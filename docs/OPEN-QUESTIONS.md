@@ -29,7 +29,7 @@
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
-| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | e.g. measure needs value + prefix + base_unit when filled; url needs neither | open |
+| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | **measure** requires them (composite); scalars like url/string do not | open |
 | Q25 | How are Units represented? | Separate Unit / single unit Node / prefix+base | **Decided:** Parameter uses **prefix** + **base_unit** Nodes from Definition tree | decided |
 | Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | Leaning: must live under the matching Definition branch | open |
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
@@ -41,6 +41,8 @@
 | Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Paused** — compare with typed-edge Bauteile example | open |
 | Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | TBD — wait for Q33 | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds (`ist-ein`, `besteht-aus`) / full Relation object | Exploring via Bauteile example tree | open |
+| Q36 | What is the core Type catalog? | Fixed list vs extensible | Leaning: string, number, integer, boolean, url, file, enum_single, enum_multiple, measure | open |
+| Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
 
 ## How to close a question
 
