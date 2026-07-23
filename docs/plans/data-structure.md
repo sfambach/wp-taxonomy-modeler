@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.15-plan"
+version: "0.6.16-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -89,6 +89,7 @@ classDiagram
     +prefix : Node?
     +base_unit : Node?
     +numeric_kind : ?
+    +selection_mode : ?
     +value : ?
   }
 
@@ -112,7 +113,7 @@ classDiagram
 
   note for Project "Definitionsbaum anchors required"
   note for Node "Hierarchy node; may still use parent_id\nand/or typed Relations (explore)"
-  note for Parameter "UNDECIDED shape\ntype from core Type catalog\nmeasure = composite:\n  number|integer + prefix + unit"
+  note for Parameter "UNDECIDED shape\ntype from core Type catalog\nmeasure = number|integer + prefix + unit\nenum = scalar options + selection_mode\n  (single|multiple — not types)"
   note for Relation "EXPLORATORY\nkinds: ist-ein | besteht-aus | ..."
   note for Change "Shared audit model"
 
@@ -133,8 +134,8 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `Relation` is **exploratory**. Core **Type** catalog emerging (scalars + composite **measure**). Parameter path still **undecided** (Q33/Q34).  
-**Clarification:** `measure` / *Wert mit Einheit* is **not** a third scalar beside `number`/`integer` — it is a **composite**: numeric value (`number` or `integer`) + optional `prefix` + `base_unit`.
+**Legend:** `Relation` is **exploratory**. Core **Type** catalog: scalars + composites **`measure`** and **`enum`**.  
+`single`/`multiple` are **selection methods** on enum, not separate types (Q38). Parameter path still **undecided** (Q33/Q34).
 
 ## Core objects
 
@@ -223,8 +224,9 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
+- Emerging **core Type catalog**: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum`, `measure` — **leaning (Q36)**
+- **`enum` is composite**: several option values of a **scalar** type; **`single` / `multiple` are selection methods**, not types — **leaning (Q38)**
 - **`measure` is composite**: numeric leaf (`number` or `integer`) + optional Präfix + Basiseinheit — **leaning (Q36/Q37)**; not a rival scalar beside `number`
-- Emerging **core Type catalog**: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum_single`, `enum_multiple`, `measure` — **leaning (Q36)**
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -451,9 +453,8 @@ flowchart TB
   T --> T4["boolean"]
   T --> T5["url"]
   T --> T6["file"]
-  T --> T7["enum_single"]
-  T --> T8["enum_multiple"]
-  T --> T9["measure<br/>composite"]
+  T --> T7["enum<br/>composite"]
+  T --> T8["measure<br/>composite"]
 
   B --> B1["Ohm"]
   B --> B2["Farad"]
@@ -476,7 +477,7 @@ flowchart TB
   M --> GH["Höhe"]
 
   Param["Parameter resistance"]
-  Param -.->|type| T9
+  Param -.->|type| T8
   Param -.->|prefix| P2
   Param -.->|base_unit| B1
 ```
@@ -490,8 +491,7 @@ Definition                                    ← Definitionsbaum root
 │   ├── boolean
 │   ├── url
 │   ├── file
-│   ├── enum_single
-│   ├── enum_multiple
+│   ├── enum                    ← composite: scalar options + selection_mode
 │   └── measure                 ← composite: number|integer + prefix + unit
 ├── Basiseinheit
 │   ├── Ohm
@@ -759,14 +759,13 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 | `boolean` | true / false | RoHS, polarisiert |
 | `url` | URL | Datenblatt-Link |
 | `file` | Datei / attachment | PDF, Bild |
-| `enum_single` | One choice from a set | Bauform: `0603` |
-| `enum_multiple` | Several choices (selection) | Features / Tags |
 
-#### Composite type (not a scalar)
+#### Composite types (not scalars)
 
 | Type key | Meaning | Built from |
 |----------|---------|------------|
 | `measure` (*Wert mit Einheit*) | Displayable quantity with unit | **`number` or `integer`** + optional **Präfix** + **Basiseinheit** |
+| `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `string`) + **selection method** |
 
 ```text
 measure / Wert mit Einheit
@@ -775,9 +774,20 @@ measure / Wert mit Einheit
 └── base_unit         ← Node under Basiseinheit (e.g. Ohm, Meter, Watt)
          │
          └─► display: "10 kOhm", "10 mm", "250 mW"
+
+enum
+├── option values[]   ← each is a scalar (leaning: string)  e.g. 0201, 0402, 0603
+└── selection_mode    ← single | multiple     ← NOT a type; UI/selection method (Q38)
+         │
+         └─► single: pick one (Bauform=0603)
+             multiple: pick many (Features=… )
 ```
 
-**Why this felt confusing:** `measure` looks like “another type next to number”, but it **reuses** a numeric leaf type. It is a **structured reading**, not a competing primitive.
+**Clarifications:**
+
+- `measure` is **not** a rival scalar beside `number`/`integer` — it **reuses** a numeric leaf.
+- `enum` is **not** split into `enum_single` / `enum_multiple` types — **single/multiple are selection methods**.
+- Option values of an enum are themselves scalar (typically `string`; whether other scalars are allowed is Q39).
 
 ```text
 Type                          ← Project.type_node
@@ -787,13 +797,14 @@ Type                          ← Project.type_node
 ├── boolean
 ├── url
 ├── file
-├── enum_single
-├── enum_multiple
-└── measure                   ← composite (uses number|integer + prefix + unit)
+├── enum                      ← composite (scalar options + selection_mode)
+└── measure                   ← composite (number|integer + prefix + unit)
 ```
 
-Open: is `measure` listed as its own Type-Node, or only a rule “when prefix/unit present”? (Q36)  
-Open: does each measure param fix `integer` vs `number`, or allow both? (Q37)
+Open: is `measure` / `enum` listed as Type-Nodes, or only composition rules? (Q36)  
+Open: does each measure param fix `integer` vs `number`, or allow both? (Q37)  
+Open: confirm selection_mode lives on the parameter/field, not in the Type name (Q38).  
+Open: which scalar(s) may appear as enum option values? (Q39)
 
 ### Worked example: Widerstand — Approach A vs B
 
@@ -808,7 +819,7 @@ Bauteile ─[ist-ein]→ Passives Bauteil ─[ist-ein]→ Widerstand
 | Attribute | Core type | Composition / choices |
 |-----------|-----------|------------------------|
 | Wert | `measure` | number + Präfix + Unit(`Ohm`) → e.g. `10 kOhm` |
-| Bauform | `enum_single` | {0201, 0402, 0603, 0805, axial, …} |
+| Bauform | `enum` + selection `single` | options {0201, 0402, 0603, 0805, axial, …} |
 | Toleranz | `measure` | number + Präfix? + Unit(`%`) → e.g. `1 %` |
 | Leistungsaufnahme | `measure` | number + Präfix + Unit(`Watt`) → e.g. `250 mW` |
 | Temperaturkoeffizient | `string` or `measure` | TBD |
@@ -834,7 +845,9 @@ parameters:
     example_value: { value: 10, prefix: k, unit: Ohm }  => "10 kOhm"
 
   - key: bauform
-    type: enum_single
+    type: enum
+    selection_mode: single
+    option_scalar: string
     choices: [0201, 0402, 0603, 0805, axial]
 
   - key: toleranz
@@ -884,8 +897,9 @@ Node: Widerstand
         filled: value=10, prefix=k  => "10 kOhm"
 
   ─[besteht-aus]→ Node: Bauform
-        type hint: enum_single
-        ─[referenziert]→ choices set / enum definition
+        type hint: enum
+        selection_mode: single
+        ─[referenziert]→ option set (scalar values)
 
   ─[besteht-aus]→ Node: Toleranz          (measure → %)
   ─[besteht-aus]→ Node: Leistungsaufnahme (measure → Watt)
@@ -913,7 +927,7 @@ Node: Widerstand
 | Field | Filled reading | A (params on node) | B (nodes + edges) |
 |-------|----------------|--------------------|-------------------|
 | Wert | 10 kOhm | Param `wert` measure payload | Child node `Wert` + refs |
-| Bauform | 0603 | Param `bauform` enum_single | Child node `Bauform` |
+| Bauform | 0603 | Param `bauform` enum+single | Child node `Bauform` |
 | Leistung | 250 mW | Param `leistungsaufnahme` | Child node `Leistungsaufnahme` |
 | Maße | 10×5×2 mm | Three params or nested group | Node `Maße` → three children |
 | Datenblatt | url | Param `datenblatt` | Child node `Datenblatt` |

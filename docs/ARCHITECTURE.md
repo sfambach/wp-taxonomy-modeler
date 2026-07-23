@@ -48,8 +48,9 @@ Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changel
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
 Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over `number`/`integer`.  
-Core Type catalog leaning: string, number, integer, boolean, url, file, enum_single, enum_multiple, measure (Q36).  
-See Q16, Q20–Q37 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Core Type catalog leaning: string, number, integer, boolean, url, file, enum, measure (Q36).  
+`enum` options are scalars; `single`/`multiple` are selection methods (Q38).  
+See Q16, Q20–Q39 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -154,7 +155,7 @@ Dimension group **Maße**: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe) und
 
 Project always has Definitionsbaum anchors. Nodes may be **templates** via `Node.template`.
 
-Details: Q24–Q37 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 

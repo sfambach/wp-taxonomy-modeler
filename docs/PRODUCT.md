@@ -39,7 +39,8 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
 - A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **measure** is composite from `number`/`integer` + Präfix + Basiseinheit.
-- Emerging core types: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum_single`, `enum_multiple`, `measure`.
+- Emerging core types: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum`, `measure`.
+- `enum` = scalar options; `single`/`multiple` = selection methods (not types).
 - **Undecided:** Parameter as specialized Node vs Parameter definitions vs nested nodes with **typed edges** (`ist-ein` / `besteht-aus`) — see Bauteile / Widerstand A vs B (Q33–Q35).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
 - Parameter single-owner rule is still **?** .
