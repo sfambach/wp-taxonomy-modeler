@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.43-plan** (2026-07-23).
+Last synced from plan version **0.6.44-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -22,8 +22,9 @@ Last synced from plan version **0.6.43-plan** (2026-07-23).
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
-| Core types: **fixed simples** per project + derived/composed types (Q36/Q48) | In progress |
+| Core types: template has **simples** + derived **enum** (base_type + values) | Done (planning) |
 | **Q49:** simples originate Relations? special kind vs config disable | Open |
+| **Q50:** lean template-copy for defaults (simples + enum) | In progress |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |

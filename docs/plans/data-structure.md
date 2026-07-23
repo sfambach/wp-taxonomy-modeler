@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.43-plan"
+version: "0.6.44-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -101,7 +101,8 @@ classDiagram
   class DerivedOrCompositeType {
     <<Node role / config>>
     built from simple types
-    e.g. enum measure string_list
+    enum: base_type + value list
+    also measure string_list later
   }
 
   class Relation {
@@ -132,10 +133,10 @@ classDiagram
     +version
   }
 
-  note for Project "Project ≈ taxonomy (Q18)\ndefaults: generate OR copy template Project (Q50)\nDefinitionsbaum + fixed simples"
+  note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + enum kind (Q50 lean)\ncopy template → new Project"
   note for Node "Hierarchy only — no taxonomy field\nattrs like Wert are just Nodes\ntype via config / has_type"
-  note for SimpleType "Always present in every Project\nQ49: special kind vs config\nthat disables originating Relations"
-  note for DerivedOrCompositeType "Created from simples\nderived or composed"
+  note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
+  note for DerivedOrCompositeType "enum in template:\nexactly one base_type (simple)\n+ list of values"
   note for Relation "EXPLORATORY\nlines = Relations with props"
   note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
   note for Change "Shared audit model"
@@ -258,14 +259,14 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - Attribute Nodes (e.g. `Wert`) bind **`type`** (required) plus optional **`prefix`** / **`base_unit`** via config and/or Relations — **no ParameterRole**. — **agreed direction**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- **Core types (Q33/Q36/Q48):** every Project has **fixed simple type Nodes** (`int`, `double`, `string`, `char`, `bool`); further types are **derived or composed** from those simples — **agreed direction**
-- **`enum` is composite**: several option values of a **scalar** type; **`single` / `multiple` are selection methods**, not types — **leaning (Q38)**
+- **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
+- **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`measure` is composite**: numeric leaf (`number` or `integer`) + optional Präfix + Basiseinheit — **leaning (Q36/Q37)**; not a rival scalar beside `number`
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
 - **Project ≈ taxonomy** — **strong leaning (Q18)**; taxonomy not on Node
-- How default Nodes appear in a new Project — **open (Q50):** generate **or** copy from a template Project
+- Default Nodes — **leaning (Q50):** template Project holds simples + enum; **copy** into new Projects (generate still optional fallback)
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
@@ -486,35 +487,55 @@ This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter-Node (Q33/
 
 ### Datentypen as tree + Relation (Q33 / Q48)
 
-**Decided direction:** types are **Nodes** in the tree. Every Project ships with a **fixed set of simple data-type Nodes**. Users (or host plugins) may create **further types** that are either **derived** or **composed** from those simples.
+**Decided direction:** types are **Nodes** in the tree.  
+**Template assignment (Q50 leaning):** the **template Project** holds the **simple types** and the **enum** derived-type kind. New Projects get them by **copying the template** (generate remains a fallback option).
 
 ```text
-Datentypen / Type             ← Project.type_node (fixed branch)
-├── int                       ← simple (always available)
+Template Project → Datentypen / Type     ← Project.type_node
+├── int                       ← simple (in template)
 ├── double                    ← simple
 ├── string                    ← simple
 ├── char                      ← simple
-└── bool                      ← simple
-# derived / composed from simples (examples):
-├── enum          ← composed over a scalar option set
-├── measure       ← composed: numeric simple + Präfix + Basiseinheit
-└── string_list   ← derived/composed from string (Q47)
+├── bool                      ← simple
+└── enum                      ← derived (in template)
+    ├── base_type → exactly one simple (e.g. string)
+    └── values    → list of options of that base type
+# later derived/composed:
+├── measure       ← numeric simple + Präfix + Basiseinheit
+└── string_list   ← open list of string (Q47; ≠ enum)
 ```
 
-**Binding:** Parameter-Node / schema slot ─[Relation `has_type` or field `type`]→ type Node  
-Example: `Menge` *has_type* `int` → table cell renders as integer field; `Stock` *has_type* `bool` → checkbox/switch.
+#### enum (derived type — agreed shape)
+
+| Rule | Meaning |
+|------|---------|
+| Kind | **Derived** from simples — not a sixth simple |
+| **Base type** | **Exactly one** simple type (`int` \| `double` \| `string` \| `char` \| `bool`) |
+| **Values** | A **list** of allowed options; each option’s value conforms to the base type |
+| Selection | `single` / `multiple` remain selection methods (Q38), not separate types |
+| Binding | Attribute Node ─[has_type]→ a concrete enum type Node (or the enum kind + instance config) |
+
+Example:
+
+```text
+enum Bauform
+  base_type: string
+  values: [0201, 0402, 0603, 0805, axial]
+```
+
+**Binding:** attribute / schema slot ─[Relation `has_type` or field `type`]→ type Node  
+Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `enum(Bauform)` → select from values.
 
 | Idea | Note |
 |------|------|
-| **Simple types are fixed** | Present in every Project; not removed as a set (per-project hide may still apply — prototype) |
-| **Derived / composed types** | Built from simples without inventing a parallel type system |
+| **Simples live in the template** | `int`…`bool` assigned to template Project; copied into new Projects |
+| **enum in the template** | Derived kind with base_type + value list |
 | Types are **Nodes** | Same storage/UI as everything else |
-| Assignment is a **Relation or typed field** | Fits typed-edge exploration (Q35); reverse view “used by” possible |
-| UI derives widget from type | Prototype: int→number, double→number step any, string→text, char→1 char, bool→checkbox |
-| Name mapping | Simple scalars ≈ earlier catalog: int↔integer, double↔number, bool↔boolean; `char` = narrow string |
-| **Relations from simples?** | Simples typically do **not** originate Relations — **Q49:** special kind **or** config that disables Relations |
+| UI derives widget from type | simples → inputs; enum → select/radio/multi from value list |
+| **Relations from simples?** | Still open **Q49** |
+| string_list vs enum | enum = **closed** list; string_list = **open** list (Q47) |
 
-**Still open (Q34/Q49):** config shape for Parameter role + whether simples are a hard special kind or config that blocks originating Relations. Binding to type remains `has_type` / `type` field (Q48).
+**Still open (Q34/Q49):** config shape details; whether simples are a hard special kind or config that blocks originating Relations.
 
 ### Definitionsbaum (canonical planning example)
 
@@ -535,7 +556,7 @@ flowchart TB
   T --> T3["string"]
   T --> T4["char"]
   T --> T5["bool"]
-  T --> T6["enum?<br/>later"]
+  T --> T6["enum<br/>base+values"]
   T --> T7["measure?<br/>later"]
   T --> T8["string_list?<br/>Q47"]
 
@@ -1290,9 +1311,9 @@ Two main options (user direction — decide later):
 | Option | Idea | Pros | Cons |
 |--------|------|------|------|
 | **A — Generate** | On Project create, code/seed creates the default Nodes | Deterministic; no extra “system” project | Defaults live in code; harder to customize globally |
-| **B — Template Project** | One template Project holds the defaults; **copy** it for each new Project | Editable defaults without code; fits Q30 deep-copy | Need a protected template Project; copy semantics |
+| **B — Template Project** | One template Project holds simples + **enum** (+ anchors); **copy** for each new Project | Editable defaults; fits Q30 | Need a protected template Project |
 
-Hybrid possible (generate minimal anchors, copy optional catalog trees). Related: Q30, Q32.
+**Current leaning:** **B** for simples + enum (already assigned to the template). Related: Q30, Q32.
 
 #### Fields / topics still to define
 

@@ -7,10 +7,11 @@
  *   - Knoten
  *   - Tabelle / Tabelle 2 — children = column schema (header + 5 rows)
  *   - Formular — selected node = field context; children = choice options
- * Datentypen branch + has_type relation → typed table widgets.
+ * Datentypen (template): simples + derived enum (base_type + value list).
+ * has_type → typed table widgets; enum base_type → exactly one simple.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v5";
+const STORAGE_KEY = "wtt-proto-tree-split-v8";
 const TABLE_BODY_ROWS = 5;
 const RIGHT_TABS = ["node", "table", "table2", "form"];
 const TAB_ARIA = {
@@ -21,8 +22,11 @@ const TAB_ARIA = {
 };
 /** Relation key in prototype: slot ─[has_type]→ Datentyp node */
 const REL_HAS_TYPE = "has_type";
+/** Relation: enum type ─[base_type]→ exactly one simple type */
+const REL_BASE_TYPE = "base_type";
+const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
 
-/** @typedef {{ id: string, parentId: string|null, name: string, position: number }} ProtoNode */
+/** @typedef {{ id: string, parentId: string|null, name: string, position: number, template?: boolean }} ProtoNode */
 /** @typedef {'node'|'table'|'table2'|'form'} RightTab */
 /**
  * @typedef {{
@@ -62,6 +66,9 @@ let formStates = new Map();
 /** slotNodeId → typeNodeId (prototype Relation has_type) */
 /** @type {Map<string, string>} */
 let typeRelations = new Map();
+/** enumTypeNodeId → simpleTypeNodeId (exactly one base_type) */
+/** @type {Map<string, string>} */
+let baseTypeRelations = new Map();
 let dataTypesRootId = "";
 
 function uid() {
@@ -88,9 +95,12 @@ function nextPosition(parentId) {
   return childrenOf(parentId).length;
 }
 
-function createNode(parentId, name, position) {
+function createNode(parentId, name, position, opts = {}) {
   const id = uid();
-  nodes.set(id, { id, parentId, name, position });
+  /** @type {ProtoNode} */
+  const node = { id, parentId, name, position };
+  if (opts.template) node.template = true;
+  nodes.set(id, node);
   return id;
 }
 
@@ -131,17 +141,26 @@ function createInitial() {
   tableCells2 = new Map();
   formStates = new Map();
   typeRelations = new Map();
+  baseTypeRelations = new Map();
   activeTab = "node";
 
-  rootId = createNode(null, "BOM Demo", 0);
+  // Template-shaped demo: Datentypen hold simples + derived enum (Q50 lean).
+  rootId = createNode(null, "Template / BOM Demo", 0, { template: true });
 
-  // Freely configurable scalar types (Q48) — start simple.
-  dataTypesRootId = createNode(rootId, "Datentypen", 0);
+  dataTypesRootId = createNode(rootId, "Datentypen", 0, { template: true });
   const tInt = createNode(dataTypesRootId, "int", 0);
   const tDouble = createNode(dataTypesRootId, "double", 1);
   const tString = createNode(dataTypesRootId, "string", 2);
   const tChar = createNode(dataTypesRootId, "char", 3);
   const tBool = createNode(dataTypesRootId, "bool", 4);
+  // Derived enum in template: exactly one base_type + value list (children).
+  const tEnum = createNode(dataTypesRootId, "enum", 5);
+  baseTypeRelations.set(tEnum, tString);
+  createNode(tEnum, "0201", 0);
+  createNode(tEnum, "0402", 1);
+  createNode(tEnum, "0603", 2);
+  createNode(tEnum, "0805", 3);
+  createNode(tEnum, "axial", 4);
 
   const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 1);
   const cRef = createNode(schemaId, "Reference", 0);
@@ -154,7 +173,7 @@ function createInitial() {
   // slot ─[has_type]→ Datentyp
   typeRelations.set(cRef, tString);
   typeRelations.set(cVal, tString);
-  typeRelations.set(cFp, tString);
+  typeRelations.set(cFp, tEnum);
   typeRelations.set(cQty, tInt);
   typeRelations.set(cLcsc, tString);
   typeRelations.set(cStock, tBool);
@@ -200,7 +219,28 @@ function typeKey(typeNode) {
   if (["bool", "boolean"].includes(k)) return "bool";
   if (["char"].includes(k)) return "char";
   if (["string", "text"].includes(k)) return "string";
+  if (["enum"].includes(k)) return "enum";
+  // Concrete enum-like: has a base_type relation
+  if (baseTypeRelations.has(typeNode.id)) return "enum";
   return "string";
+}
+
+function isSimpleTypeNode(node) {
+  if (!node) return false;
+  return SIMPLE_TYPE_NAMES.includes(node.name.trim().toLowerCase());
+}
+
+function isEnumTypeNode(node) {
+  if (!node) return false;
+  return typeKey(node) === "enum";
+}
+
+function simpleTypeNodes() {
+  return dataTypeNodes().filter(isSimpleTypeNode);
+}
+
+function enumValueNames(enumNodeId) {
+  return childrenOf(enumNodeId).map((c) => c.name);
 }
 
 function setTypeRelation(slotId, typeId) {
@@ -212,6 +252,22 @@ function setTypeRelation(slotId, typeId) {
   }
   persist();
   render();
+}
+
+function setBaseTypeRelation(enumId, simpleTypeId) {
+  if (!nodes.has(enumId)) return;
+  if (!simpleTypeId) {
+    baseTypeRelations.delete(enumId);
+  } else if (nodes.has(simpleTypeId) && isSimpleTypeNode(nodes.get(simpleTypeId))) {
+    baseTypeRelations.set(enumId, simpleTypeId);
+  }
+  persist();
+  render();
+}
+
+function baseTypeOf(enumId) {
+  const tid = baseTypeRelations.get(enumId);
+  return tid && nodes.has(tid) ? nodes.get(tid) : null;
 }
 
 /**
@@ -236,6 +292,27 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     });
     label.append(input, span);
     return label;
+  }
+
+  if (key === "enum" && typeNode) {
+    const select = document.createElement("select");
+    select.className = "form-control";
+    select.setAttribute("aria-label", ariaLabel);
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "—";
+    select.append(empty);
+    const vals = enumValueNames(typeNode.id);
+    const cur = value == null ? "" : String(value);
+    for (const v of vals) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.append(opt);
+    }
+    if (vals.includes(cur)) select.value = cur;
+    select.addEventListener("change", () => onChange(select.value));
+    return select;
   }
 
   const input = document.createElement("input");
@@ -305,10 +382,14 @@ function deleteNode(id) {
     tableCells2.delete(k);
     formStates.delete(k);
     typeRelations.delete(k);
+    baseTypeRelations.delete(k);
   }
   // Drop relations pointing at deleted type nodes.
   for (const [slot, tid] of [...typeRelations.entries()]) {
     if (kill.has(tid)) typeRelations.delete(slot);
+  }
+  for (const [enumId, tid] of [...baseTypeRelations.entries()]) {
+    if (kill.has(enumId) || kill.has(tid)) baseTypeRelations.delete(enumId);
   }
   if (kill.has(dataTypesRootId)) dataTypesRootId = "";
 
@@ -445,6 +526,7 @@ function persist() {
     tableCells2: mapToObject(tableCells2),
     formStates: mapToObject(formStates),
     typeRelations: mapToObject(typeRelations),
+    baseTypeRelations: mapToObject(baseTypeRelations),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -476,6 +558,7 @@ function restore() {
     tableCells2 = new Map();
     formStates = new Map();
     typeRelations = new Map();
+    baseTypeRelations = new Map();
     restoreStringGridMap(data.tableCells, tableCells);
     restoreStringGridMap(data.tableCells2, tableCells2);
     if (data.formStates && typeof data.formStates === "object") {
@@ -487,6 +570,17 @@ function restore() {
     if (data.typeRelations && typeof data.typeRelations === "object") {
       for (const [slot, tid] of Object.entries(data.typeRelations)) {
         if (nodes.has(slot) && nodes.has(tid)) typeRelations.set(slot, tid);
+      }
+    }
+    if (data.baseTypeRelations && typeof data.baseTypeRelations === "object") {
+      for (const [enumId, tid] of Object.entries(data.baseTypeRelations)) {
+        if (
+          nodes.has(enumId) &&
+          nodes.has(tid) &&
+          isSimpleTypeNode(nodes.get(tid))
+        ) {
+          baseTypeRelations.set(enumId, tid);
+        }
       }
     }
     dataTypeNodes(); // heal dataTypesRootId by name if needed
@@ -509,6 +603,9 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v2");
     localStorage.removeItem("wtt-proto-tree-split-v3");
     localStorage.removeItem("wtt-proto-tree-split-v4");
+    localStorage.removeItem("wtt-proto-tree-split-v5");
+    localStorage.removeItem("wtt-proto-tree-split-v6");
+    localStorage.removeItem("wtt-proto-tree-split-v7");
   } catch {
     /* ignore */
   }
@@ -776,24 +873,66 @@ function renderDetail() {
   }
   typeBlock.append(typeLab, typeSelect, typeHint);
 
+  // enum: exactly one base_type (a simple) + value list = children
+  let baseBlock = null;
+  if (isEnumTypeNode(node) && node.parentId === dataTypesRootId) {
+    baseBlock = document.createElement("div");
+    baseBlock.className = "order-block";
+    const baseLab = document.createElement("div");
+    baseLab.className = "field-label";
+    baseLab.textContent = "enum base_type (genau ein simpler Typ)";
+    const baseSelect = document.createElement("select");
+    baseSelect.className = "form-control";
+    const bNone = document.createElement("option");
+    bNone.value = "";
+    bNone.textContent = "— Base wählen —";
+    baseSelect.append(bNone);
+    const simples = simpleTypeNodes();
+    const curBase = baseTypeRelations.get(node.id) || "";
+    for (const s of simples) {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.name;
+      baseSelect.append(opt);
+    }
+    if (simples.some((s) => s.id === curBase)) baseSelect.value = curBase;
+    baseSelect.addEventListener("change", () => {
+      setBaseTypeRelation(node.id, baseSelect.value);
+    });
+    const baseHint = document.createElement("p");
+    baseHint.className = "muted";
+    baseHint.style.margin = "0.35rem 0 0";
+    baseHint.style.fontSize = "0.8rem";
+    const bt = baseTypeOf(node.id);
+    baseHint.textContent = bt
+      ? `enum ─[${REL_BASE_TYPE}]→ ${bt.name}; Werte = Kinder (${kids.length}): ${enumValueNames(node.id).join(", ") || "—"}.`
+      : "enum braucht genau einen Basistyp; Kinder sind die Werteliste.";
+    baseBlock.append(baseLab, baseSelect, baseHint);
+  }
+
   const meta = document.createElement("div");
   meta.className = "meta";
   const tn = typeNodeOf(node.id);
+  const bt = baseTypeOf(node.id);
   meta.innerHTML = `
     <div>id: <span>${node.id}</span></div>
     <div>parent: <span>${parent ? parent.name : "— (root)"}</span></div>
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
+    <div>template: <span>${node.template ? "yes" : "—"}</span></div>
     <div>has_type: <span>${tn ? tn.name : "—"}</span></div>
+    <div>base_type: <span>${bt ? bt.name : "—"}</span></div>
   `;
 
   const hint = document.createElement("p");
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Datentypen im Baum + has_type → Tabellenfelder. Kinder → Spalten/Formular-Optionen. Alt+↑ / Alt+↓.";
+    "Template: Simples + enum (base_type + Werte). has_type → Tabellenfelder. Alt+↑ / Alt+↓.";
 
-  card.append(h2, field, typeBlock, orderBlock, meta, hint);
+  card.append(h2, field, typeBlock);
+  if (baseBlock) card.append(baseBlock);
+  card.append(orderBlock, meta, hint);
   mount.append(card);
 }
 

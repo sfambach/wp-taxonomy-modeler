@@ -36,12 +36,12 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A **tree is not a separate object**; it is defined by a **root node**.
 - A **root node** is the same **Node** object with parent `null` (not a different type).
 - A **project** is practically the **taxonomy** (**Q18** strong leaning); Trees live under the Project; Nodes have no taxonomy field.
-- Default Nodes (Definitionsbaum + simples): **generate** on create **or** **copy a template Project** — open **Q50**.
+- Default Nodes (Definitionsbaum + simples + enum): **lean template Project copy** (**Q50**); generate remains a fallback.
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
 - A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **measure** is composite from `number`/`integer` + Präfix + Basiseinheit.
-- Emerging type model: **fixed simple types** per project (`int`, `double`, `string`, `char`, `bool`); further types **derived or composed** from them (`enum`, `measure`, `string_list`, …).
-- `enum` = scalar options; `single`/`multiple` = selection methods (not types).
+- Emerging type model: **template** holds **simple types** (`int`, `double`, `string`, `char`, `bool`) and derived **enum** (exactly one **base_type** + **value list**); further types later (`measure`, `string_list`, …).
+- `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - **Decided (Q33/Q34):** **no Parameter class** and **no ParameterRole** — attributes like `Wert` are ordinary **Nodes** with type binding via config / `has_type`. Typed edges remain exploratory (**Q35**, Q41–Q43).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).

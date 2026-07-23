@@ -52,10 +52,11 @@ Display leaning: part-of nodes as attributes of parent; inheritable along is_a.
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over simple numeric types.  
-**Type catalog (Q33/Q36/Q48):** fixed simple types per project (`int`, `double`, `string`, `char`, `bool`); further types derived or composed from them.  
+**Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** (exactly one base_type + value list).  
+**Q50 leaning:** copy template Project into new Projects.  
 **Q49 open:** simples typically do not originate Relations — special kind vs config that disables Relations.  
-`enum` options are scalars; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39, Q49 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
+See Q16, Q20–Q39, Q49–Q50 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
