@@ -1,8 +1,8 @@
 ---
-name: Data structure — Nodes
-overview: Define the core domain data structure for WP Taxonomy Tree. A node may have one parent and several children; nodes build trees or forests. Planning artifact only — no implementation.
+name: Data structure — Nodes and Parameters
+overview: Define the core domain objects for WP Taxonomy Tree. First object Node (parent/children → trees/forests). Second object Parameter. Planning artifact only — no implementation.
 status: draft
-version: "0.3.0-plan"
+version: "0.4.0-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -10,32 +10,47 @@ related_plans:
   - docs/plans/planning-phase.md
 todos:
   - id: define-node-core
-    content: "Define Node as the core entity and its required fields"
+    content: "Define Node as the first core entity (parent, children, trees, forests)"
     status: completed
-  - id: define-parent-link
-    content: "Define that one node can have one parent node"
-    status: completed
-  - id: define-children
-    content: "Define that one node can have several child nodes"
-    status: completed
-  - id: define-trees-forests
-    content: "Define how nodes build trees and forests"
-    status: completed
+  - id: define-parameter-core
+    content: "Define Parameter as the second core entity"
+    status: in_progress
+  - id: define-node-parameter-link
+    content: "Define how Parameter relates to Node"
+    status: pending
   - id: map-storage
-    content: "Decide how Node maps to WordPress term storage (still open detail)"
+    content: "Decide how Node and Parameter map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional Node fields (slug, description, count, sort order, meta)"
+    content: "Confirm optional Node and Parameter fields"
     status: pending
 ---
 
-# Data structure: Nodes
+# Data structure: Nodes and Parameters
 
 > Planning only. This document defines the conceptual data model. No plugin code yet.
 
-## Core idea
+## Core objects
 
-The fundamental unit is a **Node**.
+| # | Object | Role |
+|---|--------|------|
+| 1 | **Node** | Builds trees and forests via parent/child links |
+| 2 | **Parameter** | Second core object (definition in progress) |
+
+```mermaid
+flowchart LR
+  N[Node] -->|optional parent| N
+  N -->|several children| N
+  P[Parameter] -. relates to .-> N
+```
+
+Exact Node↔Parameter cardinality is still being defined (see open questions).
+
+---
+
+## 1. Node
+
+### Core idea
 
 1. **One node can have a parent node** (or no parent).
 2. **One node can have several child nodes** (or none).
@@ -58,178 +73,140 @@ flowchart TB
   end
 ```
 
-## Parent and children
+### Parent and children
 
 | Rule | Meaning |
 |------|---------|
 | Optional parent | A node may have **one** parent node, or none |
-| At most one parent | Never multiple parents (not a DAG/graph of many parents) |
+| At most one parent | Never multiple parents |
 | Several children | A node may have **zero or more** child nodes |
 | Root | A node with **no parent** is a root |
 | Child | A node whose parent is set is a child of that parent |
 | Same container | Parent and children belong to the same taxonomy/forest context |
-
-So the structural links are:
 
 ```text
 Node ──(optional)──► parent Node
 Node ◄──(many)────── child Nodes
 ```
 
-Children are the inverse view of the parent link: all nodes that point to the same parent.
+### Trees and forests
 
-## Trees and forests
+| Concept | Meaning |
+|---------|---------|
+| Tree | All nodes under one root via parent/child links |
+| Forest | One or more trees (typical: all roots in one taxonomy) |
 
-### Tree
-
-A **tree** is the set of nodes reachable from one **root** by following child links (nodes that name that root as ancestor).
-
-- Exactly one root in that tree.
-- Every non-root node has exactly one parent.
-- No cycles.
-
-### Forest
-
-A **forest** is a collection of trees (zero or more roots, each heading its own tree).
-
-- In this product, a forest is typically “all nodes for one hierarchical taxonomy”.
-- Multiple roots are normal (several top-level categories).
-- The product UI may show one forest (one taxonomy) at a time.
-
-| Concept | Built from | Root count |
-|---------|------------|------------|
-| Node | identity + optional parent + name (+ taxonomy) | — |
-| Tree | connected nodes via parent links | 1 |
-| Forest | one or more disjoint trees | 0..n |
-
-## Entity: Node
-
-Conceptual record (field names are planning English; final PHP/JS names TBD):
+### Node fields
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the node |
-| `parent_id` | yes* | identifier \| `null` | Parent node; `null` means no parent (root) |
+| `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root |
 | `name` | yes | string | Display name of the node |
 | `taxonomy` | yes | string | Which hierarchical taxonomy / forest this node belongs to |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
 
-### Planned optional fields (not decided yet)
+#### Planned optional Node fields (not decided yet)
 
 | Field | Meaning | Status |
 |-------|---------|--------|
-| `slug` | URL/machine slug | open — likely yes for WP terms |
+| `slug` | URL/machine slug | open |
 | `description` | Longer text | open |
-| `count` | Assigned object count (WP term count or host-defined) | open |
-| `position` / `menu_order` | Explicit sibling order | open — may be later than MVP |
-| `meta` | Extensible key/value bag for hosts | open — prefer host-owned meta later |
+| `count` | Assigned object count | open |
+| `position` / `menu_order` | Explicit sibling order | open |
+| `meta` | Extensible key/value bag | open |
 
-## Relations
-
-| Relation | Cardinality | Rules |
-|----------|-------------|-------|
-| Node → parent | 0..1 | One optional parent node; roots have none |
-| Node → children | 0..n | Several child nodes allowed; leaf nodes have none |
-| Node → ancestors | 0..n | Chain of parents up to the root |
-| Node → descendants | 0..n | Full subtree excluding self |
-| Nodes → tree | derived | All nodes under one root |
-| Nodes → forest | derived | All trees in one taxonomy |
-
-### Invariants
+### Node invariants
 
 1. A node’s `parent_id`, when not `null`, must reference an existing node in the **same** `taxonomy`.
-2. A node must not be its own ancestor (no cycles) — otherwise it is not a tree.
-3. From parent links alone, the structure must remain a forest (disjoint trees), never a general graph.
-4. Deleting a node must follow a defined policy for children:
-   - **promote** — children get the deleted node’s parent (or become roots if the deleted node was a root)
-   - **cascade** — children (and their descendants) are deleted too
-5. Moving/reparenting (if allowed later) must preserve invariants 1–3.
+2. A node must not be its own ancestor (no cycles).
+3. Structure remains a forest (disjoint trees), never a general multi-parent graph.
+4. Delete policies for children: **promote** or **cascade**.
 
-## How nodes build trees and forests
+### How nodes build trees and forests
 
-### Flat list (storage / transfer)
-
-Parent links are enough to rebuild structure:
+Flat list (parent links rebuild structure):
 
 ```text
 [
   { id: 1, parent_id: null, name: "Passive Components", taxonomy: "part_category" },
   { id: 2, parent_id: 1,    name: "Resistors",          taxonomy: "part_category" },
-  { id: 3, parent_id: 2,    name: "SMD 0805",           taxonomy: "part_category" },
   { id: 4, parent_id: null, name: "Semiconductors",     taxonomy: "part_category" }
 ]
 ```
 
-- Nodes `1 → 2 → 3` form **Tree A**.
-- Node `4` alone forms **Tree B**.
-- Together they are a **forest** for `part_category`.
+- `1 → 2` = Tree A; `4` = Tree B; together = forest for `part_category`.
+- Nested `children` is a **view** derived from parent links, not a second source of truth.
 
-### Nested view (UI)
+---
 
-Useful for rendering one forest as nested trees:
+## 2. Parameter
 
-```text
-[
-  {
-    id: 1,
-    parent_id: null,
-    name: "Passive Components",
-    taxonomy: "part_category",
-    children: [
-      {
-        id: 2,
-        parent_id: 1,
-        name: "Resistors",
-        taxonomy: "part_category",
-        children: [
-          { id: 3, parent_id: 2, name: "SMD 0805", taxonomy: "part_category", children: [] }
-        ]
-      }
-    ]
-  },
-  {
-    id: 4,
-    parent_id: null,
-    name: "Semiconductors",
-    taxonomy: "part_category",
-    children: []
-  }
-]
+### Core idea
+
+**Parameter** is the second core object in this data structure.
+
+Parameters describe configurable attributes in the taxonomy-tree environment (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters describe attributes associated with that hierarchy.
+
+```mermaid
+flowchart TB
+  N[Node] --- P1[Parameter]
+  N --- P2[Parameter]
+  N --- P3[Parameter]
 ```
 
-The nested `children` array is a **view** derived from parent links, not a second source of truth.
+> Cardinality sketch above is a **working assumption** (a node may relate to several parameters). Confirm in planning (Q14).
 
-## What a Node is not (MVP)
+### Parameter fields (initial — to refine)
 
-- Not a post/part record.
-- Not a property schema (measure, enum, etc.).
-- Not a user or capability object.
-- Not a many-parent graph node (only optional single parent).
+| Field | Required | Type (conceptual) | Meaning |
+|-------|----------|-------------------|---------|
+| `id` | yes | identifier | Stable identity of the parameter |
+| `key` | likely | string | Machine key (stable in code/APIs) |
+| `label` | likely | string | Human-readable name |
+| `type` | likely | string / enum | Parameter type (exact type set TBD) |
 
-Host plugins may attach extra data **to** a node (for example term meta on the underlying term) without putting domain fields into the core Node contract.
+#### Fields still to define
+
+| Topic | Status |
+|-------|--------|
+| Link to Node (`node_id` or similar) | open — Q14 |
+| Required / default / validation rules | open |
+| Inheritance to child nodes | open |
+| Allowed type list (text, number, measure, …) | open |
+| Storage (term meta vs custom table vs host-owned) | open — Q15 |
+| Whether parameter *values* live in this plugin or only in hosts | open — Q16 |
+
+### What a Parameter is not (until decided otherwise)
+
+- Not a Node (no parent/child tree of parameters unless we explicitly add that later).
+- Not necessarily a filled-in value on a part/post — that may be a separate “value” concern.
+- Not a replacement for WordPress core term fields (`name`, `slug`, …).
+
+---
+
+## Object summary
+
+| Object | Primary job | Structural link |
+|--------|-------------|-----------------|
+| Node | Hierarchy | Optional one parent; several children → trees/forests |
+| Parameter | Attribute definition | Relates to Node(s) — exact relation TBD |
 
 ## Storage mapping (leaning, not final)
 
-| Conceptual Node field | Likely WordPress mapping |
-|-----------------------|--------------------------|
-| `id` | term id (`wp_terms.term_id`) |
-| `parent_id` | `wp_term_taxonomy.parent` (`0` in DB ↔ `null` in model) |
-| `name` | `wp_terms.name` |
-| `taxonomy` | `wp_term_taxonomy.taxonomy` |
-| `slug` (if included) | `wp_terms.slug` |
+| Conceptual field | Likely WordPress mapping |
+|------------------|--------------------------|
+| Node `id` | term id |
+| Node `parent_id` | `wp_term_taxonomy.parent` (`0` ↔ `null`) |
+| Node `name` | `wp_terms.name` |
+| Node `taxonomy` | `wp_term_taxonomy.taxonomy` |
+| Parameter | term meta JSON, custom table, or host storage — **TBD (Q15)** |
 
-MVP leaning: **no custom node table** — nodes are a model over hierarchical terms. Final decision tracked as open question **Q11**.
+## Open points
 
-## Open points for this data structure
-
-See also [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md):
-
-- Confirm required vs optional fields above.
-- Sibling order: WordPress default order vs explicit `position`.
-- Whether `count` belongs on the core Node DTO for the admin UI.
-- Whether Node `id` is always the WP term id or a plugin-owned id (leaning: term id).
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q16).
 
 ## Next planning step
 
-Continue refining Node fields and operations on trees/forests (create child, reparent, delete promote/cascade). Still planning only — no implementation.
+Define how Parameter attaches to Node (one node → several parameters?), then parameter types and values. Still planning only — no implementation.

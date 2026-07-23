@@ -9,7 +9,7 @@ Living project documentation for **WP Taxonomy Tree**.
 1. [`plans/project-plan.md`](plans/project-plan.md) — plan and decisions (source of truth)
 2. [`plans/planning-phase.md`](plans/planning-phase.md) — active planning checklist
 3. [`plans/mvp-requirements.md`](plans/mvp-requirements.md) — MVP requirements
-4. [`plans/data-structure.md`](plans/data-structure.md) — Node data structure
+4. [`plans/data-structure.md`](plans/data-structure.md) — Node + Parameter data structure
 5. [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — questions to resolve before coding
 6. [`PRODUCT.md`](PRODUCT.md) — what the product is
 7. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built

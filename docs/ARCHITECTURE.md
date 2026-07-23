@@ -57,7 +57,7 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-The domain model is built from **nodes**. Nodes have an optional **parent node** and are used to build **trees** and **forests**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ### Node (conceptual)
 
@@ -67,6 +67,17 @@ The domain model is built from **nodes**. Nodes have an optional **parent node**
 | `parent_id` | yes (`null` = no parent) | Optional single parent node |
 | `name` | yes | Display name |
 | `taxonomy` | yes | Hierarchical taxonomy / forest key |
+
+### Parameter (conceptual — second object)
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `id` | yes | Stable parameter identity |
+| `key` | likely | Machine key |
+| `label` | likely | Human-readable name |
+| `type` | likely | Parameter type (set TBD) |
+
+Parameter is distinct from Node. How it attaches to nodes, where it is stored, and whether values live in this plugin are still open (Q14–Q16).
 
 ### Trees and forests
 
@@ -81,13 +92,13 @@ Nested `children` is only a view over parent links. Cycles and multi-parent link
 
 ### Storage (leaning)
 
-MVP intends to map nodes onto native WordPress taxonomy tables:
+MVP intends to map **nodes** onto native WordPress taxonomy tables:
 
 - `wp_terms`
 - `wp_term_taxonomy` (`parent`, `count`, `taxonomy`)
-- `wp_termmeta` only if a later phase needs plugin-owned meta
+- Parameter storage TBD (term meta / custom table / host) — Q15
 
-No custom node table is required for the MVP leaning. If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations). Final storage choice: open question **Q11**.
+If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations). Node storage choice: open question **Q11**.
 
 ## Tree model responsibilities (planned)
 
@@ -97,6 +108,7 @@ No custom node table is required for the MVP leaning. If custom tables appear la
 - Support delete strategies:
   - **promote:** reparent children to the deleted node’s parent (or make them roots)
   - **cascade:** delete the node and its descendants
+- Model Parameter definitions once Node↔Parameter rules are settled.
 
 ## Admin UI responsibilities (planned)
 
