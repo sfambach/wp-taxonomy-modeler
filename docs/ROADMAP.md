@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.31-plan** (2026-07-23).
+Last synced from plan version **0.6.37-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -15,13 +15,13 @@ Last synced from plan version **0.6.31-plan** (2026-07-23).
 | Planning-only rule (no implementation yet) | In progress |
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
-| Data structure: Node (root = same Node with parent null; tree = that root) | In progress |
-| Data structure: Parameter (node → several params; param → one node ?) | In progress |
-| Data structure: Project (`name`, `description`, `root_nodes`) | In progress |
-| Data structure: Project Definition anchors + Node.template | In progress |
+| Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
+| Data structure: **Parameter is a tree Node (Q33)**; Q14 dissolved; Q34 PHP shape open | Done (planning) |
+| Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
+| Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
-| Core Type catalog: scalars + measure/enum composites; selection_mode (Q36–Q39) | In progress |
+| Core types: **fixed simples** per project + derived/composed types (Q36/Q48) | In progress |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) | In progress |
@@ -33,9 +33,8 @@ Last synced from plan version **0.6.31-plan** (2026-07-23).
 | Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
 | UI prototype `prototypes/tree-split` (static, not WP plugin) | In progress |
 | Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
-| Open questions (leave open; resolve later in batches) | Parked for now |
-| Widerstand worked example: Approach A vs B | In progress |
-| Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |
+| Open questions (leave open; resolve later in batches) | In progress |
+| Widerstand worked example: Approach A rejected; B (Parameter-Nodes) survives | Done (planning) |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
 **Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.

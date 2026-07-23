@@ -21,8 +21,8 @@ todos:
     content: "Agree Node fields; tree is derived from root node (not a separate object)"
     status: completed
   - id: define-parameter-model
-    content: "Parameter object + node can have several parameters; single-owner (?) deferred via Q14"
-    status: in_progress
+    content: "Q33: Parameter is a tree Node; fixed simple types per project; derived/composed types; Q34 PHP shape still open"
+    status: completed
   - id: define-project-model
     content: "Project has name, description, root_nodes (list of root Node)"
     status: completed

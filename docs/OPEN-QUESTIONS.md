@@ -19,8 +19,8 @@
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
 | Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; **position** strongly needed if BOM/Recipe lines are Nodes (Q13/Q46) | open |
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | **Leaning: explicit `position` (or Relation order)** — BOM/Recipe line display needs stable sequence, not name sort | open |
-| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | May dissolve if Parameter is a Node or via `besteht-aus`; else still open | open |
-| Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | TBD | open |
+| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | **Dissolves under Q33:** Parameter *is* a Node; placement via `parent_id` and/or Relations (`besteht-aus`) — no separate `node_id` owner field | decided |
+| Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Same as Nodes (Q11)** — Parameter is a Node; no separate Parameter store | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
 | Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | TBD | open |
@@ -38,10 +38,10 @@
 | Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
-| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Paused** — compare with typed-edge Bauteile example | open |
-| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | TBD — wait for Q33 | open |
+| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: Parameter = tree Node.** Every project also has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples | decided |
+| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | Q33 closed (is-a Node); pick specialization mechanism next | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
-| Q36 | What is the core Type catalog? | Fixed list vs extensible | **Leaning: extensible tree** under Datentypen/Type; MVP scalars **int, double, string, char, bool** (map ≈ integer/number/string/char/boolean); later enum/measure/string_list (Q47/Q48) | open |
+| Q36 | What is the core Type catalog? | Fixed list vs extensible | **Leaning (Q33):** **fixed simple types** in every project (`int`, `double`, `string`, `char`, `bool`); users may **derive or compose** further types from them (enum/measure/string_list, …) | open |
 | Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
 | Q38 | Are single/multiple enum variants types or selection methods? | enum_single+enum_multiple types / one enum + selection_mode | **Leaning: one `enum` type; single\|multiple = selection method** | open |
 | Q39 | Which scalar may enum option values use? | string only / any scalar / configurable | string leaning | open |
@@ -53,7 +53,7 @@
 | Q45 | How is a measure bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Parameter only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Leaning: schema-as-Nodes** so BOM/Recipe need no core classes; UI renders node graphs | open |
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
-| Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Leaning: types as tree Nodes** (start: int, double, string, char, bool); schema slot ─[has_type]→ type Node; UI derives widget | open |
+| Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Aligned with Q33:** simple types = fixed Nodes per project; Parameter/slot ─[has_type]→ type Node; derived/composed types allowed; UI widget from type | open |
 
 ## How to close a question
 

@@ -40,10 +40,9 @@ flowchart TB
 
 ## PHP representation (leaning)
 
-## PHP representation (leaning)
-
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Parameter` as specialized `Node` is **undecided**; exploring **Relation** + **RelationType** (Q33–Q35, Q41–Q43).  
+**Decided (Q33):** `Parameter` **is a Node** (tree node). PHP specialization (subclass / `kind` / role) still open (**Q34**).  
+Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
 Measure spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
@@ -51,9 +50,9 @@ Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templ
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
-`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
-Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over `number`/`integer`.  
-Core Type catalog leaning: string, number, integer, boolean, url, file, enum, measure (Q36).  
+`Parameter` (as Node) references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
+Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over simple numeric types.  
+**Type catalog (Q33/Q36/Q48):** fixed simple types per project (`int`, `double`, `string`, `char`, `bool`); further types derived or composed from them.  
 `enum` options are scalars; `single`/`multiple` are selection methods (Q38).  
 See Q16, Q20–Q39 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
@@ -118,23 +117,21 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
 Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 
-### Parameter (conceptual)
+### Parameter (conceptual — is a Node, Q33)
+
+A Parameter is a **Node** in the tree (not a separate store). Extra conceptual fields beyond Node:
 
 | Field | Required | Meaning |
 |-------|----------|---------|
-| `id` | yes | Stable parameter identity |
-| `node_id` | ? | Owning node — only if single-owner model is confirmed |
-| `key` | likely | Machine key |
-| `label` | likely | Human-readable name |
-| `type` | **yes** | **Node** under `project.type_node` |
+| *(Node fields)* | yes | `id`, `parent_id`, `name`, `template`, `changelog`, … |
+| `type` | **yes** | **Node** under `project.type_node` (simple or derived/composed) |
 | `prefix` | **optional** | **Node** under `project.prefix_node` |
 | `base_unit` | **optional** | **Node** under `project.base_unit_node` |
 | `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
-| `changelog` | yes | Changelog of Change entries |
 
-**Agreed:** measure composition as above.  
-**Undecided:** Parameter as specialized Node vs definitions vs typed edges (Q33–Q35).  
-**Tentative (?):** one parameter → exactly one owning node via separate `node_id` — may dissolve if parent/child or `besteht-aus` is enough (Q14).
+**Agreed:** Parameter **is a Node** (Q33); measure composition as above; fixed simple types per project.  
+**Open:** PHP specialization mechanism (Q34); typed-edge display (Q35).  
+**Dissolved (Q14):** no separate owning `node_id` — use `parent_id` and/or Relations.
 
 ### Changelog / Change (shared)
 
