@@ -1,8 +1,8 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Parameter, Changelog/Change. A Parameter uses Nodes from Type, optional Präfix, and optional Basiseinheit. Planning artifact only — no implementation.
+overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.7-plan"
+version: "0.6.8-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -10,7 +10,7 @@ related_plans:
   - docs/plans/planning-phase.md
 todos:
   - id: define-node-core
-    content: "Define Node (parent, children, trees as derived from roots)"
+    content: "Define Node (parent, children, trees as derived from roots); template flag"
     status: completed
   - id: define-parameter-core
     content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
@@ -19,13 +19,16 @@ todos:
     content: "Node can have several parameters (agreed); parameter→one node is tentative (?)"
     status: in_progress
   - id: define-project-core
-    content: "Project has name, description, root_nodes"
+    content: "Project stores root_nodes plus required Definition anchors"
     status: completed
   - id: define-changelog
     content: "Every domain object has a Changelog made of Change entries"
     status: completed
   - id: define-definition-tree
-    content: "Example Definition tree: Type, Basiseinheit, Präfix"
+    content: "Definition tree required; Type, Basiseinheit, Präfix anchors on Project"
+    status: completed
+  - id: define-template-flag
+    content: "Node.template flag marks template trees for project-specific trees"
     status: completed
   - id: map-storage
     content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
@@ -52,6 +55,10 @@ classDiagram
     +name
     +description
     +root_nodes : Node[]
+    +definition_root : Node
+    +type_node : Node
+    +prefix_node : Node
+    +base_unit_node : Node
     +changelog : Changelog
   }
 
@@ -59,6 +66,7 @@ classDiagram
     +id
     +parent_id : id|null
     +name
+    +template : bool
     +taxonomy : ?
     +project_id : ?
     +changelog : Changelog
@@ -86,11 +94,16 @@ classDiagram
     +version
   }
 
-  note for Node "Same class used as:\n- tree hierarchy\n- Type choice e.g. measure\n- Präfix e.g. k\n- Basiseinheit e.g. Ohm"
-  note for Parameter "Draws from Definition tree:\ntype (required)\nprefix optional\nbase_unit optional\ne.g. 10 + k + Ohm\nOne parameter → one node? Q14"
+  note for Project "Always stores Definition anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\n(unique required nodes in project)"
+  note for Node "template=true → template tree\nused to seed project-specific trees\nSame class also used for Type/Präfix/Basiseinheit choices"
+  note for Parameter "type under project.type_node\nprefix under project.prefix_node\nbase_unit under project.base_unit_node"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
+  Project "1" --> "1" Node : definition_root
+  Project "1" --> "1" Node : type_node
+  Project "1" --> "1" Node : prefix_node
+  Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent / children
   Node "1" --> "*" Parameter : has several
@@ -103,15 +116,15 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Parameter composes **Type**, **Präfix**, **Basiseinheit** via Node references (see Definition example tree). Actor / ChangeBody / version: Q21–Q23.
+**Legend:** Required Definition anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy; also Type / Präfix / Basiseinheit choices |
+| 1 | **Node** | Hierarchy; Definition choices; may be marked `template` |
 | 2 | **Parameter** | Built from `type`, optional `prefix`, optional `base_unit` (all Nodes) |
-| 3 | **Project** | Container with `root_nodes` |
+| 3 | **Project** | Holds trees + **required Definition anchors** |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 
@@ -150,9 +163,10 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 |---------|--------|---------|
 | **Tree** | **Not an object** | Defined by a **root node** (and all descendants reachable via child links) |
 | **RootNode** | **Not an object** | Same as **Node** with parent `null` — only a role, not a type |
-| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Definition → Type) |
-| **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead of a single Unit class |
-| Forest | Derived view | Several trees (several roots), e.g. inside one project |
+| **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
+| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
+| **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
+| Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
 flowchart TB
@@ -186,11 +200,13 @@ flowchart TB
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
-- A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`** (Präfix Node), optional **`base_unit`** (Basiseinheit Node). — **agreed**
-- Example: “10 kOhm” → type `measure` + prefix `k` + base_unit `Ohm` (numeric value still Q16). — **agreed direction**
-- Example: URL parameter → type `url`, `prefix`/`base_unit` = null. — **agreed direction**
+- A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
+- Every **Project** must have a **Definition tree** and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
+- Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
+- Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
+- Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
-- Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
+- Every Project, Node, and Parameter has a **changelog**. — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 
 ```text
@@ -265,6 +281,7 @@ Node ◄──(many)────── Parameters
 | `id` | yes | identifier | Stable identity of the node |
 | `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root (defines a tree) |
 | `name` | yes | string | Display name of the node |
+| `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `taxonomy` | ? | string | May map to WP taxonomy and/or align with project — confirm Q18 |
 | `changelog` | yes | **Changelog** | History of changes on this node |
@@ -423,20 +440,25 @@ Definition
     └── µ
 ```
 
-**Parameter examples using this tree:**
+**Parameter examples using this tree** (anchors also stored on Project):
 
 ```text
+Project.definition_root = Definition
+Project.type_node = Type
+Project.prefix_node = Präfix
+Project.base_unit_node = Basiseinheit
+
 Parameter {
   key: "resistance",
-  type: Node("measure"),      # under Type
-  prefix: Node("k"),          # under Präfix
-  base_unit: Node("Ohm")      # under Basiseinheit
+  type: Node("measure"),      # under project.type_node
+  prefix: Node("k"),          # under project.prefix_node
+  base_unit: Node("Ohm")      # under project.base_unit_node
 }
 # with value 10  =>  "10 kOhm"
 
 Parameter {
   key: "datasheet",
-  type: Node("url"),          # under Type
+  type: Node("url"),
   prefix: null,
   base_unit: null
 }
@@ -457,22 +479,51 @@ Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).
 
 ### Core idea
 
-**Project** is a core object (PHP class leaning). A project can consist of **different trees**. Because a tree is not an extra object, the project holds a list of **root nodes** — property name: `root_nodes`.
+**Project** holds:
+
+1. All project trees via `root_nodes`
+2. **Required Definition anchors** (unique nodes that must exist so Parameters can be created)
+3. Optional other roots (catalog trees, template roots, etc.)
+
+A **Definition tree must always exist**. Inside it (or referenced from Project), these nodes **must** exist and are stored on the Project:
+
+| Anchor on Project | Node meaning |
+|-------------------|--------------|
+| `definition_root` | Root of the Definition tree |
+| `type_node` | **Type** branch node (children = selectable types) |
+| `prefix_node` | **Präfix** branch node (children = prefixes) |
+| `base_unit_node` | **Basiseinheit** branch node (children = base units) |
 
 ```mermaid
-flowchart LR
-  PR["Project<br/>name, description"]
-  PR -->|root_nodes| R1[Node parent null]
-  PR -->|root_nodes| R2[Node parent null]
-  PR -->|root_nodes| R3[Node parent null]
+flowchart TB
+  PR[Project]
+  PR --> DR[definition_root Definition]
+  PR --> TN[type_node Type]
+  PR --> PN[prefix_node Präfix]
+  PR --> BN[base_unit_node Basiseinheit]
+  DR --> TN
+  DR --> BN
+  DR --> PN
+  PR --> Rother[other root_nodes...]
 ```
 
-| Rule | Meaning |
-|------|---------|
-| Container | Project groups trees used together |
-| `root_nodes` | List of Node instances that are roots (`parent_id = null`) |
-| No Tree entity | Project does not store Tree objects; only root nodes |
-| Each entry in `root_nodes` | Must be a root node (same Node class, parent null) |
+### Required vs other nodes
+
+| Kind | Unique in project? | Must exist? | Stored where |
+|------|--------------------|-------------|--------------|
+| Definition root | yes | yes | `Project.definition_root` |
+| Type / Präfix / Basiseinheit anchors | yes each | yes | `Project.type_node` / `prefix_node` / `base_unit_node` |
+| Type choices (measure, url, …) | no | as needed | children of `type_node` |
+| Catalog / domain trees | no | no | `root_nodes` |
+| Template trees | no | no | `root_nodes` with `Node.template = true` |
+
+### Template trees
+
+Some trees are **templates** for project-specific trees.
+
+- `Node.template : bool` — flag on the node (typically set on the template root; whether children inherit is Q31)
+- Template trees can be copied/instantiated into normal project trees
+- Definition anchors may themselves come from a template (Q32)
 
 ### Project fields (agreed so far)
 
@@ -481,7 +532,11 @@ flowchart LR
 | `id` | yes | identifier | Stable identity of the project |
 | `name` | yes | string | Display name of the project |
 | `description` | yes* | string | Longer text describing the project |
-| `root_nodes` | yes | list of **Node** | Root nodes that define the project’s trees |
+| `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
+| `definition_root` | yes | **Node** | Required Definition tree root |
+| `type_node` | yes | **Node** | Required Type anchor |
+| `prefix_node` | yes | **Node** | Required Präfix anchor |
+| `base_unit_node` | yes | **Node** | Required Basiseinheit anchor |
 | `changelog` | yes | **Changelog** | History of changes on this project |
 
 \* `description` may be empty string, but the field exists on the class.
@@ -490,22 +545,43 @@ flowchart LR
 
 ```php
 class Project {
-	public string $id;          // or int — storage TBD
+	public string $id;
 	public string $name;
 	public string $description;
-	/** @var list<Node> Root nodes only (parent_id === null). */
+	/** @var list<Node> */
 	public array $root_nodes;
+	public Node $definition_root; // must always exist
+	public Node $type_node;       // must always exist
+	public Node $prefix_node;     // must always exist
+	public Node $base_unit_node;  // must always exist
+	public Changelog $changelog;
+}
+
+class Node {
+	public string $id;
+	public ?string $parent_id;
+	public string $name;
+	public bool $template; // template tree marker
 	public Changelog $changelog;
 }
 ```
+
+Invariants (leaning):
+
+1. `definition_root.parent_id === null`
+2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (Q26)
+3. Creating a Parameter requires these anchors to exist on the Project
+4. `Parameter.type` should be a descendant/child of `project.type_node` (same for prefix/base_unit)
 
 #### Fields / topics still to define
 
 | Topic | Status |
 |-------|--------|
-| Relation to WordPress taxonomy (1:1, many, none) | open — Q18 |
-| Storage for Project and how `root_nodes` is persisted | open — Q19 |
-| Whether non-root nodes also store `project_id` | open — may be derived via ancestors |
+| Relation to WordPress taxonomy | open — Q18 |
+| Storage for Project / anchors | open — Q19 |
+| Template copy/instantiate behavior | open — Q30 |
+| Does `template` inherit to children? | open — Q31 |
+| Is Definition itself a template tree? | open — Q32 |
 | id type (int vs string/UUID) | open |
 
 ### Example (conceptual)
@@ -514,10 +590,15 @@ class Project {
 Project {
   id: 100,
   name: "Electronic parts catalog",
-  description: "Hierarchical categories for electronic components",
+  description: "...",
+  definition_root: Node(1, "Definition"),
+  type_node: Node(10, "Type"),
+  prefix_node: Node(30, "Präfix"),
+  base_unit_node: Node(20, "Basiseinheit"),
   root_nodes: [
-    Node { id: 1, parent_id: null, name: "Passive Components", ... },  // Tree A
-    Node { id: 4, parent_id: null, name: "Semiconductors", ... }       // Tree B
+    Node(1, "Definition", template: true?),   # required definition tree
+    Node(200, "Passive Components"),          # project-specific catalog tree
+    Node(300, "Unit pack SI", template: true) # template tree for reuse
   ]
 }
 ```
@@ -589,10 +670,11 @@ Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
 
 | Object / concept | Stored object? | Primary job |
 |------------------|----------------|-------------|
-| **Project** | yes | Groups trees via `root_nodes`; has `changelog` |
-| **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
-| **Parameter** | yes | `type` + optional `prefix` + optional `base_unit` (Nodes); changelog |
-| **ParameterType** / **Unit** (classes) | **no** | Use Nodes from Definition → Type / Präfix / Basiseinheit |
+| **Project** | yes | Trees + required Definition anchors + changelog |
+| **Node** | yes | Hierarchy; `template` flag; changelog |
+| **Parameter** | yes | `type` + optional `prefix` + optional `base_unit`; changelog |
+| **ParameterType** / **Unit** (classes) | **no** | Use Nodes under Project type/prefix/base_unit anchors |
+| **Template tree** | **no class** | `Node.template = true` |
 | **Changelog** | yes (embedded or related) | Container of `changes` |
 | **Change** | yes (inside changelog) | timestamp + changer + change + version |
 | **Tree** | **no** | Derived from a root node + descendants |

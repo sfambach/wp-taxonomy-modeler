@@ -85,8 +85,25 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `id` | yes | Stable project identity |
 | `name` | yes | Display name |
 | `description` | yes | Project description (may be empty) |
-| `root_nodes` | yes | List of root **Node** objects (each `parent_id = null`) |
+| `root_nodes` | yes | All root nodes |
+| `definition_root` | yes | Required Definition tree root |
+| `type_node` | yes | Required Type anchor |
+| `prefix_node` | yes | Required Präfix anchor |
+| `base_unit_node` | yes | Required Basiseinheit anchor |
 | `changelog` | yes | Changelog of Change entries |
+
+### Node (conceptual)
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `id` | yes | Stable node identity |
+| `parent_id` | yes (`null` = root) | Optional single parent node |
+| `name` | yes | Display name |
+| `template` | yes | `true` = template tree marker |
+| `project_id` | ? | Optional reverse link |
+| `changelog` | yes | Changelog of Change entries |
+
+Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.
 
 A project consists of different trees via `root_nodes`. Persistence: Q19. Taxonomy mapping: Q18.
 

@@ -35,6 +35,9 @@
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
 | Q28 | Is a measure unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
 | Q29 | Can prefix exist without base_unit (or vice versa)? | Both required together / either alone / type-dependent | Type-dependent leaning | open |
+| Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
+| Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
+| Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
 
 ## How to close a question
 
