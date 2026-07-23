@@ -1,0 +1,44 @@
+---
+description: Keep living docs synchronized whenever the project plan changes
+globs: docs/plans/**/*.md,docs/**/*.md,README.md
+alwaysApply: true
+---
+
+# Plan and documentation sync
+
+The project plan is the source of truth for intent. Living documentation must stay synchronized whenever the plan changes.
+
+## Source of truth
+
+- Primary plan: `docs/plans/project-plan.md`
+- Living docs that must track the plan:
+  - `docs/PRODUCT.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/ROADMAP.md`
+  - `README.md` (short summary + links only)
+
+## Required workflow
+
+When you change goals, non-goals, phases, todos, status, architecture direction, or decisions in any file under `docs/plans/`:
+
+1. Update `last_updated` (and plan version if the change is meaningful).
+2. Update the affected living docs in the **same commit / PR**.
+3. Ensure `docs/ROADMAP.md` phase tables match the plan phases and todo statuses.
+4. Ensure `docs/PRODUCT.md` still matches in-scope / out-of-scope statements.
+5. Ensure `docs/ARCHITECTURE.md` still matches the planned technical shape (modules, APIs, data model).
+6. Refresh the README blurb if the one-line purpose or current phase changed.
+
+## Do not
+
+- Do not leave the plan describing a different product than `docs/PRODUCT.md`.
+- Do not mark plan todos completed without reflecting progress in `docs/ROADMAP.md`.
+- Do not invent architecture in code without updating `docs/ARCHITECTURE.md` when it diverges from the plan.
+- Do not create parallel “another plan” documents that compete with `docs/plans/project-plan.md` without linking them from the primary plan (`related_docs` / `related_plans`).
+
+## New slice plans
+
+Additional files under `docs/plans/` are allowed for focused slices. Each must:
+
+- Include frontmatter (`name`, `overview`, `status`, `todos` when useful).
+- Be linked from `docs/plans/project-plan.md`.
+- Trigger the same living-doc sync for any product, architecture, or roadmap impact.

@@ -1,0 +1,50 @@
+# Roadmap
+
+> Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
+
+Last synced from plan version **0.1.0-plan** (2026-07-23).
+
+## Phase 0 — Foundation
+
+| Item | Status |
+|------|--------|
+| Coding rules (English, practices, WP standards, DB practices) | In progress (separate PR) |
+| Project plan + living docs + sync rule | In progress |
+| Local WordPress development environment | In progress (separate PR) |
+
+## Phase 1 — MVP
+
+| Item | Status |
+|------|--------|
+| Plugin bootstrap (PHP 8.x, OOP, text domain) | Pending |
+| Taxonomy-agnostic tree model | Pending |
+| Admin tree UI (create / select / delete promote\|cascade) | Pending |
+| Secure mutation/read endpoints | Pending |
+
+**Exit criteria:** Activate plugin, register at least one hierarchical taxonomy, manage its tree in admin without using the default list as the primary workflow.
+
+## Phase 2 — Extensions
+
+| Item | Status |
+|------|--------|
+| Filters to register taxonomies into the environment | Pending |
+| Side-panel / row-action extension hooks | Pending |
+| Documented public PHP + HTTP API | Pending |
+| Automated tests for nesting and delete policies | Pending |
+
+**Exit criteria:** A second plugin can enable the tree for its taxonomy with glue code only (no forks of this plugin).
+
+## Phase 3 — Integration and polish
+
+| Item | Status |
+|------|--------|
+| Optional integration with `wp-electronic-parts` | Pending |
+| Drag-and-drop reparent/reorder (if still required) | Pending |
+| Large-tree performance (batch queries, caching) | Pending |
+| Optional read-only frontend tree | Pending |
+
+**Exit criteria:** Host catalog plugins can rely on this environment for tree UX; docs describe the supported extension contract.
+
+## Maintenance rule
+
+Whenever phases, priorities, or exit criteria change in the project plan, update this roadmap in the same change.
