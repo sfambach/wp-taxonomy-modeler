@@ -162,8 +162,8 @@ Details: Q24–Q32 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | One node can have several parameters (or none) |
-| Parameter owner | One parameter → one node (?) — undecided (Q14) |
+| Parameters | Leaning: Parameter-Nodes as children; else Node has several Parameters |
+| Parameter owner | Parent link if Parameter is a Node; else Q14 |
 
 Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
 
