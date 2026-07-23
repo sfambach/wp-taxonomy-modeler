@@ -1,6 +1,6 @@
 ---
 name: Data structure — Nodes
-overview: Define the core domain data structure for WP Taxonomy Tree. Nodes link via an optional parent and are used to build trees or forests. Planning artifact only — no implementation.
+overview: Define the core domain data structure for WP Taxonomy Tree. A node may have one parent and several children; nodes build trees or forests. Planning artifact only — no implementation.
 status: draft
 version: "0.3.0-plan"
 last_updated: "2026-07-23"
