@@ -40,8 +40,12 @@ flowchart TB
 
 ## PHP representation (leaning)
 
+## PHP representation (leaning)
+
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, and `Parameter` over associative arrays as the primary model.  
 `Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+
+Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
 ## Versioning
 

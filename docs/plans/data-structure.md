@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.5-plan"
+version: "0.5.6-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -32,6 +32,48 @@ todos:
 # Data structure: Project, Node, Parameter
 
 > Planning only. This document defines the conceptual data model. No plugin code yet.
+
+## Current class diagram
+
+> **Keep this section updated on every structure change.** After each change, also show this diagram in the chat reply.
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Project {
+    +id
+    +name
+    +description
+    +root_nodes : Node[]
+  }
+
+  class Node {
+    +id
+    +parent_id : id|null
+    +name
+    +taxonomy : ?
+    +project_id : ?
+  }
+
+  class Parameter {
+    +id
+    +node_id : ?
+    +key : likely
+    +label : likely
+    +type : likely
+  }
+
+  note for Node "Root node = same class\nwith parent_id = null\n(no RootNode type)"
+  note for Parameter "One parameter → one node?\nQ14 — decide later"
+
+  Project "1" --> "*" Node : root_nodes
+  Node "0..1" --> "*" Node : parent / children
+  Node "1" --> "*" Parameter : has several
+  Parameter "0..1" --> "0..1" Node : assigned ?
+```
+
+**Legend:** `?` = not decided yet. Tree is not a class.
 
 ## Core objects
 
