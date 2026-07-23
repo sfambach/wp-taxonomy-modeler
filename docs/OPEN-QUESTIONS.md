@@ -45,6 +45,7 @@
 | Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
 | Q38 | Are single/multiple enum variants types or selection methods? | enum_single+enum_multiple types / one enum + selection_mode | **Leaning: one `enum` type; single\|multiple = selection method** | open |
 | Q39 | Which scalar may enum option values use? | string only / any scalar / configurable | string leaning | open |
+| Q40 | Parked: further **Node** idea from planning session | Resume when user returns to it | User asked to park mid-thought (“Knoten im Kopf”) — details TBD on resume | parked |
 
 ## How to close a question
 

@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.16-plan"
+version: "0.6.17-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -174,6 +174,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Core Type catalog leaning: string, number, integer, boolean, url, file, enum, measure. |
 | 2026-07-23 | **measure** = composite (number\|integer + Präfix + Basiseinheit), not a separate scalar; Widerstand A vs B worked example. |
 | 2026-07-23 | **enum** = composite (scalar option values); **single/multiple** are selection methods, not types (Q38). |
+| 2026-07-23 | Parked mid-session Node thought as **Q40** (resume later); switch topic away from type/A–B fork for now. |
 
 ## Change protocol
 
