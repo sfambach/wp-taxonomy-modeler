@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.24-plan** (2026-07-23).
+Last synced from plan version **0.6.25-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -27,7 +27,8 @@ Last synced from plan version **0.6.24-plan** (2026-07-23).
 | Use-case cards (`docs/plans/use-cases.md`) | In progress |
 | Example project A — BOM (fit/gap) | Done (planning) |
 | Example project B — Hardware / tests / builds | Done (planning) |
-| Cross-check A+B — model boundary holds | Done (planning) |
+| Example project C — Rezepte | Done (planning) |
+| Cross-check A+B+C — model boundary holds | Done (planning) |
 | Open questions (leave open; resolve later in batches) | Parked for now |
 | Widerstand worked example: Approach A vs B | In progress |
 | Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |

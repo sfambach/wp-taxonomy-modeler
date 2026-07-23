@@ -2,7 +2,7 @@
 name: Example projects
 overview: Concrete host projects used to validate that the WP Taxonomy Tree domain model still fits. Open questions stay open unless an example forces a decision.
 status: draft
-version: "0.1.1-plan"
+version: "0.1.2-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -16,8 +16,11 @@ todos:
   - id: example-second
     content: "Add second example project (Hardware / benchmarks) and re-check model fit"
     status: completed
+  - id: example-recipes
+    content: "Add third example project (Rezepte) and re-check model fit"
+    status: completed
   - id: example-cross-check
-    content: "Summarize shared fit across Example A + B"
+    content: "Summarize shared fit across Example A + B + C"
     status: completed
 ---
 
@@ -175,22 +178,111 @@ Related use-case cards: UC-30… in [`use-cases.md`](use-cases.md).
 
 ---
 
-## Cross-check: Example A + B
+## Example C — Rezepte (recipes)
 
-| Concern | BOM (A) | Hardware (B) | Model still OK? |
-|---------|---------|--------------|-----------------|
-| Browse/select from tree | parts | hardware items | **Yes** |
-| Typed properties on items | Wert, Maße, … | GPU clocks, I/O, … | **Yes** |
-| Domain lists | BOM lines | hardware lists | **Host** |
-| Compare | BOM lists by parts | devices / systems | **Host** (reads tree attrs) |
-| Money / stock / CSV | yes | no | **Host** |
-| Tests / benchmarks / stats | no | yes | **Host** |
-| Composition of items | BOM refs on a board | PC from parts | **Host** (+ optional Relations) |
+### Story (planning walkthrough)
 
-**Overall verdict:** Both examples support keeping WP Taxonomy Tree as a **reusable tree + definition environment**. Neither requires the core plugin to own BOM math, vendor CSV, benchmarks, or statistics.
+A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with scaled amounts, plan meals, and shop.
+
+| Aspect | Detail |
+|--------|--------|
+| Category tree | Rezepte by kind (Vorspeise, Hauptgericht, Dessert), cuisine, diet (vegan, …) |
+| Ingredient catalog | Tree of ingredients (Gemüse, Gewürze, Milchprodukte, …) with properties |
+| Recipe | Title, time, difficulty, portions; **consists of** ingredient lines (amount + unit + ingredient); steps (ordered text) |
+| Amounts | Classic **measure**: `200 g`, `1 EL`, `½ l` → number + Präfix? + Basiseinheit (or kitchen units) |
+| Scale | Change portions → rescale all measures |
+| Lists | Recipe index; filter by category / diet / ingredient |
+| Compare | Two recipes side by side (time, calories, shared ingredients) |
+| Meal plan | Combine recipes into a week plan (composition of recipes) |
+| Shopping list | Aggregate ingredient measures across planned recipes |
+| Stats | Popular recipes, average ratings, “most used ingredients” |
+
+### Fit vs current model
+
+| Need | Fits in **WP Taxonomy Tree**? | Where it lives |
+|------|-------------------------------|----------------|
+| Recipe / ingredient **category trees** | **Yes** | `Project` + Nodes |
+| Ingredient properties (Allergen, Saison, …) | **Yes (definitions)** | Type catalog + `consists_of` |
+| Recipe attributes (Zeit, Schwierigkeit, Portionen) | **Yes (definitions)** | measure / enum / integer on recipe node |
+| Ingredient line: amount + unit + ingredient ref | **Partial** | measure types + `uses`/`consists_of` toward ingredient node; **line list UX = host** or rich editor |
+| Ordered cooking steps | **Weak / host** | Ordered text/steps are content — host CPT or block editor, not core tree |
+| Scale portions | **No — host** | Recalculate measure values |
+| Recipe index / filters | **Partial** | Tree browse = environment; faceted index = host |
+| Compare two recipes | **Partial** | Shared schema from tree; compare UI = host |
+| Meal plan (recipes → week) | **Like Hardware builds** | Optional Relations; **plan entity = host** |
+| Shopping list aggregation | **No — host** | Sum measures across recipes (needs unit conversion — host) |
+| Ratings / popularity stats | **No — host** | Analytics |
+
+### Boundary sketch
+
+```text
+┌──────────────────────────────────────────────┐
+│ WP Taxonomy Tree                             │
+│  Recipe category tree                        │
+│  Ingredient catalog tree                     │
+│  Types: measure (g, ml, EL…), enum, integer  │
+│  Recipe/ingredient attribute defs            │
+│  Optional Relations: recipe uses ingredient  │
+│  Tree UI + selection hooks                   │
+└──────────────────┬───────────────────────────┘
+                   │ node ids + measures/attrs
+                   ▼
+┌──────────────────────────────────────────────┐
+│ Host: recipes app                            │
+│  Recipe content (steps, photos, portions)    │
+│  Ingredient lines editor + scaling           │
+│  Meal plans, shopping lists                  │
+│  Compare, ratings, statistics                │
+│  Unit conversion for aggregates              │
+└──────────────────────────────────────────────┘
+```
+
+### What this example stresses (still open)
+
+| Topic | Why Recipes care | Open ref |
+|-------|------------------|----------|
+| Kitchen units as Basiseinheit | g, ml, EL, TL, Stück, … | Definitionsbaum units |
+| measure everywhere | amounts, time, calories | Q36–Q37 |
+| Recipe→ingredient links | `uses` / `consists_of` + amount on the edge? | Q35 — **edge props** for quantity |
+| Unit conversion for shopping lists | 1 EL Butter → g | **host** (not tree core) |
+| Steps as content | not taxonomy | host |
+| Same pattern as BOM lines / PC builds | composition + quantities | A/B/C alignment |
+
+### Special note: amount on the Relation?
+
+Recipes push **`props` on Relation** harder than BOM/Hardware:  
+`Rezept ─[uses]→ Mehl` may need `{ value: 200, prefix: null, base_unit: g }` on the **edge**, not only on the ingredient node.
+
+That does **not** break the model — we already sketched `Relation.props` as optional — but it becomes a **strong reason to keep edge properties** (still open, not decided).
+
+### Verdict for Example C
+
+**Still fits.** Tree + types + optional Relations for recipe/ingredient structure; host for steps, scaling, meal plans, shopping aggregation, ratings, stats.  
+Closest cousin to **BOM lines** (quantity + referenced item) and **PC builds** (composition), with extra pressure on **measure** and **Relation.props**.
+
+Related use-case cards: UC-40… in [`use-cases.md`](use-cases.md).
 
 ---
 
-## Example C — (optional later)
+## Cross-check: Example A + B + C
 
-Add further examples only if they threaten the boundary (e.g. if something truly needs to live inside the tree plugin).
+| Concern | BOM (A) | Hardware (B) | Rezepte (C) | Model still OK? |
+|---------|---------|--------------|-------------|-----------------|
+| Browse/select from tree | parts | hardware | recipes / ingredients | **Yes** |
+| Typed properties | Wert, Maße | clocks, I/O | time, diet, allergens | **Yes** |
+| measure + units | Ohm, mm | MHz, W | g, ml, EL | **Yes** (kitchen units) |
+| Domain lists / lines | BOM lines | hardware lists | ingredient lines | **Host** (+ optional Relations) |
+| Quantity on link | refs→qty | — | amount on recipe↔ingredient | **Host** / **Relation.props?** |
+| Compare | BOM lists | devices/systems | recipes | **Host** |
+| Composition | board refs | PC from parts | meal plan from recipes | **Host** (+ Relations) |
+| Aggregates | price sum | test stats | shopping list / ratings | **Host** |
+| Exports / vendors | CSV | — | — | **Host** |
+| Rich content | — | — | steps, photos | **Host** |
+
+**Overall verdict:** Three different domains, **same boundary**. WP Taxonomy Tree stays a **reusable tree + definition (+ relation) environment**. Apps own lists, math, content, analytics.
+
+---
+
+## Example D — (optional later)
+
+Add further examples only if they threaten the boundary.

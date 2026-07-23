@@ -329,6 +329,84 @@ See [`example-projects.md`](example-projects.md) Example B.
 
 ---
 
+## Example C — Rezepte
+
+See [`example-projects.md`](example-projects.md) Example C.
+
+### UC-40 — Browse recipe and ingredient trees
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Find a recipe by category or an ingredient in the catalog |
+| **Trigger** | Opens recipes / ingredients |
+| **Preconditions** | Category trees exist |
+| **Main flow** | 1. Browse recipe or ingredient tree<br>2. Select a node<br>3. See attributes (Zeit, Diet, Allergene, …) |
+| **Outcome** | Recipe or ingredient node selected |
+| **MVP?** | Tree = taxonomy-tree |
+| **Touches** | Node, attributes |
+| **Notes** | — |
+
+### UC-41 — Define recipe ingredient lines with amounts
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Editor |
+| **Goal** | Attach ingredients with amounts (e.g. 200 g Mehl) to a recipe |
+| **Trigger** | Edits a recipe’s ingredients |
+| **Preconditions** | Recipe node + ingredient nodes; measure types/units available |
+| **Main flow** | 1. Select recipe<br>2. Add ingredient from tree<br>3. Enter measure (value + unit)<br>4. Save lines |
+| **Variants** | Missing unit; kitchen unit vs SI |
+| **Outcome** | Recipe lists ingredient lines with measures |
+| **MVP?** | later — **host** editor; optional Relation + `props` |
+| **Touches** | Node; Relation `uses`?; measure; Relation.props? |
+| **Notes** | Strong case for edge props (example C) |
+
+### UC-42 — Scale recipe portions
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Change portions and rescale all ingredient amounts |
+| **Trigger** | Changes portion count |
+| **Preconditions** | Recipe has ingredient measures + base portions |
+| **Main flow** | 1. Set new portions<br>2. Host recalculates each measure<br>3. Shows scaled list |
+| **Outcome** | Scaled shopping-ready amounts |
+| **MVP?** | later — **host** |
+| **Touches** | Host calc; measure values |
+| **Notes** | — |
+
+### UC-43 — Build a meal plan and shopping list
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Combine recipes into a plan and aggregate a shopping list |
+| **Trigger** | Creates meal plan / “add to shopping list” |
+| **Preconditions** | Recipes with ingredient lines |
+| **Main flow** | 1. Add recipes to plan<br>2. Host aggregates ingredients<br>3. Converts/sums units where possible<br>4. Shows shopping list |
+| **Variants** | Unconvertible units |
+| **Outcome** | Plan + aggregated list |
+| **MVP?** | later — **host** (+ optional Relations) |
+| **Touches** | Host plan; Node ids; unit conversion |
+| **Notes** | Same composition pattern as PC builds / BOM |
+
+### UC-44 — Compare recipes and view popularity stats
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Compare two recipes; see site stats (popular, ratings) |
+| **Trigger** | Compare or opens stats dashboard |
+| **Preconditions** | Recipes + optional ratings data |
+| **Main flow** | 1. Pick recipes or open stats<br>2. Host shows side-by-side attrs / shared ingredients<br>3. Shows aggregates (ratings, most-used ingredients) |
+| **Outcome** | Compare view and/or statistics |
+| **MVP?** | later — **host** |
+| **Touches** | Host analytics; tree attrs |
+| **Notes** | — |
+
+---
+
 ## Backlog (titles only — not written yet)
 
 - UC-08 Rename node  
