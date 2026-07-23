@@ -41,11 +41,12 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **measure** is composite from `number`/`integer` + Präfix + Basiseinheit.
 - Emerging type model: **fixed simple types** per project (`int`, `double`, `string`, `char`, `bool`); further types **derived or composed** from them (`enum`, `measure`, `string_list`, …).
 - `enum` = scalar options; `single`/`multiple` = selection methods (not types).
-- **Decided (Q33):** a **Parameter is a tree Node** (not a separate attached object). PHP specialization shape still open (**Q34**). Typed edges remain exploratory (**Q35**, Q41–Q43).
+- **Decided (Q33):** a **Parameter is a tree Node** (not a separate attached object). Specialization via **configuration** (**Q34 lean**), not PHP subclass. Typed edges remain exploratory (**Q35**, Q41–Q43).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Parameter placement uses `parent_id` and/or Relations (**Q14 dissolved**).
+- Parameter placement uses `parent_id` and/or Relations (**Q14 dropped / entfällt**).
+- Open (**Q49**): simple types typically do not originate Relations — special kind **or** config that disables Relations.
 - Every Project and Node has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
@@ -63,7 +64,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 1. Open a project and work with its trees (each tree = a root node).
 2. Create root and child **nodes** from the tree.
 3. Delete a node and choose whether children are promoted or removed.
-4. Work with **Parameter-Nodes** under categories (details of PHP specialization and values still being planned).
+4. Work with **Parameter-Nodes** under categories (configuration shape and values still being planned).
 5. Let another plugin attach its own editor pane or behavior when a node is selected.
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  

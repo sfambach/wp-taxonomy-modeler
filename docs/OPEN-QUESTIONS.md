@@ -19,7 +19,7 @@
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
 | Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; **position** strongly needed if BOM/Recipe lines are Nodes (Q13/Q46) | open |
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | **Leaning: explicit `position` (or Relation order)** — BOM/Recipe line display needs stable sequence, not name sort | open |
-| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | **Dissolves under Q33:** Parameter *is* a Node; placement via `parent_id` and/or Relations (`besteht-aus`) — no separate `node_id` owner field | decided |
+| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | **Dropped (entfällt):** Parameter *is* a Node (Q33); placement via `parent_id` and/or Relations — no separate `node_id` | decided |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Same as Nodes (Q11)** — Parameter is a Node; no separate Parameter store | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
@@ -39,7 +39,7 @@
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
 | Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: Parameter = tree Node.** Every project also has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples | decided |
-| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | Q33 closed (is-a Node); pick specialization mechanism next | open |
+| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload / **configuration** | **Leaning: configuration** (not PHP subclass) — roles/capabilities via Node config; exact config shape TBD | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
 | Q36 | What is the core Type catalog? | Fixed list vs extensible | **Leaning (Q33):** **fixed simple types** in every project (`int`, `double`, `string`, `char`, `bool`); users may **derive or compose** further types from them (enum/measure/string_list, …) | open |
 | Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
@@ -54,6 +54,7 @@
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Leaning: schema-as-Nodes** so BOM/Recipe need no core classes; UI renders node graphs | open |
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
 | Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Aligned with Q33:** simple types = fixed Nodes per project; Parameter/slot ─[has_type]→ type Node; derived/composed types allowed; UI widget from type | open |
+| Q49 | May simple data-type Nodes originate Relations, or must that be blocked? | Special Node kind that cannot build Relations / same Node + **config** that disables Relations from simples / allow Relations | **Open:** simples typically do not build Relations themselves; either a special kind **or** configuration that deactivates Relations on simple types — prefer deciding with Q34 (config-first) | open |
 
 ## How to close a question
 

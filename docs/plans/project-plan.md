@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.37-plan"
+version: "0.6.38-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -159,7 +159,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | One node can have **several child nodes** (or none). Children are the inverse of the single-parent link. |
 | 2026-07-23 | Second core object is **Parameter** (initially distinct from Node; later **Q33** made Parameter a Node). Node↔Parameter relation, types, storage, and values still open at the time. |
 | 2026-07-23 | **One node can have several parameters** (or none). |
-| 2026-07-23 | “One parameter is always assigned to one node” is **tentative (?)** — reopen/keep Q14 and decide later. |
+| 2026-07-23 | “One parameter is always assigned to one node” is **tentative (?)** — later **dropped as Q14** under Q33. |
 | 2026-07-23 | **Project** is a core object and can consist of different trees. |
 | 2026-07-23 | **Tree is not an additional object**; a tree is defined by its **root node** (plus descendants). |
 | 2026-07-23 | A **root node** is a node that has **no parent**. |
@@ -206,6 +206,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Insight: BOM **Reference** = open RefDes list (`R1,R2`); validation ≠ Node meta — Type/Parameter (Q47). |
 | 2026-07-23 | Datentypen as tree Nodes (int/double/string/char/bool); bind via Relation `has_type`; UI widget from type (Q48). |
 | 2026-07-23 | **Q33 decided:** Parameter **is a tree Node**. Every Project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples. Q14 dissolves (no separate owner). Q34 (PHP specialization) remains open. |
+| 2026-07-23 | **Q14 dropped (entfällt).** **Q34 leaning: configuration** (not PHP subclass). New **Q49:** simple types may be a special Node kind that cannot originate Relations, **or** same Nodes with config that disables Relations — leave open; decide with config-first Q34. |
 
 ## Change protocol
 

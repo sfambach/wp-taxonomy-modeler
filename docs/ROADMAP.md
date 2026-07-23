@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.37-plan** (2026-07-23).
+Last synced from plan version **0.6.38-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -16,12 +16,13 @@ Last synced from plan version **0.6.37-plan** (2026-07-23).
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
 | Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
-| Data structure: **Parameter is a tree Node (Q33)**; Q14 dissolved; Q34 PHP shape open | Done (planning) |
+| Data structure: **Parameter is a tree Node (Q33)**; **Q14 dropped**; **Q34 lean = configuration** | Done (planning) |
 | Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
 | Core types: **fixed simples** per project + derived/composed types (Q36/Q48) | In progress |
+| **Q49:** simples originate Relations? special kind vs config disable | Open |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) | In progress |

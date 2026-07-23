@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter (Parameter = tree Node), Changelog/Change. Fixed simple data-type Nodes per project; further types derived or composed. Project stores Definitionsbaum anchors. Planning artifact only — no implementation.
 status: draft
-version: "0.6.37-plan"
+version: "0.6.38-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -16,11 +16,11 @@ todos:
     content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
     status: completed
   - id: define-node-parameter-link
-    content: "Q33 decided: Parameter is a tree Node; Q14 dissolves (parent/Relation, no separate owner)"
+    content: "Q33 decided: Parameter is a tree Node; Q14 dropped (parent/Relation, no separate owner)"
     status: completed
   - id: decide-parameter-is-node
-    content: "Decide PHP specialization for Parameter-as-Node (subclass / kind / role) — Q34"
-    status: pending
+    content: "Q34 leaning: configuration (not subclass); Q49 simple-type Relation capability still open"
+    status: in_progress
   - id: explore-typed-edges
     content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
     status: in_progress
@@ -28,7 +28,7 @@ todos:
     content: "Decide RelationType: single label; display + inheritable flags; bidirectional without inverse field"
     status: pending
   - id: define-core-types
-    content: "Fixed simple types per project; derived/composed types from simples (Q36/Q48)"
+    content: "Fixed simple types per project; derived/composed types from simples (Q36/Q48); Relation rules Q49"
     status: in_progress
   - id: define-project-core
     content: "Project stores root_nodes plus required Definition anchors"
@@ -60,7 +60,9 @@ todos:
 
 **Decided (Q33):** a **Parameter is a tree Node** (not a separate attached object).  
 Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples.  
-PHP specialization shape still open (**Q34**). Typed edges remain exploratory (**Q35**).
+**Q34 leaning: configuration** (not PHP subclass) for specialization / roles.  
+**Q49 open:** simples may be a special kind that cannot originate Relations, **or** config that disables Relations on simples.  
+Typed edges remain exploratory (**Q35**).
 
 ```mermaid
 classDiagram
@@ -86,6 +88,7 @@ classDiagram
     +position : ?
     +taxonomy : ?
     +project_id : ?
+    +config : ?
     +changelog : Changelog
   }
 
@@ -99,9 +102,10 @@ classDiagram
   }
 
   class SimpleType {
-    <<Node role>>
+    <<Node role / config>>
     fixed per project
     int double string char bool
+    may_not_originate_relations : ?
   }
 
   class DerivedOrCompositeType {
@@ -139,9 +143,9 @@ classDiagram
   }
 
   note for Project "Definitionsbaum anchors required\nfixed simple types under type_node\nmay also hold schema templates"
-  note for Node "Hierarchy + Relations\nBOM list/line/recipe may be Nodes\nposition? needed for line/step order"
-  note for Parameter "IS a Node (Q33)\nPHP shape = Q34\nbinds type via Node ref / has_type"
-  note for SimpleType "Always present in every Project\nnot user-deletable (prototype leaning)"
+  note for Node "Hierarchy + Relations\nconfig? for roles (Q34)\nBOM list/line may be Nodes"
+  note for Parameter "IS a Node (Q33)\nspecialization via config (Q34 lean)\nbinds type via Node ref / has_type"
+  note for SimpleType "Always present in every Project\nQ49: special kind vs config\nthat disables originating Relations"
   note for DerivedOrCompositeType "Created from simples\nderived or composed"
   note for Relation "EXPLORATORY\nlines = Relations with props"
   note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
@@ -155,7 +159,7 @@ classDiagram
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent / children
   Node <|-- Parameter : is a Node (Q33)
-  Node <|-- SimpleType : role
+  Node <|-- SimpleType : role / config
   Node <|-- DerivedOrCompositeType : role
   SimpleType ..> DerivedOrCompositeType : derive / compose
   Relation --> Node : from
@@ -174,14 +178,15 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Schema-as-Nodes spin (Q46):** domain structures such as **BOM** or **Recipe** may themselves be **Nodes + Relations** (templates), so host apps need fewer hard-coded classes (`BomList` / `BomLine` become optional views).  
-**Types:** `SimpleType` / `DerivedOrCompositeType` are **roles of Node**, not separate stored classes.
+**Types:** `SimpleType` / `DerivedOrCompositeType` are **roles of Node** (via **configuration**, Q34 lean), not separate stored PHP classes.  
+**Q49:** whether simples are a hard special kind or config that disables originating Relations — still open.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
 | 1 | **Node** | Hierarchy; Definition choices; may be marked `template`; also hosts type/parameter roles |
-| 2 | **Parameter** | **Decided (Q33):** a **tree Node** (specialized / role TBD in Q34), not a separate attached object |
+| 2 | **Parameter** | **Decided (Q33):** a **tree Node**; specialization via **configuration** (Q34 lean), not a separate attached object |
 | 3 | **Project** | Holds trees + **required Definition anchors** + fixed simple types |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
@@ -276,8 +281,9 @@ flowchart TB
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
-- **Parameter is a specialized Node** — **decided (Q33)**; PHP specialization mechanism still open (**Q34**)
-- Separate Parameter owner (`node_id`) — **dissolved (Q14)**; placement via `parent_id` and/or Relations
+- **Parameter is a specialized Node** — **decided (Q33)**; specialization via **configuration** — **leaning (Q34)**; not PHP subclass
+- Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via `parent_id` and/or Relations
+- Simple type Nodes typically **do not originate Relations** — **open (Q49):** special kind **or** config that disables Relations
 - Every Project and Node has a **changelog**. — **agreed** (Parameter-as-Node → one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 - **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label` only; no `inverse` field (Q41)
@@ -289,14 +295,17 @@ Project ──(several trees)──► Root Node
 Node ──(optional)──► parent Node          # classic tree
 Node ──(Relation?)──► Node                # exploratory typed edges
 Parameter ──(is a)──► Node                # decided Q33
+Node.config ──(roles / capabilities)──►    # leaning Q34
 SimpleType Nodes ──(derive/compose)──► further Type Nodes
+# Q49: simples cannot originate Relations — special kind vs config
 ```
 
 ### Design decision: Parameter as specialized Node
 
 **Q33 closed:** Parameter names in the Definitionsbaum (`Wert`, `Länge`, …) **are** tree Nodes.  
 They are not separate objects attached to category Nodes.  
-How PHP expresses the specialization (subclass / `kind` / role / payload) remains **Q34**.  
+**Q34 leaning:** express specialization / roles via **configuration** on the Node (not a PHP subclass hierarchy).  
+**Q49 open:** simple data-type Nodes usually should not build Relations themselves — either a **special Node kind**, or the **same Node model** with configuration that **deactivates Relations** on simples (preferred to decide together with config-first Q34).  
 Typed edges (`besteht-aus`) may still *display* Parameter-Nodes as attributes of a parent — that is orthogonal (Q35/Q42).
 
 ---
@@ -386,7 +395,7 @@ Node ◄──(many)────── Parameters
 2. A node must not be its own ancestor (no cycles).
 3. Structure under each root remains a tree; a project’s roots form multiple trees.
 4. Delete policies for children: **promote** or **cascade**.
-5. Parameters related to a deleted node must follow a defined cleanup policy (TBD; depends on Q14).
+5. Parameters related to a deleted node must follow a defined cleanup policy (TBD; parent/Relation cleanup, Q14 dropped).
 
 ### Example: trees from root nodes
 
@@ -409,7 +418,7 @@ Node ◄──(many)────── Parameters
 
 **Parameter** describes a configurable attribute (often a measure).  
 
-**Decided (Q33):** a Parameter **is a tree Node** — specialized (extra fields / role such as `type` / `prefix` / `base_unit` / `value`, exact PHP shape = **Q34**), still part of the same hierarchy. In the Definitionsbaum, nodes like `Wert` or `Länge` *are* the parameters.
+**Decided (Q33):** a Parameter **is a tree Node** — roles such as `type` / `prefix` / `base_unit` / `value` expressed via **configuration** (**Q34 lean**), still part of the same hierarchy. In the Definitionsbaum, nodes like `Wert` or `Länge` *are* the parameters.
 
 **Rejected:** Parameter as a separate object that a Node *has* via `node_id`.
 
@@ -422,12 +431,12 @@ Node ◄──(many)────── Parameters
 
 ```text
 Node (category) ──(children / besteht-aus)──► Parameter-Node
-Parameter ──(is-a)──► Node         # decided Q33; PHP shape Q34
+Parameter ──(is-a)──► Node         # decided Q33; config Q34
 ```
 
 ### Parameter fields (initial — to refine)
 
-Parameter inherits Node fields (`id`, `parent_id`, `name`, `changelog`, …) and adds:
+Parameter inherits Node fields (`id`, `parent_id`, `name`, `changelog`, …) and adds (or configures):
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
@@ -448,18 +457,16 @@ Parameter inherits Node fields (`id`, `parent_id`, `name`, `changelog`, …) and
 
 ```php
 // Conceptual — not implemented
-// Parameter is a Node (Q33); exact PHP shape = Q34
-class Parameter extends Node { // or Node + kind/role — TBD Q34
-	public Node $type;           // simple or derived/composed type Node
-	public ?Node $prefix;        // e.g. k / m (milli) — optional
-	public ?Node $base_unit;     // e.g. Ohm / Meter — optional
-	// public mixed $value;      // filled reading — open Q16
+// Parameter is a Node (Q33); specialization via configuration (Q34 lean) — not a required PHP subclass
+class Node {
+	public ?array $config; // roles / capabilities / type binding — shape TBD
+	// …
 }
 
-// Filled measure reading (value storage still Q16):
-// value + prefix + base_unit
-// "10" + "k" + "Ohm"   =>  "10 kOhm"
-// "10" + "m" + "Meter" =>  "10 mm"
+// Illustrative Parameter *view* over a configured Node (not a locked class hierarchy):
+// node.config.role = 'parameter'
+// node.config.type = <type Node id>
+// node.config.prefix / base_unit optional
 ```
 
 **Agreed for measure readings:** each filled measure has a **value**, a **prefix**, and a **base unit** (Einheit), composed for display (e.g. `10 mm`).  
@@ -470,8 +477,9 @@ Whether `prefix`/`base_unit` are required on the Parameter *definition* vs chose
 | Topic | Status |
 |-------|--------|
 | Is Parameter a specialized Node? | **decided yes** — Q33 |
-| Specialization mechanism (subclass / kind / role) | open — Q34 |
-| Separate owning `node_id` | **dissolved** — Q14 |
+| Specialization mechanism | **leaning: configuration** — Q34 (not PHP subclass) |
+| Separate owning `node_id` | **dropped** — Q14 |
+| Simple types may originate Relations? | **open** — Q49 (special kind vs config disable) |
 | Required / default / validation rules | open — **not** as ad-hoc validators on bare schema Nodes (Q47) |
 | Inheritance to child nodes | open |
 | Which types require prefix and/or base_unit | open — Q24 |
@@ -532,8 +540,9 @@ Example: `Menge` *has_type* `int` → table cell renders as integer field; `Stoc
 | Assignment is a **Relation or typed field** | Fits typed-edge exploration (Q35); reverse view “used by” possible |
 | UI derives widget from type | Prototype: int→number, double→number step any, string→text, char→1 char, bool→checkbox |
 | Name mapping | Simple scalars ≈ earlier catalog: int↔integer, double↔number, bool↔boolean; `char` = narrow string |
+| **Relations from simples?** | Simples typically do **not** originate Relations — **Q49:** special kind **or** config that disables Relations |
 
-**Still open (Q34):** whether `has_type` is the only binding, or Parameter specialization also stores `type` as a field on the Parameter-Node.
+**Still open (Q34/Q49):** config shape for Parameter role + whether simples are a hard special kind or config that blocks originating Relations. Binding to type remains `has_type` / `type` field (Q48).
 
 ### Definitionsbaum (canonical planning example)
 
@@ -670,15 +679,18 @@ Maße display:  10 mm × 5 mm × 2 mm
 `Project.definition_root` points at **Definition**; that root is also in `root_nodes`.
 
 Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).  
-Open: specialization mechanism for Parameter-as-Node (Q34).  
-**Closed (Q33):** Parameter *is* a tree Node (not a separate attached object).
+Open: Node **configuration** shape for Parameter role (Q34 lean).  
+Open: may simple types originate Relations — special kind vs config disable (**Q49**).  
+**Closed (Q33):** Parameter *is* a tree Node (not a separate attached object).  
+**Dropped (Q14):** no separate owner field.
 
 ### What a Parameter is not
 
 - Not a Project / not a Tree object.
 - Not a separate stored kind beside Node (**Q33**).
 - Not necessarily a filled-in value on a part/post (value still Q16).
-- Not owned via a separate `node_id` field (**Q14 dissolved**); use `parent_id` and/or Relations.
+- Not owned via a separate `node_id` field (**Q14 dropped**); use `parent_id` and/or Relations.
+- Not modeled as a PHP subclass hierarchy by default (**Q34 leaning: configuration**).
 
 ---
 

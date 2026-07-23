@@ -41,7 +41,7 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-**Decided (Q33):** `Parameter` **is a Node** (tree node). PHP specialization (subclass / `kind` / role) still open (**Q34**).  
+**Decided (Q33):** `Parameter` **is a Node** (tree node). Specialization via **configuration** (**Q34 lean**), not a PHP subclass hierarchy.  
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
@@ -50,11 +50,12 @@ Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templ
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
-`Parameter` (as Node) references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
+`Parameter` (as Node) references Nodes for `type`, optional `prefix`, and optional `base_unit` (via config / relation).  
 Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over simple numeric types.  
 **Type catalog (Q33/Q36/Q48):** fixed simple types per project (`int`, `double`, `string`, `char`, `bool`); further types derived or composed from them.  
+**Q49 open:** simples typically do not originate Relations — special kind vs config that disables Relations.  
 `enum` options are scalars; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+See Q16, Q20–Q39, Q49 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -111,6 +112,7 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `parent_id` | yes (`null` = root) | Optional single parent node |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
+| `config` | ? | Roles / capabilities (Q34 lean) — shape TBD |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 
@@ -130,8 +132,9 @@ A Parameter is a **Node** in the tree (not a separate store). Extra conceptual f
 | `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
 
 **Agreed:** Parameter **is a Node** (Q33); measure composition as above; fixed simple types per project.  
-**Open:** PHP specialization mechanism (Q34); typed-edge display (Q35).  
-**Dissolved (Q14):** no separate owning `node_id` — use `parent_id` and/or Relations.
+**Leaning (Q34):** specialization via **configuration**, not PHP subclass.  
+**Open (Q49):** may simples originate Relations — special kind vs config disable.  
+**Dropped (Q14):** no separate owning `node_id` — use `parent_id` and/or Relations.
 
 ### Changelog / Change (shared)
 
@@ -168,8 +171,9 @@ Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | Undecided: attached defs / Parameter-Nodes / besteht-aus children |
-| Parameter owner | Parent link, `node_id`, or besteht-aus edge — Q14 |
+| Parameters | **Parameter-Nodes** (Q33); roles via **configuration** (Q34 lean) |
+| Parameter owner | **Q14 dropped** — `parent_id` and/or Relations only |
+| Simple types & Relations | Typically no originating Relations — special kind vs config (**Q49**) |
 | Typed edges | Exploratory Relation + RelationType (`consists_of`↔`is_part_of`, …) — Q35/Q41 |
 | Relation display | part-of → attributes of parent; inherit along is_a — Q42/Q43 |
 
