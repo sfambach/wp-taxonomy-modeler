@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.41-plan"
+version: "0.6.42-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -71,6 +71,7 @@ classDiagram
     +id
     +name
     +description
+    +taxonomy : ?
     +root_nodes : Node[]
     +definition_root : Node
     +type_node : Node
@@ -85,7 +86,6 @@ classDiagram
     +name
     +template : bool
     +position : ?
-    +taxonomy : ?
     +project_id : ?
     +config : ?
     +changelog : Changelog
@@ -132,8 +132,8 @@ classDiagram
     +version
   }
 
-  note for Project "Definitionsbaum anchors required\nfixed simple types under type_node\nmay also hold schema templates"
-  note for Node "Only stored hierarchy object\nattrs like Wert are just Nodes\nwith type via config / has_type"
+  note for Project "WP taxonomy lives here (Q18 lean)\nDefinitionsbaum anchors required\nfixed simple types under type_node"
+  note for Node "Hierarchy only — no taxonomy field\nattrs like Wert are just Nodes\ntype via config / has_type"
   note for SimpleType "Always present in every Project\nQ49: special kind vs config\nthat disables originating Relations"
   note for DerivedOrCompositeType "Created from simples\nderived or composed"
   note for Relation "EXPLORATORY\nlines = Relations with props"
@@ -173,7 +173,7 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 |---|--------|------|
 | 1 | **Node** | Hierarchy; Definition choices; attributes (`Wert`, …); type Nodes; schema slots — all the same object |
 | 2 | **Parameter / ParameterRole** | **Rejected / dropped** — leftover naming only; do not model |
-| 3 | **Project** | Holds trees + **required Definition anchors** + fixed simple types |
+| 3 | **Project** | Holds trees + **WP taxonomy (leaning)** + Definition anchors + fixed simple types |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 | 6 | **Relation** | **Exploratory:** edge between two Nodes with a RelationType |
@@ -359,7 +359,6 @@ Node ◄──(many)────── Parameters
 | `name` | yes | string | Display name of the node |
 | `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
-| `taxonomy` | ? | string | May map to WP taxonomy and/or align with project — confirm Q18 |
 | `changelog` | yes | **Changelog** | History of changes on this node |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
@@ -376,7 +375,7 @@ Node ◄──(many)────── Parameters
 
 ### Node invariants
 
-1. A node’s `parent_id`, when not `null`, must reference an existing node in the **same project** (and same taxonomy context if used).
+1. A node’s `parent_id`, when not `null`, must reference an existing node in the **same project** (taxonomy is on Project, not per Node — Q18).
 2. A node must not be its own ancestor (no cycles).
 3. Structure under each root remains a tree; a project’s roots form multiple trees.
 4. Delete policies for children: **promote** or **cascade**.
