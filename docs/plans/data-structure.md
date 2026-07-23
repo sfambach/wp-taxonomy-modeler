@@ -649,6 +649,48 @@ RelationType {
 **Leaning:** RelationType = **`label`** + display/inherit flags. Opposite wording like “ist Teil von” stays a **view** of the same edge (Q41).  
 **Open:** whether `directed` (graph chrome: arrow vs line) is worth keeping beside `DisplayHint` (structural role) — they answer different questions (Q42 vs Q44).
 
+#### Design spin: measure via Relation + unit group (exploratory)
+
+Insight from examples (Rezepte amounts on edges; Widerstand Wert): a **value** can live on a **Relation**, while **Präfix + Basiseinheit form one group** (not a free chain of unrelated links).
+
+**Avoid loose chain (awkward):**
+
+```text
+Widerstand ──Wert──► 100 ──► kilo ──► Ohm     # prefix and unit look like siblings in a path — misleading
+```
+
+**Prefer grouped unit + value on edge (spin):**
+
+```text
+Widerstand
+   │
+   │  RelationType e.g. "wert" / consists_of measure slot
+   │  props: { value: 100 }
+   │
+   ▼
+UnitGroup (logical) = Präfix "k"  +  Basiseinheit "Ohm"
+         display: "100 kOhm"
+```
+
+Same pattern for recipe lines:
+
+```text
+Rezept ──uses──► Mehl
+         props: { value: 200 }  +  UnitGroup(null/"", g)
+         display: "200 g"
+```
+
+| Piece | Role |
+|-------|------|
+| `value` | Scalar on the **Relation** (`props`) — or on a measure Parameter; still open |
+| **Unit group** | **Präfix + Basiseinheit always together** (pair / small structure); “kOhm”, “mm”, “mW” |
+| Präfix alone | Incomplete for display of a measure (Q29) |
+| Basiseinheit alone | Allowed as group with null prefix (e.g. `5 Ohm`, `200 g`) |
+
+**Leaning (not locked):** treat **Präfix+Einheit as one unit group**; do not model measure as Widerstand→value→prefix→unit as three independent hops. Relation.props may carry `value` and point at / embed that group (Q45).
+
+Aligns with existing composite **`measure`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
+
 #### Example RelationTypes
 
 | Key | `label` | `directed`? (tentative) | Typical `DisplayHint` |

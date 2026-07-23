@@ -50,6 +50,7 @@
 | Q42 | How should related nodes be displayed per RelationType? | Always as tree children / type-specific (part-of as attributes, is_a as taxonomy, …) | **Leaning: part-of → attributes of parent**; is_a → taxonomy; uses → refs (`DisplayHint`) | open |
 | Q43 | Can `consists_of` attributes be inherited along `is_a`? | No / copy / live inherit / merge+override | **Leaning: yes, inheritable**; mechanics TBD (related Q30) | open |
 | Q44 | Does RelationType need **`directed`** (arrow vs line)? | Always directed / optional flag / derive from DisplayHint / drop | Tentative: directed → arrow `from→to`, else line; may overlap `bidirectional` — user unsure | open |
+| Q45 | How is a measure bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Parameter only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
 
 ## How to close a question
 

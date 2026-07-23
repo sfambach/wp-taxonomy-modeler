@@ -251,9 +251,12 @@ A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with
 ### Special note: amount on the Relation?
 
 Recipes push **`props` on Relation** harder than BOM/Hardware:  
-`Rezept ─[uses]→ Mehl` may need `{ value: 200, prefix: null, base_unit: g }` on the **edge**, not only on the ingredient node.
+`Rezept ─[uses]→ Mehl` may need `{ value: 200, unit_group: (prefix?, g) }` on the **edge**.
 
-That does **not** break the model — we already sketched `Relation.props` as optional — but it becomes a **strong reason to keep edge properties** (still open, not decided).
+Same spin for parts: `Widerstand ─[wert]→` with `{ value: 100 }` + **unit group** `(k, Ohm)` → `"100 kOhm"`.  
+**Präfix + Basiseinheit always form a group** — not a chain Widerstand→100→kilo→Ohm.
+
+That does **not** break the model — we already sketched `Relation.props` as optional — and it strengthens keeping edge properties + the measure composite (Q35, Q45).
 
 ### Verdict for Example C
 
