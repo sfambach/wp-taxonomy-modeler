@@ -110,11 +110,9 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | **yes** | ParameterType — always required; may declare `has_unit` |
-| `unit` | no* | Einheit when type allows it (null for URL, set for kOhm-style measure) |
+| `type` | **yes** | Always present (ParameterType) |
+| `unit` | **optional** | Einheit when type allows it (null for URL; e.g. kOhm for measure) |
 | `changelog` | yes | Changelog of Change entries |
-
-\* `unit` only when `type.has_unit` is true.
 
 **Agreed:** one node can have **several parameters**.  
 **Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14).
@@ -132,9 +130,9 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 
 | Rule | Example |
 |------|---------|
-| Every Parameter has a type | required |
-| A type **can** have a unit | `measure` + `kOhm` |
-| A type can have **no** unit | `url` |
+| Every Parameter has a **type** | required |
+| Every Parameter has an **optional unit** | `unit` may be null |
+| Type controls whether unit is allowed | `url` → no unit; `measure` → unit e.g. `kOhm` |
 
 Details: Q24–Q25 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 

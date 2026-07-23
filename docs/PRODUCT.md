@@ -36,7 +36,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A **tree is not a separate object**; it is defined by a **root node**.
 - A **root node** is the same **Node** object with parent `null` (not a different type).
 - A **project** holds different trees via `root_nodes`.
-- One node can have several parameters; each parameter **always has a type**; a type **can** have a unit (e.g. kOhm) or none (e.g. URL); parameter single-owner rule is still **?** .
+- One node can have several parameters; each parameter has a **type** and an **optional unit** (e.g. kOhm vs URL without unit); parameter single-owner rule is still **?** .
 - Every Project, Node, and Parameter has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).

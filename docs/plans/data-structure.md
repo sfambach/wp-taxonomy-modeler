@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter share a Changelog of Change entries (timestamp, changer, change). Tree is not a separate object. Planning artifact only — no implementation.
 status: draft
-version: "0.6.2-plan"
+version: "0.6.3-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -93,7 +93,7 @@ classDiagram
   }
 
   note for Node "Root node = same class\nwith parent_id = null\n(no RootNode type)"
-  note for Parameter "type always required\nunit only if type.has_unit\nOne parameter → one node? Q14"
+  note for Parameter "always: type\noptional: unit\nOne parameter → one node? Q14"
   note for ParameterType "e.g. url → has_unit false\nmeasure → has_unit true (kOhm)"
   note for Change "Shared audit model\nincludes version"
 
@@ -194,7 +194,9 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
 - A parameter **always has a type**. — **agreed**
-- A **type can have a unit** (Einheit), but does not always: e.g. `url` has no unit, a resistance measure can have `kOhm`. — **agreed**
+- A parameter has an **optional unit** (Einheit). — **agreed**
+- Whether a unit is allowed depends on the type (e.g. `url` → no unit; measure like 10 kOhm → unit allowed). — **agreed**
+- A **type can have a unit** (Einheit), but does not always. — **agreed**
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
 - Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
@@ -338,12 +340,13 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
-| `type` | **yes** | **ParameterType** (or type key) | Parameter type — **always required** |
-| `unit` | no* | **Unit** \| `null` | Einheit — only when the type allows/requires a unit |
+| `type` | **yes** | **ParameterType** (or type key) | Always present |
+| `unit` | **optional** | **Unit** \| `null` | Optional Einheit |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
 
-\* If `type.has_unit` is false (e.g. URL), `unit` must be `null` / omitted.  
-\* If `type.has_unit` is true (e.g. measure / resistance), `unit` may be required at value-time — exact rule Q25.
+**Rule:** A Parameter has a **type** and an **optional unit**.  
+If the type does not support units (`has_unit = false`, e.g. URL), `unit` stays `null`.  
+If the type supports units (`has_unit = true`, e.g. measure), `unit` may be set (e.g. `kOhm`).
 
 ### Parameter type and unit
 
