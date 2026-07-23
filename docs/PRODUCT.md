@@ -45,8 +45,14 @@ WP Taxonomy Tree is a WordPress plugin that provides a **taxonomy tree environme
 3. Delete a node and choose whether children are promoted or removed.
 4. Let another plugin attach its own editor pane or behavior when a node is selected.
 
+## Versioning
+
+- Plugin versions start at **`0.0.1`**.
+- The first digit changes only for official releases (first release: **`1.0.0`**).
+
 ## Related documents
 
 - Plan (source of truth): [`docs/plans/project-plan.md`](plans/project-plan.md)
 - Architecture: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
 - Roadmap: [`docs/ROADMAP.md`](ROADMAP.md)
+- Versioning rule: [`.cursor/rules/versioning.mdc`](../.cursor/rules/versioning.mdc)
