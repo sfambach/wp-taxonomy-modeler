@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.26-plan"
+version: "0.6.29-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -124,11 +124,11 @@ classDiagram
     +version
   }
 
-  note for Project "Definitionsbaum anchors required"
-  note for Node "Hierarchy + Relations; part-of nodes\nmay render as attributes of parent"
+  note for Project "Definitionsbaum anchors required\nmay also hold schema templates\n(BOM, Recipe, … as Nodes)"
+  note for Node "Hierarchy + Relations\nBOM list/line/recipe may be Nodes\nconfigured via templates — not PHP classes"
   note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
-  note for Relation "EXPLORATORY\nRelationType has one label only"
-  note for RelationType "directed? → arrow from→to\nelse line\nDisplayHint = attribute/taxonomy/…"
+  note for Relation "EXPLORATORY\nlines = Relations with props\n(qty, price, refs…)"
+  note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -154,7 +154,7 @@ Each RelationType has one **`label`** (no `forward`/`inverse` fields).
 Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
-Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `to` as **attribute** of `from`, inheritable along `ist-ein`).
+**Schema-as-Nodes spin (Q46):** domain structures such as **BOM** or **Recipe** may themselves be **Nodes + Relations** (templates), so host apps need fewer hard-coded classes (`BomList` / `BomLine` become optional views).
 
 ## Core objects
 
@@ -207,6 +207,7 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
 | **Parameter as separate sibling of Node** | **Under review** | Competing with Parameter-as-Node and with typed `besteht-aus` edges |
+| **BomList / BomLine / Recipe as PHP classes** | **Under review (Q46)** | May be replaceable by **Nodes + Relations** configured like templates |
 | **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41) |
 | **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
 | Forest | Derived view | Several trees (several roots) inside one project |
@@ -690,6 +691,55 @@ Rezept ──uses──► Mehl
 **Leaning (not locked):** treat **Präfix+Einheit as one unit group**; do not model measure as Widerstand→value→prefix→unit as three independent hops. Relation.props may carry `value` and point at / embed that group (Q45).
 
 Aligns with existing composite **`measure`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
+
+#### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
+
+Gap spotted on the concrete BOM: `BomList` / `BomLine` feel like **host classes**, but the same structure can be **configured from Nodes** — like a recipe, a PC build, or any other list.
+
+**Idea:** the *definition of what a BOM is* lives in the tree (template / schema nodes). Instances are also nodes (or node graphs), not a separate PHP model.
+
+```text
+# Schema / template (Definitionsbaum or template tree, Node.template?)
+BOM-Schema
+├── [consists_of] Zeile          ← line shape
+│     ├── [consists_of] Referenzen     (enum_multiple / string list)
+│     ├── [consists_of] Menge          (measure | integer)
+│     ├── [consists_of] Beschreibung   (string)
+│     ├── [consists_of] Preis          (measure / money)
+│     ├── [consists_of] Stock          (boolean)
+│     └── [uses] CatalogPart           (→ Bauteile leaf)
+└── [consists_of] Summe / Meta   (optional)
+
+# Instance (a concrete BOM — also Nodes)
+BOM "Platine XY"
+├── Zeile "C1,C3,C4"
+│     refs=C1,C3,C4  qty=3  price=0.30  stock=true
+│     ─[uses]→ Node "C 100nF 0603 CC0603…"
+├── Zeile "R1,R2"
+│     ─[uses]→ Node "R 1kΩ 0603"
+├── Zeile "X2"
+│     qty=0.5 m   ─[uses]→ Node "Datenkabel 4-Pol"
+└── …
+```
+
+```mermaid
+flowchart TB
+  S["BOM-Schema<br/>template Nodes"]
+  I["BOM Instance<br/>Nodes"]
+  P["Bauteile Catalog<br/>Nodes"]
+
+  S -.->|instantiates| I
+  I -->|uses / consists_of<br/>Relation + props| P
+```
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **A — Hard classes** `BomList`/`BomLine` | Fast to code for one app | Every domain reimplements lists |
+| **B — Schema-as-Nodes** | Same engine for BOM, Recipe, PC build, shopping list; configure in tree | Heavier runtime; need good templates + Relation.props |
+
+**Leaning:** treat **B as the strategic direction** for the taxonomy-tree environment; host UIs become *renderers* of node graphs. Hard classes may still appear as thin DTOs at API edges — not as the source of truth (Q46).
+
+Same for **Rezept**: Rezept-Schema Nodes + instance Nodes + `uses` ingredients with measure props — no `Recipe`/`IngredientLine` core classes required.
 
 #### Example RelationTypes
 

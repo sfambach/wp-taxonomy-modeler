@@ -124,66 +124,49 @@ User-provided list (line prices sum to **6,00 €**; multi-ref lines use **line 
 
 \* “14” is the user’s Bauteile-Gesamt; with length line X2 the host must define whether Gesamt counts lines, refs, or pieces only.
 
-#### Host BOM class diagram (conceptual)
+#### Host BOM — two views
+
+**View 1 (earlier):** dedicated host classes `BomList` / `BomLine` (convenient for one app).
+
+**View 2 (gap fill — preferred direction, Q46):** BOM is **configured as Nodes** — same as Recipe / other domains. No required `BomList` class in the core model.
 
 ```mermaid
 classDiagram
   direction TB
 
-  class BomList {
-    +id
-    +name
-    +project_label : ?
-    +lines : BomLine[]
-    +parts_total : ?
-    +price_sum : Money
+  class Project
+  class Node
+  class Relation {
+    +props : ?
   }
+  class RelationType
 
-  class BomLine {
-    +id
-    +references : string[]
-    +quantity : Quantity
-    +description : string
-    +line_price : Money
-    +in_stock : bool
-    +supplier_note : string?
-    +catalog_part_id
-  }
+  note for Node "BOM-Schema template\nBOM instance\nBOM Zeile\nCatalog part\nall are Nodes"
+  note for Relation "Zeile uses CatalogPart\nprops: refs, qty, price, stock…"
 
-  class Quantity {
-    +kind : count | length | ...
-    +value : number
-    +unit_group : UnitGroup?
-  }
+  Project --> Node : root_nodes / templates
+  Node "0..1" --> "*" Node : parent/children
+  Relation --> Node : from
+  Relation --> Node : to
+  Relation --> RelationType
+```
 
-  class UnitGroup {
-    +prefix : Node?
-    +base_unit : Node
-  }
+Concrete sample still maps the same way — only the *carrier* changes:
 
-  class CatalogPart {
-    +id
-    +name
-    +mpn : string?
-    +node_id : Node
-  }
+| Sample line | As Nodes |
+|-------------|----------|
+| BOM whole | Node `BOM Platine XY` (instance of BOM-Schema) |
+| C1,C3,C4 row | Child/related Node `Zeile` + Relation `uses` → cap leaf + props |
+| X2 0.5 m | Zeile with measure qty on Relation/props |
+| Catalog leaf | Existing Bauteile tree node |
 
-  class Node {
-    +id
-    +name
-    +parent_id
-  }
+Schema template (configurable once):
 
-  note for BomList "HOST — not taxonomy-tree core"
-  note for BomLine "refs e.g. C1,C3,C4\nqty often = count(refs)\nexcept X2: 0.5 m length"
-  note for CatalogPart "points into Bauteile tree leaf"
-  note for Quantity "count vs measure (Q45 unit group)"
-
-  BomList "1" --> "*" BomLine : lines
-  BomLine --> Quantity : quantity
-  Quantity --> UnitGroup : unit_group ?
-  BomLine --> CatalogPart : catalog_part
-  CatalogPart --> Node : node_id
+```text
+BOM-Schema (template)
+└── Zeile
+      ├── Referenzen, Menge, Beschreibung, Preis, Stock  (attribute slots)
+      └── uses → CatalogPart
 ```
 
 #### Mapping of the sample lines
@@ -438,7 +421,8 @@ That does **not** break the model — we already sketched `Relation.props` as op
 ### Verdict for Example C
 
 **Still fits.** Tree + types + optional Relations for recipe/ingredient structure; host for steps, scaling, meal plans, shopping aggregation, ratings, stats.  
-Closest cousin to **BOM lines** (quantity + referenced item) and **PC builds** (composition), with extra pressure on **measure** and **Relation.props**.
+Closest cousin to **BOM lines** (quantity + referenced item) and **PC builds** (composition), with extra pressure on **measure** and **Relation.props**.  
+With **schema-as-Nodes (Q46)**, Recipe and BOM share the same mechanism: schema template Nodes + instance Nodes — no dedicated Recipe/BOM classes required in core.
 
 Related use-case cards: UC-40… in [`use-cases.md`](use-cases.md).
 

@@ -51,6 +51,7 @@
 | Q43 | Can `consists_of` attributes be inherited along `is_a`? | No / copy / live inherit / merge+override | **Leaning: yes, inheritable**; mechanics TBD (related Q30) | open |
 | Q44 | Does RelationType need **`directed`** (arrow vs line)? | Always directed / optional flag / derive from DisplayHint / drop | Tentative: directed → arrow `from→to`, else line; may overlap `bidirectional` — user unsure | open |
 | Q45 | How is a measure bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Parameter only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
+| Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Leaning: schema-as-Nodes** so BOM/Recipe need no core classes; UI renders node graphs | open |
 
 ## How to close a question
 

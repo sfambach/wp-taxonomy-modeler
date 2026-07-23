@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.28-plan** (2026-07-23).
+Last synced from plan version **0.6.29-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -30,6 +30,7 @@ Last synced from plan version **0.6.28-plan** (2026-07-23).
 | Example project C — Rezepte | Done (planning) |
 | Cross-check A+B+C — model boundary holds | Done (planning) |
 | Part identity layers (R/C/Diode/IC) | In progress |
+| Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
 | Open questions (leave open; resolve later in batches) | Parked for now |
 | Widerstand worked example: Approach A vs B | In progress |
 | Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |

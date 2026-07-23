@@ -43,6 +43,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - `enum` = scalar options; `single`/`multiple` = selection methods (not types).
 - **Undecided:** Parameter as specialized Node vs Parameter definitions vs nested nodes with **typed edges** (`Relation` / `RelationType`) — see Bauteile / Widerstand A vs B (Q33–Q35, Q41–Q43).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
+- Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
 - Parameter single-owner rule is still **?** .
 - Every Project, Node, and Parameter has a changelog (`timestamp`, `changer`, `change`, `version`).
