@@ -42,7 +42,7 @@ todos:
     content: "Specify delete flows (promote vs cascade), confirmations, and edge cases"
     status: pending
   - id: draft-use-cases
-    content: "Write use-case cards in docs/plans/use-cases.md (format agreed; expand scenarios)"
+    content: "Use-case cards synced to Q33/Q14/Q34/Q49; UC-10 + UC-14–UC-16 added; expand further as needed"
     status: in_progress
   - id: planning-signoff
     content: "Mark project plan ready-to-implement only after user sign-off"

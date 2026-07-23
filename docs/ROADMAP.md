@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.38-plan** (2026-07-23).
+Last synced from plan version **0.6.39-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,7 +25,7 @@ Last synced from plan version **0.6.38-plan** (2026-07-23).
 | **Q49:** simples originate Relations? special kind vs config disable | Open |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
-| Use-case cards (`docs/plans/use-cases.md`) | In progress |
+| Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |
 | Example project A — BOM (fit/gap) | Done (planning) |
 | Example project B — Hardware / tests / builds | Done (planning) |
 | Example project C — Rezepte | Done (planning) |

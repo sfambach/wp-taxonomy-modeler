@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.38-plan"
+version: "0.6.39-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -207,6 +207,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Datentypen as tree Nodes (int/double/string/char/bool); bind via Relation `has_type`; UI widget from type (Q48). |
 | 2026-07-23 | **Q33 decided:** Parameter **is a tree Node**. Every Project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples. Q14 dissolves (no separate owner). Q34 (PHP specialization) remains open. |
 | 2026-07-23 | **Q14 dropped (entfällt).** **Q34 leaning: configuration** (not PHP subclass). New **Q49:** simple types may be a special Node kind that cannot originate Relations, **or** same Nodes with config that disables Relations — leave open; decide with config-first Q34. |
+| 2026-07-23 | Use cases synced to Q33/Q14/Q34/Q49 (`docs/plans/use-cases.md` **0.1.2**): UC-04–UC-06 wording; new **UC-10**, **UC-14–UC-16**. |
 
 ## Change protocol
 
