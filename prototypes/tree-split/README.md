@@ -9,11 +9,20 @@ Static throwaway UI to explore the taxonomy tree screen shape.
 - Split layout: tree left, multi-tab right
 - Demo seed: **BOM Demo** with **Datentypen** (int/double/string/char/bool), Spalten, Stückliste, Bauteile
 - Right pane **tabs**:
-  - **Knoten** — rename, sibling order, **Datentyp** via Relation `has_type`
+  - **Knoten** — rename, sibling order, **Kantenliste (Relationen)**: Kanten zu anderen Knoten hinzufügen/entfernen (`has_type` zu einem Datentyp ist nur eine Kante)
   - **Tabelle** / **Tabelle 2** — children = columns; cell widgets from column `has_type`
   - **Formular** — controls from selected node; choice options from children
 - **+** / **×** / **↑↓** / **Alt+↑↓** (`position` order, Q13)
-- State in `localStorage` (`wtt-proto-tree-split-v6`)
+- State in `localStorage` (`wtt-proto-tree-split-v7`)
+
+## Kanten / Relationen
+
+- Statt einer festen „Datentyp"-Auswahl je Knoten gibt es eine generische
+  **Kantenliste** im **Knoten**-Tab: gerichtete Kanten `{ from, to, label }`.
+- Neue Kante = Label (z. B. `has_type`, `references`, …) + Zielknoten wählen →
+  **Kante hinzufügen**. Kanten lassen sich per `×` entfernen.
+- Die **Tabelle** leitet ihr Zell-Widget weiterhin aus der `has_type`-Kante ab.
+- Ausgeblendete (fester Ast) Knoten erscheinen nicht in der Ziel-Auswahl.
 
 ## Fester Ast + Ausblenden pro Projekt (Q48)
 
@@ -42,7 +51,7 @@ Static throwaway UI to explore the taxonomy tree screen shape.
 
 ```text
 Node { id, parentId, name, position }
-typeRelations: slotId → typeNodeId   // prototype of Relation has_type
+Edge { id, from, to, label }         // generic relation; has_type is one label
 ```
 
 ## Extend later

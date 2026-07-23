@@ -726,3 +726,60 @@ body {
   border-left: 2px solid var(--accent);
   padding-left: 0.7rem;
 }
+
+/* --- Kanten (Relationen) --- */
+.edge-list {
+  list-style: none;
+  margin: 0.35rem 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.edge-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.edge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.edge-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+}
+
+.edge-arrow {
+  color: var(--muted);
+}
+
+.edge-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.edge-add .form-control {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.edge-add input.form-control {
+  flex: 0 1 8rem;
+}

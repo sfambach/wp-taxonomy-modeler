@@ -10,7 +10,7 @@
  * Datentypen branch + has_type relation → typed table widgets.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v6";
+const STORAGE_KEY = "wtt-proto-tree-split-v7";
 /** Name of the fixed system Ast that exists in every project (Q48). */
 const FIXED_BRANCH_NAME = "Datentypen";
 const TABLE_BODY_ROWS = 5;
@@ -61,9 +61,13 @@ let tableCells = new Map();
 let tableCells2 = new Map();
 /** @type {Map<string, FormState>} */
 let formStates = new Map();
-/** slotNodeId → typeNodeId (prototype Relation has_type) */
-/** @type {Map<string, string>} */
-let typeRelations = new Map();
+/**
+ * Generic directed edges between nodes (prototype of Relation objects).
+ * The `has_type` relation is just an edge with label REL_HAS_TYPE.
+ * @typedef {{ id: string, from: string, to: string, label: string }} Edge
+ * @type {Edge[]}
+ */
+let edges = [];
 let dataTypesRootId = "";
 /** Per-project hidden node ids (fixed-branch nodes hidden for this project). */
 let hiddenNodes = new Set();
@@ -136,7 +140,7 @@ function createInitial() {
   tableCells = new Map();
   tableCells2 = new Map();
   formStates = new Map();
-  typeRelations = new Map();
+  edges = [];
   hiddenNodes = new Set();
   showHidden = false;
   activeTab = "node";
@@ -159,13 +163,17 @@ function createInitial() {
   const cLcsc = createNode(schemaId, "LCSC", 4);
   const cStock = createNode(schemaId, "Stock", 5);
 
-  // slot ─[has_type]→ Datentyp
-  typeRelations.set(cRef, tString);
-  typeRelations.set(cVal, tString);
-  typeRelations.set(cFp, tString);
-  typeRelations.set(cQty, tInt);
-  typeRelations.set(cLcsc, tString);
-  typeRelations.set(cStock, tBool);
+  // slot ─[has_type]→ Datentyp (seed edges)
+  for (const [from, to] of [
+    [cRef, tString],
+    [cVal, tString],
+    [cFp, tString],
+    [cQty, tInt],
+    [cLcsc, tString],
+    [cStock, tBool],
+  ]) {
+    edges.push({ id: uid(), from, to, label: REL_HAS_TYPE });
+  }
 
   const listId = createNode(rootId, "Stückliste", 2);
   createNode(listId, "C1 — 100 nF 0603", 0);
@@ -194,9 +202,48 @@ function dataTypeNodes() {
   return childrenOf(dataTypesRootId);
 }
 
+function edgesFrom(id) {
+  return edges.filter((e) => e.from === id);
+}
+
+/** The has_type edge of a slot (first one), if any. */
+function typeEdgeOf(slotId) {
+  return edges.find((e) => e.from === slotId && e.label === REL_HAS_TYPE) || null;
+}
+
 function typeNodeOf(slotId) {
-  const tid = typeRelations.get(slotId);
-  return tid && nodes.has(tid) ? nodes.get(tid) : null;
+  const e = typeEdgeOf(slotId);
+  return e && nodes.has(e.to) ? nodes.get(e.to) : null;
+}
+
+/** Human-readable path of a node, e.g. "Datentypen / double". */
+function nodePath(id) {
+  const parts = [];
+  let cur = nodes.get(id);
+  let guard = 0;
+  while (cur && guard++ < 64) {
+    parts.unshift(cur.name);
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  return parts.join(" / ");
+}
+
+function addEdge(from, to, label) {
+  if (!nodes.has(from) || !nodes.has(to) || from === to) return;
+  const l = (label || "").trim() || "relates_to";
+  if (edges.some((e) => e.from === from && e.to === to && e.label === l)) return;
+  edges.push({ id: uid(), from, to, label: l });
+  persist();
+  render();
+}
+
+function removeEdge(edgeId) {
+  const before = edges.length;
+  edges = edges.filter((e) => e.id !== edgeId);
+  if (edges.length !== before) {
+    persist();
+    render();
+  }
 }
 
 /** The fixed Ast root itself (the "Datentypen" node). */
@@ -232,11 +279,6 @@ function setHidden(id, hidden) {
   render();
 }
 
-/** Type nodes offered in the has_type picker (hidden types excluded per project). */
-function visibleDataTypeNodes() {
-  return dataTypeNodes().filter((n) => !isHidden(n.id));
-}
-
 /** Normalize type node name → widget key. */
 function typeKey(typeNode) {
   if (!typeNode) return "string";
@@ -247,17 +289,6 @@ function typeKey(typeNode) {
   if (["char"].includes(k)) return "char";
   if (["string", "text"].includes(k)) return "string";
   return "string";
-}
-
-function setTypeRelation(slotId, typeId) {
-  if (!nodes.has(slotId)) return;
-  if (!typeId) {
-    typeRelations.delete(slotId);
-  } else if (nodes.has(typeId)) {
-    typeRelations.set(slotId, typeId);
-  }
-  persist();
-  render();
 }
 
 /**
@@ -356,12 +387,10 @@ function deleteNode(id) {
     tableCells.delete(k);
     tableCells2.delete(k);
     formStates.delete(k);
-    typeRelations.delete(k);
+    hiddenNodes.delete(k);
   }
-  // Drop relations pointing at deleted type nodes.
-  for (const [slot, tid] of [...typeRelations.entries()]) {
-    if (kill.has(tid)) typeRelations.delete(slot);
-  }
+  // Drop edges touching any deleted node (as source or target).
+  edges = edges.filter((e) => !kill.has(e.from) && !kill.has(e.to));
   if (kill.has(dataTypesRootId)) dataTypesRootId = "";
 
   if (parentId != null && nodes.has(parentId)) reindexSiblings(parentId);
@@ -498,7 +527,7 @@ function persist() {
     tableCells: mapToObject(tableCells),
     tableCells2: mapToObject(tableCells2),
     formStates: mapToObject(formStates),
-    typeRelations: mapToObject(typeRelations),
+    edges,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -533,7 +562,7 @@ function restore() {
     tableCells = new Map();
     tableCells2 = new Map();
     formStates = new Map();
-    typeRelations = new Map();
+    edges = [];
     restoreStringGridMap(data.tableCells, tableCells);
     restoreStringGridMap(data.tableCells2, tableCells2);
     if (data.formStates && typeof data.formStates === "object") {
@@ -542,10 +571,15 @@ function restore() {
         formStates.set(k, { ...defaultFormState(), ...st });
       }
     }
-    if (data.typeRelations && typeof data.typeRelations === "object") {
-      for (const [slot, tid] of Object.entries(data.typeRelations)) {
-        if (nodes.has(slot) && nodes.has(tid)) typeRelations.set(slot, tid);
-      }
+    if (Array.isArray(data.edges)) {
+      edges = data.edges
+        .filter((e) => e && nodes.has(e.from) && nodes.has(e.to))
+        .map((e) => ({
+          id: e.id || uid(),
+          from: e.from,
+          to: e.to,
+          label: (e.label || "relates_to").toString(),
+        }));
     }
     dataTypeNodes(); // heal dataTypesRootId by name if needed
     const parents = new Set(
@@ -568,6 +602,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v3");
     localStorage.removeItem("wtt-proto-tree-split-v4");
     localStorage.removeItem("wtt-proto-tree-split-v5");
+    localStorage.removeItem("wtt-proto-tree-split-v6");
   } catch {
     /* ignore */
   }
@@ -746,6 +781,121 @@ function syncTabs() {
   }
 }
 
+/**
+ * Node settings block: list outgoing edges (relations) and add new ones.
+ * @param {ProtoNode} node
+ */
+function buildEdgesBlock(node) {
+  const block = document.createElement("div");
+  block.className = "order-block edges-block";
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Kanten (Relationen)";
+  block.append(lab);
+
+  const outgoing = edgesFrom(node.id);
+  if (outgoing.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.style.margin = "0.35rem 0";
+    empty.style.fontSize = "0.8rem";
+    empty.textContent =
+      "Keine Kanten. Unten eine Relation zu einem anderen Knoten hinzufügen.";
+    block.append(empty);
+  } else {
+    const list = document.createElement("ul");
+    list.className = "edge-list";
+    for (const e of outgoing) {
+      const li = document.createElement("li");
+      li.className = "edge-item";
+
+      const text = document.createElement("span");
+      text.className = "edge-text";
+      const lbl = document.createElement("span");
+      lbl.className = "edge-label";
+      lbl.textContent = e.label;
+      const arrow = document.createElement("span");
+      arrow.className = "edge-arrow";
+      arrow.textContent = "→";
+      const target = nodes.get(e.to);
+      const tgt = document.createElement("button");
+      tgt.type = "button";
+      tgt.className = "linkish";
+      tgt.textContent = target
+        ? `${target.name}${isHidden(e.to) ? " (ausgeblendet)" : ""}`
+        : "(gelöscht)";
+      if (target) tgt.addEventListener("click", () => selectNode(e.to));
+      text.append(lbl, arrow, tgt);
+
+      const del = makeIconButton("×", "Kante entfernen", () => removeEdge(e.id), {
+        danger: true,
+      });
+      li.append(text, del);
+      list.append(li);
+    }
+    block.append(list);
+  }
+
+  // --- Add-edge controls (static prototype) ---
+  const addRow = document.createElement("div");
+  addRow.className = "edge-add";
+
+  const labelInput = document.createElement("input");
+  labelInput.className = "form-control";
+  labelInput.type = "text";
+  labelInput.value = REL_HAS_TYPE;
+  labelInput.setAttribute("list", "edge-label-suggestions");
+  labelInput.setAttribute("aria-label", "Relationstyp / Kanten-Label");
+
+  const suggestions = document.createElement("datalist");
+  suggestions.id = "edge-label-suggestions";
+  for (const s of ["has_type", "references", "part_of", "depends_on", "relates_to"]) {
+    const o = document.createElement("option");
+    o.value = s;
+    suggestions.append(o);
+  }
+
+  const targetSelect = document.createElement("select");
+  targetSelect.className = "form-control";
+  targetSelect.setAttribute("aria-label", "Zielknoten der Kante");
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = "— Zielknoten wählen —";
+  targetSelect.append(ph);
+  const candidates = [...nodes.values()]
+    .filter((n) => n.id !== node.id && n.id !== rootId && !isHidden(n.id))
+    .sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
+  for (const c of candidates) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = nodePath(c.id);
+    targetSelect.append(o);
+  }
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "btn";
+  addBtn.textContent = "Kante hinzufügen";
+  addBtn.addEventListener("click", () => {
+    if (!targetSelect.value) return;
+    addEdge(node.id, targetSelect.value, labelInput.value);
+  });
+
+  addRow.append(labelInput, targetSelect, addBtn);
+  block.append(addRow, suggestions);
+
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.style.margin = "0.35rem 0 0";
+  hint.style.fontSize = "0.8rem";
+  hint.textContent =
+    "Relation zu einem Datentyp: Label „has_type“ + Datentyp-Knoten als Ziel → bestimmt das Tabellen-Widget.";
+  block.append(hint);
+
+  return block;
+}
+
 function renderDetail() {
   const mount = document.getElementById("detail");
   if (!mount) return;
@@ -846,57 +996,8 @@ function renderDetail() {
     orderBlock.append(childLab, childList);
   }
 
-  const typeBlock = document.createElement("div");
-  typeBlock.className = "order-block";
-  const typeLab = document.createElement("div");
-  typeLab.className = "field-label";
-  typeLab.textContent = "Datentyp (Relation has_type)";
-  const typeSelect = document.createElement("select");
-  typeSelect.className = "form-control";
-  typeSelect.id = "node-type-rel";
-  const none = document.createElement("option");
-  none.value = "";
-  none.textContent = "— kein Typ —";
-  typeSelect.append(none);
-  const types = visibleDataTypeNodes();
-  const currentType = typeRelations.get(node.id) || "";
-  // Keep a currently-assigned but now-hidden type visible so state stays truthful.
-  const currentHidden =
-    currentType && isHidden(currentType) && nodes.has(currentType)
-      ? nodes.get(currentType)
-      : null;
-  const optionTypes = currentHidden ? [...types, currentHidden] : types;
-  for (const t of optionTypes) {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = isHidden(t.id) ? `${t.name} (ausgeblendet)` : t.name;
-    typeSelect.append(opt);
-  }
-  if (optionTypes.some((t) => t.id === currentType))
-    typeSelect.value = currentType;
-  const underDataTypes =
-    dataTypesRootId &&
-    (node.id === dataTypesRootId || node.parentId === dataTypesRootId);
-  typeSelect.disabled = underDataTypes || optionTypes.length === 0;
-  typeSelect.addEventListener("change", () => {
-    setTypeRelation(node.id, typeSelect.value);
-  });
-  const typeHint = document.createElement("p");
-  typeHint.className = "muted";
-  typeHint.style.margin = "0.35rem 0 0";
-  typeHint.style.fontSize = "0.8rem";
-  if (underDataTypes) {
-    typeHint.textContent =
-      "Datentyp-Knoten selbst — Zuweisung gilt für Schema-/Wert-Slots.";
-  } else if (types.length === 0) {
-    typeHint.textContent = "Ast „Datentypen“ anlegen und Kindtypen hinzufügen.";
-  } else {
-    const tn = typeNodeOf(node.id);
-    typeHint.textContent = tn
-      ? `Aktuell: ${node.name} ─[${REL_HAS_TYPE}]→ ${tn.name} → Tabellen-Widget „${typeKey(tn)}“.`
-      : "Kein Typ — Tabelle fällt auf Textfeld zurück.";
-  }
-  typeBlock.append(typeLab, typeSelect, typeHint);
+  const edgesBlock = buildEdgesBlock(node);
+  const outgoing = edgesFrom(node.id);
 
   const meta = document.createElement("div");
   meta.className = "meta";
@@ -906,6 +1007,7 @@ function renderDetail() {
     <div>parent: <span>${parent ? parent.name : "— (root)"}</span></div>
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
+    <div>Kanten: <span>${outgoing.length}</span></div>
     <div>has_type: <span>${tn ? tn.name : "—"}</span></div>
   `;
 
@@ -913,7 +1015,7 @@ function renderDetail() {
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Datentypen im Baum + has_type → Tabellenfelder. Kinder → Spalten/Formular-Optionen. Alt+↑ / Alt+↓.";
+    "Kanten = Relationen zu anderen Knoten. „has_type“ → Datentyp bestimmt das Tabellen-Widget. Alt+↑ / Alt+↓.";
 
   let fixedBlock = null;
   if (isFixedBranch(node.id)) {
@@ -948,7 +1050,7 @@ function renderDetail() {
 
   const parts = [h2, field];
   if (fixedBlock) parts.push(fixedBlock);
-  parts.push(typeBlock, orderBlock, meta, hint);
+  parts.push(edgesBlock, orderBlock, meta, hint);
   card.append(...parts);
   mount.append(card);
 }
