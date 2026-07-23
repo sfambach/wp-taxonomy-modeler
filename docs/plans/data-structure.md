@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.12-plan"
+version: "0.6.13-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -16,8 +16,11 @@ todos:
     content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
     status: completed
   - id: define-node-parameter-link
-    content: "Node can have several parameters (agreed); parameter→one node is tentative (?)"
+    content: "Leaning: Parameter may be a specialized Node (not a separate stored kind); decide Q14/Q33/Q34"
     status: in_progress
+  - id: decide-parameter-is-node
+    content: "Decide whether Parameter is a specialized Node (subclass / kind flag / role)"
+    status: pending
   - id: define-project-core
     content: "Project stores root_nodes plus required Definition anchors"
     status: completed
@@ -46,6 +49,9 @@ todos:
 
 > **Keep this section updated on every structure change.** After each change, also show this diagram in the chat reply.
 
+**Leaning (not locked):** a **Parameter is also a Node** — specialized (extra fields), but still in the same hierarchy.  
+That matches the Definitionsbaum where `Wert`, `Länge`, … already appear as tree nodes.
+
 ```mermaid
 classDiagram
   direction TB
@@ -73,15 +79,10 @@ classDiagram
   }
 
   class Parameter {
-    +id
-    +node_id : ?
-    +key : likely
-    +label : likely
     +type : Node
     +prefix : Node?
     +base_unit : Node?
     +value : ?
-    +changelog : Changelog
   }
 
   class Changelog {
@@ -96,8 +97,8 @@ classDiagram
   }
 
   note for Project "Always stores Definitionsbaum anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\nBauteile hangs under Definition (same tree)"
-  note for Node "template=true → template tree\nused to seed project-specific trees\nSame class also used for Type/Präfix/Basiseinheit choices"
-  note for Parameter "type under project.type_node\nprefix under project.prefix_node\nbase_unit under project.base_unit_node\nmeasure reading = value + prefix + unit\ne.g. 10 + m + Meter => 10 mm\n(value storage: Q16)"
+  note for Node "Hierarchy + Definition choices\ntemplate flag; Parameter may be a specialized Node"
+  note for Parameter "LEANING: specialized Node\nnot a parallel object beside the tree\ntype/prefix/base_unit still Nodes\nmeasure = value + prefix + unit\n(how specialization works: Q34)"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
@@ -107,24 +108,23 @@ classDiagram
   Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent / children
-  Node "1" --> "*" Parameter : has several
+  Node <|-- Parameter : specialized ?
   Node "1" --> "1" Changelog : changelog
-  Parameter "0..1" --> "0..1" Node : assigned ?
   Parameter "1" --> "1" Node : type
   Parameter "0..1" --> "0..1" Node : prefix
   Parameter "0..1" --> "0..1" Node : base_unit
-  Parameter "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** Required **Definitionsbaum** anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors. Filled **measure** = `value` + `prefix` + `base_unit` (value storage Q16). Domain branches such as **Bauteile** hang under `definition_root` (no separate catalog Root).
+**Legend:** Required **Definitionsbaum** anchors live on **Project**. Domain branches such as **Bauteile** hang under `definition_root`.  
+**Parameter-as-Node leaning:** `Wert` / `Länge` / … are Nodes in the tree that carry measure fields (`type`, `prefix`, `base_unit`, `value`). Specialization mechanism still open (Q34). Alternative (previous): Parameter stays a separate object attached to a Node (Q14).
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy; Definition choices; may be marked `template` |
-| 2 | **Parameter** | Built from `type`, optional `prefix`, optional `base_unit` (all Nodes) |
+| 1 | **Node** | Hierarchy; Definition choices; may be marked `template`; may be specialized as Parameter |
+| 2 | **Parameter** | **Leaning:** specialized **Node** with `type` / optional `prefix` / optional `base_unit` / optional `value` |
 | 3 | **Project** | Holds trees + **required Definition anchors** |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
@@ -167,6 +167,7 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
+| **Parameter as separate sibling of Node** | **Under review** | Leaning: Parameter is a **specialized Node** (Q33/Q34), not a parallel attached object |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -181,17 +182,18 @@ flowchart TB
   C1 --> G1["Node grandchild"]
   R2 --> C3["Node child"]
 
-  C1 --> P1[Parameter]
-  C1 --> P2[Parameter]
-  C2 --> P3[Parameter]
+  C1 --> P1["Parameter-Node ?"]
+  C1 --> P2["Parameter-Node ?"]
+  C2 --> P3["Node child"]
 
   subgraph note["Not stored as own objects"]
     T["Tree = root node + descendants"]
     RN["Root = same Node with parent null"]
+    PN["Parameter may = specialized Node"]
   end
 ```
 
-**Stored objects in this diagram:** `Project`, `Node`, `Parameter`  
+**Stored objects in this diagram:** `Project`, `Node` (Parameter leaning = specialized Node)  
 **Derived only:** tree (from root node), root role (Node with `parent = null`)
 
 **Agreed / tentative relations:**
@@ -200,7 +202,6 @@ flowchart TB
 - A **root node** is the **same object as a node** where the parent is `null` (not a separate type/entity). — **agreed**
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
-- One node can have several parameters (or none). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
@@ -209,18 +210,32 @@ flowchart TB
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
-- One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
-- Every Project, Node, and Parameter has a **changelog**. — **agreed**
+- **Parameter may be a specialized Node** (same hierarchy, extra fields) — **leaning; not locked (Q33/Q34)**
+- One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node** (parent link); otherwise Q14
+- Every Project, Node, and Parameter has a **changelog**. — **agreed** (if Parameter is a Node, one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 
 ```text
 Project ──(several trees)──► Root Node     # each tree = that root + descendants
 Node ──(optional)──► parent Node
 Node ──(several)──► child Nodes
-Node ──(several)──► Parameter              # agreed
-Parameter ──(one?)──► Node                 # unsure — Q14
+Parameter ──(specialized?)──► Node         # leaning Q33/Q34
 ```
 
+### Design thought: Parameter as specialized Node
+
+Why this is attractive (planning note):
+
+| Point | Implication |
+|-------|-------------|
+| Definitionsbaum already draws `Wert`, `Länge`, … as nodes | No second parallel structure |
+| Parent/child already answers “belongs to” | Q14 may become unnecessary |
+| Type / Präfix / Basiseinheit are already Nodes | Parameter would be “just another specialized Node” |
+| Changelog stays on Node | No separate Parameter changelog entity |
+
+Open: specialization shape (Q34) — PHP subclass / `kind` flag / role without subclass / Node + attached payload.
+
+Previous alternative (still valid until decided): Parameter remains a **separate object** that a Node *has* (several).
 ---
 
 ## 1. Node
@@ -329,35 +344,38 @@ Node ◄──(many)────── Parameters
 
 ### Core idea
 
-**Parameter** is a core object. Parameters describe configurable attributes related to nodes. Nodes form hierarchy; parameters describe attributes used with that hierarchy.
+**Parameter** describes a configurable attribute (often a measure).  
 
-**Cardinality:**
+**Leaning (not locked):** a Parameter is **also a Node** — specialized (extra fields such as `type` / `prefix` / `base_unit` / `value`), but still part of the same hierarchy. In the Definitionsbaum, nodes like `Wert` or `Länge` *are* the parameters.
+
+**Alternative (previous):** Parameter is a separate object that a Node *has* (`0..n`).
+
+**Cardinality under the leaning:**
 
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
-| Node → Parameter | several | `0..n` | **agreed** |
-| Parameter → Node | one? | `1` (?) | **tentative — decide later (Q14)** |
+| Node → child Parameter-Nodes | several | `0..n` | **leaning** (parent/child) |
+| Parameter → parent Node | one | `1` | **leaning** (via `parent_id`) |
 
 ```text
-Node ──(several)──► Parameter           # agreed
-Parameter ──(one?)──► Node              # unsure
+Node (category) ──(children)──► Parameter-Node   # leaning
+Parameter ──(is-a / specialized)──► Node         # leaning Q33/Q34
 ```
 
-Do **not** hard-assume a single owning `node_id` until Q14 is closed.
+If the leaning is rejected, fall back to Node *has* Parameter + Q14 (`node_id`).
 
 ### Parameter fields (initial — to refine)
 
+Under the **specialized Node** leaning, Parameter inherits Node fields (`id`, `parent_id`, `name`, `changelog`, …) and adds:
+
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
-| `id` | yes | identifier | Stable identity of the parameter |
-| `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
-| `key` | likely | string | Machine key (stable in code/APIs) |
-| `label` | likely | string | Human-readable name |
+| *(inherited Node fields)* | — | — | Identity, parent, name, template, changelog, … |
 | `type` | **yes** | **Node** | From Definition → **Type** (e.g. `measure`, `url`) |
 | `prefix` | **optional** | **Node** \| `null` | From Definition → **Präfix** (e.g. `k`, `m`) |
 | `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** (e.g. `Ohm`, `Meter`) |
 | `value` | **?** | scalar / TBD | Filled reading for measures (e.g. `10`); storage Q16 |
-| `changelog` | yes | **Changelog** | History of changes on this parameter |
+| `key` | likely | string | Machine key if `name` is not enough |
 
 **Rule:** A Parameter **uses** three kinds of definition nodes:
 
@@ -369,13 +387,12 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 
 ```php
 // Conceptual — not implemented
-class Parameter {
-	public string $id;
+// Leaning: Parameter specializes Node (exact PHP shape = Q34)
+class Parameter extends Node {
 	public Node $type;           // e.g. measure / url
 	public ?Node $prefix;        // e.g. k / m (milli) — optional
 	public ?Node $base_unit;     // e.g. Ohm / Meter — optional
 	// public mixed $value;      // filled reading — open Q16
-	public Changelog $changelog;
 }
 
 // Filled measure reading (value storage still Q16):
@@ -391,7 +408,9 @@ Whether `prefix`/`base_unit` are required on the Parameter *definition* vs chose
 
 | Topic | Status |
 |-------|--------|
-| Whether every parameter has exactly one owning node | open (?) — Q14 |
+| Is Parameter a specialized Node? | **leaning yes** — Q33 / Q34 |
+| Specialization mechanism (subclass / kind / role) | open — Q34 |
+| Whether every parameter has exactly one owning node | open (?) — Q14; may dissolve if Parameter is a Node |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
 | Which types require prefix and/or base_unit | open — Q24 |
@@ -498,12 +517,12 @@ Parameter {
 |------|----------------|
 | `Type` / `Basiseinheit` / `Präfix` | Required Definition anchors on Project |
 | `Bauteile` | Domain branch under Definitionsbaum (not its own root) |
-| `Widerstände` | Category node; may have several Parameters |
-| `Wert` | Parameter — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
-| `Bauform` | Parameter — e.g. type=`text` or enum-like choices |
-| `Leistungsaufnahme` | Parameter — measure + Watt base unit |
-| `Maße` | Group of three dimension measures |
-| `Länge` / `Breite` / `Höhe` | Each is a **measure**: **value + prefix + Einheit (base_unit)** |
+| `Widerstände` | Category node; children may be Parameter-Nodes |
+| `Wert` | **Parameter-Node** — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
+| `Bauform` | **Parameter-Node** — e.g. type=`text` or enum-like choices |
+| `Leistungsaufnahme` | **Parameter-Node** — measure + Watt base unit |
+| `Maße` | Group node; children are dimension Parameter-Nodes |
+| `Länge` / `Breite` / `Höhe` | **Parameter-Nodes** (measure): **value + prefix + Einheit** |
 
 **Dimension example (agreed direction):**
 
@@ -520,14 +539,15 @@ Maße display:  10 mm × 5 mm × 2 mm
 `Project.definition_root` points at **Definition**; that root is also in `root_nodes`.
 
 Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).  
-Open: whether Wert / Bauform / … are **Nodes that own Parameters**, or Parameter names drawn as tree nodes (Q33).
+Open: specialization mechanism if Parameter is a Node (Q34).  
+Open: confirm Parameter-as-Node vs separate attached Parameter object (Q33).
 
 ### What a Parameter is not (until decided otherwise)
 
-- Not a Node / not a Project.
-- Not a Tree object.
-- Not necessarily a filled-in value on a part/post.
-- Not necessarily single-owner only — still **?** (Q14).
+- Not a Project / not a Tree object.
+- **Leaning:** it *is* a (specialized) Node — not a parallel sibling entity.
+- Not necessarily a filled-in value on a part/post (value still Q16).
+- Single-owner via `node_id` may dissolve if parent/child is enough (Q14).
 
 ---
 

@@ -43,10 +43,11 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
+`Parameter` may specialize `Node` (leaning — Q33/Q34) rather than sit beside it.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
-Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q33 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q34 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -123,8 +124,9 @@ Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 | `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
 | `changelog` | yes | Changelog of Change entries |
 
-**Agreed:** one node can have **several parameters**.  
-**Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14).
+**Agreed:** measure composition as above.  
+**Leaning:** Parameter may be a **specialized Node** in the Definitionsbaum (Q33/Q34).  
+**Tentative (?):** one parameter → exactly one owning node via separate `node_id` — may dissolve if parent/child is enough (Q14).
 
 ### Changelog / Change (shared)
 

@@ -19,7 +19,7 @@
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
 | Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; position/meta later | open |
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | WP default until proven insufficient | open |
-| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | Unsure — mark **?** and decide later. (Agreed separately: one node can have several parameters.) | open |
+| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | May **dissolve** if Parameter is a specialized Node (parent link); else still open | open |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | TBD | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
@@ -38,7 +38,8 @@
 | Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
-| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | Thinking aid uses mixed wording — decide before MVP | open |
+| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Leaning: Parameter-as-node** (specialized Node) | open |
+| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | TBD — subclass sketch used in planning notes only | open |
 
 ## How to close a question
 
