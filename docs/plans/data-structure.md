@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.0-plan"
+version: "0.5.1-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -62,6 +62,7 @@ flowchart TB
 **Agreed / tentative relations:**
 
 - One node can have one parent (or none) and several children (or none). — **agreed**
+- A **root node** is a node that has **no parent** (`parent_id = null`). — **agreed**
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
@@ -84,7 +85,7 @@ Parameter ──(one?)──► Node                 # unsure — Q14
 1. **One node can have a parent node** (or no parent).
 2. **One node can have several child nodes** (or none).
 3. **One node can have several parameters** (or none).
-4. A node with **no parent** is a **root node**.
+4. A **root node** is a node that has **no parent**.
 5. A **tree** is not stored as its own object: it is **defined by a root node** plus all descendants.
 
 ```mermaid
@@ -97,6 +98,15 @@ flowchart TB
   R2 --> C3[Child node]
 ```
 
+### Root node (definition)
+
+| Term | Definition |
+|------|------------|
+| **Root node** | A node that has **no parent** (`parent_id = null`) |
+| Non-root node | A node that has a parent (`parent_id` references another node) |
+
+This is the only criterion for “root”. Being a root does not require children.
+
 ### Parent and children
 
 | Rule | Meaning |
@@ -104,7 +114,7 @@ flowchart TB
 | Optional parent | A node may have **one** parent node, or none |
 | At most one parent | Never multiple parents |
 | Several children | A node may have **zero or more** child nodes |
-| Root | A node with **no parent** is a root (and thus defines a tree) |
+| Root | A **root node** is a node that has **no parent** |
 | Child | A node whose parent is set is a child of that parent |
 
 ```text
@@ -118,7 +128,7 @@ Node ◄──(many)────── Parameters
 | Rule | Meaning |
 |------|---------|
 | No Tree table/entity | Do not model `Tree` as a first-class stored object |
-| Defined by root | Tree = root node + all nodes that have that root as ancestor |
+| Defined by root | Tree = **root node** (node with no parent) + all descendants |
 | Identity | Referring to a tree means referring to its **root node id** |
 | Empty tree | A root with no children is still a tree of one node |
 

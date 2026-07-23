@@ -80,7 +80,7 @@ A project can consist of **different trees** (different root nodes). Assignment/
 | `name` | yes | Display name |
 | `project_id` | likely | Project membership — confirm Q17 |
 
-Root node (`parent_id = null`) **defines a tree**.
+Root node (`parent_id = null`) **defines a tree**. By definition, a **root node** is a node that has **no parent**.
 
 ### Parameter (conceptual)
 
@@ -99,7 +99,7 @@ Root node (`parent_id = null`) **defines a tree**.
 
 | Concept | Meaning |
 |---------|---------|
-| Tree | **Not an object** — defined by a root node + descendants |
+| Tree | **Not an object** — defined by a **root node** (a node with no parent) + descendants |
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
