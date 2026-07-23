@@ -1,8 +1,8 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Parameter, Changelog/Change. Parameter.type and Parameter.unit are Nodes (unit values = unit children). Planning artifact only — no implementation.
+overview: Core objects Project, Node, Parameter, Changelog/Change. A Parameter uses Nodes from Type, optional Präfix, and optional Basiseinheit. Planning artifact only — no implementation.
 status: draft
-version: "0.6.6-plan"
+version: "0.6.7-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -13,7 +13,7 @@ todos:
     content: "Define Node (parent, children, trees as derived from roots)"
     status: completed
   - id: define-parameter-core
-    content: "Define Parameter as a core entity; node can have several parameters"
+    content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
     status: completed
   - id: define-node-parameter-link
     content: "Node can have several parameters (agreed); parameter→one node is tentative (?)"
@@ -24,17 +24,14 @@ todos:
   - id: define-changelog
     content: "Every domain object has a Changelog made of Change entries"
     status: completed
-  - id: define-unit-as-node
-    content: "Unit is a Node; unit values are its child nodes"
-    status: completed
-  - id: define-type-as-node
-    content: "Parameter type is a Node (not a separate ParameterType class)"
+  - id: define-definition-tree
+    content: "Example Definition tree: Type, Basiseinheit, Präfix"
     status: completed
   - id: map-storage
     content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional fields; Change.version (Q23); how type nodes declare has_unit (Q24)"
+    content: "Confirm optional fields; Change.version (Q23); type/prefix/base rules (Q24)"
     status: pending
 ---
 
@@ -73,7 +70,8 @@ classDiagram
     +key : likely
     +label : likely
     +type : Node
-    +unit : Node?
+    +prefix : Node?
+    +base_unit : Node?
     +changelog : Changelog
   }
 
@@ -88,8 +86,8 @@ classDiagram
     +version
   }
 
-  note for Node "Roles of the same class:\n- tree hierarchy\n- parameter type\n- unit (children = unit values)"
-  note for Parameter "always: type (Node)\noptional: unit (Node)\nunit values = unit.children\nOne parameter → one node? Q14"
+  note for Node "Same class used as:\n- tree hierarchy\n- Type choice e.g. measure\n- Präfix e.g. k\n- Basiseinheit e.g. Ohm"
+  note for Parameter "Draws from Definition tree:\ntype (required)\nprefix optional\nbase_unit optional\ne.g. 10 + k + Ohm\nOne parameter → one node? Q14"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
@@ -99,19 +97,20 @@ classDiagram
   Node "1" --> "1" Changelog : changelog
   Parameter "0..1" --> "0..1" Node : assigned ?
   Parameter "1" --> "1" Node : type
-  Parameter "0..1" --> "0..1" Node : unit
+  Parameter "0..1" --> "0..1" Node : prefix
+  Parameter "0..1" --> "0..1" Node : base_unit
   Parameter "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Tree / ParameterType / Unit are **not** separate classes — they are roles of **Node**. Actor / ChangeBody / version: Q21–Q23. How a type-node declares unit support: Q24.
+**Legend:** `?` = not decided yet. Parameter composes **Type**, **Präfix**, **Basiseinheit** via Node references (see Definition example tree). Actor / ChangeBody / version: Q21–Q23.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy; also used as parameter **type** and as **unit** |
-| 2 | **Parameter** | Always has `type` (Node); optional `unit` (Node) |
+| 1 | **Node** | Hierarchy; also Type / Präfix / Basiseinheit choices |
+| 2 | **Parameter** | Built from `type`, optional `prefix`, optional `base_unit` (all Nodes) |
 | 3 | **Project** | Container with `root_nodes` |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
@@ -151,8 +150,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 |---------|--------|---------|
 | **Tree** | **Not an object** | Defined by a **root node** (and all descendants reachable via child links) |
 | **RootNode** | **Not an object** | Same as **Node** with parent `null` — only a role, not a type |
-| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** |
-| **Unit** (class) | **Not an object** | A unit is a **Node**; unit **values** are that node’s **children** |
+| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Definition → Type) |
+| **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead of a single Unit class |
 | Forest | Derived view | Several trees (several roots), e.g. inside one project |
 
 ```mermaid
@@ -187,10 +186,9 @@ flowchart TB
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
-- A parameter **always has a type**, and that **type is a Node**. — **agreed**
-- A parameter has an **optional unit**. — **agreed**
-- A **unit is a Node**; the **unit values** are that node’s **child nodes** (e.g. unit node “Resistance”, children `mOhm`, `Ohm`, `kOhm`). — **agreed**
-- Whether a unit is used depends on the type-node (e.g. URL-type node → no unit; measure-type node → unit node). — **agreed** (how type-node declares this: Q24)
+- A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`** (Präfix Node), optional **`base_unit`** (Basiseinheit Node). — **agreed**
+- Example: “10 kOhm” → type `measure` + prefix `k` + base_unit `Ohm` (numeric value still Q16). — **agreed direction**
+- Example: URL parameter → type `url`, `prefix`/`base_unit` = null. — **agreed direction**
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
 - Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
@@ -334,32 +332,34 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
-| `type` | **yes** | **Node** | Parameter type — always a Node |
-| `unit` | **optional** | **Node** \| `null` | Unit node; its **children** are the selectable unit values |
+| `type` | **yes** | **Node** | From Definition → **Type** (e.g. `measure`, `url`) |
+| `prefix` | **optional** | **Node** \| `null` | From Definition → **Präfix** (e.g. `k`, `m`) |
+| `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** (e.g. `Ohm`) |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
 
-**Rule:** A Parameter has a **type** (Node) and an **optional unit** (Node).  
-There is **no** separate `ParameterType` or `Unit` class.
+**Rule:** A Parameter **uses** three kinds of definition nodes:
 
-| Field | Is | Example |
-|-------|-----|---------|
-| `type` | Node | Node named `url` or `measure` |
-| `unit` | Node or null | Node “Resistance units”; children `mOhm`, `Ohm`, `kOhm` |
+| Field | Source branch | Required? |
+|-------|---------------|-----------|
+| `type` | Type | yes |
+| `prefix` | Präfix | no |
+| `base_unit` | Basiseinheit | no |
 
 ```php
 // Conceptual — not implemented
 class Parameter {
 	public string $id;
-	public Node $type;          // always a Node
-	public ?Node $unit;         // optional unit Node; values = children of unit
+	public Node $type;           // e.g. measure / url
+	public ?Node $prefix;        // e.g. k (kilo) — optional
+	public ?Node $base_unit;     // e.g. Ohm — optional
 	public Changelog $changelog;
 }
 
-// Allowed unit value nodes when unit is set:
-// $unit_values = children_of( $parameter->unit );
+// Display idea for a measure value (value storage still Q16):
+// "10" + prefix "k" + base_unit "Ohm"  =>  "10 kOhm"
 ```
 
-How a type-Node declares that it needs/allows a unit (flag, convention, subtree, …) is **Q24**.
+Whether `prefix`/`base_unit` are allowed or required depends on `type` (Q24).
 
 #### Fields still to define
 
@@ -368,25 +368,24 @@ How a type-Node declares that it needs/allows a unit (flag, convention, subtree,
 | Whether every parameter has exactly one owning node | open (?) — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
-| How a type-Node declares unit support | open — Q24 |
-| Must selected value-unit be a direct child only, or any descendant? | open — leaning direct children — Q26 |
+| Which types require prefix and/or base_unit | open — Q24 |
+| May prefix exist without base_unit (or vice versa)? | open — Q29 |
 | Storage | open — Q15 |
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
 
 ### Example thinking tree: Definition
 
-Planning aid — a concrete tree to reason about types and units.  
-Root node **Definition**; children **Type**, **Basiseinheit**, **Präfix**.  
-(Grandchildren are illustrative, not final catalog.)
+Planning aid — Parameter picks Nodes from this tree.  
+Root **Definition**; children **Type**, **Basiseinheit**, **Präfix**.
 
 ```mermaid
 flowchart TB
-  D["Node: Definition<br/>parent = null — ROOT"]
+  D["Definition ROOT"]
 
-  D --> T["Node: Type"]
-  D --> B["Node: Basiseinheit"]
-  D --> P["Node: Präfix"]
+  D --> T["Type"]
+  D --> B["Basiseinheit"]
+  D --> P["Präfix"]
 
   T --> T1["measure"]
   T --> T2["url"]
@@ -396,41 +395,54 @@ flowchart TB
   B --> B2["Farad"]
   B --> B3["Meter"]
 
-  P --> P1["m milli"]
-  P --> P2["k kilo"]
-  P --> P3["M mega"]
-  P --> P4["µ micro"]
+  P --> P1["m"]
+  P --> P2["k"]
+  P --> P3["M"]
+  P --> P4["µ"]
+
+  Param["Parameter resistance"]
+  Param -.->|type| T1
+  Param -.->|prefix| P2
+  Param -.->|base_unit| B1
 ```
 
 ```text
-Project.root_nodes includes:
-  Node { id: 1, parent_id: null, name: "Definition" }          # ROOT → defines this tree
-    ├─ Node { id: 10, parent_id: 1, name: "Type" }
-    │    ├─ Node { id: 11, parent_id: 10, name: "measure" }
-    │    ├─ Node { id: 12, parent_id: 10, name: "url" }
-    │    └─ Node { id: 13, parent_id: 10, name: "text" }
-    ├─ Node { id: 20, parent_id: 1, name: "Basiseinheit" }
-    │    ├─ Node { id: 21, parent_id: 20, name: "Ohm" }
-    │    ├─ Node { id: 22, parent_id: 20, name: "Farad" }
-    │    └─ Node { id: 23, parent_id: 20, name: "Meter" }
-    └─ Node { id: 30, parent_id: 1, name: "Präfix" }
-         ├─ Node { id: 31, parent_id: 30, name: "m" }   # milli
-         ├─ Node { id: 32, parent_id: 30, name: "k" }   # kilo
-         ├─ Node { id: 33, parent_id: 30, name: "M" }   # mega
-         └─ Node { id: 34, parent_id: 30, name: "µ" }   # micro
+Definition
+├── Type
+│   ├── measure
+│   ├── url
+│   └── text
+├── Basiseinheit
+│   ├── Ohm
+│   ├── Farad
+│   └── Meter
+└── Präfix
+    ├── m
+    ├── k
+    ├── M
+    └── µ
 ```
 
-**How this might map to Parameter (still thinking, not locked):**
+**Parameter examples using this tree:**
 
-| Parameter field | Possible reference in this tree |
-|-----------------|----------------------------------|
-| `type` | e.g. Node `measure` (id 11) under **Type** |
-| `unit` | e.g. Node **Basiseinheit** (id 20) or a specific base like **Ohm** (id 21) — decide later |
-| unit *values* | children of the chosen unit node (e.g. under Präfix, or combined prefix+base — **open**) |
+```text
+Parameter {
+  key: "resistance",
+  type: Node("measure"),      # under Type
+  prefix: Node("k"),          # under Präfix
+  base_unit: Node("Ohm")      # under Basiseinheit
+}
+# with value 10  =>  "10 kOhm"
 
-Open design question (new): whether “10 kOhm” is modeled as prefix node `k` + base node `Ohm`, or as a single unit-value node `kOhm`. Track as **Q28**.
+Parameter {
+  key: "datasheet",
+  type: Node("url"),          # under Type
+  prefix: null,
+  base_unit: null
+}
+```
 
-### Example (earlier resistance sketch)
+Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).
 
 ### What a Parameter is not (until decided otherwise)
 
