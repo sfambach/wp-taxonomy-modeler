@@ -482,6 +482,32 @@ Why not validator-on-Node:
 
 This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter (Q33/Q36/Q47) for how cells are interpreted — not ad-hoc Node meta.
 
+### Datentypen as tree + Relation (leaning — Q48)
+
+User direction: keep types **freely configurable in the tree**, not a hardcoded PHP enum.
+
+```text
+Datentypen                    ← branch (≈ Project.type_node / Definition→Type)
+├── int
+├── double
+├── string
+├── char
+└── bool
+# later: enum, measure, string_list, url, file, …
+```
+
+**Binding:** schema/value slot Node ─[Relation `has_type`]→ type Node  
+Example: `Menge` *has_type* `int` → table cell renders as integer field; `Stock` *has_type* `bool` → checkbox/switch.
+
+| Idea | Note |
+|------|------|
+| Types are **Nodes** | Same storage/UI as everything else; add custom types without code |
+| Assignment is a **Relation**, not Node meta soup | Fits typed-edge exploration (Q35); reverse view “used by” possible |
+| UI derives widget from type | Prototype: int→number, double→number step any, string→text, char→1 char, bool→checkbox |
+| Name mapping | User scalars ≈ earlier catalog: int↔integer, double↔number, bool↔boolean; `char` = narrow string |
+
+**Not decided:** whether `has_type` replaces `Parameter.type`, or Parameter remains a specialized Node that *carries* that relation.
+
 ### Definitionsbaum (canonical planning example)
 
 From here on, this tree is always called the **Definitionsbaum**.  
@@ -496,15 +522,14 @@ flowchart TB
   D --> P["Präfix"]
   D --> Bau["Bauteile"]
 
-  T --> T1["string"]
-  T --> T2["number"]
-  T --> T3["integer"]
-  T --> T4["boolean"]
-  T --> T5["url"]
-  T --> T6["file"]
-  T --> T7["enum<br/>composite"]
-  T --> T8["measure<br/>composite"]
-  T --> T9["string_list?<br/>Q47"]
+  T --> T1["int"]
+  T --> T2["double"]
+  T --> T3["string"]
+  T --> T4["char"]
+  T --> T5["bool"]
+  T --> T6["enum?<br/>later"]
+  T --> T7["measure?<br/>later"]
+  T --> T8["string_list?<br/>Q47"]
 
   B --> B1["Ohm"]
   B --> B2["Farad"]
@@ -534,15 +559,15 @@ flowchart TB
 
 ```text
 Definition                                    ← Definitionsbaum root
-├── Type
+├── Type                                      ← ≈ Datentypen (Q48); freely configurable Nodes
+│   ├── int
+│   ├── double
 │   ├── string
-│   ├── number
-│   ├── integer
-│   ├── boolean
-│   ├── url
-│   ├── file
-│   ├── enum                    ← composite: scalar options + selection_mode
-│   └── measure                 ← composite: number|integer + prefix + unit
+│   ├── char
+│   ├── bool
+│   ├── enum?                   ← later: composite + selection_mode
+│   ├── measure?                ← later: number|integer + prefix + unit
+│   └── string_list?            ← later: open RefDes lists (Q47)
 ├── Basiseinheit
 │   ├── Ohm
 │   ├── Farad

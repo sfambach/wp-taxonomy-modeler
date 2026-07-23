@@ -41,7 +41,7 @@
 | Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Paused** — compare with typed-edge Bauteile example | open |
 | Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload | TBD — wait for Q33 | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
-| Q36 | What is the core Type catalog? | Fixed list vs extensible | Leaning: string, number, integer, boolean, url, file, **enum**, **measure**; **string_list?** for open lists like RefDes (Q47) | open |
+| Q36 | What is the core Type catalog? | Fixed list vs extensible | **Leaning: extensible tree** under Datentypen/Type; MVP scalars **int, double, string, char, bool** (map ≈ integer/number/string/char/boolean); later enum/measure/string_list (Q47/Q48) | open |
 | Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
 | Q38 | Are single/multiple enum variants types or selection methods? | enum_single+enum_multiple types / one enum + selection_mode | **Leaning: one `enum` type; single\|multiple = selection method** | open |
 | Q39 | Which scalar may enum option values use? | string only / any scalar / configurable | string leaning | open |
@@ -53,6 +53,7 @@
 | Q45 | How is a measure bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Parameter only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Leaning: schema-as-Nodes** so BOM/Recipe need no core classes; UI renders node graphs | open |
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
+| Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Leaning: types as tree Nodes** (start: int, double, string, char, bool); schema slot ─[has_type]→ type Node; UI derives widget | open |
 
 ## How to close a question
 

@@ -7,9 +7,10 @@
  *   - Knoten
  *   - Tabelle / Tabelle 2 — children = column schema (header + 5 rows)
  *   - Formular — selected node = field context; children = choice options
+ * Datentypen branch + has_type relation → typed table widgets.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v4";
+const STORAGE_KEY = "wtt-proto-tree-split-v5";
 const TABLE_BODY_ROWS = 5;
 const RIGHT_TABS = ["node", "table", "table2", "form"];
 const TAB_ARIA = {
@@ -18,6 +19,8 @@ const TAB_ARIA = {
   table2: "tab-table2",
   form: "tab-form",
 };
+/** Relation key in prototype: slot ─[has_type]→ Datentyp node */
+const REL_HAS_TYPE = "has_type";
 
 /** @typedef {{ id: string, parentId: string|null, name: string, position: number }} ProtoNode */
 /** @typedef {'node'|'table'|'table2'|'form'} RightTab */
@@ -56,6 +59,10 @@ let tableCells = new Map();
 let tableCells2 = new Map();
 /** @type {Map<string, FormState>} */
 let formStates = new Map();
+/** slotNodeId → typeNodeId (prototype Relation has_type) */
+/** @type {Map<string, string>} */
+let typeRelations = new Map();
+let dataTypesRootId = "";
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -123,24 +130,42 @@ function createInitial() {
   tableCells = new Map();
   tableCells2 = new Map();
   formStates = new Map();
+  typeRelations = new Map();
   activeTab = "node";
 
   rootId = createNode(null, "BOM Demo", 0);
 
-  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 0);
-  createNode(schemaId, "Reference", 0);
-  createNode(schemaId, "Value", 1);
-  createNode(schemaId, "Footprint", 2);
-  createNode(schemaId, "Menge", 3);
-  createNode(schemaId, "LCSC", 4);
+  // Freely configurable scalar types (Q48) — start simple.
+  dataTypesRootId = createNode(rootId, "Datentypen", 0);
+  const tInt = createNode(dataTypesRootId, "int", 0);
+  const tDouble = createNode(dataTypesRootId, "double", 1);
+  const tString = createNode(dataTypesRootId, "string", 2);
+  const tChar = createNode(dataTypesRootId, "char", 3);
+  const tBool = createNode(dataTypesRootId, "bool", 4);
 
-  const listId = createNode(rootId, "Stückliste", 1);
+  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 1);
+  const cRef = createNode(schemaId, "Reference", 0);
+  const cVal = createNode(schemaId, "Value", 1);
+  const cFp = createNode(schemaId, "Footprint", 2);
+  const cQty = createNode(schemaId, "Menge", 3);
+  const cLcsc = createNode(schemaId, "LCSC", 4);
+  const cStock = createNode(schemaId, "Stock", 5);
+
+  // slot ─[has_type]→ Datentyp
+  typeRelations.set(cRef, tString);
+  typeRelations.set(cVal, tString);
+  typeRelations.set(cFp, tString);
+  typeRelations.set(cQty, tInt);
+  typeRelations.set(cLcsc, tString);
+  typeRelations.set(cStock, tBool);
+
+  const listId = createNode(rootId, "Stückliste", 2);
   createNode(listId, "C1 — 100 nF 0603", 0);
   createNode(listId, "R1 — 10 kΩ 0603", 1);
   createNode(listId, "U1 — ESP32-WROOM-32", 2);
   createNode(listId, "D1 — LED green 0805", 3);
 
-  const partsId = createNode(rootId, "Bauteile", 2);
+  const partsId = createNode(rootId, "Bauteile", 3);
   createNode(partsId, "Kondensator", 0);
   createNode(partsId, "Widerstand", 1);
   createNode(partsId, "IC", 2);
@@ -148,6 +173,96 @@ function createInitial() {
 
   selectedId = schemaId;
   collapsed.clear();
+}
+
+function dataTypeNodes() {
+  if (!dataTypesRootId || !nodes.has(dataTypesRootId)) {
+    const found = [...nodes.values()].find(
+      (n) => n.parentId === rootId && n.name === "Datentypen"
+    );
+    dataTypesRootId = found ? found.id : "";
+  }
+  if (!dataTypesRootId) return [];
+  return childrenOf(dataTypesRootId);
+}
+
+function typeNodeOf(slotId) {
+  const tid = typeRelations.get(slotId);
+  return tid && nodes.has(tid) ? nodes.get(tid) : null;
+}
+
+/** Normalize type node name → widget key. */
+function typeKey(typeNode) {
+  if (!typeNode) return "string";
+  const k = typeNode.name.trim().toLowerCase();
+  if (["int", "integer"].includes(k)) return "int";
+  if (["double", "float", "number"].includes(k)) return "double";
+  if (["bool", "boolean"].includes(k)) return "bool";
+  if (["char"].includes(k)) return "char";
+  if (["string", "text"].includes(k)) return "string";
+  return "string";
+}
+
+function setTypeRelation(slotId, typeId) {
+  if (!nodes.has(slotId)) return;
+  if (!typeId) {
+    typeRelations.delete(slotId);
+  } else if (nodes.has(typeId)) {
+    typeRelations.set(slotId, typeId);
+  }
+  persist();
+  render();
+}
+
+/**
+ * Build an input widget for a typed table cell.
+ * @returns {HTMLElement}
+ */
+function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
+  const key = typeKey(typeNode);
+  if (key === "bool") {
+    const label = document.createElement("label");
+    label.className = "choice-row";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = value === true || value === "true" || value === "1";
+    input.setAttribute("aria-label", ariaLabel);
+    input.addEventListener("change", () => onChange(input.checked ? "true" : "false"));
+    const span = document.createElement("span");
+    span.className = "muted";
+    span.textContent = input.checked ? "true" : "false";
+    input.addEventListener("change", () => {
+      span.textContent = input.checked ? "true" : "false";
+    });
+    label.append(input, span);
+    return label;
+  }
+
+  const input = document.createElement("input");
+  input.setAttribute("aria-label", ariaLabel);
+  if (key === "int") {
+    input.type = "number";
+    input.step = "1";
+    input.inputMode = "numeric";
+  } else if (key === "double") {
+    input.type = "number";
+    input.step = "any";
+    input.inputMode = "decimal";
+  } else if (key === "char") {
+    input.type = "text";
+    input.maxLength = 1;
+    input.placeholder = "·";
+  } else {
+    input.type = "text";
+    input.placeholder = "—";
+  }
+  input.value = value == null ? "" : String(value);
+  input.addEventListener("change", () => {
+    let v = input.value;
+    if (key === "char") v = v.slice(0, 1);
+    onChange(v);
+  });
+  return input;
 }
 
 function addChild(parentId) {
@@ -189,7 +304,13 @@ function deleteNode(id) {
     tableCells.delete(k);
     tableCells2.delete(k);
     formStates.delete(k);
+    typeRelations.delete(k);
   }
+  // Drop relations pointing at deleted type nodes.
+  for (const [slot, tid] of [...typeRelations.entries()]) {
+    if (kill.has(tid)) typeRelations.delete(slot);
+  }
+  if (kill.has(dataTypesRootId)) dataTypesRootId = "";
 
   if (parentId != null && nodes.has(parentId)) reindexSiblings(parentId);
 
@@ -317,11 +438,13 @@ function persist() {
     selectedId,
     seq,
     activeTab,
+    dataTypesRootId,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
     tableCells: mapToObject(tableCells),
     tableCells2: mapToObject(tableCells2),
     formStates: mapToObject(formStates),
+    typeRelations: mapToObject(typeRelations),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -345,9 +468,14 @@ function restore() {
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
     activeTab = RIGHT_TABS.includes(data.activeTab) ? data.activeTab : "node";
+    dataTypesRootId =
+      data.dataTypesRootId && nodes.has(data.dataTypesRootId)
+        ? data.dataTypesRootId
+        : "";
     tableCells = new Map();
     tableCells2 = new Map();
     formStates = new Map();
+    typeRelations = new Map();
     restoreStringGridMap(data.tableCells, tableCells);
     restoreStringGridMap(data.tableCells2, tableCells2);
     if (data.formStates && typeof data.formStates === "object") {
@@ -356,6 +484,12 @@ function restore() {
         formStates.set(k, { ...defaultFormState(), ...st });
       }
     }
+    if (data.typeRelations && typeof data.typeRelations === "object") {
+      for (const [slot, tid] of Object.entries(data.typeRelations)) {
+        if (nodes.has(slot) && nodes.has(tid)) typeRelations.set(slot, tid);
+      }
+    }
+    dataTypeNodes(); // heal dataTypesRootId by name if needed
     const parents = new Set(
       [...nodes.values()].map((n) => n.parentId).filter((p) => p != null)
     );
@@ -374,6 +508,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split");
     localStorage.removeItem("wtt-proto-tree-split-v2");
     localStorage.removeItem("wtt-proto-tree-split-v3");
+    localStorage.removeItem("wtt-proto-tree-split-v4");
   } catch {
     /* ignore */
   }
@@ -596,22 +731,69 @@ function renderDetail() {
     orderBlock.append(childLab, childList);
   }
 
+  const typeBlock = document.createElement("div");
+  typeBlock.className = "order-block";
+  const typeLab = document.createElement("div");
+  typeLab.className = "field-label";
+  typeLab.textContent = "Datentyp (Relation has_type)";
+  const typeSelect = document.createElement("select");
+  typeSelect.className = "form-control";
+  typeSelect.id = "node-type-rel";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "— kein Typ —";
+  typeSelect.append(none);
+  const types = dataTypeNodes();
+  const currentType = typeRelations.get(node.id) || "";
+  for (const t of types) {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    typeSelect.append(opt);
+  }
+  if (types.some((t) => t.id === currentType)) typeSelect.value = currentType;
+  const underDataTypes =
+    dataTypesRootId &&
+    (node.id === dataTypesRootId || node.parentId === dataTypesRootId);
+  typeSelect.disabled = underDataTypes || types.length === 0;
+  typeSelect.addEventListener("change", () => {
+    setTypeRelation(node.id, typeSelect.value);
+  });
+  const typeHint = document.createElement("p");
+  typeHint.className = "muted";
+  typeHint.style.margin = "0.35rem 0 0";
+  typeHint.style.fontSize = "0.8rem";
+  if (underDataTypes) {
+    typeHint.textContent =
+      "Datentyp-Knoten selbst — Zuweisung gilt für Schema-/Wert-Slots.";
+  } else if (types.length === 0) {
+    typeHint.textContent = "Ast „Datentypen“ anlegen und Kindtypen hinzufügen.";
+  } else {
+    const tn = typeNodeOf(node.id);
+    typeHint.textContent = tn
+      ? `Aktuell: ${node.name} ─[${REL_HAS_TYPE}]→ ${tn.name} → Tabellen-Widget „${typeKey(tn)}“.`
+      : "Kein Typ — Tabelle fällt auf Textfeld zurück.";
+  }
+  typeBlock.append(typeLab, typeSelect, typeHint);
+
   const meta = document.createElement("div");
   meta.className = "meta";
+  const tn = typeNodeOf(node.id);
   meta.innerHTML = `
     <div>id: <span>${node.id}</span></div>
     <div>parent: <span>${parent ? parent.name : "— (root)"}</span></div>
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
+    <div>has_type: <span>${tn ? tn.name : "—"}</span></div>
   `;
 
   const hint = document.createElement("p");
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Tabelle(n): Kinder → Spalten. Formular: Knoten = Kontext, Kinder → Dropdown/Radio/Checkbox-Optionen. Alt+↑ / Alt+↓.";
+    "Datentypen im Baum + has_type → Tabellenfelder. Kinder → Spalten/Formular-Optionen. Alt+↑ / Alt+↓.";
 
-  card.append(h2, field, orderBlock, meta, hint);
+  card.append(h2, field, typeBlock, orderBlock, meta, hint);
   mount.append(card);
 }
 
@@ -641,7 +823,7 @@ function renderTableView(store, title) {
     return;
   }
 
-  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · ${TABLE_BODY_ROWS} Zeilen (eigene Zellen-Daten).`;
+  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Widgets aus <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen.`;
   wrap.append(lead);
 
   const grid = ensureTableGrid(
@@ -665,8 +847,19 @@ function renderTableView(store, title) {
   for (const col of cols) {
     const th = document.createElement("th");
     th.scope = "col";
-    th.textContent = col.name;
-    th.title = `Spalte aus Kind „${col.name}“ (position ${col.position})`;
+    const tn = typeNodeOf(col.id);
+    const label = document.createElement("span");
+    label.textContent = col.name;
+    th.append(label);
+    if (tn) {
+      const badge = document.createElement("span");
+      badge.className = "type-badge";
+      badge.textContent = tn.name;
+      th.append(document.createTextNode(" "), badge);
+    }
+    th.title = tn
+      ? `„${col.name}“ has_type ${tn.name} → ${typeKey(tn)}`
+      : `Spalte „${col.name}“ ohne Typ (Text)`;
     headRow.append(th);
   }
   thead.append(headRow);
@@ -680,15 +873,15 @@ function renderTableView(store, title) {
     tr.append(tdNum);
     for (let c = 0; c < cols.length; c++) {
       const td = document.createElement("td");
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = grid[r]?.[c] ?? "";
-      input.placeholder = "—";
-      input.setAttribute("aria-label", `${title}: ${cols[c].name}, Zeile ${r + 1}`);
-      input.addEventListener("change", () => {
-        setCellValue(store, node.id, r, c, input.value);
-      });
-      td.append(input);
+      const col = cols[c];
+      const tn = typeNodeOf(col.id);
+      const control = createTypedCellControl(
+        tn,
+        grid[r]?.[c] ?? "",
+        (v) => setCellValue(store, node.id, r, c, v),
+        `${title}: ${col.name}, Zeile ${r + 1}`
+      );
+      td.append(control);
       tr.append(td);
     }
     tbody.append(tr);

@@ -32,6 +32,7 @@ Last synced from plan version **0.6.31-plan** (2026-07-23).
 | Part identity layers (R/C/Diode/IC) | In progress |
 | Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
 | UI prototype `prototypes/tree-split` (static, not WP plugin) | In progress |
+| Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
 | Open questions (leave open; resolve later in batches) | Parked for now |
 | Widerstand worked example: Approach A vs B | In progress |
 | Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |
