@@ -43,7 +43,8 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit` (Definition tree). Keep behavior in services/repositories. Do not add `Tree`, `RootNode`, `ParameterType`, or `Unit` classes. See Q20–Q29 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`Project` stores required Definition anchors. `Node.template` marks template trees.  
+`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`. See Q20–Q32 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -103,21 +104,8 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 
-Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.
-
-A project consists of different trees via `root_nodes`. Persistence: Q19. Taxonomy mapping: Q18.
-
-### Node (conceptual)
-
-| Field | Required | Meaning |
-|-------|----------|---------|
-| `id` | yes | Stable node identity |
-| `parent_id` | yes (`null` = root) | Optional single parent node |
-| `name` | yes | Display name |
-| `project_id` | ? | Optional reverse link — primary link is `Project.root_nodes` |
-| `changelog` | yes | Changelog of Change entries |
-
-Root node = the **same Node object** with `parent_id = null` (not a separate type). That root **defines a tree**.
+Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
+Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 
 ### Parameter (conceptual)
 
@@ -127,9 +115,9 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | **yes** | **Node** under Definition → Type |
-| `prefix` | **optional** | **Node** under Definition → Präfix (e.g. `k`) |
-| `base_unit` | **optional** | **Node** under Definition → Basiseinheit (e.g. `Ohm`) |
+| `type` | **yes** | **Node** under `project.type_node` |
+| `prefix` | **optional** | **Node** under `project.prefix_node` |
+| `base_unit` | **optional** | **Node** under `project.base_unit_node` |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -146,16 +134,15 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 
 ### Parameter type and unit composition
 
-| Field | Source in Definition tree | Example |
-|-------|---------------------------|---------|
-| `type` | Type | `measure`, `url` |
-| `prefix` | Präfix | `k` |
-| `base_unit` | Basiseinheit | `Ohm` |
+| Field | Source | Example |
+|-------|--------|---------|
+| `type` | under Project.`type_node` | `measure`, `url` |
+| `prefix` | under Project.`prefix_node` | `k` |
+| `base_unit` | under Project.`base_unit_node` | `Ohm` |
 
-“10 kOhm” ≈ value `10` + prefix `k` + base_unit `Ohm`.  
-URL ≈ type `url` only (`prefix`/`base_unit` null).
+Project always has Definition anchors. Nodes may be **templates** via `Node.template`.
 
-Details: Q24–Q29 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+Details: Q24–Q32 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 
