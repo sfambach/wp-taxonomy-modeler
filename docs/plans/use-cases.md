@@ -251,12 +251,12 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Goal** | Use the derived `quantity` type (Größe = value × unit group) for slots like Wert |
 | **Trigger** | Binds a slot to `quantity` or inspects the template type |
 | **Preconditions** | Template has `quantity` under Datentypen; Präfix and Basiseinheit branches exist |
-| **Main flow** | 1. Admin selects slot (e.g. Wert)<br>2. Sets `has_type` → `quantity`<br>3. Enters value + optional Präfix + Basiseinheit<br>4. UI shows composed reading (`10 kOhm`) |
+| **Main flow** | 1. Admin selects slot (e.g. Wert)<br>2. Sets `has_type` → `quantity`<br>3. Enters value; unit select is fed Basiseinheit (e.g. Ohm)<br>4. UI lists derived choices (Ohm, kOhm, … from Vater + `allows_prefix` Präfixe)<br>5. Saves `{value, prefix?, base_unit}`; display e.g. `10 kOhm` |
 | **Variants** | Prefix omitted; numeric kind int vs double (Q37); value on Relation.props (Q45) |
-| **Outcome** | Slot behaves as Größe, not as plain number and not as a “measurement” workflow |
+| **Outcome** | Slot behaves as Größe; unit options generated — no atomic `kOhm` Nodes |
 | **MVP?** | later / unclear |
-| **Touches** | Type Node (`quantity`), Präfix, Basiseinheit, Relation `has_type` |
-| **Notes** | Renamed from informal `measure`; Q36/Q28/Q45 |
+| **Touches** | Type Node (`quantity`), Präfix, Basiseinheit, Relation `has_type` / `allows_prefix` |
+| **Notes** | Renamed from informal `measure`; Q36/Q28/Q45/Q51 |
 
 ---
 

@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.47-plan"
+version: "0.6.48-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -264,6 +264,7 @@ flowchart TB
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
 - **Basiseinheit ─[allows_prefix]→ Präfix**; scale **factor on Präfix Node** (edge override rare) — **agreed direction (Q51)**; no Unit class, no parallel model
+- Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe (Vater + Kind-set) — **agreed direction (Q51)**; no atomic `kOhm` Nodes
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -856,7 +857,35 @@ display: 10 kOhm
 
 Host/conversion math can multiply `value × prefix.factor` when comparing or scaling — domain conversion may stay host-side.
 
-**Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none”; template seed of SI factors.
+##### UI: pass Basiseinheit → generate derived unit choices (Vater + Kind)
+
+**Agreed direction:** hand a **Basiseinheit Node** (e.g. `Ohm`) to a quantity unit selector. The UI **derives** options from that unit (“Vater”) plus its linked Präfixe (“Kind”-set via `allows_prefix` — Relation targets, not required as tree children under Ohm):
+
+```text
+Input:  Node Ohm
+        Ohm ─[allows_prefix]→ k, m, M, µ
+
+Select options (generated, not stored as kOhm Nodes):
+  Ohm      ← base alone (prefix = null)
+  kOhm     ← Präfix k  +  Vater Ohm
+  mOhm     ← Präfix m  +  Vater Ohm
+  MOhm     ← Präfix M  +  Vater Ohm
+  µOhm     ← Präfix µ  +  Vater Ohm
+
+Selection stores the unit group, not a synthetic node:
+  { base_unit: Ohm, prefix: k }   # display "kOhm"
+```
+
+| Rule | Meaning |
+|------|---------|
+| No `kOhm` Node needed | Display label = `prefix.name + base_unit.name` (or project display rule) |
+| “Kinder” | Präfix Nodes linked by Relation — **not** mandatory tree children under Ohm |
+| Why not tree children under Ohm? | Would duplicate `k` under Ohm, Farad, Watt, …; shared Präfix branch + Relations stay DRY |
+| Picker API (conceptual) | `unitChoices(baseUnitNode) → [{prefix?, base_unit, label, factor}]` |
+
+Same pattern for Meter → `m`, `mm`, `km`, … from Vater Meter + linked Präfixe.
+
+**Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`).
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 
