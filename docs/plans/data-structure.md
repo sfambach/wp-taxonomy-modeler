@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.3-plan"
+version: "0.5.4-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -307,7 +307,44 @@ Project { id: 100, name: "Electronic parts catalog" }
 | **Tree** | **no** | Derived from a root node (Node with parent null) + descendants |
 | **RootNode** | **no** | Not a separate object — role of Node when parent is null |
 
-## Storage mapping (leaning, not final)
+## PHP representation (planning)
+
+Question: should domain objects be PHP **classes**, or is there a better fit?
+
+### Options
+
+| Approach | Pros | Cons | Fit for this project |
+|----------|------|------|----------------------|
+| **Typed PHP classes / DTOs** (`Project`, `Node`, `Parameter`) | Clear model, type hints, IDE support, matches modern PHP 8.x + OOP rules | Slightly more files | **Best default** |
+| **Readonly classes** (PHP 8.2+) or readonly properties (8.1+) | Immutable data carriers; safe to pass around | Needs PHP 8.1+/8.2+ (already planned) | Excellent for DTOs |
+| Associative arrays only | Familiar in older WP code; easy JSON | Weak typing; easy to misuse keys; hard to document invariants | Poor as primary model |
+| `stdClass` | Quick | Almost no safety | Avoid |
+| Use `WP_Term` (etc.) directly everywhere | Less mapping | Leaks storage into domain; awkward for Project/Parameter | Use only at storage boundary |
+
+### Recommendation (leaning — Q20)
+
+Use **small typed PHP classes** for the three stored domain objects:
+
+- `Project`
+- `Node` (root = same class with `parent_id === null`; **no** `RootNode` class)
+- `Parameter`
+
+Prefer **immutable / readonly-style DTOs** for data carried between layers. Put behavior (load tree, delete promote/cascade, build children view) in **services** (e.g. `Tree_Service`, `Project_Repository`), not fat entity classes.
+
+```text
+HTTP / Admin UI
+      ↓
+  Services / Repositories   ← WordPress APIs, $wpdb, mapping
+      ↓
+  DTO classes: Project, Node, Parameter
+```
+
+Arrays/JSON remain fine at the **edge** (REST responses, `wp_localize_script`), mapped to/from these classes.
+
+**Do not** introduce a `Tree` or `RootNode` class as a stored type; tree/root stay derived concepts on `Node`.
+
+Final choice tracked as **Q20** until explicitly accepted.
+
 
 | Conceptual field | Likely WordPress mapping |
 |------------------|--------------------------|

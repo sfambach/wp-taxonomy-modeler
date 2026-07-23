@@ -25,6 +25,7 @@
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | Nodes carry `project_id` (leaning) | open |
 | Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | TBD | open |
 | Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD | open |
+| Q20 | How are domain objects represented in PHP? | Typed DTO classes / arrays only / WP objects directly / hybrid | **Typed classes/DTOs** for Project, Node, Parameter; services for behavior; no Tree/RootNode class | open |
 
 ## How to close a question
 

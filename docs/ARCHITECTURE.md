@@ -38,6 +38,10 @@ flowchart TB
 - **Secure by default:** capability checks, nonces/permission callbacks, sanitized input, escaped output.
 - **Extensible:** host plugins register participation and UI additions through hooks.
 
+## PHP representation (leaning)
+
+Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, and `Parameter` over associative arrays as the primary model. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+
 ## Versioning
 
 - Plugin version always starts at **`0.0.1`** when coding begins.

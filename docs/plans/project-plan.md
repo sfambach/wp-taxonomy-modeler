@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.5.3-plan"
+version: "0.5.4-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -152,6 +152,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | **Tree is not an additional object**; a tree is defined by its **root node** (plus descendants). |
 | 2026-07-23 | A **root node** is a node that has **no parent**. |
 | 2026-07-23 | A root node is the **same object as a Node** where parent is `null` — not a separate type. |
+| 2026-07-23 | PHP representation leaning (**Q20**): typed DTO **classes** for Project/Node/Parameter; services for behavior; no Tree/RootNode class; arrays only at API edges. |
 
 ## Change protocol
 
