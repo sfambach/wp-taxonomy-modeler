@@ -42,8 +42,8 @@ flowchart TB
 
 ## PHP representation (leaning)
 
-Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, and `Parameter` over associative arrays as the primary model.  
-`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
+`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Every Project/Node/Parameter has `changelog`. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q22 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -86,6 +86,7 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `name` | yes | Display name |
 | `description` | yes | Project description (may be empty) |
 | `root_nodes` | yes | List of root **Node** objects (each `parent_id = null`) |
+| `changelog` | yes | Changelog of Change entries |
 
 A project consists of different trees via `root_nodes`. Persistence: Q19. Taxonomy mapping: Q18.
 
@@ -97,6 +98,7 @@ A project consists of different trees via `root_nodes`. Persistence: Q19. Taxono
 | `parent_id` | yes (`null` = root) | Optional single parent node |
 | `name` | yes | Display name |
 | `project_id` | ? | Optional reverse link — primary link is `Project.root_nodes` |
+| `changelog` | yes | Changelog of Change entries |
 
 Root node = the **same Node object** with `parent_id = null` (not a separate type). That root **defines a tree**.
 
@@ -109,9 +111,19 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
 | `type` | likely | Parameter type (set TBD) |
+| `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
 **Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14).
+
+### Changelog / Change (shared)
+
+| Class | Fields | Meaning |
+|-------|--------|---------|
+| `Changelog` | `changes: Change[]` | History container on each auditable object |
+| `Change` | `timestamp`, `changer`, `change` | When, who, what (details Q21–Q22) |
+
+Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
 
 ### Trees (derived)
 

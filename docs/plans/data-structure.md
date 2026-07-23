@@ -1,8 +1,8 @@
 ---
-name: Data structure — Project, Node, Parameter
-overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
+name: Data structure — Project, Node, Parameter, Changelog
+overview: Core objects Project, Node, Parameter share a Changelog of Change entries (timestamp, changer, change). Tree is not a separate object. Planning artifact only — no implementation.
 status: draft
-version: "0.5.6-plan"
+version: "0.6.0-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -19,17 +19,20 @@ todos:
     content: "Node can have several parameters (agreed); parameter→one node is tentative (?)"
     status: in_progress
   - id: define-project-core
-    content: "Define Project; project can consist of different trees (root nodes)"
+    content: "Project has name, description, root_nodes"
+    status: completed
+  - id: define-changelog
+    content: "Every domain object has a Changelog made of Change entries"
     status: completed
   - id: map-storage
-    content: "Decide how Project, Node, and Parameter map to WordPress storage"
+    content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional fields for Project, Node, and Parameter"
+    content: "Confirm optional fields and Change payload shape (Q21–Q22)"
     status: pending
 ---
 
-# Data structure: Project, Node, Parameter
+# Data structure: Project, Node, Parameter, Changelog
 
 > Planning only. This document defines the conceptual data model. No plugin code yet.
 
@@ -46,6 +49,7 @@ classDiagram
     +name
     +description
     +root_nodes : Node[]
+    +changelog : Changelog
   }
 
   class Node {
@@ -54,6 +58,7 @@ classDiagram
     +name
     +taxonomy : ?
     +project_id : ?
+    +changelog : Changelog
   }
 
   class Parameter {
@@ -62,18 +67,34 @@ classDiagram
     +key : likely
     +label : likely
     +type : likely
+    +changelog : Changelog
+  }
+
+  class Changelog {
+    +changes : Change[]
+  }
+
+  class Change {
+    +timestamp : DateTime
+    +changer : Actor
+    +change : ChangeBody
   }
 
   note for Node "Root node = same class\nwith parent_id = null\n(no RootNode type)"
   note for Parameter "One parameter → one node?\nQ14 — decide later"
+  note for Change "Shared audit model for\nProject, Node, Parameter"
 
   Project "1" --> "*" Node : root_nodes
+  Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent / children
   Node "1" --> "*" Parameter : has several
+  Node "1" --> "1" Changelog : changelog
   Parameter "0..1" --> "0..1" Node : assigned ?
+  Parameter "1" --> "1" Changelog : changelog
+  Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Tree is not a class.
+**Legend:** `?` = not decided yet. Tree is not a class. Actor / ChangeBody details: Q21–Q22.
 
 ## Core objects
 
@@ -81,7 +102,37 @@ classDiagram
 |---|--------|------|
 | 1 | **Node** | Hierarchy unit (parent/children) |
 | 2 | **Parameter** | Attribute definition related to nodes |
-| 3 | **Project** | Container that can consist of different trees |
+| 3 | **Project** | Container with `root_nodes` |
+| 4 | **Changelog** | History container (`changes`) |
+| 5 | **Change** | One audit entry (when, who, what) |
+
+### Shared audit idea (recommended)
+
+Give **every** main domain object the same field:
+
+```text
+changelog: Changelog
+```
+
+`Changelog` **consists of** many `Change` entries. One shared pattern for Project, Node, and Parameter — do not invent different audit fields per entity.
+
+In PHP (leaning): **composition**, not a deep inheritance tree.
+
+```php
+// Conceptual — not implemented
+class Changelog {
+	/** @var list<Change> */
+	public array $changes;
+}
+
+class Change {
+	public \DateTimeInterface $timestamp; // when (Zeitpunkt)
+	public string $changer;               // who (Änderer) — exact type Q22
+	public string $change;                // what (Änderung) — exact shape Q21
+}
+```
+
+Optional later: interface `Has_Changelog` with `changelog` so services can append entries uniformly.
 
 ### Not a separate object
 
@@ -124,6 +175,7 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
+- Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
 
 ```text
 Project ──(several trees)──► Root Node     # each tree = that root + descendants
@@ -199,6 +251,7 @@ Node ◄──(many)────── Parameters
 | `name` | yes | string | Display name of the node |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `taxonomy` | ? | string | May map to WP taxonomy and/or align with project — confirm Q18 |
+| `changelog` | yes | **Changelog** | History of changes on this node |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
 
@@ -264,6 +317,7 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
 | `type` | likely | string / enum | Parameter type (exact type set TBD) |
+| `changelog` | yes | **Changelog** | History of changes on this parameter |
 
 #### Fields still to define
 
@@ -323,6 +377,7 @@ flowchart LR
 | `name` | yes | string | Display name of the project |
 | `description` | yes* | string | Longer text describing the project |
 | `root_nodes` | yes | list of **Node** | Root nodes that define the project’s trees |
+| `changelog` | yes | **Changelog** | History of changes on this project |
 
 \* `description` may be empty string, but the field exists on the class.
 
@@ -335,6 +390,7 @@ class Project {
 	public string $description;
 	/** @var list<Node> Root nodes only (parent_id === null). */
 	public array $root_nodes;
+	public Changelog $changelog;
 }
 ```
 
@@ -363,15 +419,75 @@ Project {
 
 ---
 
+## 4. Changelog and Change
+
+### Core idea
+
+Every auditable domain object carries a **Changelog**.  
+A Changelog **consists of** **Change** entries.
+
+| Object | Field |
+|--------|--------|
+| Project | `changelog` |
+| Node | `changelog` |
+| Parameter | `changelog` |
+
+### Change fields (agreed skeleton)
+
+| Field | German intent | Required | Meaning |
+|-------|---------------|----------|---------|
+| `timestamp` | Zeitpunkt | yes | When the change happened |
+| `changer` | Änderer | yes | Who made the change |
+| `change` | Änderung | yes | What changed |
+
+```php
+// Conceptual — not implemented
+class Changelog {
+	/** @var list<Change> */
+	public array $changes;
+}
+
+class Change {
+	public \DateTimeInterface $timestamp;
+	public string $changer; // refine type in Q22
+	public string $change;  // refine payload in Q21
+}
+```
+
+### Planning notes / open detail
+
+| Topic | Status |
+|-------|--------|
+| Is `change` plain text, structured JSON diff, or both? | open — Q21 |
+| Is `changer` WP user id, login, display name, or value object? | open — Q22 |
+| Append-only history? | leaning yes |
+| Store changelog embedded on the object vs central changes table | open — part of storage questions |
+| System/automated changes (importer, migration) as changer | open |
+
+### Example
+
+```text
+Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
+  changes: [
+    Change { timestamp: "2026-07-23T10:00:00Z", changer: "admin", change: "Created node" },
+    Change { timestamp: "2026-07-23T11:15:00Z", changer: "admin", change: "Renamed to Resistors" }
+  ]
+}}
+```
+
+---
+
 ## Object summary
 
 | Object / concept | Stored object? | Primary job |
 |------------------|----------------|-------------|
-| **Project** | yes | Groups different trees (via root nodes) |
-| **Node** | yes | Hierarchy; a root is the same Node with parent null |
-| **Parameter** | yes | Attribute definition related to nodes |
-| **Tree** | **no** | Derived from a root node (Node with parent null) + descendants |
-| **RootNode** | **no** | Not a separate object — role of Node when parent is null |
+| **Project** | yes | Groups trees via `root_nodes`; has `changelog` |
+| **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
+| **Parameter** | yes | Attribute definition; has `changelog` |
+| **Changelog** | yes (embedded or related) | Container of `changes` |
+| **Change** | yes (inside changelog) | timestamp + changer + change |
+| **Tree** | **no** | Derived from a root node + descendants |
+| **RootNode** | **no** | Role of Node when parent is null |
 
 ## PHP representation (planning)
 
@@ -389,11 +505,12 @@ Question: should domain objects be PHP **classes**, or is there a better fit?
 
 ### Recommendation (leaning — Q20)
 
-Use **small typed PHP classes** for the three stored domain objects:
+Use **small typed PHP classes** for the domain objects:
 
 - `Project`
 - `Node` (root = same class with `parent_id === null`; **no** `RootNode` class)
 - `Parameter`
+- `Changelog` / `Change` (shared audit DTOs composed into the objects above)
 
 Prefer **immutable / readonly-style DTOs** for data carried between layers. Put behavior (load tree, delete promote/cascade, build children view) in **services** (e.g. `Tree_Service`, `Project_Repository`), not fat entity classes.
 

@@ -26,6 +26,9 @@ todos:
   - id: define-project-model
     content: "Project has name, description, root_nodes (list of root Node)"
     status: completed
+  - id: define-changelog-model
+    content: "Shared Changelog/Change (timestamp, changer, change) on Project, Node, Parameter"
+    status: completed
   - id: resolve-open-questions
     content: "Resolve or explicitly defer every item in docs/OPEN-QUESTIONS.md"
     status: pending

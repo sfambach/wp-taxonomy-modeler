@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.5.6-plan"
+version: "0.6.0-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -21,7 +21,7 @@ todos:
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
     status: in_progress
   - id: define-data-structure
-    content: "Define Project, Node, Parameter; tree is derived from root node; settle storage mapping"
+    content: "Define Project, Node, Parameter, Changelog/Change; tree is derived from root node; settle storage mapping"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -155,6 +155,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | PHP representation leaning (**Q20**): typed DTO **classes** for Project/Node/Parameter; services for behavior; no Tree/RootNode class; arrays only at API edges. |
 | 2026-07-23 | **Project** class fields: `name`, `description`, and `root_nodes` (list of root **Node** objects). |
 | 2026-07-23 | After every data-structure change, update and **show a Mermaid class diagram** (see `docs/plans/data-structure.md`). |
+| 2026-07-23 | Every Project, Node, and Parameter has a **Changelog** made of **Change** entries (`timestamp`, `changer`, `change`). |
 
 ## Change protocol
 
