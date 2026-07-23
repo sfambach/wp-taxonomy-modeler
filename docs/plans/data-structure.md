@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.42-plan"
+version: "0.6.43-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -132,7 +132,7 @@ classDiagram
     +version
   }
 
-  note for Project "WP taxonomy lives here (Q18 lean)\nDefinitionsbaum anchors required\nfixed simple types under type_node"
+  note for Project "Project ≈ taxonomy (Q18)\ndefaults: generate OR copy template Project (Q50)\nDefinitionsbaum + fixed simples"
   note for Node "Hierarchy only — no taxonomy field\nattrs like Wert are just Nodes\ntype via config / has_type"
   note for SimpleType "Always present in every Project\nQ49: special kind vs config\nthat disables originating Relations"
   note for DerivedOrCompositeType "Created from simples\nderived or composed"
@@ -173,7 +173,7 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 |---|--------|------|
 | 1 | **Node** | Hierarchy; Definition choices; attributes (`Wert`, …); type Nodes; schema slots — all the same object |
 | 2 | **Parameter / ParameterRole** | **Rejected / dropped** — leftover naming only; do not model |
-| 3 | **Project** | Holds trees + **WP taxonomy (leaning)** + Definition anchors + fixed simple types |
+| 3 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 | 6 | **Relation** | **Exploratory:** edge between two Nodes with a RelationType |
@@ -264,6 +264,8 @@ flowchart TB
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
+- **Project ≈ taxonomy** — **strong leaning (Q18)**; taxonomy not on Node
+- How default Nodes appear in a new Project — **open (Q50):** generate **or** copy from a template Project
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
@@ -1234,7 +1236,7 @@ Some trees are **templates** for project-specific trees.
 | `id` | yes | identifier | Stable identity of the project |
 | `name` | yes | string | Display name of the project |
 | `description` | yes* | string | Longer text describing the project |
-| `taxonomy` | ? | string (WP taxonomy slug) | **Leaning (Q18):** WP taxonomy belongs on **Project**, not on each Node |
+| `taxonomy` | ? | string (WP taxonomy slug) | **Leaning (Q18):** Project ≈ taxonomy; slug on Project (or Project *is* the taxonomy wrapper) |
 | `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
 | `definition_root` | yes | **Node** | Required Definitionsbaum root (**Definition**) |
 | `type_node` | yes | **Node** | Required Type anchor |
@@ -1279,15 +1281,29 @@ Invariants (leaning):
 3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
 4. Bound type Nodes should live under `project.type_node` (same for prefix/base_unit)
 
+### Default Nodes for a new Project (open — Q50)
+
+Every Project needs at least: Definitionsbaum anchors + fixed simple types (`int`, `double`, `string`, `char`, `bool`).
+
+Two main options (user direction — decide later):
+
+| Option | Idea | Pros | Cons |
+|--------|------|------|------|
+| **A — Generate** | On Project create, code/seed creates the default Nodes | Deterministic; no extra “system” project | Defaults live in code; harder to customize globally |
+| **B — Template Project** | One template Project holds the defaults; **copy** it for each new Project | Editable defaults without code; fits Q30 deep-copy | Need a protected template Project; copy semantics |
+
+Hybrid possible (generate minimal anchors, copy optional catalog trees). Related: Q30, Q32.
+
 #### Fields / topics still to define
 
 | Topic | Status |
 |-------|--------|
-| Exact Project↔taxonomy cardinality (1:1 vs hybrid) | leaning Project owns taxonomy — Q18 |
-| Storage for Project / anchors | open — Q19 |
-| Template copy/instantiate behavior | open — Q30 |
+| Project ≈ taxonomy | strong leaning — Q18 |
+| Storage for Project / anchors | open — Q19 (may collapse if Project≈taxonomy) |
+| **How to seed default Nodes** | **open — Q50** (generate vs copy template Project) |
+| Template copy/instantiate behavior | open — Q30 (feeds Q50-B) |
 | Does `template` inherit to children? | open — Q31 |
-| Is Definition itself a template tree? | open — Q32 |
+| Is Definition itself a template tree? | open — Q32 (may be whole template Project) |
 | id type (int vs string/UUID) | open |
 
 ### Example (conceptual)

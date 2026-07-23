@@ -23,8 +23,8 @@
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Same as Nodes (Q11)** — Parameter is a Node; no separate Parameter store | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
-| Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | **Leaning: taxonomy on Project** (not on Node); Node has no `taxonomy` field — exact 1:1 vs hybrid still open | open |
-| Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD | open |
+| Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | **Leaning strong: Project ≈ taxonomy** (practically the same); WP taxonomy slug on Project; Node has no taxonomy field | open |
+| Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD — if Project ≈ taxonomy, storage may collapse toward the taxonomy (+ meta) or a thin Project wrapper (Q19) | open |
 | Q20 | How are domain objects represented in PHP? | Typed DTO classes / arrays only / WP objects directly / hybrid | **Typed classes/DTOs** for Project, Node, Changelog, Change; **no Parameter class**; services for behavior; no Tree/RootNode class | open |
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
@@ -35,9 +35,9 @@
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
 | Q28 | Is a measure unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
 | Q29 | Can prefix exist without base_unit (or vice versa)? | Both required together / either alone / type-dependent | Type-dependent leaning | open |
-| Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
+| Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | Related to **Q50** (seed defaults via template-project copy) | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
-| Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
+| Q32 | Is the Definition tree itself a template? | Always template / never / optional | May be part of a **template Project** that is copied (Q50) rather than a separate “Definition template” flag alone | open |
 | Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: no Parameter class.** Attribute names are ordinary tree **Nodes** with type binding; **ParameterRole also dropped** | decided |
 | Q34 | How are Node specializations / type bindings modeled? | PHP subclass / `kind` flag / formal ParameterRole / **configuration** + Relations | **Leaning: configuration + Relations** — no Parameter class, no ParameterRole; config shape TBD | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
@@ -55,6 +55,7 @@
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
 | Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Aligned with Q33:** simple types = fixed Nodes per project; Parameter/slot ─[has_type]→ type Node; derived/composed types allowed; UI widget from type | open |
 | Q49 | May simple data-type Nodes originate Relations, or must that be blocked? | Special Node kind that cannot build Relations / same Node + **config** that disables Relations from simples / allow Relations | **Open:** simples typically do not build Relations themselves; either a special kind **or** configuration that deactivates Relations on simple types — prefer deciding with Q34 (config-first) | open |
+| Q50 | Where do default Nodes come from (Definitionsbaum anchors, fixed simples, …)? | **Generate** on Project create / **copy from a template Project** / hybrid | **Open — two main options:** (A) generate defaults when creating a Project; (B) maintain one template Project and copy it for each new Project. Relates to Q30/Q32 | open |
 
 ## How to close a question
 
