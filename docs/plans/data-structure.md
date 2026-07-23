@@ -906,6 +906,7 @@ enum
 **Clarifications:**
 
 - `measure` is **not** a rival scalar beside `number`/`integer` — it **reuses** a numeric leaf.
+- Inside `measure`, **Präfix + Basiseinheit form a unit group** (Q45) — not a loose path `value → prefix → unit`.
 - `enum` is **not** split into `enum_single` / `enum_multiple` types — **single/multiple are selection methods**.
 - Option values of an enum are themselves scalar (typically `string`; whether other scalars are allowed is Q39).
 
