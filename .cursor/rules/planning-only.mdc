@@ -1,0 +1,31 @@
+---
+description: Planning-only mode — do not implement plugin code yet
+alwaysApply: true
+---
+
+# Planning only — no implementation yet
+
+This repository is currently in **planning mode**.
+
+## Allowed now
+
+- Update plans under `docs/plans/`
+- Update living docs (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `README.md`)
+- Update Cursor rules that guide planning, standards, or documentation sync
+- Record decisions, open questions, acceptance criteria, and non-goals
+
+## Not allowed yet
+
+- Do **not** create or modify plugin implementation files (PHP bootstrap, `includes/`, admin UI JS/CSS, REST/AJAX handlers, tests that exercise product code, build tooling for the plugin, etc.).
+- Do **not** scaffold `wp-taxonomy-tree.php`, Composer/npm plugin packages, or activation/uninstall code unless the plan status explicitly leaves planning mode.
+- Do **not** “quickly implement” MVP slices while refining the plan.
+
+## Exit condition
+
+Implementation may begin only when **all** of the following are true:
+
+1. `docs/plans/project-plan.md` status is no longer `planning` (for example `ready-to-implement` or later).
+2. The plan decision log records that planning is complete enough to start coding.
+3. The user explicitly asks to start implementation.
+
+Until then, keep every change planning-and-docs only, and sync living docs whenever the plan changes.

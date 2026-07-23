@@ -1,34 +1,42 @@
 ---
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
-status: draft
-version: "0.1.0-plan"
+status: planning
+version: "0.2.0-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
   - docs/PRODUCT.md
   - docs/ARCHITECTURE.md
   - docs/ROADMAP.md
+  - docs/OPEN-QUESTIONS.md
   - .cursor/rules/versioning.mdc
+  - .cursor/rules/planning-only.mdc
+related_plans:
+  - docs/plans/planning-phase.md
+  - docs/plans/mvp-requirements.md
 todos:
+  - id: planning-phase
+    content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
+    status: in_progress
+  - id: docs-sync
+    content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
+    status: in_progress
   - id: scaffold-plugin
-    content: "Scaffold modern PHP 8.x plugin bootstrap, autoload, text domain, and activation hooks"
+    content: "Scaffold modern PHP 8.x plugin bootstrap, autoload, text domain, and activation hooks (blocked until planning sign-off)"
     status: pending
   - id: core-tree-model
-    content: "Implement taxonomy-agnostic tree model (load, nest, ancestors, descendants) on top of WP_Term"
+    content: "Implement taxonomy-agnostic tree model (load, nest, ancestors, descendants) on top of WP_Term (blocked until planning sign-off)"
     status: pending
   - id: admin-tree-ui
-    content: "Admin tree UI for any hierarchical taxonomy (expand/collapse, select, create child, delete with promote/cascade)"
+    content: "Admin tree UI for any hierarchical taxonomy (expand/collapse, select, create child, delete with promote/cascade) (blocked until planning sign-off)"
     status: pending
   - id: rest-or-ajax-api
-    content: "Secure CRUD/tree endpoints (capability + nonce/permission callbacks) for the admin UI"
+    content: "Secure CRUD/tree endpoints (capability + nonce/permission callbacks) for the admin UI (blocked until planning sign-off)"
     status: pending
   - id: extension-api
-    content: "Documented hooks/filters so host plugins can bind CPTs, side panes, and custom term behavior"
+    content: "Documented hooks/filters so host plugins can bind CPTs, side panes, and custom term behavior (blocked until planning sign-off)"
     status: pending
-  - id: docs-sync
-    content: "Keep PRODUCT, ARCHITECTURE, and ROADMAP docs aligned with this plan on every plan change"
-    status: in_progress
   - id: integrate-electronic-parts
     content: "Optional later: consume this plugin from wp-electronic-parts instead of the embedded category tree"
     status: pending
@@ -36,7 +44,20 @@ todos:
 
 # Project plan: WP Taxonomy Tree
 
-> **Source of truth for intent.** When this plan changes, update the linked documentation in the same change (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and the README summary).
+> **Source of truth for intent.** When this plan changes, update the linked documentation in the same change (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/OPEN-QUESTIONS.md`, and the README summary).
+
+## Current mode: planning only
+
+**Status: `planning`.** Do **not** implement plugin code yet.
+
+Work now is limited to:
+
+- refining this plan and related plan slices
+- living documentation
+- open questions and MVP requirements
+- repository rules that support planning/standards
+
+Implementation todos below stay **pending/blocked** until planning sign-off and an explicit request to start coding. See [`.cursor/rules/planning-only.mdc`](../../.cursor/rules/planning-only.mdc) and [`docs/plans/planning-phase.md`](planning-phase.md).
 
 ## Problem
 
@@ -57,28 +78,31 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 - Becoming a general-purpose graph database.
 - Owning domain-specific part properties (those stay in host plugins such as `wp-electronic-parts`).
 - Frontend public theme templates in MVP (may come later).
+- Any plugin implementation work while status remains `planning`.
 
 ## Relationship to `wp-electronic-parts`
 
 `wp-electronic-parts` already contains a catalog split-view and category tree tightly coupled to `part_category` / `electronic_part`.
 
-**Direction:** extract and generalize the taxonomy-tree concerns into this plugin, then optionally have electronic parts consume it. Until integration exists, this repo evolves independently with a clean public API.
+**Direction:** extract and generalize the taxonomy-tree concerns into this plugin, then optionally have electronic parts consume it. Until integration exists, this repo evolves independently with a clean public API. Integration coding is out of scope until after planning and after an extension contract is drafted.
 
 ## Delivery phases
 
-### Phase 0 — Foundation (current)
+### Phase 0 — Foundation & planning (current)
 
-- Repository rules (English code/docs, WordPress standards, DB practices, versioning).
+- Repository rules (English code/docs, WordPress standards, DB practices, versioning, planning-only gate).
 - Project plan + living documentation + sync rule.
-- Local WordPress development environment (see sibling/dev-env work).
+- Planning checklist, MVP requirements, and open questions.
+- Local WordPress development environment (separate PR; environment only, not product implementation).
 
-### Phase 1 — MVP plugin
+### Phase 1 — MVP plugin (after planning sign-off)
 
 - Plugin bootstrap (PHP 8.x, OOP, text domain `wp-taxonomy-tree`), starting at version **`0.0.1`**.
 - Taxonomy-agnostic tree builder over `WP_Term` / `WP_Term_Query`.
 - Admin page registering a tree UI for selected hierarchical taxonomies.
 - Create root/child terms, rename/select, delete with promote-children or cascade.
 - Capability checks, nonces, prepared `$wpdb` usage only when custom SQL is unavoidable.
+- Details: [`docs/plans/mvp-requirements.md`](mvp-requirements.md).
 
 ### Phase 2 — Extension surface
 
@@ -96,10 +120,12 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 ## Success criteria
 
-- A site admin can manage a hierarchical taxonomy as a tree without using the default tags list as the primary UI.
+- Planning produces agreed MVP requirements and closed/deferred open questions before coding starts.
+- After implementation is allowed: a site admin can manage a hierarchical taxonomy as a tree without using the default tags list as the primary UI.
 - Another plugin can register a taxonomy into the environment with minimal glue code.
-- Documentation always reflects the current plan and implemented architecture.
+- Documentation always reflects the current plan and (later) implemented architecture.
 - Code and docs remain English, WPCS-oriented, and secure by default.
+- Versioning starts at `0.0.1`; major digit changes only on official releases.
 
 ## Decision log
 
@@ -109,14 +135,17 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Plan file is the intent source of truth; product/architecture/roadmap docs must update whenever the plan changes. |
 | 2026-07-23 | Domain properties (measure, enums, etc.) remain outside this plugin. |
 | 2026-07-23 | Versioning: always start at `0.0.1`; change the first digit (`MAJOR`) only for official releases (for example first release `1.0.0`). |
+| 2026-07-23 | **Planning-only mode:** no plugin implementation until plan status leaves `planning` and the user explicitly asks to implement. |
 
 ## Change protocol
 
 1. Edit this plan (status, todos, phases, decisions).
-2. Update `last_updated`.
+2. Update `last_updated` (and plan version when the change is meaningful).
 3. In the **same commit/PR**, sync:
    - `docs/PRODUCT.md` — user-facing purpose and scope
    - `docs/ARCHITECTURE.md` — technical shape matching the plan
    - `docs/ROADMAP.md` — phased delivery matching todos/phases
+   - `docs/OPEN-QUESTIONS.md` — when decisions answer or defer questions
    - `README.md` — short summary and links
-4. Do not leave plan and docs disagreeing about goals, non-goals, or current phase.
+4. Do not leave plan and docs disagreeing about goals, non-goals, current mode, or current phase.
+5. While status is `planning`, do not add implementation files.

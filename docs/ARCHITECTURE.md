@@ -2,7 +2,11 @@
 
 > Living technical documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-**Status:** Target architecture for MVP (implementation pending)
+**Status:** Target architecture — **planning only** (implementation not started)
+
+## Planning note
+
+This document describes the **intended** shape of the plugin. File layout and APIs below are proposals to refine during planning. Do not treat them as implemented.
 
 ## High-level shape
 
@@ -26,13 +30,13 @@ flowchart TB
 
 ## Versioning
 
-- Plugin version always starts at **`0.0.1`**.
+- Plugin version always starts at **`0.0.1`** when coding begins.
 - The first digit (`MAJOR`) changes **only on official releases** (for example `1.0.0`, then later `2.0.0`).
 - While `MAJOR` is `0`, development may bump `MINOR` / `PATCH` as needed.
 - Keep plugin header, PHP version constant, and any package metadata aligned.
 - Details: [`.cursor/rules/versioning.mdc`](../.cursor/rules/versioning.mdc).
 
-## Proposed module layout
+## Proposed module layout (not created yet)
 
 ```text
 wp-taxonomy-tree/
@@ -49,11 +53,11 @@ wp-taxonomy-tree/
   docs/
 ```
 
-Exact file names may adjust during implementation; update this document when they do.
+Exact file names may adjust before implementation; update this document when decisions change.
 
 ## Data model
 
-MVP uses native WordPress taxonomy tables:
+MVP intends to use native WordPress taxonomy tables:
 
 - `wp_terms`
 - `wp_term_taxonomy` (`parent`, `count`, `taxonomy`)
@@ -61,7 +65,7 @@ MVP uses native WordPress taxonomy tables:
 
 No custom relational tables are required for the MVP tree. If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations).
 
-## Tree model responsibilities
+## Tree model responsibilities (planned)
 
 - Load terms for one or more taxonomies.
 - Build nested arrays / adjacency structures efficiently (avoid N+1).
@@ -70,14 +74,14 @@ No custom relational tables are required for the MVP tree. If custom tables appe
   - **promote:** reparent children to the deleted node’s parent
   - **cascade:** delete the node and its descendants
 
-## Admin UI responsibilities
+## Admin UI responsibilities (planned)
 
 - Render a left-hand tree (or equivalent tree-first layout).
 - Emit selection events for extension panes.
 - Provide create-root / create-child / delete flows.
 - Remain usable for large-but-reasonable term sets; document limits until Phase 3 performance work.
 
-## Extension points (planned)
+## Extension points (planned names TBD)
 
 | Hook / filter (names TBD) | Purpose |
 |---------------------------|---------|
@@ -86,16 +90,16 @@ No custom relational tables are required for the MVP tree. If custom tables appe
 | Action/filter: selected term panel | Render host UI when a term is selected |
 | Filter: delete strategies | Customize available delete behaviors |
 
-Finalize concrete hook names during Phase 2 and list them here.
+Finalize concrete hook names during planning / Phase 2 design and list them here before implementation relies on them.
 
-## Security boundaries
+## Security boundaries (planned)
 
 - Managing terms requires the taxonomy’s `manage_terms` (or equivalent) capability.
 - Mutations go through authorized endpoints only.
 - Any direct SQL uses `$wpdb->prepare()`.
 - All user-facing strings are translatable (`wp-taxonomy-tree` text domain).
 
-## Integration sketch: electronic parts
+## Integration sketch: electronic parts (future)
 
 ```mermaid
 sequenceDiagram
@@ -112,10 +116,12 @@ sequenceDiagram
 
 ## Open technical choices
 
+Tracked in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Summary:
+
 | Topic | Options | Current leaning |
 |-------|---------|-----------------|
 | Transport | REST API vs Admin-AJAX | REST if straightforward; Admin-AJAX acceptable for MVP admin UI |
 | JS stack | Vanilla JS vs `@wordpress/scripts` | Vanilla for MVP tree; upgrade if UI complexity grows |
 | Packaging | Single plugin only vs Composer library + plugin | Single plugin first |
 
-Record the final choice in the plan decision log and update this section.
+Record final choices in the plan decision log and update this section when questions close.

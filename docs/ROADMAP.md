@@ -2,29 +2,35 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.1.0-plan** (2026-07-23).
+Last synced from plan version **0.2.0-plan** (2026-07-23).
 
-## Phase 0 — Foundation
+**Current mode: planning only — no plugin implementation.**
+
+## Phase 0 — Foundation & planning (active)
 
 | Item | Status |
 |------|--------|
 | Coding rules (English, practices, WP standards, DB practices) | In progress (separate PR) |
 | Versioning rule (start `0.0.1`; major only on release) | In progress |
+| Planning-only rule (no implementation yet) | In progress |
 | Project plan + living docs + sync rule | In progress |
-| Local WordPress development environment | In progress (separate PR) |
+| Planning checklist + MVP requirements + open questions | In progress |
+| Local WordPress development environment | In progress (separate PR; env only) |
 
-## Phase 1 — MVP
+**Exit criteria:** MVP requirements accepted; open questions decided or deferred; user sign-off to leave planning mode.
+
+## Phase 1 — MVP (blocked on planning sign-off)
 
 | Item | Status |
 |------|--------|
-| Plugin bootstrap at version `0.0.1` (PHP 8.x, OOP, text domain) | Pending |
-| Taxonomy-agnostic tree model | Pending |
-| Admin tree UI (create / select / delete promote\|cascade) | Pending |
-| Secure mutation/read endpoints | Pending |
+| Plugin bootstrap at version `0.0.1` (PHP 8.x, OOP, text domain) | Blocked |
+| Taxonomy-agnostic tree model | Blocked |
+| Admin tree UI (create / select / delete promote\|cascade) | Blocked |
+| Secure mutation/read endpoints | Blocked |
 
 **Exit criteria:** Activate plugin, register at least one hierarchical taxonomy, manage its tree in admin without using the default list as the primary workflow.
 
-## Phase 2 — Extensions
+## Phase 2 — Extensions (later)
 
 | Item | Status |
 |------|--------|
@@ -35,7 +41,7 @@ Last synced from plan version **0.1.0-plan** (2026-07-23).
 
 **Exit criteria:** A second plugin can enable the tree for its taxonomy with glue code only (no forks of this plugin).
 
-## Phase 3 — Integration and polish
+## Phase 3 — Integration and polish (later)
 
 | Item | Status |
 |------|--------|

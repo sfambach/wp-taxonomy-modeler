@@ -11,12 +11,15 @@ The project plan is the source of truth for intent. Living documentation must st
 ## Source of truth
 
 - Primary plan: `docs/plans/project-plan.md`
+- Planning slices: `docs/plans/planning-phase.md`, `docs/plans/mvp-requirements.md`
 - Living docs that must track the plan:
   - `docs/PRODUCT.md`
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`
+  - `docs/OPEN-QUESTIONS.md`
   - `README.md` (short summary + links only)
 - Versioning policy for the plugin itself: `.cursor/rules/versioning.mdc` (start at `0.0.1`; major digit only on official releases)
+- While plan status is `planning`, also follow `.cursor/rules/planning-only.mdc` (docs/plans/rules only — no plugin implementation)
 
 ## Required workflow
 
@@ -27,7 +30,8 @@ When you change goals, non-goals, phases, todos, status, architecture direction,
 3. Ensure `docs/ROADMAP.md` phase tables match the plan phases and todo statuses.
 4. Ensure `docs/PRODUCT.md` still matches in-scope / out-of-scope statements.
 5. Ensure `docs/ARCHITECTURE.md` still matches the planned technical shape (modules, APIs, data model).
-6. Refresh the README blurb if the one-line purpose or current phase changed.
+6. Ensure `docs/OPEN-QUESTIONS.md` reflects newly decided or newly opened questions.
+7. Refresh the README blurb if the one-line purpose, current mode, or current phase changed.
 
 ## Do not
 
@@ -35,6 +39,7 @@ When you change goals, non-goals, phases, todos, status, architecture direction,
 - Do not mark plan todos completed without reflecting progress in `docs/ROADMAP.md`.
 - Do not invent architecture in code without updating `docs/ARCHITECTURE.md` when it diverges from the plan.
 - Do not create parallel “another plan” documents that compete with `docs/plans/project-plan.md` without linking them from the primary plan (`related_docs` / `related_plans`).
+- Do not implement plugin code while `docs/plans/project-plan.md` status is `planning`.
 
 ## New slice plans
 
