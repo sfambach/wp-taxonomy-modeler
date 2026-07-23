@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.29-plan"
+version: "0.6.30-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -198,6 +198,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Part identity **layers** (kind → subtype → specs → package → catalog part → board usage); same pattern for R/C/Diode/IC. |
 | 2026-07-23 | Concrete BOM sample (JLCPCB board): host BomList/BomLine class diagram + Bauteile tree for C/R/LED/IC/connectors. |
 | 2026-07-23 | Gap fill: **BOM/Recipe as configurable Nodes** (schema-as-Nodes) — fewer hard domain classes; Q46. |
+| 2026-07-23 | Schema-as-Nodes needs **explicit line/step order** (BOM Zeilen, recipe steps) — strengthens Q13 `position`. |
 
 ## Change protocol
 

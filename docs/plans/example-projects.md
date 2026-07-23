@@ -164,10 +164,12 @@ Schema template (configurable once):
 
 ```text
 BOM-Schema (template)
-└── Zeile
+└── Zeile   ← ordered siblings (position / Q13)
       ├── Referenzen, Menge, Beschreibung, Preis, Stock  (attribute slots)
       └── uses → CatalogPart
 ```
+
+Row order in the user’s table is meaningful (Platine, then C2, then C1/C3/C4, …). With Zeilen as Nodes that order must be stored — **not** derived from name.
 
 #### Mapping of the sample lines
 

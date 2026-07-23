@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.29-plan"
+version: "0.6.30-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -82,6 +82,7 @@ classDiagram
     +parent_id : id|null
     +name
     +template : bool
+    +position : ?
     +taxonomy : ?
     +project_id : ?
     +changelog : Changelog
@@ -125,7 +126,7 @@ classDiagram
   }
 
   note for Project "Definitionsbaum anchors required\nmay also hold schema templates\n(BOM, Recipe, … as Nodes)"
-  note for Node "Hierarchy + Relations\nBOM list/line/recipe may be Nodes\nconfigured via templates — not PHP classes"
+  note for Node "Hierarchy + Relations\nBOM list/line/recipe may be Nodes\nposition? needed for line/step order\nconfigured via templates — not PHP classes"
   note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
   note for Relation "EXPLORATORY\nlines = Relations with props\n(qty, price, refs…)"
   note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
@@ -738,6 +739,9 @@ flowchart TB
 | **B — Schema-as-Nodes** | Same engine for BOM, Recipe, PC build, shopping list; configure in tree | Heavier runtime; need good templates + Relation.props |
 
 **Leaning:** treat **B as the strategic direction** for the taxonomy-tree environment; host UIs become *renderers* of node graphs. Hard classes may still appear as thin DTOs at API edges — not as the source of truth (Q46).
+
+**Order / sequence (user insight):** if a BOM **Zeile** is a Node, the table display needs a **stable row order**. Name-sorting is wrong (`C2` before `C1,C3,C4` by string is accidental). Same for recipe **steps**.  
+→ Requires explicit ordering: Node.`position` / `menu_order`, or ordered Relations (Q12/Q13). Schema-as-Nodes makes **sibling order first-class**, not optional cosmetics.
 
 Same for **Rezept**: Rezept-Schema Nodes + instance Nodes + `uses` ingredients with measure props — no `Recipe`/`IngredientLine` core classes required.
 

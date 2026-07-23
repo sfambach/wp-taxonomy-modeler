@@ -17,8 +17,8 @@
 | Q9 | When to integrate with `wp-electronic-parts`? | After MVP / after Phase 2 / never in-repo | After extension contract exists (Phase 2+) | open |
 | Q10 | Packaging for reusable code? | Single plugin only / plugin + Composer package | Single plugin first | open |
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
-| Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; position/meta later | open |
-| Q13 | How are siblings ordered? | WP default name/term order / explicit position field | WP default until proven insufficient | open |
+| Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; **position** strongly needed if BOM/Recipe lines are Nodes (Q13/Q46) | open |
+| Q13 | How are siblings ordered? | WP default name/term order / explicit position field | **Leaning: explicit `position` (or Relation order)** — BOM/Recipe line display needs stable sequence, not name sort | open |
 | Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | May dissolve if Parameter is a Node or via `besteht-aus`; else still open | open |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | TBD | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
