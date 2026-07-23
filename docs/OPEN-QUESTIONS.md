@@ -21,7 +21,7 @@
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | WP default until proven insufficient | open |
 | Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | Unsure — mark **?** and decide later. (Agreed separately: one node can have several parameters.) | open |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | TBD | open |
-| Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | TBD — definitions may be in-core first | open |
+| Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
 | Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | TBD | open |
 | Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD | open |
@@ -29,7 +29,7 @@
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
-| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | e.g. measure needs base_unit; url needs neither | open |
+| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | e.g. measure needs value + prefix + base_unit when filled; url needs neither | open |
 | Q25 | How are Units represented? | Separate Unit / single unit Node / prefix+base | **Decided:** Parameter uses **prefix** + **base_unit** Nodes from Definition tree | decided |
 | Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | Leaning: must live under the matching Definition branch | open |
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |

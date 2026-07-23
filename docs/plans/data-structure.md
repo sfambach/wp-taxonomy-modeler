@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.10-plan"
+version: "0.6.11-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -80,6 +80,7 @@ classDiagram
     +type : Node
     +prefix : Node?
     +base_unit : Node?
+    +value : ?
     +changelog : Changelog
   }
 
@@ -96,7 +97,7 @@ classDiagram
 
   note for Project "Always stores Definition anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\n(unique required nodes in project)"
   note for Node "template=true → template tree\nused to seed project-specific trees\nSame class also used for Type/Präfix/Basiseinheit choices"
-  note for Parameter "type under project.type_node\nprefix under project.prefix_node\nbase_unit under project.base_unit_node"
+  note for Parameter "type under project.type_node\nprefix under project.prefix_node\nbase_unit under project.base_unit_node\nmeasure reading = value + prefix + unit\ne.g. 10 + m + Meter => 10 mm\n(value storage: Q16)"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
@@ -201,6 +202,8 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
+- A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
+- Dimensions under Größe (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - Every **Project** must have a **Definition tree** and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
@@ -351,7 +354,8 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `label` | likely | string | Human-readable name |
 | `type` | **yes** | **Node** | From Definition → **Type** (e.g. `measure`, `url`) |
 | `prefix` | **optional** | **Node** \| `null` | From Definition → **Präfix** (e.g. `k`, `m`) |
-| `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** (e.g. `Ohm`) |
+| `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** (e.g. `Ohm`, `Meter`) |
+| `value` | **?** | scalar / TBD | Filled reading for measures (e.g. `10`); storage Q16 |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
 
 **Rule:** A Parameter **uses** three kinds of definition nodes:
@@ -367,16 +371,20 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 class Parameter {
 	public string $id;
 	public Node $type;           // e.g. measure / url
-	public ?Node $prefix;        // e.g. k (kilo) — optional
-	public ?Node $base_unit;     // e.g. Ohm — optional
+	public ?Node $prefix;        // e.g. k / m (milli) — optional
+	public ?Node $base_unit;     // e.g. Ohm / Meter — optional
+	// public mixed $value;      // filled reading — open Q16
 	public Changelog $changelog;
 }
 
-// Display idea for a measure value (value storage still Q16):
-// "10" + prefix "k" + base_unit "Ohm"  =>  "10 kOhm"
+// Filled measure reading (value storage still Q16):
+// value + prefix + base_unit
+// "10" + "k" + "Ohm"   =>  "10 kOhm"
+// "10" + "m" + "Meter" =>  "10 mm"
 ```
 
-Whether `prefix`/`base_unit` are allowed or required depends on `type` (Q24).
+**Agreed for measure readings:** each filled measure has a **value**, a **prefix**, and a **base unit** (Einheit), composed for display (e.g. `10 mm`).  
+Whether `prefix`/`base_unit` are required on the Parameter *definition* vs chosen per filled reading is still open (Q24, Q29, Q16).
 
 #### Fields still to define
 
@@ -506,8 +514,20 @@ Root                                    ← root node (defines this tree)
 | `Wert` | Parameter on Widerstände — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
 | `Bauform` | Parameter — e.g. type=`text` or enum-like choices |
 | `Leistungsaufnahme` | Parameter — measure + Watt base unit |
-| `Größe` | Group node for dimension Parameters |
-| `Länge` / `Breite` / `Höhe` | Parameters under Größe — measure + Meter (+ optional prefix) |
+| `Größe` | Group of three dimension measures (not one single scalar) |
+| `Länge` / `Breite` / `Höhe` | Each is a **measure**: **value + prefix + Einheit (base_unit)** |
+
+**Dimension example (agreed direction):**
+
+```text
+Länge  { value: 10, prefix: m, base_unit: Meter }  =>  "10 mm"
+Breite { value:  5, prefix: m, base_unit: Meter }  =>  "5 mm"
+Höhe   { value:  2, prefix: m, base_unit: Meter }  =>  "2 mm"
+
+Größe display:  10 mm × 5 mm × 2 mm
+```
+
+`mm` is **not** a single Definition node — it is Präfix `m` + Basiseinheit `Meter` (same pattern as `k` + `Ohm` → `kOhm`).
 
 `Root` / `Bauteile` would appear in `Project.root_nodes` (or Root alone if Bauteile is not a root).  
 This tree is typically **not** `template` (unless reused as a template catalog).
