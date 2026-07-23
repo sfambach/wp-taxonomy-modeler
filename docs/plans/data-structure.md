@@ -885,6 +885,8 @@ Selection stores the unit group, not a synthetic node:
 
 Same pattern for Meter → `m`, `mm`, `km`, … from Vater Meter + linked Präfixe.
 
+**Prototype:** `prototypes/tree-split` tab **Umrechnung** — select Basiseinheit in the tree; left Menge+unit, right computed value in another derived unit of the same family; non-base selection grays out controls (`wtt-proto-tree-split-v10`).
+
 **Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`).
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
