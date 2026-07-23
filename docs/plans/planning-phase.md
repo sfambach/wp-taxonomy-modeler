@@ -24,7 +24,7 @@ todos:
     content: "Parameter object + node can have several parameters; single-owner (?) deferred via Q14"
     status: in_progress
   - id: define-project-model
-    content: "Define Project; project consists of different trees (root nodes)"
+    content: "Project has name, description, root_nodes (list of root Node)"
     status: completed
   - id: resolve-open-questions
     content: "Resolve or explicitly defer every item in docs/OPEN-QUESTIONS.md"

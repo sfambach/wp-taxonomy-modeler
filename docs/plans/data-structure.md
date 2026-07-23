@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.4-plan"
+version: "0.5.5-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -51,10 +51,10 @@ todos:
 
 ```mermaid
 flowchart TB
-  PR["Project — stored object"]
+  PR["Project<br/>name · description · root_nodes"]
 
-  PR --> R1["Node root A<br/>parent = null"]
-  PR --> R2["Node root B<br/>parent = null"]
+  PR -->|root_nodes| R1["Node root A<br/>parent = null"]
+  PR -->|root_nodes| R2["Node root B<br/>parent = null"]
 
   R1 --> C1["Node child"]
   R1 --> C2["Node child"]
@@ -155,7 +155,7 @@ Node ◄──(many)────── Parameters
 | `id` | yes | identifier | Stable identity of the node |
 | `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root (defines a tree) |
 | `name` | yes | string | Display name of the node |
-| `project_id` | likely | identifier | Project this node belongs to — confirm Q17 |
+| `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `taxonomy` | ? | string | May map to WP taxonomy and/or align with project — confirm Q18 |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
@@ -256,43 +256,67 @@ Node { id: 2, name: "Resistors", parent_id: 1, project_id: 100 }
 
 ### Core idea
 
-**Project** is a core object. A project can consist of **different trees**. Because a tree is not an extra object, that means a project groups **one or more root nodes** (each root defining a tree).
+**Project** is a core object (PHP class leaning). A project can consist of **different trees**. Because a tree is not an extra object, the project holds a list of **root nodes** — property name: `root_nodes`.
 
 ```mermaid
 flowchart LR
-  PR[Project] --> T1[Tree via root node A]
-  PR --> T2[Tree via root node B]
-  PR --> T3[Tree via root node C]
+  PR["Project<br/>name, description"]
+  PR -->|root_nodes| R1[Node parent null]
+  PR -->|root_nodes| R2[Node parent null]
+  PR -->|root_nodes| R3[Node parent null]
 ```
 
 | Rule | Meaning |
 |------|---------|
 | Container | Project groups trees used together |
-| Trees in a project | Different root nodes belonging to the project |
-| No Tree entity | Project does not point to Tree ids; it relates to **root nodes** (directly or via nodes’ `project_id`) |
+| `root_nodes` | List of Node instances that are roots (`parent_id = null`) |
+| No Tree entity | Project does not store Tree objects; only root nodes |
+| Each entry in `root_nodes` | Must be a root node (same Node class, parent null) |
 
-### Project fields (initial — to refine)
+### Project fields (agreed so far)
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the project |
 | `name` | yes | string | Display name of the project |
+| `description` | yes* | string | Longer text describing the project |
+| `root_nodes` | yes | list of **Node** | Root nodes that define the project’s trees |
 
-#### Fields still to define
+\* `description` may be empty string, but the field exists on the class.
+
+#### Conceptual PHP class (planning sketch — not implemented)
+
+```php
+class Project {
+	public string $id;          // or int — storage TBD
+	public string $name;
+	public string $description;
+	/** @var list<Node> Root nodes only (parent_id === null). */
+	public array $root_nodes;
+}
+```
+
+#### Fields / topics still to define
 
 | Topic | Status |
 |-------|--------|
-| How nodes/roots are assigned to a project | open — Q17 |
 | Relation to WordPress taxonomy (1:1, many, none) | open — Q18 |
-| Project description, slug, owner, status | open |
-| Storage for Project | open — Q19 |
+| Storage for Project and how `root_nodes` is persisted | open — Q19 |
+| Whether non-root nodes also store `project_id` | open — may be derived via ancestors |
+| id type (int vs string/UUID) | open |
 
 ### Example (conceptual)
 
 ```text
-Project { id: 100, name: "Electronic parts catalog" }
-  ├─ Tree (root node 1 "Passive Components") → child "Resistors" → …
-  └─ Tree (root node 4 "Semiconductors") → …
+Project {
+  id: 100,
+  name: "Electronic parts catalog",
+  description: "Hierarchical categories for electronic components",
+  root_nodes: [
+    Node { id: 1, parent_id: null, name: "Passive Components", ... },  // Tree A
+    Node { id: 4, parent_id: null, name: "Semiconductors", ... }       // Tree B
+  ]
+}
 ```
 
 ---
@@ -359,4 +383,4 @@ See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q19).
 
 ## Next planning step
 
-Clarify how Project assigns/owns root nodes (Q17) and how Project maps to WordPress (Q18–Q19). Still planning only — no implementation.
+Clarify Project persistence for `root_nodes` (Q19) and taxonomy mapping (Q18). Still planning only — no implementation.

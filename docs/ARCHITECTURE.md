@@ -40,7 +40,8 @@ flowchart TB
 
 ## PHP representation (leaning)
 
-Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, and `Parameter` over associative arrays as the primary model. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, and `Parameter` over associative arrays as the primary model.  
+`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ## Versioning
 
@@ -79,8 +80,10 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 |-------|----------|---------|
 | `id` | yes | Stable project identity |
 | `name` | yes | Display name |
+| `description` | yes | Project description (may be empty) |
+| `root_nodes` | yes | List of root **Node** objects (each `parent_id = null`) |
 
-A project can consist of **different trees** (different root nodes). Assignment/storage details: Q17–Q19.
+A project consists of different trees via `root_nodes`. Persistence: Q19. Taxonomy mapping: Q18.
 
 ### Node (conceptual)
 
@@ -89,7 +92,7 @@ A project can consist of **different trees** (different root nodes). Assignment/
 | `id` | yes | Stable node identity |
 | `parent_id` | yes (`null` = root) | Optional single parent node |
 | `name` | yes | Display name |
-| `project_id` | likely | Project membership — confirm Q17 |
+| `project_id` | ? | Optional reverse link — primary link is `Project.root_nodes` |
 
 Root node = the **same Node object** with `parent_id = null` (not a separate type). That root **defines a tree**.
 
