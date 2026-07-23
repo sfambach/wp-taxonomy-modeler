@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WTT Prototype — Tree Split</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">WTT</span>
+      <span class="brand-title">Tree Split Prototype</span>
+    </div>
+    <p class="top-note">Planungs-Prototyp — kein WordPress-Plugin. Erweiterbar.</p>
+  </header>
+
+  <main class="split">
+    <section class="pane pane-tree" aria-label="Baum">
+      <header class="pane-head">
+        <h1>Baum</h1>
+        <button type="button" class="btn ghost" id="btn-reset" title="Zurücksetzen">Reset</button>
+      </header>
+      <div id="tree-root" class="tree" role="tree"></div>
+    </section>
+
+    <section class="pane pane-detail" aria-label="Inhalt">
+      <header class="pane-head">
+        <h1>Inhalt</h1>
+      </header>
+      <div id="detail" class="detail">
+        <p class="muted">Knoten auswählen.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

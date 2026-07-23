@@ -16,6 +16,7 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
+| [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Target architecture |

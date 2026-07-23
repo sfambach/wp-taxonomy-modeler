@@ -13,12 +13,14 @@ This repository is currently in **planning mode**.
 - Update living docs (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `README.md`)
 - Update Cursor rules that guide planning, standards, or documentation sync
 - Record decisions, open questions, acceptance criteria, and non-goals
+- Standalone disposable UI sketches under `prototypes/` (static HTML/CSS/JS, **not** WordPress plugin code) when the user asks for a throwaway prototype
 
 ## Not allowed yet
 
 - Do **not** create or modify plugin implementation files (PHP bootstrap, `includes/`, admin UI JS/CSS, REST/AJAX handlers, tests that exercise product code, build tooling for the plugin, etc.).
 - Do **not** scaffold `wp-taxonomy-tree.php`, Composer/npm plugin packages, or activation/uninstall code unless the plan status explicitly leaves planning mode.
 - Do **not** “quickly implement” MVP slices while refining the plan.
+- Do **not** treat `prototypes/` as production plugin code or wire it into WordPress.
 
 ## Exit condition
 
