@@ -2,15 +2,44 @@
  * WTT tree-split prototype — in-memory Node model.
  * Shape mirrors planning Node: { id, parentId, name, position }
  *
- * Sibling order (Q13 leaning): explicit `position` only — not name sort.
- * Right pane: tabs — Knoten | Tabelle (children of selection = column config).
+ * Sibling order (Q13): explicit `position`.
+ * Right pane tabs:
+ *   - Knoten
+ *   - Tabelle / Tabelle 2 — children = column schema (header + 5 rows)
+ *   - Formular — selected node = field context; children = choice options
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v3";
+const STORAGE_KEY = "wtt-proto-tree-split-v4";
 const TABLE_BODY_ROWS = 5;
+const RIGHT_TABS = ["node", "table", "table2", "form"];
+const TAB_ARIA = {
+  node: "tab-node",
+  table: "tab-table",
+  table2: "tab-table2",
+  form: "tab-form",
+};
 
 /** @typedef {{ id: string, parentId: string|null, name: string, position: number }} ProtoNode */
-/** @typedef {'node'|'table'} RightTab */
+/** @typedef {'node'|'table'|'table2'|'form'} RightTab */
+/**
+ * @typedef {{
+ *   select: string,
+ *   radio: string,
+ *   checks: string[],
+ *   selectMulti: string[],
+ *   toggle: boolean,
+ *   text: string,
+ *   textarea: string,
+ *   number: string,
+ *   range: number,
+ *   color: string,
+ *   date: string,
+ *   time: string,
+ *   email: string,
+ *   url: string,
+ *   datalist: string,
+ * }} FormState
+ */
 
 /** @type {Map<string, ProtoNode>} */
 let nodes = new Map();
@@ -21,20 +50,17 @@ let collapsed = new Set();
 let seq = 1;
 /** @type {RightTab} */
 let activeTab = "node";
-/**
- * Placeholder cell values: schemaNodeId → rowIndex → colNodeId → string
- * @type {Map<string, string[][]>}
- */
+/** @type {Map<string, string[][]>} */
 let tableCells = new Map();
+/** @type {Map<string, string[][]>} */
+let tableCells2 = new Map();
+/** @type {Map<string, FormState>} */
+let formStates = new Map();
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/**
- * Sibling list sorted by explicit position (Q13).
- * Name is only a last-resort tiebreaker if two positions collide.
- */
 function childrenOf(parentId) {
   return [...nodes.values()]
     .filter((n) => n.parentId === parentId)
@@ -44,7 +70,6 @@ function childrenOf(parentId) {
     });
 }
 
-/** Normalize sibling positions to dense 0..n-1 in current display order. */
 function reindexSiblings(parentId) {
   const kids = childrenOf(parentId);
   kids.forEach((k, i) => {
@@ -53,8 +78,7 @@ function reindexSiblings(parentId) {
 }
 
 function nextPosition(parentId) {
-  const kids = childrenOf(parentId);
-  return kids.length;
+  return childrenOf(parentId).length;
 }
 
 function createNode(parentId, name, position) {
@@ -63,16 +87,46 @@ function createNode(parentId, name, position) {
   return id;
 }
 
+function defaultFormState() {
+  return {
+    select: "",
+    radio: "",
+    checks: [],
+    selectMulti: [],
+    toggle: false,
+    text: "",
+    textarea: "",
+    number: "",
+    range: 50,
+    color: "#c4a35a",
+    date: "",
+    time: "",
+    email: "",
+    url: "",
+    datalist: "",
+  };
+}
+
+function ensureFormState(nodeId) {
+  let state = formStates.get(nodeId);
+  if (!state) {
+    state = defaultFormState();
+    formStates.set(nodeId, state);
+  }
+  return state;
+}
+
 function createInitial() {
   nodes = new Map();
   collapsed = new Set();
   seq = 1;
   tableCells = new Map();
+  tableCells2 = new Map();
+  formStates = new Map();
   activeTab = "node";
 
   rootId = createNode(null, "BOM Demo", 0);
 
-  // Children = table column config when this node is selected.
   const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 0);
   createNode(schemaId, "Designator", 0);
   createNode(schemaId, "Value", 1);
@@ -90,14 +144,14 @@ function createInitial() {
   createNode(partsId, "Kondensator", 0);
   createNode(partsId, "Widerstand", 1);
   createNode(partsId, "IC", 2);
+  createNode(partsId, "Diode / LED", 3);
 
   selectedId = schemaId;
   collapsed.clear();
 }
 
 function addChild(parentId) {
-  const parent = nodes.get(parentId);
-  if (!parent) return;
+  if (!nodes.get(parentId)) return;
   const id = createNode(parentId, `Knoten ${seq++}`, nextPosition(parentId));
   reindexSiblings(parentId);
   collapsed.delete(parentId);
@@ -133,11 +187,11 @@ function deleteNode(id) {
   for (const k of kill) {
     nodes.delete(k);
     tableCells.delete(k);
+    tableCells2.delete(k);
+    formStates.delete(k);
   }
 
-  if (parentId != null && nodes.has(parentId)) {
-    reindexSiblings(parentId);
-  }
+  if (parentId != null && nodes.has(parentId)) reindexSiblings(parentId);
 
   if (kill.has(selectedId)) {
     selectedId = nodes.has(parentId) ? parentId : rootId;
@@ -146,10 +200,6 @@ function deleteNode(id) {
   render();
 }
 
-/**
- * Move node among siblings by delta (-1 = up, +1 = down).
- * Swaps positions, then reindexes so order stays dense.
- */
 function moveSibling(id, delta) {
   const node = nodes.get(id);
   if (!node || node.parentId === null) return false;
@@ -180,8 +230,8 @@ function selectNode(id) {
 }
 
 function setActiveTab(tab) {
-  if (tab !== "node" && tab !== "table") return;
-  activeTab = tab;
+  if (!RIGHT_TABS.includes(tab)) return;
+  activeTab = /** @type {RightTab} */ (tab);
   persist();
   renderRight();
   syncTabs();
@@ -213,33 +263,33 @@ function siblingIndex(node) {
   };
 }
 
-/** Ensure a TABLE_BODY_ROWS × columns grid exists for schemaNodeId. */
-function ensureTableGrid(schemaNodeId, colIds) {
-  let rows = tableCells.get(schemaNodeId);
+/** @param {Map<string, string[][]>} store */
+function ensureTableGrid(store, schemaNodeId, colIds) {
+  let rows = store.get(schemaNodeId);
   if (!rows) {
     rows = Array.from({ length: TABLE_BODY_ROWS }, () =>
       colIds.map(() => "")
     );
-    tableCells.set(schemaNodeId, rows);
+    store.set(schemaNodeId, rows);
     return rows;
   }
-  // Align width to current columns (by index; order follows children position).
   while (rows.length < TABLE_BODY_ROWS) {
     rows.push(colIds.map(() => ""));
   }
   if (rows.length > TABLE_BODY_ROWS) rows.length = TABLE_BODY_ROWS;
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r] || [];
-    const next = colIds.map((_, c) => (row[c] != null ? String(row[c]) : ""));
-    rows[r] = next;
+    rows[r] = colIds.map((_, c) => (row[c] != null ? String(row[c]) : ""));
   }
-  tableCells.set(schemaNodeId, rows);
+  store.set(schemaNodeId, rows);
   return rows;
 }
 
-function setCellValue(schemaNodeId, rowIndex, colIndex, value) {
+/** @param {Map<string, string[][]>} store */
+function setCellValue(store, schemaNodeId, rowIndex, colIndex, value) {
   const cols = childrenOf(schemaNodeId);
   const rows = ensureTableGrid(
+    store,
     schemaNodeId,
     cols.map((c) => c.id)
   );
@@ -248,11 +298,20 @@ function setCellValue(schemaNodeId, rowIndex, colIndex, value) {
   persist();
 }
 
-function persist() {
-  const cellObj = {};
-  for (const [k, rows] of tableCells) {
-    cellObj[k] = rows;
+function mapToObject(map) {
+  const obj = {};
+  for (const [k, v] of map) obj[k] = v;
+  return obj;
+}
+
+function restoreStringGridMap(raw, into) {
+  if (!raw || typeof raw !== "object") return;
+  for (const [k, rows] of Object.entries(raw)) {
+    if (nodes.has(k) && Array.isArray(rows)) into.set(k, rows);
   }
+}
+
+function persist() {
   const payload = {
     rootId,
     selectedId,
@@ -260,7 +319,9 @@ function persist() {
     activeTab,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
-    tableCells: cellObj,
+    tableCells: mapToObject(tableCells),
+    tableCells2: mapToObject(tableCells2),
+    formStates: mapToObject(formStates),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -283,11 +344,16 @@ function restore() {
     collapsed = new Set(
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
-    activeTab = data.activeTab === "table" ? "table" : "node";
+    activeTab = RIGHT_TABS.includes(data.activeTab) ? data.activeTab : "node";
     tableCells = new Map();
-    if (data.tableCells && typeof data.tableCells === "object") {
-      for (const [k, rows] of Object.entries(data.tableCells)) {
-        if (nodes.has(k) && Array.isArray(rows)) tableCells.set(k, rows);
+    tableCells2 = new Map();
+    formStates = new Map();
+    restoreStringGridMap(data.tableCells, tableCells);
+    restoreStringGridMap(data.tableCells2, tableCells2);
+    if (data.formStates && typeof data.formStates === "object") {
+      for (const [k, st] of Object.entries(data.formStates)) {
+        if (!nodes.has(k) || !st || typeof st !== "object") continue;
+        formStates.set(k, { ...defaultFormState(), ...st });
       }
     }
     const parents = new Set(
@@ -307,6 +373,7 @@ function resetAll() {
   try {
     localStorage.removeItem("wtt-proto-tree-split");
     localStorage.removeItem("wtt-proto-tree-split-v2");
+    localStorage.removeItem("wtt-proto-tree-split-v3");
   } catch {
     /* ignore */
   }
@@ -429,10 +496,7 @@ function syncTabs() {
   }
   const panel = document.getElementById("detail");
   if (panel) {
-    panel.setAttribute(
-      "aria-labelledby",
-      activeTab === "table" ? "tab-table" : "tab-node"
-    );
+    panel.setAttribute("aria-labelledby", TAB_ARIA[activeTab] || "tab-node");
   }
 }
 
@@ -501,7 +565,6 @@ function renderDetail() {
     const status = document.createElement("span");
     status.className = "order-status";
     status.textContent = `${index + 1} von ${total}`;
-
     orderRow.append(up, down, status);
   } else {
     const status = document.createElement("span");
@@ -528,7 +591,8 @@ function renderDetail() {
     const childLab = document.createElement("div");
     childLab.className = "field-label";
     childLab.style.marginTop = "1rem";
-    childLab.textContent = "Kinder (= Tabellenspalten im Tab „Tabelle“)";
+    childLab.textContent =
+      "Kinder (= Spalten in Tabelle / Optionen in Formular)";
     orderBlock.append(childLab, childList);
   }
 
@@ -545,13 +609,17 @@ function renderDetail() {
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Tab „Tabelle“: Kinder dieses Knotens werden zur Spalten-Konfiguration. Sortierung = position (Q13). Alt+↑ / Alt+↓.";
+    "Tabelle(n): Kinder → Spalten. Formular: Knoten = Kontext, Kinder → Dropdown/Radio/Checkbox-Optionen. Alt+↑ / Alt+↓.";
 
   card.append(h2, field, orderBlock, meta, hint);
   mount.append(card);
 }
 
-function renderTable() {
+/**
+ * @param {Map<string, string[][]>} store
+ * @param {string} title
+ */
+function renderTableView(store, title) {
   const mount = document.getElementById("detail");
   if (!mount) return;
   const node = nodes.get(selectedId);
@@ -567,16 +635,17 @@ function renderTable() {
   const lead = document.createElement("p");
   lead.className = "lead";
   if (cols.length === 0) {
-    lead.innerHTML = `Schema: <strong>${escapeHtml(node.name)}</strong> — keine Kinder. Lege links Kindknoten an; deren Namen werden Spaltenköpfe.`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong>. Keine Kinder; Kindnamen werden Spaltenköpfe.`;
     wrap.append(lead);
     mount.replaceChildren(wrap);
     return;
   }
 
-  lead.innerHTML = `Schema: <strong>${escapeHtml(node.name)}</strong> — ${cols.length} Spalte${cols.length === 1 ? "" : "n"} aus Kindknoten (Reihenfolge = <code>position</code>). ${TABLE_BODY_ROWS} Datenzeilen.`;
+  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · ${TABLE_BODY_ROWS} Zeilen (eigene Zellen-Daten).`;
   wrap.append(lead);
 
   const grid = ensureTableGrid(
+    store,
     node.id,
     cols.map((c) => c.id)
   );
@@ -615,9 +684,9 @@ function renderTable() {
       input.type = "text";
       input.value = grid[r]?.[c] ?? "";
       input.placeholder = "—";
-      input.setAttribute("aria-label", `${cols[c].name}, Zeile ${r + 1}`);
+      input.setAttribute("aria-label", `${title}: ${cols[c].name}, Zeile ${r + 1}`);
       input.addEventListener("change", () => {
-        setCellValue(node.id, r, c, input.value);
+        setCellValue(store, node.id, r, c, input.value);
       });
       td.append(input);
       tr.append(td);
@@ -631,6 +700,427 @@ function renderTable() {
   mount.replaceChildren(wrap);
 }
 
+function formSection(title, hintText, ...children) {
+  const section = document.createElement("section");
+  section.className = "form-section";
+  const h3 = document.createElement("h3");
+  h3.textContent = title;
+  section.append(h3);
+  if (hintText) {
+    const hint = document.createElement("p");
+    hint.className = "hint-line";
+    hint.textContent = hintText;
+    section.append(hint);
+  }
+  for (const child of children) section.append(child);
+  return section;
+}
+
+function renderForm() {
+  const mount = document.getElementById("detail");
+  if (!mount) return;
+  const node = nodes.get(selectedId);
+  if (!node) {
+    mount.innerHTML = `<p class="muted">Knoten auswählen.</p>`;
+    return;
+  }
+
+  const kids = childrenOf(node.id);
+  const state = ensureFormState(node.id);
+  const wrap = document.createElement("div");
+  wrap.className = "form-view";
+
+  const lead = document.createElement("p");
+  lead.className = "lead";
+  lead.innerHTML = `Formular-Kontext: <strong>${escapeHtml(node.name)}</strong>. Auswahlfelder nutzen die <strong>${kids.length}</strong> Kindknoten als Optionen (Reihenfolge = <code>position</code>).`;
+  wrap.append(lead);
+
+  // --- Dropdown ---
+  const select = document.createElement("select");
+  select.className = "form-control";
+  select.id = "form-select";
+  const emptyOpt = document.createElement("option");
+  emptyOpt.value = "";
+  emptyOpt.textContent = kids.length ? "— wählen —" : "— keine Kinder —";
+  select.append(emptyOpt);
+  for (const k of kids) {
+    const opt = document.createElement("option");
+    opt.value = k.id;
+    opt.textContent = k.name;
+    select.append(opt);
+  }
+  if (kids.some((k) => k.id === state.select)) select.value = state.select;
+  else state.select = "";
+  select.disabled = kids.length === 0;
+  select.addEventListener("change", () => {
+    state.select = select.value;
+    persist();
+    refreshFormSnapshot();
+  });
+  wrap.append(
+    formSection(
+      "Dropdown (select)",
+      "Optionen = Kindknoten",
+      select
+    )
+  );
+
+  // --- Radio ---
+  const radioList = document.createElement("div");
+  radioList.className = "choice-list";
+  radioList.setAttribute("role", "radiogroup");
+  radioList.setAttribute("aria-label", `Auswahl für ${node.name}`);
+  if (kids.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "hint-line";
+    empty.textContent = "Keine Kinder — keine Radio-Optionen.";
+    radioList.append(empty);
+  } else {
+    if (!kids.some((k) => k.id === state.radio)) state.radio = "";
+    for (const k of kids) {
+      const row = document.createElement("label");
+      row.className = "choice-row";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = `radio-${node.id}`;
+      input.value = k.id;
+      input.checked = state.radio === k.id;
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          state.radio = k.id;
+          persist();
+          refreshFormSnapshot();
+        }
+      });
+      const span = document.createElement("span");
+      span.textContent = k.name;
+      row.append(input, span);
+      radioList.append(row);
+    }
+  }
+  wrap.append(
+    formSection("Radio buttons", "Eine Option aus Kindknoten", radioList)
+  );
+
+  // --- Checkboxes (multi) ---
+  const checkList = document.createElement("div");
+  checkList.className = "choice-list";
+  const validChecks = new Set(kids.map((k) => k.id));
+  state.checks = (state.checks || []).filter((id) => validChecks.has(id));
+  if (kids.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "hint-line";
+    empty.textContent = "Keine Kinder — keine Checkboxen.";
+    checkList.append(empty);
+  } else {
+    for (const k of kids) {
+      const row = document.createElement("label");
+      row.className = "choice-row";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = k.id;
+      input.checked = state.checks.includes(k.id);
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          if (!state.checks.includes(k.id)) state.checks.push(k.id);
+        } else {
+          state.checks = state.checks.filter((id) => id !== k.id);
+        }
+        persist();
+        refreshFormSnapshot();
+      });
+      const span = document.createElement("span");
+      span.textContent = k.name;
+      row.append(input, span);
+      checkList.append(row);
+    }
+  }
+  wrap.append(
+    formSection(
+      "Checkboxen (Mehrfach)",
+      "Mehrere Kindknoten gleichzeitig",
+      checkList
+    )
+  );
+
+  // --- Select multiple ---
+  const selectMulti = document.createElement("select");
+  selectMulti.className = "form-control";
+  selectMulti.multiple = true;
+  selectMulti.size = Math.min(6, Math.max(3, kids.length || 3));
+  for (const k of kids) {
+    const opt = document.createElement("option");
+    opt.value = k.id;
+    opt.textContent = k.name;
+    opt.selected = (state.selectMulti || []).includes(k.id);
+    selectMulti.append(opt);
+  }
+  state.selectMulti = (state.selectMulti || []).filter((id) =>
+    validChecks.has(id)
+  );
+  selectMulti.disabled = kids.length === 0;
+  selectMulti.addEventListener("change", () => {
+    state.selectMulti = [...selectMulti.selectedOptions].map((o) => o.value);
+    persist();
+    refreshFormSnapshot();
+  });
+  wrap.append(
+    formSection(
+      "Mehrfach-Select",
+      "HTML select[multiple] — Optionen = Kinder",
+      selectMulti
+    )
+  );
+
+  // --- Switch (boolean) ---
+  const switchRow = document.createElement("div");
+  switchRow.className = "switch-row";
+  const switchLab = document.createElement("span");
+  switchLab.textContent = `${node.name} aktiv?`;
+  const switchWrap = document.createElement("label");
+  switchWrap.className = "switch";
+  const switchInput = document.createElement("input");
+  switchInput.type = "checkbox";
+  switchInput.role = "switch";
+  switchInput.checked = !!state.toggle;
+  switchInput.setAttribute("aria-label", `${node.name} Umschalter`);
+  const track = document.createElement("span");
+  track.className = "switch-track";
+  switchInput.addEventListener("change", () => {
+    state.toggle = switchInput.checked;
+    persist();
+    refreshFormSnapshot();
+  });
+  switchWrap.append(switchInput, track);
+  switchRow.append(switchLab, switchWrap);
+  wrap.append(
+    formSection(
+      "Switch (boolean)",
+      "Boolean-Umschalter — Label vom selektierten Knoten",
+      switchRow
+    )
+  );
+
+  // --- Text / textarea ---
+  const textInput = document.createElement("input");
+  textInput.className = "form-control";
+  textInput.type = "text";
+  textInput.value = state.text || "";
+  textInput.placeholder = `Text zu „${node.name}“`;
+  textInput.addEventListener("change", () => {
+    state.text = textInput.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  const area = document.createElement("textarea");
+  area.className = "form-control-area";
+  area.value = state.textarea || "";
+  area.placeholder = "Freitext / Notiz";
+  area.addEventListener("change", () => {
+    state.textarea = area.value;
+    persist();
+    refreshFormSnapshot();
+  });
+  wrap.append(
+    formSection(
+      "Text & Textarea",
+      "Freie Eingabe zum selektierten Knoten",
+      textInput,
+      area
+    )
+  );
+
+  // --- Number + range ---
+  const num = document.createElement("input");
+  num.className = "form-control";
+  num.type = "number";
+  num.value = state.number ?? "";
+  num.placeholder = "Zahl";
+  num.addEventListener("change", () => {
+    state.number = num.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  const rangeWrap = document.createElement("div");
+  rangeWrap.className = "range-row";
+  const range = document.createElement("input");
+  range.type = "range";
+  range.min = "0";
+  range.max = "100";
+  range.value = String(state.range ?? 50);
+  const rangeVal = document.createElement("span");
+  rangeVal.className = "hint-line";
+  rangeVal.textContent = `Wert: ${range.value}`;
+  range.addEventListener("input", () => {
+    state.range = Number(range.value);
+    rangeVal.textContent = `Wert: ${range.value}`;
+    persist();
+    refreshFormSnapshot();
+  });
+  rangeWrap.append(range, rangeVal);
+  wrap.append(
+    formSection("Number & Range", "Numerische Eingaben", num, rangeWrap)
+  );
+
+  // --- Color / date / time ---
+  const inline = document.createElement("div");
+  inline.className = "inline-fields";
+
+  const color = document.createElement("input");
+  color.className = "form-control";
+  color.type = "color";
+  color.value = state.color || "#c4a35a";
+  color.addEventListener("input", () => {
+    state.color = color.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  const date = document.createElement("input");
+  date.className = "form-control";
+  date.type = "date";
+  date.value = state.date || "";
+  date.addEventListener("change", () => {
+    state.date = date.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  const time = document.createElement("input");
+  time.className = "form-control";
+  time.type = "time";
+  time.value = state.time || "";
+  time.addEventListener("change", () => {
+    state.time = time.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  inline.append(color, date, time);
+  wrap.append(
+    formSection("Color / Date / Time", "Weitere HTML5-Eingabetypen", inline)
+  );
+
+  // --- Email / URL ---
+  const email = document.createElement("input");
+  email.className = "form-control";
+  email.type = "email";
+  email.value = state.email || "";
+  email.placeholder = "name@example.com";
+  email.addEventListener("change", () => {
+    state.email = email.value;
+    persist();
+    refreshFormSnapshot();
+  });
+
+  const url = document.createElement("input");
+  url.className = "form-control";
+  url.type = "url";
+  url.value = state.url || "";
+  url.placeholder = "https://…";
+  url.addEventListener("change", () => {
+    state.url = url.value;
+    persist();
+    refreshFormSnapshot();
+  });
+  wrap.append(
+    formSection("Email & URL", "Validierte Textfelder", email, url)
+  );
+
+  // --- Datalist (suggestions from children) ---
+  const listId = `datalist-${node.id}`;
+  const combo = document.createElement("input");
+  combo.className = "form-control";
+  combo.type = "text";
+  combo.setAttribute("list", listId);
+  combo.value = state.datalist || "";
+  combo.placeholder = kids.length
+    ? "Tippen oder Vorschlag wählen"
+    : "Keine Kind-Vorschläge";
+  combo.addEventListener("change", () => {
+    state.datalist = combo.value;
+    persist();
+    refreshFormSnapshot();
+  });
+  const datalist = document.createElement("datalist");
+  datalist.id = listId;
+  for (const k of kids) {
+    const opt = document.createElement("option");
+    opt.value = k.name;
+    datalist.append(opt);
+  }
+  wrap.append(
+    formSection(
+      "Datalist (Autocomplete)",
+      "Vorschläge = Kindnamen",
+      combo,
+      datalist
+    )
+  );
+
+  // --- File (UI only) ---
+  const file = document.createElement("input");
+  file.className = "form-control";
+  file.type = "file";
+  wrap.append(
+    formSection(
+      "File",
+      "Nur UI-Demo — Upload wird nicht persistiert",
+      file
+    )
+  );
+
+  // --- Actions + snapshot ---
+  const actions = document.createElement("div");
+  actions.className = "form-actions";
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "btn";
+  resetBtn.textContent = "Formularwerte leeren";
+  resetBtn.addEventListener("click", () => {
+    formStates.set(node.id, defaultFormState());
+    persist();
+    renderForm();
+  });
+  actions.append(resetBtn);
+
+  const snap = document.createElement("pre");
+  snap.className = "form-snapshot";
+  snap.id = "form-snapshot";
+
+  wrap.append(formSection("Zustand", "Aktuelle Werte (Prototype)", actions, snap));
+  mount.replaceChildren(wrap);
+  refreshFormSnapshot();
+
+  function refreshFormSnapshot() {
+    const el = document.getElementById("form-snapshot");
+    if (!el) return;
+    const s = ensureFormState(node.id);
+    const nameOf = (id) => nodes.get(id)?.name || id || "—";
+    const payload = {
+      node: node.name,
+      select: nameOf(s.select),
+      radio: nameOf(s.radio),
+      checks: s.checks.map(nameOf),
+      selectMulti: s.selectMulti.map(nameOf),
+      toggle: s.toggle,
+      text: s.text,
+      textarea: s.textarea,
+      number: s.number,
+      range: s.range,
+      color: s.color,
+      date: s.date,
+      time: s.time,
+      email: s.email,
+      url: s.url,
+      datalist: s.datalist,
+    };
+    el.textContent = JSON.stringify(payload, null, 2);
+  }
+}
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll("&", "&amp;")
@@ -640,7 +1130,9 @@ function escapeHtml(s) {
 }
 
 function renderRight() {
-  if (activeTab === "table") renderTable();
+  if (activeTab === "table") renderTableView(tableCells, "Tabelle");
+  else if (activeTab === "table2") renderTableView(tableCells2, "Tabelle 2");
+  else if (activeTab === "form") renderForm();
   else renderDetail();
 }
 
@@ -654,7 +1146,7 @@ function onKeyDown(e) {
   if (!e.altKey) return;
   if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
   const tag = (e.target && e.target.tagName) || "";
-  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   e.preventDefault();
   moveSibling(selectedId, e.key === "ArrowUp" ? -1 : 1);
 }
