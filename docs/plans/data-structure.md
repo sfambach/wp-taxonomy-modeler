@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.8-plan"
+version: "0.6.9-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -465,6 +465,52 @@ Parameter {
 ```
 
 Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).
+
+### Example thinking tree: Bauteile / Widerstände
+
+Second planning aid — a **project-specific catalog tree** (not the Definition tree).  
+Shows hierarchy where leaf-ish nodes can carry Parameters (Wert, Bauform, …).
+
+```mermaid
+flowchart TB
+  R["Root<br/>parent = null"]
+  R --> B["Bauteile"]
+  B --> W["Widerstände"]
+  W --> V["Wert"]
+  W --> F["Bauform"]
+  W --> L["Leistungsaufnahme"]
+  W --> G["Größe"]
+  G --> GL["Länge"]
+  G --> GB["Breite"]
+  G --> GH["Höhe"]
+```
+
+```text
+Root                                    ← root node (defines this tree)
+└── Bauteile
+    └── Widerstände
+        ├── Wert
+        ├── Bauform
+        ├── Leistungsaufnahme
+        └── Größe
+            ├── Länge
+            ├── Breite
+            └── Höhe
+```
+
+**Thinking notes (not locked):**
+
+| Node | Possible role |
+|------|----------------|
+| `Widerstände` | Category node; may have several Parameters |
+| `Wert` | Parameter on Widerstände — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
+| `Bauform` | Parameter — e.g. type=`text` or enum-like choices |
+| `Leistungsaufnahme` | Parameter — measure + Watt base unit |
+| `Größe` | Group node for dimension Parameters |
+| `Länge` / `Breite` / `Höhe` | Parameters under Größe — measure + Meter (+ optional prefix) |
+
+`Root` / `Bauteile` would appear in `Project.root_nodes` (or Root alone if Bauteile is not a root).  
+This tree is typically **not** `template` (unless reused as a template catalog).
 
 ### What a Parameter is not (until decided otherwise)
 
