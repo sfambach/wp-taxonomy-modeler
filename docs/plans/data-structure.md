@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.16-plan"
+version: "0.6.18-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -22,8 +22,11 @@ todos:
     content: "Decide whether Parameter is a specialized Node (subclass / kind flag / role) — explore typed edges first"
     status: pending
   - id: explore-typed-edges
-    content: "Explore is-a vs consists-of edges with properties before locking Parameter-as-Node"
+    content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
     status: in_progress
+  - id: define-relation-type
+    content: "Decide RelationType: one logical type with optional inverse pair; display + inheritable flags"
+    status: pending
   - id: define-core-types
     content: "Define core Type catalog: scalars + composite measure (value+prefix+unit)"
     status: in_progress
@@ -96,8 +99,18 @@ classDiagram
   class Relation {
     +from : Node
     +to : Node
-    +kind : RelationKind
+    +relation_type : RelationType
     +props : ?
+  }
+
+  class RelationType {
+    +id
+    +key
+    +forward_label
+    +inverse_label : ?
+    +bidirectional : bool
+    +display : DisplayHint
+    +inheritable : bool?
   }
 
   class Changelog {
@@ -112,9 +125,10 @@ classDiagram
   }
 
   note for Project "Definitionsbaum anchors required"
-  note for Node "Hierarchy node; may still use parent_id\nand/or typed Relations (explore)"
-  note for Parameter "UNDECIDED shape\ntype from core Type catalog\nmeasure = number|integer + prefix + unit\nenum = scalar options + selection_mode\n  (single|multiple — not types)"
-  note for Relation "EXPLORATORY\nkinds: ist-ein | besteht-aus | ..."
+  note for Node "Hierarchy + Relations; part-of nodes\nmay render as attributes of parent"
+  note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
+  note for Relation "EXPLORATORY\n1 logical type; optional inverse label\nif bidirectional (paired)"
+  note for RelationType "Pairs e.g.\nconsists_of <-> is_part_of\nchild <-> parent\nuses <-> used_by\ndisplay depends on type"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -127,6 +141,7 @@ classDiagram
   Node <|-- Parameter : specialized ? undecided
   Relation --> Node : from
   Relation --> Node : to
+  Relation --> RelationType : relation_type
   Node "1" --> "1" Changelog : changelog
   Parameter "1" --> "1" Node : type
   Parameter "0..1" --> "0..1" Node : prefix
@@ -134,8 +149,9 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `Relation` is **exploratory**. Core **Type** catalog: scalars + composites **`measure`** and **`enum`**.  
-`single`/`multiple` are **selection methods** on enum, not separate types (Q38). Parameter path still **undecided** (Q33/Q34).
+**Legend:** `Relation` / `RelationType` are **exploratory**.  
+One **logical** relation type; if bidirectional, store **forward + inverse labels** as a pair (still one type).  
+Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `to` as **attribute** of `from`, inheritable along `ist-ein`).
 
 ## Core objects
 
@@ -146,7 +162,8 @@ classDiagram
 | 3 | **Project** | Holds trees + **required Definition anchors** |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
-| 6 | **Relation** | **Exploratory:** typed edge (`ist-ein` / `besteht-aus` / …) |
+| 6 | **Relation** | **Exploratory:** edge between two Nodes with a RelationType |
+| 7 | **RelationType** | **Exploratory:** logical type; optional inverse label if bidirectional |
 
 ### Shared audit idea (recommended)
 
@@ -187,7 +204,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
 | **Parameter as separate sibling of Node** | **Under review** | Competing with Parameter-as-Node and with typed `besteht-aus` edges |
-| **Relation / typed edge** | **Exploratory** | `ist-ein`, `besteht-aus`, optional edge props (Q35) |
+| **Relation / typed edge** | **Exploratory** | Edge + RelationType; optional inverse pair (Q35/Q41) |
+| **RelationType** | **Exploratory** | One logical type; forward/inverse labels; display + inherit rules (Q42/Q43) |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -237,7 +255,9 @@ flowchart TB
 - One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node or via besteht-aus**; otherwise Q14
 - Every Project, Node, and Parameter has a **changelog**. — **agreed** (if Parameter is a Node, one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
-- **Typed edges** (`ist-ein`, `besteht-aus`, …) — **exploratory only (Q35)**
+- **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; bidirectional = paired labels on one type (Q41)
+- **Display** of related nodes depends on RelationType (part-of → attributes) — **leaning (Q42)**
+- **`consists_of` attributes inheritable along `is_a`** — **leaning (Q43)**
 
 ```text
 Project ──(several trees)──► Root Node
@@ -600,12 +620,63 @@ Measure pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** a
 Relation {
   from: Node
   to:   Node
-  kind: "ist-ein" | "besteht-aus" | "referenziert" | …   # open
+  relation_type: RelationType
   props: ?   # optional edge metadata
+}
+
+RelationType {
+  key:            string              # logical id, e.g. "consists_of"
+  forward_label:  string              # e.g. "besteht aus" / "consists of"
+  inverse_label:  string | null       # e.g. "ist Teil von" / "is part of"
+  bidirectional:  bool                # if true, inverse_label is required (paired)
+  display:        DisplayHint         # how UI renders the related nodes
+  inheritable:    bool?               # can child nodes inherit along ist-ein?
 }
 ```
 
-Not agreed — only for the Bauteile example below (Q35).
+#### One type or two?
+
+| Idea | Meaning | Outcome |
+|------|---------|---------|
+| Unidirectional | Relation stores only forward kind | One RelationType |
+| Bidirectional | Forward + back labels (`consists of` ↔ `is part of`) | Still **one logical RelationType** with a **paired inverse** — not two independent types |
+
+**Leaning:** allow bidirectional as **paired labels on one RelationType**. Storing two free-floating opposite types would drift; pairing keeps them as one concept (Q41).
+
+#### Example RelationType pairs
+
+| Logical key | Forward | Inverse (if bidirectional) | Typical display |
+|-------------|---------|----------------------------|-----------------|
+| `consists_of` | besteht aus / consists of | ist Teil von / is part of | **`to` as attribute of `from`** |
+| `is_a` | ist ein / is a | hat Untertyp / has subtype? | taxonomy / inheritance path |
+| `child_of` | child / Kind | father/parent / Vater | tree hierarchy (may replace `parent_id`) |
+| `uses` | using / verwendet | is used by / wird verwendet von | reference / dependency view |
+
+#### Display depends on RelationType (Q42)
+
+Related nodes are **not** always shown the same way:
+
+| RelationType | UI leaning |
+|--------------|------------|
+| `consists_of` / part-of | Nodes that **are part of** a parent appear as **attributes** of that parent (not as a peer branch in the main taxonomy tree) |
+| `is_a` | Shown as taxonomy / subtype tree |
+| `child_of` | Classic parent/child tree |
+| `uses` | Reference list / “used by” reverse index |
+
+#### Inheritance of composition attributes (Q43)
+
+- Along **`is_a`** (e.g. NPN **ist ein** Transistor): attributes that the parent **besteht aus** (Wert, Maße, …) **can be inherited** by the child node.
+- Inheritance mechanics still open (copy / live merge / override) — related to Q30.
+- Only RelationTypes marked `inheritable` (leaning: composition/`consists_of`) participate.
+
+```text
+Transistor  ─[consists_of]→ Gehäuse, Uce, Ic, Maße, …
+NPN         ─[is_a]→ Transistor
+NPN UI      → shows Transistor's consists_of set as attributes (inherited)
+              + any NPN-only consists_of overrides/additions
+```
+
+Not agreed — refine with Q35/Q41–Q43; Bauteile example below still uses informal `[ist-ein]` / `[besteht-aus]` labels.
 
 ### Example tree: Bauteile (typed edges)
 
@@ -729,9 +800,9 @@ flowchart TB
   H -.->|referenziert| Def
 ```
 
-**Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` set). Exact rule is open — copy on create, live inherit, or merge override (related to Q30/templates).
+**Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` / `consists_of` set as **attributes**). Exact rule is open — copy on create, live inherit, or merge override (Q43; related to Q30/templates).
 
-**Composition note:** `besteht-aus` is **not** inheritance. Edges need a **kind** (and maybe props). Cross-branch `referenziert` links measure slots to the Definitionsbaum.
+**Composition note:** `besteht-aus` is **not** inheritance. Paired inverse = `ist Teil von`. UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links measure slots to the Definitionsbaum.
 
 ### Implementation / selection tradeoff (planning only)
 
@@ -743,7 +814,7 @@ flowchart TB
 | Modeling “ist ein” vs “besteht aus” | Taxonomy parent + separate param link | Explicit edge kinds (clearer semantically) |
 | Risk | Params feel bolted on | Graph complexity; WP terms alone may not be enough |
 
-**Status:** explore with this Bauteile tree — **do not lock** Q33/Q34/Q35 yet.
+**Status:** explore RelationType pairs + display/inherit rules — **do not lock** Q33/Q34/Q35/Q41–Q43 yet.
 
 ### Emerging core types (leaning — Q36)
 

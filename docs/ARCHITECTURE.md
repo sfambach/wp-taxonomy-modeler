@@ -43,7 +43,9 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Parameter` as specialized `Node` is **undecided**; exploring **Relation** (typed edges) as well (Q33–Q35).  
+`Parameter` as specialized `Node` is **undecided**; exploring **Relation** + **RelationType** (Q33–Q35, Q41–Q43).  
+Bidirectional leaning: one logical RelationType with forward/inverse labels (e.g. consists_of ↔ is_part_of).  
+Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
@@ -168,7 +170,8 @@ Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Children | One node can have several child nodes (or none) |
 | Parameters | Undecided: attached defs / Parameter-Nodes / besteht-aus children |
 | Parameter owner | Parent link, `node_id`, or besteht-aus edge — Q14 |
-| Typed edges | Exploratory Relation (`ist-ein`, `besteht-aus`) — Q35 |
+| Typed edges | Exploratory Relation + RelationType (`consists_of`↔`is_part_of`, …) — Q35/Q41 |
+| Relation display | part-of → attributes of parent; inherit along is_a — Q42/Q43 |
 
 Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
 
