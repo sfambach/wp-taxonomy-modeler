@@ -32,7 +32,8 @@
 | Q24 | How does a type-Node declare that a unit is allowed/required? | Flag on node / naming convention / linked meta / subtree | TBD | open |
 | Q25 | How are Units represented? | Separate Unit class / Node / string | **Decided:** unit is a **Node**; values are **child nodes** | decided |
 | Q26 | Unit value selection: direct children only or any descendant? | Direct children / all descendants | Direct children (leaning) | open |
-| Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | TBD | open |
+| Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | See example tree under Definition → Type | open |
+| Q28 | Is a measure unit one node (kOhm) or prefix node + base unit node (k + Ohm)? | Single value node / prefix+base composition | TBD — motivated by Definition → Basiseinheit / Präfix example | open |
 
 ## How to close a question
 

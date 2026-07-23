@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Parameter.type and Parameter.unit are Nodes (unit values = unit children). Planning artifact only — no implementation.
 status: draft
-version: "0.6.5-plan"
+version: "0.6.6-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -374,32 +374,63 @@ How a type-Node declares that it needs/allows a unit (flag, convention, subtree,
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
 
-### Example (conceptual)
+### Example thinking tree: Definition
+
+Planning aid — a concrete tree to reason about types and units.  
+Root node **Definition**; children **Type**, **Basiseinheit**, **Präfix**.  
+(Grandchildren are illustrative, not final catalog.)
+
+```mermaid
+flowchart TB
+  D["Node: Definition<br/>parent = null — ROOT"]
+
+  D --> T["Node: Type"]
+  D --> B["Node: Basiseinheit"]
+  D --> P["Node: Präfix"]
+
+  T --> T1["measure"]
+  T --> T2["url"]
+  T --> T3["text"]
+
+  B --> B1["Ohm"]
+  B --> B2["Farad"]
+  B --> B3["Meter"]
+
+  P --> P1["m milli"]
+  P --> P2["k kilo"]
+  P --> P3["M mega"]
+  P --> P4["µ micro"]
+```
 
 ```text
-# Type nodes (all are Node):
-Node { id: 80, name: "measure" }
-Node { id: 81, name: "url" }
-
-# Unit node + values (all are Node):
-Node { id: 50, parent_id: null, name: "Resistance units" }
-  ├─ Node { id: 51, parent_id: 50, name: "mOhm" }
-  ├─ Node { id: 52, parent_id: 50, name: "Ohm" }
-  ├─ Node { id: 53, parent_id: 50, name: "kOhm" }
-  └─ Node { id: 54, parent_id: 50, name: "MOhm" }
-
-Node { id: 2, name: "Resistors", parent_id: 1 }
-  ├─ Parameter {
-  │    key: "resistance", label: "Resistance",
-  │    type: Node(80),   # measure
-  │    unit: Node(50)    # values = children; e.g. pick 53 = kOhm for "10 kOhm"
-  │  }
-  └─ Parameter {
-       key: "datasheet", label: "Datasheet",
-       type: Node(81),   # url
-       unit: null
-     }
+Project.root_nodes includes:
+  Node { id: 1, parent_id: null, name: "Definition" }          # ROOT → defines this tree
+    ├─ Node { id: 10, parent_id: 1, name: "Type" }
+    │    ├─ Node { id: 11, parent_id: 10, name: "measure" }
+    │    ├─ Node { id: 12, parent_id: 10, name: "url" }
+    │    └─ Node { id: 13, parent_id: 10, name: "text" }
+    ├─ Node { id: 20, parent_id: 1, name: "Basiseinheit" }
+    │    ├─ Node { id: 21, parent_id: 20, name: "Ohm" }
+    │    ├─ Node { id: 22, parent_id: 20, name: "Farad" }
+    │    └─ Node { id: 23, parent_id: 20, name: "Meter" }
+    └─ Node { id: 30, parent_id: 1, name: "Präfix" }
+         ├─ Node { id: 31, parent_id: 30, name: "m" }   # milli
+         ├─ Node { id: 32, parent_id: 30, name: "k" }   # kilo
+         ├─ Node { id: 33, parent_id: 30, name: "M" }   # mega
+         └─ Node { id: 34, parent_id: 30, name: "µ" }   # micro
 ```
+
+**How this might map to Parameter (still thinking, not locked):**
+
+| Parameter field | Possible reference in this tree |
+|-----------------|----------------------------------|
+| `type` | e.g. Node `measure` (id 11) under **Type** |
+| `unit` | e.g. Node **Basiseinheit** (id 20) or a specific base like **Ohm** (id 21) — decide later |
+| unit *values* | children of the chosen unit node (e.g. under Präfix, or combined prefix+base — **open**) |
+
+Open design question (new): whether “10 kOhm” is modeled as prefix node `k` + base node `Ohm`, or as a single unit-value node `kOhm`. Track as **Q28**.
+
+### Example (earlier resistance sketch)
 
 ### What a Parameter is not (until decided otherwise)
 
