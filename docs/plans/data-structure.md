@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.19-plan"
+version: "0.6.20-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -25,7 +25,7 @@ todos:
     content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
     status: in_progress
   - id: define-relation-type
-    content: "Decide RelationType: one logical type with optional inverse pair; display + inheritable flags"
+    content: "Decide RelationType: single label; display + inheritable flags; bidirectional without inverse field"
     status: pending
   - id: define-core-types
     content: "Define core Type catalog: scalars + composite measure (value+prefix+unit)"
@@ -108,7 +108,6 @@ classDiagram
     +key
     +label
     +bidirectional : bool
-    +inverse : RelationType?
     +display : DisplayHint
     +inheritable : bool?
   }
@@ -127,8 +126,8 @@ classDiagram
   note for Project "Definitionsbaum anchors required"
   note for Node "Hierarchy + Relations; part-of nodes\nmay render as attributes of parent"
   note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
-  note for Relation "EXPLORATORY\none RelationType.label per direction;\nbidirectional => paired inverse type"
-  note for RelationType "Each type has one label\ne.g. consists_of.label = besteht aus\ninverse.label = ist Teil von\ndisplay depends on type"
+  note for Relation "EXPLORATORY\nRelationType has one label only"
+  note for RelationType "Single label per type\ne.g. consists_of.label = besteht aus\nno inverse field\ndisplay depends on type"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -150,7 +149,8 @@ classDiagram
 ```
 
 **Legend:** `Relation` / `RelationType` are **exploratory**.  
-Each RelationType has one **`label`**. If bidirectional, pair with an **`inverse`** RelationType (that type has its own `label`) — not `forward_label`/`inverse_label` on one type.  
+Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
+`bidirectional` may mean the same edge can be read from both ends in the UI — without a second type.  
 Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `to` as **attribute** of `from`, inheritable along `ist-ein`).
 
 ## Core objects
@@ -163,7 +163,7 @@ Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `t
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 | 6 | **Relation** | **Exploratory:** edge between two Nodes with a RelationType |
-| 7 | **RelationType** | **Exploratory:** type with one `label`; optional `inverse` pair if bidirectional |
+| 7 | **RelationType** | **Exploratory:** type with one `label` (no inverse field) |
 
 ### Shared audit idea (recommended)
 
@@ -204,8 +204,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
 | **Parameter as separate sibling of Node** | **Under review** | Competing with Parameter-as-Node and with typed `besteht-aus` edges |
-| **Relation / typed edge** | **Exploratory** | Edge + RelationType; optional inverse pair (Q35/Q41) |
-| **RelationType** | **Exploratory** | One `label` per type; optional inverse RelationType; display + inherit (Q42/Q43) |
+| **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41) |
+| **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -255,7 +255,7 @@ flowchart TB
 - One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node or via besteht-aus**; otherwise Q14
 - Every Project, Node, and Parameter has a **changelog**. — **agreed** (if Parameter is a Node, one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
-- **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label`; bidirectional = paired inverse type (Q41)
+- **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label` only; no `inverse` field (Q41)
 - **Display** of related nodes depends on RelationType (part-of → attributes) — **leaning (Q42)**
 - **`consists_of` attributes inheritable along `is_a`** — **leaning (Q43)**
 
@@ -627,31 +627,30 @@ Relation {
 RelationType {
   key:            string              # logical id, e.g. "consists_of"
   label:          string              # e.g. "besteht aus" / "consists of"
-  bidirectional:  bool
-  inverse:        RelationType | null # paired opposite type (has its own label), if bidirectional
+  bidirectional:  bool                # same edge readable from both ends? (no inverse type)
   display:        DisplayHint         # how UI renders the related nodes
   inheritable:    bool?               # can child nodes inherit along ist-ein?
 }
 ```
 
-#### One type or two?
+#### Labels and direction
 
-| Idea | Meaning | Outcome |
-|------|---------|---------|
-| Unidirectional | One RelationType with one `label` | Single type |
-| Bidirectional | Two RelationTypes, each with one `label`, linked via `inverse` | Paired pair (`consists_of` ↔ `is_part_of`) |
+| Idea | Meaning |
+|------|---------|
+| One `label` | Every RelationType has exactly one label — no `forward`/`inverse` fields |
+| No `inverse` | Do not store a paired opposite RelationType on the type |
+| Bidirectional (flag) | Optional: traverse/display the same Relation from the other node |
 
-**Leaning:** every RelationType has exactly one **`label`**. Bidirectional means a **paired inverse RelationType** (also one `label`) — do not store `forward_label` + `inverse_label` on the same type (Q41).
+**Leaning:** RelationType = **`label` only** (plus key/display/flags). Opposite wording like “ist Teil von” is a **view** of the same `consists_of` edge when looking from the part, not a second stored type field (Q41).
 
-#### Example RelationType pairs
+#### Example RelationTypes
 
-| Key | `label` | Inverse key | Inverse `label` | Typical display |
-|-----|---------|-------------|-----------------|-----------------|
-| `consists_of` | besteht aus | `is_part_of` | ist Teil von | **`to` as attribute of `from`** |
-| `is_a` | ist ein | `has_subtype`? | hat Untertyp? | taxonomy / inheritance path |
-| `child_of` | Kind von | `parent_of` | Vater/Parent von | tree hierarchy (may replace `parent_id`) |
-| `uses` | verwendet | `used_by` | wird verwendet von | reference / dependency view |
-#### Display depends on RelationType (Q42)
+| Key | `label` | Typical display |
+|-----|---------|-----------------|
+| `consists_of` | besteht aus | **`to` as attribute of `from`** |
+| `is_a` | ist ein | taxonomy / inheritance path |
+| `child_of` | Kind von | tree hierarchy (may replace `parent_id`) |
+| `uses` | verwendet | reference / dependency view |#### Display depends on RelationType (Q42)
 
 Related nodes are **not** always shown the same way:
 
@@ -801,7 +800,7 @@ flowchart TB
 
 **Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` / `consists_of` set as **attributes**). Exact rule is open — copy on create, live inherit, or merge override (Q43; related to Q30/templates).
 
-**Composition note:** `besteht-aus` is **not** inheritance. Paired inverse = `ist Teil von`. UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links measure slots to the Definitionsbaum.
+**Composition note:** `besteht-aus` is **not** inheritance. From the part’s side the same edge may read as “ist Teil von” (view only — no inverse type field). UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links measure slots to the Definitionsbaum.
 
 ### Implementation / selection tradeoff (planning only)
 

@@ -44,7 +44,7 @@ flowchart TB
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
 `Parameter` as specialized `Node` is **undecided**; exploring **Relation** + **RelationType** (Q33–Q35, Q41–Q43).  
-Bidirectional leaning: each RelationType has one **`label`**; pair via `inverse` (e.g. consists_of ↔ is_part_of).  
+RelationType leaning: one **`label`** only; no `inverse` field (reverse wording is a view of the same edge).  
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
