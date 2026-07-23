@@ -2,7 +2,7 @@
 name: Use cases
 overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14; keep Q34/Q49 open in Notes.
 status: draft
-version: "0.1.2-plan"
+version: "0.1.3-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -213,20 +213,20 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Touches** | Parameter-Node, Type Node, Relation `has_type`?, Node.config? |
 | **Notes** | Q33 decided; Q48 binding; Q34 config lean |
 
-### UC-15 — Create a derived or composed type from simples
+### UC-15 — Create / edit an enum (derived type)
 
 | Field | Content |
 |-------|---------|
 | **Actor** | Admin |
-| **Goal** | Add a new type such as `measure`, `enum`, or `string_list` based on fixed simples |
-| **Trigger** | Adds a type under Datentypen / Type |
-| **Preconditions** | Fixed simples exist in the Project |
-| **Main flow** | 1. Admin creates a new type Node under Type<br>2. Configures it as derived/composed from simples (e.g. measure ← numeric simple + Präfix + Basiseinheit)<br>3. Saves<br>4. New type becomes selectable in UC-14 |
-| **Variants** | Invalid composition; name clash with a simple |
-| **Outcome** | Extensible type catalog without coding a new PHP type class |
-| **MVP?** | later |
-| **Touches** | Type Node, SimpleType Nodes, Node.config |
-| **Notes** | Q33/Q36; composition rules still open; Q34 config |
+| **Goal** | Define an enum type as a list of values over exactly one simple base type |
+| **Trigger** | Edits `enum` under Datentypen (template) or creates a concrete enum |
+| **Preconditions** | Template simples exist (`int`…`bool`) |
+| **Main flow** | 1. Admin opens enum under Datentypen<br>2. Sets **base_type** to exactly one simple (e.g. `string`)<br>3. Adds value Nodes as children (e.g. `0201`, `0603`)<br>4. Saves; slots may `has_type` → this enum |
+| **Variants** | Missing base_type; values not conforming to base (validation later) |
+| **Outcome** | Closed option list typed by one simple; UI shows select/radio/multi |
+| **MVP?** | later / unclear |
+| **Touches** | Type Node (enum), SimpleType Nodes, Relation `base_type`, value child Nodes |
+| **Notes** | Q36/Q38/Q39 agreed direction; template assignment Q50 |
 
 ### UC-16 — Restrict Relations on simple data-type Nodes
 
