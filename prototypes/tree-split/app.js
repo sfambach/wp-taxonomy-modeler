@@ -881,7 +881,7 @@ function renderForm() {
   switchWrap.className = "switch";
   const switchInput = document.createElement("input");
   switchInput.type = "checkbox";
-  switchInput.role = "switch";
+  switchInput.setAttribute("role", "switch");
   switchInput.checked = !!state.toggle;
   switchInput.setAttribute("aria-label", `${node.name} Umschalter`);
   const track = document.createElement("span");
