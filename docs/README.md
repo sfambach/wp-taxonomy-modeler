@@ -12,10 +12,11 @@ Living project documentation for **WP Taxonomy Tree**.
 4. [`plans/data-structure.md`](plans/data-structure.md) — Project + Node + Parameter (tree = root node)
 5. [`plans/use-cases.md`](plans/use-cases.md) — use-case cards (who / goal / flow)
 6. [`plans/example-projects.md`](plans/example-projects.md) — concrete host examples (BOM, …)
-7. [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — questions to resolve before coding
-8. [`PRODUCT.md`](PRODUCT.md) — what the product is
-9. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built
-10. [`ROADMAP.md`](ROADMAP.md) — what ships in which phase
+7. [`plans/part-identity-layers.md`](plans/part-identity-layers.md) — kind / package / catalog part / BOM usage
+8. [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — questions to resolve before coding
+9. [`PRODUCT.md`](PRODUCT.md) — what the product is
+10. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built
+11. [`ROADMAP.md`](ROADMAP.md) — what ships in which phase
 
 ## Keeping docs current
 

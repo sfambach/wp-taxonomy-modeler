@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.26-plan"
+version: "0.6.27-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -18,6 +18,7 @@ related_plans:
   - docs/plans/data-structure.md
   - docs/plans/use-cases.md
   - docs/plans/example-projects.md
+  - docs/plans/part-identity-layers.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
@@ -29,7 +30,10 @@ todos:
     content: "Describe planning use cases (format + cards in docs/plans/use-cases.md); open questions stay open"
     status: in_progress
   - id: example-projects
-    content: "Validate model with concrete example projects (BOM first; second example pending)"
+    content: "Validate model with concrete example projects (BOM, Hardware, Rezepte)"
+    status: in_progress
+  - id: part-identity-layers
+    content: "Keep part identity layers note aligned when catalog modeling evolves"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -191,6 +195,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Example project **Hardware** (compare, tests, PC builds, stats): same split; Relations optional for builds — model still fits (A+B cross-check). |
 | 2026-07-23 | Example project **Rezepte**: trees + measures + optional Relation.props for amounts; steps/scaling/shopping/stats = host — model still fits (A+B+C). |
 | 2026-07-23 | Design spin: measure value on **Relation**; **Präfix+Basiseinheit = unit group** (not a loose chain) — Q45. |
+| 2026-07-23 | Part identity **layers** (kind → subtype → specs → package → catalog part → board usage); same pattern for R/C/Diode/IC. |
 
 ## Change protocol
 

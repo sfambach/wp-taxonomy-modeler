@@ -68,7 +68,8 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
 Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).  
 Use cases: [`docs/plans/use-cases.md`](plans/use-cases.md).  
-Example projects: [`docs/plans/example-projects.md`](plans/example-projects.md) (BOM + Hardware + Rezepte validate tree vs host split).
+Example projects: [`docs/plans/example-projects.md`](plans/example-projects.md) (BOM + Hardware + Rezepte validate tree vs host split).  
+Part identity layers: [`docs/plans/part-identity-layers.md`](plans/part-identity-layers.md) (100 Ω SMD vs THT vs Shunt, etc.).
 Planning examples: **Definitionsbaum**; separate **Bauteile** tree with typed edges (`ist-ein` / `besteht-aus`).
 
 ## Versioning

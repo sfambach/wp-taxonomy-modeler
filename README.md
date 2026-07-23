@@ -15,6 +15,7 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Project, Node, Parameter, Changelog) |
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
+| [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Target architecture |

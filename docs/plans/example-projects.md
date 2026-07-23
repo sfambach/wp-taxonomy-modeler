@@ -100,7 +100,8 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 ### Verdict for Example A
 
 **Still fits** the intended split: taxonomy-tree owns the **part tree + property definitions (+ selection UX)**; BOM lists, money, stock, compare, and supplier CSV stay in the **host**.  
-No model break yet — confirms the plugin should stay a **tree environment**, not a BOM app.
+**No model break yet** — confirms the plugin should stay a **tree environment**, not a BOM app.  
+For “same 100 Ω, different package/shunt” confusion see [`part-identity-layers.md`](part-identity-layers.md).
 
 Related use-case cards: UC-20… in [`use-cases.md`](use-cases.md).
 
