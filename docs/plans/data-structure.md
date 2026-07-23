@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.45-plan"
+version: "0.6.46-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -802,6 +802,53 @@ Rezept ──uses──► Mehl
 **Leaning (not locked):** treat **Präfix+Einheit as one unit group**; do not model quantity as Widerstand→value→prefix→unit as three independent hops. Relation.props may carry `value` and point at / embed that group (Q45).
 
 Aligns with existing composite **`quantity`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
+
+#### Design spin: Basiseinheit → allowed Präfixe + scale factor (exploratory) — Q51
+
+**Idea:** each **Basiseinheit** Node links via Relation to the **Präfix** Nodes that make sense for it. That filters the quantity UI (Ohm → k, m, M, µ; Meter → m, c, k; kitchen `g` → maybe none or only SI mass prefixes).
+
+```text
+Basiseinheit Ohm
+  ─[allows_prefix]→ Präfix k
+  ─[allows_prefix]→ Präfix m
+  ─[allows_prefix]→ Präfix M
+  ─[allows_prefix]→ Präfix µ
+
+Basiseinheit Meter
+  ─[allows_prefix]→ Präfix m
+  ─[allows_prefix]→ Präfix k
+  ─[allows_prefix]→ Präfix c   # if present
+```
+
+**Where does ×1000 live?** Two places (can combine):
+
+| Option | Where | Example | Pros | Cons |
+|--------|--------|---------|------|------|
+| **A — on Präfix Node** | `Node.config.factor` (or child/field) | `kilo.factor = 1000`, `milli.factor = 0.001` | Matches SI: k is always ×10³, independent of Ohm/Meter/Watt | Custom non-SI “prefixes” that differ per unit need overrides |
+| **B — on the Relation edge** | `Relation.props.factor` / multiplicity | `Ohm ─[allows_prefix]→ k` with `props: { factor: 1000 }` | Unit-specific scales; flexible for weird domains | Duplicates SI factors on every edge; “Multiplizität” easy to confuse with cardinality |
+
+**Spin leaning (not locked):**
+
+1. **Allowed set** = Relations `Basiseinheit ─[allows_prefix]→ Präfix` (UI filter for quantity).
+2. **Scale factor** = primarily on the **Präfix Node** (SI: kilo always 1000) — “das könnte man auch in Kilo hinterlegen”.
+3. Edge `props.factor` only if a unit needs an **override** (rare); default = inherit from Präfix.
+4. Prefer word **factor** / **scale** over “Multiplizität” (that often means 1..n cardinality).
+
+Normalization example (same physical Größe):
+
+```text
+display: 10 kOhm
+  value=10, prefix=k (factor 1000), base_unit=Ohm
+  → SI base reading: 10 × 1000 = 10000 Ohm
+
+display: 10000 Ohm
+  value=10000, prefix=null, base_unit=Ohm
+  → same base reading
+```
+
+Host/conversion math can multiply `value × prefix.factor` when comparing or scaling (Rezepte, shopping list) — still host concern if conversions are domain-specific.
+
+**Open (Q51):** lock A vs B vs hybrid; RelationType key name (`allows_prefix`?); whether every Basiseinheit must declare prefixes or “all prefixes allowed” is default.
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 

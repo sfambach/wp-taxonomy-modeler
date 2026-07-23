@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.45-plan"
+version: "0.6.46-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -214,6 +214,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | **Project ≈ taxonomy** (Q18 strengthened). Default Nodes: **generate** vs **copy template Project** — new **Q50** (relates Q30/Q32). |
 | 2026-07-23 | Template holds **simple types** + derived **enum** (exactly one **base_type** + **value list**). Q50 leans template-copy; Q36/Q38/Q39 aligned. |
 | 2026-07-23 | Derived type **`quantity`** (Größe = value + Präfix + Basiseinheit) in the template — renamed from informal `measure` (not a Messung / measurement act; not BOM Menge). Q36/Q37/Q45/Q50 synced; UC-05/UC-17. |
+| 2026-07-23 | Spin **Q51:** Basiseinheit ─[allows_prefix]→ Präfix (allowed set); scale **factor** primarily on Präfix Node (kilo=1000); edge factor only as override. |
 
 ## Change protocol
 

@@ -43,6 +43,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Emerging type model: **template** holds **simple types** (`int`, `double`, `string`, `char`, `bool`) and derived **enum** + **quantity**; further types later (`string_list`, …).
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge.
+- Exploring (**Q51**): each Basiseinheit may link to allowed Präfixe; scale factor (e.g. kilo ×1000) lives on the Präfix Node by default.
 - **Decided (Q33/Q34):** **no Parameter class** and **no ParameterRole** — attributes like `Wert` are ordinary **Nodes** with type binding via config / `has_type`. Typed edges remain exploratory (**Q35**, Q41–Q43).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).

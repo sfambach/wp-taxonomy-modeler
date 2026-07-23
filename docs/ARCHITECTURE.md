@@ -46,6 +46,7 @@ Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
 Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
+Unit/prefix spin (Q51): Basiseinheit ─[allows_prefix]→ Präfix; **factor** (×1000) on Präfix Node by default.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
@@ -56,7 +57,7 @@ Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit
 **Q50 leaning:** copy template Project into new Projects.  
 **Q49 open:** simples typically do not originate Relations — special kind vs config that disables Relations.  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39, Q49–Q50 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+See Q16, Q20–Q39, Q49–Q51 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
