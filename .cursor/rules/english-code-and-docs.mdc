@@ -1,0 +1,48 @@
+---
+description: Require English for all code identifiers and documentation
+alwaysApply: true
+---
+
+# English language for code and documentation
+
+All source code and documentation in this repository must be written in English.
+
+## Code language
+
+- Write all identifiers in English: variable names, function names, class names, constants, file names, and directory names.
+- Write all comments, inline explanations, and TODO/FIXME notes in English.
+- Write all user-facing strings that belong to this project's own code in English (unless an i18n/localization workflow explicitly requires otherwise).
+- Do not mix other languages into code identifiers or comments.
+
+## Documentation
+
+- Document code clearly and thoroughly in English.
+- Prefer meaningful names that reduce the need for comments; add comments where intent, constraints, or non-obvious behavior would otherwise be unclear.
+- Document public APIs, classes, functions, and complex logic with concise English descriptions (purpose, parameters, return values, and important side effects when relevant).
+- Keep README files, contributor notes, and other project docs in English.
+- When changing behavior, update related documentation and comments in the same change.
+
+## Examples
+
+```php
+// ✅ Good
+/**
+ * Build a hierarchical tree from taxonomy terms.
+ *
+ * @param array<int, WP_Term> $terms Flat list of terms.
+ * @return array<string, mixed> Nested tree structure.
+ */
+function build_taxonomy_tree( array $terms ): array {
+	// Skip terms without a valid parent reference.
+	...
+}
+
+// ❌ Avoid
+/**
+ * Erstellt einen Baum aus Taxonomie-Terms.
+ */
+function erstelle_taxonomie_baum( array $terms ): array {
+	// Eltern ohne gültige Referenz überspringen.
+	...
+}
+```
