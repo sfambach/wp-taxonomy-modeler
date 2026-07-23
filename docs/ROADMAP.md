@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.48-plan** (2026-07-23).
+Last synced from plan version **0.6.49-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -36,6 +36,7 @@ Last synced from plan version **0.6.48-plan** (2026-07-23).
 | Part identity layers (R/C/Diode/IC) | In progress |
 | Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
 | UI prototype `prototypes/tree-split` (static, not WP plugin) | In progress |
+| Prototype: Umrechnung tab (Q51 unit family convert) | In progress |
 | Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
 | Open questions (leave open; resolve later in batches) | In progress |
 | Widerstand worked example: Approach A rejected; B (Parameter-Nodes) survives | Done (planning) |

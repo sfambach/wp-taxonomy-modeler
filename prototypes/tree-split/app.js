@@ -10,27 +10,43 @@
  * Datentypen (template): simples + derived enum + derived quantity (Größe).
  * has_type → typed table widgets; enum base_type → exactly one simple.
  * quantity = value + Präfix + Basiseinheit (not a Messung).
+ * Q51: Basiseinheit ─[allows_prefix]→ Präfix; factor on Präfix; Umrechnung tab.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v9";
+const STORAGE_KEY = "wtt-proto-tree-split-v10";
 const TABLE_BODY_ROWS = 5;
-const RIGHT_TABS = ["node", "table", "table2", "form"];
+const RIGHT_TABS = ["node", "table", "table2", "form", "convert"];
 const TAB_ARIA = {
   node: "tab-node",
   table: "tab-table",
   table2: "tab-table2",
   form: "tab-form",
+  convert: "tab-convert",
 };
 /** Relation key in prototype: slot ─[has_type]→ Datentyp node */
 const REL_HAS_TYPE = "has_type";
 /** Relation: enum type ─[base_type]→ exactly one simple type */
 const REL_BASE_TYPE = "base_type";
+/** Relation: Basiseinheit ─[allows_prefix]→ Präfix */
+const REL_ALLOWS_PREFIX = "allows_prefix";
 const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
 /** Cell encoding for quantity: "value|prefix|unit" */
 const QTY_SEP = "|";
+/** Default SI factors for seeded Präfixe */
+const DEFAULT_PREFIX_FACTORS = {
+  m: 1e-3,
+  k: 1e3,
+  M: 1e6,
+  µ: 1e-6,
+};
 
-/** @typedef {{ id: string, parentId: string|null, name: string, position: number, template?: boolean }} ProtoNode */
-/** @typedef {'node'|'table'|'table2'|'form'} RightTab */
+/**
+ * @typedef {{ id: string, parentId: string|null, name: string, position: number, template?: boolean, config?: { factor?: number } }} ProtoNode
+ */
+/** @typedef {'node'|'table'|'table2'|'form'|'convert'} RightTab */
+/**
+ * @typedef {{ leftValue: string, leftKey: string, rightKey: string }} ConvertState
+ */
 /**
  * @typedef {{
  *   select: string,
@@ -72,6 +88,12 @@ let typeRelations = new Map();
 /** enumTypeNodeId → simpleTypeNodeId (exactly one base_type) */
 /** @type {Map<string, string>} */
 let baseTypeRelations = new Map();
+/** baseUnitNodeId → prefixNodeId[] (Relation allows_prefix) */
+/** @type {Map<string, string[]>} */
+let allowsPrefixRelations = new Map();
+/** baseUnitNodeId → convert UI state */
+/** @type {Map<string, ConvertState>} */
+let convertStates = new Map();
 let dataTypesRootId = "";
 let prefixesRootId = "";
 let baseUnitsRootId = "";
@@ -105,6 +127,9 @@ function createNode(parentId, name, position, opts = {}) {
   /** @type {ProtoNode} */
   const node = { id, parentId, name, position };
   if (opts.template) node.template = true;
+  if (opts.config && typeof opts.config === "object") {
+    node.config = { ...opts.config };
+  }
   nodes.set(id, node);
   return id;
 }
@@ -147,6 +172,8 @@ function createInitial() {
   formStates = new Map();
   typeRelations = new Map();
   baseTypeRelations = new Map();
+  allowsPrefixRelations = new Map();
+  convertStates = new Map();
   dataTypesRootId = "";
   prefixesRootId = "";
   baseUnitsRootId = "";
@@ -173,17 +200,33 @@ function createInitial() {
   const tQuantity = createNode(dataTypesRootId, "quantity", 6);
 
   prefixesRootId = createNode(rootId, "Präfix", 1, { template: true });
-  createNode(prefixesRootId, "m", 0);
-  createNode(prefixesRootId, "k", 1);
-  createNode(prefixesRootId, "M", 2);
-  createNode(prefixesRootId, "µ", 3);
+  const pM = createNode(prefixesRootId, "m", 0, {
+    config: { factor: DEFAULT_PREFIX_FACTORS.m },
+  });
+  const pK = createNode(prefixesRootId, "k", 1, {
+    config: { factor: DEFAULT_PREFIX_FACTORS.k },
+  });
+  const pMega = createNode(prefixesRootId, "M", 2, {
+    config: { factor: DEFAULT_PREFIX_FACTORS.M },
+  });
+  const pMicro = createNode(prefixesRootId, "µ", 3, {
+    config: { factor: DEFAULT_PREFIX_FACTORS.µ },
+  });
+  const allPrefixes = [pM, pK, pMega, pMicro];
 
   baseUnitsRootId = createNode(rootId, "Basiseinheit", 2, { template: true });
-  createNode(baseUnitsRootId, "Ohm", 0);
-  createNode(baseUnitsRootId, "Farad", 1);
-  createNode(baseUnitsRootId, "Meter", 2);
-  createNode(baseUnitsRootId, "Watt", 3);
-  createNode(baseUnitsRootId, "Volt", 4);
+  const uOhm = createNode(baseUnitsRootId, "Ohm", 0);
+  const uFarad = createNode(baseUnitsRootId, "Farad", 1);
+  const uMeter = createNode(baseUnitsRootId, "Meter", 2);
+  const uWatt = createNode(baseUnitsRootId, "Watt", 3);
+  const uVolt = createNode(baseUnitsRootId, "Volt", 4);
+
+  // Q51: Basiseinheit ─[allows_prefix]→ Präfix (UI filter + Umrechnung family)
+  allowsPrefixRelations.set(uOhm, [...allPrefixes]);
+  allowsPrefixRelations.set(uFarad, [...allPrefixes]);
+  allowsPrefixRelations.set(uMeter, [pM, pK]);
+  allowsPrefixRelations.set(uWatt, [...allPrefixes]);
+  allowsPrefixRelations.set(uVolt, [...allPrefixes]);
 
   const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 3);
   const cRef = createNode(schemaId, "Reference", 0);
@@ -241,6 +284,79 @@ function baseUnitOptionNames() {
   baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
   if (!baseUnitsRootId) return [];
   return childrenOf(baseUnitsRootId).map((c) => c.name);
+}
+
+function isBaseUnitNode(node) {
+  if (!node) return false;
+  baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
+  return Boolean(baseUnitsRootId && node.parentId === baseUnitsRootId);
+}
+
+function prefixFactor(prefixNode) {
+  if (!prefixNode) return 1;
+  const f = prefixNode.config?.factor;
+  if (typeof f === "number" && Number.isFinite(f) && f !== 0) return f;
+  const named = DEFAULT_PREFIX_FACTORS[prefixNode.name];
+  if (typeof named === "number") return named;
+  return 1;
+}
+
+/**
+ * Derived unit choices for a Basiseinheit (Vater + allows_prefix Kinder).
+ * @returns {{ key: string, prefixId: string|null, label: string, factor: number }[]}
+ */
+function unitChoices(baseUnitId) {
+  const unit = nodes.get(baseUnitId);
+  if (!unit || !isBaseUnitNode(unit)) return [];
+  const choices = [
+    { key: "", prefixId: null, label: unit.name, factor: 1 },
+  ];
+  const prefixIds = allowsPrefixRelations.get(baseUnitId) || [];
+  for (const pid of prefixIds) {
+    const pref = nodes.get(pid);
+    if (!pref) continue;
+    choices.push({
+      key: pid,
+      prefixId: pid,
+      label: `${pref.name}${unit.name}`,
+      factor: prefixFactor(pref),
+    });
+  }
+  return choices;
+}
+
+function defaultConvertState() {
+  return { leftValue: "10", leftKey: "", rightKey: "" };
+}
+
+function ensureConvertState(baseUnitId) {
+  let st = convertStates.get(baseUnitId);
+  if (!st) {
+    st = defaultConvertState();
+    const choices = unitChoices(baseUnitId);
+    // Prefer demo: left kOhm-like if k exists, right bare base
+    const kChoice = choices.find((c) => nodes.get(c.key)?.name === "k");
+    if (kChoice) st.leftKey = kChoice.key;
+    st.rightKey = "";
+    convertStates.set(baseUnitId, st);
+  }
+  const keys = new Set(unitChoices(baseUnitId).map((c) => c.key));
+  if (!keys.has(st.leftKey)) st.leftKey = "";
+  if (!keys.has(st.rightKey)) st.rightKey = "";
+  return st;
+}
+
+function convertValue(leftValue, leftFactor, rightFactor) {
+  const n = Number(leftValue);
+  if (!Number.isFinite(n) || !leftFactor || !rightFactor) return "";
+  const base = n * leftFactor;
+  const out = base / rightFactor;
+  if (!Number.isFinite(out)) return "";
+  // Trim float noise for demo display
+  const rounded = Math.abs(out) >= 1e6 || (Math.abs(out) > 0 && Math.abs(out) < 1e-4)
+    ? out.toExponential(6)
+    : Number(out.toPrecision(12));
+  return String(rounded);
 }
 
 function typeNodeOf(slotId) {
@@ -651,6 +767,8 @@ function persist() {
     formStates: mapToObject(formStates),
     typeRelations: mapToObject(typeRelations),
     baseTypeRelations: mapToObject(baseTypeRelations),
+    allowsPrefixRelations: mapToObject(allowsPrefixRelations),
+    convertStates: mapToObject(convertStates),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -691,6 +809,8 @@ function restore() {
     formStates = new Map();
     typeRelations = new Map();
     baseTypeRelations = new Map();
+    allowsPrefixRelations = new Map();
+    convertStates = new Map();
     restoreStringGridMap(data.tableCells, tableCells);
     restoreStringGridMap(data.tableCells2, tableCells2);
     if (data.formStates && typeof data.formStates === "object") {
@@ -715,9 +835,35 @@ function restore() {
         }
       }
     }
+    if (data.allowsPrefixRelations && typeof data.allowsPrefixRelations === "object") {
+      for (const [uidUnit, list] of Object.entries(data.allowsPrefixRelations)) {
+        if (!nodes.has(uidUnit) || !Array.isArray(list)) continue;
+        allowsPrefixRelations.set(
+          uidUnit,
+          list.filter((pid) => nodes.has(pid))
+        );
+      }
+    }
+    if (data.convertStates && typeof data.convertStates === "object") {
+      for (const [uidUnit, st] of Object.entries(data.convertStates)) {
+        if (!nodes.has(uidUnit) || !st || typeof st !== "object") continue;
+        convertStates.set(uidUnit, {
+          ...defaultConvertState(),
+          leftValue: st.leftValue != null ? String(st.leftValue) : "10",
+          leftKey: st.leftKey != null ? String(st.leftKey) : "",
+          rightKey: st.rightKey != null ? String(st.rightKey) : "",
+        });
+      }
+    }
     dataTypeNodes();
     prefixOptionNames();
     baseUnitOptionNames();
+    // Heal missing prefix factors after older seeds
+    for (const p of childrenOf(prefixesRootId)) {
+      if (p.config?.factor == null && DEFAULT_PREFIX_FACTORS[p.name] != null) {
+        p.config = { ...(p.config || {}), factor: DEFAULT_PREFIX_FACTORS[p.name] };
+      }
+    }
     const parents = new Set(
       [...nodes.values()].map((n) => n.parentId).filter((p) => p != null)
     );
@@ -741,6 +887,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v6");
     localStorage.removeItem("wtt-proto-tree-split-v7");
     localStorage.removeItem("wtt-proto-tree-split-v8");
+    localStorage.removeItem("wtt-proto-tree-split-v9");
   } catch {
     /* ignore */
   }
@@ -1612,10 +1759,215 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
+function fillUnitSelect(select, choices, currentKey) {
+  select.replaceChildren();
+  for (const c of choices) {
+    const opt = document.createElement("option");
+    opt.value = c.key;
+    opt.textContent = c.label;
+    select.append(opt);
+  }
+  if (choices.some((c) => c.key === currentKey)) select.value = currentKey;
+  else select.value = choices[0]?.key ?? "";
+}
+
+function renderConvert() {
+  const mount = document.getElementById("detail");
+  if (!mount) return;
+  const node = nodes.get(selectedId);
+
+  const wrap = document.createElement("div");
+  wrap.className = "convert-view";
+
+  const h2 = document.createElement("h2");
+  h2.className = "detail-title";
+  h2.textContent = "Umrechnung (Q51)";
+
+  const intro = document.createElement("p");
+  intro.className = "muted";
+  intro.style.marginTop = "0";
+  intro.textContent =
+    "Basiseinheit im Baum wählen (z. B. Ohm). Links Menge + Einheit, rechts berechneter Wert in einer Variante derselben Basiseinheit.";
+
+  wrap.append(h2, intro);
+
+  const active = isBaseUnitNode(node);
+  const panel = document.createElement("div");
+  panel.className = "convert-panel" + (active ? "" : " is-disabled");
+
+  if (!active) {
+    const ban = document.createElement("p");
+    ban.className = "convert-banner";
+    ban.textContent = node
+      ? `„${node.name}“ ist keine Basiseinheit — Felder gesperrt. Unter Basiseinheit z. B. Ohm wählen.`
+      : "Basiseinheit im Baum wählen.";
+    wrap.append(ban, panel);
+    // Disabled placeholder controls
+    const row = document.createElement("div");
+    row.className = "convert-row";
+    for (const side of ["Eingabe", "Ergebnis"]) {
+      const card = document.createElement("fieldset");
+      card.className = "convert-card";
+      card.disabled = true;
+      const leg = document.createElement("legend");
+      leg.textContent = side;
+      const num = document.createElement("input");
+      num.className = "form-control";
+      num.type = "number";
+      num.disabled = true;
+      num.placeholder = "Wert";
+      const sel = document.createElement("select");
+      sel.className = "form-control";
+      sel.disabled = true;
+      const o = document.createElement("option");
+      o.textContent = "—";
+      sel.append(o);
+      card.append(leg, num, sel);
+      row.append(card);
+    }
+    panel.append(row);
+    mount.replaceChildren(wrap);
+    return;
+  }
+
+  const baseUnit = /** @type {ProtoNode} */ (node);
+  const choices = unitChoices(baseUnit.id);
+  const st = ensureConvertState(baseUnit.id);
+  const leftChoice = choices.find((c) => c.key === st.leftKey) || choices[0];
+  const rightChoice = choices.find((c) => c.key === st.rightKey) || choices[0];
+  const rightValue = convertValue(
+    st.leftValue,
+    leftChoice?.factor ?? 1,
+    rightChoice?.factor ?? 1
+  );
+
+  const meta = document.createElement("p");
+  meta.className = "muted convert-meta";
+  meta.innerHTML = `Basiseinheit: <strong>${escapeHtml(baseUnit.name)}</strong> · allows_prefix: ${
+    choices.length - 1
+  } Präfixe · factor auf Präfix-Knoten`;
+
+  const row = document.createElement("div");
+  row.className = "convert-row";
+
+  // Left: input
+  const leftCard = document.createElement("fieldset");
+  leftCard.className = "convert-card";
+  const leftLeg = document.createElement("legend");
+  leftLeg.textContent = "Eingabe";
+  const leftLab = document.createElement("div");
+  leftLab.className = "field-label";
+  leftLab.textContent = "Menge";
+  const leftNum = document.createElement("input");
+  leftNum.className = "form-control";
+  leftNum.type = "number";
+  leftNum.step = "any";
+  leftNum.inputMode = "decimal";
+  leftNum.value = st.leftValue;
+  leftNum.setAttribute("aria-label", "Eingabemenge");
+  const leftUnitLab = document.createElement("div");
+  leftUnitLab.className = "field-label";
+  leftUnitLab.textContent = "Mengeneinheit (abgeleitet)";
+  const leftSel = document.createElement("select");
+  leftSel.className = "form-control";
+  leftSel.setAttribute("aria-label", "Eingabeeinheit");
+  fillUnitSelect(leftSel, choices, st.leftKey);
+  leftCard.append(leftLeg, leftLab, leftNum, leftUnitLab, leftSel);
+
+  // Arrow
+  const arrow = document.createElement("div");
+  arrow.className = "convert-arrow";
+  arrow.setAttribute("aria-hidden", "true");
+  arrow.textContent = "→";
+
+  // Right: computed
+  const rightCard = document.createElement("fieldset");
+  rightCard.className = "convert-card";
+  const rightLeg = document.createElement("legend");
+  rightLeg.textContent = "Ergebnis";
+  const rightLab = document.createElement("div");
+  rightLab.className = "field-label";
+  rightLab.textContent = "Wert (errechnet)";
+  const rightNum = document.createElement("input");
+  rightNum.className = "form-control";
+  rightNum.type = "text";
+  rightNum.readOnly = true;
+  rightNum.value = rightValue;
+  rightNum.setAttribute("aria-label", "Errechneter Wert");
+  const rightUnitLab = document.createElement("div");
+  rightUnitLab.className = "field-label";
+  rightUnitLab.textContent = "Ziel-Einheit (gleiche Basiseinheit)";
+  const rightSel = document.createElement("select");
+  rightSel.className = "form-control";
+  rightSel.setAttribute("aria-label", "Zieleinheit");
+  fillUnitSelect(rightSel, choices, st.rightKey);
+  rightCard.append(rightLeg, rightLab, rightNum, rightUnitLab, rightSel);
+
+  row.append(leftCard, arrow, rightCard);
+
+  const formula = document.createElement("pre");
+  formula.className = "form-snapshot convert-formula";
+  const leftF = leftChoice?.factor ?? 1;
+  const rightF = rightChoice?.factor ?? 1;
+  formula.textContent = [
+    `${st.leftValue || "?"} ${leftChoice?.label || "?"}  →  Basis`,
+    `  ${st.leftValue || "?"} × ${leftF} = ${
+      Number.isFinite(Number(st.leftValue)) ? Number(st.leftValue) * leftF : "?"
+    } ${baseUnit.name}`,
+    `  → / ${rightF} = ${rightValue || "?"} ${rightChoice?.label || "?"}`,
+  ].join("\n");
+
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.style.fontSize = "0.8rem";
+  hint.textContent =
+    "Familie bleibt an der gewählten Basiseinheit (Ohm → nur Ohm/kOhm/…). Keine kOhm-Knoten — Labels aus Vater + Präfix.";
+
+  function persistConvert() {
+    convertStates.set(baseUnit.id, {
+      leftValue: leftNum.value,
+      leftKey: leftSel.value,
+      rightKey: rightSel.value,
+    });
+    persist();
+  }
+
+  function refreshResult() {
+    persistConvert();
+    const st2 = ensureConvertState(baseUnit.id);
+    const lc = choices.find((c) => c.key === st2.leftKey) || choices[0];
+    const rc = choices.find((c) => c.key === st2.rightKey) || choices[0];
+    const out = convertValue(st2.leftValue, lc?.factor ?? 1, rc?.factor ?? 1);
+    rightNum.value = out;
+    formula.textContent = [
+      `${st2.leftValue || "?"} ${lc?.label || "?"}  →  Basis`,
+      `  ${st2.leftValue || "?"} × ${lc?.factor ?? 1} = ${
+        Number.isFinite(Number(st2.leftValue))
+          ? Number(st2.leftValue) * (lc?.factor ?? 1)
+          : "?"
+      } ${baseUnit.name}`,
+      `  → / ${rc?.factor ?? 1} = ${out || "?"} ${rc?.label || "?"}`,
+    ].join("\n");
+  }
+
+  leftNum.addEventListener("input", refreshResult);
+  leftNum.addEventListener("change", refreshResult);
+  leftSel.addEventListener("change", () => {
+    // Keep right in same family; if right empty was intentional, leave it
+    refreshResult();
+  });
+  rightSel.addEventListener("change", refreshResult);
+
+  panel.append(meta, row, formula, hint);
+  wrap.append(panel);
+  mount.replaceChildren(wrap);
+}
+
 function renderRight() {
   if (activeTab === "table") renderTableView(tableCells, "Tabelle");
   else if (activeTab === "table2") renderTableView(tableCells2, "Tabelle 2");
   else if (activeTab === "form") renderForm();
+  else if (activeTab === "convert") renderConvert();
   else renderDetail();
 }
 
