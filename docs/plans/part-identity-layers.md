@@ -41,7 +41,7 @@ Same **electrical value** (100 Ω). Different **construction / package / subtype
 1. Kind          Widerstand | Kondensator | Diode | IC | …
 2. Subtype       Shunt | Draht | Metallschicht | Keramik | Zener | OpAmp | …
 3. Spec skeleton attributes this kind/subtype always has
-                 (Wert, Toleranz, Leistung, …)  — consists_of / measure / enum
+                 (Wert, Toleranz, Leistung, …)  — consists_of / quantity / enum
 4. Package       0805, 0603, axial THT, shunt-tabs, TO-220, SOIC-8, …
 5. Catalog part  orderable concrete part (all attrs filled; often a leaf)
 6. Board usage   BOM line: refs R1,R2 + qty + this catalog part  — HOST
@@ -50,7 +50,7 @@ Same **electrical value** (100 Ω). Different **construction / package / subtype
 ```text
 Kind ─is_a→ Subtype ─has→ Spec skeleton
                               │
-                              ├─ filled measure e.g. Wert = 100 Ω  (unit group k?+Ohm)
+                              ├─ filled quantity e.g. Wert = 100 Ω  (unit group k?+Ohm)
                               ├─ Toleranz, Leistung, Material, Series (E24), …
                               └─ Package / Bauform = 0805 | axial | shunt-tabs | …
 
@@ -82,7 +82,7 @@ Board usage  = Host BOM line → points at Catalog part (not at “100 Ω” alo
 | Through-hole | Widerstand | (z.B. Metallfilm) | 100 Ω | axial THT | `R 100Ω axial 0.25W 1%` |
 | Shunt with tabs | Widerstand | **Shunt** | 100 Ω | solder-tab / shunt body | `Shunt 100Ω tabbed …` |
 
-Shared: `measure` Wert = 100 + unit group `(—, Ohm)`.  
+Shared: `quantity` Wert = 100 + unit group `(—, Ohm)`.  
 Different: subtype and/or package (± power, material, series).  
 On BOMs: three lines can all say “100 Ω” in a column, but they **reference three catalog parts**.
 
@@ -96,9 +96,9 @@ On BOMs: three lines can all say “100 Ω” in a column, but they **reference 
 
 | Property | Layer | Type hint |
 |----------|-------|-----------|
-| Wert | Spec / filled | `measure` → Ohm (+ prefix if kΩ) |
-| Toleranz | Spec | `measure` (%) or enum |
-| Leistungsaufnahme | Spec | `measure` → Watt |
+| Wert | Spec / filled | `quantity` → Ohm (+ prefix if kΩ) |
+| Toleranz | Spec | `quantity` (%) or enum |
+| Leistungsaufnahme | Spec | `quantity` → Watt |
 | Material | Spec | `enum` (single) |
 | Reihe | Spec | `enum` or ref to series node |
 | Bauform / Package | Package | `enum` (0805, 0603, axial, …) or subtype |
@@ -123,7 +123,7 @@ Layers: Wert (Farad + prefix), Nennspannung, Dielektrikum/Material, Polarität, 
 | Schottky 1A SMB | Diode | Schottky | — | Package SMB, If, Vf |
 | Zener 5V1 0.5W | Diode | **Zener** | Vz ≈ 5.1 V | Package, power, Tol |
 
-Here “value” is often **Vz / Vr / If** (measures), not one universal “100”.  
+Here “value” is often **Vz / Vr / If** (quantities), not one universal “100”.  
 Subtype (Zener vs Schottky) changes the **spec skeleton** (which attributes matter).
 
 ## Same pattern: ICs
@@ -134,7 +134,7 @@ Subtype (Zener vs Schottky) changes the **spec skeleton** (which attributes matt
 | NE555 in SOIC-8 | IC | Timer | Same function | Package SOIC-8 |
 | LM358 OpAmp | IC | **OpAmp** | Dual op-amp | Package, rail voltage, … |
 
-ICs: **function/subtype** dominates; “Wert” is rarely one measure — more enums + measures (Vcc, bandwidth) + **package**.  
+ICs: **function/subtype** dominates; “Wert” is rarely one quantity — more enums + quantities (Vcc, bandwidth) + **package**.  
 Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 0805 vs THT).
 
 ## How to “ablegen” (practical leaning — not locked)
@@ -148,19 +148,19 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
    `IC → {OpAmp, Timer, MCU, …}`
 2. **Attribute skeletons** per subtype (`consists_of` / defs): Wert, Toleranz, Leistung, Package, …  
 3. **Catalog leaves** (or near-leaves): one node per orderable combination you care about.  
-4. **Unit group** for measures: Präfix+Basiseinheit together; value often on relation/props (Q45).
+4. **Unit group** for quantities: Präfix+Basiseinheit together; value often on relation/props (Q45).
 
 ### In the host (BOM)
 
 - Platine A/B/C each have **BOM lines** pointing at the **catalog part**.  
 - Columns can still show Wert / Package derived from that part.  
-- “Same 100 Ω” search = filter catalog/BOM by measure Wert, not by collapsing three parts into one node.
+- “Same 100 Ω” search = filter catalog/BOM by quantity Wert, not by collapsing three parts into one node.
 
 ### What not to do
 
 - One node “100 Ω Widerstand” as the only leaf for SMD + THT + Shunt.  
 - Encode board designators (R1, R2) as tree children of the resistor.  
-- Model measure as Widerstand → 100 → kilo → Ohm chain (use **unit group**).
+- Model quantity as Widerstand → 100 → kilo → Ohm chain (use **unit group**).
 
 ## Mapping to current domain objects (reminder)
 
@@ -168,7 +168,7 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
 |-------|----------------|
 | Kind / subtype | `Node` + Relation `is_a` |
 | Spec skeleton | `consists_of` / Parameter defs |
-| Filled Wert | `measure` + unit group; maybe Relation.props |
+| Filled Wert | `quantity` + unit group; maybe Relation.props |
 | Package | enum attr or Bauform node |
 | Catalog part | `Node` (leaf) |
 | Board usage | **Host** BOM line → part Node id |

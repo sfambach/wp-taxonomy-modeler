@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.44-plan"
+version: "0.6.45-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -102,7 +102,8 @@ classDiagram
     <<Node role / config>>
     built from simple types
     enum: base_type + value list
-    also measure string_list later
+    quantity: value + prefix + base_unit
+    also string_list later
   }
 
   class Relation {
@@ -133,10 +134,10 @@ classDiagram
     +version
   }
 
-  note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + enum kind (Q50 lean)\ncopy template → new Project"
+  note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + enum + quantity (Q50 lean)\ncopy template → new Project"
   note for Node "Hierarchy only — no taxonomy field\nattrs like Wert are just Nodes\ntype via config / has_type"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
-  note for DerivedOrCompositeType "enum in template:\nexactly one base_type (simple)\n+ list of values"
+  note for DerivedOrCompositeType "enum: base_type + values\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
   note for Relation "EXPLORATORY\nlines = Relations with props"
   note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
   note for Change "Shared audit model"
@@ -236,7 +237,7 @@ flowchart TB
   C1 --> G1["Node grandchild"]
   R2 --> C3["Node child"]
 
-  C1 --> P1["Node Wert<br/>has_type measure"]
+  C1 --> P1["Node Wert<br/>has_type quantity"]
   C1 --> P2["Node Bauform<br/>has_type enum/string"]
   C2 --> P3["Node child"]
 
@@ -258,15 +259,15 @@ flowchart TB
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - Attribute Nodes (e.g. `Wert`) bind **`type`** (required) plus optional **`prefix`** / **`base_unit`** via config and/or Relations — **no ParameterRole**. — **agreed direction**
-- A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
+- A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
 - **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
-- **`measure` is composite**: numeric leaf (`number` or `integer`) + optional Präfix + Basiseinheit — **leaning (Q36/Q37)**; not a rival scalar beside `number`
-- Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
+- **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
+- Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
 - **Project ≈ taxonomy** — **strong leaning (Q18)**; taxonomy not on Node
-- Default Nodes — **leaning (Q50):** template Project holds simples + enum; **copy** into new Projects (generate still optional fallback)
+- Default Nodes — **leaning (Q50):** template Project holds simples + enum + quantity; **copy** into new Projects (generate still optional fallback)
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
@@ -292,7 +293,7 @@ SimpleType Nodes ──(derive/compose)──► further Type Nodes
 
 **Q33/Q34:** Names like `Wert` / `Länge` in the Definitionsbaum **are ordinary Nodes**.  
 There is **no** Parameter class, **no** ParameterRole stereotype, and **no** PHP subclass.  
-Type binding lives in **Node.config** and/or Relations (`has_type`). Optional measure fields (`prefix`, `base_unit`, `value`) are likewise config / Relations — not a parallel object model.  
+Type binding lives in **Node.config** and/or Relations (`has_type`). Optional quantity fields (`prefix`, `base_unit`, `value`) are likewise config / Relations — not a parallel object model.  
 **Q49 open:** simple data-type Nodes usually should not build Relations themselves — either a **special Node kind**, or config that **deactivates Relations** on simples.  
 Typed edges (`besteht-aus`) may still *display* those Nodes as attributes of a parent — orthogonal (Q35/Q42).
 
@@ -403,7 +404,7 @@ Node ◄──(many)────── Parameters
 
 ### Core idea
 
-Configurable attributes (often measures) such as `Wert` or `Länge` are **ordinary Nodes**.  
+Configurable attributes (often quantities) such as `Wert` or `Länge` are **ordinary Nodes**.  
 
 **Decided (Q33/Q34):** **no Parameter class**, **no ParameterRole**, **no PHP subclass**.  
 A Node becomes an “attribute” by binding a **type** (and optional prefix / base_unit / value) via **config** and/or Relations (`has_type`).
@@ -430,7 +431,7 @@ Node (category) ──(children / besteht-aus)──► Node (e.g. Wert) ─[has
 | `type` | **yes** | **Node** (via config or Relation) | From Definition → **Type** (simple or derived/composed) |
 | `prefix` | **optional** | **Node** \| `null` | From Definition → **Präfix** |
 | `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** |
-| `value` | **?** | scalar / TBD | Filled reading for measures; storage Q16 |
+| `value` | **?** | scalar / TBD | Filled reading for quantities; storage Q16 |
 | `key` | likely | string | Machine key if `name` is not enough |
 
 ```php
@@ -443,7 +444,7 @@ class Node {
 // OR Relation has_type from this Node to a type Node
 ```
 
-**Agreed for measure readings:** value + prefix + base unit (e.g. `10 mm`). Details Q24, Q29, Q16.
+**Agreed for quantity readings:** value + prefix + base unit (e.g. `10 mm`). Details Q24, Q29, Q16.
 
 #### Fields still to define
 
@@ -488,7 +489,7 @@ This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter-Node (Q33/
 ### Datentypen as tree + Relation (Q33 / Q48)
 
 **Decided direction:** types are **Nodes** in the tree.  
-**Template assignment (Q50 leaning):** the **template Project** holds the **simple types** and the **enum** derived-type kind. New Projects get them by **copying the template** (generate remains a fallback option).
+**Template assignment (Q50 leaning):** the **template Project** holds the **simple types**, derived **enum**, and derived **quantity**. New Projects get them by **copying the template** (generate remains a fallback option).
 
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
@@ -497,13 +498,19 @@ Template Project → Datentypen / Type     ← Project.type_node
 ├── string                    ← simple
 ├── char                      ← simple
 ├── bool                      ← simple
-└── enum                      ← derived (in template)
-    ├── base_type → exactly one simple (e.g. string)
-    └── values    → list of options of that base type
-# later derived/composed:
-├── measure       ← numeric simple + Präfix + Basiseinheit
+├── enum                      ← derived (in template)
+│   ├── base_type → exactly one simple (e.g. string)
+│   └── values    → list of options of that base type
+└── quantity                  ← derived (in template) — Größe, not Messung
+    ├── value     → numeric simple (int | double; Q37)
+    ├── prefix?   → Präfix (unit group with base_unit)
+    └── base_unit → Basiseinheit
+# later:
 └── string_list   ← open list of string (Q47; ≠ enum)
 ```
+
+**Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
+Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
 
 #### enum (derived type — agreed shape)
 
@@ -526,12 +533,33 @@ enum Bauform
 **Binding:** attribute / schema slot ─[Relation `has_type` or field `type`]→ type Node  
 Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `enum(Bauform)` → select from values.
 
+#### quantity (derived type — agreed shape)
+
+| Rule | Meaning |
+|------|---------|
+| Kind | **Derived/composite** from a numeric simple + unit group — not a sixth simple |
+| **Value** | Numeric reading from `int` or `double` (which one: **Q37**) |
+| **Unit group** | Optional **Präfix** + **Basiseinheit** together (Q28/Q45) — display e.g. `kOhm`, `mm` |
+| Binding | Attribute Node ─[has_type]→ `quantity` (or a specialized quantity type) |
+| UI | Composite widget: number + prefix select + unit select → e.g. `10 kOhm` |
+
+Example:
+
+```text
+quantity (Größe)
+  value: 10          ← double (or int)
+  prefix: k          ← Präfix
+  base_unit: Ohm     ← Basiseinheit
+  display: "10 kOhm"
+```
+
 | Idea | Note |
 |------|------|
 | **Simples live in the template** | `int`…`bool` assigned to template Project; copied into new Projects |
 | **enum in the template** | Derived kind with base_type + value list |
+| **quantity in the template** | Derived kind: value + Präfix + Basiseinheit (Größe) |
 | Types are **Nodes** | Same storage/UI as everything else |
-| UI derives widget from type | simples → inputs; enum → select/radio/multi from value list |
+| UI derives widget from type | simples → inputs; enum → select; quantity → value+prefix+unit |
 | **Relations from simples?** | Still open **Q49** |
 | string_list vs enum | enum = **closed** list; string_list = **open** list (Q47) |
 
@@ -557,7 +585,7 @@ flowchart TB
   T --> T4["char"]
   T --> T5["bool"]
   T --> T6["enum<br/>base+values"]
-  T --> T7["measure?<br/>later"]
+  T --> T7["quantity<br/>value+prefix+unit"]
   T --> T8["string_list?<br/>Q47"]
 
   B --> B1["Ohm"]
@@ -581,7 +609,7 @@ flowchart TB
   M --> GH["Höhe"]
 
   Param["Parameter resistance"]
-  Param -.->|type| T8
+  Param -.->|type| T7
   Param -.->|prefix| P2
   Param -.->|base_unit| B1
 ```
@@ -594,8 +622,8 @@ Definition                                    ← Definitionsbaum root
 │   ├── string
 │   ├── char
 │   ├── bool
-│   ├── enum?                   ← later: composite + selection_mode
-│   ├── measure?                ← later: number|integer + prefix + unit
+│   ├── enum                    ← derived: base_type + value list
+│   ├── quantity                ← derived: value + prefix + unit (Größe)
 │   └── string_list?            ← later: open RefDes lists (Q47)
 ├── Basiseinheit
 │   ├── Ohm
@@ -630,7 +658,7 @@ Project.base_unit_node = Basiseinheit
 
 Parameter {
   key: "resistance",
-  type: Node("measure"),      # under project.type_node
+  type: Node("quantity"),      # under project.type_node
   prefix: Node("k"),          # under project.prefix_node
   base_unit: Node("Ohm")      # under project.base_unit_node
 }
@@ -651,11 +679,11 @@ Parameter {
 | `Type` / `Basiseinheit` / `Präfix` | Required Definition anchors on Project |
 | `Bauteile` | Domain branch under Definitionsbaum (not its own root) |
 | `Widerstände` | Category node; children may be Parameter-Nodes |
-| `Wert` | **Parameter-Node** — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
+| `Wert` | **Parameter-Node** — e.g. type=`quantity`, prefix=`k`, base_unit=`Ohm` |
 | `Bauform` | **Parameter-Node** — e.g. type=`text` or enum-like choices |
-| `Leistungsaufnahme` | **Parameter-Node** — measure + Watt base unit |
+| `Leistungsaufnahme` | **Parameter-Node** — quantity + Watt base unit |
 | `Maße` | Group node; children are dimension Parameter-Nodes |
-| `Länge` / `Breite` / `Höhe` | **Parameter-Nodes** (measure): **value + prefix + Einheit** |
+| `Länge` / `Breite` / `Höhe` | **Parameter-Nodes** (quantity): **value + prefix + Einheit** |
 
 **Dimension example (agreed direction):**
 
@@ -671,7 +699,7 @@ Maße display:  10 mm × 5 mm × 2 mm
 
 `Project.definition_root` points at **Definition**; that root is also in `root_nodes`.
 
-Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).  
+Open: exact validation rules when type is `quantity` vs `url` (Q24, Q29).  
 Open: Node **configuration** shape for Parameter role (Q34 lean).  
 Open: may simple types originate Relations — special kind vs config disable (**Q49**).  
 **Closed (Q33):** Parameter *is* a tree Node (not a separate attached object).  
@@ -699,7 +727,7 @@ Open: may simple types originate Relations — special kind vs config disable (*
 **User framing:**  
 *Widerstand **ist ein** Passives Bauteil* (taxonomy / inheritance path).  
 *Widerstand **besteht aus** Wert, Bauform, Maße, …* (composition — edges need properties/kind).  
-Measure pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** and be **referenced** from composition edges.
+Quantity pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** and be **referenced** from composition edges.
 
 ### Exploratory object: Relation (typed edge)
 
@@ -733,7 +761,7 @@ RelationType {
 **Leaning:** RelationType = **`label`** + display/inherit flags. Opposite wording like “ist Teil von” stays a **view** of the same edge (Q41).  
 **Open:** whether `directed` (graph chrome: arrow vs line) is worth keeping beside `DisplayHint` (structural role) — they answer different questions (Q42 vs Q44).
 
-#### Design spin: measure via Relation + unit group (exploratory)
+#### Design spin: quantity via Relation + unit group (exploratory)
 
 Insight from examples (Rezepte amounts on edges; Widerstand Wert): a **value** can live on a **Relation**, while **Präfix + Basiseinheit form one group** (not a free chain of unrelated links).
 
@@ -748,7 +776,7 @@ Widerstand ──Wert──► 100 ──► kilo ──► Ohm     # prefix and
 ```text
 Widerstand
    │
-   │  RelationType e.g. "wert" / consists_of measure slot
+   │  RelationType e.g. "wert" / consists_of quantity slot
    │  props: { value: 100 }
    │
    ▼
@@ -766,14 +794,14 @@ Rezept ──uses──► Mehl
 
 | Piece | Role |
 |-------|------|
-| `value` | Scalar on the **Relation** (`props`) — or on a measure Parameter; still open |
+| `value` | Scalar on the **Relation** (`props`) — or on a quantity Parameter; still open |
 | **Unit group** | **Präfix + Basiseinheit always together** (pair / small structure); “kOhm”, “mm”, “mW” |
-| Präfix alone | Incomplete for display of a measure (Q29) |
+| Präfix alone | Incomplete for display of a quantity (Q29) |
 | Basiseinheit alone | Allowed as group with null prefix (e.g. `5 Ohm`, `200 g`) |
 
-**Leaning (not locked):** treat **Präfix+Einheit as one unit group**; do not model measure as Widerstand→value→prefix→unit as three independent hops. Relation.props may carry `value` and point at / embed that group (Q45).
+**Leaning (not locked):** treat **Präfix+Einheit as one unit group**; do not model quantity as Widerstand→value→prefix→unit as three independent hops. Relation.props may carry `value` and point at / embed that group (Q45).
 
-Aligns with existing composite **`measure`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
+Aligns with existing composite **`quantity`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 
@@ -786,9 +814,9 @@ Gap spotted on the concrete BOM: `BomList` / `BomLine` feel like **host classes*
 BOM-Schema
 ├── [consists_of] Zeile          ← line shape
 │     ├── [consists_of] Reference / Referenzen  (string_list — open RefDes; not enum)
-│     ├── [consists_of] Menge          (measure | integer)
+│     ├── [consists_of] Menge          (quantity | integer)
 │     ├── [consists_of] Beschreibung   (string)
-│     ├── [consists_of] Preis          (measure / money)
+│     ├── [consists_of] Preis          (quantity / money)
 │     ├── [consists_of] Stock          (boolean)
 │     └── [uses] CatalogPart           (→ Bauteile leaf)
 └── [consists_of] Summe / Meta   (optional)
@@ -826,7 +854,7 @@ flowchart TB
 **Order / sequence (user insight):** if a BOM **Zeile** is a Node, the table display needs a **stable row order**. Name-sorting is wrong (`C2` before `C1,C3,C4` by string is accidental). Same for recipe **steps**.  
 → Requires explicit ordering: Node.`position` / `menu_order`, or ordered Relations (Q12/Q13). Schema-as-Nodes makes **sibling order first-class**, not optional cosmetics.
 
-Same for **Rezept**: Rezept-Schema Nodes + instance Nodes + `uses` ingredients with measure props — no `Recipe`/`IngredientLine` core classes required.
+Same for **Rezept**: Rezept-Schema Nodes + instance Nodes + `uses` ingredients with quantity props — no `Recipe`/`IngredientLine` core classes required.
 
 #### Example RelationTypes
 
@@ -868,7 +896,7 @@ Not agreed — refine with Q35/Q41–Q43; Bauteile example below still uses info
 
 Separate planning tree (root = **Bauteile**).  
 Edge labels: **`[ist-ein]`** vs **`[besteht-aus]`**.  
-Measure attributes **refer** into the Definitionsbaum (`measure` + Präfix + Basiseinheit), not duplicated as free text.
+Quantity attributes **refer** into the Definitionsbaum (`quantity` + Präfix + Basiseinheit), not duplicated as free text.
 
 ```text
 Bauteile                                              ← ROOT of this example
@@ -877,37 +905,37 @@ Bauteile                                              ← ROOT of this example
 │   │
 │   ├── [ist-ein] Widerstand
 │   │   ├── [besteht-aus] Wert
-│   │   │                 └─ [referenziert] measure + Präfix + Unit(Ohm)
+│   │   │                 └─ [referenziert] quantity + Präfix + Unit(Ohm)
 │   │   │                    Beispiel: 10 kOhm
 │   │   ├── [besteht-aus] Bauform          (z.B. 0201, 0402, 0603, axial, …)
-│   │   ├── [besteht-aus] Toleranz         (measure + Präfix + Unit(%) ?)
+│   │   ├── [besteht-aus] Toleranz         (quantity + Präfix + Unit(%) ?)
 │   │   ├── [besteht-aus] Leistungsaufnahme
-│   │   │                 └─ measure + Präfix + Unit(Watt)  z.B. 250 mW
+│   │   │                 └─ quantity + Präfix + Unit(Watt)  z.B. 250 mW
 │   │   ├── [besteht-aus] Temperaturkoeffizient
 │   │   └── [besteht-aus] Maße
-│   │       ├── [besteht-aus] Höhe         → measure + Präfix + Unit(Meter)
-│   │       ├── [besteht-aus] Breite       → measure + Präfix + Unit(Meter)
-│   │       └── [besteht-aus] Tiefe        → measure + Präfix + Unit(Meter)
+│   │       ├── [besteht-aus] Höhe         → quantity + Präfix + Unit(Meter)
+│   │       ├── [besteht-aus] Breite       → quantity + Präfix + Unit(Meter)
+│   │       └── [besteht-aus] Tiefe        → quantity + Präfix + Unit(Meter)
 │   │           Beispiel Maße: 10 mm × 5 mm × 2 mm
 │   │
 │   ├── [ist-ein] Kondensator
-│   │   ├── [besteht-aus] Wert (Kapazität) → measure + Präfix + Unit(Farad)
-│   │   ├── [besteht-aus] Nennspannung     → measure + Präfix + Unit(Volt)
+│   │   ├── [besteht-aus] Wert (Kapazität) → quantity + Präfix + Unit(Farad)
+│   │   ├── [besteht-aus] Nennspannung     → quantity + Präfix + Unit(Volt)
 │   │   ├── [besteht-aus] Bauform / Dielektrikum
 │   │   ├── [besteht-aus] Polarität        (text / enum)
 │   │   ├── [besteht-aus] Toleranz
 │   │   └── [besteht-aus] Maße
-│   │       ├── Höhe / Breite / Tiefe      → je measure + Präfix + Unit(Meter)
+│   │       ├── Höhe / Breite / Tiefe      → je quantity + Präfix + Unit(Meter)
 │   │
 │   ├── [ist-ein] Spule
-│   │   ├── [besteht-aus] Wert (Induktivität) → measure + Präfix + Unit(Henry)
+│   │   ├── [besteht-aus] Wert (Induktivität) → quantity + Präfix + Unit(Henry)
 │   │   ├── [besteht-aus] Nennstrom
 │   │   ├── [besteht-aus] Gleichstromwiderstand (DCR)
 │   │   ├── [besteht-aus] Kern / Bauform
 │   │   └── [besteht-aus] Maße → Höhe / Breite / Tiefe
 │   │
 │   └── [ist-ein] Potentiometer
-│       ├── [besteht-aus] Widerstandswert  → measure + Präfix + Unit(Ohm)
+│       ├── [besteht-aus] Widerstandswert  → quantity + Präfix + Unit(Ohm)
 │       ├── [besteht-aus] Leistung
 │       ├── [besteht-aus] Bauform (Dreh-/Schiebe-)
 │       └── [besteht-aus] Maße → Höhe / Breite / Tiefe
@@ -916,10 +944,10 @@ Bauteile                                              ← ROOT of this example
     │
     ├── [ist-ein] Transistor
     │   ├── [besteht-aus] Gehäuse
-    │   ├── [besteht-aus] Uceo / Uce sat   → measure + Präfix + Unit(Volt)
-    │   ├── [besteht-aus] Ic max           → measure + Präfix + Unit(Ampere)
+    │   ├── [besteht-aus] Uceo / Uce sat   → quantity + Präfix + Unit(Volt)
+    │   ├── [besteht-aus] Ic max           → quantity + Präfix + Unit(Ampere)
     │   ├── [besteht-aus] hFE / Verstärkung
-    │   ├── [besteht-aus] Verlustleistung  → measure + Präfix + Unit(Watt)
+    │   ├── [besteht-aus] Verlustleistung  → quantity + Präfix + Unit(Watt)
     │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
     │   │
     │   ├── [ist-ein] NPN-Transistor
@@ -929,7 +957,7 @@ Bauteile                                              ← ROOT of this example
     │       └── (dito)
     │
     ├── [ist-ein] IC
-    │   ├── [besteht-aus] Versorgungsspannung → measure + Präfix + Unit(Volt)
+    │   ├── [besteht-aus] Versorgungsspannung → quantity + Präfix + Unit(Volt)
     │   ├── [besteht-aus] Gehäuse / Pinzahl
     │   ├── [besteht-aus] Temperaturbereich
     │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
@@ -940,13 +968,13 @@ Bauteile                                              ← ROOT of this example
     │   │
     │   └── [ist-ein] Digital-IC
     │       ├── [besteht-aus] Logikfamilie (text / enum)
-    │       ├── [besteht-aus] Taktfrequenz → measure + Präfix + Unit(Hertz)
+    │       ├── [besteht-aus] Taktfrequenz → quantity + Präfix + Unit(Hertz)
     │       └── … weitere digitale Attribute
     │
     └── [ist-ein] Diode
         ├── [besteht-aus] Typ (Gleichrichter, Zener, Schottky, …)
-        ├── [besteht-aus] Uf / Uz          → measure + Präfix + Unit(Volt)
-        ├── [besteht-aus] If max           → measure + Präfix + Unit(Ampere)
+        ├── [besteht-aus] Uf / Uz          → quantity + Präfix + Unit(Volt)
+        ├── [besteht-aus] If max           → quantity + Präfix + Unit(Ampere)
         ├── [besteht-aus] Gehäuse
         └── [besteht-aus] Maße → Höhe / Breite / Tiefe
 ```
@@ -982,13 +1010,13 @@ flowchart TB
   M -->|besteht-aus| B["Breite"]
   M -->|besteht-aus| T["Tiefe"]
 
-  Wert -.->|referenziert| Def["Definitionsbaum:\nmeasure + Präfix + Unit"]
+  Wert -.->|referenziert| Def["Definitionsbaum:\nquantity + Präfix + Unit"]
   H -.->|referenziert| Def
 ```
 
 **Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` / `consists_of` set as **attributes**). Exact rule is open — copy on create, live inherit, or merge override (Q43; related to Q30/templates).
 
-**Composition note:** `besteht-aus` is **not** inheritance. From the part’s side the same edge may read as “ist Teil von” (view only — no inverse type field). UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links measure slots to the Definitionsbaum.
+**Composition note:** `besteht-aus` is **not** inheritance. From the part’s side the same edge may read as “ist Teil von” (view only — no inverse type field). UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links quantity slots to the Definitionsbaum.
 
 ### Implementation / selection tradeoff (planning only)
 
@@ -1021,11 +1049,11 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 
 | Type key | Meaning | Built from |
 |----------|---------|------------|
-| `measure` (*Wert mit Einheit*) | Displayable quantity with unit | **`number` or `integer`** + optional **Präfix** + **Basiseinheit** |
+| `quantity` (*Größe* / Wert mit Einheit — not Messung) | Displayable Größe with unit | **`int` or `double`** + optional **Präfix** + **Basiseinheit** |
 | `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `string`) + **selection method** |
 
 ```text
-measure / Wert mit Einheit
+quantity / Wert mit Einheit
 ├── numeric value     ← number  OR  integer   (open: fixed per param, or choosable — Q37)
 ├── prefix?           ← Node under Präfix    (e.g. k, m, µ)
 └── base_unit         ← Node under Basiseinheit (e.g. Ohm, Meter, Watt)
@@ -1042,8 +1070,8 @@ enum
 
 **Clarifications:**
 
-- `measure` is **not** a rival scalar beside `number`/`integer` — it **reuses** a numeric leaf.
-- Inside `measure`, **Präfix + Basiseinheit form a unit group** (Q45) — not a loose path `value → prefix → unit`.
+- `quantity` is **not** a rival scalar beside `number`/`integer` — it **reuses** a numeric leaf.
+- Inside `quantity`, **Präfix + Basiseinheit form a unit group** (Q45) — not a loose path `value → prefix → unit`.
 - `enum` is **not** split into `enum_single` / `enum_multiple` types — **single/multiple are selection methods**.
 - Option values of an enum are themselves scalar (typically `string`; whether other scalars are allowed is Q39).
 
@@ -1056,11 +1084,11 @@ Type                          ← Project.type_node
 ├── url
 ├── file
 ├── enum                      ← composite (scalar options + selection_mode)
-└── measure                   ← composite (number|integer + prefix + unit)
+└── quantity                   ← composite (number|integer + prefix + unit)
 ```
 
-Open: is `measure` / `enum` listed as Type-Nodes, or only composition rules? (Q36)  
-Open: does each measure param fix `integer` vs `number`, or allow both? (Q37)  
+Open: is `quantity` / `enum` listed as Type-Nodes, or only composition rules? (Q36)  
+Open: does each quantity param fix `integer` vs `number`, or allow both? (Q37)  
 Open: confirm selection_mode lives on the parameter/field, not in the Type name (Q38).  
 Open: which scalar(s) may appear as enum option values? (Q39)
 
@@ -1078,13 +1106,13 @@ Bauteile ─[ist-ein]→ Passives Bauteil ─[ist-ein]→ Widerstand
 
 | Attribute | Core type | Composition / choices |
 |-----------|-----------|------------------------|
-| Wert | `measure` | number + Präfix + Unit(`Ohm`) → e.g. `10 kOhm` |
+| Wert | `quantity` | number + Präfix + Unit(`Ohm`) → e.g. `10 kOhm` |
 | Bauform | `enum` + selection `single` | options {0201, 0402, 0603, 0805, axial, …} |
-| Toleranz | `measure` | number + Präfix? + Unit(`%`) → e.g. `1 %` |
-| Leistungsaufnahme | `measure` | number + Präfix + Unit(`Watt`) → e.g. `250 mW` |
-| Temperaturkoeffizient | `string` or `measure` | TBD |
+| Toleranz | `quantity` | number + Präfix? + Unit(`%`) → e.g. `1 %` |
+| Leistungsaufnahme | `quantity` | number + Präfix + Unit(`Watt`) → e.g. `250 mW` |
+| Temperaturkoeffizient | `string` or `quantity` | TBD |
 | Maße | group | consists of Höhe, Breite, Tiefe |
-| Höhe / Breite / Tiefe | `measure` | number + Präfix + Unit(`Meter`) → e.g. `10 mm` |
+| Höhe / Breite / Tiefe | `quantity` | number + Präfix + Unit(`Meter`) → e.g. `10 mm` |
 | Datenblatt | `url` or `file` | link or upload |
 | RoHS | `boolean` | true/false |
 
@@ -1098,7 +1126,7 @@ Widerstand is a taxonomy Node. Attributes were **Parameter definitions** attache
 Node: Widerstand
 parameters:
   - key: wert
-    type: measure
+    type: quantity
     numeric_kind: number
     prefix: allowed (Präfix branch)
     base_unit: Ohm
@@ -1111,19 +1139,19 @@ parameters:
     choices: [0201, 0402, 0603, 0805, axial]
 
   - key: toleranz
-    type: measure
+    type: quantity
     numeric_kind: number
     base_unit: %
 
   - key: leistungsaufnahme
-    type: measure
+    type: quantity
     numeric_kind: number
     prefix: allowed
     base_unit: Watt
     example_value: { value: 250, prefix: m, unit: Watt } => "250 mW"
 
   - key: hoehe / breite / tiefe   (or nested group "masse")
-    type: measure
+    type: quantity
     base_unit: Meter
     example: 10 mm × 5 mm × 2 mm
 
@@ -1145,13 +1173,13 @@ parameters:
 
 #### Approach B — Nested nodes + typed edges
 
-Widerstand is a taxonomy Node. Attributes are **child nodes** linked with `besteht-aus`. Measure slots **referenzieren** Definitionsbaum types/units. Selection: select `Widerstand` → edges `kind=besteht-aus`.
+Widerstand is a taxonomy Node. Attributes are **child nodes** linked with `besteht-aus`. Quantity slots **referenzieren** Definitionsbaum types/units. Selection: select `Widerstand` → edges `kind=besteht-aus`.
 
 ```text
 Node: Widerstand
   ─[besteht-aus]→ Node: Wert
-        type hint: measure
-        ─[referenziert]→ Type/measure
+        type hint: quantity
+        ─[referenziert]→ Type/quantity
         ─[referenziert]→ Basiseinheit/Ohm
         ─[referenziert]→ (Präfix allowed)
         filled: value=10, prefix=k  => "10 kOhm"
@@ -1161,12 +1189,12 @@ Node: Widerstand
         selection_mode: single
         ─[referenziert]→ option set (scalar values)
 
-  ─[besteht-aus]→ Node: Toleranz          (measure → %)
-  ─[besteht-aus]→ Node: Leistungsaufnahme (measure → Watt)
+  ─[besteht-aus]→ Node: Toleranz          (quantity → %)
+  ─[besteht-aus]→ Node: Leistungsaufnahme (quantity → Watt)
   ─[besteht-aus]→ Node: Maße
-        ─[besteht-aus]→ Höhe   (measure → Meter)
-        ─[besteht-aus]→ Breite (measure → Meter)
-        ─[besteht-aus]→ Tiefe  (measure → Meter)
+        ─[besteht-aus]→ Höhe   (quantity → Meter)
+        ─[besteht-aus]→ Breite (quantity → Meter)
+        ─[besteht-aus]→ Tiefe  (quantity → Meter)
 
   ─[besteht-aus]→ Node: Datenblatt        (url|file)
   ─[besteht-aus]→ Node: RoHS              (boolean)
@@ -1186,7 +1214,7 @@ Node: Widerstand
 
 | Field | Filled reading | A (params on node) | B (nodes + edges) |
 |-------|----------------|--------------------|-------------------|
-| Wert | 10 kOhm | Param `wert` measure payload | Child node `Wert` + refs |
+| Wert | 10 kOhm | Param `wert` quantity payload | Child node `Wert` + refs |
 | Bauform | 0603 | Param `bauform` enum+single | Child node `Bauform` |
 | Leistung | 250 mW | Param `leistungsaufnahme` | Child node `Leistungsaufnahme` |
 | Maße | 10×5×2 mm | Three params or nested group | Node `Maße` → three children |
@@ -1238,7 +1266,7 @@ flowchart TB
 |------|--------------------|-------------|--------------|
 | Definitionsbaum root | yes | yes | `Project.definition_root` |
 | Type / Präfix / Basiseinheit anchors | yes each | yes | `Project.type_node` / `prefix_node` / `base_unit_node` |
-| Type choices (measure, url, …) | no | as needed | children of `type_node` |
+| Type choices (quantity, url, …) | no | as needed | children of `type_node` |
 | Domain branches (e.g. Bauteile) | no | no | children of `definition_root` in the Definitionsbaum |
 | Extra / template trees | no | no | other `root_nodes` with optional `Node.template = true` |
 
@@ -1313,7 +1341,7 @@ Two main options (user direction — decide later):
 | **A — Generate** | On Project create, code/seed creates the default Nodes | Deterministic; no extra “system” project | Defaults live in code; harder to customize globally |
 | **B — Template Project** | One template Project holds simples + **enum** (+ anchors); **copy** for each new Project | Editable defaults; fits Q30 | Need a protected template Project |
 
-**Current leaning:** **B** for simples + enum (already assigned to the template). Related: Q30, Q32.
+**Current leaning:** **B** for simples + enum + quantity (already assigned to the template). Related: Q30, Q32.
 
 #### Fields / topics still to define
 

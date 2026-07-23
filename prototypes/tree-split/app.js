@@ -7,11 +7,12 @@
  *   - Knoten
  *   - Tabelle / Tabelle 2 — children = column schema (header + 5 rows)
  *   - Formular — selected node = field context; children = choice options
- * Datentypen (template): simples + derived enum (base_type + value list).
+ * Datentypen (template): simples + derived enum + derived quantity (Größe).
  * has_type → typed table widgets; enum base_type → exactly one simple.
+ * quantity = value + Präfix + Basiseinheit (not a Messung).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v8";
+const STORAGE_KEY = "wtt-proto-tree-split-v9";
 const TABLE_BODY_ROWS = 5;
 const RIGHT_TABS = ["node", "table", "table2", "form"];
 const TAB_ARIA = {
@@ -25,6 +26,8 @@ const REL_HAS_TYPE = "has_type";
 /** Relation: enum type ─[base_type]→ exactly one simple type */
 const REL_BASE_TYPE = "base_type";
 const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
+/** Cell encoding for quantity: "value|prefix|unit" */
+const QTY_SEP = "|";
 
 /** @typedef {{ id: string, parentId: string|null, name: string, position: number, template?: boolean }} ProtoNode */
 /** @typedef {'node'|'table'|'table2'|'form'} RightTab */
@@ -70,6 +73,8 @@ let typeRelations = new Map();
 /** @type {Map<string, string>} */
 let baseTypeRelations = new Map();
 let dataTypesRootId = "";
+let prefixesRootId = "";
+let baseUnitsRootId = "";
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -142,9 +147,12 @@ function createInitial() {
   formStates = new Map();
   typeRelations = new Map();
   baseTypeRelations = new Map();
+  dataTypesRootId = "";
+  prefixesRootId = "";
+  baseUnitsRootId = "";
   activeTab = "node";
 
-  // Template-shaped demo: Datentypen hold simples + derived enum (Q50 lean).
+  // Template-shaped demo: Datentypen hold simples + enum + quantity (Q50 lean).
   rootId = createNode(null, "Template / BOM Demo", 0, { template: true });
 
   dataTypesRootId = createNode(rootId, "Datentypen", 0, { template: true });
@@ -161,8 +169,23 @@ function createInitial() {
   createNode(tEnum, "0603", 2);
   createNode(tEnum, "0805", 3);
   createNode(tEnum, "axial", 4);
+  // Derived quantity (Größe): value + Präfix + Basiseinheit — not a Messung.
+  const tQuantity = createNode(dataTypesRootId, "quantity", 6);
 
-  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 1);
+  prefixesRootId = createNode(rootId, "Präfix", 1, { template: true });
+  createNode(prefixesRootId, "m", 0);
+  createNode(prefixesRootId, "k", 1);
+  createNode(prefixesRootId, "M", 2);
+  createNode(prefixesRootId, "µ", 3);
+
+  baseUnitsRootId = createNode(rootId, "Basiseinheit", 2, { template: true });
+  createNode(baseUnitsRootId, "Ohm", 0);
+  createNode(baseUnitsRootId, "Farad", 1);
+  createNode(baseUnitsRootId, "Meter", 2);
+  createNode(baseUnitsRootId, "Watt", 3);
+  createNode(baseUnitsRootId, "Volt", 4);
+
+  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 3);
   const cRef = createNode(schemaId, "Reference", 0);
   const cVal = createNode(schemaId, "Value", 1);
   const cFp = createNode(schemaId, "Footprint", 2);
@@ -172,19 +195,19 @@ function createInitial() {
 
   // slot ─[has_type]→ Datentyp
   typeRelations.set(cRef, tString);
-  typeRelations.set(cVal, tString);
+  typeRelations.set(cVal, tQuantity);
   typeRelations.set(cFp, tEnum);
   typeRelations.set(cQty, tInt);
   typeRelations.set(cLcsc, tString);
   typeRelations.set(cStock, tBool);
 
-  const listId = createNode(rootId, "Stückliste", 2);
+  const listId = createNode(rootId, "Stückliste", 4);
   createNode(listId, "C1 — 100 nF 0603", 0);
   createNode(listId, "R1 — 10 kΩ 0603", 1);
   createNode(listId, "U1 — ESP32-WROOM-32", 2);
   createNode(listId, "D1 — LED green 0805", 3);
 
-  const partsId = createNode(rootId, "Bauteile", 3);
+  const partsId = createNode(rootId, "Bauteile", 5);
   createNode(partsId, "Kondensator", 0);
   createNode(partsId, "Widerstand", 1);
   createNode(partsId, "IC", 2);
@@ -194,15 +217,30 @@ function createInitial() {
   collapsed.clear();
 }
 
+function healNamedRoot(currentId, name) {
+  if (currentId && nodes.has(currentId)) return currentId;
+  const found = [...nodes.values()].find(
+    (n) => n.parentId === rootId && n.name === name
+  );
+  return found ? found.id : "";
+}
+
 function dataTypeNodes() {
-  if (!dataTypesRootId || !nodes.has(dataTypesRootId)) {
-    const found = [...nodes.values()].find(
-      (n) => n.parentId === rootId && n.name === "Datentypen"
-    );
-    dataTypesRootId = found ? found.id : "";
-  }
+  dataTypesRootId = healNamedRoot(dataTypesRootId, "Datentypen");
   if (!dataTypesRootId) return [];
   return childrenOf(dataTypesRootId);
+}
+
+function prefixOptionNames() {
+  prefixesRootId = healNamedRoot(prefixesRootId, "Präfix");
+  if (!prefixesRootId) return [];
+  return childrenOf(prefixesRootId).map((c) => c.name);
+}
+
+function baseUnitOptionNames() {
+  baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
+  if (!baseUnitsRootId) return [];
+  return childrenOf(baseUnitsRootId).map((c) => c.name);
 }
 
 function typeNodeOf(slotId) {
@@ -220,6 +258,7 @@ function typeKey(typeNode) {
   if (["char"].includes(k)) return "char";
   if (["string", "text"].includes(k)) return "string";
   if (["enum"].includes(k)) return "enum";
+  if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
   // Concrete enum-like: has a base_type relation
   if (baseTypeRelations.has(typeNode.id)) return "enum";
   return "string";
@@ -233,6 +272,33 @@ function isSimpleTypeNode(node) {
 function isEnumTypeNode(node) {
   if (!node) return false;
   return typeKey(node) === "enum";
+}
+
+function isQuantityTypeNode(node) {
+  if (!node) return false;
+  return typeKey(node) === "quantity";
+}
+
+/** @returns {{ v: string, p: string, u: string }} */
+function parseQuantityCell(raw) {
+  if (raw == null || raw === "") return { v: "", p: "", u: "" };
+  const s = String(raw);
+  if (s.includes(QTY_SEP)) {
+    const [v = "", p = "", u = ""] = s.split(QTY_SEP);
+    return { v, p, u };
+  }
+  return { v: s, p: "", u: "" };
+}
+
+function formatQuantityCell(parts) {
+  return [parts.v || "", parts.p || "", parts.u || ""].join(QTY_SEP);
+}
+
+function formatQuantityDisplay(parts) {
+  const num = parts.v || "";
+  const unit = `${parts.p || ""}${parts.u || ""}`;
+  if (!num && !unit) return "—";
+  return unit ? `${num} ${unit}`.trim() : num;
 }
 
 function simpleTypeNodes() {
@@ -313,6 +379,62 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     if (vals.includes(cur)) select.value = cur;
     select.addEventListener("change", () => onChange(select.value));
     return select;
+  }
+
+  if (key === "quantity") {
+    const wrap = document.createElement("div");
+    wrap.className = "qty-cell";
+    wrap.style.display = "flex";
+    wrap.style.gap = "0.25rem";
+    wrap.style.alignItems = "center";
+    wrap.style.flexWrap = "wrap";
+    const parts = parseQuantityCell(value);
+    const num = document.createElement("input");
+    num.type = "number";
+    num.step = "any";
+    num.inputMode = "decimal";
+    num.className = "form-control";
+    num.style.width = "4.5rem";
+    num.value = parts.v;
+    num.setAttribute("aria-label", `${ariaLabel} Wert`);
+    const pref = document.createElement("select");
+    pref.className = "form-control";
+    pref.style.width = "3.2rem";
+    pref.setAttribute("aria-label", `${ariaLabel} Präfix`);
+    const pEmpty = document.createElement("option");
+    pEmpty.value = "";
+    pEmpty.textContent = "—";
+    pref.append(pEmpty);
+    for (const name of prefixOptionNames()) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      pref.append(opt);
+    }
+    if ([...pref.options].some((o) => o.value === parts.p)) pref.value = parts.p;
+    const unit = document.createElement("select");
+    unit.className = "form-control";
+    unit.style.width = "5rem";
+    unit.setAttribute("aria-label", `${ariaLabel} Einheit`);
+    const uEmpty = document.createElement("option");
+    uEmpty.value = "";
+    uEmpty.textContent = "—";
+    unit.append(uEmpty);
+    for (const name of baseUnitOptionNames()) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      unit.append(opt);
+    }
+    if ([...unit.options].some((o) => o.value === parts.u)) unit.value = parts.u;
+    const emit = () =>
+      onChange(formatQuantityCell({ v: num.value, p: pref.value, u: unit.value }));
+    num.addEventListener("change", emit);
+    num.addEventListener("input", emit);
+    pref.addEventListener("change", emit);
+    unit.addEventListener("change", emit);
+    wrap.append(num, pref, unit);
+    return wrap;
   }
 
   const input = document.createElement("input");
@@ -520,6 +642,8 @@ function persist() {
     seq,
     activeTab,
     dataTypesRootId,
+    prefixesRootId,
+    baseUnitsRootId,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
     tableCells: mapToObject(tableCells),
@@ -554,6 +678,14 @@ function restore() {
       data.dataTypesRootId && nodes.has(data.dataTypesRootId)
         ? data.dataTypesRootId
         : "";
+    prefixesRootId =
+      data.prefixesRootId && nodes.has(data.prefixesRootId)
+        ? data.prefixesRootId
+        : "";
+    baseUnitsRootId =
+      data.baseUnitsRootId && nodes.has(data.baseUnitsRootId)
+        ? data.baseUnitsRootId
+        : "";
     tableCells = new Map();
     tableCells2 = new Map();
     formStates = new Map();
@@ -583,7 +715,9 @@ function restore() {
         }
       }
     }
-    dataTypeNodes(); // heal dataTypesRootId by name if needed
+    dataTypeNodes();
+    prefixOptionNames();
+    baseUnitOptionNames();
     const parents = new Set(
       [...nodes.values()].map((n) => n.parentId).filter((p) => p != null)
     );
@@ -606,6 +740,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v5");
     localStorage.removeItem("wtt-proto-tree-split-v6");
     localStorage.removeItem("wtt-proto-tree-split-v7");
+    localStorage.removeItem("wtt-proto-tree-split-v8");
   } catch {
     /* ignore */
   }
@@ -910,6 +1045,21 @@ function renderDetail() {
     baseBlock.append(baseLab, baseSelect, baseHint);
   }
 
+  let quantityBlock = null;
+  if (isQuantityTypeNode(node) && node.parentId === dataTypesRootId) {
+    quantityBlock = document.createElement("div");
+    quantityBlock.className = "order-block";
+    const qLab = document.createElement("div");
+    qLab.className = "field-label";
+    qLab.textContent = "quantity = Größe (nicht Messung)";
+    const qHint = document.createElement("p");
+    qHint.className = "muted";
+    qHint.style.margin = "0.35rem 0 0";
+    qHint.style.fontSize = "0.8rem";
+    qHint.textContent = `Wert + Präfix (${prefixOptionNames().join(", ") || "—"}) + Basiseinheit (${baseUnitOptionNames().join(", ") || "—"}). Anzeige z. B. „10 kOhm“. Nicht BOM-Menge.`;
+    quantityBlock.append(qLab, qHint);
+  }
+
   const meta = document.createElement("div");
   meta.className = "meta";
   const tn = typeNodeOf(node.id);
@@ -928,10 +1078,11 @@ function renderDetail() {
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Template: Simples + enum (base_type + Werte). has_type → Tabellenfelder. Alt+↑ / Alt+↓.";
+    "Template: Simples + enum + quantity (Größe). has_type → Tabellenfelder. Alt+↑ / Alt+↓.";
 
   card.append(h2, field, typeBlock);
   if (baseBlock) card.append(baseBlock);
+  if (quantityBlock) card.append(quantityBlock);
   card.append(orderBlock, meta, hint);
   mount.append(card);
 }

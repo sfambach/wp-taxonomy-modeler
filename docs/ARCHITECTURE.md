@@ -45,14 +45,14 @@ Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Cha
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
-Measure spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
+Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
-Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over simple numeric types.  
-**Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** (exactly one base_type + value list).  
+Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
+**Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** + derived **quantity**.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Q49 open:** simples typically do not originate Relations — special kind vs config that disables Relations.  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
@@ -136,9 +136,9 @@ There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `L�
 | `type` | **yes** | **Node** under `project.type_node` via config or `has_type` |
 | `prefix` | **optional** | **Node** under `project.prefix_node` |
 | `base_unit` | **optional** | **Node** under `project.base_unit_node` |
-| `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
+| `value` | **?** | Filled quantity reading (e.g. `10`); storage Q16 |
 
-**Agreed:** no Parameter / ParameterRole (Q33/Q34); measure composition as above; fixed simple types per project.  
+**Agreed:** no Parameter / ParameterRole (Q33/Q34); quantity composition as above; fixed simple types per project.  
 **Open (Q49):** may simples originate Relations — special kind vs config disable.  
 **Dropped (Q14):** no separate owning `node_id`.
 
@@ -155,13 +155,13 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 
 | Field | Source | Example |
 |-------|--------|---------|
-| `type` | under Project.`type_node` | `measure`, `url` |
+| `type` | under Project.`type_node` | `quantity`, `url` |
 | `prefix` | under Project.`prefix_node` | `k`, `m` |
 | `base_unit` | under Project.`base_unit_node` | `Ohm`, `Meter` |
 | `value` | filled reading (Q16) | `10` |
 
-**Measure reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
-`measure` is **composite** (uses `number` or `integer`), not a rival scalar.  
+**Quantity reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
+`quantity` is **composite** (uses `number` or `integer`), not a rival scalar.  
 Dimension group **Maße**: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe) under the **Definitionsbaum**.
 
 Project always has Definitionsbaum anchors. Nodes may be **templates** via `Node.template`.

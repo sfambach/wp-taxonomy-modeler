@@ -10,12 +10,14 @@ Static throwaway UI to explore the taxonomy tree screen shape.
 - Demo seed: **Template / BOM Demo** with **Datentypen**:
   - simples: `int`, `double`, `string`, `char`, `bool` (in template)
   - derived **enum**: exactly one `base_type` (→ `string`) + value list as children (`0201`…`axial`)
+  - derived **quantity** (*Größe*): value + Präfix + Basiseinheit (not a Messung; not BOM Menge)
+- Also seeded: **Präfix** (`m`, `k`, `M`, `µ`) and **Basiseinheit** (`Ohm`, …)
 - Right pane **tabs**:
   - **Knoten** — rename, sibling order, **Datentyp** via `has_type`; on enum → **base_type**
-  - **Tabelle** / **Tabelle 2** — children = columns; cell widgets from column `has_type` (enum → select)
+  - **Tabelle** / **Tabelle 2** — children = columns; cell widgets from column `has_type`
   - **Formular** — controls from selected node; choice options from children
 - **+** / **×** / **↑↓** / **Alt+↑↓** (`position` order, Q13)
-- State in `localStorage` (`wtt-proto-tree-split-v8`) — Reset once after upgrade
+- State in `localStorage` (`wtt-proto-tree-split-v9`) — Reset once after upgrade
 
 ## Typed columns (Q48)
 
@@ -28,6 +30,7 @@ Static throwaway UI to explore the taxonomy tree screen shape.
    - `char` → text maxlength 1
    - `bool` → checkbox
    - `enum` → select from child value list (base_type = one simple)
+   - `quantity` → number + Präfix + Basiseinheit (cell: `value|prefix|unit`)
 
 ## Model
 
@@ -40,5 +43,5 @@ baseTypeRelations: enumId → simpleTypeId   // Relation base_type (exactly one)
 ## Extend later
 
 - Full Relation objects (not only maps)
-- measure / string_list widgets
+- string_list widgets
 - Drag-and-drop reorder

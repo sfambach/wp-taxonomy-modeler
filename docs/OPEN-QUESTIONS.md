@@ -21,7 +21,7 @@
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | **Leaning: explicit `position` (or Relation order)** — BOM/Recipe line display needs stable sequence, not name sort | open |
 | Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | **Dropped (entfällt):** Parameter *is* a Node (Q33); placement via `parent_id` and/or Relations — no separate `node_id` | decided |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Same as Nodes (Q11)** — Parameter is a Node; no separate Parameter store | open |
-| Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
+| Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: **quantity** (Größe) needs a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
 | Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | **Leaning strong: Project ≈ taxonomy** (practically the same); WP taxonomy slug on Project; Node has no taxonomy field | open |
 | Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD — if Project ≈ taxonomy, storage may collapse toward the taxonomy (+ meta) or a thin Project wrapper (Q19) | open |
@@ -29,11 +29,11 @@
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
-| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | **measure** requires them (composite); scalars like url/string do not | open |
+| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | **quantity** (Größe) uses unit group (prefix + base_unit); scalars like url/string do not | open |
 | Q25 | How are Units represented? | Separate Unit / single unit Node / prefix+base | **Decided:** Parameter uses **prefix** + **base_unit** Nodes from Definition tree | decided |
 | Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | Leaning: must live under the matching Definition branch | open |
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
-| Q28 | Is a measure unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
+| Q28 | Is a quantity unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
 | Q29 | Can prefix exist without base_unit (or vice versa)? | Both required together / either alone / type-dependent | Type-dependent leaning | open |
 | Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | Related to **Q50** (seed defaults via template-project copy) | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
@@ -41,8 +41,8 @@
 | Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: no Parameter class.** Attribute names are ordinary tree **Nodes** with type binding; **ParameterRole also dropped** | decided |
 | Q34 | How are Node specializations / type bindings modeled? | PHP subclass / `kind` flag / formal ParameterRole / **configuration** + Relations | **Leaning: configuration + Relations** — no Parameter class, no ParameterRole; config shape TBD | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
-| Q36 | What is the core Type catalog? | Fixed list vs extensible | **Agreed:** template holds simples `int, double, string, char, bool` + derived **enum**; further types (measure, string_list, …) later | open |
-| Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
+| Q36 | What is the core Type catalog? | Fixed list vs extensible | **Agreed:** template holds simples `int, double, string, char, bool` + derived **enum** + derived **quantity** (Größe); further types (`string_list`, …) later | open |
+| Q37 | For `quantity`, is the numeric part `double`, `int`, or choosable per param? | Always double / always int / per-param `numeric_kind` | Per-param leaning | open |
 | Q38 | Are single/multiple enum variants types or selection methods? | enum_single+enum_multiple types / one enum + selection_mode | **Agreed direction:** one **enum** derived type; single\|multiple = selection method | open |
 | Q39 | Which scalar may enum option values use? | string only / any scalar / configurable | **Agreed:** enum has **exactly one base_type** (a simple); values conform to that base | open |
 | Q40 | Parked: further **Node** idea from planning session | Resume when user returns to it | User asked to park mid-thought (“Knoten im Kopf”) — details TBD on resume | parked |
@@ -50,12 +50,12 @@
 | Q42 | How should related nodes be displayed per RelationType? | Always as tree children / type-specific (part-of as attributes, is_a as taxonomy, …) | **Leaning: part-of → attributes of parent**; is_a → taxonomy; uses → refs (`DisplayHint`) | open |
 | Q43 | Can `consists_of` attributes be inherited along `is_a`? | No / copy / live inherit / merge+override | **Leaning: yes, inheritable**; mechanics TBD (related Q30) | open |
 | Q44 | Does RelationType need **`directed`** (arrow vs line)? | Always directed / optional flag / derive from DisplayHint / drop | Tentative: directed → arrow `from→to`, else line; may overlap `bidirectional` — user unsure | open |
-| Q45 | How is a measure bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Parameter only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
+| Q45 | How is a quantity (Größe) bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Node only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Leaning: schema-as-Nodes** so BOM/Recipe need no core classes; UI renders node graphs | open |
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
 | Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Aligned with Q33:** simple types = fixed Nodes per project; Parameter/slot ─[has_type]→ type Node; derived/composed types allowed; UI widget from type | open |
 | Q49 | May simple data-type Nodes originate Relations, or must that be blocked? | Special Node kind that cannot build Relations / same Node + **config** that disables Relations from simples / allow Relations | **Open:** simples typically do not build Relations themselves; either a special kind **or** configuration that deactivates Relations on simple types — prefer deciding with Q34 (config-first) | open |
-| Q50 | Where do default Nodes come from (Definitionsbaum anchors, fixed simples, …)? | **Generate** on Project create / **copy from a template Project** / hybrid | **Leaning: template Project** holds simples + **enum**; copy into new Projects (generate = fallback). Relates to Q30/Q32 | open |
+| Q50 | Where do default Nodes come from (Definitionsbaum anchors, fixed simples, …)? | **Generate** on Project create / **copy from a template Project** / hybrid | **Leaning: template Project** holds simples + **enum** + **quantity**; copy into new Projects (generate = fallback). Relates to Q30/Q32 | open |
 
 ## How to close a question
 

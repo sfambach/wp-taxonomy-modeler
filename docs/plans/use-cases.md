@@ -2,7 +2,7 @@
 name: Use cases
 overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14; keep Q34/Q49 open in Notes.
 status: draft
-version: "0.1.3-plan"
+version: "0.1.4-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -138,20 +138,20 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Touches** | Node, Parameter-Node, Relation, RelationType |
 | **Notes** | **Q33 decided** (attributes = Parameter-Nodes). Display Q42; inherit Q43; config Q34 |
 
-### UC-05 — Work with measure attributes (Wert mit Einheit)
+### UC-05 — Work with quantity attributes (Größe / Wert mit Einheit)
 
 | Field | Content |
 |-------|---------|
 | **Actor** | Admin |
-| **Goal** | Set or read a measure such as `10 kOhm` or `10 mm` |
-| **Trigger** | Edits a Parameter-Node typed as `measure` (e.g. Wert, Höhe) |
-| **Preconditions** | Definitionsbaum has fixed simples + composed `measure`; Präfix; Basiseinheit |
-| **Main flow** | 1. Admin opens measure field on the Parameter-Node<br>2. Enters numeric value<br>3. Chooses Präfix (optional) and Basiseinheit<br>4. Saves<br>5. System shows composed reading (e.g. `10 kOhm`) |
-| **Variants** | Missing unit; type that forbids prefix (non-measure / simple scalar) |
-| **Outcome** | Measure reading stored/displayed as value + prefix + unit |
+| **Goal** | Set or read a Größe such as `10 kOhm` or `10 mm` |
+| **Trigger** | Edits a Parameter-Node typed as `quantity` (e.g. Wert, Höhe) |
+| **Preconditions** | Template/Definitionsbaum has simples + derived `quantity`; Präfix; Basiseinheit |
+| **Main flow** | 1. Admin opens quantity field on the Parameter-Node<br>2. Enters numeric value<br>3. Chooses Präfix (optional) and Basiseinheit<br>4. Saves<br>5. System shows composed reading (e.g. `10 kOhm`) |
+| **Variants** | Missing unit; type that forbids prefix (non-quantity / simple scalar) |
+| **Outcome** | Quantity (Größe) stored/displayed as value + prefix + unit |
 | **MVP?** | later / unclear |
 | **Touches** | Parameter-Node, Type catalog (simple + composed), Präfix, Basiseinheit |
-| **Notes** | Value storage Q16; numeric_kind Q37; types Q36/Q48; config Q34 |
+| **Notes** | Name = Größe, not Messung; not BOM Menge. Value storage Q16; numeric_kind Q37; types Q36/Q48; config Q34 |
 
 ### UC-06 — Inherit attributes along `is_a`
 
@@ -206,7 +206,7 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Goal** | Declare that a Parameter-Node (e.g. Menge, Stock, Wert) uses a specific type |
 | **Trigger** | Edits type binding on a Parameter-Node / schema slot |
 | **Preconditions** | Parameter-Node exists; type Nodes available (simple or composed) |
-| **Main flow** | 1. Admin selects Parameter-Node<br>2. Chooses type (e.g. `int`, `bool`, or composed `measure`)<br>3. System stores binding (`has_type` Relation and/or config)<br>4. UI widgets follow the type |
+| **Main flow** | 1. Admin selects Parameter-Node<br>2. Chooses type (e.g. `int`, `bool`, `enum`, or `quantity`)<br>3. System stores binding (`has_type` Relation and/or config)<br>4. UI widgets follow the type |
 | **Variants** | Change type later; target type hidden/disabled in this project |
 | **Outcome** | Slot has a clear type; forms/tables render the matching control |
 | **MVP?** | later / unclear |
@@ -242,6 +242,21 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **MVP?** | later / unclear |
 | **Touches** | SimpleType Node, Relation, Node.config? |
 | **Notes** | **Q49 open** — special kind vs config disable; decide with Q34 |
+
+### UC-17 — Work with / define a quantity type (Größe)
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Admin |
+| **Goal** | Use the derived `quantity` type (Größe = value × unit group) for slots like Wert |
+| **Trigger** | Binds a slot to `quantity` or inspects the template type |
+| **Preconditions** | Template has `quantity` under Datentypen; Präfix and Basiseinheit branches exist |
+| **Main flow** | 1. Admin selects slot (e.g. Wert)<br>2. Sets `has_type` → `quantity`<br>3. Enters value + optional Präfix + Basiseinheit<br>4. UI shows composed reading (`10 kOhm`) |
+| **Variants** | Prefix omitted; numeric kind int vs double (Q37); value on Relation.props (Q45) |
+| **Outcome** | Slot behaves as Größe, not as plain number and not as a “measurement” workflow |
+| **MVP?** | later / unclear |
+| **Touches** | Type Node (`quantity`), Präfix, Basiseinheit, Relation `has_type` |
+| **Notes** | Renamed from informal `measure`; Q36/Q28/Q45 |
 
 ---
 
@@ -427,12 +442,12 @@ See [`example-projects.md`](example-projects.md) Example C.
 | **Actor** | Editor |
 | **Goal** | Attach ingredients with amounts (e.g. 200 g Mehl) to a recipe |
 | **Trigger** | Edits a recipe’s ingredients |
-| **Preconditions** | Recipe node + ingredient nodes; measure types/units available |
-| **Main flow** | 1. Select recipe<br>2. Add ingredient from tree<br>3. Enter measure (value + unit)<br>4. Save lines |
+| **Preconditions** | Recipe node + ingredient nodes; quantity types/units available |
+| **Main flow** | 1. Select recipe<br>2. Add ingredient from tree<br>3. Enter quantity (value + unit)<br>4. Save lines |
 | **Variants** | Missing unit; kitchen unit vs SI |
-| **Outcome** | Recipe lists ingredient lines with measures |
+| **Outcome** | Recipe lists ingredient lines with quantities |
 | **MVP?** | later — **host** editor; optional Relation + `props` |
-| **Touches** | Node; Relation `uses`?; measure; Relation.props? |
+| **Touches** | Node; Relation `uses`?; quantity; Relation.props? |
 | **Notes** | Strong case for edge props (example C); Q45 |
 
 ### UC-42 — Scale recipe portions
@@ -442,11 +457,11 @@ See [`example-projects.md`](example-projects.md) Example C.
 | **Actor** | User |
 | **Goal** | Change portions and rescale all ingredient amounts |
 | **Trigger** | Changes portion count |
-| **Preconditions** | Recipe has ingredient measures + base portions |
-| **Main flow** | 1. Set new portions<br>2. Host recalculates each measure<br>3. Shows scaled list |
+| **Preconditions** | Recipe has ingredient quantities + base portions |
+| **Main flow** | 1. Set new portions<br>2. Host recalculates each quantity<br>3. Shows scaled list |
 | **Outcome** | Scaled shopping-ready amounts |
 | **MVP?** | later — **host** |
-| **Touches** | Host calc; measure values |
+| **Touches** | Host calc; quantity values |
 | **Notes** | — |
 
 ### UC-43 — Build a meal plan and shopping list
@@ -489,6 +504,7 @@ See [`example-projects.md`](example-projects.md) Example C.
 - UC-13 Template tree → instantiate into project tree  
 - UC-25 Create/edit part properties in the tree (Wert, Maße, Datenblatt, …)  
 - ~~UC-10~~ → written  
-- ~~UC-14–UC-16~~ → written (type bind / compose / simple Relation restrict)
+- ~~UC-14–UC-16~~ → written (type bind / enum / simple Relation restrict)  
+- ~~UC-17~~ → written (quantity / Größe)
 
 Add cards when we pick the next slice.
