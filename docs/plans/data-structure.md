@@ -117,7 +117,7 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** Required Definition anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors.
+**Legend:** Required Definition anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors. Filled **measure** = `value` + `prefix` + `base_unit` (value storage Q16).
 
 ## Core objects
 
