@@ -39,10 +39,10 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
 - A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **Maße** dimensions compose as `10 mm × 5 mm × 2 mm`.
-- Domain branches such as **Bauteile** hang under the Definitionsbaum root (not a separate Root).
-- **Leaning:** a **Parameter** may be a **specialized Node** (same hierarchy, extra fields) — not locked (Q33/Q34).
+- Domain branches such as **Bauteile** hang under the Definitionsbaum root (not a separate Root) — *or* as a separate example root while exploring typed edges.
+- **Undecided:** Parameter as specialized Node vs Parameter definitions vs nested nodes with **typed edges** (`ist-ein` / `besteht-aus`) — see Bauteile example (Q33–Q35).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Parameter single-owner rule is still **?** (may dissolve if Parameter is a Node).
+- Parameter single-owner rule is still **?** .
 - Every Project, Node, and Parameter has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
@@ -65,7 +65,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
 Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).  
-Planning example: single **Definitionsbaum** `Definition → Type / Basiseinheit / Präfix / Bauteile → … → Maße`.
+Planning examples: **Definitionsbaum**; separate **Bauteile** tree with typed edges (`ist-ein` / `besteht-aus`).
 
 ## Versioning
 

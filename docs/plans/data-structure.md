@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.13-plan"
+version: "0.6.14-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -19,8 +19,11 @@ todos:
     content: "Leaning: Parameter may be a specialized Node (not a separate stored kind); decide Q14/Q33/Q34"
     status: in_progress
   - id: decide-parameter-is-node
-    content: "Decide whether Parameter is a specialized Node (subclass / kind flag / role)"
+    content: "Decide whether Parameter is a specialized Node (subclass / kind flag / role) — explore typed edges first"
     status: pending
+  - id: explore-typed-edges
+    content: "Explore is-a vs consists-of edges with properties before locking Parameter-as-Node"
+    status: in_progress
   - id: define-project-core
     content: "Project stores root_nodes plus required Definition anchors"
     status: completed
@@ -49,8 +52,8 @@ todos:
 
 > **Keep this section updated on every structure change.** After each change, also show this diagram in the chat reply.
 
-**Leaning (not locked):** a **Parameter is also a Node** — specialized (extra fields), but still in the same hierarchy.  
-That matches the Definitionsbaum where `Wert`, `Länge`, … already appear as tree nodes.
+**No decision yet** on Parameter-as-Node vs Parameter definitions.  
+Exploring a second model: **typed edges** between nodes (`ist-ein`, `besteht-aus`, …) so hierarchy is not only parent/child.
 
 ```mermaid
 classDiagram
@@ -85,6 +88,13 @@ classDiagram
     +value : ?
   }
 
+  class Relation {
+    +from : Node
+    +to : Node
+    +kind : RelationKind
+    +props : ?
+  }
+
   class Changelog {
     +changes : Change[]
   }
@@ -96,10 +106,11 @@ classDiagram
     +version
   }
 
-  note for Project "Always stores Definitionsbaum anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\nBauteile hangs under Definition (same tree)"
-  note for Node "Hierarchy + Definition choices\ntemplate flag; Parameter may be a specialized Node"
-  note for Parameter "LEANING: specialized Node\nnot a parallel object beside the tree\ntype/prefix/base_unit still Nodes\nmeasure = value + prefix + unit\n(how specialization works: Q34)"
-  note for Change "Shared audit model\nincludes version"
+  note for Project "Definitionsbaum anchors required"
+  note for Node "Hierarchy node; may still use parent_id\nand/or typed Relations (explore)"
+  note for Parameter "UNDECIDED: specialized Node\nOR separate definition that references Nodes"
+  note for Relation "EXPLORATORY\nkinds: ist-ein | besteht-aus | ...\nprops on the edge (Q35)"
+  note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Node : definition_root
@@ -107,8 +118,10 @@ classDiagram
   Project "1" --> "1" Node : prefix_node
   Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
-  Node "0..1" --> "*" Node : parent / children
-  Node <|-- Parameter : specialized ?
+  Node "0..1" --> "*" Node : parent / children ?
+  Node <|-- Parameter : specialized ? undecided
+  Relation --> Node : from
+  Relation --> Node : to
   Node "1" --> "1" Changelog : changelog
   Parameter "1" --> "1" Node : type
   Parameter "0..1" --> "0..1" Node : prefix
@@ -116,18 +129,19 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** Required **Definitionsbaum** anchors live on **Project**. Domain branches such as **Bauteile** hang under `definition_root`.  
-**Parameter-as-Node leaning:** `Wert` / `Länge` / … are Nodes in the tree that carry measure fields (`type`, `prefix`, `base_unit`, `value`). Specialization mechanism still open (Q34). Alternative (previous): Parameter stays a separate object attached to a Node (Q14).
+**Legend:** `Relation` is **exploratory** (not agreed). It models edges with a **kind** (`ist-ein`, `besteht-aus`, …) and optional edge properties.  
+Parameter path still **undecided** (Q33/Q34). See comparison + Bauteile example tree below.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy; Definition choices; may be marked `template`; may be specialized as Parameter |
-| 2 | **Parameter** | **Leaning:** specialized **Node** with `type` / optional `prefix` / optional `base_unit` / optional `value` |
+| 1 | **Node** | Hierarchy; Definition choices; may be marked `template` |
+| 2 | **Parameter** | **Undecided:** specialized Node **or** definition object referencing Nodes |
 | 3 | **Project** | Holds trees + **required Definition anchors** |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
+| 6 | **Relation** | **Exploratory:** typed edge (`ist-ein` / `besteht-aus` / …) |
 
 ### Shared audit idea (recommended)
 
@@ -167,7 +181,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
-| **Parameter as separate sibling of Node** | **Under review** | Leaning: Parameter is a **specialized Node** (Q33/Q34), not a parallel attached object |
+| **Parameter as separate sibling of Node** | **Under review** | Competing with Parameter-as-Node and with typed `besteht-aus` edges |
+| **Relation / typed edge** | **Exploratory** | `ist-ein`, `besteht-aus`, optional edge props (Q35) |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -210,32 +225,23 @@ flowchart TB
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
-- **Parameter may be a specialized Node** (same hierarchy, extra fields) — **leaning; not locked (Q33/Q34)**
-- One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node** (parent link); otherwise Q14
+- **Parameter may be a specialized Node** — **paused / exploring typed edges first (Q33/Q34/Q35)**
+- One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node or via besteht-aus**; otherwise Q14
 - Every Project, Node, and Parameter has a **changelog**. — **agreed** (if Parameter is a Node, one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
+- **Typed edges** (`ist-ein`, `besteht-aus`, …) — **exploratory only (Q35)**
 
 ```text
-Project ──(several trees)──► Root Node     # each tree = that root + descendants
-Node ──(optional)──► parent Node
-Node ──(several)──► child Nodes
-Parameter ──(specialized?)──► Node         # leaning Q33/Q34
+Project ──(several trees)──► Root Node
+Node ──(optional)──► parent Node          # classic tree
+Node ──(Relation?)──► Node                # exploratory typed edges
+Parameter ──(specialized? / attached?)──► Node   # undecided Q33/Q34
 ```
 
 ### Design thought: Parameter as specialized Node
 
-Why this is attractive (planning note):
+Paused while comparing with **typed edges** on the Bauteile example tree. See **Design fork** section.
 
-| Point | Implication |
-|-------|-------------|
-| Definitionsbaum already draws `Wert`, `Länge`, … as nodes | No second parallel structure |
-| Parent/child already answers “belongs to” | Q14 may become unnecessary |
-| Type / Präfix / Basiseinheit are already Nodes | Parameter would be “just another specialized Node” |
-| Changelog stays on Node | No separate Parameter changelog entity |
-
-Open: specialization shape (Q34) — PHP subclass / `kind` flag / role without subclass / Node + attached payload.
-
-Previous alternative (still valid until decided): Parameter remains a **separate object** that a Node *has* (several).
 ---
 
 ## 1. Node
@@ -545,9 +551,176 @@ Open: confirm Parameter-as-Node vs separate attached Parameter object (Q33).
 ### What a Parameter is not (until decided otherwise)
 
 - Not a Project / not a Tree object.
-- **Leaning:** it *is* a (specialized) Node — not a parallel sibling entity.
+- Whether it *is* a specialized Node is **undecided** again while we explore typed edges (below).
 - Not necessarily a filled-in value on a part/post (value still Q16).
-- Single-owner via `node_id` may dissolve if parent/child is enough (Q14).
+- Single-owner via `node_id` may dissolve if parent/child or `besteht-aus` is enough (Q14).
+
+---
+
+## Design fork (no decision yet): inheritance vs besteht-aus
+
+Two modeling ideas collide. Keep both open until an example comparison is good enough.
+
+| Approach | Idea | Inheritance? | Selection / query feel |
+|----------|------|--------------|------------------------|
+| **A — Parameter definitions** | Parameter is a definition object (or specialized payload) that **points at** Type/Präfix/Basiseinheit Nodes | Easy to inherit attribute *definitions* down a taxonomy (`ist-ein` children reuse parent params) | Select node → load attached param defs; often fewer hops |
+| **B — Nested nodes + typed edges** | Attributes are Nodes too; edges have **kinds** (`ist-ein`, `besteht-aus`) and may **point into another branch/tree** (e.g. Definitionsbaum) | Taxonomy uses `ist-ein`; composition uses `besteht-aus` (not inheritance) | Select node → walk edges by kind; more flexible, possibly more joins |
+
+**User framing:**  
+*Widerstand **ist ein** Passives Bauteil* (taxonomy / inheritance path).  
+*Widerstand **besteht aus** Wert, Bauform, Maße, …* (composition — edges need properties/kind).  
+Measure pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** and be **referenced** from composition edges.
+
+### Exploratory object: Relation (typed edge)
+
+```text
+Relation {
+  from: Node
+  to:   Node
+  kind: "ist-ein" | "besteht-aus" | "referenziert" | …   # open
+  props: ?   # optional edge metadata
+}
+```
+
+Not agreed — only for the Bauteile example below (Q35).
+
+### Example tree: Bauteile (typed edges)
+
+Separate planning tree (root = **Bauteile**).  
+Edge labels: **`[ist-ein]`** vs **`[besteht-aus]`**.  
+Measure attributes **refer** into the Definitionsbaum (`measure` + Präfix + Basiseinheit), not duplicated as free text.
+
+```text
+Bauteile                                              ← ROOT of this example
+│
+├── [ist-ein] Passives Bauteil
+│   │
+│   ├── [ist-ein] Widerstand
+│   │   ├── [besteht-aus] Wert
+│   │   │                 └─ [referenziert] measure + Präfix + Unit(Ohm)
+│   │   │                    Beispiel: 10 kOhm
+│   │   ├── [besteht-aus] Bauform          (z.B. 0201, 0402, 0603, axial, …)
+│   │   ├── [besteht-aus] Toleranz         (measure + Präfix + Unit(%) ?)
+│   │   ├── [besteht-aus] Leistungsaufnahme
+│   │   │                 └─ measure + Präfix + Unit(Watt)  z.B. 250 mW
+│   │   ├── [besteht-aus] Temperaturkoeffizient
+│   │   └── [besteht-aus] Maße
+│   │       ├── [besteht-aus] Höhe         → measure + Präfix + Unit(Meter)
+│   │       ├── [besteht-aus] Breite       → measure + Präfix + Unit(Meter)
+│   │       └── [besteht-aus] Tiefe        → measure + Präfix + Unit(Meter)
+│   │           Beispiel Maße: 10 mm × 5 mm × 2 mm
+│   │
+│   ├── [ist-ein] Kondensator
+│   │   ├── [besteht-aus] Wert (Kapazität) → measure + Präfix + Unit(Farad)
+│   │   ├── [besteht-aus] Nennspannung     → measure + Präfix + Unit(Volt)
+│   │   ├── [besteht-aus] Bauform / Dielektrikum
+│   │   ├── [besteht-aus] Polarität        (text / enum)
+│   │   ├── [besteht-aus] Toleranz
+│   │   └── [besteht-aus] Maße
+│   │       ├── Höhe / Breite / Tiefe      → je measure + Präfix + Unit(Meter)
+│   │
+│   ├── [ist-ein] Spule
+│   │   ├── [besteht-aus] Wert (Induktivität) → measure + Präfix + Unit(Henry)
+│   │   ├── [besteht-aus] Nennstrom
+│   │   ├── [besteht-aus] Gleichstromwiderstand (DCR)
+│   │   ├── [besteht-aus] Kern / Bauform
+│   │   └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+│   │
+│   └── [ist-ein] Potentiometer
+│       ├── [besteht-aus] Widerstandswert  → measure + Präfix + Unit(Ohm)
+│       ├── [besteht-aus] Leistung
+│       ├── [besteht-aus] Bauform (Dreh-/Schiebe-)
+│       └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+│
+└── [ist-ein] Aktives Bauteil
+    │
+    ├── [ist-ein] Transistor
+    │   ├── [besteht-aus] Gehäuse
+    │   ├── [besteht-aus] Uceo / Uce sat   → measure + Präfix + Unit(Volt)
+    │   ├── [besteht-aus] Ic max           → measure + Präfix + Unit(Ampere)
+    │   ├── [besteht-aus] hFE / Verstärkung
+    │   ├── [besteht-aus] Verlustleistung  → measure + Präfix + Unit(Watt)
+    │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
+    │   │
+    │   ├── [ist-ein] NPN-Transistor
+    │   │   └── (erbt / übernimmt besteht-aus vom Transistor — Mechanik offen)
+    │   │
+    │   └── [ist-ein] PNP-Transistor
+    │       └── (dito)
+    │
+    ├── [ist-ein] IC
+    │   ├── [besteht-aus] Versorgungsspannung → measure + Präfix + Unit(Volt)
+    │   ├── [besteht-aus] Gehäuse / Pinzahl
+    │   ├── [besteht-aus] Temperaturbereich
+    │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
+    │   │
+    │   ├── [ist-ein] Analog-IC
+    │   │   ├── [besteht-aus] Bandbreite / Slew-Rate (je nach Typ)
+    │   │   └── … weitere analoge Attribute
+    │   │
+    │   └── [ist-ein] Digital-IC
+    │       ├── [besteht-aus] Logikfamilie (text / enum)
+    │       ├── [besteht-aus] Taktfrequenz → measure + Präfix + Unit(Hertz)
+    │       └── … weitere digitale Attribute
+    │
+    └── [ist-ein] Diode
+        ├── [besteht-aus] Typ (Gleichrichter, Zener, Schottky, …)
+        ├── [besteht-aus] Uf / Uz          → measure + Präfix + Unit(Volt)
+        ├── [besteht-aus] If max           → measure + Präfix + Unit(Ampere)
+        ├── [besteht-aus] Gehäuse
+        └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+```
+
+```mermaid
+flowchart TB
+  R["Bauteile ROOT"]
+
+  R -->|ist-ein| Pas["Passives Bauteil"]
+  R -->|ist-ein| Akt["Aktives Bauteil"]
+
+  Pas -->|ist-ein| W["Widerstand"]
+  Pas -->|ist-ein| C["Kondensator"]
+  Pas -->|ist-ein| L["Spule"]
+  Pas -->|ist-ein| Pot["Potentiometer"]
+
+  Akt -->|ist-ein| Tr["Transistor"]
+  Akt -->|ist-ein| IC["IC"]
+  Akt -->|ist-ein| Di["Diode"]
+
+  Tr -->|ist-ein| NPN["NPN-Transistor"]
+  Tr -->|ist-ein| PNP["PNP-Transistor"]
+  IC -->|ist-ein| Ana["Analog-IC"]
+  IC -->|ist-ein| Dig["Digital-IC"]
+
+  W -->|besteht-aus| Wert["Wert"]
+  W -->|besteht-aus| Bau["Bauform"]
+  W -->|besteht-aus| Tol["Toleranz"]
+  W -->|besteht-aus| Pwr["Leistungsaufnahme"]
+  W -->|besteht-aus| Tk["Temperaturkoeffizient"]
+  W -->|besteht-aus| M["Maße"]
+  M -->|besteht-aus| H["Höhe"]
+  M -->|besteht-aus| B["Breite"]
+  M -->|besteht-aus| T["Tiefe"]
+
+  Wert -.->|referenziert| Def["Definitionsbaum:\nmeasure + Präfix + Unit"]
+  H -.->|referenziert| Def
+```
+
+**Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` set). Exact rule is open — copy on create, live inherit, or merge override (related to Q30/templates).
+
+**Composition note:** `besteht-aus` is **not** inheritance. Edges need a **kind** (and maybe props). Cross-branch `referenziert` links measure slots to the Definitionsbaum.
+
+### Implementation / selection tradeoff (planning only)
+
+| Concern | A — Parameter definitions on nodes | B — Nested nodes + typed edges |
+|---------|-------------------------------------|--------------------------------|
+| Admin selection | Pick node → list params | Pick node → filter children/edges by kind |
+| Query speed | Often 1 node + param rows | Edge walk / recursive CTE / multiple term metas |
+| Reuse of Maße/Wert | Param templates / inheritance of defs | Shared subgraphs or reference edges |
+| Modeling “ist ein” vs “besteht aus” | Taxonomy parent + separate param link | Explicit edge kinds (clearer semantically) |
+| Risk | Params feel bolted on | Graph complexity; WP terms alone may not be enough |
+
+**Status:** explore with this Bauteile tree — **do not lock** Q33/Q34/Q35 yet.
 
 ---
 

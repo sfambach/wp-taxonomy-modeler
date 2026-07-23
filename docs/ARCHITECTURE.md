@@ -43,11 +43,11 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Parameter` may specialize `Node` (leaning — Q33/Q34) rather than sit beside it.  
+`Parameter` as specialized `Node` is **undecided**; exploring **Relation** (typed edges) as well (Q33–Q35).  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
-Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q34 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q35 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -125,8 +125,8 @@ Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** measure composition as above.  
-**Leaning:** Parameter may be a **specialized Node** in the Definitionsbaum (Q33/Q34).  
-**Tentative (?):** one parameter → exactly one owning node via separate `node_id` — may dissolve if parent/child is enough (Q14).
+**Undecided:** Parameter as specialized Node vs definitions vs typed edges (Q33–Q35).  
+**Tentative (?):** one parameter → exactly one owning node via separate `node_id` — may dissolve if parent/child or `besteht-aus` is enough (Q14).
 
 ### Changelog / Change (shared)
 
@@ -162,8 +162,9 @@ Details: Q24–Q32 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | Leaning: Parameter-Nodes as children; else Node has several Parameters |
-| Parameter owner | Parent link if Parameter is a Node; else Q14 |
+| Parameters | Undecided: attached defs / Parameter-Nodes / besteht-aus children |
+| Parameter owner | Parent link, `node_id`, or besteht-aus edge — Q14 |
+| Typed edges | Exploratory Relation (`ist-ein`, `besteht-aus`) — Q35 |
 
 Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
 
