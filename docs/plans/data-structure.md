@@ -128,7 +128,7 @@ classDiagram
   note for Node "Hierarchy + Relations; part-of nodes\nmay render as attributes of parent"
   note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
   note for Relation "EXPLORATORY\nRelationType has one label only"
-  note for RelationType "Single label per type\ne.g. consists_of.label = besteht aus\nno inverse field\ndisplay depends on type"
+  note for RelationType "directed? → arrow from→to\nelse line\nDisplayHint = attribute/taxonomy/…"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -630,8 +630,9 @@ Relation {
 RelationType {
   key:            string              # logical id, e.g. "consists_of"
   label:          string              # e.g. "besteht aus" / "consists of"
-  bidirectional:  bool                # same edge readable from both ends? (no inverse type)
-  display:        DisplayHint         # how UI renders the related nodes
+  directed:       bool?               # Q44 — true: arrow from→to; false: undirected line
+  bidirectional:  bool?               # may overlap with !directed — clarify or drop (Q41/Q44)
+  display:        DisplayHint         # structural UI: attribute / taxonomy / tree / reference
   inheritable:    bool?               # can child nodes inherit along ist-ein?
 }
 ```
@@ -642,18 +643,23 @@ RelationType {
 |------|---------|
 | One `label` | Every RelationType has exactly one label — no `forward`/`inverse` fields |
 | No `inverse` | Do not store a paired opposite RelationType on the type |
-| Bidirectional (flag) | Optional: traverse/display the same Relation from the other node |
+| **`directed`** (tentative) | **Gerichtet:** meaningful `from → to` → UI **arrow**. **Ungerichtet:** → UI **line** (Q44 — unsure) |
+| `bidirectional` | Possibly redundant with undirected / reverse-as-view — do not lock yet |
 
-**Leaning:** RelationType = **`label` only** (plus key/display/flags). Opposite wording like “ist Teil von” is a **view** of the same `consists_of` edge when looking from the part, not a second stored type field (Q41).
+**Leaning:** RelationType = **`label`** + display/inherit flags. Opposite wording like “ist Teil von” stays a **view** of the same edge (Q41).  
+**Open:** whether `directed` (graph chrome: arrow vs line) is worth keeping beside `DisplayHint` (structural role) — they answer different questions (Q42 vs Q44).
 
 #### Example RelationTypes
 
-| Key | `label` | Typical display |
-|-----|---------|-----------------|
-| `consists_of` | besteht aus | **`to` as attribute of `from`** |
-| `is_a` | ist ein | taxonomy / inheritance path |
-| `child_of` | Kind von | tree hierarchy (may replace `parent_id`) |
-| `uses` | verwendet | reference / dependency view |#### Display depends on RelationType (Q42)
+| Key | `label` | `directed`? (tentative) | Typical `DisplayHint` |
+|-----|---------|-------------------------|------------------------|
+| `consists_of` | besteht aus | yes (arrow) | `as_attribute` |
+| `is_a` | ist ein | yes (arrow) | `as_taxonomy` |
+| `child_of` | Kind von | yes (arrow) | `as_tree_child` |
+| `uses` | verwendet | yes (arrow) | `as_reference` |
+| *(symmetric?)* | verbunden mit | no (line) | TBD |
+
+#### Display depends on RelationType (Q42)
 
 Related nodes are **not** always shown the same way:
 
