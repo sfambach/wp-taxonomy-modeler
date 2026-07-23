@@ -16,6 +16,7 @@ Last synced from plan version **0.6.43-plan** (2026-07-23).
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
 | Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
+| Data structure: **no Parameter / ParameterRole** — ordinary Nodes + type binding (Q33/Q34) | Done (planning) |
 | Data structure: **Project ≈ taxonomy** (Q18); **Q50** default Nodes = generate vs template copy | In progress |
 | Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
