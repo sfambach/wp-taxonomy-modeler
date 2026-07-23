@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter share a Changelog of Change entries (timestamp, changer, change). Tree is not a separate object. Planning artifact only — no implementation.
 status: draft
-version: "0.6.0-plan"
+version: "0.6.1-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -28,7 +28,7 @@ todos:
     content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional fields and Change payload shape (Q21–Q22)"
+    content: "Confirm optional fields; Change.version format (Q23); Parameter type enum (Q24)"
     status: pending
 ---
 
@@ -66,7 +66,7 @@ classDiagram
     +node_id : ?
     +key : likely
     +label : likely
-    +type : likely
+    +type
     +changelog : Changelog
   }
 
@@ -78,11 +78,12 @@ classDiagram
     +timestamp : DateTime
     +changer : Actor
     +change : ChangeBody
+    +version
   }
 
   note for Node "Root node = same class\nwith parent_id = null\n(no RootNode type)"
-  note for Parameter "One parameter → one node?\nQ14 — decide later"
-  note for Change "Shared audit model for\nProject, Node, Parameter"
+  note for Parameter "type is always required\nOne parameter → one node?\nQ14 — decide later"
+  note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Changelog : changelog
@@ -94,7 +95,7 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Tree is not a class. Actor / ChangeBody details: Q21–Q22.
+**Legend:** `?` = not decided yet. Tree is not a class. Actor / ChangeBody / version format: Q21–Q23.
 
 ## Core objects
 
@@ -129,6 +130,7 @@ class Change {
 	public \DateTimeInterface $timestamp; // when (Zeitpunkt)
 	public string $changer;               // who (Änderer) — exact type Q22
 	public string $change;                // what (Änderung) — exact shape Q21
+	public string $version;               // version — exact format Q23
 }
 ```
 
@@ -174,8 +176,10 @@ flowchart TB
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
+- A parameter **always has a type**. — **agreed**
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
 - Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
+- Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 
 ```text
 Project ──(several trees)──► Root Node     # each tree = that root + descendants
@@ -316,7 +320,7 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
-| `type` | likely | string / enum | Parameter type (exact type set TBD) |
+| `type` | **yes** | string / enum | Parameter type — **always required** (allowed values TBD) |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
 
 #### Fields still to define
@@ -326,7 +330,7 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | Whether every parameter has exactly one owning node | open (?) — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
-| Allowed type list (text, number, measure, …) | open |
+| Allowed type list for Parameter.`type` (always required) | open — values TBD |
 | Storage | open — Q15 |
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
@@ -439,6 +443,7 @@ A Changelog **consists of** **Change** entries.
 | `timestamp` | Zeitpunkt | yes | When the change happened |
 | `changer` | Änderer | yes | Who made the change |
 | `change` | Änderung | yes | What changed |
+| `version` | Version | yes | Version associated with this change |
 
 ```php
 // Conceptual — not implemented
@@ -451,6 +456,7 @@ class Change {
 	public \DateTimeInterface $timestamp;
 	public string $changer; // refine type in Q22
 	public string $change;  // refine payload in Q21
+	public string $version; // refine format in Q23 (e.g. semver string vs int)
 }
 ```
 
@@ -460,6 +466,7 @@ class Change {
 |-------|--------|
 | Is `change` plain text, structured JSON diff, or both? | open — Q21 |
 | Is `changer` WP user id, login, display name, or value object? | open — Q22 |
+| Format of Change.`version` (semver string, integer, object version) | open — Q23 |
 | Append-only history? | leaning yes |
 | Store changelog embedded on the object vs central changes table | open — part of storage questions |
 | System/automated changes (importer, migration) as changer | open |
@@ -469,8 +476,8 @@ class Change {
 ```text
 Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
   changes: [
-    Change { timestamp: "2026-07-23T10:00:00Z", changer: "admin", change: "Created node" },
-    Change { timestamp: "2026-07-23T11:15:00Z", changer: "admin", change: "Renamed to Resistors" }
+    Change { timestamp: "2026-07-23T10:00:00Z", changer: "admin", change: "Created node", version: "0.0.1" },
+    Change { timestamp: "2026-07-23T11:15:00Z", changer: "admin", change: "Renamed to Resistors", version: "0.0.2" }
   ]
 }}
 ```
@@ -485,7 +492,7 @@ Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
 | **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
 | **Parameter** | yes | Attribute definition; has `changelog` |
 | **Changelog** | yes (embedded or related) | Container of `changes` |
-| **Change** | yes (inside changelog) | timestamp + changer + change |
+| **Change** | yes (inside changelog) | timestamp + changer + change + version |
 | **Tree** | **no** | Derived from a root node + descendants |
 | **RootNode** | **no** | Role of Node when parent is null |
 

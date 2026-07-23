@@ -110,7 +110,7 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | likely | Parameter type (set TBD) |
+| `type` | **yes** | Parameter type — always required (allowed values Q24) |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -121,7 +121,7 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | Class | Fields | Meaning |
 |-------|--------|---------|
 | `Changelog` | `changes: Change[]` | History container on each auditable object |
-| `Change` | `timestamp`, `changer`, `change` | When, who, what (details Q21–Q22) |
+| `Change` | `timestamp`, `changer`, `change`, `version` | When, who, what, version (details Q21–Q23) |
 
 Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
 
