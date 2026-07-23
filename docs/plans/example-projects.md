@@ -103,6 +103,182 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 **No model break yet** — confirms the plugin should stay a **tree environment**, not a BOM app.  
 For “same 100 Ω, different package/shunt” confusion see [`part-identity-layers.md`](part-identity-layers.md).
 
+### Concrete BOM sample (worked)
+
+User-provided list (line prices sum to **6,00 €**; multi-ref lines use **line total** in Preis):
+
+| Bauteil (refs) | Größe | Anzahl | Beschreibung | Preis € | Stock |
+|----------------|-------|--------|--------------|---------|-------|
+| Platine | 1 | 1 | Meine sind von JLCPCB | 1,50 | x |
+| C2 | 10u, 0603 | 1 | Kondensator SMD CL10A106MA8NRNC | 0,10 | x |
+| C1, C3, C4 | 100n, 0603 | 3 | Kondensator SMD CC0603KRX7R9BB104 | 0,30 | x |
+| LED1 | LED0603 | 1 | Power LED Rot KT-0603R | 0,20 | x |
+| R1, R2 | 1K, 0603 | 2 | Widerstand SMD | 0,20 | x |
+| SW1 | SW-SMD_K3-2380S-E1 | 1 | SMD Schalter … | 0,20 | x LCSC |
+| U1 | AT-Tiny 412-SSN, SOP-8_150MIL | 1 | Atmel-Tiny 412-SSN | 1,40 | x LCSC |
+| U2 | CH430N, SOP-8_150MIL | 1 | USB – Serial Treiber | 0,40 | x LCSC |
+| USB1 | USB A, Stecker | 1 | USB A Anschlussstecker | 0,20 | x |
+| X1 | Din rund 6 Pol, male | 1 | DIN6 Rund Stecker | 1,00 | x |
+| X2 | Kabel, 4 Pol | **0,5 m** | Datenkabel für Stecker X1 | 0,50 | x |
+| | | **14*** | **Summe** | **6,00** | |
+
+\* “14” is the user’s Bauteile-Gesamt; with length line X2 the host must define whether Gesamt counts lines, refs, or pieces only.
+
+#### Host BOM class diagram (conceptual)
+
+```mermaid
+classDiagram
+  direction TB
+
+  class BomList {
+    +id
+    +name
+    +project_label : ?
+    +lines : BomLine[]
+    +parts_total : ?
+    +price_sum : Money
+  }
+
+  class BomLine {
+    +id
+    +references : string[]
+    +quantity : Quantity
+    +description : string
+    +line_price : Money
+    +in_stock : bool
+    +supplier_note : string?
+    +catalog_part_id
+  }
+
+  class Quantity {
+    +kind : count | length | ...
+    +value : number
+    +unit_group : UnitGroup?
+  }
+
+  class UnitGroup {
+    +prefix : Node?
+    +base_unit : Node
+  }
+
+  class CatalogPart {
+    +id
+    +name
+    +mpn : string?
+    +node_id : Node
+  }
+
+  class Node {
+    +id
+    +name
+    +parent_id
+  }
+
+  note for BomList "HOST — not taxonomy-tree core"
+  note for BomLine "refs e.g. C1,C3,C4\nqty often = count(refs)\nexcept X2: 0.5 m length"
+  note for CatalogPart "points into Bauteile tree leaf"
+  note for Quantity "count vs measure (Q45 unit group)"
+
+  BomList "1" --> "*" BomLine : lines
+  BomLine --> Quantity : quantity
+  Quantity --> UnitGroup : unit_group ?
+  BomLine --> CatalogPart : catalog_part
+  CatalogPart --> Node : node_id
+```
+
+#### Mapping of the sample lines
+
+| Line | references | quantity | catalog part (leaf idea) |
+|------|------------|----------|---------------------------|
+| Platine | `[]` or `["PCB"]` | count 1 | PCB / JLCPCB fabric panel |
+| C2 | C2 | 1 | Cap 10 µF 0603 CL10A106MA8NRNC |
+| C1,C3,C4 | C1,C3,C4 | 3 (= #refs) | Cap 100 nF 0603 CC0603KRX7R9BB104 |
+| LED1 | LED1 | 1 | LED red 0603 KT-0603R |
+| R1,R2 | R1,R2 | 2 | Resistor 1 kΩ 0603 (generic SMD) |
+| SW1 | SW1 | 1 | Switch SW-SMD_K3-2380S-E1 |
+| U1 | U1 | 1 | ATtiny412-SSN SOP-8 |
+| U2 | U2 | 1 | CH340N SOP-8 (listed CH430N) |
+| USB1 | USB1 | 1 | USB-A connector |
+| X1 | X1 | 1 | DIN6 male circular |
+| X2 | X2 | **0.5 m** | 4-pol data cable |
+
+#### Catalog tree for this BOM (Bauteile)
+
+One possible layout (kind → subtype/package → catalog leaf). Names illustrative:
+
+```text
+Bauteile
+├── Leiterplatten
+│   └── PCB JLCPCB (Fabric)          ← Platine
+├── Passive
+│   └── SMD
+│       └── 0603
+│           └── R 1kΩ 0603           ← R1,R2
+├── Kondensatoren
+│   └── SMD Keramik
+│       └── 0603
+│           ├── C 10µF 0603 CL10A…   ← C2
+│           └── C 100nF 0603 CC0603… ← C1,C3,C4
+├── Opto / LED
+│   └── SMD
+│       └── LED 0603 RT KT-0603R     ← LED1
+├── Mechanik / Schalter
+│   └── SMD
+│       └── SW K3-2380S-E1           ← SW1
+├── ICs
+│   ├── MCU
+│   │   └── ATtiny412-SSN SOP-8      ← U1
+│   └── Interface
+│       └── CH340N SOP-8             ← U2
+├── Steckverbinder
+│   ├── USB
+│   │   └── USB-A Stecker            ← USB1
+│   └── DIN
+│       └── DIN6 rund male           ← X1
+└── Kabel / Leitungen
+    └── Datenkabel 4-Pol             ← X2 (qty as length)
+```
+
+```mermaid
+flowchart TB
+  B["Bauteile"]
+  B --> PCB["Leiterplatten"]
+  B --> R["Passive / Widerstände"]
+  B --> C["Kondensatoren"]
+  B --> L["Opto / LED"]
+  B --> S["Schalter"]
+  B --> IC["ICs"]
+  B --> X["Steckverbinder"]
+  B --> K["Kabel"]
+
+  PCB --> PCB1["PCB JLCPCB"]
+  R --> R0603["SMD 0603"]
+  R0603 --> R1k["R 1kΩ 0603"]
+  C --> C0603["SMD Keramik 0603"]
+  C0603 --> C10u["C 10µF …"]
+  C0603 --> C100n["C 100nF …"]
+  L --> LED["LED 0603 RT"]
+  S --> SW["SW K3-2380S-E1"]
+  IC --> MCU["MCU"]
+  IC --> IF["Interface"]
+  MCU --> U1n["ATtiny412-SSN"]
+  IF --> U2n["CH340N SOP-8"]
+  X --> USB["USB-A Stecker"]
+  X --> DIN["DIN6 male"]
+  K --> CAB["Datenkabel 4-Pol"]
+```
+
+#### Optional: tiny Definitionsbaum slice used by measures
+
+```text
+Definition
+├── Type → measure, string, enum, …
+├── Basiseinheit → Ohm, Farad, Meter, Stück, …
+└── Präfix → m, k, µ, n, …
+```
+
+Examples: `1 kΩ` = value 1 + group `(k, Ohm)`; `100 nF` = 100 + `(n, Farad)`; X2 `0.5 m` = 0.5 + `(—, Meter)`.
+
 Related use-case cards: UC-20… in [`use-cases.md`](use-cases.md).
 
 ---

@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.27-plan"
+version: "0.6.28-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -196,6 +196,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Example project **Rezepte**: trees + measures + optional Relation.props for amounts; steps/scaling/shopping/stats = host — model still fits (A+B+C). |
 | 2026-07-23 | Design spin: measure value on **Relation**; **Präfix+Basiseinheit = unit group** (not a loose chain) — Q45. |
 | 2026-07-23 | Part identity **layers** (kind → subtype → specs → package → catalog part → board usage); same pattern for R/C/Diode/IC. |
+| 2026-07-23 | Concrete BOM sample (JLCPCB board): host BomList/BomLine class diagram + Bauteile tree for C/R/LED/IC/connectors. |
 
 ## Change protocol
 
