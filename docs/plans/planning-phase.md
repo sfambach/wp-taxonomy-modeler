@@ -21,8 +21,8 @@ todos:
     content: "Agree Node fields, relations, and storage mapping in data-structure.md"
     status: completed
   - id: define-parameter-model
-    content: "Define Parameter as second core object and its link to Node"
-    status: in_progress
+    content: "Define Parameter as second core object; one node can have several parameters"
+    status: completed
   - id: resolve-open-questions
     content: "Resolve or explicitly defer every item in docs/OPEN-QUESTIONS.md"
     status: pending
@@ -55,7 +55,7 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Master plan | `docs/plans/project-plan.md` | Goals, phases, and decisions are current |
 | Planning checklist | `docs/plans/planning-phase.md` (this file) | Todos resolved or deferred |
 | MVP requirements | `docs/plans/mvp-requirements.md` | Acceptance criteria are testable |
-| Data structure (Nodes + Parameters) | `docs/plans/data-structure.md` | Node rules agreed; Parameter object introduced and relation refined |
+| Data structure (Nodes + Parameters) | `docs/plans/data-structure.md` | Node rules agreed; one node → several parameters agreed |
 | Open questions | `docs/OPEN-QUESTIONS.md` | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |
 

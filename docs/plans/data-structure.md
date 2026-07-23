@@ -1,8 +1,8 @@
 ---
 name: Data structure — Nodes and Parameters
-overview: Define the core domain objects for WP Taxonomy Tree. First object Node (parent/children → trees/forests). Second object Parameter. Planning artifact only — no implementation.
+overview: Define the core domain objects for WP Taxonomy Tree. Node (parent/children → trees/forests). One node can have several parameters. Planning artifact only — no implementation.
 status: draft
-version: "0.4.0-plan"
+version: "0.4.1-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -14,10 +14,10 @@ todos:
     status: completed
   - id: define-parameter-core
     content: "Define Parameter as the second core entity"
-    status: in_progress
+    status: completed
   - id: define-node-parameter-link
-    content: "Define how Parameter relates to Node"
-    status: pending
+    content: "Define that one node can have several parameters"
+    status: completed
   - id: map-storage
     content: "Decide how Node and Parameter map to WordPress storage"
     status: pending
@@ -35,16 +35,20 @@ todos:
 | # | Object | Role |
 |---|--------|------|
 | 1 | **Node** | Builds trees and forests via parent/child links |
-| 2 | **Parameter** | Second core object (definition in progress) |
+| 2 | **Parameter** | Attribute definition on a node |
 
 ```mermaid
 flowchart LR
   N[Node] -->|optional parent| N
   N -->|several children| N
-  P[Parameter] -. relates to .-> N
+  N -->|several parameters| P[Parameter]
 ```
 
-Exact Node↔Parameter cardinality is still being defined (see open questions).
+**Agreed relations:**
+
+- One node can have one parent (or none) and several children (or none).
+- **One node can have several parameters** (or none).
+- Each parameter belongs to **one** node.
 
 ---
 
@@ -54,8 +58,9 @@ Exact Node↔Parameter cardinality is still being defined (see open questions).
 
 1. **One node can have a parent node** (or no parent).
 2. **One node can have several child nodes** (or none).
-3. From those parent/child links, nodes are used to **build trees**.
-4. Several trees together form a **forest**.
+3. **One node can have several parameters** (or none).
+4. From parent/child links, nodes are used to **build trees**.
+5. Several trees together form a **forest**.
 
 ```mermaid
 flowchart TB
@@ -87,6 +92,7 @@ flowchart TB
 ```text
 Node ──(optional)──► parent Node
 Node ◄──(many)────── child Nodes
+Node ◄──(many)────── Parameters
 ```
 
 ### Trees and forests
@@ -123,6 +129,7 @@ Node ◄──(many)────── child Nodes
 2. A node must not be its own ancestor (no cycles).
 3. Structure remains a forest (disjoint trees), never a general multi-parent graph.
 4. Delete policies for children: **promote** or **cascade**.
+5. Parameters of a deleted node must follow a defined cleanup policy (delete with node, or other — TBD).
 
 ### How nodes build trees and forests
 
@@ -147,22 +154,33 @@ Flat list (parent links rebuild structure):
 
 **Parameter** is the second core object in this data structure.
 
-Parameters describe configurable attributes in the taxonomy-tree environment (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters describe attributes associated with that hierarchy.
+Parameters describe configurable attributes on a node (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters are attributes **of** a node.
+
+**Cardinality (agreed):**
+
+| From | To | Cardinality |
+|------|----|-------------|
+| Node → Parameter | several | `0..n` |
+| Parameter → Node | one | `1` (owning node) |
 
 ```mermaid
 flowchart TB
-  N[Node] --- P1[Parameter]
-  N --- P2[Parameter]
-  N --- P3[Parameter]
+  N[Node] --> P1[Parameter]
+  N --> P2[Parameter]
+  N --> P3[Parameter]
 ```
 
-> Cardinality sketch above is a **working assumption** (a node may relate to several parameters). Confirm in planning (Q14).
+```text
+Node ──(several)──► Parameter
+Parameter ──(one)──► Node   (via node_id)
+```
 
 ### Parameter fields (initial — to refine)
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the parameter |
+| `node_id` | yes | identifier | Owning node (the node that has this parameter) |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
 | `type` | likely | string / enum | Parameter type (exact type set TBD) |
@@ -171,18 +189,27 @@ flowchart TB
 
 | Topic | Status |
 |-------|--------|
-| Link to Node (`node_id` or similar) | open — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
 | Allowed type list (text, number, measure, …) | open |
 | Storage (term meta vs custom table vs host-owned) | open — Q15 |
 | Whether parameter *values* live in this plugin or only in hosts | open — Q16 |
+| Parameter cleanup when owning node is deleted | open |
+
+### Example (conceptual)
+
+```text
+Node { id: 2, name: "Resistors", parent_id: 1, taxonomy: "part_category" }
+  ├─ Parameter { id: 10, node_id: 2, key: "resistance", label: "Resistance", type: "measure" }
+  └─ Parameter { id: 11, node_id: 2, key: "tolerance",  label: "Tolerance",  type: "text" }
+```
 
 ### What a Parameter is not (until decided otherwise)
 
-- Not a Node (no parent/child tree of parameters unless we explicitly add that later).
+- Not a Node (parameters do not form the taxonomy tree).
 - Not necessarily a filled-in value on a part/post — that may be a separate “value” concern.
 - Not a replacement for WordPress core term fields (`name`, `slug`, …).
+- Not shared across many owning nodes in MVP (one owning `node_id`).
 
 ---
 
@@ -190,8 +217,8 @@ flowchart TB
 
 | Object | Primary job | Structural link |
 |--------|-------------|-----------------|
-| Node | Hierarchy | Optional one parent; several children → trees/forests |
-| Parameter | Attribute definition | Relates to Node(s) — exact relation TBD |
+| Node | Hierarchy | Optional one parent; several children → trees/forests; several parameters |
+| Parameter | Attribute definition | Belongs to one node; a node may have several parameters |
 
 ## Storage mapping (leaning, not final)
 
@@ -201,12 +228,13 @@ flowchart TB
 | Node `parent_id` | `wp_term_taxonomy.parent` (`0` ↔ `null`) |
 | Node `name` | `wp_terms.name` |
 | Node `taxonomy` | `wp_term_taxonomy.taxonomy` |
-| Parameter | term meta JSON, custom table, or host storage — **TBD (Q15)** |
+| Parameter `node_id` | term id of owning node |
+| Parameter body | term meta JSON, custom table, or host storage — **TBD (Q15)** |
 
 ## Open points
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q16).
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q13, Q15–Q16). Q14 (Node↔Parameter cardinality) is **decided**.
 
 ## Next planning step
 
-Define how Parameter attaches to Node (one node → several parameters?), then parameter types and values. Still planning only — no implementation.
+Define parameter types/fields and value ownership. Still planning only — no implementation.

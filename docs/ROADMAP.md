@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.4.0-plan** (2026-07-23).
+Last synced from plan version **0.4.1-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -16,7 +16,7 @@ Last synced from plan version **0.4.0-plan** (2026-07-23).
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
 | Data structure: Node (parent/children → trees/forests) | In progress |
-| Data structure: Parameter (second object) | In progress |
+| Data structure: Parameter (one node → several parameters) | In progress |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
 **Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.

@@ -73,11 +73,12 @@ Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable parameter identity |
+| `node_id` | yes | Owning node |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
 | `type` | likely | Parameter type (set TBD) |
 
-Parameter is distinct from Node. How it attaches to nodes, where it is stored, and whether values live in this plugin are still open (Q14–Q16).
+**Agreed:** one node can have **several parameters**; each parameter belongs to one node. Types, storage, and values remain open (Q15–Q16).
 
 ### Trees and forests
 
@@ -85,6 +86,7 @@ Parameter is distinct from Node. How it attaches to nodes, where it is stored, a
 |---------|---------|
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
+| Parameters | One node can have several parameters (or none) |
 | Tree | All nodes under one root via parent/child links |
 | Forest | One or more trees (typical: all roots in one taxonomy) |
 
