@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.1-plan"
+version: "0.6.2-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -158,6 +158,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Every Project, Node, and Parameter has a **Changelog** made of **Change** entries (`timestamp`, `changer`, `change`). |
 | 2026-07-23 | Every **Change** also has a **`version`**. |
 | 2026-07-23 | A **Parameter** always has a **`type`** (required). |
+| 2026-07-23 | A **type can have a unit** (Einheit), but not always: e.g. URL has none, measure like 10 kOhm has a unit. |
 
 ## Change protocol
 

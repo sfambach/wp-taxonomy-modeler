@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter share a Changelog of Change entries (timestamp, changer, change). Tree is not a separate object. Planning artifact only — no implementation.
 status: draft
-version: "0.6.1-plan"
+version: "0.6.2-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -28,7 +28,7 @@ todos:
     content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional fields; Change.version format (Q23); Parameter type enum (Q24)"
+    content: "Confirm optional fields; Change.version (Q23); ParameterType/unit catalog (Q24–Q25)"
     status: pending
 ---
 
@@ -66,8 +66,19 @@ classDiagram
     +node_id : ?
     +key : likely
     +label : likely
-    +type
+    +type : ParameterType
+    +unit : Unit?
     +changelog : Changelog
+  }
+
+  class ParameterType {
+    +key
+    +has_unit : bool
+  }
+
+  class Unit {
+    +id_or_code
+    +label : ?
   }
 
   class Changelog {
@@ -82,7 +93,8 @@ classDiagram
   }
 
   note for Node "Root node = same class\nwith parent_id = null\n(no RootNode type)"
-  note for Parameter "type is always required\nOne parameter → one node?\nQ14 — decide later"
+  note for Parameter "type always required\nunit only if type.has_unit\nOne parameter → one node? Q14"
+  note for ParameterType "e.g. url → has_unit false\nmeasure → has_unit true (kOhm)"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
@@ -91,21 +103,26 @@ classDiagram
   Node "1" --> "*" Parameter : has several
   Node "1" --> "1" Changelog : changelog
   Parameter "0..1" --> "0..1" Node : assigned ?
+  Parameter "1" --> "1" ParameterType : type
+  Parameter "0..1" --> "0..1" Unit : unit
   Parameter "1" --> "1" Changelog : changelog
+  ParameterType "0..1" --> "*" Unit : allowed units ?
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Tree is not a class. Actor / ChangeBody / version format: Q21–Q23.
+**Legend:** `?` = not decided yet. Tree is not a class. Unit source / type catalog: Q24–Q25. Actor / ChangeBody / version: Q21–Q23.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
 | 1 | **Node** | Hierarchy unit (parent/children) |
-| 2 | **Parameter** | Attribute definition related to nodes |
+| 2 | **Parameter** | Attribute definition related to nodes (always has a type; type may have a unit) |
 | 3 | **Project** | Container with `root_nodes` |
 | 4 | **Changelog** | History container (`changes`) |
-| 5 | **Change** | One audit entry (when, who, what) |
+| 5 | **Change** | One audit entry (when, who, what, version) |
+| 6 | **ParameterType** | Type descriptor; may declare that a unit applies |
+| 7 | **Unit** | Optional unit for types that support it (e.g. kOhm) |
 
 ### Shared audit idea (recommended)
 
@@ -177,6 +194,7 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
 - A parameter **always has a type**. — **agreed**
+- A **type can have a unit** (Einheit), but does not always: e.g. `url` has no unit, a resistance measure can have `kOhm`. — **agreed**
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
 - Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
@@ -320,8 +338,39 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
-| `type` | **yes** | string / enum | Parameter type — **always required** (allowed values TBD) |
+| `type` | **yes** | **ParameterType** (or type key) | Parameter type — **always required** |
+| `unit` | no* | **Unit** \| `null` | Einheit — only when the type allows/requires a unit |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
+
+\* If `type.has_unit` is false (e.g. URL), `unit` must be `null` / omitted.  
+\* If `type.has_unit` is true (e.g. measure / resistance), `unit` may be required at value-time — exact rule Q25.
+
+### Parameter type and unit
+
+A **type can have a unit**, but not every type does.
+
+| Example type | Has unit? | Example |
+|--------------|-----------|---------|
+| `url` | no | Datasheet link — no Einheit |
+| `text` | no | Free text |
+| `measure` / resistance-like | yes | `10` + unit `kOhm` |
+
+```php
+// Conceptual — not implemented
+class ParameterType {
+	public string $key;     // e.g. 'url', 'measure', 'text'
+	public bool $has_unit;  // whether this type can/must carry a unit
+}
+
+class Parameter {
+	public string $id;
+	public ParameterType $type; // always set
+	public ?Unit $unit;         // set only when type.has_unit
+	public Changelog $changelog;
+}
+```
+
+`ParameterType` may start as a fixed registry/enum in PHP rather than DB rows; storage of Unit (string code vs term id vs object) is Q25.
 
 #### Fields still to define
 
@@ -330,7 +379,8 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | Whether every parameter has exactly one owning node | open (?) — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
-| Allowed type list for Parameter.`type` (always required) | open — values TBD |
+| Allowed ParameterType keys and which have `has_unit` | open — Q24 |
+| Where units come from (string list, node tree, WP terms) | open — Q25 |
 | Storage | open — Q15 |
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
@@ -338,9 +388,17 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 ### Example (conceptual)
 
 ```text
-Node { id: 2, name: "Resistors", parent_id: 1, project_id: 100 }
-  ├─ Parameter { id: 10, key: "resistance", label: "Resistance", type: "measure" }
-  └─ Parameter { id: 11, key: "tolerance",  label: "Tolerance",  type: "text" }
+Node { id: 2, name: "Resistors", parent_id: 1 }
+  ├─ Parameter {
+  │    key: "resistance", label: "Resistance",
+  │    type: ParameterType { key: "measure", has_unit: true },
+  │    unit: Unit { code: "kOhm" }   // 10 kOhm style values
+  │  }
+  └─ Parameter {
+       key: "datasheet", label: "Datasheet",
+       type: ParameterType { key: "url", has_unit: false },
+       unit: null
+     }
 ```
 
 ### What a Parameter is not (until decided otherwise)
@@ -490,7 +548,9 @@ Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
 |------------------|----------------|-------------|
 | **Project** | yes | Groups trees via `root_nodes`; has `changelog` |
 | **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
-| **Parameter** | yes | Attribute definition; has `changelog` |
+| **Parameter** | yes | Attribute definition; always has type; optional unit via type; has `changelog` |
+| **ParameterType** | yes (registry/DTO) | Describes type; `has_unit` flag |
+| **Unit** | yes when used | Einheit for types that support it |
 | **Changelog** | yes (embedded or related) | Container of `changes` |
 | **Change** | yes (inside changelog) | timestamp + changer + change + version |
 | **Tree** | **no** | Derived from a root node + descendants |

@@ -110,8 +110,11 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | **yes** | Parameter type — always required (allowed values Q24) |
+| `type` | **yes** | ParameterType — always required; may declare `has_unit` |
+| `unit` | no* | Einheit when type allows it (null for URL, set for kOhm-style measure) |
 | `changelog` | yes | Changelog of Change entries |
+
+\* `unit` only when `type.has_unit` is true.
 
 **Agreed:** one node can have **several parameters**.  
 **Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14).
@@ -124,6 +127,16 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `Change` | `timestamp`, `changer`, `change`, `version` | When, who, what, version (details Q21–Q23) |
 
 Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
+
+### Parameter type and unit
+
+| Rule | Example |
+|------|---------|
+| Every Parameter has a type | required |
+| A type **can** have a unit | `measure` + `kOhm` |
+| A type can have **no** unit | `url` |
+
+Details: Q24–Q25 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 
