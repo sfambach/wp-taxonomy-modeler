@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.39-plan** (2026-07-23).
+Last synced from plan version **0.6.40-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -16,7 +16,7 @@ Last synced from plan version **0.6.39-plan** (2026-07-23).
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
 | Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
-| Data structure: **Parameter is a tree Node (Q33)**; **Q14 dropped**; **Q34 lean = configuration** | Done (planning) |
+| Data structure: **no Parameter class** — Node + config roles (Q33/Q34); Q14 dropped | Done (planning) |
 | Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |

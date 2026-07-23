@@ -25,7 +25,7 @@
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
 | Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | TBD | open |
 | Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD | open |
-| Q20 | How are domain objects represented in PHP? | Typed DTO classes / arrays only / WP objects directly / hybrid | **Typed classes/DTOs** for Project, Node, Parameter, Changelog, Change; services for behavior; no Tree/RootNode class | open |
+| Q20 | How are domain objects represented in PHP? | Typed DTO classes / arrays only / WP objects directly / hybrid | **Typed classes/DTOs** for Project, Node, Changelog, Change; **no Parameter class**; services for behavior; no Tree/RootNode class | open |
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
@@ -38,8 +38,8 @@
 | Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
-| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: Parameter = tree Node.** Every project also has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples | decided |
-| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload / **configuration** | **Leaning: configuration** (not PHP subclass) — roles/capabilities via Node config; exact config shape TBD | open |
+| Q33 | In the Definitionsbaum (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | **Decided: no Parameter class.** Attribute names are tree **Nodes**; roles via **config** (Q34). Fixed simple type Nodes per project; further types derived/composed | decided |
+| Q34 | If Parameter is a Node, how is specialization modeled? | PHP subclass / `kind` flag on Node / role without subclass / Node + payload / **configuration** | **Leaning / direction: configuration only** — **no Parameter class / no PHP subclass**; exact config shape TBD | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
 | Q36 | What is the core Type catalog? | Fixed list vs extensible | **Leaning (Q33):** **fixed simple types** in every project (`int`, `double`, `string`, `char`, `bool`); users may **derive or compose** further types from them (enum/measure/string_list, …) | open |
 | Q37 | For `measure`, is the numeric part `number`, `integer`, or choosable per param? | Always number / always integer / per-param `numeric_kind` | Per-param leaning | open |
