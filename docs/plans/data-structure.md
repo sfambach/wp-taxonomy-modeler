@@ -46,6 +46,7 @@ todos:
 | Concept | Status | Meaning |
 |---------|--------|---------|
 | **Tree** | **Not an object** | Defined by a **root node** (and all descendants reachable via child links) |
+| **RootNode** | **Not an object** | Same as **Node** with parent `null` — only a role, not a type |
 | Forest | Derived view | Several trees (several roots), e.g. inside one project |
 
 ```mermaid
