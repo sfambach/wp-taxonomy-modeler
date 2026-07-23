@@ -45,7 +45,8 @@ flowchart TB
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
 `Project` stores required Definition anchors. `Node.template` marks template trees.  
 Catalog trees (e.g. Bauteile / Widerstände) are additional roots in `root_nodes`, separate from Definition.  
-`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`. See Q20–Q32 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
+Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q33 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -119,6 +120,7 @@ Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 | `type` | **yes** | **Node** under `project.type_node` |
 | `prefix` | **optional** | **Node** under `project.prefix_node` |
 | `base_unit` | **optional** | **Node** under `project.base_unit_node` |
+| `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -138,8 +140,12 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 | Field | Source | Example |
 |-------|--------|---------|
 | `type` | under Project.`type_node` | `measure`, `url` |
-| `prefix` | under Project.`prefix_node` | `k` |
-| `base_unit` | under Project.`base_unit_node` | `Ohm` |
+| `prefix` | under Project.`prefix_node` | `k`, `m` |
+| `base_unit` | under Project.`base_unit_node` | `Ohm`, `Meter` |
+| `value` | filled reading (Q16) | `10` |
+
+**Measure reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
+Dimension group Größe: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe).
 
 Project always has Definition anchors. Nodes may be **templates** via `Node.template`.
 
