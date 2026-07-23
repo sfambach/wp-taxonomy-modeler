@@ -13,16 +13,15 @@ This document describes the **intended** shape of the plugin. File layout and AP
 ```mermaid
 flowchart TB
   Project["Project — stored object"]
-  Project --> R1["Node (root A)<br/>parent = null"]
-  Project --> R2["Node (root B)<br/>parent = null"]
+  Project --> R1["Node root A<br/>parent = null"]
+  Project --> R2["Node root B<br/>parent = null"]
   R1 --> C1[Node]
   R1 --> C2[Node]
   C1 --> G1[Node]
   R2 --> C3[Node]
-  C1 --> Params[Parameters]
-  Nodes[Child nodes] --> Params
-  Roots[Root nodes = trees] --> Nodes
-  Project --> Roots
+  C1 --> P1[Parameter]
+  C1 --> P2[Parameter]
+
   Host[Host plugin e.g. wp-electronic-parts] --> Hooks[WTT hooks and filters]
   Admin[Admin Tree UI] --> API[Tree API REST or Admin-AJAX]
   API --> Model[Project / Node / Parameter model]
