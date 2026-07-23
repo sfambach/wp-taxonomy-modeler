@@ -57,18 +57,26 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-The domain model is built from **nodes**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+The domain model is built from **nodes**. Nodes have an optional **parent node** and are used to build **trees** and **forests**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ### Node (conceptual)
 
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable node identity |
-| `parent_id` | yes (`null` for roots) | Single parent reference |
+| `parent_id` | yes (`null` = no parent) | Optional single parent node |
 | `name` | yes | Display name |
-| `taxonomy` | yes | Hierarchical taxonomy slug |
+| `taxonomy` | yes | Hierarchical taxonomy / forest key |
 
-Nodes form a rooted forest: one parent max, many children, no cycles. Nested `children` is a view over the same nodes.
+### Trees and forests
+
+| Concept | Meaning |
+|---------|---------|
+| Parent link | One node can have one parent node (or none) |
+| Tree | All nodes under one root via parent links |
+| Forest | One or more trees (typical: all roots in one taxonomy) |
+
+Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
 
 ### Storage (leaning)
 
@@ -82,11 +90,11 @@ No custom node table is required for the MVP leaning. If custom tables appear la
 
 ## Tree model responsibilities (planned)
 
-- Load nodes for one or more taxonomies.
-- Build nested arrays / adjacency structures efficiently (avoid N+1).
+- Load nodes for one or more taxonomies (forests).
+- Build trees from parent links (nested arrays / adjacency) efficiently (avoid N+1).
 - Resolve ancestors and descendants.
 - Support delete strategies:
-  - **promote:** reparent children to the deleted node’s parent
+  - **promote:** reparent children to the deleted node’s parent (or make them roots)
   - **cascade:** delete the node and its descendants
 
 ## Admin UI responsibilities (planned)

@@ -1,8 +1,8 @@
 ---
 name: Data structure — Nodes
-overview: Define the core domain data structure for WP Taxonomy Tree. The tree is made of nodes. Planning artifact only — no implementation.
+overview: Define the core domain data structure for WP Taxonomy Tree. Nodes link via an optional parent and are used to build trees or forests. Planning artifact only — no implementation.
 status: draft
-version: "0.2.0-plan"
+version: "0.3.0-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -11,10 +11,13 @@ related_plans:
 todos:
   - id: define-node-core
     content: "Define Node as the core entity and its required fields"
-    status: in_progress
-  - id: define-node-relations
-    content: "Define parent/children tree relations and invariants"
-    status: in_progress
+    status: completed
+  - id: define-parent-link
+    content: "Define that one node can have one parent node"
+    status: completed
+  - id: define-trees-forests
+    content: "Define how nodes build trees and forests"
+    status: completed
   - id: map-storage
     content: "Decide how Node maps to WordPress term storage (still open detail)"
     status: pending
@@ -29,21 +32,69 @@ todos:
 
 ## Core idea
 
-The taxonomy tree is a set of **nodes**.
+The fundamental unit is a **Node**.
 
-- Every entry in the tree is a **Node**.
-- Nodes form a **rooted forest** (one or more root nodes, each with optional descendants).
-- A node may have **at most one parent**.
-- A node may have **many children**.
-- Cycles are forbidden.
+1. **One node can have a parent node** (or no parent).
+2. From that parent link, nodes are used to **build trees**.
+3. Several trees together form a **forest**.
 
 ```mermaid
 flowchart TB
-  R1[Node root A] --> C1[Node child]
-  R1 --> C2[Node child]
-  C1 --> G1[Node grandchild]
-  R2[Node root B]
+  subgraph Forest
+    subgraph TreeA[Tree A]
+      R1[Root node A]
+      R1 --> C1[Child node]
+      R1 --> C2[Child node]
+      C1 --> G1[Grandchild node]
+    end
+    subgraph TreeB[Tree B]
+      R2[Root node B]
+      R2 --> C3[Child node]
+    end
+  end
 ```
+
+## Parent relationship
+
+| Rule | Meaning |
+|------|---------|
+| Optional parent | A node may have **one** parent node, or none |
+| At most one parent | Never multiple parents (not a DAG/graph of many parents) |
+| Root | A node with **no parent** is a root |
+| Child | A node whose parent is set is a child of that parent |
+| Same container | Parent and child belong to the same taxonomy/forest context |
+
+So the structural link is always:
+
+```text
+Node ──(optional)──► parent Node
+```
+
+Children are the inverse view: all nodes that point to the same parent.
+
+## Trees and forests
+
+### Tree
+
+A **tree** is the set of nodes reachable from one **root** by following child links (nodes that name that root as ancestor).
+
+- Exactly one root in that tree.
+- Every non-root node has exactly one parent.
+- No cycles.
+
+### Forest
+
+A **forest** is a collection of trees (zero or more roots, each heading its own tree).
+
+- In this product, a forest is typically “all nodes for one hierarchical taxonomy”.
+- Multiple roots are normal (several top-level categories).
+- The product UI may show one forest (one taxonomy) at a time.
+
+| Concept | Built from | Root count |
+|---------|------------|------------|
+| Node | identity + optional parent + name (+ taxonomy) | — |
+| Tree | connected nodes via parent links | 1 |
+| Forest | one or more disjoint trees | 0..n |
 
 ## Entity: Node
 
@@ -52,9 +103,9 @@ Conceptual record (field names are planning English; final PHP/JS names TBD):
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the node |
-| `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root |
+| `parent_id` | yes* | identifier \| `null` | Parent node; `null` means no parent (root) |
 | `name` | yes | string | Display name of the node |
-| `taxonomy` | yes | string | Which hierarchical taxonomy this node belongs to |
+| `taxonomy` | yes | string | Which hierarchical taxonomy / forest this node belongs to |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
 
@@ -72,37 +123,45 @@ Conceptual record (field names are planning English; final PHP/JS names TBD):
 
 | Relation | Cardinality | Rules |
 |----------|-------------|-------|
-| Node → parent | 0..1 | Root has none; every non-root has exactly one parent |
-| Node → children | 0..n | Ordered list of direct children (order rule TBD) |
-| Node → ancestors | 0..n | Path from parent up to root; no duplicates |
+| Node → parent | 0..1 | One optional parent node; roots have none |
+| Node → children | 0..n | All nodes that set this node as parent |
+| Node → ancestors | 0..n | Chain of parents up to the root |
 | Node → descendants | 0..n | Full subtree excluding self |
+| Nodes → tree | derived | All nodes under one root |
+| Nodes → forest | derived | All trees in one taxonomy |
 
 ### Invariants
 
 1. A node’s `parent_id`, when not `null`, must reference an existing node in the **same** `taxonomy`.
-2. A node must not be its own ancestor (no cycles).
-3. Deleting a node must follow a defined policy for children:
-   - **promote** — children get the deleted node’s `parent_id`
+2. A node must not be its own ancestor (no cycles) — otherwise it is not a tree.
+3. From parent links alone, the structure must remain a forest (disjoint trees), never a general graph.
+4. Deleting a node must follow a defined policy for children:
+   - **promote** — children get the deleted node’s parent (or become roots if the deleted node was a root)
    - **cascade** — children (and their descendants) are deleted too
-4. Moving/reparenting (if allowed later) must preserve invariants 1–2.
+5. Moving/reparenting (if allowed later) must preserve invariants 1–3.
 
-## Tree shapes used in the product
+## How nodes build trees and forests
 
 ### Flat list (storage / transfer)
 
-Useful for APIs and DB-like payloads:
+Parent links are enough to rebuild structure:
 
 ```text
 [
   { id: 1, parent_id: null, name: "Passive Components", taxonomy: "part_category" },
   { id: 2, parent_id: 1,    name: "Resistors",          taxonomy: "part_category" },
-  { id: 3, parent_id: 2,    name: "SMD 0805",           taxonomy: "part_category" }
+  { id: 3, parent_id: 2,    name: "SMD 0805",           taxonomy: "part_category" },
+  { id: 4, parent_id: null, name: "Semiconductors",     taxonomy: "part_category" }
 ]
 ```
 
-### Nested tree (UI)
+- Nodes `1 → 2 → 3` form **Tree A**.
+- Node `4` alone forms **Tree B**.
+- Together they are a **forest** for `part_category`.
 
-Useful for rendering:
+### Nested view (UI)
+
+Useful for rendering one forest as nested trees:
 
 ```text
 [
@@ -122,18 +181,25 @@ Useful for rendering:
         ]
       }
     ]
+  },
+  {
+    id: 4,
+    parent_id: null,
+    name: "Semiconductors",
+    taxonomy: "part_category",
+    children: []
   }
 ]
 ```
 
-The nested `children` array is a **view** of the same nodes, not a second source of truth.
+The nested `children` array is a **view** derived from parent links, not a second source of truth.
 
 ## What a Node is not (MVP)
 
 - Not a post/part record.
 - Not a property schema (measure, enum, etc.).
 - Not a user or capability object.
-- Not an edge in a general graph (only tree parent/child).
+- Not a many-parent graph node (only optional single parent).
 
 Host plugins may attach extra data **to** a node (for example term meta on the underlying term) without putting domain fields into the core Node contract.
 
@@ -160,4 +226,4 @@ See also [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md):
 
 ## Next planning step
 
-Extend this document as we add more structure (for example selection state, delete requests, or host extension payloads). Still planning only — no implementation.
+Continue refining Node fields and operations on trees/forests (create child, reparent, delete promote/cascade). Still planning only — no implementation.
