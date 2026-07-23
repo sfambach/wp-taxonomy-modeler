@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.2-plan"
+version: "0.5.3-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -51,14 +51,28 @@ todos:
 
 ```mermaid
 flowchart TB
-  PR[Project] --> R1[Root node A]
-  PR --> R2[Root node B]
-  R1 --> C1[Child]
-  R1 --> C2[Child]
-  R2 --> C3[Child]
+  PR["Project — stored object"]
+
+  PR --> R1["Node root A<br/>parent = null"]
+  PR --> R2["Node root B<br/>parent = null"]
+
+  R1 --> C1["Node child"]
+  R1 --> C2["Node child"]
+  C1 --> G1["Node grandchild"]
+  R2 --> C3["Node child"]
+
   C1 --> P1[Parameter]
   C1 --> P2[Parameter]
+  C2 --> P3[Parameter]
+
+  subgraph note["Not stored as own objects"]
+    T["Tree = root node + descendants"]
+    RN["Root = same Node with parent null"]
+  end
 ```
+
+**Stored objects in this diagram:** `Project`, `Node`, `Parameter`  
+**Derived only:** tree (from root node), root role (Node with `parent = null`)
 
 **Agreed / tentative relations:**
 
