@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.11-plan"
+version: "0.6.12-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -95,7 +95,7 @@ classDiagram
     +version
   }
 
-  note for Project "Always stores Definition anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\n(unique required nodes in project)"
+  note for Project "Always stores Definitionsbaum anchors:\ndefinition_root\ntype_node\nprefix_node\nbase_unit_node\nBauteile hangs under Definition (same tree)"
   note for Node "template=true → template tree\nused to seed project-specific trees\nSame class also used for Type/Präfix/Basiseinheit choices"
   note for Parameter "type under project.type_node\nprefix under project.prefix_node\nbase_unit under project.base_unit_node\nmeasure reading = value + prefix + unit\ne.g. 10 + m + Meter => 10 mm\n(value storage: Q16)"
   note for Change "Shared audit model\nincludes version"
@@ -117,7 +117,7 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** Required Definition anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors. Filled **measure** = `value` + `prefix` + `base_unit` (value storage Q16).
+**Legend:** Required **Definitionsbaum** anchors live on **Project**. `Node.template` marks template trees. Parameter still picks concrete Type/Präfix/Basiseinheit **choice** nodes under those anchors. Filled **measure** = `value` + `prefix` + `base_unit` (value storage Q16). Domain branches such as **Bauteile** hang under `definition_root` (no separate catalog Root).
 
 ## Core objects
 
@@ -203,8 +203,9 @@ flowchart TB
 - One node can have several parameters (or none). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- Dimensions under Größe (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
-- Every **Project** must have a **Definition tree** and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
+- Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
+- The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
+- Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
@@ -399,18 +400,19 @@ Whether `prefix`/`base_unit` are required on the Parameter *definition* vs chose
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
 
-### Example thinking tree: Definition
+### Definitionsbaum (canonical planning example)
 
-Planning aid — Parameter picks Nodes from this tree.  
-Root **Definition**; children **Type**, **Basiseinheit**, **Präfix**.
+From here on, this tree is always called the **Definitionsbaum**.  
+Root = **Definition** (`parent_id = null`). Parameter picks Type / Präfix / Basiseinheit from this tree; catalog branches such as **Bauteile** hang under the same root (no extra Root node).
 
 ```mermaid
 flowchart TB
-  D["Definition ROOT"]
+  D["Definition<br/>ROOT — Definitionsbaum"]
 
   D --> T["Type"]
   D --> B["Basiseinheit"]
   D --> P["Präfix"]
+  D --> Bau["Bauteile"]
 
   T --> T1["measure"]
   T --> T2["url"]
@@ -425,6 +427,15 @@ flowchart TB
   P --> P3["M"]
   P --> P4["µ"]
 
+  Bau --> W["Widerstände"]
+  W --> V["Wert"]
+  W --> F["Bauform"]
+  W --> L["Leistungsaufnahme"]
+  W --> M["Maße"]
+  M --> GL["Länge"]
+  M --> GB["Breite"]
+  M --> GH["Höhe"]
+
   Param["Parameter resistance"]
   Param -.->|type| T1
   Param -.->|prefix| P2
@@ -432,7 +443,7 @@ flowchart TB
 ```
 
 ```text
-Definition
+Definition                                    ← Definitionsbaum root
 ├── Type
 │   ├── measure
 │   ├── url
@@ -441,11 +452,20 @@ Definition
 │   ├── Ohm
 │   ├── Farad
 │   └── Meter
-└── Präfix
-    ├── m
-    ├── k
-    ├── M
-    └── µ
+├── Präfix
+│   ├── m
+│   ├── k
+│   ├── M
+│   └── µ
+└── Bauteile
+    └── Widerstände
+        ├── Wert
+        ├── Bauform
+        ├── Leistungsaufnahme
+        └── Maße
+            ├── Länge
+            ├── Breite
+            └── Höhe
 ```
 
 **Parameter examples using this tree** (anchors also stored on Project):
@@ -472,49 +492,17 @@ Parameter {
 }
 ```
 
-Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).
-
-### Example thinking tree: Bauteile / Widerstände
-
-Second planning aid — a **project-specific catalog tree** (not the Definition tree).  
-Shows hierarchy where leaf-ish nodes can carry Parameters (Wert, Bauform, …).
-
-```mermaid
-flowchart TB
-  R["Root<br/>parent = null"]
-  R --> B["Bauteile"]
-  B --> W["Widerstände"]
-  W --> V["Wert"]
-  W --> F["Bauform"]
-  W --> L["Leistungsaufnahme"]
-  W --> G["Größe"]
-  G --> GL["Länge"]
-  G --> GB["Breite"]
-  G --> GH["Höhe"]
-```
-
-```text
-Root                                    ← root node (defines this tree)
-└── Bauteile
-    └── Widerstände
-        ├── Wert
-        ├── Bauform
-        ├── Leistungsaufnahme
-        └── Größe
-            ├── Länge
-            ├── Breite
-            └── Höhe
-```
-
-**Thinking notes (not locked):**
+**Branch notes (not locked):**
 
 | Node | Possible role |
 |------|----------------|
+| `Type` / `Basiseinheit` / `Präfix` | Required Definition anchors on Project |
+| `Bauteile` | Domain branch under Definitionsbaum (not its own root) |
 | `Widerstände` | Category node; may have several Parameters |
-| `Wert` | Parameter on Widerstände — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
+| `Wert` | Parameter — e.g. type=`measure`, prefix=`k`, base_unit=`Ohm` |
 | `Bauform` | Parameter — e.g. type=`text` or enum-like choices |
 | `Leistungsaufnahme` | Parameter — measure + Watt base unit |
-| `Größe` | Group of three dimension measures (not one single scalar) |
+| `Maße` | Group of three dimension measures |
 | `Länge` / `Breite` / `Höhe` | Each is a **measure**: **value + prefix + Einheit (base_unit)** |
 
 **Dimension example (agreed direction):**
@@ -524,14 +512,14 @@ Länge  { value: 10, prefix: m, base_unit: Meter }  =>  "10 mm"
 Breite { value:  5, prefix: m, base_unit: Meter }  =>  "5 mm"
 Höhe   { value:  2, prefix: m, base_unit: Meter }  =>  "2 mm"
 
-Größe display:  10 mm × 5 mm × 2 mm
+Maße display:  10 mm × 5 mm × 2 mm
 ```
 
 `mm` is **not** a single Definition node — it is Präfix `m` + Basiseinheit `Meter` (same pattern as `k` + `Ohm` → `kOhm`).
 
-`Root` / `Bauteile` would appear in `Project.root_nodes` (or Root alone if Bauteile is not a root).  
-This tree is typically **not** `template` (unless reused as a template catalog).
+`Project.definition_root` points at **Definition**; that root is also in `root_nodes`.
 
+Open: exact validation rules when type is `measure` vs `url` (Q24, Q29).  
 Open: whether Wert / Bauform / … are **Nodes that own Parameters**, or Parameter names drawn as tree nodes (Q33).
 
 ### What a Parameter is not (until decided otherwise)
@@ -550,14 +538,14 @@ Open: whether Wert / Bauform / … are **Nodes that own Parameters**, or Paramet
 **Project** holds:
 
 1. All project trees via `root_nodes`
-2. **Required Definition anchors** (unique nodes that must exist so Parameters can be created)
-3. Optional other roots (catalog trees, template roots, etc.)
+2. **Required Definitionsbaum anchors** (unique nodes that must exist so Parameters can be created)
+3. Optional other roots (extra trees, template roots, etc.)
 
-A **Definition tree must always exist**. Inside it (or referenced from Project), these nodes **must** exist and are stored on the Project:
+A **Definitionsbaum must always exist** (root = **Definition**). Inside it (or referenced from Project), these nodes **must** exist and are stored on the Project:
 
 | Anchor on Project | Node meaning |
 |-------------------|--------------|
-| `definition_root` | Root of the Definition tree |
+| `definition_root` | Root of the Definitionsbaum (**Definition**) |
 | `type_node` | **Type** branch node (children = selectable types) |
 | `prefix_node` | **Präfix** branch node (children = prefixes) |
 | `base_unit_node` | **Basiseinheit** branch node (children = base units) |
@@ -572,18 +560,21 @@ flowchart TB
   DR --> TN
   DR --> BN
   DR --> PN
-  PR --> Rother[other root_nodes...]
+  DR --> Bau[Bauteile]
+  Bau --> W[Widerstände]
+  W --> M[Maße]
+  PR --> Rother[other root_nodes optional...]
 ```
 
 ### Required vs other nodes
 
 | Kind | Unique in project? | Must exist? | Stored where |
 |------|--------------------|-------------|--------------|
-| Definition root | yes | yes | `Project.definition_root` |
+| Definitionsbaum root | yes | yes | `Project.definition_root` |
 | Type / Präfix / Basiseinheit anchors | yes each | yes | `Project.type_node` / `prefix_node` / `base_unit_node` |
 | Type choices (measure, url, …) | no | as needed | children of `type_node` |
-| Catalog / domain trees | no | no | `root_nodes` |
-| Template trees | no | no | `root_nodes` with `Node.template = true` |
+| Domain branches (e.g. Bauteile) | no | no | children of `definition_root` in the Definitionsbaum |
+| Extra / template trees | no | no | other `root_nodes` with optional `Node.template = true` |
 
 ### Template trees
 
@@ -664,11 +655,11 @@ Project {
   prefix_node: Node(30, "Präfix"),
   base_unit_node: Node(20, "Basiseinheit"),
   root_nodes: [
-    Node(1, "Definition", template: true?),   # required definition tree
-    Node(200, "Passive Components"),          # project-specific catalog tree
-    Node(300, "Unit pack SI", template: true) # template tree for reuse
+    Node(1, "Definition"),   # Definitionsbaum root (Bauteile hangs under it)
+    # optional extra roots later, e.g. templates
   ]
 }
+# Under Definition: Type, Basiseinheit, Präfix, Bauteile → Widerstände → … → Maße
 ```
 
 ---

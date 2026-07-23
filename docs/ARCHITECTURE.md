@@ -43,8 +43,8 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Project` stores required Definition anchors. `Node.template` marks template trees.  
-Catalog trees (e.g. Bauteile / Widerstände) are additional roots in `root_nodes`, separate from Definition.  
+`Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
+Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
 Filled measures compose as **value + prefix + unit** (e.g. `10 mm`). See Q16, Q20–Q33 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
@@ -145,9 +145,9 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 | `value` | filled reading (Q16) | `10` |
 
 **Measure reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
-Dimension group Größe: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe).
+Dimension group **Maße**: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe) under the **Definitionsbaum**.
 
-Project always has Definition anchors. Nodes may be **templates** via `Node.template`.
+Project always has Definitionsbaum anchors. Nodes may be **templates** via `Node.template`.
 
 Details: Q24–Q32 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 

@@ -36,9 +36,10 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A **tree is not a separate object**; it is defined by a **root node**.
 - A **root node** is the same **Node** object with parent `null` (not a different type).
 - A **project** holds different trees via `root_nodes`.
-- **Project** always has a Definition tree and stores anchors for Type, Präfix, Basiseinheit.
+- **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
-- A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); Größe dimensions compose as `10 mm × 5 mm × 2 mm`.
+- A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **Maße** dimensions compose as `10 mm × 5 mm × 2 mm`.
+- Domain branches such as **Bauteile** hang under the Definitionsbaum root (not a separate Root).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
 - Parameter single-owner rule is still **?** .
 - Every Project, Node, and Parameter has a changelog (`timestamp`, `changer`, `change`, `version`).
@@ -63,7 +64,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
 Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).  
-Planning examples: Definition tree + catalog tree `Root → Bauteile → Widerstände → …`.
+Planning example: single **Definitionsbaum** `Definition → Type / Basiseinheit / Präfix / Bauteile → … → Maße`.
 
 ## Versioning
 
