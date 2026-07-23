@@ -21,6 +21,14 @@ The project plan is the source of truth for intent. Living documentation must st
 - Versioning policy for the plugin itself: `.cursor/rules/versioning.mdc` (start at `0.0.1`; major digit only on official releases)
 - While plan status is `planning`, also follow `.cursor/rules/planning-only.mdc` (docs/plans/rules only — no plugin implementation)
 
+## Class diagram after structure changes
+
+Whenever the **data structure** changes (objects, fields, or relations in `docs/plans/data-structure.md`):
+
+1. Update the **Current class diagram** section in `docs/plans/data-structure.md` in the same change.
+2. In the reply to the user, **always show the updated Mermaid class diagram** (not only a prose summary).
+3. Keep the diagram aligned with agreed fields; mark tentative relations with `?` (for example Parameter ownership Q14).
+
 ## Required workflow
 
 When you change goals, non-goals, phases, todos, status, architecture direction, or decisions in any file under `docs/plans/`:
