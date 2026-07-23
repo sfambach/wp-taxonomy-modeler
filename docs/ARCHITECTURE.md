@@ -57,18 +57,29 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a stored object** — it is defined by a **root node**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+
+### Project (conceptual)
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `id` | yes | Stable project identity |
+| `name` | yes | Display name |
+
+A project can consist of **different trees** (different root nodes). Assignment/storage details: Q17–Q19.
 
 ### Node (conceptual)
 
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable node identity |
-| `parent_id` | yes (`null` = no parent) | Optional single parent node |
+| `parent_id` | yes (`null` = root) | Optional single parent node |
 | `name` | yes | Display name |
-| `taxonomy` | yes | Hierarchical taxonomy / forest key |
+| `project_id` | likely | Project membership — confirm Q17 |
 
-### Parameter (conceptual — second object)
+Root node (`parent_id = null`) **defines a tree**.
+
+### Parameter (conceptual)
 
 | Field | Required | Meaning |
 |-------|----------|---------|
@@ -79,35 +90,34 @@ Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md
 | `type` | likely | Parameter type (set TBD) |
 
 **Agreed:** one node can have **several parameters**.  
-**Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14). Types, storage, and values remain open (Q15–Q16).
+**Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14).
 
-### Trees and forests
+### Trees (derived)
 
 | Concept | Meaning |
 |---------|---------|
+| Tree | **Not an object** — defined by a root node + descendants |
+| Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
 | Parameters | One node can have several parameters (or none) |
 | Parameter owner | One parameter → one node (?) — undecided (Q14) |
-| Tree | All nodes under one root via parent/child links |
-| Forest | One or more trees (typical: all roots in one taxonomy) |
 
 Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
 
 ### Storage (leaning)
 
-MVP intends to map **nodes** onto native WordPress taxonomy tables:
+- **Nodes:** likely WordPress terms (Q11) or custom — undecided.
+- **Parameters:** TBD (Q15).
+- **Projects:** TBD (Q19).
 
-- `wp_terms`
-- `wp_term_taxonomy` (`parent`, `count`, `taxonomy`)
-- Parameter storage TBD (term meta / custom table / host) — Q15
-
-If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations). Node storage choice: open question **Q11**.
+If custom tables appear, follow repository relational-database rules.
 
 ## Tree model responsibilities (planned)
 
-- Load nodes for one or more taxonomies (forests).
-- Build trees from parent links (nested arrays / adjacency) efficiently (avoid N+1).
+- Treat trees as root nodes + descendants (no Tree entity).
+- Load nodes for a project (possibly multiple roots / trees).
+- Build nested views from parent links efficiently (avoid N+1).
 - Resolve ancestors and descendants.
 - Support delete strategies:
   - **promote:** reparent children to the deleted node’s parent (or make them roots)

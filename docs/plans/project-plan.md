@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.4.2-plan"
+version: "0.5.0-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -21,7 +21,7 @@ todos:
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
     status: in_progress
   - id: define-data-structure
-    content: "Define Node and Parameter objects, their relations, and storage mapping"
+    content: "Define Project, Node, Parameter; tree is derived from root node; settle storage mapping"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -97,7 +97,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 - Repository rules (English code/docs, WordPress standards, DB practices, versioning, planning-only gate).
 - Project plan + living documentation + sync rule.
-- Planning checklist, MVP requirements, open questions, and data structure (**Node**, **Parameter**).
+- Planning checklist, MVP requirements, open questions, and data structure (**Project**, **Node**, **Parameter**; tree = root node).
 - Local WordPress development environment (separate PR; environment only, not product implementation).
 
 ### Phase 1 — MVP plugin (after planning sign-off)
@@ -148,6 +148,8 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Second core object is **Parameter** (distinct from Node). Node↔Parameter relation, types, storage, and values still open. |
 | 2026-07-23 | **One node can have several parameters** (or none). |
 | 2026-07-23 | “One parameter is always assigned to one node” is **tentative (?)** — reopen/keep Q14 and decide later. |
+| 2026-07-23 | **Project** is a core object and can consist of different trees. |
+| 2026-07-23 | **Tree is not an additional object**; a tree is defined by its **root node** (plus descendants). |
 
 ## Change protocol
 

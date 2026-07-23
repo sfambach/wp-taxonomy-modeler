@@ -32,14 +32,16 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 ## In scope (planned)
 
 - Hierarchical taxonomy tree management in wp-admin.
-- A **Node**-based model: one parent (optional), several children; nodes build **trees** and **forests**.
-- A second core object: **Parameter** — one node can have several parameters; whether each parameter always has exactly one owning node is **?** (decide later).
-- Taxonomy-agnostic handling of nodes for hierarchical taxonomies.
+- Core objects: **Project**, **Node**, **Parameter**.
+- A **tree is not a separate object**; it is defined by a **root node**.
+- A **project** can consist of different trees (multiple roots).
+- One node can have several parameters; parameter single-owner rule is still **?** .
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
 
 ## Out of scope (early versions)
 
+- Modeling Tree as its own stored entity.
 - Domain-specific part catalogs / part CPT ownership (host plugins).
 - Full public frontend theme redesign.
 - Non-hierarchical tag clouds or flat taxonomies as primary targets.
@@ -47,13 +49,14 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 
 ## Planned user outcomes
 
-1. Open a Catalog/Tree admin screen for a registered hierarchical taxonomy.
+1. Open a project and work with its trees (each tree = a root node).
 2. Create root and child **nodes** from the tree.
 3. Delete a node and choose whether children are promoted or removed.
-4. Let another plugin attach its own editor pane or behavior when a node is selected.
+4. Attach **parameters** to nodes (details still being planned).
+5. Let another plugin attach its own editor pane or behavior when a node is selected.
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
-Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Node + Parameter).
+Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).
 
 ## Versioning
 

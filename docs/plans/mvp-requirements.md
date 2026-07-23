@@ -95,10 +95,12 @@ Administrators can manage one or more **hierarchical** WordPress taxonomies in a
 
 ## Data structure reference
 
-Core objects: **Node** and **Parameter** — [`docs/plans/data-structure.md`](data-structure.md).
+Core objects: **Project**, **Node**, **Parameter**.  
+**Tree is not an object** — defined by a root node.  
+Details: [`docs/plans/data-structure.md`](data-structure.md).
 
-Parameter MVP scope (definitions vs values, types, Node link) is still open and may land partly after the first tree MVP.
+Parameter MVP scope (definitions vs values, types, owner rule) and Project↔taxonomy mapping are still open and may land partly after the first tree MVP.
 
 ## Open items affecting MVP
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, multi-taxonomy UI, default screen replacement, and Node/Parameter storage and relations (Q11–Q16).
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, Project assignment/storage (Q17–Q19), and Parameter questions (Q14–Q16).

@@ -18,11 +18,14 @@ todos:
     content: "Agree MVP in/out list and acceptance criteria in mvp-requirements.md"
     status: pending
   - id: define-node-model
-    content: "Agree Node fields, relations, and storage mapping in data-structure.md"
+    content: "Agree Node fields; tree is derived from root node (not a separate object)"
     status: completed
   - id: define-parameter-model
     content: "Parameter object + node can have several parameters; single-owner (?) deferred via Q14"
     status: in_progress
+  - id: define-project-model
+    content: "Define Project; project consists of different trees (root nodes)"
+    status: completed
   - id: resolve-open-questions
     content: "Resolve or explicitly defer every item in docs/OPEN-QUESTIONS.md"
     status: pending
@@ -55,7 +58,7 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Master plan | `docs/plans/project-plan.md` | Goals, phases, and decisions are current |
 | Planning checklist | `docs/plans/planning-phase.md` (this file) | Todos resolved or deferred |
 | MVP requirements | `docs/plans/mvp-requirements.md` | Acceptance criteria are testable |
-| Data structure (Nodes + Parameters) | `docs/plans/data-structure.md` | Node rules agreed; node→several parameters agreed; parameter→one node marked ? (Q14) |
+| Data structure (Project + Node + Parameter) | `docs/plans/data-structure.md` | Tree = root node (not an object); project has several trees; param owner ? |
 | Open questions | `docs/OPEN-QUESTIONS.md` | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |
 
