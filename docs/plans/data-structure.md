@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter share a Changelog of Change entries (timestamp, changer, change). Tree is not a separate object. Planning artifact only — no implementation.
 status: draft
-version: "0.6.3-plan"
+version: "0.6.4-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
