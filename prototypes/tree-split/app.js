@@ -3,12 +3,14 @@
  * Shape mirrors planning Node: { id, parentId, name, position }
  *
  * Sibling order (Q13 leaning): explicit `position` only — not name sort.
- * UI: ↑ / ↓ move among siblings; positions reindexed 0..n-1 after moves.
+ * Right pane: tabs — Knoten | Tabelle (children of selection = column config).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v2";
+const STORAGE_KEY = "wtt-proto-tree-split-v3";
+const TABLE_BODY_ROWS = 5;
 
 /** @typedef {{ id: string, parentId: string|null, name: string, position: number }} ProtoNode */
+/** @typedef {'node'|'table'} RightTab */
 
 /** @type {Map<string, ProtoNode>} */
 let nodes = new Map();
@@ -17,6 +19,13 @@ let selectedId = "";
 /** @type {Set<string>} */
 let collapsed = new Set();
 let seq = 1;
+/** @type {RightTab} */
+let activeTab = "node";
+/**
+ * Placeholder cell values: schemaNodeId → rowIndex → colNodeId → string
+ * @type {Map<string, string[][]>}
+ */
+let tableCells = new Map();
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -58,21 +67,31 @@ function createInitial() {
   nodes = new Map();
   collapsed = new Set();
   seq = 1;
+  tableCells = new Map();
+  activeTab = "node";
 
-  // Demo: ordered BOM-like siblings — rename/reorder to feel Q13.
   rootId = createNode(null, "BOM Demo", 0);
-  const listId = createNode(rootId, "Stückliste", 0);
+
+  // Children = table column config when this node is selected.
+  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 0);
+  createNode(schemaId, "Designator", 0);
+  createNode(schemaId, "Value", 1);
+  createNode(schemaId, "Footprint", 2);
+  createNode(schemaId, "Menge", 3);
+  createNode(schemaId, "LCSC", 4);
+
+  const listId = createNode(rootId, "Stückliste", 1);
   createNode(listId, "C1 — 100 nF 0603", 0);
   createNode(listId, "R1 — 10 kΩ 0603", 1);
   createNode(listId, "U1 — ESP32-WROOM-32", 2);
   createNode(listId, "D1 — LED green 0805", 3);
 
-  const partsId = createNode(rootId, "Bauteile", 1);
+  const partsId = createNode(rootId, "Bauteile", 2);
   createNode(partsId, "Kondensator", 0);
   createNode(partsId, "Widerstand", 1);
   createNode(partsId, "IC", 2);
 
-  selectedId = listId;
+  selectedId = schemaId;
   collapsed.clear();
 }
 
@@ -111,7 +130,10 @@ function deleteNode(id) {
 
   const parentId = node.parentId;
   const kill = new Set([id, ...descendants(id)]);
-  for (const k of kill) nodes.delete(k);
+  for (const k of kill) {
+    nodes.delete(k);
+    tableCells.delete(k);
+  }
 
   if (parentId != null && nodes.has(parentId)) {
     reindexSiblings(parentId);
@@ -157,13 +179,21 @@ function selectNode(id) {
   render();
 }
 
+function setActiveTab(tab) {
+  if (tab !== "node" && tab !== "table") return;
+  activeTab = tab;
+  persist();
+  renderRight();
+  syncTabs();
+}
+
 function renameSelected(name) {
   const n = nodes.get(selectedId);
   if (!n) return;
   n.name = name.trim() || n.name;
   persist();
   renderTree();
-  renderDetail();
+  renderRight();
 }
 
 function toggleCollapse(id, event) {
@@ -183,13 +213,54 @@ function siblingIndex(node) {
   };
 }
 
+/** Ensure a TABLE_BODY_ROWS × columns grid exists for schemaNodeId. */
+function ensureTableGrid(schemaNodeId, colIds) {
+  let rows = tableCells.get(schemaNodeId);
+  if (!rows) {
+    rows = Array.from({ length: TABLE_BODY_ROWS }, () =>
+      colIds.map(() => "")
+    );
+    tableCells.set(schemaNodeId, rows);
+    return rows;
+  }
+  // Align width to current columns (by index; order follows children position).
+  while (rows.length < TABLE_BODY_ROWS) {
+    rows.push(colIds.map(() => ""));
+  }
+  if (rows.length > TABLE_BODY_ROWS) rows.length = TABLE_BODY_ROWS;
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const next = colIds.map((_, c) => (row[c] != null ? String(row[c]) : ""));
+    rows[r] = next;
+  }
+  tableCells.set(schemaNodeId, rows);
+  return rows;
+}
+
+function setCellValue(schemaNodeId, rowIndex, colIndex, value) {
+  const cols = childrenOf(schemaNodeId);
+  const rows = ensureTableGrid(
+    schemaNodeId,
+    cols.map((c) => c.id)
+  );
+  if (!rows[rowIndex]) return;
+  rows[rowIndex][colIndex] = value;
+  persist();
+}
+
 function persist() {
+  const cellObj = {};
+  for (const [k, rows] of tableCells) {
+    cellObj[k] = rows;
+  }
   const payload = {
     rootId,
     selectedId,
     seq,
+    activeTab,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
+    tableCells: cellObj,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -212,7 +283,13 @@ function restore() {
     collapsed = new Set(
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
-    // Heal any gaps / duplicates from older sessions.
+    activeTab = data.activeTab === "table" ? "table" : "node";
+    tableCells = new Map();
+    if (data.tableCells && typeof data.tableCells === "object") {
+      for (const [k, rows] of Object.entries(data.tableCells)) {
+        if (nodes.has(k) && Array.isArray(rows)) tableCells.set(k, rows);
+      }
+    }
     const parents = new Set(
       [...nodes.values()].map((n) => n.parentId).filter((p) => p != null)
     );
@@ -229,6 +306,7 @@ function resetAll() {
   localStorage.removeItem(STORAGE_KEY);
   try {
     localStorage.removeItem("wtt-proto-tree-split");
+    localStorage.removeItem("wtt-proto-tree-split-v2");
   } catch {
     /* ignore */
   }
@@ -342,6 +420,22 @@ function renderTree() {
   mount.append(renderTreeRow(root, 0));
 }
 
+function syncTabs() {
+  const tabs = document.querySelectorAll(".tab[data-tab]");
+  for (const tab of tabs) {
+    const isActive = tab.dataset.tab === activeTab;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  }
+  const panel = document.getElementById("detail");
+  if (panel) {
+    panel.setAttribute(
+      "aria-labelledby",
+      activeTab === "table" ? "tab-table" : "tab-node"
+    );
+  }
+}
+
 function renderDetail() {
   const mount = document.getElementById("detail");
   if (!mount) return;
@@ -417,7 +511,7 @@ function renderDetail() {
   }
   orderBlock.append(orderTitle, orderRow);
 
-  if (kids.length > 1) {
+  if (kids.length > 0) {
     const childList = document.createElement("ol");
     childList.className = "child-order";
     childList.start = 1;
@@ -434,7 +528,7 @@ function renderDetail() {
     const childLab = document.createElement("div");
     childLab.className = "field-label";
     childLab.style.marginTop = "1rem";
-    childLab.textContent = "Kinder in Anzeigereihenfolge";
+    childLab.textContent = "Kinder (= Tabellenspalten im Tab „Tabelle“)";
     orderBlock.append(childLab, childList);
   }
 
@@ -451,15 +545,109 @@ function renderDetail() {
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Sortierung = explizite position unter demselben parent (Q13). Namen ändern die Reihenfolge nicht. Tastatur: Alt+↑ / Alt+↓.";
+    "Tab „Tabelle“: Kinder dieses Knotens werden zur Spalten-Konfiguration. Sortierung = position (Q13). Alt+↑ / Alt+↓.";
 
   card.append(h2, field, orderBlock, meta, hint);
   mount.append(card);
 }
 
+function renderTable() {
+  const mount = document.getElementById("detail");
+  if (!mount) return;
+  const node = nodes.get(selectedId);
+  if (!node) {
+    mount.innerHTML = `<p class="muted">Knoten auswählen.</p>`;
+    return;
+  }
+
+  const cols = childrenOf(node.id);
+  const wrap = document.createElement("div");
+  wrap.className = "table-view";
+
+  const lead = document.createElement("p");
+  lead.className = "lead";
+  if (cols.length === 0) {
+    lead.innerHTML = `Schema: <strong>${escapeHtml(node.name)}</strong> — keine Kinder. Lege links Kindknoten an; deren Namen werden Spaltenköpfe.`;
+    wrap.append(lead);
+    mount.replaceChildren(wrap);
+    return;
+  }
+
+  lead.innerHTML = `Schema: <strong>${escapeHtml(node.name)}</strong> — ${cols.length} Spalte${cols.length === 1 ? "" : "n"} aus Kindknoten (Reihenfolge = <code>position</code>). ${TABLE_BODY_ROWS} Datenzeilen.`;
+  wrap.append(lead);
+
+  const grid = ensureTableGrid(
+    node.id,
+    cols.map((c) => c.id)
+  );
+
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "table-wrap";
+  const table = document.createElement("table");
+  table.className = "data-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const thNum = document.createElement("th");
+  thNum.className = "row-num";
+  thNum.textContent = "#";
+  thNum.scope = "col";
+  headRow.append(thNum);
+  for (const col of cols) {
+    const th = document.createElement("th");
+    th.scope = "col";
+    th.textContent = col.name;
+    th.title = `Spalte aus Kind „${col.name}“ (position ${col.position})`;
+    headRow.append(th);
+  }
+  thead.append(headRow);
+
+  const tbody = document.createElement("tbody");
+  for (let r = 0; r < TABLE_BODY_ROWS; r++) {
+    const tr = document.createElement("tr");
+    const tdNum = document.createElement("td");
+    tdNum.className = "row-num";
+    tdNum.textContent = String(r + 1);
+    tr.append(tdNum);
+    for (let c = 0; c < cols.length; c++) {
+      const td = document.createElement("td");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = grid[r]?.[c] ?? "";
+      input.placeholder = "—";
+      input.setAttribute("aria-label", `${cols[c].name}, Zeile ${r + 1}`);
+      input.addEventListener("change", () => {
+        setCellValue(node.id, r, c, input.value);
+      });
+      td.append(input);
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+
+  table.append(thead, tbody);
+  tableWrap.append(table);
+  wrap.append(tableWrap);
+  mount.replaceChildren(wrap);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function renderRight() {
+  if (activeTab === "table") renderTable();
+  else renderDetail();
+}
+
 function render() {
   renderTree();
-  renderDetail();
+  syncTabs();
+  renderRight();
 }
 
 function onKeyDown(e) {
@@ -474,6 +662,9 @@ function onKeyDown(e) {
 function init() {
   if (!restore()) createInitial();
   document.getElementById("btn-reset")?.addEventListener("click", resetAll);
+  document.querySelectorAll(".tab[data-tab]").forEach((el) => {
+    el.addEventListener("click", () => setActiveTab(el.dataset.tab));
+  });
   document.addEventListener("keydown", onKeyDown);
   persist();
   render();

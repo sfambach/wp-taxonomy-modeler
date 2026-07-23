@@ -28,10 +28,13 @@
     </section>
 
     <section class="pane pane-detail" aria-label="Inhalt">
-      <header class="pane-head">
-        <h1>Inhalt</h1>
+      <header class="pane-head pane-head-tabs">
+        <div class="tabs" role="tablist" aria-label="Rechte Ansicht">
+          <button type="button" class="tab is-active" role="tab" id="tab-node" data-tab="node" aria-selected="true" aria-controls="detail">Knoten</button>
+          <button type="button" class="tab" role="tab" id="tab-table" data-tab="table" aria-selected="false" aria-controls="detail">Tabelle</button>
+        </div>
       </header>
-      <div id="detail" class="detail">
+      <div id="detail" class="detail" role="tabpanel" aria-labelledby="tab-node">
         <p class="muted">Knoten auswählen.</p>
       </div>
     </section>
