@@ -128,7 +128,7 @@ function createInitial() {
   rootId = createNode(null, "BOM Demo", 0);
 
   const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 0);
-  createNode(schemaId, "Designator", 0);
+  createNode(schemaId, "Reference", 0);
   createNode(schemaId, "Value", 1);
   createNode(schemaId, "Footprint", 2);
   createNode(schemaId, "Menge", 3);

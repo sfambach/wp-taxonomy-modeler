@@ -450,13 +450,37 @@ Whether `prefix`/`base_unit` are required on the Parameter *definition* vs chose
 | Is Parameter a specialized Node? | **leaning yes** — Q33 / Q34 |
 | Specialization mechanism (subclass / kind / role) | open — Q34 |
 | Whether every parameter has exactly one owning node | open (?) — Q14; may dissolve if Parameter is a Node |
-| Required / default / validation rules | open |
+| Required / default / validation rules | open — **not** as ad-hoc validators on bare schema Nodes (Q47) |
 | Inheritance to child nodes | open |
 | Which types require prefix and/or base_unit | open — Q24 |
 | May prefix exist without base_unit (or vice versa)? | open — Q29 |
 | Storage | open — Q15 |
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
+| List / multi-value scalars (e.g. RefDes `R1,R2`) | open — Q47; enum_multiple ≠ free string list |
+
+### Schema slot vs value shape (Reference / RefDes)
+
+Concrete pressure from the prototype / BOM:
+
+- Schema column renamed **Designator → Reference**: in practice a **comma-separated list** of board references (`R1,R2` or `C1…Cn`), not a single token.
+- Temptation: hang a **validator** on that Node (“must look like RefDes list”). That feels wrong — and it is the Parameter↔Node tension again.
+
+**Split (leaning):**
+
+| Layer | Role | Example |
+|-------|------|---------|
+| **Schema Node** | Named *slot* in a line/form (`position`, label) | Node `Reference` under BOM-Zeile schema |
+| **Type / Parameter** | *Shape* of the filled value + reusable rules | type ≈ `string_list` (or string + cardinality multiple); optional item pattern |
+| **Instance value** | Actual data | canonical `["R1","R2"]`; CSV `R1,R2` only for UI/export |
+
+Why not validator-on-Node:
+
+- Rules would pile onto every schema leaf; no reuse across slots that share a shape.
+- Mixes **identity of the slot** (“this column exists”) with **contract of the value** (“list of strings”).
+- `enum` / `enum_multiple` needs a **fixed option set** (children) — RefDes is an **open** list, so it is closer to a **list-of-string** type than to enum.
+
+This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter (Q33/Q36/Q47) for how cells are interpreted — not ad-hoc Node meta.
 
 ### Definitionsbaum (canonical planning example)
 
@@ -480,6 +504,7 @@ flowchart TB
   T --> T6["file"]
   T --> T7["enum<br/>composite"]
   T --> T8["measure<br/>composite"]
+  T --> T9["string_list?<br/>Q47"]
 
   B --> B1["Ohm"]
   B --> B2["Farad"]
@@ -703,7 +728,7 @@ Gap spotted on the concrete BOM: `BomList` / `BomLine` feel like **host classes*
 # Schema / template (Definitionsbaum or template tree, Node.template?)
 BOM-Schema
 ├── [consists_of] Zeile          ← line shape
-│     ├── [consists_of] Referenzen     (enum_multiple / string list)
+│     ├── [consists_of] Reference / Referenzen  (string_list — open RefDes; not enum)
 │     ├── [consists_of] Menge          (measure | integer)
 │     ├── [consists_of] Beschreibung   (string)
 │     ├── [consists_of] Preis          (measure / money)
@@ -714,9 +739,10 @@ BOM-Schema
 # Instance (a concrete BOM — also Nodes)
 BOM "Platine XY"
 ├── Zeile "C1,C3,C4"
-│     refs=C1,C3,C4  qty=3  price=0.30  stock=true
+│     Reference=["C1","C3","C4"]  qty=3  price=0.30  stock=true
 │     ─[uses]→ Node "C 100nF 0603 CC0603…"
 ├── Zeile "R1,R2"
+│     Reference=["R1","R2"]
 │     ─[uses]→ Node "R 1kΩ 0603"
 ├── Zeile "X2"
 │     qty=0.5 m   ─[uses]→ Node "Datenkabel 4-Pol"
