@@ -247,7 +247,7 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- Emerging **core Type catalog**: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum`, `measure` (+ candidate **`string_list`** for open RefDes lists) — **leaning (Q36/Q47)**
+- Emerging **core Type catalog**: tree under Datentypen/Type — MVP scalars **`int`, `double`, `string`, `char`, `bool`**; later enum/measure/string_list — **leaning (Q36/Q48)**
 - **`enum` is composite**: several option values of a **scalar** type; **`single` / `multiple` are selection methods**, not types — **leaning (Q38)**
 - **`measure` is composite**: numeric leaf (`number` or `integer`) + optional Präfix + Basiseinheit — **leaning (Q36/Q37)**; not a rival scalar beside `number`
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
