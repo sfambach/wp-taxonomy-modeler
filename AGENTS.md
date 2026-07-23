@@ -2,35 +2,56 @@
 
 ## Cursor Cloud specific instructions
 
-### Current repository state (read this first)
+### What this repo is
 
-As of this setup, the repository is an empty scaffold: the only tracked file is
-`README.md` (a single-line title). There is **no** application code,
-dependency manifest (`package.json` / `composer.json`), test suite, or build
-config yet. Consequently there is nothing to install, lint, test, build, or run
-at this time.
+`wp-taxonomy-tree` is intended to be a **WordPress plugin** (hierarchical
+taxonomy tree). As of this setup the repo is still an early scaffold: the only
+tracked files are `README.md` and this `AGENTS.md`. There is no plugin PHP yet,
+no `package.json`/`composer.json`, no test suite, and no build step. The plugin
+model mirrors the sibling repo `wp-electronic-parts`: a pure PHP plugin that
+is loaded into a WordPress install by dropping/symlinking the repo folder into
+`wp-content/plugins/`.
 
-### Intended stack
+### Local WordPress dev environment (how to run)
 
-The project name and repository conventions indicate this is intended to become
-a **WordPress plugin** (`wp-taxonomy-tree`). When code is added, expect a modern
-WordPress toolchain:
+A Docker-free WordPress dev site is set up on the VM using PHP's built-in
+server + SQLite (no MySQL server needed):
 
-- PHP 8.x, OOP, following the WordPress Coding Standards.
-- Gutenberg blocks authored with React/JSX using `block.json` as the single
-  source of truth.
-- JS/CSS builds via the `@wordpress/scripts` package (i.e. `npm run build` /
-  `npm run start`), which will introduce a `package.json`.
-- PHP dependencies (if any) via Composer, introducing a `composer.json`.
+- WordPress core lives in `~/wordpress` (installed via `wp-cli`).
+- This repo is symlinked in as a plugin:
+  `~/wordpress/wp-content/plugins/wp-taxonomy-tree -> /workspace`.
+- SQLite is provided by the `sqlite-database-integration` plugin used as the
+  `wp-content/db.php` drop-in, so there is no database service to start.
 
-### Environment notes for future agents
+Start the site (leave it running):
 
-- Node and npm are available on the VM (`node -v`, `npm -v`). PHP, Composer, and
-  wp-cli are **not** preinstalled; install them if/when PHP or Composer manifests
-  are added, and to run WordPress locally for end-to-end testing.
+```bash
+cd ~/wordpress && wp server --host=0.0.0.0 --port=8080
+```
+
+- Front end: `http://localhost:8080`
+- Admin: `http://localhost:8080/wp-admin` — user `admin`, password `admin123`.
+- Handy CLI (run from `~/wordpress`): `wp plugin list`, `wp core version`,
+  `wp option get siteurl`. Once plugin code exists, activate with
+  `wp plugin activate wp-taxonomy-tree`.
+
+### Recreating the environment (only if `~/wordpress` is missing)
+
+System deps (`php-cli` + extensions, `wp-cli`) and the WordPress core install
+are one-time setup captured in the VM snapshot, so they are intentionally NOT
+in the startup update script. If `~/wordpress` is absent on a fresh VM, recreate
+it: install PHP 8.x CLI with the `sqlite3`, `curl`, `gd`, `mbstring`, `xml`,
+`zip`, `intl` extensions and `wp-cli`; run `wp core download`,
+`wp config create --dbname=wordpress --dbuser=root --skip-check --force`, drop
+in the SQLite integration (`sqlite-database-integration` plugin → copy its
+`db.copy` to `wp-content/db.php`), then `wp core install` and symlink
+`/workspace` into `wp-content/plugins/`.
+
+### Notes for future JS/PHP tooling
+
 - The startup update script runs a guarded `npm install` (only when a
-  `package.json` exists), so once the plugin's JS build tooling is added,
-  dependencies refresh automatically. No manual action is needed for that.
-- To actually run the plugin end-to-end you will need a WordPress install
-  (e.g. `@wordpress/env` / `wp-env`, or a local WordPress + PHP). This is not
-  set up yet because there is no plugin code to load.
+  `package.json` exists). Modern Gutenberg blocks are expected to use
+  `@wordpress/scripts` (`npm run build` / `npm run start`), which will add a
+  `package.json` and make that install meaningful automatically.
+- If a `composer.json` is added later, install Composer and run
+  `composer install`; it is not preinstalled.
