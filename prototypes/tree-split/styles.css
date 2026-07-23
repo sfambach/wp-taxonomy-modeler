@@ -210,6 +210,15 @@ body {
   padding: 0;
 }
 
+.tree-row .order {
+  flex: 0 0 1.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: right;
+  opacity: 0.85;
+}
+
 .tree-row .label {
   flex: 1;
   min-width: 0;
@@ -223,6 +232,11 @@ body {
   display: flex;
   gap: 0.15rem;
   flex: 0 0 auto;
+}
+
+.tree-row .actions .btn:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
 .tree-children {
@@ -275,4 +289,61 @@ body {
 
 .meta span {
   color: var(--text);
+}
+
+.meta .hint {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.field-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.order-block {
+  margin-bottom: 1.25rem;
+}
+
+.order-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.order-status {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.child-order {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.child-order li {
+  font-size: 0.9rem;
+}
+
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.linkish:hover {
+  text-decoration: underline;
 }
