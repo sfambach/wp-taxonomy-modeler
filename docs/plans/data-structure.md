@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.9-plan"
+version: "0.6.10-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md

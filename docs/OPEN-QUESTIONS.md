@@ -38,6 +38,7 @@
 | Q30 | How are template trees applied to project-specific trees? | Deep copy / link / copy-on-write | TBD | open |
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | TBD | open |
+| Q33 | In catalog trees (e.g. Widerstände → Wert), are leaves Nodes that *own* Parameters, or are Parameter names themselves tree nodes? | Node + attached Parameter / Parameter-as-node / both | Thinking aid uses mixed wording — decide before MVP | open |
 
 ## How to close a question
 

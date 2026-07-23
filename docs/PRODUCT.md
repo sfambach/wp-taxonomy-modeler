@@ -61,7 +61,8 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 5. Let another plugin attach its own editor pane or behavior when a node is selected.
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
-Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).
+Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).  
+Planning examples: Definition tree + catalog tree `Root → Bauteile → Widerstände → …`.
 
 ## Versioning
 

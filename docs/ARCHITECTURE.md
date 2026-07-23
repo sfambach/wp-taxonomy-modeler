@@ -44,6 +44,7 @@ flowchart TB
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
 `Project` stores required Definition anchors. `Node.template` marks template trees.  
+Catalog trees (e.g. Bauteile / Widerstände) are additional roots in `root_nodes`, separate from Definition.  
 `Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`. See Q20–Q32 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
