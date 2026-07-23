@@ -111,7 +111,7 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
 | `type` | **yes** | Always present (ParameterType) |
-| `unit` | **optional** | Einheit when type allows it (null for URL; e.g. kOhm for measure) |
+| `unit` | **optional** | **Node** whose **children** are unit values (e.g. kOhm); null for URL |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -132,9 +132,11 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 |------|---------|
 | Every Parameter has a **type** | required |
 | Every Parameter has an **optional unit** | `unit` may be null |
-| Type controls whether unit is allowed | `url` → no unit; `measure` → unit e.g. `kOhm` |
+| **Unit = Node** | not a separate class |
+| **Unit values = child nodes** | e.g. children `mOhm`, `Ohm`, `kOhm` |
+| Type controls whether unit is used | `url` → no unit node; `measure` → unit node |
 
-Details: Q24–Q25 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+Details: Q24–Q26 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 
