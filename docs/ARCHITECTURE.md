@@ -43,7 +43,7 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Every Project/Node/Parameter has `changelog`. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q22 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Every Project/Node/Parameter has `changelog`. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q24 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
