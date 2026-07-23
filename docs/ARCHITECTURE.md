@@ -12,9 +12,9 @@ This document describes the **intended** shape of the plugin. File layout and AP
 
 ```mermaid
 flowchart TB
-  Project["Project — stored object"]
-  Project --> R1["Node root A<br/>parent = null"]
-  Project --> R2["Node root B<br/>parent = null"]
+  Project["Project<br/>name · description · root_nodes"]
+  Project -->|root_nodes| R1["Node root A<br/>parent = null"]
+  Project -->|root_nodes| R2["Node root B<br/>parent = null"]
   R1 --> C1[Node]
   R1 --> C2[Node]
   C1 --> G1[Node]
