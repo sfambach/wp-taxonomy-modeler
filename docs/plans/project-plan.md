@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.20-plan"
+version: "0.6.21-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -176,6 +176,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | **enum** = composite (scalar option values); **single/multiple** are selection methods, not types (Q38). |
 | 2026-07-23 | Parked mid-session Node thought as **Q40** (resume later); switch topic away from type/A–B fork for now. |
 | 2026-07-23 | **RelationType**: one **`label`** only; no `inverse` field (`consists_of` reverse wording = view). |
+| 2026-07-23 | Tentative **`directed`** on RelationType: arrow `from→to` vs undirected line — unsure (Q44); distinct from DisplayHint. |
 | 2026-07-23 | Display by RelationType: part-of nodes as **attributes** of parent; `consists_of` attrs inheritable along `is_a` (Q42/Q43). |
 
 ## Change protocol

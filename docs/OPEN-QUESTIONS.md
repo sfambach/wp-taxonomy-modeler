@@ -47,8 +47,9 @@
 | Q39 | Which scalar may enum option values use? | string only / any scalar / configurable | string leaning | open |
 | Q40 | Parked: further **Node** idea from planning session | Resume when user returns to it | User asked to park mid-thought (“Knoten im Kopf”) — details TBD on resume | parked |
 | Q41 | Bidirectional relations / inverse typing? | Separate inverse type / inverse field / reverse as view of same edge | **Leaning: no `inverse` field; one `label` per RelationType; reverse = view** | open |
-| Q42 | How should related nodes be displayed per RelationType? | Always as tree children / type-specific (part-of as attributes, is_a as taxonomy, …) | **Leaning: part-of → attributes of parent**; is_a → taxonomy; uses → refs | open |
+| Q42 | How should related nodes be displayed per RelationType? | Always as tree children / type-specific (part-of as attributes, is_a as taxonomy, …) | **Leaning: part-of → attributes of parent**; is_a → taxonomy; uses → refs (`DisplayHint`) | open |
 | Q43 | Can `consists_of` attributes be inherited along `is_a`? | No / copy / live inherit / merge+override | **Leaning: yes, inheritable**; mechanics TBD (related Q30) | open |
+| Q44 | Does RelationType need **`directed`** (arrow vs line)? | Always directed / optional flag / derive from DisplayHint / drop | Tentative: directed → arrow `from→to`, else line; may overlap `bidirectional` — user unsure | open |
 
 ## How to close a question
 

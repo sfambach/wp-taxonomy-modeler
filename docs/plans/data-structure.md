@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.20-plan"
+version: "0.6.21-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -107,7 +107,8 @@ classDiagram
     +id
     +key
     +label
-    +bidirectional : bool
+    +directed : bool?
+    +bidirectional : bool?
     +display : DisplayHint
     +inheritable : bool?
   }
@@ -150,7 +151,9 @@ classDiagram
 
 **Legend:** `Relation` / `RelationType` are **exploratory**.  
 Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
-`bidirectional` may mean the same edge can be read from both ends in the UI — without a second type.  
+Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
+`bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
+`DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `to` as **attribute** of `from`, inheritable along `ist-ein`).
 
 ## Core objects
