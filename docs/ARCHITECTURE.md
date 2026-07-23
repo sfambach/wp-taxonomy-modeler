@@ -110,7 +110,7 @@ If custom tables appear later, they must follow the repository relational-databa
 - Support delete strategies:
   - **promote:** reparent children to the deleted node’s parent (or make them roots)
   - **cascade:** delete the node and its descendants
-- Model Parameter definitions once Node↔Parameter rules are settled.
+- Model Parameter definitions on nodes (one node → several parameters) once types/storage are settled.
 
 ## Admin UI responsibilities (planned)
 
