@@ -73,12 +73,13 @@ Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable parameter identity |
-| `node_id` | yes | Owning node |
+| `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
 | `type` | likely | Parameter type (set TBD) |
 
-**Agreed:** one node can have **several parameters**; each parameter belongs to one node. Types, storage, and values remain open (Q15–Q16).
+**Agreed:** one node can have **several parameters**.  
+**Tentative (?):** one parameter is always assigned to exactly one node — decide later (Q14). Types, storage, and values remain open (Q15–Q16).
 
 ### Trees and forests
 
@@ -87,6 +88,7 @@ Two core objects: **Node** and **Parameter**. See [`docs/plans/data-structure.md
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
 | Parameters | One node can have several parameters (or none) |
+| Parameter owner | One parameter → one node (?) — undecided (Q14) |
 | Tree | All nodes under one root via parent/child links |
 | Forest | One or more trees (typical: all roots in one taxonomy) |
 

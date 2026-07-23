@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.4.1-plan"
+version: "0.4.2-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -146,7 +146,8 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | One node can have **one parent node** (or none). Parent links are used to build **trees**; multiple trees form a **forest** (e.g. per taxonomy). |
 | 2026-07-23 | One node can have **several child nodes** (or none). Children are the inverse of the single-parent link. |
 | 2026-07-23 | Second core object is **Parameter** (distinct from Node). Node↔Parameter relation, types, storage, and values still open. |
-| 2026-07-23 | **One node can have several parameters** (or none). Each parameter belongs to one node via `node_id`. |
+| 2026-07-23 | **One node can have several parameters** (or none). |
+| 2026-07-23 | “One parameter is always assigned to one node” is **tentative (?)** — reopen/keep Q14 and decide later. |
 
 ## Change protocol
 

@@ -2,7 +2,7 @@
 name: Data structure — Nodes and Parameters
 overview: Define the core domain objects for WP Taxonomy Tree. Node (parent/children → trees/forests). One node can have several parameters. Planning artifact only — no implementation.
 status: draft
-version: "0.4.1-plan"
+version: "0.4.2-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -16,8 +16,8 @@ todos:
     content: "Define Parameter as the second core entity"
     status: completed
   - id: define-node-parameter-link
-    content: "Define that one node can have several parameters"
-    status: completed
+    content: "Node can have several parameters (agreed); parameter→one node is tentative (?)"
+    status: in_progress
   - id: map-storage
     content: "Decide how Node and Parameter map to WordPress storage"
     status: pending
@@ -44,11 +44,16 @@ flowchart LR
   N -->|several parameters| P[Parameter]
 ```
 
-**Agreed relations:**
+**Agreed / tentative relations:**
 
-- One node can have one parent (or none) and several children (or none).
-- **One node can have several parameters** (or none).
-- Each parameter belongs to **one** node.
+- One node can have one parent (or none) and several children (or none). — **agreed**
+- **One node can have several parameters** (or none). — **agreed**
+- One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
+
+```text
+Node ──(several)──► Parameter     # agreed
+Parameter ──(one?)──► Node        # unsure — mark for later decision
+```
 
 ---
 
@@ -129,7 +134,7 @@ Node ◄──(many)────── Parameters
 2. A node must not be its own ancestor (no cycles).
 3. Structure remains a forest (disjoint trees), never a general multi-parent graph.
 4. Delete policies for children: **promote** or **cascade**.
-5. Parameters of a deleted node must follow a defined cleanup policy (delete with node, or other — TBD).
+5. Parameters related to a deleted node must follow a defined cleanup policy (TBD; depends on Q14).
 
 ### How nodes build trees and forests
 
@@ -156,12 +161,12 @@ Flat list (parent links rebuild structure):
 
 Parameters describe configurable attributes on a node (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters are attributes **of** a node.
 
-**Cardinality (agreed):**
+**Cardinality:**
 
-| From | To | Cardinality |
-|------|----|-------------|
-| Node → Parameter | several | `0..n` |
-| Parameter → Node | one | `1` (owning node) |
+| From | To | Cardinality | Status |
+|------|----|-------------|--------|
+| Node → Parameter | several | `0..n` | **agreed** |
+| Parameter → Node | one? | `1` (?) | **tentative — decide later (Q14)** |
 
 ```mermaid
 flowchart TB
@@ -171,16 +176,18 @@ flowchart TB
 ```
 
 ```text
-Node ──(several)──► Parameter
-Parameter ──(one)──► Node   (via node_id)
+Node ──(several)──► Parameter           # agreed
+Parameter ──(one?)──► Node              # unsure
 ```
+
+Do **not** hard-assume a single owning `node_id` in later design until Q14 is closed. Alternatives to consider later: shared parameters, taxonomy-level parameters, or inheritance without a single owner.
 
 ### Parameter fields (initial — to refine)
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the parameter |
-| `node_id` | yes | identifier | Owning node (the node that has this parameter) |
+| `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
 | `type` | likely | string / enum | Parameter type (exact type set TBD) |
@@ -189,27 +196,30 @@ Parameter ──(one)──► Node   (via node_id)
 
 | Topic | Status |
 |-------|--------|
+| Whether every parameter has exactly one owning node | open (?) — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
 | Allowed type list (text, number, measure, …) | open |
 | Storage (term meta vs custom table vs host-owned) | open — Q15 |
 | Whether parameter *values* live in this plugin or only in hosts | open — Q16 |
-| Parameter cleanup when owning node is deleted | open |
+| Parameter cleanup when a related node is deleted | open |
 
 ### Example (conceptual)
 
 ```text
 Node { id: 2, name: "Resistors", parent_id: 1, taxonomy: "part_category" }
-  ├─ Parameter { id: 10, node_id: 2, key: "resistance", label: "Resistance", type: "measure" }
-  └─ Parameter { id: 11, node_id: 2, key: "tolerance",  label: "Tolerance",  type: "text" }
+  ├─ Parameter { id: 10, key: "resistance", label: "Resistance", type: "measure" }
+  └─ Parameter { id: 11, key: "tolerance",  label: "Tolerance",  type: "text" }
 ```
+
+(`node_id` on Parameter shown only after Q14 is decided.)
 
 ### What a Parameter is not (until decided otherwise)
 
 - Not a Node (parameters do not form the taxonomy tree).
 - Not necessarily a filled-in value on a part/post — that may be a separate “value” concern.
 - Not a replacement for WordPress core term fields (`name`, `slug`, …).
-- Not shared across many owning nodes in MVP (one owning `node_id`).
+- Not necessarily single-owner only — shared/global assignment is still an open question (?).
 
 ---
 
@@ -218,7 +228,7 @@ Node { id: 2, name: "Resistors", parent_id: 1, taxonomy: "part_category" }
 | Object | Primary job | Structural link |
 |--------|-------------|-----------------|
 | Node | Hierarchy | Optional one parent; several children → trees/forests; several parameters |
-| Parameter | Attribute definition | Belongs to one node; a node may have several parameters |
+| Parameter | Attribute definition | Appears on a node’s parameter list; whether each parameter has exactly one owning node is **?** (Q14) |
 
 ## Storage mapping (leaning, not final)
 
@@ -228,13 +238,13 @@ Node { id: 2, name: "Resistors", parent_id: 1, taxonomy: "part_category" }
 | Node `parent_id` | `wp_term_taxonomy.parent` (`0` ↔ `null`) |
 | Node `name` | `wp_terms.name` |
 | Node `taxonomy` | `wp_term_taxonomy.taxonomy` |
-| Parameter `node_id` | term id of owning node |
+| Parameter ↔ Node link | TBD after Q14 |
 | Parameter body | term meta JSON, custom table, or host storage — **TBD (Q15)** |
 
 ## Open points
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q13, Q15–Q16). Q14 (Node↔Parameter cardinality) is **decided**.
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) (Q11–Q16). Especially **Q14 (?)**: is a parameter always assigned to exactly one node?
 
 ## Next planning step
 
-Define parameter types/fields and value ownership. Still planning only — no implementation.
+Keep Parameter→Node as a marked question; continue with parameter types/fields or other structure. Still planning only — no implementation.

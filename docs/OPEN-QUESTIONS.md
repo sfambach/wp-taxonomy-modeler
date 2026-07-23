@@ -19,7 +19,7 @@
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
 | Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; position/meta later | open |
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | WP default until proven insufficient | open |
-| Q14 | How does Parameter relate to Node? | Parameters belong to one node / inherited down the tree / global per taxonomy | **Decided:** one node can have several parameters; each parameter belongs to one node (`node_id`) | decided |
+| Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | Unsure — mark **?** and decide later. (Agreed separately: one node can have several parameters.) | open |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | TBD | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | TBD — definitions may be in-core first | open |
 
