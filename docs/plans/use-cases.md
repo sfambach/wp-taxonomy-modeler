@@ -1,8 +1,8 @@
 ---
 name: Use cases
-overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Open questions stay open; use cases drive later decisions.
+overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14; keep Q34/Q49 open in Notes.
 status: draft
-version: "0.1.1-plan"
+version: "0.1.2-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -18,20 +18,33 @@ todos:
     content: "Draft core admin tree use cases (browse, create, delete, select)"
     status: in_progress
   - id: draft-definition-ucs
-    content: "Draft Definitionsbaum / type / relation-oriented use cases"
-    status: pending
+    content: "Draft Definitionsbaum / type / relation-oriented use cases (UC-10, UC-14–UC-16)"
+    status: in_progress
   - id: draft-bom-host-ucs
     content: "Draft BOM example host use cases (UC-20+) linked to example-projects.md"
     status: in_progress
   - id: map-ucs-to-mvp
     content: "Mark which use cases are MVP vs later"
     status: pending
+  - id: sync-q33-decisions
+    content: "Align cards with Q33 decided, Q14 dropped, Q34 config lean, Q49 open"
+    status: completed
 ---
 
 # Use cases (planning)
 
 > Planning only. Describe **who does what and why**, not how it is implemented.  
-> Open questions in [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) stay open unless a use case forces a decision.
+> Open questions in [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) stay open unless already decided — then Notes may say **decided**.
+
+## Decision snapshot (for writers)
+
+| ID | Status | Meaning for use cases |
+|----|--------|------------------------|
+| **Q33** | decided | Attributes like `Wert` / `Länge` are **Parameter-Nodes** in the tree |
+| **Q14** | dropped | No separate Parameter owner field |
+| **Q34** | leaning | Specialization via **configuration**, not PHP subclass |
+| **Q48** | leaning | Bind slot/Parameter → type Node (`has_type` / type field) |
+| **Q49** | open | Simples may not originate Relations — special kind **or** config disable |
 
 ## Format (proposed)
 
@@ -59,7 +72,7 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 - Write from the actor’s view (“Admin selects …”), not from the database.
 - One primary goal per card.
 - Prefer concrete examples from the Definitionsbaum / Bauteile trees where helpful.
-- Do **not** resolve open questions here — only reference them under **Notes**.
+- Do **not** resolve open questions here — only reference them under **Notes** (or mark **decided** when already closed elsewhere).
 
 ---
 
@@ -89,11 +102,11 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Trigger** | Chooses “create child” on a selected node |
 | **Preconditions** | Node is selected; Admin has capability |
 | **Main flow** | 1. Admin selects parent node<br>2. Chooses create child<br>3. Enters name (and optional fields)<br>4. Confirms<br>5. System inserts child under parent |
-| **Variants** | Validation failure (empty name); no permission |
+| **Variants** | Validation failure (empty name); no permission; create **Parameter-Node** under a category (e.g. Wert under Widerstände) |
 | **Outcome** | New Node appears under the parent in the tree |
 | **MVP?** | yes |
-| **Touches** | Node |
-| **Notes** | Optional fields Q12; ordering Q13 |
+| **Touches** | Node (may be Parameter-Node — Q33) |
+| **Notes** | Optional fields Q12; ordering Q13; Parameter role via config Q34 |
 
 ### UC-03 — Delete a node (promote or cascade)
 
@@ -104,11 +117,11 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Trigger** | Chooses delete on a selected node |
 | **Preconditions** | Node selected; may have children |
 | **Main flow** | 1. Admin chooses delete<br>2. If children exist, System asks: promote children to parent **or** delete cascade<br>3. Admin confirms choice<br>4. System applies deletion policy |
-| **Variants** | Root delete; last child; cancel |
+| **Variants** | Root delete; last child; cancel; fixed simple-type Node — may be non-deletable |
 | **Outcome** | Node gone; children either promoted or removed as chosen |
 | **MVP?** | yes |
 | **Touches** | Node, Changelog |
-| **Notes** | Delete UX still to specify in planning-phase |
+| **Notes** | Delete UX still to specify in planning-phase; fixed simples Q33/Q49 |
 
 ### UC-04 — Select a node and see related attributes
 
@@ -117,13 +130,13 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Actor** | Admin |
 | **Goal** | Inspect a node’s details and related “consists of” attributes |
 | **Trigger** | Clicks a node in the tree (e.g. Widerstand) |
-| **Preconditions** | Node exists; may have Relations / parameters |
-| **Main flow** | 1. Admin selects node<br>2. System shows node identity (name, …)<br>3. System shows related items according to RelationType display (e.g. consists_of as attributes)<br>4. Admin reviews values / definitions |
+| **Preconditions** | Node exists; may have Relations and/or child **Parameter-Nodes** |
+| **Main flow** | 1. Admin selects node<br>2. System shows node identity (name, …)<br>3. System shows related Parameter-Nodes / consists_of targets according to RelationType display<br>4. Admin reviews definitions (and values if present) |
 | **Variants** | Node with no relations; inherited attributes from `is_a` parent |
 | **Outcome** | Admin understands what this node is and what it consists of |
 | **MVP?** | unclear |
-| **Touches** | Node, Relation, RelationType, Parameter? |
-| **Notes** | Display Q42; inherit Q43; Parameter-as-Node Q33 — all still open |
+| **Touches** | Node, Parameter-Node, Relation, RelationType |
+| **Notes** | **Q33 decided** (attributes = Parameter-Nodes). Display Q42; inherit Q43; config Q34 |
 
 ### UC-05 — Work with measure attributes (Wert mit Einheit)
 
@@ -131,14 +144,14 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 |-------|---------|
 | **Actor** | Admin |
 | **Goal** | Set or read a measure such as `10 kOhm` or `10 mm` |
-| **Trigger** | Edits an attribute typed as `measure` on a node (e.g. Wert, Höhe) |
-| **Preconditions** | Definitionsbaum has Type/`measure`, Präfix, Basiseinheit |
-| **Main flow** | 1. Admin opens measure field<br>2. Enters numeric value<br>3. Chooses Präfix (optional) and Basiseinheit<br>4. Saves<br>5. System shows composed reading (e.g. `10 kOhm`) |
-| **Variants** | Missing unit; type that forbids prefix (non-measure) |
+| **Trigger** | Edits a Parameter-Node typed as `measure` (e.g. Wert, Höhe) |
+| **Preconditions** | Definitionsbaum has fixed simples + composed `measure`; Präfix; Basiseinheit |
+| **Main flow** | 1. Admin opens measure field on the Parameter-Node<br>2. Enters numeric value<br>3. Chooses Präfix (optional) and Basiseinheit<br>4. Saves<br>5. System shows composed reading (e.g. `10 kOhm`) |
+| **Variants** | Missing unit; type that forbids prefix (non-measure / simple scalar) |
 | **Outcome** | Measure reading stored/displayed as value + prefix + unit |
 | **MVP?** | later / unclear |
-| **Touches** | Parameter or consists_of Node, Type catalog, Präfix, Basiseinheit |
-| **Notes** | Value storage Q16; numeric_kind Q37; core types Q36 |
+| **Touches** | Parameter-Node, Type catalog (simple + composed), Präfix, Basiseinheit |
+| **Notes** | Value storage Q16; numeric_kind Q37; types Q36/Q48; config Q34 |
 
 ### UC-06 — Inherit attributes along `is_a`
 
@@ -147,13 +160,13 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Actor** | Admin |
 | **Goal** | See that NPN-Transistor picks up Transistor’s consists_of attributes |
 | **Trigger** | Selects a subtype node that `is_a` a parent type |
-| **Preconditions** | Parent has consists_of relations; child linked via `is_a` |
-| **Main flow** | 1. Admin selects NPN-Transistor<br>2. System resolves `is_a` ancestors<br>3. System shows inherited consists_of attributes (plus any child-only ones)<br>4. Admin may override or extend (if allowed) |
+| **Preconditions** | Parent has consists_of → Parameter-Nodes; child linked via `is_a` |
+| **Main flow** | 1. Admin selects NPN-Transistor<br>2. System resolves `is_a` ancestors<br>3. System shows inherited consists_of Parameter-Nodes (plus any child-only ones)<br>4. Admin may override or extend (if allowed) |
 | **Variants** | No inheritance; conflict override |
 | **Outcome** | Subtype shows parent composition attributes without redefining them all |
 | **MVP?** | later |
-| **Touches** | Node, Relation (`is_a`, `consists_of`), RelationType.inheritable |
-| **Notes** | Q43, Q30 — mechanics open |
+| **Touches** | Node, Parameter-Node, Relation (`is_a`, `consists_of`), RelationType.inheritable |
+| **Notes** | Q43, Q30 — mechanics open; Q33 decided |
 
 ### UC-07 — Host plugin attaches a side panel
 
@@ -170,6 +183,66 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | **Touches** | Project, Node, extension API |
 | **Notes** | Q8, Q9 |
 
+### UC-10 — Create project with required Definitionsbaum anchors
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Admin |
+| **Goal** | Start a Project that already has Definition / Type / Präfix / Basiseinheit anchors |
+| **Trigger** | Creates a new Project |
+| **Preconditions** | Admin can create projects |
+| **Main flow** | 1. Admin creates Project (name, description)<br>2. System ensures Definitionsbaum root + anchors (`type_node`, `prefix_node`, `base_unit_node`)<br>3. System seeds **fixed simple type Nodes** under Type (`int`, `double`, `string`, `char`, `bool`)<br>4. Admin opens the project tree |
+| **Variants** | Clone from template project (later) |
+| **Outcome** | Project ready with Definitionsbaum and simples available |
+| **MVP?** | unclear (Project may be post-MVP tree-only) |
+| **Touches** | Project, Node, SimpleType Nodes |
+| **Notes** | Q33 simples; anchors agreed; storage Q19 |
+
+### UC-14 — Bind a Parameter-Node to a data type
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Admin |
+| **Goal** | Declare that a Parameter-Node (e.g. Menge, Stock, Wert) uses a specific type |
+| **Trigger** | Edits type binding on a Parameter-Node / schema slot |
+| **Preconditions** | Parameter-Node exists; type Nodes available (simple or composed) |
+| **Main flow** | 1. Admin selects Parameter-Node<br>2. Chooses type (e.g. `int`, `bool`, or composed `measure`)<br>3. System stores binding (`has_type` Relation and/or config)<br>4. UI widgets follow the type |
+| **Variants** | Change type later; target type hidden/disabled in this project |
+| **Outcome** | Slot has a clear type; forms/tables render the matching control |
+| **MVP?** | later / unclear |
+| **Touches** | Parameter-Node, Type Node, Relation `has_type`?, Node.config? |
+| **Notes** | Q33 decided; Q48 binding; Q34 config lean |
+
+### UC-15 — Create a derived or composed type from simples
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Admin |
+| **Goal** | Add a new type such as `measure`, `enum`, or `string_list` based on fixed simples |
+| **Trigger** | Adds a type under Datentypen / Type |
+| **Preconditions** | Fixed simples exist in the Project |
+| **Main flow** | 1. Admin creates a new type Node under Type<br>2. Configures it as derived/composed from simples (e.g. measure ← numeric simple + Präfix + Basiseinheit)<br>3. Saves<br>4. New type becomes selectable in UC-14 |
+| **Variants** | Invalid composition; name clash with a simple |
+| **Outcome** | Extensible type catalog without coding a new PHP type class |
+| **MVP?** | later |
+| **Touches** | Type Node, SimpleType Nodes, Node.config |
+| **Notes** | Q33/Q36; composition rules still open; Q34 config |
+
+### UC-16 — Restrict Relations on simple data-type Nodes
+
+| Field | Content |
+|-------|---------|
+| **Actor** | Admin / System |
+| **Goal** | Prevent (or allow by exception) simple types from originating Relations |
+| **Trigger** | Tries to add a Relation **from** a simple type Node (e.g. `int` → …) |
+| **Preconditions** | Simple type Nodes exist; Relation UI available |
+| **Main flow** | 1. Admin selects a simple type Node<br>2. Attempts to add an outgoing Relation<br>3. System blocks **or** allows based on rule/config<br>4. Admin still can use the simple as a **Relation target** (e.g. Menge `has_type` int) |
+| **Variants** | Special Node kind permanently forbids; config flag disables; override for power users |
+| **Outcome** | Simples stay “leaf types”; Parameter-Nodes / categories own Relations |
+| **MVP?** | later / unclear |
+| **Touches** | SimpleType Node, Relation, Node.config? |
+| **Notes** | **Q49 open** — special kind vs config disable; decide with Q34 |
+
 ---
 
 ## Example A — BOM (host + tree)
@@ -185,12 +258,12 @@ Cards below split **tree environment** vs **host BOM**.
 | **Goal** | Find a part (Widerstand, IC, …) in the category tree |
 | **Trigger** | Adding or editing a BOM line; opens part picker |
 | **Preconditions** | Bauteile tree exists with categorized parts |
-| **Main flow** | 1. User opens part picker (tree UI)<br>2. Expands categories<br>3. Selects a part node<br>4. Sees part attributes (Wert, Bauform, Datenblatt, …)<br>5. Confirms selection for the BOM line |
+| **Main flow** | 1. User opens part picker (tree UI)<br>2. Expands categories<br>3. Selects a part node<br>4. Sees part Parameter-Nodes (Wert, Bauform, Datenblatt, …)<br>5. Confirms selection for the BOM line |
 | **Variants** | Part missing → create/request new part (later) |
 | **Outcome** | A concrete part node is chosen for the line |
 | **MVP?** | Tree browse/select = taxonomy-tree; picker wiring = host |
-| **Touches** | Node, Project, Relation/attributes, extension |
-| **Notes** | Example A; UC-01/UC-04 |
+| **Touches** | Node, Parameter-Node, Project, Relation/attributes, extension |
+| **Notes** | Example A; UC-01/UC-04; Q33 |
 
 ### UC-21 — Build a BOM line with references and derived quantity
 
@@ -204,8 +277,8 @@ Cards below split **tree environment** vs **host BOM**.
 | **Variants** | Duplicate refs; qty override (if ever allowed) |
 | **Outcome** | BOM line with refs, part, qty, meta |
 | **MVP?** | later — **host** |
-| **Touches** | Host BOM line; part → Node id |
-| **Notes** | Out of scope for taxonomy-tree core |
+| **Touches** | Host BOM line; part → Node id; Reference shape Q47 |
+| **Notes** | Out of scope for taxonomy-tree core; value-shape on type/Parameter (Q47) |
 
 ### UC-22 — See BOM totals (part count + price sum)
 
@@ -247,7 +320,7 @@ Cards below split **tree environment** vs **host BOM**.
 | **Variants** | Missing MPN / supplier sku |
 | **Outcome** | File ready for the vendor |
 | **MVP?** | later — **host** |
-| **Touches** | Host exporters; may read part attributes from tree/defs |
+| **Touches** | Host exporters; may read part Parameter-Nodes from tree/defs |
 | **Notes** | Taxonomy-tree does not own vendor formats |
 
 ---
@@ -264,11 +337,11 @@ See [`example-projects.md`](example-projects.md) Example B.
 | **Goal** | Find a graphics card, sound card, motherboard, … |
 | **Trigger** | Opens hardware catalog |
 | **Preconditions** | Category tree with hardware nodes exists |
-| **Main flow** | 1. Browse categories<br>2. Select an item<br>3. See type-specific properties |
+| **Main flow** | 1. Browse categories<br>2. Select an item<br>3. See type-specific Parameter-Nodes |
 | **Outcome** | Hardware node selected with its attributes visible |
 | **MVP?** | Tree = taxonomy-tree; rich list = host/later |
-| **Touches** | Node, consists_of / attributes, `is_a` |
-| **Notes** | Different property sets per branch (Q43) |
+| **Touches** | Node, Parameter-Node, consists_of / attributes, `is_a` |
+| **Notes** | Different property sets per branch (Q43); Q33 |
 
 ### UC-31 — Compare two hardware items of the same kind
 
@@ -278,11 +351,11 @@ See [`example-projects.md`](example-projects.md) Example B.
 | **Goal** | Compare sound card A vs B (or two GPUs, …) |
 | **Trigger** | Chooses compare on two items |
 | **Preconditions** | Both nodes share a comparable attribute schema (same `is_a` family) |
-| **Main flow** | 1. Pick two nodes<br>2. Host loads shared attributes from defs/values<br>3. Shows side-by-side compare |
+| **Main flow** | 1. Pick two nodes<br>2. Host loads shared Parameter-Nodes / values from defs<br>3. Shows side-by-side compare |
 | **Variants** | Incomparable types → warn |
 | **Outcome** | Difference view of properties |
 | **MVP?** | later — **host** UI; schema from tree |
-| **Touches** | Node attrs; host compare |
+| **Touches** | Parameter-Nodes; host compare |
 | **Notes** | — |
 
 ### UC-32 — Record a component performance test
@@ -341,11 +414,11 @@ See [`example-projects.md`](example-projects.md) Example C.
 | **Goal** | Find a recipe by category or an ingredient in the catalog |
 | **Trigger** | Opens recipes / ingredients |
 | **Preconditions** | Category trees exist |
-| **Main flow** | 1. Browse recipe or ingredient tree<br>2. Select a node<br>3. See attributes (Zeit, Diet, Allergene, …) |
+| **Main flow** | 1. Browse recipe or ingredient tree<br>2. Select a node<br>3. See Parameter-Nodes (Zeit, Diet, Allergene, …) |
 | **Outcome** | Recipe or ingredient node selected |
 | **MVP?** | Tree = taxonomy-tree |
-| **Touches** | Node, attributes |
-| **Notes** | — |
+| **Touches** | Node, Parameter-Node |
+| **Notes** | Q33 |
 
 ### UC-41 — Define recipe ingredient lines with amounts
 
@@ -360,7 +433,7 @@ See [`example-projects.md`](example-projects.md) Example C.
 | **Outcome** | Recipe lists ingredient lines with measures |
 | **MVP?** | later — **host** editor; optional Relation + `props` |
 | **Touches** | Node; Relation `uses`?; measure; Relation.props? |
-| **Notes** | Strong case for edge props (example C) |
+| **Notes** | Strong case for edge props (example C); Q45 |
 
 ### UC-42 — Scale recipe portions
 
@@ -402,7 +475,7 @@ See [`example-projects.md`](example-projects.md) Example C.
 | **Main flow** | 1. Pick recipes or open stats<br>2. Host shows side-by-side attrs / shared ingredients<br>3. Shows aggregates (ratings, most-used ingredients) |
 | **Outcome** | Compare view and/or statistics |
 | **MVP?** | later — **host** |
-| **Touches** | Host analytics; tree attrs |
+| **Touches** | Host analytics; tree Parameter-Nodes |
 | **Notes** | — |
 
 ---
@@ -411,10 +484,11 @@ See [`example-projects.md`](example-projects.md) Example C.
 
 - UC-08 Rename node  
 - UC-09 Reparent node  
-- UC-10 Create project + required Definitionsbaum anchors  
 - UC-11 Manage enum attribute (`selection_mode` single/multiple)  
 - UC-12 View relation as directed arrow vs undirected line (graph chrome)  
 - UC-13 Template tree → instantiate into project tree  
-- UC-25 Create/edit part properties in the tree (Wert, Maße, Datenblatt, …)
+- UC-25 Create/edit part properties in the tree (Wert, Maße, Datenblatt, …)  
+- ~~UC-10~~ → written  
+- ~~UC-14–UC-16~~ → written (type bind / compose / simple Relation restrict)
 
 Add cards when we pick the next slice.

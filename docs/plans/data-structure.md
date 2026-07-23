@@ -427,7 +427,7 @@ Node ◄──(many)────── Parameters
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
 | Node → child Parameter-Nodes | several | `0..n` | **decided** (parent/child and/or Relations) |
-| Parameter → parent Node | one | `0..1` | **via `parent_id`** (Q14 dissolved) |
+| Parameter → parent Node | one | `0..1` | **via `parent_id`** (Q14 dropped) |
 
 ```text
 Node (category) ──(children / besteht-aus)──► Parameter-Node
