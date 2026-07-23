@@ -205,7 +205,7 @@ function renderTreeRow(node, depth) {
   delBtn.className = "btn icon danger";
   delBtn.title = "Löschen";
   delBtn.setAttribute("aria-label", "Löschen");
-  delBtn.textContent = "🗑";
+  delBtn.textContent = "×";
   delBtn.disabled = node.id === rootId;
   if (node.id === rootId) delBtn.style.visibility = "hidden";
   delBtn.addEventListener("click", (e) => {
