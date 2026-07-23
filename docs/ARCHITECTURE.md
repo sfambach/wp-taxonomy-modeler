@@ -57,17 +57,32 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-MVP intends to use native WordPress taxonomy tables:
+The domain model is built from **nodes**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+
+### Node (conceptual)
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `id` | yes | Stable node identity |
+| `parent_id` | yes (`null` for roots) | Single parent reference |
+| `name` | yes | Display name |
+| `taxonomy` | yes | Hierarchical taxonomy slug |
+
+Nodes form a rooted forest: one parent max, many children, no cycles. Nested `children` is a view over the same nodes.
+
+### Storage (leaning)
+
+MVP intends to map nodes onto native WordPress taxonomy tables:
 
 - `wp_terms`
 - `wp_term_taxonomy` (`parent`, `count`, `taxonomy`)
 - `wp_termmeta` only if a later phase needs plugin-owned meta
 
-No custom relational tables are required for the MVP tree. If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations).
+No custom node table is required for the MVP leaning. If custom tables appear later, they must follow the repository relational-database rules (keys, prepared SQL, migrations). Final storage choice: open question **Q11**.
 
 ## Tree model responsibilities (planned)
 
-- Load terms for one or more taxonomies.
+- Load nodes for one or more taxonomies.
 - Build nested arrays / adjacency structures efficiently (avoid N+1).
 - Resolve ancestors and descendants.
 - Support delete strategies:

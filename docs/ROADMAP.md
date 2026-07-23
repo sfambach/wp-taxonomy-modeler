@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.2.0-plan** (2026-07-23).
+Last synced from plan version **0.3.0-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -15,16 +15,17 @@ Last synced from plan version **0.2.0-plan** (2026-07-23).
 | Planning-only rule (no implementation yet) | In progress |
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
+| Node data structure definition | In progress |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
-**Exit criteria:** MVP requirements accepted; open questions decided or deferred; user sign-off to leave planning mode.
+**Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.
 
 ## Phase 1 — MVP (blocked on planning sign-off)
 
 | Item | Status |
 |------|--------|
 | Plugin bootstrap at version `0.0.1` (PHP 8.x, OOP, text domain) | Blocked |
-| Taxonomy-agnostic tree model | Blocked |
+| Node tree model (taxonomy-agnostic) | Blocked |
 | Admin tree UI (create / select / delete promote\|cascade) | Blocked |
 | Secure mutation/read endpoints | Blocked |
 

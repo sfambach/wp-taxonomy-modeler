@@ -16,6 +16,9 @@
 | Q8 | Placeholder right-hand panel in MVP? | Yes empty/host slot / tree-only until Phase 2 | Host slot preferred so electronic-parts can attach later | open |
 | Q9 | When to integrate with `wp-electronic-parts`? | After MVP / after Phase 2 / never in-repo | After extension contract exists (Phase 2+) | open |
 | Q10 | Packaging for reusable code? | Single plugin only / plugin + Composer package | Single plugin first | open |
+| Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
+| Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | slug + count likely; position/meta later | open |
+| Q13 | How are siblings ordered? | WP default name/term order / explicit position field | WP default until proven insufficient | open |
 
 ## How to close a question
 

@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.2.0-plan"
+version: "0.3.0-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -15,9 +15,13 @@ related_docs:
 related_plans:
   - docs/plans/planning-phase.md
   - docs/plans/mvp-requirements.md
+  - docs/plans/data-structure.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
+    status: in_progress
+  - id: define-data-structure
+    content: "Define Node-based data structure and settle storage mapping / optional fields"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -26,7 +30,7 @@ todos:
     content: "Scaffold modern PHP 8.x plugin bootstrap, autoload, text domain, and activation hooks (blocked until planning sign-off)"
     status: pending
   - id: core-tree-model
-    content: "Implement taxonomy-agnostic tree model (load, nest, ancestors, descendants) on top of WP_Term (blocked until planning sign-off)"
+    content: "Implement taxonomy-agnostic tree model (load, nest, ancestors, descendants) on top of Node/WP_Term (blocked until planning sign-off)"
     status: pending
   - id: admin-tree-ui
     content: "Admin tree UI for any hierarchical taxonomy (expand/collapse, select, create child, delete with promote/cascade) (blocked until planning sign-off)"
@@ -92,17 +96,17 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 - Repository rules (English code/docs, WordPress standards, DB practices, versioning, planning-only gate).
 - Project plan + living documentation + sync rule.
-- Planning checklist, MVP requirements, and open questions.
+- Planning checklist, MVP requirements, open questions, and **Node data structure**.
 - Local WordPress development environment (separate PR; environment only, not product implementation).
 
 ### Phase 1 — MVP plugin (after planning sign-off)
 
 - Plugin bootstrap (PHP 8.x, OOP, text domain `wp-taxonomy-tree`), starting at version **`0.0.1`**.
-- Taxonomy-agnostic tree builder over `WP_Term` / `WP_Term_Query`.
+- Taxonomy-agnostic **Node** tree model (over WordPress terms unless planning decides otherwise).
 - Admin page registering a tree UI for selected hierarchical taxonomies.
-- Create root/child terms, rename/select, delete with promote-children or cascade.
+- Create root/child nodes, rename/select, delete with promote-children or cascade.
 - Capability checks, nonces, prepared `$wpdb` usage only when custom SQL is unavoidable.
-- Details: [`docs/plans/mvp-requirements.md`](mvp-requirements.md).
+- Details: [`docs/plans/mvp-requirements.md`](mvp-requirements.md), [`docs/plans/data-structure.md`](data-structure.md).
 
 ### Phase 2 — Extension surface
 
@@ -136,6 +140,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Domain properties (measure, enums, etc.) remain outside this plugin. |
 | 2026-07-23 | Versioning: always start at `0.0.1`; change the first digit (`MAJOR`) only for official releases (for example first release `1.0.0`). |
 | 2026-07-23 | **Planning-only mode:** no plugin implementation until plan status leaves `planning` and the user explicitly asks to implement. |
+| 2026-07-23 | Core data structure starts with **Node**: `id`, `parent_id` (`null` = root), `name`, `taxonomy`; tree is a rooted forest with no cycles. |
 
 ## Change protocol
 

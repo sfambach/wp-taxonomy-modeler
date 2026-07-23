@@ -17,6 +17,9 @@ todos:
   - id: freeze-mvp-scope
     content: "Agree MVP in/out list and acceptance criteria in mvp-requirements.md"
     status: pending
+  - id: define-node-model
+    content: "Agree Node fields, relations, and storage mapping in data-structure.md"
+    status: in_progress
   - id: resolve-open-questions
     content: "Resolve or explicitly defer every item in docs/OPEN-QUESTIONS.md"
     status: pending
@@ -49,6 +52,7 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Master plan | `docs/plans/project-plan.md` | Goals, phases, and decisions are current |
 | Planning checklist | `docs/plans/planning-phase.md` (this file) | Todos resolved or deferred |
 | MVP requirements | `docs/plans/mvp-requirements.md` | Acceptance criteria are testable |
+| Data structure (Nodes) | `docs/plans/data-structure.md` | Required Node fields and invariants agreed |
 | Open questions | `docs/OPEN-QUESTIONS.md` | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |
 

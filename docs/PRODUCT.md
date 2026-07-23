@@ -32,13 +32,14 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 ## In scope (planned)
 
 - Hierarchical taxonomy tree management in wp-admin.
-- Taxonomy-agnostic PHP model for nested terms.
+- A **Node**-based tree model (`id`, `parent_id`, `name`, `taxonomy`).
+- Taxonomy-agnostic handling of nodes for hierarchical taxonomies.
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
 
 ## Out of scope (early versions)
 
-- Domain-specific term properties (parts parameters, units, measures).
+- Domain-specific term properties (parts parameters, units, measures) on the core Node.
 - Full public frontend theme redesign.
 - Non-hierarchical tag clouds or flat taxonomies as primary targets.
 - Implementation work while the project plan status is `planning`.
@@ -46,11 +47,12 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 ## Planned user outcomes
 
 1. Open a Catalog/Tree admin screen for a registered hierarchical taxonomy.
-2. Create root and child terms from the tree.
+2. Create root and child **nodes** from the tree.
 3. Delete a node and choose whether children are promoted or removed.
 4. Let another plugin attach its own editor pane or behavior when a node is selected.
 
-Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).
+Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
+Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ## Versioning
 
@@ -62,6 +64,7 @@ Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-r
 - Plan (source of truth): [`docs/plans/project-plan.md`](plans/project-plan.md)
 - Planning checklist: [`docs/plans/planning-phase.md`](plans/planning-phase.md)
 - MVP requirements: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md)
+- Data structure (Nodes): [`docs/plans/data-structure.md`](plans/data-structure.md)
 - Open questions: [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)
 - Architecture: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
 - Roadmap: [`docs/ROADMAP.md`](ROADMAP.md)

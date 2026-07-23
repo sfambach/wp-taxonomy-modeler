@@ -35,25 +35,25 @@ Administrators can manage one or more **hierarchical** WordPress taxonomies in a
 
 - Admin can expand/collapse nodes.
 - Admin can see parent/child structure for the selected taxonomy.
-- Empty taxonomy shows a clear empty state and a way to create a root term.
+- Empty taxonomy shows a clear empty state and a way to create a root node.
 
-### FR3 — Create terms
+### FR3 — Create nodes
 
-- Create a root term.
-- Create a child under a selected term.
-- New terms appear in the tree without a full page reload (planned UX).
+- Create a root node.
+- Create a child under a selected node.
+- New nodes appear in the tree without a full page reload (planned UX).
 
-### FR4 — Select term
+### FR4 — Select node
 
-- Clicking a term selects it and exposes a selection hook/event for host UI (even if MVP host UI is only a placeholder panel).
+- Clicking a node selects it and exposes a selection hook/event for host UI (even if MVP host UI is only a placeholder panel).
 
-### FR5 — Delete term
+### FR5 — Delete node
 
-- Deleting a leaf term removes it after confirmation.
-- Deleting a term with children requires an explicit choice:
-  - **promote** children to the deleted term’s parent, or
+- Deleting a leaf node removes it after confirmation.
+- Deleting a node with children requires an explicit choice:
+  - **promote** children to the deleted node’s parent, or
   - **cascade** delete descendants
-- Unauthorized users cannot mutate terms.
+- Unauthorized users cannot mutate nodes.
 
 ### FR6 — Security & i18n
 
@@ -86,13 +86,17 @@ Administrators can manage one or more **hierarchical** WordPress taxonomies in a
 
 ## Acceptance scenarios
 
-1. **Empty tree:** On a hierarchical taxonomy with no terms, admin creates a root term and sees it in the tree.
-2. **Child create:** Admin selects a term, creates a child, and sees nesting under the parent.
+1. **Empty tree:** On a hierarchical taxonomy with no nodes, admin creates a root node and sees it in the tree.
+2. **Child create:** Admin selects a node, creates a child, and sees nesting under the parent.
 3. **Promote delete:** Admin deletes a parent with children via promote; children remain under the grandparent.
 4. **Cascade delete:** Admin deletes a parent with children via cascade; parent and descendants are gone.
 5. **Caps:** A user without `manage_terms` (or taxonomy equivalent) cannot create/delete via the endpoints.
-6. **Host hook (minimal):** Selecting a term fires a documented extension point that a host can listen to.
+6. **Host hook (minimal):** Selecting a node fires a documented extension point that a host can listen to.
+
+## Data structure reference
+
+Node fields and invariants: [`docs/plans/data-structure.md`](data-structure.md).
 
 ## Open items affecting MVP
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, multi-taxonomy UI, and default screen replacement.
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, multi-taxonomy UI, default screen replacement, and Node storage/optional fields (Q11–Q13).
