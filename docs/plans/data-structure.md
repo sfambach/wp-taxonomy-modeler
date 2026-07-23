@@ -591,9 +591,8 @@ Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
 |------------------|----------------|-------------|
 | **Project** | yes | Groups trees via `root_nodes`; has `changelog` |
 | **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
-| **Parameter** | yes | `type` Node + optional `unit` Node; changelog |
-| **ParameterType** (class) | **no** | Type is a **Node** |
-| **Unit** (class) | **no** | Unit is a **Node**; children = unit values |
+| **Parameter** | yes | `type` + optional `prefix` + optional `base_unit` (Nodes); changelog |
+| **ParameterType** / **Unit** (classes) | **no** | Use Nodes from Definition → Type / Präfix / Basiseinheit |
 | **Changelog** | yes (embedded or related) | Container of `changes` |
 | **Change** | yes (inside changelog) | timestamp + changer + change + version |
 | **Tree** | **no** | Derived from a root node + descendants |

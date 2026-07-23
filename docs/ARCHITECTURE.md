@@ -43,8 +43,7 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Project` includes `name`, `description`, and `root_nodes`. Every Project/Node/Parameter has `changelog`.  
-`Parameter.type` and `Parameter.unit` are **Node** references (no ParameterType/Unit classes). Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q27 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit` (Definition tree). Keep behavior in services/repositories. Do not add `Tree`, `RootNode`, `ParameterType`, or `Unit` classes. See Q20–Q29 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -111,8 +110,9 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | **yes** | **Node** (parameter type) |
-| `unit` | **optional** | **Node** whose **children** are unit values; null when type needs no unit |
+| `type` | **yes** | **Node** under Definition → Type |
+| `prefix` | **optional** | **Node** under Definition → Präfix (e.g. `k`) |
+| `base_unit` | **optional** | **Node** under Definition → Basiseinheit (e.g. `Ohm`) |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -127,16 +127,18 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 
 Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
 
-### Parameter type and unit
+### Parameter type and unit composition
 
-| Rule | Example |
-|------|---------|
-| Every Parameter has a **type** | **type is a Node** |
-| Every Parameter has an **optional unit** | **unit is a Node** or null |
-| **Unit values = child nodes** of the unit node | e.g. `mOhm`, `Ohm`, `kOhm` |
-| No `ParameterType` / `Unit` classes | roles of **Node** only |
+| Field | Source in Definition tree | Example |
+|-------|---------------------------|---------|
+| `type` | Type | `measure`, `url` |
+| `prefix` | Präfix | `k` |
+| `base_unit` | Basiseinheit | `Ohm` |
 
-Details: Q24–Q27 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+“10 kOhm” ≈ value `10` + prefix `k` + base_unit `Ohm`.  
+URL ≈ type `url` only (`prefix`/`base_unit` null).
+
+Details: Q24–Q29 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 

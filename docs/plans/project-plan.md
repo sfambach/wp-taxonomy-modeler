@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.6-plan"
+version: "0.6.7-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -163,6 +163,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | A **unit is a Node**; the **unit values** are that node’s **child nodes** (no separate Unit class). |
 | 2026-07-23 | Parameter **type is also a Node** (no separate ParameterType class). |
 | 2026-07-23 | Example thinking tree: root **Definition** with children **Type**, **Basiseinheit**, **Präfix**. |
+| 2026-07-23 | A **Parameter** uses Nodes from **Type** (required), **Präfix** (optional), and **Basiseinheit** (optional) — e.g. measure + k + Ohm. |
 
 ## Change protocol
 

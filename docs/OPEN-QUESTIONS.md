@@ -29,11 +29,12 @@
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
-| Q24 | How does a type-Node declare that a unit is allowed/required? | Flag on node / naming convention / linked meta / subtree | TBD | open |
-| Q25 | How are Units represented? | Separate Unit class / Node / string | **Decided:** unit is a **Node**; values are **child nodes** | decided |
-| Q26 | Unit value selection: direct children only or any descendant? | Direct children / all descendants | Direct children (leaning) | open |
-| Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | See example tree under Definition → Type | open |
-| Q28 | Is a measure unit one node (kOhm) or prefix node + base unit node (k + Ohm)? | Single value node / prefix+base composition | TBD — motivated by Definition → Basiseinheit / Präfix example | open |
+| Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | e.g. measure needs base_unit; url needs neither | open |
+| Q25 | How are Units represented? | Separate Unit / single unit Node / prefix+base | **Decided:** Parameter uses **prefix** + **base_unit** Nodes from Definition tree | decided |
+| Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | Leaning: must live under the matching Definition branch | open |
+| Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
+| Q28 | Is a measure unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
+| Q29 | Can prefix exist without base_unit (or vice versa)? | Both required together / either alone / type-dependent | Type-dependent leaning | open |
 
 ## How to close a question
 
