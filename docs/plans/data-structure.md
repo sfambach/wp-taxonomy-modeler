@@ -1234,6 +1234,7 @@ Some trees are **templates** for project-specific trees.
 | `id` | yes | identifier | Stable identity of the project |
 | `name` | yes | string | Display name of the project |
 | `description` | yes* | string | Longer text describing the project |
+| `taxonomy` | ? | string (WP taxonomy slug) | **Leaning (Q18):** WP taxonomy belongs on **Project**, not on each Node |
 | `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
 | `definition_root` | yes | **Node** | Required Definitionsbaum root (**Definition**) |
 | `type_node` | yes | **Node** | Required Type anchor |
@@ -1250,6 +1251,7 @@ class Project {
 	public string $id;
 	public string $name;
 	public string $description;
+	public ?string $taxonomy; // WP taxonomy slug — leaning Q18 (on Project, not Node)
 	/** @var list<Node> */
 	public array $root_nodes;
 	public Node $definition_root; // must always exist
@@ -1264,7 +1266,9 @@ class Node {
 	public ?string $parent_id;
 	public string $name;
 	public bool $template; // template tree marker
+	public ?array $config; // type binding / capabilities — Q34
 	public Changelog $changelog;
+	// no taxonomy field — taxonomy lives on Project
 }
 ```
 
@@ -1272,14 +1276,14 @@ Invariants (leaning):
 
 1. `definition_root.parent_id === null`
 2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (Q26)
-3. Creating a Parameter requires these anchors to exist on the Project
-4. `Parameter.type` should be a descendant/child of `project.type_node` (same for prefix/base_unit)
+3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
+4. Bound type Nodes should live under `project.type_node` (same for prefix/base_unit)
 
 #### Fields / topics still to define
 
 | Topic | Status |
 |-------|--------|
-| Relation to WordPress taxonomy | open — Q18 |
+| Exact Project↔taxonomy cardinality (1:1 vs hybrid) | leaning Project owns taxonomy — Q18 |
 | Storage for Project / anchors | open — Q19 |
 | Template copy/instantiate behavior | open — Q30 |
 | Does `template` inherit to children? | open — Q31 |

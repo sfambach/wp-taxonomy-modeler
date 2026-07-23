@@ -88,7 +88,7 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a stored object** — it is defined by a **root node**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+Core stored objects: **Project** and **Node**. A **tree is not a stored object** — it is defined by a **root node**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ### Project (conceptual)
 
@@ -97,6 +97,7 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `id` | yes | Stable project identity |
 | `name` | yes | Display name |
 | `description` | yes | Project description (may be empty) |
+| `taxonomy` | ? | **Leaning (Q18):** WP taxonomy slug on Project, not on Node |
 | `root_nodes` | yes | All root nodes |
 | `definition_root` | yes | Required Definition tree root |
 | `type_node` | yes | Required Type anchor |
@@ -112,12 +113,13 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `parent_id` | yes (`null` = root) | Optional single parent node |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
-| `config` | ? | Roles / capabilities (Q34 lean) — shape TBD |
+| `config` | ? | Type binding / capabilities (Q34) — shape TBD |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 
 Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
-Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
+Template trees use `template = true`. Persistence: Q19.  
+**Taxonomy:** on **Project** (leaning Q18) — Node has **no** `taxonomy` field.
 
 ### Attribute Nodes (no Parameter / ParameterRole)
 

@@ -35,7 +35,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Core objects: **Project** (`name`, `description`, `root_nodes`, `changelog`), **Node**, **Parameter**, plus shared **Changelog** / **Change**.
 - A **tree is not a separate object**; it is defined by a **root node**.
 - A **root node** is the same **Node** object with parent `null` (not a different type).
-- A **project** holds different trees via `root_nodes`.
+- A **project** holds different trees via `root_nodes` and (leaning) the **WP taxonomy** mapping (**Q18** — not per Node).
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
 - A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **measure** is composite from `number`/`integer` + Präfix + Basiseinheit.

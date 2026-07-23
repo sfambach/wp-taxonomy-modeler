@@ -23,7 +23,7 @@
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Same as Nodes (Q11)** — Parameter is a Node; no separate Parameter store | open |
 | Q16 | Are parameter *values* (filled data) part of this plugin? | Yes in-core / host plugins only / later phase | Leaning: measures need a filled **value** beside prefix + unit (e.g. `10 mm`); storage owner TBD | open |
 | Q17 | How does a Project get its trees (root nodes)? | Nodes carry `project_id` / project stores root ids / other | **Decided (domain model):** Project has `root_nodes` (list of Node). Persistence details still Q19. | decided |
-| Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | TBD | open |
+| Q18 | How does Project relate to WordPress taxonomies? | One project = one taxonomy / project independent of taxonomy / hybrid | **Leaning: taxonomy on Project** (not on Node); Node has no `taxonomy` field — exact 1:1 vs hybrid still open | open |
 | Q19 | Where is Project stored? | CPT / custom table / option / taxonomy | TBD | open |
 | Q20 | How are domain objects represented in PHP? | Typed DTO classes / arrays only / WP objects directly / hybrid | **Typed classes/DTOs** for Project, Node, Changelog, Change; **no Parameter class**; services for behavior; no Tree/RootNode class | open |
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |

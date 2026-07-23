@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.41-plan** (2026-07-23).
+Last synced from plan version **0.6.42-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
