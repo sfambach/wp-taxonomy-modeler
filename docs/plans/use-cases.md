@@ -252,6 +252,83 @@ Cards below split **tree environment** vs **host BOM**.
 
 ---
 
+## Example B — Hardware / compare / tests / builds
+
+See [`example-projects.md`](example-projects.md) Example B.
+
+### UC-30 — Browse hardware tree by category
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Find a graphics card, sound card, motherboard, … |
+| **Trigger** | Opens hardware catalog |
+| **Preconditions** | Category tree with hardware nodes exists |
+| **Main flow** | 1. Browse categories<br>2. Select an item<br>3. See type-specific properties |
+| **Outcome** | Hardware node selected with its attributes visible |
+| **MVP?** | Tree = taxonomy-tree; rich list = host/later |
+| **Touches** | Node, consists_of / attributes, `is_a` |
+| **Notes** | Different property sets per branch (Q43) |
+
+### UC-31 — Compare two hardware items of the same kind
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Compare sound card A vs B (or two GPUs, …) |
+| **Trigger** | Chooses compare on two items |
+| **Preconditions** | Both nodes share a comparable attribute schema (same `is_a` family) |
+| **Main flow** | 1. Pick two nodes<br>2. Host loads shared attributes from defs/values<br>3. Shows side-by-side compare |
+| **Variants** | Incomparable types → warn |
+| **Outcome** | Difference view of properties |
+| **MVP?** | later — **host** UI; schema from tree |
+| **Touches** | Node attrs; host compare |
+| **Notes** | — |
+
+### UC-32 — Record a component performance test
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User / lab editor |
+| **Goal** | Attach a speed/performance test result to a hardware item |
+| **Trigger** | Adds a test run for a selected card |
+| **Preconditions** | Hardware node exists |
+| **Main flow** | 1. Select hardware<br>2. Enter test type + result metrics<br>3. Save run<br>4. View result on the item |
+| **Outcome** | Test result stored and visible |
+| **MVP?** | later — **host** |
+| **Touches** | Host test run; Node id as subject |
+| **Notes** | Results are not taxonomy Nodes |
+
+### UC-33 — Build a computer from hardware parts
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Combine GPU, sound card, motherboard, … into one computer |
+| **Trigger** | Creates/edits a computer build |
+| **Preconditions** | Part nodes exist in the tree |
+| **Main flow** | 1. Create computer<br>2. Pick parts from tree (UC-30)<br>3. Host stores build membership (optional: Relations `uses`)<br>4. Shows build bill of hardware |
+| **Outcome** | Computer references selected part nodes |
+| **MVP?** | later — **host** (+ optional Relations) |
+| **Touches** | Node; Relation `uses`?; host build |
+| **Notes** | Q35 — composition via Relation vs host-only |
+
+### UC-34 — Compare computer test results and see stats
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Compare system benchmarks and see summary statistics |
+| **Trigger** | Opens compare/stats for computer tests |
+| **Preconditions** | Computers have test result sets |
+| **Main flow** | 1. Select systems or filter tests<br>2. Host compares result sets<br>3. Shows charts/tables<br>4. Shows aggregated statistics |
+| **Outcome** | Comparable results + summaries |
+| **MVP?** | later — **host** |
+| **Touches** | Host analytics |
+| **Notes** | — |
+
+---
+
 ## Backlog (titles only — not written yet)
 
 - UC-08 Rename node  
