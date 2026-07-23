@@ -2,13 +2,14 @@
 name: Use cases
 overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Open questions stay open; use cases drive later decisions.
 status: draft
-version: "0.1.0-plan"
+version: "0.1.1-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
   - docs/plans/data-structure.md
   - docs/plans/planning-phase.md
+  - docs/plans/example-projects.md
 todos:
   - id: agree-format
     content: "Agree use-case card format with user"
@@ -19,6 +20,9 @@ todos:
   - id: draft-definition-ucs
     content: "Draft Definitionsbaum / type / relation-oriented use cases"
     status: pending
+  - id: draft-bom-host-ucs
+    content: "Draft BOM example host use cases (UC-20+) linked to example-projects.md"
+    status: in_progress
   - id: map-ucs-to-mvp
     content: "Mark which use cases are MVP vs later"
     status: pending
@@ -168,6 +172,86 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 
 ---
 
+## Example A — BOM (host + tree)
+
+See full story and fit/gap in [`example-projects.md`](example-projects.md).  
+Cards below split **tree environment** vs **host BOM**.
+
+### UC-20 — Browse part tree to find a part for a BOM line
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User (site with projects / BOM) |
+| **Goal** | Find a part (Widerstand, IC, …) in the category tree |
+| **Trigger** | Adding or editing a BOM line; opens part picker |
+| **Preconditions** | Bauteile tree exists with categorized parts |
+| **Main flow** | 1. User opens part picker (tree UI)<br>2. Expands categories<br>3. Selects a part node<br>4. Sees part attributes (Wert, Bauform, Datenblatt, …)<br>5. Confirms selection for the BOM line |
+| **Variants** | Part missing → create/request new part (later) |
+| **Outcome** | A concrete part node is chosen for the line |
+| **MVP?** | Tree browse/select = taxonomy-tree; picker wiring = host |
+| **Touches** | Node, Project, Relation/attributes, extension |
+| **Notes** | Example A; UC-01/UC-04 |
+
+### UC-21 — Build a BOM line with references and derived quantity
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Record 1…N board references and get quantity automatically |
+| **Trigger** | Edits a BOM line |
+| **Preconditions** | Part selected (UC-20); BOM list exists |
+| **Main flow** | 1. User enters references (e.g. R1, R2, R5)<br>2. System sets quantity = count(references)<br>3. User may add description, price, stock flag<br>4. Bauform may come from part or be set on the line<br>5. Saves line |
+| **Variants** | Duplicate refs; qty override (if ever allowed) |
+| **Outcome** | BOM line with refs, part, qty, meta |
+| **MVP?** | later — **host** |
+| **Touches** | Host BOM line; part → Node id |
+| **Notes** | Out of scope for taxonomy-tree core |
+
+### UC-22 — See BOM totals (part count + price sum)
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | See how many parts and total price on the list |
+| **Trigger** | Views BOM footer |
+| **Preconditions** | BOM has lines with prices |
+| **Main flow** | 1. System sums quantities / distinct lines (rule TBD by host)<br>2. System sums line prices<br>3. Shows totals at end of BOM |
+| **Outcome** | Count + price sum visible |
+| **MVP?** | later — **host** |
+| **Touches** | Host BOM |
+| **Notes** | — |
+
+### UC-23 — Find BOMs that share the same parts
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Compare or search lists with overlapping parts |
+| **Trigger** | Search/compare from a BOM or part |
+| **Preconditions** | Several BOM lists reference part nodes |
+| **Main flow** | 1. User starts compare/search<br>2. System finds lists sharing part node ids<br>3. User reviews overlaps |
+| **Outcome** | Comparable set of BOMs |
+| **MVP?** | later — **host** |
+| **Touches** | Host query; Node ids as keys |
+| **Notes** | Tree plugin only supplies stable part identity |
+
+### UC-24 — Export supplier request CSV
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | Produce a CSV/request sheet for Digikey, Conrad, AliExpress, … |
+| **Trigger** | Chooses export for a supplier |
+| **Preconditions** | BOM lines have parts (and host knows supplier mapping) |
+| **Main flow** | 1. User picks supplier profile<br>2. Host maps part attributes → supplier columns<br>3. Downloads CSV |
+| **Variants** | Missing MPN / supplier sku |
+| **Outcome** | File ready for the vendor |
+| **MVP?** | later — **host** |
+| **Touches** | Host exporters; may read part attributes from tree/defs |
+| **Notes** | Taxonomy-tree does not own vendor formats |
+
+---
+
 ## Backlog (titles only — not written yet)
 
 - UC-08 Rename node  
@@ -176,5 +260,6 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 - UC-11 Manage enum attribute (`selection_mode` single/multiple)  
 - UC-12 View relation as directed arrow vs undirected line (graph chrome)  
 - UC-13 Template tree → instantiate into project tree  
+- UC-25 Create/edit part properties in the tree (Wert, Maße, Datenblatt, …)
 
 Add cards when we pick the next slice.

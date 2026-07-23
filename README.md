@@ -14,6 +14,7 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/plans/mvp-requirements.md`](docs/plans/mvp-requirements.md) | MVP requirements & acceptance criteria |
 | [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Project, Node, Parameter, Changelog) |
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
+| [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Target architecture |

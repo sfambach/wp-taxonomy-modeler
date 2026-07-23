@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.22-plan"
+version: "0.6.23-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -17,6 +17,7 @@ related_plans:
   - docs/plans/mvp-requirements.md
   - docs/plans/data-structure.md
   - docs/plans/use-cases.md
+  - docs/plans/example-projects.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
@@ -26,6 +27,9 @@ todos:
     status: in_progress
   - id: draft-use-cases
     content: "Describe planning use cases (format + cards in docs/plans/use-cases.md); open questions stay open"
+    status: in_progress
+  - id: example-projects
+    content: "Validate model with concrete example projects (BOM first; second example pending)"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -183,6 +187,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Tentative **`directed`** on RelationType: arrow `from→to` vs undirected line — unsure (Q44); distinct from DisplayHint. |
 | 2026-07-23 | Display by RelationType: part-of nodes as **attributes** of parent; `consists_of` attrs inheritable along `is_a` (Q42/Q43). |
 | 2026-07-23 | Start **use-case cards** in `docs/plans/use-cases.md`; leave open questions open for later. |
+| 2026-07-23 | Example project **BOM**: tree+part properties in taxonomy-tree; lists/price/stock/compare/CSV in host — model still fits. |
 
 ## Change protocol
 
