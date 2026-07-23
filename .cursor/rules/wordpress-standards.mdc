@@ -1,0 +1,45 @@
+---
+description: Follow current WordPress coding and plugin development standards
+alwaysApply: true
+---
+
+# Modern WordPress standards
+
+Follow the newest official WordPress practices for PHP, JavaScript, and plugins.
+
+## PHP and architecture
+
+- Target modern PHP (8.x) with typed properties, return types, and constructor property promotion where appropriate.
+- Prefer object-oriented plugin structure with clear class responsibilities.
+- Follow WordPress Coding Standards (WPCS) for PHP, including naming, spacing, and Yoda conditions where required by the project tooling.
+- Prefix functions, classes, options, meta keys, and custom table names to avoid collisions.
+- Bootstrap the plugin through a main plugin file and autoloading or a clear loader; avoid dumping all logic into the plugin header file.
+- Use WordPress APIs first (`WP_Query`, `WP_Term_Query`, Options API, Transients, HTTP API, Filesystem API) instead of reinventing platform features.
+
+## Security and internationalization
+
+- Escape output in the correct context (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`, etc.).
+- Sanitize and validate input (`sanitize_text_field`, `absint`, custom validators) before use or storage.
+- Use nonces and capability checks for all privileged actions and form handlers.
+- Prepare every direct SQL statement with `$wpdb->prepare()`.
+- Make all user-facing strings translatable with text domain functions (`__()`, `_e()`, `esc_html__()`, etc.) and a consistent text domain.
+
+## Hooks, data, and compatibility
+
+- Prefer actions and filters for extensibility; document custom hooks.
+- Unregister and clean up on deactivation/uninstall when the plugin introduces options, cron events, or custom tables.
+- Prefer `block.json` and modern `@wordpress/scripts` builds for Gutenberg blocks.
+- Avoid deprecated WordPress functions and APIs; use the current recommended replacements.
+- Keep admin UI and REST endpoints aligned with current WordPress patterns (Settings API, REST API permission callbacks, etc.).
+
+## Frontend and assets
+
+- Enqueue scripts and styles with `wp_enqueue_script` / `wp_enqueue_style`; do not hardcode asset tags in admin/front templates.
+- Declare script dependencies and versions correctly; prefer `wp_add_inline_script` over scattered globals when needed.
+- For block editor code, use `@wordpress` packages and modern React/JSX patterns.
+
+## Do not
+
+- Do not write PHP 5 / early WordPress-era patterns (mysql_*, create_function, old admin-ajax-only flows when REST is appropriate).
+- Do not bypass WordPress permission, nonce, or sanitization expectations.
+- Do not store serialized untrusted data or execute unprepared SQL.

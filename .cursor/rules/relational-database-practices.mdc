@@ -1,0 +1,62 @@
+---
+description: Follow good relational database programming practices
+alwaysApply: true
+---
+
+# Relational database good practices
+
+Design and query data with integrity, performance, and safety in mind.
+
+## Schema design
+
+- Normalize data appropriately; avoid redundant copies of the same fact unless there is a clear read-performance reason.
+- Define primary keys for every table.
+- Use foreign keys (or enforced application-level equivalents when WordPress custom tables cannot use DB-level FKs) to preserve referential integrity.
+- Choose precise column types and sensible NULL vs NOT NULL rules.
+- Index columns used for joins, filters, and sorting; avoid unused or overly wide indexes.
+- Prefer surrogate keys when natural keys are unstable; keep natural unique constraints when business rules require them.
+- Document table purpose, key relationships, and important constraints.
+
+## Querying and writes
+
+- Prefer set-based SQL over row-by-row loops when processing collections.
+- Select only needed columns; avoid `SELECT *` in application code paths.
+- Filter in the database when possible instead of fetching large sets and filtering in PHP.
+- Use joins deliberately; understand cardinality and avoid accidental Cartesian products.
+- Keep transactions short for multi-step writes that must succeed or fail together.
+- Handle concurrent updates carefully (optimistic checks, unique constraints, or locking when required).
+
+## WordPress database usage
+
+- Prefer WordPress APIs (`get_posts`, `WP_Query`, `WP_Term_Query`, metadata APIs, Options API) before custom SQL.
+- When custom SQL is necessary, always use `$wpdb->prepare()` with placeholders; never interpolate untrusted values into SQL.
+- Use `$wpdb->insert()`, `$wpdb->update()`, `$wpdb->delete()`, and `$wpdb->replace()` when they fit; still validate data first.
+- Prefix custom tables with `$wpdb->prefix` and a plugin-specific slug.
+- On schema changes, use `dbDelta()` carefully or a versioned migration strategy; never assume an existing install matches a new schema.
+- Escape `LIKE` wildcards and use correct placeholder types (`%d`, `%f`, `%s`) for prepared statements.
+
+## Performance and safety
+
+- Avoid N+1 query patterns; batch lookups when loading related records.
+- Cache expensive read paths only when profiling shows a need; invalidate caches on writes.
+- Do not store derived trees or caches as the only source of truth without a way to rebuild them.
+- Never expose raw database errors to end users.
+- Backwards-compatible migrations should be additive when possible; destructive changes need an explicit upgrade path.
+
+## Example
+
+```php
+// ✅ Good: prepared query with explicit columns and indexed filter
+$term_ids = $wpdb->get_col(
+	$wpdb->prepare(
+		"SELECT term_id FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s AND parent = %d",
+		$taxonomy,
+		$parent_id
+	)
+);
+
+// ❌ Avoid: unprepared SQL and SELECT *
+$rows = $wpdb->get_results(
+	"SELECT * FROM {$wpdb->term_taxonomy} WHERE taxonomy = '{$taxonomy}'"
+);
+```

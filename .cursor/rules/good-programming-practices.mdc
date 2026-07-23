@@ -1,0 +1,41 @@
+---
+description: Follow solid general programming practices
+alwaysApply: true
+---
+
+# Good programming practices
+
+Write maintainable, predictable, and testable code.
+
+## Design
+
+- Prefer simple, readable solutions over clever or over-engineered ones.
+- Keep functions and methods focused on a single responsibility.
+- Prefer composition and clear module boundaries over deep inheritance.
+- Avoid duplication; extract shared logic only when reuse is real, not speculative.
+- Fail fast with clear errors; do not silently ignore invalid input or failed operations.
+- Prefer immutable data where practical; mutate state deliberately and locally.
+
+## Code quality
+
+- Use meaningful names that describe purpose, not implementation noise.
+- Prefer early returns and guard clauses over deeply nested conditionals.
+- Keep functions short; if a function does many things, split it.
+- Avoid magic numbers and opaque string literals; use named constants when values have meaning.
+- Handle edge cases explicitly (empty input, missing records, invalid IDs, permission failures).
+- Write code that is easy to review: small, focused changes with clear intent.
+
+## Safety and robustness
+
+- Validate and sanitize external input at system boundaries.
+- Never trust request, file, or third-party data without checks.
+- Prefer typed parameters and return values when the language supports them.
+- Avoid global mutable state unless required by the platform (for example WordPress hooks).
+- Log or surface actionable errors; do not leak sensitive data in messages.
+
+## Testing and change discipline
+
+- Prefer changes that are easy to test in isolation.
+- When fixing a bug, address the root cause; avoid papering over symptoms.
+- Do not leave dead code, commented-out blocks, or unused imports.
+- Update related tests and documentation in the same change when behavior changes.
