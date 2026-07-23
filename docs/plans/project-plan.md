@@ -161,6 +161,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | A **type can have a unit** (Einheit), but not always: e.g. URL has none, measure like 10 kOhm has a unit. |
 | 2026-07-23 | A **Parameter** has a **type** and an **optional unit**. |
 | 2026-07-23 | A **unit is a Node**; the **unit values** are that node’s **child nodes** (no separate Unit class). |
+| 2026-07-23 | Parameter **type is also a Node** (no separate ParameterType class). |
 
 ## Change protocol
 

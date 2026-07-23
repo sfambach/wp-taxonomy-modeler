@@ -29,9 +29,10 @@
 | Q21 | What is stored in Change.`change` (the Änderung)? | Plain text summary / structured field diff / both | Text summary first; structured diff optional later | open |
 | Q22 | What is Change.`changer` (the Änderer)? | WP user ID / login / display name / Actor value object | WP user ID (+ display resolved in UI) leaning | open |
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
-| Q24 | Which ParameterType keys exist, and which have `has_unit`? | Fixed registry / extensible | e.g. `url` → no unit; `measure` → has unit node | open |
+| Q24 | How does a type-Node declare that a unit is allowed/required? | Flag on node / naming convention / linked meta / subtree | TBD | open |
 | Q25 | How are Units represented? | Separate Unit class / Node / string | **Decided:** unit is a **Node**; values are **child nodes** | decided |
 | Q26 | Unit value selection: direct children only or any descendant? | Direct children / all descendants | Direct children (leaning) | open |
+| Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | TBD | open |
 
 ## How to close a question
 

@@ -187,10 +187,10 @@ flowchart TB
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
-- A parameter **always has a type**. — **agreed**
+- A parameter **always has a type**, and that **type is a Node**. — **agreed**
 - A parameter has an **optional unit**. — **agreed**
 - A **unit is a Node**; the **unit values** are that node’s **child nodes** (e.g. unit node “Resistance”, children `mOhm`, `Ohm`, `kOhm`). — **agreed**
-- Whether a unit is allowed depends on the type (e.g. `url` → no unit; measure → unit node required/allowed). — **agreed**
+- Whether a unit is used depends on the type-node (e.g. URL-type node → no unit; measure-type node → unit node). — **agreed** (how type-node declares this: Q24)
 - One parameter is always assigned to one node (?) — **tentative; decide later (Q14)**
 - Every Project, Node, and Parameter has a **changelog** (list of changes). — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
@@ -334,37 +334,32 @@ Do **not** hard-assume a single owning `node_id` until Q14 is closed.
 | `node_id` | ? | identifier | Owning node — **only if** “one parameter → one node” is confirmed |
 | `key` | likely | string | Machine key (stable in code/APIs) |
 | `label` | likely | string | Human-readable name |
-| `type` | **yes** | **ParameterType** (or type key) | Always present |
+| `type` | **yes** | **Node** | Parameter type — always a Node |
 | `unit` | **optional** | **Node** \| `null` | Unit node; its **children** are the selectable unit values |
 | `changelog` | yes | **Changelog** | History of changes on this parameter |
 
-**Rule:** A Parameter has a **type** and an **optional unit**.  
-The unit is **not** a separate class: **unit = Node**, and **unit values = child nodes** of that node.
+**Rule:** A Parameter has a **type** (Node) and an **optional unit** (Node).  
+There is **no** separate `ParameterType` or `Unit` class.
 
-| Example type | `unit` | Unit values |
-|--------------|--------|-------------|
-| `url` | `null` | — |
-| `measure` | Node e.g. “Resistance units” | children: `mOhm`, `Ohm`, `kOhm`, `MOhm` |
+| Field | Is | Example |
+|-------|-----|---------|
+| `type` | Node | Node named `url` or `measure` |
+| `unit` | Node or null | Node “Resistance units”; children `mOhm`, `Ohm`, `kOhm` |
 
 ```php
 // Conceptual — not implemented
-class ParameterType {
-	public string $key;     // e.g. 'url', 'measure', 'text'
-	public bool $has_unit;  // whether this type uses a unit node
-}
-
 class Parameter {
 	public string $id;
-	public ParameterType $type; // always set
-	public ?Node $unit;         // optional unit node; values = $unit's children
+	public Node $type;          // always a Node
+	public ?Node $unit;         // optional unit Node; values = children of unit
 	public Changelog $changelog;
 }
 
-// Resolve allowed unit value nodes:
+// Allowed unit value nodes when unit is set:
 // $unit_values = children_of( $parameter->unit );
 ```
 
-When a concrete value like `10 kOhm` is stored later (Q16), the chosen Einheit is expected to be **one child** of `parameter.unit`.
+How a type-Node declares that it needs/allows a unit (flag, convention, subtree, …) is **Q24**.
 
 #### Fields still to define
 
@@ -373,8 +368,8 @@ When a concrete value like `10 kOhm` is stored later (Q16), the chosen Einheit i
 | Whether every parameter has exactly one owning node | open (?) — Q14 |
 | Required / default / validation rules | open |
 | Inheritance to child nodes | open |
-| Allowed ParameterType keys and which have `has_unit` | open — Q24 |
-| Must selected value-unit be a direct child only, or any descendant? | open — leaning direct children |
+| How a type-Node declares unit support | open — Q24 |
+| Must selected value-unit be a direct child only, or any descendant? | open — leaning direct children — Q26 |
 | Storage | open — Q15 |
 | Whether parameter *values* live in this plugin | open — Q16 |
 | Parameter cleanup when a related node is deleted | open |
@@ -382,9 +377,13 @@ When a concrete value like `10 kOhm` is stored later (Q16), the chosen Einheit i
 ### Example (conceptual)
 
 ```text
-# Unit node + values (all are Node objects):
-Node { id: 50, parent_id: null, name: "Resistance units" }   # the Einheit (unit node)
-  ├─ Node { id: 51, parent_id: 50, name: "mOhm" }            # value
+# Type nodes (all are Node):
+Node { id: 80, name: "measure" }
+Node { id: 81, name: "url" }
+
+# Unit node + values (all are Node):
+Node { id: 50, parent_id: null, name: "Resistance units" }
+  ├─ Node { id: 51, parent_id: 50, name: "mOhm" }
   ├─ Node { id: 52, parent_id: 50, name: "Ohm" }
   ├─ Node { id: 53, parent_id: 50, name: "kOhm" }
   └─ Node { id: 54, parent_id: 50, name: "MOhm" }
@@ -392,12 +391,12 @@ Node { id: 50, parent_id: null, name: "Resistance units" }   # the Einheit (unit
 Node { id: 2, name: "Resistors", parent_id: 1 }
   ├─ Parameter {
   │    key: "resistance", label: "Resistance",
-  │    type: ParameterType { key: "measure", has_unit: true },
-  │    unit: Node(50)   # values = children 51..54; e.g. pick 53 = kOhm for "10 kOhm"
+  │    type: Node(80),   # measure
+  │    unit: Node(50)    # values = children; e.g. pick 53 = kOhm for "10 kOhm"
   │  }
   └─ Parameter {
        key: "datasheet", label: "Datasheet",
-       type: ParameterType { key: "url", has_unit: false },
+       type: Node(81),   # url
        unit: null
      }
 ```
@@ -549,9 +548,9 @@ Node { id: 2, name: "Resistors", parent_id: 1, changelog: Changelog {
 |------------------|----------------|-------------|
 | **Project** | yes | Groups trees via `root_nodes`; has `changelog` |
 | **Node** | yes | Hierarchy; root = same Node with parent null; has `changelog` |
-| **Parameter** | yes | Type + optional unit Node; changelog |
-| **ParameterType** | yes (registry/DTO) | Describes type; `has_unit` flag |
-| **Unit** (class) | **no** | Use **Node** instead; children = unit values |
+| **Parameter** | yes | `type` Node + optional `unit` Node; changelog |
+| **ParameterType** (class) | **no** | Type is a **Node** |
+| **Unit** (class) | **no** | Unit is a **Node**; children = unit values |
 | **Changelog** | yes (embedded or related) | Container of `changes` |
 | **Change** | yes (inside changelog) | timestamp + changer + change + version |
 | **Tree** | **no** | Derived from a root node + descendants |

@@ -43,7 +43,8 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Project` includes `name`, `description`, and `root_nodes` (list of root `Node`). Every Project/Node/Parameter has `changelog`. Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q24 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+`Project` includes `name`, `description`, and `root_nodes`. Every Project/Node/Parameter has `changelog`.  
+`Parameter.type` and `Parameter.unit` are **Node** references (no ParameterType/Unit classes). Keep behavior in services/repositories. Do not add `Tree` or `RootNode` classes. See Q20–Q27 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -110,8 +111,8 @@ Root node = the **same Node object** with `parent_id = null` (not a separate typ
 | `node_id` | ? | Owning node — only if single-owner model is confirmed |
 | `key` | likely | Machine key |
 | `label` | likely | Human-readable name |
-| `type` | **yes** | Always present (ParameterType) |
-| `unit` | **optional** | **Node** whose **children** are unit values (e.g. kOhm); null for URL |
+| `type` | **yes** | **Node** (parameter type) |
+| `unit` | **optional** | **Node** whose **children** are unit values; null when type needs no unit |
 | `changelog` | yes | Changelog of Change entries |
 
 **Agreed:** one node can have **several parameters**.  
@@ -130,13 +131,12 @@ Applied to **Project**, **Node**, and **Parameter** via composition (`changelog`
 
 | Rule | Example |
 |------|---------|
-| Every Parameter has a **type** | required |
-| Every Parameter has an **optional unit** | `unit` may be null |
-| **Unit = Node** | not a separate class |
-| **Unit values = child nodes** | e.g. children `mOhm`, `Ohm`, `kOhm` |
-| Type controls whether unit is used | `url` → no unit node; `measure` → unit node |
+| Every Parameter has a **type** | **type is a Node** |
+| Every Parameter has an **optional unit** | **unit is a Node** or null |
+| **Unit values = child nodes** of the unit node | e.g. `mOhm`, `Ohm`, `kOhm` |
+| No `ParameterType` / `Unit` classes | roles of **Node** only |
 
-Details: Q24–Q26 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+Details: Q24–Q27 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
 ### Trees (derived)
 
