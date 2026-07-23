@@ -15,6 +15,9 @@ todos:
   - id: define-parent-link
     content: "Define that one node can have one parent node"
     status: completed
+  - id: define-children
+    content: "Define that one node can have several child nodes"
+    status: completed
   - id: define-trees-forests
     content: "Define how nodes build trees and forests"
     status: completed
@@ -35,8 +38,9 @@ todos:
 The fundamental unit is a **Node**.
 
 1. **One node can have a parent node** (or no parent).
-2. From that parent link, nodes are used to **build trees**.
-3. Several trees together form a **forest**.
+2. **One node can have several child nodes** (or none).
+3. From those parent/child links, nodes are used to **build trees**.
+4. Several trees together form a **forest**.
 
 ```mermaid
 flowchart TB
@@ -54,23 +58,25 @@ flowchart TB
   end
 ```
 
-## Parent relationship
+## Parent and children
 
 | Rule | Meaning |
 |------|---------|
 | Optional parent | A node may have **one** parent node, or none |
 | At most one parent | Never multiple parents (not a DAG/graph of many parents) |
+| Several children | A node may have **zero or more** child nodes |
 | Root | A node with **no parent** is a root |
 | Child | A node whose parent is set is a child of that parent |
-| Same container | Parent and child belong to the same taxonomy/forest context |
+| Same container | Parent and children belong to the same taxonomy/forest context |
 
-So the structural link is always:
+So the structural links are:
 
 ```text
 Node ──(optional)──► parent Node
+Node ◄──(many)────── child Nodes
 ```
 
-Children are the inverse view: all nodes that point to the same parent.
+Children are the inverse view of the parent link: all nodes that point to the same parent.
 
 ## Trees and forests
 
@@ -124,7 +130,7 @@ Conceptual record (field names are planning English; final PHP/JS names TBD):
 | Relation | Cardinality | Rules |
 |----------|-------------|-------|
 | Node → parent | 0..1 | One optional parent node; roots have none |
-| Node → children | 0..n | All nodes that set this node as parent |
+| Node → children | 0..n | Several child nodes allowed; leaf nodes have none |
 | Node → ancestors | 0..n | Chain of parents up to the root |
 | Node → descendants | 0..n | Full subtree excluding self |
 | Nodes → tree | derived | All nodes under one root |

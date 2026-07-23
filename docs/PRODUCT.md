@@ -32,7 +32,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 ## In scope (planned)
 
 - Hierarchical taxonomy tree management in wp-admin.
-- A **Node**-based model: one node can have one parent node; nodes build **trees** and **forests**.
+- A **Node**-based model: one parent (optional), several children; nodes build **trees** and **forests**.
 - Taxonomy-agnostic handling of nodes for hierarchical taxonomies.
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).

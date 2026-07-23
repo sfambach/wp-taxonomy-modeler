@@ -73,7 +73,8 @@ The domain model is built from **nodes**. Nodes have an optional **parent node**
 | Concept | Meaning |
 |---------|---------|
 | Parent link | One node can have one parent node (or none) |
-| Tree | All nodes under one root via parent links |
+| Children | One node can have several child nodes (or none) |
+| Tree | All nodes under one root via parent/child links |
 | Forest | One or more trees (typical: all roots in one taxonomy) |
 
 Nested `children` is only a view over parent links. Cycles and multi-parent links are forbidden.
