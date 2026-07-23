@@ -11,7 +11,7 @@ The project plan is the source of truth for intent. Living documentation must st
 ## Source of truth
 
 - Primary plan: `docs/plans/project-plan.md`
-- Planning slices: `docs/plans/planning-phase.md`, `docs/plans/mvp-requirements.md`
+- Planning slices: `docs/plans/planning-phase.md`, `docs/plans/mvp-requirements.md`, `docs/plans/data-structure.md`
 - Living docs that must track the plan:
   - `docs/PRODUCT.md`
   - `docs/ARCHITECTURE.md`
