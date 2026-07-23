@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
-version: "0.6.14-plan"
+version: "0.6.15-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -23,6 +23,9 @@ todos:
     status: pending
   - id: explore-typed-edges
     content: "Explore is-a vs consists-of edges with properties before locking Parameter-as-Node"
+    status: in_progress
+  - id: define-core-types
+    content: "Define core Type catalog: scalars + composite measure (value+prefix+unit)"
     status: in_progress
   - id: define-project-core
     content: "Project stores root_nodes plus required Definition anchors"
@@ -85,6 +88,7 @@ classDiagram
     +type : Node
     +prefix : Node?
     +base_unit : Node?
+    +numeric_kind : ?
     +value : ?
   }
 
@@ -108,8 +112,8 @@ classDiagram
 
   note for Project "Definitionsbaum anchors required"
   note for Node "Hierarchy node; may still use parent_id\nand/or typed Relations (explore)"
-  note for Parameter "UNDECIDED: specialized Node\nOR separate definition that references Nodes"
-  note for Relation "EXPLORATORY\nkinds: ist-ein | besteht-aus | ...\nprops on the edge (Q35)"
+  note for Parameter "UNDECIDED shape\ntype from core Type catalog\nmeasure = composite:\n  number|integer + prefix + unit"
+  note for Relation "EXPLORATORY\nkinds: ist-ein | besteht-aus | ..."
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -129,8 +133,8 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `Relation` is **exploratory** (not agreed). It models edges with a **kind** (`ist-ein`, `besteht-aus`, …) and optional edge properties.  
-Parameter path still **undecided** (Q33/Q34). See comparison + Bauteile example tree below.
+**Legend:** `Relation` is **exploratory**. Core **Type** catalog emerging (scalars + composite **measure**). Parameter path still **undecided** (Q33/Q34).  
+**Clarification:** `measure` / *Wert mit Einheit* is **not** a third scalar beside `number`/`integer` — it is a **composite**: numeric value (`number` or `integer`) + optional `prefix` + `base_unit`.
 
 ## Core objects
 
@@ -219,6 +223,8 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - A **Parameter** is built from the Definition tree: **`type`** (required Node), optional **`prefix`**, optional **`base_unit`**. — **agreed**
 - A filled **measure** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
+- **`measure` is composite**: numeric leaf (`number` or `integer`) + optional Präfix + Basiseinheit — **leaning (Q36/Q37)**; not a rival scalar beside `number`
+- Emerging **core Type catalog**: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum_single`, `enum_multiple`, `measure` — **leaning (Q36)**
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a measure; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -439,13 +445,21 @@ flowchart TB
   D --> P["Präfix"]
   D --> Bau["Bauteile"]
 
-  T --> T1["measure"]
-  T --> T2["url"]
-  T --> T3["text"]
+  T --> T1["string"]
+  T --> T2["number"]
+  T --> T3["integer"]
+  T --> T4["boolean"]
+  T --> T5["url"]
+  T --> T6["file"]
+  T --> T7["enum_single"]
+  T --> T8["enum_multiple"]
+  T --> T9["measure<br/>composite"]
 
   B --> B1["Ohm"]
   B --> B2["Farad"]
   B --> B3["Meter"]
+  B --> B4["Watt"]
+  B --> B5["Volt"]
 
   P --> P1["m"]
   P --> P2["k"]
@@ -462,7 +476,7 @@ flowchart TB
   M --> GH["Höhe"]
 
   Param["Parameter resistance"]
-  Param -.->|type| T1
+  Param -.->|type| T9
   Param -.->|prefix| P2
   Param -.->|base_unit| B1
 ```
@@ -470,13 +484,22 @@ flowchart TB
 ```text
 Definition                                    ← Definitionsbaum root
 ├── Type
-│   ├── measure
+│   ├── string
+│   ├── number
+│   ├── integer
+│   ├── boolean
 │   ├── url
-│   └── text
+│   ├── file
+│   ├── enum_single
+│   ├── enum_multiple
+│   └── measure                 ← composite: number|integer + prefix + unit
 ├── Basiseinheit
 │   ├── Ohm
 │   ├── Farad
-│   └── Meter
+│   ├── Meter
+│   ├── Watt
+│   ├── Volt
+│   └── …
 ├── Präfix
 │   ├── m
 │   ├── k
@@ -721,6 +744,182 @@ flowchart TB
 | Risk | Params feel bolted on | Graph complexity; WP terms alone may not be enough |
 
 **Status:** explore with this Bauteile tree — **do not lock** Q33/Q34/Q35 yet.
+
+### Emerging core types (leaning — Q36)
+
+What is filtering out of the examples: a small **Type** catalog in the Definitionsbaum.
+
+#### Scalar / leaf types
+
+| Type key | Meaning | Example use |
+|----------|---------|-------------|
+| `string` | Free text | Bezeichnung, Notiz |
+| `number` | Floating-point scalar | generic numeric without unit |
+| `integer` | Whole-number scalar | Pinzahl, Stück |
+| `boolean` | true / false | RoHS, polarisiert |
+| `url` | URL | Datenblatt-Link |
+| `file` | Datei / attachment | PDF, Bild |
+| `enum_single` | One choice from a set | Bauform: `0603` |
+| `enum_multiple` | Several choices (selection) | Features / Tags |
+
+#### Composite type (not a scalar)
+
+| Type key | Meaning | Built from |
+|----------|---------|------------|
+| `measure` (*Wert mit Einheit*) | Displayable quantity with unit | **`number` or `integer`** + optional **Präfix** + **Basiseinheit** |
+
+```text
+measure / Wert mit Einheit
+├── numeric value     ← number  OR  integer   (open: fixed per param, or choosable — Q37)
+├── prefix?           ← Node under Präfix    (e.g. k, m, µ)
+└── base_unit         ← Node under Basiseinheit (e.g. Ohm, Meter, Watt)
+         │
+         └─► display: "10 kOhm", "10 mm", "250 mW"
+```
+
+**Why this felt confusing:** `measure` looks like “another type next to number”, but it **reuses** a numeric leaf type. It is a **structured reading**, not a competing primitive.
+
+```text
+Type                          ← Project.type_node
+├── string
+├── number
+├── integer
+├── boolean
+├── url
+├── file
+├── enum_single
+├── enum_multiple
+└── measure                   ← composite (uses number|integer + prefix + unit)
+```
+
+Open: is `measure` listed as its own Type-Node, or only a rule “when prefix/unit present”? (Q36)  
+Open: does each measure param fix `integer` vs `number`, or allow both? (Q37)
+
+### Worked example: Widerstand — Approach A vs B
+
+Same attributes, two structures. Taxonomy path shared:
+
+```text
+Bauteile ─[ist-ein]→ Passives Bauteil ─[ist-ein]→ Widerstand
+```
+
+#### Shared attribute list for Widerstand
+
+| Attribute | Core type | Composition / choices |
+|-----------|-----------|------------------------|
+| Wert | `measure` | number + Präfix + Unit(`Ohm`) → e.g. `10 kOhm` |
+| Bauform | `enum_single` | {0201, 0402, 0603, 0805, axial, …} |
+| Toleranz | `measure` | number + Präfix? + Unit(`%`) → e.g. `1 %` |
+| Leistungsaufnahme | `measure` | number + Präfix + Unit(`Watt`) → e.g. `250 mW` |
+| Temperaturkoeffizient | `string` or `measure` | TBD |
+| Maße | group | consists of Höhe, Breite, Tiefe |
+| Höhe / Breite / Tiefe | `measure` | number + Präfix + Unit(`Meter`) → e.g. `10 mm` |
+| Datenblatt | `url` or `file` | link or upload |
+| RoHS | `boolean` | true/false |
+
+---
+
+#### Approach A — Parameter definitions on the node
+
+Widerstand is a taxonomy Node. Attributes are **Parameter definitions** attached to it (not child nodes). Selection: select `Widerstand` → load `parameters[]`.
+
+```text
+Node: Widerstand
+parameters:
+  - key: wert
+    type: measure
+    numeric_kind: number
+    prefix: allowed (Präfix branch)
+    base_unit: Ohm
+    example_value: { value: 10, prefix: k, unit: Ohm }  => "10 kOhm"
+
+  - key: bauform
+    type: enum_single
+    choices: [0201, 0402, 0603, 0805, axial]
+
+  - key: toleranz
+    type: measure
+    numeric_kind: number
+    base_unit: %
+
+  - key: leistungsaufnahme
+    type: measure
+    numeric_kind: number
+    prefix: allowed
+    base_unit: Watt
+    example_value: { value: 250, prefix: m, unit: Watt } => "250 mW"
+
+  - key: hoehe / breite / tiefe   (or nested group "masse")
+    type: measure
+    base_unit: Meter
+    example: 10 mm × 5 mm × 2 mm
+
+  - key: datenblatt
+    type: url          # or file
+
+  - key: rohs
+    type: boolean
+```
+
+**Inheritance (A):** `NPN-Transistor ist-ein Transistor` can **reuse/override** parent parameter definitions (copy or live inherit — open).
+
+**Selection/query (A):**
+1. Resolve taxonomy node id  
+2. `SELECT parameters WHERE node_id = ?` (and maybe inherited from ancestors)  
+3. Render editors by `type`
+
+---
+
+#### Approach B — Nested nodes + typed edges
+
+Widerstand is a taxonomy Node. Attributes are **child nodes** linked with `besteht-aus`. Measure slots **referenzieren** Definitionsbaum types/units. Selection: select `Widerstand` → edges `kind=besteht-aus`.
+
+```text
+Node: Widerstand
+  ─[besteht-aus]→ Node: Wert
+        type hint: measure
+        ─[referenziert]→ Type/measure
+        ─[referenziert]→ Basiseinheit/Ohm
+        ─[referenziert]→ (Präfix allowed)
+        filled: value=10, prefix=k  => "10 kOhm"
+
+  ─[besteht-aus]→ Node: Bauform
+        type hint: enum_single
+        ─[referenziert]→ choices set / enum definition
+
+  ─[besteht-aus]→ Node: Toleranz          (measure → %)
+  ─[besteht-aus]→ Node: Leistungsaufnahme (measure → Watt)
+  ─[besteht-aus]→ Node: Maße
+        ─[besteht-aus]→ Höhe   (measure → Meter)
+        ─[besteht-aus]→ Breite (measure → Meter)
+        ─[besteht-aus]→ Tiefe  (measure → Meter)
+
+  ─[besteht-aus]→ Node: Datenblatt        (url|file)
+  ─[besteht-aus]→ Node: RoHS              (boolean)
+```
+
+**Inheritance (B):** `ist-ein` walks ancestors; `besteht-aus` sets may be merged from parent types (open). Composition is never “is-a”.
+
+**Selection/query (B):**
+1. Resolve taxonomy node id  
+2. Load Relations where `from=id AND kind=besteht-aus` (recursive for Maße)  
+3. Resolve `referenziert` targets in Definitionsbaum  
+4. Render by resolved type
+
+---
+
+#### Side-by-side for one filled Widerstand
+
+| Field | Filled reading | A (params on node) | B (nodes + edges) |
+|-------|----------------|--------------------|-------------------|
+| Wert | 10 kOhm | Param `wert` measure payload | Child node `Wert` + refs |
+| Bauform | 0603 | Param `bauform` enum_single | Child node `Bauform` |
+| Leistung | 250 mW | Param `leistungsaufnahme` | Child node `Leistungsaufnahme` |
+| Maße | 10×5×2 mm | Three params or nested group | Node `Maße` → three children |
+| Datenblatt | url | Param `datenblatt` | Child node `Datenblatt` |
+| RoHS | true | Param `rohs` boolean | Child node `RoHS` |
+
+**Early filter (not a decision):** both approaches need the **same core Type catalog**. The A/B fork is about *where attributes live*, not about inventing different types.
 
 ---
 

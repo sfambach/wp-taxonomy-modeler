@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.14-plan** (2026-07-23).
+Last synced from plan version **0.6.15-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -21,6 +21,8 @@ Last synced from plan version **0.6.14-plan** (2026-07-23).
 | Data structure: Project Definition anchors + Node.template | In progress |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
+| Core Type catalog + measure as composite (Q36/Q37) | In progress |
+| Widerstand worked example: Approach A vs B | In progress |
 | Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
