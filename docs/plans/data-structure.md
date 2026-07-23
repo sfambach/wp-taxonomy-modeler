@@ -512,6 +512,8 @@ Root                                    ← root node (defines this tree)
 `Root` / `Bauteile` would appear in `Project.root_nodes` (or Root alone if Bauteile is not a root).  
 This tree is typically **not** `template` (unless reused as a template catalog).
 
+Open: whether Wert / Bauform / … are **Nodes that own Parameters**, or Parameter names drawn as tree nodes (Q33).
+
 ### What a Parameter is not (until decided otherwise)
 
 - Not a Node / not a Project.
