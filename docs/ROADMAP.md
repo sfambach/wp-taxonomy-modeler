@@ -9,6 +9,7 @@ Last synced from plan version **0.1.0-plan** (2026-07-23).
 | Item | Status |
 |------|--------|
 | Coding rules (English, practices, WP standards, DB practices) | In progress (separate PR) |
+| Versioning rule (start `0.0.1`; major only on release) | In progress |
 | Project plan + living docs + sync rule | In progress |
 | Local WordPress development environment | In progress (separate PR) |
 
@@ -16,7 +17,7 @@ Last synced from plan version **0.1.0-plan** (2026-07-23).
 
 | Item | Status |
 |------|--------|
-| Plugin bootstrap (PHP 8.x, OOP, text domain) | Pending |
+| Plugin bootstrap at version `0.0.1` (PHP 8.x, OOP, text domain) | Pending |
 | Taxonomy-agnostic tree model | Pending |
 | Admin tree UI (create / select / delete promote\|cascade) | Pending |
 | Secure mutation/read endpoints | Pending |

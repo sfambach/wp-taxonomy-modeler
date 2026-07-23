@@ -9,6 +9,7 @@ related_docs:
   - docs/PRODUCT.md
   - docs/ARCHITECTURE.md
   - docs/ROADMAP.md
+  - .cursor/rules/versioning.mdc
 todos:
   - id: scaffold-plugin
     content: "Scaffold modern PHP 8.x plugin bootstrap, autoload, text domain, and activation hooks"
@@ -67,13 +68,13 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 ### Phase 0 — Foundation (current)
 
-- Repository rules (English code/docs, WordPress standards, DB practices).
+- Repository rules (English code/docs, WordPress standards, DB practices, versioning).
 - Project plan + living documentation + sync rule.
 - Local WordPress development environment (see sibling/dev-env work).
 
 ### Phase 1 — MVP plugin
 
-- Plugin bootstrap (PHP 8.x, OOP, text domain `wp-taxonomy-tree`).
+- Plugin bootstrap (PHP 8.x, OOP, text domain `wp-taxonomy-tree`), starting at version **`0.0.1`**.
 - Taxonomy-agnostic tree builder over `WP_Term` / `WP_Term_Query`.
 - Admin page registering a tree UI for selected hierarchical taxonomies.
 - Create root/child terms, rename/select, delete with promote-children or cascade.
@@ -107,6 +108,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Project is a reusable taxonomy tree **environment**, not a parts catalog. |
 | 2026-07-23 | Plan file is the intent source of truth; product/architecture/roadmap docs must update whenever the plan changes. |
 | 2026-07-23 | Domain properties (measure, enums, etc.) remain outside this plugin. |
+| 2026-07-23 | Versioning: always start at `0.0.1`; change the first digit (`MAJOR`) only for official releases (for example first release `1.0.0`). |
 
 ## Change protocol
 

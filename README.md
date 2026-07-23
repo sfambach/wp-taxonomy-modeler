@@ -4,6 +4,8 @@ WordPress plugin that provides a reusable **taxonomy tree environment** for hier
 
 > Status: planning / foundation. Implementation of the MVP plugin has not started yet.
 
+**Versioning:** start at `0.0.1`; change the first digit only for official releases (for example `1.0.0`).
+
 ## Documentation
 
 | Document | Purpose |

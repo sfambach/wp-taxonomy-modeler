@@ -16,6 +16,7 @@ The project plan is the source of truth for intent. Living documentation must st
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`
   - `README.md` (short summary + links only)
+- Versioning policy for the plugin itself: `.cursor/rules/versioning.mdc` (start at `0.0.1`; major digit only on official releases)
 
 ## Required workflow
 
