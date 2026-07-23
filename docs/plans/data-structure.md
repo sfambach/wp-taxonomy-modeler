@@ -1,6 +1,6 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definition anchors (definition root, Type, Präfix, Basiseinheit). Nodes may be template trees via a template flag. Planning artifact only — no implementation.
+overview: Core objects Project, Node, Parameter, Changelog/Change. Project stores required Definitionsbaum anchors (definition root, Type, Präfix, Basiseinheit). Bauteile hangs under Definition. Nodes may be template trees via a template flag. Planning artifact only — no implementation.
 status: draft
 version: "0.6.12-plan"
 last_updated: "2026-07-23"
@@ -592,7 +592,7 @@ Some trees are **templates** for project-specific trees.
 | `name` | yes | string | Display name of the project |
 | `description` | yes* | string | Longer text describing the project |
 | `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
-| `definition_root` | yes | **Node** | Required Definition tree root |
+| `definition_root` | yes | **Node** | Required Definitionsbaum root (**Definition**) |
 | `type_node` | yes | **Node** | Required Type anchor |
 | `prefix_node` | yes | **Node** | Required Präfix anchor |
 | `base_unit_node` | yes | **Node** | Required Basiseinheit anchor |
