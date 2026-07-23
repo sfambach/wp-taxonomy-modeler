@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter
 overview: Core objects are Project, Node, and Parameter. A tree is not a separate object — it is defined by a root node. A project can consist of different trees. Planning artifact only — no implementation.
 status: draft
-version: "0.5.1-plan"
+version: "0.5.2-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -62,7 +62,7 @@ flowchart TB
 **Agreed / tentative relations:**
 
 - One node can have one parent (or none) and several children (or none). — **agreed**
-- A **root node** is a node that has **no parent** (`parent_id = null`). — **agreed**
+- A **root node** is the **same object as a node** where the parent is `null` (not a separate type/entity). — **agreed**
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - One node can have several parameters (or none). — **agreed**
@@ -85,7 +85,7 @@ Parameter ──(one?)──► Node                 # unsure — Q14
 1. **One node can have a parent node** (or no parent).
 2. **One node can have several child nodes** (or none).
 3. **One node can have several parameters** (or none).
-4. A **root node** is a node that has **no parent**.
+4. A **root node** is the **same object as a node** where the parent is `null` (not a different object type).
 5. A **tree** is not stored as its own object: it is **defined by a root node** plus all descendants.
 
 ```mermaid
@@ -102,10 +102,11 @@ flowchart TB
 
 | Term | Definition |
 |------|------------|
-| **Root node** | A node that has **no parent** (`parent_id = null`) |
-| Non-root node | A node that has a parent (`parent_id` references another node) |
+| **Root node** | The **same Node object** with parent `null` (`parent_id = null`) |
+| Non-root node | The **same Node object** with a non-null parent |
 
-This is the only criterion for “root”. Being a root does not require children.
+There is **no separate RootNode type**. “Root” is only a role/state of Node based on `parent_id`.
+Being a root does not require children.
 
 ### Parent and children
 
@@ -114,7 +115,7 @@ This is the only criterion for “root”. Being a root does not require childre
 | Optional parent | A node may have **one** parent node, or none |
 | At most one parent | Never multiple parents |
 | Several children | A node may have **zero or more** child nodes |
-| Root | A **root node** is a node that has **no parent** |
+| Root | A root node is the same Node object with parent `null` (no separate type) |
 | Child | A node whose parent is set is a child of that parent |
 
 ```text
@@ -286,9 +287,10 @@ Project { id: 100, name: "Electronic parts catalog" }
 | Object / concept | Stored object? | Primary job |
 |------------------|----------------|-------------|
 | **Project** | yes | Groups different trees (via root nodes) |
-| **Node** | yes | Hierarchy; root node defines a tree |
+| **Node** | yes | Hierarchy; a root is the same Node with parent null |
 | **Parameter** | yes | Attribute definition related to nodes |
-| **Tree** | **no** | Derived from a root node + descendants |
+| **Tree** | **no** | Derived from a root node (Node with parent null) + descendants |
+| **RootNode** | **no** | Not a separate object — role of Node when parent is null |
 
 ## Storage mapping (leaning, not final)
 

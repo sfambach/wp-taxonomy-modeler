@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.5.1-plan** (2026-07-23).
+Last synced from plan version **0.5.2-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -15,7 +15,7 @@ Last synced from plan version **0.5.1-plan** (2026-07-23).
 | Planning-only rule (no implementation yet) | In progress |
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
-| Data structure: Node (root = no parent; tree = root node) | In progress |
+| Data structure: Node (root = same Node with parent null; tree = that root) | In progress |
 | Data structure: Parameter (node → several params; param → one node ?) | In progress |
 | Data structure: Project (consists of different trees) | In progress |
 | Local WordPress development environment | In progress (separate PR; env only) |
