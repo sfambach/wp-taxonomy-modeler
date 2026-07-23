@@ -1,6 +1,6 @@
 ---
 name: Data structure — Nodes and Parameters
-overview: Define the core domain objects for WP Taxonomy Tree. Node (parent/children → trees/forests). One node can have several parameters. Planning artifact only — no implementation.
+overview: Define the core domain objects for WP Taxonomy Tree. Node (parent/children → trees/forests). One node can have several parameters; whether each parameter has exactly one owning node is marked ? (Q14). Planning artifact only — no implementation.
 status: draft
 version: "0.4.2-plan"
 last_updated: "2026-07-23"
@@ -159,7 +159,7 @@ Flat list (parent links rebuild structure):
 
 **Parameter** is the second core object in this data structure.
 
-Parameters describe configurable attributes on a node (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters are attributes **of** a node.
+Parameters describe configurable attributes related to nodes (names, types, and related definition data). They are distinct from Nodes: nodes form the hierarchy; parameters describe attributes used with that hierarchy.
 
 **Cardinality:**
 
