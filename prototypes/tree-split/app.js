@@ -10,7 +10,9 @@
  * Datentypen branch + has_type relation → typed table widgets.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v5";
+const STORAGE_KEY = "wtt-proto-tree-split-v6";
+/** Name of the fixed system Ast that exists in every project (Q48). */
+const FIXED_BRANCH_NAME = "Datentypen";
 const TABLE_BODY_ROWS = 5;
 const RIGHT_TABS = ["node", "table", "table2", "form"];
 const TAB_ARIA = {
@@ -63,6 +65,10 @@ let formStates = new Map();
 /** @type {Map<string, string>} */
 let typeRelations = new Map();
 let dataTypesRootId = "";
+/** Per-project hidden node ids (fixed-branch nodes hidden for this project). */
+let hiddenNodes = new Set();
+/** Tree editor toggle: reveal hidden fixed-branch nodes so they can be managed. */
+let showHidden = false;
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -131,12 +137,14 @@ function createInitial() {
   tableCells2 = new Map();
   formStates = new Map();
   typeRelations = new Map();
+  hiddenNodes = new Set();
+  showHidden = false;
   activeTab = "node";
 
   rootId = createNode(null, "BOM Demo", 0);
 
   // Freely configurable scalar types (Q48) — start simple.
-  dataTypesRootId = createNode(rootId, "Datentypen", 0);
+  dataTypesRootId = createNode(rootId, FIXED_BRANCH_NAME, 0);
   const tInt = createNode(dataTypesRootId, "int", 0);
   const tDouble = createNode(dataTypesRootId, "double", 1);
   const tString = createNode(dataTypesRootId, "string", 2);
@@ -178,7 +186,7 @@ function createInitial() {
 function dataTypeNodes() {
   if (!dataTypesRootId || !nodes.has(dataTypesRootId)) {
     const found = [...nodes.values()].find(
-      (n) => n.parentId === rootId && n.name === "Datentypen"
+      (n) => n.parentId === rootId && n.name === FIXED_BRANCH_NAME
     );
     dataTypesRootId = found ? found.id : "";
   }
@@ -189,6 +197,44 @@ function dataTypeNodes() {
 function typeNodeOf(slotId) {
   const tid = typeRelations.get(slotId);
   return tid && nodes.has(tid) ? nodes.get(tid) : null;
+}
+
+/** The fixed Ast root itself (the "Datentypen" node). */
+function isFixedRoot(id) {
+  return !!dataTypesRootId && id === dataTypesRootId;
+}
+
+/** True when id is the fixed "Datentypen" Ast root or one of its descendants. */
+function isFixedBranch(id) {
+  if (!dataTypesRootId || !id) return false;
+  let cur = nodes.get(id);
+  while (cur) {
+    if (cur.id === dataTypesRootId) return true;
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  return false;
+}
+
+/** Descendants of the fixed Ast can be hidden per project; the Ast root cannot. */
+function isHideable(id) {
+  return isFixedBranch(id) && id !== dataTypesRootId;
+}
+
+function isHidden(id) {
+  return hiddenNodes.has(id);
+}
+
+function setHidden(id, hidden) {
+  if (!isHideable(id)) return;
+  if (hidden) hiddenNodes.add(id);
+  else hiddenNodes.delete(id);
+  persist();
+  render();
+}
+
+/** Type nodes offered in the has_type picker (hidden types excluded per project). */
+function visibleDataTypeNodes() {
+  return dataTypeNodes().filter((n) => !isHidden(n.id));
 }
 
 /** Normalize type node name → widget key. */
@@ -291,6 +337,12 @@ function descendants(id) {
 function deleteNode(id) {
   if (id === rootId) {
     window.alert("Root kann nicht gelöscht werden.");
+    return;
+  }
+  if (isFixedBranch(id)) {
+    window.alert(
+      "Fester Ast „Datentypen“: Knoten können nicht gelöscht werden — für dieses Projekt nur aus-/einblenden."
+    );
     return;
   }
   const node = nodes.get(id);
@@ -439,6 +491,8 @@ function persist() {
     seq,
     activeTab,
     dataTypesRootId,
+    hiddenNodes: [...hiddenNodes],
+    showHidden,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
     tableCells: mapToObject(tableCells),
@@ -467,6 +521,10 @@ function restore() {
     collapsed = new Set(
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
+    hiddenNodes = new Set(
+      (data.hiddenNodes || []).filter((id) => nodes.has(id))
+    );
+    showHidden = !!data.showHidden;
     activeTab = RIGHT_TABS.includes(data.activeTab) ? data.activeTab : "node";
     dataTypesRootId =
       data.dataTypesRootId && nodes.has(data.dataTypesRootId)
@@ -509,6 +567,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v2");
     localStorage.removeItem("wtt-proto-tree-split-v3");
     localStorage.removeItem("wtt-proto-tree-split-v4");
+    localStorage.removeItem("wtt-proto-tree-split-v5");
   } catch {
     /* ignore */
   }
@@ -534,14 +593,18 @@ function makeIconButton(label, title, onClick, opts = {}) {
 
 function renderTreeRow(node, depth) {
   const kids = childrenOf(node.id);
-  const hasKids = kids.length > 0;
+  const visibleKids = kids.filter((k) => showHidden || !isHidden(k.id));
+  const hasKids = visibleKids.length > 0;
   const isCollapsed = collapsed.has(node.id);
   const isSelected = node.id === selectedId;
+  const hidden = isHidden(node.id);
   const { index, total } = siblingIndex(node);
   const canMove = node.parentId !== null;
 
   const row = document.createElement("div");
-  row.className = `tree-row${isSelected ? " is-selected" : ""}`;
+  row.className = `tree-row${isSelected ? " is-selected" : ""}${
+    hidden ? " is-hidden" : ""
+  }${isFixedBranch(node.id) ? " is-fixed" : ""}`;
   row.style.paddingLeft = `${0.35 + depth * 0.15}rem`;
   row.setAttribute("role", "treeitem");
   row.setAttribute("aria-selected", String(isSelected));
@@ -567,6 +630,18 @@ function renderTreeRow(node, depth) {
   const label = document.createElement("span");
   label.className = "label";
   label.textContent = node.name;
+  if (isFixedRoot(node.id)) {
+    const badge = document.createElement("span");
+    badge.className = "node-badge fixed";
+    badge.textContent = "fester Ast";
+    label.append(document.createTextNode(" "), badge);
+  }
+  if (hidden) {
+    const badge = document.createElement("span");
+    badge.className = "node-badge hidden";
+    badge.textContent = "ausgeblendet";
+    label.append(document.createTextNode(" "), badge);
+  }
 
   const actions = document.createElement("div");
   actions.className = "actions";
@@ -582,13 +657,26 @@ function renderTreeRow(node, depth) {
     );
   }
 
-  actions.append(
-    makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)),
-    makeIconButton("×", "Löschen", () => deleteNode(node.id), {
-      danger: true,
-      disabled: node.id === rootId,
-    })
-  );
+  actions.append(makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)));
+
+  if (isHideable(node.id)) {
+    actions.append(
+      makeIconButton(
+        hidden ? "\u{1F441}" : "\u{1F648}",
+        hidden
+          ? "Für dieses Projekt einblenden"
+          : "Für dieses Projekt ausblenden",
+        () => setHidden(node.id, !hidden)
+      )
+    );
+  } else if (!isFixedBranch(node.id)) {
+    actions.append(
+      makeIconButton("×", "Löschen", () => deleteNode(node.id), {
+        danger: true,
+        disabled: node.id === rootId,
+      })
+    );
+  }
   if (node.id === rootId) {
     const del = actions.querySelector(".danger");
     if (del) del.style.visibility = "hidden";
@@ -604,7 +692,7 @@ function renderTreeRow(node, depth) {
     const group = document.createElement("div");
     group.className = "tree-children";
     group.setAttribute("role", "group");
-    for (const child of kids) {
+    for (const child of visibleKids) {
       group.append(renderTreeRow(child, depth + 1));
     }
     wrap.append(group);
@@ -613,10 +701,33 @@ function renderTreeRow(node, depth) {
   return wrap;
 }
 
+function renderTreeControls() {
+  const bar = document.createElement("div");
+  bar.className = "tree-controls";
+  const toggle = document.createElement("label");
+  toggle.className = "toggle-hidden";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = showHidden;
+  cb.addEventListener("change", () => {
+    showHidden = cb.checked;
+    persist();
+    renderTree();
+  });
+  const span = document.createElement("span");
+  const count = hiddenNodes.size;
+  span.textContent = `Ausgeblendete zeigen${count ? ` (${count})` : ""}`;
+  toggle.append(cb, span);
+  bar.append(toggle);
+  return bar;
+}
+
 function renderTree() {
   const mount = document.getElementById("tree-root");
   if (!mount) return;
+  dataTypeNodes(); // heal fixed Ast id before rendering rows
   mount.replaceChildren();
+  mount.append(renderTreeControls());
   const root = nodes.get(rootId);
   if (!root) return;
   mount.append(renderTreeRow(root, 0));
@@ -665,6 +776,10 @@ function renderDetail() {
   input.id = "node-name";
   input.type = "text";
   input.value = node.name;
+  input.disabled = isFixedRoot(node.id);
+  if (isFixedRoot(node.id)) {
+    input.title = "Fester Ast — Name in jedem Projekt gleich.";
+  }
   input.addEventListener("change", () => renameSelected(input.value));
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -743,19 +858,26 @@ function renderDetail() {
   none.value = "";
   none.textContent = "— kein Typ —";
   typeSelect.append(none);
-  const types = dataTypeNodes();
+  const types = visibleDataTypeNodes();
   const currentType = typeRelations.get(node.id) || "";
-  for (const t of types) {
+  // Keep a currently-assigned but now-hidden type visible so state stays truthful.
+  const currentHidden =
+    currentType && isHidden(currentType) && nodes.has(currentType)
+      ? nodes.get(currentType)
+      : null;
+  const optionTypes = currentHidden ? [...types, currentHidden] : types;
+  for (const t of optionTypes) {
     const opt = document.createElement("option");
     opt.value = t.id;
-    opt.textContent = t.name;
+    opt.textContent = isHidden(t.id) ? `${t.name} (ausgeblendet)` : t.name;
     typeSelect.append(opt);
   }
-  if (types.some((t) => t.id === currentType)) typeSelect.value = currentType;
+  if (optionTypes.some((t) => t.id === currentType))
+    typeSelect.value = currentType;
   const underDataTypes =
     dataTypesRootId &&
     (node.id === dataTypesRootId || node.parentId === dataTypesRootId);
-  typeSelect.disabled = underDataTypes || types.length === 0;
+  typeSelect.disabled = underDataTypes || optionTypes.length === 0;
   typeSelect.addEventListener("change", () => {
     setTypeRelation(node.id, typeSelect.value);
   });
@@ -793,7 +915,41 @@ function renderDetail() {
   hint.textContent =
     "Datentypen im Baum + has_type → Tabellenfelder. Kinder → Spalten/Formular-Optionen. Alt+↑ / Alt+↓.";
 
-  card.append(h2, field, typeBlock, orderBlock, meta, hint);
+  let fixedBlock = null;
+  if (isFixedBranch(node.id)) {
+    fixedBlock = document.createElement("div");
+    fixedBlock.className = "order-block fixed-block";
+    const fLab = document.createElement("div");
+    fLab.className = "field-label";
+    fLab.textContent = `Fester Ast „${FIXED_BRANCH_NAME}“`;
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.style.margin = "0.35rem 0 0.6rem";
+    note.style.fontSize = "0.8rem";
+    if (isFixedRoot(node.id)) {
+      note.textContent =
+        "In jedem Projekt vorhanden und nicht löschbar. Einzelne Typ-Knoten lassen sich pro Projekt aus-/einblenden.";
+      fixedBlock.append(fLab, note);
+    } else {
+      const hidden = isHidden(node.id);
+      note.textContent = hidden
+        ? "Für dieses Projekt ausgeblendet — nicht als Datentyp wählbar (z. B. „kein Gleitkomma“)."
+        : "Für dieses Projekt sichtbar und als Datentyp wählbar.";
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "btn";
+      toggleBtn.textContent = hidden
+        ? "Für dieses Projekt einblenden"
+        : "Für dieses Projekt ausblenden";
+      toggleBtn.addEventListener("click", () => setHidden(node.id, !hidden));
+      fixedBlock.append(fLab, note, toggleBtn);
+    }
+  }
+
+  const parts = [h2, field];
+  if (fixedBlock) parts.push(fixedBlock);
+  parts.push(typeBlock, orderBlock, meta, hint);
+  card.append(...parts);
   mount.append(card);
 }
 

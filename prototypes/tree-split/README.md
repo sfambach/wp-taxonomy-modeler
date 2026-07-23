@@ -13,7 +13,19 @@ Static throwaway UI to explore the taxonomy tree screen shape.
   - **Tabelle** / **Tabelle 2** — children = columns; cell widgets from column `has_type`
   - **Formular** — controls from selected node; choice options from children
 - **+** / **×** / **↑↓** / **Alt+↑↓** (`position` order, Q13)
-- State in `localStorage` (`wtt-proto-tree-split-v5`)
+- State in `localStorage` (`wtt-proto-tree-split-v6`)
+
+## Fester Ast + Ausblenden pro Projekt (Q48)
+
+- **Datentypen** ist ein **fester Ast**: existiert in jedem Projekt, **nicht löschbar**
+  (kein `×`, Root-Name gesperrt). Neue globale Typen lassen sich per **+** anlegen.
+- Einzelne Typ-Knoten kann man **pro Projekt aus-/einblenden** (🙈 / 👁 in der Zeile,
+  oder Button im **Knoten**-Tab). Der Root-Ast selbst ist nicht ausblendbar.
+- Ausgeblendete Typen verschwinden aus dem **Datentyp**-Picker (`has_type`) —
+  z. B. `double` ausblenden ⇒ „kein Gleitkomma“ mehr wählbar. Eine bereits
+  zugewiesene, jetzt ausgeblendete Relation bleibt sichtbar, markiert `(ausgeblendet)`.
+- Checkbox **„Ausgeblendete zeigen“** über dem Baum blendet sie zur Verwaltung wieder ein.
+- Ausgeblendete Knoten liegen in `hiddenNodes` (Set von Node-IDs), pro Projekt/State.
 
 ## Typed columns (Q48)
 
