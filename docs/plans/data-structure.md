@@ -1,8 +1,8 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Parameter, Changelog/Change. A Parameter has a type and an optional unit; a unit is a Node whose children are the unit values. Planning artifact only — no implementation.
+overview: Core objects Project, Node, Parameter, Changelog/Change. Parameter.type and Parameter.unit are Nodes (unit values = unit children). Planning artifact only — no implementation.
 status: draft
-version: "0.6.4-plan"
+version: "0.6.5-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -27,11 +27,14 @@ todos:
   - id: define-unit-as-node
     content: "Unit is a Node; unit values are its child nodes"
     status: completed
+  - id: define-type-as-node
+    content: "Parameter type is a Node (not a separate ParameterType class)"
+    status: completed
   - id: map-storage
     content: "Decide how Project, Node, Parameter, Changelog map to WordPress storage"
     status: pending
   - id: decide-optional-fields
-    content: "Confirm optional fields; Change.version (Q23); ParameterType catalog (Q24)"
+    content: "Confirm optional fields; Change.version (Q23); how type nodes declare has_unit (Q24)"
     status: pending
 ---
 
@@ -69,14 +72,9 @@ classDiagram
     +node_id : ?
     +key : likely
     +label : likely
-    +type : ParameterType
+    +type : Node
     +unit : Node?
     +changelog : Changelog
-  }
-
-  class ParameterType {
-    +key
-    +has_unit : bool
   }
 
   class Changelog {
@@ -90,9 +88,8 @@ classDiagram
     +version
   }
 
-  note for Node "Root = parent null\nAlso: unit node role —\nchildren = unit values (kOhm, …)"
-  note for Parameter "always: type\noptional: unit (Node)\nunit values = unit.children\nOne parameter → one node? Q14"
-  note for ParameterType "url → has_unit false\nmeasure → has_unit true"
+  note for Node "Roles of the same class:\n- tree hierarchy\n- parameter type\n- unit (children = unit values)"
+  note for Parameter "always: type (Node)\noptional: unit (Node)\nunit values = unit.children\nOne parameter → one node? Q14"
   note for Change "Shared audit model\nincludes version"
 
   Project "1" --> "*" Node : root_nodes
@@ -101,24 +98,23 @@ classDiagram
   Node "1" --> "*" Parameter : has several
   Node "1" --> "1" Changelog : changelog
   Parameter "0..1" --> "0..1" Node : assigned ?
-  Parameter "1" --> "1" ParameterType : type
+  Parameter "1" --> "1" Node : type
   Parameter "0..1" --> "0..1" Node : unit
   Parameter "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `?` = not decided yet. Tree is not a class. **No separate Unit class** — unit is a Node; values are its children. Type catalog: Q24. Actor / ChangeBody / version: Q21–Q23.
+**Legend:** `?` = not decided yet. Tree / ParameterType / Unit are **not** separate classes — they are roles of **Node**. Actor / ChangeBody / version: Q21–Q23. How a type-node declares unit support: Q24.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy unit (parent/children); also used as unit node |
-| 2 | **Parameter** | Always has a type; optional unit = a Node |
+| 1 | **Node** | Hierarchy; also used as parameter **type** and as **unit** |
+| 2 | **Parameter** | Always has `type` (Node); optional `unit` (Node) |
 | 3 | **Project** | Container with `root_nodes` |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
-| 6 | **ParameterType** | Type descriptor; may declare that a unit applies |
 
 ### Shared audit idea (recommended)
 
@@ -155,7 +151,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 |---------|--------|---------|
 | **Tree** | **Not an object** | Defined by a **root node** (and all descendants reachable via child links) |
 | **RootNode** | **Not an object** | Same as **Node** with parent `null` — only a role, not a type |
-| **Unit** (separate class) | **Not an object** | A unit is a **Node**; unit **values** are that node’s **children** |
+| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** |
+| **Unit** (class) | **Not an object** | A unit is a **Node**; unit **values** are that node’s **children** |
 | Forest | Derived view | Several trees (several roots), e.g. inside one project |
 
 ```mermaid
