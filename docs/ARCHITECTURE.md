@@ -12,10 +12,13 @@ This document describes the **intended** shape of the plugin. File layout and AP
 
 ```mermaid
 flowchart TB
+  Project[Project] --> Roots[Root nodes = trees]
+  Roots --> Nodes[Child nodes]
+  Nodes --> Params[Parameters]
   Host[Host plugin e.g. wp-electronic-parts] --> Hooks[WTT hooks and filters]
   Admin[Admin Tree UI] --> API[Tree API REST or Admin-AJAX]
-  API --> Model[Tree Model]
-  Model --> Terms[WordPress terms tables]
+  API --> Model[Project / Node / Parameter model]
+  Model --> Storage[WP terms and/or custom storage TBD]
   Hooks --> Admin
   Hooks --> API
 ```
