@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.46-plan"
+version: "0.6.47-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -263,6 +263,7 @@ flowchart TB
 - **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
+- **Basiseinheit ─[allows_prefix]→ Präfix**; scale **factor on Präfix Node** (edge override rare) — **agreed direction (Q51)**; no Unit class, no parallel model
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -827,12 +828,23 @@ Basiseinheit Meter
 | **A — on Präfix Node** | `Node.config.factor` (or child/field) | `kilo.factor = 1000`, `milli.factor = 0.001` | Matches SI: k is always ×10³, independent of Ohm/Meter/Watt | Custom non-SI “prefixes” that differ per unit need overrides |
 | **B — on the Relation edge** | `Relation.props.factor` / multiplicity | `Ohm ─[allows_prefix]→ k` with `props: { factor: 1000 }` | Unit-specific scales; flexible for weird domains | Duplicates SI factors on every edge; “Multiplizität” easy to confuse with cardinality |
 
-**Spin leaning (not locked):**
+**Agreed direction (fits existing concept):**
 
 1. **Allowed set** = Relations `Basiseinheit ─[allows_prefix]→ Präfix` (UI filter for quantity).
-2. **Scale factor** = primarily on the **Präfix Node** (SI: kilo always 1000) — “das könnte man auch in Kilo hinterlegen”.
+2. **Scale factor** = primarily on the **Präfix Node** / `Node.config` (SI: kilo always 1000).
 3. Edge `props.factor` only if a unit needs an **override** (rare); default = inherit from Präfix.
-4. Prefer word **factor** / **scale** over “Multiplizität” (that often means 1..n cardinality).
+4. Prefer word **factor** / **scale** over “Multiplizität” (cardinality).
+
+**Why it fits (no new object model):**
+
+| Existing piece | Role of Q51 |
+|----------------|-------------|
+| Präfix / Basiseinheit Nodes (Q25/Q28) | Already the unit group halves — unchanged |
+| `quantity` = value + prefix + base_unit | Unchanged; allows_prefix only **constrains** which pairs the UI offers |
+| Unit group (Q45) | Still Präfix+Einheit together at fill time |
+| Relation + RelationType (Q35) | `allows_prefix` is just another typed edge |
+| Node.config (Q34 lean) | Natural home for `factor` on the Präfix Node |
+| No Unit class | Still true — factor is config, not a Unit object |
 
 Normalization example (same physical Größe):
 
@@ -840,15 +852,11 @@ Normalization example (same physical Größe):
 display: 10 kOhm
   value=10, prefix=k (factor 1000), base_unit=Ohm
   → SI base reading: 10 × 1000 = 10000 Ohm
-
-display: 10000 Ohm
-  value=10000, prefix=null, base_unit=Ohm
-  → same base reading
 ```
 
-Host/conversion math can multiply `value × prefix.factor` when comparing or scaling (Rezepte, shopping list) — still host concern if conversions are domain-specific.
+Host/conversion math can multiply `value × prefix.factor` when comparing or scaling — domain conversion may stay host-side.
 
-**Open (Q51):** lock A vs B vs hybrid; RelationType key name (`allows_prefix`?); whether every Basiseinheit must declare prefixes or “all prefixes allowed” is default.
+**Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none”; template seed of SI factors.
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 

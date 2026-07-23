@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.46-plan** (2026-07-23).
+Last synced from plan version **0.6.47-plan** (2026-07-23).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,7 +25,7 @@ Last synced from plan version **0.6.46-plan** (2026-07-23).
 | Core types: template has **simples** + derived **enum** + derived **quantity** (Größe) | Done (planning) |
 | **Q49:** simples originate Relations? special kind vs config disable | Open |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
-| **Q51:** Basiseinheit→Präfix Relations; scale factor on Präfix (vs edge) | Open (spin) |
+| **Q51:** Basiseinheit→Präfix Relations; factor on Präfix Node | Agreed direction |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |
