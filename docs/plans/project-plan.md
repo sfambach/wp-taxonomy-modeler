@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.21-plan"
+version: "0.6.22-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -16,12 +16,16 @@ related_plans:
   - docs/plans/planning-phase.md
   - docs/plans/mvp-requirements.md
   - docs/plans/data-structure.md
+  - docs/plans/use-cases.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
     status: in_progress
   - id: define-data-structure
     content: "Define Project, Node, Parameter, Changelog/Change; tree is derived from root node; settle storage mapping"
+    status: in_progress
+  - id: draft-use-cases
+    content: "Describe planning use cases (format + cards in docs/plans/use-cases.md); open questions stay open"
     status: in_progress
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
@@ -178,6 +182,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | **RelationType**: one **`label`** only; no `inverse` field (`consists_of` reverse wording = view). |
 | 2026-07-23 | Tentative **`directed`** on RelationType: arrow `from→to` vs undirected line — unsure (Q44); distinct from DisplayHint. |
 | 2026-07-23 | Display by RelationType: part-of nodes as **attributes** of parent; `consists_of` attrs inheritable along `is_a` (Q42/Q43). |
+| 2026-07-23 | Start **use-case cards** in `docs/plans/use-cases.md`; leave open questions open for later. |
 
 ## Change protocol
 

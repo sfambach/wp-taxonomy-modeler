@@ -41,6 +41,9 @@ todos:
   - id: define-delete-ux
     content: "Specify delete flows (promote vs cascade), confirmations, and edge cases"
     status: pending
+  - id: draft-use-cases
+    content: "Write use-case cards in docs/plans/use-cases.md (format agreed; expand scenarios)"
+    status: in_progress
   - id: planning-signoff
     content: "Mark project plan ready-to-implement only after user sign-off"
     status: pending
@@ -61,8 +64,9 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Master plan | `docs/plans/project-plan.md` | Goals, phases, and decisions are current |
 | Planning checklist | `docs/plans/planning-phase.md` (this file) | Todos resolved or deferred |
 | MVP requirements | `docs/plans/mvp-requirements.md` | Acceptance criteria are testable |
-| Data structure (Project + Node + Parameter) | `docs/plans/data-structure.md` | Tree = root node (not an object); project has several trees; param owner ? |
-| Open questions | `docs/OPEN-QUESTIONS.md` | Each question answered or deferred with owner |
+| Data structure (Project + Node + Parameter) | [`docs/plans/data-structure.md`](data-structure.md) | Tree = root node (not an object); project has several trees; param owner ? |
+| Use cases | [`docs/plans/use-cases.md`](use-cases.md) | Actor/goal/flow cards agreed; MVP mapping started |
+| Open questions | [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |
 
 ## Explicitly out of this phase
