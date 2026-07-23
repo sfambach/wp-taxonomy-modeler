@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.42-plan"
+version: "0.6.43-plan"
 last_updated: "2026-07-23"
 related_docs:
   - README.md
@@ -211,6 +211,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Class diagram: **remove Parameter class** — only Node + config roles (`ParameterRole` stereotype); aligns Q33/Q34. |
 | 2026-07-23 | **ParameterRole dropped** as hinfällig without Parameter — attribute Nodes are just Nodes with type binding; diagram cleaned (0.6.41). |
 | 2026-07-23 | **Taxonomy on Project, not Node** (Q18 leaning) — remove `Node.taxonomy`; Project may hold WP taxonomy slug. |
+| 2026-07-23 | **Project ≈ taxonomy** (Q18 strengthened). Default Nodes: **generate** vs **copy template Project** — new **Q50** (relates Q30/Q32). |
 
 ## Change protocol
 

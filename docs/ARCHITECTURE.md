@@ -97,13 +97,15 @@ Core stored objects: **Project** and **Node**. A **tree is not a stored object**
 | `id` | yes | Stable project identity |
 | `name` | yes | Display name |
 | `description` | yes | Project description (may be empty) |
-| `taxonomy` | ? | **Leaning (Q18):** WP taxonomy slug on Project, not on Node |
+| `taxonomy` | ? | **Strong leaning (Q18):** Project ≈ taxonomy; slug / identity on Project |
 | `root_nodes` | yes | All root nodes |
 | `definition_root` | yes | Required Definition tree root |
 | `type_node` | yes | Required Type anchor |
 | `prefix_node` | yes | Required Präfix anchor |
 | `base_unit_node` | yes | Required Basiseinheit anchor |
 | `changelog` | yes | Changelog of Change entries |
+
+Default Nodes (anchors + fixed simples): **generate on create** **or** **copy from a template Project** — open **Q50**.
 
 ### Node (conceptual)
 
@@ -119,7 +121,8 @@ Core stored objects: **Project** and **Node**. A **tree is not a stored object**
 
 Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
 Template trees use `template = true`. Persistence: Q19.  
-**Taxonomy:** on **Project** (leaning Q18) — Node has **no** `taxonomy` field.
+**Taxonomy:** **Project ≈ taxonomy** (strong leaning Q18) — Node has **no** `taxonomy` field.  
+**Defaults:** seed via generate **or** template-Project copy (**Q50**). Persistence: Q19.
 
 ### Attribute Nodes (no Parameter / ParameterRole)
 

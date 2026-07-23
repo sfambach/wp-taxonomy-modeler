@@ -188,15 +188,15 @@ One **use-case card** per scenario. Keep it short — prefer many small cards ov
 | Field | Content |
 |-------|---------|
 | **Actor** | Admin |
-| **Goal** | Start a Project that already has Definition / Type / Präfix / Basiseinheit anchors |
+| **Goal** | Start a Project (≈ taxonomy) that already has Definition / Type / Präfix / Basiseinheit and fixed simples |
 | **Trigger** | Creates a new Project |
-| **Preconditions** | Admin can create projects |
-| **Main flow** | 1. Admin creates Project (name, description)<br>2. System ensures Definitionsbaum root + anchors (`type_node`, `prefix_node`, `base_unit_node`)<br>3. System seeds **fixed simple type Nodes** under Type (`int`, `double`, `string`, `char`, `bool`)<br>4. Admin opens the project tree |
-| **Variants** | Clone from template project (later) |
+| **Preconditions** | Admin can create projects; defaults strategy chosen (Q50) |
+| **Main flow** | 1. Admin creates Project (name, description)<br>2. System either **generates** default Nodes **or** **copies** a template Project (Q50)<br>3. Result includes Definitionsbaum anchors + fixed simples (`int`…`bool`)<br>4. Admin opens the project tree |
+| **Variants** | Customize template Project first (option B); regenerate missing anchors (option A repair) |
 | **Outcome** | Project ready with Definitionsbaum and simples available |
 | **MVP?** | unclear (Project may be post-MVP tree-only) |
-| **Touches** | Project, Node, SimpleType Nodes |
-| **Notes** | Q33 simples; anchors agreed; storage Q19 |
+| **Touches** | Project (≈ taxonomy), Node, SimpleType Nodes |
+| **Notes** | Q18 Project≈taxonomy; **Q50** generate vs template copy; storage Q19 |
 
 ### UC-14 — Bind a Parameter-Node to a data type
 
