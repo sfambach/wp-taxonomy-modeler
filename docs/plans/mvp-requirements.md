@@ -96,7 +96,7 @@ Administrators can manage one or more **hierarchical** WordPress taxonomies in a
 ## Data structure reference
 
 Core objects: **Project**, **Node**, **Parameter**.  
-**Tree is not an object** — defined by a root node.  
+**Tree is not an object** — defined by a **root node** (a node with no parent).  
 Details: [`docs/plans/data-structure.md`](data-structure.md).
 
 Parameter MVP scope (definitions vs values, types, owner rule) and Project↔taxonomy mapping are still open and may land partly after the first tree MVP.
