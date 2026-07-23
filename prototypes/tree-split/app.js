@@ -1,49 +1,62 @@
 /**
  * WTT tree-split prototype — in-memory Node model.
- * Shape mirrors planning Node: { id, parentId, name, position }
+ * Shape mirrors planning Node: { id, parentId, name, position, description? }
  *
  * Sibling order (Q13): explicit `position`.
  * Right pane tabs:
- *   - Knoten
- *   - Tabelle / Tabelle 2 — children = column schema (header + 5 rows)
- *   - Formular — selected node = field context; children = choice options
- * Datentypen (template): simples + derived enum + derived quantity (Größe).
- * has_type → typed table widgets; enum base_type → exactly one simple.
- * quantity = value + Präfix + Basiseinheit (not a Messung).
- * Q51: Basiseinheit ─[allows_prefix]→ Präfix; factor on Präfix; Umrechnung tab.
+ *   - Knoten — name, description, sibling order (no relations here)
+ *   - Relationen — generic edges add/list (has_type, allows_prefix, multiplikator, …)
+ *   - Tabelle / Tabelle 2 — children = column schema
+ *   - Formular — selected node = field context
+ *   - Umrechnung — Q51 convert within a Basiseinheit family
+ * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v10";
+const STORAGE_KEY = "wtt-proto-tree-split-v11";
 const TABLE_BODY_ROWS = 5;
-const RIGHT_TABS = ["node", "table", "table2", "form", "convert"];
+const RIGHT_TABS = ["node", "relations", "table", "table2", "form", "convert"];
 const TAB_ARIA = {
   node: "tab-node",
+  relations: "tab-relations",
   table: "tab-table",
   table2: "tab-table2",
   form: "tab-form",
   convert: "tab-convert",
 };
-/** Relation key in prototype: slot ─[has_type]→ Datentyp node */
 const REL_HAS_TYPE = "has_type";
-/** Relation: enum type ─[base_type]→ exactly one simple type */
 const REL_BASE_TYPE = "base_type";
-/** Relation: Basiseinheit ─[allows_prefix]→ Präfix */
 const REL_ALLOWS_PREFIX = "allows_prefix";
+/** Präfix ─[multiplikator]→ int, props.value = scale factor */
+const REL_MULTIPLIKATOR = "multiplikator";
 const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
-/** Cell encoding for quantity: "value|prefix|unit" */
 const QTY_SEP = "|";
-/** Default SI factors for seeded Präfixe */
+const EDGE_LABEL_SUGGESTIONS = [
+  REL_HAS_TYPE,
+  REL_BASE_TYPE,
+  REL_ALLOWS_PREFIX,
+  REL_MULTIPLIKATOR,
+  "references",
+  "part_of",
+  "depends_on",
+  "relates_to",
+];
+/** Fallback SI factors when multiplikator edge missing */
 const DEFAULT_PREFIX_FACTORS = {
+  p: 1e-12,
+  n: 1e-9,
+  µ: 1e-6,
   m: 1e-3,
   k: 1e3,
   M: 1e6,
-  µ: 1e-6,
 };
 
 /**
- * @typedef {{ id: string, parentId: string|null, name: string, position: number, template?: boolean, config?: { factor?: number } }} ProtoNode
+ * @typedef {{ id: string, parentId: string|null, name: string, position: number, description?: string, template?: boolean }} ProtoNode
  */
-/** @typedef {'node'|'table'|'table2'|'form'|'convert'} RightTab */
+/** @typedef {'node'|'relations'|'table'|'table2'|'form'|'convert'} RightTab */
+/**
+ * @typedef {{ id: string, from: string, to: string, label: string, props?: { value?: string|number } }} ProtoEdge
+ */
 /**
  * @typedef {{ leftValue: string, leftKey: string, rightKey: string }} ConvertState
  */
@@ -82,16 +95,8 @@ let tableCells = new Map();
 let tableCells2 = new Map();
 /** @type {Map<string, FormState>} */
 let formStates = new Map();
-/** slotNodeId → typeNodeId (prototype Relation has_type) */
-/** @type {Map<string, string>} */
-let typeRelations = new Map();
-/** enumTypeNodeId → simpleTypeNodeId (exactly one base_type) */
-/** @type {Map<string, string>} */
-let baseTypeRelations = new Map();
-/** baseUnitNodeId → prefixNodeId[] (Relation allows_prefix) */
-/** @type {Map<string, string[]>} */
-let allowsPrefixRelations = new Map();
-/** baseUnitNodeId → convert UI state */
+/** @type {ProtoEdge[]} */
+let edges = [];
 /** @type {Map<string, ConvertState>} */
 let convertStates = new Map();
 let dataTypesRootId = "";
@@ -125,11 +130,8 @@ function nextPosition(parentId) {
 function createNode(parentId, name, position, opts = {}) {
   const id = uid();
   /** @type {ProtoNode} */
-  const node = { id, parentId, name, position };
+  const node = { id, parentId, name, position, description: opts.description || "" };
   if (opts.template) node.template = true;
-  if (opts.config && typeof opts.config === "object") {
-    node.config = { ...opts.config };
-  }
   nodes.set(id, node);
   return id;
 }
@@ -163,6 +165,19 @@ function ensureFormState(nodeId) {
   return state;
 }
 
+function pushEdge(from, to, label, props) {
+  if (!nodes.has(from) || !nodes.has(to) || from === to) return null;
+  const l = (label || "").trim() || "relates_to";
+  if (edges.some((e) => e.from === from && e.to === to && e.label === l)) {
+    return edges.find((e) => e.from === from && e.to === to && e.label === l);
+  }
+  /** @type {ProtoEdge} */
+  const e = { id: uid(), from, to, label: l };
+  if (props && typeof props === "object") e.props = { ...props };
+  edges.push(e);
+  return e;
+}
+
 function createInitial() {
   nodes = new Map();
   collapsed = new Set();
@@ -170,91 +185,145 @@ function createInitial() {
   tableCells = new Map();
   tableCells2 = new Map();
   formStates = new Map();
-  typeRelations = new Map();
-  baseTypeRelations = new Map();
-  allowsPrefixRelations = new Map();
+  edges = [];
   convertStates = new Map();
   dataTypesRootId = "";
   prefixesRootId = "";
   baseUnitsRootId = "";
   activeTab = "node";
 
-  // Template-shaped demo: Datentypen hold simples + enum + quantity (Q50 lean).
-  rootId = createNode(null, "Template / BOM Demo", 0, { template: true });
-
-  dataTypesRootId = createNode(rootId, "Datentypen", 0, { template: true });
-  const tInt = createNode(dataTypesRootId, "int", 0);
-  const tDouble = createNode(dataTypesRootId, "double", 1);
-  const tString = createNode(dataTypesRootId, "string", 2);
-  const tChar = createNode(dataTypesRootId, "char", 3);
-  const tBool = createNode(dataTypesRootId, "bool", 4);
-  // Derived enum in template: exactly one base_type + value list (children).
-  const tEnum = createNode(dataTypesRootId, "enum", 5);
-  baseTypeRelations.set(tEnum, tString);
-  createNode(tEnum, "0201", 0);
-  createNode(tEnum, "0402", 1);
-  createNode(tEnum, "0603", 2);
-  createNode(tEnum, "0805", 3);
-  createNode(tEnum, "axial", 4);
-  // Derived quantity (Größe): value + Präfix + Basiseinheit — not a Messung.
-  const tQuantity = createNode(dataTypesRootId, "quantity", 6);
-
-  prefixesRootId = createNode(rootId, "Präfix", 1, { template: true });
-  const pM = createNode(prefixesRootId, "m", 0, {
-    config: { factor: DEFAULT_PREFIX_FACTORS.m },
+  rootId = createNode(null, "Template / BOM Demo", 0, {
+    template: true,
+    description: "Template-Projekt: Datentypen, Präfixe, Basiseinheiten und BOM-Demo.",
   });
-  const pK = createNode(prefixesRootId, "k", 1, {
-    config: { factor: DEFAULT_PREFIX_FACTORS.k },
+
+  dataTypesRootId = createNode(rootId, "Datentypen", 0, {
+    template: true,
+    description: "Simple und abgeleitete Datentypen des Templates.",
   });
-  const pMega = createNode(prefixesRootId, "M", 2, {
-    config: { factor: DEFAULT_PREFIX_FACTORS.M },
+  const tInt = createNode(dataTypesRootId, "int", 0, {
+    description: "Ganze Zahl.",
   });
-  const pMicro = createNode(prefixesRootId, "µ", 3, {
-    config: { factor: DEFAULT_PREFIX_FACTORS.µ },
+  const tDouble = createNode(dataTypesRootId, "double", 1, {
+    description: "Gleitkommazahl.",
   });
-  const allPrefixes = [pM, pK, pMega, pMicro];
+  const tString = createNode(dataTypesRootId, "string", 2, {
+    description: "Freitext.",
+  });
+  createNode(dataTypesRootId, "char", 3, { description: "Einzelnes Zeichen." });
+  const tBool = createNode(dataTypesRootId, "bool", 4, {
+    description: "Wahrheitswert true/false.",
+  });
+  const tEnum = createNode(dataTypesRootId, "enum", 5, {
+    description: "Abgeleiteter Typ: genau ein base_type + Werteliste (Kinder).",
+  });
+  pushEdge(tEnum, tString, REL_BASE_TYPE);
+  for (const [i, name] of ["0201", "0402", "0603", "0805", "axial"].entries()) {
+    createNode(tEnum, name, i, { description: `Enum-Wert ${name}.` });
+  }
+  const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
+    description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
+  });
 
-  baseUnitsRootId = createNode(rootId, "Basiseinheit", 2, { template: true });
-  const uOhm = createNode(baseUnitsRootId, "Ohm", 0);
-  const uFarad = createNode(baseUnitsRootId, "Farad", 1);
-  const uMeter = createNode(baseUnitsRootId, "Meter", 2);
-  const uWatt = createNode(baseUnitsRootId, "Watt", 3);
-  const uVolt = createNode(baseUnitsRootId, "Volt", 4);
+  prefixesRootId = createNode(rootId, "Präfix", 1, {
+    template: true,
+    description: "SI-Präfixe; Multiplikator via Relation multiplikator → int.",
+  });
+  const prefixDefs = [
+    ["p", 0, 1e-12, "Piko (10⁻¹²)."],
+    ["n", 1, 1e-9, "Nano (10⁻⁹)."],
+    ["µ", 2, 1e-6, "Mikro (10⁻⁶)."],
+    ["m", 3, 1e-3, "Milli (10⁻³)."],
+    ["k", 4, 1e3, "Kilo (10³)."],
+    ["M", 5, 1e6, "Mega (10⁶)."],
+  ];
+  /** @type {Record<string, string>} */
+  const pref = {};
+  for (const [name, pos, factor, desc] of prefixDefs) {
+    const id = createNode(prefixesRootId, name, pos, { description: desc });
+    pref[name] = id;
+    pushEdge(id, tInt, REL_MULTIPLIKATOR, { value: factor });
+  }
 
-  // Q51: Basiseinheit ─[allows_prefix]→ Präfix (UI filter + Umrechnung family)
-  allowsPrefixRelations.set(uOhm, [...allPrefixes]);
-  allowsPrefixRelations.set(uFarad, [...allPrefixes]);
-  allowsPrefixRelations.set(uMeter, [pM, pK]);
-  allowsPrefixRelations.set(uWatt, [...allPrefixes]);
-  allowsPrefixRelations.set(uVolt, [...allPrefixes]);
+  baseUnitsRootId = createNode(rootId, "Basiseinheit", 2, {
+    template: true,
+    description: "Physikalische Basiseinheiten; allows_prefix filtert sinnvolle Präfixe.",
+  });
+  const uOhm = createNode(baseUnitsRootId, "Ohm", 0, {
+    description: "Widerstand. Üblich: m…M, µ.",
+  });
+  const uFarad = createNode(baseUnitsRootId, "Farad", 1, {
+    description: "Kapazität. Praktisch höchstens Farad — typisch p/n/µ/m, kein k/M.",
+  });
+  const uMeter = createNode(baseUnitsRootId, "Meter", 2, {
+    description: "Länge. Demo: m und k.",
+  });
+  const uWatt = createNode(baseUnitsRootId, "Watt", 3, {
+    description: "Leistung.",
+  });
+  const uVolt = createNode(baseUnitsRootId, "Volt", 4, {
+    description: "Elektrische Spannung.",
+  });
 
-  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 3);
-  const cRef = createNode(schemaId, "Reference", 0);
-  const cVal = createNode(schemaId, "Value", 1);
-  const cFp = createNode(schemaId, "Footprint", 2);
-  const cQty = createNode(schemaId, "Menge", 3);
-  const cLcsc = createNode(schemaId, "LCSC", 4);
-  const cStock = createNode(schemaId, "Stock", 5);
+  // Ohm / Watt / Volt: broad SI set including k/M
+  for (const u of [uOhm, uWatt, uVolt]) {
+    for (const name of ["m", "k", "M", "µ", "n", "p"]) {
+      pushEdge(u, pref[name], REL_ALLOWS_PREFIX);
+    }
+  }
+  // Farad: only ≤ 1 (no kilo/mega Farad)
+  for (const name of ["p", "n", "µ", "m"]) {
+    pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
+  }
+  // Meter: milli + kilo
+  for (const name of ["m", "k"]) {
+    pushEdge(uMeter, pref[name], REL_ALLOWS_PREFIX);
+  }
 
-  // slot ─[has_type]→ Datentyp
-  typeRelations.set(cRef, tString);
-  typeRelations.set(cVal, tQuantity);
-  typeRelations.set(cFp, tEnum);
-  typeRelations.set(cQty, tInt);
-  typeRelations.set(cLcsc, tString);
-  typeRelations.set(cStock, tBool);
+  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 3, {
+    description: "Schema-Knoten: Kinder = Tabellenspalten.",
+  });
+  const cRef = createNode(schemaId, "Reference", 0, {
+    description: "Open RefDes-Liste (string).",
+  });
+  const cVal = createNode(schemaId, "Value", 1, {
+    description: "Bauteilwert als quantity.",
+  });
+  const cFp = createNode(schemaId, "Footprint", 2, {
+    description: "Bauform als enum.",
+  });
+  const cQty = createNode(schemaId, "Menge", 3, {
+    description: "Stückzahl (int) — nicht quantity/Größe.",
+  });
+  const cLcsc = createNode(schemaId, "LCSC", 4, {
+    description: "Lieferantennummer.",
+  });
+  const cStock = createNode(schemaId, "Stock", 5, {
+    description: "Lagerflag.",
+  });
 
-  const listId = createNode(rootId, "Stückliste", 4);
-  createNode(listId, "C1 — 100 nF 0603", 0);
-  createNode(listId, "R1 — 10 kΩ 0603", 1);
-  createNode(listId, "U1 — ESP32-WROOM-32", 2);
-  createNode(listId, "D1 — LED green 0805", 3);
+  pushEdge(cRef, tString, REL_HAS_TYPE);
+  pushEdge(cVal, tQuantity, REL_HAS_TYPE);
+  pushEdge(cFp, tEnum, REL_HAS_TYPE);
+  pushEdge(cQty, tInt, REL_HAS_TYPE);
+  pushEdge(cLcsc, tString, REL_HAS_TYPE);
+  pushEdge(cStock, tBool, REL_HAS_TYPE);
 
-  const partsId = createNode(rootId, "Bauteile", 5);
-  createNode(partsId, "Kondensator", 0);
-  createNode(partsId, "Widerstand", 1);
-  createNode(partsId, "IC", 2);
-  createNode(partsId, "Diode / LED", 3);
+  const listId = createNode(rootId, "Stückliste", 4, {
+    description: "Beispiel-Stückliste (Instanz-Knoten).",
+  });
+  createNode(listId, "C1 — 100 nF 0603", 0, { description: "Kondensator-Zeile." });
+  createNode(listId, "R1 — 10 kΩ 0603", 1, { description: "Widerstands-Zeile." });
+  createNode(listId, "U1 — ESP32-WROOM-32", 2, { description: "IC-Zeile." });
+  createNode(listId, "D1 — LED green 0805", 3, { description: "Diode/LED-Zeile." });
+
+  const partsId = createNode(rootId, "Bauteile", 5, {
+    description: "Katalog-Ast (Demo).",
+  });
+  createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
+  createNode(partsId, "Widerstand", 1, { description: "Kategorie Widerstand." });
+  createNode(partsId, "IC", 2, { description: "Kategorie IC." });
+  createNode(partsId, "Diode / LED", 3, { description: "Kategorie Diode/LED." });
 
   selectedId = schemaId;
   collapsed.clear();
@@ -292,10 +361,33 @@ function isBaseUnitNode(node) {
   return Boolean(baseUnitsRootId && node.parentId === baseUnitsRootId);
 }
 
+function edgesFrom(id) {
+  return edges.filter((e) => e.from === id);
+}
+
+function edgesTo(id) {
+  return edges.filter((e) => e.to === id);
+}
+
+function findEdge(from, label) {
+  return edges.find((e) => e.from === from && e.label === label) || null;
+}
+
+function allowedPrefixIds(baseUnitId) {
+  return edges
+    .filter((e) => e.from === baseUnitId && e.label === REL_ALLOWS_PREFIX)
+    .map((e) => e.to)
+    .filter((id) => nodes.has(id));
+}
+
+/** Scale from Präfix ─[multiplikator]→ int (props.value). */
 function prefixFactor(prefixNode) {
   if (!prefixNode) return 1;
-  const f = prefixNode.config?.factor;
-  if (typeof f === "number" && Number.isFinite(f) && f !== 0) return f;
+  const e = findEdge(prefixNode.id, REL_MULTIPLIKATOR);
+  if (e && e.props?.value != null) {
+    const n = Number(e.props.value);
+    if (Number.isFinite(n) && n !== 0) return n;
+  }
   const named = DEFAULT_PREFIX_FACTORS[prefixNode.name];
   if (typeof named === "number") return named;
   return 1;
@@ -311,8 +403,7 @@ function unitChoices(baseUnitId) {
   const choices = [
     { key: "", prefixId: null, label: unit.name, factor: 1 },
   ];
-  const prefixIds = allowsPrefixRelations.get(baseUnitId) || [];
-  for (const pid of prefixIds) {
+  for (const pid of allowedPrefixIds(baseUnitId)) {
     const pref = nodes.get(pid);
     if (!pref) continue;
     choices.push({
@@ -323,6 +414,43 @@ function unitChoices(baseUnitId) {
     });
   }
   return choices;
+}
+
+function nodePath(id) {
+  const parts = [];
+  let cur = nodes.get(id);
+  let guard = 0;
+  while (cur && guard++ < 64) {
+    parts.unshift(cur.name);
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  return parts.join(" / ");
+}
+
+function addEdge(from, to, label, props) {
+  const e = pushEdge(from, to, label, props);
+  if (e) {
+    persist();
+    render();
+  }
+}
+
+function removeEdge(edgeId) {
+  const before = edges.length;
+  edges = edges.filter((e) => e.id !== edgeId);
+  if (edges.length !== before) {
+    persist();
+    render();
+  }
+}
+
+function setEdgeValue(edgeId, value) {
+  const e = edges.find((x) => x.id === edgeId);
+  if (!e) return;
+  if (!e.props) e.props = {};
+  e.props.value = value;
+  persist();
+  render();
 }
 
 function defaultConvertState() {
@@ -360,8 +488,13 @@ function convertValue(leftValue, leftFactor, rightFactor) {
 }
 
 function typeNodeOf(slotId) {
-  const tid = typeRelations.get(slotId);
-  return tid && nodes.has(tid) ? nodes.get(tid) : null;
+  const e = findEdge(slotId, REL_HAS_TYPE);
+  return e && nodes.has(e.to) ? nodes.get(e.to) : null;
+}
+
+function baseTypeOf(enumId) {
+  const e = findEdge(enumId, REL_BASE_TYPE);
+  return e && nodes.has(e.to) ? nodes.get(e.to) : null;
 }
 
 /** Normalize type node name → widget key. */
@@ -375,8 +508,7 @@ function typeKey(typeNode) {
   if (["string", "text"].includes(k)) return "string";
   if (["enum"].includes(k)) return "enum";
   if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
-  // Concrete enum-like: has a base_type relation
-  if (baseTypeRelations.has(typeNode.id)) return "enum";
+  if (findEdge(typeNode.id, REL_BASE_TYPE)) return "enum";
   return "string";
 }
 
@@ -393,6 +525,12 @@ function isEnumTypeNode(node) {
 function isQuantityTypeNode(node) {
   if (!node) return false;
   return typeKey(node) === "quantity";
+}
+
+function isPrefixNode(node) {
+  if (!node) return false;
+  prefixesRootId = healNamedRoot(prefixesRootId, "Präfix");
+  return Boolean(prefixesRootId && node.parentId === prefixesRootId);
 }
 
 /** @returns {{ v: string, p: string, u: string }} */
@@ -425,37 +563,6 @@ function enumValueNames(enumNodeId) {
   return childrenOf(enumNodeId).map((c) => c.name);
 }
 
-function setTypeRelation(slotId, typeId) {
-  if (!nodes.has(slotId)) return;
-  if (!typeId) {
-    typeRelations.delete(slotId);
-  } else if (nodes.has(typeId)) {
-    typeRelations.set(slotId, typeId);
-  }
-  persist();
-  render();
-}
-
-function setBaseTypeRelation(enumId, simpleTypeId) {
-  if (!nodes.has(enumId)) return;
-  if (!simpleTypeId) {
-    baseTypeRelations.delete(enumId);
-  } else if (nodes.has(simpleTypeId) && isSimpleTypeNode(nodes.get(simpleTypeId))) {
-    baseTypeRelations.set(enumId, simpleTypeId);
-  }
-  persist();
-  render();
-}
-
-function baseTypeOf(enumId) {
-  const tid = baseTypeRelations.get(enumId);
-  return tid && nodes.has(tid) ? nodes.get(tid) : null;
-}
-
-/**
- * Build an input widget for a typed table cell.
- * @returns {HTMLElement}
- */
 function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
   const key = typeKey(typeNode);
   if (key === "bool") {
@@ -619,17 +726,12 @@ function deleteNode(id) {
     tableCells.delete(k);
     tableCells2.delete(k);
     formStates.delete(k);
-    typeRelations.delete(k);
-    baseTypeRelations.delete(k);
+    convertStates.delete(k);
   }
-  // Drop relations pointing at deleted type nodes.
-  for (const [slot, tid] of [...typeRelations.entries()]) {
-    if (kill.has(tid)) typeRelations.delete(slot);
-  }
-  for (const [enumId, tid] of [...baseTypeRelations.entries()]) {
-    if (kill.has(enumId) || kill.has(tid)) baseTypeRelations.delete(enumId);
-  }
+  edges = edges.filter((e) => !kill.has(e.from) && !kill.has(e.to));
   if (kill.has(dataTypesRootId)) dataTypesRootId = "";
+  if (kill.has(prefixesRootId)) prefixesRootId = "";
+  if (kill.has(baseUnitsRootId)) baseUnitsRootId = "";
 
   if (parentId != null && nodes.has(parentId)) reindexSiblings(parentId);
 
@@ -765,9 +867,7 @@ function persist() {
     tableCells: mapToObject(tableCells),
     tableCells2: mapToObject(tableCells2),
     formStates: mapToObject(formStates),
-    typeRelations: mapToObject(typeRelations),
-    baseTypeRelations: mapToObject(baseTypeRelations),
-    allowsPrefixRelations: mapToObject(allowsPrefixRelations),
+    edges,
     convertStates: mapToObject(convertStates),
   };
   try {
@@ -807,9 +907,7 @@ function restore() {
     tableCells = new Map();
     tableCells2 = new Map();
     formStates = new Map();
-    typeRelations = new Map();
-    baseTypeRelations = new Map();
-    allowsPrefixRelations = new Map();
+    edges = [];
     convertStates = new Map();
     restoreStringGridMap(data.tableCells, tableCells);
     restoreStringGridMap(data.tableCells2, tableCells2);
@@ -819,30 +917,26 @@ function restore() {
         formStates.set(k, { ...defaultFormState(), ...st });
       }
     }
-    if (data.typeRelations && typeof data.typeRelations === "object") {
-      for (const [slot, tid] of Object.entries(data.typeRelations)) {
-        if (nodes.has(slot) && nodes.has(tid)) typeRelations.set(slot, tid);
-      }
+    if (Array.isArray(data.edges)) {
+      edges = data.edges
+        .filter(
+          (e) =>
+            e &&
+            nodes.has(e.from) &&
+            nodes.has(e.to) &&
+            typeof e.label === "string"
+        )
+        .map((e) => ({
+          id: e.id || uid(),
+          from: e.from,
+          to: e.to,
+          label: e.label,
+          ...(e.props && typeof e.props === "object" ? { props: { ...e.props } } : {}),
+        }));
     }
-    if (data.baseTypeRelations && typeof data.baseTypeRelations === "object") {
-      for (const [enumId, tid] of Object.entries(data.baseTypeRelations)) {
-        if (
-          nodes.has(enumId) &&
-          nodes.has(tid) &&
-          isSimpleTypeNode(nodes.get(tid))
-        ) {
-          baseTypeRelations.set(enumId, tid);
-        }
-      }
-    }
-    if (data.allowsPrefixRelations && typeof data.allowsPrefixRelations === "object") {
-      for (const [uidUnit, list] of Object.entries(data.allowsPrefixRelations)) {
-        if (!nodes.has(uidUnit) || !Array.isArray(list)) continue;
-        allowsPrefixRelations.set(
-          uidUnit,
-          list.filter((pid) => nodes.has(pid))
-        );
-      }
+    // Heal: ensure every node has description string
+    for (const n of nodes.values()) {
+      if (typeof n.description !== "string") n.description = "";
     }
     if (data.convertStates && typeof data.convertStates === "object") {
       for (const [uidUnit, st] of Object.entries(data.convertStates)) {
@@ -858,10 +952,14 @@ function restore() {
     dataTypeNodes();
     prefixOptionNames();
     baseUnitOptionNames();
-    // Heal missing prefix factors after older seeds
-    for (const p of childrenOf(prefixesRootId)) {
-      if (p.config?.factor == null && DEFAULT_PREFIX_FACTORS[p.name] != null) {
-        p.config = { ...(p.config || {}), factor: DEFAULT_PREFIX_FACTORS[p.name] };
+    // Heal missing multiplikator edges on Präfixe
+    const intNode = dataTypeNodes().find((n) => n.name === "int");
+    if (intNode && prefixesRootId) {
+      for (const p of childrenOf(prefixesRootId)) {
+        if (!findEdge(p.id, REL_MULTIPLIKATOR)) {
+          const f = DEFAULT_PREFIX_FACTORS[p.name];
+          if (f != null) pushEdge(p.id, intNode.id, REL_MULTIPLIKATOR, { value: f });
+        }
       }
     }
     const parents = new Set(
@@ -888,6 +986,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v7");
     localStorage.removeItem("wtt-proto-tree-split-v8");
     localStorage.removeItem("wtt-proto-tree-split-v9");
+    localStorage.removeItem("wtt-proto-tree-split-v10");
   } catch {
     /* ignore */
   }
@@ -1014,6 +1113,227 @@ function syncTabs() {
   }
 }
 
+function renameDescription(value) {
+  const n = nodes.get(selectedId);
+  if (!n) return;
+  n.description = String(value ?? "");
+  persist();
+}
+
+/**
+ * Relationen tab: list outgoing (+ incoming) edges; add/remove.
+ * @param {ProtoNode} node
+ */
+function buildEdgesBlock(node) {
+  const block = document.createElement("div");
+  block.className = "order-block edges-block";
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Ausgehende Relationen";
+  block.append(lab);
+
+  const outgoing = edgesFrom(node.id);
+  if (outgoing.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.style.margin = "0.35rem 0";
+    empty.style.fontSize = "0.8rem";
+    empty.textContent = "Keine ausgehenden Kanten.";
+    block.append(empty);
+  } else {
+    const list = document.createElement("ul");
+    list.className = "edge-list";
+    for (const e of outgoing) {
+      const li = document.createElement("li");
+      li.className = "edge-item";
+
+      const textEl = document.createElement("span");
+      textEl.className = "edge-text";
+      const lbl = document.createElement("span");
+      lbl.className = "edge-label";
+      lbl.textContent = e.label;
+      const arrow = document.createElement("span");
+      arrow.className = "edge-arrow";
+      arrow.textContent = "→";
+      const target = nodes.get(e.to);
+      const tgt = document.createElement("button");
+      tgt.type = "button";
+      tgt.className = "linkish";
+      tgt.textContent = target ? target.name : "(gelöscht)";
+      if (target) tgt.addEventListener("click", () => selectNode(e.to));
+      textEl.append(lbl, arrow, tgt);
+
+      if (e.label === REL_MULTIPLIKATOR) {
+        const val = document.createElement("input");
+        val.className = "form-control edge-value";
+        val.type = "number";
+        val.step = "any";
+        val.title = "multiplikator value (int/number)";
+        val.setAttribute("aria-label", "Multiplikator-Wert");
+        val.value = e.props?.value != null ? String(e.props.value) : "";
+        val.addEventListener("change", () => setEdgeValue(e.id, val.value));
+        textEl.append(val);
+      } else if (e.props?.value != null) {
+        const chip = document.createElement("span");
+        chip.className = "edge-prop";
+        chip.textContent = `value=${e.props.value}`;
+        textEl.append(chip);
+      }
+
+      const del = makeIconButton("×", "Kante entfernen", () => removeEdge(e.id), {
+        danger: true,
+      });
+      li.append(textEl, del);
+      list.append(li);
+    }
+    block.append(list);
+  }
+
+  const inLab = document.createElement("div");
+  inLab.className = "field-label";
+  inLab.style.marginTop = "1rem";
+  inLab.textContent = "Eingehende Relationen";
+  block.append(inLab);
+  const incoming = edgesTo(node.id);
+  if (incoming.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.style.margin = "0.35rem 0";
+    empty.style.fontSize = "0.8rem";
+    empty.textContent = "Keine eingehenden Kanten.";
+    block.append(empty);
+  } else {
+    const list = document.createElement("ul");
+    list.className = "edge-list";
+    for (const e of incoming) {
+      const li = document.createElement("li");
+      li.className = "edge-item";
+      const textEl = document.createElement("span");
+      textEl.className = "edge-text";
+      const src = nodes.get(e.from);
+      const srcBtn = document.createElement("button");
+      srcBtn.type = "button";
+      srcBtn.className = "linkish";
+      srcBtn.textContent = src ? src.name : "(?)";
+      if (src) srcBtn.addEventListener("click", () => selectNode(e.from));
+      const lbl = document.createElement("span");
+      lbl.className = "edge-label";
+      lbl.textContent = e.label;
+      const arrow = document.createElement("span");
+      arrow.className = "edge-arrow";
+      arrow.textContent = "→";
+      const me = document.createElement("span");
+      me.textContent = node.name;
+      textEl.append(srcBtn, lbl, arrow, me);
+      if (e.label === REL_MULTIPLIKATOR && e.props?.value != null) {
+        const chip = document.createElement("span");
+        chip.className = "edge-prop";
+        chip.textContent = `× ${e.props.value}`;
+        textEl.append(chip);
+      }
+      li.append(textEl);
+      list.append(li);
+    }
+    block.append(list);
+  }
+
+  const addRow = document.createElement("div");
+  addRow.className = "edge-add";
+
+  const labelInput = document.createElement("input");
+  labelInput.className = "form-control";
+  labelInput.type = "text";
+  labelInput.value = isPrefixNode(node)
+    ? REL_MULTIPLIKATOR
+    : isBaseUnitNode(node)
+      ? REL_ALLOWS_PREFIX
+      : REL_HAS_TYPE;
+  labelInput.setAttribute("list", "edge-label-suggestions");
+  labelInput.setAttribute("aria-label", "Relationstyp");
+
+  const suggestions = document.createElement("datalist");
+  suggestions.id = "edge-label-suggestions";
+  for (const s of EDGE_LABEL_SUGGESTIONS) {
+    const o = document.createElement("option");
+    o.value = s;
+    suggestions.append(o);
+  }
+
+  const targetSelect = document.createElement("select");
+  targetSelect.className = "form-control";
+  targetSelect.setAttribute("aria-label", "Zielknoten");
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = "— Zielknoten wählen —";
+  targetSelect.append(ph);
+  const candidates = [...nodes.values()]
+    .filter((n) => n.id !== node.id && n.id !== rootId)
+    .sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
+  for (const c of candidates) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = nodePath(c.id);
+    targetSelect.append(o);
+  }
+
+  const valueInput = document.createElement("input");
+  valueInput.className = "form-control edge-value";
+  valueInput.type = "number";
+  valueInput.step = "any";
+  valueInput.placeholder = "value (optional)";
+  valueInput.setAttribute("aria-label", "Kanten-Wert / Multiplikator");
+  valueInput.title = "Für multiplikator: Zahlenwert (z. B. 1000)";
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "btn";
+  addBtn.textContent = "Relation hinzufügen";
+  addBtn.addEventListener("click", () => {
+    if (!targetSelect.value) return;
+    const props =
+      valueInput.value !== ""
+        ? { value: valueInput.value }
+        : undefined;
+    addEdge(node.id, targetSelect.value, labelInput.value, props);
+  });
+
+  addRow.append(labelInput, targetSelect, valueInput, addBtn);
+  block.append(addRow, suggestions);
+
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.style.margin = "0.35rem 0 0";
+  hint.style.fontSize = "0.8rem";
+  hint.textContent =
+    "Beispiele: has_type → Datentyp · allows_prefix → Präfix · multiplikator → int (+ value). Vorwärts/Rückwärts in Umrechnung über denselben Faktor.";
+  block.append(hint);
+
+  return block;
+}
+
+function renderRelations() {
+  const mount = document.getElementById("detail");
+  if (!mount) return;
+  const node = nodes.get(selectedId);
+  if (!node) {
+    mount.innerHTML = `<p class="muted">Knoten auswählen.</p>`;
+    return;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "detail-card";
+  const h2 = document.createElement("h2");
+  h2.className = "detail-title";
+  h2.textContent = `Relationen — ${node.name}`;
+  const lead = document.createElement("p");
+  lead.className = "muted";
+  lead.style.marginTop = "0";
+  lead.textContent =
+    "Relationen leben hier (nicht unter Knoten). Multiplikator am Präfix: Relation „multiplikator“ → int mit value.";
+  wrap.append(h2, lead, buildEdgesBlock(node));
+  mount.replaceChildren(wrap);
+}
+
 function renderDetail() {
   const mount = document.getElementById("detail");
   if (!mount) return;
@@ -1053,45 +1373,46 @@ function renderDetail() {
   });
   field.append(lab, input);
 
+  const descField = document.createElement("div");
+  descField.className = "field";
+  const descLab = document.createElement("label");
+  descLab.htmlFor = "node-desc";
+  descLab.textContent = "Beschreibung";
+  const desc = document.createElement("textarea");
+  desc.id = "node-desc";
+  desc.className = "form-control";
+  desc.rows = 3;
+  desc.value = node.description || "";
+  desc.placeholder = "Kurzbeschreibung des Knotens…";
+  desc.addEventListener("change", () => renameDescription(desc.value));
+  descField.append(descLab, desc);
+
   const orderBlock = document.createElement("div");
   orderBlock.className = "order-block";
   const orderTitle = document.createElement("div");
   orderTitle.className = "field-label";
-  orderTitle.textContent = "Geschwister-Reihenfolge";
+  orderTitle.textContent = "Reihenfolge unter Geschwistern (position)";
   const orderRow = document.createElement("div");
-  orderRow.className = "order-controls";
-
-  if (canMove) {
-    const up = document.createElement("button");
-    up.type = "button";
-    up.className = "btn";
-    up.textContent = "↑ Nach oben";
-    up.disabled = index <= 0;
-    up.addEventListener("click", () => moveSibling(node.id, -1));
-
-    const down = document.createElement("button");
-    down.type = "button";
-    down.className = "btn";
-    down.textContent = "↓ Nach unten";
-    down.disabled = index >= total - 1;
-    down.addEventListener("click", () => moveSibling(node.id, 1));
-
-    const status = document.createElement("span");
-    status.className = "order-status";
-    status.textContent = `${index + 1} von ${total}`;
-    orderRow.append(up, down, status);
-  } else {
-    const status = document.createElement("span");
-    status.className = "order-status muted";
-    status.textContent = "Root — keine Geschwister-Position";
-    orderRow.append(status);
-  }
+  orderRow.className = "order-row";
+  const up = makeIconButton("↑", "Nach oben (Alt+↑)", () =>
+    moveSibling(node.id, -1)
+  );
+  const down = makeIconButton("↓", "Nach unten (Alt+↓)", () =>
+    moveSibling(node.id, 1)
+  );
+  up.disabled = !canMove || index <= 0;
+  down.disabled = !canMove || index < 0 || index >= total - 1;
+  const orderMeta = document.createElement("span");
+  orderMeta.className = "muted";
+  orderMeta.textContent = canMove
+    ? `${index + 1} / ${total}`
+    : "Root — keine Geschwistersortierung";
+  orderRow.append(up, down, orderMeta);
   orderBlock.append(orderTitle, orderRow);
 
-  if (kids.length > 0) {
-    const childList = document.createElement("ol");
-    childList.className = "child-order";
-    childList.start = 1;
+  if (kids.length) {
+    const childList = document.createElement("ul");
+    childList.className = "child-list";
     for (const c of kids) {
       const li = document.createElement("li");
       const link = document.createElement("button");
@@ -1110,127 +1431,24 @@ function renderDetail() {
     orderBlock.append(childLab, childList);
   }
 
-  const typeBlock = document.createElement("div");
-  typeBlock.className = "order-block";
-  const typeLab = document.createElement("div");
-  typeLab.className = "field-label";
-  typeLab.textContent = "Datentyp (Relation has_type)";
-  const typeSelect = document.createElement("select");
-  typeSelect.className = "form-control";
-  typeSelect.id = "node-type-rel";
-  const none = document.createElement("option");
-  none.value = "";
-  none.textContent = "— kein Typ —";
-  typeSelect.append(none);
-  const types = dataTypeNodes();
-  const currentType = typeRelations.get(node.id) || "";
-  for (const t of types) {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = t.name;
-    typeSelect.append(opt);
-  }
-  if (types.some((t) => t.id === currentType)) typeSelect.value = currentType;
-  const underDataTypes =
-    dataTypesRootId &&
-    (node.id === dataTypesRootId || node.parentId === dataTypesRootId);
-  typeSelect.disabled = underDataTypes || types.length === 0;
-  typeSelect.addEventListener("change", () => {
-    setTypeRelation(node.id, typeSelect.value);
-  });
-  const typeHint = document.createElement("p");
-  typeHint.className = "muted";
-  typeHint.style.margin = "0.35rem 0 0";
-  typeHint.style.fontSize = "0.8rem";
-  if (underDataTypes) {
-    typeHint.textContent =
-      "Datentyp-Knoten selbst — Zuweisung gilt für Schema-/Wert-Slots.";
-  } else if (types.length === 0) {
-    typeHint.textContent = "Ast „Datentypen“ anlegen und Kindtypen hinzufügen.";
-  } else {
-    const tn = typeNodeOf(node.id);
-    typeHint.textContent = tn
-      ? `Aktuell: ${node.name} ─[${REL_HAS_TYPE}]→ ${tn.name} → Tabellen-Widget „${typeKey(tn)}“.`
-      : "Kein Typ — Tabelle fällt auf Textfeld zurück.";
-  }
-  typeBlock.append(typeLab, typeSelect, typeHint);
-
-  // enum: exactly one base_type (a simple) + value list = children
-  let baseBlock = null;
-  if (isEnumTypeNode(node) && node.parentId === dataTypesRootId) {
-    baseBlock = document.createElement("div");
-    baseBlock.className = "order-block";
-    const baseLab = document.createElement("div");
-    baseLab.className = "field-label";
-    baseLab.textContent = "enum base_type (genau ein simpler Typ)";
-    const baseSelect = document.createElement("select");
-    baseSelect.className = "form-control";
-    const bNone = document.createElement("option");
-    bNone.value = "";
-    bNone.textContent = "— Base wählen —";
-    baseSelect.append(bNone);
-    const simples = simpleTypeNodes();
-    const curBase = baseTypeRelations.get(node.id) || "";
-    for (const s of simples) {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = s.name;
-      baseSelect.append(opt);
-    }
-    if (simples.some((s) => s.id === curBase)) baseSelect.value = curBase;
-    baseSelect.addEventListener("change", () => {
-      setBaseTypeRelation(node.id, baseSelect.value);
-    });
-    const baseHint = document.createElement("p");
-    baseHint.className = "muted";
-    baseHint.style.margin = "0.35rem 0 0";
-    baseHint.style.fontSize = "0.8rem";
-    const bt = baseTypeOf(node.id);
-    baseHint.textContent = bt
-      ? `enum ─[${REL_BASE_TYPE}]→ ${bt.name}; Werte = Kinder (${kids.length}): ${enumValueNames(node.id).join(", ") || "—"}.`
-      : "enum braucht genau einen Basistyp; Kinder sind die Werteliste.";
-    baseBlock.append(baseLab, baseSelect, baseHint);
-  }
-
-  let quantityBlock = null;
-  if (isQuantityTypeNode(node) && node.parentId === dataTypesRootId) {
-    quantityBlock = document.createElement("div");
-    quantityBlock.className = "order-block";
-    const qLab = document.createElement("div");
-    qLab.className = "field-label";
-    qLab.textContent = "quantity = Größe (nicht Messung)";
-    const qHint = document.createElement("p");
-    qHint.className = "muted";
-    qHint.style.margin = "0.35rem 0 0";
-    qHint.style.fontSize = "0.8rem";
-    qHint.textContent = `Wert + Präfix (${prefixOptionNames().join(", ") || "—"}) + Basiseinheit (${baseUnitOptionNames().join(", ") || "—"}). Anzeige z. B. „10 kOhm“. Nicht BOM-Menge.`;
-    quantityBlock.append(qLab, qHint);
-  }
-
   const meta = document.createElement("div");
   meta.className = "meta";
-  const tn = typeNodeOf(node.id);
-  const bt = baseTypeOf(node.id);
   meta.innerHTML = `
     <div>id: <span>${node.id}</span></div>
     <div>parent: <span>${parent ? parent.name : "— (root)"}</span></div>
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
     <div>template: <span>${node.template ? "yes" : "—"}</span></div>
-    <div>has_type: <span>${tn ? tn.name : "—"}</span></div>
-    <div>base_type: <span>${bt ? bt.name : "—"}</span></div>
+    <div>relations: <span>${edgesFrom(node.id).length} out / ${edgesTo(node.id).length} in</span> <em class="hint">(Tab Relationen)</em></div>
   `;
 
   const hint = document.createElement("p");
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Template: Simples + enum + quantity (Größe). has_type → Tabellenfelder. Alt+↑ / Alt+↓.";
+    "Knoten: Name + Beschreibung. Relationen (has_type, allows_prefix, multiplikator, …) nur im Tab Relationen.";
 
-  card.append(h2, field, typeBlock);
-  if (baseBlock) card.append(baseBlock);
-  if (quantityBlock) card.append(quantityBlock);
-  card.append(orderBlock, meta, hint);
+  card.append(h2, field, descField, orderBlock, meta, hint);
   mount.append(card);
 }
 
@@ -1845,7 +2063,7 @@ function renderConvert() {
   meta.className = "muted convert-meta";
   meta.innerHTML = `Basiseinheit: <strong>${escapeHtml(baseUnit.name)}</strong> · allows_prefix: ${
     choices.length - 1
-  } Präfixe · factor auf Präfix-Knoten`;
+  } Präfixe · multiplikator-Relation (value) auf Präfix`;
 
   const row = document.createElement("div");
   row.className = "convert-row";
@@ -1968,6 +2186,7 @@ function renderRight() {
   else if (activeTab === "table2") renderTableView(tableCells2, "Tabelle 2");
   else if (activeTab === "form") renderForm();
   else if (activeTab === "convert") renderConvert();
+  else if (activeTab === "relations") renderRelations();
   else renderDetail();
 }
 

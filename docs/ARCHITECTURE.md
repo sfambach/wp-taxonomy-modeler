@@ -46,7 +46,7 @@ Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
 Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
-Unit/prefix (**Q51 agreed direction**): Basiseinheit ─[allows_prefix]→ Präfix; **factor** on Präfix Node (`Node.config`); UI select fed a unit Node **generates** choices (Ohm, kOhm, …) from Vater + linked Präfixe.  
+Unit/prefix (**Q51**): Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives Ohm/kOhm/…; Node has **description**.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  

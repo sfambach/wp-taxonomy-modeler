@@ -765,3 +765,79 @@ body {
 .convert-formula {
   margin-top: 0.25rem;
 }
+
+/* --- Relationen (edges) --- */
+
+.edge-list {
+  list-style: none;
+  margin: 0.35rem 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.edge-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.edge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.edge-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+}
+
+.edge-arrow {
+  color: var(--muted);
+}
+
+.edge-prop {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.edge-value {
+  width: 6.5rem !important;
+  flex: 0 0 auto !important;
+}
+
+.edge-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.edge-add .form-control {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.edge-add input.form-control:first-child {
+  flex: 0 1 8rem;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 4rem;
+}

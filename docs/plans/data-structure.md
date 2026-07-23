@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.49-plan"
+version: "0.6.50-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
@@ -84,6 +84,7 @@ classDiagram
     +id
     +parent_id : id|null
     +name
+    +description : string
     +template : bool
     +position : ?
     +project_id : ?
@@ -263,8 +264,10 @@ flowchart TB
 - **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
-- **Basiseinheit ─[allows_prefix]→ Präfix**; scale **factor on Präfix Node** (edge override rare) — **agreed direction (Q51)**; no Unit class, no parallel model
-- Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe (Vater + Kind-set) — **agreed direction (Q51)**; no atomic `kOhm` Nodes
+- **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **agreed direction (Q51)**
+- Scale via **Präfix ─[multiplikator]→ int** with edge **`props.value`** (e.g. kilo → 1000) — **agreed direction (Q51)**; enables forward/back convert
+- Every **Node** has a **description** (may be empty string) — **agreed direction**
+- Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe — **agreed direction (Q51)**; no atomic `kOhm` Nodes
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -363,6 +366,7 @@ Node ◄──(many)────── Parameters
 | `id` | yes | identifier | Stable identity of the node |
 | `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root (defines a tree) |
 | `name` | yes | string | Display name of the node |
+| `description` | yes* | string | Longer text; may be empty |
 | `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `changelog` | yes | **Changelog** | History of changes on this node |
@@ -831,10 +835,10 @@ Basiseinheit Meter
 
 **Agreed direction (fits existing concept):**
 
-1. **Allowed set** = Relations `Basiseinheit ─[allows_prefix]→ Präfix` (UI filter for quantity).
-2. **Scale factor** = primarily on the **Präfix Node** / `Node.config` (SI: kilo always 1000).
-3. Edge `props.factor` only if a unit needs an **override** (rare); default = inherit from Präfix.
-4. Prefer word **factor** / **scale** over “Multiplizität” (cardinality).
+1. **Allowed set** = Relations `Basiseinheit ─[allows_prefix]→ Präfix` (UI filter; unit-specific — Farad ≠ Ohm).
+2. **Scale** = Relation `Präfix ─[multiplikator]→ int` with **`props.value`** (kilo = 1000) — not `Node.config.factor`.
+3. Same multiplikator drives **forward and reverse** conversion (`value × left / right`).
+4. Prefer **multiplikator** / **factor** over “Multiplizität” (cardinality).
 
 **Why it fits (no new object model):**
 
@@ -843,9 +847,9 @@ Basiseinheit Meter
 | Präfix / Basiseinheit Nodes (Q25/Q28) | Already the unit group halves — unchanged |
 | `quantity` = value + prefix + base_unit | Unchanged; allows_prefix only **constrains** which pairs the UI offers |
 | Unit group (Q45) | Still Präfix+Einheit together at fill time |
-| Relation + RelationType (Q35) | `allows_prefix` is just another typed edge |
-| Node.config (Q34 lean) | Natural home for `factor` on the Präfix Node |
-| No Unit class | Still true — factor is config, not a Unit object |
+| Relation + RelationType (Q35) | `allows_prefix` and `multiplikator` are typed edges |
+| Edge `props` | Holds int **value** for multiplikator |
+| No Unit class | Still true — scale is a Relation, not a Unit object |
 
 Normalization example (same physical Größe):
 
@@ -885,7 +889,7 @@ Selection stores the unit group, not a synthetic node:
 
 Same pattern for Meter → `m`, `mm`, `km`, … from Vater Meter + linked Präfixe.
 
-**Prototype:** `prototypes/tree-split` tab **Umrechnung** — select Basiseinheit in the tree; left Menge+unit, right computed value in another derived unit of the same family; non-base selection grays out controls (`wtt-proto-tree-split-v10`).
+**Prototype:** `prototypes/tree-split` v11 — tabs **Relationen** + **Umrechnung**; multiplikator on Präfix edges; Farad without k/M; Node.description.
 
 **Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`).
 
