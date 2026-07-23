@@ -2,7 +2,7 @@
 name: Use cases
 overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14; keep Q34/Q49 open in Notes.
 status: draft
-version: "0.1.4-plan"
+version: "0.1.5-plan"
 last_updated: "2026-07-23"
 related_plans:
   - docs/plans/project-plan.md
