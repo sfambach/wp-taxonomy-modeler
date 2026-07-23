@@ -40,10 +40,10 @@ todos:
 
 | ID | Status | Meaning for use cases |
 |----|--------|------------------------|
-| **Q33** | decided | Attributes like `Wert` / `Länge` are **Parameter-Nodes** in the tree |
+| **Q33** | decided | Attribute names (`Wert`, …) are ordinary **Nodes** — no Parameter class |
 | **Q14** | dropped | No separate Parameter owner field |
-| **Q34** | leaning | Specialization via **configuration**, not PHP subclass |
-| **Q48** | leaning | Bind slot/Parameter → type Node (`has_type` / type field) |
+| **Q34** | leaning | Type binding via **configuration** / Relations — **no ParameterRole** |
+| **Q48** | leaning | Bind Node → type Node (`has_type` / type field) |
 | **Q49** | open | Simples may not originate Relations — special kind **or** config disable |
 
 ## Format (proposed)

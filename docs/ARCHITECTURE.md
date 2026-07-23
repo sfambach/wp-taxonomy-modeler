@@ -41,7 +41,7 @@ flowchart TB
 ## PHP representation (leaning)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Change`.  
-**Decided (Q33/Q34):** **no Parameter class** — attribute nodes are `Node` + **configuration**.  
+**Decided (Q33/Q34):** **no Parameter class** and **no ParameterRole** — attribute Nodes are ordinary `Node`s with type binding via **configuration** / `has_type`.  
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
@@ -119,21 +119,20 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
 Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 
-### Attribute nodes (parameter role — no Parameter class)
+### Attribute Nodes (no Parameter / ParameterRole)
 
-There is **no** separate Parameter type. Attribute nodes (e.g. `Wert`, `Länge`) are **Nodes** with a parameter **role in config**. Conceptual config / bindings:
+There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `Länge` are ordinary **Nodes** that bind a type:
 
 | Field / binding | Required | Meaning |
 |-------|----------|---------|
 | *(Node fields)* | yes | `id`, `parent_id`, `name`, `template`, `changelog`, … |
-| `config` role | yes | marks parameter / attribute role |
-| `type` | **yes** | **Node** under `project.type_node` (simple or derived/composed) via config or `has_type` |
+| `config` | ? | type binding / capabilities (Q34) — shape TBD |
+| `type` | **yes** | **Node** under `project.type_node` via config or `has_type` |
 | `prefix` | **optional** | **Node** under `project.prefix_node` |
 | `base_unit` | **optional** | **Node** under `project.base_unit_node` |
 | `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
 
-**Agreed:** no Parameter class (Q33/Q34); measure composition as above; fixed simple types per project.  
-**Leaning (Q34):** roles via **configuration**.  
+**Agreed:** no Parameter / ParameterRole (Q33/Q34); measure composition as above; fixed simple types per project.  
 **Open (Q49):** may simples originate Relations — special kind vs config disable.  
 **Dropped (Q14):** no separate owning `node_id`.
 
@@ -172,7 +171,7 @@ Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | **No Parameter class** — attribute **Nodes** + config (Q33/Q34) |
+| Parameters | **Dropped** — no Parameter class / ParameterRole; attribute **Nodes** + type binding |
 | Parameter owner | **Q14 dropped** — `parent_id` and/or Relations only |
 | Simple types & Relations | Typically no originating Relations — special kind vs config (**Q49**) |
 | Typed edges | Exploratory Relation + RelationType (`consists_of`↔`is_part_of`, …) — Q35/Q41 |
