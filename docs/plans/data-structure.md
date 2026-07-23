@@ -106,9 +106,9 @@ classDiagram
   class RelationType {
     +id
     +key
-    +forward_label
-    +inverse_label : ?
+    +label
     +bidirectional : bool
+    +inverse : RelationType?
     +display : DisplayHint
     +inheritable : bool?
   }
@@ -127,8 +127,8 @@ classDiagram
   note for Project "Definitionsbaum anchors required"
   note for Node "Hierarchy + Relations; part-of nodes\nmay render as attributes of parent"
   note for Parameter "UNDECIDED shape\nmay overlap with besteht-aus display"
-  note for Relation "EXPLORATORY\n1 logical type; optional inverse label\nif bidirectional (paired)"
-  note for RelationType "Pairs e.g.\nconsists_of <-> is_part_of\nchild <-> parent\nuses <-> used_by\ndisplay depends on type"
+  note for Relation "EXPLORATORY\none RelationType.label per direction;\nbidirectional => paired inverse type"
+  note for RelationType "Each type has one label\ne.g. consists_of.label = besteht aus\ninverse.label = ist Teil von\ndisplay depends on type"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -150,7 +150,7 @@ classDiagram
 ```
 
 **Legend:** `Relation` / `RelationType` are **exploratory**.  
-One **logical** relation type; if bidirectional, store **forward + inverse labels** as a pair (still one type).  
+Each RelationType has one **`label`**. If bidirectional, pair with an **`inverse`** RelationType (that type has its own `label`) — not `forward_label`/`inverse_label` on one type.  
 Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `to` as **attribute** of `from`, inheritable along `ist-ein`).
 
 ## Core objects
@@ -163,7 +163,7 @@ Display and inheritance depend on `RelationType` (e.g. `consists_of` → show `t
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 | 6 | **Relation** | **Exploratory:** edge between two Nodes with a RelationType |
-| 7 | **RelationType** | **Exploratory:** logical type; optional inverse label if bidirectional |
+| 7 | **RelationType** | **Exploratory:** type with one `label`; optional `inverse` pair if bidirectional |
 
 ### Shared audit idea (recommended)
 
@@ -205,7 +205,7 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
 | **Parameter as separate sibling of Node** | **Under review** | Competing with Parameter-as-Node and with typed `besteht-aus` edges |
 | **Relation / typed edge** | **Exploratory** | Edge + RelationType; optional inverse pair (Q35/Q41) |
-| **RelationType** | **Exploratory** | One logical type; forward/inverse labels; display + inherit rules (Q42/Q43) |
+| **RelationType** | **Exploratory** | One `label` per type; optional inverse RelationType; display + inherit (Q42/Q43) |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -255,7 +255,7 @@ flowchart TB
 - One parameter is always assigned to one node (?) — **may dissolve if Parameter is a Node or via besteht-aus**; otherwise Q14
 - Every Project, Node, and Parameter has a **changelog**. — **agreed** (if Parameter is a Node, one changelog on that node)
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
-- **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; bidirectional = paired labels on one type (Q41)
+- **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label`; bidirectional = paired inverse type (Q41)
 - **Display** of related nodes depends on RelationType (part-of → attributes) — **leaning (Q42)**
 - **`consists_of` attributes inheritable along `is_a`** — **leaning (Q43)**
 
@@ -626,9 +626,9 @@ Relation {
 
 RelationType {
   key:            string              # logical id, e.g. "consists_of"
-  forward_label:  string              # e.g. "besteht aus" / "consists of"
-  inverse_label:  string | null       # e.g. "ist Teil von" / "is part of"
-  bidirectional:  bool                # if true, inverse_label is required (paired)
+  label:          string              # e.g. "besteht aus" / "consists of"
+  bidirectional:  bool
+  inverse:        RelationType | null # paired opposite type (has its own label), if bidirectional
   display:        DisplayHint         # how UI renders the related nodes
   inheritable:    bool?               # can child nodes inherit along ist-ein?
 }
@@ -638,20 +638,19 @@ RelationType {
 
 | Idea | Meaning | Outcome |
 |------|---------|---------|
-| Unidirectional | Relation stores only forward kind | One RelationType |
-| Bidirectional | Forward + back labels (`consists of` ↔ `is part of`) | Still **one logical RelationType** with a **paired inverse** — not two independent types |
+| Unidirectional | One RelationType with one `label` | Single type |
+| Bidirectional | Two RelationTypes, each with one `label`, linked via `inverse` | Paired pair (`consists_of` ↔ `is_part_of`) |
 
-**Leaning:** allow bidirectional as **paired labels on one RelationType**. Storing two free-floating opposite types would drift; pairing keeps them as one concept (Q41).
+**Leaning:** every RelationType has exactly one **`label`**. Bidirectional means a **paired inverse RelationType** (also one `label`) — do not store `forward_label` + `inverse_label` on the same type (Q41).
 
 #### Example RelationType pairs
 
-| Logical key | Forward | Inverse (if bidirectional) | Typical display |
-|-------------|---------|----------------------------|-----------------|
-| `consists_of` | besteht aus / consists of | ist Teil von / is part of | **`to` as attribute of `from`** |
-| `is_a` | ist ein / is a | hat Untertyp / has subtype? | taxonomy / inheritance path |
-| `child_of` | child / Kind | father/parent / Vater | tree hierarchy (may replace `parent_id`) |
-| `uses` | using / verwendet | is used by / wird verwendet von | reference / dependency view |
-
+| Key | `label` | Inverse key | Inverse `label` | Typical display |
+|-----|---------|-------------|-----------------|-----------------|
+| `consists_of` | besteht aus | `is_part_of` | ist Teil von | **`to` as attribute of `from`** |
+| `is_a` | ist ein | `has_subtype`? | hat Untertyp? | taxonomy / inheritance path |
+| `child_of` | Kind von | `parent_of` | Vater/Parent von | tree hierarchy (may replace `parent_id`) |
+| `uses` | verwendet | `used_by` | wird verwendet von | reference / dependency view |
 #### Display depends on RelationType (Q42)
 
 Related nodes are **not** always shown the same way:

@@ -175,7 +175,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | **measure** = composite (number\|integer + Präfix + Basiseinheit), not a separate scalar; Widerstand A vs B worked example. |
 | 2026-07-23 | **enum** = composite (scalar option values); **single/multiple** are selection methods, not types (Q38). |
 | 2026-07-23 | Parked mid-session Node thought as **Q40** (resume later); switch topic away from type/A–B fork for now. |
-| 2026-07-23 | **RelationType**: one logical type; bidirectional = paired forward/inverse labels (`consists_of`↔`is_part_of`). |
+| 2026-07-23 | **RelationType**: one **`label`** per type; bidirectional = paired `inverse` RelationType (`consists_of`↔`is_part_of`). |
 | 2026-07-23 | Display by RelationType: part-of nodes as **attributes** of parent; `consists_of` attrs inheritable along `is_a` (Q42/Q43). |
 
 ## Change protocol
