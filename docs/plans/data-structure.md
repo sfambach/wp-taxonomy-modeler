@@ -2,8 +2,8 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.50-plan"
-last_updated: "2026-07-23"
+version: "0.6.51-plan"
+last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -19,7 +19,7 @@ todos:
     content: "Q33 decided: Parameter is a tree Node; Q14 dropped (parent/Relation, no separate owner)"
     status: completed
   - id: decide-parameter-is-node
-    content: "Q34 leaning: configuration (not subclass); Q49 simple-type Relation capability still open"
+    content: "Q34 strong lean: configuration (not subclass); Q49 lean: config originate_relations=false on simples"
     status: in_progress
   - id: explore-typed-edges
     content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
@@ -60,7 +60,7 @@ todos:
 
 **Decided (Q33/Q34):** there is **no Parameter class** and **no ParameterRole**. Attributes such as `Wert` / `Länge` are ordinary **Nodes** that bind a type via **configuration** and/or Relations (`has_type`).  
 Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples.  
-**Q49 open:** simples may be a special kind that cannot originate Relations, **or** config that disables Relations on simples.  
+**Q49 strong lean:** simples get config that disables originating Relations (`capabilities.originate_relations = false`) — not a hard special kind (decide with Q34).  
 Typed edges remain exploratory (**Q35**).
 
 ```mermaid
@@ -168,7 +168,7 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Schema-as-Nodes spin (Q46):** domain structures such as **BOM** or **Recipe** may themselves be **Nodes + Relations** (templates), so host apps need fewer hard-coded classes (`BomList` / `BomLine` become optional views).  
 **No Parameter / ParameterRole:** attribute Nodes are just Nodes; type binding via **config** and/or `has_type`. `SimpleType` / `DerivedOrCompositeType` remain **roles of type Nodes** (Q34), not separate stored classes.  
-**Q49:** whether simples are a hard special kind or config that disables originating Relations — still open.
+**Q49 lean:** simples use config that disables originating Relations — still open with Q34.
 
 ## Core objects
 
@@ -264,10 +264,10 @@ flowchart TB
 - **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
-- **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **agreed direction (Q51)**
-- Scale via **Präfix ─[multiplikator]→ int** with edge **`props.value`** (e.g. kilo → 1000) — **agreed direction (Q51)**; enables forward/back convert
-- Every **Node** has a **description** (may be empty string) — **agreed direction**
-- Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe — **agreed direction (Q51)**; no atomic `kOhm` Nodes
+- **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **decided (Q51)**
+- Scale via **Präfix ─[multiplikator]→ int** with edge **`props.value`** (e.g. kilo → 1000) — **decided (Q51)**; enables forward/back convert
+- Every **Node** has a **description** (may be empty string) — **decided**
+- Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe — **decided (Q51)**; no atomic `kOhm` Nodes
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
 - Every **Project** must have a **Definitionsbaum** (Definition tree) and must store anchors for **Type**, **Präfix**, and **Basiseinheit**. — **agreed**
@@ -278,7 +278,7 @@ flowchart TB
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
 - **No Parameter class and no ParameterRole** — **decided (Q33/Q34)**; attribute nodes are ordinary Nodes with type binding via config/`has_type`
 - Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via `parent_id` and/or Relations
-- Simple type Nodes typically **do not originate Relations** — **open (Q49):** special kind **or** config that disables Relations
+- Simple type Nodes typically **do not originate Relations** — **strong lean (Q49):** config `capabilities.originate_relations = false` on simples (not a hard special kind); decide with Q34
 - Every Project and Node has a **changelog**. — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 - **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label` only; no `inverse` field (Q41)
@@ -289,17 +289,41 @@ flowchart TB
 Project ──(several trees)──► Root Node
 Node ──(optional)──► parent Node          # classic tree
 Node ──(Relation?)──► Node                # exploratory typed edges
-Node.config ──(capabilities / type binding)──►  # leaning Q34 — not a ParameterRole
+Node.config ──(capabilities / type binding)──►  # strong lean Q34 — not a ParameterRole
 SimpleType Nodes ──(derive/compose)──► further Type Nodes
-# Q49: simples cannot originate Relations — special kind vs config
+# Q49 lean: config.capabilities.originate_relations = false on simples
 ```
+
+### Config shape proposal (Q34 / Q49) — pending confirm
+
+**Goal:** one `Node` class; specialization via **Relations** + optional **`config`**, never PHP subclasses or ParameterRole.
+
+| Piece | Role | Status |
+|-------|------|--------|
+| Relation `has_type` | Primary type binding (slot → type Node) | leaning (Q48) |
+| `Node.config.capabilities.originate_relations` | `false` on simple type Nodes in the template | **proposed (Q49)** |
+| `Node.config` other keys | Reserved for later (UI hints, defaults) — keep minimal | open |
+| Hard `kind` enum / PHP subclass | **Rejected** for MVP | decided lean |
+
+```php
+// Conceptual — not implemented
+class Node {
+	public ?array $config;
+	// Example for simple type Node "int":
+	// config = [ 'capabilities' => [ 'originate_relations' => false ] ]
+	// Type of an attribute Node is NOT only in config — prefer Relation has_type
+}
+```
+
+**Why config over special kind:** same storage/UI for all Nodes; template can seed capability flags; derived types (`enum`, `quantity`) can keep `originate_relations = true` if needed.  
+**Still open until user confirms:** exact key names; whether derived types may originate Relations; empty/missing config = allow Relations (default true).
 
 ### Design decision: no Parameter and no ParameterRole
 
 **Q33/Q34:** Names like `Wert` / `Länge` in the Definitionsbaum **are ordinary Nodes**.  
 There is **no** Parameter class, **no** ParameterRole stereotype, and **no** PHP subclass.  
 Type binding lives in **Node.config** and/or Relations (`has_type`). Optional quantity fields (`prefix`, `base_unit`, `value`) are likewise config / Relations — not a parallel object model.  
-**Q49 open:** simple data-type Nodes usually should not build Relations themselves — either a **special Node kind**, or config that **deactivates Relations** on simples.  
+**Q49 strong lean:** simple data-type Nodes usually should not build Relations themselves — **config** that deactivates Relations on simples (not a hard special kind); decide with Q34.  
 Typed edges (`besteht-aus`) may still *display* those Nodes as attributes of a parent — orthogonal (Q35/Q42).
 
 ---
@@ -457,9 +481,9 @@ class Node {
 | Topic | Status |
 |-------|--------|
 | Parameter class / ParameterRole | **rejected / dropped** |
-| Config shape for type binding | open — Q34 |
+| Config shape for type binding | **proposed** — Q34 (`capabilities` + `has_type`) |
 | Separate owning `node_id` | **dropped** — Q14 |
-| Simple types may originate Relations? | **open** — Q49 |
+| Simple types may originate Relations? | **strong lean no** — Q49 via config |
 | Required / default / validation rules | open — Q47 |
 | Inheritance to child nodes | open |
 | Which types require prefix and/or base_unit | open — Q24 |
@@ -566,10 +590,10 @@ quantity (Größe)
 | **quantity in the template** | Derived kind: value + Präfix + Basiseinheit (Größe) |
 | Types are **Nodes** | Same storage/UI as everything else |
 | UI derives widget from type | simples → inputs; enum → select; quantity → value+prefix+unit |
-| **Relations from simples?** | Still open **Q49** |
+| **Relations from simples?** | Strong lean **Q49:** config disable |
 | string_list vs enum | enum = **closed** list; string_list = **open** list (Q47) |
 
-**Still open (Q34/Q49):** config shape details; whether simples are a hard special kind or config that blocks originating Relations.
+**Still open (Q34/Q49):** user confirm of proposed config shape; whether derived types may originate Relations.
 
 ### Definitionsbaum (canonical planning example)
 
@@ -706,8 +730,8 @@ Maße display:  10 mm × 5 mm × 2 mm
 `Project.definition_root` points at **Definition**; that root is also in `root_nodes`.
 
 Open: exact validation rules when type is `quantity` vs `url` (Q24, Q29).  
-Open: Node **configuration** shape for Parameter role (Q34 lean).  
-Open: may simple types originate Relations — special kind vs config disable (**Q49**).  
+Open: Node **configuration** shape — proposed `capabilities` (Q34); pending confirm.  
+Open: simples `originate_relations=false` via config (**Q49** lean) — pending confirm.  
 **Closed (Q33):** Parameter *is* a tree Node (not a separate attached object).  
 **Dropped (Q14):** no separate owner field.
 
@@ -809,7 +833,7 @@ Rezept ──uses──► Mehl
 
 Aligns with existing composite **`quantity`** = number\|integer + optional prefix + base_unit — the “group” is exactly that unit part of the composite.
 
-#### Design spin: Basiseinheit → allowed Präfixe + scale factor (exploratory) — Q51
+#### Design spin: Basiseinheit → allowed Präfixe + scale factor — **Q51 decided**
 
 **Idea:** each **Basiseinheit** Node links via Relation to the **Präfix** Nodes that make sense for it. That filters the quantity UI (Ohm → k, m, M, µ; Meter → m, c, k; kitchen `g` → maybe none or only SI mass prefixes).
 
@@ -826,14 +850,14 @@ Basiseinheit Meter
   ─[allows_prefix]→ Präfix c   # if present
 ```
 
-**Where does ×1000 live?** Two places (can combine):
+**Where does ×1000 live?** (options explored; decision below)
 
 | Option | Where | Example | Pros | Cons |
 |--------|--------|---------|------|------|
 | **A — on Präfix Node** | `Node.config.factor` (or child/field) | `kilo.factor = 1000`, `milli.factor = 0.001` | Matches SI: k is always ×10³, independent of Ohm/Meter/Watt | Custom non-SI “prefixes” that differ per unit need overrides |
 | **B — on the Relation edge** | `Relation.props.factor` / multiplicity | `Ohm ─[allows_prefix]→ k` with `props: { factor: 1000 }` | Unit-specific scales; flexible for weird domains | Duplicates SI factors on every edge; “Multiplizität” easy to confuse with cardinality |
 
-**Agreed direction (fits existing concept):**
+**Decided (Q51):**
 
 1. **Allowed set** = Relations `Basiseinheit ─[allows_prefix]→ Präfix` (UI filter; unit-specific — Farad ≠ Ohm).
 2. **Scale** = Relation `Präfix ─[multiplikator]→ int` with **`props.value`** (kilo = 1000) — not `Node.config.factor`.
@@ -863,7 +887,7 @@ Host/conversion math can multiply `value × prefix.factor` when comparing or sca
 
 ##### UI: pass Basiseinheit → generate derived unit choices (Vater + Kind)
 
-**Agreed direction:** hand a **Basiseinheit Node** (e.g. `Ohm`) to a quantity unit selector. The UI **derives** options from that unit (“Vater”) plus its linked Präfixe (“Kind”-set via `allows_prefix` — Relation targets, not required as tree children under Ohm):
+**Decided (Q51):** hand a **Basiseinheit Node** (e.g. `Ohm`) to a quantity unit selector. The UI **derives** options from that unit (“Vater”) plus its linked Präfixe (“Kind”-set via `allows_prefix` — Relation targets, not required as tree children under Ohm):
 
 ```text
 Input:  Node Ohm
@@ -891,7 +915,7 @@ Same pattern for Meter → `m`, `mm`, `km`, … from Vater Meter + linked Präfi
 
 **Prototype:** `prototypes/tree-split` v11 — tabs **Relationen** + **Umrechnung**; multiplikator on Präfix edges; Farad without k/M; Node.description.
 
-**Still open (details):** RelationType key name (`allows_prefix`?); empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`).
+**Still open (edge details only):** empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`). RelationType keys `allows_prefix` / `multiplikator` are the working names.
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 

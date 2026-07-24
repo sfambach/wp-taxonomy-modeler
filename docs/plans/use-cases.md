@@ -1,9 +1,9 @@
 ---
 name: Use cases
-overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14; keep Q34/Q49 open in Notes.
+overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect decided Q33/Q14/Q20/Q51; Q34/Q49 proposal pending confirm.
 status: draft
-version: "0.1.5-plan"
-last_updated: "2026-07-23"
+version: "0.1.6-plan"
+last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -42,9 +42,11 @@ todos:
 |----|--------|------------------------|
 | **Q33** | decided | Attribute names (`Wert`, …) are ordinary **Nodes** — no Parameter class |
 | **Q14** | dropped | No separate Parameter owner field |
-| **Q34** | leaning | Type binding via **configuration** / Relations — **no ParameterRole** |
+| **Q20** | decided | Typed PHP DTOs; no Parameter class |
+| **Q34** | strong lean | Type binding via **configuration** / Relations — **no ParameterRole**; proposed `capabilities` |
 | **Q48** | leaning | Bind Node → type Node (`has_type` / type field) |
-| **Q49** | open | Simples may not originate Relations — special kind **or** config disable |
+| **Q49** | strong lean | Simples: config `originate_relations=false` (not hard special kind) |
+| **Q51** | decided | allows_prefix + multiplikator; UI derives Ohm/kOhm/… |
 
 ## Format (proposed)
 

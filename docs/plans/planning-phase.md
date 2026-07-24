@@ -21,7 +21,7 @@ todos:
     content: "Agree Node fields; tree is derived from root node (not a separate object)"
     status: completed
   - id: define-parameter-model
-    content: "Q33: Parameter is a tree Node; Q14 dropped; Q34 lean = configuration; Q49 open (simple-type Relations)"
+    content: "Q33: Parameter is a tree Node; Q14 dropped; Q34/Q49 config proposal pending confirm; Q51/Q20 decided"
     status: completed
   - id: define-project-model
     content: "Project has name, description, root_nodes (list of root Node)"

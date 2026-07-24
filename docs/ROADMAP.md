@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.50-plan** (2026-07-23).
+Last synced from plan version **0.6.51-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -23,9 +23,10 @@ Last synced from plan version **0.6.50-plan** (2026-07-23).
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
 | Core types: template has **simples** + derived **enum** + derived **quantity** (Größe) | Done (planning) |
-| **Q49:** simples originate Relations? special kind vs config disable | Open |
+| **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
-| **Q51:** Basiseinheit→Präfix; factor on Präfix; select derives Ohm/kOhm/… | Agreed direction |
+| **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
+| **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |

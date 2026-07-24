@@ -2,8 +2,8 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.50-plan"
-last_updated: "2026-07-23"
+version: "0.6.51-plan"
+last_updated: "2026-07-24"
 related_docs:
   - README.md
   - docs/PRODUCT.md
@@ -219,6 +219,10 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Q51 UI: pass Basiseinheit Node to a select → **derive** unit choices (Vater + linked Präfixe); labels like `kOhm`; store `{prefix, base_unit}`, not atomic unit Nodes. |
 | 2026-07-23 | Prototype tab **Umrechnung** (`tree-split` v10): pick Basiseinheit in tree; convert Menge between derived units via Präfix.factor; non-base selection grays out fields. |
 | 2026-07-23 | Q51 refine: scale = Relation **multiplikator** → int + value (not config); Farad allows only p/n/µ/m; Node.**description**; Relationen tab (not on Knoten); proto v11. |
+| 2026-07-24 | **Q51 decided:** Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives unit labels; forward+back convert. |
+| 2026-07-24 | **Q20 decided:** typed PHP DTO classes for Project/Node/Changelog/Change; no Parameter class; services for behavior. |
+| 2026-07-24 | Node.**description** confirmed on every Node (may be empty); Q12 updated. |
+| 2026-07-24 | **Q34/Q49 proposal:** config-first — `Node.config.capabilities.originate_relations` (false on simples); type binding via Relation `has_type`; no hard special kind. Still open pending user confirm. |
 
 ## Change protocol
 

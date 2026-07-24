@@ -19,12 +19,12 @@ flowchart TB
   R1 --> C2[Node]
   C1 --> G1[Node]
   R2 --> C3[Node]
-  C1 --> P1[Parameter]
-  C1 --> P2[Parameter]
+  C1 --> A1["Node (attribute)<br/>has_type → …"]
+  C1 --> A2["Node (attribute)"]
 
   Host[Host plugin e.g. wp-electronic-parts] --> Hooks[WTT hooks and filters]
   Admin[Admin Tree UI] --> API[Tree API REST or Admin-AJAX]
-  API --> Model[Project / Node / Parameter model]
+  API --> Model[Project / Node model]
   Model --> Storage[WP terms and/or custom storage TBD]
   Hooks --> Admin
   Hooks --> API
@@ -38,15 +38,15 @@ flowchart TB
 - **Secure by default:** capability checks, nonces/permission callbacks, sanitized input, escaped output.
 - **Extensible:** host plugins register participation and UI additions through hooks.
 
-## PHP representation (leaning)
+## PHP representation (**Q20 decided**)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Change`.  
-**Decided (Q33/Q34):** **no Parameter class** and **no ParameterRole** — attribute Nodes are ordinary `Node`s with type binding via **configuration** / `has_type`.  
+**Decided (Q33):** **no Parameter class** and **no ParameterRole** — attribute Nodes are ordinary `Node`s with type binding via **configuration** / `has_type`.  
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
 Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
-Unit/prefix (**Q51**): Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives Ohm/kOhm/…; Node has **description**.  
+Unit/prefix (**Q51 decided**): Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives Ohm/kOhm/…; Node has **description**.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
@@ -55,7 +55,7 @@ Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or 
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** + derived **quantity**.  
 **Q50 leaning:** copy template Project into new Projects.  
-**Q49 open:** simples typically do not originate Relations — special kind vs config that disables Relations.  
+**Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
 See Q16, Q20–Q39, Q49–Q51 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
