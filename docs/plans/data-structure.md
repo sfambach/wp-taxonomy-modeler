@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.74-plan"
+version: "0.6.75-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -336,6 +336,7 @@ SimpleType Nodes ──(derive/compose)──► further Type Nodes
 | Piece | Role | Status |
 |-------|------|--------|
 | Relation `has_type` | Primary type binding (slot → type Node) | leaning (Q48) |
+| `Node.config.required` | Slot Pflicht/Optional (on the attribute/column Node — **not** on `has_type`) | **leaning (proto v27)** |
 | `Node.config.capabilities.originate_relations` | `false` on simple type Nodes in the template | **proposed (Q49)** |
 | `Node.config` other keys | Reserved for later (UI hints, defaults) — keep minimal | open |
 | Hard `kind` enum / PHP subclass | **Rejected** for MVP | decided lean |
@@ -923,7 +924,7 @@ Composition "Stückliste Platine XY"
 |---|----------|------------------|
 | **1** | Composition storage | **Node** with role `composition` |
 | **2** | Column definition | Named **Parameter**/column on the Composition (or its schema Vorlage): `name` + `type` |
-| **3** | Bauteil-Ref | First-class column type → target **Bauteil** Node id |
+| **3** | Catalog ref | Type **`node_ref`** + Relation **`ref_scope`** → catalog root (e.g. Bauteile); column name may stay „Bauteil“ |
 | **4** | Instance content | **CompositionRow** + cell **ParameterValue**s |
 | **5** | Bauteil (separate) | Catalog Node + Parameter defs/values (Q55) — not a Composition |
 
@@ -960,7 +961,7 @@ Level — Bauteil (separate)
 | Collection `enum` (e.g. `Bauart`) | composed | Bauteil Bauform |
 | Collection `list` (e.g. `RefDes`) | composed | BOM Reference |
 | Collection `table` | composed | may describe Composition schema shape |
-| **Bauteil-Ref** (needed) | TBD | Composition column → Katalog-Bauteil |
+| **`node_ref`** | reference | Composition column → Node id; scope via **`ref_scope`** → Katalogwurzel |
 
 ###### Worked Composition definitions — Spalten + Typen
 
@@ -1032,7 +1033,7 @@ Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
 
 **Reject:** treating Widerstand / GPU-Karte as Composition; stuffing Bauteil properties into Composition columns except via Bauteil-Ref.
 
-**Gap:** formalize **Bauteil-Ref** column type (blocker #3).
+**Resolved lean (proto v27):** type **`node_ref`** (generic, cf. ACF Post Object) + Relation **`ref_scope`** → catalog root. Domain label „Bauteil“ / „Zutat“ stays the **column name**. Slot Pflicht = `config.required` on the column Node.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
@@ -1663,7 +1664,8 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 | Type key | Meaning | Built from |
 |----------|---------|------------|
 | `quantity` (*Größe* / Wert mit Einheit — not Messung) | Displayable Größe with unit | **`int` or `double`** + optional **Präfix** + **Basiseinheit** |
-| `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `string`) + **selection method** |
+| `node_ref` | Pointer to another Node (select) | Scope = Relation **`ref_scope`** → catalog root; children = options |
+| `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `text`) + **selection method** |
 
 ```text
 quantity / Wert mit Einheit

@@ -9,10 +9,11 @@
  * Collection (Q52): enum is created like list — one typed column + (for enum) closed options.
  *
  * Sibling order (Q13): explicit `position`.
- * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
+ * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int);
+ *   node_ref uses ref_scope → catalog root. Slot Pflicht = Node.config.required.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v26";
+const STORAGE_KEY = "wtt-proto-tree-split-v27";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -37,6 +38,8 @@ const REL_BASE_TYPE = "base_type";
 const REL_ALLOWS_PREFIX = "allows_prefix";
 /** Präfix ─[multiplikator]→ int, props.value = scale factor */
 const REL_MULTIPLIKATOR = "multiplikator";
+/** node_ref slot/type ─[ref_scope]→ catalog root (children = selectable targets) */
+const REL_REF_SCOPE = "ref_scope";
 const SIMPLE_TYPE_NAMES = ["int", "double", "text", "textarea", "char", "bool"];
 const COLLECTION_KIND_NAMES = ["list", "table", "enum"];
 const QTY_SEP = "|";
@@ -45,6 +48,7 @@ const EDGE_LABEL_SUGGESTIONS = [
   REL_BASE_TYPE,
   REL_ALLOWS_PREFIX,
   REL_MULTIPLIKATOR,
+  REL_REF_SCOPE,
   "references",
   "part_of",
   "depends_on",
@@ -62,7 +66,7 @@ const DEFAULT_PREFIX_FACTORS = {
 };
 
 /**
- * @typedef {{ id: string, parentId: string|null, name: string, position: number, description?: string, template?: boolean }} ProtoNode
+ * @typedef {{ id: string, parentId: string|null, name: string, position: number, description?: string, template?: boolean, config?: { required?: boolean } }} ProtoNode
  */
 /**
  * @typedef {{
@@ -162,6 +166,9 @@ function createNode(parentId, name, position, opts = {}) {
   /** @type {ProtoNode} */
   const node = { id, parentId, name, position, description: opts.description || "" };
   if (opts.template) node.template = true;
+  if (opts.config && typeof opts.config === "object") {
+    node.config = { ...opts.config };
+  }
   nodes.set(id, node);
   return id;
 }
@@ -228,12 +235,13 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const bauteileRootId = createNode(projectRootId, "Bauteile", 2, {
     template: mark,
     description:
-      "Katalog (kein Composition): Bauteilgruppen mit Parametern. Erscheinen in BOM nur als Bauteil-Ref.",
+      "Katalog (kein Composition): Bauteilgruppen mit Parametern. In BOM als node_ref + ref_scope → diese Wurzel.",
   });
 
   const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
     template: mark,
-    description: "Simples: int/double/text/textarea/char/bool · quantity · Collection.",
+    description:
+      "Simples: int/double/text/textarea/char/bool · quantity · node_ref · Collection.",
   });
   const tInt = createNode(dataTypesRootId, "int", 0, {
     description: "Ganze Zahl.",
@@ -257,8 +265,12 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
     description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
   });
+  const tNodeRef = createNode(dataTypesRootId, "node_ref", 7, {
+    description:
+      "Verweis auf einen anderen Node (wie ACF Post Object). Auswahlbereich via Relation ref_scope → Katalogwurzel.",
+  });
 
-  const collectionId = createNode(dataTypesRootId, "Collection", 7, {
+  const collectionId = createNode(dataTypesRootId, "Collection", 8, {
     template: mark,
     description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
   });
@@ -352,6 +364,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
       tChar,
       tBool,
       tQuantity,
+      tNodeRef,
       tList,
       tTable,
       tEnum,
@@ -410,7 +423,6 @@ function seedCompositionSimplesDemo(compositionsRootId, core) {
  */
 function seedBomTestData(compositionsRootId, core) {
   const { types, pref, baseUnitsRootId, prefixesRootId, bauteileRootId } = core;
-  void bauteileRootId;
 
   // enum like list: Bauart → Option ─[has_type]→ text → closed options
   const bauart = createNode(types.tEnum, "Bauart", 0, {
@@ -499,37 +511,64 @@ function seedBomTestData(compositionsRootId, core) {
 
   const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
-      "BOM-Zeile: zuerst Bauteil wählen → Wert/Präfix richten sich nach der Gruppe; Einheit typfest.",
+      "BOM-Zeile: Bauteil = node_ref (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
   const cPart = createNode(bomCompId, "Bauteil", 0, {
-    description: "Bauteil-Ref → Kataloggruppe (Widerstand / Kondensator).",
+    description:
+      "node_ref → Kataloggruppe. has_type → node_ref; ref_scope → Bauteile. Pflicht (config.required).",
+    config: { required: true },
   });
   const cRef = createNode(bomCompId, "Reference", 1, {
-    description: "RefDes — has_type → RefDes (list).",
+    description: "RefDes — has_type → RefDes (list). Pflicht.",
+    config: { required: true },
   });
   const cVal = createNode(bomCompId, "Wert", 2, {
-    description: "Größe aus Bauteil-Schema: double + Präfix; Einheit von Bauteil.Einheit.",
+    description: "Größe aus Bauteil-Schema: double + Präfix; Einheit von Bauteil.Einheit. Pflicht.",
+    config: { required: true },
   });
   pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
   const cFp = createNode(bomCompId, "Footprint", 3, {
-    description: "Bauform — has_type → Bauart (enum).",
+    description: "Bauform — has_type → Bauart (enum). Optional.",
+    config: { required: false },
   });
   const cQty = createNode(bomCompId, "Menge", 4, {
-    description: "Stückzahl (int).",
+    description: "Stückzahl (int). Pflicht.",
+    config: { required: true },
+  });
+  const cDesc = createNode(bomCompId, "Beschreibung", 5, {
+    description: "Freitext — has_type → textarea. Optional.",
+    config: { required: false },
   });
 
+  pushEdge(cPart, types.tNodeRef, REL_HAS_TYPE);
+  pushEdge(cPart, bauteileRootId, REL_REF_SCOPE);
   pushEdge(cRef, refDes, REL_HAS_TYPE);
   pushEdge(cFp, bauart, REL_HAS_TYPE);
   pushEdge(cQty, types.tInt, REL_HAS_TYPE);
+  pushEdge(cDesc, types.tTextarea, REL_HAS_TYPE);
 
   tableCells.set(bomCompId, [
-    [widerstand, "R1", formatQuantityCell({ v: "10", p: "k", u: "Ohm" }), "0603", "2"],
-    [kondensator, "C1", formatQuantityCell({ v: "100", p: "n", u: "Farad" }), "0603", "4"],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""],
-    ["", "", "", "", ""],
+    [
+      widerstand,
+      "R1",
+      formatQuantityCell({ v: "10", p: "k", u: "Ohm" }),
+      "0603",
+      "2",
+      "10k Pull-up",
+    ],
+    [
+      kondensator,
+      "C1",
+      formatQuantityCell({ v: "100", p: "n", u: "Farad" }),
+      "0603",
+      "4",
+      "Entkopplung",
+    ],
+    ["", "", "", "", "", ""],
+    ["", "", "", "", "", ""],
+    ["", "", "", "", "", ""],
   ]);
 
   return bomCompId;
@@ -807,6 +846,7 @@ function typeKey(typeNode) {
   if (["text", "string", "varchar"].includes(k)) return "text";
   if (["textarea", "longtext", "multiline"].includes(k)) return "textarea";
   if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
+  if (["node_ref", "noderef", "ref"].includes(k)) return "node_ref";
   const kind = collectionKindOf(typeNode);
   if (kind === "enum") return "enum";
   if (kind === "list") return "list";
@@ -884,6 +924,47 @@ function findBauteileRoot() {
 function bauteilCatalogOptions() {
   const root = findBauteileRoot();
   return root ? childrenOf(root.id) : [];
+}
+
+/**
+ * Catalog root for a node_ref slot/type via Relation ref_scope.
+ * Prefer slot edge; fall back to type edge (specialized node_ref).
+ * @param {string} slotId
+ * @returns {ProtoNode|null}
+ */
+function refScopeRootOf(slotId) {
+  const se = findEdge(slotId, REL_REF_SCOPE);
+  if (se && nodes.has(se.to)) return nodes.get(se.to);
+  const tn = typeNodeOf(slotId);
+  if (tn) {
+    const te = findEdge(tn.id, REL_REF_SCOPE);
+    if (te && nodes.has(te.to)) return nodes.get(te.to);
+  }
+  return null;
+}
+
+/** Selectable targets for a node_ref slot = children of ref_scope root. */
+function nodeRefOptions(slotId) {
+  const root = refScopeRootOf(slotId);
+  if (root) return childrenOf(root.id);
+  // Legacy fallback: Bauteile catalog when scope missing
+  return bauteilCatalogOptions();
+}
+
+/** Slot/parameter Pflicht? Lives on the Node (config.required), not on has_type. */
+function isSlotRequired(nodeOrId) {
+  const n = typeof nodeOrId === "string" ? nodes.get(nodeOrId) : nodeOrId;
+  return Boolean(n?.config?.required);
+}
+
+function setSlotRequired(nodeId, required) {
+  if (!isProjectEditable()) return;
+  const n = nodes.get(nodeId);
+  if (!n) return;
+  if (!n.config) n.config = {};
+  n.config.required = Boolean(required);
+  persist();
+  renderRight();
 }
 
 /** Named parameter child of a Bauteilgruppe (Wert / Präfix / Einheit). */
@@ -984,16 +1065,20 @@ function buildAllowedPrefixesPanel(unitNode) {
 function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {}) {
   const key = typeKey(typeNode);
 
-  if (opts.mode === "bauteil") {
+  if (key === "node_ref") {
     const select = document.createElement("select");
     select.className = "form-control";
     select.setAttribute("aria-label", ariaLabel);
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "— Bauteil wählen —";
+    const scope = opts.slotId ? refScopeRootOf(opts.slotId) : null;
+    empty.textContent = scope
+      ? `— ${scope.name} wählen —`
+      : "— Node wählen —";
     select.append(empty);
     const cur = value == null ? "" : String(value);
-    for (const p of bauteilCatalogOptions()) {
+    const options = opts.slotId ? nodeRefOptions(opts.slotId) : bauteilCatalogOptions();
+    for (const p of options) {
       const opt = document.createElement("option");
       opt.value = p.id;
       opt.textContent = p.name;
@@ -1410,7 +1495,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 26,
+    version: 27,
     projects,
     activeProjectId,
     rootId,
@@ -1508,9 +1593,10 @@ function restore() {
           ...(e.props && typeof e.props === "object" ? { props: { ...e.props } } : {}),
         }));
     }
-    // Heal: ensure every node has description string
+    // Heal: ensure every node has description string; normalize config
     for (const n of nodes.values()) {
       if (typeof n.description !== "string") n.description = "";
+      if (n.config != null && typeof n.config !== "object") delete n.config;
     }
     dataTypeNodes();
     prefixOptionNames();
@@ -2116,7 +2202,35 @@ function renderDetail() {
   hint.textContent =
     "Name/Beschreibung sind freier Text (Schlüssel = id). Struktur ändern (Kinder/Relationen) im Template gesperrt.";
 
+  /** Slot constraint: Pflicht/Optional hangs on the Node (config.required), not on has_type. */
+  let requiredBlock = null;
+  if (findEdge(node.id, REL_HAS_TYPE)) {
+    requiredBlock = document.createElement("div");
+    requiredBlock.className = "order-block slot-required";
+    const rl = document.createElement("div");
+    rl.className = "field-label";
+    rl.textContent = "Feldpflicht (config.required)";
+    const row = document.createElement("label");
+    row.className = "choice-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = isSlotRequired(node);
+    cb.disabled = !editable;
+    cb.addEventListener("change", () => setSlotRequired(node.id, cb.checked));
+    const span = document.createElement("span");
+    span.textContent = "Pflichtfeld";
+    row.append(cb, span);
+    const rh = document.createElement("p");
+    rh.className = "muted";
+    rh.style.margin = "0.25rem 0 0";
+    rh.style.fontSize = "0.8rem";
+    rh.textContent =
+      "Am Slot-Knoten, nicht an der Relation has_type. Typ = Form; required = Ausfüllregel.";
+    requiredBlock.append(rl, row, rh);
+  }
+
   card.append(h2, field, descField, orderBlock, meta);
+  if (requiredBlock) card.append(requiredBlock);
   if (isBaseUnitNode(node)) {
     card.append(buildAllowedPrefixesPanel(node));
   }
@@ -2187,6 +2301,13 @@ function renderTableView(store, title) {
     const tn = typeNodeOf(col.id);
     const label = document.createElement("span");
     label.textContent = col.name;
+    if (isSlotRequired(col)) {
+      const star = document.createElement("abbr");
+      star.className = "req-star";
+      star.title = "Pflichtfeld (config.required)";
+      star.textContent = "*";
+      label.append(star);
+    }
     th.append(label);
     if (tn) {
       const badge = document.createElement("span");
@@ -2194,18 +2315,20 @@ function renderTableView(store, title) {
       badge.textContent = tn.name;
       th.append(document.createTextNode(" "), badge);
     }
+    const reqHint = isSlotRequired(col) ? " · Pflicht" : " · optional";
     th.title = tn
-      ? `„${col.name}“ has_type ${tn.name} → ${typeKey(tn)}`
-      : `Spalte „${col.name}“ ohne Typ (Text)`;
+      ? `„${col.name}“ has_type ${tn.name} → ${typeKey(tn)}${reqHint}`
+      : `Spalte „${col.name}“ ohne Typ (Text)${reqHint}`;
     headRow.append(th);
   }
   thead.append(headRow);
 
-  const partColIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "bauteil");
+  // Part-driven: first node_ref column (scoped catalog pick), not hardcoded name "Bauteil"
+  const partColIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "node_ref");
   const isBomPartDriven = partColIdx >= 0;
 
   if (isBomPartDriven) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: Bauteil wählen → Wert/Präfix nach Gruppe; Einheit typfest (Ohm/Farad); Präfixe = <code>allows_prefix</code>.`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>node_ref</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. * = Pflicht (<code>config.required</code>).`;
   }
 
   const tbody = document.createElement("tbody");
@@ -2221,21 +2344,19 @@ function renderTableView(store, title) {
       const td = document.createElement("td");
       const col = cols[c];
       const tn = typeNodeOf(col.id);
-      const colName = col.name.trim().toLowerCase();
+      const colKey = typeKey(tn);
       /** @type {Record<string, unknown>} */
-      let cellOpts = {};
-      if (colName === "bauteil") {
-        cellOpts = { mode: "bauteil" };
-      } else if (typeKey(tn) === "quantity" && isBomPartDriven) {
-        cellOpts = { fixedUnit, requirePart: true };
+      let cellOpts = { slotId: col.id };
+      if (colKey === "quantity" && isBomPartDriven) {
+        cellOpts = { slotId: col.id, fixedUnit, requirePart: true };
       }
       const control = createTypedCellControl(
         tn,
         grid[r]?.[c] ?? "",
         (v) => {
           setCellValue(store, node.id, r, c, v);
-          if (colName === "bauteil") {
-            // Sync Einheit in Wert-Zelle when Bauteil changes
+          if (colKey === "node_ref" && c === partColIdx) {
+            // Sync Einheit in Wert-Zelle when node_ref (Bauteil) changes
             const wertIdx = cols.findIndex(
               (x) => typeKey(typeNodeOf(x.id)) === "quantity"
             );
@@ -2768,13 +2889,11 @@ function renderFrontend() {
       }
     }
     let rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
-    if (cols[titleIdx]?.name.trim().toLowerCase() === "bauteil" && nodes.has(rowTitle)) {
+    if (typeKey(typeNodeOf(cols[titleIdx]?.id)) === "node_ref" && nodes.has(rowTitle)) {
       rowTitle = nodes.get(rowTitle).name;
-    } else if (nodes.has(values[titleIdx] || "")) {
-      /* keep */
     }
-    // Prefer Bauteil column as title when present
-    const partIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "bauteil");
+    // Prefer first node_ref column as title when present
+    const partIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "node_ref");
     if (partIdx >= 0 && values[partIdx] && nodes.has(values[partIdx])) {
       rowTitle = nodes.get(values[partIdx]).name;
     }
@@ -2799,7 +2918,7 @@ function renderFrontend() {
       const dt = document.createElement("dt");
       dt.textContent = cols[c].name;
       const dd = document.createElement("dd");
-      if (cols[c].name.trim().toLowerCase() === "bauteil" && nodes.has(raw)) {
+      if (key === "node_ref" && nodes.has(raw)) {
         display = nodes.get(raw).name;
       }
       if (key === "quantity") {

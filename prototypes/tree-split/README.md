@@ -8,10 +8,11 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 | Tab | Role |
 |-----|------|
-| **Knoten** | Eigenschaften + Relationen; bei Basiseinheit: **zulässige Präfixe** |
+| **Knoten** | Eigenschaften + Relationen; bei Basiseinheit: **zulässige Präfixe**; bei typed Slots: **Pflicht (config.required)** |
 | **Backend** | Dateneingabe nur für **Compositionen** (Tabelle) |
 | **Frontend** | Vereinfachte Seitenvorschau |
 | **Feld** | HTML-Spielwiese — unangetastet |
+
 
 ## Root layout
 
@@ -24,14 +25,16 @@ Project root
     └── Kondensator  Wert/Präfix/Einheit→Farad
 ```
 
-**Bauteile sind kein Composition** und keine Tabelle — nur Katalog mit Parameter-Schema. In der BOM erscheinen sie als **Bauteil-Ref**.
+**Bauteile sind kein Composition** und keine Tabelle — nur Katalog mit Parameter-Schema. In der BOM erscheinen sie als **`node_ref`** (Auswahlbereich via `ref_scope` → Bauteile).
 
 ## Goal path — BOM-Zeile
 
 1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
-2. **BOM — Board** → Backend: Spalte **Bauteil** wählen.
+2. **BOM — Board** → Backend: Spalte **Bauteil** (`node_ref` + `ref_scope`→Bauteile) wählen.
 3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
-4. Erlaubte Präfixe = `allows_prefix` der Einheit (Ohm/Farad im Knoten-Tab).
+4. **Beschreibung** = `textarea` (optional).
+5. Erlaubte Präfixe = `allows_prefix` der Einheit (Ohm/Farad im Knoten-Tab).
+6. Pflicht/Optional = `config.required` am **Slot-Knoten** (nicht an `has_type`).
 
 ## Projects
 
@@ -40,7 +43,7 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v26` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v27` — **Reset** after upgrade.
 
 ## Simple types (HTML lean)
 
@@ -51,9 +54,23 @@ State: `localStorage` key `wtt-proto-tree-split-v26` — **Reset** after upgrade
 | `char` | 1 Zeichen | — |
 | `int` / `double` / `bool` | number / checkbox | — |
 
+## Reference type
+
+| Type | Widget | Scope |
+|------|--------|-------|
+| `node_ref` | `<select>` of target Nodes | Relation **`ref_scope`** → Katalogwurzel (Kinder = Optionen) |
+
+Name lean: **`node_ref`** (generic Node pointer, cf. ACF Post Object) — not `bauteil` / `tree_part` / `ast`. Domain label „Bauteil“ stays the **column name**; the type is reusable (Zutat, GPU, …).
+
+## Slot properties
+
+| Concern | Where | Notes |
+|---------|-------|-------|
+| Type / Form | Relation **`has_type`** → type Node | Shape of the value |
+| Pflicht / Optional | **`Node.config.required`** on the slot | Not on the type edge |
 
 ## Edges
 
 ```text
-has_type | allows_prefix | multiplikator | …
+has_type | allows_prefix | multiplikator | ref_scope | …
 ```

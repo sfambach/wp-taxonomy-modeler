@@ -539,6 +539,14 @@ body {
   vertical-align: middle;
 }
 
+.req-star {
+  margin-left: 0.15rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: help;
+}
+
 .data-table .row-num {
   width: 2.25rem;
   text-align: center;
