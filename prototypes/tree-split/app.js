@@ -2,9 +2,10 @@
  * WTT tree-split prototype — in-memory Node model.
  * Shape mirrors planning Node: { id, parentId, name, position, description? }
  *
- * Two demo Projects (switcher):
- *   - Template (nur lesen) — Datentypen inkl. Collection(list/table/enum), Präfix, Basiseinheit
- *   - BOM Testprojekt (editierbar) — Kern-Kopie + Bauart (wie list), Spalten(table), …
+ * Three demo Projects (switcher):
+ *   - Template (nur lesen)
+ *   - Composition Simples (editierbar) — Zusammenstellung nur mit Simple-Typen
+ *   - BOM Testprojekt (editierbar) — später: quantity / enum / Bauteil-Ref
  *
  * Collection (Q52): enum is created like list — one typed column + (for enum) closed options.
  *
@@ -12,9 +13,10 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v14";
+const STORAGE_KEY = "wtt-proto-tree-split-v15";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
+const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
 const PROJECT_KIND_BOM_TEST = "bom-test";
 const RIGHT_TABS = ["node", "relations", "table", "table2", "form", "convert"];
 const TAB_ARIA = {
@@ -63,7 +65,7 @@ const DEFAULT_PREFIX_FACTORS = {
  *   id: string,
  *   name: string,
  *   description: string,
- *   kind: 'template'|'bom-test',
+ *   kind: 'template'|'composition-simples'|'bom-test',
  *   rootId: string,
  *   dataTypesRootId: string,
  *   prefixesRootId: string,
@@ -220,7 +222,9 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const tString = createNode(dataTypesRootId, "string", 2, {
     description: "Freitext.",
   });
-  createNode(dataTypesRootId, "char", 3, { description: "Einzelnes Zeichen." });
+  const tChar = createNode(dataTypesRootId, "char", 3, {
+    description: "Einzelnes Zeichen.",
+  });
   const tBool = createNode(dataTypesRootId, "bool", 4, {
     description: "Wahrheitswert true/false.",
   });
@@ -315,6 +319,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
       tInt,
       tDouble,
       tString,
+      tChar,
       tBool,
       tQuantity,
       tList,
@@ -322,6 +327,53 @@ function seedTemplateCore(projectRootId, opts = {}) {
       tEnum,
     },
   };
+}
+
+/**
+ * Phase-1 Composition demo: Zusammenstellung whose columns are **only simple types**.
+ * Open the Composition node → tab „Tabelle“ to edit instance rows (CompositionRows as grid).
+ * Later phases add quantity / enum / Bauteil-Ref columns.
+ * @param {string} projectRootId
+ * @param {ReturnType<typeof seedTemplateCore>} core
+ * @returns {string} composition node id
+ */
+function seedCompositionSimplesDemo(projectRootId, core) {
+  const { types } = core;
+  const compId = createNode(projectRootId, "Zusammenstellung — nur Simples", 1, {
+    description:
+      "Composition-Definition: Spalten nur simple Typen. Instanz = Tabellenzeilen (Phase 1).",
+  });
+  const cName = createNode(compId, "Bezeichnung", 0, {
+    description: "Spalte → string",
+  });
+  const cCount = createNode(compId, "Anzahl", 1, {
+    description: "Spalte → int",
+  });
+  const cActive = createNode(compId, "Aktiv", 2, {
+    description: "Spalte → bool",
+  });
+  const cCode = createNode(compId, "Code", 3, {
+    description: "Spalte → char",
+  });
+  const cFactor = createNode(compId, "Faktor", 4, {
+    description: "Spalte → double",
+  });
+  pushEdge(cName, types.tString, REL_HAS_TYPE);
+  pushEdge(cCount, types.tInt, REL_HAS_TYPE);
+  pushEdge(cActive, types.tBool, REL_HAS_TYPE);
+  pushEdge(cCode, types.tChar, REL_HAS_TYPE);
+  pushEdge(cFactor, types.tDouble, REL_HAS_TYPE);
+
+  // Seed two example instance rows (CompositionRow payloads as grid strings)
+  tableCells.set(compId, [
+    ["Zeile A", "3", "true", "X", "1.5"],
+    ["Zeile B", "10", "false", "Y", "0.25"],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+  ]);
+
+  return compId;
 }
 
 /**
@@ -494,8 +546,27 @@ function createInitial() {
     baseUnitsRootId: templateCore.baseUnitsRootId,
   };
 
-  // 2) BOM test project — editable; template core copy + Collection instances + BOM trees
-  const bomRootId = createNode(null, "BOM Testprojekt", 1, {
+  // 2) Composition Simples — editable; columns = int/double/string/char/bool only
+  const simplesRootId = createNode(null, "Composition Simples", 1, {
+    template: false,
+    description:
+      "Phase 1: Zusammenstellung nur mit Simple-Typen. Später: quantity / enum / Bauteil-Ref.",
+  });
+  const simplesCore = seedTemplateCore(simplesRootId, { markTemplate: false });
+  const simplesCompId = seedCompositionSimplesDemo(simplesRootId, simplesCore);
+  const simplesProject = {
+    id: "proj-composition-simples",
+    name: "Composition Simples",
+    description: "Composition-Demo Phase 1 — nur Simples.",
+    kind: PROJECT_KIND_COMPOSITION_SIMPLES,
+    rootId: simplesRootId,
+    dataTypesRootId: simplesCore.dataTypesRootId,
+    prefixesRootId: simplesCore.prefixesRootId,
+    baseUnitsRootId: simplesCore.baseUnitsRootId,
+  };
+
+  // 3) BOM test project — editable; template core copy + Collection instances + BOM trees
+  const bomRootId = createNode(null, "BOM Testprojekt", 2, {
     template: false,
     description:
       "Editierbar: Bauart (enum wie list), RefDes (list), Spalten (table), Ohm/Farad/…, Stückliste, Bauteile.",
@@ -513,9 +584,9 @@ function createInitial() {
     baseUnitsRootId: bomCore.baseUnitsRootId,
   };
 
-  projects = [templateProject, bomProject];
-  applyProject(templateProject);
-  selectedId = templateRootId;
+  projects = [templateProject, simplesProject, bomProject];
+  applyProject(simplesProject);
+  selectedId = simplesCompId;
   void schemaId;
 }
 
@@ -1132,7 +1203,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 14,
+    version: 15,
     projects,
     activeProjectId,
     rootId,
@@ -1286,6 +1357,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v11");
     localStorage.removeItem("wtt-proto-tree-split-v12");
     localStorage.removeItem("wtt-proto-tree-split-v13");
+    localStorage.removeItem("wtt-proto-tree-split-v14");
   } catch {
     /* ignore */
   }
@@ -1410,7 +1482,9 @@ function syncProjectSelect() {
   opt.textContent =
       p.kind === PROJECT_KIND_TEMPLATE
         ? `${p.name} (nur lesen)`
-        : `${p.name} (editierbar)`;
+        : p.kind === PROJECT_KIND_COMPOSITION_SIMPLES
+          ? `${p.name} (Phase 1 · Simples)`
+          : `${p.name} (editierbar)`;
     sel.append(opt);
   }
   sel.value = projects.some((p) => p.id === activeProjectId)
@@ -1847,7 +1921,7 @@ function renderTableView(store, title) {
     return;
   }
 
-  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Widgets aus <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen.`;
+  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Composition-Instanz: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ-Widgets via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen (= CompositionRows).`;
   wrap.append(lead);
 
   const grid = ensureTableGrid(
