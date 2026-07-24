@@ -571,17 +571,15 @@ Template Project → Datentypen / Type     ← Project.type_node
 ├── string                    ← simple
 ├── char                      ← simple
 ├── bool                      ← simple
-├── enum                      ← derived kind in template (no concrete values)
-│   └── (domain: Bauart + values — e.g. BOM Test)
+├── enum                      ← Collection kind (Q52); concrete enums e.g. Bauart in domain projects
 └── quantity                  ← derived (in template) — Größe, not Messung
     ├── value     → numeric simple (int | double; Q37)
     ├── prefix?   → Präfix (unit group with base_unit)
     └── base_unit → Basiseinheit
-# later / exploring Q52:
-└── Collection?
-    ├── list      ← 1 column
-    ├── table     ← n columns
-    └── enum      ← closed list (already present; may move under Collection)
+└── Collection                ← Q52 decided
+    ├── list
+    ├── table
+    └── enum
 ```
 
 #### Collection → list / table / enum (Q52 **decided** / Q53 open)

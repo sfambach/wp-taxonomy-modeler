@@ -27,7 +27,9 @@ Last synced from plan version **0.6.57-plan** (2026-07-24).
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
 | UI prototype `prototypes/tree-split` v14 (Collection; Bauart/RefDes/Spalten) | In progress |
-| **Q52/Q53:** Collection → list / table / enum (**enum = list + closed options**) | Exploring |
+| **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
+| **Q53:** XOR kind binding (parent vs has_type) | Open (strong lean) |
+| Core types: template has **simples** + **quantity** + **Collection** (Q36/Q52) | Done (planning) |
 | **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
 | **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
