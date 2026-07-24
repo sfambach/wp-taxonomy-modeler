@@ -4,7 +4,7 @@
  *
  * Projects (switcher):
  *   - Template (nur lesen)
- *   - Demo (editierbar) — Rezept (simples) + BOM — Board unter Compositionen
+ *   - Demo (editierbar) — Compositionen (Rezept/BOM) + Bauteile-Katalog
  *
  * Collection (Q52): enum is created like list — one typed column + (for enum) closed options.
  *
@@ -12,7 +12,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v22";
+const STORAGE_KEY = "wtt-proto-tree-split-v23";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -208,7 +208,7 @@ function pushEdge(from, to, label, props) {
 
 /**
  * Pure template core under a project root.
- * Root children are only **Typen** and **Compositionen**; everything else hangs under those.
+ * Root children: **Typen**, **Compositionen**, **Bauteile** (Katalog ≠ Composition/Tabelle).
  * @param {string} projectRootId
  * @param {{ markTemplate?: boolean }} [opts]
  */
@@ -221,7 +221,12 @@ function seedTemplateCore(projectRootId, opts = {}) {
   });
   const compositionsRootId = createNode(projectRootId, "Compositionen", 1, {
     template: mark,
-    description: "Zusammenstellungen (Composition-Definitionen und -Instanzen).",
+    description: "Zusammenstellungen (Composition-Definitionen und -Instanzen) — Tabellen/Zeilen.",
+  });
+  const bauteileRootId = createNode(projectRootId, "Bauteile", 2, {
+    template: mark,
+    description:
+      "Katalog (kein Composition): Bauteilgruppen mit Parametern. Erscheinen in BOM nur als Bauteil-Ref.",
   });
 
   const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
@@ -327,6 +332,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
   return {
     typesRootId,
     compositionsRootId,
+    bauteileRootId,
     dataTypesRootId,
     prefixesRootId,
     baseUnitsRootId,
@@ -391,12 +397,13 @@ function seedCompositionSimplesDemo(compositionsRootId, core) {
 }
 
 /**
- * BOM demo extras under Compositionen (+ electronics units under Typen/Basiseinheit).
+ * BOM under Compositionen + Bauteile catalog under project Bauteile root.
  * @param {string} compositionsRootId
  * @param {ReturnType<typeof seedTemplateCore>} core
  */
 function seedBomTestData(compositionsRootId, core) {
-  const { types, pref, baseUnitsRootId, prefixesRootId } = core;
+  const { types, pref, baseUnitsRootId, prefixesRootId, bauteileRootId } = core;
+  void bauteileRootId;
 
   // enum like list: Bauart → Option ─[has_type]→ string → closed options
   const bauart = createNode(types.tEnum, "Bauart", 0, {
@@ -443,11 +450,13 @@ function seedBomTestData(compositionsRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
-  // Katalog: Bauteilgruppe bestimmt Parameter (Wert double, Präfix, Einheit fix)
-  const partsId = createNode(compositionsRootId, "Bauteile", nextPosition(compositionsRootId), {
-    description:
-      "Katalog: Bauteilgruppe wählen → Parameter-Schema. Einheit ist typfest; Präfixe = allows_prefix der Einheit.",
-  });
+  // Katalog unter Projekt-Root → Bauteile (nicht unter Compositionen)
+  const partsId = core.bauteileRootId;
+  const partNode = nodes.get(partsId);
+  if (partNode) {
+    partNode.description =
+      "Katalog: Bauteilgruppe → Parameter-Schema. Kein Composition/keine Tabelle. Einheit typfest; Präfixe = allows_prefix.";
+  }
 
   const widerstand = createNode(partsId, "Widerstand", 0, {
     description: "Bauteilgruppe: Wert (double) + Präfix; Einheit immer Ohm.",
@@ -545,6 +554,8 @@ function setActiveProject(projectId) {
   // Root + Compositionen aufklappen, damit Compositionen sichtbar sind
   collapsed.delete(project.rootId);
   const comps = childrenOf(project.rootId).find((n) => n.name === "Compositionen");
+  const bauteile = childrenOf(project.rootId).find((n) => n.name === "Bauteile");
+  if (bauteile) collapsed.delete(bauteile.id);
   if (comps) {
     collapsed.delete(comps.id);
     const bom = childrenOf(comps.id).find((n) => n.name === "BOM — Board");
@@ -593,7 +604,7 @@ function createInitial() {
   const demoRootId = createNode(null, "Demo", 1, {
     template: false,
     description:
-      "Editierbares Demo: Compositionen mit Rezept (Simples) und BOM — Board (quantity/enum/list) + Bauteile.",
+      "Editierbares Demo: Compositionen (Rezept/BOM) + Bauteile-Katalog (kein Composition).",
   });
   const demoCore = seedTemplateCore(demoRootId, { markTemplate: false });
   const rezeptId = seedCompositionSimplesDemo(
@@ -604,7 +615,7 @@ function createInitial() {
   const demoProject = {
     id: "proj-demo",
     name: "Demo",
-    description: "Rezept + BOM + Bauteile unter Compositionen.",
+    description: "Compositionen + Bauteile-Katalog (getrennt).",
     kind: PROJECT_KIND_COMPOSITION_SIMPLES,
     rootId: demoRootId,
     dataTypesRootId: demoCore.dataTypesRootId,
@@ -619,10 +630,7 @@ function createInitial() {
   // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
-  const bauteile = childrenOf(demoCore.compositionsRootId).find(
-    (n) => n.name === "Bauteile"
-  );
-  if (bauteile) collapsed.delete(bauteile.id);
+  if (demoCore.bauteileRootId) collapsed.delete(demoCore.bauteileRootId);
   void rezeptId;
 }
 
@@ -857,11 +865,9 @@ function enumValueNames(enumNodeId) {
 }
 
 
-/** Catalog root „Bauteile“ under Compositionen of the active project. */
+/** Catalog root „Bauteile“ — sibling of Typen/Compositionen (not a Composition). */
 function findBauteileRoot() {
-  const comps = childrenOf(rootId).find((n) => n.name === "Compositionen");
-  if (!comps) return null;
-  return childrenOf(comps.id).find((n) => n.name === "Bauteile") || null;
+  return childrenOf(rootId).find((n) => n.name === "Bauteile") || null;
 }
 
 /** Selectable Bauteilgruppen (direct children of Bauteile). */
@@ -1353,7 +1359,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 22,
+    version: 23,
     projects,
     activeProjectId,
     rootId,
@@ -1504,6 +1510,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v19");
     localStorage.removeItem("wtt-proto-tree-split-v20");
     localStorage.removeItem("wtt-proto-tree-split-v21");
+    localStorage.removeItem("wtt-proto-tree-split-v22");
   } catch {
     /* ignore */
   }
