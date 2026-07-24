@@ -2,6 +2,10 @@
  * WTT tree-split prototype — in-memory Node model.
  * Shape mirrors planning Node: { id, parentId, name, position, description? }
  *
+ * Two demo Projects (switcher):
+ *   - Template (rein) — Datentypen, Präfix, Basiseinheit only
+ *   - BOM Testprojekt — template-core copy + Spalten / Stückliste / Bauteile
+ *
  * Sibling order (Q13): explicit `position`.
  * Right pane tabs:
  *   - Knoten — name, description, sibling order (no relations here)
@@ -12,8 +16,10 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v11";
+const STORAGE_KEY = "wtt-proto-tree-split-v12";
 const TABLE_BODY_ROWS = 5;
+const PROJECT_KIND_TEMPLATE = "template";
+const PROJECT_KIND_BOM_TEST = "bom-test";
 const RIGHT_TABS = ["node", "relations", "table", "table2", "form", "convert"];
 const TAB_ARIA = {
   node: "tab-node",
@@ -53,6 +59,18 @@ const DEFAULT_PREFIX_FACTORS = {
 /**
  * @typedef {{ id: string, parentId: string|null, name: string, position: number, description?: string, template?: boolean }} ProtoNode
  */
+/**
+ * @typedef {{
+ *   id: string,
+ *   name: string,
+ *   description: string,
+ *   kind: 'template'|'bom-test',
+ *   rootId: string,
+ *   dataTypesRootId: string,
+ *   prefixesRootId: string,
+ *   baseUnitsRootId: string,
+ * }} ProtoProject
+ */
 /** @typedef {'node'|'relations'|'table'|'table2'|'form'|'convert'} RightTab */
 /**
  * @typedef {{ id: string, from: string, to: string, label: string, props?: { value?: string|number } }} ProtoEdge
@@ -82,6 +100,9 @@ const DEFAULT_PREFIX_FACTORS = {
 
 /** @type {Map<string, ProtoNode>} */
 let nodes = new Map();
+/** @type {ProtoProject[]} */
+let projects = [];
+let activeProjectId = "";
 let rootId = "";
 let selectedId = "";
 /** @type {Set<string>} */
@@ -178,28 +199,16 @@ function pushEdge(from, to, label, props) {
   return e;
 }
 
-function createInitial() {
-  nodes = new Map();
-  collapsed = new Set();
-  seq = 1;
-  tableCells = new Map();
-  tableCells2 = new Map();
-  formStates = new Map();
-  edges = [];
-  convertStates = new Map();
-  dataTypesRootId = "";
-  prefixesRootId = "";
-  baseUnitsRootId = "";
-  activeTab = "node";
-
-  rootId = createNode(null, "Template / BOM Demo", 0, {
-    template: true,
-    description: "Template-Projekt: Datentypen, Präfixe, Basiseinheiten und BOM-Demo.",
-  });
-
-  dataTypesRootId = createNode(rootId, "Datentypen", 0, {
-    template: true,
-    description: "Simple und abgeleitete Datentypen des Templates.",
+/**
+ * Pure template core under a project root: Datentypen + Präfix + Basiseinheit + Relations.
+ * @param {string} projectRootId
+ * @param {{ markTemplate?: boolean }} [opts]
+ */
+function seedTemplateCore(projectRootId, opts = {}) {
+  const mark = opts.markTemplate !== false;
+  const dataTypesRootId = createNode(projectRootId, "Datentypen", 0, {
+    template: mark,
+    description: "Simple und abgeleitete Datentypen (Template-Kern).",
   });
   const tInt = createNode(dataTypesRootId, "int", 0, {
     description: "Ganze Zahl.",
@@ -225,8 +234,8 @@ function createInitial() {
     description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
   });
 
-  prefixesRootId = createNode(rootId, "Präfix", 1, {
-    template: true,
+  const prefixesRootId = createNode(projectRootId, "Präfix", 1, {
+    template: mark,
     description: "SI-Präfixe; Multiplikator via Relation multiplikator → int.",
   });
   const prefixDefs = [
@@ -245,8 +254,8 @@ function createInitial() {
     pushEdge(id, tInt, REL_MULTIPLIKATOR, { value: factor });
   }
 
-  baseUnitsRootId = createNode(rootId, "Basiseinheit", 2, {
-    template: true,
+  const baseUnitsRootId = createNode(projectRootId, "Basiseinheit", 2, {
+    template: mark,
     description: "Physikalische Basiseinheiten; allows_prefix filtert sinnvolle Präfixe.",
   });
   const uOhm = createNode(baseUnitsRootId, "Ohm", 0, {
@@ -265,23 +274,34 @@ function createInitial() {
     description: "Elektrische Spannung.",
   });
 
-  // Ohm / Watt / Volt: broad SI set including k/M
   for (const u of [uOhm, uWatt, uVolt]) {
     for (const name of ["m", "k", "M", "µ", "n", "p"]) {
       pushEdge(u, pref[name], REL_ALLOWS_PREFIX);
     }
   }
-  // Farad: only ≤ 1 (no kilo/mega Farad)
   for (const name of ["p", "n", "µ", "m"]) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
-  // Meter: milli + kilo
   for (const name of ["m", "k"]) {
     pushEdge(uMeter, pref[name], REL_ALLOWS_PREFIX);
   }
 
-  const schemaId = createNode(rootId, "Spalten (BOM-Zeile)", 3, {
-    description: "Schema-Knoten: Kinder = Tabellenspalten.",
+  return {
+    dataTypesRootId,
+    prefixesRootId,
+    baseUnitsRootId,
+    types: { tInt, tDouble, tString, tBool, tEnum, tQuantity },
+  };
+}
+
+/**
+ * BOM demo trees only (not part of the pure template).
+ * @param {string} projectRootId
+ * @param {{ tInt: string, tString: string, tBool: string, tEnum: string, tQuantity: string }} types
+ */
+function seedBomTestData(projectRootId, types) {
+  const schemaId = createNode(projectRootId, "Spalten (BOM-Zeile)", 3, {
+    description: "BOM-Test: Schema-Knoten; Kinder = Tabellenspalten.",
   });
   const cRef = createNode(schemaId, "Reference", 0, {
     description: "Open RefDes-Liste (string).",
@@ -302,31 +322,108 @@ function createInitial() {
     description: "Lagerflag.",
   });
 
-  pushEdge(cRef, tString, REL_HAS_TYPE);
-  pushEdge(cVal, tQuantity, REL_HAS_TYPE);
-  pushEdge(cFp, tEnum, REL_HAS_TYPE);
-  pushEdge(cQty, tInt, REL_HAS_TYPE);
-  pushEdge(cLcsc, tString, REL_HAS_TYPE);
-  pushEdge(cStock, tBool, REL_HAS_TYPE);
+  pushEdge(cRef, types.tString, REL_HAS_TYPE);
+  pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
+  pushEdge(cFp, types.tEnum, REL_HAS_TYPE);
+  pushEdge(cQty, types.tInt, REL_HAS_TYPE);
+  pushEdge(cLcsc, types.tString, REL_HAS_TYPE);
+  pushEdge(cStock, types.tBool, REL_HAS_TYPE);
 
-  const listId = createNode(rootId, "Stückliste", 4, {
-    description: "Beispiel-Stückliste (Instanz-Knoten).",
+  const listId = createNode(projectRootId, "Stückliste", 4, {
+    description: "BOM-Test: Beispiel-Stückliste (Instanz-Knoten).",
   });
   createNode(listId, "C1 — 100 nF 0603", 0, { description: "Kondensator-Zeile." });
   createNode(listId, "R1 — 10 kΩ 0603", 1, { description: "Widerstands-Zeile." });
   createNode(listId, "U1 — ESP32-WROOM-32", 2, { description: "IC-Zeile." });
   createNode(listId, "D1 — LED green 0805", 3, { description: "Diode/LED-Zeile." });
 
-  const partsId = createNode(rootId, "Bauteile", 5, {
-    description: "Katalog-Ast (Demo).",
+  const partsId = createNode(projectRootId, "Bauteile", 5, {
+    description: "BOM-Test: Katalog-Ast (Demo).",
   });
   createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
   createNode(partsId, "Widerstand", 1, { description: "Kategorie Widerstand." });
   createNode(partsId, "IC", 2, { description: "Kategorie IC." });
   createNode(partsId, "Diode / LED", 3, { description: "Kategorie Diode/LED." });
 
-  selectedId = schemaId;
-  collapsed.clear();
+  return schemaId;
+}
+
+function applyProject(project) {
+  activeProjectId = project.id;
+  rootId = project.rootId;
+  dataTypesRootId = project.dataTypesRootId;
+  prefixesRootId = project.prefixesRootId;
+  baseUnitsRootId = project.baseUnitsRootId;
+}
+
+function setActiveProject(projectId) {
+  const project = projects.find((p) => p.id === projectId);
+  if (!project) return;
+  applyProject(project);
+  selectedId = project.rootId;
+  persist();
+  render();
+}
+
+function isProjectRoot(id) {
+  return projects.some((p) => p.rootId === id);
+}
+
+function createInitial() {
+  nodes = new Map();
+  collapsed = new Set();
+  seq = 1;
+  tableCells = new Map();
+  tableCells2 = new Map();
+  formStates = new Map();
+  edges = [];
+  convertStates = new Map();
+  projects = [];
+  dataTypesRootId = "";
+  prefixesRootId = "";
+  baseUnitsRootId = "";
+  activeTab = "node";
+
+  // 1) Pure template project — no BOM test data
+  const templateRootId = createNode(null, "Template", 0, {
+    template: true,
+    description: "Reines Template: nur Datentypen, Präfixe und Basiseinheiten (Q50).",
+  });
+  const templateCore = seedTemplateCore(templateRootId, { markTemplate: true });
+  const templateProject = {
+    id: "proj-template",
+    name: "Template",
+    description: "Reiner Template-Baum (kein BOM).",
+    kind: PROJECT_KIND_TEMPLATE,
+    rootId: templateRootId,
+    dataTypesRootId: templateCore.dataTypesRootId,
+    prefixesRootId: templateCore.prefixesRootId,
+    baseUnitsRootId: templateCore.baseUnitsRootId,
+  };
+
+  // 2) BOM test project — template core copy + Stückliste / Bauteile / Spalten
+  const bomRootId = createNode(null, "BOM Testprojekt", 1, {
+    template: false,
+    description: "Testprojekt für BOM: Schema, Stückliste und Bauteile (nicht Teil des Templates).",
+  });
+  const bomCore = seedTemplateCore(bomRootId, { markTemplate: false });
+  const schemaId = seedBomTestData(bomRootId, bomCore.types);
+  const bomProject = {
+    id: "proj-bom-test",
+    name: "BOM Testprojekt",
+    description: "BOM-Demo mit kopiertem Template-Kern + Testdaten.",
+    kind: PROJECT_KIND_BOM_TEST,
+    rootId: bomRootId,
+    dataTypesRootId: bomCore.dataTypesRootId,
+    prefixesRootId: bomCore.prefixesRootId,
+    baseUnitsRootId: bomCore.baseUnitsRootId,
+  };
+
+  projects = [templateProject, bomProject];
+  applyProject(templateProject);
+  selectedId = templateRootId;
+  // Keep schema selectable when switching to BOM later
+  void schemaId;
 }
 
 function healNamedRoot(currentId, name) {
@@ -711,8 +808,8 @@ function descendants(id) {
 }
 
 function deleteNode(id) {
-  if (id === rootId) {
-    window.alert("Root kann nicht gelöscht werden.");
+  if (isProjectRoot(id)) {
+    window.alert("Projekt-Root kann nicht gelöscht werden.");
     return;
   }
   const node = nodes.get(id);
@@ -729,6 +826,11 @@ function deleteNode(id) {
     convertStates.delete(k);
   }
   edges = edges.filter((e) => !kill.has(e.from) && !kill.has(e.to));
+  for (const p of projects) {
+    if (kill.has(p.dataTypesRootId)) p.dataTypesRootId = "";
+    if (kill.has(p.prefixesRootId)) p.prefixesRootId = "";
+    if (kill.has(p.baseUnitsRootId)) p.baseUnitsRootId = "";
+  }
   if (kill.has(dataTypesRootId)) dataTypesRootId = "";
   if (kill.has(prefixesRootId)) prefixesRootId = "";
   if (kill.has(baseUnitsRootId)) baseUnitsRootId = "";
@@ -855,6 +957,9 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
+    version: 12,
+    projects,
+    activeProjectId,
     rootId,
     selectedId,
     seq,
@@ -885,25 +990,41 @@ function restore() {
     if (!data?.rootId || !Array.isArray(data.nodes)) return false;
     nodes = new Map(data.nodes.map((n) => [n.id, n]));
     if (!nodes.has(data.rootId)) return false;
-    rootId = data.rootId;
+
+    if (Array.isArray(data.projects) && data.projects.length > 0) {
+      projects = data.projects
+        .filter((p) => p && p.rootId && nodes.has(p.rootId))
+        .map((p) => ({
+          id: p.id || `proj-${p.rootId}`,
+          name: p.name || nodes.get(p.rootId)?.name || "Project",
+          description: p.description || "",
+          kind: p.kind === PROJECT_KIND_BOM_TEST ? PROJECT_KIND_BOM_TEST : PROJECT_KIND_TEMPLATE,
+          rootId: p.rootId,
+          dataTypesRootId:
+            p.dataTypesRootId && nodes.has(p.dataTypesRootId) ? p.dataTypesRootId : "",
+          prefixesRootId:
+            p.prefixesRootId && nodes.has(p.prefixesRootId) ? p.prefixesRootId : "",
+          baseUnitsRootId:
+            p.baseUnitsRootId && nodes.has(p.baseUnitsRootId) ? p.baseUnitsRootId : "",
+        }));
+    } else {
+      // Legacy single-root payloads are not migrated — force fresh seed
+      return false;
+    }
+    if (projects.length === 0) return false;
+
+    const preferred =
+      projects.find((p) => p.id === data.activeProjectId) ||
+      projects.find((p) => p.rootId === data.rootId) ||
+      projects[0];
+    applyProject(preferred);
+
     selectedId = nodes.has(data.selectedId) ? data.selectedId : rootId;
     seq = Number(data.seq) || nodes.size;
     collapsed = new Set(
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
     activeTab = RIGHT_TABS.includes(data.activeTab) ? data.activeTab : "node";
-    dataTypesRootId =
-      data.dataTypesRootId && nodes.has(data.dataTypesRootId)
-        ? data.dataTypesRootId
-        : "";
-    prefixesRootId =
-      data.prefixesRootId && nodes.has(data.prefixesRootId)
-        ? data.prefixesRootId
-        : "";
-    baseUnitsRootId =
-      data.baseUnitsRootId && nodes.has(data.baseUnitsRootId)
-        ? data.baseUnitsRootId
-        : "";
     tableCells = new Map();
     tableCells2 = new Map();
     formStates = new Map();
@@ -974,7 +1095,7 @@ function restore() {
 }
 
 function resetAll() {
-  if (!window.confirm("Baum zurücksetzen (BOM-Demo inkl. Reihenfolge)?")) return;
+  if (!window.confirm("Beide Projekte zurücksetzen (Template + BOM Testprojekt)?")) return;
   localStorage.removeItem(STORAGE_KEY);
   try {
     localStorage.removeItem("wtt-proto-tree-split");
@@ -987,6 +1108,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v8");
     localStorage.removeItem("wtt-proto-tree-split-v9");
     localStorage.removeItem("wtt-proto-tree-split-v10");
+    localStorage.removeItem("wtt-proto-tree-split-v11");
   } catch {
     /* ignore */
   }
@@ -1064,10 +1186,10 @@ function renderTreeRow(node, depth) {
     makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)),
     makeIconButton("×", "Löschen", () => deleteNode(node.id), {
       danger: true,
-      disabled: node.id === rootId,
+      disabled: isProjectRoot(node.id),
     })
   );
-  if (node.id === rootId) {
+  if (isProjectRoot(node.id)) {
     const del = actions.querySelector(".danger");
     if (del) del.style.visibility = "hidden";
   }
@@ -1091,10 +1213,31 @@ function renderTreeRow(node, depth) {
   return wrap;
 }
 
+function syncProjectSelect() {
+  const sel = document.getElementById("project-select");
+  if (!sel) return;
+  const current = sel.value;
+  sel.replaceChildren();
+  for (const p of projects) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent =
+      p.kind === PROJECT_KIND_TEMPLATE ? `${p.name} (rein)` : p.name;
+    sel.append(opt);
+  }
+  sel.value = projects.some((p) => p.id === activeProjectId)
+    ? activeProjectId
+    : projects[0]?.id || "";
+  if (sel.value !== current && current && !projects.some((p) => p.id === current)) {
+    /* ok */
+  }
+}
+
 function renderTree() {
   const mount = document.getElementById("tree-root");
   if (!mount) return;
   mount.replaceChildren();
+  syncProjectSelect();
   const root = nodes.get(rootId);
   if (!root) return;
   mount.append(renderTreeRow(root, 0));
@@ -1267,8 +1410,9 @@ function buildEdgesBlock(node) {
   ph.value = "";
   ph.textContent = "— Zielknoten wählen —";
   targetSelect.append(ph);
+  const inProject = new Set([rootId, ...descendants(rootId)]);
   const candidates = [...nodes.values()]
-    .filter((n) => n.id !== node.id && n.id !== rootId)
+    .filter((n) => n.id !== node.id && inProject.has(n.id))
     .sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
   for (const c of candidates) {
     const o = document.createElement("option");
@@ -2208,6 +2352,10 @@ function onKeyDown(e) {
 function init() {
   if (!restore()) createInitial();
   document.getElementById("btn-reset")?.addEventListener("click", resetAll);
+  document.getElementById("project-select")?.addEventListener("change", (e) => {
+    const t = /** @type {HTMLSelectElement} */ (e.target);
+    setActiveProject(t.value);
+  });
   document.querySelectorAll(".tab[data-tab]").forEach((el) => {
     el.addEventListener("click", () => setActiveTab(el.dataset.tab));
   });

@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.51-plan"
+version: "0.6.52-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -521,6 +521,33 @@ This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter-Node (Q33/
 **Decided direction:** types are **Nodes** in the tree.  
 **Template assignment (Q50 leaning):** the **template Project** holds the **simple types**, derived **enum**, and derived **quantity**. New Projects get them by **copying the template** (generate remains a fallback option).
 
+### Template Project vs BOM Testprojekt (planning / proto)
+
+Keep the **pure template** separate from **domain demo data**:
+
+| Project | Contents | Role |
+|---------|----------|------|
+| **Template** | `Datentypen` + `Präfix` + `Basiseinheit` (+ Q51 Relations) | Reusable seed (Q50) — **no** Stückliste / Bauteile / BOM schema |
+| **BOM Testprojekt** | Copy of template core **plus** `Spalten (BOM-Zeile)`, `Stückliste`, `Bauteile` | Demo/test Project for Example A — not part of the template |
+
+```text
+Template                              ← pure
+├── Datentypen
+│   ├── int · double · string · char · bool
+│   ├── enum (+ values)
+│   └── quantity
+├── Präfix (p…M ─[multiplikator]→ int)
+└── Basiseinheit (Ohm, Farad, … ─[allows_prefix]→ …)
+
+BOM Testprojekt                       ← demo (copied core + test data)
+├── Datentypen / Präfix / Basiseinheit   ← from template copy
+├── Spalten (BOM-Zeile)
+├── Stückliste
+└── Bauteile
+```
+
+Prototype: `prototypes/tree-split` **v12** — project switcher between Template and BOM Testprojekt.
+
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
 ├── int                       ← simple (in template)
@@ -598,7 +625,8 @@ quantity (Größe)
 ### Definitionsbaum (canonical planning example)
 
 From here on, this tree is always called the **Definitionsbaum**.  
-Root = **Definition** (`parent_id = null`). Parameter picks Type / Präfix / Basiseinheit from this tree; catalog branches such as **Bauteile** hang under the same root (no extra Root node).
+Root = **Definition** (`parent_id = null`). Type / Präfix / Basiseinheit come from the **Template** (or a copy into a Project).  
+**Bauteile** and similar catalog branches belong to **domain / test Projects** (e.g. BOM Testprojekt), not to the pure template.
 
 ```mermaid
 flowchart TB

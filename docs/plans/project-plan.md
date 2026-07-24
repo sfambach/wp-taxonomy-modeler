@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.51-plan"
+version: "0.6.52-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -223,6 +223,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | **Q20 decided:** typed PHP DTO classes for Project/Node/Changelog/Change; no Parameter class; services for behavior. |
 | 2026-07-24 | Node.**description** confirmed on every Node (may be empty); Q12 updated. |
 | 2026-07-24 | **Q34/Q49 proposal:** config-first — `Node.config.capabilities.originate_relations` (false on simples); type binding via Relation `has_type`; no hard special kind. Still open pending user confirm. |
+| 2026-07-24 | **Template vs BOM test:** pure **Template** Project = Datentypen + Präfix + Basiseinheit only; **Stückliste / Bauteile / Spalten** live in a separate **BOM Testprojekt** (demo), not in the template. Proto v12 project switcher. |
 
 ## Change protocol
 

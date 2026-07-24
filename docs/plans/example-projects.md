@@ -36,6 +36,9 @@ Open questions stay open — examples only show **fit**, **host territory**, or 
 
 ## Example A — BOM (Bill of Materials)
 
+> **Planning note:** The pure **Template** Project holds only Datentypen / Präfix / Basiseinheit.  
+> **Stückliste**, **Bauteile**, and BOM **Spalten** are **test/demo data** for a separate **BOM Testprojekt** (see `prototypes/tree-split` v12), not part of the template seed.
+
 ### Story (user wording, condensed)
 
 Website with projects. A user wants to build **BOM lists** of electronic parts.
