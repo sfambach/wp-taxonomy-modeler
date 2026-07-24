@@ -60,7 +60,7 @@ State: `localStorage` key `wtt-proto-tree-split-v28` — **Reset** after upgrade
 |------|--------|-------|
 | `node_ref` | `<select>` of target Nodes | Relation **`ref_scope`** → Katalogwurzel (Kinder = Optionen) |
 
-Name lean: **`node_ref`** (generic Node pointer, cf. ACF Post Object) — not `bauteil` / `tree_part` / `ast`. Domain label „Bauteil“ stays the **column name**; the type is reusable (Zutat, GPU, …).
+Name lean: **`node_ref`** (generic Node pointer, cf. ACF Post Object) — not `bauteil` / `tree_part` / `ast`. Spaltenname z. B. **Bauteil Wahl** (≠ Katalogwurzel **Bauteile**); Typ wiederverwendbar (Zutat, GPU, …).
 
 ## Slot properties
 
