@@ -8,8 +8,8 @@ Static throwaway UI to explore the taxonomy tree screen shape.
 
 - Split layout: tree left, multi-tab right
 - **Project switcher** — two Projects in one seed:
-  - **Template (rein)** — only Datentypen, Präfix, Basiseinheit
-  - **BOM Testprojekt** — copied template core + Spalten / Stückliste / Bauteile (demo data)
+  - **Template (nur lesen)** — Datentypen (enum ohne Werte), Präfix, Standard-Basiseinheiten — **nicht änderbar**
+  - **BOM Testprojekt (editierbar)** — Template-Kern-Kopie + Bauart, Ohm/Farad/Watt/Volt, Spalten / Stückliste / Bauteile
 - Every node has **name** + **description**
 - Right pane **tabs**:
   - **Knoten** — name, description, sibling order (no relation editors here)
@@ -17,29 +17,38 @@ Static throwaway UI to explore the taxonomy tree screen shape.
   - **Tabelle** / **Tabelle 2** — typed columns via `has_type`
   - **Formular** — demo controls
   - **Umrechnung** — convert within a Basiseinheit family (forward & back)
-- State: `localStorage` key `wtt-proto-tree-split-v12` — **Reset** after upgrade
+- State: `localStorage` key `wtt-proto-tree-split-v13` — **Reset** after upgrade
 
 ## Seed trees
 
 ```text
-Template
-├── Datentypen (int…bool, enum, quantity)
-├── Präfix (p…M + multiplikator)
-└── Basiseinheit (Ohm, Farad, … + allows_prefix)
+Template (read-only)
+├── Datentypen
+│   ├── int · double · string · char · bool
+│   ├── enum                         ← keine konkreten Werte
+│   └── quantity
+├── Präfix (p…M + c; multiplikator)
+└── Basiseinheit
+    ├── Meter · Liter · Kilogramm · Sekunde · Kelvin · Ampere
 
-BOM Testprojekt
-├── Datentypen / Präfix / Basiseinheit   ← copy of template core (Q50 lean)
-├── Spalten (BOM-Zeile)                   ← schema demo
-├── Stückliste                            ← instance demo
-└── Bauteile                              ← catalog demo
+BOM Testprojekt (editable)
+├── Datentypen / Präfix / Basiseinheit   ← Kopie + Erweiterungen
+│   └── enum
+│       └── Bauart ─[base_type]→ string
+│           └── 0201 · 0402 · 0603 · 0805 · axial
+│   └── Basiseinheit + Ohm · Farad · Watt · Volt
+├── Spalten (BOM-Zeile)   Footprint ─[has_type]→ Bauart
+├── Stückliste
+└── Bauteile
 ```
 
 ## Q51 model in the seed
 
 ```text
 Präfix k ─[multiplikator]→ int   props.value = 1000
-Basiseinheit Ohm ─[allows_prefix]→ m, k, M, µ, n, p
-Basiseinheit Farad ─[allows_prefix]→ p, n, µ, m   # no k/M (kein Mega-Farad)
+Basiseinheit Ohm ─[allows_prefix]→ m, k, M, µ, n, p   # BOM only
+Basiseinheit Farad ─[allows_prefix]→ p, n, µ, m       # BOM only
+Basiseinheit Meter ─[allows_prefix]→ µ, m, c, k       # template + copy
 ```
 
 Umrechnung: `out = in × left.multiplikator / right.multiplikator`.

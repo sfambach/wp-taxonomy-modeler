@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.52-plan** (2026-07-24).
+Last synced from plan version **0.6.53-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,7 +25,8 @@ Last synced from plan version **0.6.52-plan** (2026-07-24).
 | Core types: template has **simples** + derived **enum** + derived **quantity** (Größe) | Done (planning) |
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
-| **Template vs BOM Testprojekt** (Stückliste/Bauteile = demo, not template) | Done (planning) |
+| **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
+| UI prototype `prototypes/tree-split` v13 (Template locked; Bauart under enum) | In progress |
 | **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
 | **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
@@ -37,7 +38,6 @@ Last synced from plan version **0.6.52-plan** (2026-07-24).
 | Cross-check A+B+C — model boundary holds | Done (planning) |
 | Part identity layers (R/C/Diode/IC) | In progress |
 | Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
-| UI prototype `prototypes/tree-split` v12 (project switcher; Template ≠ BOM) | In progress |
 | Prototype: Umrechnung tab (Q51 unit family convert) | In progress |
 | Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
 | Open questions (leave open; resolve later in batches) | In progress |

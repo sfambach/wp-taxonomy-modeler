@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.52-plan"
+version: "0.6.53-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -224,6 +224,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Node.**description** confirmed on every Node (may be empty); Q12 updated. |
 | 2026-07-24 | **Q34/Q49 proposal:** config-first — `Node.config.capabilities.originate_relations` (false on simples); type binding via Relation `has_type`; no hard special kind. Still open pending user confirm. |
 | 2026-07-24 | **Template vs BOM test:** pure **Template** Project = Datentypen + Präfix + Basiseinheit only; **Stückliste / Bauteile / Spalten** live in a separate **BOM Testprojekt** (demo), not in the template. Proto v12 project switcher. |
+| 2026-07-24 | Template refinement: **enum** has no concrete values in template; BOM adds **Bauart** under enum. Template **Basiseinheit** = Meter/Liter/Kilogramm/Sekunde/Kelvin/Ampere; Ohm/Farad/Watt/Volt = BOM only. Template **read-only**, BOM Test **editable**. Proto v13. |
 
 ## Change protocol
 

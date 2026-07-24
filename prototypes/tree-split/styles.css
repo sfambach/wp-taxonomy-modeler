@@ -148,6 +148,26 @@ body {
   border: 0;
 }
 
+.readonly-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.detail-card.is-readonly input:disabled,
+.detail-card.is-readonly textarea:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
 .pane-head-tabs {
   padding: 0;
   min-height: 2.75rem;

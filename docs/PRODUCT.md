@@ -37,7 +37,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A **root node** is the same **Node** object with parent `null` (not a different type).
 - A **project** is practically the **taxonomy** (**Q18** strong leaning); Trees live under the Project; Nodes have no taxonomy field.
 - Default Nodes (Definitionsbaum + simples + enum + quantity): **lean template Project copy** (**Q50**); generate remains a fallback.
-- **Pure Template** = Datentypen + Präfix + Basiseinheit only; **BOM demo data** (Stückliste, Bauteile, Spalten) belongs in a **BOM Testprojekt**, not in the template.
+- **Pure Template** (**read-only**) = Datentypen (enum ohne konkrete Werte) + Präfix + Standard-Basiseinheiten (Meter, Liter, …); **BOM demo** (Bauart, Ohm/Farad/…, Stückliste, Bauteile, Spalten) belongs in an **editable BOM Testprojekt**.
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - Attribute **Nodes** bind **Type** (via `has_type` / config), optional **Präfix**, and optional **Basiseinheit**.
 - A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.

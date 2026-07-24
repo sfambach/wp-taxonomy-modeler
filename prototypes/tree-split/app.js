@@ -16,7 +16,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v12";
+const STORAGE_KEY = "wtt-proto-tree-split-v13";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_BOM_TEST = "bom-test";
@@ -52,6 +52,7 @@ const DEFAULT_PREFIX_FACTORS = {
   n: 1e-9,
   µ: 1e-6,
   m: 1e-3,
+  c: 1e-2,
   k: 1e3,
   M: 1e6,
 };
@@ -201,6 +202,8 @@ function pushEdge(from, to, label, props) {
 
 /**
  * Pure template core under a project root: Datentypen + Präfix + Basiseinheit + Relations.
+ * Enum has no concrete values here — those belong in domain/test projects (e.g. Bauart).
+ * Basiseinheit: generic standards only (Meter, Liter, …) — electronics units go to BOM test.
  * @param {string} projectRootId
  * @param {{ markTemplate?: boolean }} [opts]
  */
@@ -224,12 +227,9 @@ function seedTemplateCore(projectRootId, opts = {}) {
     description: "Wahrheitswert true/false.",
   });
   const tEnum = createNode(dataTypesRootId, "enum", 5, {
-    description: "Abgeleiteter Typ: genau ein base_type + Werteliste (Kinder).",
+    description:
+      "Abgeleiteter Typ-Kind: konkrete Enums (z. B. Bauart) als Kinder mit base_type + Werteliste.",
   });
-  pushEdge(tEnum, tString, REL_BASE_TYPE);
-  for (const [i, name] of ["0201", "0402", "0603", "0805", "axial"].entries()) {
-    createNode(tEnum, name, i, { description: `Enum-Wert ${name}.` });
-  }
   const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
     description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
   });
@@ -243,8 +243,9 @@ function seedTemplateCore(projectRootId, opts = {}) {
     ["n", 1, 1e-9, "Nano (10⁻⁹)."],
     ["µ", 2, 1e-6, "Mikro (10⁻⁶)."],
     ["m", 3, 1e-3, "Milli (10⁻³)."],
-    ["k", 4, 1e3, "Kilo (10³)."],
-    ["M", 5, 1e6, "Mega (10⁶)."],
+    ["c", 4, 1e-2, "Zenti (10⁻²)."],
+    ["k", 5, 1e3, "Kilo (10³)."],
+    ["M", 6, 1e6, "Mega (10⁶)."],
   ];
   /** @type {Record<string, string>} */
   const pref = {};
@@ -256,22 +257,85 @@ function seedTemplateCore(projectRootId, opts = {}) {
 
   const baseUnitsRootId = createNode(projectRootId, "Basiseinheit", 2, {
     template: mark,
-    description: "Physikalische Basiseinheiten; allows_prefix filtert sinnvolle Präfixe.",
+    description:
+      "Standard-Basiseinheiten im Template. Domäneneinheiten (Ohm, Farad, …) gehören ins Testprojekt.",
   });
-  const uOhm = createNode(baseUnitsRootId, "Ohm", 0, {
-    description: "Widerstand. Üblich: m…M, µ.",
+  const uMeter = createNode(baseUnitsRootId, "Meter", 0, {
+    description: "Länge.",
   });
-  const uFarad = createNode(baseUnitsRootId, "Farad", 1, {
-    description: "Kapazität. Praktisch höchstens Farad — typisch p/n/µ/m, kein k/M.",
+  const uLiter = createNode(baseUnitsRootId, "Liter", 1, {
+    description: "Volumen.",
   });
-  const uMeter = createNode(baseUnitsRootId, "Meter", 2, {
-    description: "Länge. Demo: m und k.",
+  const uKilogramm = createNode(baseUnitsRootId, "Kilogramm", 2, {
+    description: "Masse (SI-Basiseinheit).",
   });
-  const uWatt = createNode(baseUnitsRootId, "Watt", 3, {
-    description: "Leistung.",
+  const uSekunde = createNode(baseUnitsRootId, "Sekunde", 3, {
+    description: "Zeit.",
   });
-  const uVolt = createNode(baseUnitsRootId, "Volt", 4, {
-    description: "Elektrische Spannung.",
+  const uKelvin = createNode(baseUnitsRootId, "Kelvin", 4, {
+    description: "Thermodynamische Temperatur.",
+  });
+  const uAmpere = createNode(baseUnitsRootId, "Ampere", 5, {
+    description: "Elektrische Stromstärke (SI; allgemein, nicht BOM-spezifisch).",
+  });
+
+  for (const name of ["µ", "m", "c", "k"]) {
+    pushEdge(uMeter, pref[name], REL_ALLOWS_PREFIX);
+  }
+  for (const name of ["µ", "m", "c", "k"]) {
+    pushEdge(uLiter, pref[name], REL_ALLOWS_PREFIX);
+  }
+  for (const name of ["m", "µ"]) {
+    pushEdge(uKilogramm, pref[name], REL_ALLOWS_PREFIX);
+  }
+  for (const name of ["n", "µ", "m"]) {
+    pushEdge(uSekunde, pref[name], REL_ALLOWS_PREFIX);
+  }
+  for (const name of ["m", "µ", "n", "k"]) {
+    pushEdge(uAmpere, pref[name], REL_ALLOWS_PREFIX);
+  }
+  void uKelvin; // typically no SI prefix in this demo
+
+  return {
+    dataTypesRootId,
+    prefixesRootId,
+    baseUnitsRootId,
+    pref,
+    types: { tInt, tDouble, tString, tBool, tEnum, tQuantity },
+  };
+}
+
+/**
+ * BOM demo extras (not part of the pure template).
+ * Adds: Bauart under enum, electronics Basiseinheiten, schema / Stückliste / Bauteile.
+ * @param {string} projectRootId
+ * @param {ReturnType<typeof seedTemplateCore>} core
+ */
+function seedBomTestData(projectRootId, core) {
+  const { types, pref, baseUnitsRootId } = core;
+
+  // Concrete enum under Datentypen → enum → Bauart → values
+  const bauart = createNode(types.tEnum, "Bauart", 0, {
+    description: "BOM-Enum: SMD/THT-Bauformen (base_type string + Werteliste).",
+  });
+  pushEdge(bauart, types.tString, REL_BASE_TYPE);
+  for (const [i, name] of ["0201", "0402", "0603", "0805", "axial"].entries()) {
+    createNode(bauart, name, i, { description: `Bauart-Wert ${name}.` });
+  }
+
+  // Electronics units (BOM-specific)
+  const nextPos = childrenOf(baseUnitsRootId).length;
+  const uOhm = createNode(baseUnitsRootId, "Ohm", nextPos, {
+    description: "BOM: Widerstand.",
+  });
+  const uFarad = createNode(baseUnitsRootId, "Farad", nextPos + 1, {
+    description: "BOM: Kapazität — typisch p/n/µ/m, kein k/M.",
+  });
+  const uWatt = createNode(baseUnitsRootId, "Watt", nextPos + 2, {
+    description: "BOM: Leistung.",
+  });
+  const uVolt = createNode(baseUnitsRootId, "Volt", nextPos + 3, {
+    description: "BOM: elektrische Spannung.",
   });
 
   for (const u of [uOhm, uWatt, uVolt]) {
@@ -282,24 +346,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
   for (const name of ["p", "n", "µ", "m"]) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
-  for (const name of ["m", "k"]) {
-    pushEdge(uMeter, pref[name], REL_ALLOWS_PREFIX);
-  }
 
-  return {
-    dataTypesRootId,
-    prefixesRootId,
-    baseUnitsRootId,
-    types: { tInt, tDouble, tString, tBool, tEnum, tQuantity },
-  };
-}
-
-/**
- * BOM demo trees only (not part of the pure template).
- * @param {string} projectRootId
- * @param {{ tInt: string, tString: string, tBool: string, tEnum: string, tQuantity: string }} types
- */
-function seedBomTestData(projectRootId, types) {
   const schemaId = createNode(projectRootId, "Spalten (BOM-Zeile)", 3, {
     description: "BOM-Test: Schema-Knoten; Kinder = Tabellenspalten.",
   });
@@ -310,7 +357,7 @@ function seedBomTestData(projectRootId, types) {
     description: "Bauteilwert als quantity.",
   });
   const cFp = createNode(schemaId, "Footprint", 2, {
-    description: "Bauform als enum.",
+    description: "Bauform — has_type → Bauart.",
   });
   const cQty = createNode(schemaId, "Menge", 3, {
     description: "Stückzahl (int) — nicht quantity/Größe.",
@@ -324,7 +371,7 @@ function seedBomTestData(projectRootId, types) {
 
   pushEdge(cRef, types.tString, REL_HAS_TYPE);
   pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
-  pushEdge(cFp, types.tEnum, REL_HAS_TYPE);
+  pushEdge(cFp, bauart, REL_HAS_TYPE);
   pushEdge(cQty, types.tInt, REL_HAS_TYPE);
   pushEdge(cLcsc, types.tString, REL_HAS_TYPE);
   pushEdge(cStock, types.tBool, REL_HAS_TYPE);
@@ -346,6 +393,16 @@ function seedBomTestData(projectRootId, types) {
   createNode(partsId, "Diode / LED", 3, { description: "Kategorie Diode/LED." });
 
   return schemaId;
+}
+
+function activeProject() {
+  return projects.find((p) => p.id === activeProjectId) || null;
+}
+
+/** Template project is read-only; BOM test is editable. */
+function isProjectEditable() {
+  const p = activeProject();
+  return p != null && p.kind !== PROJECT_KIND_TEMPLATE;
 }
 
 function applyProject(project) {
@@ -384,16 +441,17 @@ function createInitial() {
   baseUnitsRootId = "";
   activeTab = "node";
 
-  // 1) Pure template project — no BOM test data
+  // 1) Pure template project — read-only; no BOM test data
   const templateRootId = createNode(null, "Template", 0, {
     template: true,
-    description: "Reines Template: nur Datentypen, Präfixe und Basiseinheiten (Q50).",
+    description:
+      "Reines Template (read-only): Datentypen, Präfixe, Standard-Basiseinheiten.",
   });
   const templateCore = seedTemplateCore(templateRootId, { markTemplate: true });
   const templateProject = {
     id: "proj-template",
     name: "Template",
-    description: "Reiner Template-Baum (kein BOM).",
+    description: "Reiner Template-Baum — nicht änderbar.",
     kind: PROJECT_KIND_TEMPLATE,
     rootId: templateRootId,
     dataTypesRootId: templateCore.dataTypesRootId,
@@ -401,17 +459,18 @@ function createInitial() {
     baseUnitsRootId: templateCore.baseUnitsRootId,
   };
 
-  // 2) BOM test project — template core copy + Stückliste / Bauteile / Spalten
+  // 2) BOM test project — editable; template core copy + Bauart / electronics / BOM trees
   const bomRootId = createNode(null, "BOM Testprojekt", 1, {
     template: false,
-    description: "Testprojekt für BOM: Schema, Stückliste und Bauteile (nicht Teil des Templates).",
+    description:
+      "Editierbares Testprojekt: Template-Kern-Kopie + Bauart, Ohm/Farad/…, Spalten, Stückliste, Bauteile.",
   });
   const bomCore = seedTemplateCore(bomRootId, { markTemplate: false });
-  const schemaId = seedBomTestData(bomRootId, bomCore.types);
+  const schemaId = seedBomTestData(bomRootId, bomCore);
   const bomProject = {
     id: "proj-bom-test",
     name: "BOM Testprojekt",
-    description: "BOM-Demo mit kopiertem Template-Kern + Testdaten.",
+    description: "BOM-Demo — änderbar.",
     kind: PROJECT_KIND_BOM_TEST,
     rootId: bomRootId,
     dataTypesRootId: bomCore.dataTypesRootId,
@@ -422,7 +481,6 @@ function createInitial() {
   projects = [templateProject, bomProject];
   applyProject(templateProject);
   selectedId = templateRootId;
-  // Keep schema selectable when switching to BOM later
   void schemaId;
 }
 
@@ -525,6 +583,10 @@ function nodePath(id) {
 }
 
 function addEdge(from, to, label, props) {
+  if (!isProjectEditable()) {
+    window.alert("Template ist schreibgeschützt.");
+    return;
+  }
   const e = pushEdge(from, to, label, props);
   if (e) {
     persist();
@@ -533,6 +595,10 @@ function addEdge(from, to, label, props) {
 }
 
 function removeEdge(edgeId) {
+  if (!isProjectEditable()) {
+    window.alert("Template ist schreibgeschützt.");
+    return;
+  }
   const before = edges.length;
   edges = edges.filter((e) => e.id !== edgeId);
   if (edges.length !== before) {
@@ -542,6 +608,7 @@ function removeEdge(edgeId) {
 }
 
 function setEdgeValue(edgeId, value) {
+  if (!isProjectEditable()) return;
   const e = edges.find((x) => x.id === edgeId);
   if (!e) return;
   if (!e.props) e.props = {};
@@ -785,6 +852,10 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
 }
 
 function addChild(parentId) {
+  if (!isProjectEditable()) {
+    window.alert("Template ist schreibgeschützt.");
+    return;
+  }
   if (!nodes.get(parentId)) return;
   const id = createNode(parentId, `Knoten ${seq++}`, nextPosition(parentId));
   reindexSiblings(parentId);
@@ -808,6 +879,10 @@ function descendants(id) {
 }
 
 function deleteNode(id) {
+  if (!isProjectEditable()) {
+    window.alert("Template ist schreibgeschützt.");
+    return;
+  }
   if (isProjectRoot(id)) {
     window.alert("Projekt-Root kann nicht gelöscht werden.");
     return;
@@ -845,6 +920,7 @@ function deleteNode(id) {
 }
 
 function moveSibling(id, delta) {
+  if (!isProjectEditable()) return false;
   const node = nodes.get(id);
   if (!node || node.parentId === null) return false;
 
@@ -882,6 +958,7 @@ function setActiveTab(tab) {
 }
 
 function renameSelected(name) {
+  if (!isProjectEditable()) return;
   const n = nodes.get(selectedId);
   if (!n) return;
   n.name = name.trim() || n.name;
@@ -957,7 +1034,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 12,
+    version: 13,
     projects,
     activeProjectId,
     rootId,
@@ -1109,6 +1186,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v9");
     localStorage.removeItem("wtt-proto-tree-split-v10");
     localStorage.removeItem("wtt-proto-tree-split-v11");
+    localStorage.removeItem("wtt-proto-tree-split-v12");
   } catch {
     /* ignore */
   }
@@ -1170,8 +1248,9 @@ function renderTreeRow(node, depth) {
 
   const actions = document.createElement("div");
   actions.className = "actions";
+  const editable = isProjectEditable();
 
-  if (canMove) {
+  if (canMove && editable) {
     actions.append(
       makeIconButton("↑", "Nach oben (Position −1)", () => moveSibling(node.id, -1), {
         disabled: index <= 0,
@@ -1182,16 +1261,24 @@ function renderTreeRow(node, depth) {
     );
   }
 
-  actions.append(
-    makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)),
-    makeIconButton("×", "Löschen", () => deleteNode(node.id), {
-      danger: true,
-      disabled: isProjectRoot(node.id),
-    })
-  );
-  if (isProjectRoot(node.id)) {
-    const del = actions.querySelector(".danger");
-    if (del) del.style.visibility = "hidden";
+  if (editable) {
+    actions.append(
+      makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)),
+      makeIconButton("×", "Löschen", () => deleteNode(node.id), {
+        danger: true,
+        disabled: isProjectRoot(node.id),
+      })
+    );
+    if (isProjectRoot(node.id)) {
+      const del = actions.querySelector(".danger");
+      if (del) del.style.visibility = "hidden";
+    }
+  } else if (isProjectRoot(node.id)) {
+    const badge = document.createElement("span");
+    badge.className = "readonly-badge";
+    badge.textContent = "nur lesen";
+    badge.title = "Template-Projekt ist schreibgeschützt";
+    actions.append(badge);
   }
 
   row.append(twist, order, label, actions);
@@ -1221,8 +1308,10 @@ function syncProjectSelect() {
   for (const p of projects) {
     const opt = document.createElement("option");
     opt.value = p.id;
-    opt.textContent =
-      p.kind === PROJECT_KIND_TEMPLATE ? `${p.name} (rein)` : p.name;
+  opt.textContent =
+      p.kind === PROJECT_KIND_TEMPLATE
+        ? `${p.name} (nur lesen)`
+        : `${p.name} (editierbar)`;
     sel.append(opt);
   }
   sel.value = projects.some((p) => p.id === activeProjectId)
@@ -1257,6 +1346,7 @@ function syncTabs() {
 }
 
 function renameDescription(value) {
+  if (!isProjectEditable()) return;
   const n = nodes.get(selectedId);
   if (!n) return;
   n.description = String(value ?? "");
@@ -1270,6 +1360,7 @@ function renameDescription(value) {
 function buildEdgesBlock(node) {
   const block = document.createElement("div");
   block.className = "order-block edges-block";
+  const editable = isProjectEditable();
 
   const lab = document.createElement("div");
   lab.className = "field-label";
@@ -1315,7 +1406,11 @@ function buildEdgesBlock(node) {
         val.title = "multiplikator value (int/number)";
         val.setAttribute("aria-label", "Multiplikator-Wert");
         val.value = e.props?.value != null ? String(e.props.value) : "";
-        val.addEventListener("change", () => setEdgeValue(e.id, val.value));
+        val.readOnly = !editable;
+        val.disabled = !editable;
+        if (editable) {
+          val.addEventListener("change", () => setEdgeValue(e.id, val.value));
+        }
         textEl.append(val);
       } else if (e.props?.value != null) {
         const chip = document.createElement("span");
@@ -1324,10 +1419,14 @@ function buildEdgesBlock(node) {
         textEl.append(chip);
       }
 
-      const del = makeIconButton("×", "Kante entfernen", () => removeEdge(e.id), {
-        danger: true,
-      });
-      li.append(textEl, del);
+      if (editable) {
+        const del = makeIconButton("×", "Kante entfernen", () => removeEdge(e.id), {
+          danger: true,
+        });
+        li.append(textEl, del);
+      } else {
+        li.append(textEl);
+      }
       list.append(li);
     }
     block.append(list);
@@ -1383,6 +1482,16 @@ function buildEdgesBlock(node) {
 
   const addRow = document.createElement("div");
   addRow.className = "edge-add";
+
+  if (!editable) {
+    const locked = document.createElement("p");
+    locked.className = "muted";
+    locked.style.margin = "0.75rem 0 0";
+    locked.style.fontSize = "0.8rem";
+    locked.textContent = "Template — Relationen nicht änderbar.";
+    block.append(locked);
+    return block;
+  }
 
   const labelInput = document.createElement("input");
   labelInput.className = "form-control";
@@ -1491,13 +1600,20 @@ function renderDetail() {
   const parent = node.parentId ? nodes.get(node.parentId) : null;
   const { index, total } = siblingIndex(node);
   const canMove = node.parentId !== null;
+  const editable = isProjectEditable();
 
   mount.replaceChildren();
   const card = document.createElement("div");
-  card.className = "detail-card";
+  card.className = "detail-card" + (editable ? "" : " is-readonly");
 
   const h2 = document.createElement("h2");
   h2.textContent = node.name;
+  if (!editable) {
+    const badge = document.createElement("span");
+    badge.className = "readonly-badge";
+    badge.textContent = "nur lesen";
+    h2.append(" ", badge);
+  }
 
   const field = document.createElement("div");
   field.className = "field";
@@ -1508,13 +1624,17 @@ function renderDetail() {
   input.id = "node-name";
   input.type = "text";
   input.value = node.name;
-  input.addEventListener("change", () => renameSelected(input.value));
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      input.blur();
-    }
-  });
+  input.readOnly = !editable;
+  input.disabled = !editable;
+  if (editable) {
+    input.addEventListener("change", () => renameSelected(input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        input.blur();
+      }
+    });
+  }
   field.append(lab, input);
 
   const descField = document.createElement("div");
@@ -1528,7 +1648,11 @@ function renderDetail() {
   desc.rows = 3;
   desc.value = node.description || "";
   desc.placeholder = "Kurzbeschreibung des Knotens…";
-  desc.addEventListener("change", () => renameDescription(desc.value));
+  desc.readOnly = !editable;
+  desc.disabled = !editable;
+  if (editable) {
+    desc.addEventListener("change", () => renameDescription(desc.value));
+  }
   descField.append(descLab, desc);
 
   const orderBlock = document.createElement("div");
@@ -1544,13 +1668,15 @@ function renderDetail() {
   const down = makeIconButton("↓", "Nach unten (Alt+↓)", () =>
     moveSibling(node.id, 1)
   );
-  up.disabled = !canMove || index <= 0;
-  down.disabled = !canMove || index < 0 || index >= total - 1;
+  up.disabled = !editable || !canMove || index <= 0;
+  down.disabled = !editable || !canMove || index < 0 || index >= total - 1;
   const orderMeta = document.createElement("span");
   orderMeta.className = "muted";
-  orderMeta.textContent = canMove
-    ? `${index + 1} / ${total}`
-    : "Root — keine Geschwistersortierung";
+  orderMeta.textContent = !editable
+    ? "Template — schreibgeschützt"
+    : canMove
+      ? `${index + 1} / ${total}`
+      : "Root — keine Geschwistersortierung";
   orderRow.append(up, down, orderMeta);
   orderBlock.append(orderTitle, orderRow);
 

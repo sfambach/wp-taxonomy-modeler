@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.52-plan"
+version: "0.6.53-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -527,26 +527,31 @@ Keep the **pure template** separate from **domain demo data**:
 
 | Project | Contents | Role |
 |---------|----------|------|
-| **Template** | `Datentypen` + `Präfix` + `Basiseinheit` (+ Q51 Relations) | Reusable seed (Q50) — **no** Stückliste / Bauteile / BOM schema |
-| **BOM Testprojekt** | Copy of template core **plus** `Spalten (BOM-Zeile)`, `Stückliste`, `Bauteile` | Demo/test Project for Example A — not part of the template |
+| **Template** (**read-only**) | `Datentypen` (simples + empty `enum` + `quantity`) + `Präfix` + standard `Basiseinheit` (Meter, Liter, Kilogramm, Sekunde, Kelvin, Ampere) | Reusable seed (Q50) — **not editable** |
+| **BOM Testprojekt** (**editable**) | Copy of template core **plus** `enum → Bauart` values, electronics units (Ohm/Farad/Watt/Volt), `Spalten`, `Stückliste`, `Bauteile` | Demo/test Project — **editable** |
 
 ```text
-Template                              ← pure
+Template (nur lesen)
 ├── Datentypen
 │   ├── int · double · string · char · bool
-│   ├── enum (+ values)
+│   ├── enum                              ← keine konkreten Werte
 │   └── quantity
-├── Präfix (p…M ─[multiplikator]→ int)
-└── Basiseinheit (Ohm, Farad, … ─[allows_prefix]→ …)
+├── Präfix (p…M + c)
+└── Basiseinheit
+    └── Meter · Liter · Kilogramm · Sekunde · Kelvin · Ampere
 
-BOM Testprojekt                       ← demo (copied core + test data)
-├── Datentypen / Präfix / Basiseinheit   ← from template copy
-├── Spalten (BOM-Zeile)
+BOM Testprojekt (editierbar)
+├── …Template-Kern-Kopie…
+│   └── enum
+│       └── Bauart ─[base_type]→ string
+│           └── 0201 · 0402 · 0603 · 0805 · axial
+│   └── Basiseinheit + Ohm · Farad · Watt · Volt
+├── Spalten (BOM-Zeile)   Footprint ─[has_type]→ Bauart
 ├── Stückliste
 └── Bauteile
 ```
 
-Prototype: `prototypes/tree-split` **v12** — project switcher between Template and BOM Testprojekt.
+Prototype: `prototypes/tree-split` **v13** — project switcher; Template locked, BOM editable.
 
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
@@ -555,9 +560,8 @@ Template Project → Datentypen / Type     ← Project.type_node
 ├── string                    ← simple
 ├── char                      ← simple
 ├── bool                      ← simple
-├── enum                      ← derived (in template)
-│   ├── base_type → exactly one simple (e.g. string)
-│   └── values    → list of options of that base type
+├── enum                      ← derived kind in template (no concrete values)
+│   └── (domain: Bauart + values — e.g. BOM Test)
 └── quantity                  ← derived (in template) — Größe, not Messung
     ├── value     → numeric simple (int | double; Q37)
     ├── prefix?   → Präfix (unit group with base_unit)

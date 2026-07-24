@@ -55,7 +55,7 @@ Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or 
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** + derived **quantity**.  
 **Q50 leaning:** copy template Project into new Projects.  
-**Template vs demo:** pure Template excludes Stückliste/Bauteile; those live in domain test Projects (e.g. BOM).  
+**Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
 See Q16, Q20–Q39, Q49–Q51 and [`docs/plans/data-structure.md`](plans/data-structure.md).
