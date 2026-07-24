@@ -41,7 +41,7 @@ const REL_ALLOWS_PREFIX = "allows_prefix";
 const REL_MULTIPLIKATOR = "multiplikator";
 /** subtree slot/type ─[ref_scope]→ catalog root (children = selectable targets) */
 const REL_REF_SCOPE = "ref_scope";
-const SIMPLE_TYPE_NAMES = ["int", "double", "text", "textarea", "char", "bool"];
+const SIMPLE_TYPE_NAMES = ["int", "double", "text", "textarea", "char", "bool", "node_ref"];
 const COLLECTION_KIND_NAMES = ["list", "table", "enum"];
 const QTY_SEP = "|";
 const EDGE_LABEL_SUGGESTIONS = [
@@ -980,11 +980,6 @@ function subtreeOptions(slotId) {
   return bauteilCatalogOptions();
 }
 
-/** @deprecated use subtreeOptions */
-function nodeRefOptions(slotId) {
-  return subtreeOptions(slotId);
-}
-
 /** All nodes in the active project — for free node_ref (Absprungpunkt). */
 function allProjectNodes() {
   return [...nodes.values()]
@@ -1070,6 +1065,27 @@ function refScopeCandidates() {
 }
 
 /**
+ * Show Typ-Bindung only for schema-ish slots — not every folder/type Node.
+ * Heuristic: already typed, composition column, Bauteil-Gruppe param, or typed siblings.
+ * @param {ProtoNode} node
+ */
+function isSlotLikeNode(node) {
+  if (!node || node.parentId == null) return false;
+  if (findEdge(node.id, REL_HAS_TYPE)) return true;
+  const parent = nodes.get(node.parentId);
+  if (!parent) return false;
+  const parentType = typeNodeOf(parent.id);
+  const pk = typeKey(parentType);
+  if (pk === "table" || pk === "list" || pk === "enum") return true;
+  if (collectionKindOf(parent)) return true;
+  const sibs = childrenOf(parent.id);
+  if (sibs.some((c) => c.id !== node.id && findEdge(c.id, REL_HAS_TYPE))) return true;
+  const bau = findBauteileRoot();
+  if (bau && parent.parentId === bau.id) return true;
+  return false;
+}
+
+/**
  * Guided Typ-Bindung: has_type (+ ref_scope when subtree).
  * Answers "woher weiß ich, dass ich eine Node-Referenz brauche?"
  * @param {ProtoNode} node
@@ -1089,7 +1105,7 @@ function buildTypeBindingPanel(node) {
   lead.style.margin = "0.25rem 0 0.5rem";
   lead.style.fontSize = "0.8rem";
   lead.textContent =
-    "Der Spaltenname allein sagt nichts — der Typ entscheidet das Widget. Node-Referenz? → Typ subtree (Katalog) oder node_ref (freier Absprung).";
+    "Typ entscheidet das Widget (nicht der Name). Katalog-Auswahl → subtree (+ Katalogwurzel). Freier Absprung → node_ref.";
   block.append(lead);
 
   const typeRow = document.createElement("div");
@@ -2443,8 +2459,14 @@ function renderDetail() {
     const childLab = document.createElement("div");
     childLab.className = "field-label";
     childLab.style.marginTop = "1rem";
+    const parentType = typeNodeOf(node.id);
+    const pKey = typeKey(parentType);
     childLab.textContent =
-      "Kinder (= Spalten im Backend / Optionen im Feld-Tab)";
+      pKey === "table" || pKey === "list"
+        ? "Kinder (= Spalten im Backend)"
+        : pKey === "enum" || collectionKindOf(node) === "enum"
+          ? "Kinder (= Optionen / Spalte)"
+          : "Kinder";
     orderBlock.append(childLab, childList);
   }
 
@@ -2473,12 +2495,12 @@ function renderDetail() {
 
   /** Slot constraint: Pflicht/Optional hangs on the Node (config.required), not on has_type. */
   let requiredBlock = null;
-  if (findEdge(node.id, REL_HAS_TYPE)) {
+  if (isSlotLikeNode(node) || findEdge(node.id, REL_HAS_TYPE)) {
     requiredBlock = document.createElement("div");
     requiredBlock.className = "order-block slot-required";
     const rl = document.createElement("div");
     rl.className = "field-label";
-    rl.textContent = "Feldpflicht (config.required)";
+    rl.textContent = "Pflichtfeld";
     const row = document.createElement("label");
     row.className = "choice-row";
     const cb = document.createElement("input");
@@ -2494,21 +2516,27 @@ function renderDetail() {
     rh.style.margin = "0.25rem 0 0";
     rh.style.fontSize = "0.8rem";
     rh.textContent =
-      "Am Slot-Knoten, nicht an der Relation has_type. Typ = Form; required = Ausfüllregel.";
+      "Am Slot, nicht an has_type. Typ = Form; Pflicht = Ausfüllregel.";
     requiredBlock.append(rl, row, rh);
   }
 
-  const typeBinding =
-    node.parentId != null ? buildTypeBindingPanel(node) : null;
+  const typeBinding = isSlotLikeNode(node) ? buildTypeBindingPanel(node) : null;
 
   card.append(h2, field, descField);
   if (typeBinding) card.append(typeBinding);
-  card.append(orderBlock, meta);
   if (requiredBlock) card.append(requiredBlock);
+  card.append(orderBlock);
   if (isBaseUnitNode(node)) {
     card.append(buildAllowedPrefixesPanel(node));
   }
-  card.append(edgesTitle, buildEdgesBlock(node), hint);
+
+  const edgesDetails = document.createElement("details");
+  edgesDetails.className = "edges-details";
+  edgesDetails.open = false;
+  const edgesSum = document.createElement("summary");
+  edgesSum.textContent = "Erweitert: Relationen (Roh-Editor)";
+  edgesDetails.append(edgesSum, edgesTitle, buildEdgesBlock(node));
+  card.append(edgesDetails, meta, hint);
   mount.append(card);
 
   if (focusNameAfterRender) {

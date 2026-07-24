@@ -270,7 +270,7 @@ classDiagram
 |---|--------|------|
 | 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; **Bauteil** and **Composition** identities |
 | 2 | **Bauteil** | Catalog part (e.g. Widerstand, GPU-Karte) — Parameter defs + ParameterValues; **not** a Composition |
-| 3 | **Parameter** | **Definition** (name + type) on Bauteil-Vorlage; inherited by child Bauteile |
+| 3 | **Slot / “Parameter”** *(vocab)* | Typed attribute/column **Node** (`has_type`…); **not** a PHP class (Q33/Q55) |
 | 4 | **ParameterValue** | Filled payload on a **Bauteil** or in a **CompositionRow** cell |
 | 5 | **Composition** (UX: Zusammenstellung) | List/table Zusammenstellung — column schema + rows (BOM, Rezept, Build) |
 | 6 | **CompositionRow** | One line of a Composition — cells include **Bauteil-Ref** and other typed columns |
@@ -318,7 +318,7 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
-| **Parameter / ParameterRole** | **Spin (Q55)** | Definition on Node + inherit; distinct object vs Node-role open; Role stereotype still optional |
+| **Parameter / ParameterRole** | **Rejected as class (Q33/Q55)** | Vocab only; slot = Node + `has_type`; Role stereotype dropped |
 | **BomList / BomLine / Recipe as PHP classes** | **Under review (Q46)** | May be replaceable by **Nodes + Relations** configured like templates |
 | **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41); hierarchy-via-edges TE closed (Q53/Q54 restart) |
 | **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
@@ -419,11 +419,13 @@ class Node {
 
 ### Design decision: no Parameter and no ParameterRole
 
-**Q33/Q34:** Names like `Wert` / `Länge` in the Definitionsbaum **are ordinary Nodes**.  
+**Q33/Q34/Q55:** Names like `Wert` / `Länge` / Composition columns **are ordinary Nodes** (slots).  
 There is **no** Parameter class, **no** ParameterRole stereotype, and **no** PHP subclass.  
-Type binding lives in **Node.config** and/or Relations (`has_type`). Optional quantity fields (`prefix`, `base_unit`, `value`) are likewise config / Relations — not a parallel object model.  
-**Q49 strong lean:** simple data-type Nodes usually should not build Relations themselves — **config** that deactivates Relations on simples (not a hard special kind); decide with Q34.  
-Typed edges (`besteht-aus`) may still *display* those Nodes as attributes of a parent — orthogonal (Q35/Q42).
+“Parameter” remains **ubiquitous language** for a typed slot — not a stored type.  
+Type binding: Relations (`has_type`, optional `ref_scope`) + `Node.config` (`required`, capabilities).  
+**Inheritance:** child catalog Nodes inherit **slot definitions** from ancestors along `parent_id`; instances fill **ParameterValue**.  
+**Q49 strong lean:** simples `capabilities.originate_relations = false` — decide with Q34.  
+Typed edges (`besteht-aus`) may still *display* those Nodes as attributes — orthogonal (Q35/Q42).
 
 ---
 

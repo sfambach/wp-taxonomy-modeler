@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.73-plan** (2026-07-24).
+Last synced from plan version **0.6.78-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,12 +25,12 @@ Last synced from plan version **0.6.73-plan** (2026-07-24).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v15 (Composition Simples Phase 1) | In progress |
+| UI prototype `prototypes/tree-split` v29 (Simple/Complex, subtree, node_ref, Typ-Bindung) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
-| **Q55:** Parameter define/inherit on catalog Nodes (Bauform etc.) | Open (spin — Bauform as Parameter lean) |
-| **Q56:** Composition = Zusammenstellung (BOM/Rezept/Build); Bauteil ≠ Composition | Open (corrected lean); **naming decided** |
+| **Q55:** Slot = typed Node (no Parameter class); inherit along catalog; ParameterValue for fills | Done (planning) |
+| **Q56:** Composition vs Bauteil; catalog ref = `subtree` + `ref_scope` | Done (planning) |
 | Goal path: create one Composition (blockers #1–3) | In progress |
 | Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
 | Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |

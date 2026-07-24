@@ -91,7 +91,7 @@ Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
 See Q16, Q20–Q39, Q49–Q51, Q55–Q56 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
-**Open tension (docs):** Q33 = no Parameter *class*; Q55 may reintroduce Parameter as *definition object* — resolve before coding. Until then treat “Parameter” as vocabulary for slot defs, not a PHP class.
+**Q55 decided:** keep Q33 — “Parameter” is vocabulary for typed slot Nodes; no Parameter PHP class. Instance fills = `ParameterValue`.
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -184,7 +184,7 @@ There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `L�
 | `Changelog` | `changes: Change[]` | History container on each auditable object |
 | `Change` | `timestamp`, `changer`, `change`, `version` | When, who, what, version (details Q21–Q23) |
 
-Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
+Applied to **Project** and **Node** via composition (`changelog` field). (No Parameter class — Q33/Q55.)
 
 ### Parameter type and unit composition
 

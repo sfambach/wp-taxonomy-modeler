@@ -946,3 +946,20 @@ textarea.form-control {
   resize: vertical;
   min-height: 4rem;
 }
+
+
+.edges-details {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+.edges-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.edges-details .detail-subtitle {
+  margin-top: 0.5rem;
+}
