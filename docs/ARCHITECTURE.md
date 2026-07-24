@@ -53,8 +53,8 @@ Display leaning: part-of nodes as attributes of parent; inheritable along is_a.
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
-**Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** + derived **quantity**.  
-Exploring **Collection** (Q52): `list` / `table` / `enum` — **enum created like list** (1 typed column + closed options); kind binding XOR parentage vs `has_type` (Q53).  
+**Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
+**Q53 open:** kind binding XOR parentage vs `has_type`.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  

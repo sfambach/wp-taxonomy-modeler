@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.56-plan"
+version: "0.6.57-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -584,20 +584,20 @@ Template Project → Datentypen / Type     ← Project.type_node
     └── enum      ← closed list (already present; may move under Collection)
 ```
 
-#### Design spin: Collection → list / table / enum (Q52 / Q53) — exploratory
+#### Collection → list / table / enum (Q52 **decided** / Q53 open)
 
-**User insight:** an **enum** is essentially a **list**; a **list** is a **one-column table**. Unify under **Collection**.
+**Decided (Q52):** an **enum** is a **list**; a **list** is a **one-column table**. Unify under **Collection**.
 
-##### Proposed shape
+##### Shape
 
 ```text
 Datentypen
 ├── int · double · string · char · bool     ← simples
 ├── quantity                                ← derived (Größe)
-└── Collection                              ← structural super-kind (exploratory)
+└── Collection                              ← structural super-kind
     ├── list      ← Collection with exactly 1 column
     ├── table     ← Collection with n ≥ 1 columns
-    └── enum      ← special list: closed values, not extensible at fill-time
+    └── enum      ← list + closed option children (not extensible at fill-time)
 ```
 
 | Kind | Columns | At type-definition | At fill-time |
@@ -610,28 +610,26 @@ Datentypen
 
 ##### Concrete type = kind + column schema (“immer zwei”)
 
-Contradiction resolved by splitting two layers:
-
-1. **Kind** — is this a list / table / enum?  
+1. **Kind** — is this a list / table / enum? (binding: **Q53**)  
 2. **Column type(s)** — what does each column hold? (simple or derived, e.g. `string`, `quantity`)
 
 Example **list**:
 
 ```text
 my_list                         ← concrete Collection type
-  kind: list                    ← see XOR binding below
+  kind: list                    ← see XOR binding (Q53)
   └── my_listelement            ← exactly one column node
         ─[has_type]→ string     ← element type (simple or derived)
 ```
 
-Example **table** (BOM-Zeile already looks like this):
+Example **table** (BOM-Zeile):
 
 ```text
 BOM-Zeile                       ← concrete table type
   kind: table
-  ├── Reference ─[has_type]→ string   (or later: list-of-string)
+  ├── Reference ─[has_type]→ RefDes   (list)
   ├── Value     ─[has_type]→ quantity
-  ├── Footprint ─[has_type]→ Bauart   (enum instance)
+  ├── Footprint ─[has_type]→ Bauart   (enum)
   └── Menge     ─[has_type]→ int
 ```
 
@@ -639,29 +637,27 @@ Example **enum** — **same layout as list**, plus closed options under the colu
 
 ```text
 Bauart                          ← concrete Collection type
-  kind: enum                    ← XOR: under enum branch or has_type→enum
+  kind: enum
   └── Option                    ← exactly one column (like my_listelement)
         ─[has_type]→ string     ← replaces separate base_type Relation
-        ├── 0201                ← fixed options (part of the type)
+        ├── 0201
         ├── 0402
         ├── 0603
         ├── 0805
         └── axial
 ```
 
-**No special `base_type` edge required** in this spin — the column’s `has_type` *is* the element/primitive type (aligns enum with list). Legacy `base_type` in the current proto is a stand-in until Collection is adopted.
+**No special `base_type` edge** — the column’s `has_type` *is* the element/primitive type.
 
-##### Kind binding XOR (Q53) — parentage **or** Relation, not both
+##### Kind binding XOR (Q53) — still open
 
 | Mechanism | Meaning |
 |-----------|---------|
 | **A — Parent under kind** | `my_list` child of `list` ⇒ kind = list; `Bauart` child of `enum` ⇒ kind = enum |
 | **B — Relation** | `my_list` ─[has_type]→ `list`; `Bauart` ─[has_type]→ `enum` |
 
-**Rule (strong lean):** **exactly one** of A or B. Doing both is invalid (double kind).  
-Doing **neither** leaves the concrete type incomplete.
-
-Column `has_type` is **independent** of kind binding — every column still needs a type (the “zweite” half).
+**Strong lean:** **exactly one** of A or B. Doing both is invalid (double kind).  
+Column `has_type` is independent of kind binding.
 
 ##### Why this fits existing decisions
 
@@ -669,34 +665,33 @@ Column `has_type` is **independent** of kind binding — every column still need
 |----------|-----|
 | Q33 / Q48 Nodes + `has_type` | Kind and column types stay Nodes + Relations |
 | Q38 / Q39 enum | Same create path as list; one typed column; options closed; single/multiple = selection method |
-| Q47 RefDes / string_list | Concrete **list** with column `has_type`→`string` |
-| BOM Spalten prototype | Already a **table** schema; Footprint → Bauart already an enum column |
-| Template read-only | Template holds Collection kinds (`list`/`table`/`enum`); concrete `Bauart` / `my_list` stay in domain/test Projects |
+| Q47 RefDes / string_list | Concrete **list** with column `has_type`→`string` — no separate `string_list` |
+| BOM Spalten prototype | **table** schema; Footprint → Bauart already an enum column |
+| Template read-only | Template holds Collection kinds; concrete `Bauart` / `RefDes` stay in domain/test Projects |
 
-##### Still open
+##### Still open (Q53 + polish)
 
-- Exact template tree: is `Collection` a real parent Node, or only a doc grouping?
-- Where option Nodes hang for enum: under the column (lean above) vs under the concrete type
+- Confirm XOR kind binding (Q53)
+- Where option Nodes hang for enum: under the column (**decided lean** / proto v14) vs under the concrete type
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
-- Migrate proto Bauart from `base_type` → column + `has_type` when confirmed
 
-**Status:** exploratory shape now mirrored in proto **v14** (Bauart/RefDes/Spalten); further confirmations still open (XOR edge cases, Collection parent Node permanence).
+**Status:** **Q52 decided**; proto **v14** mirrors the shape. Q53 pending confirm.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
 
-#### enum (derived type — agreed shape; Collection spin may supersede `base_type`)
+#### enum (derived type — **Q52**: Collection / like list)
 
 | Rule | Meaning |
 |------|---------|
-| Kind | **Derived** Collection — created **like list** (1 typed column) |
-| **Column type** | Exactly one column with `has_type` → simple (or derived); **replaces** dedicated `base_type` Relation in the Collection spin |
+| Kind | **Collection `enum`** — created **like list** (1 typed column) |
+| **Column type** | Exactly one column with `has_type` → simple (or derived); replaces dedicated `base_type` Relation |
 | **Values** | Fixed option Nodes under that column; each conforms to the column type |
 | Selection | `single` / `multiple` remain selection methods (Q38), not separate types |
 | Binding | Attribute Node ─[has_type]→ concrete enum type (e.g. Bauart) |
 
-Example (target shape under Collection spin):
+Example:
 
 ```text
 Bauart  (kind enum)
