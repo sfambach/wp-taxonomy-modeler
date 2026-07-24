@@ -54,7 +54,7 @@ Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separat
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
-**Q53/Q54:** **Q54 strong lean** — tree = categorize list Bestandteile (BOM / Hardware / Rezept) + inherit hierarchical props; not Collection schema. **Q53** still open. Closed TE (edges + `parent_id` cache) excluded. Guidelines: clear structures; named objects; flag perf/nonsense; modern paradigms.  
+**Q53/Q54/Q55:** **Q54 lean** — catalog tree + inherit. **Q55 spin** — Parameter definitions on Nodes, children inherit, leaves fill (Bauform as Parameter → Bauart). **Q53** open. Closed TE excluded.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  

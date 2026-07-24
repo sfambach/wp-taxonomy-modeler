@@ -60,6 +60,7 @@
 | Q52 | How do **list** / **table** / **enum** relate (Collection model)? | Separate types / **Collection** super-kind (list=1 col, table=n cols, enum=closed list) / enum stays apart | **Decided:** Collection → `list` \| `table` \| `enum`. list ≡ 1-column table; enum created like list (1 typed column + closed option children under that column). Kind binding still **Q53**. | decided |
 | Q53 | How is Collection **kind** bound for a concrete type (e.g. `my_list`, `Bauart`)? | Parent under list/table/enum / Relation `has_type` → kind / XOR / other | **Fresh start** under design guidelines (clear structures; named objects; flag perf/nonsense; modern paradigms). Prior TE closed — no carry-over. | open |
 | Q54 | How do tree hierarchy and Relations relate? | Semantic `parent_id` / org-only tree / hierarchy as Relation / hybrid | **Strong lean:** `parent_id` tree = **categorize Bestandteile** of domain lists (BOM / Hardware / Rezept) **+ inherit hierarchical properties**. Not Collection schema nesting. Closed TE hybrid still excluded. | open |
+| Q55 | How are catalog **Parameters** defined and inherited (e.g. Wert + Bauform on Widerstand)? | Parameter object on Node / Parameter as Node role (Q33) / only Relations `consists_of` | **Spin:** Node **defines** Parameters (name + type); children **inherit** definitions; leaves **fill** values. Bauform lean: Parameter typed as enum `Bauart`, concrete leaf fills Wert+Bauform. Simple + composed types from template. | open |
 
 ## How to close a question
 

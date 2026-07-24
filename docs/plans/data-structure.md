@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.64-plan"
+version: "0.6.65-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -58,10 +58,11 @@ todos:
 
 > **Keep this section updated on every structure change.** After each change, also show this diagram in the chat reply.
 
-**Decided (Q33/Q34):** there is **no Parameter class** and **no ParameterRole**. Attributes such as `Wert` / `Länge` are ordinary **Nodes** that bind a type via **configuration** and/or Relations (`has_type`).  
-Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples.  
+**Decided (Q33):** attributes such as `Wert` / `Länge` live in the catalog model (not a separate owner via `node_id` — Q14 dropped).  
+**Under revisit (Q55):** whether **Parameter** returns as a **named definition object** on a Node (children inherit) or stays a **Node role** — vocabulary “Parameter” is back either way.  
+Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples (`quantity`, Collection).  
 **Q49 strong lean:** simples get config that disables originating Relations (`capabilities.originate_relations = false`) — not a hard special kind (decide with Q34).  
-Typed edges remain exploratory (**Q35**). **Q53/Q54** restarted after a closed thought experiment (see Collection section) — no hierarchy-as-edge decision carried forward.
+Typed edges remain exploratory (**Q35**). **Q54 lean:** catalog tree + property inheritance. Closed hierarchy-edge TE stays out.
 
 ```mermaid
 classDiagram
@@ -106,6 +107,14 @@ classDiagram
     quantity: value + prefix + base_unit
   }
 
+  class Parameter {
+    <<spin Q55>>
+    +name
+    +type : Node
+    +value : ?
+    +required : ?
+  }
+
   class Relation {
     +from : Node
     +to : Node
@@ -135,7 +144,8 @@ classDiagram
   }
 
   note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Tree = categorize list parts\n+ inherit hierarchical props\n(BOM / Hardware / Recipe)\nNOT Collection schema (Q54 lean)"
+  note for Node "Tree = catalog + inherit\nBOM/Hardware/Recipe\ndefines Parameters (Q55 spin)"
+  note for Parameter "DEFINITION on Node\nchildren inherit defs\nfill values on leaves\nobject vs Node-role TBD"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
   note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT hierarchy store (closed TE)"
@@ -149,10 +159,11 @@ classDiagram
   Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent / children
+  Node "1" --> "*" Parameter : defines
+  Parameter --> Node : type
   Node <|-- SimpleType : role / config
   Node <|-- DerivedOrCompositeType : role / config
   SimpleType ..> DerivedOrCompositeType : derive / compose
-  Node ..> Node : has_type optional
   Relation --> Node : from
   Relation --> Node : to
   Relation --> RelationType : relation_type
@@ -161,22 +172,23 @@ classDiagram
 ```
 
 **Legend:** `Relation` / `RelationType` are **exploratory** (Q35). They are **not** the hierarchy store (closed TE).  
-**Q54 lean (new):** `parent_id` tree = **categorize Bestandteile of domain lists** (BOM / Hardware / Recipe) **and** path for **inheriting hierarchical properties** — not Collection schema nesting.  
+**Q54 lean:** `parent_id` tree = **categorize Bestandteile** (BOM / Hardware / Recipe) **+ inherit hierarchical properties**.  
+**Q55 spin:** **Parameter** = attribute **definition** on a catalog Node; child Nodes **inherit** those definitions and may fill/lock values. Whether Parameter is a **distinct object** or a **Node role** (Q33) is open — vocabulary returns either way.  
 Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
 Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Explicitly out:** `parent_id` as cache of hierarchy edges (closed TE).  
 **Schema-as-Nodes spin (Q46):** domain structures such as **BOM** or **Recipe** may themselves be **Nodes + Relations** (templates), so host apps need fewer hard-coded classes (`BomList` / `BomLine` become optional views).  
-**No Parameter / ParameterRole:** attribute Nodes are just Nodes; type binding via **config** and/or `has_type`. `SimpleType` / `DerivedOrCompositeType` remain **roles of type Nodes** (Q34), not separate stored classes.  
+**Types:** simples + composed (`quantity`, Collection) remain type Nodes (Q36/Q52).  
 **Q49 lean:** simples use config that disables originating Relations — still open with Q34.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Hierarchy; Definition choices; attributes (`Wert`, …); type Nodes; schema slots — all the same object |
-| 2 | **Parameter / ParameterRole** | **Rejected / dropped** — leftover naming only; do not model |
+| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; list constituents |
+| 2 | **Parameter** | **Spin (Q55):** definition on a Node (name + type); children inherit; values on leaves — object vs Node-role TBD |
 | 3 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
@@ -221,7 +233,7 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
 | **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
-| **Parameter / ParameterRole** | **Rejected / dropped** | No class and no formal role stereotype; attribute Nodes are just Nodes with type binding |
+| **Parameter / ParameterRole** | **Spin (Q55)** | Definition on Node + inherit; distinct object vs Node-role open; Role stereotype still optional |
 | **BomList / BomLine / Recipe as PHP classes** | **Under review (Q46)** | May be replaceable by **Nodes + Relations** configured like templates |
 | **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41); hierarchy-via-edges TE closed (Q53/Q54 restart) |
 | **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
@@ -751,17 +763,104 @@ Same pattern for Hardware (GPU → …) and Rezepte (Vorspeise → …).
 - Is inheritance **only** via `parent_id` (= `parent_id` *is* `is_a`), or can `is_a` be a Relation while `parent_id` is browse-only? (Two truths → guideline violation.)
 - Are BOM **lines** themselves tree nodes, or only the **catalog** they reference?
 
-##### Still open (fresh Q53 / Q54)
+##### Q55 spin — Parameter definitions + Bauform (BOM / Hardware / Rezept)
 
-- **Q54 lean above** — confirm or refine
-- How is Collection **kind** bound? (Q53) — must **not** rely on “hangs under enum in the catalog tree”
-- How do columns / enum options hang if not via this tree? (named Column object / Relations / separate schema tree?)
+**User direction:** leaves are **concrete Bestandteile** (e.g. Widerstand → … → a pickable part). A **1 kΩ** resistor exists in **different Bauformen**. Reintroduce **Parameter**: a Node can **define** parameters; **child Nodes inherit** those definitions. Keep **simple** and **composed** types; validate on examples.
+
+###### Definition vs value (must stay clear)
+
+| Layer | Meaning | Example |
+|-------|---------|---------|
+| **Parameter definition** | Slot declared on a catalog Node: name + **type** (+ optional constraints) | On `Widerstand`: `Wert` → `quantity`, `Bauform` → `Bauart` (enum) |
+| **Parameter value** | Filled reading for that slot on a Node (or later on a list line) | On leaf: `Wert = 1 kΩ`, `Bauform = 0603` |
+| **Inheritance** | Child sees parent’s **definitions** (and optionally unset defaults); may fill, lock, or refine | `1kΩ`-Gruppe erbt beide Slots; Leaf füllt beide |
+
+Without this split, “Parameter” collapses into either a folder or a free-text field — guideline failure.
+
+###### How to bring Bauform in (three shapes)
+
+| Shape | Tree | Parameters | Verdict |
+|-------|------|------------|---------|
+| **A — Bauform as deeper category** | `Widerstand → 1kΩ → 0603` (leaf = SKU) | `Wert` filled at `1kΩ` level or leaf; Bauform implied by path | Works, but Bauform is **taxonomy**, not a typed Parameter — weak for Hardware/Rezept analogy and for BOM column “Footprint” |
+| **B — Bauform as Parameter (preferred lean)** | `Widerstand → … → R 1kΩ 0603` (leaf) | `Widerstand` defines `Wert:quantity` + `Bauform:Bauart`; leaf **fills both** | Matches “concrete leaf”; Bauart stays a **composed type** (Collection enum); reusable on BOM schema column Footprint |
+| **C — Leaf = only 1kΩ, Bauform later** | Leaf `1kΩ` with Wert set, Bauform empty | Bauform filled on **BOM line** | Conflicts with “Blätter = konkrete Bestandteile” unless the line is allowed to complete identity — **flag:** then the leaf is a *family*, not a part |
+
+**Lean for discussion:** **B**. Intermediate nodes like `1kΩ` may exist as **groups** (not pickable leaves) that lock `Wert` and leave `Bauform` open for children — or omit the group and go straight to SKU leaves.
+
+```text
+Bauteile
+└── Widerstand                         ← defines Parameter Wert:quantity, Bauform:Bauart
+    └── 1 kΩ                           ← group (optional): Wert locked = 1 kΩ; Bauform still open
+        ├── R 1kΩ 0603                 ← leaf: Bauform = 0603  → BOM pick
+        └── R 1kΩ 0805                 ← leaf: Bauform = 0805
+```
+
+###### Types used (simples + composed)
+
+| Type | Kind | Used as Parameter type for… |
+|------|------|-----------------------------|
+| `int` / `double` / `string` / `char` / `bool` | **simple** | counts, flags, free text |
+| `quantity` | **composed** | `Wert`, VRAM, cable length, recipe amount |
+| `Bauart` (Collection **enum**) | **composed** | `Bauform` / Footprint |
+| `RefDes` (Collection **list**) | **composed** | BOM Reference column (schema, not catalog Parameter) |
+
+###### Worked examples
+
+**BOM (A)**
+
+```text
+Widerstand
+  parameters:
+    Wert     : quantity     # Ohm family
+    Bauform  : Bauart       # enum 0201… / THT …
+Leaf "R 1kΩ 0603": Wert=1kΩ, Bauform=0603
+BOM line → picks leaf; schema columns Reference/Menge separate
+```
+
+**Hardware (B)**
+
+```text
+GPU
+  parameters:
+    Speicher : quantity     # e.g. 8 + G + Byte (or specialized)
+    Bus      : enum/string  # PCIe …
+Leaf "RTX … 8GB" fills both; compare UI reads inherited Parameter set
+```
+
+**Rezept (C)**
+
+```text
+Zutat (or Gericht-Komponente)
+  parameters:
+    Menge : quantity        # 200 g, 1 EL, …
+Gericht tree categorizes recipes; ingredient lines pick Zutat-leaves
+# amount often on Relation/line (Q45) — Parameter def still declares the slot shape
+```
+
+###### Object or Node role? (guideline 2)
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Parameter = distinct object** owned by Node | Clear definition/value API; illegal states easier; matches user wording | Softens Q33 “no Parameter class” |
+| **Parameter = Node role** (Q33) via `consists_of` / config | One Node class; already decided once | Easy to confuse definition Nodes with catalog children in the same tree |
+
+**Nonsense / perf flags:**  
+- Do **not** put Parameter definitions as `parent_id` children of `Widerstand` if those children are also catalog categories — two jobs in one list. Prefer `Node.defines → Parameter` (or a dedicated Relation `has_parameter`) **outside** the catalog child axis.  
+- Resolving inherited Parameter sets = walk ancestors once per Node (fine); materialize on write if catalogs get huge.  
+- Filling the same Parameter on both leaf **and** BOM line without a rule → dual truth (avoid).
+
+##### Still open (fresh Q53 / Q54 / Q55)
+
+- **Q54 lean** — confirm catalog + inherit
+- **Q55** — Parameter definition object vs Node role; definition vs value rules; Bauform shape **B**?
+- **Q53** — Collection kind binding (must not use catalog tree for enum/list kind)
+- How do columns / enum **type** options hang if not via catalog tree?
 - Definitionsbaum vs catalog tree: one forest or two purposes?
 - Inheritance: `parent_id` alone vs Relation `is_a` (pick one truth)
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
 
-**Status:** **Q52 decided**. **Q54 strong lean** (catalog + inherit). **Q53 open**. Proto **v14** still mixes schema nesting into the tree — **not** aligned with this lean until revised.
+**Status:** **Q52 decided**. **Q54 strong lean** (catalog + inherit). **Q55 spin** (Parameter definitions + Bauform **B**). **Q53 open**. Proto **v14** still mixes schema nesting into the tree — **not** aligned until revised.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).

@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.64-plan** (2026-07-24).
+Last synced from plan version **0.6.65-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -29,6 +29,7 @@ Last synced from plan version **0.6.64-plan** (2026-07-24).
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
+| **Q55:** Parameter define/inherit on catalog Nodes (Bauform etc.) | Open (spin — Bauform as Parameter lean) |
 | Closed TE: hierarchy-as-edges + `parent_id` cache | Closed (not adopted) |
 | Design guidelines: clear structures; named objects when better | Done (planning) |
 | Guideline: proactively flag performance risk / nonsense | Done (planning) |
