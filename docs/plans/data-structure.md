@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.67-plan"
+version: "0.6.68-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -179,7 +179,7 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Explicitly out:** `parent_id` as cache of hierarchy edges (closed TE).  
-**Q56 lean:** **Composition** / UX **Zusammenstellung** — Ausprägung *is* a composition (filled params); may also reference other compositions (BOM/Build). Katalog holds Vorlagen+Ausprägungen. Drop Rezept as primary UX term.  
+**Q56 lean:** **Composition** / UX **Zusammenstellung** (**naming decided**; rename later OK). Ausprägung *is* a composition; may reference other compositions (BOM/Build). Katalog holds Vorlagen+Ausprägungen.  
 **Schema-as-Nodes (Q46):** Composition schemas/instances as Nodes + Collections — no hard `BomList` / `Recipe` / `Build` classes required.  
 **Types:** simples + composed (`quantity`, Collection) remain type Nodes (Q36/Q52).  
 **Q49 lean:** simples use config that disables originating Relations — still open with Q34.
@@ -885,18 +885,17 @@ Katalog                          ← organisiert Vorlagen + Ausprägungen (Baute
 | **Vorlage** (e.g. GPU, Widerstand) | Parameter **definitions** (+ inheritance along catalog tree) |
 | **Ausprägung** (e.g. RTX 4090, R 1kΩ 0603) | Parameter **values** filled; may refine Vorlage; pickable in higher compositions |
 
-**Naming (user feedback):**
+**Naming — decided:**
 
-| Candidate | Pros | Cons |
-|-----------|------|------|
-| Rezept | Unifying metaphor | Too kitchen — **drop as primary UX term** |
-| Composition | Precise / modern | Too technical for end users |
-| **Zusammenstellung** | Neutral German; fits properties *and* parts | Slightly long |
-| Spezifikation | Great for GPU cards | Weak for BOM/Build |
-| Baugruppe | Good for assemblies | Odd for a single resistor leaf |
-| Konfiguration | Familiar in hardware | Vague / overloaded |
+| Layer | Term |
+|-------|------|
+| **UX / Anwender** | **Zusammenstellung** (skins remain allowed: Stückliste, Build, Gericht, …) |
+| **Internal / model** | **Composition** |
+| Later rename | Allowed if a better word appears — treat as rename, not a new concept |
 
-**Lean:** internal/model type **`Composition`**; primary **user-facing** word lean **`Zusammenstellung`** (skins: Stückliste, Build, Gericht, Bauteil-Ausprägung). Avoid leading with Rezept or Composition in UI copy.
+Drop **Rezept** and raw **Composition** as primary UI labels.
+
+**Lean:** naming **decided** below; concept still open on Vorlage vs Ausprägung roles.
 
 **Guideline check:**
 
@@ -911,14 +910,14 @@ Katalog                          ← organisiert Vorlagen + Ausprägungen (Baute
 
 ##### Still open (Q53 / Q54 / Q55 / Q56)
 
-- Lock UX name: **Zusammenstellung** vs Spezifikation vs other?
+- Naming **decided:** UX Zusammenstellung / internal Composition (rename later OK)
 - Are **Vorlage** and **Ausprägung** two roles of one Composition type, or Composition only on Ausprägung while Vorlage is “category + Parameter defs”?
 - Member kinds: Parameter value vs child-Composition ref — one member table with a discriminant?
 - **Q55** Parameter object vs Node-role; Bauform **B**
 - **Q53** Collection kind binding
 - Definitionsbaum vs catalog forest
 
-**Status:** **Q52 decided**. **Q54 / Q56 strong leans** (refined: Ausprägung *is* a composition; compare = composition vs composition). **Q55 spin**. **Q53 open**. Proto **v14** still mixes schema into the catalog tree — revise later.
+**Status:** **Q52 decided**. **Q56 naming decided** (Zusammenstellung / Composition). **Q54 / Q56 concept strong leans**. **Q55 spin**. **Q53 open**.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
