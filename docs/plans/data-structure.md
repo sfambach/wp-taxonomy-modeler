@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.71-plan"
+version: "0.6.72-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -155,10 +155,10 @@ classDiagram
   }
 
   note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Catalog: Vorlage + Ausprägung\nComposition/Zusammenstellung (Q56)"
+  note for Node "Catalog Bauteil (Widerstand…)\nOR Composition list identity"
   note for Parameter "DEFINITION only\nname + type\nowned by Vorlage"
   note for ParameterValue "INSTANCE content\npayload by type"
-  note for CompositionRow "Level B lines\ncells = ParameterValues"
+  note for CompositionRow "BOM/Rezept lines\nBauteil-Ref cell → Bauteil"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
   note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT hierarchy store (closed TE)"
@@ -174,9 +174,9 @@ classDiagram
   Node "0..1" --> "*" Node : parent / children
   Node "1" --> "*" Parameter : defines
   Parameter --> Node : type
-  Node "1" --> "*" ParameterValue : Level A fills
+  Node "1" --> "*" ParameterValue : Bauteil fills
   ParameterValue --> Parameter : parameter
-  Node "1" --> "*" CompositionRow : Level B rows
+  Node "1" --> "*" CompositionRow : Composition rows
   CompositionRow "1" --> "*" ParameterValue : cells
   Node <|-- SimpleType : role / config
   Node <|-- DerivedOrCompositeType : role / config
@@ -190,7 +190,7 @@ classDiagram
 
 **Legend:** `Relation` / `RelationType` are **exploratory** (Q35). They are **not** the hierarchy store (closed TE).  
 **Q54 lean:** `parent_id` tree = catalog + inherit.  
-**Parameter** = definition; **ParameterValue** / **CompositionRow** = instance content when a Composition object is created.  
+**Bauteil** = catalog part (e.g. Widerstand) with Parameter defs/values. **Composition** = Zusammenstellung (BOM/Rezept/Build) with columns + rows; Bauteile appear **only as column values** (Bauteil-Ref), not as Compositions themselves.  
 Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
 Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
@@ -205,16 +205,17 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; Composition instances (Q56) |
-| 2 | **Parameter** | **Definition** (name + type) owned by Vorlage; inherited by children |
-| 3 | **ParameterValue** | **Instance content** — typed payload for one Parameter on a Composition Node or Row |
-| 4 | **CompositionRow** | **Level-B instance line** (BOM/Rezept/Build) — ordered cells = ParameterValues |
-| 5 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
-| 6 | **Changelog** | History container (`changes`) |
-| 7 | **Change** | One audit entry (when, who, what, version) |
-| 8 | **Relation** | **Exploratory (Q35):** typed edge; **not** hierarchy store |
-| 9 | **RelationType** | **Exploratory:** type with one `label` |
-| 10 | **Composition** (UX: Zusammenstellung) | Node + Definition and/or Rows; identity of the Zusammenstellung |
+| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; **Bauteil** and **Composition** identities |
+| 2 | **Bauteil** | Catalog part (e.g. Widerstand, GPU-Karte) — Parameter defs + ParameterValues; **not** a Composition |
+| 3 | **Parameter** | **Definition** (name + type) on Bauteil-Vorlage; inherited by child Bauteile |
+| 4 | **ParameterValue** | Filled payload on a **Bauteil** or in a **CompositionRow** cell |
+| 5 | **Composition** (UX: Zusammenstellung) | List/table Zusammenstellung — column schema + rows (BOM, Rezept, Build) |
+| 6 | **CompositionRow** | One line of a Composition — cells include **Bauteil-Ref** and other typed columns |
+| 7 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples (**Q50**) |
+| 8 | **Changelog** | History container (`changes`) |
+| 9 | **Change** | One audit entry (when, who, what, version) |
+| 10 | **Relation** | **Exploratory (Q35):** typed edge; **not** hierarchy store |
+| 11 | **RelationType** | **Exploratory:** type with one `label` |
 
 ### Shared audit idea (recommended)
 
@@ -870,245 +871,168 @@ Gericht tree categorizes recipes; ingredient lines pick Zutat-leaves
 - Resolving inherited Parameter sets = walk ancestors once per Node (fine); materialize on write if catalogs get huge.  
 - Filling the same Parameter on both leaf **and** BOM line without a rule → dual truth (avoid).
 
-##### Q56 lean — one composition concept (refined: GPU *is* a composition)
+##### Q56 lean — Composition vs Bauteil (corrected)
 
-**Correction to earlier wording:** a compare matrix over GPUs is **not** “only a view outside the concept.”  
-User model: a **GPU category** defines which properties belong together; a **graphics card** is a composition that **fills** those properties (and **references** the GPU type). Comparing cards = comparing compositions to compositions. A PC build / BOM is the **same** concept whose members are other compositions (catalog leaves). Cooking recipes likewise.
+**User correction:** **Widerstand is a Bauteil.** It is **not** a Composition. In a Composition it appears **only via a column** (e.g. Bestandteil → Bauteil-Ref).
 
-**Abstract idea (composite):** a composition bundles either **parameter values**, and/or **references to other compositions**, under one identity.
+| Concept | What it is | Example |
+|---------|------------|---------|
+| **Bauteil** | Catalog part with Parameter defs/values | `Widerstand` Vorlage; leaf `R 1kΩ 0603`; GPU-Karte |
+| **Composition** (UX Zusammenstellung) | List/table that **assembles** things via typed columns | Stückliste, Gericht, PC-Build |
 
 ```text
-GPU (Vorlage)                    ← defines Parameters: Speicher, Bus, …
-    └── RTX 4090 (Ausprägung)    ← composition: filled values; refers to GPU
-          compare ←→ other cards ← compositions vs compositions
+Katalog (Bauteile)
+└── Widerstand          ← Bauteil-Vorlage (Parameter: Wert, Bauform)
+    └── R 1kΩ 0603      ← Bauteil-Ausprägung (ParameterValues) — NOT a Composition
 
-PC-Build / Stückliste            ← composition: lines → RTX 4090, Mainboard, …
-Kochbuch-Gericht                 ← composition: lines → Zutaten-Ausprägungen
-
-Katalog                          ← organisiert Vorlagen + Ausprägungen (Bauteile)
-                                   wird von höheren Compositions verwendet
+Composition "Stückliste Platine XY"
+  Definition columns: Reference | Bestandteil (Bauteil-Ref) | Menge | …
+  Row: R1,R2 | → R 1kΩ 0603 | 2
 ```
 
-| Kind of member | Example | Same concept? |
-|----------------|---------|---------------|
-| Parameter / Eigenschaft | Speicher = 24 GB on RTX 4090 | yes — properties belong together |
-| Reference to another composition | Build line → RTX 4090 | yes — parts belong together |
-| Both | BOM line: leaf + Menge | yes |
-
-**Katalog (agreed):** catalog of Bauteile (Vorlagen + konkrete Ausprägungen). Higher compositions (Stückliste, Build, Gericht) **use** those catalog entries — they do not replace the catalog.
-
-**Template vs instance (keep clear):**
-
-| | Role |
-|--|------|
-| **Vorlage** (e.g. GPU, Widerstand) | Parameter **definitions** (+ inheritance along catalog tree) |
-| **Ausprägung** (e.g. RTX 4090, R 1kΩ 0603) | Parameter **values** filled; may refine Vorlage; pickable in higher compositions |
+**Compare:** comparing GPUs / Widerstände = compare **Bauteile** (their ParameterValues), not Compositions.  
+**PC-Build / BOM / Rezept** = **Composition** whose rows reference Bauteile (and other cells).
 
 **Naming — decided:**
 
 | Layer | Term |
 |-------|------|
-| **UX / Anwender** | **Zusammenstellung** (skins remain allowed: Stückliste, Build, Gericht, …) |
-| **Internal / model** | **Composition** |
-| Later rename | Allowed if a better word appears — treat as rename, not a new concept |
+| **UX** | **Zusammenstellung** (skins: Stückliste, Build, Gericht, …) |
+| **Internal** | **Composition** |
+| Catalog part | **Bauteil** (not called Composition) |
 
-Drop **Rezept** and raw **Composition** as primary UI labels.
-
-**Lean:** naming **decided** above; concept still open on Vorlage vs Ausprägung roles.
-
-**Guideline check:**
-
-| Guideline | Assessment |
-|-----------|------------|
-| Clear structures | Strong if Vorlage ≠ Ausprägung ≠ Katalog-Ordner stay explicit |
-| Named objects | Composition/Zusammenstellung yes; lines/params as members |
-| Perf / nonsense | Compare N Ausprägungen = read inherited Parameter sets — OK; watch wide matrices. **Do not** make every catalog *folder* a Composition without defs/values |
-| Modern practice | Composite pattern + type/instance; one aggregate, many skins (Q46) |
-
-**Aligns:** Q54 catalog tree, Q55 Parameter define/fill, Q46 schema-as-Nodes, Q52 tables for multi-member compositions (BOM lines).
-
-##### Still open (Q53 / Q54 / Q55 / Q56)
-
-- Naming **decided:** UX Zusammenstellung / internal Composition (rename later OK)
-- Are **Vorlage** and **Ausprägung** two roles of one Composition type, or Composition only on Ausprägung while Vorlage is “category + Parameter defs”?
-- Member kinds: Parameter value vs child-Composition ref — one member table with a discriminant?
-- **Q55** Parameter object vs Node-role; Bauform **B**
-- **Q53** Collection kind binding
-- Definitionsbaum vs catalog forest
-
-**Status:** **Q52 decided**. **Q56 naming decided** (Zusammenstellung / Composition). **Q54 / Q56 concept strong leans**. **Q55 spin**. **Q53 open**.
+**Guideline check:** Clear split Bauteil ≠ Composition — avoids calling every part a Zusammenstellung (nonsense for UI). ParameterValues stay on Bauteile; Composition stores rows/cells.
 
 ##### Goal path — „eine Composition anlegen“ (zielorientiert)
 
-**Goal:** In planning terms, specify the minimum so an operator can **create one Ausprägung-Composition** (e.g. `R 1kΩ 0603` or `RTX 4090`). BOM-style member lists come **second**.
+**Goal:** Create a **Composition** (e.g. Stückliste) with a **Definition** (columns+types) and **Instanz** (rows). Bauteile (Widerstand, …) are created in the **Katalog** separately and only **referenced** from a Bauteil-Ref column.
 
-###### Already in place
+###### Prerequisites
 
-| Item | Status |
-|------|--------|
-| Name UX / intern | decided — Zusammenstellung / Composition |
-| Catalog tree (`parent_id`) | lean Q54 |
-| Parameter define → inherit → fill | spin Q55 |
-| Types: simples + quantity + Collection | decided Q36/Q52 |
-| Bauform as Parameter → Bauart | lean |
+| Need | Role |
+|------|------|
+| Katalog + Bauteil-Vorlage/Ausprägung | Source for Bauteil-Ref cells |
+| Types (`quantity`, `Bauart`, `RefDes`, `int`, …) | Column types + Bauteil Parameter types |
+| Composition Node | Identity of the Zusammenstellung |
+| Column definitions | Schema of the Composition |
+| CompositionRows + cell ParameterValues | Instance content |
 
-###### Ordered blockers (decide in this order)
+###### Ordered blockers
 
-| # | Decision | Proposed default (to lock) | Why |
-|---|----------|----------------------------|-----|
-| **1** | What *is* a Composition in storage? | **Node** with role/config `composition` (Ausprägung); no separate Composition table for MVP | One identity in the catalog; pickable; compares as Nodes |
-| **2** | What is a **Vorlage**? | **Node** in the catalog that **owns Parameter definitions**; children inherit | Same tree as Q54; not a second hierarchy |
-| **3** | What is a **Parameter**? | **Named definition object** owned by a Vorlage-Node (`name` + `type` → type Node); values stored on the Ausprägung-Node | Clear define/fill split; avoids mixing params with catalog children |
-| **4** | How does Ausprägung know its Vorlage? | Prefer **`parent_id`** under Vorlage (or under a group under Vorlage) = inheritance path; optional explicit `based_on` only if parent ≠ Vorlage | One truth (no edge-cache hybrid) |
-| **5** | Types for first example | Project must already have needed type Nodes (from template): e.g. `quantity`, `Bauart` (enum) | Cannot fill Wert/Bauform without types |
-| **6** | Create API (conceptual) | `createComposition({ parent_id, name, values[] })` → Node + filled Parameter values; defs from ancestors | Goal operation |
-| **7** | Members (BOM/Build) | **Later** — CompositionMember refs to other Composition Nodes (+ props e.g. Menge) | Same concept, second milestone |
+| # | Decision | Proposed default |
+|---|----------|------------------|
+| **1** | Composition storage | **Node** with role `composition` |
+| **2** | Column definition | Named **Parameter**/column on the Composition (or its schema Vorlage): `name` + `type` |
+| **3** | Bauteil-Ref | First-class column type → target **Bauteil** Node id |
+| **4** | Instance content | **CompositionRow** + cell **ParameterValue**s |
+| **5** | Bauteil (separate) | Catalog Node + Parameter defs/values (Q55) — not a Composition |
 
-###### Concrete create checklist (Ausprägung)
+###### Create checklist (Composition)
 
-1. Ensure **Project** + **Katalog**-root exist.  
-2. Ensure **Vorlage** exists (e.g. `Widerstand`) with Parameter defs (`Wert:quantity`, `Bauform:Bauart`).  
-3. Ensure **types** exist (`quantity`, `Bauart` + options).  
-4. **Create** child Node under Vorlage (or under group `1 kΩ`).  
-5. **Fill** Parameter values (`1 kΩ`, `0603`).  
-6. Result = **Composition** (Zusammenstellung) ready to compare or to use in a later BOM Composition.
-
-###### Next decision to lock now
-
-**Blocker #1–3** (Composition = Node; Vorlage = Node with Parameter defs; Parameter = definition object).  
-If you agree, we mark them decided and draft the conceptual `createComposition` shape + first worked example (Widerstand / 1 kΩ / 0603).
+1. Bauteile exist in Katalog (e.g. `R 1kΩ 0603`).  
+2. Create Composition Node (Stückliste).  
+3. Define columns (Reference, Bestandteil:Bauteil-Ref, Menge, …).  
+4. Add rows with cell values (refs + scalars).
 
 ##### Two viewpoints of a Composition (Definition vs Instanz)
 
-A Composition always has **both**:
-
-| Viewpoint | Meaning | “Spalten” |
-|-----------|---------|-----------|
-| **1 — Definition (Schema)** | How many slots / columns, each with a **type** | Parameter definitions (or table columns) |
-| **2 — Instanz (Ausprägung / Rows)** | Filled values, and/or member rows | Values for those slots |
-
-Creating a Composition **definition** = declare columns + types.  
-Creating a Composition **instance** = fill those columns (and/or add member rows that reference other Compositions).
-
-Same pattern at two levels:
+| Viewpoint | Meaning |
+|-----------|---------|
+| **1 — Definition** | Number and types of **columns** (schema) |
+| **2 — Instanz** | **Rows** with cell values (incl. Bauteil-Ref → Bauteil) |
 
 ```text
-Level A — Katalog-Vorlage "GPU" / "Widerstand"
-  Definition: Parameter-Spalten (Eigenschaften)
-  Instanz:    Ausprägung RTX 4090 / R 1kΩ 0603
+Level — Composition only (Stückliste / Gericht / Build)
+  Definition: Spalten + Typen
+  Instanz:    CompositionRows
 
-Level B — Listen-Composition "Stückliste" / "Gericht" / "PC-Build"
-  Definition: Zeilen-Spalten (Bestandteil, Menge, …)
-  Instanz:    konkrete Zeilen die auf Katalog-Ausprägungen zeigen
+Level — Bauteil (separate)
+  Definition: Parameter on Vorlage (Wert, Bauform, …)
+  Instanz:    ParameterValues on Bauteil-Ausprägung
 ```
 
 ###### Type catalog we can use (already decided)
 
 | Type | Kind | Typical use |
 |------|------|-------------|
-| `int` `double` `string` `char` `bool` | simple | counts, flags, free text |
-| `quantity` | composed | Wert, Menge (Gewicht), Speicher, TDP, Länge |
-| Collection `enum` (e.g. `Bauart`) | composed | Bauform / closed choices |
-| Collection `list` (e.g. `RefDes`) | composed | multi-value strings (R1,R2) |
-| Collection `table` | composed | multi-column line schemas |
-| **Composition-Ref** (needed) | TBD | column that points at another Composition (Katalog-Blatt) — not a simple yet; treat as **member/ref slot** for now |
+| `int` `double` `string` `char` `bool` | simple | counts, flags, text |
+| `quantity` | composed | Bauteil Wert; Rezept-Menge |
+| Collection `enum` (e.g. `Bauart`) | composed | Bauteil Bauform |
+| Collection `list` (e.g. `RefDes`) | composed | BOM Reference |
+| Collection `table` | composed | may describe Composition schema shape |
+| **Bauteil-Ref** (needed) | TBD | Composition column → Katalog-Bauteil |
 
-###### Worked definitions — Spalten + Typen
+###### Worked Composition definitions — Spalten + Typen
 
-**1) BOM / Stückliste** (Level B — Zeilenschema; from example A)
+**1) BOM / Stückliste**
 
-| Spalte | Typ | Notes |
-|--------|-----|--------|
-| Reference | `RefDes` (list→string) | Designators `R1,R2` |
-| Bestandteil | **Composition-Ref** → Katalog-Ausprägung | picks e.g. `R 1kΩ 0603` |
-| Menge | `int` | often derived from Reference count |
-| Beschreibung | `string` | optional |
-| Preis | `double` (or later money) | often host |
-| Auf Lager | `bool` | often host |
+| Spalte | Typ |
+|--------|-----|
+| Reference | `RefDes` (list→string) |
+| Bestandteil | **Bauteil-Ref** → e.g. Widerstand-Ausprägung |
+| Menge | `int` |
+| Beschreibung | `string` |
+| Preis | `double` (often host) |
+| Auf Lager | `bool` (often host) |
 
-Part properties like **Bauform** live on the **Katalog-Ausprägung**, not as BOM columns (Q55 lean).
+**2) Kochrezept / Gericht**
 
-**2) Kochrezept / Gericht** (Level B)
+| Spalte | Typ |
+|--------|-----|
+| Zutat | **Bauteil-Ref** (or Zutat-Bauteil) |
+| Menge | `quantity` |
+| Hinweis | `string` |
 
-| Spalte | Typ | Notes |
-|--------|-----|--------|
-| Zutat | **Composition-Ref** → Zutaten-Ausprägung | e.g. Weizenmehl |
-| Menge | `quantity` | `200 g`, `1 EL` |
-| Optional / Hinweis | `string` | optional |
+**3) PC-Build**
 
-**3) Grafikkarte** (Level A — Eigenschaftsschema; **working example**, user had no fixed list yet)
+| Spalte | Typ |
+|--------|-----|
+| Slot / Rolle | `enum`/`string` (GPU, RAM, …) |
+| Bestandteil | **Bauteil-Ref** → GPU-Karte, … |
+| Menge | `int` |
 
-Vorlage **GPU** defines:
+**Bauteil Widerstand** (not Composition columns — own Parameter set):
 
-| Spalte (Parameter) | Typ | Example value on Ausprägung |
-|--------------------|-----|-----------------------------|
-| Speicher | `quantity` | `24 GB` (Byte-Familie / Spezialisierung TBD) |
-| Speicher-Typ | `enum` (e.g. `GddrTyp`) oder `string` | `GDDR6X` |
-| Bus | `string` oder `enum` | `PCIe 4.0 x16` |
-| Chip | `string` | `AD102` |
-| TDP | `quantity` | `450 W` |
-| Ausgänge | `list`→`string` oder `string` | `3× DP, 1× HDMI` |
+| Parameter | Typ |
+|-----------|-----|
+| Wert | `quantity` |
+| Bauform | `Bauart` |
 
-Ausprägung **„RTX 4090 Fe …“** = Instanz: fills those columns. Compare = compare instances.  
-PC-Build = Level-B Composition whose Bestandteil column refs this GPU Ausprägung.
+**Bauteil GPU** (draft Parameter set — for compare of Bauteile):
 
-**4) Widerstand** (Level A — already agreed lean)
+| Parameter | Typ |
+|-----------|-----|
+| Speicher | `quantity` |
+| Speicher-Typ | `enum`/`string` |
+| Bus | `string`/`enum` |
+| Chip | `string` |
+| TDP | `quantity` |
+| Ausgänge | `list`/`string` |
 
-| Spalte | Typ | Example |
-|--------|-----|---------|
-| Wert | `quantity` | `1 kΩ` |
-| Bauform | `Bauart` (enum) | `0603` |
+###### Viewpoint 2 — Instanz / Inhalt ablegen
 
-###### Gap to close for “Definition anlegen”
-
-To **create a Composition definition** we must be able to:
-
-1. Name the Composition / Vorlage.  
-2. Add **N columns** (Parameters), each with a **type** from the catalog (or Composition-Ref).  
-3. Persist that schema so instances can fill it.
-
-**Composition-Ref** as a first-class type is still missing — needed for BOM/Rezept/Build member columns. Flag for next lock (blocker **#3b**).
-
-###### Viewpoint 2 — Instanz / Inhalt ablegen (when a Composition object is created)
-
-**Lean:** do **not** stuff filled content into `Node.config` blobs or as catalog `parent_id` children. Use dedicated instance objects.
-
-| Created object | What is stored | Where |
-|----------------|----------------|-------|
-| **Level A Ausprägung** (GPU card, `R 1kΩ 0603`) | One **Node** (Composition identity) + one **ParameterValue** per filled Parameter | `ParameterValue { composition_node, parameter, payload }` |
-| **Level B list** (Stückliste, Gericht, PC-Build) | One **Node** (list identity) + **CompositionRow**s; each row has **ParameterValue** cells (incl. Composition-Ref payloads) | `Node → rows[] → cells[]` |
+**Composition create:**
 
 ```text
-create Ausprägung "R 1kΩ 0603"
-  Node(id=N1, parent=Widerstand|1kΩ-Gruppe, role=composition)
-  ParameterValue(N1, Wert,    payload={kind:quantity, value:1, prefix:k, unit:Ohm})
-  ParameterValue(N1, Bauform, payload={kind:enum, option:0603})
-
-create Stückliste "Platine XY"
-  Node(id=N2, role=composition/table-instance)
-  CompositionRow(N2, position=1)
-    cell Reference → payload list ["R1","R2"]
-    cell Bestandteil → payload ref N1
-    cell Menge → payload int 2
+Node(id=S1, role=composition, name="Stückliste Platine XY")
+  columns: Reference, Bestandteil(Bauteil-Ref), Menge, …
+  CompositionRow(position=1)
+    Reference → ["R1","R2"]
+    Bestandteil → Bauteil R 1kΩ 0603
+    Menge → 2
 ```
 
-**Payload shape (by Parameter.type):**
+**Bauteil create (separate):**
 
-| Type | Payload lean |
-|------|----------------|
-| simple | scalar (`int`/`double`/`string`/`char`/`bool`) |
-| `quantity` | `{ value, prefix?, base_unit }` (group — Q45) |
-| enum | option id / key |
-| list | ordered scalars or nested payloads |
-| Composition-Ref | target Composition Node id |
+```text
+Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
+  ParameterValue(Wert → 1 kΩ)
+  ParameterValue(Bauform → 0603)
+```
 
-**Persistence (conceptual — Q11/Q16):** domain objects first; WP mapping later (custom tables or meta). Filled values are **in-core** for Compositions (strengthens Q16 lean) — otherwise Zusammenstellung cannot exist.
+**Reject:** treating Widerstand / GPU-Karte as Composition; stuffing Bauteil properties into Composition columns except via Bauteil-Ref.
 
-**Reject:** values only on Relations for Level A (forces fake edges); JSON blob without Parameter ids (breaks schema evolution); dual-write Node meta + ParameterValue.
-
-**Perf:** load ParameterValues by `composition_node_id` (indexed); rows by parent Node + `position`. Fine for BOM-sized lists; huge catalogs may page.
-
-**Still open:** exact PHP DTO field names; whether Quantity payload stores unit Node ids vs keys; host-only columns (Preis/Lager) vs in-core.
+**Gap:** formalize **Bauteil-Ref** column type (blocker #3).
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
