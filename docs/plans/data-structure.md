@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.62-plan"
+version: "0.6.63-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -690,6 +690,21 @@ Binding rules for the **new** approach (not answers — constraints on how we de
 | **Nonsense check** | If two structures encode the same fact, or a named object would be clearer than a clever encoding, say that plainly — including when the suggestion came from the user or a prior spin. |
 | **Cost vs clarity** | Prefer the clearer model unless there is a concrete, measured reason not to. “Might be slower later” alone is not a veto; **silent** acceptance of known bad shapes is. |
 | **Agent duty** | In planning replies, **proactively** warn when a proposal looks performance-hostile or conceptually absurd — do not wait to be asked. |
+
+###### 4. Modern design paradigms and best practice
+
+Prefer current, mainstream modeling practice — not novelty for its own sake, and not WP 4 / PHP 5 habits.
+
+| Rule | Meaning |
+|------|---------|
+| **Composition over inheritance** | Prefer composing Nodes + Relations + config over PHP subclass trees or “kind flags that pretend to be types.” Aligns with Q34 lean. |
+| **Typed, explicit models** | Prefer named types / DTOs / RelationTypes with clear fields over anonymous arrays and stringly bags (Q20). Optional/`?` must mean optional — not “we’ll see.” |
+| **Ubiquitous language** | Domain words (`Collection`, `column`, `quantity`, `contains` vs `has_type`) stay consistent in docs, proto, and later PHP. Rename when the word lies. |
+| **Separation of concerns** | Persistence (WP terms/meta/tables), domain model, and UI/proto are layers. Do not let storage quirks dictate the conceptual model — map later (Q11/Q19). |
+| **Make illegal states unrepresentable** | Where practical, structure the model so invalid combos are hard (e.g. enum without column type). Prefer that over “document and hope.” |
+| **YAGNI with honesty** | Do not invent speculative meta-frameworks. Do invent a real object when the domain already needs it (guideline 2). |
+| **Established patterns first** | Trees → adjacency / explicit parent; typed links → edge table; closed sets → enum/options; tabular schema → columns. Reach for property-graph / EAV / JSON-blob only with a stated reason. |
+| **Cite or contrast** | When proposing a pattern, briefly name the practice (DDD value vs entity, adjacency list, schema-as-data) or say why we deviate — so choices stay reviewable. |
 
 ##### Still open (fresh Q53 / Q54)
 

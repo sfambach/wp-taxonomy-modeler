@@ -1,5 +1,5 @@
 ---
-description: Design guidelines for the clean Q53/Q54 restart — clear structures; named objects when better; flag performance risk and nonsense
+description: Design guidelines for clean Q53/Q54 restart — clear structures; named objects; flag perf/nonsense; modern design paradigms
 alwaysApply: true
 ---
 
@@ -32,3 +32,13 @@ Apply when discussing or deciding **Q53** (Collection kind binding), **Q54** (hi
 - Say plainly when something is conceptually nonsense (same fact twice, overloaded RelationType, clever encoding instead of a named object).
 - Prefer clarity unless there is a concrete reason not to; do not silently accept known bad shapes.
 - Do this in planning replies without waiting to be asked.
+
+## Modern design paradigms and best practice
+
+- Composition over inheritance; typed explicit models (DTOs / named RelationTypes) over stringly bags.
+- Ubiquitous language — rename when the word lies.
+- Separate persistence, domain model, and UI; storage must not dictate the conceptual model.
+- Prefer making illegal states hard to represent.
+- YAGNI, but still use a real object when the domain needs one.
+- Prefer established patterns (adjacency for trees, edge table for typed links, columns for tabular schema) unless a deviation is justified.
+- When proposing a pattern, briefly name it or say why we deviate.
