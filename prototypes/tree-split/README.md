@@ -25,12 +25,12 @@ Project root
     └── Kondensator  Wert/Präfix/Einheit→Farad
 ```
 
-**Bauteile sind kein Composition** und keine Tabelle — nur Katalog mit Parameter-Schema. In der BOM erscheinen sie als **`node_ref`** (Auswahlbereich via `ref_scope` → Bauteile).
+**Bauteile** = Katalogwurzel. In der BOM heißt die Auswahlspalte **Bauteil Wahl** (`node_ref` + `ref_scope` → Bauteile) — nicht dieselbe Sache wie der Katalogknoten.
 
 ## Goal path — BOM-Zeile
 
 1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
-2. **BOM — Board** → Backend: Spalte **Bauteil** (`node_ref` + `ref_scope`→Bauteile) wählen.
+2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`node_ref` + `ref_scope`→Bauteile).
 3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
 4. **Beschreibung** = `textarea` (optional).
 5. Erlaubte Präfixe = `allows_prefix` der Einheit (Ohm/Farad im Knoten-Tab).
@@ -43,7 +43,7 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v27` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v28` — **Reset** after upgrade.
 
 ## Simple types (HTML lean)
 

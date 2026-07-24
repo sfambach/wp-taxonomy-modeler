@@ -924,7 +924,7 @@ Composition "Stückliste Platine XY"
 |---|----------|------------------|
 | **1** | Composition storage | **Node** with role `composition` |
 | **2** | Column definition | Named **Parameter**/column on the Composition (or its schema Vorlage): `name` + `type` |
-| **3** | Catalog ref | Type **`node_ref`** + Relation **`ref_scope`** → catalog root (e.g. Bauteile); column name may stay „Bauteil“ |
+| **3** | Catalog ref | Type **`node_ref`** + Relation **`ref_scope`** → catalog root (e.g. Bauteile); column name e.g. „Bauteil Wahl“ (≠ Katalogwurzel) |
 | **4** | Instance content | **CompositionRow** + cell **ParameterValue**s |
 | **5** | Bauteil (separate) | Catalog Node + Parameter defs/values (Q55) — not a Composition |
 
@@ -1033,7 +1033,7 @@ Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
 
 **Reject:** treating Widerstand / GPU-Karte as Composition; stuffing Bauteil properties into Composition columns except via Bauteil-Ref.
 
-**Resolved lean (proto v27):** type **`node_ref`** (generic, cf. ACF Post Object) + Relation **`ref_scope`** → catalog root. Domain label „Bauteil“ / „Zutat“ stays the **column name**. Slot Pflicht = `config.required` on the column Node.
+**Resolved lean (proto v27/v28):** type **`node_ref`** (generic, cf. ACF Post Object) + Relation **`ref_scope`** → catalog root. Column name e.g. **„Bauteil Wahl“** (distinct from catalog root **Bauteile**). Slot Pflicht = `config.required` on the column Node.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).

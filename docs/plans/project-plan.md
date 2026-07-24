@@ -248,6 +248,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Proto **v15:** project **Composition Simples** — Phase 1 Zusammenstellung with only simple column types; Tabelle = instance rows. Extend later to quantity/enum/Bauteil-Ref. Plan **0.6.73**. |
 | 2026-07-24 | **Simple types rename:** `string` → **`text`** (einzeilig, HTML input) + **`textarea`** (mehrzeilig; Format/Interpreter later). Aligns HTML/DB/Rails (`string`/`text`). Proto v26. Plan **0.6.74**. |
 | 2026-07-24 | **`node_ref`** type (generic Node pointer) + Relation **`ref_scope`** → catalog root; replaces hardcoded Bauteil picker. Slot **Pflicht/Optional** = **`Node.config.required`** (not on `has_type`). BOM column **Beschreibung** → `textarea`. Proto v27. Plan **0.6.75**. |
+| 2026-07-24 | BOM column rename **Bauteil** → **Bauteil Wahl** (vs catalog root Bauteile). Proto v28. |
 
 ## Change protocol
 

@@ -13,7 +13,7 @@
  *   node_ref uses ref_scope → catalog root. Slot Pflicht = Node.config.required.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v27";
+const STORAGE_KEY = "wtt-proto-tree-split-v28";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -511,13 +511,13 @@ function seedBomTestData(compositionsRootId, core) {
 
   const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
-      "BOM-Zeile: Bauteil = node_ref (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
+      "BOM-Zeile: Spalte „Bauteil Wahl“ = node_ref (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
-  const cPart = createNode(bomCompId, "Bauteil", 0, {
+  const cPart = createNode(bomCompId, "Bauteil Wahl", 0, {
     description:
-      "node_ref → Kataloggruppe. has_type → node_ref; ref_scope → Bauteile. Pflicht (config.required).",
+      "node_ref → Kataloggruppe. has_type → node_ref; ref_scope → Bauteile. Pflicht (config.required). Name ≠ Katalogwurzel „Bauteile“.",
     config: { required: true },
   });
   const cRef = createNode(bomCompId, "Reference", 1, {
@@ -1495,7 +1495,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 27,
+    version: 28,
     projects,
     activeProjectId,
     rootId,
