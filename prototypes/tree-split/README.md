@@ -8,7 +8,7 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 | Tab | Role |
 |-----|------|
-| **Knoten** | Eigenschaften + Relationen; bei Basiseinheit: **zulässige Präfixe**; bei typed Slots: **Pflicht (config.required)** |
+| **Knoten** | Eigenschaften + **Typ-Bindung** (`has_type` / bei `subtree` auch `ref_scope`) + Relationen; Basiseinheit: Präfixe; Slots: Pflicht |
 | **Backend** | Dateneingabe nur für **Compositionen** (Tabelle) |
 | **Frontend** | Vereinfachte Seitenvorschau |
 | **Feld** | HTML-Spielwiese — unangetastet |

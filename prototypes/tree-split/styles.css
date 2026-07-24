@@ -547,6 +547,15 @@ body {
   cursor: help;
 }
 
+.type-binding-warn {
+  margin: 0.5rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
 .data-table .row-num {
   width: 2.25rem;
   text-align: center;
