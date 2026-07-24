@@ -566,20 +566,12 @@ Prototype: `prototypes/tree-split` **v14** — Collection in template; Bauart/Re
 
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
-├── int                       ← simple (in template)
-├── double                    ← simple
-├── string                    ← simple
-├── char                      ← simple
-├── bool                      ← simple
-├── enum                      ← Collection kind (Q52); concrete enums e.g. Bauart in domain projects
-└── quantity                  ← derived (in template) — Größe, not Messung
-    ├── value     → numeric simple (int | double; Q37)
-    ├── prefix?   → Präfix (unit group with base_unit)
-    └── base_unit → Basiseinheit
-└── Collection                ← Q52 decided
+├── int · double · string · char · bool   ← simples (in template)
+├── quantity                              ← Größe (in template)
+└── Collection                            ← Q52 decided
     ├── list
     ├── table
-    └── enum
+    └── enum                              ← concrete enums (e.g. Bauart) in domain projects
 ```
 
 #### Collection → list / table / enum (Q52 **decided** / Q53 open)

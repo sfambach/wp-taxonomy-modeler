@@ -22,7 +22,6 @@ Last synced from plan version **0.6.57-plan** (2026-07-24).
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
-| Core types: template has **simples** + derived **enum** + derived **quantity** (Größe) | Done (planning) |
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
