@@ -9,42 +9,29 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 | Tab | Role |
 |-----|------|
 | **Knoten** | Eigenschaften + Relationen; bei Basiseinheit: **zulässige Präfixe** |
-| **Backend** | Dateneingabe (BOM: Bauteil → dynamische Wert/Präfix-Felder) |
+| **Backend** | Dateneingabe nur für **Compositionen** (Tabelle) |
 | **Frontend** | Vereinfachte Seitenvorschau |
 | **Feld** | HTML-Spielwiese — unangetastet |
-
-## Goal path — BOM-Zeile
-
-1. Unter **Bauteile** Gruppe wählen (Widerstand / Kondensator) — Schema im Baum.
-2. In **BOM — Board** → Backend: Spalte **Bauteil** setzen.
-3. **Wert** = double + Präfix; **Einheit** kommt fix vom Bauteil (Ohm / Farad).
-4. Erlaubte Präfixe = `allows_prefix` der Einheit (unter Typen → Basiseinheit → Ohm/Farad pflegbar).
-
-```text
-Bauteile
-├── Widerstand
-│   ├── Wert ─[has_type]→ double
-│   ├── Präfix ─[has_type]→ Präfixe
-│   └── Einheit ─[has_type]→ Ohm   (fix)
-└── Kondensator
-    ├── Wert ─[has_type]→ double
-    ├── Präfix ─[has_type]→ Präfixe
-    └── Einheit ─[has_type]→ Farad (fix)
-
-Ohm  ─[allows_prefix]→ m, k, M, µ, n, p
-Farad ─[allows_prefix]→ p, n, µ, m
-```
 
 ## Root layout
 
 ```text
-Demo
-├── Typen (Datentypen · Präfixe · Basiseinheit inkl. Ohm/Farad)
-└── Compositionen
-    ├── Rezept — Backzutaten
-    ├── Bauteile
-    └── BOM — Board
+Project root
+├── Typen          (Datentypen · Präfixe · Basiseinheit)
+├── Compositionen  (Rezept · BOM — Board)  ← Tabellen / Zeilen
+└── Bauteile       (Katalog ≠ Composition)
+    ├── Widerstand   Wert/Präfix/Einheit→Ohm
+    └── Kondensator  Wert/Präfix/Einheit→Farad
 ```
+
+**Bauteile sind kein Composition** und keine Tabelle — nur Katalog mit Parameter-Schema. In der BOM erscheinen sie als **Bauteil-Ref**.
+
+## Goal path — BOM-Zeile
+
+1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
+2. **BOM — Board** → Backend: Spalte **Bauteil** wählen.
+3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
+4. Erlaubte Präfixe = `allows_prefix` der Einheit (Ohm/Farad im Knoten-Tab).
 
 ## Projects
 
@@ -53,7 +40,7 @@ Demo
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v22` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v23` — **Reset** after upgrade.
 
 ## Edges
 
