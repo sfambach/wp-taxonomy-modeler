@@ -4,9 +4,18 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 **Not** WordPress plugin code. Open `index.html` in a browser (or `python3 -m http.server` in this folder).
 
-## Root layout (all projects)
+## Right pane tabs (left → right)
 
-Every project root has exactly two children:
+| Tab | Role |
+|-----|------|
+| **Knoten** | Eigenschaften + Relationen für jeden Knoten (inkl. Composition) |
+| **Backend** | Dateneingabe / vereinfachte WP-Seitenerstellung (Tabelle = CompositionRows) |
+| **Frontend** | Vereinfachte Seitenvorschau (später: Gutenberg-Blöcke, Vergleich, Aktionen) |
+| **Feld** | HTML-Feld-Spielwiese — **unangetastet**, für spätere Zwecke |
+
+Entfernt: Umrechnung, Tabelle 2, separater Relationen-Tab (Relationen → Knoten).
+
+## Root layout (all projects)
 
 ```text
 Project root
@@ -26,20 +35,15 @@ Project root
 | **Template** | read-only | (leer — nur Typen) |
 | **BOM Testprojekt** | editable | Spalten, Stückliste, Bauteile |
 
-State: `localStorage` key `wtt-proto-tree-split-v17` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v18` — **Reset** after upgrade.
 
-## Walkthrough — Phase 1 (Simples only)
+## Walkthrough — Phase 1 (Simples)
 
 1. Open the prototype → **Reset**.
 2. Project **Composition Simples**.
-3. Tree: `Compositionen` → **`Rezept — Backzutaten`** → tab **Tabelle**.
-4. Seeded rows:
-
-| Bezeichnung | Anzahl | Aktiv | Code | Faktor |
-|-------------|--------|-------|------|--------|
-| Mehl | 200 | ✓ | M | 1 |
-| Zucker | 50 | ✓ | Z | 0.5 |
-| Salz | 5 | | S | 0.1 |
+3. Tree: `Compositionen` → **`Rezept — Backzutaten`**.
+4. Tab **Backend** — Zeilen Mehl / Zucker / Salz bearbeiten.
+5. Tab **Frontend** — Block-ähnliche Seitenvorschau derselben Daten.
 
 ```text
 Composition Simples

@@ -13,19 +13,24 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v17";
+const STORAGE_KEY = "wtt-proto-tree-split-v18";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
 const PROJECT_KIND_BOM_TEST = "bom-test";
-const RIGHT_TABS = ["node", "relations", "table", "table2", "form", "convert"];
+/** Left→right: node props · WP/data entry · page preview · HTML field playground (kept for later). */
+const RIGHT_TABS = ["node", "backend", "frontend", "form"];
 const TAB_ARIA = {
   node: "tab-node",
-  relations: "tab-relations",
-  table: "tab-table",
-  table2: "tab-table2",
+  backend: "tab-backend",
+  frontend: "tab-frontend",
   form: "tab-form",
-  convert: "tab-convert",
+};
+const LEGACY_TAB_MAP = {
+  relations: "node",
+  table: "backend",
+  table2: "backend",
+  convert: "node",
 };
 const REL_HAS_TYPE = "has_type";
 /** @deprecated Collection spin: prefer column ─[has_type]→ element type */
@@ -72,12 +77,9 @@ const DEFAULT_PREFIX_FACTORS = {
  *   baseUnitsRootId: string,
  * }} ProtoProject
  */
-/** @typedef {'node'|'relations'|'table'|'table2'|'form'|'convert'} RightTab */
+/** @typedef {'node'|'backend'|'frontend'|'form'} RightTab */
 /**
  * @typedef {{ id: string, from: string, to: string, label: string, props?: { value?: string|number } }} ProtoEdge
- */
-/**
- * @typedef {{ leftValue: string, leftKey: string, rightKey: string }} ConvertState
  */
 /**
  * @typedef {{
@@ -113,14 +115,10 @@ let seq = 1;
 let activeTab = "node";
 /** @type {Map<string, string[][]>} */
 let tableCells = new Map();
-/** @type {Map<string, string[][]>} */
-let tableCells2 = new Map();
 /** @type {Map<string, FormState>} */
 let formStates = new Map();
 /** @type {ProtoEdge[]} */
 let edges = [];
-/** @type {Map<string, ConvertState>} */
-let convertStates = new Map();
 let dataTypesRootId = "";
 let prefixesRootId = "";
 let baseUnitsRootId = "";
@@ -523,10 +521,8 @@ function createInitial() {
   collapsed = new Set();
   seq = 1;
   tableCells = new Map();
-  tableCells2 = new Map();
   formStates = new Map();
   edges = [];
-  convertStates = new Map();
   projects = [];
   dataTypesRootId = "";
   prefixesRootId = "";
@@ -652,49 +648,6 @@ function findEdge(from, label) {
   return edges.find((e) => e.from === from && e.label === label) || null;
 }
 
-function allowedPrefixIds(baseUnitId) {
-  return edges
-    .filter((e) => e.from === baseUnitId && e.label === REL_ALLOWS_PREFIX)
-    .map((e) => e.to)
-    .filter((id) => nodes.has(id));
-}
-
-/** Scale from Präfix ─[multiplikator]→ int (props.value). */
-function prefixFactor(prefixNode) {
-  if (!prefixNode) return 1;
-  const e = findEdge(prefixNode.id, REL_MULTIPLIKATOR);
-  if (e && e.props?.value != null) {
-    const n = Number(e.props.value);
-    if (Number.isFinite(n) && n !== 0) return n;
-  }
-  const named = DEFAULT_PREFIX_FACTORS[prefixNode.name];
-  if (typeof named === "number") return named;
-  return 1;
-}
-
-/**
- * Derived unit choices for a Basiseinheit (Vater + allows_prefix Kinder).
- * @returns {{ key: string, prefixId: string|null, label: string, factor: number }[]}
- */
-function unitChoices(baseUnitId) {
-  const unit = nodes.get(baseUnitId);
-  if (!unit || !isBaseUnitNode(unit)) return [];
-  const choices = [
-    { key: "", prefixId: null, label: unit.name, factor: 1 },
-  ];
-  for (const pid of allowedPrefixIds(baseUnitId)) {
-    const pref = nodes.get(pid);
-    if (!pref) continue;
-    choices.push({
-      key: pid,
-      prefixId: pid,
-      label: `${pref.name}${unit.name}`,
-      factor: prefixFactor(pref),
-    });
-  }
-  return choices;
-}
-
 function nodePath(id) {
   const parts = [];
   let cur = nodes.get(id);
@@ -741,39 +694,8 @@ function setEdgeValue(edgeId, value) {
   render();
 }
 
-function defaultConvertState() {
-  return { leftValue: "10", leftKey: "", rightKey: "" };
-}
 
-function ensureConvertState(baseUnitId) {
-  let st = convertStates.get(baseUnitId);
-  if (!st) {
-    st = defaultConvertState();
-    const choices = unitChoices(baseUnitId);
-    // Prefer demo: left kOhm-like if k exists, right bare base
-    const kChoice = choices.find((c) => nodes.get(c.key)?.name === "k");
-    if (kChoice) st.leftKey = kChoice.key;
-    st.rightKey = "";
-    convertStates.set(baseUnitId, st);
-  }
-  const keys = new Set(unitChoices(baseUnitId).map((c) => c.key));
-  if (!keys.has(st.leftKey)) st.leftKey = "";
-  if (!keys.has(st.rightKey)) st.rightKey = "";
-  return st;
-}
 
-function convertValue(leftValue, leftFactor, rightFactor) {
-  const n = Number(leftValue);
-  if (!Number.isFinite(n) || !leftFactor || !rightFactor) return "";
-  const base = n * leftFactor;
-  const out = base / rightFactor;
-  if (!Number.isFinite(out)) return "";
-  // Trim float noise for demo display
-  const rounded = Math.abs(out) >= 1e6 || (Math.abs(out) > 0 && Math.abs(out) < 1e-4)
-    ? out.toExponential(6)
-    : Number(out.toPrecision(12));
-  return String(rounded);
-}
 
 function typeNodeOf(slotId) {
   const e = findEdge(slotId, REL_HAS_TYPE);
@@ -1083,9 +1005,7 @@ function deleteNode(id) {
   for (const k of kill) {
     nodes.delete(k);
     tableCells.delete(k);
-    tableCells2.delete(k);
     formStates.delete(k);
-    convertStates.delete(k);
   }
   edges = edges.filter((e) => !kill.has(e.from) && !kill.has(e.to));
   for (const p of projects) {
@@ -1136,9 +1056,14 @@ function selectNode(id) {
   render();
 }
 
+function normalizeTab(tab) {
+  if (RIGHT_TABS.includes(tab)) return /** @type {RightTab} */ (tab);
+  if (tab && LEGACY_TAB_MAP[tab]) return /** @type {RightTab} */ (LEGACY_TAB_MAP[tab]);
+  return "node";
+}
+
 function setActiveTab(tab) {
-  if (!RIGHT_TABS.includes(tab)) return;
-  activeTab = /** @type {RightTab} */ (tab);
+  activeTab = normalizeTab(tab);
   persist();
   renderRight();
   syncTabs();
@@ -1221,7 +1146,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 17,
+    version: 18,
     projects,
     activeProjectId,
     rootId,
@@ -1234,10 +1159,8 @@ function persist() {
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
     tableCells: mapToObject(tableCells),
-    tableCells2: mapToObject(tableCells2),
     formStates: mapToObject(formStates),
     edges,
-    convertStates: mapToObject(convertStates),
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1262,7 +1185,12 @@ function restore() {
           id: p.id || `proj-${p.rootId}`,
           name: p.name || nodes.get(p.rootId)?.name || "Project",
           description: p.description || "",
-          kind: p.kind === PROJECT_KIND_BOM_TEST ? PROJECT_KIND_BOM_TEST : PROJECT_KIND_TEMPLATE,
+          kind:
+            p.kind === PROJECT_KIND_BOM_TEST
+              ? PROJECT_KIND_BOM_TEST
+              : p.kind === PROJECT_KIND_COMPOSITION_SIMPLES
+                ? PROJECT_KIND_COMPOSITION_SIMPLES
+                : PROJECT_KIND_TEMPLATE,
           rootId: p.rootId,
           dataTypesRootId:
             p.dataTypesRootId && nodes.has(p.dataTypesRootId) ? p.dataTypesRootId : "",
@@ -1288,14 +1216,11 @@ function restore() {
     collapsed = new Set(
       (data.collapsed || []).filter((id) => nodes.has(id))
     );
-    activeTab = RIGHT_TABS.includes(data.activeTab) ? data.activeTab : "node";
+    activeTab = normalizeTab(data.activeTab);
     tableCells = new Map();
-    tableCells2 = new Map();
     formStates = new Map();
     edges = [];
-    convertStates = new Map();
     restoreStringGridMap(data.tableCells, tableCells);
-    restoreStringGridMap(data.tableCells2, tableCells2);
     if (data.formStates && typeof data.formStates === "object") {
       for (const [k, st] of Object.entries(data.formStates)) {
         if (!nodes.has(k) || !st || typeof st !== "object") continue;
@@ -1322,17 +1247,6 @@ function restore() {
     // Heal: ensure every node has description string
     for (const n of nodes.values()) {
       if (typeof n.description !== "string") n.description = "";
-    }
-    if (data.convertStates && typeof data.convertStates === "object") {
-      for (const [uidUnit, st] of Object.entries(data.convertStates)) {
-        if (!nodes.has(uidUnit) || !st || typeof st !== "object") continue;
-        convertStates.set(uidUnit, {
-          ...defaultConvertState(),
-          leftValue: st.leftValue != null ? String(st.leftValue) : "10",
-          leftKey: st.leftKey != null ? String(st.leftKey) : "",
-          rightKey: st.rightKey != null ? String(st.rightKey) : "",
-        });
-      }
     }
     dataTypeNodes();
     prefixOptionNames();
@@ -1378,6 +1292,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v14");
     localStorage.removeItem("wtt-proto-tree-split-v15");
     localStorage.removeItem("wtt-proto-tree-split-v16");
+    localStorage.removeItem("wtt-proto-tree-split-v17");
   } catch {
     /* ignore */
   }
@@ -1752,32 +1667,10 @@ function buildEdgesBlock(node) {
   hint.style.margin = "0.35rem 0 0";
   hint.style.fontSize = "0.8rem";
   hint.textContent =
-    "Beispiele: has_type → Datentyp · allows_prefix → Präfix · multiplikator → int (+ value). Vorwärts/Rückwärts in Umrechnung über denselben Faktor.";
+    "Beispiele: has_type → Datentyp · allows_prefix → Präfix · multiplikator → int (+ value).";
   block.append(hint);
 
   return block;
-}
-
-function renderRelations() {
-  const mount = document.getElementById("detail");
-  if (!mount) return;
-  const node = nodes.get(selectedId);
-  if (!node) {
-    mount.innerHTML = `<p class="muted">Knoten auswählen.</p>`;
-    return;
-  }
-  const wrap = document.createElement("div");
-  wrap.className = "detail-card";
-  const h2 = document.createElement("h2");
-  h2.className = "detail-title";
-  h2.textContent = `Relationen — ${node.name}`;
-  const lead = document.createElement("p");
-  lead.className = "muted";
-  lead.style.marginTop = "0";
-  lead.textContent =
-    "Relationen leben hier (nicht unter Knoten). Multiplikator am Präfix: Relation „multiplikator“ → int mit value.";
-  wrap.append(h2, lead, buildEdgesBlock(node));
-  mount.replaceChildren(wrap);
 }
 
 function renderDetail() {
@@ -1890,7 +1783,7 @@ function renderDetail() {
     childLab.className = "field-label";
     childLab.style.marginTop = "1rem";
     childLab.textContent =
-      "Kinder (= Spalten in Tabelle / Optionen in Formular)";
+      "Kinder (= Spalten im Backend / Optionen im Feld-Tab)";
     orderBlock.append(childLab, childList);
   }
 
@@ -1902,16 +1795,21 @@ function renderDetail() {
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
     <div>template: <span>${node.template ? "yes" : "—"}</span></div>
-    <div>relations: <span>${edgesFrom(node.id).length} out / ${edgesTo(node.id).length} in</span> <em class="hint">(Tab Relationen)</em></div>
+    <div>relations: <span>${edgesFrom(node.id).length} out / ${edgesTo(node.id).length} in</span></div>
   `;
+
+  const edgesTitle = document.createElement("h3");
+  edgesTitle.className = "detail-subtitle";
+  edgesTitle.textContent = "Relationen";
+  edgesTitle.style.marginTop = "1.5rem";
 
   const hint = document.createElement("p");
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Knoten: Name + Beschreibung. Relationen (has_type, allows_prefix, multiplikator, …) nur im Tab Relationen.";
+    "Knoten-Eigenschaften gelten für alle Knoten inkl. Composition. Relationen gehören hierher. Backend = Dateneingabe; Frontend = Seitenvorschau; Feld = HTML-Spielwiese (später).";
 
-  card.append(h2, field, descField, orderBlock, meta, hint);
+  card.append(h2, field, descField, orderBlock, meta, edgesTitle, buildEdgesBlock(node), hint);
   mount.append(card);
 }
 
@@ -1935,13 +1833,13 @@ function renderTableView(store, title) {
   const lead = document.createElement("p");
   lead.className = "lead";
   if (cols.length === 0) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Schema: <strong>${escapeHtml(node.name)}</strong>. Keine Kinder; Kindnamen werden Spaltenköpfe.`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>. Keine Kinder (= Spalten); Kindknoten werden Spaltenköpfe.`;
     wrap.append(lead);
     mount.replaceChildren(wrap);
     return;
   }
 
-  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — Composition-Instanz: <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ-Widgets via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen (= CompositionRows).`;
+  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen. Vereinfacht: später Block/Editor.`;
   wrap.append(lead);
 
   const grid = ensureTableGrid(
@@ -2043,7 +1941,7 @@ function renderForm() {
 
   const lead = document.createElement("p");
   lead.className = "lead";
-  lead.innerHTML = `Formular-Kontext: <strong>${escapeHtml(node.name)}</strong>. Auswahlfelder nutzen die <strong>${kids.length}</strong> Kindknoten als Optionen (Reihenfolge = <code>position</code>).`;
+  lead.innerHTML = `<strong>Feld</strong> (Spielwiese, für später) — Kontext <strong>${escapeHtml(node.name)}</strong>. Auswahlfelder nutzen die <strong>${kids.length}</strong> Kindknoten als Optionen.`;
   wrap.append(lead);
 
   // --- Dropdown ---
@@ -2432,6 +2330,123 @@ function renderForm() {
   }
 }
 
+
+/**
+ * Simplified page preview (future: Gutenberg blocks for recipes / compare / actions).
+ */
+function renderFrontend() {
+  const mount = document.getElementById("detail");
+  if (!mount) return;
+  const node = nodes.get(selectedId);
+  if (!node) {
+    mount.innerHTML = `<p class="muted">Knoten auswählen.</p>`;
+    return;
+  }
+
+  const cols = childrenOf(node.id);
+  const wrap = document.createElement("div");
+  wrap.className = "frontend-view";
+
+  const lead = document.createElement("p");
+  lead.className = "lead";
+  lead.innerHTML = `<strong>Frontend</strong> — vereinfachte Seitenvorschau für <strong>${escapeHtml(node.name)}</strong>. Später: Blöcke (Rezept, Vergleich, Aktionen).`;
+  wrap.append(lead);
+
+  if (cols.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent =
+      "Keine Spalten-Kinder — Composition mit Spalten wählen (z. B. Rezept — Backzutaten).";
+    wrap.append(empty);
+    mount.replaceChildren(wrap);
+    return;
+  }
+
+  const grid = ensureTableGrid(
+    tableCells,
+    node.id,
+    cols.map((c) => c.id)
+  );
+
+  const block = document.createElement("article");
+  block.className = "frontend-block";
+  const head = document.createElement("header");
+  head.className = "frontend-block-head";
+  const titleEl = document.createElement("h2");
+  titleEl.textContent = node.name;
+  const sub = document.createElement("p");
+  sub.className = "frontend-block-sub";
+  sub.textContent = "Block-Vorschau · Composition";
+  head.append(titleEl, sub);
+  block.append(head);
+
+  const list = document.createElement("ul");
+  list.className = "frontend-rows";
+  let shown = 0;
+  for (let r = 0; r < TABLE_BODY_ROWS; r++) {
+    const row = grid[r] || [];
+    const values = cols.map((_, c) => String(row[c] ?? "").trim());
+    if (values.every((v) => v === "")) continue;
+    shown += 1;
+
+    const li = document.createElement("li");
+    li.className = "frontend-row";
+
+    let titleIdx = 0;
+    for (let c = 0; c < cols.length; c++) {
+      const tn = typeNodeOf(cols[c].id);
+      const key = tn ? typeKey(tn) : "string";
+      if (key === "string" || key === "char") {
+        titleIdx = c;
+        break;
+      }
+    }
+    const rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
+    const h = document.createElement("h3");
+    h.textContent = rowTitle;
+    li.append(h);
+
+    const dl = document.createElement("dl");
+    dl.className = "frontend-facts";
+    for (let c = 0; c < cols.length; c++) {
+      if (c === titleIdx) continue;
+      const raw = values[c];
+      if (!raw) continue;
+      const tn = typeNodeOf(cols[c].id);
+      const key = tn ? typeKey(tn) : "";
+      let display = raw;
+      if (key === "bool") {
+        display = ["1", "true", "yes", "ja", "on"].includes(raw.toLowerCase())
+          ? "ja"
+          : "nein";
+      }
+      const dt = document.createElement("dt");
+      dt.textContent = cols[c].name;
+      const dd = document.createElement("dd");
+      dd.textContent = display;
+      dl.append(dt, dd);
+    }
+    if (dl.childElementCount) li.append(dl);
+    list.append(li);
+  }
+
+  if (shown === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Noch keine Zeilen im Backend — Daten unter Tab Backend eingeben.";
+    block.append(empty);
+  } else {
+    block.append(list);
+  }
+
+  const note = document.createElement("p");
+  note.className = "muted frontend-note";
+  note.textContent =
+    "Nur Demo-Layout. Später: echte Blöcke, ggf. zwei Rezepte nebeneinander, Aktionen auf Compositionen.";
+  wrap.append(block, note);
+  mount.replaceChildren(wrap);
+}
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll("&", "&amp;")
@@ -2440,216 +2455,10 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-function fillUnitSelect(select, choices, currentKey) {
-  select.replaceChildren();
-  for (const c of choices) {
-    const opt = document.createElement("option");
-    opt.value = c.key;
-    opt.textContent = c.label;
-    select.append(opt);
-  }
-  if (choices.some((c) => c.key === currentKey)) select.value = currentKey;
-  else select.value = choices[0]?.key ?? "";
-}
-
-function renderConvert() {
-  const mount = document.getElementById("detail");
-  if (!mount) return;
-  const node = nodes.get(selectedId);
-
-  const wrap = document.createElement("div");
-  wrap.className = "convert-view";
-
-  const h2 = document.createElement("h2");
-  h2.className = "detail-title";
-  h2.textContent = "Umrechnung (Q51)";
-
-  const intro = document.createElement("p");
-  intro.className = "muted";
-  intro.style.marginTop = "0";
-  intro.textContent =
-    "Basiseinheit im Baum wählen (z. B. Ohm). Links Menge + Einheit, rechts berechneter Wert in einer Variante derselben Basiseinheit.";
-
-  wrap.append(h2, intro);
-
-  const active = isBaseUnitNode(node);
-  const panel = document.createElement("div");
-  panel.className = "convert-panel" + (active ? "" : " is-disabled");
-
-  if (!active) {
-    const ban = document.createElement("p");
-    ban.className = "convert-banner";
-    ban.textContent = node
-      ? `„${node.name}“ ist keine Basiseinheit — Felder gesperrt. Unter Basiseinheit z. B. Ohm wählen.`
-      : "Basiseinheit im Baum wählen.";
-    wrap.append(ban, panel);
-    // Disabled placeholder controls
-    const row = document.createElement("div");
-    row.className = "convert-row";
-    for (const side of ["Eingabe", "Ergebnis"]) {
-      const card = document.createElement("fieldset");
-      card.className = "convert-card";
-      card.disabled = true;
-      const leg = document.createElement("legend");
-      leg.textContent = side;
-      const num = document.createElement("input");
-      num.className = "form-control";
-      num.type = "number";
-      num.disabled = true;
-      num.placeholder = "Wert";
-      const sel = document.createElement("select");
-      sel.className = "form-control";
-      sel.disabled = true;
-      const o = document.createElement("option");
-      o.textContent = "—";
-      sel.append(o);
-      card.append(leg, num, sel);
-      row.append(card);
-    }
-    panel.append(row);
-    mount.replaceChildren(wrap);
-    return;
-  }
-
-  const baseUnit = /** @type {ProtoNode} */ (node);
-  const choices = unitChoices(baseUnit.id);
-  const st = ensureConvertState(baseUnit.id);
-  const leftChoice = choices.find((c) => c.key === st.leftKey) || choices[0];
-  const rightChoice = choices.find((c) => c.key === st.rightKey) || choices[0];
-  const rightValue = convertValue(
-    st.leftValue,
-    leftChoice?.factor ?? 1,
-    rightChoice?.factor ?? 1
-  );
-
-  const meta = document.createElement("p");
-  meta.className = "muted convert-meta";
-  meta.innerHTML = `Basiseinheit: <strong>${escapeHtml(baseUnit.name)}</strong> · allows_prefix: ${
-    choices.length - 1
-  } Präfixe · multiplikator-Relation (value) auf Präfix`;
-
-  const row = document.createElement("div");
-  row.className = "convert-row";
-
-  // Left: input
-  const leftCard = document.createElement("fieldset");
-  leftCard.className = "convert-card";
-  const leftLeg = document.createElement("legend");
-  leftLeg.textContent = "Eingabe";
-  const leftLab = document.createElement("div");
-  leftLab.className = "field-label";
-  leftLab.textContent = "Menge";
-  const leftNum = document.createElement("input");
-  leftNum.className = "form-control";
-  leftNum.type = "number";
-  leftNum.step = "any";
-  leftNum.inputMode = "decimal";
-  leftNum.value = st.leftValue;
-  leftNum.setAttribute("aria-label", "Eingabemenge");
-  const leftUnitLab = document.createElement("div");
-  leftUnitLab.className = "field-label";
-  leftUnitLab.textContent = "Mengeneinheit (abgeleitet)";
-  const leftSel = document.createElement("select");
-  leftSel.className = "form-control";
-  leftSel.setAttribute("aria-label", "Eingabeeinheit");
-  fillUnitSelect(leftSel, choices, st.leftKey);
-  leftCard.append(leftLeg, leftLab, leftNum, leftUnitLab, leftSel);
-
-  // Arrow
-  const arrow = document.createElement("div");
-  arrow.className = "convert-arrow";
-  arrow.setAttribute("aria-hidden", "true");
-  arrow.textContent = "→";
-
-  // Right: computed
-  const rightCard = document.createElement("fieldset");
-  rightCard.className = "convert-card";
-  const rightLeg = document.createElement("legend");
-  rightLeg.textContent = "Ergebnis";
-  const rightLab = document.createElement("div");
-  rightLab.className = "field-label";
-  rightLab.textContent = "Wert (errechnet)";
-  const rightNum = document.createElement("input");
-  rightNum.className = "form-control";
-  rightNum.type = "text";
-  rightNum.readOnly = true;
-  rightNum.value = rightValue;
-  rightNum.setAttribute("aria-label", "Errechneter Wert");
-  const rightUnitLab = document.createElement("div");
-  rightUnitLab.className = "field-label";
-  rightUnitLab.textContent = "Ziel-Einheit (gleiche Basiseinheit)";
-  const rightSel = document.createElement("select");
-  rightSel.className = "form-control";
-  rightSel.setAttribute("aria-label", "Zieleinheit");
-  fillUnitSelect(rightSel, choices, st.rightKey);
-  rightCard.append(rightLeg, rightLab, rightNum, rightUnitLab, rightSel);
-
-  row.append(leftCard, arrow, rightCard);
-
-  const formula = document.createElement("pre");
-  formula.className = "form-snapshot convert-formula";
-  const leftF = leftChoice?.factor ?? 1;
-  const rightF = rightChoice?.factor ?? 1;
-  formula.textContent = [
-    `${st.leftValue || "?"} ${leftChoice?.label || "?"}  →  Basis`,
-    `  ${st.leftValue || "?"} × ${leftF} = ${
-      Number.isFinite(Number(st.leftValue)) ? Number(st.leftValue) * leftF : "?"
-    } ${baseUnit.name}`,
-    `  → / ${rightF} = ${rightValue || "?"} ${rightChoice?.label || "?"}`,
-  ].join("\n");
-
-  const hint = document.createElement("p");
-  hint.className = "muted";
-  hint.style.fontSize = "0.8rem";
-  hint.textContent =
-    "Familie bleibt an der gewählten Basiseinheit (Ohm → nur Ohm/kOhm/…). Keine kOhm-Knoten — Labels aus Vater + Präfix.";
-
-  function persistConvert() {
-    convertStates.set(baseUnit.id, {
-      leftValue: leftNum.value,
-      leftKey: leftSel.value,
-      rightKey: rightSel.value,
-    });
-    persist();
-  }
-
-  function refreshResult() {
-    persistConvert();
-    const st2 = ensureConvertState(baseUnit.id);
-    const lc = choices.find((c) => c.key === st2.leftKey) || choices[0];
-    const rc = choices.find((c) => c.key === st2.rightKey) || choices[0];
-    const out = convertValue(st2.leftValue, lc?.factor ?? 1, rc?.factor ?? 1);
-    rightNum.value = out;
-    formula.textContent = [
-      `${st2.leftValue || "?"} ${lc?.label || "?"}  →  Basis`,
-      `  ${st2.leftValue || "?"} × ${lc?.factor ?? 1} = ${
-        Number.isFinite(Number(st2.leftValue))
-          ? Number(st2.leftValue) * (lc?.factor ?? 1)
-          : "?"
-      } ${baseUnit.name}`,
-      `  → / ${rc?.factor ?? 1} = ${out || "?"} ${rc?.label || "?"}`,
-    ].join("\n");
-  }
-
-  leftNum.addEventListener("input", refreshResult);
-  leftNum.addEventListener("change", refreshResult);
-  leftSel.addEventListener("change", () => {
-    // Keep right in same family; if right empty was intentional, leave it
-    refreshResult();
-  });
-  rightSel.addEventListener("change", refreshResult);
-
-  panel.append(meta, row, formula, hint);
-  wrap.append(panel);
-  mount.replaceChildren(wrap);
-}
-
 function renderRight() {
-  if (activeTab === "table") renderTableView(tableCells, "Tabelle");
-  else if (activeTab === "table2") renderTableView(tableCells2, "Tabelle 2");
+  if (activeTab === "backend") renderTableView(tableCells, "Backend");
+  else if (activeTab === "frontend") renderFrontend();
   else if (activeTab === "form") renderForm();
-  else if (activeTab === "convert") renderConvert();
-  else if (activeTab === "relations") renderRelations();
   else renderDetail();
 }
 
