@@ -607,34 +607,30 @@ Example **list**:
 
 ```text
 my_list                         ← concrete Collection type
-  kind: list                    ← see XOR binding (Q53)
-  └── my_listelement            ← exactly one column node
-        ─[has_type]→ string     ← element type (simple or derived)
+  ─[has_type]→ list             ← kind (Q53 lean: authoritative)
+  └── my_listelement            ← column (containment: parent and/or Relation — Q54)
+        ─[has_type]→ string
 ```
 
 Example **table** (BOM-Zeile):
 
 ```text
-BOM-Zeile                       ← concrete table type
-  kind: table
-  ├── Reference ─[has_type]→ RefDes   (list)
+BOM-Zeile
+  ─[has_type]→ table
+  ├── Reference ─[has_type]→ RefDes
   ├── Value     ─[has_type]→ quantity
-  ├── Footprint ─[has_type]→ Bauart   (enum)
+  ├── Footprint ─[has_type]→ Bauart
   └── Menge     ─[has_type]→ int
 ```
 
-Example **enum** — **same layout as list**, plus closed options under the column:
+Example **enum**:
 
 ```text
-Bauart                          ← concrete Collection type
-  kind: enum
-  └── Option                    ← exactly one column (like my_listelement)
-        ─[has_type]→ string     ← replaces separate base_type Relation
-        ├── 0201
-        ├── 0402
-        ├── 0603
-        ├── 0805
-        └── axial
+Bauart
+  ─[has_type]→ enum             ← kind (not “because parent is enum”)
+  └── Option
+        ─[has_type]→ string
+        ├── 0201 · 0402 · …
 ```
 
 **No special `base_type` edge** — the column’s `has_type` *is* the element/primitive type.
