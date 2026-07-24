@@ -54,8 +54,8 @@ Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separat
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
-**Q53 lean:** Collection kind only via `has_type`→list\|table\|enum (tree parent under Collection = org only).  
-**Q54 exploring:** treat hierarchy as RelationType (`contains`); tree UI = view over the edge cloud (avoids double list→column links).  
+**Q53 decided:** Collection kind only via `has_type`→list\|table\|enum (parentage never confers kind).  
+**Q54 decided:** hierarchy uses the **same Edge/Relation table**; RelationType e.g. `contains`; tree UI = view; `parent_id` = optional cache only.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
@@ -117,14 +117,14 @@ Default Nodes (anchors + fixed simples): **generate on create** **or** **copy fr
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable node identity |
-| `parent_id` | yes (`null` = root) | Optional single parent node |
+| `parent_id` | yes (`null` = root) | **Optional cache** of hierarchy Relation `contains` (**Q54**); not a second semantic system |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
 | `config` | ? | Type binding / capabilities (Q34) — shape TBD |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 
-Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
+Root node = Node with no incoming hierarchy edge (`contains`); if `parent_id` cache is used, that is `parent_id = null`. That root **defines a tree** (view).  
 Template trees use `template = true`. Persistence: Q19.  
 **Taxonomy:** **Project ≈ taxonomy** (strong leaning Q18) — Node has **no** `taxonomy` field.  
 **Defaults:** seed via generate **or** template-Project copy (**Q50**). Persistence: Q19.
