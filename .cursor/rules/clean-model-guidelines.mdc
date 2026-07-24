@@ -1,0 +1,27 @@
+---
+description: Design guidelines for the clean Q53/Q54 restart — clear structures; do not refuse useful objects
+alwaysApply: true
+---
+
+# Clean model guidelines (planning)
+
+Apply when discussing or deciding **Q53** (Collection kind binding), **Q54** (hierarchy vs Relations), or related data-structure spins. Source: `docs/plans/data-structure.md` (Collection / restart section). Plan version tracks these rules.
+
+## Clear structures
+
+- One job per concept — do not overload one field, table, or RelationType with hierarchy + type-binding + schema membership.
+- One source of truth — no writable mirrors or “parent_id as cache of edges.”
+- Name the structure explicitly; prefer readable shapes over clever compression.
+- State invariants where the structure lives, not only in UI/proto code.
+- Prototype nesting is not a model decision.
+
+## Do not refuse objects where an object is better
+
+- If a concept has identity, lifecycle, invariants, or its own vocabulary, give it a **named object/type**.
+- “Everything is a Node” does not forbid first-class Relation / RelationType / Column / Option when those jobs differ.
+- Dropping a class needs a positive reason (e.g. Parameter *is* a Node — Q33). “Fewer tables” alone is not enough.
+- Split structures when constraints or query patterns differ.
+
+## Explicitly out (closed thought experiment)
+
+- Do not revive hierarchy-as-edges **plus** `parent_id` as denormalized cache of those edges.

@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.60-plan"
+version: "0.6.61-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -657,15 +657,41 @@ Bauart
 
 **Allowed learnings to keep (non-decisions):** the mixup “tree meaning vs Relation meaning” is real; Collection kind should not silently equal “hangs under enum in the UI”; Q52 Collection shape stands.
 
+##### Design guidelines — clean restart (Q53 / Q54)
+
+Binding rules for the **new** approach (not answers — constraints on how we decide):
+
+###### 1. Clear structures
+
+| Rule | Meaning |
+|------|---------|
+| **One job per concept** | Hierarchy, type-binding, and schema-membership are different jobs. Do not overload one field/table/RelationType to mean all three. |
+| **One source of truth** | Each fact has exactly one authoritative store. No mirrors, no “cache that is also writable.” |
+| **Name the structure** | Prefer explicit shapes (`list` / `table` / `enum`, column, option, parent/child) over clever compression that only experts can read. |
+| **Invariants visible** | Tree rules (≤1 parent, acyclic), Collection rules (1 vs n columns, closed options), and edge rules must be stated where the structure lives — not only in UI code. |
+| **Proto ≠ model** | Browse nesting in the prototype is not a decision. Decisions must survive without the current tree chrome. |
+
+###### 2. Do not refuse objects where an object is better
+
+| Rule | Meaning |
+|------|---------|
+| **Object when it has identity** | If something has its own lifecycle, invariants, or vocabulary (e.g. column of a table, RelationType, Collection kind), give it a **named object / type** — do not hide it as anonymous tree children or loose config blobs. |
+| **Node is not the only noun** | “Everything is a Node” is fine for *instances in the graph*, but **roles and edge kinds** may still be first-class (Relation, RelationType, and later Column/Option if needed). Flattening for purity is not a goal. |
+| **Refuse only with a reason** | Dropping a class (as with Parameter → Node, Q33) needs a positive argument (“it *is* a Node”). “Fewer tables” or “one edge table for everything” alone is **not** enough. |
+| **Split when jobs differ** | If two concerns need different constraints or queries (e.g. catalog tree vs `has_type`), prefer two clear structures over one overloaded one. |
+
+**Anti-patterns from the closed TE (do not repeat):** unify hierarchy into Relations to “have one system”; keep `parent_id` as edge cache; let DisplayHint invent a second parent.
+
 ##### Still open (fresh Q53 / Q54)
 
-- How is Collection **kind** bound? (parent under kind / `has_type` / XOR / other)
+- How is Collection **kind** bound? (parent under kind / `has_type` / XOR / other) — apply guidelines above
 - Is `parent_id` semantic containment, org-only, or something else — **without** a hierarchy-edge cache hybrid?
 - Do Relations stay non-hierarchical (`has_type`, `allows_prefix`, …) only?
+- Which concepts deserve **named objects** (Column? Option? CollectionType?) vs Node roles?
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
 
-**Status:** **Q52 decided**. **Q53/Q54 open (restart)**. Proto **v14** still uses `parent_id` nesting + some `has_type` for browse; not normative for the closed TE.
+**Status:** **Q52 decided**. **Q53/Q54 open (restart)** under the design guidelines above. Proto **v14** still uses `parent_id` nesting + some `has_type` for browse; not normative for the closed TE.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).

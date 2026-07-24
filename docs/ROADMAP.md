@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.60-plan** (2026-07-24).
+Last synced from plan version **0.6.61-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -27,9 +27,10 @@ Last synced from plan version **0.6.60-plan** (2026-07-24).
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
 | UI prototype `prototypes/tree-split` v14 (Collection; Bauart/RefDes/Spalten) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
-| **Q53:** Collection kind binding | Open (restart after closed TE) |
+| **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open (restart; `parent_id`-as-edge-cache **excluded**) |
 | Closed TE: hierarchy-as-edges + `parent_id` cache | Closed (not adopted) |
+| Design guidelines: clear structures; named objects when better | Done (planning) |
 | Core types: template has **simples** + **quantity** + **Collection** (Q36/Q52) | Done (planning) |
 | **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
 | **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
