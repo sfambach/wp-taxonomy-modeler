@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.57-plan"
+version: "0.6.58-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -639,34 +639,45 @@ Bauart                          ← concrete Collection type
 
 **No special `base_type` edge** — the column’s `has_type` *is* the element/primitive type.
 
-##### Kind binding XOR (Q53) — still open
+##### Kind binding (Q53) — tree vs edges mixup
 
-| Mechanism | Meaning |
-|-----------|---------|
-| **A — Parent under kind** | `my_list` child of `list` ⇒ kind = list; `Bauart` child of `enum` ⇒ kind = enum |
-| **B — Relation** | `my_list` ─[has_type]→ `list`; `Bauart` ─[has_type]→ `enum` |
+**Problem:** the UI **tree** (`parent_id`) already carries meaning today (containment, “Bauart under enum”, columns under Spalten). **Relations** (`has_type`, `allows_prefix`, …) also carry meaning. Using both for the same fact → ambiguity (the old XOR).
 
-**Strong lean:** **exactly one** of A or B. Doing both is invalid (double kind).  
-Column `has_type` is independent of kind binding.
+**Insight:** we really have a **cloud of Nodes** linked by typed edges; some “clouds” are smaller groupings. A browse tree is one *view*, not the only truth.
 
-##### Why this fits existing decisions
+| Approach | Idea | Pros | Cons |
+|----------|------|------|------|
+| **A — Org-only tree** | `parent_id` = folder/order only; **no** semantics | Clear: all meaning on Relations | list→column (and similar) must be linked **twice** (tree + Relation) or UI invents meaning |
+| **B — Hierarchy = Relation** | Containment is a RelationType e.g. `contains` / `child_of`; tree UI = DisplayHint | One model; inheritance/`is_a` fits (Q42/Q43); no double meaning | Bigger shift; `parent_id` becomes derived or storage shortcut |
+| **C — has_type authoritative for kind** | Kind only via `has_type`→list\|table\|enum; parent under Collection is optional org | Fixes Collection kind mixup now without full graph rewrite | Still need a rule for column containment (parent vs `has_column`) |
 
-| Existing | Fit |
-|----------|-----|
-| Q33 / Q48 Nodes + `has_type` | Kind and column types stay Nodes + Relations |
-| Q38 / Q39 enum | Same create path as list; one typed column; options closed; single/multiple = selection method |
-| Q47 RefDes / string_list | Concrete **list** with column `has_type`→`string` — no separate `string_list` |
-| BOM Spalten prototype | **table** schema; Footprint → Bauart already an enum column |
-| Template read-only | Template holds Collection kinds; concrete `Bauart` / `RefDes` stay in domain/test Projects |
+**Strong lean now (Q53):** **C** — Collection **kind is only** `─[has_type]→ list|table|enum`.  
+Hanging under `enum` in the tree does **not** make a Node an enum. (Proto may still nest for browsing; meaning = Relation.)
 
-##### Still open (Q53 + polish)
+**Exploring (Q54):** move toward **B** — model hierarchical links as Relations so inheritance and grouping are uniform. Until then, prefer not treating `parent_id` as kind/schema truth.
 
-- Confirm XOR kind binding (Q53)
-- Where option Nodes hang for enum: under the column (**decided lean** / proto v14) vs under the concrete type
+```text
+# Kind (Q53 lean)
+Bauart ─[has_type]→ enum          ← authoritative
+Bauart may also sit under Collection/enum in the tree ← org / browse only
+
+# Column membership (still choose with Q54)
+Bauart ─[contains]/has_column]→ Option   ← semantic (preferred long-term)
+# and/or Option.parent_id = Bauart         ← tree; if org-only, do not omit the Relation
+Option ─[has_type]→ string
+```
+
+**Trade-off the user named:** if the tree is purely orderly, **list↔column** (and Zeile↔Spalten) need an explicit Relation or you lose meaning when the same Nodes appear in another grouping. Hierarchy-as-Relation avoids that double bookkeeping by making the tree a projection of `contains`.
+
+##### Still open (Q53 / Q54 + polish)
+
+- Confirm Q53: kind = `has_type` only (drop parentage-as-kind)
+- Q54: `parent_id` vs `contains` Relation; when to require both
+- RelationType catalog for containment vs `has_column` vs `has_option`
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
 
-**Status:** **Q52 decided**; proto **v14** mirrors the shape. Q53 pending confirm.
+**Status:** **Q52 decided**; Q53/Q54 under active design (mixup: tree edges vs Relations). Proto **v14** still uses nesting for browse + `has_type` for Spalten→table and column types.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
