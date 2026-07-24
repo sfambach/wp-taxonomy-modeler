@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.55-plan"
+version: "0.6.56-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -527,32 +527,42 @@ Keep the **pure template** separate from **domain demo data**:
 
 | Project | Contents | Role |
 |---------|----------|------|
-| **Template** (**read-only**) | `Datentypen` (simples + empty `enum` + `quantity`) + `Präfix` + standard `Basiseinheit` (Meter, Liter, Kilogramm, Sekunde, Kelvin, Ampere) | Reusable seed (Q50) — **not editable** |
-| **BOM Testprojekt** (**editable**) | Copy of template core **plus** `enum → Bauart` values, electronics units (Ohm/Farad/Watt/Volt), `Spalten`, `Stückliste`, `Bauteile` | Demo/test Project — **editable** |
+| **Template** (**read-only**) | simples + `quantity` + **Collection** (`list`/`table`/`enum`) + `Präfix` + standard `Basiseinheit` | Reusable seed (Q50) — **not editable** |
+| **BOM Testprojekt** (**editable**) | Copy + concrete Collections (`Bauart`, `RefDes`), electronics units, `Spalten` (table), `Stückliste`, `Bauteile` | Demo/test Project — **editable** |
 
 ```text
 Template (nur lesen)
 ├── Datentypen
 │   ├── int · double · string · char · bool
-│   ├── enum                              ← keine konkreten Werte
-│   └── quantity
+│   ├── quantity
+│   └── Collection
+│       ├── list
+│       ├── table
+│       └── enum
 ├── Präfix (p…M + c)
 └── Basiseinheit
     └── Meter · Liter · Kilogramm · Sekunde · Kelvin · Ampere
 
 BOM Testprojekt (editierbar)
-├── …Template-Kern-Kopie…
+├── …Template-Kern-Kopie (inkl. Collection)…
+│   └── list
+│       └── RefDes
+│           └── Element ─[has_type]→ string
 │   └── enum
 │       └── Bauart
-│           └── Option ─[has_type]→ string   ← target Collection shape (proto still uses base_type)
+│           └── Option ─[has_type]→ string
 │               └── 0201 · 0402 · 0603 · 0805 · axial
 │   └── Basiseinheit + Ohm · Farad · Watt · Volt
-├── Spalten (BOM-Zeile)   Footprint ─[has_type]→ Bauart
+├── Spalten (BOM-Zeile) ─[has_type]→ table
+│   ├── Reference ─[has_type]→ RefDes
+│   ├── Value     ─[has_type]→ quantity
+│   ├── Footprint ─[has_type]→ Bauart
+│   ├── Menge · LCSC · Stock
 ├── Stückliste
 └── Bauteile
 ```
 
-Prototype: `prototypes/tree-split` **v13** — project switcher; Template locked, BOM editable.
+Prototype: `prototypes/tree-split` **v14** — Collection in template; Bauart/RefDes/Spalten as concrete Collections; Template locked.
 
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
@@ -671,7 +681,7 @@ Column `has_type` is **independent** of kind binding — every column still need
 - Display / widgets: list vs table vs enum UI
 - Migrate proto Bauart from `base_type` → column + `has_type` when confirmed
 
-**Status:** exploratory — do **not** change the prototype seed until user confirms the XOR + Collection shape (enum created like list).
+**Status:** exploratory shape now mirrored in proto **v14** (Bauart/RefDes/Spalten); further confirmations still open (XOR edge cases, Collection parent Node permanence).
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).

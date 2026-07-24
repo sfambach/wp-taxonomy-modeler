@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.55-plan"
+version: "0.6.56-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -227,6 +227,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Template refinement: **enum** has no concrete values in template; BOM adds **Bauart** under enum. Template **Basiseinheit** = Meter/Liter/Kilogramm/Sekunde/Kelvin/Ampere; Ohm/Farad/Watt/Volt = BOM only. Template **read-only**, BOM Test **editable**. Proto v13. |
 | 2026-07-24 | Spin **Collection** (Q52/Q53): list = 1-col table; enum = closed list; kind binding XOR (parent under kind **or** `has_type`→kind); concrete type needs kind + column type(s). |
 | 2026-07-24 | Collection refine: **enum is created like list** (one column + `has_type`); closed options hang under that column; dedicated `base_type` Relation becomes redundant in this spin. |
+| 2026-07-24 | Proto **v14:** Template has Collection(list/table/enum); BOM adds Bauart (enum), RefDes (list), Spalten ─[has_type]→ table. |
 
 ## Change protocol
 

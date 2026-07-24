@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.55-plan** (2026-07-24).
+Last synced from plan version **0.6.56-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -26,7 +26,7 @@ Last synced from plan version **0.6.55-plan** (2026-07-24).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v13 (Template locked; Bauart under enum) | In progress |
+| UI prototype `prototypes/tree-split` v14 (Collection; Bauart/RefDes/Spalten) | In progress |
 | **Q52/Q53:** Collection → list / table / enum (**enum = list + closed options**) | Exploring |
 | **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
 | **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |

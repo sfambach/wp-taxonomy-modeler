@@ -3,20 +3,16 @@
  * Shape mirrors planning Node: { id, parentId, name, position, description? }
  *
  * Two demo Projects (switcher):
- *   - Template (rein) — Datentypen, Präfix, Basiseinheit only
- *   - BOM Testprojekt — template-core copy + Spalten / Stückliste / Bauteile
+ *   - Template (nur lesen) — Datentypen inkl. Collection(list/table/enum), Präfix, Basiseinheit
+ *   - BOM Testprojekt (editierbar) — Kern-Kopie + Bauart (wie list), Spalten(table), …
+ *
+ * Collection (Q52): enum is created like list — one typed column + (for enum) closed options.
  *
  * Sibling order (Q13): explicit `position`.
- * Right pane tabs:
- *   - Knoten — name, description, sibling order (no relations here)
- *   - Relationen — generic edges add/list (has_type, allows_prefix, multiplikator, …)
- *   - Tabelle / Tabelle 2 — children = column schema
- *   - Formular — selected node = field context
- *   - Umrechnung — Q51 convert within a Basiseinheit family
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v13";
+const STORAGE_KEY = "wtt-proto-tree-split-v14";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_BOM_TEST = "bom-test";
@@ -30,11 +26,13 @@ const TAB_ARIA = {
   convert: "tab-convert",
 };
 const REL_HAS_TYPE = "has_type";
+/** @deprecated Collection spin: prefer column ─[has_type]→ element type */
 const REL_BASE_TYPE = "base_type";
 const REL_ALLOWS_PREFIX = "allows_prefix";
 /** Präfix ─[multiplikator]→ int, props.value = scale factor */
 const REL_MULTIPLIKATOR = "multiplikator";
 const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
+const COLLECTION_KIND_NAMES = ["list", "table", "enum"];
 const QTY_SEP = "|";
 const EDGE_LABEL_SUGGESTIONS = [
   REL_HAS_TYPE,
@@ -202,7 +200,7 @@ function pushEdge(from, to, label, props) {
 
 /**
  * Pure template core under a project root: Datentypen + Präfix + Basiseinheit + Relations.
- * Enum has no concrete values here — those belong in domain/test projects (e.g. Bauart).
+ * Collection kinds (list/table/enum) have no concrete instances here — those belong in domain/test projects.
  * Basiseinheit: generic standards only (Meter, Liter, …) — electronics units go to BOM test.
  * @param {string} projectRootId
  * @param {{ markTemplate?: boolean }} [opts]
@@ -211,7 +209,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const mark = opts.markTemplate !== false;
   const dataTypesRootId = createNode(projectRootId, "Datentypen", 0, {
     template: mark,
-    description: "Simple und abgeleitete Datentypen (Template-Kern).",
+    description: "Simple Typen, quantity und Collection-Kinds (list/table/enum).",
   });
   const tInt = createNode(dataTypesRootId, "int", 0, {
     description: "Ganze Zahl.",
@@ -226,12 +224,23 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const tBool = createNode(dataTypesRootId, "bool", 4, {
     description: "Wahrheitswert true/false.",
   });
-  const tEnum = createNode(dataTypesRootId, "enum", 5, {
-    description:
-      "Abgeleiteter Typ-Kind: konkrete Enums (z. B. Bauart) als Kinder mit base_type + Werteliste.",
-  });
-  const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
+  const tQuantity = createNode(dataTypesRootId, "quantity", 5, {
     description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
+  });
+
+  const collectionId = createNode(dataTypesRootId, "Collection", 6, {
+    template: mark,
+    description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
+  });
+  const tList = createNode(collectionId, "list", 0, {
+    description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar.",
+  });
+  const tTable = createNode(collectionId, "table", 1, {
+    description: "Collection mit n Spalten; Zeilen offen erweiterbar.",
+  });
+  const tEnum = createNode(collectionId, "enum", 2, {
+    description:
+      "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte — nicht erweiterbar beim Ausfüllen.",
   });
 
   const prefixesRootId = createNode(projectRootId, "Präfix", 1, {
@@ -294,34 +303,57 @@ function seedTemplateCore(projectRootId, opts = {}) {
   for (const name of ["m", "µ", "n", "k"]) {
     pushEdge(uAmpere, pref[name], REL_ALLOWS_PREFIX);
   }
-  void uKelvin; // typically no SI prefix in this demo
+  void uKelvin;
 
   return {
     dataTypesRootId,
     prefixesRootId,
     baseUnitsRootId,
+    collectionId,
     pref,
-    types: { tInt, tDouble, tString, tBool, tEnum, tQuantity },
+    types: {
+      tInt,
+      tDouble,
+      tString,
+      tBool,
+      tQuantity,
+      tList,
+      tTable,
+      tEnum,
+    },
   };
 }
 
 /**
  * BOM demo extras (not part of the pure template).
- * Adds: Bauart under enum, electronics Basiseinheiten, schema / Stückliste / Bauteile.
+ * Collection instances: Bauart (enum like list), RefDes (list); Spalten as table;
+ * electronics Basiseinheiten; Stückliste / Bauteile.
  * @param {string} projectRootId
  * @param {ReturnType<typeof seedTemplateCore>} core
  */
 function seedBomTestData(projectRootId, core) {
   const { types, pref, baseUnitsRootId } = core;
 
-  // Concrete enum under Datentypen → enum → Bauart → values
+  // enum like list: Bauart → Option ─[has_type]→ string → closed options
   const bauart = createNode(types.tEnum, "Bauart", 0, {
-    description: "BOM-Enum: SMD/THT-Bauformen (base_type string + Werteliste).",
+    description: "Konkretes enum (wie list): eine Spalte + feste Optionen.",
   });
-  pushEdge(bauart, types.tString, REL_BASE_TYPE);
+  const bauartCol = createNode(bauart, "Option", 0, {
+    description: "Einzige Spalte der enum-Collection.",
+  });
+  pushEdge(bauartCol, types.tString, REL_HAS_TYPE);
   for (const [i, name] of ["0201", "0402", "0603", "0805", "axial"].entries()) {
-    createNode(bauart, name, i, { description: `Bauart-Wert ${name}.` });
+    createNode(bauartCol, name, i, { description: `Bauart-Option ${name}.` });
   }
+
+  // open list: RefDes → Element ─[has_type]→ string (no fixed children)
+  const refDes = createNode(types.tList, "RefDes", 0, {
+    description: "Offene list für Board-Referenzen (R1, R2, …).",
+  });
+  const refCol = createNode(refDes, "Element", 0, {
+    description: "Einzige Spalte der list-Collection.",
+  });
+  pushEdge(refCol, types.tString, REL_HAS_TYPE);
 
   // Electronics units (BOM-specific)
   const nextPos = childrenOf(baseUnitsRootId).length;
@@ -347,17 +379,20 @@ function seedBomTestData(projectRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
+  // table instance via has_type → table (XOR: not also parent under table)
   const schemaId = createNode(projectRootId, "Spalten (BOM-Zeile)", 3, {
-    description: "BOM-Test: Schema-Knoten; Kinder = Tabellenspalten.",
+    description: "BOM-Test: konkrete table — Kinder = Spalten mit has_type.",
   });
+  pushEdge(schemaId, types.tTable, REL_HAS_TYPE);
+
   const cRef = createNode(schemaId, "Reference", 0, {
-    description: "Open RefDes-Liste (string).",
+    description: "RefDes-Liste — has_type → RefDes (list).",
   });
   const cVal = createNode(schemaId, "Value", 1, {
     description: "Bauteilwert als quantity.",
   });
   const cFp = createNode(schemaId, "Footprint", 2, {
-    description: "Bauform — has_type → Bauart.",
+    description: "Bauform — has_type → Bauart (enum).",
   });
   const cQty = createNode(schemaId, "Menge", 3, {
     description: "Stückzahl (int) — nicht quantity/Größe.",
@@ -369,7 +404,7 @@ function seedBomTestData(projectRootId, core) {
     description: "Lagerflag.",
   });
 
-  pushEdge(cRef, types.tString, REL_HAS_TYPE);
+  pushEdge(cRef, refDes, REL_HAS_TYPE);
   pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
   pushEdge(cFp, bauart, REL_HAS_TYPE);
   pushEdge(cQty, types.tInt, REL_HAS_TYPE);
@@ -445,7 +480,7 @@ function createInitial() {
   const templateRootId = createNode(null, "Template", 0, {
     template: true,
     description:
-      "Reines Template (read-only): Datentypen, Präfixe, Standard-Basiseinheiten.",
+      "Reines Template (read-only): Datentypen inkl. Collection(list/table/enum), Präfixe, Standard-Basiseinheiten.",
   });
   const templateCore = seedTemplateCore(templateRootId, { markTemplate: true });
   const templateProject = {
@@ -459,11 +494,11 @@ function createInitial() {
     baseUnitsRootId: templateCore.baseUnitsRootId,
   };
 
-  // 2) BOM test project — editable; template core copy + Bauart / electronics / BOM trees
+  // 2) BOM test project — editable; template core copy + Collection instances + BOM trees
   const bomRootId = createNode(null, "BOM Testprojekt", 1, {
     template: false,
     description:
-      "Editierbares Testprojekt: Template-Kern-Kopie + Bauart, Ohm/Farad/…, Spalten, Stückliste, Bauteile.",
+      "Editierbar: Bauart (enum wie list), RefDes (list), Spalten (table), Ohm/Farad/…, Stückliste, Bauteile.",
   });
   const bomCore = seedTemplateCore(bomRootId, { markTemplate: false });
   const schemaId = seedBomTestData(bomRootId, bomCore);
@@ -656,9 +691,49 @@ function typeNodeOf(slotId) {
   return e && nodes.has(e.to) ? nodes.get(e.to) : null;
 }
 
+/**
+ * Collection kind of a concrete type: parent under list|table|enum, or has_type → kind.
+ * @param {ProtoNode|null|undefined} typeNode
+ * @returns {'list'|'table'|'enum'|null}
+ */
+function collectionKindOf(typeNode) {
+  if (!typeNode) return null;
+  const parent = typeNode.parentId ? nodes.get(typeNode.parentId) : null;
+  if (parent) {
+    const pk = parent.name.trim().toLowerCase();
+    if (COLLECTION_KIND_NAMES.includes(pk)) return /** @type {'list'|'table'|'enum'} */ (pk);
+  }
+  const ht = findEdge(typeNode.id, REL_HAS_TYPE);
+  if (ht && nodes.has(ht.to)) {
+    const target = nodes.get(ht.to);
+    const tk = target.name.trim().toLowerCase();
+    if (COLLECTION_KIND_NAMES.includes(tk)) return /** @type {'list'|'table'|'enum'} */ (tk);
+  }
+  // Legacy: base_type edge meant enum
+  if (findEdge(typeNode.id, REL_BASE_TYPE)) return "enum";
+  return null;
+}
+
+/** First schema column of a Collection instance (child with has_type, else first child). */
+function collectionColumn(typeNodeId) {
+  const kids = childrenOf(typeNodeId);
+  const typed = kids.find((k) => findEdge(k.id, REL_HAS_TYPE));
+  return typed || kids[0] || null;
+}
+
+/** Element type of a Collection's (first) column — replaces legacy base_type. */
+function columnElementType(collectionTypeId) {
+  const col = collectionColumn(collectionTypeId);
+  if (col) {
+    const t = typeNodeOf(col.id);
+    if (t) return t;
+  }
+  const legacy = findEdge(collectionTypeId, REL_BASE_TYPE);
+  return legacy && nodes.has(legacy.to) ? nodes.get(legacy.to) : null;
+}
+
 function baseTypeOf(enumId) {
-  const e = findEdge(enumId, REL_BASE_TYPE);
-  return e && nodes.has(e.to) ? nodes.get(e.to) : null;
+  return columnElementType(enumId);
 }
 
 /** Normalize type node name → widget key. */
@@ -670,9 +745,12 @@ function typeKey(typeNode) {
   if (["bool", "boolean"].includes(k)) return "bool";
   if (["char"].includes(k)) return "char";
   if (["string", "text"].includes(k)) return "string";
-  if (["enum"].includes(k)) return "enum";
   if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
-  if (findEdge(typeNode.id, REL_BASE_TYPE)) return "enum";
+  const kind = collectionKindOf(typeNode);
+  if (kind === "enum") return "enum";
+  if (kind === "list") return "list";
+  if (kind === "table") return "table";
+  if (["enum", "list", "table"].includes(k)) return k;
   return "string";
 }
 
@@ -723,8 +801,16 @@ function simpleTypeNodes() {
   return dataTypeNodes().filter(isSimpleTypeNode);
 }
 
+/** Closed enum options: children of the typed column (or legacy direct children). */
 function enumValueNames(enumNodeId) {
-  return childrenOf(enumNodeId).map((c) => c.name);
+  const col = collectionColumn(enumNodeId);
+  if (col && findEdge(col.id, REL_HAS_TYPE)) {
+    return childrenOf(col.id).map((c) => c.name);
+  }
+  // Legacy: options hung directly under the enum type
+  return childrenOf(enumNodeId)
+    .filter((c) => !findEdge(c.id, REL_HAS_TYPE))
+    .map((c) => c.name);
 }
 
 function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
@@ -766,6 +852,18 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     if (vals.includes(cur)) select.value = cur;
     select.addEventListener("change", () => onChange(select.value));
     return select;
+  }
+
+  if (key === "list") {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "form-control";
+    input.setAttribute("aria-label", ariaLabel);
+    input.placeholder = "z. B. R1, R2, R5";
+    input.title = "Offene list — Werte kommasepariert (Demo)";
+    input.value = value == null ? "" : String(value);
+    input.addEventListener("change", () => onChange(input.value));
+    return input;
   }
 
   if (key === "quantity") {
@@ -1034,7 +1132,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 13,
+    version: 14,
     projects,
     activeProjectId,
     rootId,
@@ -1187,6 +1285,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v10");
     localStorage.removeItem("wtt-proto-tree-split-v11");
     localStorage.removeItem("wtt-proto-tree-split-v12");
+    localStorage.removeItem("wtt-proto-tree-split-v13");
   } catch {
     /* ignore */
   }
