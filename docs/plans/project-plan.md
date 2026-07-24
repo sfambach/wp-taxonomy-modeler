@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.59-plan"
+version: "0.6.60-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -231,6 +231,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | **Q52 decided:** Collection → `list` \| `table` \| `enum`; list = 1-col table; enum = list + closed options under typed column. **Q36** catalog aligned (no separate `string_list`). Q53 XOR kind-binding remains open. |
 | 2026-07-24 | **Q53/Q54 spin:** tree `parent_id` vs Relations mixup — hierarchy already has meaning; prefer semantic graph (cloud + edges). Q53 lean: kind only via `has_type`; parent under Collection = org only. Q54: explore hierarchy as RelationType `contains` (tree = view). |
 | 2026-07-24 | **Q53/Q54 decided:** Collection kind only via `has_type`. Hierarchy uses the **same Edge/Relation table** (rename optional); RelationType e.g. `contains`; tree UI = projection; `parent_id` if kept = denormalized cache only. |
+| 2026-07-24 | **Q53/Q54 thought experiment closed (not adopted).** Hierarchy-as-edges + `parent_id` cache hybrid **excluded** from that branch. Q53/Q54 **restart fresh**; Q52 Collection shape kept. Baseline tree remains `parent_id` until a new decision. Plan **0.6.60**. |
 
 ## Change protocol
 

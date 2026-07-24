@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.59-plan"
+version: "0.6.60-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -61,7 +61,7 @@ todos:
 **Decided (Q33/Q34):** there is **no Parameter class** and **no ParameterRole**. Attributes such as `Wert` / `Länge` are ordinary **Nodes** that bind a type via **configuration** and/or Relations (`has_type`).  
 Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples.  
 **Q49 strong lean:** simples get config that disables originating Relations (`capabilities.originate_relations = false`) — not a hard special kind (decide with Q34).  
-**Decided (Q54):** hierarchy uses the **same Edge/Relation table** (rename optional); other typed links share that table. Catalog of RelationTypes beyond `contains` / `has_type` still open (**Q35**).
+Typed edges remain exploratory (**Q35**). **Q53/Q54** restarted after a closed thought experiment (see Collection section) — no hierarchy-as-edge decision carried forward.
 
 ```mermaid
 classDiagram
@@ -107,7 +107,6 @@ classDiagram
   }
 
   class Relation {
-    <<Edge table>>
     +from : Node
     +to : Node
     +relation_type : RelationType
@@ -136,11 +135,11 @@ classDiagram
   }
 
   note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Cloud of Nodes\nparent_id = cache of contains (Q54)\nattrs like Wert are just Nodes\ntype via config / has_type"
+  note for Node "Hierarchy via parent_id (baseline)\nattrs like Wert are just Nodes\ntype via config / has_type\nQ53/Q54 restart"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
-  note for Relation "ONE edge table (Q54)\ncontains = hierarchy\nhas_type / allows_prefix / …\nrename Edge optional"
-  note for RelationType "contains | has_type | …\ndirected? → arrow\nDisplayHint = attribute/taxonomy/tree"
+  note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT decided as hierarchy store"
+  note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
   note for Change "Shared audit model"
 
   Project "1" --> "*" Node : root_nodes
@@ -149,10 +148,11 @@ classDiagram
   Project "1" --> "1" Node : prefix_node
   Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
-  Node "0..1" --> "*" Node : parent_id cache
+  Node "0..1" --> "*" Node : parent / children
   Node <|-- SimpleType : role / config
   Node <|-- DerivedOrCompositeType : role / config
   SimpleType ..> DerivedOrCompositeType : derive / compose
+  Node ..> Node : has_type optional
   Relation --> Node : from
   Relation --> Node : to
   Relation --> RelationType : relation_type
@@ -160,13 +160,12 @@ classDiagram
   Changelog "1" --> "*" Change : changes
 ```
 
-**Legend:** `Relation` = **Edge** row (same table for hierarchy and typed links — **Q54**). Naming `Relation` vs `Edge` is cosmetic.  
+**Legend:** `Relation` / `RelationType` are **exploratory** (Q35). They are **not** currently the hierarchy store — that was tried and parked in a closed thought experiment (Q53/Q54 restart).  
 Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
-Hierarchy RelationType key TBD (`contains` preferred); Collection kind via `has_type` only (**Q53**).  
 Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
-`parent_id` on Node, if kept, is a **cache** of the hierarchy edge — not a second source of truth.  
+**Baseline for now:** Node.`parent_id` defines the browse tree (as before the TE). Fresh work on Q53/Q54 must not reintroduce **`parent_id` as cache of hierarchy edges**.  
 **Schema-as-Nodes spin (Q46):** domain structures such as **BOM** or **Recipe** may themselves be **Nodes + Relations** (templates), so host apps need fewer hard-coded classes (`BomList` / `BomLine` become optional views).  
 **No Parameter / ParameterRole:** attribute Nodes are just Nodes; type binding via **config** and/or `has_type`. `SimpleType` / `DerivedOrCompositeType` remain **roles of type Nodes** (Q34), not separate stored classes.  
 **Q49 lean:** simples use config that disables originating Relations — still open with Q34.
@@ -180,8 +179,8 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 | 3 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
-| 6 | **Relation** (aka **Edge**) | **Decided (Q54):** one edge table — hierarchy (`contains`) + typed links (`has_type`, …) |
-| 7 | **RelationType** | Type of an edge: one `label`; keys include `contains`, `has_type`, … (full catalog Q35) |
+| 6 | **Relation** | **Exploratory (Q35):** typed edge; **not** adopted as hierarchy store (see closed Q53/Q54 TE) |
+| 7 | **RelationType** | **Exploratory:** type with one `label` (no inverse field) |
 
 ### Shared audit idea (recommended)
 
@@ -223,8 +222,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
 | **Parameter / ParameterRole** | **Rejected / dropped** | No class and no formal role stereotype; attribute Nodes are just Nodes with type binding |
 | **BomList / BomLine / Recipe as PHP classes** | **Under review (Q46)** | May be replaceable by **Nodes + Relations** configured like templates |
-| **Relation / Edge** | **Decided (Q54)** | One edge table: hierarchy (`contains`) + typed links; full type catalog still Q35 |
-| **RelationType** | **In progress** | One `label` only; display + inherit (Q42/Q43); keys include `contains`, `has_type` |
+| **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41); hierarchy-via-edges TE closed (Q53/Q54 restart) |
+| **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
 | Forest | Derived view | Several trees (several roots) inside one project |
 
 ```mermaid
@@ -278,7 +277,7 @@ flowchart TB
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
 - **No Parameter class and no ParameterRole** — **decided (Q33/Q34)**; attribute nodes are ordinary Nodes with type binding via config/`has_type`
-- Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via hierarchy edges (`contains`) and/or other Relations (**Q54**)
+- Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via `parent_id` and/or Relations (hierarchy-as-edge + `parent_id` cache hybrid **excluded** — closed TE)
 - Simple type Nodes typically **do not originate Relations** — **strong lean (Q49):** config `capabilities.originate_relations = false` on simples (not a hard special kind); decide with Q34
 - Every Project and Node has a **changelog**. — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
@@ -353,10 +352,10 @@ flowchart TB
 
 | Term | Definition |
 |------|------------|
-| **Root node** | Same Node with **no incoming `contains` edge**; `parent_id = null` if cache is used |
+| **Root node** | The **same Node object** with parent `null` (`parent_id = null`) |
 | Non-root node | The **same Node object** with a non-null parent |
 
-There is **no separate RootNode type**. “Root” is only a role/state of Node (no hierarchy parent edge / cached `parent_id = null`).
+There is **no separate RootNode type**. “Root” is only a role/state of Node based on `parent_id`.
 Being a root does not require children.
 
 ### Parent and children
@@ -389,14 +388,14 @@ Node ◄──(many)────── Parameters
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
 | `id` | yes | identifier | Stable identity of the node |
-| `parent_id` | ?* | identifier \| `null` | **Optional cache** of hierarchy Relation `contains` (**Q54**); `null` = root; not a second semantic system |
+| `parent_id` | yes* | identifier \| `null` | Parent node; `null` = root (defines a tree). **Not** a cache of hierarchy Relations (that hybrid is excluded — closed Q53/Q54 TE). |
 | `name` | yes | string | Display name of the node |
 | `description` | yes* | string | Longer text; may be empty |
 | `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `changelog` | yes | **Changelog** | History of changes on this node |
 
-\* If the cache field is used, it is always present as a value: either a valid parent id or `null`. Truth lives on the `contains` edge.
+\* `parent_id` is always present as a value: either a valid parent id or `null`.
 
 #### Planned optional Node fields (not decided yet)
 
@@ -448,7 +447,7 @@ A Node becomes an “attribute” by binding a **type** (and optional prefix / b
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
 | Node → child attribute Nodes | several | `0..n` | **decided** (parent/child and/or Relations) |
-| Attribute Node → parent | one | `0..1` | **via `contains` edge** (Q14 dropped; Q54); `parent_id` cache optional |
+| Attribute Node → parent | one | `0..1` | **via `parent_id`** (Q14 dropped); Relations separate (Q35) — hierarchy-edge hybrid excluded |
 
 ```text
 Node (category) ──(children / besteht-aus)──► Node (e.g. Wert) ─[has_type]→ Type Node
@@ -575,7 +574,7 @@ Template Project → Datentypen / Type     ← Project.type_node
     └── enum                              ← concrete enums (e.g. Bauart) in domain projects
 ```
 
-#### Collection → list / table / enum (Q52 / Q53 / Q54 **decided**)
+#### Collection → list / table / enum (Q52 **decided**; Q53/Q54 **restart**)
 
 **Decided (Q52):** an **enum** is a **list**; a **list** is a **one-column table**. Unify under **Collection**.
 
@@ -601,16 +600,16 @@ Datentypen
 
 ##### Concrete type = kind + column schema (“immer zwei”)
 
-1. **Kind** — is this a list / table / enum? (binding: **Q53** — `has_type` only)  
+1. **Kind** — is this a list / table / enum? (binding: **Q53 — open, fresh**)  
 2. **Column type(s)** — what does each column hold? (simple or derived, e.g. `string`, `quantity`)  
-   Membership of columns/options = hierarchy Relation **`contains`** (**Q54**).
+   How columns/options hang under the type: **Q54 — open, fresh** (tree `parent_id` vs Relations — restart).
 
-Example **list**:
+Example **list** (proto-style nesting; binding rules TBD):
 
 ```text
 my_list                         ← concrete Collection type
-  ─[has_type]→ list             ← kind (Q53)
-  ─[contains]→ my_listelement   ← column (Q54 — same edge table)
+  ─[has_type]→ list?            ← kind (Q53 open)
+  └── my_listelement            ← column (membership: Q54 open)
         ─[has_type]→ string
 ```
 
@@ -618,57 +617,55 @@ Example **table** (BOM-Zeile):
 
 ```text
 BOM-Zeile
-  ─[has_type]→ table
-  ─[contains]→ Reference ─[has_type]→ RefDes
-  ─[contains]→ Value     ─[has_type]→ quantity
-  ─[contains]→ Footprint ─[has_type]→ Bauart
-  ─[contains]→ Menge     ─[has_type]→ int
+  ─[has_type]→ table?
+  ├── Reference ─[has_type]→ RefDes
+  ├── Value     ─[has_type]→ quantity
+  ├── Footprint ─[has_type]→ Bauart
+  └── Menge     ─[has_type]→ int
 ```
 
 Example **enum**:
 
 ```text
 Bauart
-  ─[has_type]→ enum             ← kind (not “because parent is enum”)
-  ─[contains]→ Option
+  ─[has_type]→ enum?
+  └── Option
         ─[has_type]→ string
-        ├── 0201 · 0402 · …     ← options also via contains under Option
+        ├── 0201 · 0402 · …
 ```
 
 **No special `base_type` edge** — the column’s `has_type` *is* the element/primitive type.
 
-##### Kind + hierarchy (Q53 / Q54 **decided**)
+##### Closed thought experiment — hierarchy as Edges + `parent_id` cache (Q53/Q54)
 
-**Problem (was):** UI tree via `parent_id` *and* Relations both carried meaning → ambiguity.
+**Status:** closed / not adopted. Booked as pure TE. **Q53 and Q54 restart from zero** (no carry-over decision).
 
-**Decided:**
+**What was tried:** treat Nodes as a cloud; put hierarchy on the same Relation/Edge table as `has_type` (e.g. `contains`); tree UI = projection; keep `parent_id` only as denormalized cache of that hierarchy edge; Collection kind only via `has_type`.
 
-| Decision | Rule |
-|----------|------|
-| **Q53** | Collection **kind only** via `─[has_type]→ list\|table\|enum`. Parentage never confers kind. |
-| **Q54** | **Hierarchy = same Edge/Relation table** as `has_type` / `allows_prefix` / …. RelationType e.g. **`contains`**. Tree UI = projection / DisplayHint. Rename Relations→**Edges** optional (same rows). |
-| **`parent_id`** | If kept: **denormalized cache** of the hierarchy edge — not a second semantic system. |
+**Why closed (substance):**
 
-```text
-# Kind (Q53)
-Bauart ─[has_type]→ enum
+| Critique | Consequence |
+|----------|-------------|
+| One edge table still needs per-type constraints (tree vs typed links) | Fake unification |
+| `parent_id` cache of `contains` drifts under dual writes | Hybrid is the expensive path |
+| Hierarchy reads dominate admin/BOM UI | Edge-filtered tree queries lose vs adjacency |
+| One `contains` for schema membership *and* catalog folders | Overloaded RelationType |
+| DisplayHint-as-tree can invent a second hierarchy | Ambiguous “the” parent |
 
-# Membership (Q54 — same edge table)
-Bauart ─[contains]→ Option
-Option ─[has_type]→ string
-# Option.parent_id = Bauart   ← optional cache only
-```
+**Explicitly excluded from this branch (do not reopen as part of the TE):**  
+**`parent_id` as cache of hierarchy edges.** Even if DB-convenient, it does not belong in that design. Any future Q54 answer must choose a *single* hierarchy truth — not Edge + parent_id mirror.
 
-One edge table → no double bookkeeping for list↔column / enum↔options. Inheritance/`is_a` can use other RelationTypes on the same table (Q35/Q42/Q43).
+**Allowed learnings to keep (non-decisions):** the mixup “tree meaning vs Relation meaning” is real; Collection kind should not silently equal “hangs under enum in the UI”; Q52 Collection shape stands.
 
-##### Still open (polish)
+##### Still open (fresh Q53 / Q54)
 
-- Exact RelationType key: `contains` vs `has_column` vs `has_option` (one type vs specialized)
-- Whether MVP always materializes `parent_id` cache or derives tree only from edges
+- How is Collection **kind** bound? (parent under kind / `has_type` / XOR / other)
+- Is `parent_id` semantic containment, org-only, or something else — **without** a hierarchy-edge cache hybrid?
+- Do Relations stay non-hierarchical (`has_type`, `allows_prefix`, …) only?
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
 
-**Status:** **Q52 / Q53 / Q54 decided**. Proto **v14** still nests via `parent_id` for browse; next proto can mirror hierarchy as `contains` edges.
+**Status:** **Q52 decided**. **Q53/Q54 open (restart)**. Proto **v14** still uses `parent_id` nesting + some `has_type` for browse; not normative for the closed TE.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
@@ -891,9 +888,9 @@ Open: simples `originate_relations=false` via config (**Q49** lean) — pending 
 *Widerstand **besteht aus** Wert, Bauform, Maße, …* (composition — edges need properties/kind).  
 Quantity pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** and be **referenced** from composition edges.
 
-### Relation / Edge (typed edge — **Q54 decided**)
+### Exploratory object: Relation (typed edge)
 
-One table for **all** node–node links: hierarchy (`contains`) and typed links (`has_type`, `allows_prefix`, `multiplikator`, …). Rename to **Edge** is optional and cosmetic.
+Typed links between Nodes (`has_type`, `allows_prefix`, …). **Not** currently the hierarchy store — hierarchy-via-edges + `parent_id` cache was a **closed thought experiment** (Q53/Q54 restart).
 
 ```text
 Relation {

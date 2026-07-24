@@ -41,18 +41,17 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - Attribute **Nodes** bind **Type** (via `has_type` / config), optional **Präfix**, and optional **Basiseinheit**.
 - A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.
-- Emerging type model: **template** holds **simple types** + **quantity** + **Collection** (`list` / `table` / `enum` — **Q52**); kind via `has_type` (**Q53**); hierarchy = same Edge/Relation table (**Q54**).
+- Emerging type model: **template** holds **simple types** + **quantity** + **Collection** (`list` / `table` / `enum` — **Q52**). **Q53/Q54** open again after a closed thought experiment (hierarchy-as-edges + `parent_id` cache excluded).
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge.
 - **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.
 - Every Node has a **description** (may be empty).
-- **Decided (Q33):** **no Parameter class** and **no ParameterRole** — attributes like `Wert` are ordinary **Nodes** with type binding via config / `has_type`.
-- **Decided (Q54):** one **Edge/Relation** table for hierarchy (`contains`) and typed links; tree UI = projection; `parent_id` = optional cache. RelationType catalog beyond that still open (**Q35**, Q41–Q43).
+- **Decided (Q33):** **no Parameter class** and **no ParameterRole** — attributes like `Wert` are ordinary **Nodes** with type binding via config / `has_type`. Typed edges remain exploratory (**Q35**, Q41–Q43) — not hierarchy store.
 - **Decided (Q20):** typed PHP DTOs for Project / Node / Changelog / Change.
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Attribute-node placement uses hierarchy edges and/or other Relations (**Q14 dropped / entfällt**; **Q54**).
+- Attribute-node placement uses `parent_id` and/or Relations (**Q14 dropped / entfällt**); baseline tree = `parent_id` until fresh Q54.
 - Open (**Q34/Q49**): config-first proposal — simples get `capabilities.originate_relations = false` (not a hard special kind).
 - Every Project and Node has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
