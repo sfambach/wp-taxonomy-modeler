@@ -566,10 +566,104 @@ Template Project → Datentypen / Type     ← Project.type_node
     ├── value     → numeric simple (int | double; Q37)
     ├── prefix?   → Präfix (unit group with base_unit)
     └── base_unit → Basiseinheit
-# later:
-└── string_list   ← open list of string (Q47; ≠ enum)
+# later / exploring Q52:
+└── Collection?
+    ├── list      ← 1 column
+    ├── table     ← n columns
+    └── enum      ← closed list (already present; may move under Collection)
 ```
 
+#### Design spin: Collection → list / table / enum (Q52 / Q53) — exploratory
+
+**User insight:** an **enum** is essentially a **list**; a **list** is a **one-column table**. Unify under **Collection**.
+
+##### Proposed shape
+
+```text
+Datentypen
+├── int · double · string · char · bool     ← simples
+├── quantity                                ← derived (Größe)
+└── Collection                              ← structural super-kind (exploratory)
+    ├── list      ← Collection with exactly 1 column
+    ├── table     ← Collection with n ≥ 1 columns
+    └── enum      ← special list: closed values, not extensible at fill-time
+```
+
+| Kind | Columns | Values at fill-time | Notes |
+|------|---------|---------------------|--------|
+| **list** | exactly **1** column node | open (user adds rows) | e.g. RefDes list (Q47) |
+| **table** | **n ≥ 1** column nodes | open | e.g. BOM-Zeile schema |
+| **enum** | **1** implicit column (= `base_type`) | **closed** option set | e.g. Bauart; not extensible when filling data |
+
+**list ≡ 1-column table** — same creation rules; only the column count differs (and UI chrome).
+
+##### Concrete type = kind + column schema (“immer zwei”)
+
+Contradiction resolved by splitting two layers:
+
+1. **Kind** — is this a list / table / enum?  
+2. **Column type(s)** — what does each column hold? (simple or derived, e.g. `string`, `quantity`)
+
+Example **list**:
+
+```text
+my_list                         ← concrete Collection type
+  kind: list                    ← see XOR binding below
+  └── my_listelement            ← exactly one column node
+        ─[has_type]→ string     ← element type (simple or derived)
+```
+
+Example **table** (BOM-Zeile already looks like this):
+
+```text
+BOM-Zeile                       ← concrete table type
+  kind: table
+  ├── Reference ─[has_type]→ string   (or later: list-of-string)
+  ├── Value     ─[has_type]→ quantity
+  ├── Footprint ─[has_type]→ Bauart   (enum instance)
+  └── Menge     ─[has_type]→ int
+```
+
+Example **enum** (Bauart — closed list):
+
+```text
+Bauart
+  kind: enum
+  ─[base_type]→ string          ← the single “column” primitive
+  └── 0201 · 0402 · 0603 …      ← fixed options (not free columns)
+```
+
+##### Kind binding XOR (Q53) — parentage **or** Relation, not both
+
+| Mechanism | Meaning |
+|-----------|---------|
+| **A — Parent under kind** | `my_list` child of `list` ⇒ kind = list |
+| **B — Relation** | `my_list` ─[has_type]→ `list` ⇒ kind = list |
+
+**Rule (strong lean):** **exactly one** of A or B. Doing both is invalid (double kind).  
+Doing **neither** leaves the concrete type incomplete.
+
+Column `has_type` is **independent** of kind binding — every column still needs a type (the “zweite” half).
+
+##### Why this fits existing decisions
+
+| Existing | Fit |
+|----------|-----|
+| Q33 / Q48 Nodes + `has_type` | Kind and column types stay Nodes + Relations |
+| Q38 / Q39 enum | Remains closed list + one `base_type`; selection single/multiple unchanged |
+| Q47 RefDes / string_list | Becomes concrete **list** with column `has_type`→`string` — no separate `string_list` type required |
+| BOM Spalten prototype | Already a **table** schema; Footprint → Bauart already an enum column |
+| Template read-only | Template holds Collection kinds (`list`/`table`/`enum`); concrete `Bauart` / `my_list` stay in domain/test Projects |
+
+##### Still open
+
+- Exact template tree: is `Collection` a real parent Node, or only a doc grouping?
+- Enum under Collection vs sibling of Collection?
+- May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
+- Display / widgets: list vs table vs enum UI
+- Rename Relation `has_type` vs `is_type_of` / `type_of` (wording only)
+
+**Status:** exploratory — do **not** change the prototype seed until user confirms the XOR + Collection shape.
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
 
