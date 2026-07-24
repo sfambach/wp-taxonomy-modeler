@@ -188,14 +188,14 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; Rezept instances/lines (Q56) as Nodes when schema-as-Nodes |
+| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; Composition instances (Q56) |
 | 2 | **Parameter** | **Spin (Q55):** definition on a catalog Node (name + type); children inherit; values on leaves — object vs Node-role TBD |
 | 3 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
 | 4 | **Changelog** | History container (`changes`) |
 | 5 | **Change** | One audit entry (when, who, what, version) |
 | 6 | **Relation** | **Exploratory (Q35):** typed edge; **not** adopted as hierarchy store (see closed Q53/Q54 TE) |
 | 7 | **RelationType** | **Exploratory:** type with one `label` (no inverse field) |
-| 8 | **Rezept** (Composition) | **Lean (Q56):** which Bestandteile belong together — unifies BOM / Build / Kochrezept (not a third catalog) |
+| 8 | **Composition** (UX: Zusammenstellung) | **Lean (Q56):** bundles Parameter values and/or refs to other Compositions — GPU card, BOM, Build, Gericht |
 
 ### Shared audit idea (recommended)
 
