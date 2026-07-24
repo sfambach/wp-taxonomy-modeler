@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.72-plan"
+version: "0.6.73-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -245,6 +245,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Composition has **two viewpoints**: Definition (columns+types) and Instanz (filled values/rows). Worked schemas: BOM, Rezept, GPU (draft), Widerstand. Gap: **Composition-Ref** type for member columns. Plan **0.6.70**. |
 | 2026-07-24 | **Instance content lean:** on create, store **ParameterValue**s on the Composition Node (Level A); Level B adds **CompositionRow**s with cell ParameterValues (incl. Composition-Ref). Not config blobs / not catalog children. Q16 strengthened in-core. Plan **0.6.71**. |
 | 2026-07-24 | **Q56 correction:** **Widerstand is a Bauteil**, not a Composition; used in Composition **only as Bauteil-Ref column**. Composition = Stückliste/Rezept/Build. GPU-Karte = Bauteil too. Plan **0.6.72**. |
+| 2026-07-24 | Proto **v15:** project **Composition Simples** — Phase 1 Zusammenstellung with only simple column types; Tabelle = instance rows. Extend later to quantity/enum/Bauteil-Ref. Plan **0.6.73**. |
 
 ## Change protocol
 

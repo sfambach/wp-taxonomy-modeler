@@ -1,58 +1,54 @@
 # Tree split prototype
 
-Static throwaway UI to explore the taxonomy tree screen shape.
+Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung).
 
 **Not** WordPress plugin code. Open `index.html` in a browser (or `python3 -m http.server` in this folder).
 
-## What it does
+## Projects
 
-- Split layout: tree left, multi-tab right
-- **Project switcher**:
-  - **Template (nur lesen)** — simples, `quantity`, **Collection** (`list` / `table` / `enum`), Präfix, Standard-Basiseinheiten
-  - **BOM Testprojekt (editierbar)** — Kern-Kopie + concrete Collections + Spalten / Stückliste / Bauteile
-- **Collection (Q52):** enum is created **like list** — one typed column; enum adds closed options under that column
-- State: `localStorage` key `wtt-proto-tree-split-v14` — **Reset** after upgrade
+| Project | Mode | Purpose |
+|---------|------|---------|
+| **Composition Simples** | editable | **Phase 1** — Composition with **only simple** column types |
+| **Template** | read-only | Datentypen (simples + quantity + Collection), Präfix, Basiseinheit |
+| **BOM Testprojekt** | editable | Later phases: enum / quantity / Spalten / Bauteile |
 
-## Seed trees
+State: `localStorage` key `wtt-proto-tree-split-v15` — **Reset** after upgrade.
+
+## Walkthrough — Phase 1 (Simples only)
+
+1. Open the prototype (defaults to **Composition Simples**).
+2. In the tree select **`Zusammenstellung — nur Simples`**.
+3. Open tab **Tabelle**.
+4. See **Definition**: column headers + type badges (`string`, `int`, `bool`, `char`, `double`) from `has_type`.
+5. See **Instanz**: 5 rows (CompositionRows); first two seeded — edit cells (typed widgets).
+6. Optional: add a child under the Zusammenstellung = new column; set Relation `has_type` → a simple type on Relationen tab; reload Tabelle.
 
 ```text
-Template (read-only)
-├── Datentypen
-│   ├── int · double · string · char · bool
-│   ├── quantity
-│   └── Collection
-│       ├── list
-│       ├── table
-│       └── enum
-├── Präfix (p…M + c)
-└── Basiseinheit
-    └── Meter · Liter · Kilogramm · Sekunde · Kelvin · Ampere
-
-BOM Testprojekt (editable)
-├── Datentypen → Collection
-│   ├── list
-│   │   └── RefDes
-│   │       └── Element ─[has_type]→ string
-│   ├── table
-│   └── enum
-│       └── Bauart
-│           └── Option ─[has_type]→ string
-│               └── 0201 · 0402 · 0603 · 0805 · axial
-├── Basiseinheit + Ohm · Farad · Watt · Volt
-├── Spalten (BOM-Zeile) ─[has_type]→ table
-│   ├── Reference ─[has_type]→ RefDes
-│   ├── Value     ─[has_type]→ quantity
-│   ├── Footprint ─[has_type]→ Bauart
-│   ├── Menge     ─[has_type]→ int
-│   ├── LCSC      ─[has_type]→ string
-│   └── Stock     ─[has_type]→ bool
-├── Stückliste
-└── Bauteile
+Composition Simples
+├── Datentypen (int · double · string · char · bool · …)
+└── Zusammenstellung — nur Simples     ← select → Tabelle
+    ├── Bezeichnung ─[has_type]→ string
+    ├── Anzahl      ─[has_type]→ int
+    ├── Aktiv       ─[has_type]→ bool
+    ├── Code        ─[has_type]→ char
+    └── Faktor      ─[has_type]→ double
 ```
+
+Maps to planning: Composition **Definition** = children + `has_type`; **Instanz** = `tableCells` grid (ParameterValues / rows).
+
+## Later phases (not in this project yet)
+
+| Phase | Add column types |
+|-------|------------------|
+| 2 | `quantity` |
+| 3 | Collection `enum` / `list` |
+| 4 | **Bauteil-Ref** → Katalog-Bauteil (Widerstand is Bauteil, not Composition) |
+
+Use **BOM Testprojekt** as a richer sketch for Spalten/Bauart; keep Phase 1 project for the clean Composition story.
 
 ## Edges
 
 ```text
 Edge { id, from, to, label, props? }
-labels: has_type | allows_prefix | multiplikator | …  (base_type legacy only)
+labels: has_type | allows_prefix | multiplikator | …
 ```
