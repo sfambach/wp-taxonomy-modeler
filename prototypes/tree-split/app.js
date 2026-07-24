@@ -1008,6 +1008,191 @@ function setSlotRequired(nodeId, required) {
   renderRight();
 }
 
+/** Replace outgoing edge with label (at most one). Empty toId removes it. */
+function setLabeledEdge(fromId, label, toId) {
+  if (!isProjectEditable()) return;
+  edges = edges.filter((e) => !(e.from === fromId && e.label === label));
+  if (toId && nodes.has(toId) && toId !== fromId) {
+    pushEdge(fromId, toId, label);
+  }
+  persist();
+  renderRight();
+}
+
+function setHasType(slotId, typeId) {
+  setLabeledEdge(slotId, REL_HAS_TYPE, typeId || "");
+}
+
+function setRefScope(slotId, rootId) {
+  setLabeledEdge(slotId, REL_REF_SCOPE, rootId || "");
+}
+
+/** Candidates for has_type picker: simples, complex leaves, Collection kinds + concretes, units, Präfixe root. */
+function typePickerCandidates() {
+  /** @type {ProtoNode[]} */
+  const list = [];
+  const seen = new Set();
+  const add = (n) => {
+    if (!n || seen.has(n.id) || n.id === rootId) return;
+    seen.add(n.id);
+    list.push(n);
+  };
+  for (const n of dataTypeNodes()) {
+    add(n);
+    if (n.name.trim().toLowerCase() === "collection") {
+      for (const kind of childrenOf(n.id)) {
+        add(kind);
+        for (const concrete of childrenOf(kind.id)) add(concrete);
+      }
+    }
+  }
+  prefixesRootId = healNamedRoot(prefixesRootId, "Präfixe");
+  if (prefixesRootId) add(nodes.get(prefixesRootId));
+  baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
+  if (baseUnitsRootId) {
+    for (const u of childrenOf(baseUnitsRootId)) add(u);
+  }
+  return list.sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
+}
+
+/** Catalog roots for ref_scope (project top-level folders + their useful children). */
+function refScopeCandidates() {
+  const top = childrenOf(rootId);
+  /** @type {ProtoNode[]} */
+  const list = [...top];
+  // Also allow deeper catalog folders (e.g. future Bauteile/Passiv)
+  for (const t of top) {
+    if (t.name.trim().toLowerCase() === "bauteile") {
+      list.push(...childrenOf(t.id));
+    }
+  }
+  return list.sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
+}
+
+/**
+ * Guided Typ-Bindung: has_type (+ ref_scope when subtree).
+ * Answers "woher weiß ich, dass ich eine Node-Referenz brauche?"
+ * @param {ProtoNode} node
+ */
+function buildTypeBindingPanel(node) {
+  const block = document.createElement("div");
+  block.className = "order-block type-binding";
+  const editable = isProjectEditable();
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Typ-Bindung (has_type)";
+  block.append(lab);
+
+  const lead = document.createElement("p");
+  lead.className = "muted";
+  lead.style.margin = "0.25rem 0 0.5rem";
+  lead.style.fontSize = "0.8rem";
+  lead.textContent =
+    "Der Spaltenname allein sagt nichts — der Typ entscheidet das Widget. Node-Referenz? → Typ subtree (Katalog) oder node_ref (freier Absprung).";
+  block.append(lead);
+
+  const typeRow = document.createElement("div");
+  typeRow.className = "field";
+  const typeLab = document.createElement("label");
+  typeLab.textContent = "Typ";
+  typeLab.htmlFor = "slot-has-type";
+  const typeSel = document.createElement("select");
+  typeSel.id = "slot-has-type";
+  typeSel.className = "form-control";
+  typeSel.disabled = !editable;
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "— kein Typ (Freitext) —";
+  typeSel.append(empty);
+  const curType = typeNodeOf(node.id);
+  for (const c of typePickerCandidates()) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    const key = typeKey(c);
+    o.textContent = `${nodePath(c.id)}  [${key}]`;
+    typeSel.append(o);
+  }
+  if (curType && [...typeSel.options].some((o) => o.value === curType.id)) {
+    typeSel.value = curType.id;
+  }
+  typeSel.addEventListener("change", () => setHasType(node.id, typeSel.value));
+  typeRow.append(typeLab, typeSel);
+  block.append(typeRow);
+
+  const key = typeKey(curType);
+  const help = document.createElement("p");
+  help.className = "muted";
+  help.style.margin = "0.35rem 0 0";
+  help.style.fontSize = "0.8rem";
+
+  if (!curType) {
+    help.textContent =
+      "Ohne Typ → Backend zeigt Freitext. Für „Bauteil Wahl“: Typ = subtree, danach Katalogwurzel setzen.";
+    block.append(help);
+  } else if (key === "subtree") {
+    help.innerHTML =
+      "<strong>subtree</strong> = Auswahl unter einer Katalogwurzel. Du brauchst zusätzlich <code>ref_scope</code> → z. B. <em>Bauteile</em>.";
+    block.append(help);
+
+    const scopeRow = document.createElement("div");
+    scopeRow.className = "field";
+    scopeRow.style.marginTop = "0.75rem";
+    const scopeLab = document.createElement("label");
+    scopeLab.textContent = "Katalogwurzel (ref_scope)";
+    scopeLab.htmlFor = "slot-ref-scope";
+    const scopeSel = document.createElement("select");
+    scopeSel.id = "slot-ref-scope";
+    scopeSel.className = "form-control";
+    scopeSel.disabled = !editable;
+    const sEmpty = document.createElement("option");
+    sEmpty.value = "";
+    sEmpty.textContent = "— Katalogwurzel wählen (Pflicht für subtree) —";
+    scopeSel.append(sEmpty);
+    const curScope = refScopeRootOf(node.id);
+    // Prefer slot's own edge for display (refScopeRootOf also falls back to type)
+    const slotScopeEdge = findEdge(node.id, REL_REF_SCOPE);
+    for (const c of refScopeCandidates()) {
+      const o = document.createElement("option");
+      o.value = c.id;
+      o.textContent = nodePath(c.id);
+      scopeSel.append(o);
+    }
+    const scopeVal = slotScopeEdge?.to || curScope?.id || "";
+    if (scopeVal && [...scopeSel.options].some((o) => o.value === scopeVal)) {
+      scopeSel.value = scopeVal;
+    }
+    scopeSel.addEventListener("change", () => setRefScope(node.id, scopeSel.value));
+    scopeRow.append(scopeLab, scopeSel);
+    block.append(scopeRow);
+
+    if (!scopeVal) {
+      const warn = document.createElement("p");
+      warn.className = "type-binding-warn";
+      warn.textContent =
+        "Noch keine Katalogwurzel — Backend kann keine Optionen anbieten.";
+      block.append(warn);
+    } else {
+      const ok = document.createElement("p");
+      ok.className = "muted";
+      ok.style.margin = "0.35rem 0 0";
+      ok.style.fontSize = "0.8rem";
+      const opts = childrenOf(scopeVal);
+      ok.textContent = `Optionen: ${opts.length} Kind(er) von „${nodes.get(scopeVal)?.name || "?"}“ (${opts.map((n) => n.name).join(", ") || "—"}).`;
+      block.append(ok);
+    }
+  } else if (key === "node_ref") {
+    help.innerHTML =
+      "<strong>node_ref</strong> = freier Absprung zu einem beliebigen Knoten. Kein <code>ref_scope</code> nötig — Wert = Node-id.";
+    block.append(help);
+  } else {
+    help.textContent = `Typ „${curType.name}“ → Widget „${key}“. Relationen unten bleiben für Spezialfälle.`;
+    block.append(help);
+  }
+
+  return block;
+}
+
 /** Named parameter child of a Bauteilgruppe (Wert / Präfix / Einheit). */
 function bauteilParam(partId, paramName) {
   if (!partId || !nodes.has(partId)) return null;
@@ -2124,7 +2309,7 @@ function buildEdgesBlock(node) {
   hint.style.margin = "0.35rem 0 0";
   hint.style.fontSize = "0.8rem";
   hint.textContent =
-    "Beispiele: has_type → Datentyp · allows_prefix → Präfix · multiplikator → int (+ value).";
+    "Beispiele: has_type → Typ · ref_scope → Katalogwurzel (bei subtree) · allows_prefix → Präfix · multiplikator → int (+ value). Typ-Bindung besser oben im Panel setzen.";
   block.append(hint);
 
   return block;
@@ -2313,7 +2498,12 @@ function renderDetail() {
     requiredBlock.append(rl, row, rh);
   }
 
-  card.append(h2, field, descField, orderBlock, meta);
+  const typeBinding =
+    node.parentId != null ? buildTypeBindingPanel(node) : null;
+
+  card.append(h2, field, descField);
+  if (typeBinding) card.append(typeBinding);
+  card.append(orderBlock, meta);
   if (requiredBlock) card.append(requiredBlock);
   if (isBaseUnitNode(node)) {
     card.append(buildAllowedPrefixesPanel(node));
