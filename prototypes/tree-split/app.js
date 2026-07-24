@@ -2,10 +2,9 @@
  * WTT tree-split prototype — in-memory Node model.
  * Shape mirrors planning Node: { id, parentId, name, position, description? }
  *
- * Three demo Projects (switcher):
+ * Projects (switcher):
  *   - Template (nur lesen)
- *   - Composition Simples (editierbar) — Zusammenstellung nur mit Simple-Typen
- *   - BOM Testprojekt (editierbar) — später: quantity / enum / Bauteil-Ref
+ *   - Demo (editierbar) — Rezept (simples) + BOM — Board unter Compositionen
  *
  * Collection (Q52): enum is created like list — one typed column + (for enum) closed options.
  *
@@ -13,7 +12,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v19";
+const STORAGE_KEY = "wtt-proto-tree-split-v20";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -444,7 +443,7 @@ function seedBomTestData(compositionsRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
-  const bomCompId = createNode(compositionsRootId, "BOM — Board", 0, {
+  const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
       "BOM-Composition: Spalten + Instanzzeilen (Backend). quantity / enum / list — Phase 2–3 Demo.",
   });
@@ -485,7 +484,7 @@ function seedBomTestData(compositionsRootId, core) {
     ["", "", "", "", "", ""],
   ]);
 
-  const partsId = createNode(compositionsRootId, "Bauteile", 1, {
+  const partsId = createNode(compositionsRootId, "Bauteile", nextPosition(compositionsRootId), {
     description: "Katalog-Ast (Demo) — Bauteile ≠ Composition; später Bauteil-Ref-Spalte.",
   });
   createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
@@ -519,6 +518,14 @@ function setActiveProject(projectId) {
   if (!project) return;
   applyProject(project);
   selectedId = project.rootId;
+  // Root + Compositionen aufklappen, damit Compositionen sichtbar sind
+  collapsed.delete(project.rootId);
+  const comps = childrenOf(project.rootId).find((n) => n.name === "Compositionen");
+  if (comps) {
+    collapsed.delete(comps.id);
+    const bom = childrenOf(comps.id).find((n) => n.name === "BOM — Board");
+    if (bom) selectedId = bom.id;
+  }
   persist();
   render();
 }
@@ -558,55 +565,37 @@ function createInitial() {
     baseUnitsRootId: templateCore.baseUnitsRootId,
   };
 
-  // 2) Composition Simples — editable; columns = int/double/string/char/bool only
-  const simplesRootId = createNode(null, "Composition Simples", 1, {
+  // 2) Demo — editable; Rezept (simples) + BOM — Board under Compositionen
+  const demoRootId = createNode(null, "Demo", 1, {
     template: false,
     description:
-      "Phase 1: Zusammenstellung nur mit Simple-Typen. Später: quantity / enum / Bauteil-Ref.",
+      "Editierbares Demo: Compositionen mit Rezept (Simples) und BOM — Board (quantity/enum/list) + Bauteile.",
   });
-  const simplesCore = seedTemplateCore(simplesRootId, { markTemplate: false });
-  const simplesCompId = seedCompositionSimplesDemo(
-    simplesCore.compositionsRootId,
-    simplesCore
+  const demoCore = seedTemplateCore(demoRootId, { markTemplate: false });
+  const rezeptId = seedCompositionSimplesDemo(
+    demoCore.compositionsRootId,
+    demoCore
   );
-  const simplesProject = {
-    id: "proj-composition-simples",
-    name: "Composition Simples",
-    description: "Composition-Demo Phase 1 — nur Simples.",
+  const bomCompId = seedBomTestData(demoCore.compositionsRootId, demoCore);
+  const demoProject = {
+    id: "proj-demo",
+    name: "Demo",
+    description: "Rezept + BOM + Bauteile unter Compositionen.",
     kind: PROJECT_KIND_COMPOSITION_SIMPLES,
-    rootId: simplesRootId,
-    dataTypesRootId: simplesCore.dataTypesRootId,
-    prefixesRootId: simplesCore.prefixesRootId,
-    baseUnitsRootId: simplesCore.baseUnitsRootId,
+    rootId: demoRootId,
+    dataTypesRootId: demoCore.dataTypesRootId,
+    prefixesRootId: demoCore.prefixesRootId,
+    baseUnitsRootId: demoCore.baseUnitsRootId,
   };
 
-  // 3) BOM test project — editable; template core copy + Collection instances + BOM trees
-  const bomRootId = createNode(null, "BOM Testprojekt", 2, {
-    template: false,
-    description:
-      "Editierbar: Bauart (enum wie list), RefDes (list), Spalten (table), Ohm/Farad/…, Stückliste, Bauteile.",
-  });
-  const bomCore = seedTemplateCore(bomRootId, { markTemplate: false });
-  const schemaId = seedBomTestData(bomCore.compositionsRootId, bomCore);
-  const bomProject = {
-    id: "proj-bom-test",
-    name: "BOM Testprojekt",
-    description: "BOM-Demo — änderbar.",
-    kind: PROJECT_KIND_BOM_TEST,
-    rootId: bomRootId,
-    dataTypesRootId: bomCore.dataTypesRootId,
-    prefixesRootId: bomCore.prefixesRootId,
-    baseUnitsRootId: bomCore.baseUnitsRootId,
-  };
-
-  projects = [templateProject, simplesProject, bomProject];
+  projects = [templateProject, demoProject];
   collapseAllBranches();
-  applyProject(simplesProject);
-  selectedId = simplesCompId;
-  // keep path to Rezept visible
-  collapsed.delete(simplesRootId);
-  collapsed.delete(simplesCore.compositionsRootId);
-  void schemaId;
+  applyProject(demoProject);
+  selectedId = bomCompId;
+  // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
+  collapsed.delete(demoRootId);
+  collapsed.delete(demoCore.compositionsRootId);
+  void rezeptId;
 }
 
 function nodeBelongsToActiveRoot(nodeId) {
@@ -1175,7 +1164,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 19,
+    version: 20,
     projects,
     activeProjectId,
     rootId,
@@ -1302,7 +1291,7 @@ function restore() {
 }
 
 function resetAll() {
-  if (!window.confirm("Beide Projekte zurücksetzen (Template + BOM Testprojekt)?")) return;
+  if (!window.confirm("Projekte zurücksetzen (Template + Demo)?")) return;
   localStorage.removeItem(STORAGE_KEY);
   try {
     localStorage.removeItem("wtt-proto-tree-split");
@@ -1323,6 +1312,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v16");
     localStorage.removeItem("wtt-proto-tree-split-v17");
     localStorage.removeItem("wtt-proto-tree-split-v18");
+    localStorage.removeItem("wtt-proto-tree-split-v19");
   } catch {
     /* ignore */
   }
@@ -1452,9 +1442,7 @@ function syncProjectSelect() {
   opt.textContent =
       p.kind === PROJECT_KIND_TEMPLATE
         ? `${p.name} (nur lesen)`
-        : p.kind === PROJECT_KIND_COMPOSITION_SIMPLES
-          ? `${p.name} (Phase 1 · Simples)`
-          : `${p.name} (editierbar)`;
+        : `${p.name} (editierbar)`;
     sel.append(opt);
   }
   sel.value = projects.some((p) => p.id === activeProjectId)

@@ -13,8 +13,6 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 | **Frontend** | Vereinfachte Seitenvorschau (später: Gutenberg-Blöcke, Vergleich, Aktionen) |
 | **Feld** | HTML-Feld-Spielwiese — **unangetastet**, für spätere Zwecke |
 
-Entfernt: Umrechnung, Tabelle 2, separater Relationen-Tab (Relationen → Knoten).
-
 ## Root layout (all projects)
 
 ```text
@@ -31,39 +29,36 @@ Project root
 
 | Project | Mode | Under Compositionen |
 |---------|------|---------------------|
-| **Composition Simples** | editable | **Rezept — Backzutaten** (Phase 1 · nur Simples) |
+| **Demo** | editable | **Rezept — Backzutaten**, **BOM — Board**, Bauteile |
 | **Template** | read-only | (leer — nur Typen) |
-| **BOM Testprojekt** | editable | **BOM — Board** (quantity/enum/list) + Bauteile |
 
-State: `localStorage` key `wtt-proto-tree-split-v19` — **Reset** after upgrade. Tree starts collapsed.
+State: `localStorage` key `wtt-proto-tree-split-v20` — **Reset** after upgrade. Tree starts collapsed; **Compositionen** is opened so both compositions are visible.
 
-## Walkthrough — Phase 1 (Simples)
+## Walkthrough
 
 1. Open the prototype → **Reset**.
-2. Project **Composition Simples**.
-3. Tree: `Compositionen` → **`Rezept — Backzutaten`**.
-4. Tab **Backend** — Zeilen Mehl / Zucker / Salz bearbeiten.
-5. Tab **Frontend** — Block-ähnliche Seitenvorschau derselben Daten.
+2. Project **Demo** (default).
+3. Tree under `Compositionen`:
+   - **Rezept — Backzutaten** — Phase 1 Simples
+   - **BOM — Board** — quantity / enum / list (+ Seed-Zeilen)
+   - **Bauteile** — Katalog-Ast
+4. Tab **Backend** — Zeilen bearbeiten; Tab **Frontend** — Seitenvorschau.
 
 ```text
-Composition Simples
-├── Typen
-│   ├── Datentypen · Präfix · Basiseinheit
+Demo
+├── Typen · …
 └── Compositionen
-    └── Rezept — Backzutaten
-        ├── Bezeichnung ─[has_type]→ string
-        ├── Anzahl      ─[has_type]→ int
-        ├── Aktiv       ─[has_type]→ bool
-        ├── Code        ─[has_type]→ char
-        └── Faktor      ─[has_type]→ double
+    ├── Rezept — Backzutaten
+    ├── BOM — Board
+    └── Bauteile
 ```
 
 ## Later phases
 
 | Phase | Add column types |
 |-------|------------------|
-| 2 | `quantity` |
-| 3 | Collection `enum` / `list` |
+| 2 | `quantity` (BOM already demos) |
+| 3 | Collection `enum` / `list` (BOM already demos) |
 | 4 | **Bauteil-Ref** → Katalog-Bauteil |
 
 ## Edges
