@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.68-plan"
+version: "0.6.69-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -895,7 +895,7 @@ Katalog                          ← organisiert Vorlagen + Ausprägungen (Baute
 
 Drop **Rezept** and raw **Composition** as primary UI labels.
 
-**Lean:** naming **decided** below; concept still open on Vorlage vs Ausprägung roles.
+**Lean:** naming **decided** above; concept still open on Vorlage vs Ausprägung roles.
 
 **Guideline check:**
 
@@ -918,6 +918,46 @@ Drop **Rezept** and raw **Composition** as primary UI labels.
 - Definitionsbaum vs catalog forest
 
 **Status:** **Q52 decided**. **Q56 naming decided** (Zusammenstellung / Composition). **Q54 / Q56 concept strong leans**. **Q55 spin**. **Q53 open**.
+
+##### Goal path — „eine Composition anlegen“ (zielorientiert)
+
+**Goal:** In planning terms, specify the minimum so an operator can **create one Ausprägung-Composition** (e.g. `R 1kΩ 0603` or `RTX 4090`). BOM-style member lists come **second**.
+
+###### Already in place
+
+| Item | Status |
+|------|--------|
+| Name UX / intern | decided — Zusammenstellung / Composition |
+| Catalog tree (`parent_id`) | lean Q54 |
+| Parameter define → inherit → fill | spin Q55 |
+| Types: simples + quantity + Collection | decided Q36/Q52 |
+| Bauform as Parameter → Bauart | lean |
+
+###### Ordered blockers (decide in this order)
+
+| # | Decision | Proposed default (to lock) | Why |
+|---|----------|----------------------------|-----|
+| **1** | What *is* a Composition in storage? | **Node** with role/config `composition` (Ausprägung); no separate Composition table for MVP | One identity in the catalog; pickable; compares as Nodes |
+| **2** | What is a **Vorlage**? | **Node** in the catalog that **owns Parameter definitions**; children inherit | Same tree as Q54; not a second hierarchy |
+| **3** | What is a **Parameter**? | **Named definition object** owned by a Vorlage-Node (`name` + `type` → type Node); values stored on the Ausprägung-Node | Clear define/fill split; avoids mixing params with catalog children |
+| **4** | How does Ausprägung know its Vorlage? | Prefer **`parent_id`** under Vorlage (or under a group under Vorlage) = inheritance path; optional explicit `based_on` only if parent ≠ Vorlage | One truth (no edge-cache hybrid) |
+| **5** | Types for first example | Project must already have needed type Nodes (from template): e.g. `quantity`, `Bauart` (enum) | Cannot fill Wert/Bauform without types |
+| **6** | Create API (conceptual) | `createComposition({ parent_id, name, values[] })` → Node + filled Parameter values; defs from ancestors | Goal operation |
+| **7** | Members (BOM/Build) | **Later** — CompositionMember refs to other Composition Nodes (+ props e.g. Menge) | Same concept, second milestone |
+
+###### Concrete create checklist (Ausprägung)
+
+1. Ensure **Project** + **Katalog**-root exist.  
+2. Ensure **Vorlage** exists (e.g. `Widerstand`) with Parameter defs (`Wert:quantity`, `Bauform:Bauart`).  
+3. Ensure **types** exist (`quantity`, `Bauart` + options).  
+4. **Create** child Node under Vorlage (or under group `1 kΩ`).  
+5. **Fill** Parameter values (`1 kΩ`, `0603`).  
+6. Result = **Composition** (Zusammenstellung) ready to compare or to use in a later BOM Composition.
+
+###### Next decision to lock now
+
+**Blocker #1–3** (Composition = Node; Vorlage = Node with Parameter defs; Parameter = definition object).  
+If you agree, we mark them decided and draft the conceptual `createComposition` shape + first worked example (Widerstand / 1 kΩ / 0603).
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
