@@ -12,7 +12,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v20";
+const STORAGE_KEY = "wtt-proto-tree-split-v21";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -226,45 +226,52 @@ function seedTemplateCore(projectRootId, opts = {}) {
 
   const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
     template: mark,
-    description: "Simple Typen, quantity und Collection-Kinds (list/table/enum).",
+    description: "Drei Äste: Simple · Zusammengesetzt · Collections.",
   });
-  const tInt = createNode(dataTypesRootId, "int", 0, {
-    description: "Ganze Zahl.",
+  const simpleRootId = createNode(dataTypesRootId, "Simple", 0, {
+    template: mark,
+    description: "Atomare Typen (int, double, string, char, bool).",
   });
-  const tDouble = createNode(dataTypesRootId, "double", 1, {
-    description: "Gleitkommazahl.",
+  const composedRootId = createNode(dataTypesRootId, "Zusammengesetzt", 1, {
+    template: mark,
+    description: "Zusammengesetzte Typen aus Parametern (z. B. quantity).",
   });
-  const tString = createNode(dataTypesRootId, "string", 2, {
-    description: "Freitext.",
-  });
-  const tChar = createNode(dataTypesRootId, "char", 3, {
-    description: "Einzelnes Zeichen.",
-  });
-  const tBool = createNode(dataTypesRootId, "bool", 4, {
-    description: "Wahrheitswert true/false.",
-  });
-  const tQuantity = createNode(dataTypesRootId, "quantity", 5, {
-    description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
+  const collectionsRootId = createNode(dataTypesRootId, "Collections", 2, {
+    template: mark,
+    description: "Collection-Kinds: list · table · enum.",
   });
 
-  const collectionId = createNode(dataTypesRootId, "Collection", 6, {
-    template: mark,
-    description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
+  const tInt = createNode(simpleRootId, "int", 0, {
+    description: "Ganze Zahl.",
   });
-  const tList = createNode(collectionId, "list", 0, {
+  const tDouble = createNode(simpleRootId, "double", 1, {
+    description: "Gleitkommazahl.",
+  });
+  const tString = createNode(simpleRootId, "string", 2, {
+    description: "Freitext.",
+  });
+  const tChar = createNode(simpleRootId, "char", 3, {
+    description: "Einzelnes Zeichen.",
+  });
+  const tBool = createNode(simpleRootId, "bool", 4, {
+    description: "Wahrheitswert true/false.",
+  });
+
+  const tList = createNode(collectionsRootId, "list", 0, {
     description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar.",
   });
-  const tTable = createNode(collectionId, "table", 1, {
+  const tTable = createNode(collectionsRootId, "table", 1, {
     description: "Collection mit n Spalten; Zeilen offen erweiterbar.",
   });
-  const tEnum = createNode(collectionId, "enum", 2, {
+  const tEnum = createNode(collectionsRootId, "enum", 2, {
     description:
       "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte — nicht erweiterbar beim Ausfüllen.",
   });
 
-  const prefixesRootId = createNode(typesRootId, "Präfix", 1, {
+  const prefixesRootId = createNode(typesRootId, "Präfixe", 1, {
     template: mark,
-    description: "SI-Präfixe; Multiplikator via Relation multiplikator → int.",
+    description:
+      "SI-Präfixe; Multiplikator via Relation multiplikator → int. Kind-Typ für quantity.Präfix.",
   });
   const prefixDefs = [
     ["p", 0, 1e-12, "Piko (10⁻¹²)."],
@@ -286,7 +293,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const baseUnitsRootId = createNode(typesRootId, "Basiseinheit", 2, {
     template: mark,
     description:
-      "Standard-Basiseinheiten im Template. Domäneneinheiten (Ohm, Farad, …) gehören ins Testprojekt.",
+      "Basiseinheiten. Kind-Typ für quantity.Einheit. Domäneneinheiten (Ohm, Farad, …) im Demo.",
   });
   const uMeter = createNode(baseUnitsRootId, "Meter", 0, {
     description: "Länge.",
@@ -324,14 +331,35 @@ function seedTemplateCore(projectRootId, opts = {}) {
   }
   void uKelvin;
 
+  // quantity = zusammengesetzter Typ: Parameter Menge / Präfix / Einheit
+  const tQuantity = createNode(composedRootId, "quantity", 0, {
+    description:
+      "Größe (nicht Messung): Menge (int) + Präfix (Kind von Präfixe) + Einheit (Kind von Basiseinheit).",
+  });
+  const qMenge = createNode(tQuantity, "Menge", 0, {
+    description: "Numerischer Betrag — has_type → int.",
+  });
+  const qPrefix = createNode(tQuantity, "Präfix", 1, {
+    description: "Optionaler SI-Präfix — has_type → Präfixe (Wert = Kind darunter).",
+  });
+  const qUnit = createNode(tQuantity, "Einheit", 2, {
+    description: "Basiseinheit — has_type → Basiseinheit (Wert = Kind darunter).",
+  });
+  pushEdge(qMenge, tInt, REL_HAS_TYPE);
+  pushEdge(qPrefix, prefixesRootId, REL_HAS_TYPE);
+  pushEdge(qUnit, baseUnitsRootId, REL_HAS_TYPE);
+
   return {
     typesRootId,
     compositionsRootId,
     dataTypesRootId,
+    simpleRootId,
+    composedRootId,
+    collectionsRootId,
     prefixesRootId,
     baseUnitsRootId,
-    collectionId,
     pref,
+    quantityParams: { qMenge, qPrefix, qUnit },
     types: {
       tInt,
       tDouble,
@@ -551,7 +579,7 @@ function createInitial() {
   const templateRootId = createNode(null, "Template", 0, {
     template: true,
     description:
-      "Reines Template (read-only): Datentypen inkl. Collection(list/table/enum), Präfixe, Standard-Basiseinheiten.",
+      "Reines Template (read-only): Datentypen (Simple / Zusammengesetzt / Collections), Präfixe, Basiseinheiten.",
   });
   const templateCore = seedTemplateCore(templateRootId, { markTemplate: true });
   const templateProject = {
@@ -592,9 +620,11 @@ function createInitial() {
   collapseAllBranches();
   applyProject(demoProject);
   selectedId = bomCompId;
-  // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
+  // Compositionen + Datentypen-Äste sichtbar
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
+  collapsed.delete(demoCore.typesRootId);
+  collapsed.delete(demoCore.dataTypesRootId);
   void rezeptId;
 }
 
@@ -619,7 +649,12 @@ function healNamedRoot(currentId, name) {
 function dataTypeNodes() {
   dataTypesRootId = healNamedRoot(dataTypesRootId, "Datentypen");
   if (!dataTypesRootId) return [];
-  return childrenOf(dataTypesRootId);
+  const simple = childrenOf(dataTypesRootId).find(
+    (n) => n.name.trim().toLowerCase() === "simple"
+  );
+  if (simple) return childrenOf(simple.id);
+  // Legacy flat Datentypen
+  return childrenOf(dataTypesRootId).filter(isSimpleTypeNode);
 }
 
 function prefixOptionNames() {
@@ -713,6 +748,10 @@ function typeNodeOf(slotId) {
  */
 function collectionKindOf(typeNode) {
   if (!typeNode) return null;
+  const self = typeNode.name.trim().toLowerCase();
+  if (COLLECTION_KIND_NAMES.includes(self)) {
+    return /** @type {'list'|'table'|'enum'} */ (self);
+  }
   const parent = typeNode.parentId ? nodes.get(typeNode.parentId) : null;
   if (parent) {
     const pk = parent.name.trim().toLowerCase();
@@ -896,7 +935,7 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     num.className = "form-control";
     num.style.width = "4.5rem";
     num.value = parts.v;
-    num.setAttribute("aria-label", `${ariaLabel} Wert`);
+    num.setAttribute("aria-label", `${ariaLabel} Menge`);
     const pref = document.createElement("select");
     pref.className = "form-control";
     pref.style.width = "3.2rem";
@@ -1164,7 +1203,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 20,
+    version: 21,
     projects,
     activeProjectId,
     rootId,
@@ -1313,6 +1352,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v17");
     localStorage.removeItem("wtt-proto-tree-split-v18");
     localStorage.removeItem("wtt-proto-tree-split-v19");
+    localStorage.removeItem("wtt-proto-tree-split-v20");
   } catch {
     /* ignore */
   }

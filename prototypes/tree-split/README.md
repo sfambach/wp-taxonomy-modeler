@@ -32,7 +32,7 @@ Project root
 | **Demo** | editable | **Rezept — Backzutaten**, **BOM — Board**, Bauteile |
 | **Template** | read-only | (leer — nur Typen) |
 
-State: `localStorage` key `wtt-proto-tree-split-v20` — **Reset** after upgrade. Tree starts collapsed; **Compositionen** is opened so both compositions are visible.
+State: `localStorage` key `wtt-proto-tree-split-v21` — **Reset** after upgrade. Tree starts with Compositionen + Datentypen sichtbar.
 
 ## Walkthrough
 
