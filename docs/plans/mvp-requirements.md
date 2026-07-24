@@ -104,4 +104,4 @@ Parameter MVP scope (definitions vs values, types, owner rule) and Project↔tax
 
 ## Open items affecting MVP
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, Project assignment/storage (Q17–Q19), and Parameter questions (Q14–Q16).
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, Project assignment/storage (Q17–Q19), Parameter config (Q34), and simple-type Relation rules (Q49).

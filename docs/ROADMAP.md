@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.31-plan** (2026-07-23).
+Last synced from plan version **0.6.78-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -15,27 +15,45 @@ Last synced from plan version **0.6.31-plan** (2026-07-23).
 | Planning-only rule (no implementation yet) | In progress |
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
-| Data structure: Node (root = same Node with parent null; tree = that root) | In progress |
-| Data structure: Parameter (node → several params; param → one node ?) | In progress |
-| Data structure: Project (`name`, `description`, `root_nodes`) | In progress |
-| Data structure: Project Definition anchors + Node.template | In progress |
+| Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
+| Data structure: **no Parameter / ParameterRole** — ordinary Nodes + type binding (Q33/Q34) | Done (planning) |
+| Data structure: **Project ≈ taxonomy** (Q18); **Q50** default Nodes = generate vs template copy | In progress |
+| Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
+| Data structure: Project Definition anchors + Node.template | Done (planning) |
 | Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
 | Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
-| Core Type catalog: scalars + measure/enum composites; selection_mode (Q36–Q39) | In progress |
+| **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
+| **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
+| **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
+| UI prototype `prototypes/tree-split` v29 (Simple/Complex, subtree, node_ref, Typ-Bindung) | In progress |
+| **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
+| **Q53:** Collection kind binding | Open (restart; guidelines) |
+| **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
+| **Q55:** Slot = typed Node (no Parameter class); inherit along catalog; ParameterValue for fills | Done (planning) |
+| **Q56:** Composition vs Bauteil; catalog ref = `subtree` + `ref_scope` | Done (planning) |
+| Goal path: create one Composition (blockers #1–3) | In progress |
+| Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
+| Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |
+| Closed TE: hierarchy-as-edges + `parent_id` cache | Closed (not adopted) |
+| Design guidelines: clear structures; named objects when better | Done (planning) |
+| Guideline: proactively flag performance risk / nonsense | Done (planning) |
+| Guideline: modern design paradigms / best practice | Done (planning) |
+| Core types: template has **simples** + **quantity** + **Collection** (Q36/Q52) | Done (planning) |
+| **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
+| **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
-| Use-case cards (`docs/plans/use-cases.md`) | In progress |
+| Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |
 | Example project A — BOM (fit/gap) | Done (planning) |
 | Example project B — Hardware / tests / builds | Done (planning) |
 | Example project C — Rezepte | Done (planning) |
 | Cross-check A+B+C — model boundary holds | Done (planning) |
 | Part identity layers (R/C/Diode/IC) | In progress |
 | Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
-| UI prototype `prototypes/tree-split` (static, not WP plugin) | In progress |
+| Prototype: Umrechnung tab (Q51 unit family convert) | In progress |
 | Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
-| Open questions (leave open; resolve later in batches) | Parked for now |
-| Widerstand worked example: Approach A vs B | In progress |
-| Data structure: Parameter-as-Node vs param defs vs typed edges (Q33–Q35) | In progress |
+| Open questions (leave open; resolve later in batches) | In progress |
+| Widerstand worked example: Approach A rejected; B (Parameter-Nodes) survives | Done (planning) |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
 **Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.

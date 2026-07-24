@@ -36,6 +36,9 @@ Open questions stay open — examples only show **fit**, **host territory**, or 
 
 ## Example A — BOM (Bill of Materials)
 
+> **Planning note:** The pure **Template** Project is **read-only** and holds Datentypen / Präfix / standard Basiseinheiten only (`enum` without concrete values).  
+> **Bauart** (under enum), electronics units (Ohm/Farad/Watt/Volt), **Stückliste**, **Bauteile**, and BOM **Spalten** live in the editable **BOM Testprojekt** (`prototypes/tree-split` v13).
+
 ### Story (user wording, condensed)
 
 Website with projects. A user wants to build **BOM lists** of electronic parts.
@@ -54,14 +57,14 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 | Need | Fits in **WP Taxonomy Tree**? | Where it lives |
 |------|-------------------------------|----------------|
 | Category / part **tree** to browse and select | **Yes** | `Project` + Nodes (Bauteile tree / Definitionsbaum branches) |
-| Part **properties** (Wert, Maße, Leistung, URL Datenblatt, Bauform enum, …) | **Mostly yes (definitions)** | Type catalog (`measure`, `url`, `enum`, …); Relations `consists_of` / attributes; filled values still Q16 |
+| Part **properties** (Wert, Maße, Leistung, URL Datenblatt, Bauform enum, …) | **Mostly yes (definitions)** | Type catalog (`quantity`, `url`, `enum`, …); Relations `consists_of` / attributes; filled values still Q16 |
 | Selecting a part from the tree into a BOM line | **Yes (extension)** | Tree selection + host listens (UC-07 style side panel / action) |
 | BOM **list** entity (one list per project/board) | **No — host** | Host CPT/table (out of scope for early taxonomy-tree versions) |
 | BOM **line**: references, qty, price, stock flag, description | **No — host** | Host line model; qty derived from reference count |
 | Price sum / line totals | **No — host** | Host calculation |
 | Compare lists by shared parts | **No — host** | Host search/query |
 | Supplier CSV (Digikey, Conrad, …) | **No — host** | Host exporters / adapters |
-| Definitionsbaum Type / Präfix / Basiseinheit for measures | **Yes** | Required Project anchors |
+| Definitionsbaum Type / Präfix / Basiseinheit for quantities | **Yes** | Required Project anchors |
 
 ### Boundary sketch
 
@@ -91,7 +94,7 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 | Topic | Why BOM cares | Open ref |
 |-------|---------------|----------|
 | Part pick from tree | Core UX of the environment | UC-01, UC-04, UC-07 |
-| Measure + URL + enum on parts | Need Type catalog | Q36–Q39 |
+| Quantity + URL + enum on parts | Need Type catalog | Q36–Q39 |
 | Attributes on part nodes | consists_of vs Parameter-as-Node | Q33–Q35, Q42 |
 | Filled values on the part | BOM shows Wert/Maße already on the part | Q16 |
 | Project vs WP taxonomy | One website “project” vs our Project | Q18–Q19 |
@@ -157,7 +160,7 @@ Concrete sample still maps the same way — only the *carrier* changes:
 |-------------|----------|
 | BOM whole | Node `BOM Platine XY` (instance of BOM-Schema) |
 | C1,C3,C4 row | Child/related Node `Zeile` + Relation `uses` → cap leaf + props |
-| X2 0.5 m | Zeile with measure qty on Relation/props |
+| X2 0.5 m | Zeile with quantity qty on Relation/props |
 | Catalog leaf | Existing Bauteile tree node |
 
 Schema template (configurable once):
@@ -253,11 +256,11 @@ flowchart TB
   K --> CAB["Datenkabel 4-Pol"]
 ```
 
-#### Optional: tiny Definitionsbaum slice used by measures
+#### Optional: tiny Definitionsbaum slice used by quantities
 
 ```text
 Definition
-├── Type → measure, string, enum, …
+├── Type → quantity, string, enum, …
 ├── Basiseinheit → Ohm, Farad, Meter, Stück, …
 └── Präfix → m, k, µ, n, …
 ```
@@ -284,13 +287,26 @@ Hardware such as **graphics cards, sound cards, motherboards**, … Each family 
 | System tests | Tests on the combined computer → results that can be compared |
 | Stats | Aggregated / summary statistics from tests |
 
+### Draft GPU Composition definition (planning)
+
+No fixed user parameter list yet — working draft for Vorlage **GPU** / Ausprägung e.g. `RTX 4090 …`:
+
+| Parameter | Typ |
+|-----------|-----|
+| Speicher | `quantity` |
+| Speicher-Typ | `enum` / `string` |
+| Bus | `string` / `enum` |
+| Chip | `string` |
+| TDP | `quantity` |
+| Ausgänge | `list`→`string` or `string` |
+
 ### Fit vs current model
 
 | Need | Fits in **WP Taxonomy Tree**? | Where it lives |
 |------|-------------------------------|----------------|
 | Category tree (Grafikkarten, Soundkarten, Mainboards, …) | **Yes** | `Project` + Nodes |
 | Different property sets per category | **Yes (definitions)** | `is_a` / category nodes + `consists_of` attribute sets (inherit Q43) |
-| Property types (measure, string, enum, url, …) | **Yes** | Type catalog + Präfix/Basiseinheit |
+| Property types (quantity, string, enum, url, …) | **Yes** | Type catalog + Präfix/Basiseinheit |
 | List UI of hardware + properties | **Partial** | Tree/list of nodes = environment; rich list columns = **host** or later UI |
 | Compare two sound cards | **Partial** | Shared attribute definitions from tree; **compare UI + result layout = host** |
 | Benchmark / speed tests on one device | **No — host** | Test runs, scores, charts |
@@ -305,7 +321,7 @@ Hardware such as **graphics cards, sound cards, motherboards**, … Each family 
 │ WP Taxonomy Tree                             │
 │  Hardware category tree (Nodes)              │
 │  Per-type attribute defs (consists_of / …)   │
-│  Types: measure, enum, url, …                │
+│  Types: quantity, enum, url, …                │
 │  Optional: Relation uses/consists_of for     │
 │            “PC uses GPU / Mainboard / …”     │
 │  Tree UI + selection hooks                   │
@@ -351,12 +367,12 @@ A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with
 | Category tree | Rezepte by kind (Vorspeise, Hauptgericht, Dessert), cuisine, diet (vegan, …) |
 | Ingredient catalog | Tree of ingredients (Gemüse, Gewürze, Milchprodukte, …) with properties |
 | Recipe | Title, time, difficulty, portions; **consists of** ingredient lines (amount + unit + ingredient); steps (ordered text) |
-| Amounts | Classic **measure**: `200 g`, `1 EL`, `½ l` → number + Präfix? + Basiseinheit (or kitchen units) |
-| Scale | Change portions → rescale all measures |
+| Amounts | Classic **quantity**: `200 g`, `1 EL`, `½ l` → number + Präfix? + Basiseinheit (or kitchen units) |
+| Scale | Change portions → rescale all quantities |
 | Lists | Recipe index; filter by category / diet / ingredient |
 | Compare | Two recipes side by side (time, calories, shared ingredients) |
 | Meal plan | Combine recipes into a week plan (composition of recipes) |
-| Shopping list | Aggregate ingredient measures across planned recipes |
+| Shopping list | Aggregate ingredient quantities across planned recipes |
 | Stats | Popular recipes, average ratings, “most used ingredients” |
 
 ### Fit vs current model
@@ -365,14 +381,14 @@ A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with
 |------|-------------------------------|----------------|
 | Recipe / ingredient **category trees** | **Yes** | `Project` + Nodes |
 | Ingredient properties (Allergen, Saison, …) | **Yes (definitions)** | Type catalog + `consists_of` |
-| Recipe attributes (Zeit, Schwierigkeit, Portionen) | **Yes (definitions)** | measure / enum / integer on recipe node |
-| Ingredient line: amount + unit + ingredient ref | **Partial** | measure types + `uses`/`consists_of` toward ingredient node; **line list UX = host** or rich editor |
+| Recipe attributes (Zeit, Schwierigkeit, Portionen) | **Yes (definitions)** | quantity / enum / integer on recipe node |
+| Ingredient line: amount + unit + ingredient ref | **Partial** | quantity types + `uses`/`consists_of` toward ingredient node; **line list UX = host** or rich editor |
 | Ordered cooking steps | **Weak / host** | Ordered text/steps are content — host CPT or block editor, not core tree |
-| Scale portions | **No — host** | Recalculate measure values |
+| Scale portions | **No — host** | Recalculate quantity values |
 | Recipe index / filters | **Partial** | Tree browse = environment; faceted index = host |
 | Compare two recipes | **Partial** | Shared schema from tree; compare UI = host |
 | Meal plan (recipes → week) | **Like Hardware builds** | Optional Relations; **plan entity = host** |
-| Shopping list aggregation | **No — host** | Sum measures across recipes (needs unit conversion — host) |
+| Shopping list aggregation | **No — host** | Sum quantities across recipes (needs unit conversion — host) |
 | Ratings / popularity stats | **No — host** | Analytics |
 
 ### Boundary sketch
@@ -382,12 +398,12 @@ A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with
 │ WP Taxonomy Tree                             │
 │  Recipe category tree                        │
 │  Ingredient catalog tree                     │
-│  Types: measure (g, ml, EL…), enum, integer  │
+│  Types: quantity (g, ml, EL…), enum, integer  │
 │  Recipe/ingredient attribute defs            │
 │  Optional Relations: recipe uses ingredient  │
 │  Tree UI + selection hooks                   │
 └──────────────────┬───────────────────────────┘
-                   │ node ids + measures/attrs
+                   │ node ids + quantities/attrs
                    ▼
 ┌──────────────────────────────────────────────┐
 │ Host: recipes app                            │
@@ -404,7 +420,7 @@ A cooking / recipe site. Users browse **recipes** and **ingredients**, cook with
 | Topic | Why Recipes care | Open ref |
 |-------|------------------|----------|
 | Kitchen units as Basiseinheit | g, ml, EL, TL, Stück, … | Definitionsbaum units |
-| measure everywhere | amounts, time, calories | Q36–Q37 |
+| quantity everywhere | amounts, time, calories | Q36–Q37 |
 | Recipe→ingredient links | `uses` / `consists_of` + amount on the edge? | Q35 — **edge props** for quantity |
 | Unit conversion for shopping lists | 1 EL Butter → g | **host** (not tree core) |
 | Steps as content | not taxonomy | host |
@@ -418,12 +434,12 @@ Recipes push **`props` on Relation** harder than BOM/Hardware:
 Same spin for parts: `Widerstand ─[wert]→` with `{ value: 100 }` + **unit group** `(k, Ohm)` → `"100 kOhm"`.  
 **Präfix + Basiseinheit always form a group** — not a chain Widerstand→100→kilo→Ohm.
 
-That does **not** break the model — we already sketched `Relation.props` as optional — and it strengthens keeping edge properties + the measure composite (Q35, Q45).
+That does **not** break the model — we already sketched `Relation.props` as optional — and it strengthens keeping edge properties + the quantity composite (Q35, Q45).
 
 ### Verdict for Example C
 
 **Still fits.** Tree + types + optional Relations for recipe/ingredient structure; host for steps, scaling, meal plans, shopping aggregation, ratings, stats.  
-Closest cousin to **BOM lines** (quantity + referenced item) and **PC builds** (composition), with extra pressure on **measure** and **Relation.props**.  
+Closest cousin to **BOM lines** (quantity + referenced item) and **PC builds** (composition), with extra pressure on **quantity** and **Relation.props**.  
 With **schema-as-Nodes (Q46)**, Recipe and BOM share the same mechanism: schema template Nodes + instance Nodes — no dedicated Recipe/BOM classes required in core.
 
 Related use-case cards: UC-40… in [`use-cases.md`](use-cases.md).
@@ -436,7 +452,7 @@ Related use-case cards: UC-40… in [`use-cases.md`](use-cases.md).
 |---------|---------|--------------|-------------|-----------------|
 | Browse/select from tree | parts | hardware | recipes / ingredients | **Yes** |
 | Typed properties | Wert, Maße | clocks, I/O | time, diet, allergens | **Yes** |
-| measure + units | Ohm, mm | MHz, W | g, ml, EL | **Yes** (kitchen units) |
+| quantity + units | Ohm, mm | MHz, W | g, ml, EL | **Yes** (kitchen units) |
 | Domain lists / lines | BOM lines | hardware lists | ingredient lines | **Host** (+ optional Relations) |
 | Quantity on link | refs→qty | — | amount on recipe↔ingredient | **Host** / **Relation.props?** |
 | Compare | BOM lists | devices/systems | recipes | **Host** |

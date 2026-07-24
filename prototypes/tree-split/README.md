@@ -1,40 +1,81 @@
 # Tree split prototype
 
-Static throwaway UI to explore the taxonomy tree screen shape.
+Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung).
 
 **Not** WordPress plugin code. Open `index.html` in a browser (or `python3 -m http.server` in this folder).
 
-## What it does
+## Right pane tabs (left → right)
 
-- Split layout: tree left, multi-tab right
-- Demo seed: **BOM Demo** with **Datentypen** (int/double/string/char/bool), Spalten, Stückliste, Bauteile
-- Right pane **tabs**:
-  - **Knoten** — rename, sibling order, **Datentyp** via Relation `has_type`
-  - **Tabelle** / **Tabelle 2** — children = columns; cell widgets from column `has_type`
-  - **Formular** — controls from selected node; choice options from children
-- **+** / **×** / **↑↓** / **Alt+↑↓** (`position` order, Q13)
-- State in `localStorage` (`wtt-proto-tree-split-v5`)
+| Tab | Role |
+|-----|------|
+| **Knoten** | Eigenschaften; bei **Slots** Typ-Bindung + Pflicht; Basiseinheit: Präfixe; Relationen unter „Erweitert“ |
+| **Backend** | Dateneingabe nur für **Compositionen** (Tabelle) |
+| **Frontend** | Vereinfachte Seitenvorschau |
+| **Feld** | HTML-Spielwiese — unangetastet |
 
-## Typed columns (Q48)
 
-1. Types live under **Datentypen** (editable tree Nodes).
-2. On a schema column node, assign **Datentyp** (`has_type`).
-3. Table headers show a type badge; cells render:
-   - `int` → number (step 1)
-   - `double` → number (step any)
-   - `string` → text
-   - `char` → text maxlength 1
-   - `bool` → checkbox
-
-## Model
+## Root layout
 
 ```text
-Node { id, parentId, name, position }
-typeRelations: slotId → typeNodeId   // prototype of Relation has_type
+Project root
+├── Typen
+│   ├── Datentypen
+│   │   ├── Simple    int · double · text · textarea · char · bool · node_ref
+│   │   └── Complex   quantity · subtree · Collection(list/table/enum)
+│   ├── Präfixe
+│   └── Basiseinheit
+├── Compositionen  (Rezept · BOM — Board)
+└── Bauteile       (Katalog ≠ Composition)
+    ├── Widerstand
+    └── Kondensator
 ```
 
-## Extend later
+**Bauteile** = Katalogwurzel. BOM-Spalte **Bauteil Wahl** = **`subtree`** + `ref_scope` → Bauteile.
 
-- Full Relation objects (not only has_type map)
-- enum / measure / string_list widgets
-- Drag-and-drop reorder
+## Reference types
+
+| Type | Gruppe | Bedeutung |
+|------|--------|-----------|
+| **`node_ref`** | Simple | Freier Absprung zu **beliebigem** Node (Wert = id); kein Scope |
+| **`subtree`** | Complex | Auswahl unter einer Katalogwurzel via **`ref_scope`** (Kinder = Optionen) |
+
+## Goal path — BOM-Zeile
+
+1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
+2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
+3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
+4. **Beschreibung** = `textarea` (optional).
+5. Erlaubte Präfixe = `allows_prefix` der Einheit.
+6. Pflicht/Optional = `config.required` am Slot-Knoten.
+
+## Projects
+
+| Project | Mode |
+|---------|------|
+| **Demo** | editable |
+| **Template** | read-only |
+
+State: `localStorage` key `wtt-proto-tree-split-v29` — **Reset** after upgrade.
+
+## Simple types (HTML lean)
+
+| Type | Widget | Analog |
+|------|--------|--------|
+| `text` | einzeilig `<input type="text">` | DB VARCHAR / Rails `:string` |
+| `textarea` | mehrzeilig `<textarea>` | DB TEXT / Rails `:text` |
+| `char` | 1 Zeichen | — |
+| `int` / `double` / `bool` | number / checkbox | — |
+| `node_ref` | select + → Absprung | freie Node-id |
+
+## Slot properties
+
+| Concern | Where | Notes |
+|---------|-------|-------|
+| Type / Form | Relation **`has_type`** → type Node | Shape of the value |
+| Pflicht / Optional | **`Node.config.required`** on the slot | Not on the type edge |
+
+## Edges
+
+```text
+has_type | allows_prefix | multiplikator | ref_scope | …
+```

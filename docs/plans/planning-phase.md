@@ -21,8 +21,8 @@ todos:
     content: "Agree Node fields; tree is derived from root node (not a separate object)"
     status: completed
   - id: define-parameter-model
-    content: "Parameter object + node can have several parameters; single-owner (?) deferred via Q14"
-    status: in_progress
+    content: "Q33: Parameter is a tree Node; Q14 dropped; Q34/Q49 config proposal pending confirm; Q51/Q20 decided"
+    status: completed
   - id: define-project-model
     content: "Project has name, description, root_nodes (list of root Node)"
     status: completed
@@ -42,7 +42,7 @@ todos:
     content: "Specify delete flows (promote vs cascade), confirmations, and edge cases"
     status: pending
   - id: draft-use-cases
-    content: "Write use-case cards in docs/plans/use-cases.md (format agreed; expand scenarios)"
+    content: "Use-case cards synced to Q33/Q14/Q34/Q49; UC-10 + UC-14–UC-16 added; expand further as needed"
     status: in_progress
   - id: planning-signoff
     content: "Mark project plan ready-to-implement only after user sign-off"

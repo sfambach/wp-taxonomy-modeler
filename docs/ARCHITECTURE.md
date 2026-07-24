@@ -19,12 +19,12 @@ flowchart TB
   R1 --> C2[Node]
   C1 --> G1[Node]
   R2 --> C3[Node]
-  C1 --> P1[Parameter]
-  C1 --> P2[Parameter]
+  C1 --> A1["Node (attribute)<br/>has_type → …"]
+  C1 --> A2["Node (attribute)"]
 
   Host[Host plugin e.g. wp-electronic-parts] --> Hooks[WTT hooks and filters]
   Admin[Admin Tree UI] --> API[Tree API REST or Admin-AJAX]
-  API --> Model[Project / Node / Parameter model]
+  API --> Model[Project / Node model]
   Model --> Storage[WP terms and/or custom storage TBD]
   Hooks --> Admin
   Hooks --> API
@@ -38,24 +38,60 @@ flowchart TB
 - **Secure by default:** capability checks, nonces/permission callbacks, sanitized input, escaped output.
 - **Extensible:** host plugins register participation and UI additions through hooks.
 
-## PHP representation (leaning)
+## Layers (not classic MVC)
 
-## PHP representation (leaning)
+WordPress has **no classic MVC controller**. Prefer **DTO + Domain Service + Repository (+ WP adapter)**.
 
-Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Parameter`, `Changelog`, and `Change`.  
-`Parameter` as specialized `Node` is **undecided**; exploring **Relation** + **RelationType** (Q33–Q35, Q41–Q43).  
+```text
+Admin UI / REST / Admin-AJAX          ← thin adapters (caps, nonces, i18n)
+        ↓
+Domain Services                       ← Tree_Service, Relation_Service / TypeBinding_Service, Project_Service
+        ↓
+DTOs / value objects                  ← Project, Node, Relation, RelationType, Changelog, Change, …
+        ↓
+Repositories (DAO)                    ← Project_Repository, Node_Repository, Relation_Repository
+        ↓
+WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
+```
+
+| Layer | Responsibility | Examples |
+|-------|----------------|----------|
+| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
+| **Domain service** | Invariants & workflows (no WP I/O) | tree walk/move/delete policy; `bindType` / `bindRefScope` / `assertTypeBindingsComplete`; `copyFromTemplate` |
+| **Repository (DAO)** | Load/save/map | `*_Repository` — only place that talks to WP storage |
+| **WP adapter** | Hooks, Admin, REST | `class-plugin.php`, screens, REST routes; host filters = extension surface |
+
+**Not used as architecture terms here:** classic MVC `Controller`/`Model`/`View`, generic “Service Provider” (DI). Hooks/filters are the WordPress **extension** surface, not a container Provider pattern.
+
+**RelationType invariants:** static contract on the type object (`key`, `label`, display flags); **application** to the graph (e.g. `subtree` requires `ref_scope`) in a domain service.
+
+**Class diagram note:** methods shown on DTOs in [`data-structure.md`](plans/data-structure.md) are a **conceptual API wish-list**. Graph queries, mutations, and binding checks belong on **services/repos** at implementation time (Q20) — do not ship fat entities.
+
+## PHP representation (**Q20 decided**)
+
+Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Change`.  
+**Decided (Q33):** **no Parameter class** and **no ParameterRole** — attribute Nodes are ordinary `Node`s with type binding via **configuration** / `has_type`.  
+Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
-Measure spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
+Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
+Unit/prefix (**Q51 decided**): Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives Ohm/kOhm/…; Node has **description**.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
-`Parameter` references Nodes for `type`, optional `prefix`, and optional `base_unit`.  
-Filled measures compose as **value + prefix + unit** (e.g. `10 mm`); `measure` is a **composite** over `number`/`integer`.  
-Core Type catalog leaning: string, number, integer, boolean, url, file, enum, measure (Q36).  
-`enum` options are scalars; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
+Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
+**Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
+**Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
+**Type catalog (proto v29 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
+**Q50 leaning:** copy template Project into new Projects.  
+**Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
+**Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
+`enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
+See Q16, Q20–Q39, Q49–Q51, Q55–Q56 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+
+**Q55 decided:** keep Q33 — “Parameter” is vocabulary for typed slot Nodes; no Parameter PHP class. Instance fills = `ParameterValue`.
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -88,7 +124,7 @@ Exact file names may adjust before implementation; update this document when dec
 
 ## Data model
 
-Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a stored object** — it is defined by a **root node**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
+Core stored objects: **Project** and **Node**. A **tree is not a stored object** — it is defined by a **root node**. See [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 ### Project (conceptual)
 
@@ -97,6 +133,7 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `id` | yes | Stable project identity |
 | `name` | yes | Display name |
 | `description` | yes | Project description (may be empty) |
+| `taxonomy` | ? | **Strong leaning (Q18):** Project ≈ taxonomy; slug / identity on Project |
 | `root_nodes` | yes | All root nodes |
 | `definition_root` | yes | Required Definition tree root |
 | `type_node` | yes | Required Type anchor |
@@ -104,37 +141,41 @@ Core stored objects: **Project**, **Node**, and **Parameter**. A **tree is not a
 | `base_unit_node` | yes | Required Basiseinheit anchor |
 | `changelog` | yes | Changelog of Change entries |
 
+Default Nodes (anchors + fixed simples): **generate on create** **or** **copy from a template Project** — open **Q50**.
+
 ### Node (conceptual)
 
 | Field | Required | Meaning |
 |-------|----------|---------|
 | `id` | yes | Stable node identity |
-| `parent_id` | yes (`null` = root) | Optional single parent node |
+| `parent_id` | yes (`null` = root) | Catalog/taxonomy parent (**Q54 lean:** categorize Bestandteile + inheritance path). Not Collection schema; not Relation-edge cache. |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
+| `config` | ? | Type binding / capabilities (Q34) — shape TBD |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 
 Root node = the **same Node object** with `parent_id = null`. That root **defines a tree**.  
-Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
+Template trees use `template = true`. Persistence: Q19.  
+**Taxonomy:** **Project ≈ taxonomy** (strong leaning Q18) — Node has **no** `taxonomy` field.  
+**Defaults:** seed via generate **or** template-Project copy (**Q50**). Persistence: Q19.
 
-### Parameter (conceptual)
+### Attribute Nodes (no Parameter / ParameterRole)
 
-| Field | Required | Meaning |
+There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `Länge` are ordinary **Nodes** that bind a type:
+
+| Field / binding | Required | Meaning |
 |-------|----------|---------|
-| `id` | yes | Stable parameter identity |
-| `node_id` | ? | Owning node — only if single-owner model is confirmed |
-| `key` | likely | Machine key |
-| `label` | likely | Human-readable name |
-| `type` | **yes** | **Node** under `project.type_node` |
+| *(Node fields)* | yes | `id`, `parent_id`, `name`, `template`, `changelog`, … |
+| `config` | ? | type binding / capabilities (Q34) — shape TBD |
+| `type` | **yes** | **Node** under `project.type_node` via config or `has_type` |
 | `prefix` | **optional** | **Node** under `project.prefix_node` |
 | `base_unit` | **optional** | **Node** under `project.base_unit_node` |
-| `value` | **?** | Filled measure reading (e.g. `10`); storage Q16 |
-| `changelog` | yes | Changelog of Change entries |
+| `value` | **?** | Filled quantity reading (e.g. `10`); storage Q16 |
 
-**Agreed:** measure composition as above.  
-**Undecided:** Parameter as specialized Node vs definitions vs typed edges (Q33–Q35).  
-**Tentative (?):** one parameter → exactly one owning node via separate `node_id` — may dissolve if parent/child or `besteht-aus` is enough (Q14).
+**Agreed:** no Parameter / ParameterRole (Q33/Q34); quantity composition as above; fixed simple types per project.  
+**Open (Q49):** may simples originate Relations — special kind vs config disable.  
+**Dropped (Q14):** no separate owning `node_id`.
 
 ### Changelog / Change (shared)
 
@@ -143,19 +184,19 @@ Template trees use `template = true`. Persistence: Q19. Taxonomy mapping: Q18.
 | `Changelog` | `changes: Change[]` | History container on each auditable object |
 | `Change` | `timestamp`, `changer`, `change`, `version` | When, who, what, version (details Q21–Q23) |
 
-Applied to **Project**, **Node**, and **Parameter** via composition (`changelog` field).
+Applied to **Project** and **Node** via composition (`changelog` field). (No Parameter class — Q33/Q55.)
 
 ### Parameter type and unit composition
 
 | Field | Source | Example |
 |-------|--------|---------|
-| `type` | under Project.`type_node` | `measure`, `url` |
+| `type` | under Project.`type_node` | `quantity`, `url` |
 | `prefix` | under Project.`prefix_node` | `k`, `m` |
 | `base_unit` | under Project.`base_unit_node` | `Ohm`, `Meter` |
 | `value` | filled reading (Q16) | `10` |
 
-**Measure reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
-`measure` is **composite** (uses `number` or `integer`), not a rival scalar.  
+**Quantity reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
+`quantity` is **composite** (uses `number` or `integer`), not a rival scalar.  
 Dimension group **Maße**: `10 mm × 5 mm × 2 mm` (Länge / Breite / Höhe) under the **Definitionsbaum**.
 
 Project always has Definitionsbaum anchors. Nodes may be **templates** via `Node.template`.
@@ -171,8 +212,9 @@ Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | Undecided: attached defs / Parameter-Nodes / besteht-aus children |
-| Parameter owner | Parent link, `node_id`, or besteht-aus edge — Q14 |
+| Parameters | **Dropped** — no Parameter class / ParameterRole; attribute **Nodes** + type binding |
+| Parameter owner | **Q14 dropped** — `parent_id` and/or Relations only |
+| Simple types & Relations | Typically no originating Relations — special kind vs config (**Q49**) |
 | Typed edges | Exploratory Relation + RelationType (`consists_of`↔`is_part_of`, …) — Q35/Q41 |
 | Relation display | part-of → attributes of parent; inherit along is_a — Q42/Q43 |
 

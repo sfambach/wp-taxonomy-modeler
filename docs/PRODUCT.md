@@ -32,21 +32,28 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 ## In scope (planned)
 
 - Hierarchical taxonomy tree management in wp-admin.
-- Core objects: **Project** (`name`, `description`, `root_nodes`, `changelog`), **Node**, **Parameter**, plus shared **Changelog** / **Change**.
+- Core objects: **Project** (`name`, `description`, `root_nodes`, `changelog`), **Node**, plus shared **Changelog** / **Change**. **No Parameter class.**
 - A **tree is not a separate object**; it is defined by a **root node**.
 - A **root node** is the same **Node** object with parent `null` (not a different type).
-- A **project** holds different trees via `root_nodes`.
+- A **project** is practically the **taxonomy** (**Q18** strong leaning); Trees live under the Project; Nodes have no taxonomy field.
+- Default Nodes (Definitionsbaum + simples + enum + quantity): **lean template Project copy** (**Q50**); generate remains a fallback.
+- **Pure Template** (**read-only**) = Datentypen (enum ohne konkrete Werte) + Präfix + Standard-Basiseinheiten (Meter, Liter, …); **BOM demo** (Bauart, Ohm/Farad/…, Stückliste, Bauteile, Spalten) belongs in an **editable BOM Testprojekt**.
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
-- A **Parameter** uses **Type**, optional **Präfix**, and optional **Basiseinheit**.
-- A filled **measure** is **value + prefix + unit** (e.g. `10 mm`); **measure** is composite from `number`/`integer` + Präfix + Basiseinheit.
-- Emerging core types: `string`, `number`, `integer`, `boolean`, `url`, `file`, `enum`, `measure`.
-- `enum` = scalar options; `single`/`multiple` = selection methods (not types).
-- **Undecided:** Parameter as specialized Node vs Parameter definitions vs nested nodes with **typed edges** (`Relation` / `RelationType`) — see Bauteile / Widerstand A vs B (Q33–Q35, Q41–Q43).
+- Attribute **Nodes** bind **Type** (via `has_type` / config), optional **Präfix**, and optional **Basiseinheit**.
+- A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.
+- Emerging type model: **Bauteil** (Katalog, z. B. Widerstand) vs **Composition**/Zusammenstellung (BOM/Rezept/Build). Bauteile nur als **`subtree`**-Spalte (`ref_scope`; UX: Bauteil-Ref / „Bauteil Wahl“) in der Composition. Instanz: ParameterValues am Bauteil; Rows/Zellen an der Composition.
+- `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
+- `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge.
+- **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.
+- Every Node has a **description** (may be empty).
+- **Decided (Q33):** **no Parameter class** and **no ParameterRole** — attributes like `Wert` are ordinary **Nodes** with type binding via config / `has_type`. Typed edges remain exploratory (**Q35**, Q41–Q43) — not hierarchy store.
+- **Decided (Q20):** typed PHP DTOs for Project / Node / Changelog / Change.
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Parameter single-owner rule is still **?** .
-- Every Project, Node, and Parameter has a changelog (`timestamp`, `changer`, `change`, `version`).
+- Attribute-node placement uses `parent_id` and/or Relations (**Q14 dropped / entfällt**); baseline tree = `parent_id` until fresh Q54.
+- Open (**Q34/Q49**): config-first proposal — simples get `capabilities.originate_relations = false` (not a hard special kind).
+- Every Project and Node has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
 
@@ -63,11 +70,11 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 1. Open a project and work with its trees (each tree = a root node).
 2. Create root and child **nodes** from the tree.
 3. Delete a node and choose whether children are promoted or removed.
-4. Attach **parameters** to nodes (details still being planned).
+4. Work with attribute **Nodes** under categories (configuration shape and values still being planned).
 5. Let another plugin attach its own editor pane or behavior when a node is selected.
 
 Detailed MVP acceptance criteria: [`docs/plans/mvp-requirements.md`](plans/mvp-requirements.md).  
-Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node + Parameter; tree = root).  
+Data structure: [`docs/plans/data-structure.md`](plans/data-structure.md) (Project + Node; no Parameter; tree = root).  
 Use cases: [`docs/plans/use-cases.md`](plans/use-cases.md).  
 Example projects: [`docs/plans/example-projects.md`](plans/example-projects.md) (BOM + Hardware + Rezepte validate tree vs host split).  
 Part identity layers: [`docs/plans/part-identity-layers.md`](plans/part-identity-layers.md) (100 Ω SMD vs THT vs Shunt, etc.).

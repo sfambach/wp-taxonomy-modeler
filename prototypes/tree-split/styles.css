@@ -119,6 +119,55 @@ body {
   color: var(--muted);
 }
 
+.pane-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.project-switch select {
+  font-family: var(--font);
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  max-width: 12rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.readonly-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.detail-card.is-readonly input:disabled,
+.detail-card.is-readonly textarea:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
 .pane-head-tabs {
   padding: 0;
   min-height: 2.75rem;
@@ -209,9 +258,37 @@ body {
   opacity: 1;
 }
 
+.btn.icon.add {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.btn.icon.add:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent-dim) 28%, var(--bg-hover));
+  border-color: var(--accent-dim);
+}
+
+.btn.icon.danger {
+  color: color-mix(in srgb, var(--danger) 75%, var(--muted));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+}
+
 .btn.icon.danger:hover {
   color: var(--danger);
   border-color: var(--danger-dim);
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-hover));
+}
+
+.action-sep {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--line);
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .tree-row {
@@ -313,10 +390,12 @@ body {
   color: var(--text);
 }
 
-.field input:focus {
-  outline: 1px solid var(--accent-dim);
-  border-color: var(--accent-dim);
+.field input.node-edit,
+.field textarea.node-edit {
+  pointer-events: auto;
+  cursor: text;
 }
+
 
 .meta {
   font-family: var(--mono);
@@ -458,6 +537,23 @@ body {
   text-transform: none;
   color: var(--accent);
   vertical-align: middle;
+}
+
+.req-star {
+  margin-left: 0.15rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: help;
+}
+
+.type-binding-warn {
+  margin: 0.5rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 0.8rem;
+  color: var(--text);
 }
 
 .data-table .row-num {
@@ -668,4 +764,202 @@ body {
   padding: 0.65rem 0.75rem;
   white-space: pre-wrap;
   margin: 0;
+}
+
+.detail-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.detail-subtitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* --- Frontend page preview (future blocks) --- */
+
+.frontend-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.frontend-block {
+  margin: 0;
+  padding: 1.1rem 1.25rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--accent-dim) 22%, var(--bg-pane)) 0%,
+      var(--bg-pane) 42%,
+      var(--bg-pane) 100%
+    );
+}
+
+.frontend-block-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.frontend-block-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.frontend-rows {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.frontend-row {
+  padding: 0.75rem 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.frontend-row:first-child {
+  border-top: none;
+  padding-top: 0.25rem;
+}
+
+.frontend-row h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.frontend-facts {
+  display: grid;
+  grid-template-columns: minmax(5rem, 8rem) 1fr;
+  gap: 0.2rem 0.85rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.frontend-facts dt {
+  margin: 0;
+  color: var(--muted);
+}
+
+.frontend-facts dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.prefix-allow-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.allowed-prefixes {
+  margin-top: 1rem;
+  padding-top: 0.25rem;
+}
+
+
+/* --- Relationen (edges) --- */
+
+.edge-list {
+  list-style: none;
+  margin: 0.35rem 0 0.6rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.edge-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.edge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.edge-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+}
+
+.edge-arrow {
+  color: var(--muted);
+}
+
+.edge-prop {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.edge-value {
+  width: 6.5rem !important;
+  flex: 0 0 auto !important;
+}
+
+.edge-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.edge-add .form-control {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.edge-add input.form-control:first-child {
+  flex: 0 1 8rem;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+
+.edges-details {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+.edges-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.edges-details .detail-subtitle {
+  margin-top: 0.5rem;
 }

@@ -15,14 +15,20 @@
       <span class="brand-mark">WTT</span>
       <span class="brand-title">Tree Split Prototype</span>
     </div>
-    <p class="top-note">Planungs-Prototyp — Geschwister sortiert nach <code>position</code> (↑↓ / Alt+Pfeil). Kein WP-Plugin.</p>
+    <p class="top-note">Planungs-Prototyp — Root: <strong>Typen</strong> · <strong>Compositionen</strong> · <strong>Bauteile</strong> (Katalog ≠ Tabelle). Kein WP-Plugin.</p>
   </header>
 
   <main class="split">
     <section class="pane pane-tree" aria-label="Baum">
       <header class="pane-head">
         <h1>Baum</h1>
-        <button type="button" class="btn ghost" id="btn-reset" title="Zurücksetzen">Reset</button>
+        <div class="pane-head-actions">
+          <label class="project-switch">
+            <span class="visually-hidden">Projekt</span>
+            <select id="project-select" title="Projekt wechseln" aria-label="Projekt"></select>
+          </label>
+          <button type="button" class="btn ghost" id="btn-reset" title="Zurücksetzen">Reset</button>
+        </div>
       </header>
       <div id="tree-root" class="tree" role="tree"></div>
     </section>
@@ -31,9 +37,9 @@
       <header class="pane-head pane-head-tabs">
         <div class="tabs" role="tablist" aria-label="Rechte Ansicht">
           <button type="button" class="tab is-active" role="tab" id="tab-node" data-tab="node" aria-selected="true" aria-controls="detail">Knoten</button>
-          <button type="button" class="tab" role="tab" id="tab-table" data-tab="table" aria-selected="false" aria-controls="detail">Tabelle</button>
-          <button type="button" class="tab" role="tab" id="tab-table2" data-tab="table2" aria-selected="false" aria-controls="detail">Tabelle 2</button>
-          <button type="button" class="tab" role="tab" id="tab-form" data-tab="form" aria-selected="false" aria-controls="detail">Formular</button>
+          <button type="button" class="tab" role="tab" id="tab-backend" data-tab="backend" aria-selected="false" aria-controls="detail">Backend</button>
+          <button type="button" class="tab" role="tab" id="tab-frontend" data-tab="frontend" aria-selected="false" aria-controls="detail">Frontend</button>
+          <button type="button" class="tab" role="tab" id="tab-form" data-tab="form" aria-selected="false" aria-controls="detail">Feld</button>
         </div>
       </header>
       <div id="detail" class="detail" role="tabpanel" aria-labelledby="tab-node">
@@ -42,6 +48,6 @@
     </section>
   </main>
 
-  <script src="app.js" type="module"></script>
+  <script src="app.js?v=30" type="module"></script>
 </body>
 </html>

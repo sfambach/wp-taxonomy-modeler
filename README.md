@@ -12,7 +12,7 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/plans/project-plan.md`](docs/plans/project-plan.md) | Project plan (source of truth for intent) |
 | [`docs/plans/planning-phase.md`](docs/plans/planning-phase.md) | Active planning checklist |
 | [`docs/plans/mvp-requirements.md`](docs/plans/mvp-requirements.md) | MVP requirements & acceptance criteria |
-| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Project, Node, Parameter, Changelog) |
+| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (no Parameter / ParameterRole) |
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
