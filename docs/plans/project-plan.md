@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.63-plan"
+version: "0.6.64-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -236,6 +236,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | **Design guidelines for clean restart:** (1) clear structures — one job / one truth / named shapes / visible invariants; (2) do not refuse objects where a named object is better — drop classes only with a positive reason. Cursor rule `clean-model-guidelines.mdc`. Plan **0.6.61**. |
 | 2026-07-24 | Guideline add-on: **proactively flag** designs that look performance-hostile or conceptually nonsense (hot paths, dual writes, overloaded types). Plan **0.6.62**. |
 | 2026-07-24 | Guideline add-on: **modern design paradigms / best practice** — composition over inheritance, typed models, ubiquitous language, SoC (persist ≠ domain ≠ UI), illegal states hard, established patterns first, cite or contrast. Plan **0.6.63**. |
+| 2026-07-24 | **Q54 lean (new):** tree hierarchy only for **categorizing Bestandteile** of domain lists (BOM / Hardware / Rezept) and **inheriting hierarchical properties** — not Collection schema nesting. Plan **0.6.64**. |
 
 ## Change protocol
 
