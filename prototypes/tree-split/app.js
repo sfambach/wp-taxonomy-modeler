@@ -1252,6 +1252,7 @@ function selectNode(id) {
   if (!nodes.has(id)) return;
   flushNodeFields();
   selectedId = id;
+  activeTab = "node";
   persist();
   render();
 }
