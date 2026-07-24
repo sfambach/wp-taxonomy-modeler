@@ -41,7 +41,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit.
 - Attribute **Nodes** bind **Type** (via `has_type` / config), optional **Präfix**, and optional **Basiseinheit**.
 - A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.
-- Emerging type model: **template** holds simples + **quantity** + **Collection**. **Q54:** catalog tree. **Q55:** Parameter defs on Nodes. **Q56 lean:** BOM / hardware build / Kochrezept = one **Rezept** (which Bestandteile belong together). Katalog ≠ Rezept.
+- Emerging type model: **template** holds simples + **quantity** + **Collection**. **Q54:** catalog tree. **Q55:** Parameter defs. **Q56 lean:** **Composition** (UX **Zusammenstellung**) — GPU-Ausprägung *is* one; compare Compositions; BOM/Build nest catalog entries. Avoid Rezept/Composition as primary UI terms.
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge.
 - **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.

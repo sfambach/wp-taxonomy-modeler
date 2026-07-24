@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.66-plan"
+version: "0.6.67-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -144,7 +144,7 @@ classDiagram
   }
 
   note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Catalog tree + Parameters\nRezept = composition (Q56)\nBOM/Build/Kochrezept = same"
+  note for Node "Catalog: Vorlage + Ausprägung\nComposition/Zusammenstellung (Q56)\nparams and/or member refs"
   note for Parameter "DEFINITION on Node\nchildren inherit defs\nfill values on leaves\nobject vs Node-role TBD"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
@@ -179,8 +179,8 @@ Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow**
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Explicitly out:** `parent_id` as cache of hierarchy edges (closed TE).  
-**Q56 lean:** **Rezept** = composition instance (BOM / Build / Kochrezept); Katalog ≠ Rezept.  
-**Schema-as-Nodes (Q46):** Rezept schemas/instances as Nodes + Collections — no hard `BomList` / `Recipe` / `Build` classes required.  
+**Q56 lean:** **Composition** / UX **Zusammenstellung** — Ausprägung *is* a composition (filled params); may also reference other compositions (BOM/Build). Katalog holds Vorlagen+Ausprägungen. Drop Rezept as primary UX term.  
+**Schema-as-Nodes (Q46):** Composition schemas/instances as Nodes + Collections — no hard `BomList` / `Recipe` / `Build` classes required.  
 **Types:** simples + composed (`quantity`, Collection) remain type Nodes (Q36/Q52).  
 **Q49 lean:** simples use config that disables originating Relations — still open with Q34.
 
@@ -851,58 +851,74 @@ Gericht tree categorizes recipes; ingredient lines pick Zutat-leaves
 - Resolving inherited Parameter sets = walk ancestors once per Node (fine); materialize on write if catalogs get huge.  
 - Filling the same Parameter on both leaf **and** BOM line without a rule → dual truth (avoid).
 
-##### Q56 lean — BOM / Hardware-Build / Rezept = one concept (“Rezept”)
+##### Q56 lean — one composition concept (refined: GPU *is* a composition)
 
-**User direction:** a BOM, a hardware “what belongs together” list, and a cooking recipe are **the same thing** — a **Rezept**: it states which **Bestandteile** belong together.
+**Correction to earlier wording:** a compare matrix over GPUs is **not** “only a view outside the concept.”  
+User model: a **GPU category** defines which properties belong together; a **graphics card** is a composition that **fills** those properties (and **references** the GPU type). Comparing cards = comparing compositions to compositions. A PC build / BOM is the **same** concept whose members are other compositions (catalog leaves). Cooking recipes likewise.
 
-**Opinion (planning):** **Yes — strong lean.** That is the right abstraction for *composition instances*, and it matches examples A/B/C and Q46 (schema-as-Nodes) without three domain classes.
-
-| Surface name | Same core idea |
-|--------------|----------------|
-| Stückliste / BOM | Rezept whose lines point at electronic catalog leaves (+ qty / refs) |
-| PC-Build / Hardware-Zusammenstellung | Rezept whose lines point at hardware catalog leaves |
-| Kochrezept | Rezept whose lines point at Zutaten (+ Mengen) |
+**Abstract idea (composite):** a composition bundles either **parameter values**, and/or **references to other compositions**, under one identity.
 
 ```text
-Katalog-Baum (Q54/Q55)          Rezept (Q56)
-Widerstand → R 1kΩ 0603    ←——  Zeile: Bestandteil + Menge / Refs / …
-GPU → RTX …                ←——  Zeile: …
-Mehl → Weizenmehl Type 405 ←——  Zeile: 200 g
+GPU (Vorlage)                    ← defines Parameters: Speicher, Bus, …
+    └── RTX 4090 (Ausprägung)    ← composition: filled values; refers to GPU
+          compare ←→ other cards ← compositions vs compositions
+
+PC-Build / Stückliste            ← composition: lines → RTX 4090, Mainboard, …
+Kochbuch-Gericht                 ← composition: lines → Zutaten-Ausprägungen
+
+Katalog                          ← organisiert Vorlagen + Ausprägungen (Bauteile)
+                                   wird von höheren Compositions verwendet
 ```
 
-**Two layers stay distinct (guideline 1):**
+| Kind of member | Example | Same concept? |
+|----------------|---------|---------------|
+| Parameter / Eigenschaft | Speicher = 24 GB on RTX 4090 | yes — properties belong together |
+| Reference to another composition | Build line → RTX 4090 | yes — parts belong together |
+| Both | BOM line: leaf + Menge | yes |
 
-| Layer | Job |
-|-------|-----|
-| **Katalog** | What *exists* (Bestandteile) + Parameter defs/values + inheritance |
-| **Rezept** | Which Bestandteile *belong together* in one composition (ordered lines) |
+**Katalog (agreed):** catalog of Bauteile (Vorlagen + konkrete Ausprägungen). Higher compositions (Stückliste, Build, Gericht) **use** those catalog entries — they do not replace the catalog.
 
-A Rezept is typically a **Collection `table`** (or list) instance: columns = line schema (Bestandteil-Ref, Menge, …); rows = membership. Schema template reusable across domains (Q46/Q52).
+**Template vs instance (keep clear):**
 
-**Naming:** domain metaphor **Rezept** is fine in German product language; in the model prefer a neutral type name too (e.g. `Composition` / `Rezept`) so “Kochrezept” is not the only reading. Ubiquitous language: one word, many skins.
+| | Role |
+|--|------|
+| **Vorlage** (e.g. GPU, Widerstand) | Parameter **definitions** (+ inheritance along catalog tree) |
+| **Ausprägung** (e.g. RTX 4090, R 1kΩ 0603) | Parameter **values** filled; may refine Vorlage; pickable in higher compositions |
+
+**Naming (user feedback):**
+
+| Candidate | Pros | Cons |
+|-----------|------|------|
+| Rezept | Unifying metaphor | Too kitchen — **drop as primary UX term** |
+| Composition | Precise / modern | Too technical for end users |
+| **Zusammenstellung** | Neutral German; fits properties *and* parts | Slightly long |
+| Spezifikation | Great for GPU cards | Weak for BOM/Build |
+| Baugruppe | Good for assemblies | Odd for a single resistor leaf |
+| Konfiguration | Familiar in hardware | Vague / overloaded |
+
+**Lean:** internal/model type **`Composition`**; primary **user-facing** word lean **`Zusammenstellung`** (skins: Stückliste, Build, Gericht, Bauteil-Ausprägung). Avoid leading with Rezept or Composition in UI copy.
 
 **Guideline check:**
 
 | Guideline | Assessment |
 |-----------|------------|
-| Clear structures | Strong if Katalog ≠ Rezept |
-| Named objects | Yes — Rezept (Composition) deserves a named concept; lines may be Nodes or row values |
-| Perf / nonsense | **OK** for line lists. **Flag:** calling a pure **Eigenschaftsliste** (flat catalog query / compare matrix) a Rezept is a stretch — that is a *view over Katalog-Parameters*, not “Bestandteile gehören zusammen”. PC-**Build** = Rezept; “alle GPUs vergleichen” ≠ Rezept |
-| Modern practice | One composition aggregate + line items; classic BOM/recipe pattern; avoids BomList/Recipe/Build class explosion |
+| Clear structures | Strong if Vorlage ≠ Ausprägung ≠ Katalog-Ordner stay explicit |
+| Named objects | Composition/Zusammenstellung yes; lines/params as members |
+| Perf / nonsense | Compare N Ausprägungen = read inherited Parameter sets — OK; watch wide matrices. **Do not** make every catalog *folder* a Composition without defs/values |
+| Modern practice | Composite pattern + type/instance; one aggregate, many skins (Q46) |
 
-**Aligns:** Q46 lean (no hard BomList/Recipe classes), Q52 Collection for line shape, Q54 catalog picks, Q55 parameters on catalog (and optionally line-level Menge via quantity / Relation props Q45).
+**Aligns:** Q54 catalog tree, Q55 Parameter define/fill, Q46 schema-as-Nodes, Q52 tables for multi-member compositions (BOM lines).
 
 ##### Still open (Q53 / Q54 / Q55 / Q56)
 
-- Confirm **Q56** (Rezept as unifying composition)
-- Model name: only `Rezept` vs alias `Composition`?
-- Rezept line: Node vs row-in-table vs Relation to catalog leaf?
-- Hardware: only Builds = Rezept, or also property-matrix UIs?
+- Lock UX name: **Zusammenstellung** vs Spezifikation vs other?
+- Are **Vorlage** and **Ausprägung** two roles of one Composition type, or Composition only on Ausprägung while Vorlage is “category + Parameter defs”?
+- Member kinds: Parameter value vs child-Composition ref — one member table with a discriminant?
 - **Q55** Parameter object vs Node-role; Bauform **B**
 - **Q53** Collection kind binding
 - Definitionsbaum vs catalog forest
 
-**Status:** **Q52 decided**. **Q54 / Q56 strong leans**. **Q55 spin**. **Q53 open**. Proto **v14** still mixes schema into the catalog tree — revise later.
+**Status:** **Q52 decided**. **Q54 / Q56 strong leans** (refined: Ausprägung *is* a composition; compare = composition vs composition). **Q55 spin**. **Q53 open**. Proto **v14** still mixes schema into the catalog tree — revise later.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
