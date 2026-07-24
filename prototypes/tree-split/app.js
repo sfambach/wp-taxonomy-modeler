@@ -112,6 +112,8 @@ let collapsed = new Set();
 let seq = 1;
 /** @type {RightTab} */
 let activeTab = "node";
+/** Focus Name field after addChild / when requested. */
+let focusNameAfterRender = false;
 /** @type {Map<string, string[][]>} */
 let tableCells = new Map();
 /** @type {Map<string, FormState>} */
@@ -581,6 +583,7 @@ function createInitial() {
   prefixesRootId = "";
   baseUnitsRootId = "";
   activeTab = "node";
+  focusNameAfterRender = false;
 
   // 1) Pure template project — read-only; no BOM test data
   const templateRootId = createNode(null, "Template", 0, {
@@ -1169,6 +1172,8 @@ function addChild(parentId) {
   reindexSiblings(parentId);
   collapsed.delete(parentId);
   selectedId = id;
+  activeTab = "node";
+  focusNameAfterRender = true;
   persist();
   render();
 }
@@ -1270,27 +1275,50 @@ function setActiveTab(tab) {
   syncTabs();
 }
 
-function renameSelected(name, opts = {}) {
+
+function treeRowLabelEl(nodeId) {
+  try {
+    return document.querySelector(
+      `.tree-row[data-id="${CSS.escape(nodeId)}"] .label`
+    );
+  } catch {
+    return document.querySelector(`.tree-row[data-id="${nodeId}"] .label`);
+  }
+}
+
+function applyNodeName(nodeId, rawName, opts = {}) {
   if (!isProjectEditable()) return;
-  const n = nodes.get(selectedId);
+  const n = nodes.get(nodeId);
   if (!n) return;
-  const next = String(name ?? "").trim();
+  const next = String(rawName ?? "").trim();
   if (next) n.name = next;
   persist();
-  if (opts.soft) {
-    const label = document.querySelector(`.tree-row[data-id="${CSS.escape(n.id)}"] .label`);
-    if (label) label.textContent = n.name;
+  const label = treeRowLabelEl(n.id);
+  if (label) label.textContent = n.name;
+  if (!opts.skipTitle) {
     const title = document.querySelector("#detail .detail-card > h2");
-    if (title) {
-      // keep badge if present
+    if (title && selectedId === nodeId) {
       const badge = title.querySelector(".readonly-badge");
       title.textContent = n.name;
       if (badge) title.append(" ", badge);
     }
-    return;
   }
-  renderTree();
-  renderRight();
+  if (!opts.soft) {
+    renderTree();
+    renderRight();
+  }
+}
+
+function applyNodeDescription(nodeId, value) {
+  if (!isProjectEditable()) return;
+  const n = nodes.get(nodeId);
+  if (!n) return;
+  n.description = String(value ?? "");
+  persist();
+}
+
+function renameSelected(name, opts = {}) {
+  applyNodeName(selectedId, name, opts);
 }
 
 function toggleCollapse(id, event) {
@@ -1676,11 +1704,7 @@ function syncTabs() {
 }
 
 function renameDescription(value) {
-  if (!isProjectEditable()) return;
-  const n = nodes.get(selectedId);
-  if (!n) return;
-  n.description = String(value ?? "");
-  persist();
+  applyNodeDescription(selectedId, value);
 }
 
 /** Flush in-progress name/description before the detail pane is torn down. */
@@ -1688,13 +1712,14 @@ function flushNodeFields() {
   if (!isProjectEditable()) return;
   const nameEl = document.getElementById("node-name");
   const descEl = document.getElementById("node-desc");
-  const n = nodes.get(selectedId);
+  const nodeId = nameEl?.dataset?.nodeId || descEl?.dataset?.nodeId || selectedId;
+  const n = nodes.get(nodeId);
   if (!n) return;
-  if (nameEl && document.activeElement === nameEl) {
+  if (nameEl) {
     const next = nameEl.value.trim();
     if (next) n.name = next;
   }
-  if (descEl && document.activeElement === descEl) {
+  if (descEl) {
     n.description = descEl.value;
   }
 }
@@ -1945,17 +1970,29 @@ function renderDetail() {
   lab.htmlFor = "node-name";
   lab.textContent = "Name";
   const input = document.createElement("input");
+  const editingId = node.id;
   input.id = "node-name";
   input.type = "text";
-  input.className = "form-control";
+  input.className = "form-control node-edit";
   input.value = node.name;
   input.autocomplete = "off";
+  input.spellcheck = false;
+  input.dataset.nodeId = editingId;
+  // readOnly only — avoid disabled (blocks focus / looks broken)
   input.readOnly = !editable;
-  input.disabled = !editable;
   if (editable) {
-    input.addEventListener("input", () => renameSelected(input.value, { soft: true }));
-    input.addEventListener("change", () => renameSelected(input.value, { soft: true }));
+    const stop = (e) => e.stopPropagation();
+    input.addEventListener("mousedown", stop);
+    input.addEventListener("click", stop);
+    input.addEventListener("pointerdown", stop);
+    input.addEventListener("input", () =>
+      applyNodeName(editingId, input.value, { soft: true })
+    );
+    input.addEventListener("change", () =>
+      applyNodeName(editingId, input.value, { soft: true })
+    );
     input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
       if (e.key === "Enter") {
         e.preventDefault();
         input.blur();
@@ -1971,15 +2008,22 @@ function renderDetail() {
   descLab.textContent = "Beschreibung";
   const desc = document.createElement("textarea");
   desc.id = "node-desc";
-  desc.className = "form-control";
+  desc.className = "form-control node-edit";
   desc.rows = 3;
   desc.value = node.description || "";
-  desc.placeholder = "Kurzbeschreibung des Knotens…";
+  desc.placeholder = editable
+    ? "Kurzbeschreibung des Knotens…"
+    : "Template — nicht editierbar";
+  desc.dataset.nodeId = editingId;
   desc.readOnly = !editable;
-  desc.disabled = !editable;
   if (editable) {
-    desc.addEventListener("input", () => renameDescription(desc.value));
-    desc.addEventListener("change", () => renameDescription(desc.value));
+    const stop = (e) => e.stopPropagation();
+    desc.addEventListener("mousedown", stop);
+    desc.addEventListener("click", stop);
+    desc.addEventListener("pointerdown", stop);
+    desc.addEventListener("keydown", stop);
+    desc.addEventListener("input", () => applyNodeDescription(editingId, desc.value));
+    desc.addEventListener("change", () => applyNodeDescription(editingId, desc.value));
   }
   descField.append(descLab, desc);
 
@@ -2057,6 +2101,16 @@ function renderDetail() {
   }
   card.append(edgesTitle, buildEdgesBlock(node), hint);
   mount.append(card);
+
+  if (focusNameAfterRender) {
+    focusNameAfterRender = false;
+    if (editable) {
+      queueMicrotask(() => {
+        input.focus();
+        input.select();
+      });
+    }
+  }
 }
 
 /**
