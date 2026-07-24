@@ -287,6 +287,19 @@ Hardware such as **graphics cards, sound cards, motherboards**, … Each family 
 | System tests | Tests on the combined computer → results that can be compared |
 | Stats | Aggregated / summary statistics from tests |
 
+### Draft GPU Composition definition (planning)
+
+No fixed user parameter list yet — working draft for Vorlage **GPU** / Ausprägung e.g. `RTX 4090 …`:
+
+| Parameter | Typ |
+|-----------|-----|
+| Speicher | `quantity` |
+| Speicher-Typ | `enum` / `string` |
+| Bus | `string` / `enum` |
+| Chip | `string` |
+| TDP | `quantity` |
+| Ausgänge | `list`→`string` or `string` |
+
 ### Fit vs current model
 
 | Need | Fits in **WP Taxonomy Tree**? | Where it lives |
