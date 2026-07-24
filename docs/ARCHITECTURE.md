@@ -54,6 +54,7 @@ Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separat
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q48):** template holds simples (`int`, `double`, `string`, `char`, `bool`) + derived **enum** + derived **quantity**.  
+Exploring **Collection** (Q52): `list` / `table` / `enum` (list = 1-column table; enum = closed list); kind binding XOR parentage vs `has_type` (Q53).  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
