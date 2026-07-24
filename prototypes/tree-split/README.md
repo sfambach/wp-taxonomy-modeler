@@ -18,8 +18,15 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 ```text
 Project root
 ├── Typen
-│   ├── Datentypen (simples, quantity, Collection…)
-│   ├── Präfix
+│   ├── Datentypen
+│   │   ├── Simple (int, double, string, char, bool)
+│   │   ├── Zusammengesetzt
+│   │   │   └── quantity
+│   │   │       ├── Menge ─[has_type]→ int
+│   │   │       ├── Präfix ─[has_type]→ Präfixe
+│   │   │       └── Einheit ─[has_type]→ Basiseinheit
+│   │   └── Collections (list · table · enum)
+│   ├── Präfixe
 │   └── Basiseinheit
 └── Compositionen
     └── … Zusammenstellungen / Katalog-Ast …
@@ -38,15 +45,14 @@ State: `localStorage` key `wtt-proto-tree-split-v21` — **Reset** after upgrade
 
 1. Open the prototype → **Reset**.
 2. Project **Demo** (default).
-3. Tree under `Compositionen`:
-   - **Rezept — Backzutaten** — Phase 1 Simples
-   - **BOM — Board** — quantity / enum / list (+ Seed-Zeilen)
-   - **Bauteile** — Katalog-Ast
-4. Tab **Backend** — Zeilen bearbeiten; Tab **Frontend** — Seitenvorschau.
+3. Under `Typen` → `Datentypen`: Simple / Zusammengesetzt / Collections.
+4. Under `Compositionen`: Rezept, **BOM — Board**, Bauteile.
+5. Tab **Backend** — Zeilen; Tab **Frontend** — Seitenvorschau.
 
 ```text
 Demo
-├── Typen · …
+├── Typen
+│   └── Datentypen · Simple / Zusammengesetzt / Collections
 └── Compositionen
     ├── Rezept — Backzutaten
     ├── BOM — Board
