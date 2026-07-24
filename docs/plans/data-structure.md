@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.69-plan"
+version: "0.6.70-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -958,6 +958,97 @@ Drop **Rezept** and raw **Composition** as primary UI labels.
 
 **Blocker #1–3** (Composition = Node; Vorlage = Node with Parameter defs; Parameter = definition object).  
 If you agree, we mark them decided and draft the conceptual `createComposition` shape + first worked example (Widerstand / 1 kΩ / 0603).
+
+##### Two viewpoints of a Composition (Definition vs Instanz)
+
+A Composition always has **both**:
+
+| Viewpoint | Meaning | “Spalten” |
+|-----------|---------|-----------|
+| **1 — Definition (Schema)** | How many slots / columns, each with a **type** | Parameter definitions (or table columns) |
+| **2 — Instanz (Ausprägung / Rows)** | Filled values, and/or member rows | Values for those slots |
+
+Creating a Composition **definition** = declare columns + types.  
+Creating a Composition **instance** = fill those columns (and/or add member rows that reference other Compositions).
+
+Same pattern at two levels:
+
+```text
+Level A — Katalog-Vorlage "GPU" / "Widerstand"
+  Definition: Parameter-Spalten (Eigenschaften)
+  Instanz:    Ausprägung RTX 4090 / R 1kΩ 0603
+
+Level B — Listen-Composition "Stückliste" / "Gericht" / "PC-Build"
+  Definition: Zeilen-Spalten (Bestandteil, Menge, …)
+  Instanz:    konkrete Zeilen die auf Katalog-Ausprägungen zeigen
+```
+
+###### Type catalog we can use (already decided)
+
+| Type | Kind | Typical use |
+|------|------|-------------|
+| `int` `double` `string` `char` `bool` | simple | counts, flags, free text |
+| `quantity` | composed | Wert, Menge (Gewicht), Speicher, TDP, Länge |
+| Collection `enum` (e.g. `Bauart`) | composed | Bauform / closed choices |
+| Collection `list` (e.g. `RefDes`) | composed | multi-value strings (R1,R2) |
+| Collection `table` | composed | multi-column line schemas |
+| **Composition-Ref** (needed) | TBD | column that points at another Composition (Katalog-Blatt) — not a simple yet; treat as **member/ref slot** for now |
+
+###### Worked definitions — Spalten + Typen
+
+**1) BOM / Stückliste** (Level B — Zeilenschema; from example A)
+
+| Spalte | Typ | Notes |
+|--------|-----|--------|
+| Reference | `RefDes` (list→string) | Designators `R1,R2` |
+| Bestandteil | **Composition-Ref** → Katalog-Ausprägung | picks e.g. `R 1kΩ 0603` |
+| Menge | `int` | often derived from Reference count |
+| Beschreibung | `string` | optional |
+| Preis | `double` (or later money) | often host |
+| Auf Lager | `bool` | often host |
+
+Part properties like **Bauform** live on the **Katalog-Ausprägung**, not as BOM columns (Q55 lean).
+
+**2) Kochrezept / Gericht** (Level B)
+
+| Spalte | Typ | Notes |
+|--------|-----|--------|
+| Zutat | **Composition-Ref** → Zutaten-Ausprägung | e.g. Weizenmehl |
+| Menge | `quantity` | `200 g`, `1 EL` |
+| Optional / Hinweis | `string` | optional |
+
+**3) Grafikkarte** (Level A — Eigenschaftsschema; **working example**, user had no fixed list yet)
+
+Vorlage **GPU** defines:
+
+| Spalte (Parameter) | Typ | Example value on Ausprägung |
+|--------------------|-----|-----------------------------|
+| Speicher | `quantity` | `24 GB` (Byte-Familie / Spezialisierung TBD) |
+| Speicher-Typ | `enum` (e.g. `GddrTyp`) oder `string` | `GDDR6X` |
+| Bus | `string` oder `enum` | `PCIe 4.0 x16` |
+| Chip | `string` | `AD102` |
+| TDP | `quantity` | `450 W` |
+| Ausgänge | `list`→`string` oder `string` | `3× DP, 1× HDMI` |
+
+Ausprägung **„RTX 4090 Fe …“** = Instanz: fills those columns. Compare = compare instances.  
+PC-Build = Level-B Composition whose Bestandteil column refs this GPU Ausprägung.
+
+**4) Widerstand** (Level A — already agreed lean)
+
+| Spalte | Typ | Example |
+|--------|-----|---------|
+| Wert | `quantity` | `1 kΩ` |
+| Bauform | `Bauart` (enum) | `0603` |
+
+###### Gap to close for “Definition anlegen”
+
+To **create a Composition definition** we must be able to:
+
+1. Name the Composition / Vorlage.  
+2. Add **N columns** (Parameters), each with a **type** from the catalog (or Composition-Ref).  
+3. Persist that schema so instances can fill it.
+
+**Composition-Ref** as a first-class type is still missing — needed for BOM/Rezept/Build member columns. Flag for next lock (blocker **#3b**).
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).

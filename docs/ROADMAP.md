@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.69-plan** (2026-07-24).
+Last synced from plan version **0.6.70-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -32,6 +32,7 @@ Last synced from plan version **0.6.69-plan** (2026-07-24).
 | **Q55:** Parameter define/inherit on catalog Nodes (Bauform etc.) | Open (spin — Bauform as Parameter lean) |
 | **Q56:** Composition / UX Zusammenstellung (GPU card, BOM, Build, …) | Open (concept lean); **naming decided** |
 | Goal path: create one Composition (blockers #1–3) | In progress |
+| Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
 | Closed TE: hierarchy-as-edges + `parent_id` cache | Closed (not adopted) |
 | Design guidelines: clear structures; named objects when better | Done (planning) |
 | Guideline: proactively flag performance risk / nonsense | Done (planning) |

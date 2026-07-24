@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.69-plan"
+version: "0.6.70-plan"
 last_updated: "2026-07-24"
 related_docs:
   - README.md
@@ -242,6 +242,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | **Q56 refined:** GPU-Ausprägung *is* a Composition (filled params; refs Vorlage). Compare = Composition vs Composition. BOM/Build nest Compositions. Katalog agreed. UX lean **Zusammenstellung**; drop Rezept (kitchen) and Composition (too technical) as primary UI terms. Plan **0.6.67**. |
 | 2026-07-24 | **Q56 naming decided:** UX **Zusammenstellung**, internal **Composition**; rename later allowed if a better word appears. Plan **0.6.68**. |
 | 2026-07-24 | **Goal path:** create one Composition — ordered blockers; proposed defaults: Composition=Node, Vorlage=Node+Parameter defs, Parameter=definition object; BOM members = milestone 2. Plan **0.6.69**. |
+| 2026-07-24 | Composition has **two viewpoints**: Definition (columns+types) and Instanz (filled values/rows). Worked schemas: BOM, Rezept, GPU (draft), Widerstand. Gap: **Composition-Ref** type for member columns. Plan **0.6.70**. |
 
 ## Change protocol
 
