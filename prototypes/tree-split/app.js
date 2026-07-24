@@ -13,7 +13,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v15";
+const STORAGE_KEY = "wtt-proto-tree-split-v16";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -339,15 +339,15 @@ function seedTemplateCore(projectRootId, opts = {}) {
  */
 function seedCompositionSimplesDemo(projectRootId, core) {
   const { types } = core;
-  const compId = createNode(projectRootId, "Zusammenstellung — nur Simples", 1, {
+  const compId = createNode(projectRootId, "Rezept — Backzutaten", 1, {
     description:
-      "Composition-Definition: Spalten nur simple Typen. Instanz = Tabellenzeilen (Phase 1).",
+      "Composition-Demo Phase 1 (Simples): Rezept-Zusammenstellung nur mit simple Spaltentypen.",
   });
   const cName = createNode(compId, "Bezeichnung", 0, {
     description: "Spalte → string",
   });
   const cCount = createNode(compId, "Anzahl", 1, {
-    description: "Spalte → int",
+    description: "Spalte → int (hier: Mengenangabe roh, noch ohne quantity)",
   });
   const cActive = createNode(compId, "Aktiv", 2, {
     description: "Spalte → bool",
@@ -364,11 +364,11 @@ function seedCompositionSimplesDemo(projectRootId, core) {
   pushEdge(cCode, types.tChar, REL_HAS_TYPE);
   pushEdge(cFactor, types.tDouble, REL_HAS_TYPE);
 
-  // Seed two example instance rows (CompositionRow payloads as grid strings)
+  // Seeded Rezept-Zeilen (CompositionRows as grid) — Phase 1 simples only
   tableCells.set(compId, [
-    ["Zeile A", "3", "true", "X", "1.5"],
-    ["Zeile B", "10", "false", "Y", "0.25"],
-    ["", "", "", "", ""],
+    ["Mehl", "200", "true", "M", "1"],
+    ["Zucker", "50", "true", "Z", "0.5"],
+    ["Salz", "5", "false", "S", "0.1"],
     ["", "", "", "", ""],
     ["", "", "", "", ""],
   ]);
@@ -1203,7 +1203,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 15,
+    version: 16,
     projects,
     activeProjectId,
     rootId,
@@ -1358,6 +1358,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v12");
     localStorage.removeItem("wtt-proto-tree-split-v13");
     localStorage.removeItem("wtt-proto-tree-split-v14");
+    localStorage.removeItem("wtt-proto-tree-split-v15");
   } catch {
     /* ignore */
   }
