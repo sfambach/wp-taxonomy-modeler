@@ -18,23 +18,35 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 ```text
 Project root
-├── Typen          (Datentypen · Präfixe · Basiseinheit)
-├── Compositionen  (Rezept · BOM — Board)  ← Tabellen / Zeilen
+├── Typen
+│   ├── Datentypen
+│   │   ├── Simple    int · double · text · textarea · char · bool · node_ref
+│   │   └── Complex   quantity · subtree · Collection(list/table/enum)
+│   ├── Präfixe
+│   └── Basiseinheit
+├── Compositionen  (Rezept · BOM — Board)
 └── Bauteile       (Katalog ≠ Composition)
-    ├── Widerstand   Wert/Präfix/Einheit→Ohm
-    └── Kondensator  Wert/Präfix/Einheit→Farad
+    ├── Widerstand
+    └── Kondensator
 ```
 
-**Bauteile** = Katalogwurzel. In der BOM heißt die Auswahlspalte **Bauteil Wahl** (`node_ref` + `ref_scope` → Bauteile) — nicht dieselbe Sache wie der Katalogknoten.
+**Bauteile** = Katalogwurzel. BOM-Spalte **Bauteil Wahl** = **`subtree`** + `ref_scope` → Bauteile.
+
+## Reference types
+
+| Type | Gruppe | Bedeutung |
+|------|--------|-----------|
+| **`node_ref`** | Simple | Freier Absprung zu **beliebigem** Node (Wert = id); kein Scope |
+| **`subtree`** | Complex | Auswahl unter einer Katalogwurzel via **`ref_scope`** (Kinder = Optionen) |
 
 ## Goal path — BOM-Zeile
 
 1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
-2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`node_ref` + `ref_scope`→Bauteile).
+2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
 3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
 4. **Beschreibung** = `textarea` (optional).
-5. Erlaubte Präfixe = `allows_prefix` der Einheit (Ohm/Farad im Knoten-Tab).
-6. Pflicht/Optional = `config.required` am **Slot-Knoten** (nicht an `has_type`).
+5. Erlaubte Präfixe = `allows_prefix` der Einheit.
+6. Pflicht/Optional = `config.required` am Slot-Knoten.
 
 ## Projects
 
@@ -43,24 +55,17 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v28` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v29` — **Reset** after upgrade.
 
 ## Simple types (HTML lean)
 
 | Type | Widget | Analog |
 |------|--------|--------|
 | `text` | einzeilig `<input type="text">` | DB VARCHAR / Rails `:string` |
-| `textarea` | mehrzeilig `<textarea>` | DB TEXT / Rails `:text`; später Format/Interpreter |
+| `textarea` | mehrzeilig `<textarea>` | DB TEXT / Rails `:text` |
 | `char` | 1 Zeichen | — |
 | `int` / `double` / `bool` | number / checkbox | — |
-
-## Reference type
-
-| Type | Widget | Scope |
-|------|--------|-------|
-| `node_ref` | `<select>` of target Nodes | Relation **`ref_scope`** → Katalogwurzel (Kinder = Optionen) |
-
-Name lean: **`node_ref`** (generic Node pointer, cf. ACF Post Object) — not `bauteil` / `tree_part` / `ast`. Spaltenname z. B. **Bauteil Wahl** (≠ Katalogwurzel **Bauteile**); Typ wiederverwendbar (Zutat, GPU, …).
+| `node_ref` | select + → Absprung | freie Node-id |
 
 ## Slot properties
 

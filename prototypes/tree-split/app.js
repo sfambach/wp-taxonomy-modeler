@@ -10,10 +10,11 @@
  *
  * Sibling order (Q13): explicit `position`.
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int);
- *   node_ref uses ref_scope → catalog root. Slot Pflicht = Node.config.required.
+ *   subtree uses ref_scope → catalog root; node_ref = free jump to any node.
+ *   Slot Pflicht = Node.config.required. Datentypen → Simple | Complex.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v28";
+const STORAGE_KEY = "wtt-proto-tree-split-v29";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -38,7 +39,7 @@ const REL_BASE_TYPE = "base_type";
 const REL_ALLOWS_PREFIX = "allows_prefix";
 /** Präfix ─[multiplikator]→ int, props.value = scale factor */
 const REL_MULTIPLIKATOR = "multiplikator";
-/** node_ref slot/type ─[ref_scope]→ catalog root (children = selectable targets) */
+/** subtree slot/type ─[ref_scope]→ catalog root (children = selectable targets) */
 const REL_REF_SCOPE = "ref_scope";
 const SIMPLE_TYPE_NAMES = ["int", "double", "text", "textarea", "char", "bool"];
 const COLLECTION_KIND_NAMES = ["list", "table", "enum"];
@@ -235,42 +236,55 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const bauteileRootId = createNode(projectRootId, "Bauteile", 2, {
     template: mark,
     description:
-      "Katalog (kein Composition): Bauteilgruppen mit Parametern. In BOM als node_ref + ref_scope → diese Wurzel.",
+      "Katalog (kein Composition): Bauteilgruppen mit Parametern. In BOM via subtree + ref_scope → diese Wurzel.",
   });
 
   const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
     template: mark,
-    description:
-      "Simples: int/double/text/textarea/char/bool · quantity · node_ref · Collection.",
+    description: "Zwei Gruppen: Simple (Skalare + node_ref) · Complex (quantity, subtree, Collection).",
   });
-  const tInt = createNode(dataTypesRootId, "int", 0, {
+  const simpleRootId = createNode(dataTypesRootId, "Simple", 0, {
+    template: mark,
+    description: "Skalare + freier Node-Absprung (node_ref).",
+  });
+  const complexRootId = createNode(dataTypesRootId, "Complex", 1, {
+    template: mark,
+    description: "Zusammengesetzt / scoped: quantity · subtree · Collection.",
+  });
+
+  const tInt = createNode(simpleRootId, "int", 0, {
     description: "Ganze Zahl.",
   });
-  const tDouble = createNode(dataTypesRootId, "double", 1, {
+  const tDouble = createNode(simpleRootId, "double", 1, {
     description: "Gleitkommazahl.",
   });
-  const tText = createNode(dataTypesRootId, "text", 2, {
+  const tText = createNode(simpleRootId, "text", 2, {
     description: "Einzeiliger Text — HTML <input type=text> / DB VARCHAR-ähnlich.",
   });
-  const tTextarea = createNode(dataTypesRootId, "textarea", 3, {
+  const tTextarea = createNode(simpleRootId, "textarea", 3, {
     description:
       "Mehrzeiliger Text — HTML <textarea>. Später: Format/Interpreter (plain, markdown, html, …).",
   });
-  const tChar = createNode(dataTypesRootId, "char", 4, {
+  const tChar = createNode(simpleRootId, "char", 4, {
     description: "Einzelnes Zeichen.",
   });
-  const tBool = createNode(dataTypesRootId, "bool", 5, {
+  const tBool = createNode(simpleRootId, "bool", 5, {
     description: "Wahrheitswert true/false.",
   });
-  const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
-    description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
-  });
-  const tNodeRef = createNode(dataTypesRootId, "node_ref", 7, {
+  const tNodeRef = createNode(simpleRootId, "node_ref", 6, {
     description:
-      "Verweis auf einen anderen Node (wie ACF Post Object). Auswahlbereich via Relation ref_scope → Katalogwurzel.",
+      "Absprungpunkt zu einem beliebigen anderen Node (freie id-Referenz). Kein ref_scope.",
   });
 
-  const collectionId = createNode(dataTypesRootId, "Collection", 8, {
+  const tQuantity = createNode(complexRootId, "quantity", 0, {
+    description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
+  });
+  const tSubtree = createNode(complexRootId, "subtree", 1, {
+    description:
+      "Auswahl unter einer Katalogwurzel: Relation ref_scope → Root; Optionen = direkte Kinder (z. B. Bauteile).",
+  });
+
+  const collectionId = createNode(complexRootId, "Collection", 2, {
     template: mark,
     description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
   });
@@ -356,6 +370,8 @@ function seedTemplateCore(projectRootId, opts = {}) {
     baseUnitsRootId,
     collectionId,
     pref,
+    simpleRootId,
+    complexRootId,
     types: {
       tInt,
       tDouble,
@@ -363,8 +379,9 @@ function seedTemplateCore(projectRootId, opts = {}) {
       tTextarea,
       tChar,
       tBool,
-      tQuantity,
       tNodeRef,
+      tQuantity,
+      tSubtree,
       tList,
       tTable,
       tEnum,
@@ -511,13 +528,13 @@ function seedBomTestData(compositionsRootId, core) {
 
   const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
-      "BOM-Zeile: Spalte „Bauteil Wahl“ = node_ref (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
+      "BOM-Zeile: Spalte „Bauteil Wahl“ = subtree (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
   const cPart = createNode(bomCompId, "Bauteil Wahl", 0, {
     description:
-      "node_ref → Kataloggruppe. has_type → node_ref; ref_scope → Bauteile. Pflicht (config.required). Name ≠ Katalogwurzel „Bauteile“.",
+      "subtree → Kataloggruppe. has_type → subtree; ref_scope → Bauteile. Pflicht (config.required).",
     config: { required: true },
   });
   const cRef = createNode(bomCompId, "Reference", 1, {
@@ -542,7 +559,7 @@ function seedBomTestData(compositionsRootId, core) {
     config: { required: false },
   });
 
-  pushEdge(cPart, types.tNodeRef, REL_HAS_TYPE);
+  pushEdge(cPart, types.tSubtree, REL_HAS_TYPE);
   pushEdge(cPart, bauteileRootId, REL_REF_SCOPE);
   pushEdge(cRef, refDes, REL_HAS_TYPE);
   pushEdge(cFp, bauart, REL_HAS_TYPE);
@@ -702,7 +719,18 @@ function healNamedRoot(currentId, name) {
 function dataTypeNodes() {
   dataTypesRootId = healNamedRoot(dataTypesRootId, "Datentypen");
   if (!dataTypesRootId) return [];
-  return childrenOf(dataTypesRootId);
+  const top = childrenOf(dataTypesRootId);
+  const out = [];
+  for (const g of top) {
+    const gn = g.name.trim().toLowerCase();
+    if (gn === "simple" || gn === "complex") {
+      out.push(...childrenOf(g.id));
+    } else {
+      // Legacy flat Datentypen children
+      out.push(g);
+    }
+  }
+  return out;
 }
 
 function prefixOptionNames() {
@@ -846,6 +874,7 @@ function typeKey(typeNode) {
   if (["text", "string", "varchar"].includes(k)) return "text";
   if (["textarea", "longtext", "multiline"].includes(k)) return "textarea";
   if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
+  if (["subtree", "sub_tree", "catalog_ref"].includes(k)) return "subtree";
   if (["node_ref", "noderef", "ref"].includes(k)) return "node_ref";
   const kind = collectionKindOf(typeNode);
   if (kind === "enum") return "enum";
@@ -927,8 +956,8 @@ function bauteilCatalogOptions() {
 }
 
 /**
- * Catalog root for a node_ref slot/type via Relation ref_scope.
- * Prefer slot edge; fall back to type edge (specialized node_ref).
+ * Catalog root for a subtree slot/type via Relation ref_scope.
+ * Prefer slot edge; fall back to type edge (specialized subtree).
  * @param {string} slotId
  * @returns {ProtoNode|null}
  */
@@ -943,12 +972,24 @@ function refScopeRootOf(slotId) {
   return null;
 }
 
-/** Selectable targets for a node_ref slot = children of ref_scope root. */
-function nodeRefOptions(slotId) {
+/** Selectable targets for a subtree slot = children of ref_scope root. */
+function subtreeOptions(slotId) {
   const root = refScopeRootOf(slotId);
   if (root) return childrenOf(root.id);
   // Legacy fallback: Bauteile catalog when scope missing
   return bauteilCatalogOptions();
+}
+
+/** @deprecated use subtreeOptions */
+function nodeRefOptions(slotId) {
+  return subtreeOptions(slotId);
+}
+
+/** All nodes in the active project — for free node_ref (Absprungpunkt). */
+function allProjectNodes() {
+  return [...nodes.values()]
+    .filter((n) => nodeBelongsToActiveRoot(n.id) && n.id !== rootId)
+    .sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
 }
 
 /** Slot/parameter Pflicht? Lives on the Node (config.required), not on has_type. */
@@ -1065,7 +1106,7 @@ function buildAllowedPrefixesPanel(unitNode) {
 function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {}) {
   const key = typeKey(typeNode);
 
-  if (key === "node_ref") {
+  if (key === "subtree") {
     const select = document.createElement("select");
     select.className = "form-control";
     select.setAttribute("aria-label", ariaLabel);
@@ -1074,10 +1115,10 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {})
     const scope = opts.slotId ? refScopeRootOf(opts.slotId) : null;
     empty.textContent = scope
       ? `— ${scope.name} wählen —`
-      : "— Node wählen —";
+      : "— Unterbaum wählen —";
     select.append(empty);
     const cur = value == null ? "" : String(value);
-    const options = opts.slotId ? nodeRefOptions(opts.slotId) : bauteilCatalogOptions();
+    const options = opts.slotId ? subtreeOptions(opts.slotId) : bauteilCatalogOptions();
     for (const p of options) {
       const opt = document.createElement("option");
       opt.value = p.id;
@@ -1087,6 +1128,49 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {})
     if ([...select.options].some((o) => o.value === cur)) select.value = cur;
     select.addEventListener("change", () => onChange(select.value));
     return select;
+  }
+
+  if (key === "node_ref") {
+    // Free Absprungpunkt: any project node (path label); value = node id
+    const wrap = document.createElement("div");
+    wrap.className = "node-ref-cell";
+    wrap.style.display = "flex";
+    wrap.style.gap = "0.25rem";
+    wrap.style.alignItems = "center";
+    const select = document.createElement("select");
+    select.className = "form-control";
+    select.setAttribute("aria-label", ariaLabel);
+    select.title = "node_ref — Absprung zu beliebigem Knoten";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "— Knoten wählen —";
+    select.append(empty);
+    const cur = value == null ? "" : String(value);
+    for (const p of allProjectNodes()) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = nodePath(p.id);
+      select.append(opt);
+    }
+    if ([...select.options].some((o) => o.value === cur)) select.value = cur;
+    select.addEventListener("change", () => onChange(select.value));
+    const jump = document.createElement("button");
+    jump.type = "button";
+    jump.className = "btn ghost";
+    jump.textContent = "→";
+    jump.title = "Zum Knoten springen";
+    jump.disabled = !cur || !nodes.has(cur);
+    jump.addEventListener("click", () => {
+      if (select.value && nodes.has(select.value)) {
+        selectNode(select.value);
+        setActiveTab("node");
+      }
+    });
+    select.addEventListener("change", () => {
+      jump.disabled = !select.value || !nodes.has(select.value);
+    });
+    wrap.append(select, jump);
+    return wrap;
   }
 
   if (key === "bool") {
@@ -1495,7 +1579,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 28,
+    version: 29,
     projects,
     activeProjectId,
     rootId,
@@ -2323,12 +2407,12 @@ function renderTableView(store, title) {
   }
   thead.append(headRow);
 
-  // Part-driven: first node_ref column (scoped catalog pick), not hardcoded name "Bauteil"
-  const partColIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "node_ref");
+  // Part-driven: first subtree column (scoped catalog pick), not hardcoded name
+  const partColIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "subtree");
   const isBomPartDriven = partColIdx >= 0;
 
   if (isBomPartDriven) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>node_ref</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. * = Pflicht (<code>config.required</code>).`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. * = Pflicht (<code>config.required</code>).`;
   }
 
   const tbody = document.createElement("tbody");
@@ -2355,8 +2439,8 @@ function renderTableView(store, title) {
         grid[r]?.[c] ?? "",
         (v) => {
           setCellValue(store, node.id, r, c, v);
-          if (colKey === "node_ref" && c === partColIdx) {
-            // Sync Einheit in Wert-Zelle when node_ref (Bauteil) changes
+          if (colKey === "subtree" && c === partColIdx) {
+            // Sync Einheit in Wert-Zelle when subtree (Bauteil Wahl) changes
             const wertIdx = cols.findIndex(
               (x) => typeKey(typeNodeOf(x.id)) === "quantity"
             );
@@ -2889,11 +2973,14 @@ function renderFrontend() {
       }
     }
     let rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
-    if (typeKey(typeNodeOf(cols[titleIdx]?.id)) === "node_ref" && nodes.has(rowTitle)) {
-      rowTitle = nodes.get(rowTitle).name;
+    {
+      const tk = typeKey(typeNodeOf(cols[titleIdx]?.id));
+      if ((tk === "subtree" || tk === "node_ref") && nodes.has(rowTitle)) {
+        rowTitle = nodes.get(rowTitle).name;
+      }
     }
-    // Prefer first node_ref column as title when present
-    const partIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "node_ref");
+    // Prefer first subtree column as title when present
+    const partIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "subtree");
     if (partIdx >= 0 && values[partIdx] && nodes.has(values[partIdx])) {
       rowTitle = nodes.get(values[partIdx]).name;
     }
@@ -2918,8 +3005,8 @@ function renderFrontend() {
       const dt = document.createElement("dt");
       dt.textContent = cols[c].name;
       const dd = document.createElement("dd");
-      if (key === "node_ref" && nodes.has(raw)) {
-        display = nodes.get(raw).name;
+      if ((key === "subtree" || key === "node_ref") && nodes.has(raw)) {
+        display = key === "node_ref" ? nodePath(raw) : nodes.get(raw).name;
       }
       if (key === "quantity") {
         display = formatQuantityDisplay(parseQuantityCell(raw));

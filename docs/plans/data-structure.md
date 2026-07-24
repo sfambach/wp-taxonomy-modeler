@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.75-plan"
+version: "0.6.76-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -569,12 +569,15 @@ Keep the **pure template** separate from **domain demo data**:
 ```text
 Template (nur lesen)
 ├── Datentypen
-│   ├── int · double · text · textarea · char · bool
-│   ├── quantity
-│   └── Collection
-│       ├── list
-│       ├── table
-│       └── enum
+│   ├── Simple
+│   │   └── int · double · text · textarea · char · bool · node_ref
+│   └── Complex
+│       ├── quantity
+│       ├── subtree          ← scoped pick via ref_scope
+│       └── Collection
+│           ├── list
+│           ├── table
+│           └── enum
 ├── Präfix (p…M + c)
 └── Basiseinheit
     └── Meter · Liter · Kilogramm · Sekunde · Kelvin · Ampere
@@ -598,17 +601,20 @@ BOM Testprojekt (editierbar)
 └── Bauteile
 ```
 
-Prototype: `prototypes/tree-split` **v14** — Collection in template; Bauart/RefDes/Spalten as concrete Collections; Template locked.
+Prototype: `prototypes/tree-split` **v29** — Datentypen Simple/Complex; `subtree` + `node_ref`; Template locked.
 
 ```text
-Template Project → Datentypen / Type     ← Project.type_node
-├── int · double · text · textarea · char · bool   ← simples (in template)
-├── quantity                              ← Größe (in template)
-└── Collection                            ← Q52 decided
-    ├── list
-    ├── table
-    └── enum                              ← concrete enums (e.g. Bauart) in domain projects
+Template Project → Datentypen
+├── Simple   int · double · text · textarea · char · bool · node_ref
+└── Complex  quantity · subtree · Collection(list/table/enum)
 ```
+
+#### Reference types (proto v29)
+
+| Type | Group | Meaning |
+|------|-------|---------|
+| **`node_ref`** | Simple | Free Absprung to **any** Node (cell value = id); no scope |
+| **`subtree`** | Complex | Pick among **children** of a catalog root via Relation **`ref_scope`** |
 
 #### Collection → list / table / enum (Q52 **decided**; Q53/Q54 **restart**)
 
@@ -618,12 +624,15 @@ Template Project → Datentypen / Type     ← Project.type_node
 
 ```text
 Datentypen
-├── int · double · text · textarea · char · bool     ← simples
-├── quantity                                ← derived (Größe)
-└── Collection                              ← structural super-kind
-    ├── list      ← Collection with exactly 1 column
-    ├── table     ← Collection with n ≥ 1 columns
-    └── enum      ← list + closed option children (not extensible at fill-time)
+├── Simple
+│   └── int · double · text · textarea · char · bool · node_ref
+└── Complex
+    ├── quantity                                ← derived (Größe)
+    ├── subtree                                 ← scoped catalog pick
+    └── Collection                              ← structural super-kind
+        ├── list      ← Collection with exactly 1 column
+        ├── table     ← Collection with n ≥ 1 columns
+        └── enum      ← list + closed option children (not extensible at fill-time)
 ```
 
 | Kind | Columns | At type-definition | At fill-time |
@@ -924,7 +933,7 @@ Composition "Stückliste Platine XY"
 |---|----------|------------------|
 | **1** | Composition storage | **Node** with role `composition` |
 | **2** | Column definition | Named **Parameter**/column on the Composition (or its schema Vorlage): `name` + `type` |
-| **3** | Catalog ref | Type **`node_ref`** + Relation **`ref_scope`** → catalog root (e.g. Bauteile); column name e.g. „Bauteil Wahl“ (≠ Katalogwurzel) |
+| **3** | Catalog ref | Type **`subtree`** + Relation **`ref_scope`** → catalog root (e.g. Bauteile); column name e.g. „Bauteil Wahl“. Free jump = Simple **`node_ref`**. |
 | **4** | Instance content | **CompositionRow** + cell **ParameterValue**s |
 | **5** | Bauteil (separate) | Catalog Node + Parameter defs/values (Q55) — not a Composition |
 
@@ -961,7 +970,8 @@ Level — Bauteil (separate)
 | Collection `enum` (e.g. `Bauart`) | composed | Bauteil Bauform |
 | Collection `list` (e.g. `RefDes`) | composed | BOM Reference |
 | Collection `table` | composed | may describe Composition schema shape |
-| **`node_ref`** | reference | Composition column → Node id; scope via **`ref_scope`** → Katalogwurzel |
+| **`subtree`** | complex | Composition column → child of catalog root (`ref_scope`) |
+| **`node_ref`** | simple | Free Absprung → any Node id |
 
 ###### Worked Composition definitions — Spalten + Typen
 
@@ -1033,7 +1043,7 @@ Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
 
 **Reject:** treating Widerstand / GPU-Karte as Composition; stuffing Bauteil properties into Composition columns except via Bauteil-Ref.
 
-**Resolved lean (proto v27/v28):** type **`node_ref`** (generic, cf. ACF Post Object) + Relation **`ref_scope`** → catalog root. Column name e.g. **„Bauteil Wahl“** (distinct from catalog root **Bauteile**). Slot Pflicht = `config.required` on the column Node.
+**Resolved lean (proto v29):** scoped catalog pick = **`subtree`** + **`ref_scope`**; free Absprung = Simple **`node_ref`**. Column name e.g. **„Bauteil Wahl“**. Slot Pflicht = `config.required` on the column Node.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
@@ -1664,7 +1674,8 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 | Type key | Meaning | Built from |
 |----------|---------|------------|
 | `quantity` (*Größe* / Wert mit Einheit — not Messung) | Displayable Größe with unit | **`int` or `double`** + optional **Präfix** + **Basiseinheit** |
-| `node_ref` | Pointer to another Node (select) | Scope = Relation **`ref_scope`** → catalog root; children = options |
+| `subtree` | Pick under a catalog root | Relation **`ref_scope`** → root; children = options |
+| `node_ref` | Free Absprung to any Node | Cell value = target Node id (no scope) |
 | `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `text`) + **selection method** |
 
 ```text
