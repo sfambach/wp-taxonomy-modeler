@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.54-plan"
+version: "0.6.55-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -543,8 +543,9 @@ Template (nur lesen)
 BOM Testprojekt (editierbar)
 ├── …Template-Kern-Kopie…
 │   └── enum
-│       └── Bauart ─[base_type]→ string
-│           └── 0201 · 0402 · 0603 · 0805 · axial
+│       └── Bauart
+│           └── Option ─[has_type]→ string   ← target Collection shape (proto still uses base_type)
+│               └── 0201 · 0402 · 0603 · 0805 · axial
 │   └── Basiseinheit + Ohm · Farad · Watt · Volt
 ├── Spalten (BOM-Zeile)   Footprint ─[has_type]→ Bauart
 ├── Stückliste
@@ -589,13 +590,13 @@ Datentypen
     └── enum      ← special list: closed values, not extensible at fill-time
 ```
 
-| Kind | Columns | Values at fill-time | Notes |
-|------|---------|---------------------|--------|
-| **list** | exactly **1** column node | open (user adds rows) | e.g. RefDes list (Q47) |
-| **table** | **n ≥ 1** column nodes | open | e.g. BOM-Zeile schema |
-| **enum** | **1** implicit column (= `base_type`) | **closed** option set | e.g. Bauart; not extensible when filling data |
+| Kind | Columns | At type-definition | At fill-time |
+|------|---------|--------------------|--------------|
+| **list** | exactly **1** column node with `has_type` | column schema only | open rows |
+| **table** | **n ≥ 1** column nodes each with `has_type` | column schema only | open rows |
+| **enum** | exactly **1** column node with `has_type` (**same as list**) | column + **fixed option children** | closed — pick from options only |
 
-**list ≡ 1-column table** — same creation rules; only the column count differs (and UI chrome).
+**list ≡ 1-column table**; **enum ≡ list** in how you create it — only difference: enum options are fixed on the type (non-extensible when filling).
 
 ##### Concrete type = kind + column schema (“immer zwei”)
 
@@ -624,21 +625,28 @@ BOM-Zeile                       ← concrete table type
   └── Menge     ─[has_type]→ int
 ```
 
-Example **enum** (Bauart — closed list):
+Example **enum** — **same layout as list**, plus closed options under the column:
 
 ```text
-Bauart
-  kind: enum
-  ─[base_type]→ string          ← the single “column” primitive
-  └── 0201 · 0402 · 0603 …      ← fixed options (not free columns)
+Bauart                          ← concrete Collection type
+  kind: enum                    ← XOR: under enum branch or has_type→enum
+  └── Option                    ← exactly one column (like my_listelement)
+        ─[has_type]→ string     ← replaces separate base_type Relation
+        ├── 0201                ← fixed options (part of the type)
+        ├── 0402
+        ├── 0603
+        ├── 0805
+        └── axial
 ```
+
+**No special `base_type` edge required** in this spin — the column’s `has_type` *is* the element/primitive type (aligns enum with list). Legacy `base_type` in the current proto is a stand-in until Collection is adopted.
 
 ##### Kind binding XOR (Q53) — parentage **or** Relation, not both
 
 | Mechanism | Meaning |
 |-----------|---------|
-| **A — Parent under kind** | `my_list` child of `list` ⇒ kind = list |
-| **B — Relation** | `my_list` ─[has_type]→ `list` ⇒ kind = list |
+| **A — Parent under kind** | `my_list` child of `list` ⇒ kind = list; `Bauart` child of `enum` ⇒ kind = enum |
+| **B — Relation** | `my_list` ─[has_type]→ `list`; `Bauart` ─[has_type]→ `enum` |
 
 **Rule (strong lean):** **exactly one** of A or B. Doing both is invalid (double kind).  
 Doing **neither** leaves the concrete type incomplete.
@@ -650,43 +658,44 @@ Column `has_type` is **independent** of kind binding — every column still need
 | Existing | Fit |
 |----------|-----|
 | Q33 / Q48 Nodes + `has_type` | Kind and column types stay Nodes + Relations |
-| Q38 / Q39 enum | Remains closed list + one `base_type`; selection single/multiple unchanged |
-| Q47 RefDes / string_list | Becomes concrete **list** with column `has_type`→`string` — no separate `string_list` type required |
+| Q38 / Q39 enum | Same create path as list; one typed column; options closed; single/multiple = selection method |
+| Q47 RefDes / string_list | Concrete **list** with column `has_type`→`string` |
 | BOM Spalten prototype | Already a **table** schema; Footprint → Bauart already an enum column |
 | Template read-only | Template holds Collection kinds (`list`/`table`/`enum`); concrete `Bauart` / `my_list` stay in domain/test Projects |
 
 ##### Still open
 
 - Exact template tree: is `Collection` a real parent Node, or only a doc grouping?
-- Enum under Collection vs sibling of Collection?
+- Where option Nodes hang for enum: under the column (lean above) vs under the concrete type
 - May a list column’s type itself be a Collection (list-of-list)? Likely later / forbid for MVP
 - Display / widgets: list vs table vs enum UI
-- Rename Relation `has_type` vs `is_type_of` / `type_of` (wording only)
+- Migrate proto Bauart from `base_type` → column + `has_type` when confirmed
 
-**Status:** exploratory — do **not** change the prototype seed until user confirms the XOR + Collection shape.
+**Status:** exploratory — do **not** change the prototype seed until user confirms the XOR + Collection shape (enum created like list).
+
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
 
-#### enum (derived type — agreed shape)
+#### enum (derived type — agreed shape; Collection spin may supersede `base_type`)
 
 | Rule | Meaning |
 |------|---------|
-| Kind | **Derived** from simples — not a sixth simple |
-| **Base type** | **Exactly one** simple type (`int` \| `double` \| `string` \| `char` \| `bool`) |
-| **Values** | A **list** of allowed options; each option’s value conforms to the base type |
+| Kind | **Derived** Collection — created **like list** (1 typed column) |
+| **Column type** | Exactly one column with `has_type` → simple (or derived); **replaces** dedicated `base_type` Relation in the Collection spin |
+| **Values** | Fixed option Nodes under that column; each conforms to the column type |
 | Selection | `single` / `multiple` remain selection methods (Q38), not separate types |
-| Binding | Attribute Node ─[has_type]→ a concrete enum type Node (or the enum kind + instance config) |
+| Binding | Attribute Node ─[has_type]→ concrete enum type (e.g. Bauart) |
 
-Example:
+Example (target shape under Collection spin):
 
 ```text
-enum Bauform
-  base_type: string
-  values: [0201, 0402, 0603, 0805, axial]
+Bauart  (kind enum)
+└── Option ─[has_type]→ string
+    values: 0201, 0402, 0603, 0805, axial
 ```
 
 **Binding:** attribute / schema slot ─[Relation `has_type` or field `type`]→ type Node  
-Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `enum(Bauform)` → select from values.
+Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `Bauart` → select from closed options.
 
 #### quantity (derived type — agreed shape)
 
