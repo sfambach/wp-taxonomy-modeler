@@ -58,7 +58,8 @@ todos:
 
 Conceptual domain model (planning — not implemented PHP).  
 **Q33/Q34:** no `Parameter` / `ParameterRole` class — slots are ordinary `Node`s with `has_type` (+ optional `ref_scope`, `config.required`).  
-Methods = intended domain API (lean); persistence/UI stay separate.
+
+**Layer note (Q20):** fields below are **DTO** shape. Many *methods* are a conceptual API — at implementation they move to **Domain Services** / **Repositories** (tree walk, bindType/refScope, copyFromTemplate, persist). Do not read this diagram as “fat Active Record.” See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) § Layers.
 
 ```mermaid
 classDiagram

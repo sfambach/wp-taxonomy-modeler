@@ -38,6 +38,35 @@ flowchart TB
 - **Secure by default:** capability checks, nonces/permission callbacks, sanitized input, escaped output.
 - **Extensible:** host plugins register participation and UI additions through hooks.
 
+## Layers (not classic MVC)
+
+WordPress has **no classic MVC controller**. Prefer **DTO + Domain Service + Repository (+ WP adapter)**.
+
+```text
+Admin UI / REST / Admin-AJAX          ← thin adapters (caps, nonces, i18n)
+        ↓
+Domain Services                       ← Tree_Service, Relation_Service / TypeBinding_Service, Project_Service
+        ↓
+DTOs / value objects                  ← Project, Node, Relation, RelationType, Changelog, Change, …
+        ↓
+Repositories (DAO)                    ← Project_Repository, Node_Repository, Relation_Repository
+        ↓
+WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
+```
+
+| Layer | Responsibility | Examples |
+|-------|----------------|----------|
+| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
+| **Domain service** | Invariants & workflows (no WP I/O) | tree walk/move/delete policy; `bindType` / `bindRefScope` / `assertTypeBindingsComplete`; `copyFromTemplate` |
+| **Repository (DAO)** | Load/save/map | `*_Repository` — only place that talks to WP storage |
+| **WP adapter** | Hooks, Admin, REST | `class-plugin.php`, screens, REST routes; host filters = extension surface |
+
+**Not used as architecture terms here:** classic MVC `Controller`/`Model`/`View`, generic “Service Provider” (DI). Hooks/filters are the WordPress **extension** surface, not a container Provider pattern.
+
+**RelationType invariants:** static contract on the type object (`key`, `label`, display flags); **application** to the graph (e.g. `subtree` requires `ref_scope`) in a domain service.
+
+**Class diagram note:** methods shown on DTOs in [`data-structure.md`](plans/data-structure.md) are a **conceptual API wish-list**. Graph queries, mutations, and binding checks belong on **services/repos** at implementation time (Q20) — do not ship fat entities.
+
 ## PHP representation (**Q20 decided**)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Change`.  
@@ -54,12 +83,15 @@ Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separat
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
-**Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU) with Parameters. **Composition** = Zusammenstellung (columns+rows); Bauteile only via **Bauteil-Ref** column. Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
+**Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
+**Type catalog (proto v29 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
 **Q50 leaning:** copy template Project into new Projects.  
-**Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
+**Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39, Q49–Q51 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+See Q16, Q20–Q39, Q49–Q51, Q55–Q56 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+
+**Open tension (docs):** Q33 = no Parameter *class*; Q55 may reintroduce Parameter as *definition object* — resolve before coding. Until then treat “Parameter” as vocabulary for slot defs, not a PHP class.
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
