@@ -13,7 +13,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v16";
+const STORAGE_KEY = "wtt-proto-tree-split-v17";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -558,7 +558,10 @@ function createInitial() {
       "Phase 1: Zusammenstellung nur mit Simple-Typen. Später: quantity / enum / Bauteil-Ref.",
   });
   const simplesCore = seedTemplateCore(simplesRootId, { markTemplate: false });
-  const simplesCompId = seedCompositionSimplesDemo(simplesRootId, simplesCore);
+  const simplesCompId = seedCompositionSimplesDemo(
+    simplesCore.compositionsRootId,
+    simplesCore
+  );
   const simplesProject = {
     id: "proj-composition-simples",
     name: "Composition Simples",
@@ -577,7 +580,7 @@ function createInitial() {
       "Editierbar: Bauart (enum wie list), RefDes (list), Spalten (table), Ohm/Farad/…, Stückliste, Bauteile.",
   });
   const bomCore = seedTemplateCore(bomRootId, { markTemplate: false });
-  const schemaId = seedBomTestData(bomRootId, bomCore);
+  const schemaId = seedBomTestData(bomCore.compositionsRootId, bomCore);
   const bomProject = {
     id: "proj-bom-test",
     name: "BOM Testprojekt",
@@ -595,10 +598,20 @@ function createInitial() {
   void schemaId;
 }
 
+function nodeBelongsToActiveRoot(nodeId) {
+  let cur = nodes.get(nodeId);
+  let guard = 0;
+  while (cur && guard++ < 64) {
+    if (cur.id === rootId) return true;
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  return false;
+}
+
 function healNamedRoot(currentId, name) {
   if (currentId && nodes.has(currentId)) return currentId;
   const found = [...nodes.values()].find(
-    (n) => n.parentId === rootId && n.name === name
+    (n) => n.name === name && nodeBelongsToActiveRoot(n.id)
   );
   return found ? found.id : "";
 }
@@ -1208,7 +1221,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 16,
+    version: 17,
     projects,
     activeProjectId,
     rootId,
@@ -1364,6 +1377,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v13");
     localStorage.removeItem("wtt-proto-tree-split-v14");
     localStorage.removeItem("wtt-proto-tree-split-v15");
+    localStorage.removeItem("wtt-proto-tree-split-v16");
   } catch {
     /* ignore */
   }
