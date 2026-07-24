@@ -12,7 +12,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v20";
+const STORAGE_KEY = "wtt-proto-tree-split-v22";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -396,7 +396,7 @@ function seedCompositionSimplesDemo(compositionsRootId, core) {
  * @param {ReturnType<typeof seedTemplateCore>} core
  */
 function seedBomTestData(compositionsRootId, core) {
-  const { types, pref, baseUnitsRootId } = core;
+  const { types, pref, baseUnitsRootId, prefixesRootId } = core;
 
   // enum like list: Bauart → Option ─[has_type]→ string → closed options
   const bauart = createNode(types.tEnum, "Bauart", 0, {
@@ -422,10 +422,10 @@ function seedBomTestData(compositionsRootId, core) {
   // Electronics units (BOM-specific) stay under Typen → Basiseinheit
   const nextPos = childrenOf(baseUnitsRootId).length;
   const uOhm = createNode(baseUnitsRootId, "Ohm", nextPos, {
-    description: "BOM: Widerstand.",
+    description: "Fixe Einheit für Widerstand. Zulässige Präfixe via allows_prefix.",
   });
   const uFarad = createNode(baseUnitsRootId, "Farad", nextPos + 1, {
-    description: "BOM: Kapazität — typisch p/n/µ/m, kein k/M.",
+    description: "Fixe Einheit für Kondensator. Zulässige Präfixe via allows_prefix.",
   });
   const uWatt = createNode(baseUnitsRootId, "Watt", nextPos + 2, {
     description: "BOM: Leistung.",
@@ -443,54 +443,78 @@ function seedBomTestData(compositionsRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
+  // Katalog: Bauteilgruppe bestimmt Parameter (Wert double, Präfix, Einheit fix)
+  const partsId = createNode(compositionsRootId, "Bauteile", nextPosition(compositionsRootId), {
+    description:
+      "Katalog: Bauteilgruppe wählen → Parameter-Schema. Einheit ist typfest; Präfixe = allows_prefix der Einheit.",
+  });
+
+  const widerstand = createNode(partsId, "Widerstand", 0, {
+    description: "Bauteilgruppe: Wert (double) + Präfix; Einheit immer Ohm.",
+  });
+  const wWert = createNode(widerstand, "Wert", 0, {
+    description: "Betrag — has_type → double.",
+  });
+  const wPref = createNode(widerstand, "Präfix", 1, {
+    description: "SI-Präfix — has_type → Präfixe; aktive Kinder = allows_prefix von Ohm.",
+  });
+  const wUnit = createNode(widerstand, "Einheit", 2, {
+    description: "Immer Ohm — has_type → Ohm (fix).",
+  });
+  pushEdge(wWert, types.tDouble, REL_HAS_TYPE);
+  pushEdge(wPref, prefixesRootId, REL_HAS_TYPE);
+  pushEdge(wUnit, uOhm, REL_HAS_TYPE);
+
+  const kondensator = createNode(partsId, "Kondensator", 1, {
+    description: "Bauteilgruppe: Wert (double) + Präfix; Einheit immer Farad.",
+  });
+  const kWert = createNode(kondensator, "Wert", 0, {
+    description: "Betrag — has_type → double.",
+  });
+  const kPref = createNode(kondensator, "Präfix", 1, {
+    description: "SI-Präfix — has_type → Präfixe; aktive Kinder = allows_prefix von Farad.",
+  });
+  const kUnit = createNode(kondensator, "Einheit", 2, {
+    description: "Immer Farad — has_type → Farad (fix).",
+  });
+  pushEdge(kWert, types.tDouble, REL_HAS_TYPE);
+  pushEdge(kPref, prefixesRootId, REL_HAS_TYPE);
+  pushEdge(kUnit, uFarad, REL_HAS_TYPE);
+
   const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
-      "BOM-Composition: Spalten + Instanzzeilen (Backend). quantity / enum / list — Phase 2–3 Demo.",
+      "BOM-Zeile: zuerst Bauteil wählen → Wert/Präfix richten sich nach der Gruppe; Einheit typfest.",
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
-  const cRef = createNode(bomCompId, "Reference", 0, {
-    description: "RefDes-Liste — has_type → RefDes (list).",
+  const cPart = createNode(bomCompId, "Bauteil", 0, {
+    description: "Bauteil-Ref → Kataloggruppe (Widerstand / Kondensator).",
   });
-  const cVal = createNode(bomCompId, "Value", 1, {
-    description: "Bauteilwert als quantity.",
+  const cRef = createNode(bomCompId, "Reference", 1, {
+    description: "RefDes — has_type → RefDes (list).",
   });
-  const cFp = createNode(bomCompId, "Footprint", 2, {
+  const cVal = createNode(bomCompId, "Wert", 2, {
+    description: "Größe aus Bauteil-Schema: double + Präfix; Einheit von Bauteil.Einheit.",
+  });
+  pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
+  const cFp = createNode(bomCompId, "Footprint", 3, {
     description: "Bauform — has_type → Bauart (enum).",
   });
-  const cQty = createNode(bomCompId, "Menge", 3, {
-    description: "Stückzahl (int) — nicht quantity/Größe.",
-  });
-  const cLcsc = createNode(bomCompId, "LCSC", 4, {
-    description: "Lieferantennummer.",
-  });
-  const cStock = createNode(bomCompId, "Stock", 5, {
-    description: "Lagerflag.",
+  const cQty = createNode(bomCompId, "Menge", 4, {
+    description: "Stückzahl (int).",
   });
 
   pushEdge(cRef, refDes, REL_HAS_TYPE);
-  pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
   pushEdge(cFp, bauart, REL_HAS_TYPE);
   pushEdge(cQty, types.tInt, REL_HAS_TYPE);
-  pushEdge(cLcsc, types.tString, REL_HAS_TYPE);
-  pushEdge(cStock, types.tBool, REL_HAS_TYPE);
 
-  // quantity cell: value|prefix|unitName
   tableCells.set(bomCompId, [
-    ["C1", formatQuantityCell({ v: "100", p: "n", u: "Farad" }), "0603", "4", "C12345", "true"],
-    ["R1", formatQuantityCell({ v: "10", p: "k", u: "Ohm" }), "0603", "2", "C67890", "true"],
-    ["U1", formatQuantityCell({ v: "", p: "", u: "" }), "ESP32", "1", "C11111", "false"],
-    ["D1", formatQuantityCell({ v: "", p: "", u: "" }), "0805", "2", "C22222", "true"],
-    ["", "", "", "", "", ""],
+    [widerstand, "R1", formatQuantityCell({ v: "10", p: "k", u: "Ohm" }), "0603", "2"],
+    [kondensator, "C1", formatQuantityCell({ v: "100", p: "n", u: "Farad" }), "0603", "4"],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
   ]);
-
-  const partsId = createNode(compositionsRootId, "Bauteile", nextPosition(compositionsRootId), {
-    description: "Katalog-Ast (Demo) — Bauteile ≠ Composition; später Bauteil-Ref-Spalte.",
-  });
-  createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
-  createNode(partsId, "Widerstand", 1, { description: "Kategorie Widerstand." });
-  createNode(partsId, "IC", 2, { description: "Kategorie IC." });
-  createNode(partsId, "Diode / LED", 3, { description: "Kategorie Diode/LED." });
 
   return bomCompId;
 }
@@ -595,6 +619,10 @@ function createInitial() {
   // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
+  const bauteile = childrenOf(demoCore.compositionsRootId).find(
+    (n) => n.name === "Bauteile"
+  );
+  if (bauteile) collapsed.delete(bauteile.id);
   void rezeptId;
 }
 
@@ -828,8 +856,138 @@ function enumValueNames(enumNodeId) {
     .map((c) => c.name);
 }
 
-function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
+
+/** Catalog root „Bauteile“ under Compositionen of the active project. */
+function findBauteileRoot() {
+  const comps = childrenOf(rootId).find((n) => n.name === "Compositionen");
+  if (!comps) return null;
+  return childrenOf(comps.id).find((n) => n.name === "Bauteile") || null;
+}
+
+/** Selectable Bauteilgruppen (direct children of Bauteile). */
+function bauteilCatalogOptions() {
+  const root = findBauteileRoot();
+  return root ? childrenOf(root.id) : [];
+}
+
+/** Named parameter child of a Bauteilgruppe (Wert / Präfix / Einheit). */
+function bauteilParam(partId, paramName) {
+  if (!partId || !nodes.has(partId)) return null;
+  const want = String(paramName).trim().toLowerCase();
+  return (
+    childrenOf(partId).find((c) => c.name.trim().toLowerCase() === want) || null
+  );
+}
+
+/** Fixed unit node from Bauteilgruppe.Einheit ─[has_type]→ Ohm|Farad|… */
+function bauteilFixedUnit(partId) {
+  const einheit = bauteilParam(partId, "Einheit");
+  if (!einheit) return null;
+  return typeNodeOf(einheit.id);
+}
+
+/** Prefix nodes allowed for a Basiseinheit via allows_prefix. */
+function allowedPrefixNodesForUnit(unitId) {
+  if (!unitId) return [];
+  return edges
+    .filter((e) => e.from === unitId && e.label === REL_ALLOWS_PREFIX && nodes.has(e.to))
+    .map((e) => nodes.get(e.to))
+    .filter(Boolean);
+}
+
+function allowedPrefixNamesForUnit(unitId) {
+  return allowedPrefixNodesForUnit(unitId).map((n) => n.name);
+}
+
+function toggleAllowsPrefix(unitId, prefixId, enabled) {
+  if (!isProjectEditable()) return;
+  const existing = edges.find(
+    (e) => e.from === unitId && e.to === prefixId && e.label === REL_ALLOWS_PREFIX
+  );
+  if (enabled && !existing) {
+    pushEdge(unitId, prefixId, REL_ALLOWS_PREFIX);
+  } else if (!enabled && existing) {
+    edges = edges.filter((e) => e.id !== existing.id);
+  }
+  persist();
+  renderRight();
+}
+
+/**
+ * Checkbox panel: which Präfixe-Kinder are active for this Basiseinheit.
+ * @param {ProtoNode} unitNode
+ */
+function buildAllowedPrefixesPanel(unitNode) {
+  const block = document.createElement("div");
+  block.className = "order-block allowed-prefixes";
+  const editable = isProjectEditable();
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Zulässige Präfixe (allows_prefix → Kind von Präfixe)";
+  block.append(lab);
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.style.margin = "0.25rem 0 0.5rem";
+  hint.style.fontSize = "0.8rem";
+  hint.textContent =
+    "Nach Typ Basiseinheit: aktive Präfix-Kinder festlegen. BOM nutzt nur diese für Wert/Präfix.";
+  block.append(hint);
+
+  prefixesRootId = healNamedRoot(prefixesRootId, "Präfixe");
+  const prefixes = prefixesRootId ? childrenOf(prefixesRootId) : [];
+  if (prefixes.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Keine Präfixe im Baum.";
+    block.append(empty);
+    return block;
+  }
+
+  const allowed = new Set(allowedPrefixNodesForUnit(unitNode.id).map((n) => n.id));
+  const list = document.createElement("div");
+  list.className = "prefix-allow-list";
+  for (const p of prefixes) {
+    const row = document.createElement("label");
+    row.className = "choice-row";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = allowed.has(p.id);
+    input.disabled = !editable;
+    input.addEventListener("change", () =>
+      toggleAllowsPrefix(unitNode.id, p.id, input.checked)
+    );
+    const span = document.createElement("span");
+    span.textContent = p.name;
+    row.append(input, span);
+    list.append(row);
+  }
+  block.append(list);
+  return block;
+}
+
+function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {}) {
   const key = typeKey(typeNode);
+
+  if (opts.mode === "bauteil") {
+    const select = document.createElement("select");
+    select.className = "form-control";
+    select.setAttribute("aria-label", ariaLabel);
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "— Bauteil wählen —";
+    select.append(empty);
+    const cur = value == null ? "" : String(value);
+    for (const p of bauteilCatalogOptions()) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      select.append(opt);
+    }
+    if ([...select.options].some((o) => o.value === cur)) select.value = cur;
+    select.addEventListener("change", () => onChange(select.value));
+    return select;
+  }
+
   if (key === "bool") {
     const label = document.createElement("label");
     label.className = "choice-row";
@@ -889,6 +1047,19 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     wrap.style.alignItems = "center";
     wrap.style.flexWrap = "wrap";
     const parts = parseQuantityCell(value);
+    const fixedUnit = opts.fixedUnit || null;
+    const unitName = fixedUnit ? fixedUnit.name : parts.u;
+    const prefixNames = fixedUnit
+      ? allowedPrefixNamesForUnit(fixedUnit.id)
+      : prefixOptionNames();
+    const locked = Boolean(fixedUnit);
+    if (opts.requirePart && !fixedUnit) {
+      const msg = document.createElement("span");
+      msg.className = "muted";
+      msg.textContent = "Zuerst Bauteil wählen";
+      return msg;
+    }
+
     const num = document.createElement("input");
     num.type = "number";
     num.step = "any";
@@ -905,30 +1076,48 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel) {
     pEmpty.value = "";
     pEmpty.textContent = "—";
     pref.append(pEmpty);
-    for (const name of prefixOptionNames()) {
+    for (const name of prefixNames) {
       const opt = document.createElement("option");
       opt.value = name;
       opt.textContent = name;
       pref.append(opt);
     }
     if ([...pref.options].some((o) => o.value === parts.p)) pref.value = parts.p;
+    else pref.value = "";
+
     const unit = document.createElement("select");
     unit.className = "form-control";
     unit.style.width = "5rem";
     unit.setAttribute("aria-label", `${ariaLabel} Einheit`);
-    const uEmpty = document.createElement("option");
-    uEmpty.value = "";
-    uEmpty.textContent = "—";
-    unit.append(uEmpty);
-    for (const name of baseUnitOptionNames()) {
+    if (locked) {
+      unit.disabled = true;
+      unit.title = `Fixe Einheit für Bauteil: ${unitName}`;
       const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
+      opt.value = unitName;
+      opt.textContent = unitName;
       unit.append(opt);
+      unit.value = unitName;
+    } else {
+      const uEmpty = document.createElement("option");
+      uEmpty.value = "";
+      uEmpty.textContent = "—";
+      unit.append(uEmpty);
+      for (const name of baseUnitOptionNames()) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        unit.append(opt);
+      }
+      if ([...unit.options].some((o) => o.value === parts.u)) unit.value = parts.u;
     }
-    if ([...unit.options].some((o) => o.value === parts.u)) unit.value = parts.u;
     const emit = () =>
-      onChange(formatQuantityCell({ v: num.value, p: pref.value, u: unit.value }));
+      onChange(
+        formatQuantityCell({
+          v: num.value,
+          p: pref.value,
+          u: locked ? unitName : unit.value,
+        })
+      );
     num.addEventListener("change", emit);
     num.addEventListener("input", emit);
     pref.addEventListener("change", emit);
@@ -1164,7 +1353,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 20,
+    version: 22,
     projects,
     activeProjectId,
     rootId,
@@ -1313,6 +1502,8 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v17");
     localStorage.removeItem("wtt-proto-tree-split-v18");
     localStorage.removeItem("wtt-proto-tree-split-v19");
+    localStorage.removeItem("wtt-proto-tree-split-v20");
+    localStorage.removeItem("wtt-proto-tree-split-v21");
   } catch {
     /* ignore */
   }
@@ -1852,7 +2043,11 @@ function renderDetail() {
   hint.textContent =
     "Knoten-Eigenschaften gelten für alle Knoten inkl. Composition. Relationen gehören hierher. Backend = Dateneingabe; Frontend = Seitenvorschau; Feld = HTML-Spielwiese (später).";
 
-  card.append(h2, field, descField, orderBlock, meta, edgesTitle, buildEdgesBlock(node), hint);
+  card.append(h2, field, descField, orderBlock, meta);
+  if (isBaseUnitNode(node)) {
+    card.append(buildAllowedPrefixesPanel(node));
+  }
+  card.append(edgesTitle, buildEdgesBlock(node), hint);
   mount.append(card);
 }
 
@@ -1923,6 +2118,13 @@ function renderTableView(store, title) {
   }
   thead.append(headRow);
 
+  const partColIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "bauteil");
+  const isBomPartDriven = partColIdx >= 0;
+
+  if (isBomPartDriven) {
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: Bauteil wählen → Wert/Präfix nach Gruppe; Einheit typfest (Ohm/Farad); Präfixe = <code>allows_prefix</code>.`;
+  }
+
   const tbody = document.createElement("tbody");
   for (let r = 0; r < TABLE_BODY_ROWS; r++) {
     const tr = document.createElement("tr");
@@ -1930,15 +2132,53 @@ function renderTableView(store, title) {
     tdNum.className = "row-num";
     tdNum.textContent = String(r + 1);
     tr.append(tdNum);
+    const partId = partColIdx >= 0 ? String(grid[r]?.[partColIdx] ?? "") : "";
+    const fixedUnit = partId ? bauteilFixedUnit(partId) : null;
     for (let c = 0; c < cols.length; c++) {
       const td = document.createElement("td");
       const col = cols[c];
       const tn = typeNodeOf(col.id);
+      const colName = col.name.trim().toLowerCase();
+      /** @type {Record<string, unknown>} */
+      let cellOpts = {};
+      if (colName === "bauteil") {
+        cellOpts = { mode: "bauteil" };
+      } else if (typeKey(tn) === "quantity" && isBomPartDriven) {
+        cellOpts = { fixedUnit, requirePart: true };
+      }
       const control = createTypedCellControl(
         tn,
         grid[r]?.[c] ?? "",
-        (v) => setCellValue(store, node.id, r, c, v),
-        `${title}: ${col.name}, Zeile ${r + 1}`
+        (v) => {
+          setCellValue(store, node.id, r, c, v);
+          if (colName === "bauteil") {
+            // Sync Einheit in Wert-Zelle when Bauteil changes
+            const wertIdx = cols.findIndex(
+              (x) => typeKey(typeNodeOf(x.id)) === "quantity"
+            );
+            if (wertIdx >= 0) {
+              const unit = v ? bauteilFixedUnit(v) : null;
+              const prev = parseQuantityCell(grid[r]?.[wertIdx] ?? "");
+              setCellValue(
+                store,
+                node.id,
+                r,
+                wertIdx,
+                formatQuantityCell({
+                  v: prev.v,
+                  p: unit && allowedPrefixNamesForUnit(unit.id).includes(prev.p)
+                    ? prev.p
+                    : "",
+                  u: unit ? unit.name : "",
+                })
+              );
+            }
+            renderRight();
+            return;
+          }
+        },
+        `${title}: ${col.name}, Zeile ${r + 1}`,
+        cellOpts
       );
       td.append(control);
       tr.append(td);
@@ -2444,7 +2684,17 @@ function renderFrontend() {
         break;
       }
     }
-    const rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
+    let rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
+    if (cols[titleIdx]?.name.trim().toLowerCase() === "bauteil" && nodes.has(rowTitle)) {
+      rowTitle = nodes.get(rowTitle).name;
+    } else if (nodes.has(values[titleIdx] || "")) {
+      /* keep */
+    }
+    // Prefer Bauteil column as title when present
+    const partIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "bauteil");
+    if (partIdx >= 0 && values[partIdx] && nodes.has(values[partIdx])) {
+      rowTitle = nodes.get(values[partIdx]).name;
+    }
     const h = document.createElement("h3");
     h.textContent = rowTitle;
     li.append(h);
@@ -2466,6 +2716,12 @@ function renderFrontend() {
       const dt = document.createElement("dt");
       dt.textContent = cols[c].name;
       const dd = document.createElement("dd");
+      if (cols[c].name.trim().toLowerCase() === "bauteil" && nodes.has(raw)) {
+        display = nodes.get(raw).name;
+      }
+      if (key === "quantity") {
+        display = formatQuantityDisplay(parseQuantityCell(raw));
+      }
       dd.textContent = display;
       dl.append(dt, dd);
     }

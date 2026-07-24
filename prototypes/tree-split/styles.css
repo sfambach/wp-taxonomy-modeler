@@ -839,10 +839,18 @@ body {
   color: var(--text);
 }
 
-.frontend-note {
-  margin: 0;
-  font-size: 0.8rem;
+.prefix-allow-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0.35rem 0 0.75rem;
 }
+
+.allowed-prefixes {
+  margin-top: 1rem;
+  padding-top: 0.25rem;
+}
+
 
 /* --- Relationen (edges) --- */
 
