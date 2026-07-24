@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.76-plan"
+version: "0.6.77-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -56,114 +56,181 @@ todos:
 
 ## Current class diagram
 
-> **Keep this section updated on every structure change.** After each change, also show this diagram in the chat reply.
-
-**Decided (Q33):** attributes such as `Wert` / `Länge` live in the catalog model (not a separate owner via `node_id` — Q14 dropped).  
-**Under revisit (Q55):** whether **Parameter** returns as a **named definition object** on a Node (children inherit) or stays a **Node role** — vocabulary “Parameter” is back either way.  
-Every project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples (`quantity`, Collection).  
-**Q49 strong lean:** simples get config that disables originating Relations (`capabilities.originate_relations = false`) — not a hard special kind (decide with Q34).  
-Typed edges remain exploratory (**Q35**). **Q54 lean:** catalog tree + property inheritance. Closed hierarchy-edge TE stays out.
+Conceptual domain model (planning — not implemented PHP).  
+**Q33/Q34:** no `Parameter` / `ParameterRole` class — slots are ordinary `Node`s with `has_type` (+ optional `ref_scope`, `config.required`).  
+Methods = intended domain API (lean); persistence/UI stay separate.
 
 ```mermaid
 classDiagram
   direction TB
 
   class Project {
-    +id
-    +name
-    +description
-    +taxonomy : ?
-    +root_nodes : Node[]
-    +definition_root : Node
-    +type_node : Node
-    +prefix_node : Node
-    +base_unit_node : Node
-    +changelog : Changelog
+    +id: Id
+    +name: string
+    +description: string
+    +taxonomy: string?
+    +root_nodes: Node[]
+    +definition_root: Node
+    +type_node: Node
+    +prefix_node: Node
+    +base_unit_node: Node
+    +changelog: Changelog
+    +getRootNodes() Node[]
+    +getDefinitionRoot() Node
+    +getTypeAnchor() Node
+    +getPrefixAnchor() Node
+    +getBaseUnitAnchor() Node
+    +findNode(id) Node?
+    +belongsToProject(node) bool
+    +copyFromTemplate(template) Project
+    +recordChange(changer, body, version) void
   }
 
   class Node {
-    +id
-    +parent_id : id|null
-    +name
-    +description : string
-    +template : bool
-    +position : ?
-    +project_id : ?
-    +config : ?
-    +changelog : Changelog
+    +id: Id
+    +parent_id: Id|null
+    +name: string
+    +description: string
+    +template: bool
+    +position: int?
+    +project_id: Id?
+    +config: NodeConfig?
+    +changelog: Changelog
+    +parent() Node?
+    +children() Node[]
+    +descendants() Node[]
+    +ancestors() Node[]
+    +path() string
+    +isRoot() bool
+    +isTemplate() bool
+    +move(newParent, position) void
+    +rename(name) void
+    +setDescription(text) void
+    +typeNode() Node?
+    +typeKey() string
+    +refScopeRoot() Node?
+    +isRequired() bool
+    +setRequired(flag) void
+    +outgoingRelations(label?) Relation[]
+    +incomingRelations(label?) Relation[]
+    +bindType(typeNode) void
+    +bindRefScope(catalogRoot) void
+    +assertTypeBindingsComplete() void
+    +recordChange(changer, body, version) void
   }
 
-  class SimpleType {
-    <<Node role / config>>
-    fixed per project
-    int double text textarea char bool
-    may_not_originate_relations : ?
+  class NodeConfig {
+    <<value object>>
+    +required: bool?
+    +capabilities: Capabilities?
+    +isRequired() bool
+    +mayOriginateRelations() bool
   }
 
-  class DerivedOrCompositeType {
-    <<Node role / config>>
-    built from simple types
-    Collection: list table enum
-    quantity: value + prefix + base_unit
+  class Capabilities {
+    <<value object>>
+    +originate_relations: bool
   }
 
-  class Parameter {
-    <<definition Q55>>
-    +name
-    +type : Node
-    +required : ?
+  class Relation {
+    +id: Id
+    +from: Node
+    +to: Node
+    +relation_type: RelationType
+    +props: map?
+    +label() string
+    +prop(key) any?
+    +setProp(key, value) void
+    +involves(node) bool
+  }
+
+  class RelationType {
+    +id: Id
+    +key: string
+    +label: string
+    +directed: bool?
+    +bidirectional: bool?
+    +display: DisplayHint?
+    +inheritable: bool?
+    +isDirected() bool
+    +isInheritable() bool
+    +displayHint() DisplayHint?
+  }
+
+  class DisplayHint {
+    <<enumeration>>
+    attribute
+    taxonomy
+    tree
+    reference
+  }
+
+  class Changelog {
+    +changes: Change[]
+    +append(change) void
+    +latest() Change?
+    +atVersion(version) Change[]
+  }
+
+  class Change {
+    +timestamp: DateTime
+    +changer: Actor
+    +change: ChangeBody
+    +version: string
+    +summarize() string
   }
 
   class ParameterValue {
     <<instance content>>
-    +parameter : Parameter
-    +payload : typed
+    +slot: Node
+    +payload: typed
+    +asScalar() any?
+    +asNodeRef() Id?
+    +asQuantity() QuantityReading?
+    +validateAgainstSlot() bool
   }
 
   class CompositionRow {
     <<Level B instance>>
-    +position : ?
-    +cells : ParameterValue[]
+    +composition: Node
+    +position: int?
+    +cells: ParameterValue[]
+    +getCell(slot) ParameterValue?
+    +setCell(slot, payload) void
+    +orderedCells() ParameterValue[]
   }
 
-  class Relation {
-    +from : Node
-    +to : Node
-    +relation_type : RelationType
-    +props : ?
+  class QuantityReading {
+    <<value object>>
+    +value: number
+    +prefix: Node?
+    +base_unit: Node?
+    +format() string
+    +toBase() number
   }
 
-  class RelationType {
-    +id
-    +key
-    +label
-    +directed : bool?
-    +bidirectional : bool?
-    +display : DisplayHint
-    +inheritable : bool?
+  class TypeKind {
+    <<enumeration / Node role>>
+    Simple_int
+    Simple_double
+    Simple_text
+    Simple_textarea
+    Simple_char
+    Simple_bool
+    Simple_node_ref
+    Complex_quantity
+    Complex_subtree
+    Complex_Collection
   }
 
-  class Changelog {
-    +changes : Change[]
-  }
-
-  class Change {
-    +timestamp : DateTime
-    +changer : Actor
-    +change : ChangeBody
-    +version
-  }
-
-  note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Catalog Bauteil (Widerstand…)\nOR Composition list identity"
-  note for Parameter "DEFINITION only\nname + type\nowned by Vorlage"
-  note for ParameterValue "INSTANCE content\npayload by type"
-  note for CompositionRow "BOM/Rezept lines\nBauteil-Ref cell → Bauteil"
-  note for SimpleType "Live in the template Project\nint double text textarea char bool\ncopied into every new Project"
-  note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
-  note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT hierarchy store (closed TE)"
-  note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
-  note for Change "Shared audit model"
+  note for Project "≈ taxonomy (Q18)\nTemplate copy → new Project (Q50 lean)"
+  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34)\nBauteil | Composition | Slot | Type"
+  note for NodeConfig "required on slots\ncapabilities.originate_relations\non simples (Q49 lean)"
+  note for Relation "Exploratory (Q35)\nhas_type | ref_scope |\nallows_prefix | multiplikator\nNOT hierarchy store"
+  note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
+  note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
+  note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id"
+  note for TypeKind "Not PHP subclasses —\nNodes under Datentypen\nSimple | Complex"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Node : definition_root
@@ -171,35 +238,30 @@ classDiagram
   Project "1" --> "1" Node : prefix_node
   Project "1" --> "1" Node : base_unit_node
   Project "1" --> "1" Changelog : changelog
-  Node "0..1" --> "*" Node : parent / children
-  Node "1" --> "*" Parameter : defines
-  Parameter --> Node : type
-  Node "1" --> "*" ParameterValue : Bauteil fills
-  ParameterValue --> Parameter : parameter
-  Node "1" --> "*" CompositionRow : Composition rows
-  CompositionRow "1" --> "*" ParameterValue : cells
-  Node <|-- SimpleType : role / config
-  Node <|-- DerivedOrCompositeType : role / config
-  SimpleType ..> DerivedOrCompositeType : derive / compose
+  Node "0..1" --> "*" Node : parent_id / children
+  Node "1" --> "0..1" NodeConfig : config
+  NodeConfig --> Capabilities : capabilities
+  Node "1" --> "1" Changelog : changelog
+  Changelog "1" --> "*" Change : changes
   Relation --> Node : from
   Relation --> Node : to
   Relation --> RelationType : relation_type
-  Node "1" --> "1" Changelog : changelog
-  Changelog "1" --> "*" Change : changes
+  RelationType --> DisplayHint : display
+  Node "1" --> "*" CompositionRow : composition rows
+  CompositionRow "1" --> "*" ParameterValue : cells
+  Node "1" --> "*" ParameterValue : Bauteil fills
+  ParameterValue --> Node : slot
+  ParameterValue --> QuantityReading : payload?
 ```
 
-**Legend:** `Relation` / `RelationType` are **exploratory** (Q35). They are **not** the hierarchy store (closed TE).  
-**Q54 lean:** `parent_id` tree = catalog + inherit.  
-**Bauteil** = catalog part (e.g. Widerstand) with Parameter defs/values. **Composition** = Zusammenstellung (BOM/Rezept/Build) with columns + rows; Bauteile appear **only as column values** (Bauteil-Ref), not as Compositions themselves.  
-Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
-Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
-`bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
-`DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
-**Explicitly out:** `parent_id` as cache of hierarchy edges (closed TE).  
-**Q56:** **Composition** / UX **Zusammenstellung** (naming decided).  
-**Schema-as-Nodes (Q46):** no hard BomList/Recipe/Build classes.  
-**Types:** simples + composed (`quantity`, Collection).  
-**Q49 lean:** simples `originate_relations=false` via config — still open with Q34.
+**Invariants (type bindings — live on model, not only UI):**
+
+| Type key | Extra binding | Method check |
+|----------|---------------|--------------|
+| simples / `node_ref` / `quantity` / Collection | `has_type` only | `typeNode()` set |
+| **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
+
+**Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
 
 ## Core objects
 
