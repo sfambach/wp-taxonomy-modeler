@@ -40,7 +40,17 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v23` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v26` — **Reset** after upgrade.
+
+## Simple types (HTML lean)
+
+| Type | Widget | Analog |
+|------|--------|--------|
+| `text` | einzeilig `<input type="text">` | DB VARCHAR / Rails `:string` |
+| `textarea` | mehrzeilig `<textarea>` | DB TEXT / Rails `:text`; später Format/Interpreter |
+| `char` | 1 Zeichen | — |
+| `int` / `double` / `bool` | number / checkbox | — |
+
 
 ## Edges
 

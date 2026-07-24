@@ -96,7 +96,7 @@ classDiagram
   class SimpleType {
     <<Node role / config>>
     fixed per project
-    int double string char bool
+    int double text textarea char bool
     may_not_originate_relations : ?
   }
 
@@ -159,7 +159,7 @@ classDiagram
   note for Parameter "DEFINITION only\nname + type\nowned by Vorlage"
   note for ParameterValue "INSTANCE content\npayload by type"
   note for CompositionRow "BOM/Rezept lines\nBauteil-Ref cell → Bauteil"
-  note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
+  note for SimpleType "Live in the template Project\nint double text textarea char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
   note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT hierarchy store (closed TE)"
   note for RelationType "directed? → arrow\nDisplayHint = attribute/taxonomy/…"
@@ -296,7 +296,7 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - Attribute Nodes (e.g. `Wert`) bind **`type`** (required) plus optional **`prefix`** / **`base_unit`** via config and/or Relations — **no ParameterRole**. — **agreed direction**
 - A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `string`, `char`, `bool`) — **agreed**
+- **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `text`, `textarea`, `char`, `bool`) — **agreed** (`text` = einzeilig / HTML input; `textarea` = mehrzeilig; legacy name `string` → `text`)
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
 - **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **decided (Q51)**
@@ -568,7 +568,7 @@ Keep the **pure template** separate from **domain demo data**:
 ```text
 Template (nur lesen)
 ├── Datentypen
-│   ├── int · double · string · char · bool
+│   ├── int · double · text · textarea · char · bool
 │   ├── quantity
 │   └── Collection
 │       ├── list
@@ -601,7 +601,7 @@ Prototype: `prototypes/tree-split` **v14** — Collection in template; Bauart/Re
 
 ```text
 Template Project → Datentypen / Type     ← Project.type_node
-├── int · double · string · char · bool   ← simples (in template)
+├── int · double · text · textarea · char · bool   ← simples (in template)
 ├── quantity                              ← Größe (in template)
 └── Collection                            ← Q52 decided
     ├── list
@@ -617,7 +617,7 @@ Template Project → Datentypen / Type     ← Project.type_node
 
 ```text
 Datentypen
-├── int · double · string · char · bool     ← simples
+├── int · double · text · textarea · char · bool     ← simples
 ├── quantity                                ← derived (Größe)
 └── Collection                              ← structural super-kind
     ├── list      ← Collection with exactly 1 column
@@ -821,7 +821,7 @@ Bauteile
 
 | Type | Kind | Used as Parameter type for… |
 |------|------|-----------------------------|
-| `int` / `double` / `string` / `char` / `bool` | **simple** | counts, flags, free text |
+| `int` / `double` / `text` / `textarea` / `char` / `bool` | **simple** | counts, flags, ein-/mehrzeiliger Text |
 | `quantity` | **composed** | `Wert`, VRAM, cable length, recipe amount |
 | `Bauart` (Collection **enum**) | **composed** | `Bauform` / Footprint |
 | `RefDes` (Collection **list**) | **composed** | BOM Reference column (schema, not catalog Parameter) |
@@ -955,7 +955,7 @@ Level — Bauteil (separate)
 
 | Type | Kind | Typical use |
 |------|------|-------------|
-| `int` `double` `string` `char` `bool` | simple | counts, flags, text |
+| `int` `double` `text` `textarea` `char` `bool` | simple | counts, flags, text |
 | `quantity` | composed | Bauteil Wert; Rezept-Menge |
 | Collection `enum` (e.g. `Bauart`) | composed | Bauteil Bauform |
 | Collection `list` (e.g. `RefDes`) | composed | BOM Reference |
@@ -1650,7 +1650,8 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 
 | Type key | Meaning | Example use |
 |----------|---------|-------------|
-| `string` | Free text | Bezeichnung, Notiz |
+| `text` | Einzeiliger Text (`<input>`) | Bezeichnung, Code |
+| `textarea` | Mehrzeilig (`<textarea>`; Format später) | Notiz, Beschreibung |
 | `number` | Floating-point scalar | generic numeric without unit |
 | `integer` | Whole-number scalar | Pinzahl, Stück |
 | `boolean` | true / false | RoHS, polarisiert |
@@ -1944,7 +1945,7 @@ Invariants (leaning):
 
 ### Default Nodes for a new Project (open — Q50)
 
-Every Project needs at least: Definitionsbaum anchors + fixed simple types (`int`, `double`, `string`, `char`, `bool`).
+Every Project needs at least: Definitionsbaum anchors + fixed simple types (`int`, `double`, `text`, `textarea`, `char`, `bool`).
 
 Two main options (user direction — decide later):
 

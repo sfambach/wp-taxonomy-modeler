@@ -12,7 +12,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v23";
+const STORAGE_KEY = "wtt-proto-tree-split-v26";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -37,7 +37,7 @@ const REL_BASE_TYPE = "base_type";
 const REL_ALLOWS_PREFIX = "allows_prefix";
 /** Präfix ─[multiplikator]→ int, props.value = scale factor */
 const REL_MULTIPLIKATOR = "multiplikator";
-const SIMPLE_TYPE_NAMES = ["int", "double", "string", "char", "bool"];
+const SIMPLE_TYPE_NAMES = ["int", "double", "text", "textarea", "char", "bool"];
 const COLLECTION_KIND_NAMES = ["list", "table", "enum"];
 const QTY_SEP = "|";
 const EDGE_LABEL_SUGGESTIONS = [
@@ -233,7 +233,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
 
   const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
     template: mark,
-    description: "Simple Typen, quantity und Collection-Kinds (list/table/enum).",
+    description: "Simples: int/double/text/textarea/char/bool · quantity · Collection.",
   });
   const tInt = createNode(dataTypesRootId, "int", 0, {
     description: "Ganze Zahl.",
@@ -241,20 +241,24 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const tDouble = createNode(dataTypesRootId, "double", 1, {
     description: "Gleitkommazahl.",
   });
-  const tString = createNode(dataTypesRootId, "string", 2, {
-    description: "Freitext.",
+  const tText = createNode(dataTypesRootId, "text", 2, {
+    description: "Einzeiliger Text — HTML <input type=text> / DB VARCHAR-ähnlich.",
   });
-  const tChar = createNode(dataTypesRootId, "char", 3, {
+  const tTextarea = createNode(dataTypesRootId, "textarea", 3, {
+    description:
+      "Mehrzeiliger Text — HTML <textarea>. Später: Format/Interpreter (plain, markdown, html, …).",
+  });
+  const tChar = createNode(dataTypesRootId, "char", 4, {
     description: "Einzelnes Zeichen.",
   });
-  const tBool = createNode(dataTypesRootId, "bool", 4, {
+  const tBool = createNode(dataTypesRootId, "bool", 5, {
     description: "Wahrheitswert true/false.",
   });
-  const tQuantity = createNode(dataTypesRootId, "quantity", 5, {
+  const tQuantity = createNode(dataTypesRootId, "quantity", 6, {
     description: "Größe: Wert + optional Präfix + Basiseinheit (nicht Messung).",
   });
 
-  const collectionId = createNode(dataTypesRootId, "Collection", 6, {
+  const collectionId = createNode(dataTypesRootId, "Collection", 7, {
     template: mark,
     description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
   });
@@ -343,7 +347,8 @@ function seedTemplateCore(projectRootId, opts = {}) {
     types: {
       tInt,
       tDouble,
-      tString,
+      tText,
+      tTextarea,
       tChar,
       tBool,
       tQuantity,
@@ -367,7 +372,7 @@ function seedCompositionSimplesDemo(compositionsRootId, core) {
       "Composition-Demo Phase 1 (Simples): Rezept-Zusammenstellung nur mit simple Spaltentypen.",
   });
   const cName = createNode(compId, "Bezeichnung", 0, {
-    description: "Spalte → string",
+    description: "Spalte → text (einzeilig)",
   });
   const cCount = createNode(compId, "Anzahl", 1, {
     description: "Spalte → int (hier: Mengenangabe roh, noch ohne quantity)",
@@ -381,7 +386,7 @@ function seedCompositionSimplesDemo(compositionsRootId, core) {
   const cFactor = createNode(compId, "Faktor", 4, {
     description: "Spalte → double",
   });
-  pushEdge(cName, types.tString, REL_HAS_TYPE);
+  pushEdge(cName, types.tText, REL_HAS_TYPE);
   pushEdge(cCount, types.tInt, REL_HAS_TYPE);
   pushEdge(cActive, types.tBool, REL_HAS_TYPE);
   pushEdge(cCode, types.tChar, REL_HAS_TYPE);
@@ -407,26 +412,26 @@ function seedBomTestData(compositionsRootId, core) {
   const { types, pref, baseUnitsRootId, prefixesRootId, bauteileRootId } = core;
   void bauteileRootId;
 
-  // enum like list: Bauart → Option ─[has_type]→ string → closed options
+  // enum like list: Bauart → Option ─[has_type]→ text → closed options
   const bauart = createNode(types.tEnum, "Bauart", 0, {
     description: "Konkretes enum (wie list): eine Spalte + feste Optionen.",
   });
   const bauartCol = createNode(bauart, "Option", 0, {
     description: "Einzige Spalte der enum-Collection.",
   });
-  pushEdge(bauartCol, types.tString, REL_HAS_TYPE);
+  pushEdge(bauartCol, types.tText, REL_HAS_TYPE);
   for (const [i, name] of ["0201", "0402", "0603", "0805", "axial"].entries()) {
     createNode(bauartCol, name, i, { description: `Bauart-Option ${name}.` });
   }
 
-  // open list: RefDes → Element ─[has_type]→ string (no fixed children)
+  // open list: RefDes → Element ─[has_type]→ text (no fixed children)
   const refDes = createNode(types.tList, "RefDes", 0, {
     description: "Offene list für Board-Referenzen (R1, R2, …).",
   });
   const refCol = createNode(refDes, "Element", 0, {
     description: "Einzige Spalte der list-Collection.",
   });
-  pushEdge(refCol, types.tString, REL_HAS_TYPE);
+  pushEdge(refCol, types.tText, REL_HAS_TYPE);
 
   // Electronics units (BOM-specific) stay under Typen → Basiseinheit
   const nextPos = childrenOf(baseUnitsRootId).length;
@@ -792,20 +797,22 @@ function baseTypeOf(enumId) {
 
 /** Normalize type node name → widget key. */
 function typeKey(typeNode) {
-  if (!typeNode) return "string";
+  if (!typeNode) return "text";
   const k = typeNode.name.trim().toLowerCase();
   if (["int", "integer"].includes(k)) return "int";
   if (["double", "float", "number"].includes(k)) return "double";
   if (["bool", "boolean"].includes(k)) return "bool";
   if (["char"].includes(k)) return "char";
-  if (["string", "text"].includes(k)) return "string";
+  // HTML/DB lean: text = single-line; textarea = multi-line (legacy "string" → text)
+  if (["text", "string", "varchar"].includes(k)) return "text";
+  if (["textarea", "longtext", "multiline"].includes(k)) return "textarea";
   if (["quantity", "größe", "groesse"].includes(k)) return "quantity";
   const kind = collectionKindOf(typeNode);
   if (kind === "enum") return "enum";
   if (kind === "list") return "list";
   if (kind === "table") return "table";
   if (["enum", "list", "table"].includes(k)) return k;
-  return "string";
+  return "text";
 }
 
 function isSimpleTypeNode(node) {
@@ -1135,8 +1142,22 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {})
     return wrap;
   }
 
+  if (key === "textarea") {
+    const area = document.createElement("textarea");
+    area.className = "form-control";
+    area.rows = 3;
+    area.setAttribute("aria-label", ariaLabel);
+    area.placeholder = "Mehrzeilig…";
+    area.title = "textarea — später Format/Interpreter (plain/markdown/html)";
+    area.value = value == null ? "" : String(value);
+    area.addEventListener("change", () => onChange(area.value));
+    area.addEventListener("input", () => onChange(area.value));
+    return area;
+  }
+
   const input = document.createElement("input");
   input.setAttribute("aria-label", ariaLabel);
+  input.className = "form-control";
   if (key === "int") {
     input.type = "number";
     input.step = "1";
@@ -1150,8 +1171,10 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {})
     input.maxLength = 1;
     input.placeholder = "·";
   } else {
+    // text (einzeilig) — HTML input type=text
     input.type = "text";
     input.placeholder = "—";
+    input.title = "text — einzeilig";
   }
   input.value = value == null ? "" : String(value);
   input.addEventListener("change", () => {
@@ -1387,7 +1410,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 23,
+    version: 26,
     projects,
     activeProjectId,
     rootId,
@@ -1539,6 +1562,9 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v20");
     localStorage.removeItem("wtt-proto-tree-split-v21");
     localStorage.removeItem("wtt-proto-tree-split-v22");
+    localStorage.removeItem("wtt-proto-tree-split-v23");
+    localStorage.removeItem("wtt-proto-tree-split-v24");
+    localStorage.removeItem("wtt-proto-tree-split-v25");
   } catch {
     /* ignore */
   }
@@ -2735,8 +2761,8 @@ function renderFrontend() {
     let titleIdx = 0;
     for (let c = 0; c < cols.length; c++) {
       const tn = typeNodeOf(cols[c].id);
-      const key = tn ? typeKey(tn) : "string";
-      if (key === "string" || key === "char") {
+      const key = tn ? typeKey(tn) : "text";
+      if (key === "text" || key === "string" || key === "char") {
         titleIdx = c;
         break;
       }
