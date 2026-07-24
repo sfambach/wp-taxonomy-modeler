@@ -201,15 +201,24 @@ function pushEdge(from, to, label, props) {
 }
 
 /**
- * Pure template core under a project root: Datentypen + Präfix + Basiseinheit + Relations.
- * Collection kinds (list/table/enum) have no concrete instances here — those belong in domain/test projects.
- * Basiseinheit: generic standards only (Meter, Liter, …) — electronics units go to BOM test.
+ * Pure template core under a project root.
+ * Root children are only **Typen** and **Compositionen**; everything else hangs under those.
  * @param {string} projectRootId
  * @param {{ markTemplate?: boolean }} [opts]
  */
 function seedTemplateCore(projectRootId, opts = {}) {
   const mark = opts.markTemplate !== false;
-  const dataTypesRootId = createNode(projectRootId, "Datentypen", 0, {
+
+  const typesRootId = createNode(projectRootId, "Typen", 0, {
+    template: mark,
+    description: "Alle Typ-Definitionen: Datentypen, Präfixe, Basiseinheiten.",
+  });
+  const compositionsRootId = createNode(projectRootId, "Compositionen", 1, {
+    template: mark,
+    description: "Zusammenstellungen (Composition-Definitionen und -Instanzen).",
+  });
+
+  const dataTypesRootId = createNode(typesRootId, "Datentypen", 0, {
     template: mark,
     description: "Simple Typen, quantity und Collection-Kinds (list/table/enum).",
   });
@@ -247,7 +256,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
       "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte — nicht erweiterbar beim Ausfüllen.",
   });
 
-  const prefixesRootId = createNode(projectRootId, "Präfix", 1, {
+  const prefixesRootId = createNode(typesRootId, "Präfix", 1, {
     template: mark,
     description: "SI-Präfixe; Multiplikator via Relation multiplikator → int.",
   });
@@ -268,7 +277,7 @@ function seedTemplateCore(projectRootId, opts = {}) {
     pushEdge(id, tInt, REL_MULTIPLIKATOR, { value: factor });
   }
 
-  const baseUnitsRootId = createNode(projectRootId, "Basiseinheit", 2, {
+  const baseUnitsRootId = createNode(typesRootId, "Basiseinheit", 2, {
     template: mark,
     description:
       "Standard-Basiseinheiten im Template. Domäneneinheiten (Ohm, Farad, …) gehören ins Testprojekt.",
@@ -310,6 +319,8 @@ function seedTemplateCore(projectRootId, opts = {}) {
   void uKelvin;
 
   return {
+    typesRootId,
+    compositionsRootId,
     dataTypesRootId,
     prefixesRootId,
     baseUnitsRootId,
@@ -330,16 +341,14 @@ function seedTemplateCore(projectRootId, opts = {}) {
 }
 
 /**
- * Phase-1 Composition demo: Zusammenstellung whose columns are **only simple types**.
- * Open the Composition node → tab „Tabelle“ to edit instance rows (CompositionRows as grid).
- * Later phases add quantity / enum / Bauteil-Ref columns.
- * @param {string} projectRootId
+ * Phase-1 Composition demo under Compositionen: columns = simple types only.
+ * @param {string} compositionsRootId
  * @param {ReturnType<typeof seedTemplateCore>} core
  * @returns {string} composition node id
  */
-function seedCompositionSimplesDemo(projectRootId, core) {
+function seedCompositionSimplesDemo(compositionsRootId, core) {
   const { types } = core;
-  const compId = createNode(projectRootId, "Rezept — Backzutaten", 1, {
+  const compId = createNode(compositionsRootId, "Rezept — Backzutaten", 0, {
     description:
       "Composition-Demo Phase 1 (Simples): Rezept-Zusammenstellung nur mit simple Spaltentypen.",
   });
@@ -364,7 +373,6 @@ function seedCompositionSimplesDemo(projectRootId, core) {
   pushEdge(cCode, types.tChar, REL_HAS_TYPE);
   pushEdge(cFactor, types.tDouble, REL_HAS_TYPE);
 
-  // Seeded Rezept-Zeilen (CompositionRows as grid) — Phase 1 simples only
   tableCells.set(compId, [
     ["Mehl", "200", "true", "M", "1"],
     ["Zucker", "50", "true", "Z", "0.5"],
@@ -377,13 +385,11 @@ function seedCompositionSimplesDemo(projectRootId, core) {
 }
 
 /**
- * BOM demo extras (not part of the pure template).
- * Collection instances: Bauart (enum like list), RefDes (list); Spalten as table;
- * electronics Basiseinheiten; Stückliste / Bauteile.
- * @param {string} projectRootId
+ * BOM demo extras under Compositionen (+ electronics units under Typen/Basiseinheit).
+ * @param {string} compositionsRootId
  * @param {ReturnType<typeof seedTemplateCore>} core
  */
-function seedBomTestData(projectRootId, core) {
+function seedBomTestData(compositionsRootId, core) {
   const { types, pref, baseUnitsRootId } = core;
 
   // enum like list: Bauart → Option ─[has_type]→ string → closed options
@@ -407,7 +413,7 @@ function seedBomTestData(projectRootId, core) {
   });
   pushEdge(refCol, types.tString, REL_HAS_TYPE);
 
-  // Electronics units (BOM-specific)
+  // Electronics units (BOM-specific) stay under Typen → Basiseinheit
   const nextPos = childrenOf(baseUnitsRootId).length;
   const uOhm = createNode(baseUnitsRootId, "Ohm", nextPos, {
     description: "BOM: Widerstand.",
@@ -431,8 +437,7 @@ function seedBomTestData(projectRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
-  // table instance via has_type → table (XOR: not also parent under table)
-  const schemaId = createNode(projectRootId, "Spalten (BOM-Zeile)", 3, {
+  const schemaId = createNode(compositionsRootId, "Spalten (BOM-Zeile)", 0, {
     description: "BOM-Test: konkrete table — Kinder = Spalten mit has_type.",
   });
   pushEdge(schemaId, types.tTable, REL_HAS_TYPE);
@@ -463,7 +468,7 @@ function seedBomTestData(projectRootId, core) {
   pushEdge(cLcsc, types.tString, REL_HAS_TYPE);
   pushEdge(cStock, types.tBool, REL_HAS_TYPE);
 
-  const listId = createNode(projectRootId, "Stückliste", 4, {
+  const listId = createNode(compositionsRootId, "Stückliste", 1, {
     description: "BOM-Test: Beispiel-Stückliste (Instanz-Knoten).",
   });
   createNode(listId, "C1 — 100 nF 0603", 0, { description: "Kondensator-Zeile." });
@@ -471,8 +476,8 @@ function seedBomTestData(projectRootId, core) {
   createNode(listId, "U1 — ESP32-WROOM-32", 2, { description: "IC-Zeile." });
   createNode(listId, "D1 — LED green 0805", 3, { description: "Diode/LED-Zeile." });
 
-  const partsId = createNode(projectRootId, "Bauteile", 5, {
-    description: "BOM-Test: Katalog-Ast (Demo).",
+  const partsId = createNode(compositionsRootId, "Bauteile", 2, {
+    description: "Katalog-Ast für Compositionen (Demo) — Bauteile ≠ Composition.",
   });
   createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
   createNode(partsId, "Widerstand", 1, { description: "Kategorie Widerstand." });
