@@ -1708,7 +1708,6 @@ function renameDescription(value) {
 
 /** Flush in-progress name/description before the detail pane is torn down. */
 function flushNodeFields() {
-  if (!isProjectEditable()) return;
   const nameEl = document.getElementById("node-name");
   const descEl = document.getElementById("node-desc");
   const nodeId = nameEl?.dataset?.nodeId || descEl?.dataset?.nodeId || selectedId;
@@ -2089,7 +2088,7 @@ function renderDetail() {
   hint.className = "muted";
   hint.style.marginTop = "1.5rem";
   hint.textContent =
-    "Knoten-Eigenschaften gelten für alle Knoten inkl. Composition. Relationen gehören hierher. Backend = Dateneingabe; Frontend = Seitenvorschau; Feld = HTML-Spielwiese (später).";
+    "Name/Beschreibung sind freier Text (Schlüssel = id). Struktur ändern (Kinder/Relationen) im Template gesperrt.";
 
   card.append(h2, field, descField, orderBlock, meta);
   if (isBaseUnitNode(node)) {
