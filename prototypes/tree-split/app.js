@@ -1287,10 +1287,10 @@ function treeRowLabelEl(nodeId) {
 }
 
 function applyNodeName(nodeId, rawName, opts = {}) {
-  if (!isProjectEditable()) return;
   const n = nodes.get(nodeId);
   if (!n) return;
   const next = String(rawName ?? "").trim();
+  // Name is display text only — id is the stable key
   if (next) n.name = next;
   persist();
   const label = treeRowLabelEl(n.id);
@@ -1310,7 +1310,6 @@ function applyNodeName(nodeId, rawName, opts = {}) {
 }
 
 function applyNodeDescription(nodeId, value) {
-  if (!isProjectEditable()) return;
   const n = nodes.get(nodeId);
   if (!n) return;
   n.description = String(value ?? "");
@@ -1978,9 +1977,8 @@ function renderDetail() {
   input.autocomplete = "off";
   input.spellcheck = false;
   input.dataset.nodeId = editingId;
-  // readOnly only — avoid disabled (blocks focus / looks broken)
-  input.readOnly = !editable;
-  if (editable) {
+  input.title = "Anzeigename (frei) — Schlüssel ist die id";
+  {
     const stop = (e) => e.stopPropagation();
     input.addEventListener("mousedown", stop);
     input.addEventListener("click", stop);
@@ -2011,12 +2009,9 @@ function renderDetail() {
   desc.className = "form-control node-edit";
   desc.rows = 3;
   desc.value = node.description || "";
-  desc.placeholder = editable
-    ? "Kurzbeschreibung des Knotens…"
-    : "Template — nicht editierbar";
+  desc.placeholder = "Kurzbeschreibung des Knotens…";
   desc.dataset.nodeId = editingId;
-  desc.readOnly = !editable;
-  if (editable) {
+  {
     const stop = (e) => e.stopPropagation();
     desc.addEventListener("mousedown", stop);
     desc.addEventListener("click", stop);
@@ -2076,7 +2071,8 @@ function renderDetail() {
   const meta = document.createElement("div");
   meta.className = "meta";
   meta.innerHTML = `
-    <div>id: <span>${node.id}</span></div>
+    <div>id: <span>${node.id}</span> <em class="hint">(Schlüssel — unveränderlich)</em></div>
+    <div>name: <span>freier Anzeigetext</span></div>
     <div>parent: <span>${parent ? parent.name : "— (root)"}</span></div>
     <div>position: <span>${node.position}</span> <em class="hint">(Sortierschlüssel)</em></div>
     <div>children: <span>${kids.length}</span></div>
