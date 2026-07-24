@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.61-plan"
+version: "0.6.62-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -681,6 +681,15 @@ Binding rules for the **new** approach (not answers — constraints on how we de
 | **Split when jobs differ** | If two concerns need different constraints or queries (e.g. catalog tree vs `has_type`), prefer two clear structures over one overloaded one. |
 
 **Anti-patterns from the closed TE (do not repeat):** unify hierarchy into Relations to “have one system”; keep `parent_id` as edge cache; let DisplayHint invent a second parent.
+
+###### 3. Call out performance risk and nonsense
+
+| Rule | Meaning |
+|------|---------|
+| **Flag hot paths early** | If a design implies recursive edge scans, dual-write sync, N+1 Relation lookups for every tree expand, or “filter the whole edge table by type on every parent/child query,” say so **before** it becomes a decision. |
+| **Nonsense check** | If two structures encode the same fact, or a named object would be clearer than a clever encoding, say that plainly — including when the suggestion came from the user or a prior spin. |
+| **Cost vs clarity** | Prefer the clearer model unless there is a concrete, measured reason not to. “Might be slower later” alone is not a veto; **silent** acceptance of known bad shapes is. |
+| **Agent duty** | In planning replies, **proactively** warn when a proposal looks performance-hostile or conceptually absurd — do not wait to be asked. |
 
 ##### Still open (fresh Q53 / Q54)
 

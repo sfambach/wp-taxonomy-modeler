@@ -1,5 +1,5 @@
 ---
-description: Design guidelines for the clean Q53/Q54 restart — clear structures; do not refuse useful objects
+description: Design guidelines for the clean Q53/Q54 restart — clear structures; named objects when better; flag performance risk and nonsense
 alwaysApply: true
 ---
 
@@ -25,3 +25,10 @@ Apply when discussing or deciding **Q53** (Collection kind binding), **Q54** (hi
 ## Explicitly out (closed thought experiment)
 
 - Do not revive hierarchy-as-edges **plus** `parent_id` as denormalized cache of those edges.
+
+## Call out performance risk and nonsense
+
+- Proactively warn when a proposal implies heavy recursive edge scans, dual-write sync, N+1 lookups on tree expand, or other hot-path pain.
+- Say plainly when something is conceptually nonsense (same fact twice, overloaded RelationType, clever encoding instead of a named object).
+- Prefer clarity unless there is a concrete reason not to; do not silently accept known bad shapes.
+- Do this in planning replies without waiting to be asked.
