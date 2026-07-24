@@ -258,9 +258,37 @@ body {
   opacity: 1;
 }
 
+.btn.icon.add {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.btn.icon.add:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent-dim) 28%, var(--bg-hover));
+  border-color: var(--accent-dim);
+}
+
+.btn.icon.danger {
+  color: color-mix(in srgb, var(--danger) 75%, var(--muted));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+}
+
 .btn.icon.danger:hover {
   color: var(--danger);
   border-color: var(--danger-dim);
+  background: color-mix(in srgb, var(--danger) 12%, var(--bg-hover));
+}
+
+.action-sep {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--line);
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .tree-row {

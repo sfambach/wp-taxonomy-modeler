@@ -33,9 +33,9 @@ Project root
 |---------|------|---------------------|
 | **Composition Simples** | editable | **Rezept — Backzutaten** (Phase 1 · nur Simples) |
 | **Template** | read-only | (leer — nur Typen) |
-| **BOM Testprojekt** | editable | Spalten, Stückliste, Bauteile |
+| **BOM Testprojekt** | editable | **BOM — Board** (quantity/enum/list) + Bauteile |
 
-State: `localStorage` key `wtt-proto-tree-split-v18` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v19` — **Reset** after upgrade. Tree starts collapsed.
 
 ## Walkthrough — Phase 1 (Simples)
 

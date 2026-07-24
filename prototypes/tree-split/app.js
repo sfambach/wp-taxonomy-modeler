@@ -13,7 +13,7 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v18";
+const STORAGE_KEY = "wtt-proto-tree-split-v19";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -145,6 +145,15 @@ function reindexSiblings(parentId) {
 
 function nextPosition(parentId) {
   return childrenOf(parentId).length;
+}
+
+
+/** Collapse every node that currently has children (default tree state). */
+function collapseAllBranches() {
+  collapsed = new Set();
+  for (const n of nodes.values()) {
+    if (childrenOf(n.id).length > 0) collapsed.add(n.id);
+  }
 }
 
 function createNode(parentId, name, position, opts = {}) {
@@ -435,27 +444,28 @@ function seedBomTestData(compositionsRootId, core) {
     pushEdge(uFarad, pref[name], REL_ALLOWS_PREFIX);
   }
 
-  const schemaId = createNode(compositionsRootId, "Spalten (BOM-Zeile)", 0, {
-    description: "BOM-Test: konkrete table — Kinder = Spalten mit has_type.",
+  const bomCompId = createNode(compositionsRootId, "BOM — Board", 0, {
+    description:
+      "BOM-Composition: Spalten + Instanzzeilen (Backend). quantity / enum / list — Phase 2–3 Demo.",
   });
-  pushEdge(schemaId, types.tTable, REL_HAS_TYPE);
+  pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
-  const cRef = createNode(schemaId, "Reference", 0, {
+  const cRef = createNode(bomCompId, "Reference", 0, {
     description: "RefDes-Liste — has_type → RefDes (list).",
   });
-  const cVal = createNode(schemaId, "Value", 1, {
+  const cVal = createNode(bomCompId, "Value", 1, {
     description: "Bauteilwert als quantity.",
   });
-  const cFp = createNode(schemaId, "Footprint", 2, {
+  const cFp = createNode(bomCompId, "Footprint", 2, {
     description: "Bauform — has_type → Bauart (enum).",
   });
-  const cQty = createNode(schemaId, "Menge", 3, {
+  const cQty = createNode(bomCompId, "Menge", 3, {
     description: "Stückzahl (int) — nicht quantity/Größe.",
   });
-  const cLcsc = createNode(schemaId, "LCSC", 4, {
+  const cLcsc = createNode(bomCompId, "LCSC", 4, {
     description: "Lieferantennummer.",
   });
-  const cStock = createNode(schemaId, "Stock", 5, {
+  const cStock = createNode(bomCompId, "Stock", 5, {
     description: "Lagerflag.",
   });
 
@@ -466,23 +476,24 @@ function seedBomTestData(compositionsRootId, core) {
   pushEdge(cLcsc, types.tString, REL_HAS_TYPE);
   pushEdge(cStock, types.tBool, REL_HAS_TYPE);
 
-  const listId = createNode(compositionsRootId, "Stückliste", 1, {
-    description: "BOM-Test: Beispiel-Stückliste (Instanz-Knoten).",
-  });
-  createNode(listId, "C1 — 100 nF 0603", 0, { description: "Kondensator-Zeile." });
-  createNode(listId, "R1 — 10 kΩ 0603", 1, { description: "Widerstands-Zeile." });
-  createNode(listId, "U1 — ESP32-WROOM-32", 2, { description: "IC-Zeile." });
-  createNode(listId, "D1 — LED green 0805", 3, { description: "Diode/LED-Zeile." });
+  // quantity cell: value|prefix|unitName
+  tableCells.set(bomCompId, [
+    ["C1", formatQuantityCell({ v: "100", p: "n", u: "Farad" }), "0603", "4", "C12345", "true"],
+    ["R1", formatQuantityCell({ v: "10", p: "k", u: "Ohm" }), "0603", "2", "C67890", "true"],
+    ["U1", formatQuantityCell({ v: "", p: "", u: "" }), "ESP32", "1", "C11111", "false"],
+    ["D1", formatQuantityCell({ v: "", p: "", u: "" }), "0805", "2", "C22222", "true"],
+    ["", "", "", "", "", ""],
+  ]);
 
-  const partsId = createNode(compositionsRootId, "Bauteile", 2, {
-    description: "Katalog-Ast für Compositionen (Demo) — Bauteile ≠ Composition.",
+  const partsId = createNode(compositionsRootId, "Bauteile", 1, {
+    description: "Katalog-Ast (Demo) — Bauteile ≠ Composition; später Bauteil-Ref-Spalte.",
   });
   createNode(partsId, "Kondensator", 0, { description: "Kategorie Kondensator." });
   createNode(partsId, "Widerstand", 1, { description: "Kategorie Widerstand." });
   createNode(partsId, "IC", 2, { description: "Kategorie IC." });
   createNode(partsId, "Diode / LED", 3, { description: "Kategorie Diode/LED." });
 
-  return schemaId;
+  return bomCompId;
 }
 
 function activeProject() {
@@ -589,8 +600,12 @@ function createInitial() {
   };
 
   projects = [templateProject, simplesProject, bomProject];
+  collapseAllBranches();
   applyProject(simplesProject);
   selectedId = simplesCompId;
+  // keep path to Rezept visible
+  collapsed.delete(simplesRootId);
+  collapsed.delete(simplesCore.compositionsRootId);
   void schemaId;
 }
 
@@ -1051,6 +1066,7 @@ function moveSibling(id, delta) {
 
 function selectNode(id) {
   if (!nodes.has(id)) return;
+  flushNodeFields();
   selectedId = id;
   persist();
   render();
@@ -1069,12 +1085,25 @@ function setActiveTab(tab) {
   syncTabs();
 }
 
-function renameSelected(name) {
+function renameSelected(name, opts = {}) {
   if (!isProjectEditable()) return;
   const n = nodes.get(selectedId);
   if (!n) return;
-  n.name = name.trim() || n.name;
+  const next = String(name ?? "").trim();
+  if (next) n.name = next;
   persist();
+  if (opts.soft) {
+    const label = document.querySelector(`.tree-row[data-id="${CSS.escape(n.id)}"] .label`);
+    if (label) label.textContent = n.name;
+    const title = document.querySelector("#detail .detail-card > h2");
+    if (title) {
+      // keep badge if present
+      const badge = title.querySelector(".readonly-badge");
+      title.textContent = n.name;
+      if (badge) title.append(" ", badge);
+    }
+    return;
+  }
   renderTree();
   renderRight();
 }
@@ -1146,7 +1175,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 18,
+    version: 19,
     projects,
     activeProjectId,
     rootId,
@@ -1293,6 +1322,7 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v15");
     localStorage.removeItem("wtt-proto-tree-split-v16");
     localStorage.removeItem("wtt-proto-tree-split-v17");
+    localStorage.removeItem("wtt-proto-tree-split-v18");
   } catch {
     /* ignore */
   }
@@ -1304,7 +1334,10 @@ function resetAll() {
 function makeIconButton(label, title, onClick, opts = {}) {
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = `btn icon${opts.danger ? " danger" : ""}`;
+  const extra = [opts.danger ? "danger" : "", opts.add ? "add" : "", opts.className || ""]
+    .filter(Boolean)
+    .join(" ");
+  btn.className = `btn icon${extra ? ` ${extra}` : ""}`;
   btn.title = title;
   btn.setAttribute("aria-label", title);
   btn.textContent = label;
@@ -1368,16 +1401,18 @@ function renderTreeRow(node, depth) {
   }
 
   if (editable) {
-    actions.append(
-      makeIconButton("+", "Kind hinzufügen", () => addChild(node.id)),
-      makeIconButton("×", "Löschen", () => deleteNode(node.id), {
-        danger: true,
-        disabled: isProjectRoot(node.id),
-      })
-    );
-    if (isProjectRoot(node.id)) {
-      const del = actions.querySelector(".danger");
-      if (del) del.style.visibility = "hidden";
+    const addBtn = makeIconButton("+", "Kind hinzufügen", () => addChild(node.id), {
+      add: true,
+    });
+    actions.append(addBtn);
+    if (!isProjectRoot(node.id)) {
+      const sep = document.createElement("span");
+      sep.className = "action-sep";
+      sep.setAttribute("aria-hidden", "true");
+      actions.append(
+        sep,
+        makeIconButton("×", "Löschen", () => deleteNode(node.id), { danger: true })
+      );
     }
   } else if (isProjectRoot(node.id)) {
     const badge = document.createElement("span");
@@ -1459,6 +1494,22 @@ function renameDescription(value) {
   if (!n) return;
   n.description = String(value ?? "");
   persist();
+}
+
+/** Flush in-progress name/description before the detail pane is torn down. */
+function flushNodeFields() {
+  if (!isProjectEditable()) return;
+  const nameEl = document.getElementById("node-name");
+  const descEl = document.getElementById("node-desc");
+  const n = nodes.get(selectedId);
+  if (!n) return;
+  if (nameEl && document.activeElement === nameEl) {
+    const next = nameEl.value.trim();
+    if (next) n.name = next;
+  }
+  if (descEl && document.activeElement === descEl) {
+    n.description = descEl.value;
+  }
 }
 
 /**
@@ -1709,11 +1760,14 @@ function renderDetail() {
   const input = document.createElement("input");
   input.id = "node-name";
   input.type = "text";
+  input.className = "form-control";
   input.value = node.name;
+  input.autocomplete = "off";
   input.readOnly = !editable;
   input.disabled = !editable;
   if (editable) {
-    input.addEventListener("change", () => renameSelected(input.value));
+    input.addEventListener("input", () => renameSelected(input.value, { soft: true }));
+    input.addEventListener("change", () => renameSelected(input.value, { soft: true }));
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -1737,6 +1791,7 @@ function renderDetail() {
   desc.readOnly = !editable;
   desc.disabled = !editable;
   if (editable) {
+    desc.addEventListener("input", () => renameDescription(desc.value));
     desc.addEventListener("change", () => renameDescription(desc.value));
   }
   descField.append(descLab, desc);
