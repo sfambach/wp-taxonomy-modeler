@@ -54,7 +54,7 @@ Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separat
 Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
-**Composition:** Definition (columns+types) + Instanz. **Instance lean:** ParameterValue on Composition Node; Level B uses CompositionRow + cell values (Composition-Ref for members). Values **in-core** (Q16). Naming Zusammenstellung/Composition decided.  
+**Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU) with Parameters. **Composition** = Zusammenstellung (columns+rows); Bauteile only via **Bauteil-Ref** column. Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only** (no Bauart values, no Ohm/Farad); those live in the editable BOM Testprojekt.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  

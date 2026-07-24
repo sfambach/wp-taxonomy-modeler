@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.71-plan** (2026-07-24).
+Last synced from plan version **0.6.72-plan** (2026-07-24).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -30,7 +30,7 @@ Last synced from plan version **0.6.71-plan** (2026-07-24).
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
 | **Q55:** Parameter define/inherit on catalog Nodes (Bauform etc.) | Open (spin — Bauform as Parameter lean) |
-| **Q56:** Composition / UX Zusammenstellung (GPU card, BOM, Build, …) | Open (concept lean); **naming decided** |
+| **Q56:** Composition = Zusammenstellung (BOM/Rezept/Build); Bauteil ≠ Composition | Open (corrected lean); **naming decided** |
 | Goal path: create one Composition (blockers #1–3) | In progress |
 | Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
 | Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |
