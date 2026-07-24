@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.70-plan"
+version: "0.6.71-plan"
 last_updated: "2026-07-24"
 related_plans:
   - docs/plans/project-plan.md
@@ -108,11 +108,22 @@ classDiagram
   }
 
   class Parameter {
-    <<spin Q55>>
+    <<definition Q55>>
     +name
     +type : Node
-    +value : ?
     +required : ?
+  }
+
+  class ParameterValue {
+    <<instance content>>
+    +parameter : Parameter
+    +payload : typed
+  }
+
+  class CompositionRow {
+    <<Level B instance>>
+    +position : ?
+    +cells : ParameterValue[]
   }
 
   class Relation {
@@ -144,8 +155,10 @@ classDiagram
   }
 
   note for Project "Project ≈ taxonomy (Q18)\nTemplate holds simples + Collection + quantity (Q50 lean)\ncopy template → new Project"
-  note for Node "Catalog: Vorlage + Ausprägung\nComposition/Zusammenstellung (Q56)\nparams and/or member refs"
-  note for Parameter "DEFINITION on Node\nchildren inherit defs\nfill values on leaves\nobject vs Node-role TBD"
+  note for Node "Catalog: Vorlage + Ausprägung\nComposition/Zusammenstellung (Q56)"
+  note for Parameter "DEFINITION only\nname + type\nowned by Vorlage"
+  note for ParameterValue "INSTANCE content\npayload by type"
+  note for CompositionRow "Level B lines\ncells = ParameterValues"
   note for SimpleType "Live in the template Project\nint double string char bool\ncopied into every new Project"
   note for DerivedOrCompositeType "Collection: list/table/enum (Q52)\nquantity (Größe, not Messung):\nvalue + prefix + base_unit"
   note for Relation "EXPLORATORY (Q35)\nhas_type / allows_prefix / …\nNOT hierarchy store (closed TE)"
@@ -161,6 +174,10 @@ classDiagram
   Node "0..1" --> "*" Node : parent / children
   Node "1" --> "*" Parameter : defines
   Parameter --> Node : type
+  Node "1" --> "*" ParameterValue : Level A fills
+  ParameterValue --> Parameter : parameter
+  Node "1" --> "*" CompositionRow : Level B rows
+  CompositionRow "1" --> "*" ParameterValue : cells
   Node <|-- SimpleType : role / config
   Node <|-- DerivedOrCompositeType : role / config
   SimpleType ..> DerivedOrCompositeType : derive / compose
@@ -172,30 +189,32 @@ classDiagram
 ```
 
 **Legend:** `Relation` / `RelationType` are **exploratory** (Q35). They are **not** the hierarchy store (closed TE).  
-**Q54 lean:** `parent_id` tree = **categorize Bestandteile** (BOM / Hardware / Recipe) **+ inherit hierarchical properties**.  
-**Q55 spin:** **Parameter** = attribute **definition** on a catalog Node; child Nodes **inherit** those definitions and may fill/lock values. Whether Parameter is a **distinct object** or a **Node role** (Q33) is open — vocabulary returns either way.  
+**Q54 lean:** `parent_id` tree = catalog + inherit.  
+**Parameter** = definition; **ParameterValue** / **CompositionRow** = instance content when a Composition object is created.  
 Each RelationType has one **`label`** (no `forward`/`inverse` fields).  
 Optional **`directed`** (unsicher — Q44): if true, graph UI shows an **arrow** `from → to`; if false, a plain **line**.  
 `bidirectional` may overlap with undirected — clarify or drop (Q41/Q44).  
 `DisplayHint` = how related nodes appear structurally (attribute / taxonomy / tree / reference).  
 **Explicitly out:** `parent_id` as cache of hierarchy edges (closed TE).  
-**Q56 lean:** **Composition** / UX **Zusammenstellung** (**naming decided**; rename later OK). Ausprägung *is* a composition; may reference other compositions (BOM/Build). Katalog holds Vorlagen+Ausprägungen.  
-**Schema-as-Nodes (Q46):** Composition schemas/instances as Nodes + Collections — no hard `BomList` / `Recipe` / `Build` classes required.  
-**Types:** simples + composed (`quantity`, Collection) remain type Nodes (Q36/Q52).  
-**Q49 lean:** simples use config that disables originating Relations — still open with Q34.
+**Q56:** **Composition** / UX **Zusammenstellung** (naming decided).  
+**Schema-as-Nodes (Q46):** no hard BomList/Recipe/Build classes.  
+**Types:** simples + composed (`quantity`, Collection).  
+**Q49 lean:** simples `originate_relations=false` via config — still open with Q34.
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
 | 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; Composition instances (Q56) |
-| 2 | **Parameter** | **Spin (Q55):** definition on a catalog Node (name + type); children inherit; values on leaves — object vs Node-role TBD |
-| 3 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
-| 4 | **Changelog** | History container (`changes`) |
-| 5 | **Change** | One audit entry (when, who, what, version) |
-| 6 | **Relation** | **Exploratory (Q35):** typed edge; **not** adopted as hierarchy store (see closed Q53/Q54 TE) |
-| 7 | **RelationType** | **Exploratory:** type with one `label` (no inverse field) |
-| 8 | **Composition** (UX: Zusammenstellung) | **Lean (Q56):** bundles Parameter values and/or refs to other Compositions — GPU card, BOM, Build, Gericht |
+| 2 | **Parameter** | **Definition** (name + type) owned by Vorlage; inherited by children |
+| 3 | **ParameterValue** | **Instance content** — typed payload for one Parameter on a Composition Node or Row |
+| 4 | **CompositionRow** | **Level-B instance line** (BOM/Rezept/Build) — ordered cells = ParameterValues |
+| 5 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples; defaults via generate or template copy (**Q50**) |
+| 6 | **Changelog** | History container (`changes`) |
+| 7 | **Change** | One audit entry (when, who, what, version) |
+| 8 | **Relation** | **Exploratory (Q35):** typed edge; **not** hierarchy store |
+| 9 | **RelationType** | **Exploratory:** type with one `label` |
+| 10 | **Composition** (UX: Zusammenstellung) | Node + Definition and/or Rows; identity of the Zusammenstellung |
 
 ### Shared audit idea (recommended)
 
@@ -1049,6 +1068,47 @@ To **create a Composition definition** we must be able to:
 3. Persist that schema so instances can fill it.
 
 **Composition-Ref** as a first-class type is still missing — needed for BOM/Rezept/Build member columns. Flag for next lock (blocker **#3b**).
+
+###### Viewpoint 2 — Instanz / Inhalt ablegen (when a Composition object is created)
+
+**Lean:** do **not** stuff filled content into `Node.config` blobs or as catalog `parent_id` children. Use dedicated instance objects.
+
+| Created object | What is stored | Where |
+|----------------|----------------|-------|
+| **Level A Ausprägung** (GPU card, `R 1kΩ 0603`) | One **Node** (Composition identity) + one **ParameterValue** per filled Parameter | `ParameterValue { composition_node, parameter, payload }` |
+| **Level B list** (Stückliste, Gericht, PC-Build) | One **Node** (list identity) + **CompositionRow**s; each row has **ParameterValue** cells (incl. Composition-Ref payloads) | `Node → rows[] → cells[]` |
+
+```text
+create Ausprägung "R 1kΩ 0603"
+  Node(id=N1, parent=Widerstand|1kΩ-Gruppe, role=composition)
+  ParameterValue(N1, Wert,    payload={kind:quantity, value:1, prefix:k, unit:Ohm})
+  ParameterValue(N1, Bauform, payload={kind:enum, option:0603})
+
+create Stückliste "Platine XY"
+  Node(id=N2, role=composition/table-instance)
+  CompositionRow(N2, position=1)
+    cell Reference → payload list ["R1","R2"]
+    cell Bestandteil → payload ref N1
+    cell Menge → payload int 2
+```
+
+**Payload shape (by Parameter.type):**
+
+| Type | Payload lean |
+|------|----------------|
+| simple | scalar (`int`/`double`/`string`/`char`/`bool`) |
+| `quantity` | `{ value, prefix?, base_unit }` (group — Q45) |
+| enum | option id / key |
+| list | ordered scalars or nested payloads |
+| Composition-Ref | target Composition Node id |
+
+**Persistence (conceptual — Q11/Q16):** domain objects first; WP mapping later (custom tables or meta). Filled values are **in-core** for Compositions (strengthens Q16 lean) — otherwise Zusammenstellung cannot exist.
+
+**Reject:** values only on Relations for Level A (forces fake edges); JSON blob without Parameter ids (breaks schema evolution); dual-write Node meta + ParameterValue.
+
+**Perf:** load ParameterValues by `composition_node_id` (indexed); rows by parent Node + `position`. Fine for BOM-sized lists; huge catalogs may page.
+
+**Still open:** exact PHP DTO field names; whether Quantity payload stores unit Node ids vs keys; host-only columns (Preis/Lager) vs in-core.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
 Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
