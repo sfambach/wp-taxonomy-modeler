@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.84-plan** (2026-07-25).
+Last synced from plan version **0.6.85-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -16,7 +16,7 @@ Last synced from plan version **0.6.84-plan** (2026-07-25).
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
 | Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
-| Data structure: **no Parameter / ParameterRole** — ordinary Nodes + type binding (Q33/Q34) | Done (planning) |
+| Data structure: **Parameter class** (`name` + `type` from Typ-Ast) on every Node (Q64) | Done (planning) |
 | Data structure: **Project ≈ taxonomy** (Q18); **Q50** default Nodes = generate vs template copy | In progress |
 | Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
 | Data structure: Project Definition anchors + Node.template | Done (planning) |
@@ -25,11 +25,11 @@ Last synced from plan version **0.6.84-plan** (2026-07-25).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v32 (tree=BOM structure; Projektname instance; Block) | In progress |
+| UI prototype `prototypes/tree-split` v33 (Parameter name+type on Node; BOM/Projektname) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
-| **Q55:** Slot = typed Node (no Parameter class); inherit along catalog; ParameterValue for fills | Done (planning) |
+| **Q55/Q64:** Parameter class on Node (name + type); inherit defs; ParameterValue for fills | Done (planning) |
 | **Q56:** Composition vs Bauteil; catalog ref = `subtree` + `ref_scope` | Done (planning) |
 | **Q26:** type only under Type branch; Präfix/Basiseinheit under their anchors | Done (planning) |
 | **Q57:** BOM Fußzeile = same columns; per cell sum/avg/min/max/count/none | Done (planning) |
@@ -49,7 +49,7 @@ Last synced from plan version **0.6.84-plan** (2026-07-25).
 | Guideline: modern design paradigms / best practice | Done (planning) |
 | Core types: template has **simples** + **quantity** + **Collection** (Q36/Q52) | Done (planning) |
 | **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
-| **Q20:** typed PHP DTOs; no Parameter class | Done (planning) |
+| **Q20:** typed PHP DTOs including Parameter | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
 | Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |

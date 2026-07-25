@@ -56,7 +56,7 @@ WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
 
 | Layer | Responsibility | Examples |
 |-------|----------------|----------|
-| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `CompositionFooter`, `FooterCell`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
+| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Parameter`, `Relation`, `RelationType`, `NodeConfig`, `CompositionFooter`, `FooterCell`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
 | **Domain service** | Invariants & workflows (no WP I/O) | tree walk/move/delete policy; `bindType` / `bindRefScope` / `assertTypeBindingsComplete`; `copyFromTemplate` |
 | **Repository (DAO)** | Load/save/map | `*_Repository` — only place that talks to WP storage |
 | **WP adapter** | Hooks, Admin, REST | `class-plugin.php`, screens, REST routes; host filters = extension surface |
@@ -69,8 +69,8 @@ WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
 
 ## PHP representation (**Q20 decided**)
 
-Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, and `Change`.  
-**Decided (Q33):** **no Parameter class** and **no ParameterRole** — attribute Nodes are ordinary `Node`s with type binding via **configuration** / `has_type`.  
+Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, **`Parameter`**, `Changelog`, `Change`, `ParameterValue`, ….  
+**Decided (Q64 / Q33 revised):** **Parameter class** — `name` (user text) + `type` (Node under Typ-Ast); every Node may own Parameters.  
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
@@ -84,19 +84,17 @@ Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or 
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
 **Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
-**Types = Nodes under `type_node` (Typ-Ast)** — folders e.g. Simple / Complex / Collection are just tree structure; **no `TypeKind` class**.  
-**Q26 decided:** resolve Node type **only under `type_node`**.  
-**Q59 decided:** `Project.start_node` from Setup (default focus).  
-**Q63:** Tree = **definition**; WP page/block = **instance** (`ParameterValue` / rows).  
-**Q61:** Tree structure name **`BOM`**; slot **`Projektname`** on **Collection** (inherited); title `BOM als Bauteilliste – {Projektname}` from instance.  
-**BOM (Q57/Q58/Q60/Q62):** Fußzeile + `footer_op`; Menge = Stück; allowlists; block picks Collection art then fills Projektname + rows.  
+**Types = Nodes under `type_node` (Typ-Ast)** — no `TypeKind` class.  
+**Q64:** `Parameter { name, type }` on any Node; `type` ∈ Typ-Ast.  
+**Q26:** type Nodes only under `type_node`.  
+**Q59:** `Project.start_node` from Setup.  
+**Q63:** Tree = definition (Parameter defs); WP page = instance (ParameterValues / rows).  
+**Q61:** Tree structure **`BOM`**; Parameter **Projektname** on Collection (inherited); title from instance.  
+**BOM (Q57/Q58/Q60/Q62):** columns = Parameters; Fußzeile; Menge = Stück; allowlists; block fills Parameters + rows.  
 **Q50 leaning:** copy template Project into new Projects.  
-**Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
-**Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
-`enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39, Q49–Q51, Q55–Q60 and [`docs/plans/data-structure.md`](plans/data-structure.md).
-
-**Q55 decided:** keep Q33 — “Parameter” is vocabulary for typed slot Nodes; no Parameter PHP class. Instance fills = `ParameterValue`.
+**Template vs demo:** Template read-only; demo editable.  
+**Q34/Q49 proposal:** simples `capabilities.originate_relations = false`.  
+See Q16, Q20–Q39, Q49–Q51, Q55–Q64 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-structure.md) and must be refreshed on every structure change.
 
@@ -166,22 +164,20 @@ Template trees use `template = true`. Persistence: Q19.
 **Taxonomy:** **Project ≈ taxonomy** (strong leaning Q18) — Node has **no** `taxonomy` field.  
 **Defaults:** seed via generate **or** template-Project copy (**Q50**). Persistence: Q19.
 
-### Attribute Nodes (no Parameter / ParameterRole)
+### Parameter (Q64 — class reintroduced)
 
-There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `Länge` are ordinary **Nodes** that bind a type:
+**Parameter** is a class again (revises Q33). Every **Node** may own Parameters. A Parameter is **not** a tree Node.
 
-| Field / binding | Required | Meaning |
+| Field | Required | Meaning |
 |-------|----------|---------|
-| *(Node fields)* | yes | `id`, `parent_id`, `name`, `template`, `changelog`, … |
-| `config` | ? | type binding / capabilities (Q34) — shape TBD |
-| `type` | **yes** | **Node** under `project.type_node` via config or `has_type` |
-| `prefix` | **optional** | **Node** under `project.prefix_node` |
-| `base_unit` | **optional** | **Node** under `project.base_unit_node` |
-| `value` | **?** | Filled quantity reading (e.g. `10`); storage Q16 |
+| `name` | **yes** | User text when assigning the Parameter to a Node |
+| `type` | **yes** | **Node** under `project.type_node` (Typ-Ast only) |
+| `prefix` | optional | Node under `project.prefix_node` (when type needs it) |
+| `base_unit` | optional | Node under `project.base_unit_node` |
+| filled value | **?** | **ParameterValue** (e.g. quantity reading); storage Q16 |
 
-**Agreed:** no Parameter / ParameterRole (Q33/Q34); quantity composition as above; fixed simple types per project.  
-**Open (Q49):** may simples originate Relations — special kind vs config disable.  
-**Dropped (Q14):** no separate owning `node_id`.
+**Agreed:** Parameter class with `name` + `type`; fixed simple types per project.  
+**Open (Q49):** may simples originate Relations — special kind vs config disable.
 
 ### Changelog / Change (shared)
 
@@ -190,16 +186,16 @@ There is **no** Parameter type and **no** ParameterRole. Nodes like `Wert` / `L�
 | `Changelog` | `changes: Change[]` | History container on each auditable object |
 | `Change` | `timestamp`, `changer`, `change`, `version` | When, who, what, version (details Q21–Q23) |
 
-Applied to **Project** and **Node** via composition (`changelog` field). (No Parameter class — Q33/Q55.)
+Applied to **Project** and **Node** via composition (`changelog` field).
 
 ### Parameter type and unit composition
 
 | Field | Source | Example |
 |-------|--------|---------|
-| `type` | under Project.`type_node` | `quantity`, `url` |
+| `type` | under Project.`type_node` | `quantity`, `text` |
 | `prefix` | under Project.`prefix_node` | `k`, `m` |
 | `base_unit` | under Project.`base_unit_node` | `Ohm`, `Meter` |
-| `value` | filled reading (Q16) | `10` |
+| `value` | ParameterValue / filled reading (Q16) | `10` |
 
 **Quantity reading (agreed):** `value` + `prefix` + `base_unit` → e.g. `10` + `m` + `Meter` = `10 mm`.  
 `quantity` is **composite** (uses `number` or `integer`), not a rival scalar.  
@@ -218,8 +214,8 @@ Details: Q24–Q39 in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 | Project trees | A project may include several such root-defined trees |
 | Parent link | One node can have one parent node (or none) |
 | Children | One node can have several child nodes (or none) |
-| Parameters | **Dropped** — no Parameter class / ParameterRole; attribute **Nodes** + type binding |
-| Parameter owner | **Q14 dropped** — `parent_id` and/or Relations only |
+| Parameters | **Parameter class (Q64)** — `name` + `type` on any Node |
+| Parameter inheritance | Along `parent_id`; instances fill ParameterValue |
 | Simple types & Relations | Typically no originating Relations — special kind vs config (**Q49**) |
 | Typed edges | Exploratory Relation + RelationType (`consists_of`↔`is_part_of`, …) — Q35/Q41 |
 | Relation display | part-of → attributes of parent; inherit along is_a — Q42/Q43 |

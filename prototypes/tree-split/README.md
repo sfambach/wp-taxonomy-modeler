@@ -1,6 +1,6 @@
 # Tree split prototype
 
-Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung).
+Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung) + **Parameter**.
 
 **Not** WordPress plugin code. Open `index.html` in a browser (or `python3 -m http.server` in this folder).
 
@@ -8,18 +8,29 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 | Tab | Role |
 |-----|------|
-| **Knoten** | Definition im Baum (Strukturname, Spalten, Typ-Bindung, Allowlists) |
+| **Knoten** | Definition: Node + **Parameters** (name + Typ-Ast), Allowlists, Fußzeile |
 | **Backend** | **Instanz** wie WP-Seite: Projektname + Tabelle + Titel darunter |
 | **Block** | WP-Block-Skizze: Collection-Art wählen + gleiche Instanz-Tabelle |
 | **Feld** | HTML-Spielwiese — unangetastet |
+
+## Parameter (Q64)
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Text, vom Benutzer bei Zuweisung zum Knoten |
+| `type` | Knoten aus dem **Typ-Ast** |
+
+- Jeder Node kann Parameter haben; Parameter ≠ Baumknoten.
+- BOM-Spalten = eigene Parameter am BOM-Knoten.
+- `Projektname` = Parameter an **Collection** (vererbt); Instanzwert auf der WP-Seite.
 
 ## Definition vs Instanz (Q63)
 
 | | Baum (Definition) | WP-Seite / Backend-Tab (Instanz) |
 |--|-------------------|----------------------------------|
 | Name | Strukturknoten heißt **`BOM`** | — |
-| Projektname | Slot unter **Collection** (vererbt) | Pflicht-**Wert** eingeben |
-| Spalten / Typen / Fußzeile-Ops | Schema | — |
+| Projektname | Parameter an **Collection** | Pflicht-**Wert** eingeben |
+| Spalten / Typen / Fußzeile-Ops | Parameter-Schema | — |
 | Zeilen / Bauteile | — | CompositionRows füllen |
 | Titel unter Tabelle | — | `BOM als Bauteilliste – {Projektname}` |
 
@@ -31,24 +42,24 @@ Project root
 │   ├── Datentypen
 │   │   ├── Simple
 │   │   └── Complex
-│   │       └── Collection
-│   │           ├── Projektname   ← Attribut (Definition), vererbt
+│   │       └── Collection   ← Parameter Projektname→text (kein Kindknoten)
 │   │           ├── list
 │   │           ├── table
 │   │           └── enum
 │   ├── Präfixe
 │   └── Basiseinheit
 ├── Compositionen
-│   ├── Rezept — …
-│   └── BOM                 ← Strukturname bleibt BOM
+│   ├── Rezept — …          ← Spalten noch als Kindknoten (Legacy-Demo)
+│   └── BOM                 ← Spalten = Parameters
 └── Bauteile
 ```
 
 ## How to view (Demo)
 
-1. Open `index.html` → **Reset** (v32).
-2. Tree: **Compositionen → BOM** (structure). Under **Typen → … → Collection** see **Projektname**.
-3. Tab **Backend**: edit **Projektname (Instanz)** → title under table updates; tree name stays BOM.
-4. Tab **Block**: pick Collection art + same instance fields/table.
+1. Open `index.html` → **Reset** (v33).
+2. Tree: **Compositionen → BOM**. Tab **Knoten**: Parameter-Liste (Bauteil Wahl, Menge, …).
+3. **Typen → … → Collection**: Parameter **Projektname** (kein Kind „Projektname“).
+4. Tab **Backend**: Instanz-**Projektname** → Titel unter der Tabelle; Baumname bleibt BOM.
+5. Tab **Block**: Collection-Art + gleiche Instanz-Tabelle.
 
-State: `localStorage` key `wtt-proto-tree-split-v32` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v33` — **Reset** after upgrade.

@@ -1,8 +1,8 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
+overview: Core objects Project, Node, Parameter (name + type), Changelog/Change. Every Node may own Parameters; type is a Node from the Type branch. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.84-plan"
+version: "0.6.85-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -63,6 +63,7 @@ classDiagram
   direction TB
   class Project
   class Node
+  class Parameter
   class NodeConfig
   class CompositionFooter
   class FooterCell
@@ -80,31 +81,32 @@ classDiagram
   Project --> Node : roots / anchors / start
   Project --> Changelog
   Node --> Node : parent_id
+  Node --> Parameter : parameters
   Node --> NodeConfig
   Node --> Changelog
   Node --> CompositionRow
-  Node --> ParameterValue
+  Parameter --> Node : type
+  ParameterValue --> Parameter
   NodeConfig --> Capabilities
   NodeConfig --> CompositionFooter
   NodeConfig --> FooterAggOp
   CompositionFooter --> FooterCell
   FooterCell --> FooterAggOp
-  FooterCell --> Node
+  FooterCell --> Parameter
   Changelog --> Change
   Relation --> Node
   Relation --> RelationType
   RelationType --> DisplayHint
   CompositionRow --> ParameterValue
-  ParameterValue --> Node
   ParameterValue --> QuantityReading
 ```
 
 ## Current class diagram (detailed)
 
 Conceptual domain model (planning — not implemented PHP).  
-**Q33/Q34:** no `Parameter` / `ParameterRole` class — slots are ordinary `Node`s with `has_type` (+ optional `ref_scope`, `config.required`).  
+**Q33/Q55/Q64 revised:** **`Parameter` is a class again.** Every Node may own Parameters. Each Parameter has **`name`** (user text) + **`type`** (Node under Typ-Ast).  
 
-**Layer note (Q20):** fields below are **DTO** shape. Many *methods* are a conceptual API — at implementation they move to **Domain Services** / **Repositories** (tree walk, bindType/refScope, copyFromTemplate, persist). Do not read this diagram as “fat Active Record.” See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) § Layers.
+**Layer note (Q20):** fields below are **DTO** shape. Many *methods* are a conceptual API — at implementation they move to **Domain Services** / **Repositories**. See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) § Layers.
 
 ```mermaid
 classDiagram
@@ -144,6 +146,7 @@ classDiagram
     +template: bool
     +position: int?
     +project_id: Id?
+    +parameters: Parameter[]
     +config: NodeConfig?
     +changelog: Changelog
     +parent() Node?
@@ -153,20 +156,28 @@ classDiagram
     +path() string
     +isRoot() bool
     +isTemplate() bool
+    +parametersOwn() Parameter[]
+    +parametersInherited() Parameter[]
+    +addParameter(name, type) Parameter
+    +removeParameter(param) void
     +move(newParent, position) void
     +rename(name) void
     +setDescription(text) void
-    +typeNode() Node?
-    +typeKey() string
-    +refScopeRoot() Node?
-    +isRequired() bool
-    +setRequired(flag) void
     +outgoingRelations(label?) Relation[]
     +incomingRelations(label?) Relation[]
-    +bindType(typeNode) void
-    +bindRefScope(catalogRoot) void
-    +assertTypeBindingsComplete() void
     +recordChange(changer, body, version) void
+  }
+
+  class Parameter {
+    +id: Id
+    +name: string
+    +type: Node
+    +owner: Node
+    +required: bool?
+    +footer_op: FooterAggOp?
+    +ref_scope: Node?
+    +typeKey() string
+    +assertTypeInTypAst() bool
   }
 
   class NodeConfig {
@@ -267,12 +278,12 @@ classDiagram
 
   class ParameterValue {
     <<instance content>>
-    +slot: Node
+    +parameter: Parameter
     +payload: typed
     +asScalar() any?
     +asNodeRef() Id?
     +asQuantity() QuantityReading?
-    +validateAgainstSlot() bool
+    +validateAgainstParameter() bool
   }
 
   class CompositionRow {
@@ -295,15 +306,15 @@ classDiagram
   }
 
   note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
-  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34).\nTypes = Nodes under type_node.\nTree BOM name = structure;\nProjektname = Collection slot → instance"
-  note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57);\nfooter_op on column slots"
+  note for Node "May own Parameters (Q64).\nTree hierarchy = parent_id.\nBOM structure name ≠ Projektname"
+  note for Parameter "name = user text\ntype = Node in Typ-Ast\nowner = one Node"
+  note for NodeConfig "Composition allowlists (Q60);\nfooter on BOM (Q57)"
   note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
-  note for FooterCell "op: sum|avg|min|max|count|none|label"
+  note for FooterCell "op via Parameter.footer_op"
   note for FooterAggOp "simple column aggregates only"
-  note for Relation "Exploratory (Q35)\nhas_type | ref_scope |\nallows_prefix | multiplikator\nNOT hierarchy store"
-  note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
-  note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
-  note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id;\nMenge = Stück int"
+  note for Relation "Exploratory (Q35)\nallows_prefix | multiplikator |\nref_scope — NOT hierarchy"
+  note for ParameterValue "Filled instance value\nfor a Parameter"
+  note for CompositionRow "BOM/Rezept lines;\ncells → ParameterValue;\nMenge = Stück int"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Node : definition_root
@@ -313,13 +324,16 @@ classDiagram
   Project "1" --> "1" Node : start_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent_id / children
+  Node "1" --> "*" Parameter : parameters
   Node "1" --> "0..1" NodeConfig : config
+  Parameter --> Node : type
+  Parameter --> Node : owner
+  Parameter --> FooterAggOp : footer_op
   NodeConfig --> Capabilities : capabilities
   NodeConfig --> CompositionFooter : footer
-  NodeConfig --> FooterAggOp : footer_op
   CompositionFooter "1" --> "*" FooterCell : cells
   FooterCell --> FooterAggOp : op
-  FooterCell --> Node : slot
+  FooterCell --> Parameter : parameter
   Node "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
   Relation --> Node : from
@@ -329,40 +343,41 @@ classDiagram
   Node "1" --> "*" CompositionRow : composition rows
   CompositionRow "1" --> "*" ParameterValue : cells
   Node "1" --> "*" ParameterValue : Bauteil fills
-  ParameterValue --> Node : slot
+  ParameterValue --> Parameter : parameter
   ParameterValue --> QuantityReading : payload?
 ```
 
-**Invariants (type bindings — live on model, not only UI):**
+**Invariants (Parameter — Q64 / Q26):**
 
-| Type key | Extra binding | Method check |
-|----------|---------------|--------------|
-| simples / `node_ref` / `quantity` / Collection | `has_type` only; target under `type_node` (**Q26**) | `typeNode()` set; `isUnderTypeBranch` |
-| **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
+| Rule | Check |
+|------|-------|
+| Every Node may have zero or more Parameters | `Node.parameters` |
+| Parameter.`name` | Non-empty user text at assignment (not a tree Node) |
+| Parameter.`type` | Must be a Node under `Project.type_node` (Typ-Ast) |
+| `subtree` parameters | May carry `ref_scope` → catalog root |
+| Inheritance | Child Nodes inherit Parameter **definitions** along `parent_id`; instances fill ParameterValue |
 
-**Composition / BOM (Q57–Q63):**  
-- **Tree definition:** structure node name stays **`BOM`** (not the project name).  
-- **`Projektname`:** required **attribute slot on `Collection`**, inherited by all Collection descendants; filled only as **instance value** on the WP page/block (**Q61**/Q63).  
-- **Display title under table (instance):** `BOM als Bauteilliste – {Projektname}` (**Q61**).  
-- **Fußzeile:** same column count; per-cell `footer_op` (**Q57**) — definition on columns.  
+**Composition / BOM (Q57–Q64):**  
+- **Tree definition:** structure node name stays **`BOM`**. Columns = **Parameters** on that Node (name + type).  
+- **`Projektname`:** **Parameter** on **Collection** (`name`="Projektname", `type`=text), inherited; instance value on WP page/block (**Q61**/Q63).  
+- **Display title (instance):** `BOM als Bauteilliste – {Projektname}`.  
+- **Fußzeile:** same column count; per Parameter `footer_op` (**Q57**).  
 - **Menge** = Stück (`int`) (**Q58**).  
-- Allowlists: `allowed_types` / `allowed_base_units` (**Q60**).  
-- **WP Block:** pick Collection art → fill Projektname + rows (**Q62**).  
-- **No `TypeKind` class** — types are Nodes under `type_node`.
+- Allowlists (**Q60**); WP Block (**Q62**). No `TypeKind` class.
 
-**Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
+**Legend:** Hierarchy = `parent_id` (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). **Parameter ≠ Node.**
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; **Bauteil** and **Composition** identities |
-| 2 | **Bauteil** | Catalog part (e.g. Widerstand, GPU-Karte) — Parameter defs + ParameterValues; **not** a Composition |
-| 3 | **Slot / “Parameter”** *(vocab)* | Typed attribute/column **Node** (`has_type`…); **not** a PHP class (Q33/Q55) |
-| 4 | **ParameterValue** | Filled payload on a **Bauteil** or in a **CompositionRow** cell |
-| 5 | **Composition** (UX: Zusammenstellung) | List/table Zusammenstellung — column schema + rows (BOM, Rezept, Build) |
-| 6 | **CompositionRow** | One line of a Composition — cells include **Bauteil-Ref** and other typed columns |
-| 7 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples (**Q50**) |
+| 1 | **Node** | Tree identity (catalog, types, Composition structure, …); may **own Parameters** |
+| 2 | **Parameter** | **`name`** (user text) + **`type`** (Node from Typ-Ast); assigned to one Node (**Q64**) |
+| 3 | **Bauteil** | Catalog part (e.g. Widerstand) — Parameters + ParameterValues; **not** a Composition |
+| 4 | **ParameterValue** | Filled instance payload for a Parameter (Bauteil or CompositionRow cell) |
+| 5 | **Composition** (UX: Zusammenstellung) | Zusammenstellung; columns = Parameters; rows = CompositionRows |
+| 6 | **CompositionRow** | One line — cells are ParameterValues |
+| 7 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors (**Q50**) |
 | 8 | **Changelog** | History container (`changes`) |
 | 9 | **Change** | One audit entry (when, who, what, version) |
 | 10 | **Relation** | **Exploratory (Q35):** typed edge; **not** hierarchy store |
@@ -462,7 +477,7 @@ flowchart TB
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
-- **No Parameter class and no ParameterRole** — **decided (Q33/Q34)**; attribute nodes are ordinary Nodes with type binding via config/`has_type`
+- **Parameter class** — **decided (Q64 / Q33 revised)**; every Node may own Parameters (`name` + `type`); not a tree Node
 - Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via `parent_id` and/or Relations (hierarchy-as-edge + `parent_id` cache hybrid **excluded** — closed TE)
 - Simple type Nodes typically **do not originate Relations** — **strong lean (Q49):** config `capabilities.originate_relations = false` on simples (not a hard special kind); decide with Q34
 - Every Project and Node has a **changelog**. — **agreed**
@@ -505,15 +520,20 @@ class Node {
 **Why config over special kind:** same storage/UI for all Nodes; template can seed capability flags; derived types (`enum`, `quantity`) can keep `originate_relations = true` if needed.  
 **Still open until user confirms:** exact key names; whether derived types may originate Relations; empty/missing config = allow Relations (default true).
 
-### Design decision: no Parameter and no ParameterRole
+### Design decision: Parameter class reintroduced (**Q64**)
 
-**Q33/Q34/Q55:** Names like `Wert` / `Länge` / Composition columns **are ordinary Nodes** (slots).  
-There is **no** Parameter class, **no** ParameterRole stereotype, and **no** PHP subclass.  
-“Parameter” remains **ubiquitous language** for a typed slot — not a stored type.  
-Type binding: Relations (`has_type`, optional `ref_scope`) + `Node.config` (`required`, capabilities).  
-**Inheritance:** child catalog Nodes inherit **slot definitions** from ancestors along `parent_id`; instances fill **ParameterValue**.  
-**Q49 strong lean:** simples `capabilities.originate_relations = false` — decide with Q34.  
-Typed edges (`besteht-aus`) may still *display* those Nodes as attributes — orthogonal (Q35/Q42).
+**Q33/Q55 revised (2026-07-25):** The slot-as-Node model softened “Parameter” too far.
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Plain text, set by the user when assigning the Parameter to a Node |
+| `type` | A **Node from the Typ-Ast** only |
+
+- Every **Node** may own Parameters (`Node.parameters`).
+- A Parameter is **not** a tree Node.
+- Composition columns and catalog attributes (Wert, Projektname, …) are Parameters.
+- **Inheritance:** children inherit Parameter definitions along `parent_id`; instances fill **ParameterValue**.
+- **Q49 lean** (unchanged): simples `capabilities.originate_relations = false`.
 
 ---
 
@@ -619,27 +639,25 @@ Node ◄──(many)────── Parameters
 
 ---
 
-## 2. Attribute Nodes (no Parameter / ParameterRole)
+## 2. Parameter (Q64 — class reintroduced)
 
 ### Core idea
 
-Configurable attributes (often quantities) such as `Wert` or `Länge` are **ordinary Nodes**.  
+Configurable attributes (often quantities) such as `Wert` or `Länge` are **Parameters** on a Node — not child tree Nodes.
 
-**Decided (Q33/Q34):** **no Parameter class**, **no ParameterRole**, **no PHP subclass**.  
-A Node becomes an “attribute” by binding a **type** (and optional prefix / base_unit / value) via **config** and/or Relations (`has_type`).
+**Decided (Q64 / Q33 revised):** **Parameter class** with **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a PHP subclass of Node; not a tree Node.
 
-**Rejected:** Parameter as a separate object via `node_id`.  
-**Dropped:** ParameterRole as a formal diagram/model stereotype (hinfällig without Parameter).
+**Dropped:** ParameterRole stereotype; slot-as-Node for attribute names.
 
 **Cardinality (decided direction):**
 
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
-| Node → child attribute Nodes | several | `0..n` | **decided** (parent/child and/or Relations) |
-| Attribute Node → parent | one | `0..1` | **via `parent_id`** (Q14 dropped); Relations separate (Q35) — hierarchy-edge hybrid excluded |
+| Node → Parameters | several | `0..n` | **decided (Q64)** |
+| Parameter → type Node | one | `1` | **Typ-Ast only (Q26)** |
 
 ```text
-Node (category) ──(children / besteht-aus)──► Node (e.g. Wert) ─[has_type]→ Type Node
+Node ──(parameters)──► Parameter { name, type → Type Node in Typ-Ast }
 ```
 
 ### Config / bindings (initial — to refine)
@@ -669,12 +687,13 @@ class Node {
 
 | Topic | Status |
 |-------|--------|
-| Parameter class / ParameterRole | **rejected / dropped** |
-| Config shape for type binding | **proposed** — Q34 (`capabilities` + `has_type`) |
-| Separate owning `node_id` | **dropped** — Q14 |
+| Parameter class | **decided (Q64)** — `name` + `type` on Node |
+| ParameterRole | **dropped** |
+| Config shape for type binding | **proposed** — Q34 (`capabilities`); Parameter.type for attributes |
+| Parameter owner | **one Node** — Q14 revised |
 | Simple types may originate Relations? | **strong lean no** — Q49 via config |
 | Required / default / validation rules | open — Q47 |
-| Inheritance to child nodes | open |
+| Inheritance to child nodes | **lean yes** — along `parent_id` (Q55) |
 | Which types require prefix and/or base_unit | open — Q24 |
 | May prefix exist without base_unit? | open — Q29 |
 | Storage | same as Node — Q11/Q15 |
@@ -1107,11 +1126,11 @@ Composition "Stückliste Platine XY"
 ```text
 TREE (Definition)
   Typen → … → Collection
-      ├── Projektname     ← slot def (text, required) — inherited by children
+      parameters: [ Parameter(name="Projektname", type=text) ]  ← inherited
       ├── list / table / enum
   Compositionen
-      └── BOM             ← structure name stays "BOM"; columns = schema
-            ├── Bauteil Wahl, Reference, Menge, …
+      └── BOM             ← structure name stays "BOM"
+            parameters: [ Bauteil Wahl→subtree, Reference→…, Menge→int, … ]
 
 WP PAGE / BLOCK (Instanz)
   Block: Art = Collection/table (or BOM schema)
@@ -1120,7 +1139,8 @@ WP PAGE / BLOCK (Instanz)
   Title under table: "BOM als Bauteilliste – Platine XY"
 ```
 
-**Do not** put the project/board name into the tree as `Node.name` of BOM — that mixed definition and instance (**Q61 corrected**).
+**Do not** put the project/board name into the tree as `Node.name` of BOM — that mixed definition and instance (**Q61 corrected**).  
+**Do not** model Parameter names as tree Nodes — name is text on the Parameter object (**Q64**).
 
 ###### Type catalog we can use (already decided)
 

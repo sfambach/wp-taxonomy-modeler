@@ -12,11 +12,11 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int);
  *   subtree uses ref_scope → catalog root; node_ref = free jump to any node.
  *   Slot Pflicht = Node.config.required. Datentypen → Simple | Complex.
- *   Tree = Definition (BOM structure name). WP page = Instanz (Projektname + rows).
- *   Projektname = Collection attribute (inherited); title uses instance value.
+ *   Tree = Definition. WP page = Instanz.
+ *   Parameter class: { name (user text), typeId (Typ-Ast Node) } on every Node (Q64).
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v32";
+const STORAGE_KEY = "wtt-proto-tree-split-v33";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -71,11 +71,22 @@ const DEFAULT_PREFIX_FACTORS = {
 /**
  * @typedef {{
  *   id: string,
+ *   name: string,
+ *   typeId: string,
+ *   required?: boolean,
+ *   footer_op?: 'none'|'label'|'sum'|'avg'|'min'|'max'|'count',
+ *   refScopeId?: string,
+ * }} ProtoParameter
+ */
+/**
+ * @typedef {{
+ *   id: string,
  *   parentId: string|null,
  *   name: string,
  *   position: number,
  *   description?: string,
  *   template?: boolean,
+ *   parameters?: ProtoParameter[],
  *   config?: {
  *     required?: boolean,
  *     allowed_types?: string[],
@@ -188,13 +199,156 @@ function collapseAllBranches() {
 function createNode(parentId, name, position, opts = {}) {
   const id = uid();
   /** @type {ProtoNode} */
-  const node = { id, parentId, name, position, description: opts.description || "" };
+  const node = {
+    id,
+    parentId,
+    name,
+    position,
+    description: opts.description || "",
+    parameters: Array.isArray(opts.parameters) ? [...opts.parameters] : [],
+  };
   if (opts.template) node.template = true;
   if (opts.config && typeof opts.config === "object") {
     node.config = { ...opts.config };
   }
   nodes.set(id, node);
   return id;
+}
+
+/**
+ * @param {string} ownerId
+ * @param {string} name
+ * @param {string} typeId
+ * @param {{ required?: boolean, footer_op?: string, refScopeId?: string }} [extra]
+ */
+function addParameter(ownerId, name, typeId, extra = {}) {
+  const owner = nodes.get(ownerId);
+  if (!owner || !nodes.has(typeId)) return null;
+  if (!isUnderTypeBranch(typeId)) {
+    window.alert("Parameter.type muss ein Knoten im Typ-Ast sein.");
+    return null;
+  }
+  const nm = String(name || "").trim();
+  if (!nm) {
+    window.alert("Parameter.name ist Pflicht (Text vom Benutzer).");
+    return null;
+  }
+  if (!owner.parameters) owner.parameters = [];
+  /** @type {ProtoParameter} */
+  const p = { id: uid(), name: nm, typeId };
+  if (extra.required != null) p.required = Boolean(extra.required);
+  if (extra.footer_op) p.footer_op = /** @type {any} */ (extra.footer_op);
+  if (extra.refScopeId) p.refScopeId = extra.refScopeId;
+  owner.parameters.push(p);
+  return p;
+}
+
+/** Own + inherited Parameters (along parent_id). Own wins on same name. */
+function parametersFor(nodeId) {
+  /** @type {ProtoParameter[]} */
+  const out = [];
+  const seen = new Set();
+  let cur = nodes.get(nodeId);
+  let guard = 0;
+  // collect from root → leaf so own overrides
+  /** @type {ProtoNode[]} */
+  const chain = [];
+  while (cur && guard++ < 64) {
+    chain.unshift(cur);
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  for (const n of chain) {
+    for (const p of n.parameters || []) {
+      const key = p.name.trim().toLowerCase();
+      if (seen.has(key)) {
+        // replace with closer definition
+        const idx = out.findIndex((x) => x.name.trim().toLowerCase() === key);
+        if (idx >= 0) out[idx] = p;
+      } else {
+        seen.add(key);
+        out.push(p);
+      }
+    }
+  }
+  return out;
+}
+
+/** @param {string} ownerId @param {string} paramId */
+function removeParameter(ownerId, paramId) {
+  if (!isProjectEditable()) return;
+  const owner = nodes.get(ownerId);
+  if (!owner?.parameters) return;
+  owner.parameters = owner.parameters.filter((p) => p.id !== paramId);
+  persist();
+  render();
+}
+
+/** @param {string} paramId @returns {ProtoParameter|null} */
+function findParameterById(paramId) {
+  for (const n of nodes.values()) {
+    const hit = (n.parameters || []).find((p) => p.id === paramId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Column descriptors for a Composition/table node (Q64).
+ * Prefer own Parameters; fall back to legacy child slot Nodes.
+ * @typedef {{
+ *   id: string,
+ *   name: string,
+ *   typeId: string|null,
+ *   required: boolean,
+ *   footer_op: string,
+ *   refScopeId?: string,
+ *   mode: 'parameter'|'legacy-node',
+ * }} ColumnDesc
+ * @param {string} compId
+ * @returns {ColumnDesc[]}
+ */
+function columnsOf(compId) {
+  const n = nodes.get(compId);
+  if (!n) return [];
+  const own = n.parameters || [];
+  if (own.length > 0) {
+    return own.map((p) => ({
+      id: p.id,
+      name: p.name,
+      typeId: p.typeId && nodes.has(p.typeId) ? p.typeId : null,
+      required: Boolean(p.required),
+      footer_op: FOOTER_OPS.includes(/** @type {any} */ (p.footer_op))
+        ? /** @type {string} */ (p.footer_op)
+        : "none",
+      refScopeId: p.refScopeId,
+      mode: /** @type {'parameter'} */ ("parameter"),
+    }));
+  }
+  return childrenOf(compId).map((c) => {
+    const tn = typeNodeOf(c.id);
+    const scopeEdge = findEdge(c.id, REL_REF_SCOPE);
+    return {
+      id: c.id,
+      name: c.name,
+      typeId: tn ? tn.id : null,
+      required: isSlotRequired(c),
+      footer_op: columnFooterOp(c),
+      refScopeId: scopeEdge && nodes.has(scopeEdge.to) ? scopeEdge.to : undefined,
+      mode: /** @type {'legacy-node'} */ ("legacy-node"),
+    };
+  });
+}
+
+/** @param {ColumnDesc|ProtoParameter|ProtoNode|null|undefined} col */
+function columnTypeNode(col) {
+  if (!col) return null;
+  if ("typeId" in col && col.typeId && nodes.has(col.typeId)) {
+    return nodes.get(col.typeId);
+  }
+  if ("id" in col && typeof col.id === "string" && nodes.has(col.id)) {
+    return typeNodeOf(col.id);
+  }
+  return null;
 }
 
 function defaultFormState() {
@@ -310,25 +464,19 @@ function seedTemplateCore(projectRootId, opts = {}) {
   const collectionId = createNode(complexRootId, "Collection", 2, {
     template: mark,
     description:
-      "Oberbegriff: list/table/enum. Attribute hier (z. B. Projektname) vererben sich auf alle Unterknoten — Werte erst auf der WP-Seite (Instanz).",
+      "Oberbegriff: list/table/enum. Parameter (z. B. Projektname) am Knoten — vererbt an Unterknoten. Werte erst auf der WP-Seite.",
   });
-  // Q61: Projektname = Collection attribute (definition); instance filled on WP page
-  const slotProjektname = createNode(collectionId, "Projektname", 0, {
-    template: mark,
+  // Q64/Q61: Projektname = Parameter on Collection (name text + type text), not a tree child
+  addParameter(collectionId, "Projektname", tText, { required: true });
+  const tList = createNode(collectionId, "list", 0, {
+    description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar. Erbt Parameter von Collection.",
+  });
+  const tTable = createNode(collectionId, "table", 1, {
+    description: "Collection mit n Spalten; Zeilen offen erweiterbar. Erbt Parameter von Collection.",
+  });
+  const tEnum = createNode(collectionId, "enum", 2, {
     description:
-      "Attribut von Collection — vererbt an list/table/enum. Pflicht-Instanzwert beim Einfügen auf einer WP-Seite (nicht der Baumname).",
-    config: { required: true },
-  });
-  pushEdge(slotProjektname, tText, REL_HAS_TYPE);
-  const tList = createNode(collectionId, "list", 1, {
-    description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar. Erbt Projektname.",
-  });
-  const tTable = createNode(collectionId, "table", 2, {
-    description: "Collection mit n Spalten; Zeilen offen erweiterbar. Erbt Projektname.",
-  });
-  const tEnum = createNode(collectionId, "enum", 3, {
-    description:
-      "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte. Erbt Projektname.",
+      "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte. Erbt Parameter von Collection.",
   });
 
   const prefixesRootId = createNode(typesRootId, "Präfix", 1, {
@@ -558,13 +706,13 @@ function seedBomTestData(compositionsRootId, core) {
   pushEdge(kPref, prefixesRootId, REL_HAS_TYPE);
   pushEdge(kUnit, uFarad, REL_HAS_TYPE);
 
-  // Q61/Q63: Tree structure name stays "BOM". Projektname = instance value (WP page).
+  // Q61/Q63/Q64: Tree structure name stays "BOM". Columns = Parameters (name + type).
+  // Projektname = Collection Parameter; instance value on WP page.
   const bomCompId = createNode(compositionsRootId, "BOM", nextPosition(compositionsRootId), {
     description:
-      "Definition im Baum: Strukturname BOM + Spalten. Projektname kommt von Collection (vererbt) und wird erst auf der WP-Seite gefüllt.",
+      "Definition: Strukturname BOM + Spalten als Parameter. Projektname = Collection-Parameter (vererbt), Wert erst auf der WP-Seite.",
     config: {
       footer: { enabled: true },
-      // empty = all under Typ-Ast / Basiseinheit; demo pre-selects common types + electronics units
       allowed_types: [
         types.tInt,
         types.tDouble,
@@ -581,40 +729,31 @@ function seedBomTestData(compositionsRootId, core) {
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
-  const cPart = createNode(bomCompId, "Bauteil Wahl", 0, {
-    description:
-      "subtree → Kataloggruppe. has_type → subtree; ref_scope → Bauteile. Pflicht (config.required).",
-    config: { required: true, footer_op: "count" },
+  addParameter(bomCompId, "Bauteil Wahl", types.tSubtree, {
+    required: true,
+    footer_op: "count",
+    refScopeId: bauteileRootId,
   });
-  const cRef = createNode(bomCompId, "Reference", 1, {
-    description: "RefDes — has_type → RefDes (list). Pflicht.",
-    config: { required: true, footer_op: "none" },
+  addParameter(bomCompId, "Reference", refDes, {
+    required: true,
+    footer_op: "none",
   });
-  const cVal = createNode(bomCompId, "Wert", 2, {
-    description: "Größe aus Bauteil-Schema: double + Präfix; Einheit von Bauteil.Einheit. Pflicht.",
-    config: { required: true, footer_op: "none" },
+  addParameter(bomCompId, "Wert", types.tQuantity, {
+    required: true,
+    footer_op: "none",
   });
-  pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
-  const cFp = createNode(bomCompId, "Footprint", 3, {
-    description: "Bauform — has_type → Bauart (enum). Optional.",
-    config: { required: false, footer_op: "none" },
+  addParameter(bomCompId, "Footprint", bauart, {
+    required: false,
+    footer_op: "none",
   });
-  const cQty = createNode(bomCompId, "Menge", 4, {
-    description:
-      "Stückzahl — Einheit Stück (int, nicht quantity). Pflicht. Fußzeile: footer_op=sum → Σ Stück.",
-    config: { required: true, footer_op: "sum" },
+  addParameter(bomCompId, "Menge", types.tInt, {
+    required: true,
+    footer_op: "sum",
   });
-  const cDesc = createNode(bomCompId, "Beschreibung", 5, {
-    description: "Freitext — has_type → textarea. Optional. Fußzeile leer (footer_op=none).",
-    config: { required: false, footer_op: "none" },
+  addParameter(bomCompId, "Beschreibung", types.tTextarea, {
+    required: false,
+    footer_op: "none",
   });
-
-  pushEdge(cPart, types.tSubtree, REL_HAS_TYPE);
-  pushEdge(cPart, bauteileRootId, REL_REF_SCOPE);
-  pushEdge(cRef, refDes, REL_HAS_TYPE);
-  pushEdge(cFp, bauart, REL_HAS_TYPE);
-  pushEdge(cQty, types.tInt, REL_HAS_TYPE);
-  pushEdge(cDesc, types.tTextarea, REL_HAS_TYPE);
 
   tableCells.set(bomCompId, [
     [
@@ -770,24 +909,30 @@ function createInitial() {
   void rezeptId;
 }
 
-/** BOM-ähnliche Composition: subtree-Spalte oder Menge-Spalte. */
+/** BOM-ähnliche Composition: subtree-Spalte oder Menge-Spalte (Parameters or legacy). */
 function isBomComposition(node) {
   if (!node) return false;
-  const cols = childrenOf(node.id);
+  const cols = columnsOf(node.id);
   return (
-    cols.some((c) => typeKey(typeNodeOf(c.id)) === "subtree") ||
+    cols.some((c) => typeKey(columnTypeNode(c)) === "subtree") ||
     cols.some((c) => c.name.trim().toLowerCase() === "menge")
   );
 }
 
-/** Inherited Collection attribute slot "Projektname" (definition in tree). */
+/**
+ * Collection Parameter „Projektname“ (Q61/Q64) — definition, not a tree child.
+ * @returns {ProtoParameter|null}
+ */
 function projektnameSlot() {
   collectionRootId = healNamedRoot(collectionRootId, "Collection");
   if (!collectionRootId) return null;
+  const own = nodes.get(collectionRootId)?.parameters || [];
   return (
-    childrenOf(collectionRootId).find(
-      (c) => c.name.trim().toLowerCase() === "projektname"
-    ) || null
+    own.find((p) => p.name.trim().toLowerCase() === "projektname") ||
+    parametersFor(collectionRootId).find(
+      (p) => p.name.trim().toLowerCase() === "projektname"
+    ) ||
+    null
   );
 }
 
@@ -1066,15 +1211,22 @@ function bauteilCatalogOptions() {
 }
 
 /**
- * Catalog root for a subtree slot/type via Relation ref_scope.
- * Prefer slot edge; fall back to type edge (specialized subtree).
+ * Catalog root for a subtree slot/Parameter via Relation ref_scope or Parameter.refScopeId.
  * @param {string} slotId
+ * @param {{ refScopeId?: string }} [opts]
  * @returns {ProtoNode|null}
  */
-function refScopeRootOf(slotId) {
+function refScopeRootOf(slotId, opts = {}) {
+  if (opts.refScopeId && nodes.has(opts.refScopeId)) {
+    return nodes.get(opts.refScopeId);
+  }
+  const param = findParameterById(slotId);
+  if (param?.refScopeId && nodes.has(param.refScopeId)) {
+    return nodes.get(param.refScopeId);
+  }
   const se = findEdge(slotId, REL_REF_SCOPE);
   if (se && nodes.has(se.to)) return nodes.get(se.to);
-  const tn = typeNodeOf(slotId);
+  const tn = typeNodeOf(slotId) || (param?.typeId ? nodes.get(param.typeId) : null);
   if (tn) {
     const te = findEdge(tn.id, REL_REF_SCOPE);
     if (te && nodes.has(te.to)) return nodes.get(te.to);
@@ -1083,8 +1235,8 @@ function refScopeRootOf(slotId) {
 }
 
 /** Selectable targets for a subtree slot = children of ref_scope root. */
-function subtreeOptions(slotId) {
-  const root = refScopeRootOf(slotId);
+function subtreeOptions(slotId, opts = {}) {
+  const root = refScopeRootOf(slotId, opts);
   if (root) return childrenOf(root.id);
   // Legacy fallback: Bauteile catalog when scope missing
   return bauteilCatalogOptions();
@@ -1134,16 +1286,19 @@ function setRefScope(slotId, rootId) {
 
 /**
  * Is node under the project Typ-Ast (Typen → …)? Q26: type search only here.
+ * Works during seed (no activeProject) by walking ancestors named „Typen“.
  * @param {string} nodeId
  */
 function isUnderTypeBranch(nodeId) {
   const p = activeProject();
-  const typesRoot = p?.typesRootId || healNamedRoot("", "Typen");
-  if (!typesRoot) return false;
+  const typesRoot =
+    (p?.typesRootId && nodes.has(p.typesRootId) && p.typesRootId) ||
+    healNamedRoot("", "Typen");
   let cur = nodes.get(nodeId);
   let guard = 0;
   while (cur && guard++ < 64) {
-    if (cur.id === typesRoot) return true;
+    if (typesRoot && cur.id === typesRoot) return true;
+    if (cur.name === "Typen") return true;
     cur = cur.parentId ? nodes.get(cur.parentId) : null;
   }
   return false;
@@ -1405,20 +1560,29 @@ function toggleAllowsPrefix(unitId, prefixId, enabled) {
   renderRight();
 }
 
-/** @param {ProtoNode|null|undefined} col */
+/** @param {ColumnDesc|ProtoNode|ProtoParameter|null|undefined} col */
 function columnFooterOp(col) {
-  const op = col?.config?.footer_op;
-  return FOOTER_OPS.includes(op) ? op : "none";
+  if (!col) return "none";
+  if ("mode" in col || ("footer_op" in col && !("config" in col))) {
+    const op = /** @type {{ footer_op?: string }} */ (col).footer_op;
+    return FOOTER_OPS.includes(/** @type {any} */ (op)) ? /** @type {string} */ (op) : "none";
+  }
+  const op = /** @type {ProtoNode} */ (col).config?.footer_op;
+  return FOOTER_OPS.includes(/** @type {any} */ (op)) ? /** @type {string} */ (op) : "none";
 }
 
 /**
  * Parse numeric values from a column for footer aggregates.
  * @param {string[][]} grid
  * @param {number} colIdx
- * @param {ProtoNode} col
+ * @param {ColumnDesc|ProtoNode} col
  */
 function columnNumericValues(grid, colIdx, col) {
-  const key = typeKey(typeNodeOf(col.id));
+  const tn =
+    "mode" in /** @type {object} */ (col) || "typeId" in /** @type {object} */ (col)
+      ? columnTypeNode(/** @type {ColumnDesc} */ (col))
+      : typeNodeOf(/** @type {ProtoNode} */ (col).id);
+  const key = typeKey(tn);
   /** @type {number[]} */
   const nums = [];
   for (let r = 0; r < TABLE_BODY_ROWS; r++) {
@@ -1439,17 +1603,24 @@ function columnNumericValues(grid, colIdx, col) {
 /**
  * @param {string[][]} grid
  * @param {number} colIdx
- * @param {ProtoNode} col
+ * @param {ColumnDesc|ProtoNode} col
  */
 function computeFooterCell(grid, colIdx, col) {
   const op = columnFooterOp(col);
   if (op === "none") return "";
-  if (op === "label") return col.config?.footer_label || col.name;
+  const name = col.name;
+  if (op === "label") {
+    const label =
+      "config" in /** @type {object} */ (col)
+        ? /** @type {ProtoNode} */ (col).config?.footer_label
+        : undefined;
+    return label || name;
+  }
   const filled = grid.filter((row) => String(row?.[colIdx] ?? "").trim() !== "").length;
   if (op === "count") return String(filled);
   const nums = columnNumericValues(grid, colIdx, col);
   if (!nums.length) return "—";
-  const isMenge = col.name.trim().toLowerCase() === "menge";
+  const isMenge = name.trim().toLowerCase() === "menge";
   const fmt = (n) => {
     const s = Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
     return isMenge && (op === "sum" || op === "avg") ? `${s} Stück` : s;
@@ -1505,7 +1676,7 @@ function buildCompositionAllowlistPanel(compNode) {
   );
   block.append(footRow);
 
-  const cols = childrenOf(compNode.id);
+  const cols = columnsOf(compNode.id);
   if (cols.length) {
     const opBlock = document.createElement("div");
     opBlock.style.marginTop = "0.75rem";
@@ -1531,8 +1702,15 @@ function buildCompositionAllowlistPanel(compNode) {
       }
       sel.value = columnFooterOp(col);
       sel.addEventListener("change", () => {
-        if (!col.config) col.config = {};
-        col.config.footer_op = sel.value;
+        if (col.mode === "parameter") {
+          const p = findParameterById(col.id);
+          if (p) p.footer_op = /** @type {any} */ (sel.value);
+        } else {
+          const n = nodes.get(col.id);
+          if (!n) return;
+          if (!n.config) n.config = {};
+          n.config.footer_op = sel.value;
+        }
         persist();
         renderRight();
       });
@@ -1742,13 +1920,20 @@ function createTypedCellControl(typeNode, value, onChange, ariaLabel, opts = {})
     select.setAttribute("aria-label", ariaLabel);
     const empty = document.createElement("option");
     empty.value = "";
-    const scope = opts.slotId ? refScopeRootOf(opts.slotId) : null;
+    const scopeOpts = { refScopeId: opts.refScopeId };
+    const scope = opts.slotId
+      ? refScopeRootOf(opts.slotId, scopeOpts)
+      : opts.refScopeId && nodes.has(opts.refScopeId)
+        ? nodes.get(opts.refScopeId)
+        : null;
     empty.textContent = scope
       ? `— ${scope.name} wählen —`
       : "— Unterbaum wählen —";
     select.append(empty);
     const cur = value == null ? "" : String(value);
-    const options = opts.slotId ? subtreeOptions(opts.slotId) : bauteilCatalogOptions();
+    const options = opts.slotId
+      ? subtreeOptions(opts.slotId, scopeOpts)
+      : bauteilCatalogOptions();
     for (const p of options) {
       const opt = document.createElement("option");
       opt.value = p.id;
@@ -2184,7 +2369,7 @@ function ensureTableGrid(store, schemaNodeId, colIds) {
 
 /** @param {Map<string, string[][]>} store */
 function setCellValue(store, schemaNodeId, rowIndex, colIndex, value) {
-  const cols = childrenOf(schemaNodeId);
+  const cols = columnsOf(schemaNodeId);
   const rows = ensureTableGrid(
     store,
     schemaNodeId,
@@ -2210,7 +2395,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 32,
+    version: 33,
     projects,
     activeProjectId,
     rootId,
@@ -2329,10 +2514,33 @@ function restore() {
           ...(e.props && typeof e.props === "object" ? { props: { ...e.props } } : {}),
         }));
     }
-    // Heal: ensure every node has description string; normalize config
+    // Heal: description, config, parameters (Q64)
     for (const n of nodes.values()) {
       if (typeof n.description !== "string") n.description = "";
       if (n.config != null && typeof n.config !== "object") delete n.config;
+      if (!Array.isArray(n.parameters)) {
+        n.parameters = [];
+      } else {
+        n.parameters = n.parameters
+          .filter(
+            (p) =>
+              p &&
+              typeof p.name === "string" &&
+              p.typeId &&
+              nodes.has(p.typeId) &&
+              isUnderTypeBranch(p.typeId)
+          )
+          .map((p) => ({
+            id: p.id || uid(),
+            name: p.name.trim(),
+            typeId: p.typeId,
+            ...(p.required != null ? { required: Boolean(p.required) } : {}),
+            ...(FOOTER_OPS.includes(p.footer_op) ? { footer_op: p.footer_op } : {}),
+            ...(p.refScopeId && nodes.has(p.refScopeId)
+              ? { refScopeId: p.refScopeId }
+              : {}),
+          }));
+      }
     }
     dataTypeNodes();
     prefixOptionNames();
@@ -2387,6 +2595,14 @@ function resetAll() {
     localStorage.removeItem("wtt-proto-tree-split-v23");
     localStorage.removeItem("wtt-proto-tree-split-v24");
     localStorage.removeItem("wtt-proto-tree-split-v25");
+    localStorage.removeItem("wtt-proto-tree-split-v26");
+    localStorage.removeItem("wtt-proto-tree-split-v27");
+    localStorage.removeItem("wtt-proto-tree-split-v28");
+    localStorage.removeItem("wtt-proto-tree-split-v29");
+    localStorage.removeItem("wtt-proto-tree-split-v30");
+    localStorage.removeItem("wtt-proto-tree-split-v31");
+    localStorage.removeItem("wtt-proto-tree-split-v32");
+    localStorage.removeItem("wtt-proto-tree-split-v33");
   } catch {
     /* ignore */
   }
@@ -2853,7 +3069,7 @@ function renderDetail() {
     nameHint.style.fontSize = "0.8rem";
     nameHint.style.margin = "0.25rem 0 0";
     nameHint.textContent =
-      "Projektname = Attribut unter Collection (vererbt). Wert erst auf der WP-Seite (Tab Backend/Block).";
+      "Projektname = Parameter an Collection (name + Typ text, vererbt). Wert erst auf der WP-Seite (Tab Backend/Block).";
     field.append(nameHint);
   }
 
@@ -2995,6 +3211,7 @@ function renderDetail() {
   if (setupPanel) card.append(setupPanel);
   if (typeBinding) card.append(typeBinding);
   if (requiredBlock) card.append(requiredBlock);
+  card.append(buildParametersPanel(node));
   if (isCompositionTable) card.append(buildCompositionAllowlistPanel(node));
   card.append(orderBlock);
   if (isBaseUnitNode(node)) {
@@ -3022,6 +3239,145 @@ function renderDetail() {
 }
 
 /**
+ * Parameters panel (Q64): every Node may own Parameters (name text + type from Typ-Ast).
+ * @param {ProtoNode} node
+ */
+function buildParametersPanel(node) {
+  const block = document.createElement("div");
+  block.className = "order-block parameters-panel";
+  const editable = isProjectEditable();
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Parameter (name + Typ)";
+  block.append(lab);
+
+  const lead = document.createElement("p");
+  lead.className = "muted";
+  lead.style.margin = "0.25rem 0 0.5rem";
+  lead.style.fontSize = "0.8rem";
+  lead.textContent =
+    "Jeder Knoten kann Parameter haben. name = Text vom Benutzer; type = Knoten aus dem Typ-Ast. Kein Baumknoten.";
+  block.append(lead);
+
+  const own = node.parameters || [];
+  const inherited = parametersFor(node.id).filter(
+    (p) => !own.some((o) => o.id === p.id)
+  );
+
+  if (own.length === 0 && inherited.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.style.fontSize = "0.8rem";
+    empty.textContent = "Keine Parameter (eigene oder vererbte).";
+    block.append(empty);
+  }
+
+  if (own.length) {
+    const list = document.createElement("ul");
+    list.className = "child-list param-list";
+    for (const p of own) {
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.alignItems = "center";
+      li.style.gap = "0.5rem";
+      li.style.flexWrap = "wrap";
+      const tn = p.typeId && nodes.has(p.typeId) ? nodes.get(p.typeId) : null;
+      const text = document.createElement("span");
+      text.textContent = `${p.name} → ${tn ? tn.name : "?"}`;
+      if (p.required) {
+        const star = document.createElement("abbr");
+        star.className = "req-star";
+        star.title = "Pflicht";
+        star.textContent = "*";
+        text.append(star);
+      }
+      if (p.footer_op && p.footer_op !== "none") {
+        const badge = document.createElement("span");
+        badge.className = "type-badge";
+        badge.textContent = `footer:${p.footer_op}`;
+        text.append(document.createTextNode(" "), badge);
+      }
+      li.append(text);
+      if (editable) {
+        const del = makeIconButton("×", `Parameter „${p.name}“ entfernen`, () => {
+          removeParameter(node.id, p.id);
+        }, { danger: true });
+        li.append(del);
+      }
+      list.append(li);
+    }
+    block.append(list);
+  }
+
+  if (inherited.length) {
+    const inLab = document.createElement("div");
+    inLab.className = "field-label";
+    inLab.style.marginTop = "0.75rem";
+    inLab.textContent = "Vererbt (entlang parent_id)";
+    block.append(inLab);
+    const inList = document.createElement("ul");
+    inList.className = "child-list param-list";
+    for (const p of inherited) {
+      const li = document.createElement("li");
+      const tn = p.typeId && nodes.has(p.typeId) ? nodes.get(p.typeId) : null;
+      li.textContent = `${p.name} → ${tn ? tn.name : "?"}`;
+      li.className = "muted";
+      inList.append(li);
+    }
+    block.append(inList);
+  }
+
+  if (editable) {
+    const addRow = document.createElement("div");
+    addRow.className = "field";
+    addRow.style.marginTop = "0.75rem";
+    const nameLab = document.createElement("label");
+    nameLab.textContent = "Neuer Parameter";
+    nameLab.htmlFor = `param-name-${node.id}`;
+    const nameIn = document.createElement("input");
+    nameIn.id = `param-name-${node.id}`;
+    nameIn.type = "text";
+    nameIn.className = "form-control";
+    nameIn.placeholder = "Name (Text)";
+    nameIn.autocomplete = "off";
+    const typeLab = document.createElement("label");
+    typeLab.textContent = "Typ (Typ-Ast)";
+    typeLab.htmlFor = `param-type-${node.id}`;
+    typeLab.style.marginTop = "0.35rem";
+    typeLab.style.display = "block";
+    const typeSel = document.createElement("select");
+    typeSel.id = `param-type-${node.id}`;
+    typeSel.className = "form-control";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "— Typ wählen —";
+    typeSel.append(empty);
+    for (const t of typePickerCandidates()) {
+      const o = document.createElement("option");
+      o.value = t.id;
+      o.textContent = nodePath(t.id);
+      typeSel.append(o);
+    }
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "btn";
+    addBtn.style.marginTop = "0.5rem";
+    addBtn.textContent = "Parameter hinzufügen";
+    addBtn.addEventListener("click", () => {
+      const created = addParameter(node.id, nameIn.value, typeSel.value);
+      if (!created) return;
+      persist();
+      render();
+    });
+    addRow.append(nameLab, nameIn, typeLab, typeSel, addBtn);
+    block.append(addRow);
+  }
+
+  return block;
+}
+
+/**
  * Instance field Projektname (Q61/Q63) — WP page value, not tree Node.name.
  * @param {ProtoNode} node composition
  * @param {HTMLElement} [titleEl] live title element to refresh
@@ -3044,9 +3400,10 @@ function buildProjektnameInstanceField(node, titleEl) {
   hint.className = "muted";
   hint.style.fontSize = "0.8rem";
   hint.style.margin = "0.25rem 0 0";
+  const slotType = slot?.typeId && nodes.has(slot.typeId) ? nodes.get(slot.typeId) : null;
   hint.textContent = slot
-    ? `Definition: Slot „${slot.name}“ unter Collection (vererbt). Baumknoten heißt weiter „${node.name}“.`
-    : "Definition: Projektname sollte unter Collection liegen.";
+    ? `Definition: Parameter „${slot.name}“ → Typ ${slotType?.name || "?"} an Collection (vererbt). Baumknoten heißt weiter „${node.name}“.`
+    : "Definition: Parameter Projektname sollte an Collection liegen.";
   const syncTitle = () => {
     if (titleEl) titleEl.textContent = bomDisplayTitle(node);
   };
@@ -3081,7 +3438,7 @@ function renderTableView(store, title) {
     return;
   }
 
-  const cols = childrenOf(node.id);
+  const cols = columnsOf(node.id);
   const wrap = document.createElement("div");
   wrap.className = "table-view";
   const bomLike = isBomComposition(node);
@@ -3089,7 +3446,7 @@ function renderTableView(store, title) {
   const lead = document.createElement("p");
   lead.className = "lead";
   if (cols.length === 0) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>. Keine Kinder (= Spalten); Kindknoten werden Spaltenköpfe.`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>. Keine Spalten-Parameter; am Knoten Parameter (name + Typ) anlegen.`;
     wrap.append(lead);
     mount.replaceChildren(wrap);
     return;
@@ -3099,9 +3456,9 @@ function renderTableView(store, title) {
   let bomTitleEl = null;
   if (title !== "Block") {
     if (bomLike) {
-      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <em>Instanz</em> (wie WP-Seite): Projektname + Zeilen. Baum-Definition heißt „${escapeHtml(node.name)}“. Menge = Stück.`;
+      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <em>Instanz</em> (wie WP-Seite): Projektname + Zeilen. Baum-Definition heißt „${escapeHtml(node.name)}“. Spalten = Parameter. Menge = Stück.`;
     } else {
-      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen.`;
+      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ am Parameter · ${TABLE_BODY_ROWS} Zeilen.`;
     }
     wrap.append(lead);
   }
@@ -3133,13 +3490,13 @@ function renderTableView(store, title) {
   for (const col of cols) {
     const th = document.createElement("th");
     th.scope = "col";
-    const tn = typeNodeOf(col.id);
+    const tn = columnTypeNode(col);
     const label = document.createElement("span");
     label.textContent = col.name;
-    if (isSlotRequired(col)) {
+    if (col.required) {
       const star = document.createElement("abbr");
       star.className = "req-star";
-      star.title = "Pflichtfeld (config.required)";
+      star.title = "Pflichtfeld (Parameter.required)";
       star.textContent = "*";
       label.append(star);
     }
@@ -3150,20 +3507,20 @@ function renderTableView(store, title) {
       badge.textContent = tn.name;
       th.append(document.createTextNode(" "), badge);
     }
-    const reqHint = isSlotRequired(col) ? " · Pflicht" : " · optional";
+    const reqHint = col.required ? " · Pflicht" : " · optional";
     th.title = tn
-      ? `„${col.name}“ has_type ${tn.name} → ${typeKey(tn)}${reqHint}`
-      : `Spalte „${col.name}“ ohne Typ (Text)${reqHint}`;
+      ? `Parameter „${col.name}“ → Typ ${tn.name} (${typeKey(tn)})${reqHint}`
+      : `Parameter „${col.name}“ ohne Typ${reqHint}`;
     headRow.append(th);
   }
   thead.append(headRow);
 
   // Part-driven: first subtree column (scoped catalog pick), not hardcoded name
-  const partColIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "subtree");
+  const partColIdx = cols.findIndex((c) => typeKey(columnTypeNode(c)) === "subtree");
   const isBomPartDriven = partColIdx >= 0;
 
   if (isBomPartDriven && title !== "Block" && lead.isConnected) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. Menge = <strong>Stück</strong>. * = Pflicht (<code>config.required</code>).`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code>-Parameter wählen → Wert/Präfix nach Gruppe. Menge = <strong>Stück</strong> (int). * = Pflicht.`;
   }
 
   const mengeColIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "menge");
@@ -3183,12 +3540,17 @@ function renderTableView(store, title) {
     for (let c = 0; c < cols.length; c++) {
       const td = document.createElement("td");
       const col = cols[c];
-      const tn = typeNodeOf(col.id);
+      const tn = columnTypeNode(col);
       const colKey = typeKey(tn);
       /** @type {Record<string, unknown>} */
-      let cellOpts = { slotId: col.id };
+      let cellOpts = { slotId: col.id, refScopeId: col.refScopeId };
       if (colKey === "quantity" && isBomPartDriven) {
-        cellOpts = { slotId: col.id, fixedUnit, requirePart: true };
+        cellOpts = {
+          slotId: col.id,
+          refScopeId: col.refScopeId,
+          fixedUnit,
+          requirePart: true,
+        };
       }
       const control = createTypedCellControl(
         tn,
@@ -3196,9 +3558,8 @@ function renderTableView(store, title) {
         (v) => {
           setCellValue(store, node.id, r, c, v);
           if (colKey === "subtree" && c === partColIdx) {
-            // Sync Einheit in Wert-Zelle when subtree (Bauteil Wahl) changes
             const wertIdx = cols.findIndex(
-              (x) => typeKey(typeNodeOf(x.id)) === "quantity"
+              (x) => typeKey(columnTypeNode(x)) === "quantity"
             );
             if (wertIdx >= 0) {
               const unit = v ? bauteilFixedUnit(v) : null;
@@ -3220,16 +3581,15 @@ function renderTableView(store, title) {
             renderRight();
             return;
           }
-          // Live-update Fußzeile (gleiche Spaltenzahl, Ops pro Spalte) without losing focus
           if (showFooter) {
             const cells = table.querySelectorAll("tfoot td[data-footer-col]");
-            cells.forEach((td) => {
-              const idx = Number(td.getAttribute("data-footer-col"));
+            cells.forEach((tdEl) => {
+              const idx = Number(tdEl.getAttribute("data-footer-col"));
               if (!Number.isFinite(idx) || !cols[idx]) return;
               const op = columnFooterOp(cols[idx]);
-              td.textContent = computeFooterCell(grid, idx, cols[idx]);
-              td.className = op === "sum" || op === "avg" ? "footer-agg" : "muted";
-              td.title = `${cols[idx].name}: ${op}`;
+              tdEl.textContent = computeFooterCell(grid, idx, cols[idx]);
+              tdEl.className = op === "sum" || op === "avg" ? "footer-agg" : "muted";
+              tdEl.title = `${cols[idx].name}: ${op}`;
             });
           }
         },
@@ -3790,7 +4150,7 @@ function renderFrontend() {
   }
 
   // Non-BOM compositions: light preview
-  const cols = childrenOf(node.id);
+  const cols = columnsOf(node.id);
   const wrap = document.createElement("div");
   wrap.className = "frontend-view";
 
@@ -3802,7 +4162,7 @@ function renderFrontend() {
   if (cols.length === 0) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "Keine Spalten — Composition mit Spalten wählen.";
+    empty.textContent = "Keine Spalten-Parameter — Composition mit Parametern wählen.";
     wrap.append(empty);
     mount.replaceChildren(wrap);
     return;
