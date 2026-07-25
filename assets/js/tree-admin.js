@@ -291,6 +291,30 @@
 		return pane;
 	}
 
+	function installDemo() {
+		post('wtt_install_demo', {})
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				state.tree = json.data.tree || [];
+				state.selectedId = null;
+				state.selectedNode = null;
+				state.error = '';
+				state.expanded = {};
+				(state.tree || []).forEach(function (n) {
+					if (n && n.id) {
+						state.expanded[n.id] = true;
+					}
+				});
+				render();
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
 	function render() {
 		var root = document.getElementById('wtt-app');
 		var badge = document.getElementById('wtt-badge');
@@ -345,6 +369,12 @@
 				onClick: function () {
 					createTerm(0);
 				},
+			}),
+			el('button', {
+				type: 'button',
+				className: 'button',
+				text: i18n.installDemo || 'Install test tree',
+				onClick: installDemo,
 			}),
 		]);
 
