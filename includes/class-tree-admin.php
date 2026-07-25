@@ -15,14 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Registers the Taxonomy Tree admin page and assets.
+ *
+ * Assets are printed inline from disk so Laragon junctions cannot break
+ * static file URLs under wp-content/plugins/.
  */
 final class Tree_Admin {
 
 	public const PAGE_SLUG = 'wp-taxonomy-tree';
 
+	/** @var array<string, mixed>|null */
+	private static ?array $boot_config = null;
+
 	public static function register(): void {
 		add_action( 'admin_menu', array( self::class, 'register_menu' ) );
-		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'prepare_screen' ) );
+		add_action( 'admin_head', array( self::class, 'print_inline_css' ) );
+		add_action( 'admin_footer', array( self::class, 'print_inline_js' ) );
 	}
 
 	public static function register_menu(): void {
@@ -37,11 +45,8 @@ final class Tree_Admin {
 		);
 	}
 
-	/**
-	 * Whether the current admin request is our screen.
-	 */
-	private static function is_plugin_screen( string $hook_suffix ): bool {
-		if ( 'toplevel_page_' . self::PAGE_SLUG === $hook_suffix ) {
+	private static function is_plugin_screen( string $hook_suffix = '' ): bool {
+		if ( '' !== $hook_suffix && 'toplevel_page_' . self::PAGE_SLUG === $hook_suffix ) {
 			return true;
 		}
 
@@ -50,35 +55,19 @@ final class Tree_Admin {
 		return self::PAGE_SLUG === $page;
 	}
 
-	public static function enqueue_assets( string $hook_suffix ): void {
+	public static function prepare_screen( string $hook_suffix ): void {
 		if ( ! self::is_plugin_screen( $hook_suffix ) ) {
 			return;
 		}
 
-		$css_rel = 'assets/css/tree-admin.css';
-		$js_rel  = 'assets/js/tree-admin.js';
-		$css_abs = WTT_PLUGIN_DIR . $css_rel;
-		$js_abs  = WTT_PLUGIN_DIR . $js_rel;
+		wp_enqueue_style( 'dashicons' );
+		self::$boot_config = self::build_config();
+	}
 
-		if ( is_readable( $css_abs ) ) {
-			wp_enqueue_style(
-				'wtt-tree-admin',
-				plugins_url( $css_rel, WTT_PLUGIN_FILE ),
-				array( 'dashicons' ),
-				(string) filemtime( $css_abs )
-			);
-		}
-
-		if ( is_readable( $js_abs ) ) {
-			wp_enqueue_script(
-				'wtt-tree-admin',
-				plugins_url( $js_rel, WTT_PLUGIN_FILE ),
-				array(),
-				(string) filemtime( $js_abs ),
-				true
-			);
-		}
-
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function build_config(): array {
 		$taxonomies = Tree_Model::hierarchical_taxonomies();
 		$default    = 'category';
 		if ( ! empty( $taxonomies ) ) {
@@ -94,16 +83,14 @@ final class Tree_Admin {
 			$requested = $default;
 		}
 
-		$config = array(
-			'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
-			'nonce'        => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
-			'taxonomy'     => $requested,
-			'taxonomies'   => $taxonomies,
-			'tree'         => Tree_Model::get_tree( $requested ),
-			'version'      => WTT_VERSION,
-			'assetsOk'     => is_readable( $css_abs ) && is_readable( $js_abs ),
-			'pluginUrl'    => plugins_url( '/', WTT_PLUGIN_FILE ),
-			'i18n'         => array(
+		return array(
+			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+			'nonce'      => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
+			'taxonomy'   => $requested,
+			'taxonomies' => $taxonomies,
+			'tree'       => Tree_Model::get_tree( $requested ),
+			'version'    => WTT_VERSION,
+			'i18n'       => array(
 				'empty'           => __( 'No terms yet. Create a root node to start the tree.', 'wp-taxonomy-tree' ),
 				'selectHint'      => __( 'Select a node to inspect it. Domain model (Project / Node / Parameter) is still in planning - this screen is the taxonomy-tree scaffold.', 'wp-taxonomy-tree' ),
 				'loading'         => __( 'Loading...', 'wp-taxonomy-tree' ),
@@ -126,19 +113,60 @@ final class Tree_Admin {
 				'cancel'          => __( 'Cancel', 'wp-taxonomy-tree' ),
 				'error'           => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 				'taxonomy'        => __( 'Taxonomy', 'wp-taxonomy-tree' ),
-				'scaffoldBadge'   => __( 'Scaffold 0.0.2', 'wp-taxonomy-tree' ),
+				'scaffoldBadge'   => sprintf(
+					/* translators: %s: plugin version */
+					__( 'Scaffold %s', 'wp-taxonomy-tree' ),
+					WTT_VERSION
+				),
 			),
 		);
+	}
 
-		if ( is_readable( $js_abs ) ) {
-			wp_localize_script( 'wtt-tree-admin', 'wttTree', $config );
+	public static function print_inline_css(): void {
+		if ( ! self::is_plugin_screen() ) {
+			return;
+		}
+		if ( null === self::$boot_config ) {
+			self::$boot_config = self::build_config();
+		}
+
+		$css_abs = WTT_PLUGIN_DIR . 'assets/css/tree-admin.css';
+		if ( ! is_readable( $css_abs ) ) {
+			return;
+		}
+
+		$css = file_get_contents( $css_abs ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( false === $css || '' === $css ) {
+			return;
+		}
+
+		echo "<style id=\"wtt-tree-admin-css\">\n" . $css . "\n</style>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	public static function print_inline_js(): void {
+		if ( ! self::is_plugin_screen() ) {
+			return;
+		}
+		if ( null === self::$boot_config ) {
+			self::$boot_config = self::build_config();
+		}
+
+		$js_abs = WTT_PLUGIN_DIR . 'assets/js/tree-admin.js';
+		$js     = is_readable( $js_abs ) ? file_get_contents( $js_abs ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+
+		$json = wp_json_encode( self::$boot_config );
+		if ( false === $json ) {
+			$json = '{}';
+		}
+
+		echo "<script id=\"wtt-tree-boot\">\n";
+		echo 'window.wttTree = ' . $json . ";\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo "</script>\n";
+
+		if ( false !== $js && '' !== $js ) {
+			echo "<script id=\"wtt-tree-admin-js\">\n" . $js . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		} else {
-			// Still expose config for diagnostics when JS file is missing.
-			wp_add_inline_script(
-				'jquery',
-				'window.wttTree = ' . wp_json_encode( $config ) . ';',
-				'before'
-			);
+			echo "<script>document.getElementById('wtt-app') && (document.getElementById('wtt-app').innerHTML = '<p class=\"wtt-error\">JS file missing on disk.</p>');</script>\n";
 		}
 	}
 
@@ -153,7 +181,7 @@ final class Tree_Admin {
 		<div class="wrap wtt-wrap">
 			<h1>
 				<?php esc_html_e( 'Taxonomy Tree', 'wp-taxonomy-tree' ); ?>
-				<span class="wtt-badge" id="wtt-badge"><?php esc_html_e( 'Scaffold 0.0.2', 'wp-taxonomy-tree' ); ?></span>
+				<span class="wtt-badge" id="wtt-badge"><?php echo esc_html( sprintf( __( 'Scaffold %s', 'wp-taxonomy-tree' ), WTT_VERSION ) ); ?></span>
 			</h1>
 			<p class="description" id="wtt-intro">
 				<?php esc_html_e( 'Select a node to inspect it. Domain model (Project / Node / Parameter) is still in planning - this screen is the taxonomy-tree scaffold.', 'wp-taxonomy-tree' ); ?>
@@ -165,7 +193,7 @@ final class Tree_Admin {
 						echo esc_html(
 							sprintf(
 								/* translators: 1: CSS path status, 2: JS path status */
-								__( 'Plugin assets missing. CSS: %1$s / JS: %2$s. Pull branch cursor/plugin-scaffold-f17e and ensure the assets/ folder exists next to wp-taxonomy-tree.php.', 'wp-taxonomy-tree' ),
+								__( 'Plugin assets missing on disk. CSS: %1$s / JS: %2$s', 'wp-taxonomy-tree' ),
 								$css_ok ? 'OK' : 'MISSING',
 								$js_ok ? 'OK' : 'MISSING'
 							)
