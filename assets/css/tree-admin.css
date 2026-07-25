@@ -1,0 +1,203 @@
+.wtt-wrap {
+	max-width: 1200px;
+}
+
+.wtt-badge {
+	display: inline-block;
+	margin-left: 0.5em;
+	padding: 0.15em 0.55em;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	vertical-align: middle;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.wtt-app {
+	margin-top: 1em;
+	display: grid;
+	grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+	gap: 0;
+	min-height: 65vh;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+}
+
+.wtt-tree-pane {
+	border-right: 1px solid #c3c4c7;
+	padding: 0.75em;
+	background: #f6f7f7;
+	overflow: auto;
+}
+
+.wtt-detail-pane {
+	padding: 1em 1.25em;
+	overflow: auto;
+	min-width: 0;
+}
+
+.wtt-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin-bottom: 0.75em;
+}
+
+.wtt-toolbar label {
+	font-weight: 600;
+}
+
+.wtt-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em;
+	margin-top: 1em;
+}
+
+.wtt-tree,
+.wtt-tree__children {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.wtt-tree__children {
+	margin-left: 0.85em;
+	padding-left: 0.55em;
+	border-left: 1px solid #c3c4c7;
+}
+
+.wtt-tree__children.is-collapsed {
+	display: none;
+}
+
+.wtt-tree__row {
+	display: flex;
+	align-items: center;
+	gap: 0.15em;
+	padding: 0.15em 0.25em;
+	border-radius: 2px;
+}
+
+.wtt-tree__row:hover {
+	background: #eef0f1;
+}
+
+.wtt-tree__row.is-active {
+	background: #dcdcde;
+}
+
+.wtt-tree__toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	color: #50575e;
+	flex: 0 0 auto;
+}
+
+.wtt-tree__toggle--spacer {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.wtt-tree__toggle .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.wtt-tree__name {
+	appearance: none;
+	border: none;
+	background: transparent;
+	padding: 0.15em 0.25em;
+	margin: 0;
+	font: inherit;
+	color: #1d2327;
+	text-align: left;
+	cursor: pointer;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.wtt-empty {
+	color: #646970;
+	padding: 0.5em 0.25em;
+}
+
+.wtt-detail dl {
+	display: grid;
+	grid-template-columns: 140px 1fr;
+	gap: 0.4em 1em;
+	margin: 0;
+}
+
+.wtt-detail dt {
+	margin: 0;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.wtt-detail dd {
+	margin: 0;
+}
+
+.wtt-dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.35);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100000;
+}
+
+.wtt-dialog {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+	max-width: 420px;
+	width: 90%;
+	padding: 1.25em;
+}
+
+.wtt-dialog h2 {
+	margin-top: 0;
+}
+
+.wtt-dialog__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	margin-top: 1em;
+}
+
+.wtt-error {
+	color: #b32d2e;
+	margin: 0.5em 0;
+}
+
+@media (max-width: 782px) {
+	.wtt-app {
+		grid-template-columns: 1fr;
+		min-height: 0;
+	}
+
+	.wtt-tree-pane {
+		border-right: none;
+		border-bottom: 1px solid #c3c4c7;
+		max-height: 45vh;
+	}
+}

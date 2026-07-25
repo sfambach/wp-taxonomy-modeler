@@ -1,11 +1,12 @@
 ---
-description: Planning-only mode — do not implement plugin code yet
+description: Planning mode with early scaffold allowed when user requests implementation
 alwaysApply: true
 ---
 
-# Planning only — no implementation yet
+# Planning + early scaffold
 
-This repository is currently in **planning mode**.
+This repository is primarily in **planning mode**. Full Project / Node / Parameter
+domain model is still being designed.
 
 ## Allowed now
 
@@ -13,21 +14,26 @@ This repository is currently in **planning mode**.
 - Update living docs (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `README.md`)
 - Update Cursor rules that guide planning, standards, or documentation sync
 - Record decisions, open questions, acceptance criteria, and non-goals
-- Standalone disposable UI sketches under `prototypes/` (static HTML/CSS/JS, **not** WordPress plugin code) when the user asks for a throwaway prototype
+- Standalone disposable UI sketches under `prototypes/`
+- **Early plugin scaffold** (`wp-taxonomy-tree.php`, `includes/`, admin tree UI)
+  when the user **explicitly** asks to see/build a runnable preview
+- Version starts at **`0.0.1`** (see `versioning.mdc`)
 
-## Not allowed yet
+## Scaffold scope (allowed)
 
-- Do **not** create or modify plugin implementation files (PHP bootstrap, `includes/`, admin UI JS/CSS, REST/AJAX handlers, tests that exercise product code, build tooling for the plugin, etc.).
-- Do **not** scaffold `wp-taxonomy-tree.php`, Composer/npm plugin packages, or activation/uninstall code unless the plan status explicitly leaves planning mode.
-- Do **not** “quickly implement” MVP slices while refining the plan.
-- Do **not** treat `prototypes/` as production plugin code or wire it into WordPress.
+- Taxonomy-agnostic tree browse / create / select / delete (MVP FR1–FR7 slice)
+- Thin admin UI over WordPress terms (no custom tables yet)
+- Placeholder for later Project/Node/Parameter domain services
 
-## Exit condition
+## Not allowed yet (without further explicit ask)
 
-Implementation may begin only when **all** of the following are true:
+- Full BOM / Composition / Parameter domain implementation
+- Treating the scaffold as planning sign-off for the whole model
+- Wiring `prototypes/` static HTML into production plugin code
 
-1. `docs/plans/project-plan.md` status is no longer `planning` (for example `ready-to-implement` or later).
-2. The plan decision log records that planning is complete enough to start coding.
-3. The user explicitly asks to start implementation.
+## Full implementation exit
 
-Until then, keep every change planning-and-docs only, and sync living docs whenever the plan changes.
+Broader domain coding beyond the taxonomy-tree scaffold continues when:
+
+1. `docs/plans/project-plan.md` status leaves `planning` / `scaffolding` toward a ready state, and
+2. The user asks to implement the next slice.

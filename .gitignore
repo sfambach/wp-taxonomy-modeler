@@ -1,0 +1,12 @@
+# Ignore OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Dependencies / builds (when added later)
+/node_modules/
+/vendor/
+/build/
+*.log

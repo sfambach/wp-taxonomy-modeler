@@ -2,7 +2,7 @@
 
 > Living technical documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-**Status:** Target architecture — **planning only** (implementation not started)
+**Status:** Target architecture — domain model still planning; **scaffold `0.0.1`** ships a term-based admin tree UI
 
 ## Planning note
 

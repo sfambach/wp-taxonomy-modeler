@@ -3,7 +3,7 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Planning only — not implemented yet  
+**Status:** Scaffold `0.0.1` (admin taxonomy tree); domain model still planning  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode

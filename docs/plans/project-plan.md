@@ -1,8 +1,8 @@
 ---
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
-status: planning
-version: "0.6.86-plan"
+status: scaffolding
+version: "0.6.87-plan"
 last_updated: "2026-07-25"
 related_docs:
   - README.md
@@ -40,17 +40,17 @@ todos:
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
     status: in_progress
   - id: scaffold-plugin
-    content: "Scaffold modern PHP 8.x plugin bootstrap, autoload, text domain, and activation hooks (blocked until planning sign-off)"
-    status: pending
+    content: "Scaffold modern PHP 8.x plugin bootstrap 0.0.1 (wp-taxonomy-tree.php + includes)"
+    status: completed
   - id: core-tree-model
-    content: "Implement taxonomy-agnostic tree model (load, nest, ancestors, descendants) on top of Node/WP_Term (blocked until planning sign-off)"
-    status: pending
+    content: "Taxonomy-agnostic tree model over WP_Term (nest/walk/delete); Domain Node DTO still planning"
+    status: completed
   - id: admin-tree-ui
-    content: "Admin tree UI for any hierarchical taxonomy (expand/collapse, select, create child, delete with promote/cascade) (blocked until planning sign-off)"
-    status: pending
+    content: "Admin tree UI for hierarchical taxonomies (expand/collapse, select, create, delete promote/cascade)"
+    status: completed
   - id: rest-or-ajax-api
-    content: "Secure CRUD/tree endpoints (capability + nonce/permission callbacks) for the admin UI (blocked until planning sign-off)"
-    status: pending
+    content: "Secure Admin-AJAX endpoints (capability + nonce) for the tree UI"
+    status: completed
   - id: extension-api
     content: "Documented hooks/filters so host plugins can bind CPTs, side panes, and custom term behavior (blocked until planning sign-off)"
     status: pending
