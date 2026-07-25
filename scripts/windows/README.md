@@ -30,14 +30,34 @@ Laragon hält den Ordner oft über **Junctions**:
 - `wp-content\plugins\wp-taxonomy-tree` → `source\wp-taxonomy-tree`
 - `laragon\www\devel` → `C:\devel\wordpress`
 
-1. Laragon **Exit** (Tray-Icon, nicht nur Stop)
-2. Cursor/Explorer schließen
-3. **`unlock-and-clone.bat`** — oder manuell zuerst Junctions entfernen:
+**Laragon beenden ohne Taskleisten-Icon:**
+
+1. **Task-Manager** (`Strg+Shift+Esc`) → Prozesse beenden:
+   - `laragon.exe`
+   - `httpd.exe` (Apache)
+   - `nginx.exe` (falls Nginx statt Apache)
+   - `mysqld.exe`
+2. Oder in **cmd**:
+
+```bat
+taskkill /IM laragon.exe /F
+taskkill /IM httpd.exe /F
+taskkill /IM nginx.exe /F
+taskkill /IM mysqld.exe /F
+taskkill /IM php-cgi.exe /F
+timeout /t 3
+```
+
+3. Laragon ggf. manuell starten: `C:\laragon\laragon.exe` — danach **Rechtsklick** aufs Icon → Exit (falls sichtbar).
+
+4. Cursor/Explorer schließen, dann Junctions entfernen:
 
 ```bat
 rmdir C:\devel\wordpress\wp-content\plugins\wp-taxonomy-tree
 rmdir C:\laragon\www\devel
 ```
+
+5. **`unlock-and-clone.bat`** — macht das automatisch und klont neu.
 
 Dann erst den `source\`-Ordner löschen oder klonen.
 
