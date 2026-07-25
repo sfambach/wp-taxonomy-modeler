@@ -541,6 +541,14 @@ body {
   font-size: 0.8rem;
 }
 
+.bom-table-title {
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
 .allowlist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));

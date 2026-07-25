@@ -84,10 +84,11 @@ Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or 
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
 **Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
-**Type catalog (proto v30 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
-**Q26 decided:** resolve Node type **only under `type_node`** (Typ-Ast).  
+**Types = Nodes under `type_node` (Typ-Ast)** — folders e.g. Simple / Complex / Collection are just tree structure; **no `TypeKind` class**.  
+**Q26 decided:** resolve Node type **only under `type_node`**.  
 **Q59 decided:** `Project.start_node` from Setup (default focus).  
-**BOM (Q57/Q58/Q60):** Fußzeile = same column count; per cell `footer_op` (`sum`/`avg`/`min`/`max`/`count`/none|label); Menge = Stück (`int`); Composition `config.allowed_types` + `config.allowed_base_units`.  
+**BOM (Q57/Q58/Q60/Q61):** required `Node.name`; title under table `BOM als Bauteilliste – {name}`; Fußzeile = same columns + `footer_op`; Menge = Stück; allowlists.  
+**Q62 (later):** Gutenberg block — pick Collection node as table art, then fill rows like Backend.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  

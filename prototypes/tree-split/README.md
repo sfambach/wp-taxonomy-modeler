@@ -24,7 +24,7 @@ Project root
 │   │   └── Complex   quantity · subtree · Collection(list/table/enum)
 │   ├── Präfixe
 │   └── Basiseinheit
-├── Compositionen  (Rezept · BOM — Board)
+├── Compositionen  (Rezept · BOM „Demo-Platine A“)
 └── Bauteile       (Katalog ≠ Composition)
     ├── Widerstand
     └── Kondensator
@@ -42,15 +42,17 @@ Project root
 ## Goal path — BOM-Zeile
 
 1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
-2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
-3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
-4. **Menge** = **Stück** (`int`) — nicht `quantity`.
-5. **Beschreibung** = `textarea` (optional).
-6. Erlaubte Präfixe = `allows_prefix` der Einheit.
-7. Pflicht/Optional = `config.required` am Slot-Knoten.
-8. **Fußzeile** = gleiche Spaltenzahl; pro Spalte `footer_op` (`sum` / `avg` / …); Menge typisch `sum` → Stück.
-9. Am BOM-Knoten: **zulässige Typen** + **zulässige Basiseinheiten** (Allowlists).
-10. Projekt-**Startknoten** in Setup (Standard-Fokus beim Öffnen).
+2. BOM anlegen — **Name Pflicht** (z. B. Platinenname); Titel unter Tabelle: **`BOM als Bauteilliste – {name}`**.
+3. Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
+4. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
+5. **Menge** = **Stück** (`int`) — nicht `quantity`.
+6. **Beschreibung** = `textarea` (optional).
+7. Erlaubte Präfixe = `allows_prefix` der Einheit.
+8. Pflicht/Optional = `config.required` am Slot-Knoten.
+9. **Fußzeile** = gleiche Spaltenzahl; pro Spalte `footer_op` (`sum` / `avg` / …).
+10. Am BOM-Knoten: **zulässige Typen** + **zulässige Basiseinheiten**.
+11. Später WP-**Block**: Art der Tabelle = Knoten unter **Collection**; Zeilen wie Backend.
+12. Typen = nur der **Typ-Ast** (kein separates TypeKind).
 
 ## Projects
 
@@ -69,6 +71,9 @@ State: `localStorage` key `wtt-proto-tree-split-v30` — **Reset** after upgrade
 | Startknoten | Pro Projekt in Setup (`startNodeId`) |
 | Menge | **Stück** (`int`) |
 | Fußzeile | Gleiche Spaltenzahl; pro Spalte `footer_op` (sum/avg/min/max/count/none) |
+| BOM-Name | Pflicht (`Node.name`); Titel unter Tabelle: `BOM als Bauteilliste – {name}` |
+| WP-Block | Später: Collection-Knoten als Tabellenart, dann Zeilen wie Backend |
+| Typen | Nur Ast unter `Typen` / `type_node` — kein `TypeKind` |
 | Allowlists | `config.allowed_types` / `config.allowed_base_units` am Composition-Knoten |
 
 ## Simple types (HTML lean)

@@ -44,7 +44,9 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Emerging type model: **Bauteil** (Katalog, z. B. Widerstand) vs **Composition**/Zusammenstellung (BOM/Rezept/Build). Bauteile nur als **`subtree`**-Spalte (`ref_scope`; UX: Bauteil-Ref / „Bauteil Wahl“) in der Composition. Instanz: ParameterValues am Bauteil; Rows/Zellen an der Composition.
 - **Decided (Q26):** the type of a Node is resolved **only in the Type branch** (`type_node` / Datentypen).
 - **Decided (Q59):** **Startknoten** is set by default in **Project Setup** (`start_node`).
-- **Decided (Q57/Q58/Q60):** a **BOM has a Fußzeile** with the **same column count**; each footer cell may show a simple aggregate (`sum` / `avg` / …) or stay empty/label; **Menge** = **Stück** (`int`); per BOM one chooses **zulässige Typen** and **zulässige Basiseinheiten**.
+- **Decided (Q57/Q58/Q60/Q61):** a **BOM has a required name** (e.g. Projekt- or Platinenname); title under the table = **`BOM als Bauteilliste – {name}`**; **Fußzeile** with the **same column count** and per-cell aggregates (`sum` / `avg` / …); **Menge** = **Stück** (`int`); per BOM **zulässige Typen** / **Basiseinheiten**.
+- **Decided (Q62 direction):** later a WordPress **block** selects the table art from **Collection** nodes (Typ-Ast), then adds Bauteile/rows like the Backend tab.
+- Types are **Nodes under the Type branch** — there is **no separate `TypeKind`** class/enum.
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück).
 - **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.

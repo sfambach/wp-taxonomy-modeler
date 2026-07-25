@@ -544,9 +544,10 @@ function seedBomTestData(compositionsRootId, core) {
   pushEdge(kPref, prefixesRootId, REL_HAS_TYPE);
   pushEdge(kUnit, uFarad, REL_HAS_TYPE);
 
-  const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
+  // Q61: BOM name = required user-entered Node.name (Projekt-/Platinenname)
+  const bomCompId = createNode(compositionsRootId, "Demo-Platine A", nextPosition(compositionsRootId), {
     description:
-      "BOM-Zeile: Spalte „Bauteil Wahl“ = subtree (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest. Menge = Stück. Fußzeile = Summe Stück.",
+      "BOM-Name (Pflicht) = dieser Knotenname. Titel unter Tabelle: „BOM als Bauteilliste – {name}“. Spalten + Fußzeile; Menge = Stück.",
     config: {
       footer: { enabled: true },
       // empty = all under Typ-Ast / Basiseinheit; demo pre-selects common types + electronics units
@@ -655,7 +656,7 @@ function setActiveProject(projectId) {
   const project = projects.find((p) => p.id === projectId);
   if (!project) return;
   applyProject(project);
-  // Q59: Setup-Startknoten = Standard-Fokus (Demo-Seed: BOM — Board)
+  // Q59: Setup-Startknoten = Standard-Fokus (Demo-Seed: BOM Demo-Platine A)
   selectedId =
     project.startNodeId && nodes.has(project.startNodeId)
       ? project.startNodeId
@@ -730,14 +731,14 @@ function createInitial() {
     dataTypesRootId: demoCore.dataTypesRootId,
     prefixesRootId: demoCore.prefixesRootId,
     baseUnitsRootId: demoCore.baseUnitsRootId,
-    startNodeId: bomCompId, // Setup-Standard: BOM — Board
+    startNodeId: bomCompId, // Setup-Standard: BOM Demo-Platine A
   };
 
   projects = [templateProject, demoProject];
   collapseAllBranches();
   applyProject(demoProject);
   selectedId = demoProject.startNodeId;
-  // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
+  // Compositionen aufgeklappt, damit Rezept + BOM sichtbar sind
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
   if (demoCore.bauteileRootId) collapsed.delete(demoCore.bauteileRootId);
@@ -3114,7 +3115,21 @@ function renderTableView(store, title) {
   }
 
   tableWrap.append(table);
-  wrap.append(tableWrap);
+
+  // Q61: Titel unter der Tabelle — „BOM als Bauteilliste – {name}“
+  const isBomLike =
+    isBomPartDriven ||
+    cols.some((c) => c.name.trim().toLowerCase() === "menge");
+  if (isBomLike) {
+    const caption = document.createElement("p");
+    caption.className = "bom-table-title";
+    caption.textContent = `BOM als Bauteilliste – ${node.name}`;
+    caption.title =
+      "Pflichtname der BOM (Knotenname) — z. B. Projektname oder Platinenname (Q61)";
+    wrap.append(tableWrap, caption);
+  } else {
+    wrap.append(tableWrap);
+  }
   mount.replaceChildren(wrap);
 }
 
@@ -3540,8 +3555,23 @@ function renderForm() {
 }
 
 
+/** Collection kinds under Typ-Ast (list / table / enum) — Q62 block art picker. */
+function collectionArtCandidates() {
+  /** @type {ProtoNode[]} */
+  const out = [];
+  for (const n of dataTypeNodes()) {
+    if (n.name.trim().toLowerCase() !== "collection") continue;
+    for (const kind of childrenOf(n.id)) {
+      out.push(kind);
+      out.push(...childrenOf(kind.id));
+    }
+  }
+  return out;
+}
+
 /**
  * Simplified page preview (future: Gutenberg blocks for recipes / compare / actions).
+ * Q62: later WP block picks Collection art, then fills rows like Backend.
  */
 function renderFrontend() {
   const mount = document.getElementById("detail");
@@ -3558,8 +3588,39 @@ function renderFrontend() {
 
   const lead = document.createElement("p");
   lead.className = "lead";
-  lead.innerHTML = `<strong>Frontend</strong> — vereinfachte Seitenvorschau für <strong>${escapeHtml(node.name)}</strong>. Später: Blöcke (Rezept, Vergleich, Aktionen).`;
+  lead.innerHTML = `<strong>Frontend</strong> — Vorschau für <strong>${escapeHtml(node.name)}</strong>. Später WP-Block: Art der Tabelle aus <code>Collection</code>-Knoten, dann Zeilen wie Backend (Q62).`;
   wrap.append(lead);
+
+  // Q62 sketch: Art der Tabelle = Node under Collection
+  const artBlock = document.createElement("div");
+  artBlock.className = "order-block";
+  const artLab = document.createElement("div");
+  artLab.className = "field-label";
+  artLab.textContent = "Block (Skizze) — Art der Tabelle";
+  const artSel = document.createElement("select");
+  artSel.className = "form-control";
+  artSel.disabled = true;
+  const artEmpty = document.createElement("option");
+  artEmpty.value = "";
+  artEmpty.textContent = "— Collection-Knoten wählen (später im WP-Block) —";
+  artSel.append(artEmpty);
+  const bound = typeNodeOf(node.id);
+  for (const c of collectionArtCandidates()) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = nodePath(c.id);
+    artSel.append(o);
+  }
+  if (bound && [...artSel.options].some((o) => o.value === bound.id)) {
+    artSel.value = bound.id;
+  }
+  const artHint = document.createElement("p");
+  artHint.className = "muted";
+  artHint.style.fontSize = "0.8rem";
+  artHint.textContent =
+    "Auswahl = Knoten unter Collection (list/table/enum …). Danach Bauteile/Zeilen wie im Tab Backend.";
+  artBlock.append(artLab, artSel, artHint);
+  wrap.append(artBlock);
 
   if (cols.length === 0) {
     const empty = document.createElement("p");
@@ -3582,10 +3643,17 @@ function renderFrontend() {
   const head = document.createElement("header");
   head.className = "frontend-block-head";
   const titleEl = document.createElement("h2");
-  titleEl.textContent = node.name;
+  const isBomLike =
+    cols.some((c) => typeKey(typeNodeOf(c.id)) === "subtree") ||
+    cols.some((c) => c.name.trim().toLowerCase() === "menge");
+  titleEl.textContent = isBomLike
+    ? `BOM als Bauteilliste – ${node.name}`
+    : node.name;
   const sub = document.createElement("p");
   sub.className = "frontend-block-sub";
-  sub.textContent = "Block-Vorschau · Composition";
+  sub.textContent = isBomLike
+    ? "Block-Vorschau · BOM (Name Pflicht, Q61)"
+    : "Block-Vorschau · Composition";
   head.append(titleEl, sub);
   block.append(head);
 
@@ -3668,7 +3736,7 @@ function renderFrontend() {
   const note = document.createElement("p");
   note.className = "muted frontend-note";
   note.textContent =
-    "Nur Demo-Layout. Später: echte Blöcke, ggf. zwei Rezepte nebeneinander, Aktionen auf Compositionen.";
+    "Nur Demo-Layout. Später echter Gutenberg-Block (Q62): Collection-Art wählen, dann Zeilen wie Backend; BOM-Titel = „BOM als Bauteilliste – {name}“.";
   wrap.append(block, note);
   mount.replaceChildren(wrap);
 }

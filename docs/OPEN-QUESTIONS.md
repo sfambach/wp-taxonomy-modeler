@@ -66,6 +66,8 @@
 | Q58 | How is BOM **Menge** expressed? | `quantity` with unit / free text / **Stück as `int`** | **Decided:** BOM Menge = **Stück** (piece count) via type **`int`** — not `quantity` (Größe). Display unit label „Stück“. Rezept-Menge may still be `quantity`. | decided |
 | Q59 | Where is the Project **Startknoten** set? | Hardcoded root / first root_node / **Setup default** | **Decided:** **Startknoten** is set by default in **Project Setup** (`Project.start_node`). UI opens/focuses that node; may point at project root or a chosen branch (e.g. Typen, Compositionen). | decided |
 | Q60 | Can a BOM restrict which types / Basiseinheiten are usable? | Always all project types / host filter / **per-Composition allowlists** | **Decided:** on a BOM/Composition one chooses **zulässige Typen** (subset under Type branch) and **zulässige Basiseinheiten** (subset under Basiseinheit). Empty allowlist = all under the project anchor. Same pattern for both. | decided |
+| Q61 | How is a BOM named / titled? | Auto-id only / optional label / **required user name** | **Decided:** BOM has a **required name** (`Node.name`) entered by the user (e.g. project name or Platinenname). Display title **under** the table: **`BOM als Bauteilliste – {name}`**. | decided |
+| Q62 | How will frontend/editor expose a BOM table? | Hardcoded BOM UI / host-only / **Gutenberg block** | **Decided (direction):** later a **WordPress block** lets the author pick the **table art** from Nodes under **Collection** (Typ-Ast), then add Bauteile/rows like the Backend tab today. Not implemented while planning. | decided |
 
 ## How to close a question
 

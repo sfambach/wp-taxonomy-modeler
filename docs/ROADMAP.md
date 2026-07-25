@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.81-plan** (2026-07-25).
+Last synced from plan version **0.6.82-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -36,6 +36,9 @@ Last synced from plan version **0.6.81-plan** (2026-07-25).
 | **Q58:** BOM Menge = Stück (`int`) | Done (planning) |
 | **Q59:** Startknoten from Project Setup | Done (planning) |
 | **Q60:** per BOM zulässige Typen + Basiseinheiten | Done (planning) |
+| **Q61:** BOM name required; title `BOM als Bauteilliste – {name}` | Done (planning) |
+| **Q62:** later WP block — Collection art + Backend-like rows | Done (planning direction) |
+| Drop `TypeKind` — types = Typ-Ast nodes only | Done (planning) |
 | Goal path: create one Composition (blockers #1–3) | In progress |
 | Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
 | Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |

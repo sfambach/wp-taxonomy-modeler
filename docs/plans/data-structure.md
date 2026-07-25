@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.81-plan"
+version: "0.6.82-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -249,22 +249,8 @@ classDiagram
     +toBase() number
   }
 
-  class TypeKind {
-    <<enumeration / Node role>>
-    Simple_int
-    Simple_double
-    Simple_text
-    Simple_textarea
-    Simple_char
-    Simple_bool
-    Simple_node_ref
-    Complex_quantity
-    Complex_subtree
-    Complex_Collection
-  }
-
   note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
-  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34)\nBauteil | Composition | Slot | Type"
+  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34).\nTypes = Nodes under type_node\n(no TypeKind enum).\nBOM name = Node.name (required)"
   note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57);\nfooter_op on column slots"
   note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
   note for FooterCell "op: sum|avg|min|max|count|none|label"
@@ -273,7 +259,6 @@ classDiagram
   note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
   note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
   note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id;\nMenge = Stück int"
-  note for TypeKind "Not PHP subclasses —\nNodes under Datentypen\nSimple | Complex"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Node : definition_root
@@ -310,7 +295,14 @@ classDiagram
 | simples / `node_ref` / `quantity` / Collection | `has_type` only; target under `type_node` (**Q26**) | `typeNode()` set; `isUnderTypeBranch` |
 | **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
 
-**Composition / BOM (Q57–Q60):** Fußzeile required for BOM — **same column count**, per-cell aggregate (`sum`/`avg`/… via column `footer_op`); Menge = Stück (`int`); `config.allowed_types` / `config.allowed_base_units` filter pickers under the matching Definition branches.
+**Composition / BOM (Q57–Q62):**  
+- **Name (required):** Composition `Node.name` — user-entered (e.g. project name or Platinenname) (**Q61**).  
+- **Display title under table:** `BOM als Bauteilliste – {name}` (**Q61**).  
+- **Fußzeile:** same column count; per-cell `footer_op` (**Q57**).  
+- **Menge** = Stück (`int`) (**Q58**).  
+- Allowlists: `allowed_types` / `allowed_base_units` (**Q60**).  
+- **WP Block (later):** pick table art from **Collection** nodes under Type, then fill rows like Backend (**Q62**).  
+- **No `TypeKind` class** — types are simply Nodes under `type_node` (Typ-Ast).
 
 **Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
 
@@ -1105,9 +1097,12 @@ Level — Bauteil (separate)
 
 | Concern | Rule |
 |---------|------|
+| **Name** | **Required** user-entered `Node.name` — e.g. Projektname or Platinenname (**Q61**) |
+| **Titel unter Tabelle** | Fixed pattern: **`BOM als Bauteilliste – {name}`** (**Q61**) |
 | **Fußzeile** | Same **column count** as body. Each cell may differ: `none`/`label`, or aggregate **`sum` / `avg` / `min` / `max` / `count`** over that column’s rows (Q57). Typical: Menge → `sum` (Stück); Preis → `sum`; text → empty. Op on column slot `config.footer_op` (or aligned `CompositionFooter.cells`). |
 | **Zulässige Typen** | `Node.config.allowed_types` = ids under `Project.type_node` (empty = all) |
 | **Zulässige Basiseinheiten** | `Node.config.allowed_base_units` = ids under `Project.base_unit_node` (empty = all) |
+| **WP Block (later)** | Editor picks **Art der Tabelle** = a Node under **Collection** (list/table/enum …); then adds Bauteile/rows like Backend today (**Q62**) |
 
 **2) Kochrezept / Gericht**
 
@@ -2081,7 +2076,7 @@ Invariants (leaning):
 3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
 4. **`has_type` targets must be under `project.type_node`** (never under Compositionen / Bauteile) — **Q26**
 5. `start_node` belongs to the Project tree and is configured in Setup (**Q59**)
-6. Composition/BOM: `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); BOM has Fußzeile with **same column count**; each footer cell has `footer_op` ∈ {none,label,sum,avg,min,max,count} (**Q57**); Menge = Stück (**Q58**)
+6. Composition/BOM: `Node.name` required (**Q61**); display title under table `BOM als Bauteilliste – {name}`; `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); Fußzeile same column count + `footer_op` (**Q57**); Menge = Stück (**Q58**); no `TypeKind` — types are Typ-Ast Nodes only
 
 ### Default Nodes for a new Project (open — Q50)
 

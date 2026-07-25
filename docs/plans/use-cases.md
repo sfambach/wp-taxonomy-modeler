@@ -297,6 +297,20 @@ Cards below split **tree environment** vs **host BOM**.
 | **Touches** | CompositionRow; part → Node id; Reference shape Q47 |
 | **Notes** | Menge ≠ `quantity` (Größe). Q58 |
 
+### UC-21b — Name a BOM (required)
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User / Admin |
+| **Goal** | Give the BOM a required display name |
+| **Trigger** | Creates or renames a BOM Composition |
+| **Preconditions** | Composition Node exists |
+| **Main flow** | 1. User enters **name** (e.g. project name or Platinenname)<br>2. System stores as `Node.name` (required, non-empty)<br>3. Under the table, title shows **`BOM als Bauteilliste – {name}`** |
+| **Outcome** | Named BOM with composed title under the table |
+| **MVP?** | planning |
+| **Touches** | Composition Node.name; table caption (**Q61**) |
+| **Notes** | Name ≠ auto id |
+
 ### UC-22 — See BOM Fußzeile (per-column aggregates)
 
 | Field | Content |
