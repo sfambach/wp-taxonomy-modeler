@@ -47,22 +47,22 @@ machine.
 | Laragon | `C:\laragon` |
 | Site URL (after junction) | `http://devel.test` |
 
-**One-time / refresh setup (PowerShell as normal user):**
+**WordPress install only** (Laragon + MySQL, fully automated):
+
+```powershell
+cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
+.\install-wordpress.ps1
+```
+
+Creates DB `wordpress`, downloads core to `C:\devel\wordpress`, runs
+`wp core install`, site URL `http://devel.test`, admin `admin` / `admin123`.
+
+**Full dev setup** (checkout + plugin link + Laragon junction + WP install):
 
 ```powershell
 cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
 .\setup-dev.ps1
 ```
-
-Or double-click `setup-dev.bat`. The script will:
-
-1. Start Laragon if it is installed but not running.
-2. Clone or `git pull` this repo into `C:\devel\wordpress\source\wp-taxonomy-tree`.
-3. Download WordPress core into `C:\devel\wordpress` when missing.
-4. Create junctions:
-   - `C:\devel\wordpress\wp-content\plugins\wp-taxonomy-tree` → source checkout
-   - `C:\laragon\www\devel` → `C:\devel\wordpress` (serves `http://devel.test`)
-5. Run `npm install` / `npm run build` when a `package.json` exists.
 
 **Checkout only (no Laragon / WP setup):**
 

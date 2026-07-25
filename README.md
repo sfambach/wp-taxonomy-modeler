@@ -55,16 +55,20 @@ WordPress docroot: `C:\devel\wordpress` → served as `http://devel.test` via La
 After Laragon is installed, run once (also safe before a reboot):
 
 ```powershell
+mkdir C:\devel\wordpress\source -Force
+git clone -b cursor/laragon-setup-f17e https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
 cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
 .\setup-dev.ps1
 ```
 
-First-time clone only:
+**WordPress only** (if repo is already checked out):
 
 ```powershell
-mkdir C:\devel\wordpress\source -Force
-git clone https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
+cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
+.\install-wordpress.ps1
 ```
+
+Site: `http://devel.test/wp-admin` — user `admin`, password `admin123`.
 
 See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windows/setup-dev.ps1) for details.
 

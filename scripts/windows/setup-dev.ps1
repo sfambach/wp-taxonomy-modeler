@@ -120,49 +120,13 @@ function Ensure-GitCheckout {
     }
 }
 
-function Ensure-WordPressCore {
-    $index = Join-Path $WordPressRoot 'index.php'
-    if (Test-Path -LiteralPath $index) {
-        Write-Host "WordPress core already present at $WordPressRoot"
-        return
+function Ensure-WordPressInstalled {
+    Write-Step 'Installing WordPress (core, database, wp core install)'
+    $installScript = Join-Path $PSScriptRoot 'install-wordpress.ps1'
+    if (-not (Test-Path -LiteralPath $installScript)) {
+        throw "Missing $installScript"
     }
-
-    Write-Step 'Downloading WordPress core into C:\devel\wordpress'
-    Ensure-Directory $WordPressRoot
-
-    $php = Get-LaragonPhp
-    $wpCli = Join-Path $LaragonDir 'bin\wp-cli.phar'
-
-    if (-not (Test-Path -LiteralPath $wpCli)) {
-        Write-Host 'Downloading wp-cli.phar'
-        Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar' -OutFile $wpCli
-    }
-
-    Push-Location $WordPressRoot
-    try {
-        & $php $wpCli core download --locale=de_DE
-        if (-not (Test-Path -LiteralPath (Join-Path $WordPressRoot 'wp-config.php'))) {
-            & $php $wpCli config create `
-                --dbname=wordpress `
-                --dbuser=root `
-                --dbpass='' `
-                --dbhost=127.0.0.1 `
-                --skip-check `
-                --force
-        }
-    }
-    finally {
-        Pop-Location
-    }
-
-    Write-Host @"
-
-WordPress files are in place. Finish setup in Laragon:
-  1. Open Laragon -> Menu -> Quick app -> WordPress (or create DB 'wordpress' in HeidiSQL)
-  2. Run from $WordPressRoot :
-       php $wpCli core install --url=$SiteUrl --title='WP Dev' --admin_user=admin --admin_password=admin123 --admin_email=admin@example.test --skip-email
-  3. Visit $SiteUrl/wp-admin
-"@
+    & $installScript
 }
 
 function Install-NodeDependencies {
@@ -190,7 +154,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 
 Start-LaragonIfNeeded
 Ensure-GitCheckout
-Ensure-WordPressCore
+Ensure-WordPressInstalled
 Ensure-Directory $PluginsDir
 Ensure-Junction -Link $PluginLink -Target $RepoDir
 Ensure-Junction -Link $LaragonWwwLink -Target $WordPressRoot
@@ -206,9 +170,8 @@ Local paths:
   Site URL    : $SiteUrl  (Laragon junction: $LaragonWwwLink)
 
 Next steps:
-  - If WordPress is not installed yet, complete the wp core install step shown above.
   - Open Laragon and confirm Apache + MySQL are green.
-  - Browse to $SiteUrl/wp-admin
+  - Browse to $SiteUrl/wp-admin (admin / admin123)
   - After plugin bootstrap exists: Plugins -> activate wp-taxonomy-tree
 
 Safe to reboot — rerun this script anytime to pull latest and refresh links.
