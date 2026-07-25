@@ -12,7 +12,7 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/plans/project-plan.md`](docs/plans/project-plan.md) | Project plan (source of truth for intent) |
 | [`docs/plans/planning-phase.md`](docs/plans/planning-phase.md) | Active planning checklist |
 | [`docs/plans/mvp-requirements.md`](docs/plans/mvp-requirements.md) | MVP requirements & acceptance criteria |
-| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (no Parameter / ParameterRole) |
+| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Parameter class Q64) |
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
@@ -23,6 +23,25 @@ WordPress plugin that will provide a reusable **taxonomy tree environment** for 
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased delivery roadmap |
 
 When the plan changes, the living docs above must be updated in the same change.
+
+## Local Windows layout
+
+| Role | Path |
+|------|------|
+| WordPress (docroot) | `C:\devel\wordpress` |
+| GitHub sources | `C:\devel\wordpress\source` |
+| This repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
+| Web server (Laragon, …) | e.g. `C:\laragon` |
+
+```powershell
+mkdir C:\devel\wordpress\source -Force
+cd C:\devel\wordpress\source
+git clone https://github.com/sfambach/wp-taxonomy-tree.git
+cd wp-taxonomy-tree
+git checkout cursor/bom-konzept-konfiguration-de76
+```
+
+Open `C:\devel\wordpress\source\wp-taxonomy-tree` in Cursor Desktop.
 
 ## Relationship to other projects
 
