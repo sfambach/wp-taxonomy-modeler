@@ -14,7 +14,7 @@ todos:
     content: "User agrees identity layers are a useful mental model (not yet storage decision)"
     status: in_progress
   - id: storage-mapping
-    content: "Later: map layers to Node / Relation / host BOM (depends Q33–Q35, Q45)"
+    content: "Later: map layers to Node / Parameter / Relation / host BOM (depends Q64, Q35, Q45)"
     status: pending
 ---
 
@@ -146,7 +146,7 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
    `Kondensator → {Keramik, Folie, Elko, …}`  
    `Diode → {Signal, Schottky, Zener, …}`  
    `IC → {OpAmp, Timer, MCU, …}`
-2. **Attribute skeletons** per subtype (`consists_of` / defs): Wert, Toleranz, Leistung, Package, …  
+2. **Parameter skeletons** per subtype (defs on Node, Q64): Wert, Toleranz, Leistung, Package, …  
 3. **Catalog leaves** (or near-leaves): one node per orderable combination you care about.  
 4. **Unit group** for quantities: Präfix+Basiseinheit together; value often on relation/props (Q45).
 
@@ -167,13 +167,13 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
 | Layer | Likely object |
 |-------|----------------|
 | Kind / subtype | `Node` + Relation `is_a` |
-| Spec skeleton | `consists_of` / Parameter defs |
-| Filled Wert | `quantity` + unit group; maybe Relation.props |
-| Package | enum attr or Bauform node |
+| Spec skeleton | **Parameter** defs on Node (Q64) |
+| Filled Wert | ParameterValue (`quantity` + unit group); maybe Relation.props |
+| Package | Parameter Bauform (enum) |
 | Catalog part | `Node` (leaf) |
 | Board usage | **Host** BOM line → part Node id |
 
-Storage choice Parameter-as-Node vs Relation vs host SKU remains open (Q33–Q35).  
+Parameter storage (term meta vs table) remains open (Q15); typed edges exploratory (Q35).  
 This note only says: **keep the layers distinct when thinking**.
 
 ## Mini decision guide

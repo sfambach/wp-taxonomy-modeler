@@ -44,7 +44,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Emerging type model: **Bauteil** (Katalog) vs **Composition**/Zusammenstellung. Bauteile nur als **`subtree`**-Parameter (`ref_scope`). Instanz: ParameterValues.
 - **Decided (Q26):** the type of a Node is resolved **only in the Type branch** (`type_node` / Datentypen).
 - **Decided (Q59):** **Startknoten** is set by default in **Project Setup** (`start_node`).
-- **Decided (Q64 / Q33 revised):** **`Parameter` is a class** — every Node may have Parameters with **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a tree Node.
+- **Decided (Q64):** **`Parameter` is a class** — every Node may have Parameters with **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a tree Node.
 - **Decided (Q63):** **Tree = definition** (structure + Parameter defs); **WP page/block = instance values** (ParameterValues, rows).
 - **Decided (Q61):** Tree structure named **`BOM`**. **`Projektname`** = Parameter on Collection (inherited); filled on the page. Title: **`BOM als Bauteilliste – {Projektname}`**.
 - **Decided (Q57/Q58/Q60/Q62):** Fußzeile; Menge = Stück; allowlists; WP block fills Parameters + rows.
@@ -53,11 +53,11 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück).
 - **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.
 - Every Node has a **description** (may be empty).
-- **Decided (Q20 revised):** typed PHP DTOs including **Parameter**. Typed edges remain exploratory (**Q35**).
+- **Decided (Q20):** typed PHP DTOs including **Parameter**. Typed edges remain exploratory (**Q35**).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Attribute-node placement uses `parent_id` and/or Relations (**Q14 dropped / entfällt**); baseline tree = `parent_id` until fresh Q54.
+- Each Parameter is owned by exactly one Node (**Q14 revised / Q64**); baseline tree = `parent_id` until fresh Q54.
 - Open (**Q34/Q49**): config-first proposal — simples get `capabilities.originate_relations = false` (not a hard special kind).
 - Every Project and Node has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.

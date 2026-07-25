@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.85-plan"
+version: "0.6.86-plan"
 last_updated: "2026-07-25"
 related_docs:
   - README.md
@@ -158,9 +158,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Core data structure starts with **Node**: `id`, `parent_id` (`null` = root), `name`, `taxonomy`; tree is a rooted forest with no cycles. |
 | 2026-07-23 | One node can have **one parent node** (or none). Parent links are used to build **trees**; multiple trees form a **forest** (e.g. per taxonomy). |
 | 2026-07-23 | One node can have **several child nodes** (or none). Children are the inverse of the single-parent link. |
-| 2026-07-23 | Second core object is **Parameter** (initially distinct from Node; later **Q33** made Parameter a Node). Node↔Parameter relation, types, storage, and values still open at the time. |
-| 2026-07-23 | **One node can have several parameters** (or none). |
-| 2026-07-23 | “One parameter is always assigned to one node” is **tentative (?)** — later **dropped as Q14** under Q33. |
+| 2026-07-23 | Second core object is **Parameter** (distinct from Node). One Node can have several Parameters (or none); each Parameter has one owning Node (**Q14** / **Q64**). |
 | 2026-07-23 | **Project** is a core object and can consist of different trees. |
 | 2026-07-23 | **Tree is not an additional object**; a tree is defined by its **root node** (plus descendants). |
 | 2026-07-23 | A **root node** is a node that has **no parent**. |
@@ -182,8 +180,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Example catalog tree: Root → Bauteile → Widerstände → Wert / Bauform / Leistungsaufnahme / Größe → Länge / Breite / Höhe. |
 | 2026-07-23 | Filled **measure** = **value + prefix + Einheit (base_unit)**; dimensions e.g. `10 mm × 5 mm × 2 mm` (`mm` = Präfix `m` + Basiseinheit `Meter`). |
 | 2026-07-23 | Merged into one **Definitionsbaum**: root **Definition**; **Bauteile** hangs under it (no separate Root); **Maße** → Länge / Breite / Höhe (replaces Größe). |
-| 2026-07-23 | Design thought / leaning: **Parameter may be a specialized Node** (same tree, extra fields); specialization shape open (Q33/Q34). |
-| 2026-07-23 | Pause Parameter decision; explore **typed edges** (`ist-ein` / `besteht-aus`) via expanded **Bauteile** example tree (Q35). |
+| 2026-07-23 | Explore **typed edges** (`ist-ein` / `besteht-aus`) via expanded **Bauteile** example tree (Q35) — orthogonal to Parameter class. |
 | 2026-07-23 | Core Type catalog leaning: string, number, integer, boolean, url, file, enum, measure. |
 | 2026-07-23 | **measure** = composite (number\|integer + Präfix + Basiseinheit), not a separate scalar; Widerstand A vs B worked example. |
 | 2026-07-23 | **enum** = composite (scalar option values); **single/multiple** are selection methods, not types (Q38). |
@@ -206,11 +203,9 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Prototype: second editable table tab + form tab (dropdown/radio/switch/… from selected node + children). |
 | 2026-07-23 | Insight: BOM **Reference** = open RefDes list (`R1,R2`); validation ≠ Node meta — Type/Parameter (Q47). |
 | 2026-07-23 | Datentypen as tree Nodes (int/double/string/char/bool); bind via Relation `has_type`; UI widget from type (Q48). |
-| 2026-07-23 | **Q33 decided:** Parameter **is a tree Node**. Every Project has **fixed simple data-type Nodes**; further types are **derived or composed** from those simples. Q14 dissolves (no separate owner). Q34 (PHP specialization) remains open. |
-| 2026-07-23 | **Q14 dropped (entfällt).** **Q34 leaning: configuration** (not PHP subclass). New **Q49:** simple types may be a special Node kind that cannot originate Relations, **or** same Nodes with config that disables Relations — leave open; decide with config-first Q34. |
-| 2026-07-23 | Use cases synced to Q33/Q14/Q34/Q49 (`docs/plans/use-cases.md` **0.1.2**): UC-04–UC-06 wording; new **UC-10**, **UC-14–UC-16**. |
-| 2026-07-23 | Class diagram: **remove Parameter class** — only Node + config roles (`ParameterRole` stereotype); aligns Q33/Q34. |
-| 2026-07-23 | **ParameterRole dropped** as hinfällig without Parameter — attribute Nodes are just Nodes with type binding; diagram cleaned (0.6.41). |
+| 2026-07-23 | Fixed **simple data-type Nodes** in the template; further types **derived or composed** from those simples (**Q36**). |
+| 2026-07-23 | **Q14:** each Parameter has exactly one owning Node. **Q34 leaning: configuration** (not PHP subclass of Node). **Q49:** simples may not originate Relations — config vs special kind. |
+| 2026-07-23 | Use cases synced (`docs/plans/use-cases.md`): UC-04–UC-06; **UC-10**, **UC-14–UC-16**. |
 | 2026-07-23 | **Taxonomy on Project, not Node** (Q18 leaning) — remove `Node.taxonomy`; Project may hold WP taxonomy slug. |
 | 2026-07-23 | **Project ≈ taxonomy** (Q18 strengthened). Default Nodes: **generate** vs **copy template Project** — new **Q50** (relates Q30/Q32). |
 | 2026-07-23 | Template holds **simple types** + derived **enum** (exactly one **base_type** + **value list**). Q50 leans template-copy; Q36/Q38/Q39 aligned. |
@@ -221,7 +216,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Prototype tab **Umrechnung** (`tree-split` v10): pick Basiseinheit in tree; convert Menge between derived units via Präfix.factor; non-base selection grays out fields. |
 | 2026-07-23 | Q51 refine: scale = Relation **multiplikator** → int + value (not config); Farad allows only p/n/µ/m; Node.**description**; Relationen tab (not on Knoten); proto v11. |
 | 2026-07-24 | **Q51 decided:** Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives unit labels; forward+back convert. |
-| 2026-07-24 | **Q20 decided:** typed PHP DTO classes for Project/Node/Changelog/Change; no Parameter class; services for behavior. |
+| 2026-07-24 | **Q20 decided:** typed PHP DTO classes for Project, Node, **Parameter**, Changelog, Change, …; services for behavior. |
 | 2026-07-24 | Node.**description** confirmed on every Node (may be empty); Q12 updated. |
 | 2026-07-24 | **Q34/Q49 proposal:** config-first — `Node.config.capabilities.originate_relations` (false on simples); type binding via Relation `has_type`; no hard special kind. Still open pending user confirm. |
 | 2026-07-24 | **Template vs BOM test:** pure **Template** Project = Datentypen + Präfix + Basiseinheit only; **Stückliste / Bauteile / Spalten** live in a separate **BOM Testprojekt** (demo), not in the template. Proto v12 project switcher. |
@@ -237,7 +232,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Guideline add-on: **proactively flag** designs that look performance-hostile or conceptually nonsense (hot paths, dual writes, overloaded types). Plan **0.6.62**. |
 | 2026-07-24 | Guideline add-on: **modern design paradigms / best practice** — composition over inheritance, typed models, ubiquitous language, SoC (persist ≠ domain ≠ UI), illegal states hard, established patterns first, cite or contrast. Plan **0.6.63**. |
 | 2026-07-24 | **Q54 lean (new):** tree hierarchy only for **categorizing Bestandteile** of domain lists (BOM / Hardware / Rezept) and **inheriting hierarchical properties** — not Collection schema nesting. Plan **0.6.64**. |
-| 2026-07-24 | **Q55 spin:** reintroduce **Parameter** as definitions on a catalog Node (children inherit; leaves fill). Bauform lean = Parameter typed `Bauart` (enum); concrete leaf fills Wert+Bauform. Simple + composed types via examples BOM/Hardware/Rezept. Q33 “no Parameter class” under revisit (object vs Node-role). Plan **0.6.65**. |
+| 2026-07-24 | **Q55:** **Parameter** definitions on a catalog Node (children inherit; leaves fill ParameterValue). Bauform = Parameter typed `Bauart` (enum). Examples BOM/Hardware/Rezept. Plan **0.6.65**. |
 | 2026-07-24 | **Q56 lean:** BOM, hardware build, and cooking recipe are the **same concept** — a **Rezept** (composition: which Bestandteile belong together). Distinct from Katalog. Property-compare ≠ Rezept. Aligns Q46. Plan **0.6.66**. |
 | 2026-07-24 | **Q56 refined:** GPU-Ausprägung *is* a Composition (filled params; refs Vorlage). Compare = Composition vs Composition. BOM/Build nest Compositions. Katalog agreed. UX lean **Zusammenstellung**; drop Rezept (kitchen) and Composition (too technical) as primary UI terms. Plan **0.6.67**. |
 | 2026-07-24 | **Q56 naming decided:** UX **Zusammenstellung**, internal **Composition**; rename later allowed if a better word appears. Plan **0.6.68**. |
@@ -250,7 +245,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | **`node_ref`** type (generic Node pointer) + Relation **`ref_scope`** → catalog root; replaces hardcoded Bauteil picker. Slot **Pflicht/Optional** = **`Node.config.required`** (not on `has_type`). BOM column **Beschreibung** → `textarea`. Proto v27. Plan **0.6.75**. |
 | 2026-07-24 | BOM column rename **Bauteil** → **Bauteil Wahl** (vs catalog root Bauteile). Proto v28. |
 | 2026-07-24 | Datentypen → **Simple** / **Complex**. Scoped catalog pick renamed **`subtree`** (`ref_scope`); new Simple **`node_ref`** = free Absprung to any Node. Proto v29. Plan **0.6.76**. |
-| 2026-07-24 | Class diagram refreshed with **methods** + `NodeConfig` / `subtree` invariants; no Parameter class (Q33). Plan **0.6.77**. |
+| 2026-07-24 | Class diagram refreshed with **methods** + `NodeConfig` / `subtree` invariants. Plan **0.6.77**. |
 | 2026-07-24 | Architecture **layers**: DTO + Domain Service + Repository (+ WP adapter); not classic MVC. Review notes (Parameter/Q55, naming). Plan **0.6.78**. |
 | 2026-07-25 | **Q26 decided:** type of a Node is resolved **only under the Type branch** (`type_node` / Datentypen); Präfix/Basiseinheit only under their anchors. |
 | 2026-07-25 | **Q57 decided:** a **BOM has a Fußzeile** (Composition table footer; e.g. Summe Menge in Stück). |
@@ -262,9 +257,10 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-25 | **Q62 decided (direction):** later WP **block** — pick table art from **Collection** nodes, then fill Bauteile like Backend. |
 | 2026-07-25 | **Drop `TypeKind`:** types are simply Nodes under the Type branch (`type_node`) — no parallel enum/class. Plan **0.6.82**. |
 | 2026-07-25 | Proto **v31:** BOM name field + title under table + Block tab (Collection art + Backend table). Simplified class diagram (classes only). Plan **0.6.83**. |
-| 2026-07-25 | **Q61 corrected:** Tree structure name stays **`BOM`**; **`Projektname`** = Collection attribute (inherited); filled on WP page/block. Title uses Projektname value. |
+| 2026-07-25 | **Q61 corrected:** Tree structure name stays **`BOM`**; **`Projektname`** = Collection **Parameter** (inherited); filled on WP page/block. Title uses Projektname value. |
 | 2026-07-25 | **Q63 decided:** Tree = **definition**; WP page/block = **instance values**. Proto v32. Plan **0.6.84**. |
-| 2026-07-25 | **Q64 / Q33+Q55 revised:** **Parameter class reintroduced** — every Node may have Parameters; each has **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a tree Node. Proto v33. Plan **0.6.85**. |
+| 2026-07-25 | **Q64 decided:** **Parameter class** — every Node may have Parameters; each has **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a tree Node. Values = ParameterValue. Inheritance of defs along `parent_id` (Q55). BOM columns / Collection.Projektname = Parameters. Proto v33. Plan **0.6.85**. |
+| 2026-07-25 | Docs: remove discarded anti-Parameter paths; concept is Parameter-only (**Q64**). Plan **0.6.86**. |
 
 ## Change protocol
 

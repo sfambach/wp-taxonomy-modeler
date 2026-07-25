@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.85-plan** (2026-07-25).
+Last synced from plan version **0.6.86-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -36,7 +36,7 @@ Last synced from plan version **0.6.85-plan** (2026-07-25).
 | **Q58:** BOM Menge = Stück (`int`) | Done (planning) |
 | **Q59:** Startknoten from Project Setup | Done (planning) |
 | **Q60:** per BOM zulässige Typen + Basiseinheiten | Done (planning) |
-| **Q61:** Tree name BOM; Projektname = Collection attr → instance title | Done (planning) |
+| **Q61:** Tree name BOM; Projektname = Collection Parameter → instance title | Done (planning) |
 | **Q62:** WP block — Collection art + Projektname + rows | Done (planning direction) |
 | **Q63:** Tree = definition; WP page = instance values | Done (planning) |
 | Drop `TypeKind` — types = Typ-Ast nodes only | Done (planning) |
@@ -52,7 +52,7 @@ Last synced from plan version **0.6.85-plan** (2026-07-25).
 | **Q20:** typed PHP DTOs including Parameter | Done (planning) |
 | Parked: further Node idea (Q40) | Parked |
 | RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
-| Use-case cards (`docs/plans/use-cases.md`) — synced to Q33/Q14; UC-10, UC-14–UC-16 | In progress |
+| Use-case cards (`docs/plans/use-cases.md`) — synced to Q64/Q14; UC-10, UC-14–UC-16 | In progress |
 | Example project A — BOM (fit/gap) | Done (planning) |
 | Example project B — Hardware / tests / builds | Done (planning) |
 | Example project C — Rezepte | Done (planning) |
@@ -62,7 +62,7 @@ Last synced from plan version **0.6.85-plan** (2026-07-25).
 | Prototype: Umrechnung tab (Q51 unit family convert) | In progress |
 | Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
 | Open questions (leave open; resolve later in batches) | In progress |
-| Widerstand worked example: Approach A rejected; B (Parameter-Nodes) survives | Done (planning) |
+| Widerstand worked example: Parameters on Node (Q64) | Done (planning) |
 | Local WordPress development environment | In progress (separate PR; env only) |
 
 **Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.

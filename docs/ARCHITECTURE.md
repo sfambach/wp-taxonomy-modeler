@@ -19,12 +19,12 @@ flowchart TB
   R1 --> C2[Node]
   C1 --> G1[Node]
   R2 --> C3[Node]
-  C1 --> A1["Node (attribute)<br/>has_type → …"]
-  C1 --> A2["Node (attribute)"]
+  C1 --> A1["Parameter<br/>name + type → Typ-Ast"]
+  C1 --> A2["Parameter"]
 
   Host[Host plugin e.g. wp-electronic-parts] --> Hooks[WTT hooks and filters]
   Admin[Admin Tree UI] --> API[Tree API REST or Admin-AJAX]
-  API --> Model[Project / Node model]
+  API --> Model[Project / Node / Parameter model]
   Model --> Storage[WP terms and/or custom storage TBD]
   Hooks --> Admin
   Hooks --> API
@@ -70,7 +70,7 @@ WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
 ## PHP representation (**Q20 decided**)
 
 Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, **`Parameter`**, `Changelog`, `Change`, `ParameterValue`, ….  
-**Decided (Q64 / Q33 revised):** **Parameter class** — `name` (user text) + `type` (Node under Typ-Ast); every Node may own Parameters.  
+**Decided (Q64):** **Parameter class** — `name` (user text) + `type` (Node under Typ-Ast); every Node may own Parameters.  
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
@@ -80,7 +80,7 @@ Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templ
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
-Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or Relations.  
+**Parameters (Q64):** every Node may own Parameters (`name` + `type` from Typ-Ast); optional prefix / base_unit where needed. Not tree Nodes.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
 **Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
@@ -164,9 +164,9 @@ Template trees use `template = true`. Persistence: Q19.
 **Taxonomy:** **Project ≈ taxonomy** (strong leaning Q18) — Node has **no** `taxonomy` field.  
 **Defaults:** seed via generate **or** template-Project copy (**Q50**). Persistence: Q19.
 
-### Parameter (Q64 — class reintroduced)
+### Parameter (Q64)
 
-**Parameter** is a class again (revises Q33). Every **Node** may own Parameters. A Parameter is **not** a tree Node.
+**Parameter** is a class. Every **Node** may own Parameters. A Parameter is **not** a tree Node.
 
 | Field | Required | Meaning |
 |-------|----------|---------|
