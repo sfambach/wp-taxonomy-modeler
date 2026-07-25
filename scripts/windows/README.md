@@ -9,6 +9,7 @@ Unter Windows **öffnet ein Doppelklick auf `.ps1`-Dateien oft den Editor**
 |--------|--------|
 | Alles (Repo + WP + Links) | **`setup-dev.bat`** |
 | Nur WordPress installieren | **`install-wordpress.bat`** |
+| Repo neu klonen / reparieren | **`recover-repo.bat`** |
 
 Pfad:
 
@@ -31,6 +32,32 @@ powershell -ExecutionPolicy Bypass -File .\install-wordpress.ps1
 
 - `.ps1` per Doppelklick im Explorer
 - Rechtsklick → Bearbeiten (öffnet nur den Editor)
+
+## Wenn das Verzeichnis weg oder kaputt ist
+
+Alles liegt auf GitHub — lokal kannst du jederzeit neu klonen.
+
+**In cmd (alles in einem):**
+
+```bat
+mkdir C:\devel\wordpress\source 2>nul
+cd /d C:\devel\wordpress\source
+if exist wp-taxonomy-tree rmdir /s /q wp-taxonomy-tree
+git clone https://github.com/sfambach/wp-taxonomy-tree.git wp-taxonomy-tree
+dir wp-taxonomy-tree\scripts\windows
+C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\setup-dev.bat
+```
+
+**Oder nur reparieren** (wenn `.git` noch da ist):
+
+```bat
+cd /d C:\devel\wordpress\source
+git -C wp-taxonomy-tree fetch origin
+git -C wp-taxonomy-tree checkout main
+git -C wp-taxonomy-tree reset --hard origin/main
+```
+
+Nach dem Klon/Reparieren: **`setup-dev.bat`** starten.
 
 ## Wenn `install-wordpress.ps1` fehlt oder git nach `y/n` fragt
 
