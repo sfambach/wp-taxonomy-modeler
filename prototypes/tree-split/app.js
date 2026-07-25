@@ -79,10 +79,12 @@ const DEFAULT_PREFIX_FACTORS = {
  *     required?: boolean,
  *     allowed_types?: string[],
  *     allowed_base_units?: string[],
- *     footer?: { enabled?: boolean, sum_menge_stueck?: boolean },
+ *     footer?: { enabled?: boolean },
+ *     footer_op?: 'none'|'label'|'sum'|'avg'|'min'|'max'|'count',
  *   },
  * }} ProtoNode
  */
+const FOOTER_OPS = ["none", "label", "sum", "avg", "min", "max", "count"];
 /**
  * @typedef {{
  *   id: string,
@@ -546,7 +548,7 @@ function seedBomTestData(compositionsRootId, core) {
     description:
       "BOM-Zeile: Spalte „Bauteil Wahl“ = subtree (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest. Menge = Stück. Fußzeile = Summe Stück.",
     config: {
-      footer: { enabled: true, sum_menge_stueck: true },
+      footer: { enabled: true },
       // empty = all under Typ-Ast / Basiseinheit; demo pre-selects common types + electronics units
       allowed_types: [
         types.tInt,
@@ -567,28 +569,29 @@ function seedBomTestData(compositionsRootId, core) {
   const cPart = createNode(bomCompId, "Bauteil Wahl", 0, {
     description:
       "subtree → Kataloggruppe. has_type → subtree; ref_scope → Bauteile. Pflicht (config.required).",
-    config: { required: true },
+    config: { required: true, footer_op: "count" },
   });
   const cRef = createNode(bomCompId, "Reference", 1, {
     description: "RefDes — has_type → RefDes (list). Pflicht.",
-    config: { required: true },
+    config: { required: true, footer_op: "none" },
   });
   const cVal = createNode(bomCompId, "Wert", 2, {
     description: "Größe aus Bauteil-Schema: double + Präfix; Einheit von Bauteil.Einheit. Pflicht.",
-    config: { required: true },
+    config: { required: true, footer_op: "none" },
   });
   pushEdge(cVal, types.tQuantity, REL_HAS_TYPE);
   const cFp = createNode(bomCompId, "Footprint", 3, {
     description: "Bauform — has_type → Bauart (enum). Optional.",
-    config: { required: false },
+    config: { required: false, footer_op: "none" },
   });
   const cQty = createNode(bomCompId, "Menge", 4, {
-    description: "Stückzahl — Einheit Stück (int, nicht quantity). Pflicht. Fußzeile summiert Stück.",
-    config: { required: true },
+    description:
+      "Stückzahl — Einheit Stück (int, nicht quantity). Pflicht. Fußzeile: footer_op=sum → Σ Stück.",
+    config: { required: true, footer_op: "sum" },
   });
   const cDesc = createNode(bomCompId, "Beschreibung", 5, {
-    description: "Freitext — has_type → textarea. Optional.",
-    config: { required: false },
+    description: "Freitext — has_type → textarea. Optional. Fußzeile leer (footer_op=none).",
+    config: { required: false, footer_op: "none" },
   });
 
   pushEdge(cPart, types.tSubtree, REL_HAS_TYPE);
@@ -1338,8 +1341,64 @@ function toggleAllowsPrefix(unitId, prefixId, enabled) {
   renderRight();
 }
 
+/** @param {ProtoNode|null|undefined} col */
+function columnFooterOp(col) {
+  const op = col?.config?.footer_op;
+  return FOOTER_OPS.includes(op) ? op : "none";
+}
+
 /**
- * Composition/BOM: zulässige Typen + Basiseinheiten (Q60) + Fußzeile hint (Q57).
+ * Parse numeric values from a column for footer aggregates.
+ * @param {string[][]} grid
+ * @param {number} colIdx
+ * @param {ProtoNode} col
+ */
+function columnNumericValues(grid, colIdx, col) {
+  const key = typeKey(typeNodeOf(col.id));
+  /** @type {number[]} */
+  const nums = [];
+  for (let r = 0; r < TABLE_BODY_ROWS; r++) {
+    const raw = String(grid[r]?.[colIdx] ?? "").trim();
+    if (!raw) continue;
+    if (key === "quantity") {
+      const q = parseQuantityCell(raw);
+      const v = Number.parseFloat(String(q.v ?? "").replace(",", "."));
+      if (Number.isFinite(v)) nums.push(v);
+      continue;
+    }
+    const n = Number.parseFloat(raw.replace(",", "."));
+    if (Number.isFinite(n)) nums.push(n);
+  }
+  return nums;
+}
+
+/**
+ * @param {string[][]} grid
+ * @param {number} colIdx
+ * @param {ProtoNode} col
+ */
+function computeFooterCell(grid, colIdx, col) {
+  const op = columnFooterOp(col);
+  if (op === "none") return "";
+  if (op === "label") return col.config?.footer_label || col.name;
+  const filled = grid.filter((row) => String(row?.[colIdx] ?? "").trim() !== "").length;
+  if (op === "count") return String(filled);
+  const nums = columnNumericValues(grid, colIdx, col);
+  if (!nums.length) return "—";
+  const isMenge = col.name.trim().toLowerCase() === "menge";
+  const fmt = (n) => {
+    const s = Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
+    return isMenge && (op === "sum" || op === "avg") ? `${s} Stück` : s;
+  };
+  if (op === "sum") return fmt(nums.reduce((a, b) => a + b, 0));
+  if (op === "avg") return fmt(nums.reduce((a, b) => a + b, 0) / nums.length);
+  if (op === "min") return fmt(Math.min(...nums));
+  if (op === "max") return fmt(Math.max(...nums));
+  return "";
+}
+
+/**
+ * Composition/BOM: zulässige Typen + Basiseinheiten (Q60) + Fußzeile (Q57).
  * @param {ProtoNode} compNode
  */
 function buildCompositionAllowlistPanel(compNode) {
@@ -1357,12 +1416,12 @@ function buildCompositionAllowlistPanel(compNode) {
   lead.style.margin = "0.25rem 0 0.5rem";
   lead.style.fontSize = "0.8rem";
   lead.textContent =
-    "Typen nur aus dem Typ-Ast; Basiseinheiten nur unter Basiseinheit. Leer = alle. Menge = Stück; Fußzeile summiert Stück.";
+    "Typen nur aus dem Typ-Ast; Basiseinheiten nur unter Basiseinheit. Leer = alle. Fußzeile = gleiche Spaltenzahl; pro Spalte sum/avg/min/max/count.";
   block.append(lead);
 
   if (!compNode.config) compNode.config = {};
   const cfg = compNode.config;
-  if (!cfg.footer) cfg.footer = { enabled: true, sum_menge_stueck: true };
+  if (!cfg.footer) cfg.footer = { enabled: true };
 
   const footRow = document.createElement("label");
   footRow.className = "choice-row";
@@ -1372,15 +1431,52 @@ function buildCompositionAllowlistPanel(compNode) {
   footCb.disabled = !editable;
   footCb.addEventListener("change", () => {
     if (!compNode.config) compNode.config = {};
-    compNode.config.footer = {
-      enabled: footCb.checked,
-      sum_menge_stueck: true,
-    };
+    compNode.config.footer = { enabled: footCb.checked };
     persist();
     renderRight();
   });
-  footRow.append(footCb, document.createTextNode(" Fußzeile (Summe Menge in Stück)"));
+  footRow.append(
+    footCb,
+    document.createTextNode(" Fußzeile aktiv (gleiche Spaltenzahl, Ops pro Spalte)")
+  );
   block.append(footRow);
+
+  const cols = childrenOf(compNode.id);
+  if (cols.length) {
+    const opBlock = document.createElement("div");
+    opBlock.style.marginTop = "0.75rem";
+    const opLab = document.createElement("div");
+    opLab.className = "field-label";
+    opLab.textContent = "Fußzeile pro Spalte (footer_op)";
+    opBlock.append(opLab);
+    for (const col of cols) {
+      const row = document.createElement("div");
+      row.className = "field footer-op-row";
+      const l = document.createElement("label");
+      l.textContent = col.name;
+      l.htmlFor = `footer-op-${col.id}`;
+      const sel = document.createElement("select");
+      sel.id = `footer-op-${col.id}`;
+      sel.className = "form-control";
+      sel.disabled = !editable;
+      for (const op of FOOTER_OPS) {
+        const o = document.createElement("option");
+        o.value = op;
+        o.textContent = op;
+        sel.append(o);
+      }
+      sel.value = columnFooterOp(col);
+      sel.addEventListener("change", () => {
+        if (!col.config) col.config = {};
+        col.config.footer_op = sel.value;
+        persist();
+        renderRight();
+      });
+      row.append(l, sel);
+      opBlock.append(row);
+    }
+    block.append(opBlock);
+  }
 
   /** @param {string} key @param {string} title @param {() => ProtoNode[]} getCandidates */
   const checklist = (key, title, getCandidates) => {
@@ -2969,18 +3065,17 @@ function renderTableView(store, title) {
             renderRight();
             return;
           }
-          // Live-update Fußzeile Summe Stück without losing focus
-          if (showFooter && c === mengeColIdx) {
-            const foot = table.querySelector("tfoot .footer-stueck");
-            if (foot) {
-              let sum = 0;
-              for (let rr = 0; rr < TABLE_BODY_ROWS; rr++) {
-                const raw = String(grid[rr]?.[mengeColIdx] ?? "").trim();
-                const n = Number.parseInt(raw, 10);
-                if (Number.isFinite(n)) sum += n;
-              }
-              foot.textContent = `${sum} Stück`;
-            }
+          // Live-update Fußzeile (gleiche Spaltenzahl, Ops pro Spalte) without losing focus
+          if (showFooter) {
+            const cells = table.querySelectorAll("tfoot td[data-footer-col]");
+            cells.forEach((td) => {
+              const idx = Number(td.getAttribute("data-footer-col"));
+              if (!Number.isFinite(idx) || !cols[idx]) return;
+              const op = columnFooterOp(cols[idx]);
+              td.textContent = computeFooterCell(grid, idx, cols[idx]);
+              td.className = op === "sum" || op === "avg" ? "footer-agg" : "muted";
+              td.title = `${cols[idx].name}: ${op}`;
+            });
           }
         },
         `${title}: ${col.name}, Zeile ${r + 1}`,
@@ -2994,7 +3089,7 @@ function renderTableView(store, title) {
 
   table.append(thead, tbody);
 
-  // Q57/Q58: BOM Fußzeile — Summe Menge in Stück
+  // Q57: Fußzeile — same column count; per-cell footer_op (sum/avg/…)
   if (showFooter) {
     const tfoot = document.createElement("tfoot");
     const fr = document.createElement("tr");
@@ -3002,28 +3097,16 @@ function renderTableView(store, title) {
     lab.scope = "row";
     lab.className = "row-num";
     lab.textContent = "Σ";
-    lab.title = "Fußzeile — Summe Menge in Stück";
+    lab.title = "Fußzeile — gleiche Spaltenzahl; Aggregation pro Spalte (footer_op)";
     fr.append(lab);
-    let stueckSum = 0;
-    if (mengeColIdx >= 0) {
-      for (let r = 0; r < TABLE_BODY_ROWS; r++) {
-        const raw = String(grid[r]?.[mengeColIdx] ?? "").trim();
-        const n = Number.parseInt(raw, 10);
-        if (Number.isFinite(n)) stueckSum += n;
-      }
-    }
     for (let c = 0; c < cols.length; c++) {
+      const col = cols[c];
+      const op = columnFooterOp(col);
       const td = document.createElement("td");
-      if (c === mengeColIdx) {
-        td.className = "footer-stueck";
-        td.textContent = `${stueckSum} Stück`;
-        td.title = "Summe Menge (Stück)";
-      } else if (c === 0) {
-        td.className = "muted";
-        td.textContent = "Fußzeile";
-      } else {
-        td.textContent = "";
-      }
+      td.setAttribute("data-footer-col", String(c));
+      td.textContent = computeFooterCell(grid, c, col);
+      td.className = op === "none" || op === "label" ? "muted" : "footer-agg";
+      td.title = `${col.name}: ${op}`;
       fr.append(td);
     }
     tfoot.append(fr);

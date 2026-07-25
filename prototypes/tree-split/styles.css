@@ -523,10 +523,22 @@ body {
   font-size: 0.82rem;
 }
 
-.data-table .footer-stueck {
+.data-table .footer-agg {
   font-family: var(--mono);
   color: var(--accent);
   white-space: nowrap;
+}
+
+.footer-op-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(6rem, 8rem);
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.footer-op-row label {
+  font-size: 0.8rem;
 }
 
 .allowlist-grid {

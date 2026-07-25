@@ -48,7 +48,7 @@ Project root
 5. **Beschreibung** = `textarea` (optional).
 6. Erlaubte Präfixe = `allows_prefix` der Einheit.
 7. Pflicht/Optional = `config.required` am Slot-Knoten.
-8. **Fußzeile** = Summe Menge (Stück).
+8. **Fußzeile** = gleiche Spaltenzahl; pro Spalte `footer_op` (`sum` / `avg` / …); Menge typisch `sum` → Stück.
 9. Am BOM-Knoten: **zulässige Typen** + **zulässige Basiseinheiten** (Allowlists).
 10. Projekt-**Startknoten** in Setup (Standard-Fokus beim Öffnen).
 
@@ -68,7 +68,7 @@ State: `localStorage` key `wtt-proto-tree-split-v30` — **Reset** after upgrade
 | Typ-Suche | Nur im **Typ-Ast** (`Typen` → Datentypen …) |
 | Startknoten | Pro Projekt in Setup (`startNodeId`) |
 | Menge | **Stück** (`int`) |
-| Fußzeile | Summe Menge (Stück) |
+| Fußzeile | Gleiche Spaltenzahl; pro Spalte `footer_op` (sum/avg/min/max/count/none) |
 | Allowlists | `config.allowed_types` / `config.allowed_base_units` am Composition-Knoten |
 
 ## Simple types (HTML lean)

@@ -56,7 +56,7 @@ WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
 
 | Layer | Responsibility | Examples |
 |-------|----------------|----------|
-| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `CompositionFooter`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
+| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `CompositionFooter`, `FooterCell`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
 | **Domain service** | Invariants & workflows (no WP I/O) | tree walk/move/delete policy; `bindType` / `bindRefScope` / `assertTypeBindingsComplete`; `copyFromTemplate` |
 | **Repository (DAO)** | Load/save/map | `*_Repository` — only place that talks to WP storage |
 | **WP adapter** | Hooks, Admin, REST | `class-plugin.php`, screens, REST routes; host filters = extension surface |
@@ -87,7 +87,7 @@ Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit
 **Type catalog (proto v30 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
 **Q26 decided:** resolve Node type **only under `type_node`** (Typ-Ast).  
 **Q59 decided:** `Project.start_node` from Setup (default focus).  
-**BOM (Q57/Q58/Q60):** Fußzeile; Menge = Stück (`int`); Composition `config.allowed_types` + `config.allowed_base_units`.  
+**BOM (Q57/Q58/Q60):** Fußzeile = same column count; per cell `footer_op` (`sum`/`avg`/`min`/`max`/`count`/none|label); Menge = Stück (`int`); Composition `config.allowed_types` + `config.allowed_base_units`.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
@@ -155,7 +155,7 @@ Default Nodes (anchors + fixed simples): **generate on create** **or** **copy fr
 | `parent_id` | yes (`null` = root) | Catalog/taxonomy parent (**Q54 lean:** categorize Bestandteile + inheritance path). Not Collection schema; not Relation-edge cache. |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
-| `config` | ? | Slot: `required` / capabilities (Q34); Composition: `allowed_types`, `allowed_base_units`, `footer` (Q57/Q60) |
+| `config` | ? | Slot: `required` / `footer_op` / capabilities (Q34); Composition: `allowed_types`, `allowed_base_units`, `footer` (Q57/Q60) |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 

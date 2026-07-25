@@ -48,7 +48,7 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 | BOM line | 1…N **references** (designators on a board) + a chosen **part** (Widerstand, Kondensator, IC, Buchse, …) + **Bauform** (SMD, TH, …) + **Menge in Stück** (from reference count, `int`) + **description** + **price** + **in stock?** |
 | Part pick | From a **category tree** of possible parts |
 | Part data | Parts already carry properties: Größe, Wert, Datenblatt-Link, Leistung, … |
-| BOM Fußzeile | **Summe Menge (Stück)** + optional **price sum** (**Q57**/Q58) |
+| BOM Fußzeile | Same column count; per cell e.g. Menge → **sum** (Stück), Preis → **sum**, others empty/label — also **avg**/min/max/count (**Q57**/Q58) |
 | BOM allowlists | Which **Typen** / **Basiseinheiten** are zulässig on this BOM (**Q60**) |
 | Project Setup | Default **Startknoten** (**Q59**); type search only under Typ-Ast (**Q26**) |
 | Compare | Find/compare lists that share the same parts |

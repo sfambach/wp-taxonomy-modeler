@@ -44,7 +44,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Emerging type model: **Bauteil** (Katalog, z. B. Widerstand) vs **Composition**/Zusammenstellung (BOM/Rezept/Build). Bauteile nur als **`subtree`**-Spalte (`ref_scope`; UX: Bauteil-Ref / „Bauteil Wahl“) in der Composition. Instanz: ParameterValues am Bauteil; Rows/Zellen an der Composition.
 - **Decided (Q26):** the type of a Node is resolved **only in the Type branch** (`type_node` / Datentypen).
 - **Decided (Q59):** **Startknoten** is set by default in **Project Setup** (`start_node`).
-- **Decided (Q57/Q58/Q60):** a **BOM has a Fußzeile**; **Menge** = **Stück** (`int`); per BOM one chooses **zulässige Typen** and **zulässige Basiseinheiten**.
+- **Decided (Q57/Q58/Q60):** a **BOM has a Fußzeile** with the **same column count**; each footer cell may show a simple aggregate (`sum` / `avg` / …) or stay empty/label; **Menge** = **Stück** (`int`); per BOM one chooses **zulässige Typen** and **zulässige Basiseinheiten**.
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück).
 - **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.

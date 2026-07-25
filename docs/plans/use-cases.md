@@ -297,19 +297,19 @@ Cards below split **tree environment** vs **host BOM**.
 | **Touches** | CompositionRow; part → Node id; Reference shape Q47 |
 | **Notes** | Menge ≠ `quantity` (Größe). Q58 |
 
-### UC-22 — See BOM Fußzeile (Stück sum + optional price)
+### UC-22 — See BOM Fußzeile (per-column aggregates)
 
 | Field | Content |
 |-------|---------|
 | **Actor** | User |
-| **Goal** | See Fußzeile totals on the BOM |
+| **Goal** | See Fußzeile with same columns; each cell may aggregate its column |
 | **Trigger** | Views BOM table |
-| **Preconditions** | BOM has lines; Composition has Fußzeile (**Q57**) |
-| **Main flow** | 1. System sums Menge column → **Stück** total<br>2. Optionally sums line prices (host)<br>3. Shows totals in the **Fußzeile** |
-| **Outcome** | Stück sum (+ price if present) visible in footer |
+| **Preconditions** | BOM has lines; Composition has Fußzeile (**Q57**); columns have `footer_op` |
+| **Main flow** | 1. System renders Fußzeile with **one cell per column**<br>2. For each column: apply `footer_op` (`sum` / `avg` / `min` / `max` / `count` / none\|label) over filled rows<br>3. E.g. Menge → sum in **Stück**; Preis → sum; text → empty/label |
+| **Outcome** | Aligned footer row with per-column results |
 | **MVP?** | planning / Composition view |
-| **Touches** | Composition table + footer |
-| **Notes** | Q57 — Fußzeile is part of BOM, not optional chrome |
+| **Touches** | Composition table + footer; column `config.footer_op` |
+| **Notes** | Q57 — same column count; content may deviate via simple math only |
 
 ### UC-23 — Find BOMs that share the same parts
 

@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.80-plan"
+version: "0.6.81-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -131,18 +131,40 @@ classDiagram
     +allowed_types: Id[]?
     +allowed_base_units: Id[]?
     +footer: CompositionFooter?
+    +footer_op: FooterAggOp?
     +isRequired() bool
     +mayOriginateRelations() bool
     +allowsType(typeId) bool
     +allowsBaseUnit(unitId) bool
     +hasFooter() bool
+    +footerOp() FooterAggOp
   }
 
   class CompositionFooter {
     <<value object>>
     +enabled: bool
-    +sum_menge_stueck: bool
-    +sum_price: bool?
+    +cells: FooterCell[]
+    +columnCount() int
+    +assertAligned(columns) bool
+  }
+
+  class FooterCell {
+    <<value object>>
+    +slot: Node
+    +op: FooterAggOp
+    +label: string?
+    +compute(rows) string
+  }
+
+  class FooterAggOp {
+    <<enumeration>>
+    none
+    label
+    sum
+    avg
+    min
+    max
+    count
   }
 
   class Capabilities {
@@ -243,8 +265,10 @@ classDiagram
 
   note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
   note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34)\nBauteil | Composition | Slot | Type"
-  note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57)"
-  note for CompositionFooter "BOM Fußzeile — Summe Menge in Stück (Q57/Q58)"
+  note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57);\nfooter_op on column slots"
+  note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
+  note for FooterCell "op: sum|avg|min|max|count|none|label"
+  note for FooterAggOp "simple column aggregates only"
   note for Relation "Exploratory (Q35)\nhas_type | ref_scope |\nallows_prefix | multiplikator\nNOT hierarchy store"
   note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
   note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
@@ -262,6 +286,10 @@ classDiagram
   Node "1" --> "0..1" NodeConfig : config
   NodeConfig --> Capabilities : capabilities
   NodeConfig --> CompositionFooter : footer
+  NodeConfig --> FooterAggOp : footer_op
+  CompositionFooter "1" --> "*" FooterCell : cells
+  FooterCell --> FooterAggOp : op
+  FooterCell --> Node : slot
   Node "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
   Relation --> Node : from
@@ -282,7 +310,7 @@ classDiagram
 | simples / `node_ref` / `quantity` / Collection | `has_type` only; target under `type_node` (**Q26**) | `typeNode()` set; `isUnderTypeBranch` |
 | **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
 
-**Composition / BOM (Q57–Q60):** Fußzeile required for BOM; Menge = Stück (`int`); `config.allowed_types` / `config.allowed_base_units` filter pickers under the matching Definition branches.
+**Composition / BOM (Q57–Q60):** Fußzeile required for BOM — **same column count**, per-cell aggregate (`sum`/`avg`/… via column `footer_op`); Menge = Stück (`int`); `config.allowed_types` / `config.allowed_base_units` filter pickers under the matching Definition branches.
 
 **Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
 
@@ -1077,7 +1105,7 @@ Level — Bauteil (separate)
 
 | Concern | Rule |
 |---------|------|
-| **Fußzeile** | BOM table always has a footer — at least **Summe Menge (Stück)**; price sum optional/host |
+| **Fußzeile** | Same **column count** as body. Each cell may differ: `none`/`label`, or aggregate **`sum` / `avg` / `min` / `max` / `count`** over that column’s rows (Q57). Typical: Menge → `sum` (Stück); Preis → `sum`; text → empty. Op on column slot `config.footer_op` (or aligned `CompositionFooter.cells`). |
 | **Zulässige Typen** | `Node.config.allowed_types` = ids under `Project.type_node` (empty = all) |
 | **Zulässige Basiseinheiten** | `Node.config.allowed_base_units` = ids under `Project.base_unit_node` (empty = all) |
 
@@ -2053,7 +2081,7 @@ Invariants (leaning):
 3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
 4. **`has_type` targets must be under `project.type_node`** (never under Compositionen / Bauteile) — **Q26**
 5. `start_node` belongs to the Project tree and is configured in Setup (**Q59**)
-6. Composition/BOM: `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); BOM has Fußzeile (**Q57**); Menge = Stück (**Q58**)
+6. Composition/BOM: `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); BOM has Fußzeile with **same column count**; each footer cell has `footer_op` ∈ {none,label,sum,avg,min,max,count} (**Q57**); Menge = Stück (**Q58**)
 
 ### Default Nodes for a new Project (open — Q50)
 
