@@ -1,9 +1,24 @@
 @echo off
-setlocal
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-dev.ps1" %*
-if errorlevel 1 (
-  echo.
-  echo Setup failed. See messages above.
-  exit /b 1
+setlocal EnableExtensions
+title wp-taxonomy-tree — Dev Setup
+cd /d "%~dp0"
+
+echo.
+echo ============================================================
+echo   wp-taxonomy-tree — Laragon Dev Setup
+echo   (Bitte diese .bat Datei starten, NICHT die .ps1 per Doppelklick)
+echo ============================================================
+echo.
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup-dev.ps1" %*
+set "ERR=%ERRORLEVEL%"
+
+echo.
+if not "%ERR%"=="0" (
+  echo [FEHLER] Setup fehlgeschlagen. Exit-Code: %ERR%
+) else (
+  echo [OK] Setup abgeschlossen.
 )
-endlocal
+echo.
+pause
+exit /b %ERR%

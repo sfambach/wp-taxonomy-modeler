@@ -59,30 +59,6 @@ function Ensure-Junction([string]$Link, [string]$Target) {
     Write-Host "Linked $Link -> $Target"
 }
 
-function Get-LaragonPhp {
-    $candidates = @(
-        (Join-Path $LaragonDir 'bin\php\php-8.3.16-Win32-vs16-x64\php.exe'),
-        (Join-Path $LaragonDir 'bin\php\php-8.3.14-Win32-vs16-x64\php.exe'),
-        (Join-Path $LaragonDir 'bin\php\php-8.2.27-Win32-vs16-x64\php.exe')
-    )
-
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            return $candidate
-        }
-    }
-
-    $found = Get-ChildItem -Path (Join-Path $LaragonDir 'bin\php') -Filter php.exe -Recurse -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending |
-        Select-Object -First 1
-
-    if ($null -ne $found) {
-        return $found.FullName
-    }
-
-    throw "Could not find php.exe under $LaragonDir\bin\php"
-}
-
 function Start-LaragonIfNeeded {
     if (-not (Test-Path -LiteralPath (Join-Path $LaragonDir 'laragon.exe'))) {
         throw "Laragon not found at $LaragonDir. Install Laragon first, then rerun this script."

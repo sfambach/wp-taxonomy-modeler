@@ -54,21 +54,24 @@ WordPress docroot: `C:\devel\wordpress` → served as `http://devel.test` via La
 
 After Laragon is installed, run once (also safe before a reboot):
 
+**Doppelklick auf `setup-dev.bat`** (nicht auf `.ps1` — Windows öffnet die sonst im Editor).
+
+Pfad: `C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\setup-dev.bat`
+
+Erstes Mal (Repo noch nicht da) in **cmd** oder PowerShell:
+
 ```powershell
 mkdir C:\devel\wordpress\source -Force
 git clone -b cursor/laragon-setup-f17e https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
 cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\setup-dev.ps1
+.\setup-dev.bat
 ```
 
-**WordPress only** (if repo is already checked out):
-
-```powershell
-cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\install-wordpress.ps1
-```
+**Nur WordPress:** `install-wordpress.bat` doppelklicken.
 
 Site: `http://devel.test/wp-admin` — user `admin`, password `admin123`.
+
+Details: [`scripts/windows/README.md`](scripts/windows/README.md)
 
 See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windows/setup-dev.ps1) for details.
 

@@ -47,11 +47,15 @@ machine.
 | Laragon | `C:\laragon` |
 | Site URL (after junction) | `http://devel.test` |
 
+**Wichtig (Windows):** `.ps1` per Doppelklick öffnet oft nur den Editor.
+Stattdessen **`setup-dev.bat`** oder **`install-wordpress.bat`** doppelklicken
+(siehe [`scripts/windows/README.md`](scripts/windows/README.md)).
+
 **WordPress install only** (Laragon + MySQL, fully automated):
 
 ```powershell
 cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\install-wordpress.ps1
+.\install-wordpress.bat
 ```
 
 Creates DB `wordpress`, downloads core to `C:\devel\wordpress`, runs
@@ -61,8 +65,10 @@ Creates DB `wordpress`, downloads core to `C:\devel\wordpress`, runs
 
 ```powershell
 cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\setup-dev.ps1
+.\setup-dev.bat
 ```
+
+In PowerShell-Terminal geht auch `-File .\setup-dev.ps1` (nicht per Explorer-Doppelklick).
 
 **Checkout only (no Laragon / WP setup):**
 
