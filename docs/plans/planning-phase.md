@@ -21,7 +21,7 @@ todos:
     content: "Agree Node fields; tree is derived from root node (not a separate object)"
     status: completed
   - id: define-parameter-model
-    content: "Q33: Parameter is a tree Node; Q14 dropped; Q34/Q49 config proposal pending confirm; Q51/Q20 decided"
+    content: "Q64: Parameter class (name + type from Typ-Ast) on every Node; Q14 owner; Q34/Q49 config proposal pending confirm; Q51/Q20 decided"
     status: completed
   - id: define-project-model
     content: "Project has name, description, root_nodes (list of root Node)"
@@ -42,7 +42,7 @@ todos:
     content: "Specify delete flows (promote vs cascade), confirmations, and edge cases"
     status: pending
   - id: draft-use-cases
-    content: "Use-case cards synced to Q33/Q14/Q34/Q49; UC-10 + UC-14–UC-16 added; expand further as needed"
+    content: "Use-case cards synced to Q64/Q14/Q34/Q49; UC-10 + UC-14–UC-16; expand further as needed"
     status: in_progress
   - id: planning-signoff
     content: "Mark project plan ready-to-implement only after user sign-off"
@@ -64,7 +64,7 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Master plan | `docs/plans/project-plan.md` | Goals, phases, and decisions are current |
 | Planning checklist | `docs/plans/planning-phase.md` (this file) | Todos resolved or deferred |
 | MVP requirements | `docs/plans/mvp-requirements.md` | Acceptance criteria are testable |
-| Data structure (Project + Node + Parameter) | [`docs/plans/data-structure.md`](data-structure.md) | Tree = root node (not an object); project has several trees; param owner ? |
+| Data structure (Project + Node + Parameter) | [`docs/plans/data-structure.md`](data-structure.md) | Tree = root node (not an object); project has several trees; Parameter class Q64 (owner = Node) |
 | Use cases | [`docs/plans/use-cases.md`](use-cases.md) | Actor/goal/flow cards agreed; MVP mapping started |
 | Open questions | [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |

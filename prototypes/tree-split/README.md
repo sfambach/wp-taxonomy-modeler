@@ -1,6 +1,6 @@
 # Tree split prototype
 
-Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung).
+Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung) + **Parameter**.
 
 **Not** WordPress plugin code. Open `index.html` in a browser (or `python3 -m http.server` in this folder).
 
@@ -8,11 +8,31 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 
 | Tab | Role |
 |-----|------|
-| **Knoten** | Eigenschaften; bei **Slots** Typ-Bindung + Pflicht; Basiseinheit: Präfixe; Relationen unter „Erweitert“ |
-| **Backend** | Dateneingabe nur für **Compositionen** (Tabelle) |
-| **Frontend** | Vereinfachte Seitenvorschau |
+| **Knoten** | Definition: Node + **Parameters** (name + Typ-Ast), Allowlists, Fußzeile |
+| **Backend** | **Instanz** wie WP-Seite: Projektname + Tabelle + Titel darunter |
+| **Block** | WP-Block-Skizze: Collection-Art wählen + gleiche Instanz-Tabelle |
 | **Feld** | HTML-Spielwiese — unangetastet |
 
+## Parameter (Q64)
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Text, vom Benutzer bei Zuweisung zum Knoten |
+| `type` | Knoten aus dem **Typ-Ast** |
+
+- Jeder Node kann Parameter haben; Parameter ≠ Baumknoten.
+- BOM-Spalten = eigene Parameter am BOM-Knoten.
+- `Projektname` = Parameter an **Collection** (vererbt); Instanzwert auf der WP-Seite.
+
+## Definition vs Instanz (Q63)
+
+| | Baum (Definition) | WP-Seite / Backend-Tab (Instanz) |
+|--|-------------------|----------------------------------|
+| Name | Strukturknoten heißt **`BOM`** | — |
+| Projektname | Parameter an **Collection** | Pflicht-**Wert** eingeben |
+| Spalten / Typen / Fußzeile-Ops | Parameter-Schema | — |
+| Zeilen / Bauteile | — | CompositionRows füllen |
+| Titel unter Tabelle | — | `BOM als Bauteilliste – {Projektname}` |
 
 ## Root layout
 
@@ -20,62 +40,26 @@ Static throwaway UI to explore taxonomy tree + **Composition** (Zusammenstellung
 Project root
 ├── Typen
 │   ├── Datentypen
-│   │   ├── Simple    int · double · text · textarea · char · bool · node_ref
-│   │   └── Complex   quantity · subtree · Collection(list/table/enum)
+│   │   ├── Simple
+│   │   └── Complex
+│   │       └── Collection   ← Parameter Projektname→text (kein Kindknoten)
+│   │           ├── list
+│   │           ├── table
+│   │           └── enum
 │   ├── Präfixe
 │   └── Basiseinheit
-├── Compositionen  (Rezept · BOM — Board)
-└── Bauteile       (Katalog ≠ Composition)
-    ├── Widerstand
-    └── Kondensator
+├── Compositionen
+│   ├── Rezept — …          ← Spalten noch als Kindknoten (Legacy-Demo)
+│   └── BOM                 ← Spalten = Parameters
+└── Bauteile
 ```
 
-**Bauteile** = Katalogwurzel. BOM-Spalte **Bauteil Wahl** = **`subtree`** + `ref_scope` → Bauteile.
+## How to view (Demo)
 
-## Reference types
+1. Open `index.html` → **Reset** (v33).
+2. Tree: **Compositionen → BOM**. Tab **Knoten**: Parameter-Liste (Bauteil Wahl, Menge, …).
+3. **Typen → … → Collection**: Parameter **Projektname** (kein Kind „Projektname“).
+4. Tab **Backend**: Instanz-**Projektname** → Titel unter der Tabelle; Baumname bleibt BOM.
+5. Tab **Block**: Collection-Art + gleiche Instanz-Tabelle.
 
-| Type | Gruppe | Bedeutung |
-|------|--------|-----------|
-| **`node_ref`** | Simple | Freier Absprung zu **beliebigem** Node (Wert = id); kein Scope |
-| **`subtree`** | Complex | Auswahl unter einer Katalogwurzel via **`ref_scope`** (Kinder = Optionen) |
-
-## Goal path — BOM-Zeile
-
-1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
-2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
-3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
-4. **Beschreibung** = `textarea` (optional).
-5. Erlaubte Präfixe = `allows_prefix` der Einheit.
-6. Pflicht/Optional = `config.required` am Slot-Knoten.
-
-## Projects
-
-| Project | Mode |
-|---------|------|
-| **Demo** | editable |
-| **Template** | read-only |
-
-State: `localStorage` key `wtt-proto-tree-split-v29` — **Reset** after upgrade.
-
-## Simple types (HTML lean)
-
-| Type | Widget | Analog |
-|------|--------|--------|
-| `text` | einzeilig `<input type="text">` | DB VARCHAR / Rails `:string` |
-| `textarea` | mehrzeilig `<textarea>` | DB TEXT / Rails `:text` |
-| `char` | 1 Zeichen | — |
-| `int` / `double` / `bool` | number / checkbox | — |
-| `node_ref` | select + → Absprung | freie Node-id |
-
-## Slot properties
-
-| Concern | Where | Notes |
-|---------|-------|-------|
-| Type / Form | Relation **`has_type`** → type Node | Shape of the value |
-| Pflicht / Optional | **`Node.config.required`** on the slot | Not on the type edge |
-
-## Edges
-
-```text
-has_type | allows_prefix | multiplikator | ref_scope | …
-```
+State: `localStorage` key `wtt-proto-tree-split-v33` — **Reset** after upgrade.

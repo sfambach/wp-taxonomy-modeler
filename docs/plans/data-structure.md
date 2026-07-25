@@ -1,9 +1,9 @@
 ---
 name: Data structure — Project, Node, Parameter, Changelog
-overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
+overview: Core objects Project, Node, Parameter (name + type), Changelog/Change. Every Node may own Parameters; type is a Node from the Type branch. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.77-plan"
-last_updated: "2026-07-24"
+version: "0.6.86-plan"
+last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -16,11 +16,11 @@ todos:
     content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
     status: completed
   - id: define-node-parameter-link
-    content: "Q33 decided: Parameter is a tree Node; Q14 dropped (parent/Relation, no separate owner)"
+    content: "Q64: Parameter class (name + type from Typ-Ast) on every Node; not a tree Node"
     status: completed
-  - id: decide-parameter-is-node
-    content: "Q34 strong lean: configuration (not subclass); Q49 lean: config originate_relations=false on simples"
-    status: in_progress
+  - id: decide-parameter-model
+    content: "Q64: Parameter class; Q34/Q49 lean config capabilities on Nodes (not Parameter subclass)"
+    status: completed
   - id: explore-typed-edges
     content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
     status: in_progress
@@ -54,12 +54,59 @@ todos:
 
 > Planning only. This document defines the conceptual data model. No plugin code yet.
 
-## Current class diagram
+## Simplified class diagram (classes only)
+
+No attributes, no methods — structure only:
+
+```mermaid
+classDiagram
+  direction TB
+  class Project
+  class Node
+  class Parameter
+  class NodeConfig
+  class CompositionFooter
+  class FooterCell
+  class FooterAggOp
+  class Capabilities
+  class Relation
+  class RelationType
+  class DisplayHint
+  class Changelog
+  class Change
+  class ParameterValue
+  class CompositionRow
+  class QuantityReading
+
+  Project --> Node : roots / anchors / start
+  Project --> Changelog
+  Node --> Node : parent_id
+  Node --> Parameter : parameters
+  Node --> NodeConfig
+  Node --> Changelog
+  Node --> CompositionRow
+  Parameter --> Node : type
+  ParameterValue --> Parameter
+  NodeConfig --> Capabilities
+  NodeConfig --> CompositionFooter
+  NodeConfig --> FooterAggOp
+  CompositionFooter --> FooterCell
+  FooterCell --> FooterAggOp
+  FooterCell --> Parameter
+  Changelog --> Change
+  Relation --> Node
+  Relation --> RelationType
+  RelationType --> DisplayHint
+  CompositionRow --> ParameterValue
+  ParameterValue --> QuantityReading
+```
+
+## Current class diagram (detailed)
 
 Conceptual domain model (planning — not implemented PHP).  
-**Q33/Q34:** no `Parameter` / `ParameterRole` class — slots are ordinary `Node`s with `has_type` (+ optional `ref_scope`, `config.required`).  
+**Q64:** **`Parameter` is a class.** Every Node may own Parameters. Each Parameter has **`name`** (user text) + **`type`** (Node under Typ-Ast).  
 
-**Layer note (Q20):** fields below are **DTO** shape. Many *methods* are a conceptual API — at implementation they move to **Domain Services** / **Repositories** (tree walk, bindType/refScope, copyFromTemplate, persist). Do not read this diagram as “fat Active Record.” See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) § Layers.
+**Layer note (Q20):** fields below are **DTO** shape. Many *methods* are a conceptual API — at implementation they move to **Domain Services** / **Repositories**. See [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) § Layers.
 
 ```mermaid
 classDiagram
@@ -75,14 +122,18 @@ classDiagram
     +type_node: Node
     +prefix_node: Node
     +base_unit_node: Node
+    +start_node: Node
     +changelog: Changelog
     +getRootNodes() Node[]
     +getDefinitionRoot() Node
     +getTypeAnchor() Node
     +getPrefixAnchor() Node
     +getBaseUnitAnchor() Node
+    +getStartNode() Node
+    +setStartNode(node) void
     +findNode(id) Node?
     +belongsToProject(node) bool
+    +isUnderTypeBranch(node) bool
     +copyFromTemplate(template) Project
     +recordChange(changer, body, version) void
   }
@@ -95,6 +146,7 @@ classDiagram
     +template: bool
     +position: int?
     +project_id: Id?
+    +parameters: Parameter[]
     +config: NodeConfig?
     +changelog: Changelog
     +parent() Node?
@@ -104,28 +156,71 @@ classDiagram
     +path() string
     +isRoot() bool
     +isTemplate() bool
+    +parametersOwn() Parameter[]
+    +parametersInherited() Parameter[]
+    +addParameter(name, type) Parameter
+    +removeParameter(param) void
     +move(newParent, position) void
     +rename(name) void
     +setDescription(text) void
-    +typeNode() Node?
-    +typeKey() string
-    +refScopeRoot() Node?
-    +isRequired() bool
-    +setRequired(flag) void
     +outgoingRelations(label?) Relation[]
     +incomingRelations(label?) Relation[]
-    +bindType(typeNode) void
-    +bindRefScope(catalogRoot) void
-    +assertTypeBindingsComplete() void
     +recordChange(changer, body, version) void
+  }
+
+  class Parameter {
+    +id: Id
+    +name: string
+    +type: Node
+    +owner: Node
+    +required: bool?
+    +footer_op: FooterAggOp?
+    +ref_scope: Node?
+    +typeKey() string
+    +assertTypeInTypAst() bool
   }
 
   class NodeConfig {
     <<value object>>
     +required: bool?
     +capabilities: Capabilities?
+    +allowed_types: Id[]?
+    +allowed_base_units: Id[]?
+    +footer: CompositionFooter?
+    +footer_op: FooterAggOp?
     +isRequired() bool
     +mayOriginateRelations() bool
+    +allowsType(typeId) bool
+    +allowsBaseUnit(unitId) bool
+    +hasFooter() bool
+    +footerOp() FooterAggOp
+  }
+
+  class CompositionFooter {
+    <<value object>>
+    +enabled: bool
+    +cells: FooterCell[]
+    +columnCount() int
+    +assertAligned(columns) bool
+  }
+
+  class FooterCell {
+    <<value object>>
+    +slot: Node
+    +op: FooterAggOp
+    +label: string?
+    +compute(rows) string
+  }
+
+  class FooterAggOp {
+    <<enumeration>>
+    none
+    label
+    sum
+    avg
+    min
+    max
+    count
   }
 
   class Capabilities {
@@ -183,12 +278,12 @@ classDiagram
 
   class ParameterValue {
     <<instance content>>
-    +slot: Node
+    +parameter: Parameter
     +payload: typed
     +asScalar() any?
     +asNodeRef() Id?
     +asQuantity() QuantityReading?
-    +validateAgainstSlot() bool
+    +validateAgainstParameter() bool
   }
 
   class CompositionRow {
@@ -210,38 +305,35 @@ classDiagram
     +toBase() number
   }
 
-  class TypeKind {
-    <<enumeration / Node role>>
-    Simple_int
-    Simple_double
-    Simple_text
-    Simple_textarea
-    Simple_char
-    Simple_bool
-    Simple_node_ref
-    Complex_quantity
-    Complex_subtree
-    Complex_Collection
-  }
-
-  note for Project "≈ taxonomy (Q18)\nTemplate copy → new Project (Q50 lean)"
-  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34)\nBauteil | Composition | Slot | Type"
-  note for NodeConfig "required on slots\ncapabilities.originate_relations\non simples (Q49 lean)"
-  note for Relation "Exploratory (Q35)\nhas_type | ref_scope |\nallows_prefix | multiplikator\nNOT hierarchy store"
-  note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
-  note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
-  note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id"
-  note for TypeKind "Not PHP subclasses —\nNodes under Datentypen\nSimple | Complex"
+  note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
+  note for Node "May own Parameters (Q64).\nTree hierarchy = parent_id.\nBOM structure name ≠ Projektname"
+  note for Parameter "name = user text\ntype = Node in Typ-Ast\nowner = one Node"
+  note for NodeConfig "Composition allowlists (Q60);\nfooter on BOM (Q57)"
+  note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
+  note for FooterCell "op via Parameter.footer_op"
+  note for FooterAggOp "simple column aggregates only"
+  note for Relation "Exploratory (Q35)\nallows_prefix | multiplikator |\nref_scope — NOT hierarchy"
+  note for ParameterValue "Filled instance value\nfor a Parameter"
+  note for CompositionRow "BOM/Rezept lines;\ncells → ParameterValue;\nMenge = Stück int"
 
   Project "1" --> "*" Node : root_nodes
   Project "1" --> "1" Node : definition_root
   Project "1" --> "1" Node : type_node
   Project "1" --> "1" Node : prefix_node
   Project "1" --> "1" Node : base_unit_node
+  Project "1" --> "1" Node : start_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent_id / children
+  Node "1" --> "*" Parameter : parameters
   Node "1" --> "0..1" NodeConfig : config
+  Parameter --> Node : type
+  Parameter --> Node : owner
+  Parameter --> FooterAggOp : footer_op
   NodeConfig --> Capabilities : capabilities
+  NodeConfig --> CompositionFooter : footer
+  CompositionFooter "1" --> "*" FooterCell : cells
+  FooterCell --> FooterAggOp : op
+  FooterCell --> Parameter : parameter
   Node "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
   Relation --> Node : from
@@ -251,30 +343,41 @@ classDiagram
   Node "1" --> "*" CompositionRow : composition rows
   CompositionRow "1" --> "*" ParameterValue : cells
   Node "1" --> "*" ParameterValue : Bauteil fills
-  ParameterValue --> Node : slot
+  ParameterValue --> Parameter : parameter
   ParameterValue --> QuantityReading : payload?
 ```
 
-**Invariants (type bindings — live on model, not only UI):**
+**Invariants (Parameter — Q64 / Q26):**
 
-| Type key | Extra binding | Method check |
-|----------|---------------|--------------|
-| simples / `node_ref` / `quantity` / Collection | `has_type` only | `typeNode()` set |
-| **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
+| Rule | Check |
+|------|-------|
+| Every Node may have zero or more Parameters | `Node.parameters` |
+| Parameter.`name` | Non-empty user text at assignment (not a tree Node) |
+| Parameter.`type` | Must be a Node under `Project.type_node` (Typ-Ast) |
+| `subtree` parameters | May carry `ref_scope` → catalog root |
+| Inheritance | Child Nodes inherit Parameter **definitions** along `parent_id`; instances fill ParameterValue |
 
-**Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
+**Composition / BOM (Q57–Q64):**  
+- **Tree definition:** structure node name stays **`BOM`**. Columns = **Parameters** on that Node (name + type).  
+- **`Projektname`:** **Parameter** on **Collection** (`name`="Projektname", `type`=text), inherited; instance value on WP page/block (**Q61**/Q63).  
+- **Display title (instance):** `BOM als Bauteilliste – {Projektname}`.  
+- **Fußzeile:** same column count; per Parameter `footer_op` (**Q57**).  
+- **Menge** = Stück (`int`) (**Q58**).  
+- Allowlists (**Q60**); WP Block (**Q62**). No `TypeKind` class.
+
+**Legend:** Hierarchy = `parent_id` (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). **Parameter ≠ Node.**
 
 ## Core objects
 
 | # | Object | Role |
 |---|--------|------|
-| 1 | **Node** | Catalog hierarchy; Definition anchors; type Nodes; **Bauteil** and **Composition** identities |
-| 2 | **Bauteil** | Catalog part (e.g. Widerstand, GPU-Karte) — Parameter defs + ParameterValues; **not** a Composition |
-| 3 | **Slot / “Parameter”** *(vocab)* | Typed attribute/column **Node** (`has_type`…); **not** a PHP class (Q33/Q55) |
-| 4 | **ParameterValue** | Filled payload on a **Bauteil** or in a **CompositionRow** cell |
-| 5 | **Composition** (UX: Zusammenstellung) | List/table Zusammenstellung — column schema + rows (BOM, Rezept, Build) |
-| 6 | **CompositionRow** | One line of a Composition — cells include **Bauteil-Ref** and other typed columns |
-| 7 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors + fixed simples (**Q50**) |
+| 1 | **Node** | Tree identity (catalog, types, Composition structure, …); may **own Parameters** |
+| 2 | **Parameter** | **`name`** (user text) + **`type`** (Node from Typ-Ast); assigned to one Node (**Q64**) |
+| 3 | **Bauteil** | Catalog part (e.g. Widerstand) — Parameters + ParameterValues; **not** a Composition |
+| 4 | **ParameterValue** | Filled instance payload for a Parameter (Bauteil or CompositionRow cell) |
+| 5 | **Composition** (UX: Zusammenstellung) | Zusammenstellung; columns = Parameters; rows = CompositionRows |
+| 6 | **CompositionRow** | One line — cells are ParameterValues |
+| 7 | **Project** | **≈ taxonomy (Q18)**; trees + Definition anchors (**Q50**) |
 | 8 | **Changelog** | History container (`changes`) |
 | 9 | **Change** | One audit entry (when, who, what, version) |
 | 10 | **Relation** | **Exploratory (Q35):** typed edge; **not** hierarchy store |
@@ -316,9 +419,8 @@ Optional later: interface `Has_Changelog` with `changelog` so services can appen
 | **Tree** | **Not an object** | Defined by a **root node** (and all descendants reachable via child links) |
 | **RootNode** | **Not an object** | Same as **Node** with parent `null` — only a role, not a type |
 | **Template tree** | **Not a class** | A tree whose root (or node) has `template = true`; seeds project-specific trees |
-| **ParameterType** (class) | **Not an object** | Parameter **type is a Node** (under Project.type_node) |
+| **ParameterType** (class) | **Not an object** | Parameter **`type` is a Node** (under Project.type_node / Typ-Ast) |
 | **Unit** (class) | **Not an object** | Use **Präfix** + **Basiseinheit** Nodes instead |
-| **Parameter / ParameterRole** | **Rejected as class (Q33/Q55)** | Vocab only; slot = Node + `has_type`; Role stereotype dropped |
 | **BomList / BomLine / Recipe as PHP classes** | **Under review (Q46)** | May be replaceable by **Nodes + Relations** configured like templates |
 | **Relation / typed edge** | **Exploratory** | Edge + RelationType (Q35/Q41); hierarchy-via-edges TE closed (Q53/Q54 restart) |
 | **RelationType** | **Exploratory** | One `label` only; display + inherit (Q42/Q43) |
@@ -336,20 +438,19 @@ flowchart TB
   C1 --> G1["Node grandchild"]
   R2 --> C3["Node child"]
 
-  C1 --> P1["Node Wert<br/>has_type quantity"]
-  C1 --> P2["Node Bauform<br/>has_type enum/string"]
+  C1 --> P1["Parameter Wert<br/>type → quantity"]
+  C1 --> P2["Parameter Bauform<br/>type → enum/text"]
   C2 --> P3["Node child"]
 
   subgraph note["Not stored as own objects"]
     T["Tree = root node + descendants"]
     RN["Root = same Node with parent null"]
-    PN["No Parameter / ParameterRole"]
     ST["Simple types = Nodes under type_node"]
   end
 ```
 
-**Stored objects in this diagram:** `Project`, `Node` only  
-**Derived only:** tree (from root node), root role (Node with `parent = null`); type roles via config
+**Stored objects in this diagram:** `Project`, `Node`, **`Parameter`** (Q64)  
+**Derived only:** tree (from root node), root role (Node with `parent = null`)
 
 **Agreed / tentative relations:**
 
@@ -357,9 +458,9 @@ flowchart TB
 - A **root node** is the **same object as a node** where the parent is `null` (not a separate type/entity). — **agreed**
 - A **tree** is identified by its **root node** (no extra Tree entity). — **agreed**
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
-- Attribute Nodes (e.g. `Wert`) bind **`type`** (required) plus optional **`prefix`** / **`base_unit`** via config and/or Relations — **no ParameterRole**. — **agreed direction**
+- Every **Node** may own **Parameters** (`name` + `type` from Typ-Ast); optional `prefix` / `base_unit` where the type needs them — **decided (Q64)**
 - A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- **Core types (Q33/Q36/Q48):** **simple types live in the template** (`int`, `double`, `text`, `textarea`, `char`, `bool`) — **agreed** (`text` = einzeilig / HTML input; `textarea` = mehrzeilig; legacy name `string` → `text`)
+- **Core types (Q36/Q48):** **simple types live in the template** (`int`, `double`, `text`, `textarea`, `char`, `bool`) — **agreed** (`text` = einzeilig / HTML input; `textarea` = mehrzeilig; legacy name `string` → `text`)
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
 - **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **decided (Q51)**
@@ -374,34 +475,35 @@ flowchart TB
 - Those required Definition nodes are **unique per project** and are **stored on the Project**. — **agreed**
 - Some trees are **template trees**; `template` is a **flag on Node**. — **agreed**
 - Template trees can serve as templates for **project-specific trees**. — **agreed** (copy/instantiate mechanics still open — Q30)
-- **No Parameter class and no ParameterRole** — **decided (Q33/Q34)**; attribute nodes are ordinary Nodes with type binding via config/`has_type`
-- Separate Parameter owner (`node_id`) — **dropped / entfällt (Q14)**; placement via `parent_id` and/or Relations (hierarchy-as-edge + `parent_id` cache hybrid **excluded** — closed TE)
+- **Parameter class** — **decided (Q64)**; every Node may own Parameters (`name` + `type`); not a tree Node; BOM columns and Collection.Projektname are Parameters
+- **Parameter ownership (Q14 revised):** each Parameter is assigned to **exactly one** owning Node (`Node.parameters`)
 - Simple type Nodes typically **do not originate Relations** — **strong lean (Q49):** config `capabilities.originate_relations = false` on simples (not a hard special kind); decide with Q34
 - Every Project and Node has a **changelog**. — **agreed**
 - Every **Change** has `timestamp`, `changer`, `change`, and **`version`**. — **agreed**
 - **Typed edges** (`Relation` + `RelationType`) — **exploratory (Q35)**; each type has one `label` only; no `inverse` field (Q41)
 - **Display** of related nodes depends on RelationType (part-of → attributes) — **leaning (Q42)**
-- **`consists_of` attributes inheritable along `is_a`** — **leaning (Q43)**
+- **Parameter defs inheritable** along `parent_id` / `is_a` — **leaning (Q43/Q55)**
 
 ```text
 Project ──(several trees)──► Root Node
 Node ──(optional)──► parent Node          # classic tree
+Node ──(parameters)──► Parameter { name, type → Typ-Ast Node }   # Q64
 Node ──(Relation?)──► Node                # exploratory typed edges
-Node.config ──(capabilities / type binding)──►  # strong lean Q34 — not a ParameterRole
+Node.config ──(capabilities / allowlists / footer)──►  # strong lean Q34
 SimpleType Nodes ──(derive/compose)──► further Type Nodes
 # Q49 lean: config.capabilities.originate_relations = false on simples
 ```
 
 ### Config shape proposal (Q34 / Q49) — pending confirm
 
-**Goal:** one `Node` class; specialization via **Relations** + optional **`config`**, never PHP subclasses or ParameterRole.
+**Goal:** one `Node` class for tree structure; specialization via **Relations** + optional **`config`**, never PHP subclasses. Attribute slots are **Parameter** objects (Q64), not Node roles.
 
 | Piece | Role | Status |
 |-------|------|--------|
-| Relation `has_type` | Primary type binding (slot → type Node) | leaning (Q48) |
-| `Node.config.required` | Slot Pflicht/Optional (on the attribute/column Node — **not** on `has_type`) | **leaning (proto v27)** |
+| `Parameter.type` | Primary type binding (Parameter → type Node in Typ-Ast) | **decided (Q64)**; Q48 may still use `has_type` for other bindings |
+| `Parameter.required` / config | Slot Pflicht/Optional on the Parameter | **leaning** |
 | `Node.config.capabilities.originate_relations` | `false` on simple type Nodes in the template | **proposed (Q49)** |
-| `Node.config` other keys | Reserved for later (UI hints, defaults) — keep minimal | open |
+| `Node.config` other keys | Reserved for later (UI hints, defaults, allowlists, footer) — keep minimal | open |
 | Hard `kind` enum / PHP subclass | **Rejected** for MVP | decided lean |
 
 ```php
@@ -410,22 +512,26 @@ class Node {
 	public ?array $config;
 	// Example for simple type Node "int":
 	// config = [ 'capabilities' => [ 'originate_relations' => false ] ]
-	// Type of an attribute Node is NOT only in config — prefer Relation has_type
+	/** @var list<Parameter> */
+	public array $parameters; // Q64 — each Parameter has name + type (Typ-Ast Node)
 }
 ```
 
 **Why config over special kind:** same storage/UI for all Nodes; template can seed capability flags; derived types (`enum`, `quantity`) can keep `originate_relations = true` if needed.  
 **Still open until user confirms:** exact key names; whether derived types may originate Relations; empty/missing config = allow Relations (default true).
 
-### Design decision: no Parameter and no ParameterRole
+### Design decision: Parameter class (**Q64**)
 
-**Q33/Q34/Q55:** Names like `Wert` / `Länge` / Composition columns **are ordinary Nodes** (slots).  
-There is **no** Parameter class, **no** ParameterRole stereotype, and **no** PHP subclass.  
-“Parameter” remains **ubiquitous language** for a typed slot — not a stored type.  
-Type binding: Relations (`has_type`, optional `ref_scope`) + `Node.config` (`required`, capabilities).  
-**Inheritance:** child catalog Nodes inherit **slot definitions** from ancestors along `parent_id`; instances fill **ParameterValue**.  
-**Q49 strong lean:** simples `capabilities.originate_relations = false` — decide with Q34.  
-Typed edges (`besteht-aus`) may still *display* those Nodes as attributes — orthogonal (Q35/Q42).
+| Field | Meaning |
+|-------|---------|
+| `name` | Plain text, set by the user when assigning the Parameter to a Node |
+| `type` | A **Node from the Typ-Ast** only |
+
+- Every **Node** may own Parameters (`Node.parameters`).
+- A Parameter is **not** a tree Node.
+- Composition columns and catalog attributes (Wert, Projektname, …) are Parameters.
+- **Inheritance:** children inherit Parameter definitions along `parent_id`; instances fill **ParameterValue**.
+- **Q49 lean** (unchanged): simples `capabilities.originate_relations = false`.
 
 ---
 
@@ -514,7 +620,7 @@ Node ◄──(many)────── Parameters
 2. A node must not be its own ancestor (no cycles).
 3. Structure under each root remains a tree; a project’s roots form multiple trees.
 4. Delete policies for children: **promote** or **cascade**.
-5. Parameters related to a deleted node must follow a defined cleanup policy (TBD; parent/Relation cleanup, Q14 dropped).
+5. Parameters owned by a deleted node must follow a defined cleanup policy (TBD; Q14 — one owner per Parameter).
 
 ### Example: trees from root nodes
 
@@ -531,48 +637,46 @@ Node ◄──(many)────── Parameters
 
 ---
 
-## 2. Attribute Nodes (no Parameter / ParameterRole)
+## 2. Parameter (Q64)
 
 ### Core idea
 
-Configurable attributes (often quantities) such as `Wert` or `Länge` are **ordinary Nodes**.  
+Configurable attributes (often quantities) such as `Wert` or `Länge` are **Parameters** on a Node — not child tree Nodes.
 
-**Decided (Q33/Q34):** **no Parameter class**, **no ParameterRole**, **no PHP subclass**.  
-A Node becomes an “attribute” by binding a **type** (and optional prefix / base_unit / value) via **config** and/or Relations (`has_type`).
+**Decided (Q64):** **Parameter class** with **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a PHP subclass of Node; not a tree Node. Filled values = **ParameterValue**.
 
-**Rejected:** Parameter as a separate object via `node_id`.  
-**Dropped:** ParameterRole as a formal diagram/model stereotype (hinfällig without Parameter).
-
-**Cardinality (decided direction):**
+**Cardinality (decided):**
 
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
-| Node → child attribute Nodes | several | `0..n` | **decided** (parent/child and/or Relations) |
-| Attribute Node → parent | one | `0..1` | **via `parent_id`** (Q14 dropped); Relations separate (Q35) — hierarchy-edge hybrid excluded |
+| Node → Parameters | several | `0..n` | **decided (Q64)** |
+| Parameter → type Node | one | `1` | **Typ-Ast only (Q26)** |
 
 ```text
-Node (category) ──(children / besteht-aus)──► Node (e.g. Wert) ─[has_type]→ Type Node
+Node ──(parameters)──► Parameter { name, type → Type Node in Typ-Ast }
 ```
 
-### Config / bindings (initial — to refine)
+### Fields
 
 | Field | Required | Type (conceptual) | Meaning |
 |-------|----------|-------------------|---------|
-| *(Node fields)* | — | — | Identity, parent, name, template, changelog, … |
-| `type` | **yes** | **Node** (via config or Relation) | From Definition → **Type** (simple or derived/composed) |
+| `name` | **yes** | string | User text when assigning the Parameter to a Node |
+| `type` | **yes** | **Node** | From Definition → **Type** / Typ-Ast (simple or derived/composed) |
 | `prefix` | **optional** | **Node** \| `null` | From Definition → **Präfix** |
 | `base_unit` | **optional** | **Node** \| `null` | From Definition → **Basiseinheit** |
-| `value` | **?** | scalar / TBD | Filled reading for quantities; storage Q16 |
+| filled value | **?** | **ParameterValue** | Instance payload; storage Q16 |
 | `key` | likely | string | Machine key if `name` is not enough |
 
 ```php
 // Conceptual — not implemented
-class Node {
-	public ?array $config; // type binding / capabilities — shape TBD (Q34)
-	// …
+class Parameter {
+	public string $name;
+	public Node $type;          // must be under project.type_node (Q26)
+	public ?Node $prefix;
+	public ?Node $base_unit;
 }
-// e.g. node.config.type = <type Node id>; optional prefix / base_unit / value
-// OR Relation has_type from this Node to a type Node
+// Node.parameters: list<Parameter>
+// Filled readings live in ParameterValue (Bauteil or CompositionRow cell)
 ```
 
 **Agreed for quantity readings:** value + prefix + base unit (e.g. `10 mm`). Details Q24, Q29, Q16.
@@ -581,17 +685,17 @@ class Node {
 
 | Topic | Status |
 |-------|--------|
-| Parameter class / ParameterRole | **rejected / dropped** |
-| Config shape for type binding | **proposed** — Q34 (`capabilities` + `has_type`) |
-| Separate owning `node_id` | **dropped** — Q14 |
+| Parameter class | **decided (Q64)** — `name` + `type` on Node |
+| Node.config (capabilities, allowlists, …) | **proposed** — Q34 / Q49 / Q57 / Q60 |
+| Parameter owner | **one Node** — Q14 revised |
 | Simple types may originate Relations? | **strong lean no** — Q49 via config |
 | Required / default / validation rules | open — Q47 |
-| Inheritance to child nodes | open |
+| Inheritance to child nodes | **yes** — along `parent_id` (Q55) |
 | Which types require prefix and/or base_unit | open — Q24 |
 | May prefix exist without base_unit? | open — Q29 |
-| Storage | same as Node — Q11/Q15 |
-| Whether attribute *values* live in this plugin | open — Q16 |
-| Cleanup when a related node is deleted | open |
+| Storage | open — Q11/Q15 |
+| Whether attribute *values* live in this plugin | lean in-core — Q16 |
+| Cleanup when owning node is deleted | open |
 | List / multi-value scalars (e.g. RefDes) | open — Q47 |
 
 ### Schema slot vs value shape (Reference / RefDes)
@@ -599,15 +703,15 @@ class Node {
 Concrete pressure from the prototype / BOM:
 
 - Schema column renamed **Designator → Reference**: in practice a **comma-separated list** of board references (`R1,R2` or `C1…Cn`), not a single token.
-- Temptation: hang a **validator** on that Node (“must look like RefDes list”). That feels wrong — and it is the Parameter↔Node tension again.
+- Temptation: hang a **validator** on a bare Node (“must look like RefDes list”). Prefer type rules on the Parameter instead.
 
 **Split (leaning):**
 
 | Layer | Role | Example |
 |-------|------|---------|
-| **Schema Node** | Named *slot* in a line/form (`position`, label) | Node `Reference` under BOM-Zeile schema |
-| **Type / Parameter** | *Shape* of the filled value + reusable rules | type ≈ `string_list` (or string + cardinality multiple); optional item pattern |
-| **Instance value** | Actual data | canonical `["R1","R2"]`; CSV `R1,R2` only for UI/export |
+| **Parameter (column/slot)** | Named *slot* (`name`) on the Composition/line schema | Parameter `Reference` on BOM |
+| **Type** | *Shape* of the filled value + reusable rules | type ≈ Collection list / string + cardinality; optional item pattern |
+| **Instance value** | Actual data (**ParameterValue**) | canonical `["R1","R2"]`; CSV `R1,R2` only for UI/export |
 
 Why not validator-on-Node:
 
@@ -615,9 +719,9 @@ Why not validator-on-Node:
 - Mixes **identity of the slot** (“this column exists”) with **contract of the value** (“list of strings”).
 - `enum` / `enum_multiple` needs a **fixed option set** (children) — RefDes is an **open** list, so it is closer to a **list-of-string** type than to enum.
 
-This strengthens: schema-as-Nodes (Q46) for structure; Type/Parameter-Node (Q33/Q36/Q47) for how cells are interpreted — not ad-hoc Node meta.
+This strengthens: schema-as-Nodes (Q46) for structure where needed; **Parameter.type** (Q64/Q36/Q47) for how cells are interpreted — not ad-hoc Node meta.
 
-### Datentypen as tree + Relation (Q33 / Q48)
+### Datentypen as tree + Relation (Q48 / Q64)
 
 **Decided direction:** types are **Nodes** in the tree.  
 **Template assignment (Q50 leaning):** the **template Project** holds the **simple types**, derived **enum**, and derived **quantity**. New Projects get them by **copying the template** (generate remains a fallback option).
@@ -657,16 +761,19 @@ BOM Testprojekt (editierbar)
 │           └── Option ─[has_type]→ string
 │               └── 0201 · 0402 · 0603 · 0805 · axial
 │   └── Basiseinheit + Ohm · Farad · Watt · Volt
-├── Spalten (BOM-Zeile) ─[has_type]→ table
-│   ├── Reference ─[has_type]→ RefDes
-│   ├── Value     ─[has_type]→ quantity
-│   ├── Footprint ─[has_type]→ Bauart
-│   ├── Menge · LCSC · Stock
-├── Stückliste
+├── Compositionen
+│   └── BOM                         ← Strukturknoten; has_type → table
+│       Parameters (Q64):
+│       ├── Bauteil Wahl → subtree (+ ref_scope → Bauteile)
+│       ├── Reference    → RefDes
+│       ├── Wert         → quantity
+│       ├── Footprint    → Bauart
+│       ├── Menge        → int (Stück)
+│       └── Beschreibung → textarea
 └── Bauteile
 ```
 
-Prototype: `prototypes/tree-split` **v29** — Datentypen Simple/Complex; `subtree` + `node_ref`; Template locked.
+Prototype: `prototypes/tree-split` **v33** — Parameter (`name` + `type`) on Nodes; BOM columns + Collection.Projektname as Parameters.
 
 ```text
 Template Project → Datentypen
@@ -700,11 +807,11 @@ Datentypen
         └── enum      ← list + closed option children (not extensible at fill-time)
 ```
 
-| Kind | Columns | At type-definition | At fill-time |
-|------|---------|--------------------|--------------|
-| **list** | exactly **1** column node with `has_type` | column schema only | open rows |
-| **table** | **n ≥ 1** column nodes each with `has_type` | column schema only | open rows |
-| **enum** | exactly **1** column node with `has_type` (**same as list**) | column + **fixed option children** | closed — pick from options only |
+| Kind | Columns (on a Composition / concrete type) | At type-definition | At fill-time |
+|------|---------------------------------------------|--------------------|--------------|
+| **list** | exactly **1** Parameter (`name` + `type`) | column schema only | open rows |
+| **table** | **n ≥ 1** Parameters | column schema only | open rows |
+| **enum** | exactly **1** Parameter (**same as list**) | schema + **fixed option children** on the type | closed — pick from options only |
 
 **list ≡ 1-column table**; **enum ≡ list** in how you create it — only difference: enum options are fixed on the type (non-extensible when filling).
 
@@ -714,37 +821,38 @@ Datentypen
 2. **Column type(s)** — what does each column hold? (simple or derived, e.g. `string`, `quantity`)  
    How columns/options hang under the type: **Q54 — open, fresh** (tree `parent_id` vs Relations — restart).
 
-Example **list** (proto-style nesting; binding rules TBD):
+Example **list** (kind binding Q53 open; columns = Parameters Q64):
 
 ```text
-my_list                         ← concrete Collection type
+my_list                         ← concrete Collection type Node
   ─[has_type]→ list?            ← kind (Q53 open)
-  └── my_listelement            ← column (membership: Q54 open)
-        ─[has_type]→ string
+  Parameters:
+    └── Element → text            ← Parameter.name + Parameter.type
 ```
 
-Example **table** (BOM-Zeile):
+Example **table** (BOM):
 
 ```text
-BOM-Zeile
+BOM
   ─[has_type]→ table?
-  ├── Reference ─[has_type]→ RefDes
-  ├── Value     ─[has_type]→ quantity
-  ├── Footprint ─[has_type]→ Bauart
-  └── Menge     ─[has_type]→ int
+  Parameters:
+    ├── Reference → RefDes
+    ├── Wert      → quantity
+    ├── Footprint → Bauart
+    └── Menge     → int
 ```
 
-Example **enum**:
+Example **enum** (type catalog; options still tree children of the type):
 
 ```text
 Bauart
   ─[has_type]→ enum?
-  └── Option
-        ─[has_type]→ string
-        ├── 0201 · 0402 · …
+  Parameters:
+    └── Option → text
+  └── 0201 · 0402 · …          ← closed option children on the type
 ```
 
-**No special `base_type` edge** — the column’s `has_type` *is* the element/primitive type.
+**No special `base_type` edge** — the Parameter’s `type` *is* the element/primitive type.
 
 ##### Closed thought experiment — hierarchy as Edges + `parent_id` cache (Q53/Q54)
 
@@ -787,7 +895,7 @@ Binding rules for the **new** approach (not answers — constraints on how we de
 |------|---------|
 | **Object when it has identity** | If something has its own lifecycle, invariants, or vocabulary (e.g. column of a table, RelationType, Collection kind), give it a **named object / type** — do not hide it as anonymous tree children or loose config blobs. |
 | **Node is not the only noun** | “Everything is a Node” is fine for *instances in the graph*, but **roles and edge kinds** may still be first-class (Relation, RelationType, and later Column/Option if needed). Flattening for purity is not a goal. |
-| **Refuse only with a reason** | Dropping a class (as with Parameter → Node, Q33) needs a positive argument (“it *is* a Node”). “Fewer tables” or “one edge table for everything” alone is **not** enough. |
+| **Refuse only with a reason** | Dropping a class needs a positive argument (“it *is* an X”). “Fewer tables” or “one edge table for everything” alone is **not** enough. (**Q64:** Parameter stayed a class.) |
 | **Split when jobs differ** | If two concerns need different constraints or queries (e.g. catalog tree vs `has_type`), prefer two clear structures over one overloaded one. |
 
 **Anti-patterns from the closed TE (do not repeat):** unify hierarchy into Relations to “have one system”; keep `parent_id` as edge cache; let DisplayHint invent a second parent.
@@ -934,15 +1042,12 @@ Gericht tree categorizes recipes; ingredient lines pick Zutat-leaves
 # amount often on Relation/line (Q45) — Parameter def still declares the slot shape
 ```
 
-###### Object or Node role? (guideline 2)
+###### Parameter ownership (Q64)
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **Parameter = distinct object** owned by Node | Clear definition/value API; illegal states easier; matches user wording | Softens Q33 “no Parameter class” |
-| **Parameter = Node role** (Q33) via `consists_of` / config | One Node class; already decided once | Easy to confuse definition Nodes with catalog children in the same tree |
+**Decided:** Parameter = **distinct object** owned by Node (`name` + `type`). Not a tree Node; not a Node role.
 
 **Nonsense / perf flags:**  
-- Do **not** put Parameter definitions as `parent_id` children of `Widerstand` if those children are also catalog categories — two jobs in one list. Prefer `Node.defines → Parameter` (or a dedicated Relation `has_parameter`) **outside** the catalog child axis.  
+- Do **not** put Parameter definitions as `parent_id` children of `Widerstand` if those children are also catalog categories — two jobs in one list. Prefer `Node.parameters` **outside** the catalog child axis.  
 - Resolving inherited Parameter sets = walk ancestors once per Node (fine); materialize on write if catalogs get huge.  
 - Filling the same Parameter on both leaf **and** BOM line without a rule → dual truth (avoid).
 
@@ -1009,22 +1114,31 @@ Composition "Stückliste Platine XY"
 3. Define columns (Reference, Bestandteil:Bauteil-Ref, Menge, …).  
 4. Add rows with cell values (refs + scalars).
 
-##### Two viewpoints of a Composition (Definition vs Instanz)
+##### Two viewpoints — Definition (Baum) vs Instanz (WP-Seite) (**Q63**)
 
-| Viewpoint | Meaning |
-|-----------|---------|
-| **1 — Definition** | Number and types of **columns** (schema) |
-| **2 — Instanz** | **Rows** with cell values (incl. Bauteil-Ref → Bauteil) |
+| Viewpoint | Where | What |
+|-----------|-------|------|
+| **1 — Definition** | **Tree** (Typen / Compositionen) | Structure only: Collection schema, columns + types, Fußzeile ops, allowlists, slot defs (e.g. **Projektname** on Collection). Tree node name of the art stays **`BOM`** / `Rezept` / … |
+| **2 — Instanz** | **WP Backend / page block** | Filled values: **Projektname** (and other inherited Collection attrs), **CompositionRows**, cell ParameterValues |
 
 ```text
-Level — Composition only (Stückliste / Gericht / Build)
-  Definition: Spalten + Typen
-  Instanz:    CompositionRows
+TREE (Definition)
+  Typen → … → Collection
+      parameters: [ Parameter(name="Projektname", type=text) ]  ← inherited
+      ├── list / table / enum
+  Compositionen
+      └── BOM             ← structure name stays "BOM"
+            parameters: [ Bauteil Wahl→subtree, Reference→…, Menge→int, … ]
 
-Level — Bauteil (separate)
-  Definition: Parameter on Vorlage (Wert, Bauform, …)
-  Instanz:    ParameterValues on Bauteil-Ausprägung
+WP PAGE / BLOCK (Instanz)
+  Block: Art = Collection/table (or BOM schema)
+  ParameterValue(Projektname → "Platine XY")     ← user enters here
+  CompositionRow…  (Bauteile, Mengen, …)
+  Title under table: "BOM als Bauteilliste – Platine XY"
 ```
+
+**Do not** put the project/board name into the tree as `Node.name` of BOM — that mixed definition and instance (**Q61 corrected**).  
+**Do not** model Parameter names as tree Nodes — name is text on the Parameter object (**Q64**).
 
 ###### Type catalog we can use (already decided)
 
@@ -1044,12 +1158,23 @@ Level — Bauteil (separate)
 
 | Spalte | Typ |
 |--------|-----|
-| Reference | `RefDes` (list→string) |
-| Bestandteil | **Bauteil-Ref** → e.g. Widerstand-Ausprägung |
-| Menge | `int` |
-| Beschreibung | `string` |
+| Reference | `RefDes` (list→text) |
+| Bauteil Wahl | **`subtree`** + `ref_scope` → Bauteile |
+| Menge | **`int`** — unit semantics **Stück** (**Q58**); not `quantity` |
+| Beschreibung | `textarea` |
 | Preis | `double` (often host) |
 | Auf Lager | `bool` (often host) |
+
+**BOM extras (decided Q57/Q60):**
+
+| Concern | Rule |
+|---------|------|
+| **Tree name** | Structure node remains **`BOM`** (definition) |
+| **Projektname** | Slot on **`Collection`** (text, required), **inherited** by all under Collection; **instance value** on WP page/block (**Q61**) |
+| **Titel unter Tabelle** | Instance only: **`BOM als Bauteilliste – {Projektname}`** |
+| **Fußzeile** | Definition: same column count; per cell `footer_op` (`sum`/`avg`/…) (**Q57**) |
+| **Zulässige Typen / Basiseinheiten** | Definition on Composition (`allowed_*`) (**Q60**) |
+| **WP Block** | Instance: pick Collection art → fill Projektname → rows like Backend (**Q62**/Q63) |
 
 **2) Kochrezept / Gericht**
 
@@ -1111,7 +1236,7 @@ Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
 **Resolved lean (proto v29):** scoped catalog pick = **`subtree`** + **`ref_scope`**; free Absprung = Simple **`node_ref`**. Column name e.g. **„Bauteil Wahl“**. Slot Pflicht = `config.required` on the column Node.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
-Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
+Not a *Messung* (measurement act). Not BOM **Menge** — BOM Menge is **Stück** (`int`, **Q58**).
 
 #### enum (derived type — **Q52**: Collection / like list)
 
@@ -1121,7 +1246,7 @@ Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `i
 | **Column type** | Exactly one column with `has_type` → simple (or derived); replaces dedicated `base_type` Relation |
 | **Values** | Fixed option Nodes under that column; each conforms to the column type |
 | Selection | `single` / `multiple` remain selection methods (Q38), not separate types |
-| Binding | Attribute Node ─[has_type]→ concrete enum type (e.g. Bauart) |
+| Binding | Parameter.`type` → concrete enum type Node (e.g. Bauart) |
 
 Example:
 
@@ -1131,8 +1256,8 @@ Bauart  (kind enum)
     values: 0201, 0402, 0603, 0805, axial
 ```
 
-**Binding:** attribute / schema slot ─[Relation `has_type` or field `type`]→ type Node  
-Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `Bauart` → select from closed options.
+**Binding:** Parameter.`type` → type Node (Typ-Ast)  
+Example: Parameter `Menge` type=`int`; Parameter `Bauform` type=`Bauart` → select from closed options.
 
 #### quantity (derived type — agreed shape)
 
@@ -1141,7 +1266,7 @@ Example: `Menge` *has_type* `int` → integer field; `Bauform` *has_type* `Bauar
 | Kind | **Derived/composite** from a numeric simple + unit group — not a sixth simple |
 | **Value** | Numeric reading from `int` or `double` (which one: **Q37**) |
 | **Unit group** | Optional **Präfix** + **Basiseinheit** together (Q28/Q45) — display e.g. `kOhm`, `mm` |
-| Binding | Attribute Node ─[has_type]→ `quantity` (or a specialized quantity type) |
+| Binding | Parameter.`type` → `quantity` (or a specialized quantity type) |
 | UI | Composite widget: number + prefix select + unit select → e.g. `10 kOhm` |
 
 Example:
@@ -1202,15 +1327,9 @@ flowchart TB
   P --> P4["µ"]
 
   Bau --> W["Widerstände"]
-  W --> V["Wert"]
-  W --> F["Bauform"]
-  W --> L["Leistungsaufnahme"]
-  W --> M["Maße"]
-  M --> GL["Länge"]
-  M --> GB["Breite"]
-  M --> GH["Höhe"]
+  W -.->|parameters| PW["Parameter Wert · Bauform · …"]
 
-  Param["Parameter resistance"]
+  Param["Parameter Wert"]
   Param -.->|type| T7
   Param -.->|prefix| P2
   Param -.->|base_unit| B1
@@ -1240,14 +1359,12 @@ Definition                                    ← Definitionsbaum root
 │   ├── M
 │   └── µ
 └── Bauteile
-    └── Widerstände
-        ├── Wert
-        ├── Bauform
-        ├── Leistungsaufnahme
-        └── Maße
-            ├── Länge
-            ├── Breite
-            └── Höhe
+    └── Widerstände             ← catalog Node; owns Parameters (not child attribute Nodes)
+         parameters:
+           Wert → quantity (+ Ohm)
+           Bauform → text|enum
+           Leistungsaufnahme → quantity (+ Watt)
+           Länge / Breite / Höhe → quantity (+ Meter)
 ```
 
 **Parameter examples using this tree** (anchors also stored on Project):
@@ -1258,34 +1375,24 @@ Project.type_node = Type
 Project.prefix_node = Präfix
 Project.base_unit_node = Basiseinheit
 
-Parameter {
-  key: "resistance",
-  type: Node("quantity"),      # under project.type_node
-  prefix: Node("k"),          # under project.prefix_node
-  base_unit: Node("Ohm")      # under project.base_unit_node
-}
-# with value 10  =>  "10 kOhm"
-
-Parameter {
-  key: "datasheet",
-  type: Node("url"),
-  prefix: null,
-  base_unit: null
-}
+Node "Widerstände".parameters:
+  Parameter { name: "Wert", type: Node("quantity"), prefix?: …, base_unit: Node("Ohm") }
+  Parameter { name: "Bauform", type: Node("text") }   # or enum Bauart
+  Parameter { name: "Länge", type: Node("quantity"), base_unit: Node("Meter") }
+# filled ParameterValue e.g. Wert = 10 + k + Ohm  =>  "10 kOhm"
 ```
 
-**Branch notes (not locked):**
+**Branch notes (Q64):**
 
-| Node | Possible role |
-|------|----------------|
+| Concept | Role |
+|---------|------|
 | `Type` / `Basiseinheit` / `Präfix` | Required Definition anchors on Project |
 | `Bauteile` | Domain branch under Definitionsbaum (not its own root) |
-| `Widerstände` | Category node; children may be Parameter-Nodes |
-| `Wert` | **Parameter-Node** — e.g. type=`quantity`, prefix=`k`, base_unit=`Ohm` |
-| `Bauform` | **Parameter-Node** — e.g. type=`text` or enum-like choices |
-| `Leistungsaufnahme` | **Parameter-Node** — quantity + Watt base unit |
-| `Maße` | Group node; children are dimension Parameter-Nodes |
-| `Länge` / `Breite` / `Höhe` | **Parameter-Nodes** (quantity): **value + prefix + Einheit** |
+| `Widerstände` | Category / Vorlage Node — **owns Parameters** |
+| Parameter `Wert` | `name`="Wert", `type`=`quantity`, unit group Ohm |
+| Parameter `Bauform` | `name`="Bauform", `type`=`text` or enum |
+| Parameter `Leistungsaufnahme` | quantity + Watt |
+| Parameters `Länge` / `Breite` / `Höhe` | quantity readings: **value + prefix + Einheit** |
 
 **Dimension example (agreed direction):**
 
@@ -1304,32 +1411,30 @@ Maße display:  10 mm × 5 mm × 2 mm
 Open: exact validation rules when type is `quantity` vs `url` (Q24, Q29).  
 Open: Node **configuration** shape — proposed `capabilities` (Q34); pending confirm.  
 Open: simples `originate_relations=false` via config (**Q49** lean) — pending confirm.  
-**Closed (Q33):** Parameter *is* a tree Node (not a separate attached object).  
-**Dropped (Q14):** no separate owner field.
+**Decided (Q64):** Parameter is a **class** on the Node (`name` + `type`); not a tree Node.  
+**Decided (Q14 revised):** each Parameter has exactly one owning Node.
 
 ### What we do not model
 
-- No **Parameter** class and no **ParameterRole** stereotype.
-- Attribute Nodes are not a separate stored kind beside Node (**Q33/Q34**).
-- Not necessarily a filled-in value on a part/post (value still Q16).
-- Not owned via a separate `node_id` field (**Q14 dropped**); use `parent_id` and/or Relations.
-- Not a PHP subclass hierarchy (**Q34 leaning: configuration**).
+- Parameter names as tree Nodes (use Parameter.`name` text — **Q64**).
+- PHP subclass hierarchy for Node specializations (**Q34 leaning: configuration**).
+- Hierarchy-as-edges + `parent_id` cache hybrid (closed TE).
 
 ---
 
-## Design fork (partially resolved): inheritance vs besteht-aus
+## Taxonomy vs Parameter defs
 
-**Q33 closed** Parameter-as-Node. The remaining fork is how those Parameter-Nodes hang under categories: classic parent/child, typed `besteht-aus` edges, or both (display vs storage).
+**Current (Q64):** catalog Nodes own **Parameter** definitions; children inherit defs along `parent_id`. Taxonomy edges (`is_a`) remain exploratory for display/inherit (Q42/Q43).
 
-| Approach | Idea | Inheritance? | Selection / query feel |
-|----------|------|--------------|------------------------|
-| **A — Parameter definitions** | Parameter is a definition object (or specialized payload) that **points at** Type/Präfix/Basiseinheit Nodes | Easy to inherit attribute *definitions* down a taxonomy (`ist-ein` children reuse parent params) | Select node → load attached param defs; often fewer hops |
-| **B — Nested nodes + typed edges** | Attributes are Nodes too; edges have **kinds** (`ist-ein`, `besteht-aus`) and may **point into another branch/tree** (e.g. Definitionsbaum) | Taxonomy uses `ist-ein`; composition uses `besteht-aus` (not inheritance) | Select node → walk edges by kind; more flexible, possibly more joins |
+| Piece | Idea | Inheritance? |
+|-------|------|--------------|
+| **Parameter definitions (Q64)** | Parameter objects on the Node point at Type/Präfix/Basiseinheit Nodes | Children reuse parent Parameter defs along `parent_id` |
+| **Typed edges (exploratory)** | `is_a` / other Relations between catalog Nodes | Display/inherit leans Q42/Q43 — not for storing Parameter names as Nodes |
 
 **User framing:**  
 *Widerstand **ist ein** Passives Bauteil* (taxonomy / inheritance path).  
-*Widerstand **besteht aus** Wert, Bauform, Maße, …* (composition — edges need properties/kind).  
-Quantity pieces (Maßzahl / Präfix / Unit) may live in the **Definitionsbaum** and be **referenced** from composition edges.
+*Widerstand has Parameters* Wert, Bauform, Maße, … (definitions on the Node).  
+Quantity pieces (Präfix / Unit) live in the **Definitionsbaum** and are **referenced** from Parameter.type / prefix / base_unit.
 
 ### Exploratory object: Relation (typed edge)
 
@@ -1565,26 +1670,25 @@ Related nodes are **not** always shown the same way:
 | `child_of` | Classic parent/child tree |
 | `uses` | Reference list / “used by” reverse index |
 
-#### Inheritance of composition attributes (Q43)
+#### Inheritance of Parameter definitions (Q43 / Q55)
 
-- Along **`is_a`** (e.g. NPN **ist ein** Transistor): attributes that the parent **besteht aus** (Wert, Maße, …) **can be inherited** by the child node.
-- Inheritance mechanics still open (copy / live merge / override) — related to Q30.
-- Only RelationTypes marked `inheritable` (leaning: composition/`consists_of`) participate.
+- Along **`parent_id`** / **`is_a`** (e.g. NPN **ist ein** Transistor): Parameter **definitions** on the parent (Wert, Maße, …) **are inherited** by the child (**Q55**).
+- Inheritance mechanics still open (copy / live merge / override) — related to Q30 / Q43.
+- Exploratory: RelationTypes marked `inheritable` may also participate for display (Q42).
 
 ```text
-Transistor  ─[consists_of]→ Gehäuse, Uce, Ic, Maße, …
-NPN         ─[is_a]→ Transistor
-NPN UI      → shows Transistor's consists_of set as attributes (inherited)
-              + any NPN-only consists_of overrides/additions
+Transistor.parameters  → Gehäuse, Uce, Ic, Länge/Breite/Höhe, …
+NPN ─[is_a / parent]→ Transistor
+NPN UI → shows inherited Parameter defs (+ any NPN-only Parameters)
 ```
 
-Not agreed — refine with Q35/Q41–Q43; Bauteile example below still uses informal `[ist-ein]` / `[besteht-aus]` labels.
+Not agreed on Relation display details — refine with Q35/Q41–Q43.
 
-### Example tree: Bauteile (typed edges)
+### Example tree: Bauteile (catalog + Parameters)
 
 Separate planning tree (root = **Bauteile**).  
-Edge labels: **`[ist-ein]`** vs **`[besteht-aus]`**.  
-Quantity attributes **refer** into the Definitionsbaum (`quantity` + Präfix + Basiseinheit), not duplicated as free text.
+Taxonomy edges: **`[ist-ein]`** (exploratory).  
+Attributes are **Parameters** on the catalog Node (`name` + `type` → Typ-Ast); quantity types use Präfix + Basiseinheit from the Definitionsbaum (**Q64**).
 
 ```text
 Bauteile                                              ← ROOT of this example
@@ -1592,79 +1696,34 @@ Bauteile                                              ← ROOT of this example
 ├── [ist-ein] Passives Bauteil
 │   │
 │   ├── [ist-ein] Widerstand
-│   │   ├── [besteht-aus] Wert
-│   │   │                 └─ [referenziert] quantity + Präfix + Unit(Ohm)
-│   │   │                    Beispiel: 10 kOhm
-│   │   ├── [besteht-aus] Bauform          (z.B. 0201, 0402, 0603, axial, …)
-│   │   ├── [besteht-aus] Toleranz         (quantity + Präfix + Unit(%) ?)
-│   │   ├── [besteht-aus] Leistungsaufnahme
-│   │   │                 └─ quantity + Präfix + Unit(Watt)  z.B. 250 mW
-│   │   ├── [besteht-aus] Temperaturkoeffizient
-│   │   └── [besteht-aus] Maße
-│   │       ├── [besteht-aus] Höhe         → quantity + Präfix + Unit(Meter)
-│   │       ├── [besteht-aus] Breite       → quantity + Präfix + Unit(Meter)
-│   │       └── [besteht-aus] Tiefe        → quantity + Präfix + Unit(Meter)
-│   │           Beispiel Maße: 10 mm × 5 mm × 2 mm
+│   │     parameters:
+│   │       Wert → quantity (+ Ohm)           # e.g. 10 kOhm
+│   │       Bauform → enum/text               # 0201, 0402, 0603, axial, …
+│   │       Toleranz → quantity (+ %)
+│   │       Leistungsaufnahme → quantity (+ Watt)  # e.g. 250 mW
+│   │       Temperaturkoeffizient → text|quantity
+│   │       Länge / Breite / Höhe → quantity (+ Meter)  # e.g. 10×5×2 mm
 │   │
 │   ├── [ist-ein] Kondensator
-│   │   ├── [besteht-aus] Wert (Kapazität) → quantity + Präfix + Unit(Farad)
-│   │   ├── [besteht-aus] Nennspannung     → quantity + Präfix + Unit(Volt)
-│   │   ├── [besteht-aus] Bauform / Dielektrikum
-│   │   ├── [besteht-aus] Polarität        (text / enum)
-│   │   ├── [besteht-aus] Toleranz
-│   │   └── [besteht-aus] Maße
-│   │       ├── Höhe / Breite / Tiefe      → je quantity + Präfix + Unit(Meter)
+│   │     parameters: Wert(Kapazität)+Farad, Nennspannung+Volt, Bauform, …
 │   │
 │   ├── [ist-ein] Spule
-│   │   ├── [besteht-aus] Wert (Induktivität) → quantity + Präfix + Unit(Henry)
-│   │   ├── [besteht-aus] Nennstrom
-│   │   ├── [besteht-aus] Gleichstromwiderstand (DCR)
-│   │   ├── [besteht-aus] Kern / Bauform
-│   │   └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+│   │     parameters: Wert(Induktivität)+Henry, Nennstrom, DCR, Bauform, …
 │   │
 │   └── [ist-ein] Potentiometer
-│       ├── [besteht-aus] Widerstandswert  → quantity + Präfix + Unit(Ohm)
-│       ├── [besteht-aus] Leistung
-│       ├── [besteht-aus] Bauform (Dreh-/Schiebe-)
-│       └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+│         parameters: Widerstandswert+Ohm, Leistung, Bauform, …
 │
 └── [ist-ein] Aktives Bauteil
-    │
     ├── [ist-ein] Transistor
-    │   ├── [besteht-aus] Gehäuse
-    │   ├── [besteht-aus] Uceo / Uce sat   → quantity + Präfix + Unit(Volt)
-    │   ├── [besteht-aus] Ic max           → quantity + Präfix + Unit(Ampere)
-    │   ├── [besteht-aus] hFE / Verstärkung
-    │   ├── [besteht-aus] Verlustleistung  → quantity + Präfix + Unit(Watt)
-    │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
-    │   │
-    │   ├── [ist-ein] NPN-Transistor
-    │   │   └── (erbt / übernimmt besteht-aus vom Transistor — Mechanik offen)
-    │   │
-    │   └── [ist-ein] PNP-Transistor
-    │       └── (dito)
-    │
+    │     parameters: Gehäuse, Uceo+Volt, Ic max+Ampere, hFE, Verlustleistung+Watt, …
+    │     ├── [ist-ein] NPN-Transistor   ← inherits Parameter defs (Q55)
+    │     └── [ist-ein] PNP-Transistor
     ├── [ist-ein] IC
-    │   ├── [besteht-aus] Versorgungsspannung → quantity + Präfix + Unit(Volt)
-    │   ├── [besteht-aus] Gehäuse / Pinzahl
-    │   ├── [besteht-aus] Temperaturbereich
-    │   ├── [besteht-aus] Maße → Höhe / Breite / Tiefe
-    │   │
-    │   ├── [ist-ein] Analog-IC
-    │   │   ├── [besteht-aus] Bandbreite / Slew-Rate (je nach Typ)
-    │   │   └── … weitere analoge Attribute
-    │   │
-    │   └── [ist-ein] Digital-IC
-    │       ├── [besteht-aus] Logikfamilie (text / enum)
-    │       ├── [besteht-aus] Taktfrequenz → quantity + Präfix + Unit(Hertz)
-    │       └── … weitere digitale Attribute
-    │
+    │     parameters: Versorgungsspannung+Volt, Gehäuse, Temperaturbereich, …
+    │     ├── [ist-ein] Analog-IC
+    │     └── [ist-ein] Digital-IC
     └── [ist-ein] Diode
-        ├── [besteht-aus] Typ (Gleichrichter, Zener, Schottky, …)
-        ├── [besteht-aus] Uf / Uz          → quantity + Präfix + Unit(Volt)
-        ├── [besteht-aus] If max           → quantity + Präfix + Unit(Ampere)
-        ├── [besteht-aus] Gehäuse
-        └── [besteht-aus] Maße → Höhe / Breite / Tiefe
+          parameters: Typ, Uf/Uz+Volt, If max+Ampere, Gehäuse, …
 ```
 
 ```mermaid
@@ -1688,35 +1747,13 @@ flowchart TB
   IC -->|ist-ein| Ana["Analog-IC"]
   IC -->|ist-ein| Dig["Digital-IC"]
 
-  W -->|besteht-aus| Wert["Wert"]
-  W -->|besteht-aus| Bau["Bauform"]
-  W -->|besteht-aus| Tol["Toleranz"]
-  W -->|besteht-aus| Pwr["Leistungsaufnahme"]
-  W -->|besteht-aus| Tk["Temperaturkoeffizient"]
-  W -->|besteht-aus| M["Maße"]
-  M -->|besteht-aus| H["Höhe"]
-  M -->|besteht-aus| B["Breite"]
-  M -->|besteht-aus| T["Tiefe"]
-
-  Wert -.->|referenziert| Def["Definitionsbaum:\nquantity + Präfix + Unit"]
-  H -.->|referenziert| Def
+  W -.->|parameters| PW["Wert · Bauform · …"]
+  PW -.->|type| Def["Typ-Ast:\nquantity + Präfix + Unit"]
 ```
 
-**Inheritance note:** `ist-ein` suggests attribute *reuse* (NPN inherits Transistor’s `besteht-aus` / `consists_of` set as **attributes**). Exact rule is open — copy on create, live inherit, or merge override (Q43; related to Q30/templates).
+**Inheritance note:** children inherit Parameter **definitions** along `parent_id` / `is_a` (**Q55** / Q43). Exact copy vs live inherit mechanics still open (related to Q30/templates).
 
-**Composition note:** `besteht-aus` is **not** inheritance. From the part’s side the same edge may read as “ist Teil von” (view only — no inverse type field). UI: part-of nodes render as **attributes of the parent** (Q42). Cross-branch `uses`/`referenziert` links quantity slots to the Definitionsbaum.
-
-### Implementation / selection tradeoff (planning only)
-
-| Concern | A — Parameter definitions on nodes | B — Nested nodes + typed edges |
-|---------|-------------------------------------|--------------------------------|
-| Admin selection | Pick node → list params | Pick node → filter children/edges by kind |
-| Query speed | Often 1 node + param rows | Edge walk / recursive CTE / multiple term metas |
-| Reuse of Maße/Wert | Param templates / inheritance of defs | Shared subgraphs or reference edges |
-| Modeling “ist ein” vs “besteht aus” | Taxonomy parent + separate param link | Explicit edge kinds (clearer semantically) |
-| Risk | Params feel bolted on | Graph complexity; WP terms alone may not be enough |
-
-**Status:** explore RelationType pairs + display/inherit rules — **do not lock** Q33/Q34/Q35/Q41–Q43 yet.
+**Status:** explore RelationType pairs + display/inherit rules — **do not lock** Q34/Q35/Q41–Q43 yet. Parameter class itself is **decided (Q64)**.
 
 ### Emerging core types (leaning — Q36)
 
@@ -1783,136 +1820,88 @@ Open: does each quantity param fix `integer` vs `number`, or allow both? (Q37)
 Open: confirm selection_mode lives on the parameter/field, not in the Type name (Q38).  
 Open: which scalar(s) may appear as enum option values? (Q39)
 
-### Worked example: Widerstand — Approach A vs B
+### Worked example: Widerstand — Parameters on the Node (**Q64**)
 
-Same attributes, two structures. Taxonomy path shared:
+Taxonomy path (catalog tree):
 
 ```text
 Bauteile ─[ist-ein]→ Passives Bauteil ─[ist-ein]→ Widerstand
 ```
 
-> **Update (Q33):** Approach A’s “separate Parameter definitions attached via `parameters[]`” is **rejected**. Attributes such as `Wert` are **Parameter-Nodes**. Approach B (typed edges / child Parameter-Nodes) is the surviving direction; keep both sketches for history.
+#### Parameter list for Widerstand
 
-#### Shared attribute list for Widerstand
-
-| Attribute | Core type | Composition / choices |
-|-----------|-----------|------------------------|
+| Parameter `name` | `type` | Notes / choices |
+|------------------|--------|-----------------|
 | Wert | `quantity` | number + Präfix + Unit(`Ohm`) → e.g. `10 kOhm` |
 | Bauform | `enum` + selection `single` | options {0201, 0402, 0603, 0805, axial, …} |
 | Toleranz | `quantity` | number + Präfix? + Unit(`%`) → e.g. `1 %` |
 | Leistungsaufnahme | `quantity` | number + Präfix + Unit(`Watt`) → e.g. `250 mW` |
-| Temperaturkoeffizient | `string` or `quantity` | TBD |
-| Maße | group | consists of Höhe, Breite, Tiefe |
-| Höhe / Breite / Tiefe | `quantity` | number + Präfix + Unit(`Meter`) → e.g. `10 mm` |
+| Temperaturkoeffizient | `text` or `quantity` | TBD |
+| Länge / Breite / Höhe | `quantity` | number + Präfix + Unit(`Meter`) → e.g. `10 mm` |
 | Datenblatt | `url` or `file` | link or upload |
-| RoHS | `boolean` | true/false |
+| RoHS | `bool` | true/false |
 
----
+#### Current shape (Q64)
 
-#### Approach A — Parameter definitions on the node (rejected — Q33)
-
-Widerstand is a taxonomy Node. Attributes were **Parameter definitions** attached to it (not child nodes). **Rejected:** Parameter is itself a tree Node.
+Widerstand is a taxonomy Node. Attributes are **Parameter** objects on it (not child tree Nodes).
 
 ```text
 Node: Widerstand
 parameters:
-  - key: wert
+  - name: Wert
     type: quantity
     numeric_kind: number
     prefix: allowed (Präfix branch)
     base_unit: Ohm
-    example_value: { value: 10, prefix: k, unit: Ohm }  => "10 kOhm"
+    example ParameterValue: { value: 10, prefix: k, unit: Ohm }  => "10 kOhm"
 
-  - key: bauform
+  - name: Bauform
     type: enum
     selection_mode: single
     option_scalar: string
     choices: [0201, 0402, 0603, 0805, axial]
 
-  - key: toleranz
+  - name: Toleranz
     type: quantity
-    numeric_kind: number
     base_unit: %
 
-  - key: leistungsaufnahme
+  - name: Leistungsaufnahme
     type: quantity
-    numeric_kind: number
     prefix: allowed
     base_unit: Watt
-    example_value: { value: 250, prefix: m, unit: Watt } => "250 mW"
+    example: { value: 250, prefix: m, unit: Watt } => "250 mW"
 
-  - key: hoehe / breite / tiefe   (or nested group "masse")
+  - name: Länge / Breite / Höhe
     type: quantity
     base_unit: Meter
     example: 10 mm × 5 mm × 2 mm
 
-  - key: datenblatt
+  - name: Datenblatt
     type: url          # or file
 
-  - key: rohs
-    type: boolean
+  - name: RoHS
+    type: bool
 ```
 
-**Inheritance (A):** `NPN-Transistor ist-ein Transistor` can **reuse/override** parent parameter definitions (copy or live inherit — open).
+**Inheritance:** child Nodes inherit Parameter **definitions** along `parent_id` (Q55); instances fill ParameterValue.
 
-**Selection/query (A):**
+**Selection/query:**
 1. Resolve taxonomy node id  
-2. `SELECT parameters WHERE node_id = ?` (and maybe inherited from ancestors)  
-3. Render editors by `type`
+2. Load `Node.parameters` (and inherited from ancestors)  
+3. Render editors by `Parameter.type`
 
----
+#### Filled Widerstand (example)
 
-#### Approach B — Nested nodes + typed edges
+| Parameter | ParameterValue |
+|-----------|----------------|
+| Wert | 10 kOhm |
+| Bauform | 0603 |
+| Leistungsaufnahme | 250 mW |
+| Länge / Breite / Höhe | 10×5×2 mm |
+| Datenblatt | url |
+| RoHS | true |
 
-Widerstand is a taxonomy Node. Attributes are **child nodes** linked with `besteht-aus`. Quantity slots **referenzieren** Definitionsbaum types/units. Selection: select `Widerstand` → edges `kind=besteht-aus`.
-
-```text
-Node: Widerstand
-  ─[besteht-aus]→ Node: Wert
-        type hint: quantity
-        ─[referenziert]→ Type/quantity
-        ─[referenziert]→ Basiseinheit/Ohm
-        ─[referenziert]→ (Präfix allowed)
-        filled: value=10, prefix=k  => "10 kOhm"
-
-  ─[besteht-aus]→ Node: Bauform
-        type hint: enum
-        selection_mode: single
-        ─[referenziert]→ option set (scalar values)
-
-  ─[besteht-aus]→ Node: Toleranz          (quantity → %)
-  ─[besteht-aus]→ Node: Leistungsaufnahme (quantity → Watt)
-  ─[besteht-aus]→ Node: Maße
-        ─[besteht-aus]→ Höhe   (quantity → Meter)
-        ─[besteht-aus]→ Breite (quantity → Meter)
-        ─[besteht-aus]→ Tiefe  (quantity → Meter)
-
-  ─[besteht-aus]→ Node: Datenblatt        (url|file)
-  ─[besteht-aus]→ Node: RoHS              (boolean)
-```
-
-**Inheritance (B):** `ist-ein` walks ancestors; `besteht-aus` sets may be merged from parent types (open). Composition is never “is-a”.
-
-**Selection/query (B):**
-1. Resolve taxonomy node id  
-2. Load Relations where `from=id AND kind=besteht-aus` (recursive for Maße)  
-3. Resolve `referenziert` targets in Definitionsbaum  
-4. Render by resolved type
-
----
-
-#### Side-by-side for one filled Widerstand
-
-| Field | Filled reading | A (params on node) | B (nodes + edges) |
-|-------|----------------|--------------------|-------------------|
-| Wert | 10 kOhm | Param `wert` quantity payload | Child node `Wert` + refs |
-| Bauform | 0603 | Param `bauform` enum+single | Child node `Bauform` |
-| Leistung | 250 mW | Param `leistungsaufnahme` | Child node `Leistungsaufnahme` |
-| Maße | 10×5×2 mm | Three params or nested group | Node `Maße` → three children |
-| Datenblatt | url | Param `datenblatt` | Child node `Datenblatt` |
-| RoHS | true | Param `rohs` boolean | Child node `RoHS` |
-
-**Early filter (not a decision):** both approaches need the **same core Type catalog**. The A/B fork is about *where attributes live*, not about inventing different types.
+Types come from the shared Typ-Ast catalog (Q36/Q48).
 
 ---
 
@@ -1979,9 +1968,10 @@ Some trees are **templates** for project-specific trees.
 | `taxonomy` | ? | string (WP taxonomy slug) | **Leaning (Q18):** Project ≈ taxonomy; slug on Project (or Project *is* the taxonomy wrapper) |
 | `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
 | `definition_root` | yes | **Node** | Required Definitionsbaum root (**Definition**) |
-| `type_node` | yes | **Node** | Required Type anchor |
+| `type_node` | yes | **Node** | Required Type anchor — **only** branch where Node types are resolved (**Q26**) |
 | `prefix_node` | yes | **Node** | Required Präfix anchor |
 | `base_unit_node` | yes | **Node** | Required Basiseinheit anchor |
+| `start_node` | yes | **Node** | Default UI entry / focus — set in **Setup** (**Q59**); often = project root or Typen |
 | `changelog` | yes | **Changelog** | History of changes on this project |
 
 \* `description` may be empty string, but the field exists on the class.
@@ -1997,9 +1987,10 @@ class Project {
 	/** @var list<Node> */
 	public array $root_nodes;
 	public Node $definition_root; // must always exist
-	public Node $type_node;       // must always exist
+	public Node $type_node;       // must always exist — type search root (Q26)
 	public Node $prefix_node;     // must always exist
 	public Node $base_unit_node;  // must always exist
+	public Node $start_node;      // Setup default focus (Q59)
 	public Changelog $changelog;
 }
 
@@ -2008,7 +1999,7 @@ class Node {
 	public ?string $parent_id;
 	public string $name;
 	public bool $template; // template tree marker
-	public ?array $config; // type binding / capabilities — Q34
+	public ?array $config; // type binding / capabilities / Composition allowlists + footer — Q34/Q57/Q60
 	public Changelog $changelog;
 	// no taxonomy field — taxonomy lives on Project
 }
@@ -2017,9 +2008,11 @@ class Node {
 Invariants (leaning):
 
 1. `definition_root.parent_id === null`
-2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (Q26)
-3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
-4. Bound type Nodes should live under `project.type_node` (same for prefix/base_unit)
+2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (**Q26 decided**)
+3. Every Node may own **Parameters** (`name` + `type`); `Parameter.type` must be under `project.type_node` (**Q64** / **Q26**)
+4. Type targets (and Präfix / Basiseinheit) never live under Compositionen / Bauteile — **Q26**
+5. `start_node` belongs to the Project tree and is configured in Setup (**Q59**)
+6. **Q63:** tree = definition; WP page = instance values. Collection defines Parameter **Projektname** (inherited). Structure node name **`BOM`**. Title `BOM als Bauteilliste – {Projektname}` from instance. Allowlists (**Q60**); Fußzeile (**Q57**); Menge = Stück (**Q58**).
 
 ### Default Nodes for a new Project (open — Q50)
 

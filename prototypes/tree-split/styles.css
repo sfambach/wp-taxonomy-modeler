@@ -514,6 +514,66 @@ body {
   border-bottom: 0;
 }
 
+.data-table tfoot td,
+.data-table tfoot th {
+  border-top: 2px solid var(--line);
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--bg) 45%, var(--bg-pane));
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.data-table .footer-agg {
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.footer-op-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(6rem, 8rem);
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.footer-op-row label {
+  font-size: 0.8rem;
+}
+
+.bom-name-field {
+  margin: 0.5rem 0 1rem;
+  max-width: 28rem;
+}
+
+.bom-table-title {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  border-top: 2px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg-pane));
+}
+
+.block-chrome {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+.block-art-panel {
+  margin-top: 0.5rem;
+}
+
+.allowlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.35rem;
+}
+
 .data-table thead th {
   background: color-mix(in srgb, var(--bg) 55%, var(--bg-pane));
   font-weight: 600;

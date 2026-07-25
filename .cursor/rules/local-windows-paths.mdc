@@ -1,0 +1,22 @@
+---
+description: Local Windows paths for WordPress and GitHub source checkouts
+alwaysApply: true
+---
+
+# Local Windows development paths
+
+When working on the developer's Windows machine:
+
+| Role | Path |
+|------|------|
+| WordPress install (docroot) | `C:\devel\wordpress` |
+| **GitHub source checkouts** | `C:\devel\wordpress\source` |
+| This plugin repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
+| Web server stack (Laragon/XAMPP) | outside docroot, e.g. `C:\laragon` |
+
+## Rules
+
+- Clone and work on GitHub sources **only** under `C:\devel\wordpress\source\<repo-name>`.
+- Do **not** put git checkouts directly in `C:\devel\wordpress` root (that stays the WP install).
+- When the plugin is implemented, link or deploy into `C:\devel\wordpress\wp-content\plugins\wp-taxonomy-tree` from the source checkout (junction/symlink preferred).
+- Cloud agents cannot access `C:\`; give the developer the exact `git` commands for local checkout when needed.

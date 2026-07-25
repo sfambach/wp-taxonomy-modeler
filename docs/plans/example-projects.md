@@ -45,10 +45,16 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 
 | Aspect | Detail |
 |--------|--------|
-| BOM line | 1…N **references** (designators on a board) + a chosen **part** (Widerstand, Kondensator, IC, Buchse, …) + **Bauform** (SMD, TH, …) + **quantity** (from reference count) + **description** + **price** + **in stock?** |
+| BOM line | 1…N **references** (designators on a board) + a chosen **part** (Widerstand, Kondensator, IC, Buchse, …) + **Bauform** (SMD, TH, …) + **Menge in Stück** (from reference count, `int`) + **description** + **price** + **in stock?** |
 | Part pick | From a **category tree** of possible parts |
 | Part data | Parts already carry properties: Größe, Wert, Datenblatt-Link, Leistung, … |
-| BOM footer | Part count + **price sum** |
+| BOM in tree | Structure node named **`BOM`** (definition) (**Q61**/Q63) |
+| Projektname | **Parameter** on **Collection**, inherited; filled on **WP page/block** |
+| BOM title under table | `BOM als Bauteilliste – {Projektname}` (instance) |
+| BOM Fußzeile | Same column count; per cell sum/avg/… (**Q57**/Q58) |
+| WP Block | Collection art + Projektname + rows like Backend (**Q62**) |
+| BOM allowlists | Which **Typen** / **Basiseinheiten** are zulässig on this BOM (**Q60**) |
+| Project Setup | Default **Startknoten** (**Q59**); type search only under Typ-Ast (**Q26**) |
 | Compare | Find/compare lists that share the same parts |
 | Export | Request sheets / CSV for Digikey, Conrad, AliExpress, … |
 
@@ -95,7 +101,7 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 |-------|---------------|----------|
 | Part pick from tree | Core UX of the environment | UC-01, UC-04, UC-07 |
 | Quantity + URL + enum on parts | Need Type catalog | Q36–Q39 |
-| Attributes on part nodes | consists_of vs Parameter-as-Node | Q33–Q35, Q42 |
+| Attributes on part nodes | Parameters on Node (name + type); Relations exploratory | Q64, Q35, Q42 |
 | Filled values on the part | BOM shows Wert/Maße already on the part | Q16 |
 | Project vs WP taxonomy | One website “project” vs our Project | Q18–Q19 |
 | Host extension contract | Add-to-BOM on select | Q8–Q9 |
