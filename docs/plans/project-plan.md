@@ -2,8 +2,8 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.79-plan"
-last_updated: "2026-07-24"
+version: "0.6.80-plan"
+last_updated: "2026-07-25"
 related_docs:
   - README.md
   - docs/PRODUCT.md
@@ -252,6 +252,11 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-24 | Datentypen → **Simple** / **Complex**. Scoped catalog pick renamed **`subtree`** (`ref_scope`); new Simple **`node_ref`** = free Absprung to any Node. Proto v29. Plan **0.6.76**. |
 | 2026-07-24 | Class diagram refreshed with **methods** + `NodeConfig` / `subtree` invariants; no Parameter class (Q33). Plan **0.6.77**. |
 | 2026-07-24 | Architecture **layers**: DTO + Domain Service + Repository (+ WP adapter); not classic MVC. Review notes (Parameter/Q55, naming). Plan **0.6.78**. |
+| 2026-07-25 | **Q26 decided:** type of a Node is resolved **only under the Type branch** (`type_node` / Datentypen); Präfix/Basiseinheit only under their anchors. |
+| 2026-07-25 | **Q57 decided:** a **BOM has a Fußzeile** (Composition table footer; e.g. Summe Menge in Stück). |
+| 2026-07-25 | **Q58 decided:** BOM **Menge** = **Stück** (`int`), not `quantity`. |
+| 2026-07-25 | **Q59 decided:** **Startknoten** defaults from **Project Setup** (`Project.start_node`). |
+| 2026-07-25 | **Q60 decided:** per BOM/Composition — **zulässige Typen** and **zulässige Basiseinheiten** (allowlists under the matching Definition branches). Plan **0.6.80**. Proto v30. |
 
 ## Change protocol
 

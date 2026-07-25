@@ -514,6 +514,28 @@ body {
   border-bottom: 0;
 }
 
+.data-table tfoot td,
+.data-table tfoot th {
+  border-top: 2px solid var(--line);
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--bg) 45%, var(--bg-pane));
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.data-table .footer-stueck {
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.allowlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.35rem;
+}
+
 .data-table thead th {
   background: color-mix(in srgb, var(--bg) 55%, var(--bg-pane));
   font-weight: 600;

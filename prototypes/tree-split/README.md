@@ -44,9 +44,13 @@ Project root
 1. Unter **Bauteile** Gruppe anlegen/pflegen (Widerstand / Kondensator).
 2. **BOM — Board** → Backend: Spalte **Bauteil Wahl** (`subtree` + `ref_scope`→Bauteile).
 3. **Wert** = double + Präfix; **Einheit** typfest (Ohm / Farad).
-4. **Beschreibung** = `textarea` (optional).
-5. Erlaubte Präfixe = `allows_prefix` der Einheit.
-6. Pflicht/Optional = `config.required` am Slot-Knoten.
+4. **Menge** = **Stück** (`int`) — nicht `quantity`.
+5. **Beschreibung** = `textarea` (optional).
+6. Erlaubte Präfixe = `allows_prefix` der Einheit.
+7. Pflicht/Optional = `config.required` am Slot-Knoten.
+8. **Fußzeile** = Summe Menge (Stück).
+9. Am BOM-Knoten: **zulässige Typen** + **zulässige Basiseinheiten** (Allowlists).
+10. Projekt-**Startknoten** in Setup (Standard-Fokus beim Öffnen).
 
 ## Projects
 
@@ -55,7 +59,17 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v29` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v30` — **Reset** after upgrade.
+
+## BOM / Setup (v30)
+
+| Concern | Rule |
+|---------|------|
+| Typ-Suche | Nur im **Typ-Ast** (`Typen` → Datentypen …) |
+| Startknoten | Pro Projekt in Setup (`startNodeId`) |
+| Menge | **Stück** (`int`) |
+| Fußzeile | Summe Menge (Stück) |
+| Allowlists | `config.allowed_types` / `config.allowed_base_units` am Composition-Knoten |
 
 ## Simple types (HTML lean)
 

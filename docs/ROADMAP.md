@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.78-plan** (2026-07-24).
+Last synced from plan version **0.6.80-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,12 +25,17 @@ Last synced from plan version **0.6.78-plan** (2026-07-24).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v29 (Simple/Complex, subtree, node_ref, Typ-Bindung) | In progress |
+| UI prototype `prototypes/tree-split` v30 (BOM Fußzeile, Menge=Stück, Setup-Startknoten, Allowlists) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
 | **Q55:** Slot = typed Node (no Parameter class); inherit along catalog; ParameterValue for fills | Done (planning) |
 | **Q56:** Composition vs Bauteil; catalog ref = `subtree` + `ref_scope` | Done (planning) |
+| **Q26:** type only under Type branch; Präfix/Basiseinheit under their anchors | Done (planning) |
+| **Q57:** BOM has Fußzeile | Done (planning) |
+| **Q58:** BOM Menge = Stück (`int`) | Done (planning) |
+| **Q59:** Startknoten from Project Setup | Done (planning) |
+| **Q60:** per BOM zulässige Typen + Basiseinheiten | Done (planning) |
 | Goal path: create one Composition (blockers #1–3) | In progress |
 | Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
 | Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |

@@ -282,34 +282,34 @@ Cards below split **tree environment** vs **host BOM**.
 | **Touches** | Node, Parameter-Node, Project, Relation/attributes, extension |
 | **Notes** | Example A; UC-01/UC-04; Q33 |
 
-### UC-21 — Build a BOM line with references and derived quantity
+### UC-21 — Build a BOM line with references and Menge in Stück
 
 | Field | Content |
 |-------|---------|
 | **Actor** | User |
-| **Goal** | Record 1…N board references and get quantity automatically |
+| **Goal** | Record 1…N board references and Menge in **Stück** |
 | **Trigger** | Edits a BOM line |
 | **Preconditions** | Part selected (UC-20); BOM list exists |
-| **Main flow** | 1. User enters references (e.g. R1, R2, R5)<br>2. System sets quantity = count(references)<br>3. User may add description, price, stock flag<br>4. Bauform may come from part or be set on the line<br>5. Saves line |
+| **Main flow** | 1. User enters references (e.g. R1, R2, R5)<br>2. System sets Menge = count(references) in **Stück** (`int`, Q58)<br>3. User may add description, price, stock flag<br>4. Bauform may come from part or be set on the line<br>5. Saves line |
 | **Variants** | Duplicate refs; qty override (if ever allowed) |
-| **Outcome** | BOM line with refs, part, qty, meta |
-| **MVP?** | later — **host** |
-| **Touches** | Host BOM line; part → Node id; Reference shape Q47 |
-| **Notes** | Out of scope for taxonomy-tree core; value-shape on type/Parameter (Q47) |
+| **Outcome** | BOM line with refs, part, Menge (Stück), meta |
+| **MVP?** | later — **host** / Composition |
+| **Touches** | CompositionRow; part → Node id; Reference shape Q47 |
+| **Notes** | Menge ≠ `quantity` (Größe). Q58 |
 
-### UC-22 — See BOM totals (part count + price sum)
+### UC-22 — See BOM Fußzeile (Stück sum + optional price)
 
 | Field | Content |
 |-------|---------|
 | **Actor** | User |
-| **Goal** | See how many parts and total price on the list |
-| **Trigger** | Views BOM footer |
-| **Preconditions** | BOM has lines with prices |
-| **Main flow** | 1. System sums quantities / distinct lines (rule TBD by host)<br>2. System sums line prices<br>3. Shows totals at end of BOM |
-| **Outcome** | Count + price sum visible |
-| **MVP?** | later — **host** |
-| **Touches** | Host BOM |
-| **Notes** | — |
+| **Goal** | See Fußzeile totals on the BOM |
+| **Trigger** | Views BOM table |
+| **Preconditions** | BOM has lines; Composition has Fußzeile (**Q57**) |
+| **Main flow** | 1. System sums Menge column → **Stück** total<br>2. Optionally sums line prices (host)<br>3. Shows totals in the **Fußzeile** |
+| **Outcome** | Stück sum (+ price if present) visible in footer |
+| **MVP?** | planning / Composition view |
+| **Touches** | Composition table + footer |
+| **Notes** | Q57 — Fußzeile is part of BOM, not optional chrome |
 
 ### UC-23 — Find BOMs that share the same parts
 

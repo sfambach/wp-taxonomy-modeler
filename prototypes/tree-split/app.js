@@ -12,9 +12,10 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int);
  *   subtree uses ref_scope → catalog root; node_ref = free jump to any node.
  *   Slot Pflicht = Node.config.required. Datentypen → Simple | Complex.
+ *   BOM: Fußzeile, Menge=Stück, zulässige Typen/Basiseinheiten; Startknoten in Setup.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v29";
+const STORAGE_KEY = "wtt-proto-tree-split-v30";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -67,7 +68,20 @@ const DEFAULT_PREFIX_FACTORS = {
 };
 
 /**
- * @typedef {{ id: string, parentId: string|null, name: string, position: number, description?: string, template?: boolean, config?: { required?: boolean } }} ProtoNode
+ * @typedef {{
+ *   id: string,
+ *   parentId: string|null,
+ *   name: string,
+ *   position: number,
+ *   description?: string,
+ *   template?: boolean,
+ *   config?: {
+ *     required?: boolean,
+ *     allowed_types?: string[],
+ *     allowed_base_units?: string[],
+ *     footer?: { enabled?: boolean, sum_menge_stueck?: boolean },
+ *   },
+ * }} ProtoNode
  */
 /**
  * @typedef {{
@@ -76,9 +90,11 @@ const DEFAULT_PREFIX_FACTORS = {
  *   description: string,
  *   kind: 'template'|'composition-simples'|'bom-test',
  *   rootId: string,
+ *   typesRootId: string,
  *   dataTypesRootId: string,
  *   prefixesRootId: string,
  *   baseUnitsRootId: string,
+ *   startNodeId: string,
  * }} ProtoProject
  */
 /** @typedef {'node'|'backend'|'frontend'|'form'} RightTab */
@@ -528,7 +544,23 @@ function seedBomTestData(compositionsRootId, core) {
 
   const bomCompId = createNode(compositionsRootId, "BOM — Board", nextPosition(compositionsRootId), {
     description:
-      "BOM-Zeile: Spalte „Bauteil Wahl“ = subtree (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest.",
+      "BOM-Zeile: Spalte „Bauteil Wahl“ = subtree (ref_scope→Bauteile) → Wert/Präfix nach Gruppe; Einheit typfest. Menge = Stück. Fußzeile = Summe Stück.",
+    config: {
+      footer: { enabled: true, sum_menge_stueck: true },
+      // empty = all under Typ-Ast / Basiseinheit; demo pre-selects common types + electronics units
+      allowed_types: [
+        types.tInt,
+        types.tDouble,
+        types.tText,
+        types.tTextarea,
+        types.tQuantity,
+        types.tSubtree,
+        types.tTable,
+        refDes,
+        bauart,
+      ],
+      allowed_base_units: [uOhm, uFarad, uWatt, uVolt],
+    },
   });
   pushEdge(bomCompId, types.tTable, REL_HAS_TYPE);
 
@@ -551,7 +583,7 @@ function seedBomTestData(compositionsRootId, core) {
     config: { required: false },
   });
   const cQty = createNode(bomCompId, "Menge", 4, {
-    description: "Stückzahl (int). Pflicht.",
+    description: "Stückzahl — Einheit Stück (int, nicht quantity). Pflicht. Fußzeile summiert Stück.",
     config: { required: true },
   });
   const cDesc = createNode(bomCompId, "Beschreibung", 5, {
@@ -607,23 +639,30 @@ function applyProject(project) {
   dataTypesRootId = project.dataTypesRootId;
   prefixesRootId = project.prefixesRootId;
   baseUnitsRootId = project.baseUnitsRootId;
+  if (!project.typesRootId) {
+    const t = childrenOf(project.rootId).find((n) => n.name === "Typen");
+    project.typesRootId = t ? t.id : "";
+  }
+  if (!project.startNodeId || !nodes.has(project.startNodeId)) {
+    project.startNodeId = project.rootId;
+  }
 }
 
 function setActiveProject(projectId) {
   const project = projects.find((p) => p.id === projectId);
   if (!project) return;
   applyProject(project);
-  selectedId = project.rootId;
+  // Q59: Setup-Startknoten = Standard-Fokus (Demo-Seed: BOM — Board)
+  selectedId =
+    project.startNodeId && nodes.has(project.startNodeId)
+      ? project.startNodeId
+      : project.rootId;
   // Root + Compositionen aufklappen, damit Compositionen sichtbar sind
   collapsed.delete(project.rootId);
   const comps = childrenOf(project.rootId).find((n) => n.name === "Compositionen");
   const bauteile = childrenOf(project.rootId).find((n) => n.name === "Bauteile");
   if (bauteile) collapsed.delete(bauteile.id);
-  if (comps) {
-    collapsed.delete(comps.id);
-    const bom = childrenOf(comps.id).find((n) => n.name === "BOM — Board");
-    if (bom) selectedId = bom.id;
-  }
+  if (comps) collapsed.delete(comps.id);
   persist();
   render();
 }
@@ -659,9 +698,11 @@ function createInitial() {
     description: "Reiner Template-Baum — nicht änderbar.",
     kind: PROJECT_KIND_TEMPLATE,
     rootId: templateRootId,
+    typesRootId: templateCore.typesRootId,
     dataTypesRootId: templateCore.dataTypesRootId,
     prefixesRootId: templateCore.prefixesRootId,
     baseUnitsRootId: templateCore.baseUnitsRootId,
+    startNodeId: templateCore.typesRootId,
   };
 
   // 2) Demo — editable; Rezept (simples) + BOM — Board under Compositionen
@@ -682,15 +723,17 @@ function createInitial() {
     description: "Compositionen + Bauteile-Katalog (getrennt).",
     kind: PROJECT_KIND_COMPOSITION_SIMPLES,
     rootId: demoRootId,
+    typesRootId: demoCore.typesRootId,
     dataTypesRootId: demoCore.dataTypesRootId,
     prefixesRootId: demoCore.prefixesRootId,
     baseUnitsRootId: demoCore.baseUnitsRootId,
+    startNodeId: bomCompId, // Setup-Standard: BOM — Board
   };
 
   projects = [templateProject, demoProject];
   collapseAllBranches();
   applyProject(demoProject);
-  selectedId = bomCompId;
+  selectedId = demoProject.startNodeId;
   // Compositionen aufgeklappt, damit Rezept + BOM — Board sichtbar sind
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
@@ -1022,13 +1065,46 @@ function setRefScope(slotId, rootId) {
   setLabeledEdge(slotId, REL_REF_SCOPE, rootId || "");
 }
 
-/** Candidates for has_type picker: simples, complex leaves, Collection kinds + concretes, units, Präfixe root. */
-function typePickerCandidates() {
+/**
+ * Is node under the project Typ-Ast (Typen → …)? Q26: type search only here.
+ * @param {string} nodeId
+ */
+function isUnderTypeBranch(nodeId) {
+  const p = activeProject();
+  const typesRoot = p?.typesRootId || healNamedRoot("", "Typen");
+  if (!typesRoot) return false;
+  let cur = nodes.get(nodeId);
+  let guard = 0;
+  while (cur && guard++ < 64) {
+    if (cur.id === typesRoot) return true;
+    cur = cur.parentId ? nodes.get(cur.parentId) : null;
+  }
+  return false;
+}
+
+/** Owning Composition for a slot column (parent with table type / under Compositionen). */
+function compositionOwnerOf(slotId) {
+  const slot = nodes.get(slotId);
+  if (!slot?.parentId) return null;
+  const parent = nodes.get(slot.parentId);
+  if (!parent) return null;
+  const pk = typeKey(typeNodeOf(parent.id));
+  if (pk === "table" || pk === "list") return parent;
+  return null;
+}
+
+/**
+ * Candidates for has_type picker — **only Typ-Ast** (Q26).
+ * When slot belongs to a Composition with allowed_types, filter to that allowlist (Q60).
+ * @param {string} [slotId]
+ */
+function typePickerCandidates(slotId) {
   /** @type {ProtoNode[]} */
   const list = [];
   const seen = new Set();
   const add = (n) => {
     if (!n || seen.has(n.id) || n.id === rootId) return;
+    if (!isUnderTypeBranch(n.id)) return;
     seen.add(n.id);
     list.push(n);
   };
@@ -1041,11 +1117,21 @@ function typePickerCandidates() {
       }
     }
   }
-  prefixesRootId = healNamedRoot(prefixesRootId, "Präfixe");
-  if (prefixesRootId) add(nodes.get(prefixesRootId));
+  // Einheit-Slots may still bind Basiseinheit via has_type (legacy demo) — only under Typ-Ast
   baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
   if (baseUnitsRootId) {
     for (const u of childrenOf(baseUnitsRootId)) add(u);
+  }
+  prefixesRootId = healNamedRoot(prefixesRootId, "Präfixe");
+  if (prefixesRootId) add(nodes.get(prefixesRootId));
+
+  const owner = slotId ? compositionOwnerOf(slotId) : null;
+  const allow = owner?.config?.allowed_types;
+  if (Array.isArray(allow) && allow.length > 0) {
+    const set = new Set(allow);
+    return list
+      .filter((n) => set.has(n.id))
+      .sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
   }
   return list.sort((a, b) => nodePath(a.id).localeCompare(nodePath(b.id), "de"));
 }
@@ -1105,7 +1191,7 @@ function buildTypeBindingPanel(node) {
   lead.style.margin = "0.25rem 0 0.5rem";
   lead.style.fontSize = "0.8rem";
   lead.textContent =
-    "Typ entscheidet das Widget (nicht der Name). Katalog-Auswahl → subtree (+ Katalogwurzel). Freier Absprung → node_ref.";
+    "Typ nur aus dem Typ-Ast (Q26). Katalog-Auswahl → subtree (+ Katalogwurzel). Freier Absprung → node_ref. BOM kann Typen weiter einschränken (Q60).";
   block.append(lead);
 
   const typeRow = document.createElement("div");
@@ -1122,7 +1208,7 @@ function buildTypeBindingPanel(node) {
   empty.textContent = "— kein Typ (Freitext) —";
   typeSel.append(empty);
   const curType = typeNodeOf(node.id);
-  for (const c of typePickerCandidates()) {
+  for (const c of typePickerCandidates(node.id)) {
     const o = document.createElement("option");
     o.value = c.id;
     const key = typeKey(c);
@@ -1250,6 +1336,189 @@ function toggleAllowsPrefix(unitId, prefixId, enabled) {
   }
   persist();
   renderRight();
+}
+
+/**
+ * Composition/BOM: zulässige Typen + Basiseinheiten (Q60) + Fußzeile hint (Q57).
+ * @param {ProtoNode} compNode
+ */
+function buildCompositionAllowlistPanel(compNode) {
+  const block = document.createElement("div");
+  block.className = "order-block composition-allowlists";
+  const editable = isProjectEditable();
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "BOM / Composition — Zulässigkeiten & Fußzeile";
+  block.append(lab);
+
+  const lead = document.createElement("p");
+  lead.className = "muted";
+  lead.style.margin = "0.25rem 0 0.5rem";
+  lead.style.fontSize = "0.8rem";
+  lead.textContent =
+    "Typen nur aus dem Typ-Ast; Basiseinheiten nur unter Basiseinheit. Leer = alle. Menge = Stück; Fußzeile summiert Stück.";
+  block.append(lead);
+
+  if (!compNode.config) compNode.config = {};
+  const cfg = compNode.config;
+  if (!cfg.footer) cfg.footer = { enabled: true, sum_menge_stueck: true };
+
+  const footRow = document.createElement("label");
+  footRow.className = "choice-row";
+  const footCb = document.createElement("input");
+  footCb.type = "checkbox";
+  footCb.checked = cfg.footer.enabled !== false;
+  footCb.disabled = !editable;
+  footCb.addEventListener("change", () => {
+    if (!compNode.config) compNode.config = {};
+    compNode.config.footer = {
+      enabled: footCb.checked,
+      sum_menge_stueck: true,
+    };
+    persist();
+    renderRight();
+  });
+  footRow.append(footCb, document.createTextNode(" Fußzeile (Summe Menge in Stück)"));
+  block.append(footRow);
+
+  /** @param {string} key @param {string} title @param {() => ProtoNode[]} getCandidates */
+  const checklist = (key, title, getCandidates) => {
+    const sub = document.createElement("div");
+    sub.style.marginTop = "0.75rem";
+    const t = document.createElement("div");
+    t.className = "field-label";
+    t.textContent = title;
+    sub.append(t);
+    const wrap = document.createElement("div");
+    wrap.className = "allowlist-grid";
+    const selected = new Set(
+      Array.isArray(cfg[key]) ? cfg[key] : []
+    );
+    const cands = getCandidates();
+    if (!cands.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "Keine Kandidaten.";
+      sub.append(empty);
+      return sub;
+    }
+    for (const c of cands) {
+      const row = document.createElement("label");
+      row.className = "choice-row";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = selected.size === 0 ? true : selected.has(c.id);
+      cb.disabled = !editable;
+      cb.addEventListener("change", () => {
+        if (!compNode.config) compNode.config = {};
+        const cur = Array.isArray(compNode.config[key])
+          ? compNode.config[key]
+          : [];
+        // empty allowlist = all allowed → expand before toggle
+        let next = cur.length === 0 ? cands.map((x) => x.id) : [...cur];
+        if (cb.checked) {
+          if (!next.includes(c.id)) next.push(c.id);
+        } else {
+          next = next.filter((id) => id !== c.id);
+        }
+        // all checked → store empty (= all allowed)
+        const allOn = cands.every((x) => next.includes(x.id));
+        compNode.config[key] = allOn ? [] : next;
+        persist();
+        renderRight();
+      });
+      const span = document.createElement("span");
+      span.textContent = c.name;
+      span.title = nodePath(c.id);
+      row.append(cb, span);
+      wrap.append(row);
+    }
+    sub.append(wrap);
+    return sub;
+  };
+
+  block.append(
+    checklist("allowed_types", "Zulässige Typen (Typ-Ast)", () => {
+      /** @type {ProtoNode[]} */
+      const out = [];
+      for (const n of dataTypeNodes()) {
+        out.push(n);
+        if (n.name.trim().toLowerCase() === "collection") {
+          for (const kind of childrenOf(n.id)) {
+            out.push(kind);
+            out.push(...childrenOf(kind.id));
+          }
+        }
+      }
+      return out;
+    }),
+    checklist("allowed_base_units", "Zulässige Basiseinheiten", () => {
+      baseUnitsRootId = healNamedRoot(baseUnitsRootId, "Basiseinheit");
+      return baseUnitsRootId ? childrenOf(baseUnitsRootId) : [];
+    })
+  );
+  return block;
+}
+
+/**
+ * Project Setup: Startknoten (Q59).
+ * @param {ProtoNode} rootNode
+ */
+function buildProjectSetupPanel(rootNode) {
+  const p = activeProject();
+  if (!p || p.rootId !== rootNode.id) return null;
+  const block = document.createElement("div");
+  block.className = "order-block project-setup";
+  const editable = isProjectEditable();
+
+  const lab = document.createElement("div");
+  lab.className = "field-label";
+  lab.textContent = "Setup — Startknoten";
+  block.append(lab);
+
+  const lead = document.createElement("p");
+  lead.className = "muted";
+  lead.style.margin = "0.25rem 0 0.5rem";
+  lead.style.fontSize = "0.8rem";
+  lead.textContent =
+    "Standard-Fokus beim Öffnen des Projekts. Typ-Suche bleibt unabhängig nur im Typ-Ast.";
+  block.append(lead);
+
+  const row = document.createElement("div");
+  row.className = "field";
+  const selLab = document.createElement("label");
+  selLab.textContent = "Startknoten";
+  selLab.htmlFor = "project-start-node";
+  const sel = document.createElement("select");
+  sel.id = "project-start-node";
+  sel.className = "form-control";
+  sel.disabled = !editable;
+  /** @type {ProtoNode[]} */
+  const opts = [rootNode];
+  const walk = (id, depth) => {
+    for (const c of childrenOf(id)) {
+      opts.push(c);
+      if (depth < 3) walk(c.id, depth + 1);
+    }
+  };
+  walk(rootNode.id, 0);
+  for (const n of opts) {
+    const o = document.createElement("option");
+    o.value = n.id;
+    o.textContent = nodePath(n.id);
+    sel.append(o);
+  }
+  if (p.startNodeId && [...sel.options].some((o) => o.value === p.startNodeId)) {
+    sel.value = p.startNodeId;
+  }
+  sel.addEventListener("change", () => {
+    p.startNodeId = sel.value;
+    persist();
+  });
+  row.append(selLab, sel);
+  block.append(row);
+  return block;
 }
 
 /**
@@ -1780,7 +2049,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 29,
+    version: 30,
     projects,
     activeProjectId,
     rootId,
@@ -1826,12 +2095,16 @@ function restore() {
                 ? PROJECT_KIND_COMPOSITION_SIMPLES
                 : PROJECT_KIND_TEMPLATE,
           rootId: p.rootId,
+          typesRootId:
+            p.typesRootId && nodes.has(p.typesRootId) ? p.typesRootId : "",
           dataTypesRootId:
             p.dataTypesRootId && nodes.has(p.dataTypesRootId) ? p.dataTypesRootId : "",
           prefixesRootId:
             p.prefixesRootId && nodes.has(p.prefixesRootId) ? p.prefixesRootId : "",
           baseUnitsRootId:
             p.baseUnitsRootId && nodes.has(p.baseUnitsRootId) ? p.baseUnitsRootId : "",
+          startNodeId:
+            p.startNodeId && nodes.has(p.startNodeId) ? p.startNodeId : p.rootId,
         }));
     } else {
       // Legacy single-root payloads are not migrated — force fresh seed
@@ -2521,10 +2794,19 @@ function renderDetail() {
   }
 
   const typeBinding = isSlotLikeNode(node) ? buildTypeBindingPanel(node) : null;
+  const setupPanel = buildProjectSetupPanel(node);
+  const isCompositionTable =
+    typeKey(typeNodeOf(node.id)) === "table" &&
+    (() => {
+      const parent = node.parentId ? nodes.get(node.parentId) : null;
+      return parent && parent.name.trim().toLowerCase() === "compositionen";
+    })();
 
   card.append(h2, field, descField);
+  if (setupPanel) card.append(setupPanel);
   if (typeBinding) card.append(typeBinding);
   if (requiredBlock) card.append(requiredBlock);
+  if (isCompositionTable) card.append(buildCompositionAllowlistPanel(node));
   card.append(orderBlock);
   if (isBaseUnitNode(node)) {
     card.append(buildAllowedPrefixesPanel(node));
@@ -2630,8 +2912,13 @@ function renderTableView(store, title) {
   const isBomPartDriven = partColIdx >= 0;
 
   if (isBomPartDriven) {
-    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. * = Pflicht (<code>config.required</code>).`;
+    lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. Menge = <strong>Stück</strong>. * = Pflicht (<code>config.required</code>).`;
   }
+
+  const mengeColIdx = cols.findIndex((c) => c.name.trim().toLowerCase() === "menge");
+  const showFooter =
+    node.config?.footer?.enabled !== false &&
+    (isBomPartDriven || mengeColIdx >= 0);
 
   const tbody = document.createElement("tbody");
   for (let r = 0; r < TABLE_BODY_ROWS; r++) {
@@ -2682,6 +2969,19 @@ function renderTableView(store, title) {
             renderRight();
             return;
           }
+          // Live-update Fußzeile Summe Stück without losing focus
+          if (showFooter && c === mengeColIdx) {
+            const foot = table.querySelector("tfoot .footer-stueck");
+            if (foot) {
+              let sum = 0;
+              for (let rr = 0; rr < TABLE_BODY_ROWS; rr++) {
+                const raw = String(grid[rr]?.[mengeColIdx] ?? "").trim();
+                const n = Number.parseInt(raw, 10);
+                if (Number.isFinite(n)) sum += n;
+              }
+              foot.textContent = `${sum} Stück`;
+            }
+          }
         },
         `${title}: ${col.name}, Zeile ${r + 1}`,
         cellOpts
@@ -2693,6 +2993,43 @@ function renderTableView(store, title) {
   }
 
   table.append(thead, tbody);
+
+  // Q57/Q58: BOM Fußzeile — Summe Menge in Stück
+  if (showFooter) {
+    const tfoot = document.createElement("tfoot");
+    const fr = document.createElement("tr");
+    const lab = document.createElement("th");
+    lab.scope = "row";
+    lab.className = "row-num";
+    lab.textContent = "Σ";
+    lab.title = "Fußzeile — Summe Menge in Stück";
+    fr.append(lab);
+    let stueckSum = 0;
+    if (mengeColIdx >= 0) {
+      for (let r = 0; r < TABLE_BODY_ROWS; r++) {
+        const raw = String(grid[r]?.[mengeColIdx] ?? "").trim();
+        const n = Number.parseInt(raw, 10);
+        if (Number.isFinite(n)) stueckSum += n;
+      }
+    }
+    for (let c = 0; c < cols.length; c++) {
+      const td = document.createElement("td");
+      if (c === mengeColIdx) {
+        td.className = "footer-stueck";
+        td.textContent = `${stueckSum} Stück`;
+        td.title = "Summe Menge (Stück)";
+      } else if (c === 0) {
+        td.className = "muted";
+        td.textContent = "Fußzeile";
+      } else {
+        td.textContent = "";
+      }
+      fr.append(td);
+    }
+    tfoot.append(fr);
+    table.append(tfoot);
+  }
+
   tableWrap.append(table);
   wrap.append(tableWrap);
   mount.replaceChildren(wrap);

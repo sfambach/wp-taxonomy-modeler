@@ -45,10 +45,12 @@ Website with projects. A user wants to build **BOM lists** of electronic parts.
 
 | Aspect | Detail |
 |--------|--------|
-| BOM line | 1…N **references** (designators on a board) + a chosen **part** (Widerstand, Kondensator, IC, Buchse, …) + **Bauform** (SMD, TH, …) + **quantity** (from reference count) + **description** + **price** + **in stock?** |
+| BOM line | 1…N **references** (designators on a board) + a chosen **part** (Widerstand, Kondensator, IC, Buchse, …) + **Bauform** (SMD, TH, …) + **Menge in Stück** (from reference count, `int`) + **description** + **price** + **in stock?** |
 | Part pick | From a **category tree** of possible parts |
 | Part data | Parts already carry properties: Größe, Wert, Datenblatt-Link, Leistung, … |
-| BOM footer | Part count + **price sum** |
+| BOM Fußzeile | **Summe Menge (Stück)** + optional **price sum** (**Q57**/Q58) |
+| BOM allowlists | Which **Typen** / **Basiseinheiten** are zulässig on this BOM (**Q60**) |
+| Project Setup | Default **Startknoten** (**Q59**); type search only under Typ-Ast (**Q26**) |
 | Compare | Find/compare lists that share the same parts |
 | Export | Request sheets / CSV for Digikey, Conrad, AliExpress, … |
 

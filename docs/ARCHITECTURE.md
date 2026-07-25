@@ -56,7 +56,7 @@ WordPress storage                     ← terms / meta / $wpdb (TBD Q19)
 
 | Layer | Responsibility | Examples |
 |-------|----------------|----------|
-| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
+| **DTO / value** | Data + local pure helpers | `Project`, `Node`, `Relation`, `RelationType`, `NodeConfig`, `CompositionFooter`, `ParameterValue`, `CompositionRow`, `QuantityReading` |
 | **Domain service** | Invariants & workflows (no WP I/O) | tree walk/move/delete policy; `bindType` / `bindRefScope` / `assertTypeBindingsComplete`; `copyFromTemplate` |
 | **Repository (DAO)** | Load/save/map | `*_Repository` — only place that talks to WP storage |
 | **WP adapter** | Hooks, Admin, REST | `class-plugin.php`, screens, REST routes; host filters = extension surface |
@@ -84,12 +84,15 @@ Attribute Nodes bind `type` (and optional prefix / base_unit) via config and/or 
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
 **Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
 **Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
-**Type catalog (proto v29 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
+**Type catalog (proto v30 / plan lean):** Datentypen → **Simple** (`int`…`bool`, `node_ref`) · **Complex** (`quantity`, `subtree`, Collection).  
+**Q26 decided:** resolve Node type **only under `type_node`** (Typ-Ast).  
+**Q59 decided:** `Project.start_node` from Setup (default focus).  
+**BOM (Q57/Q58/Q60):** Fußzeile; Menge = Stück (`int`); Composition `config.allowed_types` + `config.allowed_base_units`.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  
 `enum` options conform to the enum’s base type; `single`/`multiple` are selection methods (Q38).  
-See Q16, Q20–Q39, Q49–Q51, Q55–Q56 and [`docs/plans/data-structure.md`](plans/data-structure.md).
+See Q16, Q20–Q39, Q49–Q51, Q55–Q60 and [`docs/plans/data-structure.md`](plans/data-structure.md).
 
 **Q55 decided:** keep Q33 — “Parameter” is vocabulary for typed slot Nodes; no Parameter PHP class. Instance fills = `ParameterValue`.
 
@@ -136,9 +139,10 @@ Core stored objects: **Project** and **Node**. A **tree is not a stored object**
 | `taxonomy` | ? | **Strong leaning (Q18):** Project ≈ taxonomy; slug / identity on Project |
 | `root_nodes` | yes | All root nodes |
 | `definition_root` | yes | Required Definition tree root |
-| `type_node` | yes | Required Type anchor |
+| `type_node` | yes | Required Type anchor — only branch for type resolution (**Q26**) |
 | `prefix_node` | yes | Required Präfix anchor |
 | `base_unit_node` | yes | Required Basiseinheit anchor |
+| `start_node` | yes | Default UI focus from **Setup** (**Q59**) |
 | `changelog` | yes | Changelog of Change entries |
 
 Default Nodes (anchors + fixed simples): **generate on create** **or** **copy from a template Project** — open **Q50**.
@@ -151,7 +155,7 @@ Default Nodes (anchors + fixed simples): **generate on create** **or** **copy fr
 | `parent_id` | yes (`null` = root) | Catalog/taxonomy parent (**Q54 lean:** categorize Bestandteile + inheritance path). Not Collection schema; not Relation-edge cache. |
 | `name` | yes | Display name |
 | `template` | yes | `true` = template tree marker |
-| `config` | ? | Type binding / capabilities (Q34) — shape TBD |
+| `config` | ? | Slot: `required` / capabilities (Q34); Composition: `allowed_types`, `allowed_base_units`, `footer` (Q57/Q60) |
 | `project_id` | ? | Optional reverse link |
 | `changelog` | yes | Changelog of Change entries |
 

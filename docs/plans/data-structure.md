@@ -2,8 +2,8 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.77-plan"
-last_updated: "2026-07-24"
+version: "0.6.80-plan"
+last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -75,14 +75,18 @@ classDiagram
     +type_node: Node
     +prefix_node: Node
     +base_unit_node: Node
+    +start_node: Node
     +changelog: Changelog
     +getRootNodes() Node[]
     +getDefinitionRoot() Node
     +getTypeAnchor() Node
     +getPrefixAnchor() Node
     +getBaseUnitAnchor() Node
+    +getStartNode() Node
+    +setStartNode(node) void
     +findNode(id) Node?
     +belongsToProject(node) bool
+    +isUnderTypeBranch(node) bool
     +copyFromTemplate(template) Project
     +recordChange(changer, body, version) void
   }
@@ -124,8 +128,21 @@ classDiagram
     <<value object>>
     +required: bool?
     +capabilities: Capabilities?
+    +allowed_types: Id[]?
+    +allowed_base_units: Id[]?
+    +footer: CompositionFooter?
     +isRequired() bool
     +mayOriginateRelations() bool
+    +allowsType(typeId) bool
+    +allowsBaseUnit(unitId) bool
+    +hasFooter() bool
+  }
+
+  class CompositionFooter {
+    <<value object>>
+    +enabled: bool
+    +sum_menge_stueck: bool
+    +sum_price: bool?
   }
 
   class Capabilities {
@@ -224,13 +241,14 @@ classDiagram
     Complex_Collection
   }
 
-  note for Project "≈ taxonomy (Q18)\nTemplate copy → new Project (Q50 lean)"
+  note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
   note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34)\nBauteil | Composition | Slot | Type"
-  note for NodeConfig "required on slots\ncapabilities.originate_relations\non simples (Q49 lean)"
+  note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57)"
+  note for CompositionFooter "BOM Fußzeile — Summe Menge in Stück (Q57/Q58)"
   note for Relation "Exploratory (Q35)\nhas_type | ref_scope |\nallows_prefix | multiplikator\nNOT hierarchy store"
   note for RelationType "Keys e.g. has_type,\nref_scope — invariants\nlive here (guideline)"
   note for ParameterValue "Filled value on Bauteil\nor CompositionRow cell"
-  note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id"
+  note for CompositionRow "BOM/Rezept lines;\nsubtree cell → Bauteil id;\nMenge = Stück int"
   note for TypeKind "Not PHP subclasses —\nNodes under Datentypen\nSimple | Complex"
 
   Project "1" --> "*" Node : root_nodes
@@ -238,10 +256,12 @@ classDiagram
   Project "1" --> "1" Node : type_node
   Project "1" --> "1" Node : prefix_node
   Project "1" --> "1" Node : base_unit_node
+  Project "1" --> "1" Node : start_node
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "*" Node : parent_id / children
   Node "1" --> "0..1" NodeConfig : config
   NodeConfig --> Capabilities : capabilities
+  NodeConfig --> CompositionFooter : footer
   Node "1" --> "1" Changelog : changelog
   Changelog "1" --> "*" Change : changes
   Relation --> Node : from
@@ -259,8 +279,10 @@ classDiagram
 
 | Type key | Extra binding | Method check |
 |----------|---------------|--------------|
-| simples / `node_ref` / `quantity` / Collection | `has_type` only | `typeNode()` set |
+| simples / `node_ref` / `quantity` / Collection | `has_type` only; target under `type_node` (**Q26**) | `typeNode()` set; `isUnderTypeBranch` |
 | **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
+
+**Composition / BOM (Q57–Q60):** Fußzeile required for BOM; Menge = Stück (`int`); `config.allowed_types` / `config.allowed_base_units` filter pickers under the matching Definition branches.
 
 **Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
 
@@ -1044,12 +1066,20 @@ Level — Bauteil (separate)
 
 | Spalte | Typ |
 |--------|-----|
-| Reference | `RefDes` (list→string) |
-| Bestandteil | **Bauteil-Ref** → e.g. Widerstand-Ausprägung |
-| Menge | `int` |
-| Beschreibung | `string` |
+| Reference | `RefDes` (list→text) |
+| Bauteil Wahl | **`subtree`** + `ref_scope` → Bauteile |
+| Menge | **`int`** — unit semantics **Stück** (**Q58**); not `quantity` |
+| Beschreibung | `textarea` |
 | Preis | `double` (often host) |
 | Auf Lager | `bool` (often host) |
+
+**BOM extras (decided Q57/Q60):**
+
+| Concern | Rule |
+|---------|------|
+| **Fußzeile** | BOM table always has a footer — at least **Summe Menge (Stück)**; price sum optional/host |
+| **Zulässige Typen** | `Node.config.allowed_types` = ids under `Project.type_node` (empty = all) |
+| **Zulässige Basiseinheiten** | `Node.config.allowed_base_units` = ids under `Project.base_unit_node` (empty = all) |
 
 **2) Kochrezept / Gericht**
 
@@ -1111,7 +1141,7 @@ Node(id=B1, role=bauteile, parent=Widerstand|1kΩ)
 **Resolved lean (proto v29):** scoped catalog pick = **`subtree`** + **`ref_scope`**; free Absprung = Simple **`node_ref`**. Column name e.g. **„Bauteil Wahl“**. Slot Pflicht = `config.required` on the column Node.
 
 **Naming:** type key **`quantity`** = physical **Größe** (Zahl × Einheit), e.g. Widerstandsgröße `10 kOhm`.  
-Not a *Messung* (measurement act). Not BOM **Menge** (piece count — usually `int`).
+Not a *Messung* (measurement act). Not BOM **Menge** — BOM Menge is **Stück** (`int`, **Q58**).
 
 #### enum (derived type — **Q52**: Collection / like list)
 
@@ -1979,9 +2009,10 @@ Some trees are **templates** for project-specific trees.
 | `taxonomy` | ? | string (WP taxonomy slug) | **Leaning (Q18):** Project ≈ taxonomy; slug on Project (or Project *is* the taxonomy wrapper) |
 | `root_nodes` | yes | list of **Node** | All root nodes (Definition + others) |
 | `definition_root` | yes | **Node** | Required Definitionsbaum root (**Definition**) |
-| `type_node` | yes | **Node** | Required Type anchor |
+| `type_node` | yes | **Node** | Required Type anchor — **only** branch where Node types are resolved (**Q26**) |
 | `prefix_node` | yes | **Node** | Required Präfix anchor |
 | `base_unit_node` | yes | **Node** | Required Basiseinheit anchor |
+| `start_node` | yes | **Node** | Default UI entry / focus — set in **Setup** (**Q59**); often = project root or Typen |
 | `changelog` | yes | **Changelog** | History of changes on this project |
 
 \* `description` may be empty string, but the field exists on the class.
@@ -1997,9 +2028,10 @@ class Project {
 	/** @var list<Node> */
 	public array $root_nodes;
 	public Node $definition_root; // must always exist
-	public Node $type_node;       // must always exist
+	public Node $type_node;       // must always exist — type search root (Q26)
 	public Node $prefix_node;     // must always exist
 	public Node $base_unit_node;  // must always exist
+	public Node $start_node;      // Setup default focus (Q59)
 	public Changelog $changelog;
 }
 
@@ -2008,7 +2040,7 @@ class Node {
 	public ?string $parent_id;
 	public string $name;
 	public bool $template; // template tree marker
-	public ?array $config; // type binding / capabilities — Q34
+	public ?array $config; // type binding / capabilities / Composition allowlists + footer — Q34/Q57/Q60
 	public Changelog $changelog;
 	// no taxonomy field — taxonomy lives on Project
 }
@@ -2017,9 +2049,11 @@ class Node {
 Invariants (leaning):
 
 1. `definition_root.parent_id === null`
-2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (Q26)
+2. `type_node`, `prefix_node`, `base_unit_node` are children of `definition_root` (**Q26 decided**)
 3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
-4. Bound type Nodes should live under `project.type_node` (same for prefix/base_unit)
+4. **`has_type` targets must be under `project.type_node`** (never under Compositionen / Bauteile) — **Q26**
+5. `start_node` belongs to the Project tree and is configured in Setup (**Q59**)
+6. Composition/BOM: `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); BOM has Fußzeile (**Q57**); Menge = Stück (**Q58**)
 
 ### Default Nodes for a new Project (open — Q50)
 
