@@ -113,8 +113,8 @@ final class Tree_Admin {
 				'cancel'          => __( 'Cancel', 'wp-taxonomy-tree' ),
 				'error'           => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 				'taxonomy'        => __( 'Taxonomy', 'wp-taxonomy-tree' ),
-				'installDemo'     => __( 'Install test tree', 'wp-taxonomy-tree' ),
-				'demoDone'        => __( 'Test tree installed.', 'wp-taxonomy-tree' ),
+				'installDemo'     => __( 'Install BOM test tree', 'wp-taxonomy-tree' ),
+				'demoDone'        => __( 'BOM test tree installed (from planning + tree-split proto).', 'wp-taxonomy-tree' ),
 				'scaffoldBadge'   => sprintf(
 					/* translators: %s: plugin version */
 					__( 'Scaffold %s', 'wp-taxonomy-tree' ),
