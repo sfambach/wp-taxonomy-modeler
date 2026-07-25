@@ -36,8 +36,15 @@ cd ~/wordpress && wp server --host=0.0.0.0 --port=8080
 
 ### Local WordPress dev environment — Windows (Laragon)
 
-Cloud agents **cannot access `C:\`**. Run the setup locally on the developer
-machine.
+Cloud agents **cannot access `C:\` or start Laragon on your PC**. They only
+control the Linux VM (`~/wordpress`, `/workspace`). The Windows scripts mirror
+that layout locally — you run them on your machine.
+
+| | Cloud VM (agent) | Your Windows PC |
+|---|---|---|
+| WordPress | `~/wordpress` + SQLite | `C:\devel\wordpress` + Laragon MySQL |
+| Plugin source | `/workspace` symlink | `C:\devel\wordpress\source\wp-taxonomy-tree` junction |
+| URL | `http://localhost:8080` | `http://devel.test` |
 
 | Role | Path |
 |------|------|
@@ -45,45 +52,14 @@ machine.
 | GitHub source checkouts | `C:\devel\wordpress\source` |
 | This repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
 | Laragon | `C:\laragon` |
-| Site URL (after junction) | `http://devel.test` |
 
-**Wichtig (Windows):** `.ps1` per Doppelklick öffnet oft nur den Editor.
-Stattdessen **`setup-dev.bat`** oder **`install-wordpress.bat`** doppelklicken
-(siehe [`scripts/windows/README.md`](scripts/windows/README.md)).
+**Start setup:** double-click **`scripts/windows/setup-dev.bat`** (not `.ps1`).
 
-**WordPress install only** (Laragon + MySQL, fully automated):
+`setup-dev.bat` does **not** run `git pull` anymore (that broke `scripts\windows`
+on Windows). It only clones if the repo is missing. Use **`recover-repo.bat`**
+when you explicitly want to update from GitHub.
 
-```powershell
-cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\install-wordpress.bat
-```
-
-Creates DB `wordpress`, downloads core to `C:\devel\wordpress`, runs
-`wp core install`, site URL `http://devel.test`, admin `admin` / `admin123`.
-
-**Full dev setup** (checkout + plugin link + Laragon junction + WP install):
-
-```powershell
-cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\setup-dev.bat
-```
-
-In PowerShell-Terminal geht auch `-File .\setup-dev.ps1` (nicht per Explorer-Doppelklick).
-
-**Checkout only (no Laragon / WP setup):**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\checkout-only.ps1
-```
-
-**Manual git checkout (first time, before scripts exist):**
-
-```powershell
-mkdir C:\devel\wordpress\source -Force
-git clone https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
-```
-
-Then run `setup-dev.ps1` from the cloned repo.
+See [`scripts/windows/README.md`](scripts/windows/README.md).
 
 ### Recreating the Cloud VM environment (only if `~/wordpress` is missing)
 

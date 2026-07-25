@@ -1,81 +1,63 @@
-# Windows Setup — so startest du die Skripte
+# Windows Setup
 
-Unter Windows **öffnet ein Doppelklick auf `.ps1`-Dateien oft den Editor**
-(Notepad, VS Code) statt PowerShell. Das ist normales Windows-Verhalten.
+## Cloud vs. dein PC
 
-## Richtig: `.bat` per Doppelklick oder aus cmd
+| | **Cloud-Umgebung (Cursor Agent)** | **Dein Windows-PC (Laragon)** |
+|---|---|---|
+| Wo | Linux-VM in der Cloud | `C:\devel\wordpress` bei dir |
+| WordPress | `~/wordpress` + SQLite | Laragon + MySQL |
+| Plugin-Quellcode | `/workspace` (Symlink) | `source\wp-taxonomy-tree` (Junction) |
+| Wer richtet ein | Der Agent direkt | **Du** — per `.bat`, Agent hat kein `C:\` |
 
-| Aktion | Datei |
-|--------|--------|
-| Alles (Repo + WP + Links) | **`setup-dev.bat`** |
-| Nur WordPress installieren | **`install-wordpress.bat`** |
-| Repo neu klonen / reparieren | **`recover-repo.bat`** |
+Der Agent **kann Laragon auf deinem Rechner nicht starten** — er läuft in einer
+getrennten Cloud-VM. Die Skripte sind die Windows-Entsprechung dessen, was
+in der Cloud schon automatisch existiert (`AGENTS.md`).
 
-Pfad:
+---
 
-`C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\`
+## Was welches Skript tut
 
-## Alternative: PowerShell-Terminal
+| Skript | Aufgabe | Git? |
+|--------|---------|------|
+| **`setup-dev.bat`** | Laragon starten, Junctions, WordPress installieren | Nur **Clone**, wenn Repo fehlt — **kein pull** |
+| **`install-wordpress.bat`** | Nur WordPress unter `C:\devel\wordpress` | Nein |
+| **`recover-repo.bat`** | Repo neu klonen oder reparieren | Ja — **nur mit J-Bestätigung** |
 
-```powershell
-cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-powershell -ExecutionPolicy Bypass -File .\setup-dev.ps1
-```
+### `setup-dev.bat` im Detail (Entsprechung zur Cloud)
 
-Oder nur WordPress:
+1. Laragon starten (Apache + MySQL)
+2. Repo unter `source\wp-taxonomy-tree` — **nur beim allerersten Mal** klonen
+3. Junction Plugin → `wp-content\plugins\wp-taxonomy-tree`
+4. Junction `laragon\www\devel` → `C:\devel\wordpress` → `http://devel.test`
+5. WordPress installieren (`install-wordpress.ps1`)
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install-wordpress.ps1
-```
+**Wichtig:** Frühere Versionen haben bei jedem Start `git pull` gemacht — das
+hat unter Windows `scripts\windows` zerstört, wenn die `.bat` aus dem Ordner lief.
+Das ist entfernt.
 
-## Nicht so
+---
 
-- `.ps1` per Doppelklick im Explorer
-- Rechtsklick → Bearbeiten (öffnet nur den Editor)
+## Starten
 
-## Wenn das Verzeichnis weg oder kaputt ist
+**Doppelklick** (nicht `.ps1`):
 
-Alles liegt auf GitHub — lokal kannst du jederzeit neu klonen.
+- `setup-dev.bat` — normales Setup
+- `install-wordpress.bat` — nur WordPress
+- `recover-repo.bat` — Repo bewusst neu holen
 
-**In cmd (alles in einem):**
+---
+
+## Repo komplett weg?
+
+In **cmd**:
 
 ```bat
 mkdir C:\devel\wordpress\source 2>nul
-cd /d C:\devel\wordpress\source
-if exist wp-taxonomy-tree rmdir /s /q wp-taxonomy-tree
-git clone https://github.com/sfambach/wp-taxonomy-tree.git wp-taxonomy-tree
-dir wp-taxonomy-tree\scripts\windows
+git clone https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
 C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\setup-dev.bat
 ```
 
-**Oder nur reparieren** (wenn `.git` noch da ist):
-
-```bat
-cd /d C:\devel\wordpress\source
-git -C wp-taxonomy-tree fetch origin
-git -C wp-taxonomy-tree checkout main
-git -C wp-taxonomy-tree reset --hard origin/main
-```
-
-Nach dem Klon/Reparieren: **`setup-dev.bat`** starten.
-
-## Wenn `install-wordpress.ps1` fehlt oder git nach `y/n` fragt
-
-Ursache: alter Stand auf `main` **oder** git pull aus `scripts\windows` (Ordner gesperrt).
-
-**Einmal manuell in cmd** (Explorer-Fenster schließen, das Skripte offen hat):
-
-```bat
-cd /d C:\devel\wordpress\source
-git -C wp-taxonomy-tree fetch origin
-git -C wp-taxonomy-tree checkout main
-git -C wp-taxonomy-tree pull --ff-only origin main
-dir wp-taxonomy-tree\scripts\windows
-```
-
-Dann erneut **`setup-dev.bat`** doppelklicken.
-
-Die `.bat`-Dateien wechseln jetzt vor dem git pull ins Repo-Root, damit `scripts\windows` nicht gesperrt ist.
+---
 
 ## Nach erfolgreichem Setup
 
