@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Clone wp-taxonomy-tree only if missing. No git pull (use recover-repo.bat to update).
@@ -22,7 +22,7 @@ if (Test-Path -LiteralPath (Join-Path $RepoDir '.git')) {
 }
 
 if (Test-Path -LiteralPath $RepoDir) {
-    throw "$RepoDir exists without .git — use recover-repo.bat"
+    throw "$RepoDir exists without .git - use recover-repo.bat"
 }
 
 Write-Host "Cloning into $RepoDir"

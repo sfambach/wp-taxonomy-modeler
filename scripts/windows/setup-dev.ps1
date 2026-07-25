@@ -1,13 +1,13 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-  Local Laragon dev setup — mirrors the Cloud VM layout (no destructive git).
+  Local Laragon dev setup - mirrors the Cloud VM layout (no destructive git).
 
 .DESCRIPTION
   What this script DOES (same idea as the Cloud VM in AGENTS.md):
     1. Start Laragon (Apache + MySQL)
     2. Ensure plugin source exists under C:\devel\wordpress\source\wp-taxonomy-tree
-       — clones ONLY if the folder/.git is completely missing (never git pull)
+       - clones ONLY if the folder/.git is completely missing (never git pull)
     3. Junction: wp-content\plugins\wp-taxonomy-tree -> source checkout
     4. Junction: C:\laragon\www\devel -> C:\devel\wordpress  (http://devel.test)
     5. Install WordPress via install-wordpress.ps1 (MySQL + wp-cli)
@@ -16,7 +16,7 @@
     - No git pull, checkout, or reset (that destroyed scripts\windows on Windows)
     - To update sources from GitHub, run recover-repo.bat manually when you want
 
-  Cloud agents cannot run this on your PC — they only have the Linux VM (/workspace).
+  Cloud agents cannot run this on your PC - they only have the Linux VM (/workspace).
 #>
 [CmdletBinding()]
 param(
@@ -91,7 +91,7 @@ function Ensure-RepoPresent {
 
     if (Test-Path -LiteralPath (Join-Path $RepoDir '.git')) {
         Write-Host "Using existing repo: $RepoDir"
-        Write-Host '(No automatic git pull — use recover-repo.bat only when YOU want to update.)'
+        Write-Host '(No automatic git pull - use recover-repo.bat only when YOU want to update.)'
         return
     }
 
@@ -115,7 +115,7 @@ function Update-RepoExplicit {
 
     Write-Step 'Explicit repo update (-UpdateRepo)'
     if (-not (Test-Path -LiteralPath (Join-Path $RepoDir '.git'))) {
-        throw "Cannot update — repo missing. Run setup without -UpdateRepo first."
+        throw 'Cannot update - repo missing. Run setup without -UpdateRepo first.'
     }
 
     $env:GIT_TERMINAL_PROMPT = '0'
@@ -162,7 +162,7 @@ Or run recover-repo.bat
 function Install-NodeDependencies {
     $packageJson = Join-Path $RepoDir 'package.json'
     if (-not (Test-Path -LiteralPath $packageJson)) {
-        Write-Host 'No package.json yet — npm skipped (planning phase).'
+        Write-Host 'No package.json yet - npm skipped (planning phase).'
         return
     }
 
@@ -204,5 +204,5 @@ Write-Host @"
   Plugin link : $PluginLink
   Site        : $SiteUrl/wp-admin  (admin / admin123)
 
-Rerun anytime — idempotent, no git pull unless you pass -UpdateRepo.
+Rerun anytime - idempotent, no git pull unless you pass -UpdateRepo.
 "@

@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-title wp-taxonomy-tree — Repo wiederherstellen
+title wp-taxonomy-tree - Repo wiederherstellen
 
 set "SOURCE_ROOT=C:\devel\wordpress\source"
 set "REPO_DIR=%SOURCE_ROOT%\wp-taxonomy-tree"

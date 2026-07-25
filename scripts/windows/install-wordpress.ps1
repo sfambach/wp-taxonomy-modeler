@@ -1,11 +1,11 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Install or verify WordPress under C:\devel\wordpress using Laragon (MySQL).
 
 .DESCRIPTION
   Downloads WordPress core, creates the MySQL database, runs wp core install,
-  and sets site URL to http://devel.test. Idempotent — safe to rerun.
+  and sets site URL to http://devel.test. Idempotent - safe to rerun.
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -70,7 +70,7 @@ function Get-WpCli {
 
 function Invoke-WpCore {
     param(
-        [string[]]$Args,
+        [string[]]$WpArgs,
         [switch]$AllowFailure
     )
 
@@ -78,10 +78,10 @@ function Invoke-WpCore {
     $wpCli = Get-WpCli
     Push-Location $WordPressRoot
     try {
-        $output = & $php $wpCli @Args 2>&1
+        $output = & $php $wpCli @WpArgs 2>&1
         $code = $LASTEXITCODE
         if (-not $AllowFailure -and $code -ne 0) {
-            throw "wp $($Args -join ' ') failed (exit $code): $output"
+            throw "wp $($WpArgs -join ' ') failed (exit $code): $output"
         }
         return [pscustomobject]@{
             ExitCode = $code
@@ -144,7 +144,7 @@ function Ensure-WordPressCore {
     }
 
     Write-Step 'Downloading WordPress core (de_DE)'
-    Invoke-WpCore -Args @('core', 'download', '--locale=de_DE') | Out-Null
+    Invoke-WpCore -WpArgs @('core', 'download', '--locale=de_DE') | Out-Null
 }
 
 function Ensure-WordPressConfig {
@@ -154,7 +154,7 @@ function Ensure-WordPressConfig {
     }
 
     Write-Step 'Creating wp-config.php'
-    Invoke-WpCore -Args @(
+    Invoke-WpCore -WpArgs @(
         'config', 'create',
         "--dbname=$DbName",
         "--dbuser=$DbUser",
@@ -166,7 +166,7 @@ function Ensure-WordPressConfig {
 }
 
 function Test-WordPressInstalled {
-    $result = Invoke-WpCore -Args @('core', 'is-installed') -AllowFailure
+    $result = Invoke-WpCore -WpArgs @('core', 'is-installed') -AllowFailure
     return $result.ExitCode -eq 0
 }
 
@@ -177,7 +177,7 @@ function Install-WordPressCore {
     }
 
     Write-Step 'Running wp core install'
-    Invoke-WpCore -Args @(
+    Invoke-WpCore -WpArgs @(
         'core', 'install',
         "--url=$SiteUrl",
         "--title=$SiteTitle",
@@ -189,15 +189,15 @@ function Install-WordPressCore {
 }
 
 function Sync-SiteUrl {
-    $current = (Invoke-WpCore -Args @('option', 'get', 'siteurl')).Output
+    $current = (Invoke-WpCore -WpArgs @('option', 'get', 'siteurl')).Output
     if ($current -ne $SiteUrl) {
         Write-Step "Updating site URL to $SiteUrl"
-        Invoke-WpCore -Args @('option', 'update', 'siteurl', $SiteUrl) | Out-Null
-        Invoke-WpCore -Args @('option', 'update', 'home', $SiteUrl) | Out-Null
+        Invoke-WpCore -WpArgs @('option', 'update', 'siteurl', $SiteUrl) | Out-Null
+        Invoke-WpCore -WpArgs @('option', 'update', 'home', $SiteUrl) | Out-Null
     }
 
-    Invoke-WpCore -Args @('rewrite', 'structure', '/%postname%/') | Out-Null
-    Invoke-WpCore -Args @('rewrite', 'flush', '--hard') | Out-Null
+    Invoke-WpCore -WpArgs @('rewrite', 'structure', '/%postname%/') | Out-Null
+    Invoke-WpCore -WpArgs @('rewrite', 'flush', '--hard') | Out-Null
 }
 
 Write-Step 'WordPress install for Laragon'

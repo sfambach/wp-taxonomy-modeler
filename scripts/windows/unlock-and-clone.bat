@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-title wp-taxonomy-tree — Laragon stoppen, Ordner freigeben
+title wp-taxonomy-tree - Laragon stoppen, Ordner freigeben
 
 set "SOURCE_ROOT=C:\devel\wordpress\source"
 set "REPO_DIR=%SOURCE_ROOT%\wp-taxonomy-tree"
@@ -33,7 +33,7 @@ if exist "%PLUGIN_LINK%" (
   )
   echo       Entfernt: %PLUGIN_LINK%
 ) else (
-  echo       Nicht vorhanden — ok.
+  echo       Nicht vorhanden - ok.
 )
 
 echo.
@@ -46,7 +46,7 @@ if exist "%LARAGON_WWW%" (
   )
   echo       Entfernt: %LARAGON_WWW%
 ) else (
-  echo       Nicht vorhanden — ok.
+  echo       Nicht vorhanden - ok.
 )
 
 echo.
@@ -85,7 +85,7 @@ exit /b 0
 :blocked
 echo.
 echo ============================================================
-echo   Ordner noch gesperrt — bitte manuell:
+echo   Ordner noch gesperrt - bitte manuell:
 echo   1. Laragon komplett beenden (Tray -^> Exit, nicht nur Stop)
 echo   2. Cursor/VS Code schliessen (Repo geoeffnet?)
 echo   3. Explorer-Fenster unter source\wp-taxonomy-tree schliessen

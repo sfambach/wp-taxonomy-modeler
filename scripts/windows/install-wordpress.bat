@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-title wp-taxonomy-tree — WordPress Install
+title wp-taxonomy-tree - WordPress Install
 
 set "SCRIPT_DIR=%~dp0"
 set "REPO_DIR=%SCRIPT_DIR%..\.."
