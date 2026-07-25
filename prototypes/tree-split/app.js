@@ -709,7 +709,7 @@ function createInitial() {
     startNodeId: templateCore.typesRootId,
   };
 
-  // 2) Demo — editable; Rezept (simples) + BOM — Board under Compositionen
+  // 2) Demo — editable; Rezept (simples) + BOM under Compositionen
   const demoRootId = createNode(null, "Demo", 1, {
     template: false,
     description:
