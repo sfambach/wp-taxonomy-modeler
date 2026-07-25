@@ -19,4 +19,5 @@ When working on the developer's Windows machine:
 - Clone and work on GitHub sources **only** under `C:\devel\wordpress\source\<repo-name>`.
 - Do **not** put git checkouts directly in `C:\devel\wordpress` root (that stays the WP install).
 - When the plugin is implemented, link or deploy into `C:\devel\wordpress\wp-content\plugins\wp-taxonomy-tree` from the source checkout (junction/symlink preferred).
-- Cloud agents cannot access `C:\`; give the developer the exact `git` commands for local checkout when needed.
+- Cloud agents cannot access `C:\`; run `scripts/windows/setup-dev.ps1` locally (or the manual `git clone` in `AGENTS.md`).
+- Laragon serves `C:\devel\wordpress` via junction `C:\laragon\www\devel` → `http://devel.test`.

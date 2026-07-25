@@ -47,6 +47,27 @@ Open `C:\devel\wordpress\source\wp-taxonomy-tree` in Cursor Desktop.
 
 Domain catalogs such as [`wp-electronic-parts`](https://github.com/sfambach/wp-electronic-parts) may consume this environment later. Part-specific properties stay in those host plugins.
 
+## Local development (Windows + Laragon)
+
+Source checkout: `C:\devel\wordpress\source\wp-taxonomy-tree`  
+WordPress docroot: `C:\devel\wordpress` → served as `http://devel.test` via Laragon.
+
+After Laragon is installed, run once (also safe before a reboot):
+
+```powershell
+cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
+.\setup-dev.ps1
+```
+
+First-time clone only:
+
+```powershell
+mkdir C:\devel\wordpress\source -Force
+git clone https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
+```
+
+See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windows/setup-dev.ps1) for details.
+
 ## License
 
 GPLv2 or later (intended; finalize with the first plugin bootstrap commit after planning).
