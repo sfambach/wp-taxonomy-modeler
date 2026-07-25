@@ -27,6 +27,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_delete_term', array( self::class, 'delete_term' ) );
 		add_action( 'wp_ajax_wtt_install_demo', array( self::class, 'install_demo' ) );
 		add_action( 'wp_ajax_wtt_reset_demo', array( self::class, 'reset_demo' ) );
+		add_action( 'wp_ajax_wtt_update_node', array( self::class, 'update_node' ) );
 	}
 
 	public static function get_tree(): void {
@@ -163,6 +164,45 @@ final class Tree_Ajax {
 				'created'  => $result['created'],
 				'existing' => $result['existing'],
 				'tree'     => Tree_Model::get_tree( $taxonomy ),
+			)
+		);
+	}
+
+	public static function update_node(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$raw     = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$data    = array();
+		if ( is_string( $raw ) && '' !== $raw ) {
+			$decoded = json_decode( $raw, true );
+			if ( is_array( $decoded ) ) {
+				$data = $decoded;
+			}
+		}
+
+		$result = Node_Meta::update( $taxonomy, $term_id, $data );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		$node = Tree_Model::get_node( $taxonomy, $term_id );
+		if ( is_wp_error( $node ) ) {
+			self::send_error( $node );
+		}
+
+		wp_send_json_success(
+			array(
+				'node' => $node,
+				'tree' => Tree_Model::get_tree( $taxonomy ),
 			)
 		);
 	}

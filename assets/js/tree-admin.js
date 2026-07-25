@@ -242,6 +242,34 @@
 		});
 	}
 
+	function saveNode(payload, keepSelection) {
+		return post('wtt_update_node', {
+			term_id: state.selectedId,
+			payload: JSON.stringify(payload || {}),
+		}).then(function (json) {
+			if (!json || !json.success) {
+				setError((json && json.data && json.data.message) || i18n.error);
+				return null;
+			}
+			state.tree = json.data.tree || state.tree;
+			state.selectedNode = json.data.node;
+			state.error = '';
+			if (!keepSelection) {
+				render();
+			} else {
+				render();
+			}
+			return json.data.node;
+		});
+	}
+
+	function fieldBlock(labelText, control) {
+		return el('div', { className: 'wtt-field' }, [
+			el('label', { text: labelText }),
+			control,
+		]);
+	}
+
 	function renderDetail() {
 		var pane = el('div', { className: 'wtt-detail-pane' });
 		if (state.error) {
@@ -257,21 +285,266 @@
 		}
 
 		var n = state.selectedNode;
-		var dl = el('dl');
-		[
-			[i18n.name, n.name],
-			[i18n.slug, n.slug],
-			[i18n.parent, n.parentName || i18n.none],
-			[i18n.description, n.description || ''],
-			[i18n.count, String(n.count)],
-		].forEach(function (pair) {
-			dl.appendChild(el('dt', { text: pair[0] }));
-			dl.appendChild(el('dd', { text: pair[1] }));
-		});
+		var meta = n.meta || {};
+		var draft = {
+			name: n.name || '',
+			description: n.description || '',
+			template: !!meta.template,
+			required: !!meta.required,
+			footerOp: meta.footerOp || 'none',
+			hasType: meta.hasType || '',
+			refScope: meta.refScope || '',
+			parameters: Array.isArray(meta.parameters)
+				? meta.parameters.map(function (p) {
+						return {
+							id: p.id || '',
+							name: p.name || '',
+							type: p.type || '',
+							required: !!p.required,
+							footerOp: p.footerOp || 'none',
+							refScope: p.refScope || null,
+						};
+				  })
+				: [],
+		};
 
-		pane.appendChild(el('div', { className: 'wtt-detail' }, [dl]));
+		pane.appendChild(el('h2', { className: 'wtt-detail-title', text: n.name }));
+		pane.appendChild(el('h3', { className: 'wtt-subtitle', text: i18n.attributes || 'Node attributes' }));
+
+		var nameInput = el('input', { type: 'text', className: 'wtt-input', value: draft.name });
+		nameInput.value = draft.name;
+		var descInput = el('textarea', { className: 'wtt-input', rows: '3' });
+		descInput.value = draft.description;
+		pane.appendChild(fieldBlock(i18n.name, nameInput));
+		pane.appendChild(fieldBlock(i18n.description, descInput));
+
+		var metaLine = el('p', {
+			className: 'wtt-muted',
+			text:
+				'slug: ' +
+				n.slug +
+				' | parent: ' +
+				(n.parentName || i18n.none) +
+				' | id: ' +
+				n.id,
+		});
+		pane.appendChild(metaLine);
+
+		var templateCb = el('input', { type: 'checkbox' });
+		templateCb.checked = draft.template;
+		pane.appendChild(
+			el('label', { className: 'wtt-check' }, [
+				templateCb,
+				el('span', { text: ' ' + (i18n.templateFlag || 'Template node') }),
+			])
+		);
+
+		// Type binding
+		var typeBlock = el('div', { className: 'wtt-block' });
+		typeBlock.appendChild(el('h3', { className: 'wtt-subtitle', text: i18n.typeBinding || 'Type binding' }));
+		typeBlock.appendChild(el('p', { className: 'wtt-muted', text: i18n.typeHint || '' }));
+
+		var typeSel = el('select', { className: 'wtt-input' });
+		typeSel.appendChild(el('option', { value: '', text: i18n.noType || '- no type -' }));
+		(meta.typeOptions || []).forEach(function (opt) {
+			var o = el('option', { value: String(opt.id), text: opt.path || opt.label });
+			if (String(opt.id) === String(draft.hasType)) {
+				o.selected = true;
+			}
+			typeSel.appendChild(o);
+		});
+		typeBlock.appendChild(fieldBlock(i18n.type || 'Type', typeSel));
+
+		var scopeWrap = el('div', { className: 'wtt-scope-wrap' });
+		function refreshScopeVisibility() {
+			var selectedOpt = null;
+			(meta.typeOptions || []).forEach(function (opt) {
+				if (String(opt.id) === String(typeSel.value)) {
+					selectedOpt = opt;
+				}
+			});
+			var isSubtree =
+				!!selectedOpt &&
+				(selectedOpt.label === 'subtree' ||
+					/(^|\/)subtree$/.test(String(selectedOpt.path || '').replace(/\s+/g, '')));
+			scopeWrap.style.display = isSubtree ? '' : 'none';
+		}
+		var scopeSel = el('select', { className: 'wtt-input' });
+		scopeSel.appendChild(el('option', { value: '', text: i18n.noScope || '- choose catalog root -' }));
+		(meta.scopeOptions || []).forEach(function (opt) {
+			var o = el('option', { value: String(opt.id), text: opt.path || opt.label });
+			if (String(opt.id) === String(draft.refScope)) {
+				o.selected = true;
+			}
+			scopeSel.appendChild(o);
+		});
+		scopeWrap.appendChild(fieldBlock(i18n.refScope || 'ref_scope', scopeSel));
+		typeBlock.appendChild(scopeWrap);
+		typeSel.addEventListener('change', refreshScopeVisibility);
+		refreshScopeVisibility();
+		pane.appendChild(typeBlock);
+
+		// Required / footer for slot-like
+		if (meta.slotLike || draft.hasType) {
+			var reqBlock = el('div', { className: 'wtt-block' });
+			var reqCb = el('input', { type: 'checkbox' });
+			reqCb.checked = draft.required;
+			reqBlock.appendChild(
+				el('label', { className: 'wtt-check' }, [
+					reqCb,
+					el('span', { text: ' ' + (i18n.required || 'Required') }),
+				])
+			);
+			reqBlock.appendChild(el('p', { className: 'wtt-muted', text: i18n.requiredHint || '' }));
+			var footerSel = el('select', { className: 'wtt-input' });
+			['none', 'label', 'sum', 'avg', 'min', 'max', 'count'].forEach(function (op) {
+				var o = el('option', { value: op, text: op });
+				if (op === draft.footerOp) {
+					o.selected = true;
+				}
+				footerSel.appendChild(o);
+			});
+			reqBlock.appendChild(fieldBlock(i18n.footerOp || 'Footer op', footerSel));
+			pane.appendChild(reqBlock);
+			draft._reqCb = reqCb;
+			draft._footerSel = footerSel;
+		}
+
+		// Parameters
+		var paramBlock = el('div', { className: 'wtt-block' });
+		paramBlock.appendChild(el('h3', { className: 'wtt-subtitle', text: i18n.parameters || 'Parameters' }));
+		var paramList = el('div', { className: 'wtt-param-list' });
+
+		function redrawParams() {
+			paramList.innerHTML = '';
+			draft.parameters.forEach(function (p, idx) {
+				var row = el('div', { className: 'wtt-param-row' });
+				var nameIn = el('input', { type: 'text', className: 'wtt-input', placeholder: i18n.paramName || 'Name' });
+				nameIn.value = p.name;
+				nameIn.addEventListener('input', function () {
+					draft.parameters[idx].name = nameIn.value;
+				});
+				var typeIn = el('select', { className: 'wtt-input' });
+				typeIn.appendChild(el('option', { value: '', text: i18n.noType || '- type -' }));
+				(meta.typeOptions || []).forEach(function (opt) {
+					var o = el('option', { value: String(opt.id), text: opt.path || opt.label });
+					if (String(opt.id) === String(p.type)) {
+						o.selected = true;
+					}
+					typeIn.appendChild(o);
+				});
+				typeIn.addEventListener('change', function () {
+					draft.parameters[idx].type = typeIn.value ? parseInt(typeIn.value, 10) : '';
+				});
+				var req = el('input', { type: 'checkbox', title: i18n.required || 'Required' });
+				req.checked = !!p.required;
+				req.addEventListener('change', function () {
+					draft.parameters[idx].required = req.checked;
+				});
+				var rm = el('button', {
+					type: 'button',
+					className: 'button-link-delete',
+					text: i18n.remove || 'Remove',
+					onClick: function () {
+						draft.parameters.splice(idx, 1);
+						redrawParams();
+					},
+				});
+				row.appendChild(nameIn);
+				row.appendChild(typeIn);
+				row.appendChild(el('label', { className: 'wtt-check' }, [req, el('span', { text: ' req' })]));
+				row.appendChild(rm);
+				paramList.appendChild(row);
+			});
+		}
+		redrawParams();
+		paramBlock.appendChild(paramList);
+		paramBlock.appendChild(
+			el('button', {
+				type: 'button',
+				className: 'button',
+				text: i18n.addParameter || 'Add parameter',
+				onClick: function () {
+					draft.parameters.push({
+						id: 'p_' + Date.now(),
+						name: '',
+						type: '',
+						required: false,
+						footerOp: 'none',
+						refScope: null,
+					});
+					redrawParams();
+				},
+			})
+		);
+		pane.appendChild(paramBlock);
+
+		// Relations read-only list
+		var edges = meta.edges || [];
+		if (edges.length) {
+			var relBlock = el('div', { className: 'wtt-block' });
+			relBlock.appendChild(el('h3', { className: 'wtt-subtitle', text: i18n.relations || 'Relations' }));
+			var ul = el('ul', { className: 'wtt-edge-list' });
+			edges.forEach(function (e) {
+				var label = (e.label || '') + ' -> #' + (e.to || '?');
+				if (e.value != null) {
+					label += ' (value=' + e.value + ')';
+				}
+				ul.appendChild(el('li', { text: label }));
+			});
+			relBlock.appendChild(ul);
+			pane.appendChild(relBlock);
+		}
+
+		var status = el('p', { className: 'wtt-muted', id: 'wtt-save-status' });
+		pane.appendChild(status);
+
 		pane.appendChild(
 			el('div', { className: 'wtt-actions' }, [
+				el('button', {
+					type: 'button',
+					className: 'button button-primary',
+					text: i18n.save || 'Save',
+					onClick: function () {
+						var payload = {
+							name: nameInput.value,
+							description: descInput.value,
+							template: templateCb.checked,
+							hasType: typeSel.value ? parseInt(typeSel.value, 10) : 0,
+							refScope: scopeSel.value ? parseInt(scopeSel.value, 10) : 0,
+							parameters: draft.parameters
+								.filter(function (p) {
+									return p.name && p.type;
+								})
+								.map(function (p) {
+									return {
+										id: p.id,
+										name: p.name,
+										type: parseInt(p.type, 10),
+										required: !!p.required,
+										footerOp: p.footerOp || 'none',
+										refScope: p.refScope || null,
+									};
+								}),
+						};
+						if (draft._reqCb) {
+							payload.required = draft._reqCb.checked;
+						}
+						if (draft._footerSel) {
+							payload.footerOp = draft._footerSel.value;
+						}
+						status.textContent = i18n.loading || '...';
+						saveNode(payload, true)
+							.then(function (node) {
+								if (node) {
+									status.textContent = i18n.saved || 'Saved.';
+								}
+							})
+							.catch(function () {
+								setError(i18n.error);
+							});
+					},
+				}),
 				el('button', {
 					type: 'button',
 					className: 'button',

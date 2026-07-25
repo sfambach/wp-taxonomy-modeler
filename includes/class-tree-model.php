@@ -154,6 +154,7 @@ final class Tree_Model {
 			'parentName'  => $parent_name,
 			'count'       => (int) $term->count,
 			'hasChildren' => self::term_has_children( $taxonomy, (int) $term->term_id ),
+			'meta'        => Node_Meta::get_for_term( $taxonomy, (int) $term->term_id ),
 		);
 	}
 

@@ -218,6 +218,7 @@ final class Demo_Data {
 		$created  = 0;
 		$existing = 0;
 		self::install_nodes( $taxonomy, self::blueprint(), 0, $created, $existing );
+		Node_Meta::seed_demo_bindings( $taxonomy );
 
 		return array(
 			'created'  => $created,
