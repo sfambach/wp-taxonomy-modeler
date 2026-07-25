@@ -16,11 +16,11 @@ todos:
     content: "Parameter uses type, optional prefix, optional base_unit (all Nodes)"
     status: completed
   - id: define-node-parameter-link
-    content: "Q33 decided: Parameter is a tree Node; Q14 dropped (parent/Relation, no separate owner)"
+    content: "Q64: Parameter class (name + type from Typ-Ast) on every Node; not a tree Node"
     status: completed
   - id: decide-parameter-is-node
-    content: "Q34 strong lean: configuration (not subclass); Q49 lean: config originate_relations=false on simples"
-    status: in_progress
+    content: "Q34/Q49 lean: config capabilities; Parameter is class (Q64), not Node subclass"
+    status: completed
   - id: explore-typed-edges
     content: "Explore RelationType pairs, display rules, inherit of consists_of along is_a (Q35/Q41–Q43)"
     status: in_progress
