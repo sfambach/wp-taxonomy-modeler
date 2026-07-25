@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.83-plan"
+version: "0.6.84-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -295,7 +295,7 @@ classDiagram
   }
 
   note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
-  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34).\nTypes = Nodes under type_node\n(no TypeKind enum).\nBOM name = Node.name (required)"
+  note for Node "One class — roles via parent_id,\nRelations, config (Q33/Q34).\nTypes = Nodes under type_node.\nTree BOM name = structure;\nProjektname = Collection slot → instance"
   note for NodeConfig "required on slots;\nComposition: allowed_types +\nallowed_base_units (Q60);\nfooter on BOM (Q57);\nfooter_op on column slots"
   note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
   note for FooterCell "op: sum|avg|min|max|count|none|label"
@@ -340,14 +340,15 @@ classDiagram
 | simples / `node_ref` / `quantity` / Collection | `has_type` only; target under `type_node` (**Q26**) | `typeNode()` set; `isUnderTypeBranch` |
 | **`subtree`** | `has_type` **and** `ref_scope` → catalog root | `assertTypeBindingsComplete()` |
 
-**Composition / BOM (Q57–Q62):**  
-- **Name (required):** Composition `Node.name` — user-entered (e.g. project name or Platinenname) (**Q61**).  
-- **Display title under table:** `BOM als Bauteilliste – {name}` (**Q61**).  
-- **Fußzeile:** same column count; per-cell `footer_op` (**Q57**).  
+**Composition / BOM (Q57–Q63):**  
+- **Tree definition:** structure node name stays **`BOM`** (not the project name).  
+- **`Projektname`:** required **attribute slot on `Collection`**, inherited by all Collection descendants; filled only as **instance value** on the WP page/block (**Q61**/Q63).  
+- **Display title under table (instance):** `BOM als Bauteilliste – {Projektname}` (**Q61**).  
+- **Fußzeile:** same column count; per-cell `footer_op` (**Q57**) — definition on columns.  
 - **Menge** = Stück (`int`) (**Q58**).  
 - Allowlists: `allowed_types` / `allowed_base_units` (**Q60**).  
-- **WP Block (later):** pick table art from **Collection** nodes under Type, then fill rows like Backend (**Q62**).  
-- **No `TypeKind` class** — types are simply Nodes under `type_node` (Typ-Ast).
+- **WP Block:** pick Collection art → fill Projektname + rows (**Q62**).  
+- **No `TypeKind` class** — types are Nodes under `type_node`.
 
 **Legend:** Hierarchy = `parent_id` only (**Q54 lean**). Typed links = `Relation` (**Q35**, exploratory). No Parameter class. Spaltenname ≠ Typ.
 
@@ -1096,22 +1097,30 @@ Composition "Stückliste Platine XY"
 3. Define columns (Reference, Bestandteil:Bauteil-Ref, Menge, …).  
 4. Add rows with cell values (refs + scalars).
 
-##### Two viewpoints of a Composition (Definition vs Instanz)
+##### Two viewpoints — Definition (Baum) vs Instanz (WP-Seite) (**Q63**)
 
-| Viewpoint | Meaning |
-|-----------|---------|
-| **1 — Definition** | Number and types of **columns** (schema) |
-| **2 — Instanz** | **Rows** with cell values (incl. Bauteil-Ref → Bauteil) |
+| Viewpoint | Where | What |
+|-----------|-------|------|
+| **1 — Definition** | **Tree** (Typen / Compositionen) | Structure only: Collection schema, columns + types, Fußzeile ops, allowlists, slot defs (e.g. **Projektname** on Collection). Tree node name of the art stays **`BOM`** / `Rezept` / … |
+| **2 — Instanz** | **WP Backend / page block** | Filled values: **Projektname** (and other inherited Collection attrs), **CompositionRows**, cell ParameterValues |
 
 ```text
-Level — Composition only (Stückliste / Gericht / Build)
-  Definition: Spalten + Typen
-  Instanz:    CompositionRows
+TREE (Definition)
+  Typen → … → Collection
+      ├── Projektname     ← slot def (text, required) — inherited by children
+      ├── list / table / enum
+  Compositionen
+      └── BOM             ← structure name stays "BOM"; columns = schema
+            ├── Bauteil Wahl, Reference, Menge, …
 
-Level — Bauteil (separate)
-  Definition: Parameter on Vorlage (Wert, Bauform, …)
-  Instanz:    ParameterValues on Bauteil-Ausprägung
+WP PAGE / BLOCK (Instanz)
+  Block: Art = Collection/table (or BOM schema)
+  ParameterValue(Projektname → "Platine XY")     ← user enters here
+  CompositionRow…  (Bauteile, Mengen, …)
+  Title under table: "BOM als Bauteilliste – Platine XY"
 ```
+
+**Do not** put the project/board name into the tree as `Node.name` of BOM — that mixed definition and instance (**Q61 corrected**).
 
 ###### Type catalog we can use (already decided)
 
@@ -1142,12 +1151,12 @@ Level — Bauteil (separate)
 
 | Concern | Rule |
 |---------|------|
-| **Name** | **Required** user-entered `Node.name` — e.g. Projektname or Platinenname (**Q61**) |
-| **Titel unter Tabelle** | Fixed pattern: **`BOM als Bauteilliste – {name}`** (**Q61**) |
-| **Fußzeile** | Same **column count** as body. Each cell may differ: `none`/`label`, or aggregate **`sum` / `avg` / `min` / `max` / `count`** over that column’s rows (Q57). Typical: Menge → `sum` (Stück); Preis → `sum`; text → empty. Op on column slot `config.footer_op` (or aligned `CompositionFooter.cells`). |
-| **Zulässige Typen** | `Node.config.allowed_types` = ids under `Project.type_node` (empty = all) |
-| **Zulässige Basiseinheiten** | `Node.config.allowed_base_units` = ids under `Project.base_unit_node` (empty = all) |
-| **WP Block (later)** | Editor picks **Art der Tabelle** = a Node under **Collection** (list/table/enum …); then adds Bauteile/rows like Backend today (**Q62**) |
+| **Tree name** | Structure node remains **`BOM`** (definition) |
+| **Projektname** | Slot on **`Collection`** (text, required), **inherited** by all under Collection; **instance value** on WP page/block (**Q61**) |
+| **Titel unter Tabelle** | Instance only: **`BOM als Bauteilliste – {Projektname}`** |
+| **Fußzeile** | Definition: same column count; per cell `footer_op` (`sum`/`avg`/…) (**Q57**) |
+| **Zulässige Typen / Basiseinheiten** | Definition on Composition (`allowed_*`) (**Q60**) |
+| **WP Block** | Instance: pick Collection art → fill Projektname → rows like Backend (**Q62**/Q63) |
 
 **2) Kochrezept / Gericht**
 
@@ -2121,7 +2130,7 @@ Invariants (leaning):
 3. Attribute Nodes bind types via Project type anchors / Relations — no Parameter class
 4. **`has_type` targets must be under `project.type_node`** (never under Compositionen / Bauteile) — **Q26**
 5. `start_node` belongs to the Project tree and is configured in Setup (**Q59**)
-6. Composition/BOM: `Node.name` required (**Q61**); display title under table `BOM als Bauteilliste – {name}`; `config.allowed_types` ⊆ descendants of `type_node`; `config.allowed_base_units` ⊆ descendants of `base_unit_node` (**Q60**); Fußzeile same column count + `footer_op` (**Q57**); Menge = Stück (**Q58**); no `TypeKind` — types are Typ-Ast Nodes only
+6. **Q63:** tree = definition; WP page = instance values. Collection defines slot **Projektname** (inherited). Structure node name **`BOM`**. Title `BOM als Bauteilliste – {Projektname}` from instance. Allowlists (**Q60**); Fußzeile (**Q57**); Menge = Stück (**Q58**).
 
 ### Default Nodes for a new Project (open — Q50)
 

@@ -297,19 +297,19 @@ Cards below split **tree environment** vs **host BOM**.
 | **Touches** | CompositionRow; part → Node id; Reference shape Q47 |
 | **Notes** | Menge ≠ `quantity` (Größe). Q58 |
 
-### UC-21b — Name a BOM (required)
+### UC-21b — Fill Projektname when placing a BOM on a page
 
 | Field | Content |
 |-------|---------|
-| **Actor** | User / Admin |
-| **Goal** | Give the BOM a required display name |
-| **Trigger** | Creates or renames a BOM Composition |
-| **Preconditions** | Composition Node exists |
-| **Main flow** | 1. User enters **name** (e.g. project name or Platinenname)<br>2. System stores as `Node.name` (required, non-empty)<br>3. Under the table, title shows **`BOM als Bauteilliste – {name}`** |
-| **Outcome** | Named BOM with composed title under the table |
-| **MVP?** | planning |
-| **Touches** | Composition Node.name; table caption (**Q61**) |
-| **Notes** | Name ≠ auto id |
+| **Actor** | Editor (WP page) |
+| **Goal** | Set the instance **Projektname** for a BOM on a page |
+| **Trigger** | Inserts/edits a BOM block on a page |
+| **Preconditions** | Tree has Collection with slot **Projektname**; structure **BOM** exists (**Q61**/Q63) |
+| **Main flow** | 1. Editor picks table art under Collection<br>2. Enters **Projektname** (required instance value)<br>3. Adds rows/Bauteile like Backend<br>4. Title under table shows **`BOM als Bauteilliste – {Projektname}`** |
+| **Outcome** | Instance has Projektname; tree node still named **BOM** |
+| **MVP?** | planning / later block |
+| **Touches** | ParameterValue(Projektname); CompositionRows |
+| **Notes** | Do not rename the tree structure node to the project name |
 
 ### UC-22 — See BOM Fußzeile (per-column aggregates)
 

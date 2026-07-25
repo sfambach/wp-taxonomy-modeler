@@ -12,10 +12,11 @@
  * Edges: { id, from, to, label, props? } — multiplikator carries props.value (int);
  *   subtree uses ref_scope → catalog root; node_ref = free jump to any node.
  *   Slot Pflicht = Node.config.required. Datentypen → Simple | Complex.
- *   BOM: Fußzeile, Menge=Stück, zulässige Typen/Basiseinheiten; Startknoten in Setup.
+ *   Tree = Definition (BOM structure name). WP page = Instanz (Projektname + rows).
+ *   Projektname = Collection attribute (inherited); title uses instance value.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v31";
+const STORAGE_KEY = "wtt-proto-tree-split-v32";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -141,11 +142,15 @@ let focusNameAfterRender = false;
 let tableCells = new Map();
 /** @type {Map<string, FormState>} */
 let formStates = new Map();
+/** Instance attrs on a Composition (WP page values) — e.g. Projektname. Key = composition node id. */
+/** @type {Map<string, Record<string, string>>} */
+let instanceAttrs = new Map();
 /** @type {ProtoEdge[]} */
 let edges = [];
 let dataTypesRootId = "";
 let prefixesRootId = "";
 let baseUnitsRootId = "";
+let collectionRootId = "";
 
 function uid() {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -304,17 +309,26 @@ function seedTemplateCore(projectRootId, opts = {}) {
 
   const collectionId = createNode(complexRootId, "Collection", 2, {
     template: mark,
-    description: "Oberbegriff: list (1 Spalte), table (n Spalten), enum (geschlossene list).",
-  });
-  const tList = createNode(collectionId, "list", 0, {
-    description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar.",
-  });
-  const tTable = createNode(collectionId, "table", 1, {
-    description: "Collection mit n Spalten; Zeilen offen erweiterbar.",
-  });
-  const tEnum = createNode(collectionId, "enum", 2, {
     description:
-      "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte — nicht erweiterbar beim Ausfüllen.",
+      "Oberbegriff: list/table/enum. Attribute hier (z. B. Projektname) vererben sich auf alle Unterknoten — Werte erst auf der WP-Seite (Instanz).",
+  });
+  // Q61: Projektname = Collection attribute (definition); instance filled on WP page
+  const slotProjektname = createNode(collectionId, "Projektname", 0, {
+    template: mark,
+    description:
+      "Attribut von Collection — vererbt an list/table/enum. Pflicht-Instanzwert beim Einfügen auf einer WP-Seite (nicht der Baumname).",
+    config: { required: true },
+  });
+  pushEdge(slotProjektname, tText, REL_HAS_TYPE);
+  const tList = createNode(collectionId, "list", 1, {
+    description: "Collection mit genau einer Spalte; Zeilen offen erweiterbar. Erbt Projektname.",
+  });
+  const tTable = createNode(collectionId, "table", 2, {
+    description: "Collection mit n Spalten; Zeilen offen erweiterbar. Erbt Projektname.",
+  });
+  const tEnum = createNode(collectionId, "enum", 3, {
+    description:
+      "Wie list anlegen (1 typisierte Spalte); Optionen fest unter der Spalte. Erbt Projektname.",
   });
 
   const prefixesRootId = createNode(typesRootId, "Präfix", 1, {
@@ -544,10 +558,10 @@ function seedBomTestData(compositionsRootId, core) {
   pushEdge(kPref, prefixesRootId, REL_HAS_TYPE);
   pushEdge(kUnit, uFarad, REL_HAS_TYPE);
 
-  // Q61: BOM name = required user-entered Node.name (Projekt-/Platinenname)
-  const bomCompId = createNode(compositionsRootId, "Demo-Platine A", nextPosition(compositionsRootId), {
+  // Q61/Q63: Tree structure name stays "BOM". Projektname = instance value (WP page).
+  const bomCompId = createNode(compositionsRootId, "BOM", nextPosition(compositionsRootId), {
     description:
-      "BOM-Name (Pflicht) = dieser Knotenname. Titel unter Tabelle: „BOM als Bauteilliste – {name}“. Spalten + Fußzeile; Menge = Stück.",
+      "Definition im Baum: Strukturname BOM + Spalten. Projektname kommt von Collection (vererbt) und wird erst auf der WP-Seite gefüllt.",
     config: {
       footer: { enabled: true },
       // empty = all under Typ-Ast / Basiseinheit; demo pre-selects common types + electronics units
@@ -623,6 +637,8 @@ function seedBomTestData(compositionsRootId, core) {
     ["", "", "", "", "", ""],
     ["", "", "", "", "", ""],
   ]);
+  // Demo instance value (as if already set on a WP page)
+  instanceAttrs.set(bomCompId, { Projektname: "Platine XY" });
 
   return bomCompId;
 }
@@ -656,7 +672,7 @@ function setActiveProject(projectId) {
   const project = projects.find((p) => p.id === projectId);
   if (!project) return;
   applyProject(project);
-  // Q59: Setup-Startknoten = Standard-Fokus (Demo-Seed: BOM Demo-Platine A)
+  // Q59: Setup-Startknoten = Standard-Fokus (Demo-Seed: BOM structure)
   selectedId =
     project.startNodeId && nodes.has(project.startNodeId)
       ? project.startNodeId
@@ -681,11 +697,13 @@ function createInitial() {
   seq = 1;
   tableCells = new Map();
   formStates = new Map();
+  instanceAttrs = new Map();
   edges = [];
   projects = [];
   dataTypesRootId = "";
   prefixesRootId = "";
   baseUnitsRootId = "";
+  collectionRootId = "";
   activeTab = "node";
   focusNameAfterRender = false;
 
@@ -731,18 +749,24 @@ function createInitial() {
     dataTypesRootId: demoCore.dataTypesRootId,
     prefixesRootId: demoCore.prefixesRootId,
     baseUnitsRootId: demoCore.baseUnitsRootId,
-    startNodeId: bomCompId, // Setup-Standard: BOM Demo-Platine A
+    startNodeId: bomCompId, // Setup-Standard: BOM (structure)
   };
 
   projects = [templateProject, demoProject];
+  collectionRootId = demoCore.collectionId || "";
   collapseAllBranches();
   applyProject(demoProject);
   selectedId = demoProject.startNodeId;
-  activeTab = "backend"; // Demo: BOM-Tabelle + Titel sofort sichtbar
-  // Compositionen aufgeklappt, damit Rezept + BOM sichtbar sind
+  activeTab = "backend"; // Demo: Instanz-Tabelle + Projektname-Titel
+  // Compositionen + Collection aufgeklappt
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
   if (demoCore.bauteileRootId) collapsed.delete(demoCore.bauteileRootId);
+  if (demoCore.collectionId) {
+    collapsed.delete(demoCore.dataTypesRootId);
+    collapsed.delete(demoCore.complexRootId);
+    collapsed.delete(demoCore.collectionId);
+  }
   void rezeptId;
 }
 
@@ -756,9 +780,32 @@ function isBomComposition(node) {
   );
 }
 
-/** Display title under BOM table (Q61). */
+/** Inherited Collection attribute slot "Projektname" (definition in tree). */
+function projektnameSlot() {
+  collectionRootId = healNamedRoot(collectionRootId, "Collection");
+  if (!collectionRootId) return null;
+  return (
+    childrenOf(collectionRootId).find(
+      (c) => c.name.trim().toLowerCase() === "projektname"
+    ) || null
+  );
+}
+
+function getInstanceAttr(compId, key) {
+  const row = instanceAttrs.get(compId);
+  return row && row[key] != null ? String(row[key]) : "";
+}
+
+function setInstanceAttr(compId, key, value) {
+  const prev = instanceAttrs.get(compId) || {};
+  instanceAttrs.set(compId, { ...prev, [key]: value });
+  persist();
+}
+
+/** Display title under BOM table from instance Projektname (Q61). */
 function bomDisplayTitle(node) {
-  return `BOM als Bauteilliste – ${node?.name || "—"}`;
+  const pn = getInstanceAttr(node?.id, "Projektname").trim() || "—";
+  return `BOM als Bauteilliste – ${pn}`;
 }
 
 function nodeBelongsToActiveRoot(nodeId) {
@@ -1985,6 +2032,7 @@ function deleteNode(id) {
     nodes.delete(k);
     tableCells.delete(k);
     formStates.delete(k);
+    instanceAttrs.delete(k);
   }
   edges = edges.filter((e) => !kill.has(e.from) && !kill.has(e.to));
   for (const p of projects) {
@@ -2162,7 +2210,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 31,
+    version: 32,
     projects,
     activeProjectId,
     rootId,
@@ -2172,10 +2220,12 @@ function persist() {
     dataTypesRootId,
     prefixesRootId,
     baseUnitsRootId,
+    collectionRootId,
     collapsed: [...collapsed],
     nodes: [...nodes.values()],
     tableCells: mapToObject(tableCells),
     formStates: mapToObject(formStates),
+    instanceAttrs: mapToObject(instanceAttrs),
     edges,
   };
   try {
@@ -2239,12 +2289,27 @@ function restore() {
     activeTab = normalizeTab(data.activeTab);
     tableCells = new Map();
     formStates = new Map();
+    instanceAttrs = new Map();
     edges = [];
+    collectionRootId = data.collectionRootId && nodes.has(data.collectionRootId)
+      ? data.collectionRootId
+      : "";
     restoreStringGridMap(data.tableCells, tableCells);
     if (data.formStates && typeof data.formStates === "object") {
       for (const [k, st] of Object.entries(data.formStates)) {
         if (!nodes.has(k) || !st || typeof st !== "object") continue;
         formStates.set(k, { ...defaultFormState(), ...st });
+      }
+    }
+    if (data.instanceAttrs && typeof data.instanceAttrs === "object") {
+      for (const [k, attrs] of Object.entries(data.instanceAttrs)) {
+        if (!nodes.has(k) || !attrs || typeof attrs !== "object") continue;
+        /** @type {Record<string, string>} */
+        const clean = {};
+        for (const [ak, av] of Object.entries(attrs)) {
+          clean[ak] = String(av ?? "");
+        }
+        instanceAttrs.set(k, clean);
       }
     }
     if (Array.isArray(data.edges)) {
@@ -2781,15 +2846,14 @@ function renderDetail() {
   }
   field.append(lab, input);
   if (isBomComposition(node)) {
-    lab.textContent = "BOM-Name (Pflicht)";
-    input.placeholder = "z. B. Projektname oder Platinenname";
-    input.title =
-      "Pflichtname der BOM — erscheint unter der Tabelle als „BOM als Bauteilliste – …“";
+    lab.textContent = "Strukturname (Baum / Definition)";
+    input.title = "Bleibt „BOM“ — Projektname ist Instanzattribut von Collection, nicht dieser Name.";
     const nameHint = document.createElement("p");
     nameHint.className = "muted bom-name-hint";
     nameHint.style.fontSize = "0.8rem";
     nameHint.style.margin = "0.25rem 0 0";
-    nameHint.textContent = `Titel unter Tabelle: ${bomDisplayTitle(node)}`;
+    nameHint.textContent =
+      "Projektname = Attribut unter Collection (vererbt). Wert erst auf der WP-Seite (Tab Backend/Block).";
     field.append(nameHint);
   }
 
@@ -2958,44 +3022,49 @@ function renderDetail() {
 }
 
 /**
- * Editable BOM name (Q61) — updates Node.name and live title.
- * @param {ProtoNode} node
+ * Instance field Projektname (Q61/Q63) — WP page value, not tree Node.name.
+ * @param {ProtoNode} node composition
  * @param {HTMLElement} [titleEl] live title element to refresh
  */
-function buildBomNameField(node, titleEl) {
+function buildProjektnameInstanceField(node, titleEl) {
   const field = document.createElement("div");
   field.className = "field bom-name-field";
   const lab = document.createElement("label");
-  lab.htmlFor = "bom-name-input";
-  lab.textContent = "BOM-Name (Pflicht)";
+  lab.htmlFor = "instance-projektname";
+  lab.textContent = "Projektname (Instanz / WP-Seite) *";
   const input = document.createElement("input");
-  input.id = "bom-name-input";
+  input.id = "instance-projektname";
   input.type = "text";
   input.className = "form-control";
-  input.value = node.name;
-  input.placeholder = "z. B. Projektname oder Platinenname";
+  input.value = getInstanceAttr(node.id, "Projektname");
+  input.placeholder = "z. B. Platinenname oder Projektname";
   input.disabled = !isProjectEditable();
+  const slot = projektnameSlot();
+  const hint = document.createElement("p");
+  hint.className = "muted";
+  hint.style.fontSize = "0.8rem";
+  hint.style.margin = "0.25rem 0 0";
+  hint.textContent = slot
+    ? `Definition: Slot „${slot.name}“ unter Collection (vererbt). Baumknoten heißt weiter „${node.name}“.`
+    : "Definition: Projektname sollte unter Collection liegen.";
+  const syncTitle = () => {
+    if (titleEl) titleEl.textContent = bomDisplayTitle(node);
+  };
   input.addEventListener("input", () => {
-    const next = input.value.trim() || node.name;
-    applyNodeName(node.id, next, { soft: true });
-    if (titleEl) titleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
-    const treeLabel = document.querySelector(
-      `.tree-row[data-id="${CSS.escape(node.id)}"] .label`
-    );
-    if (treeLabel) treeLabel.textContent = nodes.get(node.id)?.name || next;
+    setInstanceAttr(node.id, "Projektname", input.value);
+    syncTitle();
   });
   input.addEventListener("change", () => {
     const next = input.value.trim();
     if (!next) {
-      input.value = node.name;
-      window.alert("BOM-Name ist Pflicht (z. B. Projekt- oder Platinenname).");
+      window.alert("Projektname ist Pflicht (Instanzwert auf der Seite).");
+      input.value = getInstanceAttr(node.id, "Projektname");
       return;
     }
-    applyNodeName(node.id, next);
-    if (titleEl) titleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
-    renderTree();
+    setInstanceAttr(node.id, "Projektname", next);
+    syncTitle();
   });
-  field.append(lab, input);
+  field.append(lab, input, hint);
   return field;
 }
 
@@ -3030,7 +3099,7 @@ function renderTableView(store, title) {
   let bomTitleEl = null;
   if (title !== "Block") {
     if (bomLike) {
-      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — BOM-Daten. Name Pflicht · Menge = Stück · Fußzeile. Bauteile über <code>Bauteil Wahl</code> hinzufügen.`;
+      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <em>Instanz</em> (wie WP-Seite): Projektname + Zeilen. Baum-Definition heißt „${escapeHtml(node.name)}“. Menge = Stück.`;
     } else {
       lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen.`;
     }
@@ -3040,7 +3109,7 @@ function renderTableView(store, title) {
     bomTitleEl = document.createElement("p");
     bomTitleEl.className = "bom-table-title";
     bomTitleEl.textContent = bomDisplayTitle(node);
-    wrap.append(buildBomNameField(node, bomTitleEl));
+    wrap.append(buildProjektnameInstanceField(node, bomTitleEl));
   }
 
   const grid = ensureTableGrid(
@@ -3206,7 +3275,7 @@ function renderTableView(store, title) {
   if (bomLike && bomTitleEl) {
     bomTitleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
     bomTitleEl.title =
-      "Titel unter der Tabelle = „BOM als Bauteilliste – {BOM-Name}“";
+      "Titel unter der Tabelle = „BOM als Bauteilliste – {Projektname}“ (Instanzwert)";
     wrap.append(bomTitleEl);
   }
   mount.replaceChildren(wrap);
@@ -3714,7 +3783,7 @@ function renderFrontend() {
     const lead = document.createElement("p");
     lead.className = "lead";
     lead.innerHTML =
-      "<strong>Block</strong> — Skizze des späteren Gutenberg-Blocks: zuerst <em>Art der Tabelle</em> (Collection), dann Zeilen wie Backend.";
+      "<strong>Block</strong> — WP-Seite: Art der Tabelle (Collection) → <em>Projektname</em> (Instanz) → Zeilen. Baum behält Strukturname „BOM“.";
     chrome.append(lead, buildBlockArtPanel(node));
     wrap.insertBefore(chrome, wrap.firstChild);
     return;
@@ -3742,7 +3811,7 @@ function renderFrontend() {
   const note = document.createElement("p");
   note.className = "muted frontend-note";
   note.textContent =
-    "Für die BOM-Ansicht: links „Demo-Platine A“ wählen — dann Name, Tabelle, Titel und Fußzeile.";
+    "Für die BOM-Ansicht: links „BOM“ wählen — Projektname (Instanz) + Tabelle + Titel.";
   wrap.append(note);
   mount.replaceChildren(wrap);
 }

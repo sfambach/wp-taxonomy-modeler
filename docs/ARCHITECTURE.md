@@ -87,8 +87,9 @@ Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit
 **Types = Nodes under `type_node` (Typ-Ast)** — folders e.g. Simple / Complex / Collection are just tree structure; **no `TypeKind` class**.  
 **Q26 decided:** resolve Node type **only under `type_node`**.  
 **Q59 decided:** `Project.start_node` from Setup (default focus).  
-**BOM (Q57/Q58/Q60/Q61):** required `Node.name`; title under table `BOM als Bauteilliste – {name}`; Fußzeile = same columns + `footer_op`; Menge = Stück; allowlists.  
-**Q62 (later):** Gutenberg block — pick Collection node as table art, then fill rows like Backend.  
+**Q63:** Tree = **definition**; WP page/block = **instance** (`ParameterValue` / rows).  
+**Q61:** Tree structure name **`BOM`**; slot **`Projektname`** on **Collection** (inherited); title `BOM als Bauteilliste – {Projektname}` from instance.  
+**BOM (Q57/Q58/Q60/Q62):** Fußzeile + `footer_op`; Menge = Stück; allowlists; block picks Collection art then fills Projektname + rows.  
 **Q50 leaning:** copy template Project into new Projects.  
 **Template vs demo:** pure Template is **read-only**; domain samples live in the editable Demo.  
 **Q34/Q49 proposal:** config-first — simples get `capabilities.originate_relations = false` (not a hard special kind).  

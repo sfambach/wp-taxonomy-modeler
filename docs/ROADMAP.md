@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.83-plan** (2026-07-25).
+Last synced from plan version **0.6.84-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,7 +25,7 @@ Last synced from plan version **0.6.83-plan** (2026-07-25).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v31 (BOM name/title, Block tab, Fußzeile, Stück) | In progress |
+| UI prototype `prototypes/tree-split` v32 (tree=BOM structure; Projektname instance; Block) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
@@ -36,8 +36,9 @@ Last synced from plan version **0.6.83-plan** (2026-07-25).
 | **Q58:** BOM Menge = Stück (`int`) | Done (planning) |
 | **Q59:** Startknoten from Project Setup | Done (planning) |
 | **Q60:** per BOM zulässige Typen + Basiseinheiten | Done (planning) |
-| **Q61:** BOM name required; title `BOM als Bauteilliste – {name}` | Done (planning) |
-| **Q62:** later WP block — Collection art + Backend-like rows | Done (planning direction) |
+| **Q61:** Tree name BOM; Projektname = Collection attr → instance title | Done (planning) |
+| **Q62:** WP block — Collection art + Projektname + rows | Done (planning direction) |
+| **Q63:** Tree = definition; WP page = instance values | Done (planning) |
 | Drop `TypeKind` — types = Typ-Ast nodes only | Done (planning) |
 | Goal path: create one Composition (blockers #1–3) | In progress |
 | Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
