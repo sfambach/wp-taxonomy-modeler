@@ -22,6 +22,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Demo_Data {
 
+	public const ROOT_NAME = 'BOM Testprojekt';
+
+	/**
+	 * Older stub roots from early scaffolds - removed on reset.
+	 *
+	 * @var array<int, string>
+	 */
+	private const LEGACY_ROOT_NAMES = array(
+		'Passive Components',
+		'Semiconductors',
+	);
+
 	/**
 	 * Full BOM Testprojekt outline from planning + tree-split prototype.
 	 *
@@ -30,7 +42,7 @@ final class Demo_Data {
 	public static function blueprint(): array {
 		return array(
 			array(
-				'name'        => 'BOM Testprojekt',
+				'name'        => self::ROOT_NAME,
 				'description' => 'Editable demo Project (proto Demo). Pure Template is Datentypen+Praefixe+SI units only; this copy adds Bauart, electronics units, Compositionen, Bauteile. See docs/plans/data-structure.md and prototypes/tree-split.',
 				'children'    => array(
 					array(
@@ -118,7 +130,7 @@ final class Demo_Data {
 									array( 'name' => 'm', 'description' => 'Milli 1e-3' ),
 									array( 'name' => 'c', 'description' => 'Centi 1e-2' ),
 									array( 'name' => 'k', 'description' => 'Kilo 1e3' ),
-									array( 'name' => 'M', 'description' => 'Mega 1e6' ),
+									array( 'name' => 'Mega', 'description' => 'Mega 1e6 (proto node name M; WP slug cannot collide with milli m)' ),
 								),
 							),
 							array(
@@ -212,6 +224,114 @@ final class Demo_Data {
 			'existing' => $existing,
 			'taxonomy' => $taxonomy,
 		);
+	}
+
+	/**
+	 * Delete known demo roots (and descendants), then reinstall the blueprint.
+	 *
+	 * @return array{deleted:int,created:int,existing:int,taxonomy:string}|\WP_Error
+	 */
+	public static function reset( string $taxonomy = 'category' ) {
+		if ( ! Tree_Model::is_hierarchical_taxonomy( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Not a hierarchical taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+
+		$can_edit   = ( defined( 'WP_CLI' ) && WP_CLI ) || current_user_can( Capabilities::edit_terms( $taxonomy ) );
+		$can_delete = ( defined( 'WP_CLI' ) && WP_CLI ) || current_user_can( Capabilities::delete_terms( $taxonomy ) );
+		if ( ! $can_edit || ! $can_delete ) {
+			return new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) );
+		}
+
+		$deleted = 0;
+		$roots   = array_merge( array( self::ROOT_NAME ), self::LEGACY_ROOT_NAMES );
+		foreach ( $roots as $root_name ) {
+			$removed = self::delete_root_by_name( $taxonomy, $root_name );
+			if ( is_wp_error( $removed ) ) {
+				return $removed;
+			}
+			$deleted += $removed;
+		}
+
+		$install = self::install( $taxonomy );
+		if ( is_wp_error( $install ) ) {
+			return $install;
+		}
+
+		return array(
+			'deleted'  => $deleted,
+			'created'  => $install['created'],
+			'existing' => $install['existing'],
+			'taxonomy' => $taxonomy,
+		);
+	}
+
+	/**
+	 * @return int|\WP_Error Number of terms deleted.
+	 */
+	private static function delete_root_by_name( string $taxonomy, string $name ) {
+		$found = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'name'       => $name,
+				'parent'     => 0,
+				'hide_empty' => false,
+			)
+		);
+
+		if ( ! is_array( $found ) || empty( $found ) ) {
+			return 0;
+		}
+
+		$deleted = 0;
+		foreach ( $found as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$count = self::delete_term_cascade( $taxonomy, (int) $term->term_id );
+			if ( is_wp_error( $count ) ) {
+				return $count;
+			}
+			$deleted += $count;
+		}
+
+		return $deleted;
+	}
+
+	/**
+	 * @return int|\WP_Error
+	 */
+	private static function delete_term_cascade( string $taxonomy, int $term_id ) {
+		$deleted  = 0;
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $term_id,
+				'hide_empty' => false,
+			)
+		);
+
+		if ( is_array( $children ) ) {
+			foreach ( $children as $child ) {
+				if ( ! $child instanceof \WP_Term ) {
+					continue;
+				}
+				$nested = self::delete_term_cascade( $taxonomy, (int) $child->term_id );
+				if ( is_wp_error( $nested ) ) {
+					return $nested;
+				}
+				$deleted += $nested;
+			}
+		}
+
+		$result = wp_delete_term( $term_id, $taxonomy );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( false === $result || 0 === $result ) {
+			return new \WP_Error( 'wtt_delete_failed', __( 'Could not delete demo term.', 'wp-taxonomy-tree' ) );
+		}
+
+		return $deleted + 1;
 	}
 
 	/**

@@ -26,6 +26,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_create_term', array( self::class, 'create_term' ) );
 		add_action( 'wp_ajax_wtt_delete_term', array( self::class, 'delete_term' ) );
 		add_action( 'wp_ajax_wtt_install_demo', array( self::class, 'install_demo' ) );
+		add_action( 'wp_ajax_wtt_reset_demo', array( self::class, 'reset_demo' ) );
 	}
 
 	public static function get_tree(): void {
@@ -137,6 +138,28 @@ final class Tree_Ajax {
 
 		wp_send_json_success(
 			array(
+				'created'  => $result['created'],
+				'existing' => $result['existing'],
+				'tree'     => Tree_Model::get_tree( $taxonomy ),
+			)
+		);
+	}
+
+	public static function reset_demo(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+
+		$result = Demo_Data::reset( $taxonomy );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		wp_send_json_success(
+			array(
+				'deleted'  => $result['deleted'],
 				'created'  => $result['created'],
 				'existing' => $result['existing'],
 				'tree'     => Tree_Model::get_tree( $taxonomy ),

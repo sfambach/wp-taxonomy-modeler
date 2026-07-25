@@ -291,6 +291,20 @@
 		return pane;
 	}
 
+	function applyDemoTree(tree) {
+		state.tree = tree || [];
+		state.selectedId = null;
+		state.selectedNode = null;
+		state.error = '';
+		state.expanded = {};
+		(state.tree || []).forEach(function (n) {
+			if (n && n.id && n.name === 'BOM Testprojekt') {
+				state.expanded[n.id] = true;
+			}
+		});
+		render();
+	}
+
 	function installDemo() {
 		post('wtt_install_demo', {})
 			.then(function (json) {
@@ -298,17 +312,25 @@
 					setError((json && json.data && json.data.message) || i18n.error);
 					return;
 				}
-				state.tree = json.data.tree || [];
-				state.selectedId = null;
-				state.selectedNode = null;
-				state.error = '';
-				state.expanded = {};
-				(state.tree || []).forEach(function (n) {
-					if (n && n.id) {
-						state.expanded[n.id] = true;
-					}
-				});
-				render();
+				applyDemoTree(json.data.tree);
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
+	function resetDemo() {
+		var msg = i18n.confirmReset || 'Reset test tree?';
+		if (!window.confirm(msg)) {
+			return;
+		}
+		post('wtt_reset_demo', {})
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				applyDemoTree(json.data.tree);
 			})
 			.catch(function () {
 				setError(i18n.error);
@@ -375,6 +397,12 @@
 				className: 'button',
 				text: i18n.installDemo || 'Install test tree',
 				onClick: installDemo,
+			}),
+			el('button', {
+				type: 'button',
+				className: 'button',
+				text: i18n.resetDemo || 'Reset test tree',
+				onClick: resetDemo,
 			}),
 		]);
 

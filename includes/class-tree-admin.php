@@ -114,7 +114,10 @@ final class Tree_Admin {
 				'error'           => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 				'taxonomy'        => __( 'Taxonomy', 'wp-taxonomy-tree' ),
 				'installDemo'     => __( 'Install BOM test tree', 'wp-taxonomy-tree' ),
+				'resetDemo'       => __( 'Reset test tree', 'wp-taxonomy-tree' ),
+				'confirmReset'    => __( 'Delete BOM Testprojekt (and old Passive Components / Semiconductors stubs), then reinstall the full demo tree?', 'wp-taxonomy-tree' ),
 				'demoDone'        => __( 'BOM test tree installed (from planning + tree-split proto).', 'wp-taxonomy-tree' ),
+				'demoReset'       => __( 'Test tree reset and reinstalled.', 'wp-taxonomy-tree' ),
 				'scaffoldBadge'   => sprintf(
 					/* translators: %s: plugin version */
 					__( 'Scaffold %s', 'wp-taxonomy-tree' ),
