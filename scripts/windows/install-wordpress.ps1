@@ -76,19 +76,45 @@ function Invoke-WpCore {
 
     $php = Get-LaragonPhp
     $wpCli = Get-WpCli
+
+    # Avoid WP CLI "Undefined array key HTTP_HOST" noise on Windows CLI.
+    $env:HTTP_HOST = 'devel.test'
+    $env:SERVER_NAME = 'devel.test'
+
     Push-Location $WordPressRoot
+    # PowerShell 5.1 turns native stderr (PHP warnings) into terminating
+    # ErrorRecords when ErrorActionPreference is Stop and 2>&1 is used.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
-        $output = & $php $wpCli @WpArgs 2>&1
+        $raw = & $php $wpCli @WpArgs 2>&1
         $code = $LASTEXITCODE
-        if (-not $AllowFailure -and $code -ne 0) {
-            throw "wp $($WpArgs -join ' ') failed (exit $code): $output"
+        $lines = @()
+        foreach ($item in @($raw)) {
+            if ($item -is [System.Management.Automation.ErrorRecord]) {
+                $lines += $item.ToString()
+            }
+            else {
+                $lines += [string]$item
+            }
         }
+        $text = ($lines -join "`n").Trim()
+
+        if ($text) {
+            Write-Host $text
+        }
+
+        if (-not $AllowFailure -and $code -ne 0) {
+            throw "wp $($WpArgs -join ' ') failed (exit $code): $text"
+        }
+
         return [pscustomobject]@{
             ExitCode = $code
-            Output   = ($output | Out-String).Trim()
+            Output   = $text
         }
     }
     finally {
+        $ErrorActionPreference = $prevEap
         Pop-Location
     }
 }
