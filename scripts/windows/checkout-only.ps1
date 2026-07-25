@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Clone or update wp-taxonomy-tree under C:\devel\wordpress\source only.
+  Clone wp-taxonomy-tree only if missing. No git pull (use recover-repo.bat to update).
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -15,21 +15,16 @@ if (-not (Test-Path -LiteralPath $SourceRoot)) {
     New-Item -ItemType Directory -Path $SourceRoot -Force | Out-Null
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $RepoDir '.git'))) {
-    Write-Host "Cloning into $RepoDir"
-    git clone --branch $Branch $RepoUrl $RepoDir
-}
-else {
-    Push-Location $RepoDir
-    try {
-        git fetch origin
-        git checkout $Branch
-        git pull --ff-only origin $Branch
-    }
-    finally {
-        Pop-Location
-    }
-    Write-Host "Updated $RepoDir"
+if (Test-Path -LiteralPath (Join-Path $RepoDir '.git')) {
+    Write-Host "Repo already present: $RepoDir"
+    Write-Host 'To update from GitHub, run recover-repo.bat (asks for confirmation).'
+    exit 0
 }
 
+if (Test-Path -LiteralPath $RepoDir) {
+    throw "$RepoDir exists without .git — use recover-repo.bat"
+}
+
+Write-Host "Cloning into $RepoDir"
+git clone --branch $Branch $RepoUrl $RepoDir
 Write-Host "Checkout ready: $RepoDir"
