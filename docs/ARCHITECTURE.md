@@ -2,11 +2,11 @@
 
 > Living technical documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-**Status:** Target architecture — domain model still planning; **scaffold `0.0.1`** ships a term-based admin tree UI
+**Status:** Target architecture — domain model still planning; **scaffold ≈ `0.0.74`** ships a term-based admin tree UI + interim type/unit meta + preview UX
 
 ## Planning note
 
-This document describes the **intended** shape of the plugin. File layout and APIs below are proposals to refine during planning. Do not treat them as implemented.
+Sections without an “Implemented scaffold” label describe the **intended** domain shape. The early scaffold is a thin preview over WP terms — not the final DTO/service architecture.
 
 ## High-level shape
 
@@ -75,14 +75,14 @@ Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).
 RelationType leaning: one **`label`** only; no `inverse` field.  
 Optional **`directed`** (Q44, unsure): graph chrome arrow vs line — separate from `DisplayHint` (structural role).  
 Quantity spin (Q45): value may sit on Relation; **Präfix+Basiseinheit form a unit group**.  
-Unit/prefix (**Q51 decided**): Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives Ohm/kOhm/…; Node has **description**.  
+Unit/prefix (**Q51 decided**): allowlist per Basiseinheit; multiplikator on Präfix; display = Praefix+Kuerzel (mm / kΩ). Scaffold: each unit is a **set** (Typ + optional Praefix + fixed Kuerzel); meta `_wtt_allowed_prefix_ids`; Node has **description** + optional **short_description**.  
 Schema-as-Nodes spin (Q46): **BOM / Recipe / builds** configurable as Node templates — hard `BomList` classes optional views only.
 Display leaning: part-of nodes as attributes of parent; inheritable along is_a.  
 `Project` stores required **Definitionsbaum** anchors. `Node.template` marks template trees.  
 Domain branches (e.g. **Bauteile**) hang under `definition_root` — not separate catalog roots.  
 **Parameters (Q64):** every Node may own Parameters (`name` + `type` from Typ-Ast); optional prefix / base_unit where needed. Not tree Nodes.  
 Filled **quantity** (*Größe*, not Messung) composes as **value + prefix + unit** (e.g. `10 mm`); composite over `int`/`double`.  
-**Type catalog (Q36/Q52 decided):** template holds simples + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list).  
+**Type catalog (Q36/Q52 decided):** template holds simples (`int`…`bool`, **`display_node_name`**, `node_ref`) + **quantity** + **Collection** (`list` / `table` / `enum` — enum created like list). `display_node_name` is read-only host `Node.name`.  
 **Bauteil vs Composition:** Bauteil = Katalogteil (Widerstand, GPU). **Composition** = Zusammenstellung (columns+rows); Bauteile only via column type **`subtree`** + `ref_scope` (UX label e.g. „Bauteil Wahl“ / Bauteil-Ref). Instance: ParameterValues on Bauteil; CompositionRow cells on Composition. Naming Zusammenstellung/Composition decided.  
 **Types = Nodes under `type_node` (Typ-Ast)** — no `TypeKind` class.  
 **Q64:** `Parameter { name, type }` on any Node; `type` ∈ Typ-Ast.  
@@ -106,24 +106,49 @@ Current class diagram lives in [`docs/plans/data-structure.md`](plans/data-struc
 - Keep plugin header, PHP version constant, and any package metadata aligned.
 - Details: [`.cursor/rules/versioning.mdc`](../.cursor/rules/versioning.mdc).
 
-## Proposed module layout (not created yet)
+## Implemented scaffold (≈ `0.0.74`)
 
 ```text
 wp-taxonomy-tree/
-  wp-taxonomy-tree.php          # bootstrap
+  wp-taxonomy-tree.php              # bootstrap, WTT_VERSION
   includes/
-    class-plugin.php            # wires hooks
-    class-tree-model.php        # nest / walk / descendants
-    class-tree-admin.php        # admin page + assets
-    class-tree-rest.php         # or class-tree-ajax.php
-    class-capabilities.php      # capability helpers
+    class-plugin.php                # wires hooks
+    class-tree-model.php            # nest / walk / move / copy / delete / get_node / short_description
+    class-tree-admin.php            # admin page + boot config / i18n
+    class-tree-ajax.php             # Admin-AJAX (caps + nonce)
+    class-capabilities.php          # taxonomy cap helpers
+    class-node-type.php             # interim type/set/fixed/allowlist/footer/set options meta
+    class-demo-data.php             # BOM Testprojekt blueprint + migrations
+    class-settings.php              # test mode, tree type label, set child props, save-via-button
   assets/
-    css/
-    js/
-  docs/
+    css/tree-admin.css
+    js/tree-admin.js                # tree UI + unified preview + dropdowns
+    js/settings-admin.js
+  scripts/
+    sync-demo-tree.php
+    test-get-node.php / test-prefix-allowlist.php / test-basiseinheit-sets.php
+    windows/seed-test-tree.ps1
+  docs/ + prototypes/
+  .cursor/rules/preview-checkpoints.mdc
 ```
 
-Exact file names may adjust before implementation; update this document when decisions change.
+| Concern | Scaffold approach | Target (later) |
+|---------|-------------------|----------------|
+| Node storage | `WP_Term` + term meta | Domain Node DTO + repo (Q11/Q19) |
+| Types | Term meta type id + set children as terms | Typ-Ast + Relations `has_type` |
+| Q51 allowlist | `_wtt_allowed_prefix_ids` JSON on unit | Relation `allows_prefix` |
+| Unit shape | Unit node typed `set` (Typ, Praefix?, Kuerzel) | Same conceptual; cleaner persistence |
+| short_description | `_wtt_short_description` term meta | Node.short_description |
+| Set display | separator / join-units / label-children meta | Set config on NodeConfig |
+| Preview | Form×Table × edit/display; set = one field | Instance values on WP page (Q63) |
+| Quantity display | Compose Praefix name + Kuerzel → `mm` / `kΩ` | Same; ParameterValue readings |
+| Transport | Admin-AJAX only | REST optional (Q1) |
+| JS | Vanilla admin JS | Vanilla until complexity forces `@wordpress/scripts` (Q2) |
+| Preview | Form/Table × edit/display; units = Definition + composed usage | Align with instance vs definition (Q63) |
+
+## Proposed module layout (target beyond scaffold)
+
+Same tree plus Domain Service / Repository / DTO layers (see Layers above). REST module optional. Exact names may still change.
 
 ## Data model
 
@@ -287,8 +312,8 @@ Tracked in [`docs/OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md). Summary:
 
 | Topic | Options | Current leaning |
 |-------|---------|-----------------|
-| Transport | REST API vs Admin-AJAX | REST if straightforward; Admin-AJAX acceptable for MVP admin UI |
-| JS stack | Vanilla JS vs `@wordpress/scripts` | Vanilla for MVP tree; upgrade if UI complexity grows |
+| Transport | REST API vs Admin-AJAX | **Scaffold:** Admin-AJAX. Still open whether REST is added for hosts (Q1) |
+| JS stack | Vanilla JS vs `@wordpress/scripts` | **Scaffold:** vanilla. Upgrade if UI complexity grows (Q2) |
 | Packaging | Single plugin only vs Composer library + plugin | Single plugin first |
 
 Record final choices in the plan decision log and update this section when questions close.

@@ -2,22 +2,22 @@
 
 > Resolve or defer during planning. Keep aligned with [`docs/plans/project-plan.md`](plans/project-plan.md) and [`docs/plans/planning-phase.md`](plans/planning-phase.md).
 
-**Mode:** planning only — answers here become decision-log entries; they do not trigger implementation by themselves.
+**Mode:** scaffolding + planning — answers become decision-log entries. Early scaffold may adopt a leaning (e.g. Admin-AJAX) without freezing the final product choice.
 
 | ID | Question | Options | Current leaning | Status |
 |----|----------|---------|-----------------|--------|
-| Q1 | How should the admin UI talk to WordPress? | REST API / Admin-AJAX / both | REST if straightforward; Admin-AJAX OK for MVP | open |
-| Q2 | Which JS approach for the tree UI in MVP? | Vanilla JS / `@wordpress/scripts` + React | Vanilla for MVP | open |
+| Q1 | How should the admin UI talk to WordPress? | REST API / Admin-AJAX / both | **Scaffold uses Admin-AJAX**; REST still optional for hosts | open |
+| Q2 | Which JS approach for the tree UI in MVP? | Vanilla JS / `@wordpress/scripts` + React | **Scaffold uses vanilla JS**; upgrade if complexity grows | open |
 | Q3 | One tree screen for many taxonomies, or one screen per taxonomy? | Switcher on one screen / submenu per taxonomy | Switcher or filter-registered screens | open |
 | Q4 | Should activating the plugin replace core term list screens by default? | Opt-in per taxonomy / replace when registered / never replace | Opt-in when a taxonomy is registered with the environment | open |
 | Q5 | Exact PHP namespace and prefix? | e.g. `WTT\` / `wtt_` | TBD | open |
 | Q6 | Minimum supported WordPress / PHP versions? | WP 6.x + PHP 8.x targets | PHP 8.x; modern WP — pin exact numbers at sign-off | open |
-| Q7 | Is rename/reparent in-tree required for MVP? | Yes rename only / yes rename+reparent / later | Rename likely MVP; reparent maybe later | open |
+| Q7 | Is rename/reparent in-tree required for MVP? | Yes rename only / yes rename+reparent / later | **Scaffold has rename + reparent**; keep both for MVP leaning | open |
 | Q8 | Placeholder right-hand panel in MVP? | Yes empty/host slot / tree-only until Phase 2 | Host slot preferred so electronic-parts can attach later | open |
 | Q9 | When to integrate with `wp-electronic-parts`? | After MVP / after Phase 2 / never in-repo | After extension contract exists (Phase 2+) | open |
 | Q10 | Packaging for reusable code? | Single plugin only / plugin + Composer package | Single plugin first | open |
 | Q11 | How is Node stored? | Map 1:1 to WP terms / custom node table / hybrid | Map 1:1 to hierarchical WP terms | open |
-| Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta | **description** required on every Node (may be empty); slug + count likely; **position** strongly needed if BOM/Recipe lines are Nodes (Q13/Q46) | open |
+| Q12 | Which optional Node fields are in MVP? | slug / description / count / position / meta / short_description | **description** required on every Node (may be empty); **short_description** decided (scaffold: labels/help/tooltips); slug + count likely; **position** strongly needed if BOM/Recipe lines are Nodes (Q13/Q46) | open |
 | Q13 | How are siblings ordered? | WP default name/term order / explicit position field | **Leaning: explicit `position` (or Relation order)** — BOM/Recipe line display needs stable sequence, not name sort | open |
 | Q14 | Is a parameter always assigned to exactly one node? | Always one owning node / can be shared / taxonomy-level / other | **Decided (revised):** a Parameter is **assigned to exactly one owning Node** (`Node.parameters`). Not a tree Node itself. | decided |
 | Q15 | Where are Parameters stored? | Term meta / custom table / host plugin storage | **Reopened:** Parameter is its own object (not a Node). Persistence TBD with Q11 (term meta vs table). | open |
@@ -51,7 +51,7 @@
 | Q43 | Can `consists_of` attributes be inherited along `is_a`? | No / copy / live inherit / merge+override | **Leaning: yes, inheritable**; mechanics TBD (related Q30) | open |
 | Q44 | Does RelationType need **`directed`** (arrow vs line)? | Always directed / optional flag / derive from DisplayHint / drop | Tentative: directed → arrow `from→to`, else line; may overlap `bidirectional` — user unsure | open |
 | Q45 | How is a quantity (Größe) bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Node only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
-| Q51 | How do Basiseinheit and Präfix relate, and where is the scale factor (×1000)? | Unit─[allows_prefix]→Präfix + multiplikator Relation / config on Präfix / factor only on allows_prefix edge | **Decided:** `allows_prefix` = allowed set (per unit; Farad without k/M); **Präfix ─[multiplikator]→ int** with `props.value`; UI derives Ohm/kOhm/…; forward+back convert via same factor | decided |
+| Q51 | How do Basiseinheit and Präfix relate, and where is the scale factor (×1000)? | Unit─[allows_prefix]→Präfix + multiplikator Relation / config on Präfix / factor only on allows_prefix edge | **Decided:** allowlist; multiplikator on Präfix (same SI exponents). **to_si** = Typ × multiplikator × `prefix_root_to_si`. Mass: SI base = **kg**, prefix root = **g** (`prefix_root_to_si=1e-3`). Scaffold: unit set = **Typ** + Praefix? + Kuerzel; metas `_wtt_multiplikator`, `_wtt_prefix_root_to_si`. | decided |
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Strong lean with Q56:** one **Composition** / UX **Zusammenstellung**; no BomList/Recipe/Build core classes | open |
 | Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / Parameter payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type/Parameter** owns list-vs-scalar + validation; `,` is serialization | open |
 | Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / Parameter.type only | **Aligned with Q64:** types = Nodes under Typ-Ast; **`Parameter.type`** points at such a Node. Widget from type. | open |

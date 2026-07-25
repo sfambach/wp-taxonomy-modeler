@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.6.87-plan"
+version: "0.6.93-plan"
 last_updated: "2026-07-25"
 related_docs:
   - README.md
@@ -40,16 +40,25 @@ todos:
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
     status: in_progress
   - id: scaffold-plugin
-    content: "Scaffold modern PHP 8.x plugin bootstrap 0.0.1 (wp-taxonomy-tree.php + includes)"
+    content: "Scaffold modern PHP 8.x plugin bootstrap (wp-taxonomy-tree.php + includes); version tracked in plugin header"
     status: completed
   - id: core-tree-model
-    content: "Taxonomy-agnostic tree model over WP_Term (nest/walk/delete); Domain Node DTO still planning"
+    content: "Taxonomy-agnostic tree model over WP_Term (nest/walk/move/delete/copy); Domain Node DTO still planning"
     status: completed
   - id: admin-tree-ui
-    content: "Admin tree UI for hierarchical taxonomies (expand/collapse, select, create, delete promote/cascade)"
+    content: "Admin tree UI (expand/collapse, select, create, copy, move, delete, detail pane, preview)"
     status: completed
   - id: rest-or-ajax-api
     content: "Secure Admin-AJAX endpoints (capability + nonce) for the tree UI"
+    status: completed
+  - id: scaffold-types-units
+    content: "Interim type/set/fixed/allowlist meta + Basiseinheit unit=set; demo BOM Testprojekt seed"
+    status: completed
+  - id: scaffold-settings-preview
+    content: "Plugin settings (test mode, tree labels, set child props, save-via-button) + unified Form/Table preview"
+    status: completed
+  - id: scaffold-set-preview-ux
+    content: "Set = one field; separator/join-units/label-children; short_description; dropdown unify"
     status: completed
   - id: extension-api
     content: "Documented hooks/filters so host plugins can bind CPTs, side panes, and custom term behavior (blocked until planning sign-off)"
@@ -63,18 +72,17 @@ todos:
 
 > **Source of truth for intent.** When this plan changes, update the linked documentation in the same change (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/OPEN-QUESTIONS.md`, and the README summary).
 
-## Current mode: planning only
+## Current mode: scaffolding (+ planning)
 
-**Status: `planning`.** Do **not** implement plugin code yet.
+**Status: `scaffolding`.** Full Project / Node / Parameter domain is still planned; the user asked for a **runnable admin preview** over WordPress terms. That early scaffold is allowed (see [`.cursor/rules/planning-only.mdc`](../../.cursor/rules/planning-only.mdc)).
 
-Work now is limited to:
+Still in parallel:
 
 - refining this plan and related plan slices
-- living documentation
-- open questions and MVP requirements
-- repository rules that support planning/standards
+- living documentation / open questions / MVP requirements
+- exploring UX in the scaffold (may reverse preview experiments — see `.cursor/rules/preview-checkpoints.mdc`)
 
-Implementation todos below stay **pending/blocked** until planning sign-off and an explicit request to start coding. See [`.cursor/rules/planning-only.mdc`](../../.cursor/rules/planning-only.mdc) and [`docs/plans/planning-phase.md`](planning-phase.md).
+**Not yet:** treating the scaffold as planning sign-off; full Composition / ParameterValue / Relations persistence; host extension API.
 
 ## Problem
 
@@ -95,8 +103,9 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 - Becoming a general-purpose graph database.
 - Owning filled part-instance catalogs (parts CPT, etc. stay in host plugins such as `wp-electronic-parts`).
 - Frontend public theme templates in MVP (may come later).
-- Any plugin implementation work while status remains `planning`.
+- Broader domain implementation beyond the allowed early scaffold while status is `scaffolding` / planning incomplete.
 - Treating Parameter as fully specified before Node↔Parameter relation and types are agreed.
+- Treating scaffold UX experiments as frozen product decisions.
 
 ## Relationship to `wp-electronic-parts`
 
@@ -106,20 +115,40 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 ## Delivery phases
 
-### Phase 0 — Foundation & planning (current)
+### Phase 0 — Foundation & planning (active)
 
-- Repository rules (English code/docs, WordPress standards, DB practices, versioning, planning-only gate).
+- Repository rules (English code/docs, WordPress standards, DB practices, versioning, planning + early-scaffold gate).
 - Project plan + living documentation + sync rule.
 - Planning checklist, MVP requirements, open questions, and data structure (**Project**, **Node**, **Parameter**; tree = root node).
-- Local WordPress development environment (separate PR; environment only, not product implementation).
+- Local WordPress development environment (Windows Laragon + Cloud VM notes).
+
+### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.74`)
+
+Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP terms + term meta.
+
+| Area | Scaffold status |
+|------|-----------------|
+| Bootstrap | PHP 8.x OOP plugin (`WTT_VERSION`); text domain `wp-taxonomy-tree` |
+| Tree model | Nest / walk / create / rename / description / short_description / copy sibling / move ↑↓ / delete (promote \| cascade) |
+| Transport | **Admin-AJAX** + nonce + taxonomy caps (Q1 leaning for admin MVP) |
+| Admin UI | Split tree + detail; expand/collapse + selection persistence; toolbar Add child / Copy / Save / Undo / Delete |
+| Types (interim) | Type assign from Typ-Ast; `set` / `table` / simples; required; fixed value (literal \| node); type-branch enable/disable |
+| Q51 interim | Basiseinheit unit = **set** (**Typ** + optional Praefix + fixed Kuerzel); allowlist meta `_wtt_allowed_prefix_ids`; UI filter; display compose (mm / kΩ). Kuerzel symbol `m` ≠ Praefix catalog `m` (Milli). |
+| Set options | Term meta: `setSeparator`, `setJoinUnits`, `setLabelChildren`; Form/Table treat multi-member set as **one field** |
+| short_description | `_wtt_short_description`; used in labels, help, tooltips, dropdowns |
+| Demo seed | BOM Testprojekt blueprint + sync/reset scripts; SMD Bauformen + Abmessung set; units incl. Celsius / Stück |
+| Settings | Test mode; show type in tree; show set child properties; save-via-button |
+| Preview | Form + Table × Editable + Display only; units: **Definition** + usage; set field caption/help; join-units display (checkpoint P1+) |
+| Dropdowns | Shared `renderOptionsSelect` / `formatSelectLabel`; no empty `—` placeholders; space indent |
+| Not in scaffold | Parameter class persistence, Relations table, Composition rows/ParameterValue, REST, host hooks |
+
+Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaffold”.
 
 ### Phase 1 — MVP plugin (after planning sign-off)
 
-- Plugin bootstrap (PHP 8.x, OOP, text domain `wp-taxonomy-tree`), starting at version **`0.0.1`**.
-- Taxonomy-agnostic **Node** tree model (over WordPress terms unless planning decides otherwise).
+- Formalize domain DTOs / services beyond term-meta interim.
 - **Parameter** object model as defined in the data-structure plan (scope of MVP vs later still open).
-- Admin page registering a tree UI for selected hierarchical taxonomies.
-- Create root/child nodes, rename/select, delete with promote-children or cascade.
+- Harden delete / create / rename against accepted MVP requirements.
 - Capability checks, nonces, prepared `$wpdb` usage only when custom SQL is unavoidable.
 - Details: [`docs/plans/mvp-requirements.md`](mvp-requirements.md), [`docs/plans/data-structure.md`](data-structure.md).
 
@@ -139,8 +168,9 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 
 ## Success criteria
 
-- Planning produces agreed MVP requirements and closed/deferred open questions before coding starts.
-- After implementation is allowed: a site admin can manage a hierarchical taxonomy as a tree without using the default tags list as the primary UI.
+- Planning produces agreed MVP requirements and closed/deferred open questions before full domain coding beyond the scaffold.
+- Early scaffold: a site admin can manage a hierarchical taxonomy as a tree and explore interim types/units/preview.
+- After full implementation is allowed: primary tree workflow without relying on the default tags list.
 - Another plugin can register a taxonomy into the environment with minimal glue code.
 - Documentation always reflects the current plan and (later) implemented architecture.
 - Code and docs remain English, WPCS-oriented, and secure by default.
@@ -216,6 +246,8 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-23 | Prototype tab **Umrechnung** (`tree-split` v10): pick Basiseinheit in tree; convert Menge between derived units via Präfix.factor; non-base selection grays out fields. |
 | 2026-07-23 | Q51 refine: scale = Relation **multiplikator** → int + value (not config); Farad allows only p/n/µ/m; Node.**description**; Relationen tab (not on Knoten); proto v11. |
 | 2026-07-24 | **Q51 decided:** Basiseinheit ─[allows_prefix]→ Präfix; Präfix ─[multiplikator]→ int (`props.value`); UI derives unit labels; forward+back convert. |
+| 2026-07-25 | Q51 refine: **empty allowlist = L1 (no prefixes)**; scaffold interim `_wtt_allowed_prefix_ids` on Basiseinheit units; Praefix UI filtered by fixed sibling Einheit; Kondensator local disable removed in favour of Farad allowlist. |
+| 2026-07-25 | Basiseinheit units as **set**: Wert + optional Praefix + fixed **Kuerzel** string; display Praefix+Kuerzel (mm); add Celsius + Stück. |
 | 2026-07-24 | **Q20 decided:** typed PHP DTO classes for Project, Node, **Parameter**, Changelog, Change, …; services for behavior. |
 | 2026-07-24 | Node.**description** confirmed on every Node (may be empty); Q12 updated. |
 | 2026-07-24 | **Q34/Q49 proposal:** config-first — `Node.config.capabilities.originate_relations` (false on simples); type binding via Relation `has_type`; no hard special kind. Still open pending user confirm. |
@@ -261,6 +293,11 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-25 | **Q63 decided:** Tree = **definition**; WP page/block = **instance values**. Proto v32. Plan **0.6.84**. |
 | 2026-07-25 | **Q64 decided:** **Parameter class** — every Node may have Parameters; each has **`name`** (user text) + **`type`** (Node from Typ-Ast). Not a tree Node. Values = ParameterValue. Inheritance of defs along `parent_id` (Q55). BOM columns / Collection.Projektname = Parameters. Proto v33. Plan **0.6.85**. |
 | 2026-07-25 | Docs: remove discarded anti-Parameter paths; concept is Parameter-only (**Q64**). Plan **0.6.86**. |
+| 2026-07-25 | Simple type **`display_node_name`**: read-only host `Node.name` (no input / no fixed value). Scaffold + plan **0.6.88**. |
+| 2026-07-25 | Plan mode **`scaffolding`**: early admin preview allowed; domain planning continues in parallel. Plan **0.6.91**. |
+| 2026-07-25 | Scaffold inventory synced: Admin-AJAX tree UI; type/set/fixed/footer; Q51 unit=set + allowlist meta; demo seed; settings; Form/Table preview; unit Definition vs usage (P1). Plugin ≈ **`0.0.40`**. |
+| 2026-07-25 | Unit set member **Wert → Typ**; Praefix `_wtt_multiplikator`; Kilogramm SI base kg with prefix root **g** (`prefix_root_to_si=1e-3`). to_si = Typ × multiplikator × prefix_root_to_si. |
+| 2026-07-25 | Preview UX closure: set = one field; separator / join-units / label-children; **short_description**; dropdown unify; Kuerzel≠Praefix `m` clarified. Plugin ≈ **`0.0.74`**. Plan **0.6.93**. |
 
 ## Change protocol
 
@@ -273,4 +310,4 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
    - `docs/OPEN-QUESTIONS.md` — when decisions answer or defer questions
    - `README.md` — short summary and links
 4. Do not leave plan and docs disagreeing about goals, non-goals, current mode, or current phase.
-5. While status is `planning`, do not add implementation files.
+5. While status is `planning`, do not add implementation files. While `scaffolding`, only extend the **allowed early scaffold** (tree UI / interim meta) unless the user asks for the next domain slice.

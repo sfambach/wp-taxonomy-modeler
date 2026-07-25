@@ -2,17 +2,18 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffold `0.0.1`** — runnable admin tree over WordPress terms.  
-> Full Project / Node / Parameter domain model is still in planning.  
+> **Scaffolding ≈ `0.0.74`** — runnable admin tree over WordPress terms, interim types/units, demo BOM seed, Form/Table preview (set field, join units, short descriptions).  
+> Full Project / Node / Parameter domain model is still in planning (`docs/plans/`, status `scaffolding`).  
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
 
 1. Activate **WP Taxonomy Tree** under Plugins.
-2. Open **Taxonomy Tree** in the wp-admin menu.
-3. Pick a hierarchical taxonomy (e.g. Categories), expand/collapse, create root/child, delete (promote or cascade).
+2. Open **Taxonomy Tree** in the wp-admin menu (seed/reset demo via settings / `scripts/windows/seed-test-tree.ps1` if needed).
+3. Expand/collapse, create/copy/move/delete; assign types; explore Basiseinheit units and preview panels.
 
-Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)
+Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)  
+Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ## Documentation
 

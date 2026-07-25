@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Parameter (name + type), Changelog/Change. Every Node may own Parameters; type is a Node from the Type branch. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.86-plan"
+version: "0.6.93-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -52,7 +52,7 @@ todos:
 
 # Data structure: Project, Node, Parameter, Changelog
 
-> Planning only. This document defines the conceptual data model. No plugin code yet.
+> Planning artifact for the domain model. Early scaffold (≈ plugin `0.0.74`) uses term meta interim; this document remains the target conceptual model.
 
 ## Simplified class diagram (classes only)
 
@@ -142,6 +142,7 @@ classDiagram
     +id: Id
     +parent_id: Id|null
     +name: string
+    +short_description: string
     +description: string
     +template: bool
     +position: int?
@@ -188,6 +189,9 @@ classDiagram
     +allowed_base_units: Id[]?
     +footer: CompositionFooter?
     +footer_op: FooterAggOp?
+    +set_separator: string?
+    +set_join_units: bool?
+    +set_label_children: bool?
     +isRequired() bool
     +mayOriginateRelations() bool
     +allowsType(typeId) bool
@@ -308,7 +312,7 @@ classDiagram
   note for Project "≈ taxonomy (Q18)\nstart_node from Setup (Q59)\ntype only under type_node (Q26)"
   note for Node "May own Parameters (Q64).\nTree hierarchy = parent_id.\nBOM structure name ≠ Projektname"
   note for Parameter "name = user text\ntype = Node in Typ-Ast\nowner = one Node"
-  note for NodeConfig "Composition allowlists (Q60);\nfooter on BOM (Q57)"
+  note for NodeConfig "Composition allowlists (Q60);\nfooter on BOM (Q57);\nset display (scaffold)"
   note for CompositionFooter "same column count as body;\ncells align 1:1 (Q57)"
   note for FooterCell "op via Parameter.footer_op"
   note for FooterAggOp "simple column aggregates only"
@@ -460,12 +464,13 @@ flowchart TB
 - A **project** can consist of **different trees** (different root nodes). — **agreed**
 - Every **Node** may own **Parameters** (`name` + `type` from Typ-Ast); optional `prefix` / `base_unit` where the type needs them — **decided (Q64)**
 - A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` → `"10 mm"`. — **agreed** (where the value is stored: Q16)
-- **Core types (Q36/Q48):** **simple types live in the template** (`int`, `double`, `text`, `textarea`, `char`, `bool`) — **agreed** (`text` = einzeilig / HTML input; `textarea` = mehrzeilig; legacy name `string` → `text`)
+- **Core types (Q36/Q48):** **simple types live in the template** (`int`, `double`, `text`, `textarea`, `char`, `bool`, `display_node_name`) — **agreed** (`text` = einzeilig / HTML input; `textarea` = mehrzeilig; legacy name `string` → `text`; `display_node_name` = read-only host `Node.name`)
 - **`enum` is a derived type** in the template: **exactly one base_type** (a simple) + **list of values**; `single`/`multiple` = selection methods — **agreed (Q38/Q39 direction)**
 - **`quantity` is a derived/composite type** in the template: numeric leaf (`int` or `double`) + optional Präfix + Basiseinheit — **agreed direction (Q36/Q37)**; name = **Größe**, not Messung / not BOM-Menge
 - **Basiseinheit ─[allows_prefix]→ Präfix** (per-unit allowed set; e.g. Farad has no k/M) — **decided (Q51)**
 - Scale via **Präfix ─[multiplikator]→ int** with edge **`props.value`** (e.g. kilo → 1000) — **decided (Q51)**; enables forward/back convert
 - Every **Node** has a **description** (may be empty string) — **decided**
+- Every **Node** has an optional **short_description** (compact expansion of `name`, e.g. `L` → `Länge`, `m` → `Milli`) — **decided (scaffold)**
 - Quantity unit **select** is fed a Basiseinheit Node; options = base + derived labels from linked Präfixe — **decided (Q51)**; no atomic `kOhm` Nodes
 - Dimensions under **Maße** (`Länge` / `Breite` / `Höhe`) each carry such a quantity; together e.g. `10 mm × 5 mm × 2 mm`. — **agreed**
 - The planning **Definitionsbaum** is one tree with root **Definition**; **Bauteile** (and other branches) hang under that root — no separate catalog Root. — **agreed**
@@ -597,12 +602,16 @@ Node ◄──(many)────── Parameters
 | `id` | yes | identifier | Stable identity of the node |
 | `parent_id` | yes* | identifier \| `null` | Catalog/taxonomy parent (**Q54 lean:** Bestandteile + inheritance). `null` = root. Not schema nesting; not edge-cache hybrid. |
 | `name` | yes | string | Display name of the node |
+| `short_description` | yes* | string | Compact expansion of `name` (e.g. L → Länge); may be empty |
 | `description` | yes* | string | Longer text; may be empty |
 | `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `project_id` | ? | identifier | Optional reverse link — domain access is via `Project.root_nodes` (Q17) |
 | `changelog` | yes | **Changelog** | History of changes on this node |
 
 \* `parent_id` is always present as a value: either a valid parent id or `null`.
+\* `short_description` / `description` may be empty strings.
+
+**NodeConfig set display (scaffold lean):** for nodes typed `set`, optional `set_separator` (default `/`), `set_join_units`, `set_label_children` control Form/Table caption and joined quantity display. Unit sets use members **Typ** + optional Praefix + fixed Kuerzel (not “Wert”).
 
 #### Planned optional Node fields (not decided yet)
 
@@ -739,7 +748,7 @@ Keep the **pure template** separate from **domain demo data**:
 Template (nur lesen)
 ├── Datentypen
 │   ├── Simple
-│   │   └── int · double · text · textarea · char · bool · node_ref
+│   │   └── int · double · text · textarea · char · bool · display_node_name · node_ref
 │   └── Complex
 │       ├── quantity
 │       ├── subtree          ← scoped pick via ref_scope
@@ -777,7 +786,7 @@ Prototype: `prototypes/tree-split` **v33** — Parameter (`name` + `type`) on No
 
 ```text
 Template Project → Datentypen
-├── Simple   int · double · text · textarea · char · bool · node_ref
+├── Simple   int · double · text · textarea · char · bool · display_node_name · node_ref
 └── Complex  quantity · subtree · Collection(list/table/enum)
 ```
 
@@ -797,7 +806,7 @@ Template Project → Datentypen
 ```text
 Datentypen
 ├── Simple
-│   └── int · double · text · textarea · char · bool · node_ref
+│   └── int · double · text · textarea · char · bool · display_node_name · node_ref
 └── Complex
     ├── quantity                                ← derived (Größe)
     ├── subtree                                 ← scoped catalog pick
@@ -1005,6 +1014,7 @@ Bauteile
 | Type | Kind | Used as Parameter type for… |
 |------|------|-----------------------------|
 | `int` / `double` / `text` / `textarea` / `char` / `bool` | **simple** | counts, flags, ein-/mehrzeiliger Text |
+| `display_node_name` | **simple** | read-only host `Node.name` |
 | `quantity` | **composed** | `Wert`, VRAM, cable length, recipe amount |
 | `Bauart` (Collection **enum**) | **composed** | `Bauform` / Footprint |
 | `RefDes` (Collection **list**) | **composed** | BOM Reference column (schema, not catalog Parameter) |
@@ -1145,6 +1155,7 @@ WP PAGE / BLOCK (Instanz)
 | Type | Kind | Typical use |
 |------|------|-------------|
 | `int` `double` `text` `textarea` `char` `bool` | simple | counts, flags, text |
+| **`display_node_name`** | simple | Read-only label = host `Node.name` (no input, no fixed value) |
 | `quantity` | composed | Bauteil Wert; Rezept-Menge |
 | Collection `enum` (e.g. `Bauart`) | composed | Bauteil Bauform |
 | Collection `list` (e.g. `RefDes`) | composed | BOM Reference |
@@ -1594,7 +1605,15 @@ Same pattern for Meter → `m`, `mm`, `km`, … from Vater Meter + linked Präfi
 
 **Prototype:** `prototypes/tree-split` v11 — tabs **Relationen** + **Umrechnung**; multiplikator on Präfix edges; Farad without k/M; Node.description.
 
-**Still open (edge details only):** empty allows-list = “all prefixes” vs “none” vs “base only”; template seed of SI factors; exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`). RelationType keys `allows_prefix` / `multiplikator` are the working names.
+**Empty allowlist (L1 — decided 2026-07-25):** no Präfixe allowed (base unit only). Units that need prefixes must list them explicitly (e.g. Farad → p/n/u/m; Kelvin → empty).
+
+**Scaffold interim (until Relation table):** term meta `_wtt_allowed_prefix_ids` on each Basiseinheit unit node (JSON id list). UI edits the allowlist on the unit; Praefix pickers / type-branch under a set with fixed Einheit are filtered by that list. Migrates 1:1 to Relation `allows_prefix` later. Do **not** nest Präfixe as tree children under each unit.
+
+**Basiseinheit unit = set schema (2026-07-25, refined):** each catalog unit is typed `set` with children **`Typ`** (int|double magnitude) + optional `Praefix` + `Kuerzel` (prefix-root symbol). Display = `Praefix+Kuerzel` (e.g. `m`+`m` → `mm`). **Conversion to SI base:** `to_si = Typ × multiplikator(Praefix) × prefix_root_to_si(unit)`. Prefix multiplikators are the same SI powers for all units; **Kilogramm** is the exception: SI base unit is **kg**, but prefixes attach to **gram** → Kuerzel=`g`, `prefix_root_to_si=1e-3` (so `5 mg` → `5e-6 kg`). Abmessung stays a separate set (L/B/T + shared Praefix) using Meter.
+
+**Scaffold preview:** unit nodes show Definition + composed usage (Typ + Praefix + symbol). Checkpoint **P1**.
+
+**Still open (edge details only):** template seed of SI factors (`multiplikator`); exact display concatenation (`k`+`Ohm` vs `kilo`+`Ohm`). RelationType keys `allows_prefix` / `multiplikator` are the working names.
 
 #### Design spin: BOM / Recipe as Nodes (no dedicated domain classes) — Q46
 
@@ -2016,7 +2035,7 @@ Invariants (leaning):
 
 ### Default Nodes for a new Project (open — Q50)
 
-Every Project needs at least: Definitionsbaum anchors + fixed simple types (`int`, `double`, `text`, `textarea`, `char`, `bool`).
+Every Project needs at least: Definitionsbaum anchors + fixed simple types (`int`, `double`, `text`, `textarea`, `char`, `bool`, `display_node_name`).
 
 Two main options (user direction — decide later):
 

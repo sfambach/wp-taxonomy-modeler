@@ -3,12 +3,12 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Scaffold `0.0.1` (admin taxonomy tree); domain model still planning  
+**Status:** Scaffolding ≈ **`0.0.74`** (runnable admin taxonomy tree + interim types/units + preview UX); full Project/Node/Parameter domain still planning  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode
 
-We are defining scope, requirements, and architecture **before** writing plugin code. See [`docs/plans/planning-phase.md`](plans/planning-phase.md).
+**Scaffolding + planning:** domain model and MVP requirements continue in docs; a **runnable early scaffold** (tree UI over WP terms, interim type/unit meta, demo seed, Form/Table preview) is available for exploration. Scaffold ≠ planning sign-off. See [`docs/plans/planning-phase.md`](plans/planning-phase.md) and [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 ## What it is
 
@@ -51,8 +51,11 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Types are **Nodes under the Type branch** — no separate `TypeKind` class.
 - `enum` = closed value list over one simple base; `single`/`multiple` = selection methods (not types).
 - `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück).
-- **Decided (Q51):** Basiseinheit links to allowed Präfixe; scale via Relation **multiplikator** → int (value on edge); unit select fed e.g. `Ohm` derives `Ohm`/`kOhm`/… — no `kOhm` Nodes.
+- Simple **`display_node_name`**: read-only display of the host node’s name (no user input).
+- **Decided (Q51):** Basiseinheit allowlist for Präfixe; display from Präfix+Kuerzel (e.g. mm); no atomic `kOhm`/`mm` Nodes. Empty allowlist = no prefixes. Scaffold: units are sets (Typ + optional Praefix + fixed Kuerzel).
 - Every Node has a **description** (may be empty).
+- Every Node has an optional **short_description** (compact expansion of the name, e.g. L → Länge, m → Milli).
+- Scaffold set UX: editable **separator**, **include children in label**, **join units** (shared Praefix when all members share a typed quantity with Praefix).
 - **Decided (Q20):** typed PHP DTOs including **Parameter**. Typed edges remain exploratory (**Q35**).
 - Leaning: each RelationType has one **`label`** (no `inverse`); `consists_of` targets shown as **attributes**, inheritable along `is_a`.
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
@@ -69,9 +72,20 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Domain-specific part catalogs / part CPT ownership (host plugins).
 - Full public frontend theme redesign.
 - Non-hierarchical tag clouds or flat taxonomies as primary targets.
-- Implementation work while the project plan status is `planning`.
+- Treating the early scaffold as the final Parameter / Composition / Relations product.
+- Full domain services while broader planning questions remain open (beyond allowed scaffold scope).
 
-## Planned user outcomes
+## Available now (scaffold)
+
+1. Browse a hierarchical taxonomy as a tree (expand/collapse, selection memory).
+2. Create / copy / rename / describe / reorder siblings / delete (promote or cascade).
+3. Assign interim **types** (simples, set, table); required + fixed values; type-branch toggles.
+4. Explore **Basiseinheit** units as sets (Typ / Praefix / Kuerzel) with prefix allowlists and composed labels (e.g. mm). Note: unit symbol Kuerzel `m` ≠ Praefix catalog `m` (Milli).
+5. Preview Form + Table (editable vs display); sets as one field (separator, optional join-units, short_description in labels/dropdowns).
+6. Seed / reset a **BOM Testprojekt** demo tree from plugin settings / scripts.
+7. Optional **short_description** on nodes; set options (separator, label children, join units); reparent; autosave or save-via-button.
+
+## Planned user outcomes (full product)
 
 1. Open a project and work with its trees (each tree = a root node).
 2. Create root and child **nodes** from the tree.
@@ -88,7 +102,7 @@ Planning examples: **Definitionsbaum**; separate **Bauteile** tree with typed ed
 
 ## Versioning
 
-- Plugin versions start at **`0.0.1`** when implementation begins.
+- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.74`** (`MAJOR` stays `0` until first official release).
 - The first digit changes only for official releases (first release: **`1.0.0`**).
 
 ## Related documents

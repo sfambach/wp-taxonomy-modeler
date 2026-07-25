@@ -1,9 +1,9 @@
 ---
 name: Planning phase
-overview: Expand and freeze product/technical planning before any plugin implementation. No code until this phase is accepted.
+overview: Expand and freeze product/technical planning. Early scaffold preview is allowed when the user asks; full domain implementation still waits for sign-off.
 status: active
-version: "0.1.0-plan"
-last_updated: "2026-07-23"
+version: "0.1.1-plan"
+last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -49,13 +49,13 @@ todos:
     status: pending
 ---
 
-# Planning phase (no implementation)
+# Planning phase (docs + early scaffold exception)
 
-> Active now. Produce clear requirements and decisions only. Do **not** write plugin code in this phase.
+> Active now for requirements and decisions. **Early scaffold** (admin tree over terms) is allowed when the user asks — see project plan status `scaffolding` and `.cursor/rules/planning-only.mdc`. Full domain coding beyond that scope still waits for sign-off.
 
 ## Purpose
 
-Turn the high-level project idea into an agreed MVP plan that another engineer (or agent) can implement later without re-litigating basics.
+Turn the high-level project idea into an agreed MVP plan that another engineer (or agent) can implement later without re-litigating basics. The runnable scaffold is a preview, not sign-off.
 
 ## Planning outputs
 
@@ -69,11 +69,11 @@ Turn the high-level project idea into an agreed MVP plan that another engineer (
 | Open questions | [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) | Each question answered or deferred with owner |
 | Product / architecture / roadmap | living docs | Match the plan |
 
-## Explicitly out of this phase
+## Explicitly out of this phase (unless user asks for a scaffold slice)
 
-- Plugin PHP/JS/CSS implementation
-- Package scaffolding for runtime code
-- Database migrations or custom tables
+- Full Composition / ParameterValue / Relations persistence
+- Database migrations or custom tables beyond interim term meta
+- Treating scaffold UX as frozen product decisions
 - Integration coding in `wp-electronic-parts`
 
 ## Exit criteria for planning
