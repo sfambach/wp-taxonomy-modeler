@@ -32,6 +32,24 @@ powershell -ExecutionPolicy Bypass -File .\install-wordpress.ps1
 - `.ps1` per Doppelklick im Explorer
 - Rechtsklick → Bearbeiten (öffnet nur den Editor)
 
+## Wenn `install-wordpress.ps1` fehlt oder git nach `y/n` fragt
+
+Ursache: alter Stand auf `main` **oder** git pull aus `scripts\windows` (Ordner gesperrt).
+
+**Einmal manuell in cmd** (Explorer-Fenster schließen, das Skripte offen hat):
+
+```bat
+cd /d C:\devel\wordpress\source
+git -C wp-taxonomy-tree fetch origin
+git -C wp-taxonomy-tree checkout main
+git -C wp-taxonomy-tree pull --ff-only origin main
+dir wp-taxonomy-tree\scripts\windows
+```
+
+Dann erneut **`setup-dev.bat`** doppelklicken.
+
+Die `.bat`-Dateien wechseln jetzt vor dem git pull ins Repo-Root, damit `scripts\windows` nicht gesperrt ist.
+
 ## Nach erfolgreichem Setup
 
 - http://devel.test

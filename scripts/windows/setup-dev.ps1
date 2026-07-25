@@ -85,23 +85,54 @@ function Ensure-GitCheckout {
     }
 
     Write-Step "Updating existing checkout at $RepoDir"
-    Push-Location $RepoDir
+    $env:GIT_TERMINAL_PROMPT = '0'
+
+    # Do not run git pull while cwd is scripts/windows — Windows locks that folder
+    # when setup-dev.bat is started from there.
+    Push-Location $SourceRoot
     try {
-        git fetch origin
-        git checkout $Branch
-        git pull --ff-only origin $Branch
+        git -C $RepoDir fetch origin
+        git -C $RepoDir checkout $Branch
+        git -C $RepoDir pull --ff-only origin $Branch
     }
     finally {
         Pop-Location
     }
 }
 
+function Get-InstallWordPressScript {
+    $candidates = @(
+        (Join-Path $RepoDir 'scripts\windows\install-wordpress.ps1'),
+        (Join-Path $PSScriptRoot 'install-wordpress.ps1')
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 function Ensure-WordPressInstalled {
     Write-Step 'Installing WordPress (core, database, wp core install)'
-    $installScript = Join-Path $PSScriptRoot 'install-wordpress.ps1'
-    if (-not (Test-Path -LiteralPath $installScript)) {
-        throw "Missing $installScript"
+    $installScript = Get-InstallWordPressScript
+    if ($null -eq $installScript) {
+        throw @"
+Missing install-wordpress.ps1 in the repo checkout.
+Expected: $RepoDir\scripts\windows\install-wordpress.ps1
+
+Run once manually:
+  cd $SourceRoot
+  git -C wp-taxonomy-tree fetch origin
+  git -C wp-taxonomy-tree checkout main
+  git -C wp-taxonomy-tree pull --ff-only origin main
+
+Then rerun setup-dev.bat (close any editor windows that have scripts\windows open).
+"@
     }
+
     & $installScript
 }
 

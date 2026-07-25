@@ -1,7 +1,10 @@
 @echo off
 setlocal EnableExtensions
 title wp-taxonomy-tree — WordPress Install
-cd /d "%~dp0"
+
+set "SCRIPT_DIR=%~dp0"
+set "REPO_DIR=%SCRIPT_DIR%..\.."
+cd /d "%REPO_DIR%"
 
 echo.
 echo ============================================================
@@ -10,7 +13,7 @@ echo   (Bitte diese .bat Datei starten, NICHT die .ps1 per Doppelklick)
 echo ============================================================
 echo.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-wordpress.ps1" %*
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%install-wordpress.ps1" %*
 set "ERR=%ERRORLEVEL%"
 
 echo.
