@@ -22,6 +22,24 @@ in der Cloud schon automatisch existiert (`AGENTS.md`).
 | **`setup-dev.bat`** | Laragon starten, Junctions, WordPress installieren | Nur **Clone**, wenn Repo fehlt — **kein pull** |
 | **`install-wordpress.bat`** | Nur WordPress unter `C:\devel\wordpress` | Nein |
 | **`recover-repo.bat`** | Repo neu klonen oder reparieren | Ja — **nur mit J-Bestätigung** |
+| **`unlock-and-clone.bat`** | Laragon stoppen, Junctions entfernen, neu klonen | Ja |
+
+### Ordner lässt sich nicht löschen (Laragon)
+
+Laragon hält den Ordner oft über **Junctions**:
+- `wp-content\plugins\wp-taxonomy-tree` → `source\wp-taxonomy-tree`
+- `laragon\www\devel` → `C:\devel\wordpress`
+
+1. Laragon **Exit** (Tray-Icon, nicht nur Stop)
+2. Cursor/Explorer schließen
+3. **`unlock-and-clone.bat`** — oder manuell zuerst Junctions entfernen:
+
+```bat
+rmdir C:\devel\wordpress\wp-content\plugins\wp-taxonomy-tree
+rmdir C:\laragon\www\devel
+```
+
+Dann erst den `source\`-Ordner löschen oder klonen.
 
 ### `setup-dev.bat` im Detail (Entsprechung zur Cloud)
 
