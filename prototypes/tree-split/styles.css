@@ -541,12 +541,30 @@ body {
   font-size: 0.8rem;
 }
 
+.bom-name-field {
+  margin: 0.5rem 0 1rem;
+  max-width: 28rem;
+}
+
 .bom-table-title {
-  margin: 0.75rem 0 0;
-  font-size: 0.95rem;
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text);
+  border-top: 2px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg-pane));
+}
+
+.block-chrome {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+.block-art-panel {
+  margin-top: 0.5rem;
 }
 
 .allowlist-grid {

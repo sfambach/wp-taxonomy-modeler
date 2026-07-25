@@ -15,7 +15,7 @@
  *   BOM: Fußzeile, Menge=Stück, zulässige Typen/Basiseinheiten; Startknoten in Setup.
  */
 
-const STORAGE_KEY = "wtt-proto-tree-split-v30";
+const STORAGE_KEY = "wtt-proto-tree-split-v31";
 const TABLE_BODY_ROWS = 5;
 const PROJECT_KIND_TEMPLATE = "template";
 const PROJECT_KIND_COMPOSITION_SIMPLES = "composition-simples";
@@ -738,11 +738,27 @@ function createInitial() {
   collapseAllBranches();
   applyProject(demoProject);
   selectedId = demoProject.startNodeId;
+  activeTab = "backend"; // Demo: BOM-Tabelle + Titel sofort sichtbar
   // Compositionen aufgeklappt, damit Rezept + BOM sichtbar sind
   collapsed.delete(demoRootId);
   collapsed.delete(demoCore.compositionsRootId);
   if (demoCore.bauteileRootId) collapsed.delete(demoCore.bauteileRootId);
   void rezeptId;
+}
+
+/** BOM-ähnliche Composition: subtree-Spalte oder Menge-Spalte. */
+function isBomComposition(node) {
+  if (!node) return false;
+  const cols = childrenOf(node.id);
+  return (
+    cols.some((c) => typeKey(typeNodeOf(c.id)) === "subtree") ||
+    cols.some((c) => c.name.trim().toLowerCase() === "menge")
+  );
+}
+
+/** Display title under BOM table (Q61). */
+function bomDisplayTitle(node) {
+  return `BOM als Bauteilliste – ${node?.name || "—"}`;
 }
 
 function nodeBelongsToActiveRoot(nodeId) {
@@ -2146,7 +2162,7 @@ function restoreStringGridMap(raw, into) {
 
 function persist() {
   const payload = {
-    version: 30,
+    version: 31,
     projects,
     activeProjectId,
     rootId,
@@ -2764,6 +2780,18 @@ function renderDetail() {
     });
   }
   field.append(lab, input);
+  if (isBomComposition(node)) {
+    lab.textContent = "BOM-Name (Pflicht)";
+    input.placeholder = "z. B. Projektname oder Platinenname";
+    input.title =
+      "Pflichtname der BOM — erscheint unter der Tabelle als „BOM als Bauteilliste – …“";
+    const nameHint = document.createElement("p");
+    nameHint.className = "muted bom-name-hint";
+    nameHint.style.fontSize = "0.8rem";
+    nameHint.style.margin = "0.25rem 0 0";
+    nameHint.textContent = `Titel unter Tabelle: ${bomDisplayTitle(node)}`;
+    field.append(nameHint);
+  }
 
   const descField = document.createElement("div");
   descField.className = "field";
@@ -2930,6 +2958,48 @@ function renderDetail() {
 }
 
 /**
+ * Editable BOM name (Q61) — updates Node.name and live title.
+ * @param {ProtoNode} node
+ * @param {HTMLElement} [titleEl] live title element to refresh
+ */
+function buildBomNameField(node, titleEl) {
+  const field = document.createElement("div");
+  field.className = "field bom-name-field";
+  const lab = document.createElement("label");
+  lab.htmlFor = "bom-name-input";
+  lab.textContent = "BOM-Name (Pflicht)";
+  const input = document.createElement("input");
+  input.id = "bom-name-input";
+  input.type = "text";
+  input.className = "form-control";
+  input.value = node.name;
+  input.placeholder = "z. B. Projektname oder Platinenname";
+  input.disabled = !isProjectEditable();
+  input.addEventListener("input", () => {
+    const next = input.value.trim() || node.name;
+    applyNodeName(node.id, next, { soft: true });
+    if (titleEl) titleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
+    const treeLabel = document.querySelector(
+      `.tree-row[data-id="${CSS.escape(node.id)}"] .label`
+    );
+    if (treeLabel) treeLabel.textContent = nodes.get(node.id)?.name || next;
+  });
+  input.addEventListener("change", () => {
+    const next = input.value.trim();
+    if (!next) {
+      input.value = node.name;
+      window.alert("BOM-Name ist Pflicht (z. B. Projekt- oder Platinenname).");
+      return;
+    }
+    applyNodeName(node.id, next);
+    if (titleEl) titleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
+    renderTree();
+  });
+  field.append(lab, input);
+  return field;
+}
+
+/**
  * @param {Map<string, string[][]>} store
  * @param {string} title
  */
@@ -2945,6 +3015,7 @@ function renderTableView(store, title) {
   const cols = childrenOf(node.id);
   const wrap = document.createElement("div");
   wrap.className = "table-view";
+  const bomLike = isBomComposition(node);
 
   const lead = document.createElement("p");
   lead.className = "lead";
@@ -2955,8 +3026,22 @@ function renderTableView(store, title) {
     return;
   }
 
-  lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen. Vereinfacht: später Block/Editor.`;
-  wrap.append(lead);
+  /** @type {HTMLElement|null} */
+  let bomTitleEl = null;
+  if (title !== "Block") {
+    if (bomLike) {
+      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — BOM-Daten. Name Pflicht · Menge = Stück · Fußzeile. Bauteile über <code>Bauteil Wahl</code> hinzufügen.`;
+    } else {
+      lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — WP-Dateneingabe für <strong>${escapeHtml(node.name)}</strong> · ${cols.length} Spalte${cols.length === 1 ? "" : "n"} · Typ via <code>has_type</code> · ${TABLE_BODY_ROWS} Zeilen.`;
+    }
+    wrap.append(lead);
+  }
+  if (bomLike) {
+    bomTitleEl = document.createElement("p");
+    bomTitleEl.className = "bom-table-title";
+    bomTitleEl.textContent = bomDisplayTitle(node);
+    wrap.append(buildBomNameField(node, bomTitleEl));
+  }
 
   const grid = ensureTableGrid(
     store,
@@ -3008,7 +3093,7 @@ function renderTableView(store, title) {
   const partColIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "subtree");
   const isBomPartDriven = partColIdx >= 0;
 
-  if (isBomPartDriven) {
+  if (isBomPartDriven && title !== "Block" && lead.isConnected) {
     lead.innerHTML = `<strong>${escapeHtml(title)}</strong> — <strong>${escapeHtml(node.name)}</strong>: <code>subtree</code> wählen → Wert/Präfix nach Gruppe; Einheit typfest; Präfixe = <code>allows_prefix</code>. Menge = <strong>Stück</strong>. * = Pflicht (<code>config.required</code>).`;
   }
 
@@ -3115,20 +3200,14 @@ function renderTableView(store, title) {
   }
 
   tableWrap.append(table);
+  wrap.append(tableWrap);
 
   // Q61: Titel unter der Tabelle — „BOM als Bauteilliste – {name}“
-  const isBomLike =
-    isBomPartDriven ||
-    cols.some((c) => c.name.trim().toLowerCase() === "menge");
-  if (isBomLike) {
-    const caption = document.createElement("p");
-    caption.className = "bom-table-title";
-    caption.textContent = `BOM als Bauteilliste – ${node.name}`;
-    caption.title =
-      "Pflichtname der BOM (Knotenname) — z. B. Projektname oder Platinenname (Q61)";
-    wrap.append(tableWrap, caption);
-  } else {
-    wrap.append(tableWrap);
+  if (bomLike && bomTitleEl) {
+    bomTitleEl.textContent = bomDisplayTitle(nodes.get(node.id) || node);
+    bomTitleEl.title =
+      "Titel unter der Tabelle = „BOM als Bauteilliste – {BOM-Name}“";
+    wrap.append(bomTitleEl);
   }
   mount.replaceChildren(wrap);
 }
@@ -3570,8 +3649,51 @@ function collectionArtCandidates() {
 }
 
 /**
- * Simplified page preview (future: Gutenberg blocks for recipes / compare / actions).
- * Q62: later WP block picks Collection art, then fills rows like Backend.
+ * WP-Block chrome (Q62): pick Collection art + hint.
+ * @param {ProtoNode} node
+ */
+function buildBlockArtPanel(node) {
+  const artBlock = document.createElement("div");
+  artBlock.className = "order-block block-art-panel";
+  const artLab = document.createElement("div");
+  artLab.className = "field-label";
+  artLab.textContent = "WordPress-Block — Art der Tabelle";
+  const artSel = document.createElement("select");
+  artSel.className = "form-control";
+  artSel.disabled = !isProjectEditable();
+  const artEmpty = document.createElement("option");
+  artEmpty.value = "";
+  artEmpty.textContent = "— Collection-Knoten wählen —";
+  artSel.append(artEmpty);
+  if (!node.config) node.config = {};
+  const bound = typeNodeOf(node.id);
+  const stored = node.config.block_art || bound?.id || "";
+  for (const c of collectionArtCandidates()) {
+    const o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = nodePath(c.id);
+    artSel.append(o);
+  }
+  if (stored && [...artSel.options].some((o) => o.value === stored)) {
+    artSel.value = stored;
+  }
+  artSel.addEventListener("change", () => {
+    if (!node.config) node.config = {};
+    node.config.block_art = artSel.value || undefined;
+    persist();
+  });
+  const artHint = document.createElement("p");
+  artHint.className = "muted";
+  artHint.style.fontSize = "0.8rem";
+  artHint.style.margin = "0.35rem 0 0";
+  artHint.textContent =
+    "Auswahl = Knoten unter Collection (list / table / enum …). Darunter: Bauteile/Zeilen wie im Backend.";
+  artBlock.append(artLab, artSel, artHint);
+  return artBlock;
+}
+
+/**
+ * Tab „Block“ (Q62): Collection-Art wählen, dann dieselbe Tabelle wie Backend + Titel darunter.
  */
 function renderFrontend() {
   const mount = document.getElementById("detail");
@@ -3582,162 +3704,46 @@ function renderFrontend() {
     return;
   }
 
+  // BOM: volle Block-Skizze = Art wählen + Backend-Tabelle + Titel
+  if (isBomComposition(node)) {
+    renderTableView(tableCells, "Block");
+    const wrap = mount.querySelector(".table-view");
+    if (!wrap) return;
+    const chrome = document.createElement("div");
+    chrome.className = "block-chrome";
+    const lead = document.createElement("p");
+    lead.className = "lead";
+    lead.innerHTML =
+      "<strong>Block</strong> — Skizze des späteren Gutenberg-Blocks: zuerst <em>Art der Tabelle</em> (Collection), dann Zeilen wie Backend.";
+    chrome.append(lead, buildBlockArtPanel(node));
+    wrap.insertBefore(chrome, wrap.firstChild);
+    return;
+  }
+
+  // Non-BOM compositions: light preview
   const cols = childrenOf(node.id);
   const wrap = document.createElement("div");
   wrap.className = "frontend-view";
 
   const lead = document.createElement("p");
   lead.className = "lead";
-  lead.innerHTML = `<strong>Frontend</strong> — Vorschau für <strong>${escapeHtml(node.name)}</strong>. Später WP-Block: Art der Tabelle aus <code>Collection</code>-Knoten, dann Zeilen wie Backend (Q62).`;
-  wrap.append(lead);
-
-  // Q62 sketch: Art der Tabelle = Node under Collection
-  const artBlock = document.createElement("div");
-  artBlock.className = "order-block";
-  const artLab = document.createElement("div");
-  artLab.className = "field-label";
-  artLab.textContent = "Block (Skizze) — Art der Tabelle";
-  const artSel = document.createElement("select");
-  artSel.className = "form-control";
-  artSel.disabled = true;
-  const artEmpty = document.createElement("option");
-  artEmpty.value = "";
-  artEmpty.textContent = "— Collection-Knoten wählen (später im WP-Block) —";
-  artSel.append(artEmpty);
-  const bound = typeNodeOf(node.id);
-  for (const c of collectionArtCandidates()) {
-    const o = document.createElement("option");
-    o.value = c.id;
-    o.textContent = nodePath(c.id);
-    artSel.append(o);
-  }
-  if (bound && [...artSel.options].some((o) => o.value === bound.id)) {
-    artSel.value = bound.id;
-  }
-  const artHint = document.createElement("p");
-  artHint.className = "muted";
-  artHint.style.fontSize = "0.8rem";
-  artHint.textContent =
-    "Auswahl = Knoten unter Collection (list/table/enum …). Danach Bauteile/Zeilen wie im Tab Backend.";
-  artBlock.append(artLab, artSel, artHint);
-  wrap.append(artBlock);
+  lead.innerHTML = `<strong>Block</strong> — Vorschau für <strong>${escapeHtml(node.name)}</strong>. BOM wählen für volle Block-Skizze (Collection + Tabelle).`;
+  wrap.append(lead, buildBlockArtPanel(node));
 
   if (cols.length === 0) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent =
-      "Keine Spalten-Kinder — Composition mit Spalten wählen (z. B. Rezept — Backzutaten).";
+    empty.textContent = "Keine Spalten — Composition mit Spalten wählen.";
     wrap.append(empty);
     mount.replaceChildren(wrap);
     return;
   }
 
-  const grid = ensureTableGrid(
-    tableCells,
-    node.id,
-    cols.map((c) => c.id)
-  );
-
-  const block = document.createElement("article");
-  block.className = "frontend-block";
-  const head = document.createElement("header");
-  head.className = "frontend-block-head";
-  const titleEl = document.createElement("h2");
-  const isBomLike =
-    cols.some((c) => typeKey(typeNodeOf(c.id)) === "subtree") ||
-    cols.some((c) => c.name.trim().toLowerCase() === "menge");
-  titleEl.textContent = isBomLike
-    ? `BOM als Bauteilliste – ${node.name}`
-    : node.name;
-  const sub = document.createElement("p");
-  sub.className = "frontend-block-sub";
-  sub.textContent = isBomLike
-    ? "Block-Vorschau · BOM (Name Pflicht, Q61)"
-    : "Block-Vorschau · Composition";
-  head.append(titleEl, sub);
-  block.append(head);
-
-  const list = document.createElement("ul");
-  list.className = "frontend-rows";
-  let shown = 0;
-  for (let r = 0; r < TABLE_BODY_ROWS; r++) {
-    const row = grid[r] || [];
-    const values = cols.map((_, c) => String(row[c] ?? "").trim());
-    if (values.every((v) => v === "")) continue;
-    shown += 1;
-
-    const li = document.createElement("li");
-    li.className = "frontend-row";
-
-    let titleIdx = 0;
-    for (let c = 0; c < cols.length; c++) {
-      const tn = typeNodeOf(cols[c].id);
-      const key = tn ? typeKey(tn) : "text";
-      if (key === "text" || key === "string" || key === "char") {
-        titleIdx = c;
-        break;
-      }
-    }
-    let rowTitle = values[titleIdx] || `Zeile ${r + 1}`;
-    {
-      const tk = typeKey(typeNodeOf(cols[titleIdx]?.id));
-      if ((tk === "subtree" || tk === "node_ref") && nodes.has(rowTitle)) {
-        rowTitle = nodes.get(rowTitle).name;
-      }
-    }
-    // Prefer first subtree column as title when present
-    const partIdx = cols.findIndex((c) => typeKey(typeNodeOf(c.id)) === "subtree");
-    if (partIdx >= 0 && values[partIdx] && nodes.has(values[partIdx])) {
-      rowTitle = nodes.get(values[partIdx]).name;
-    }
-    const h = document.createElement("h3");
-    h.textContent = rowTitle;
-    li.append(h);
-
-    const dl = document.createElement("dl");
-    dl.className = "frontend-facts";
-    for (let c = 0; c < cols.length; c++) {
-      if (c === titleIdx) continue;
-      const raw = values[c];
-      if (!raw) continue;
-      const tn = typeNodeOf(cols[c].id);
-      const key = tn ? typeKey(tn) : "";
-      let display = raw;
-      if (key === "bool") {
-        display = ["1", "true", "yes", "ja", "on"].includes(raw.toLowerCase())
-          ? "ja"
-          : "nein";
-      }
-      const dt = document.createElement("dt");
-      dt.textContent = cols[c].name;
-      const dd = document.createElement("dd");
-      if ((key === "subtree" || key === "node_ref") && nodes.has(raw)) {
-        display = key === "node_ref" ? nodePath(raw) : nodes.get(raw).name;
-      }
-      if (key === "quantity") {
-        display = formatQuantityDisplay(parseQuantityCell(raw));
-      }
-      dd.textContent = display;
-      dl.append(dt, dd);
-    }
-    if (dl.childElementCount) li.append(dl);
-    list.append(li);
-  }
-
-  if (shown === 0) {
-    const empty = document.createElement("p");
-    empty.className = "muted";
-    empty.textContent = "Noch keine Zeilen im Backend — Daten unter Tab Backend eingeben.";
-    block.append(empty);
-  } else {
-    block.append(list);
-  }
-
   const note = document.createElement("p");
   note.className = "muted frontend-note";
   note.textContent =
-    "Nur Demo-Layout. Später echter Gutenberg-Block (Q62): Collection-Art wählen, dann Zeilen wie Backend; BOM-Titel = „BOM als Bauteilliste – {name}“.";
-  wrap.append(block, note);
+    "Für die BOM-Ansicht: links „Demo-Platine A“ wählen — dann Name, Tabelle, Titel und Fußzeile.";
+  wrap.append(note);
   mount.replaceChildren(wrap);
 }
 

@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: planning
-version: "0.6.82-plan"
+version: "0.6.83-plan"
 last_updated: "2026-07-25"
 related_docs:
   - README.md
@@ -261,6 +261,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 | 2026-07-25 | **Q61 decided:** BOM **name required** (user); title under table = `BOM als Bauteilliste – {name}`. |
 | 2026-07-25 | **Q62 decided (direction):** later WP **block** — pick table art from **Collection** nodes, then fill Bauteile like Backend. |
 | 2026-07-25 | **Drop `TypeKind`:** types are simply Nodes under the Type branch (`type_node`) — no parallel enum/class. Plan **0.6.82**. |
+| 2026-07-25 | Proto **v31:** BOM name field + title under table + Block tab (Collection art + Backend table). Simplified class diagram (classes only). Plan **0.6.83**. |
 
 ## Change protocol
 

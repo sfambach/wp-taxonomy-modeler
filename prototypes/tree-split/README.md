@@ -61,9 +61,16 @@ Project root
 | **Demo** | editable |
 | **Template** | read-only |
 
-State: `localStorage` key `wtt-proto-tree-split-v30` — **Reset** after upgrade.
+State: `localStorage` key `wtt-proto-tree-split-v31` — **Reset** after upgrade.
 
-## BOM / Setup (v30)
+## How to view (Demo)
+
+1. Open `index.html` (or local server) — Demo startet auf **Backend** mit BOM „Demo-Platine A“.
+2. **BOM-Name** oben ändern → Titel unter der Tabelle folgt (`BOM als Bauteilliste – …`).
+3. Bauteile in der Tabelle wählen (Spalte Bauteil Wahl); Fußzeile aggregiert.
+4. Tab **Block** — Art der Tabelle (Collection) wählen, gleiche Tabelle + Titel.
+
+## BOM / Setup (v31)
 
 | Concern | Rule |
 |---------|------|

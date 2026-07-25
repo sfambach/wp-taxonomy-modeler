@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Parameter, Changelog
 overview: Core objects Project, Node, Changelog/Change. No Parameter class and no ParameterRole — attribute Nodes are ordinary Nodes with type binding. Fixed simple types; derived/composed types. Planning artifact only.
 status: draft
-version: "0.6.82-plan"
+version: "0.6.83-plan"
 last_updated: "2026-07-25"
 related_plans:
   - docs/plans/project-plan.md
@@ -54,7 +54,52 @@ todos:
 
 > Planning only. This document defines the conceptual data model. No plugin code yet.
 
-## Current class diagram
+## Simplified class diagram (classes only)
+
+No attributes, no methods — structure only:
+
+```mermaid
+classDiagram
+  direction TB
+  class Project
+  class Node
+  class NodeConfig
+  class CompositionFooter
+  class FooterCell
+  class FooterAggOp
+  class Capabilities
+  class Relation
+  class RelationType
+  class DisplayHint
+  class Changelog
+  class Change
+  class ParameterValue
+  class CompositionRow
+  class QuantityReading
+
+  Project --> Node : roots / anchors / start
+  Project --> Changelog
+  Node --> Node : parent_id
+  Node --> NodeConfig
+  Node --> Changelog
+  Node --> CompositionRow
+  Node --> ParameterValue
+  NodeConfig --> Capabilities
+  NodeConfig --> CompositionFooter
+  NodeConfig --> FooterAggOp
+  CompositionFooter --> FooterCell
+  FooterCell --> FooterAggOp
+  FooterCell --> Node
+  Changelog --> Change
+  Relation --> Node
+  Relation --> RelationType
+  RelationType --> DisplayHint
+  CompositionRow --> ParameterValue
+  ParameterValue --> Node
+  ParameterValue --> QuantityReading
+```
+
+## Current class diagram (detailed)
 
 Conceptual domain model (planning — not implemented PHP).  
 **Q33/Q34:** no `Parameter` / `ParameterRole` class — slots are ordinary `Node`s with `has_type` (+ optional `ref_scope`, `config.required`).  

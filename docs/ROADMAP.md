@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.82-plan** (2026-07-25).
+Last synced from plan version **0.6.83-plan** (2026-07-25).
 
 **Current mode: planning only — no plugin implementation.**
 
@@ -25,7 +25,7 @@ Last synced from plan version **0.6.82-plan** (2026-07-25).
 | **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
 | **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
 | **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v30 (BOM Fußzeile per Spalte sum/avg/…, Menge=Stück, Setup, Allowlists) | In progress |
+| UI prototype `prototypes/tree-split` v31 (BOM name/title, Block tab, Fußzeile, Stück) | In progress |
 | **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
 | **Q53:** Collection kind binding | Open (restart; guidelines) |
 | **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
