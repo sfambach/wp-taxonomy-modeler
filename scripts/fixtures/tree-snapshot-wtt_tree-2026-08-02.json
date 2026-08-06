@@ -1,0 +1,1754 @@
+{
+    "exportedAt": "2026-08-02T16:40:17+00:00",
+    "taxonomy": "wtt_tree",
+    "plugin": "0.0.87",
+    "tree": [
+        {
+            "id": 1486,
+            "name": "BOM Testprojekt",
+            "slug": "bom-testprojekt",
+            "description": "Editable demo Project (proto Demo). Pure Template is Datentypen+Praefixe+SI units only; this copy adds Bauart, electronics units, Compositionen, Bauteile. See docs/plans/data-structure.md and prototypes/tree-split.",
+            "shortDescription": "",
+            "typeId": 0,
+            "typeName": "",
+            "required": false,
+            "position": 0,
+            "children": [
+                {
+                    "id": 1487,
+                    "name": "Typen",
+                    "slug": "typen",
+                    "description": "Type branch (Q26): Datentypen, Praefixe, Basiseinheit only.",
+                    "shortDescription": "",
+                    "typeId": 0,
+                    "typeName": "",
+                    "required": false,
+                    "position": 0,
+                    "children": [
+                        {
+                            "id": 1488,
+                            "name": "Datentypen",
+                            "slug": "datentypen",
+                            "description": "Simple (scalars + node_ref) and Complex (quantity, subtree, Collection).",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": [
+                                {
+                                    "id": 1489,
+                                    "name": "Simple",
+                                    "slug": "simple",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": [
+                                        {
+                                            "id": 1490,
+                                            "name": "int",
+                                            "slug": "int",
+                                            "description": "Whole number.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1491,
+                                            "name": "double",
+                                            "slug": "double",
+                                            "description": "Floating point.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1492,
+                                            "name": "text",
+                                            "slug": "text",
+                                            "description": "Single-line text.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1493,
+                                            "name": "textarea",
+                                            "slug": "textarea",
+                                            "description": "Multi-line text.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1494,
+                                            "name": "char",
+                                            "slug": "char",
+                                            "description": "Single character.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1495,
+                                            "name": "bool",
+                                            "slug": "bool",
+                                            "description": "Boolean.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1496,
+                                            "name": "display_node_name",
+                                            "slug": "display_node_name",
+                                            "description": "Read-only: shows the host Node.name (no user input).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 6,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1497,
+                                            "name": "media",
+                                            "slug": "media",
+                                            "description": "WP Media Library and/or URL (Q65). MIME-based display.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 7,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1498,
+                                            "name": "node_ref",
+                                            "slug": "node_ref",
+                                            "description": "Free jump to any Node (no ref_scope).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 8,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1499,
+                                    "name": "Complex",
+                                    "slug": "complex",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": [
+                                        {
+                                            "id": 1500,
+                                            "name": "quantity",
+                                            "slug": "quantity",
+                                            "description": "Groesse: value + optional prefix + base unit (not a measurement act).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1501,
+                                            "name": "subtree",
+                                            "slug": "subtree",
+                                            "description": "Pick under a catalog root via Relation ref_scope.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1502,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung",
+                                            "description": "Package dimensions L/B/H. Each edge is a Meter quantity (Typ + Praefix + m). Table: one Abmessung column containing L/B/H.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": [
+                                                {
+                                                    "id": 1503,
+                                                    "name": "L",
+                                                    "slug": "l",
+                                                    "description": "Length as Meter quantity (Typ + Praefix + m).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1504,
+                                                    "name": "B",
+                                                    "slug": "b",
+                                                    "description": "Width (Breite) as Meter quantity.",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1505,
+                                                    "name": "H",
+                                                    "slug": "h",
+                                                    "description": "Height (Hoehe) as Meter quantity.",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 1506,
+                                            "name": "Collection",
+                                            "slug": "collection",
+                                            "description": "Super-kind list/table/enum/set. Property Projektname (type text) lives on Collection instances - not a tree child (Q61; Q64 superseded).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": [
+                                                {
+                                                    "id": 1507,
+                                                    "name": "list",
+                                                    "slug": "list",
+                                                    "description": "Collection with exactly one column; rows open.",
+                                                    "shortDescription": "",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": [
+                                                        {
+                                                            "id": 1508,
+                                                            "name": "RefDes",
+                                                            "slug": "refdes",
+                                                            "description": "BOM open list for board references (R1, R2, ...).",
+                                                            "shortDescription": "",
+                                                            "typeId": 0,
+                                                            "typeName": "",
+                                                            "required": false,
+                                                            "position": 0,
+                                                            "children": [
+                                                                {
+                                                                    "id": 1509,
+                                                                    "name": "Element",
+                                                                    "slug": "element",
+                                                                    "description": "Single list column - has_type text (proto).",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 0,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 0,
+                                                                    "children": []
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "id": 1510,
+                                                    "name": "table",
+                                                    "slug": "table",
+                                                    "description": "Collection with n columns; rows open. Extra settings: has footer (Fusszeile). BOM/Rezept -&gt; table.",
+                                                    "shortDescription": "",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1511,
+                                                    "name": "enum",
+                                                    "slug": "enum",
+                                                    "description": "Like list + closed options under the column.",
+                                                    "shortDescription": "",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": [
+                                                        {
+                                                            "id": 1512,
+                                                            "name": "Bauart",
+                                                            "slug": "bauart",
+                                                            "description": "Concrete enum for footprints (BOM Testprojekt, not pure Template).",
+                                                            "shortDescription": "",
+                                                            "typeId": 0,
+                                                            "typeName": "",
+                                                            "required": false,
+                                                            "position": 0,
+                                                            "children": [
+                                                                {
+                                                                    "id": 1513,
+                                                                    "name": "Option",
+                                                                    "slug": "option",
+                                                                    "description": "Single enum column - has_type text (proto).",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 0,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 0,
+                                                                    "children": [
+                                                                        {
+                                                                            "id": 1514,
+                                                                            "name": "0201",
+                                                                            "slug": "0201",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 0,
+                                                                            "children": []
+                                                                        },
+                                                                        {
+                                                                            "id": 1515,
+                                                                            "name": "0402",
+                                                                            "slug": "0402",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 1,
+                                                                            "children": []
+                                                                        },
+                                                                        {
+                                                                            "id": 1516,
+                                                                            "name": "0603",
+                                                                            "slug": "0603",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 2,
+                                                                            "children": []
+                                                                        },
+                                                                        {
+                                                                            "id": 1517,
+                                                                            "name": "0805",
+                                                                            "slug": "0805",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 3,
+                                                                            "children": []
+                                                                        },
+                                                                        {
+                                                                            "id": 1518,
+                                                                            "name": "1206",
+                                                                            "slug": "1206",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 4,
+                                                                            "children": []
+                                                                        },
+                                                                        {
+                                                                            "id": 1519,
+                                                                            "name": "axial",
+                                                                            "slug": "axial",
+                                                                            "description": "",
+                                                                            "shortDescription": "",
+                                                                            "typeId": 0,
+                                                                            "typeName": "",
+                                                                            "required": false,
+                                                                            "position": 5,
+                                                                            "children": []
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "id": 1520,
+                                                    "name": "set",
+                                                    "slug": "set",
+                                                    "description": "Collection of named members; schema = child nodes (each typed). Used by Bauteil groups.",
+                                                    "shortDescription": "",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 3,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1521,
+                            "name": "Praefixe",
+                            "slug": "praefixe",
+                            "description": "SI prefixes. multiplikator = scale vs the unit’s prefix root (Q51). Same factors for Meter and mass — mass differs via unit prefix_root_to_si (g→kg).",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 1,
+                            "children": [
+                                {
+                                    "id": 1522,
+                                    "name": "p",
+                                    "slug": "p",
+                                    "description": "SI prefix pico (10⁻¹²).",
+                                    "shortDescription": "Pico",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1523,
+                                    "name": "n",
+                                    "slug": "n",
+                                    "description": "SI prefix nano (10⁻⁹).",
+                                    "shortDescription": "Nano",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1524,
+                                    "name": "u",
+                                    "slug": "u",
+                                    "description": "SI prefix micro (10⁻⁶); proto: µ.",
+                                    "shortDescription": "Micro",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1525,
+                                    "name": "m",
+                                    "slug": "m",
+                                    "description": "SI prefix milli (10⁻³); with Meter symbol → mm (Millimeter).",
+                                    "shortDescription": "Milli",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1526,
+                                    "name": "c",
+                                    "slug": "c",
+                                    "description": "SI prefix centi (10⁻²).",
+                                    "shortDescription": "Centi",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1527,
+                                    "name": "k",
+                                    "slug": "k",
+                                    "description": "SI prefix kilo (10³).",
+                                    "shortDescription": "Kilo",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 5,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1528,
+                                    "name": "Mega",
+                                    "slug": "mega",
+                                    "description": "SI prefix mega (10⁶); node name Mega avoids slug clash with milli m.",
+                                    "shortDescription": "Mega",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 6,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1529,
+                            "name": "Basiseinheit",
+                            "slug": "basiseinheit",
+                            "description": "Each unit is a set: Typ (numeric type) + optional Praefix + Kuerzel. Display = Praefix+Kuerzel. to_si = Typ × multiplikator × prefix_root_to_si. Mass: SI base = kg, prefix root = g.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 2,
+                            "children": [
+                                {
+                                    "id": 1530,
+                                    "name": "Meter",
+                                    "slug": "meter",
+                                    "description": "Length; m+m → mm.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": [
+                                        {
+                                            "id": 1531,
+                                            "name": "Typ",
+                                            "slug": "typ",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1532,
+                                            "name": "Praefix",
+                                            "slug": "praefix",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1533,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1534,
+                                    "name": "Liter",
+                                    "slug": "liter",
+                                    "description": "Volume.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": [
+                                        {
+                                            "id": 1535,
+                                            "name": "Typ",
+                                            "slug": "typ-liter",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1536,
+                                            "name": "Praefix",
+                                            "slug": "praefix-liter-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1537,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-liter-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1538,
+                                    "name": "Kilogramm",
+                                    "slug": "kilogramm",
+                                    "description": "SI base unit is kilogram; prefixes attach to gram (mg/kg/Mg). Kuerzel=g; prefix_root_to_si=1e-3.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": [
+                                        {
+                                            "id": 1539,
+                                            "name": "Typ",
+                                            "slug": "typ-kilogramm",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1540,
+                                            "name": "Praefix",
+                                            "slug": "praefix-kilogramm-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1541,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-kilogramm-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1542,
+                                    "name": "Sekunde",
+                                    "slug": "sekunde",
+                                    "description": "Time.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": [
+                                        {
+                                            "id": 1543,
+                                            "name": "Typ",
+                                            "slug": "typ-sekunde",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1544,
+                                            "name": "Praefix",
+                                            "slug": "praefix-sekunde-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1545,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-sekunde-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1546,
+                                    "name": "Kelvin",
+                                    "slug": "kelvin",
+                                    "description": "Thermodynamic temperature; no prefixes.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": [
+                                        {
+                                            "id": 1547,
+                                            "name": "Typ",
+                                            "slug": "typ-kelvin",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1548,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-kelvin-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1549,
+                                    "name": "Celsius",
+                                    "slug": "celsius",
+                                    "description": "Celsius temperature; no SI prefixes.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 5,
+                                    "children": [
+                                        {
+                                            "id": 1550,
+                                            "name": "Typ",
+                                            "slug": "typ-celsius",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1551,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-celsius-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1552,
+                                    "name": "Ampere",
+                                    "slug": "ampere",
+                                    "description": "Electric current.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 6,
+                                    "children": [
+                                        {
+                                            "id": 1553,
+                                            "name": "Typ",
+                                            "slug": "typ-ampere",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1554,
+                                            "name": "Praefix",
+                                            "slug": "praefix-ampere-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1555,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-ampere-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1556,
+                                    "name": "Ohm",
+                                    "slug": "ohm",
+                                    "description": "Resistance; k+Ω → kΩ.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 7,
+                                    "children": [
+                                        {
+                                            "id": 1557,
+                                            "name": "Typ",
+                                            "slug": "typ-ohm",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1558,
+                                            "name": "Praefix",
+                                            "slug": "praefix-ohm-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1559,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-ohm-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1560,
+                                    "name": "Farad",
+                                    "slug": "farad",
+                                    "description": "Capacitance; no k/Mega.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 8,
+                                    "children": [
+                                        {
+                                            "id": 1561,
+                                            "name": "Typ",
+                                            "slug": "typ-farad",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1562,
+                                            "name": "Praefix",
+                                            "slug": "praefix-farad-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1563,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-farad-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1564,
+                                    "name": "Watt",
+                                    "slug": "watt",
+                                    "description": "Power.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 9,
+                                    "children": [
+                                        {
+                                            "id": 1565,
+                                            "name": "Typ",
+                                            "slug": "typ-watt",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1566,
+                                            "name": "Praefix",
+                                            "slug": "praefix-watt-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1567,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-watt-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1568,
+                                    "name": "Volt",
+                                    "slug": "volt",
+                                    "description": "Voltage.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 10,
+                                    "children": [
+                                        {
+                                            "id": 1569,
+                                            "name": "Typ",
+                                            "slug": "typ-volt",
+                                            "description": "Numeric magnitude field; data type = double.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1570,
+                                            "name": "Praefix",
+                                            "slug": "praefix-volt-basiseinheit",
+                                            "description": "Optional SI prefix from Praefixe (e.g. catalog “m” = Milli). Not fixed in the unit schema. Display: Praefix + Kuerzel → mm.",
+                                            "shortDescription": "SI-Präfix",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1571,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-volt-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1572,
+                                    "name": "Stück",
+                                    "slug": "stueck",
+                                    "description": "Count / Menge (BOM); no prefixes.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 11,
+                                    "children": [
+                                        {
+                                            "id": 1573,
+                                            "name": "Typ",
+                                            "slug": "typ-stueck",
+                                            "description": "Numeric magnitude field; data type = int.",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 1574,
+                                            "name": "Kuerzel",
+                                            "slug": "kuerzel-stueck-basiseinheit",
+                                            "description": "Fixed unit symbol / prefix-root (e.g. Meter → m). Not the Praefix catalog node “m” (Milli). With Praefix → mm / kΩ / mg.",
+                                            "shortDescription": "Einheitensymbol",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1575,
+                            "name": "Bauformen",
+                            "slug": "bauformen",
+                            "description": "Package / footprint catalog (Typen branch). SMD sizes carry Abmessung L/B/H in mm.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 3,
+                            "children": [
+                                {
+                                    "id": 1576,
+                                    "name": "Durchloch Axial",
+                                    "slug": "durchloch-axial",
+                                    "description": "Zum Beispiel Widerstaende, Anschluesse rechts und links vom Koerper. Auch alte Kondensatoren haben oft dieses Format.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1577,
+                                    "name": "Durchloch Radial",
+                                    "slug": "durchloch-radial",
+                                    "description": "Zum Beispiel bei Kondensatoren beide Anschlussbeine auf einer Seite.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1578,
+                                    "name": "SMD 0201",
+                                    "slug": "smd-0201",
+                                    "description": "Imperial 0201 (metric 0603).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": [
+                                        {
+                                            "id": 1579,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung-smd-0201-bauformen",
+                                            "description": "Fixed package body size: L/B/H as Meter quantities (mm via milli).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": [
+                                                {
+                                                    "id": 1580,
+                                                    "name": "L",
+                                                    "slug": "l-abmessung-smd-0201-bauformen",
+                                                    "description": "Length magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1581,
+                                                    "name": "B",
+                                                    "slug": "b-abmessung-smd-0201-bauformen",
+                                                    "description": "Width magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1582,
+                                                    "name": "H",
+                                                    "slug": "h-abmessung-smd-0201-bauformen",
+                                                    "description": "Height magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1583,
+                                    "name": "SMD 0402",
+                                    "slug": "smd-0402",
+                                    "description": "Kleinste Bauform 0402.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": [
+                                        {
+                                            "id": 1584,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung-smd-0402",
+                                            "description": "Fixed package body size: L/B/H as Meter quantities (mm via milli).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": [
+                                                {
+                                                    "id": 1585,
+                                                    "name": "L",
+                                                    "slug": "l-abmessung-smd-0402",
+                                                    "description": "Length magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1586,
+                                                    "name": "B",
+                                                    "slug": "b-abmessung-smd-0402",
+                                                    "description": "Width magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1587,
+                                                    "name": "H",
+                                                    "slug": "h-abmessung-smd-0402",
+                                                    "description": "Height magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1588,
+                                    "name": "SMD 0603",
+                                    "slug": "smd-0603",
+                                    "description": "Imperial 0603 (metric 1608).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": [
+                                        {
+                                            "id": 1589,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung-smd-0603-bauformen",
+                                            "description": "Fixed package body size: L/B/H as Meter quantities (mm via milli).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": [
+                                                {
+                                                    "id": 1590,
+                                                    "name": "L",
+                                                    "slug": "l-abmessung-smd-0603-bauformen",
+                                                    "description": "Length magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1591,
+                                                    "name": "B",
+                                                    "slug": "b-abmessung-smd-0603-bauformen",
+                                                    "description": "Width magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1592,
+                                                    "name": "H",
+                                                    "slug": "h-abmessung-smd-0603-bauformen",
+                                                    "description": "Height magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1593,
+                                    "name": "SMD 0805",
+                                    "slug": "smd-0805",
+                                    "description": "Imperial 0805 (metric 2012).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 5,
+                                    "children": [
+                                        {
+                                            "id": 1594,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung-smd-0805-bauformen",
+                                            "description": "Fixed package body size: L/B/H as Meter quantities (mm via milli).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": [
+                                                {
+                                                    "id": 1595,
+                                                    "name": "L",
+                                                    "slug": "l-abmessung-smd-0805-bauformen",
+                                                    "description": "Length magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1596,
+                                                    "name": "B",
+                                                    "slug": "b-abmessung-smd-0805-bauformen",
+                                                    "description": "Width magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1597,
+                                                    "name": "H",
+                                                    "slug": "h-abmessung-smd-0805-bauformen",
+                                                    "description": "Height magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1598,
+                                    "name": "SMD 1206",
+                                    "slug": "smd-1206",
+                                    "description": "Imperial 1206 (metric 3216).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 6,
+                                    "children": [
+                                        {
+                                            "id": 1599,
+                                            "name": "Abmessung",
+                                            "slug": "abmessung-smd-1206-bauformen",
+                                            "description": "Fixed package body size: L/B/H as Meter quantities (mm via milli).",
+                                            "shortDescription": "",
+                                            "typeId": 0,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": [
+                                                {
+                                                    "id": 1600,
+                                                    "name": "L",
+                                                    "slug": "l-abmessung-smd-1206-bauformen",
+                                                    "description": "Length magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Länge",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1601,
+                                                    "name": "B",
+                                                    "slug": "b-abmessung-smd-1206-bauformen",
+                                                    "description": "Width magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Breite",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 1602,
+                                                    "name": "H",
+                                                    "slug": "h-abmessung-smd-1206-bauformen",
+                                                    "description": "Height magnitude (mm via milli + Meter).",
+                                                    "shortDescription": "Höhe",
+                                                    "typeId": 0,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 2,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": 1603,
+                    "name": "Compositionen",
+                    "slug": "compositionen",
+                    "description": "Zusammenstellungen (Composition definitions). BOM columns are typed property children (Q64 superseded), not a separate Parameter class.",
+                    "shortDescription": "",
+                    "typeId": 0,
+                    "typeName": "",
+                    "required": false,
+                    "position": 1,
+                    "children": [
+                        {
+                            "id": 1604,
+                            "name": "Rezept - Backzutaten",
+                            "slug": "rezept-backzutaten",
+                            "description": "Composition table (type table) with Fusszeile. Columns as child Nodes in scaffold.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": [
+                                {
+                                    "id": 1605,
+                                    "name": "Bezeichnung",
+                                    "slug": "bezeichnung",
+                                    "description": "Column -&gt; text",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1606,
+                                    "name": "Anzahl",
+                                    "slug": "anzahl",
+                                    "description": "Column -&gt; int",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1607,
+                                    "name": "Aktiv",
+                                    "slug": "aktiv",
+                                    "description": "Column -&gt; bool",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1608,
+                                    "name": "Code",
+                                    "slug": "code",
+                                    "description": "Column -&gt; char",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1609,
+                                    "name": "Faktor",
+                                    "slug": "faktor",
+                                    "description": "Column -&gt; double",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1610,
+                                    "name": "Datei",
+                                    "slug": "datei",
+                                    "description": "Column -&gt; media (WP library / optional URL).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 5,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1611,
+                            "name": "BOM",
+                            "slug": "bom",
+                            "description": "Structure node BOM (type table, has Fusszeile). Columns = property children. Instance Projektname on WP page.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 1,
+                            "children": [
+                                {
+                                    "id": 1612,
+                                    "name": "Bauteil Wahl",
+                                    "slug": "bauteil-wahl",
+                                    "description": "Part pick (scaffold: text; later subtree → Bauteile).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1613,
+                                    "name": "Reference",
+                                    "slug": "reference",
+                                    "description": "Board references (e.g. R1,R2).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1614,
+                                    "name": "Wert",
+                                    "slug": "wert",
+                                    "description": "Value / rating display.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1615,
+                                    "name": "Footprint",
+                                    "slug": "footprint",
+                                    "description": "Footprint / Bauart (scaffold: text; later enum).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1616,
+                                    "name": "Menge",
+                                    "slug": "menge",
+                                    "description": "Quantity (Stück).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1617,
+                                    "name": "Beschreibung",
+                                    "slug": "beschreibung",
+                                    "description": "Notes.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 5,
+                                    "children": []
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": 1618,
+                    "name": "Bauteile",
+                    "slug": "bauteile",
+                    "description": "Catalog (not Composition). BOM Bauteil Wahl uses subtree + ref_scope -&gt; this root.",
+                    "shortDescription": "",
+                    "typeId": 0,
+                    "typeName": "",
+                    "required": false,
+                    "position": 2,
+                    "children": [
+                        {
+                            "id": 1619,
+                            "name": "Widerstand",
+                            "slug": "widerstand",
+                            "description": "Part group (type set): Wert + Praefix + Einheit Ohm as child nodes define the set.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": [
+                                {
+                                    "id": 1620,
+                                    "name": "Wert",
+                                    "slug": "wert-widerstand",
+                                    "description": "Set member: numeric value (double). Required.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1621,
+                                    "name": "Praefix",
+                                    "slug": "praefix-widerstand",
+                                    "description": "Set member: SI prefix catalog (Praefixe root). Optional.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1622,
+                                    "name": "Einheit",
+                                    "slug": "einheit",
+                                    "description": "Set member: type Basiseinheit, fixed value Ohm.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1623,
+                                    "name": "Datenblatt",
+                                    "slug": "datenblatt",
+                                    "description": "Datasheet / image via media type (Q65).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1624,
+                            "name": "Kondensator",
+                            "slug": "kondensator",
+                            "description": "Part group (type set): Wert + Praefix + Einheit Farad as child nodes define the set.",
+                            "shortDescription": "",
+                            "typeId": 0,
+                            "typeName": "",
+                            "required": false,
+                            "position": 1,
+                            "children": [
+                                {
+                                    "id": 1625,
+                                    "name": "Wert",
+                                    "slug": "wert-kondensator-bauteile",
+                                    "description": "Set member: numeric value (double). Required.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1626,
+                                    "name": "Praefix",
+                                    "slug": "praefix-kondensator-bauteile",
+                                    "description": "SI prefixes filtered by Einheit Farad allowlist (Q51).",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 1627,
+                                    "name": "Einheit",
+                                    "slug": "einheit-kondensator-bauteile",
+                                    "description": "Set member: type Basiseinheit, fixed value Farad.",
+                                    "shortDescription": "",
+                                    "typeId": 0,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": []
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

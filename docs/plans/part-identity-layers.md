@@ -14,7 +14,7 @@ todos:
     content: "User agrees identity layers are a useful mental model (not yet storage decision)"
     status: in_progress
   - id: storage-mapping
-    content: "Later: map layers to Node / Parameter / Relation / host BOM (depends Q64, Q35, Q45)"
+    content: "Later: map layers to Node / property children / Relation / host BOM (depends Q66, Q35, Q45)"
     status: pending
 ---
 
@@ -54,7 +54,7 @@ Kind ─is_a→ Subtype ─has→ Spec skeleton
                               ├─ Toleranz, Leistung, Material, Series (E24), …
                               └─ Package / Bauform = 0805 | axial | shunt-tabs | …
 
-Catalog part = one Node (or Parameter-set) that binds Spec + Package (+ manufacturer/SKU)
+Catalog part = one Node (with property children) that binds Spec + Package (+ manufacturer/SKU)
 Board usage  = Host BOM line → points at Catalog part (not at “100 Ω” alone)
 ```
 
@@ -146,7 +146,7 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
    `Kondensator → {Keramik, Folie, Elko, …}`  
    `Diode → {Signal, Schottky, Zener, …}`  
    `IC → {OpAmp, Timer, MCU, …}`
-2. **Parameter skeletons** per subtype (defs on Node, Q64): Wert, Toleranz, Leistung, Package, …  
+2. **Property-slot skeletons** per subtype (typed children on Node, Q64 superseded / Q66): Wert, Toleranz, Leistung, Package, …  
 3. **Catalog leaves** (or near-leaves): one node per orderable combination you care about.  
 4. **Unit group** for quantities: Präfix+Basiseinheit together; value often on relation/props (Q45).
 
@@ -167,13 +167,13 @@ Same die / same function in DIP vs SOIC = **two catalog parts** (like 100 Ω 080
 | Layer | Likely object |
 |-------|----------------|
 | Kind / subtype | `Node` + Relation `is_a` |
-| Spec skeleton | **Parameter** defs on Node (Q64) |
-| Filled Wert | ParameterValue (`quantity` + unit group); maybe Relation.props |
-| Package | Parameter Bauform (enum) |
+| Spec skeleton | **Property children** on Node (Q64 superseded) |
+| Filled Wert | Instance value (`quantity` + unit group); maybe Relation.props |
+| Package | Property child Bauform (enum) |
 | Catalog part | `Node` (leaf) |
 | Board usage | **Host** BOM line → part Node id |
 
-Parameter storage (term meta vs table) remains open (Q15); typed edges exploratory (Q35).  
+Property-slot storage (term meta vs table) remains open (Q15); typed edges exploratory (Q35).  
 This note only says: **keep the layers distinct when thinking**.
 
 ## Mini decision guide

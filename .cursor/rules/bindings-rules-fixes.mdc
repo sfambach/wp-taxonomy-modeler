@@ -1,0 +1,68 @@
+---
+description: Bindings → Rules → optional Fixes (0..n). Ask for fixes when adding rules.
+alwaysApply: true
+---
+
+# Bindings, Rules, and Fixes
+
+Scaffold pattern confirmed with table bands (≈ `0.0.188`): **bindings** are checked by **rules**; a failing rule may offer **0..n optional fixes**.
+
+## Model
+
+```text
+Binding(s)  →  Rule(s)  →  on fail: Fix? (0..n, optional)
+```
+
+| Concept | Job | Example (table) |
+|---------|-----|-----------------|
+| **Binding** | Named link: type prop / slot → concrete node (id) | `_wtt_prop_bindings`: `zeile`→…, `kopf`→…, `fuss`→… |
+| **Rule** | Invariant over bindings + structure; reports errors | Fuss field count must equal Zeile count |
+| **Fix** | Optional, user-triggered repair that makes the rule pass | “Create missing fields” under Fuss from Zeile columns |
+
+- A binding can have **one or more rules**.
+- A rule may have **zero fixes** (report only) or **several** alternative/complementary fixes.
+- Fixes are **never required** to exist; do not invent destructive auto-fixes without asking.
+- Prefer **idempotent, additive** fixes (create missing) over silent deletes unless the user chose that fix.
+
+## Agent workflow — when adding a Rule
+
+Whenever you introduce or extend a **validation rule** (PHP validator, JS mirror, save gate, UI check):
+
+1. State the **binding(s)** and the **rule** clearly.
+2. **Ask the user** whether there should be a **Fix** (and which), e.g.:
+   - “Create missing …?”
+   - “Unbind …?”
+   - “No fix — message only?”
+3. Only implement fixes the user accepts; record them next to the rule (validator `fixes[]`, UI button, AJAX action).
+4. Keep rule evaluation pure; fixes are separate commands that mutate then re-validate.
+
+## Scaffold shape (reuse)
+
+Validation payload should allow:
+
+```text
+{ ok, blocking, errors[], bands|…, fixes: [{ action, … }] }
+```
+
+- `fixes: []` when none.
+- UI shows errors always; shows Fix buttons only when `fixes.length > 0`.
+- Example: `Table_Validator::collect_fixes` + `wtt_fix_table_band_fields`.
+
+## Do / don’t
+
+- **Do** couple new rules with an explicit fix decision (ask if unclear).
+- **Do** keep binding identity on ids/keys — not display names.
+- **Don’t** auto-run fixes on load/save unless the user asked for that product behavior.
+- **Don’t** bury fix logic inside the rule checker — check vs apply stay separate.
+
+## Table rules (scaffold)
+
+| Rule | Fix |
+|------|-----|
+| Zeile unbound | `create_zeile` — create child + bind |
+| Zeile has 0 fields | `create_zeile_field` — create one text column |
+| Kopf/Fuss count ≠ Zeile | `create_fields` — pad missing fields |
+
+**Deferred (UAT):** unique band bindings (Zeile ≠ Kopf ≠ Fuss — same child not reusable). Do not implement until UAT shows pain; then add rule + optional fix (filter picker / unbind).
+
+Living doc: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) (Bindings / Rules / Fixes).

@@ -1,0 +1,76 @@
+---
+description: Composition-first domain model (Q85) — objects over table/relations prison
+globs:
+  - docs/**/*.md
+  - includes/**/*.php
+  - assets/js/**/*.js
+  - src/blocks/**/*
+alwaysApply: false
+---
+
+# Composition-first (Q85)
+
+Domain thinking is **objects + `besteht_aus` (composition)**, not a relational database or Relations-CRUD prison.
+
+## Class / attribute analogy
+
+A **Composition** is like a **class**. Each member is an **attribute**:
+
+```text
+class BOM {                 ← Composition (Objekt / Klasse)
+  text   Name;     [1]      ← Attribut: Typ + Name + Multiplizität
+  …      Position; [1]
+  …      Menge;    [0..*]
+}
+```
+
+| OOP | Tree / Relations |
+|-----|------------------|
+| Class | Composition node (e.g. Platine, BOM) |
+| Attribute **name** | Member node **`name`** (required, never anonymous) |
+| Attribute **type** | Member **`type_id` / `has_type`** |
+| Attribute **multiplicity** | On **`besteht_aus`** edge (Q78); default **`1`** (Q87 trial) |
+| Field list | Outgoing **`besteht_aus`** targets (order = member order) |
+| Inheritance | Along **`child_of`** only (Q66/Q86) — no separate `erbt_von`; attributes merge by name (child wins); inherited may be **hidden** on child; **Festwert** lives on the current node |
+| Specialization type | **Datatype of a hierarchy child = parent** (Q88). Parent is `is_datatype`; child `type_id` → parent. Attribute members are excluded (they keep their own type). |
+
+No nameless composition edges. No “DB column without identifier.”
+
+## Canonical shape
+
+```text
+Platine                          ← Composition
+  besteht_aus → Name : text
+  besteht_aus → (weitere Eigenschaften …)
+  besteht_aus → BOM : …          ← eine Eigenschaft unter vielen
+
+BOM                              ← Composition
+  besteht_aus → Name : text
+  besteht_aus → Position / Ref / Bauteil-Zuordnung / Menge / …
+  → eine BOM-Zeile ist ein Objekt aus diesen Teilen
+```
+
+## Keep vs demote
+
+| Keep | Demote / view-only |
+|------|--------------------|
+| `besteht_aus` = aggregation (typed named members) | Relations picker as the default product model |
+| Typed named slots as Eigenschaften | “Table” as the primary domain noun |
+| `child_of` = hierarchy + inheritance path | Band/`prop_bindings` as mental SoT |
+| `node_ref` where a slot points at a catalog record | Cells/CSV/grid as the object model |
+| Table UI as **presentation** of composition | Persisting “rows/cells” as the conceptual API |
+
+## Language
+
+- Prefer: Composition, Attribut (Name + Typ), Instanz, Slot, Record, Zuordnung.
+- RelationType key: **`besteht_aus`** (legacy alias `composition`).
+- Prefer block/product names that say **Composition / BOM instance**, not “Collection table database”.
+- `table` datatype = optional **display contract** (Zeile/Kopf/Fuss), not “Platine is a table”.
+
+## Do / don’t
+
+- **Do** model Platine → BOM → line parts as nested composition with **named typed** members.
+- **Do** keep `has_type` / `ref_scope` as helpers, not the spine.
+- **Don’t** invent more Relation types to replace composition aggregates.
+- **Don’t** teach users “add a DB row”; teach “add a line object / fill attributes”.
+- **Don’t** allow anonymous `besteht_aus` targets (always a Name + Type).

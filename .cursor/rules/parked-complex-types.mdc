@@ -1,0 +1,34 @@
+---
+description: Q90 — catalog enum/list/table parked; warn before reuse
+alwaysApply: true
+---
+
+# Parked Complex types (Q90)
+
+## Decision (2026-08-06)
+
+Catalog / Collection kinds **`enum`**, **`list`**, and **`table`** (aliases Liste / Tabelle) are **parked — out of product direction**.
+
+| Kind | Replacement |
+|------|-------------|
+| **enum** | Hierarchy inheritance (Q88) + attributes / Festwerte (Q87) — not a Collection `enum` type |
+| **list** | YAGNI for now |
+| **table** | YAGNI for product core; scaffold BOM/`taxo/collection-table` may remain as **legacy** until removal |
+
+Scaffold may still seed Complex leaves and Enum UI — **do not extend** them as the model.
+
+## Agent duty — warn on reuse
+
+If the user asks to **use, restore, seed, feature, or build on** `enum` / `list` / `table` (or Liste / Tabelle as catalog types):
+
+1. **Stop** and remind them of **Q90** and this rule.
+2. Ask whether they really want to **revive** these types (override the park).
+3. Prefer: hierarchy + attributes / Festwerte / composition-first (Q85–Q88).
+
+Do **not** silently reintroduce Collection-kind product features.
+
+## Related
+
+- [`docs/OPEN-QUESTIONS.md`](../../docs/OPEN-QUESTIONS.md) Q90 (also Q36/Q52/Q53 superseded or deferred)
+- Historical scaffold notes: [`.cursor/rules/enum-nodes.mdc`](enum-nodes.mdc) (**PARKED**)
+---

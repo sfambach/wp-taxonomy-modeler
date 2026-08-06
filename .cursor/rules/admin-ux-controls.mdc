@@ -1,0 +1,54 @@
+---
+description: Admin UX controls — trash, slide switch, Actions column last
+globs:
+  - assets/js/**/*.js
+  - assets/css/**/*.css
+  - includes/class-tree-admin.php
+  - includes/class-settings.php
+alwaysApply: true
+---
+
+# Admin UX controls
+
+Conventions for wp-admin UI in this plugin (tree admin, settings, attribute panels).
+
+## Row-wise editing tables — Actions last
+
+In any **row editor** (attributes, relations, band fields, similar tabular edit UIs):
+
+- Put **Actions** in the **rightmost column** (header label e.g. “Actions”).
+- Row actions (trash / add) live only in that column — never between data columns.
+- Prefer shared class `wtt-row-edit-table` + `wtt-col-actions` (right-aligned).
+- Status columns such as **Inherited** come **before** Actions, not after.
+
+Column order example (Attributes):
+
+`Name → Type → Mult. → Bindung → Default value → Readonly → Hide → Inherited → Actions`
+
+## Remove / delete
+
+- **Always** use a **trash-can icon** as the primary remove/delete control.
+- Reuse: `dashicons dashicons-trash` inside `button-link-delete` / `wtt-row-edit-table__trash`.
+- Set `title` and `aria-label` to the i18n remove string.
+- Do **not** use a plain text “Remove” / “Delete” button as the primary control.
+
+## Boolean settings
+
+- For simple true/false decisions, **always** use a **slide switch** (`.wtt-switch` / `renderSlideSwitch`), not radio pairs or plain checkboxes.
+- Match WordPress admin chrome (neutral track, `#2271b1` when on).
+- Radios/checkboxes only when the choice is **not** a binary on/off.
+
+## Default value (Festwert meta) / node pickers
+
+- UI label **Default value**; term meta key remains `_wtt_attribute_fixed_values`.
+- Catalog choices use the shared **node tree picker** (list-picker chrome).
+- Scalar defaults use value entry; catalog defaults pick under the attribute’s type tree.
+- Multiplicity: `0..*` / `1..*` → multi-select; required `1` / `1..*` → **swap only** (no clear / no delete last).
+
+## Do / don’t
+
+- **Do** keep Inherited / status columns read-only; Hide uses a slide switch (**default off**).
+- **Do** confirm destructive trash actions when deleting persisted data.
+- **Don’t** invent a second toggle style per panel; reuse `.wtt-switch`.
+- **Don’t** put Actions anywhere except the last column in row editors.
+---

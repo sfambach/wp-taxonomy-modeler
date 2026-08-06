@@ -1,0 +1,71 @@
+/**
+ * Frontend / shared table chrome (align with admin preview tables).
+ */
+
+.wtt-collection-table {
+	margin: 1em 0;
+}
+
+.wtt-collection-table__title {
+	margin: 0 0 0.5em;
+	font-size: 1.15em;
+}
+
+.wtt-collection-table__empty {
+	color: #646970;
+	font-style: italic;
+}
+
+.wtt-collection-table__wrap {
+	overflow-x: auto;
+}
+
+.wtt-collection-table__table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+
+.wtt-collection-table__table th,
+.wtt-collection-table__table td {
+	border: 1px solid #c3c4c7;
+	padding: 0.4em 0.55em;
+	text-align: left;
+	vertical-align: top;
+}
+
+.wtt-collection-table__table th {
+	background: #f0f0f1;
+	font-weight: 600;
+}
+
+.wtt-collection-table__table tbody tr:nth-child(even) {
+	background: #fcfcfc;
+}
+
+.wtt-node-render__ref-list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 4px 6px;
+	max-width: 100%;
+}
+
+.wtt-node-render__ref-chip {
+	display: inline-block;
+	font-size: 12px;
+	line-height: 1.4;
+	padding: 1px 7px;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	background: #fff;
+	white-space: nowrap;
+	max-width: 12em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.wtt-collection-table__empty-cell {
+	color: #646970;
+}
+

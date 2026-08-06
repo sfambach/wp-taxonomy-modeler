@@ -5,8 +5,15 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Local scratch / dump scripts (never commit)
+scripts/_tmp*
+scripts/_tmp-*/
+
 # Dependencies / builds (when added later)
 /node_modules/
 /vendor/
-/build/
+# Keep compiled Gutenberg block assets so the inserter works without a local npm build.
+/build/*
+!/build/blocks/
+!/build/blocks/**
 *.log

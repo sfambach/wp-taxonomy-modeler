@@ -1,0 +1,92 @@
+# Node renderer architecture
+
+Separate **node data** from **GUI presentation**. Nodes are never painted with ad-hoc inline markup in new code — always go through the renderer pipeline.
+
+## Q91 — one Registry ≠ one renderer
+
+Domain objects are **nodes** (Collection catalog kinds `enum` / `list` / `table` are **parked** — Q90). That does **not** mean a single paint class.
+
+- **One pipeline:** `NodeRendererRegistry` dispatches by datatype + context.
+- **Many renderers:** register **one renderer per simple** (`int`, `char`, `double`, `text`, `textarea`, `bool`, `email`) and add more when a type needs custom chrome.
+- Contexts (`tree` / `form` / `table` / …) still differ visually; composition / attributes recurse through the same Registry.
+- Do **not** revive parked catalog `enum` / `list` / `table` product renderers without an explicit Q90 reversal (see `.cursor/rules/parked-complex-types.mdc`). Scaffold may still contain legacy `EnumRenderer` / `TableRenderer` — **do not extend**.
+
+## Design principle — class renderer + example
+
+Confirmed working pattern (live table preview ≈ `0.0.187`):
+
+1. **Resolve the type** → pick the registered **renderer class** for that type (`int`, `bool`, …).
+2. **Sample / preview chrome** → call that class’s **`getExampleNode()`** (via `Registry.getExampleNode`), then paint with **`render` / `renderLabel` / `renderContent`**.
+3. **Live structure stays the schema** — bindings, band children, column order, Kopf labels come from the real node; **cell / field sample values** come from the type’s example DTO, not from empty live shells.
+
+| Layer | Source of truth |
+|-------|-----------------|
+| Structure (columns, bindings, headers) | Live node + prop bindings |
+| Sample cell / field content | Type renderer `getExampleNode` → same `render*` |
+
+Do **not** invent parallel “preview HTML” for a type that already has a renderer. Do **not** leave typed preview cells blank when an example node exists.
+
+## Pipeline
+
+1. **`NodeRendererRegistry`** (dispatcher / orchestrator) receives a node + **presentation context**.
+2. It selects a registered **renderer** that `canRender` the node (by type key, e.g. `int`, `char`).
+3. Call sites pick the part they need:
+   - **`getExampleNode(typeKey|node)`** — DTO for preview (e.g. `Int_name` for `int`; table with Kopf/Zeile/Fuss)
+   - **`renderLabel(node, context)`** — field designation (form label, tree name, table column title)
+   - **`renderContent(node, context, readonly)`** — field value / control; `readonly === true` forces display-only output
+   - **`render(node, context)`** — composed label + content (or composition of children); returns **`false`** if the renderer cannot handle the node
+4. If the node has **composition** members, the Registry calls **`render` again** for each child (same contexts).
+
+Do not fork a second display stack for “preview,” blocks, or admin chrome. **Preview, admin backend, and frontend** all use `Registry.render`.
+
+Scaffold module: `assets/js/wtt-node-render.js` (`WTTNodeRender.Registry`, `IntRenderer`, `CharRenderer`).
+
+## Contexts
+
+A node looks different per context. At least:
+
+| Context | Typical surface |
+|---------|-----------------|
+| **tree** | Hierarchy chrome / compact field in tree preview |
+| **list** | Flat / tabular list rows |
+| **form** | Labeled controls (edit / display) — **one instance** via `WTTObjectRender.renderForm` |
+| **table** | Column / cell — **list of instances** via `WTTObjectRender.renderTable` (≠ parked catalog `table`) |
+
+More contexts may appear (e.g. block frontend). Each needs its **own** renderer handling (or shared control with context flags), still chosen by the Registry.
+
+## Object surfaces (Form / Table)
+
+Attribute-bearing **schema nodes** (e.g. Kontakt) preview as:
+
+- `renderForm(instance, { readonly })` — attributes → rows
+- `renderTable(instances[], { readonly })` — attributes → columns; instances → rows
+
+Paint each twice (editable + readonly). Field cells still use **Registry** by `typeKey`. Module: `assets/js/wtt-object-render.js`.
+
+## Preview = samples + Registry
+
+**Sample values** come from the central **name→then type** map (`WTTSampleData` / `Sample_Data`) — **not** methods on nodes.  
+**`getExampleNode()`** builds example **structure** DTOs only; scalars pull values from that map.
+
+Attribute-host preview uses **`WTTObjectRender`** Form(1)/Table(n); field cells still call **Registry** by `typeKey`.
+
+- Scalar example: `int` → `{ name: 'Int_name', typeKey: 'int', sample: from map }`.
+- Legacy table **catalog** example (parked product type — scaffold only): full demo bands.
+- Do **not** invent a distinct “preview renderer” or parallel “preview path.”
+- Contexts still differ visually (tree ≠ list ≠ form).
+
+## Do / don’t
+
+- **Do** register a new renderer when a new type needs custom chrome (`canRender` + `getExampleNode` + `render*`).
+- **Do** keep data loading / DTOs out of renderer chrome (renderers consume node payload + context options).
+- **Do** register one renderer per simple scalar type (`int`, `char`, `double`, `text`, `textarea`, `bool`, `email`).
+- **Do** treat **one Registry ≠ one renderer** (Q91) — many type handlers share one dispatch pipeline.
+- **Do** use Sample_Data for fill values; `getExampleNode` for structure DTOs.
+- **Don’t** hard-code node HTML/JSX only for “the preview pane.”
+- **Don’t** special-case Meter/Abmessung by name — resolve kind, then render (see preview-checkpoints UX rules).
+- **Don’t** treat `set` / `media` / `node_ref` as simple scalars — they need composition or dedicated renderers (`NodeRefRenderer` for `node_ref`). Catalog `list` / `enum` / `table` are **parked (Q90)** — do not extend; warn before revival (`.cursor/rules/parked-complex-types.mdc`; historical enum notes in `.cursor/rules/enum-nodes.mdc`).
+- **Don’t** call this a Factory — nothing constructs domain objects; it **registers** and **dispatches**.
+
+Scaffold today may still use helpers such as `renderFieldView` / `WTTMediaRender` for types without a registered renderer; new display work must extend the Registry pattern, not bypass it. `int` / `char` / `email` / `node_ref` (and legacy `enum` / `table`) already go through the Registry (including `renderFieldView` delegation).
+
+Details and living-doc pointer: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) (Node presentation).

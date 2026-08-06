@@ -1,0 +1,267 @@
+/**
+ * Editor styles for Collection table block.
+ */
+
+.wtt-collection-table-editor {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 0.75rem;
+}
+
+.wtt-collection-table-editor__name {
+	margin: 0 0 0.75rem;
+	max-width: 28rem;
+}
+
+.wtt-collection-table-editor__toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.wtt-collection-table-editor .wtt-collection-table__table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.wtt-collection-table-editor .wtt-collection-table__table th,
+.wtt-collection-table-editor .wtt-collection-table__table td {
+	border: 1px solid #dcdcde;
+	padding: 0.35rem 0.45rem;
+	vertical-align: middle;
+	font-size: 13px;
+}
+
+.wtt-collection-table-editor .wtt-collection-table__table th {
+	background: #f0f0f1;
+	text-align: left;
+	font-weight: 600;
+}
+
+.wtt-collection-table-editor__cell-input {
+	width: 100%;
+	min-width: 4rem;
+	box-sizing: border-box;
+}
+
+.wtt-collection-table-editor__row-actions {
+	white-space: nowrap;
+}
+
+.wtt-collection-table-editor__cell--node-ref {
+	min-width: 10rem;
+	vertical-align: top;
+}
+
+.wtt-collection-table-editor__node-ref {
+	min-width: 9rem;
+}
+
+/* node_ref chooser chrome (subset of tree-admin) */
+.wtt-node-ref-chooser {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 4px 6px;
+	max-width: 100%;
+}
+
+.wtt-node-ref-chooser__trigger {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	border: 1px solid #8c8f94;
+	border-radius: 2px;
+	background: #fff;
+	padding: 2px 4px;
+}
+
+.wtt-node-ref-chooser__chips {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.wtt-node-picker__actions {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 2px;
+}
+
+.wtt-node-picker__icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 2px;
+	background: transparent;
+	cursor: pointer;
+	color: #1d2327;
+}
+
+.wtt-node-picker__icon-btn:hover {
+	background: #f0f0f1;
+	border-color: #c3c4c7;
+}
+
+.wtt-node-render__ref-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	font-size: 12px;
+	line-height: 1.4;
+	padding: 1px 7px;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	background: #fff;
+	white-space: nowrap;
+	max-width: 14em;
+}
+
+.wtt-node-render__ref-chip-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.wtt-node-render__ref-chip--removable {
+	padding-right: 2px;
+}
+
+.wtt-node-render__ref-chip-remove {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0 3px;
+	border: none;
+	background: transparent;
+	color: #646970;
+	font-size: 14px;
+	line-height: 1;
+	cursor: pointer;
+	border-radius: 2px;
+}
+
+.wtt-node-render__ref-chip-remove:hover {
+	color: #b32d2e;
+	background: #f6f7f7;
+}
+
+.wtt-node-picker__value.is-empty {
+	color: #646970;
+	font-size: 12px;
+}
+
+.wtt-dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.45);
+}
+
+.wtt-dialog {
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+	padding: 1rem 1.25rem;
+	max-width: min(36rem, 94vw);
+	width: 100%;
+	max-height: 85vh;
+	overflow: auto;
+}
+
+.wtt-dialog h2 {
+	margin: 0 0 0.75rem;
+	font-size: 1.1rem;
+}
+
+.wtt-dialog__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+.wtt-node-ref-chooser__list {
+	max-height: 16em;
+	overflow: auto;
+	margin-top: 6px;
+}
+
+.wtt-node-ref-chooser__table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.wtt-node-ref-chooser__row {
+	cursor: pointer;
+}
+
+.wtt-node-ref-chooser__row:hover {
+	background: #f0f6fc;
+}
+
+.wtt-node-ref-chooser__row.is-picked {
+	background: #e5f2ff;
+}
+
+.wtt-node-ref-chooser__cell-check {
+	width: 2em;
+	vertical-align: middle;
+	padding: 4px 6px;
+}
+
+.wtt-node-ref-chooser__cell-name {
+	padding: 4px 6px;
+	vertical-align: middle;
+}
+
+.wtt-node-ref-chooser__name {
+	display: block;
+	font-weight: 600;
+}
+
+.wtt-node-ref-chooser__path {
+	display: block;
+	font-size: 11px;
+	color: #646970;
+}
+
+.wtt-node-ref-chooser__create {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.wtt-node-ref-chooser__field-label {
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.wtt-node-ref-chooser__input {
+	width: 100%;
+}
+
+.wtt-node-ref-chooser__status.is-error {
+	color: #b32d2e;
+}
+
+.wtt-node-picker__search-input {
+	width: 100%;
+	box-sizing: border-box;
+}
+

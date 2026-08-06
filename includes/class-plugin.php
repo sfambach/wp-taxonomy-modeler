@@ -31,6 +31,8 @@ final class Plugin {
 	private function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		Tree_Admin::register();
+		Model_Data_Admin::register();
+		Settings::register();
 		Tree_Ajax::register();
 	}
 

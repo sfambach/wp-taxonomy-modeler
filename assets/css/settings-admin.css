@@ -1,0 +1,49 @@
+/**
+ * Settings screen (admin options) — keep close to tree detail panel chrome.
+ */
+.wtt-settings-form {
+	max-width: 52rem;
+	margin-top: 1em;
+	padding: 0.85em 1em 1em;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.wtt-settings-form .form-table th {
+	width: 14rem;
+	padding-top: 1em;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.wtt-settings-form .form-table td {
+	padding-top: 0.85em;
+}
+
+.wtt-settings-form .form-table td label {
+	display: inline-flex;
+	align-items: flex-start;
+	gap: 0.4em;
+	line-height: 1.4;
+}
+
+.wtt-settings-form .description {
+	margin-top: 0.35em;
+	max-width: 40rem;
+}
+
+.wtt-settings-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em;
+	margin: 0.5em 0 0;
+	padding-top: 0.75em;
+	border-top: 1px solid #f0f0f1;
+}
+
+.wtt-settings-actions .button {
+	margin: 0;
+}

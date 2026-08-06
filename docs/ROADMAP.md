@@ -2,81 +2,96 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.6.86-plan** (2026-07-25).
+Last synced from plan version **0.7.28-plan** (2026-08-06).
 
-**Current mode: planning only — no plugin implementation.**
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE (plan **0.7.28**). Status stays scaffolding — not Phase-1 green light.
+
+- Node presentation: **one Registry pipeline**, many type-specific renderers (Q91); Form(1)/Table(n) object surfaces (`WTTObjectRender`); samples = **name→then type** map (not methods on nodes).
+- Attribute type chooser: **`chooser_root` + `chooser_focus`** (full branch + focus), not Data-Types-only.
+- Multiplicity: many → multi-select; required `1` / `1..*` → **swap only** (no clear).
 
 ## Phase 0 — Foundation & planning (active)
 
 | Item | Status |
 |------|--------|
-| Coding rules (English, practices, WP standards, DB practices) | In progress (separate PR) |
-| Versioning rule (start `0.0.1`; major only on release) | In progress |
-| Planning-only rule (no implementation yet) | In progress |
+| Coding rules (English, practices, WP standards, DB practices) | In progress |
+| Versioning rule (start `0.0.1`; major only on release) | Done |
+| Planning + early-scaffold rule | Done (updated) |
 | Project plan + living docs + sync rule | In progress |
 | Planning checklist + MVP requirements + open questions | In progress |
-| Data structure: Node (root = same Node with parent null; tree = that root) | Done (planning) |
-| Data structure: **Parameter class** (`name` + `type` from Typ-Ast) on every Node (Q64) | Done (planning) |
-| Data structure: **Project ≈ taxonomy** (Q18); **Q50** default Nodes = generate vs template copy | In progress |
-| Data structure: Project (`name`, `description`, `root_nodes`) | Done (planning) |
-| Data structure: Project Definition anchors + Node.template | Done (planning) |
-| Example tree: single **Definitionsbaum** (Definition + Bauteile + Maße) | In progress |
-| Example tree: **Bauteile** with typed edges (`ist-ein` / `besteht-aus`) | In progress |
-| **Q49:** simples originate Relations? lean config `originate_relations=false` (with Q34) | Open (strong lean) |
-| **Q50:** lean template-copy for defaults (simples + enum + quantity) | In progress |
-| **Template vs BOM Testprojekt** (Bauart/Ohm… = demo; Template read-only) | Done (planning) |
-| UI prototype `prototypes/tree-split` v33 (Parameter name+type on Node; BOM/Projektname) | In progress |
-| **Q52:** Collection → list / table / enum (enum = list + closed options) | Done (planning) |
-| **Q53:** Collection kind binding | Open (restart; guidelines) |
-| **Q54:** tree hierarchy vs Relations | Open — **lean:** catalog Bestandteile + property inheritance (BOM/Hardware/Rezept) |
-| **Q55/Q64:** Parameter class on Node (name + type); inherit defs; ParameterValue for fills | Done (planning) |
-| **Q56:** Composition vs Bauteil; catalog ref = `subtree` + `ref_scope` | Done (planning) |
-| **Q26:** type only under Type branch; Präfix/Basiseinheit under their anchors | Done (planning) |
-| **Q57:** BOM Fußzeile = same columns; per cell sum/avg/min/max/count/none | Done (planning) |
-| **Q58:** BOM Menge = Stück (`int`) | Done (planning) |
-| **Q59:** Startknoten from Project Setup | Done (planning) |
-| **Q60:** per BOM zulässige Typen + Basiseinheiten | Done (planning) |
-| **Q61:** Tree name BOM; Projektname = Collection Parameter → instance title | Done (planning) |
-| **Q62:** WP block — Collection art + Projektname + rows | Done (planning direction) |
-| **Q63:** Tree = definition; WP page = instance values | Done (planning) |
-| Drop `TypeKind` — types = Typ-Ast nodes only | Done (planning) |
-| Goal path: create one Composition (blockers #1–3) | In progress |
-| Composition Definition vs Instanz + worked column types (BOM/Rezept/GPU) | In progress |
-| Composition instance storage: ParameterValue + CompositionRow | Open (strong lean) |
-| Closed TE: hierarchy-as-edges + `parent_id` cache | Closed (not adopted) |
-| Design guidelines: clear structures; named objects when better | Done (planning) |
-| Guideline: proactively flag performance risk / nonsense | Done (planning) |
-| Guideline: modern design paradigms / best practice | Done (planning) |
-| Core types: template has **simples** + **quantity** + **Collection** (Q36/Q52) | Done (planning) |
-| **Q51:** Basiseinheit→Präfix; multiplikator→int; select derives Ohm/kOhm/… | Done (planning) |
-| **Q20:** typed PHP DTOs including Parameter | Done (planning) |
-| Parked: further Node idea (Q40) | Parked |
-| RelationType pairs + display/inherit (Q35, Q41–Q43) | In progress |
-| Use-case cards (`docs/plans/use-cases.md`) — synced to Q64/Q14; UC-10, UC-14–UC-16 | In progress |
-| Example project A — BOM (fit/gap) | Done (planning) |
-| Example project B — Hardware / tests / builds | Done (planning) |
-| Example project C — Rezepte | Done (planning) |
-| Cross-check A+B+C — model boundary holds | Done (planning) |
-| Part identity layers (R/C/Diode/IC) | In progress |
-| Schema-as-Nodes (BOM/Recipe without hard classes) Q46 | In progress |
-| Prototype: Umrechnung tab (Q51 unit family convert) | In progress |
-| Datentypen tree + `has_type` → typed table widgets (Q48) | In progress |
-| Open questions (leave open; resolve later in batches) | In progress |
-| Widerstand worked example: Parameters on Node (Q64) | Done (planning) |
-| Local WordPress development environment | In progress (separate PR; env only) |
+| Data structure: Node / Project / Definition anchors; Eigenschaften = typed children | Done (planning) |
+| **Docs absorb Fallstudie** (overwrite Parameter / `parent_id` lean / slot_scope-primary) | Done (plan **0.7.17**) |
+| **Q51 + Q75:** unit=`set`; members via **`composition`** | Done (planning); scaffold ≈ `0.0.140` |
+| **Q64 superseded / Q66:** Parameter class dropped; inherit along `child_of` (Q54) | Done (planning) |
+| **Q54 / Q35 / Q74:** hierarchy = `child_of`; RelationTypes-Ast; Relation picker CRUD | Done (planning); scaffold ≈ `0.0.140` |
+| **Q76 / Q77:** catalog type inherit+override interim; `is_datatype`; local `is_abstract` | Done (planning); **Q76 superseded for hierarchy by Q88**; scaffold ≈ `0.0.128` |
+| **Q88:** hierarchy datatype = parent (root **Knoten**); attrs keep own types | Done (planning); scaffold ≈ `0.0.234+` |
+| **Q90:** Complex `enum` / `list` / `table` parked | Done (docs); scaffold leftovers until removal |
+| **Q91:** Registry + many type renderers (node ≠ one renderer) | Done (docs) |
+| **Q92:** Catalog bindings (`chooser_root` + `chooser_focus`; legacy `data_types`/…) | Done (≈ `0.0.264`) |
+| **Q61 / Q70 / Q80:** BOM = Name + Tabelle; bands via **`prop_bindings`**; rules + optional fixes | Done (planning); scaffold ≈ `0.0.181`–`0.0.188` |
+| **Q57:** Fuss `_wtt_footer_op` + Aggregate catalog | Done (planning); scaffold ≈ `0.0.192` |
+| **Q78 / Q79:** Relation multiplicity; identity=ID; datatype names unique | Done; scaffold ≈ `0.0.153` / `0.0.175` |
+| **Q62** collection-table block | Done (≈ `0.0.87`); **Q90** — legacy until removal |
+| **Q65 url_mirror** + **Q67** re-fetch | Docs locked / open |
+| **Q68** host MediaRef display reuse | Open (deferred) |
+| **Q69** Collection schema drift / soft-delete | Deferred with Q90 (parked Collection kinds) |
+| **Q81** unique Kopf/Zeile/Fuss bindings | Deferred (UAT) |
+| **Q83** Bauteilarten vs Bauteile | Done (planning); scaffold ≈ `0.0.207` |
+| **Q85** composition-first (objects over relations/table prison) | Done (planning); scaffold reshape pending |
+| **Q82** Fuss labels via `fixed` + footer_op | Open (strong lean) |
+| **Q53** Collection kind binding | Deferred (Q90) |
+| Open questions remaining | In progress |
+| Local WordPress development environment | In progress (Windows + Cloud notes) |
 
-**Exit criteria:** MVP requirements accepted; Node data structure agreed; open questions decided or deferred; user sign-off to leave planning mode.
+**Exit criteria (planning):** MVP requirements accepted; open questions decided or deferred; user sign-off for broader domain implementation beyond scaffold. Fallstudie alone is **not** exit.
 
-## Phase 1 — MVP (blocked on planning sign-off)
+## Phase 0b — Early scaffold (active)
 
 | Item | Status |
 |------|--------|
-| Plugin bootstrap at version `0.0.1` (PHP 8.x, OOP, text domain) | Blocked |
-| Node tree model (taxonomy-agnostic) | Blocked |
-| Admin tree UI (create / select / delete promote\|cascade) | Blocked |
-| Secure mutation/read endpoints | Blocked |
+| Plugin bootstrap PHP 8.x OOP (`WTT_VERSION`, text domain) | Done |
+| Dedicated taxonomy `wtt_tree` (no post categories in tree UI) | Done |
+| Parallel Fallstudie taxonomy `wtt_fs` (slim UI; not model sign-off) | Done (≈ `0.0.139`) |
+| Tree model over `WP_Term` (nest, create, rename+slug sync, description, short_description, copy, move, delete) | Done |
+| Admin-AJAX + caps + nonce | Done |
+| Admin split UI (tree + detail + toolbar; Meta/Flags form-row trial) | Done |
+| Interim types: assign type, set members, table footer, required, fixed value | Done |
+| Q51 / Q75: unit set + composition members + prefix allowlist | Done |
+| Set options: separator, join units, label children; set = one Form/Table field | Done |
+| Demo BOM + Fallstudie seed + reset/sync scripts | Done |
+| Settings + denser chrome + picker search / adaptive path | Done (UX may reverse) |
+| Gutenberg `taxo/object-view` | Done |
+| Gutenberg `taxo/collection-table` | Done — **Q90 legacy** (do not extend) |
+| **Fill Model Data** (instances vs structures) | Done (≈ `0.0.267`) |
+| **Sample_Data** name→type map + attribute Form/Table preview | Done (≈ `0.0.265`–`0.0.270`) |
+| **Q92** `chooser_root` + `chooser_focus` | Done (≈ `0.0.264`) |
+| **BOM / table bands** + **`_wtt_prop_bindings`** + validator | Done (≈ `0.0.171`–`0.0.181`) — **Q90 legacy path** |
+| **Bindings → Rules → Fixes** (Q80) | Done (≈ `0.0.188`) — table-band scaffold |
+| **Fuss `_wtt_footer_op`** + Aggregate catalog | Done (≈ `0.0.192`) |
+| **Q74 / Q78:** Relation list CRUD + multiplicity | Done |
+| **Q76 / Q77:** catalog type inherit interim; `is_datatype`; local `is_abstract` | Done (Q76 demoted for hierarchy) |
+| **Q88:** hierarchy datatype = parent; root **Knoten**; type UI read-only when typed-as-parent | Done (≈ `0.0.234+`; gaps: full seed chain / all parents `is_datatype`) |
+| **Q79:** identity = ID; datatype names unique | Done |
+| **Q84:** `node_ref` catalog chooser + mini-form create | Done (≈ `0.0.225`–`0.0.227`) |
+| **Q85:** composition-first language / reshape (block ≠ DB table) | Planning decided; implementation pending |
+| Legacy `_wtt_slot_scope` / block header Name follow-up | Pending (legacy filter; block instance Name UI removed) |
+| **Q54 follow-up:** map hierarchy to `child_of` as sole persistence | Pending |
+| **Q82** fixed Fuss labels in renderer | Not started |
+| Property inheritance UI (Q66) / real Relation edge table / Composition services / REST / host hooks | Not started |
+| Explicit removal slice for parked enum/list/table scaffold | Not started |
 
-**Exit criteria:** Activate plugin, register at least one hierarchical taxonomy, manage its tree in admin without using the default list as the primary workflow.
+**Exit criteria:** User can exercise the taxonomy tree + type/unit/table preview locally; scaffold remains interim until domain sign-off.
+
+## Phase 1 — MVP (blocked on planning sign-off for domain slice)
+
+| Item | Status |
+|------|--------|
+| Formal Domain DTOs / services (beyond term-meta interim) | Blocked |
+| Property-slot inherit (Q66) + instance values (no Parameter class) | Blocked |
+| Harden MVP FR acceptance vs scaffold | Blocked |
+
+**Exit criteria:** Activate plugin, manage hierarchical taxonomy as primary tree workflow; accepted MVP requirements met.
 
 ## Phase 2 — Extensions (later)
 
@@ -98,8 +113,4 @@ Last synced from plan version **0.6.86-plan** (2026-07-25).
 | Large-tree performance (batch queries, caching) | Pending |
 | Optional read-only frontend tree | Pending |
 
-**Exit criteria:** Host catalog plugins can rely on this environment for tree UX; docs describe the supported extension contract.
-
-## Maintenance rule
-
-Whenever phases, priorities, or exit criteria change in the project plan, update this roadmap in the same change.
+**Exit criteria:** Host catalog plugins can rely on a stable tree environment without forking tree UI code.

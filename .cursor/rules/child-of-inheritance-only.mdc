@@ -1,0 +1,27 @@
+---
+description: child_of is inheritance only; attributes use besteht_aus
+globs:
+  - includes/class-attribute.php
+  - includes/class-relation.php
+  - includes/class-tree-model.php
+  - assets/js/tree-admin.js
+alwaysApply: true
+---
+
+# child_of = inheritance only
+
+## Rule
+
+- **`child_of`** (WP `term_parent` / tree hierarchy) = **inheritance / specialization only** (Q54, Q86, Q88).
+  - Child datatype = father; attribute defs inherit along the host chain.
+- **Attributes** = **`besteht_aus`** or **`aggregation`** edges only (Q87).
+  - **Never** create `child_of` / WP parent from host → attribute slot.
+  - Slot terms: `_wtt_attribute_slot`; hidden from tree under the host.
+
+## Do / don’t
+
+- **Do** add attributes via `Attribute::add` (edge + slot meta, parent ≠ host).
+- **Don’t** `wp_insert_term( …, parent => $host_id )` for attributes.
+- **Don’t** show attribute slots as tree subnodes of the host.
+- If the user asks to model properties as hierarchy children again, remind them: **child_of is only inheritance**.
+---

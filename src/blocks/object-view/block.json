@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "taxo/object-view",
+  "title": "Taxo Object view",
+  "category": "taxo",
+  "icon": "id-alt",
+  "description": "Bind a taxonomy tree node and display its name, descriptions, and all attributes.",
+  "keywords": ["taxo", "taxo-object-view", "object", "node", "properties", "attributes", "form"],
+  "textdomain": "wp-taxonomy-tree",
+  "attributes": {
+    "termId": {
+      "type": "number",
+      "default": 0
+    },
+    "taxonomy": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": ["wide", "full"]
+  },
+  "editorScript": "taxo-object-view-editor-script",
+  "editorStyle": "taxo-object-view-editor-style",
+  "style": "taxo-object-view-style"
+}

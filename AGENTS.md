@@ -4,12 +4,12 @@
 
 ### What this repo is
 
-`wp-taxonomy-tree` is intended to be a **WordPress plugin** (hierarchical
-taxonomy tree). As of this setup the repo is still an early scaffold: planning
-docs, prototypes, and setup scripts — no plugin PHP yet, no `package.json`/
-`composer.json`, no test suite, and no build step. The plugin model mirrors the
-sibling repo `wp-electronic-parts`: a pure PHP plugin loaded into WordPress via
-`wp-content/plugins/`.
+`wp-taxonomy-tree` is a **WordPress plugin** (hierarchical taxonomy tree).
+Mode is still **scaffolding + planning**: runnable admin tree over WP terms
+(≈ plugin **`0.0.270`**), plus planning docs and prototypes. Full Project / Node /
+Parameter domain is not signed off yet. Has **`package.json`** + `@wordpress/scripts`
+for Gutenberg blocks (`npm run build` / `npm run start`). PHP plugin loaded via
+`wp-content/plugins/` (same pattern as sibling `wp-electronic-parts`).
 
 ### Local WordPress dev environment — Cloud VM (Linux)
 
@@ -31,7 +31,7 @@ cd ~/wordpress && wp server --host=0.0.0.0 --port=8080
 - Front end: `http://localhost:8080`
 - Admin: `http://localhost:8080/wp-admin` — user `admin`, password `admin123`.
 - Handy CLI (run from `~/wordpress`): `wp plugin list`, `wp core version`,
-  `wp option get siteurl`. Once plugin code exists, activate with
+  `wp option get siteurl`. Activate with
   `wp plugin activate wp-taxonomy-tree`.
 
 ### Local WordPress dev environment — Windows (Laragon)

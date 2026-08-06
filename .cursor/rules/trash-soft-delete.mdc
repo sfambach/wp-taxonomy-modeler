@@ -1,0 +1,30 @@
+---
+description: Soft-delete Trash bin for taxonomy nodes (Q89)
+globs:
+  - includes/class-trash.php
+  - includes/class-tree-model.php
+  - assets/js/tree-admin.js
+alwaysApply: false
+---
+
+# Trash / soft-delete (Q89)
+
+## Model
+
+- Soft-delete flag: `_wtt_trashed` on the node **and all descendants**.
+- **Parent/child links stay** (WP `term_parent` unchanged).
+- Special **Trash** node: `_wtt_is_trash=1`, not deletable.
+- Trash attribute/list: `_wtt_trash_item_ids` = JSON list of soft-delete **roots** (never a bare PHP array — avoids Array-to-string warnings).
+
+## Tree UI
+
+- Normal tree: hide `_wtt_trashed` nodes.
+- Under Trash: do **not** show WP children; show the **trashed forest** (roots = trashed nodes whose parent is not trashed).
+- Empty Trash: permanent `wp_delete_term` for all trashed; clear the list.
+
+## Do / don’t
+
+- **Do** route UI delete → `Trash::move_to_trash` (not hard delete).
+- **Don’t** allow deleting the Trash node itself.
+- **Don’t** show soft-deleted nodes outside the Trash view.
+---

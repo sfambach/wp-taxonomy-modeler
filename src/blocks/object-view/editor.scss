@@ -1,0 +1,19 @@
+/**
+ * Editor chrome for Object view (preview host + inspector).
+ */
+
+.wtt-object-view-editor {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 0.75rem;
+}
+
+.wtt-object-view-editor__preview {
+	min-height: 2rem;
+}
+
+.wtt-object-view-editor__hint {
+	margin: 0 0 0.75rem;
+	color: #646970;
+	font-size: 13px;
+}

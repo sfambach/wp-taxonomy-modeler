@@ -1,0 +1,51 @@
+---
+description: node_ref field (Q73) and NodeRefRenderer presentation
+globs:
+  - assets/js/wtt-node-render.js
+  - assets/js/tree-admin.js
+  - includes/class-node-type.php
+  - includes/class-table-validator.php
+  - includes/class-composition.php
+  - includes/class-tree-ajax.php
+alwaysApply: false
+---
+
+# node_ref (Q73)
+
+`node_ref` stores **id(s)** of nodes under a catalog root (`ref_scope`). It does not embed the target’s fields (`node_embed` does).
+
+## Correct shape
+
+```text
+Model / Kontakt (attribute host)
+  └── Lieferant (attribute, type → node_ref)
+        ref_scope → Implementation / Lieferanten (catalog root)
+        field multiplicity → 0..1 | 1 | 0..* | 1..*
+```
+
+Historical BOM teaching shape used a catalog `table` band (**Q90 parked**) — prefer attribute hosts + `node_ref`. Legacy example only: `Kontakgruppe (table) → Zeile → Kontakte`.
+
+Sibling catalog holds pickable records (e.g. Name, E-Mail). Analog: Bauteil.**Lieferant** → catalog **Lieferanten**.
+
+## Rendering
+
+- Dedicated **`NodeRefRenderer`** in `wtt-node-render.js`.
+  - Closed: chips of selected targets (with × to remove from the selection only — not delete from catalog) + Choose/Change.
+  - Multiplicity drives single vs multi in the chooser but is **not shown** as a badge in the field.
+  - Open: **catalog chooser** (search + list of `nodeRefOptions`); presentation via **`treePickerMode`** (`popup` / `inline`).
+  - `0..1` / `1` → single pick; `0..*` / `1..*` → multi + Apply.
+  - Footer **Add new…** → mini-form (Name + simple scalar catalog fields) → AJAX create under `ref_scope`, then select.
+- PHP exposes **`nodeRefOptions`** via `Node_Type::get_node_ref_options_for_slot` and **`nodeRefCreateFields`** via `Composition::get_node_ref_create_fields` on `get_node` / table band fields.
+- Options are **records only**: table Kopf/Zeile/Fuss bands and set composition slots (and their subtrees) are excluded — e.g. Kontakte shows `contact c`, not `Zeilendefinition / Rolle / …`.
+- Create endpoint: **`wtt_create_node_ref_target`** (returns `{ option, nodeRefOptions }`).
+- **Field multiplicity** (Properties) controls single vs multi pick — not Relations Mult. on `has_type` / `ref_scope` (those stay `0..1`).
+- Preview / table cells go through **Registry** — do not leave `node_ref` cells as plain text or a naked checkbox wall.
+
+## Do / don’t
+
+- **Do** set `ref_scope` before expecting options or create.
+- **Do** use Field multiplicity for `1..*` contacts in a cell.
+- **Don’t** special-case Kontakte by name — resolve `node_ref` + `nodeRefOptions`.
+- **Don’t** confuse Relation Mult. with field cardinality.
+- **Don’t** open the detail panel from the chooser mid-cell-edit (selection stays in the dialog).
+- **Don’t** put media / nested table fields in the v1 mini-form.

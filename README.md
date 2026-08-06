@@ -2,17 +2,19 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffold `0.0.1`** — runnable admin tree over WordPress terms.  
-> Full Project / Node / Parameter domain model is still in planning.  
+> **Scaffolding ≈ `0.0.270`** — runnable admin tree on **`wtt_tree`** (BOM) plus parallel **`wtt_fs`** Fallstudie (slim UI). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root` + `chooser_focus`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**.  
+> Full Project / Node domain still planning. **Case study** is exploratory only — not model sign-off. **Q83–Q92** as in living docs (plan **0.7.28**). Status stays **scaffolding**.  
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
 
 1. Activate **WP Taxonomy Tree** under Plugins.
-2. Open **Taxonomy Tree** in the wp-admin menu.
-3. Pick a hierarchical taxonomy (e.g. Categories), expand/collapse, create root/child, delete (promote or cascade).
+2. Open **Taxonomy Tree** in the wp-admin menu (seed/reset demo via settings / `scripts/windows/seed-test-tree.ps1` if needed).
+3. Expand/collapse, create/copy/move/delete; assign types; explore Basiseinheit units and preview panels.
+4. Optional: `npm install && npm run build` then insert blocks **Taxo Collection table** or **Taxo Object view** (search `taxo`) on a page.
 
-Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)
+Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)  
+Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ## Documentation
 
@@ -21,10 +23,11 @@ Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)
 | [`docs/plans/project-plan.md`](docs/plans/project-plan.md) | Project plan (source of truth for intent) |
 | [`docs/plans/planning-phase.md`](docs/plans/planning-phase.md) | Active planning checklist |
 | [`docs/plans/mvp-requirements.md`](docs/plans/mvp-requirements.md) | MVP requirements & acceptance criteria |
-| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Parameter class Q64) |
+| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Eigenschaften = typed children; Q66) |
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
+| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Parallel Fallstudie (`wtt_fs`) — slim Definition/Implementation tree |
 | [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
@@ -83,6 +86,17 @@ Site: `http://devel.test/wp-admin` — user `admin`, password `admin123`.
 Details: [`scripts/windows/README.md`](scripts/windows/README.md)
 
 See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windows/setup-dev.ps1) for details.
+
+## FAQ (settings)
+
+| Setting | Where | Notes |
+|---------|--------|--------|
+| **Tree picker** (`popup` / `inline`) | Settings → Taxonomy Tree | Controls both the taxonomy **tree picker** and the **`node_ref` catalog chooser** in Form/Table preview **and** the Collection table block editor. Default **popup**. Reparent stays inline. |
+| **`node_ref` create** | Preview / block cell → Choose → Add new… | Needs **Catalog root (`ref_scope`)** on the field. Mini-form = Name + scalar catalog slots (e.g. Lieferanten: Url, Suchstring, Bewertung). |
+| **Collection table block** | `npm run build` after JS changes | Editor uses `WTTNodeRender` for `node_ref` columns; frontend shows name chips (not raw ids). |
+| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `tree` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen; deletes BOM/Bauteile/… Use `reset` only for `wtt_tree` (reinstalls types first). `wtt_fs` is clear-only (Case_Data reset blocked by protected Aggregate). |
+| **Attributes (Q87 trial)** | Node detail → Attributes | Name + Type + Mult. → stored as `besteht_aus` member. Default Mult. `1`. |
+| **Fill Model Data** | Taxonomy Tree → Fill Model Data | No extra settings. Pick a structure host with attributes, then add/edit instance rows (option `wtt_model_instances`). Taxonomy = structures; this page = filled data. |
 
 ## License
 

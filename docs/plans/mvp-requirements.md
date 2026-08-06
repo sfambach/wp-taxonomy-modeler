@@ -2,8 +2,8 @@
 name: MVP requirements
 overview: Testable requirements for the first implementable plugin version (0.0.1 development line). Planning artifact only.
 status: draft
-version: "0.1.0-plan"
-last_updated: "2026-07-23"
+version: "0.1.1-plan"
+last_updated: "2026-08-05"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/planning-phase.md
@@ -15,7 +15,7 @@ related_plans:
 
 ## Product statement
 
-Administrators can manage one or more **hierarchical** WordPress taxonomies in a dedicated tree screen. Host plugins can later attach behavior when a term is selected. Domain-specific fields (parts, measures, etc.) are **not** part of this MVP.
+Administrators can manage one or more **hierarchical** WordPress taxonomies in a dedicated tree screen. Host plugins can later attach behavior when a term is selected. Domain-specific Composition / table-band / instance services are **not** part of this tree MVP — they remain exploratory scaffold (Fallstudie / `wtt_fs`) until planning sign-off adds them as FRs.
 
 ## Personas
 
@@ -95,13 +95,13 @@ Administrators can manage one or more **hierarchical** WordPress taxonomies in a
 
 ## Data structure reference
 
-Core objects: **Project**, **Node**, **Parameter**.  
+Core objects: **Project**, **Node** (Eigenschaften = typed child Nodes).  
 **Tree is not an object** — defined by a **root node**.  
-**Root node** is the same **Node** object with parent `null` (not a separate type).  
+**Root node** is the same **Node** object with **no `child_of`** parent (not a separate type).  
 Details: [`docs/plans/data-structure.md`](data-structure.md).
 
-Parameter MVP scope (definitions vs values, types, owner rule) and Project↔taxonomy mapping are still open and may land partly after the first tree MVP.
+Property-slot inherit (**Q66**) and instance-value storage (**Q16**) plus Project↔taxonomy mapping are still open in detail and may land partly after the first tree MVP. Fallstudie-proven Composition / bands / bindings (**Q61/Q70/Q80**) are **planning truth** for the domain model but **not** MVP FRs until sign-off.
 
 ## Open items affecting MVP
 
-See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, Project assignment/storage (Q17–Q19), Parameter config (Q34), and simple-type Relation rules (Q49).
+See [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md) — especially transport, JS stack, Project assignment/storage (Q17–Q19), Node config (Q34), and simple-type Relation rules (Q49).

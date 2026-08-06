@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "taxo/collection-table",
+  "title": "Taxo Collection table",
+  "category": "taxo",
+  "icon": "editor-table",
+  "description": "Table or catalog list (BOM, Rezept, Lieferanten…). Columns from the taxonomy tree; catalog rows edit supplier records.",
+  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "bom", "table", "collection", "rezept", "lieferanten", "list"],
+  "textdomain": "wp-taxonomy-tree",
+  "attributes": {
+    "collectionTermId": {
+      "type": "number",
+      "default": 0
+    },
+    "instanceName": {
+      "type": "string",
+      "default": ""
+    },
+    "rows": {
+      "type": "array",
+      "default": []
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": ["wide", "full"]
+  },
+  "editorScript": "taxo-collection-table-editor-script",
+  "editorStyle": "taxo-collection-table-editor-style",
+  "style": "taxo-collection-table-style"
+}
