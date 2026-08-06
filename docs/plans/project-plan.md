@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.29-plan"
+version: "0.7.30-plan"
 last_updated: "2026-08-06"
 related_docs:
   - README.md
@@ -379,6 +379,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-06 | **Q92 decided:** Template catalog folders bound by term id in option **`wtt_catalog_bindings`**. Attribute type chooser uses **`chooser_root`** (branch, e.g. Fallstudie) + **`chooser_focus`** (e.g. Data Types). Legacy keys `data_types` / `simple` / `complex` remain helpers. Scaffold ≈ **0.0.264+**. Plan **0.7.28**. |
 | 2026-08-06 | Concept sync ≈ **`0.0.270`:** Fill Model Data instances; Sample_Data name→type map; Form(1)/Table(n) attribute-host preview; multiplicity swap-vs-clear; Q90 leftovers marked legacy (no removal slice). Plan **0.7.28**. |
 | 2026-08-06 | **CatalogChoice UI (Q90 note):** Attribute type with specialization children — max choice-subtree depth ≤ 1 → flat `<select>`; depth ≥ 2 → tree chooser; Festwert seeds selection. Typed choice under type host only (e.g. Währung), not every product picker. Docs + admin-ux rule; no new Q id. Plan **0.7.29**. |
+| 2026-08-06 | **Q93 opened:** CatalogChoice **value SoT** when type host and/or selected child has attributes — node id only vs id + instance values (host / child / both). UI chrome stays Q90; no Choice object. Plan **0.7.30**. |
 
 ## Change protocol
 

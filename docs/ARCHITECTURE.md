@@ -2,7 +2,7 @@
 
 > Living technical documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-**Status:** Target architecture — domain model still planning; **scaffold ≈ `0.0.270`** ships a term-based admin tree on **`wtt_tree`** (BOM) and parallel **`wtt_fs`** (Fallstudie, slim UI — **not** model sign-off) + Relations (Q74–Q78) + set=`composition` (Q75) + catalog type inherit interim (Q76/Q77) + **Q88 hierarchy datatype = parent (no Data type UI)** + **Q90 Complex enum/list/table parked** + **Q91 Registry ≠ one renderer** + Form(1)/Table(n) object surfaces + **Q92 `chooser_root`/`chooser_focus`** + Fill Model Data + Sample_Data + BOM Name+Tabelle / **Q83 Bauteilarten vs Bauteile** / **Q85 composition-first** / **Q86 inherit=`child_of`** / **Q87 attributes** / table bands (legacy) / Bindings→Rules→Fixes (Q80) + Trash soft-delete (Q89) + preview UX. **Parameter class discarded** (slots = typed child Nodes). Docs absorb Fallstudie (plan **0.7.29**); status stays scaffolding.
+**Status:** Target architecture — domain model still planning; **scaffold ≈ `0.0.270`** ships a term-based admin tree on **`wtt_tree`** (BOM) and parallel **`wtt_fs`** (Fallstudie, slim UI — **not** model sign-off) + Relations (Q74–Q78) + set=`composition` (Q75) + catalog type inherit interim (Q76/Q77) + **Q88 hierarchy datatype = parent (no Data type UI)** + **Q90 Complex enum/list/table parked** + **Q91 Registry ≠ one renderer** + Form(1)/Table(n) object surfaces + **Q92 `chooser_root`/`chooser_focus`** + Fill Model Data + Sample_Data + BOM Name+Tabelle / **Q83 Bauteilarten vs Bauteile** / **Q85 composition-first** / **Q86 inherit=`child_of`** / **Q87 attributes** / table bands (legacy) / Bindings→Rules→Fixes (Q80) + Trash soft-delete (Q89) + preview UX. **Parameter class discarded** (slots = typed child Nodes). Docs absorb Fallstudie (plan **0.7.30**); status stays scaffolding.
 
 ## Planning note
 
@@ -89,6 +89,8 @@ Prefer **typed PHP classes (DTOs)** for `Project`, `Node`, `Changelog`, `Change`
 4. Default/Festwert seeds the selected value when present.
 
 Scope = **typed choice / specialization trees** under a type host (e.g. Währung → Euro/Dollar). Not automatic for every node picker in the product — deep taxonomy browse / model-binding may still prefer tree chrome; when choosing among options under a type host, use this depth rule. Admin UX: `.cursor/rules/admin-ux-controls.mdc`.
+
+**Value SoT (TBD → Q93):** When the type host and/or the selected specialization child has its own attributes — store only the selected **node id**, or also **instance values** for attributes of host, child, or both (pick + fill)? Not decided; do not invent a Choice object (Q90).
 
 **Q92:** Catalog folders via option **`wtt_catalog_bindings`** (term ids per taxonomy), not display names. Attribute type chooser: **`chooser_root`** (subtree shown, e.g. Fallstudie) + **`chooser_focus`** (default node) + picker flag **`expandFocusBranch: true`** (open path and expand that branch). Legacy keys `data_types` / `simple` / `complex` remain helpers (`data_types` migrates to `chooser_focus` when focus empty). Class `Catalog_Bindings`; Settings shows current bindings (≈ **0.0.271**).
 Exploring **Relation** + **RelationType** for typed edges (Q35, Q41–Q43).  

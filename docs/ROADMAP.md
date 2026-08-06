@@ -2,9 +2,9 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.29-plan** (2026-08-06).
+Last synced from plan version **0.7.30-plan** (2026-08-06).
 
-**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE; **CatalogChoice** depth rule under Q90 (plan **0.7.29**). Status stays scaffolding — not Phase-1 green light.
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE; **CatalogChoice** depth rule under Q90; **Q93** CatalogChoice value SoT open (plan **0.7.30**). Status stays scaffolding — not Phase-1 green light.
 
 - Node presentation: **one Registry pipeline**, many type-specific renderers (Q91); Form(1)/Table(n) object surfaces (`WTTObjectRender`); samples = **name→then type** map (not methods on nodes).
 - Attribute type chooser: **`chooser_root` + `chooser_focus`** (full branch + focus), not Data-Types-only.
@@ -29,6 +29,7 @@ Last synced from plan version **0.7.29-plan** (2026-08-06).
 | **Q90:** Complex `enum` / `list` / `table` parked | Done (docs); CatalogChoice depth UI noted; scaffold leftovers until removal |
 | **Q91:** Registry + many type renderers (node ≠ one renderer) | Done (docs) |
 | **Q92:** Catalog bindings (`chooser_root` + `chooser_focus`; legacy `data_types`/…) | Done (≈ `0.0.264`) |
+| **Q93:** CatalogChoice value SoT (id only vs pick + fill) | Open |
 | **Q61 / Q70 / Q80:** BOM = Name + Tabelle; bands via **`prop_bindings`**; rules + optional fixes | Done (planning); scaffold ≈ `0.0.181`–`0.0.188` |
 | **Q57:** Fuss `_wtt_footer_op` + Aggregate catalog | Done (planning); scaffold ≈ `0.0.192` |
 | **Q78 / Q79:** Relation multiplicity; identity=ID; datatype names unique | Done; scaffold ≈ `0.0.153` / `0.0.175` |
