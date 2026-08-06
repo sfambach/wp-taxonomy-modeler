@@ -402,62 +402,12 @@ final class Object_Render {
 			'fixedOptions'  => isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
 				? array_values( $row['fixedOptions'] )
 				: array(),
-			'choiceDepth'   => self::choice_depth_from_options(
+			'choiceDepth'   => Attribute::choice_depth_from_options(
 				isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
 					? $row['fixedOptions']
 					: array()
 			),
 		);
-	}
-
-	/**
-	 * CatalogChoice depth from fixedOptions paths (Q90).
-	 *
-	 * @param list<array<string, mixed>> $options Fixed options.
-	 */
-	private static function choice_depth_from_options( array $options ): int {
-		if ( array() === $options ) {
-			return 0;
-		}
-		$paths = array();
-		foreach ( $options as $opt ) {
-			if ( ! is_array( $opt ) ) {
-				continue;
-			}
-			$path = (string) ( $opt['path'] ?? $opt['name'] ?? '' );
-			$path = trim( preg_replace( '/\s*\/\s*/', '/', $path ) ?? '' );
-			$path = trim( $path, '/' );
-			$parts = '' !== $path
-				? array_values( array_filter( explode( '/', $path ), static fn( $p ) => '' !== $p ) )
-				: array( (string) ( $opt['name'] ?? $opt['id'] ?? '' ) );
-			if ( array() !== $parts ) {
-				$paths[] = $parts;
-			}
-		}
-		if ( array() === $paths ) {
-			return 0;
-		}
-		$common = $paths[0];
-		foreach ( $paths as $parts ) {
-			$n = 0;
-			while (
-				$n < count( $common )
-				&& $n < count( $parts )
-				&& $common[ $n ] === $parts[ $n ]
-			) {
-				++$n;
-			}
-			$common = array_slice( $common, 0, $n );
-		}
-		$max_rel = 0;
-		foreach ( $paths as $parts ) {
-			$rel   = max( 0, count( $parts ) - count( $common ) );
-			$depth = max( 1, $rel );
-			if ( $depth > $max_rel ) {
-				$max_rel = $depth;
-			}
-		}
-		return $max_rel;
 	}
 
 	/**

@@ -12937,7 +12937,7 @@
 
 	/**
 	 * Attribute host preview: Form(1) + Table(n) + Compact(1, H|V) × edit/display.
-	 * Kontakt uses static samples; other hosts use Sample_Data-backed example factory stubs.
+	 * Samples are host-agnostic via WTTSampleData (name → type) + variantIndex for rows.
 	 */
 	function renderAttributeHostPreview(n, members) {
 		var ObjectRender = window.WTTObjectRender;

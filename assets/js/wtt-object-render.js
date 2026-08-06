@@ -5,8 +5,8 @@
  * surfaces over a node schema + filled attribute values. Field cells go through
  * WTTNodeRender.Registry by typeKey.
  *
- * Sample stubs (Kontakt) are static for now; buildExampleInstance / buildExampleList
- * are shaped so a real example factory can replace them later.
+ * Example instances are host-agnostic: WTTSampleData / Sample_Data by name then
+ * type, with optional variantIndex for multi-row table samples.
  *
  * Preferred surface for page view is intentionally not stored here — later block
  * (or node) setting may choose Form / Table / Compact.
@@ -805,184 +805,47 @@
 		return String((schemaNode && schemaNode.name) || '').trim();
 	}
 
-	function isKontaktSchema(schemaNode) {
-		return schemaName(schemaNode).toLowerCase() === 'kontakt';
-	}
-
-	function isPlatineSchema(schemaNode) {
-		var n = schemaName(schemaNode).toLowerCase();
-		return n === 'platine' || n === 'pcb' || n === 'board';
-	}
-
 	/**
-	 * Static Kontakt sample (plan slice). Later replaced by example factory.
-	 * @param {Array} attributes normalized or raw
-	 * @return {object}
-	 */
-	function buildStaticKontaktInstance(attributes, variant) {
-		variant = variant || 0;
-		var fields = normalizeAttributes(attributes);
-		var Sample = sampleApi();
-		var persona =
-			Sample && Sample.PERSONA
-				? Sample.PERSONA
-				: { firstName: 'Herbert', lastName: 'Müller', email: 'herbert@home.de' };
-		var first = String(persona.firstName || 'Herbert');
-		var last = String(persona.lastName || 'Müller');
-		var full = (first + ' ' + last).trim();
-		var email = String(persona.email || 'herbert@home.de');
-		/* Light variants for table rows — same persona family. */
-		var names = [full, first + ' Muster', 'Hans ' + last];
-		var emails = [
-			email,
-			first.toLowerCase() + '.muster@example.com',
-			'hans.' + last.toLowerCase() + '@example.com',
-		];
-		var idx = Math.abs(parseInt(variant, 10) || 0) % names.length;
-		var values = {};
-		fields.forEach(function (field) {
-			var key = valueKey(field);
-			var n = String(field.name || '').toLowerCase();
-			var tk = String(field.typeKey || '').toLowerCase();
-			if (tk === 'email' || n === 'e-mail' || n === 'email') {
-				values[key] = emails[idx];
-			} else if (n === 'name' || n === 'fullname') {
-				values[key] = names[idx];
-			} else if (
-				n === 'vorname' ||
-				n === 'first name' ||
-				n === 'firstname' ||
-				n === 'given name'
-			) {
-				values[key] = names[idx].split(' ')[0];
-			} else if (
-				n === 'nachname' ||
-				n === 'last name' ||
-				n === 'lastname' ||
-				n === 'surname'
-			) {
-				var parts = names[idx].split(' ');
-				values[key] = parts.length > 1 ? parts.slice(1).join(' ') : names[idx];
-			} else if (n === 'anrede' || n === 'titel' || n === 'title') {
-				values[key] = 'Herr';
-			} else if (Sample && typeof Sample.forAttribute === 'function') {
-				values[key] = String(Sample.forAttribute(field) || field.sample || '');
-			} else {
-				values[key] = field.sample || '';
-			}
-		});
-		return {
-			schemaName: 'Kontakt',
-			attributes: fields,
-			values: values,
-			variant: idx,
-		};
-	}
-
-	/**
-	 * @param {Array} attributes
-	 * @param {number} [count]
-	 * @return {Array}
-	 */
-	function buildStaticKontaktList(attributes, count) {
-		count = Math.max(1, parseInt(count, 10) || 3);
-		var list = [];
-		var i;
-		for (i = 0; i < count; i++) {
-			list.push(buildStaticKontaktInstance(attributes, i));
-		}
-		return list;
-	}
-
-	/**
-	 * Static Platine / PCB sample — Name = Prototype PCB (+ light table variants).
-	 * @param {Array} attributes
-	 * @param {number} [variant]
-	 * @return {object}
-	 */
-	function buildStaticPlatineInstance(attributes, variant) {
-		variant = variant || 0;
-		var fields = normalizeAttributes(attributes);
-		var Sample = sampleApi();
-		var names = [
-			'Prototype PCB',
-			'Prototype PCB Rev B',
-			'Demo Board',
-		];
-		var idx = Math.abs(parseInt(variant, 10) || 0) % names.length;
-		var values = {};
-		fields.forEach(function (field) {
-			var key = valueKey(field);
-			var n = String(field.name || '').toLowerCase();
-			if (
-				n === 'name' ||
-				n === 'bezeichnung' ||
-				n === 'title' ||
-				n === 'titel' ||
-				n === 'board' ||
-				n === 'platine'
-			) {
-				values[key] = names[idx];
-			} else if (Sample && typeof Sample.forAttribute === 'function') {
-				values[key] = String(Sample.forAttribute(field) || field.sample || '');
-			} else {
-				values[key] = field.sample || '';
-			}
-		});
-		return {
-			schemaName: 'Platine',
-			attributes: fields,
-			values: values,
-			variant: idx,
-		};
-	}
-
-	/**
-	 * @param {Array} attributes
-	 * @param {number} [count]
-	 * @return {Array}
-	 */
-	function buildStaticPlatineList(attributes, count) {
-		count = Math.max(1, parseInt(count, 10) || 3);
-		var list = [];
-		var i;
-		for (i = 0; i < count; i++) {
-			list.push(buildStaticPlatineInstance(attributes, i));
-		}
-		return list;
-	}
-
-	/**
-	 * Generic one-instance fill (Sample_Data / attribute samples). Kontakt / Platine → static.
+	 * Host-agnostic one-instance fill via WTTSampleData (name → type).
 	 * @param {object} schemaNode
 	 * @param {Array} [attributes]
+	 * @param {number} [variantIndex] Row index for light sample variation
 	 * @return {object}
 	 */
-	function buildExampleInstance(schemaNode, attributes) {
+	function buildExampleInstance(schemaNode, attributes, variantIndex) {
+		variantIndex = Math.abs(parseInt(variantIndex, 10) || 0);
 		var attrs =
 			attributes ||
 			(schemaNode && (schemaNode.attributes || schemaNode.fields)) ||
 			[];
-		if (isKontaktSchema(schemaNode)) {
-			return buildStaticKontaktInstance(attrs, 0);
-		}
-		if (isPlatineSchema(schemaNode)) {
-			return buildStaticPlatineInstance(attrs, 0);
-		}
 		var fields = normalizeAttributes(attrs);
+		var Sample = sampleApi();
 		var values = {};
 		fields.forEach(function (field) {
-			/* Prefer Festwert / sample already resolved in normalizeAttributes. */
-			values[valueKey(field)] =
-				(field.fixedLabel && String(field.fixedLabel)) ||
-				field.sample ||
-				'';
+			var key = valueKey(field);
+			var fest =
+				(field.fixedLabel && String(field.fixedLabel).trim()) || '';
+			if (fest) {
+				values[key] = fest;
+				return;
+			}
+			if (Sample && typeof Sample.forAttribute === 'function') {
+				values[key] = String(
+					Sample.forAttribute(
+						Object.assign({}, field, { variantIndex: variantIndex })
+					) ||
+						field.sample ||
+						''
+				);
+				return;
+			}
+			values[key] = field.sample || '';
 		});
 		return {
 			schemaName: schemaName(schemaNode),
 			attributes: fields,
 			values: values,
-			variant: 0,
+			variant: variantIndex,
 		};
 	}
 
@@ -998,22 +861,10 @@
 			attributes ||
 			(schemaNode && (schemaNode.attributes || schemaNode.fields)) ||
 			[];
-		if (isKontaktSchema(schemaNode)) {
-			return buildStaticKontaktList(attrs, n);
-		}
-		if (isPlatineSchema(schemaNode)) {
-			return buildStaticPlatineList(attrs, n);
-		}
-		var base = buildExampleInstance(schemaNode, attrs);
 		var list = [];
 		var i;
 		for (i = 0; i < n; i++) {
-			list.push({
-				schemaName: base.schemaName,
-				attributes: base.attributes,
-				values: Object.assign({}, base.values),
-				variant: i,
-			});
+			list.push(buildExampleInstance(schemaNode, attrs, i));
 		}
 		return list;
 	}
@@ -1450,12 +1301,6 @@
 		renderForm: renderForm,
 		renderTable: renderTable,
 		renderCompact: renderCompact,
-		isKontaktSchema: isKontaktSchema,
-		isPlatineSchema: isPlatineSchema,
-		buildStaticKontaktInstance: buildStaticKontaktInstance,
-		buildStaticKontaktList: buildStaticKontaktList,
-		buildStaticPlatineInstance: buildStaticPlatineInstance,
-		buildStaticPlatineList: buildStaticPlatineList,
 		buildExampleInstance: buildExampleInstance,
 		buildExampleList: buildExampleList,
 	};

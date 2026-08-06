@@ -296,8 +296,47 @@
 	}
 
 	/**
+	 * Light row variation for table sample lists (host-agnostic).
+	 * Emails get +N before @; plain strings get a short tag. JSON/URLs unchanged.
+	 *
+	 * @param {string} value
+	 * @param {number} variantIndex
+	 * @return {string}
+	 */
+	function applyVariant(value, variantIndex) {
+		var idx = Math.abs(parseInt(variantIndex, 10) || 0);
+		if (!idx || value == null || value === '') {
+			return value == null ? '' : String(value);
+		}
+		var s = String(value);
+		if (s.charAt(0) === '{' || /^https?:\/\//i.test(s)) {
+			return s;
+		}
+		var at = s.indexOf('@');
+		if (at > 0) {
+			return s.slice(0, at) + '+' + idx + s.slice(at);
+		}
+		var tags = ['', ' (B)', ' (C)'];
+		return s + (tags[idx % tags.length] || ' (' + (idx + 1) + ')');
+	}
+
+	function readVariantIndex(source) {
+		if (!source || typeof source !== 'object') {
+			return 0;
+		}
+		if (source.variantIndex != null) {
+			return Math.abs(parseInt(source.variantIndex, 10) || 0);
+		}
+		if (source.variant != null) {
+			return Math.abs(parseInt(source.variant, 10) || 0);
+		}
+		return 0;
+	}
+
+	/**
 	 * Sample for an attribute/member: name heuristics, then type fallback.
 	 * Does not mutate session previewValues — callers use as fallback only.
+	 * Optional attr.variantIndex lightly varies the string for table rows.
 	 *
 	 * @param {string|object|null} attr Attribute name or node-like { name, typeKey, … }
 	 * @param {string|object|null} [typeFallback] Type when attr is a bare name
@@ -310,28 +349,34 @@
 			typeKey = resolveTypeKey(typeFallback);
 		}
 
+		var base = '';
 		/* Type email → always persona fake address. */
 		if (typeKey === 'email') {
-			return PERSONA.email;
-		}
-
-		var i;
-		for (i = 0; i < hints.length; i++) {
-			var mapped = sampleForNameHint(hints[i]);
-			if (mapped) {
-				return mapped;
+			base = PERSONA.email;
+		} else {
+			var i;
+			for (i = 0; i < hints.length; i++) {
+				var mapped = sampleForNameHint(hints[i]);
+				if (mapped) {
+					base = mapped;
+					break;
+				}
+			}
+			if (!base) {
+				base = sampleFromTypeKey(typeKey);
 			}
 		}
 
-		return sampleFromTypeKey(typeKey);
+		return applyVariant(base, readVariantIndex(attr));
 	}
 
 	/**
 	 * Sample value for a simple type (string). Empty when unknown / parked.
 	 * Optional context.name / shortDescription enables name-aware fill.
+	 * Optional context.variantIndex lightly varies multi-row samples.
 	 *
 	 * @param {string|number|object|null} typeNodeOrKey
-	 * @param {{ name?: string, shortDescription?: string }|null} [context]
+	 * @param {{ name?: string, shortDescription?: string, variantIndex?: number }|null} [context]
 	 * @return {string}
 	 */
 	function forType(typeNodeOrKey, context) {
@@ -340,7 +385,9 @@
 			(context.name ||
 				context.shortDescription ||
 				context.short_description ||
-				context.displayName)
+				context.displayName ||
+				context.variantIndex != null ||
+				context.variant != null)
 		) {
 			var attr =
 				typeof typeNodeOrKey === 'object' && typeNodeOrKey
