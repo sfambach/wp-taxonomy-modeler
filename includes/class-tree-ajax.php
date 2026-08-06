@@ -53,6 +53,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_remove_attribute', array( self::class, 'remove_attribute' ) );
 		add_action( 'wp_ajax_wtt_move_attribute_to_parent', array( self::class, 'move_attribute_to_parent' ) );
 		add_action( 'wp_ajax_wtt_move_attribute_to_child', array( self::class, 'move_attribute_to_child' ) );
+		add_action( 'wp_ajax_wtt_reorder_attribute', array( self::class, 'reorder_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_hidden', array( self::class, 'set_attribute_hidden' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_readonly', array( self::class, 'set_attribute_readonly' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_type', array( self::class, 'set_attribute_type' ) );
@@ -1294,6 +1295,28 @@ final class Tree_Ajax {
 		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::remove( $taxonomy, $host_id, $attr_id );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	public static function reorder_attribute(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$delta   = isset( $_POST['delta'] ) ? (int) wp_unslash( $_POST['delta'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$result = Attribute::reorder( $taxonomy, $host_id, $attr_id, $delta );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}

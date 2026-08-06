@@ -65,6 +65,10 @@
 	 * Normalized attribute-name hints → sample strings (DE + EN).
 	 */
 	var NAME_MAP = {
+		praefix: 'm',
+		prefix: 'm',
+		einheit: 'Ohm',
+		unit: 'Ohm',
 		name: PERSONA.firstName,
 		bezeichnung: PERSONA.firstName,
 		fullname: PERSONA.fullName,

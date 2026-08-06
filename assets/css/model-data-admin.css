@@ -1,6 +1,9 @@
 /**
  * Fill Model Data admin page.
  *
+ * Layout: sidebar (taxonomy + structure) | main (form editor + list view below).
+ * List view = automatic instance list for the selected structure (identity columns).
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -11,7 +14,7 @@
 
 .wtt-model-data__layout {
 	display: grid;
-	grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+	grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
 	gap: 1.25rem;
 	align-items: start;
 }
@@ -35,6 +38,10 @@
 	margin-bottom: 0.85rem;
 }
 
+.wtt-model-data__field:last-child {
+	margin-bottom: 0;
+}
+
 .wtt-model-data__field label {
 	display: block;
 	font-weight: 600;
@@ -48,56 +55,6 @@
 
 .wtt-model-data__opt--empty {
 	color: #646970;
-}
-
-.wtt-model-data__instances-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
-	margin: 1rem 0 0.5rem;
-}
-
-.wtt-model-data__instances-head h2 {
-	margin: 0;
-	font-size: 1rem;
-}
-
-.wtt-model-data__instance-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	max-height: 24rem;
-	overflow: auto;
-	border: 1px solid #dcdcde;
-	border-radius: 2px;
-}
-
-.wtt-model-data__instance {
-	margin: 0;
-	border-bottom: 1px solid #f0f0f1;
-}
-
-.wtt-model-data__instance:last-child {
-	border-bottom: 0;
-}
-
-.wtt-model-data__instance.is-active {
-	background: #f0f6fc;
-}
-
-.wtt-model-data__instance-btn {
-	display: block;
-	width: 100%;
-	text-align: left;
-	padding: 0.45rem 0.65rem;
-	text-decoration: none;
-}
-
-.wtt-model-data__empty {
-	padding: 0.65rem;
-	color: #646970;
-	font-style: italic;
 }
 
 .wtt-model-data__placeholder {
@@ -115,6 +72,40 @@
 .wtt-model-data__editor-toolbar h2 {
 	margin: 0;
 	font-size: 1.1rem;
+}
+
+.wtt-model-data__identity {
+	margin: 0 0 1rem;
+	padding: 0.65rem 0.75rem;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}
+
+.wtt-model-data__identity-grid {
+	display: grid;
+	grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+	gap: 0.35rem 0.75rem;
+	margin: 0;
+}
+
+.wtt-model-data__identity-grid dt {
+	margin: 0;
+	font-weight: 600;
+	color: #50575e;
+	font-size: 12px;
+}
+
+.wtt-model-data__identity-grid dd {
+	margin: 0;
+	font-size: 13px;
+	color: #1d2327;
+	word-break: break-word;
+}
+
+.wtt-model-data__identity-grid dd.is-pending {
+	color: #646970;
+	font-style: italic;
 }
 
 .wtt-model-data__status {
@@ -178,4 +169,90 @@
 .wtt-model-data__trash:hover,
 .wtt-model-data__trash:focus {
 	color: #8a2424;
+}
+
+/* List view — instances below editor (automatic for selected structure) */
+
+.wtt-model-data__list-view {
+	margin-top: 1.5rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid #dcdcde;
+}
+
+.wtt-model-data__list-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 0.65rem;
+}
+
+.wtt-model-data__list-toolbar h2 {
+	margin: 0;
+	font-size: 1rem;
+}
+
+.wtt-model-data__list-wrap {
+	overflow-x: auto;
+}
+
+.wtt-model-data__list {
+	margin: 0;
+	border: 1px solid #c3c4c7;
+}
+
+.wtt-model-data__list th,
+.wtt-model-data__list td {
+	vertical-align: middle;
+}
+
+.wtt-model-data__col-active {
+	width: 2.25rem;
+	text-align: center;
+}
+
+.wtt-model-data__col-active .dashicons {
+	color: #2271b1;
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.wtt-model-data__col-number {
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.wtt-model-data__col-id {
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	word-break: break-all;
+}
+
+.wtt-model-data__list-row {
+	cursor: pointer;
+}
+
+.wtt-model-data__list-row:hover td {
+	background: #f6f7f7;
+}
+
+.wtt-model-data__list-row.is-active td {
+	background: #f0f6fc;
+}
+
+.wtt-model-data__list-row:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+}
+
+.wtt-model-data__list-row:focus td {
+	background: #f0f6fc;
+}
+
+.wtt-model-data__empty {
+	padding: 0.85rem 0.75rem;
+	color: #646970;
+	font-style: italic;
+	text-align: left;
 }

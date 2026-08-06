@@ -2,6 +2,10 @@
  * Fill Model Data admin UI — instance CRUD against structure hosts.
  * Uses WTTNodeRender for attribute fields; WTTSampleData for Fill samples.
  *
+ * Identity is automatic (seq / id / created / version / modified) — no free-text name.
+ * Below the editor: automatic **list view** of instances for the selected structure
+ * (identity columns; click a row to open in the form above).
+ *
  * @package WP_Taxonomy_Tree
  */
 (function () {
@@ -15,8 +19,8 @@
 		structure: null,
 		instances: [],
 		editingId: '',
+		meta: null,
 		values: {},
-		name: '',
 		dirty: false,
 	};
 
@@ -115,37 +119,193 @@
 		sel.value = String(state.structureId || 0);
 	}
 
+	function dash(value) {
+		var s = value != null ? String(value).trim() : '';
+		return s !== '' ? s : '—';
+	}
+
+	function pendingLabel() {
+		return t('assignedOnSave', 'Assigned on save');
+	}
+
+	function formatSeq(seq) {
+		var n = parseInt(seq, 10) || 0;
+		return n > 0 ? '#' + n : pendingLabel();
+	}
+
+	function formatVersion(version) {
+		var n = parseInt(version, 10) || 0;
+		if (n <= 0) {
+			return pendingLabel();
+		}
+		return t('versionShort', 'v') + n;
+	}
+
+	function formatModified(inst) {
+		var when = dash(inst.modifiedAtLabel || inst.modifiedAt);
+		var who = (inst.modifiedByName || '').trim();
+		if (who) {
+			return when + ' · ' + who;
+		}
+		return when;
+	}
+
+	function showInstancesPanel(show) {
+		var panel = $('wtt-md-instances');
+		if (panel) {
+			panel.hidden = !show;
+		}
+	}
+
+	/**
+	 * List view of instances for the current structure (below the form editor).
+	 * Columns: Number, Id, Created, Version, Last modified (date · user).
+	 */
 	function renderInstanceList() {
-		var list = $('wtt-md-instance-list');
-		if (!list) {
+		var tbody = $('wtt-md-list-tbody');
+		if (!tbody) {
 			return;
 		}
-		list.innerHTML = '';
+		tbody.innerHTML = '';
+
 		if (!state.structureId) {
+			showInstancesPanel(false);
 			return;
 		}
+
+		showInstancesPanel(true);
+
 		if (!state.instances.length) {
-			var empty = document.createElement('li');
-			empty.className = 'wtt-model-data__empty';
-			empty.textContent = t('noInstances', 'No instances yet.');
-			list.appendChild(empty);
+			var emptyRow = document.createElement('tr');
+			emptyRow.className = 'wtt-model-data__list-empty';
+			var emptyCell = document.createElement('td');
+			emptyCell.colSpan = 6;
+			emptyCell.className = 'wtt-model-data__empty';
+			emptyCell.textContent = t(
+				'noInstances',
+				'No instances yet. Create one to fill attribute values.'
+			);
+			emptyRow.appendChild(emptyCell);
+			tbody.appendChild(emptyRow);
 			return;
 		}
+
 		state.instances.forEach(function (inst) {
-			var li = document.createElement('li');
-			li.className =
-				'wtt-model-data__instance' +
-				(inst.id === state.editingId ? ' is-active' : '');
-			var btn = document.createElement('button');
-			btn.type = 'button';
-			btn.className = 'button-link wtt-model-data__instance-btn';
-			btn.textContent = inst.name || t('unnamed', '(unnamed)');
-			btn.addEventListener('click', function () {
+			var isActive = inst.id === state.editingId;
+			var tr = document.createElement('tr');
+			tr.className =
+				'wtt-model-data__list-row' + (isActive ? ' is-active' : '');
+			tr.tabIndex = 0;
+			tr.setAttribute('role', 'button');
+			tr.setAttribute(
+				'aria-label',
+				t('openInstance', 'Open instance') +
+					' ' +
+					formatSeq(inst.seq)
+			);
+			if (isActive) {
+				tr.setAttribute('aria-current', 'true');
+			}
+
+			var tdActive = document.createElement('td');
+			tdActive.className = 'wtt-model-data__col-active';
+			if (isActive) {
+				var mark = document.createElement('span');
+				mark.className = 'dashicons dashicons-yes-alt';
+				mark.setAttribute('aria-hidden', 'true');
+				mark.title = t('activeInstance', 'Editing');
+				tdActive.appendChild(mark);
+			}
+			tr.appendChild(tdActive);
+
+			var tdSeq = document.createElement('td');
+			tdSeq.className = 'wtt-model-data__col-number';
+			tdSeq.textContent = formatSeq(inst.seq);
+			tr.appendChild(tdSeq);
+
+			var tdId = document.createElement('td');
+			tdId.className = 'wtt-model-data__col-id';
+			tdId.textContent = dash(inst.id);
+			tr.appendChild(tdId);
+
+			var tdCreated = document.createElement('td');
+			tdCreated.textContent = dash(inst.createdAtLabel || inst.createdAt);
+			tr.appendChild(tdCreated);
+
+			var tdVersion = document.createElement('td');
+			tdVersion.textContent = formatVersion(inst.version);
+			tr.appendChild(tdVersion);
+
+			var tdModified = document.createElement('td');
+			tdModified.textContent = formatModified(inst);
+			tr.appendChild(tdModified);
+
+			function selectRow() {
 				openInstance(inst);
+			}
+			tr.addEventListener('click', selectRow);
+			tr.addEventListener('keydown', function (ev) {
+				if (ev.key === 'Enter' || ev.key === ' ') {
+					ev.preventDefault();
+					selectRow();
+				}
 			});
-			li.appendChild(btn);
-			list.appendChild(li);
+
+			tbody.appendChild(tr);
 		});
+	}
+
+	function appendIdentityRow(dl, label, value, isPending) {
+		var dt = document.createElement('dt');
+		dt.textContent = label;
+		var dd = document.createElement('dd');
+		dd.textContent = value;
+		if (isPending) {
+			dd.className = 'is-pending';
+		}
+		dl.appendChild(dt);
+		dl.appendChild(dd);
+	}
+
+	function renderIdentity() {
+		var dl = $('wtt-md-identity');
+		if (!dl) {
+			return;
+		}
+		dl.innerHTML = '';
+		var meta = state.meta;
+		var pending = !meta || !meta.id;
+
+		appendIdentityRow(
+			dl,
+			t('runningNumber', 'Number'),
+			pending ? pendingLabel() : formatSeq(meta.seq),
+			pending
+		);
+		appendIdentityRow(
+			dl,
+			t('instanceId', 'Id'),
+			pending ? pendingLabel() : dash(meta.id),
+			pending
+		);
+		appendIdentityRow(
+			dl,
+			t('createdAt', 'Created'),
+			pending ? pendingLabel() : dash(meta.createdAtLabel || meta.createdAt),
+			pending
+		);
+		appendIdentityRow(
+			dl,
+			t('version', 'Version'),
+			pending ? pendingLabel() : formatVersion(meta.version),
+			pending
+		);
+		appendIdentityRow(
+			dl,
+			t('modifiedAt', 'Last modified'),
+			pending ? pendingLabel() : formatModified(meta),
+			pending
+		);
 	}
 
 	function fieldNode(field) {
@@ -282,20 +442,35 @@
 		}
 	}
 
+	function applyInstanceMeta(inst) {
+		if (!inst) {
+			state.meta = null;
+			return;
+		}
+		state.meta = {
+			id: inst.id || '',
+			seq: inst.seq || 0,
+			createdAt: inst.createdAt || '',
+			createdAtLabel: inst.createdAtLabel || '',
+			version: inst.version || 0,
+			modifiedAt: inst.modifiedAt || '',
+			modifiedAtLabel: inst.modifiedAtLabel || '',
+			modifiedBy: inst.modifiedBy || 0,
+			modifiedByName: inst.modifiedByName || '',
+		};
+	}
+
 	function openNew() {
 		state.editingId = '';
-		state.name = '';
+		state.meta = null;
 		state.values = {};
 		state.dirty = false;
-		var nameEl = $('wtt-md-name');
-		if (nameEl) {
-			nameEl.value = '';
-		}
 		var title = $('wtt-md-editor-title');
 		if (title) {
 			title.textContent = t('newInstance', 'New instance');
 		}
 		showEditor(true);
+		renderIdentity();
 		renderFields();
 		renderInstanceList();
 		setStatus('');
@@ -303,18 +478,18 @@
 
 	function openInstance(inst) {
 		state.editingId = inst.id || '';
-		state.name = inst.name || '';
+		applyInstanceMeta(inst);
 		state.values = Object.assign({}, inst.values || {});
 		state.dirty = false;
-		var nameEl = $('wtt-md-name');
-		if (nameEl) {
-			nameEl.value = state.name;
-		}
 		var title = $('wtt-md-editor-title');
 		if (title) {
-			title.textContent = t('editInstance', 'Edit instance');
+			title.textContent =
+				t('editInstance', 'Edit instance') +
+				' ' +
+				formatSeq(inst.seq);
 		}
 		showEditor(true);
+		renderIdentity();
 		renderFields();
 		renderInstanceList();
 		setStatus('');
@@ -326,10 +501,12 @@
 			state.structure = null;
 			state.instances = [];
 			state.editingId = '';
+			state.meta = null;
 			if (newBtn) {
 				newBtn.disabled = true;
 			}
 			showEditor(false);
+			showInstancesPanel(false);
 			renderInstanceList();
 			setStatus('');
 			return;
@@ -406,19 +583,9 @@
 	}
 
 	function onSave() {
-		var nameEl = $('wtt-md-name');
-		var name = nameEl ? nameEl.value.trim() : '';
-		if (!name) {
-			setStatus(t('instanceName', 'Instance name') + '…', true);
-			if (nameEl) {
-				nameEl.focus();
-			}
-			return;
-		}
 		setStatus(t('loading', 'Loading…'));
 		post('wtt_model_data_save', {
 			id: state.editingId || '',
-			name: name,
 			values: collectValues(),
 		}).then(function (json) {
 			if (!json || !json.success) {
@@ -431,14 +598,18 @@
 			state.instances = json.data.instances || [];
 			if (json.data.instance) {
 				state.editingId = json.data.instance.id;
-				state.name = json.data.instance.name;
+				applyInstanceMeta(json.data.instance);
 				state.values = Object.assign({}, json.data.instance.values || {});
 			}
 			state.dirty = false;
+			renderIdentity();
 			renderInstanceList();
 			var title = $('wtt-md-editor-title');
-			if (title) {
-				title.textContent = t('editInstance', 'Edit instance');
+			if (title && state.meta) {
+				title.textContent =
+					t('editInstance', 'Edit instance') +
+					' ' +
+					formatSeq(state.meta.seq);
 			}
 			setStatus(t('saved', 'Instance saved.'));
 		}).catch(function () {
@@ -465,6 +636,7 @@
 			}
 			state.instances = json.data.instances || [];
 			state.editingId = '';
+			state.meta = null;
 			renderInstanceList();
 			if (state.instances.length) {
 				openInstance(state.instances[0]);
@@ -535,6 +707,7 @@
 				state.taxonomy = taxSel.value;
 				state.structureId = 0;
 				state.editingId = '';
+				state.meta = null;
 				fillStructureSelect();
 				loadStructure();
 			});
@@ -544,6 +717,7 @@
 			structSel.addEventListener('change', function () {
 				state.structureId = parseInt(structSel.value, 10) || 0;
 				state.editingId = '';
+				state.meta = null;
 				loadStructure();
 			});
 		}
@@ -562,13 +736,6 @@
 		var samplesBtn = $('wtt-md-samples');
 		if (samplesBtn) {
 			samplesBtn.addEventListener('click', onFillSamples);
-		}
-		var nameEl = $('wtt-md-name');
-		if (nameEl) {
-			nameEl.addEventListener('input', function () {
-				state.name = nameEl.value;
-				state.dirty = true;
-			});
 		}
 	}
 

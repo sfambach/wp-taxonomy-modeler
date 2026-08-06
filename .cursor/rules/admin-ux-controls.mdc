@@ -41,8 +41,8 @@ Column order example (Attributes):
 ## Default value (Festwert meta) / node pickers
 
 - UI label **Default value**; term meta key remains `_wtt_attribute_fixed_values`.
-- Catalog choices use the shared **node tree picker** (list-picker chrome).
 - Scalar defaults use value entry; catalog defaults pick under the attribute’s type tree.
+- **CatalogChoice** (typed specialization under a type host — Q90; e.g. Währung → Euro/Dollar): max depth of the type’s choice subtree — **depth ≤ 1** → flat `<select>` / simple leaf list; **depth ≥ 2** → shared **node tree picker**. Default/Festwert seeds the selected value when present. Not catalog `enum`. Not automatic for every picker (deep taxonomy / model-binding may still prefer tree).
 - Multiplicity: `0..*` / `1..*` → multi-select; required `1` / `1..*` → **swap only** (no clear / no delete last).
 
 ## Do / don’t

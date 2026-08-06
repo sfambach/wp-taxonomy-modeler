@@ -6,8 +6,11 @@ import {
 	Spinner,
 	Notice,
 } from '@wordpress/components';
-import { useEffect, useState, useRef } from '@wordpress/element';
+import { useEffect, useState, useRef, useMemo } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
+import ModelTreeChooser from '../shared/model-tree-chooser';
+import ModelInstancePicker from '../shared/model-instance-picker';
+import '../shared/model-bind.scss';
 
 const cfg = window.wttCollectionTable || {};
 const i18n = cfg.i18n || {};
@@ -42,8 +45,26 @@ function normalizeRows( rows, columns ) {
 	} );
 }
 
+function cellsFromInstanceValues( values, columns ) {
+	const cells = emptyCells( columns );
+	const src = values && typeof values === 'object' ? values : {};
+	Object.keys( src ).forEach( ( key ) => {
+		cells[ String( key ) ] = src[ key ] == null ? '' : String( src[ key ] );
+	} );
+	return cells;
+}
+
+function valuesFromCells( cells ) {
+	const out = {};
+	const src = cells && typeof cells === 'object' ? cells : {};
+	Object.keys( src ).forEach( ( key ) => {
+		out[ String( key ) ] = src[ key ] == null ? '' : String( src[ key ] );
+	} );
+	return out;
+}
+
 function formatInstanceTitle( schemaName ) {
-	return String( schemaName || '' ).trim() || 'Collection';
+	return String( schemaName || '' ).trim() || 'Model';
 }
 
 function columnTypeKey( col ) {
@@ -53,6 +74,14 @@ function columnTypeKey( col ) {
 		.trim()
 		.toLowerCase();
 	return raw === 'integer' ? 'int' : raw;
+}
+
+function formatInstanceChip( instanceId, i18nMap ) {
+	const id = String( instanceId || '' ).trim();
+	if ( ! id ) {
+		return i18nMap.noInstance || 'No dataset';
+	}
+	return id;
 }
 
 /**
@@ -133,7 +162,11 @@ function NodeRefCell( { column, value, onChange, taxonomy } ) {
 }
 
 export default function CollectionTableEdit( { attributes, setAttributes } ) {
-	const { collectionTermId = 0, rows = [] } = attributes;
+	const {
+		collectionTermId = 0,
+		instanceId = '',
+		rows = [],
+	} = attributes;
 	const blockProps = useBlockProps( {
 		className: 'wtt-collection-table-editor',
 	} );
@@ -148,6 +181,19 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 	const [ saveNote, setSaveNote ] = useState( '' );
 	const saveTimer = useRef( null );
 	const isCatalog = schema && schema.kind === 'catalog';
+	const isModel = schema && schema.kind === 'model';
+	const needsInstance = !! isModel;
+	const boundReady =
+		!! collectionTermId &&
+		( ! needsInstance || !! String( instanceId || '' ).trim() );
+
+	const selectedCollection = useMemo(
+		() =>
+			collections.find(
+				( c ) => Number( c.id ) === Number( collectionTermId )
+			) || null,
+		[ collections, collectionTermId ]
+	);
 
 	const collectionOptions = [
 		{
@@ -155,7 +201,7 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 			value: '0',
 		},
 		...collections.map( ( c ) => ( {
-			label: `${ c.path } [${ c.kind || 'table' }] (${ c.columnCount })`,
+			label: `${ c.path } [${ c.kind || 'model' }] (${ c.columnCount })`,
 			value: String( c.id ),
 		} ) ),
 	];
@@ -203,6 +249,8 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 					setAttributes( {
 						rows: normalizeRows( data.rows, cols ),
 					} );
+				} else if ( data.kind === 'model' ) {
+					/* Rows come from model-data instance load below. */
 				} else {
 					setAttributes( {
 						rows: normalizeRows( rows, cols ),
@@ -222,6 +270,49 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- reload schema when collection changes only
 	}, [ collectionTermId ] );
+
+	/* Load selected model-data instance into a single table row. */
+	useEffect( () => {
+		if ( ! isModel || ! collectionTermId || ! instanceId ) {
+			return undefined;
+		}
+		let cancelled = false;
+		const tax = ( schema && schema.taxonomy ) || '';
+		const qs = tax ? `?taxonomy=${ encodeURIComponent( tax ) }` : '';
+		apiFetch( {
+			path: `/wtt/v1/model-data/${ collectionTermId }${ qs }`,
+		} )
+			.then( ( data ) => {
+				if ( cancelled ) {
+					return;
+				}
+				const list =
+					data && Array.isArray( data.instances ) ? data.instances : [];
+				const match = list.find(
+					( inst ) => String( inst.id ) === String( instanceId )
+				);
+				const cols = ( schema && schema.columns ) || [];
+				if ( match ) {
+					setAttributes( {
+						rows: [
+							{
+								id: String( match.id ),
+								cells: cellsFromInstanceValues(
+									match.values,
+									cols
+								),
+							},
+						],
+					} );
+				}
+			} )
+			.catch( () => {
+				/* keep existing rows */
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ isModel, collectionTermId, instanceId, schema ] );
 
 	const columns = schema && Array.isArray( schema.columns ) ? schema.columns : [];
 	const displayRows = normalizeRows( rows, columns );
@@ -258,16 +349,104 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 		}, 450 );
 	};
 
+	const persistModelInstance = ( nextRows ) => {
+		if ( ! isModel || ! collectionTermId || ! instanceId ) {
+			return;
+		}
+		const row = Array.isArray( nextRows ) && nextRows[ 0 ] ? nextRows[ 0 ] : null;
+		if ( ! row ) {
+			return;
+		}
+		if ( saveTimer.current ) {
+			clearTimeout( saveTimer.current );
+		}
+		const tax = ( schema && schema.taxonomy ) || '';
+		saveTimer.current = setTimeout( () => {
+			setSaving( true );
+			setSaveNote( i18n.savingInstance || 'Saving instance…' );
+			apiFetch( {
+				path: `/wtt/v1/model-data/${ collectionTermId }`,
+				method: 'POST',
+				data: {
+					taxonomy: tax || undefined,
+					id: String( instanceId ),
+					values: valuesFromCells( row.cells ),
+				},
+			} )
+				.then( () => {
+					setSaving( false );
+					setSaveNote( i18n.savedInstance || 'Instance saved.' );
+				} )
+				.catch( ( err ) => {
+					setSaving( false );
+					setError( ( err && err.message ) || 'Save failed' );
+					setSaveNote( '' );
+				} );
+		}, 450 );
+	};
+
 	const onPickCollection = ( value ) => {
 		const id = parseInt( value, 10 ) || 0;
 		setAttributes( {
 			collectionTermId: id,
+			instanceId: '',
 			rows: [],
 		} );
 		setSaveNote( '' );
 	};
 
+	const onTreeSelect = ( node ) => {
+		const id = node && node.id ? parseInt( node.id, 10 ) || 0 : 0;
+		setAttributes( {
+			collectionTermId: id,
+			instanceId: '',
+			rows: [],
+		} );
+		setSaveNote( '' );
+	};
+
+	const clearBinding = () => {
+		setAttributes( {
+			collectionTermId: 0,
+			instanceId: '',
+			rows: [],
+		} );
+		setSchema( null );
+		setSaveNote( '' );
+	};
+
+	const clearInstance = () => {
+		setAttributes( {
+			instanceId: '',
+			rows: [],
+		} );
+		setSaveNote( '' );
+	};
+
+	const onPickInstance = ( inst ) => {
+		const id = inst && inst.id ? String( inst.id ) : '';
+		const cols = columns.length ? columns : ( schema && schema.columns ) || [];
+		setAttributes( {
+			instanceId: id,
+			rows: id
+				? [
+						{
+							id,
+							cells: cellsFromInstanceValues(
+								inst && inst.values,
+								cols
+							),
+						},
+				  ]
+				: [],
+		} );
+		setSaveNote( '' );
+	};
+
 	const addRow = () => {
+		if ( isModel ) {
+			return;
+		}
 		const next = [
 			...displayRows,
 			{ id: newRowId(), cells: emptyCells( columns ) },
@@ -279,6 +458,9 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 	};
 
 	const removeRow = ( rowId ) => {
+		if ( isModel ) {
+			return;
+		}
 		const next = displayRows.filter( ( r ) => r.id !== rowId );
 		setAttributes( { rows: next } );
 		if ( isCatalog ) {
@@ -302,45 +484,124 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 		setAttributes( { rows: next } );
 		if ( isCatalog ) {
 			persistCatalogRows( next );
+		} else if ( isModel ) {
+			persistModelInstance( next );
 		}
 	};
 
 	const titleText = schema ? formatInstanceTitle( schema.name ) : '';
+	const showTree = ! collectionTermId;
+	const showInstancePicker =
+		!! collectionTermId &&
+		! loading &&
+		needsInstance &&
+		! String( instanceId || '' ).trim();
+	const showTable = boundReady && schema && columns.length > 0;
 
 	return (
 		<div { ...blockProps }>
 			<InspectorControls>
 				<PanelBody
-					title={ i18n.title || 'Collection table' }
+					title={ i18n.title || 'Taxo Model table' }
 					initialOpen={ true }
 				>
-					<SelectControl
-						label={ i18n.pickCollection || 'Collection' }
-						value={ String( collectionTermId || 0 ) }
-						options={ collectionOptions }
-						onChange={ onPickCollection }
-						help={
-							collections.length
-								? i18n.pickHint ||
-								  'Pick the definition (BOM table, Rezept, Lieferanten…).'
-								: i18n.noCollections ||
-								  'No collections found. Create a table-typed node in Taxonomy Tree, then reload.'
-						}
-					/>
+					{ collectionTermId ? (
+						<>
+							<p className="wtt-collection-table-editor__hint">
+								{ ( selectedCollection && selectedCollection.path ) ||
+									( schema && schema.path ) ||
+									`#${ collectionTermId }` }
+							</p>
+							{ needsInstance ? (
+								<p className="wtt-collection-table-editor__hint">
+									{ i18n.datasetLabel || 'Dataset:' }{ ' ' }
+									{ formatInstanceChip( instanceId, i18n ) }
+								</p>
+							) : null }
+							<Button variant="secondary" onClick={ clearBinding }>
+								{ i18n.changeModel || 'Change model…' }
+							</Button>
+							{ needsInstance && instanceId ? (
+								<Button
+									variant="link"
+									onClick={ clearInstance }
+									style={ { marginLeft: '0.5rem' } }
+								>
+									{ i18n.changeInstance || 'Change dataset…' }
+								</Button>
+							) : null }
+						</>
+					) : (
+						<SelectControl
+							label={ i18n.pickCollection || 'Model / node' }
+							value={ String( collectionTermId || 0 ) }
+							options={ collectionOptions }
+							onChange={ onPickCollection }
+							help={
+								collections.length
+									? i18n.pickHint ||
+									  'Pick a model or schema node (e.g. Kontakt, Platine). Columns come from its attributes.'
+									: i18n.noCollections ||
+									  'No model nodes found. Create a node with attributes under Taxonomy Tree, then reload.'
+							}
+						/>
+					) }
 				</PanelBody>
 			</InspectorControls>
 
-			<p className="wtt-collection-table-editor__hint">
-				{ i18n.flowHint ||
-					'Choose a collection, then fill the rows.' }
-			</p>
+			{ showTree ? (
+				<>
+					<p className="wtt-collection-table-editor__hint">
+						{ i18n.chooseModelCanvas ||
+							'Choose a model node in the tree below.' }
+					</p>
+					{ collections.length === 0 ? (
+						<Notice status="info" isDismissible={ false }>
+							{ i18n.noCollections ||
+								'No model nodes found. Create a node with attributes under Taxonomy Tree, then reload.' }
+						</Notice>
+					) : (
+						<ModelTreeChooser
+							items={ collections }
+							selectedId={ collectionTermId }
+							onSelect={ onTreeSelect }
+							mode="tree"
+							i18n={ i18n }
+						/>
+					) }
+				</>
+			) : null }
 
-			{ ! collectionTermId && (
-				<Notice status="info" isDismissible={ false }>
-					{ i18n.noCollection ||
-						'Select a Collection (e.g. BOM, Rezept, or Lieferanten) in the sidebar.' }
-				</Notice>
-			) }
+			{ collectionTermId && ! showTree ? (
+				<p className="wtt-collection-table-editor__hint">
+					{ needsInstance && ! instanceId
+						? i18n.flowHintInstance ||
+						  'Model bound — pick or create a dataset instance.'
+						: i18n.flowHint ||
+						  'Choose a model node, then fill the rows.' }
+					{ ' ' }
+					<strong>
+						{ ( selectedCollection && selectedCollection.path ) ||
+							( schema && schema.path ) ||
+							titleText }
+					</strong>
+					{ ' ' }
+					<Button variant="link" onClick={ clearBinding }>
+						{ i18n.changeModel || 'Change model…' }
+					</Button>
+				</p>
+			) : null }
+
+			{ showInstancePicker ? (
+				<ModelInstancePicker
+					structureId={ collectionTermId }
+					taxonomy={ ( schema && schema.taxonomy ) || '' }
+					selectedId={ instanceId }
+					onSelect={ onPickInstance }
+					onCreated={ onPickInstance }
+					i18n={ i18n }
+				/>
+			) : null }
 
 			{ loading && <Spinner /> }
 
@@ -350,7 +611,7 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 				</Notice>
 			) }
 
-			{ ( saving || saveNote ) && isCatalog && (
+			{ ( saving || saveNote ) && ( isCatalog || isModel ) && boundReady && (
 				<p className="wtt-collection-table-editor__hint">
 					{ saving ? <Spinner /> : null } { saveNote }
 				</p>
@@ -359,17 +620,28 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 			{ schema && ! loading && columns.length === 0 && (
 				<Notice status="warning" isDismissible={ false }>
 					{ i18n.noColumns ||
-						'This Collection has no columns yet.' }
+						'This node has no attributes yet.' }
 				</Notice>
 			) }
 
-			{ schema && columns.length > 0 && (
+			{ showTable && (
 				<>
 					<div className="wtt-collection-table-editor__toolbar">
-						<strong>{ titleText }</strong>
-						<Button variant="secondary" onClick={ addRow }>
-							{ i18n.addRow || 'Add row' }
-						</Button>
+						<strong>
+							{ titleText }
+							{ isModel && instanceId
+								? ` · ${ formatInstanceChip( instanceId, i18n ) }`
+								: '' }
+						</strong>
+						{ ! isModel ? (
+							<Button variant="secondary" onClick={ addRow }>
+								{ i18n.addRow || 'Add row' }
+							</Button>
+						) : (
+							<Button variant="link" onClick={ clearInstance }>
+								{ i18n.changeInstance || 'Change dataset…' }
+							</Button>
+						) }
 					</div>
 					<div className="wtt-collection-table__wrap">
 						<table className="wtt-collection-table__table">
@@ -386,13 +658,13 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 												: '' }
 										</th>
 									) ) }
-									<th scope="col" />
+									{ ! isModel ? <th scope="col" /> : null }
 								</tr>
 							</thead>
 							<tbody>
 								{ displayRows.length === 0 && (
 									<tr>
-										<td colSpan={ columns.length + 2 }>
+										<td colSpan={ columns.length + ( isModel ? 1 : 2 ) }>
 											—
 										</td>
 									</tr>
@@ -448,17 +720,19 @@ export default function CollectionTableEdit( { attributes, setAttributes } ) {
 												</td>
 											);
 										} ) }
-										<td className="wtt-collection-table-editor__row-actions">
-											<Button
-												isDestructive
-												variant="link"
-												onClick={ () =>
-													removeRow( row.id )
-												}
-											>
-												{ i18n.removeRow || 'Remove' }
-											</Button>
-										</td>
+										{ ! isModel ? (
+											<td className="wtt-collection-table-editor__row-actions">
+												<Button
+													isDestructive
+													variant="link"
+													onClick={ () =>
+														removeRow( row.id )
+													}
+												>
+													{ i18n.removeRow || 'Remove' }
+												</Button>
+											</td>
+										) : null }
 									</tr>
 								) ) }
 							</tbody>

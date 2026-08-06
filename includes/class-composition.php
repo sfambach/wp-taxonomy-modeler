@@ -28,20 +28,34 @@ final class Composition {
 
 	public const KIND_TABLE   = 'table';
 	public const KIND_CATALOG = 'catalog';
+	/** Attribute-host model node (e.g. Fallstudie/Model/Kontakt) — not a legacy table Collection. */
+	public const KIND_MODEL   = 'model';
 
 	/**
-	 * All pickable Collections across scaffold taxonomies (tables + set catalogs).
+	 * All pickable block hosts across scaffold taxonomies:
+	 * legacy table + catalog roots, plus attribute-host model nodes.
 	 *
 	 * @return list<array{id:int,name:string,path:string,taxonomy:string,kind:string,hasFooter:bool,columnCount:int}>
 	 */
 	public static function list_all_collections(): array {
 		$out = array();
+		$seen = array();
 		foreach ( Taxonomy::scaffold_slugs() as $taxonomy ) {
 			if ( ! taxonomy_exists( $taxonomy ) ) {
 				continue;
 			}
-			$out = array_merge( $out, self::list_table_collections( $taxonomy ) );
-			$out = array_merge( $out, self::list_catalog_collections( $taxonomy ) );
+			foreach ( array_merge(
+				self::list_table_collections( $taxonomy ),
+				self::list_catalog_collections( $taxonomy ),
+				self::list_model_hosts( $taxonomy )
+			) as $row ) {
+				$id = (int) ( $row['id'] ?? 0 );
+				if ( $id <= 0 || isset( $seen[ $id ] ) ) {
+					continue;
+				}
+				$seen[ $id ] = true;
+				$out[]       = $row;
+			}
 		}
 
 		usort(
@@ -51,6 +65,70 @@ final class Composition {
 				if ( 0 !== $tax ) {
 					return $tax;
 				}
+				return strcasecmp( $a['path'], $b['path'] );
+			}
+		);
+
+		return $out;
+	}
+
+	/**
+	 * Attribute-host model nodes (any node with effective attributes) for the table block.
+	 * Prefer Fallstudie/Model/… hosts; any node with attributes is eligible.
+	 *
+	 * @return list<array{id:int,name:string,path:string,taxonomy:string,kind:string,hasFooter:bool,columnCount:int}>
+	 */
+	public static function list_model_hosts( string $taxonomy = '' ): array {
+		$taxonomy = '' !== $taxonomy ? $taxonomy : Taxonomy::FS;
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$term_id = (int) $term->term_id;
+			if ( Trash::is_trashed( $term_id ) || Trash::is_trash_node( $term_id ) ) {
+				continue;
+			}
+			/* Skip dedicated table/catalog roots — those use their own kinds. */
+			if ( Node_Type::has_type_named( $taxonomy, $term_id, 'table' ) ) {
+				continue;
+			}
+			if ( self::is_catalog_list_root( $taxonomy, $term_id ) ) {
+				continue;
+			}
+			$columns = self::get_attribute_columns( $taxonomy, $term_id );
+			if ( array() === $columns ) {
+				continue;
+			}
+			$out[] = array(
+				'id'          => $term_id,
+				'name'        => $term->name,
+				'path'        => self::term_path( $taxonomy, $term_id ),
+				'taxonomy'    => $taxonomy,
+				'kind'        => self::KIND_MODEL,
+				'hasFooter'   => false,
+				'columnCount' => count( $columns ),
+			);
+		}
+
+		usort(
+			$out,
+			static function ( array $a, array $b ): int {
 				return strcasecmp( $a['path'], $b['path'] );
 			}
 		);
@@ -265,6 +343,20 @@ final class Composition {
 			);
 		}
 
+		/* Attribute-host model (Kontakt, Platine, …) — preferred over legacy table Collection. */
+		$attr_columns = self::get_attribute_columns( $taxonomy, $collection_id );
+		if ( array() !== $attr_columns ) {
+			return array(
+				'id'        => $collection_id,
+				'name'      => $term->name,
+				'path'      => self::term_path( $taxonomy, $collection_id ),
+				'taxonomy'  => $taxonomy,
+				'kind'      => self::KIND_MODEL,
+				'hasFooter' => false,
+				'columns'   => $attr_columns,
+			);
+		}
+
 		if ( ! Node_Type::has_type_named( $taxonomy, $collection_id, 'table' ) ) {
 			return null;
 		}
@@ -348,6 +440,55 @@ final class Composition {
 				'typeId'           => Node_Type::get_type_id( $child_id ),
 				'typeName'         => is_array( $type ) ? (string) ( $type['name'] ?? '' ) : '',
 				'typePath'         => is_array( $type ) ? (string) ( $type['path'] ?? '' ) : '',
+			);
+		}
+
+		return $columns;
+	}
+
+	/**
+	 * Columns from effective attributes on a model / schema host node.
+	 *
+	 * @return list<array{id:int,name:string,slug:string,description:string,shortDescription:string,required:bool,typeId:int,typeName:string,typeKey:string,typePath:string}>
+	 */
+	public static function get_attribute_columns( string $taxonomy, int $host_id ): array {
+		if ( $host_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+
+		$columns = array();
+		foreach ( Attribute::list( $taxonomy, $host_id ) as $row ) {
+			if ( ! empty( $row['hidden'] ) ) {
+				continue;
+			}
+			$id = (int) ( $row['id'] ?? 0 );
+			if ( $id <= 0 ) {
+				continue;
+			}
+			$type_name = (string) ( $row['typeName'] ?? '' );
+			$type_key  = (string) ( $row['typeKey'] ?? '' );
+			if ( '' === $type_key && '' !== $type_name ) {
+				$type_key = strtolower( $type_name );
+				if ( false !== strpos( $type_key, '/' ) ) {
+					$parts    = explode( '/', $type_key );
+					$type_key = trim( (string) end( $parts ) );
+				}
+			}
+			$columns[] = array(
+				'id'               => $id,
+				'name'             => (string) ( $row['name'] ?? '' ),
+				'slug'             => sanitize_title( (string) ( $row['name'] ?? '' ) ),
+				'description'      => (string) ( $row['description'] ?? '' ),
+				'shortDescription' => (string) ( $row['shortDescription'] ?? '' ),
+				'required'         => ! Attribute::multiplicity_allows_empty(
+					(string) ( $row['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY )
+				),
+				'typeId'           => (int) ( $row['typeId'] ?? 0 ),
+				'typeName'         => $type_name,
+				'typeKey'          => $type_key,
+				'typePath'         => '',
+				'readonly'         => ! empty( $row['readonly'] ),
+				'fixedLabel'       => (string) ( $row['fixedLabel'] ?? '' ),
 			);
 		}
 

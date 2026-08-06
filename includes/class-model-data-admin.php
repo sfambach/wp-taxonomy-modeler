@@ -5,6 +5,9 @@
  * Taxonomy Tree menu item (before Settings): manage instance data against
  * structure hosts (attributes). Persistence via Model_Data.
  *
+ * Layout: sidebar = taxonomy + structure pickers; main = form editor for one
+ * instance, with automatic **list view** of instances below (identity columns).
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -156,7 +159,14 @@ final class Model_Data_Admin {
 			'noInstances'     => __( 'No instances yet. Create one to fill attribute values.', 'wp-taxonomy-tree' ),
 			'newInstance'     => __( 'New instance', 'wp-taxonomy-tree' ),
 			'editInstance'    => __( 'Edit instance', 'wp-taxonomy-tree' ),
-			'instanceName'    => __( 'Instance name', 'wp-taxonomy-tree' ),
+			'identity'        => __( 'Identity', 'wp-taxonomy-tree' ),
+			'runningNumber'   => __( 'Number', 'wp-taxonomy-tree' ),
+			'instanceId'      => __( 'Id', 'wp-taxonomy-tree' ),
+			'createdAt'       => __( 'Created', 'wp-taxonomy-tree' ),
+			'version'         => __( 'Version', 'wp-taxonomy-tree' ),
+			'modifiedAt'      => __( 'Last modified', 'wp-taxonomy-tree' ),
+			'modifiedBy'      => __( 'Modified by', 'wp-taxonomy-tree' ),
+			'assignedOnSave'  => __( 'Assigned on save', 'wp-taxonomy-tree' ),
 			'attributes'      => __( 'Attributes', 'wp-taxonomy-tree' ),
 			'save'            => __( 'Save', 'wp-taxonomy-tree' ),
 			'delete'          => __( 'Delete', 'wp-taxonomy-tree' ),
@@ -171,7 +181,14 @@ final class Model_Data_Admin {
 			'fixed'           => __( 'Fixed', 'wp-taxonomy-tree' ),
 			'inherited'       => __( 'Inherited', 'wp-taxonomy-tree' ),
 			'selectStructure' => __( 'Select a structure node to list and edit instances.', 'wp-taxonomy-tree' ),
-			'unnamed'         => __( '(unnamed)', 'wp-taxonomy-tree' ),
+			'versionShort'    => __( 'v', 'wp-taxonomy-tree' ),
+			'colNumber'       => __( 'Number', 'wp-taxonomy-tree' ),
+			'colId'           => __( 'Id', 'wp-taxonomy-tree' ),
+			'colCreated'      => __( 'Created', 'wp-taxonomy-tree' ),
+			'colVersion'      => __( 'Version', 'wp-taxonomy-tree' ),
+			'colModified'     => __( 'Last modified', 'wp-taxonomy-tree' ),
+			'openInstance'    => __( 'Open instance', 'wp-taxonomy-tree' ),
+			'activeInstance'  => __( 'Editing', 'wp-taxonomy-tree' ),
 		);
 	}
 
@@ -186,7 +203,7 @@ final class Model_Data_Admin {
 				<?php echo esc_html__( 'The taxonomy tree defines structures (types, attributes, hosts). This page manages instance data filled against a selected structure.', 'wp-taxonomy-tree' ); ?>
 			</p>
 			<div class="wtt-model-data__layout">
-				<aside class="wtt-model-data__sidebar" aria-label="<?php echo esc_attr__( 'Structure and instances', 'wp-taxonomy-tree' ); ?>">
+				<aside class="wtt-model-data__sidebar" aria-label="<?php echo esc_attr__( 'Structure', 'wp-taxonomy-tree' ); ?>">
 					<div class="wtt-model-data__field">
 						<label for="wtt-md-taxonomy"><?php echo esc_html__( 'Taxonomy', 'wp-taxonomy-tree' ); ?></label>
 						<select id="wtt-md-taxonomy" class="wtt-model-data__select"></select>
@@ -196,13 +213,6 @@ final class Model_Data_Admin {
 						<select id="wtt-md-structure" class="wtt-model-data__select"></select>
 						<p class="description"><?php echo esc_html__( 'Pick a host that has attributes. Hosts with attributes are listed first.', 'wp-taxonomy-tree' ); ?></p>
 					</div>
-					<div class="wtt-model-data__instances-head">
-						<h2><?php echo esc_html__( 'Instances', 'wp-taxonomy-tree' ); ?></h2>
-						<button type="button" class="button" id="wtt-md-new" disabled>
-							<?php echo esc_html__( 'New instance', 'wp-taxonomy-tree' ); ?>
-						</button>
-					</div>
-					<ul id="wtt-md-instance-list" class="wtt-model-data__instance-list" role="list"></ul>
 				</aside>
 				<main class="wtt-model-data__main" aria-live="polite">
 					<p id="wtt-md-placeholder" class="wtt-model-data__placeholder description">
@@ -213,10 +223,10 @@ final class Model_Data_Admin {
 							<h2 id="wtt-md-editor-title"><?php echo esc_html__( 'Edit instance', 'wp-taxonomy-tree' ); ?></h2>
 							<span id="wtt-md-status" class="wtt-model-data__status" role="status"></span>
 						</div>
-						<div class="wtt-model-data__field">
-							<label for="wtt-md-name"><?php echo esc_html__( 'Instance name', 'wp-taxonomy-tree' ); ?></label>
-							<input type="text" id="wtt-md-name" class="regular-text" autocomplete="off" />
-						</div>
+						<section class="wtt-model-data__identity" aria-labelledby="wtt-md-identity-title">
+							<h3 id="wtt-md-identity-title" class="screen-reader-text"><?php echo esc_html__( 'Identity', 'wp-taxonomy-tree' ); ?></h3>
+							<dl id="wtt-md-identity" class="wtt-model-data__identity-grid"></dl>
+						</section>
 						<section class="wtt-model-data__attrs" aria-labelledby="wtt-md-attrs-title">
 							<h3 id="wtt-md-attrs-title"><?php echo esc_html__( 'Attributes', 'wp-taxonomy-tree' ); ?></h3>
 							<div id="wtt-md-fields" class="wtt-object-view__form wtt-model-data__fields" role="list"></div>
@@ -233,6 +243,29 @@ final class Model_Data_Admin {
 							</button>
 						</p>
 					</div>
+					<section id="wtt-md-instances" class="wtt-model-data__list-view" hidden aria-labelledby="wtt-md-instances-title">
+						<div class="wtt-model-data__list-toolbar">
+							<h2 id="wtt-md-instances-title"><?php echo esc_html__( 'Instances', 'wp-taxonomy-tree' ); ?></h2>
+							<button type="button" class="button" id="wtt-md-new" disabled>
+								<?php echo esc_html__( 'New instance', 'wp-taxonomy-tree' ); ?>
+							</button>
+						</div>
+						<div class="wtt-model-data__list-wrap">
+							<table class="widefat striped wtt-model-data__list" id="wtt-md-instance-list">
+								<thead>
+									<tr>
+										<th scope="col" class="wtt-model-data__col-active"><span class="screen-reader-text"><?php echo esc_html__( 'Editing', 'wp-taxonomy-tree' ); ?></span></th>
+										<th scope="col"><?php echo esc_html__( 'Number', 'wp-taxonomy-tree' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Id', 'wp-taxonomy-tree' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Created', 'wp-taxonomy-tree' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Version', 'wp-taxonomy-tree' ); ?></th>
+										<th scope="col"><?php echo esc_html__( 'Last modified', 'wp-taxonomy-tree' ); ?></th>
+									</tr>
+								</thead>
+								<tbody id="wtt-md-list-tbody"></tbody>
+							</table>
+						</div>
+					</section>
 				</main>
 			</div>
 		</div>
@@ -276,7 +309,6 @@ final class Model_Data_Admin {
 
 		$payload = array(
 			'id'     => isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			'name'   => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['name'] ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			'values' => self::request_values_json(),
 		);
 

@@ -2,16 +2,20 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
   "name": "taxo/collection-table",
-  "title": "Taxo Collection table",
+  "title": "Taxo Model table",
   "category": "taxo",
   "icon": "editor-table",
-  "description": "Table or catalog list (BOM, Rezept, Lieferanten…). Columns from the taxonomy tree; catalog rows edit supplier records.",
-  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "bom", "table", "collection", "rezept", "lieferanten", "list"],
+  "description": "Bind a model / schema node (e.g. Kontakt, Platine). Columns from attributes; pick or create a model-data instance, then fill rows.",
+  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "knoten", "node", "attributes", "form", "list"],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "collectionTermId": {
       "type": "number",
       "default": 0
+    },
+    "instanceId": {
+      "type": "string",
+      "default": ""
     },
     "instanceName": {
       "type": "string",

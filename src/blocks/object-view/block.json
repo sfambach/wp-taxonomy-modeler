@@ -6,7 +6,7 @@
   "category": "taxo",
   "icon": "id-alt",
   "description": "Bind a taxonomy tree node and display its name, descriptions, and all attributes.",
-  "keywords": ["taxo", "taxo-object-view", "object", "node", "properties", "attributes", "form"],
+  "keywords": ["taxo", "taxo-object-view", "object", "node", "properties", "attributes", "form", "table", "liste", "compact"],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "termId": {
@@ -16,6 +16,15 @@
     "taxonomy": {
       "type": "string",
       "default": ""
+    },
+    "instanceId": {
+      "type": "string",
+      "default": ""
+    },
+    "layout": {
+      "type": "string",
+      "default": "form",
+      "enum": ["form", "table", "compact", "compact-vertical"]
     }
   },
   "supports": {

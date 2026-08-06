@@ -541,7 +541,7 @@ flowchart TB
 - A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` â†’ `"10 mm"`. â€” **agreed** (where the value is stored: Q16 reopen)
 - **Core types (Q36 / Q90):** **simple types** (`int`, `double`, `text`, `textarea`, `char`, `bool`, `display_node_name`, **`media`**, `node_ref`) + **quantity** / units + **`node_embed`** / **`node_pick`** — **agreed**. Collection kinds **`list` / `table` / `enum` parked (Q90)** — not active product types.
 - **`media` (Q65):** one simple type for files/images/links. Value = **MediaRef**. Config: `allow_upload` / `allow_url` / **`allow_url_mirror`** + **`allowed_kinds`** (MIME display kinds; default **none** — at least one kind required). **Mirror:** origin `url` + local `attachment_id` (not XOR). — **decided** (kinds 2026-08-02; url_mirror 2026-08-02)
-- **Closed values:** prefer hierarchy specialization + attributes / Festwerte (Q87/Q88) — **not** catalog `enum` (Q90)
+- **Closed values:** prefer hierarchy specialization + attributes / Festwerte (Q87/Q88) — **not** catalog `enum` (Q90). **CatalogChoice:** type choice-subtree depth ≤ 1 → flat select; depth ≥ 2 → tree chooser; Festwert seeds selection.
 - **Basiseinheit unit = set** Typ + Praefix? + Kuerzel — **decided (Q51)**
 - Every **Node** has **description** + optional **short_description** — **decided**
 - **Project ≈ taxonomy** — **strong leaning (Q18)**

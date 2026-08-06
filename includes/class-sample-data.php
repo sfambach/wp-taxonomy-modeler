@@ -83,6 +83,10 @@ final class Sample_Data {
 		$p = self::persona();
 
 		return array(
+			'praefix'         => 'm',
+			'prefix'          => 'm',
+			'einheit'         => 'Ohm',
+			'unit'            => 'Ohm',
 			'name'            => $p['first_name'],
 			'bezeichnung'     => $p['first_name'],
 			'fullname'       => $p['full_name'],

@@ -1,8 +1,11 @@
 /**
- * Editor chrome for Object view (preview host + inspector).
+ * Editor chrome for Object view (preview host + inspector + bind flow).
  */
 
 .wtt-object-view-editor {
+	box-sizing: border-box;
+	max-width: 100%;
+	overflow-x: auto;
 	border: 1px solid #c3c4c7;
 	background: #fff;
 	padding: 0.75rem;
@@ -10,10 +13,19 @@
 
 .wtt-object-view-editor__preview {
 	min-height: 2rem;
+	max-width: 100%;
+	overflow-x: auto;
 }
 
 .wtt-object-view-editor__hint {
 	margin: 0 0 0.75rem;
 	color: #646970;
 	font-size: 13px;
+}
+
+.wtt-object-view-editor .wtt-object-view {
+	margin: 0;
+	border: none;
+	padding: 0;
+	max-width: 100%;
 }

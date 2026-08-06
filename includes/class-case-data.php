@@ -468,6 +468,7 @@ final class Case_Data {
 		self::ensure_bom_implementation( $taxonomy );
 		self::ensure_bauteile_catalog( $taxonomy );
 		self::ensure_kontakt_model( $taxonomy );
+		self::ensure_platine_model( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
 		self::ensure_root_typed_knoten( $taxonomy );
@@ -516,6 +517,7 @@ final class Case_Data {
 		self::ensure_bom_implementation( $taxonomy );
 		self::ensure_bauteile_catalog( $taxonomy );
 		self::ensure_kontakt_model( $taxonomy );
+		self::ensure_platine_model( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
 		Demo_Data::strip_distributor_samples_under_enum( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
@@ -1491,7 +1493,7 @@ final class Case_Data {
 			$taxonomy,
 			'Model',
 			$root_id,
-			'Example schema hosts for Form/Table preview (Kontakt, …).',
+			'Example schema hosts for Form/Table/Compact preview (Kontakt, Platine, …).',
 			$created,
 			$existing
 		);
@@ -1531,6 +1533,62 @@ final class Case_Data {
 		}
 
 		return $kontakt_id;
+	}
+
+	/**
+	 * Seed Fallstudie/Model/Platine with attribute Name(text).
+	 * Preview sample: Name = "Prototype PCB".
+	 *
+	 * @return int Platine host term id, or 0.
+	 */
+	public static function ensure_platine_model( string $taxonomy = Taxonomy::FS ): int {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$root_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME ) );
+		if ( $root_id <= 0 ) {
+			return 0;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$model_id = self::ensure_term(
+			$taxonomy,
+			'Model',
+			$root_id,
+			'Example schema hosts for Form/Table preview (Kontakt, Platine, …).',
+			$created,
+			$existing
+		);
+		if ( $model_id <= 0 ) {
+			return 0;
+		}
+
+		$platine_id = self::ensure_term(
+			$taxonomy,
+			'Platine',
+			$model_id,
+			'PCB / board schema: Name attribute (preview sample Prototype PCB).',
+			$created,
+			$existing
+		);
+		if ( $platine_id <= 0 ) {
+			return 0;
+		}
+
+		$text_id = self::find_case_datatype_id( $taxonomy, 'text' );
+		$have    = array();
+		foreach ( Attribute::list_own( $taxonomy, $platine_id ) as $row ) {
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = true;
+		}
+
+		if ( $text_id > 0 && empty( $have['name'] ) ) {
+			Attribute::add( $taxonomy, $platine_id, 'Name', $text_id );
+		}
+
+		return $platine_id;
 	}
 
 	/**

@@ -2,9 +2,9 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.28-plan** (2026-08-06).
+Last synced from plan version **0.7.29-plan** (2026-08-06).
 
-**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE (plan **0.7.28**). Status stays scaffolding — not Phase-1 green light.
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE; **CatalogChoice** depth rule under Q90 (plan **0.7.29**). Status stays scaffolding — not Phase-1 green light.
 
 - Node presentation: **one Registry pipeline**, many type-specific renderers (Q91); Form(1)/Table(n) object surfaces (`WTTObjectRender`); samples = **name→then type** map (not methods on nodes).
 - Attribute type chooser: **`chooser_root` + `chooser_focus`** (full branch + focus), not Data-Types-only.
@@ -26,7 +26,7 @@ Last synced from plan version **0.7.28-plan** (2026-08-06).
 | **Q54 / Q35 / Q74:** hierarchy = `child_of`; RelationTypes-Ast; Relation picker CRUD | Done (planning); scaffold ≈ `0.0.140` |
 | **Q76 / Q77:** catalog type inherit+override interim; `is_datatype`; local `is_abstract` | Done (planning); **Q76 superseded for hierarchy by Q88**; scaffold ≈ `0.0.128` |
 | **Q88:** hierarchy datatype = parent (root **Knoten**); attrs keep own types | Done (planning); scaffold ≈ `0.0.234+` |
-| **Q90:** Complex `enum` / `list` / `table` parked | Done (docs); scaffold leftovers until removal |
+| **Q90:** Complex `enum` / `list` / `table` parked | Done (docs); CatalogChoice depth UI noted; scaffold leftovers until removal |
 | **Q91:** Registry + many type renderers (node ≠ one renderer) | Done (docs) |
 | **Q92:** Catalog bindings (`chooser_root` + `chooser_focus`; legacy `data_types`/…) | Done (≈ `0.0.264`) |
 | **Q61 / Q70 / Q80:** BOM = Name + Tabelle; bands via **`prop_bindings`**; rules + optional fixes | Done (planning); scaffold ≈ `0.0.181`–`0.0.188` |

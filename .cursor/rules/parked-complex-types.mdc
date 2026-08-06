@@ -11,7 +11,7 @@ Catalog / Collection kinds **`enum`**, **`list`**, and **`table`** (aliases List
 
 | Kind | Replacement |
 |------|-------------|
-| **enum** | Hierarchy inheritance (Q88) + attributes / Festwerte (Q87) — not a Collection `enum` type |
+| **enum** | Hierarchy inheritance (Q88) + attributes / Festwerte (Q87) — not a Collection `enum` type. **CatalogChoice UI:** flat `<select>` when type choice-subtree depth ≤ 1, else tree chooser (Q90 note). |
 | **list** | YAGNI for now |
 | **table** | YAGNI for product core; scaffold BOM/`taxo/collection-table` may remain as **legacy** until removal |
 

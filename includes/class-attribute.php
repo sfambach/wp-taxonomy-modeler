@@ -30,6 +30,9 @@ final class Attribute {
 	/** Term meta on host: list of inherited attribute term ids hidden on this node. */
 	public const META_KEY_HIDDEN = '_wtt_hidden_attributes';
 
+	/** Term meta on host: ordered list of own attribute term ids (display order). */
+	public const META_KEY_ORDER = '_wtt_attribute_order';
+
 	/**
 	 * Term meta on host: map attribute name → string|list of default values.
 	 * (Internal key kept as fixed_values for compatibility.)
@@ -98,6 +101,53 @@ final class Attribute {
 	}
 
 	/**
+	 * Move an own attribute up (delta -1) or down (delta +1) in host display order.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function reorder( string $taxonomy, int $host_id, int $attr_id, int $delta ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$host = get_term( $host_id, $taxonomy );
+		if ( ! $host instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Host node not found.', 'wp-taxonomy-tree' ) );
+		}
+		if ( $attr_id <= 0 || 0 === $delta ) {
+			return new \WP_Error( 'wtt_bad_attribute', __( 'Invalid attribute move.', 'wp-taxonomy-tree' ) );
+		}
+		if ( ! self::is_own_member( $taxonomy, $host_id, $attr_id ) ) {
+			return new \WP_Error(
+				'wtt_bad_attribute',
+				__( 'Only own attributes can be reordered.', 'wp-taxonomy-tree' )
+			);
+		}
+
+		$ids = array();
+		foreach ( self::list_own_raw( $taxonomy, $host_id ) as $row ) {
+			$id = (int) ( $row['id'] ?? 0 );
+			if ( $id > 0 ) {
+				$ids[] = $id;
+			}
+		}
+		$index = array_search( $attr_id, $ids, true );
+		if ( false === $index ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Attribute not found on this node.', 'wp-taxonomy-tree' ) );
+		}
+		$target = (int) $index + $delta;
+		if ( $target < 0 || $target >= count( $ids ) ) {
+			return true;
+		}
+		$tmp            = $ids[ $index ];
+		$ids[ $index ]  = $ids[ $target ];
+		$ids[ $target ] = $tmp;
+		self::store_order_ids( $host_id, $ids );
+		Tree_Model::touch_modified( $host_id );
+
+		return true;
+	}
+
+	/**
 	 * Merge attributes from root → … → host along child_of; same name → closer node wins.
 	 *
 	 * @return list<array<string, mixed>>
@@ -146,7 +196,7 @@ final class Attribute {
 			$out[] = self::decorate_row( $row, $taxonomy, $host_id );
 		}
 
-		return $out;
+		return self::apply_order( $host_id, $out );
 	}
 
 	/**
@@ -1062,7 +1112,88 @@ final class Attribute {
 			}
 		}
 
-		return $out;
+		return self::apply_order( $host_id, $out );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows
+	 * @return list<array<string, mixed>>
+	 */
+	private static function apply_order( int $host_id, array $rows ): array {
+		$order = get_term_meta( $host_id, self::META_KEY_ORDER, true );
+		if ( ! is_array( $order ) || empty( $order ) ) {
+			return $rows;
+		}
+		$rank = array();
+		$i    = 0;
+		foreach ( $order as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 && ! isset( $rank[ $id ] ) ) {
+				$rank[ $id ] = $i;
+				++$i;
+			}
+		}
+		if ( empty( $rank ) ) {
+			return $rows;
+		}
+
+		/*
+		 * Reorder only own (non-inherited) rows among their existing slots so
+		 * inherited attributes keep their merge positions.
+		 */
+		$own_slots = array();
+		foreach ( $rows as $index => $row ) {
+			if ( empty( $row['inherited'] ) ) {
+				$own_slots[] = array(
+					'index' => $index,
+					'row'   => $row,
+				);
+			}
+		}
+		if ( empty( $own_slots ) ) {
+			return $rows;
+		}
+
+		usort(
+			$own_slots,
+			static function ( array $a, array $b ) use ( $rank ): int {
+				$ia = $rank[ (int) ( $a['row']['id'] ?? 0 ) ] ?? PHP_INT_MAX;
+				$ib = $rank[ (int) ( $b['row']['id'] ?? 0 ) ] ?? PHP_INT_MAX;
+				if ( $ia === $ib ) {
+					return $a['index'] <=> $b['index'];
+				}
+				return $ia < $ib ? -1 : 1;
+			}
+		);
+
+		$out      = $rows;
+		$slot_i  = 0;
+		foreach ( $rows as $index => $row ) {
+			if ( empty( $row['inherited'] ) ) {
+				$out[ $index ] = $own_slots[ $slot_i ]['row'];
+				++$slot_i;
+			}
+		}
+
+		return array_values( $out );
+	}
+
+	/**
+	 * @param list<int|string> $ids
+	 */
+	private static function store_order_ids( int $host_id, array $ids ): void {
+		$clean = array();
+		foreach ( $ids as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 && ! in_array( $id, $clean, true ) ) {
+				$clean[] = $id;
+			}
+		}
+		if ( empty( $clean ) ) {
+			delete_term_meta( $host_id, self::META_KEY_ORDER );
+			return;
+		}
+		update_term_meta( $host_id, self::META_KEY_ORDER, $clean );
 	}
 
 	/**

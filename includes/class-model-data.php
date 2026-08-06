@@ -7,6 +7,14 @@
  *
  * Persistence: one WP option keyed by taxonomy + structure term id.
  *
+ * Identity rule (per host bag `taxonomy:structureId`):
+ * - `seq` — running number, assigned on create as max(seq)+1 within the bag (never reused).
+ * - `id` — opaque string key (`md_…`), stable primary key.
+ * - `createdAt` — ISO-8601 UTC, set once on create.
+ * - `version` — starts at 1; increments when an existing instance is saved with
+ *   changed `values` (meaningful update). Identical re-saves keep the version.
+ * - `modifiedAt` / `modifiedBy` — last save time (ISO-8601 UTC) and WP user id.
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -34,31 +42,35 @@ final class Model_Data {
 	}
 
 	/**
-	 * List instances for a structure node (newest first).
+	 * List instances for a structure node (highest seq first).
 	 *
-	 * @return list<array{id:string,name:string,values:array<string,string>,updatedAt:string}>
+	 * @return list<array<string, mixed>>
 	 */
 	public static function list( string $taxonomy, int $structure_id ): array {
 		if ( $structure_id <= 0 || ! Taxonomy::is_scaffold( $taxonomy ) ) {
 			return array();
 		}
 
-		$all = self::load_all();
-		$key = self::bag_key( $taxonomy, $structure_id );
-		$bag = isset( $all[ $key ] ) && is_array( $all[ $key ] ) ? $all[ $key ] : array();
+		$all     = self::load_all();
+		$key     = self::bag_key( $taxonomy, $structure_id );
+		$bag     = isset( $all[ $key ] ) && is_array( $all[ $key ] ) ? $all[ $key ] : array();
+		$changed = false;
+		$out     = self::normalize_bag( $bag, $changed );
 
-		$out = array();
-		foreach ( $bag as $row ) {
-			$normalized = self::normalize_row( $row );
-			if ( null !== $normalized ) {
-				$out[] = $normalized;
-			}
+		if ( $changed ) {
+			$all[ $key ] = self::rows_for_persist( $out );
+			self::persist_all( $all );
 		}
 
 		usort(
 			$out,
 			static function ( array $a, array $b ): int {
-				return strcmp( (string) ( $b['updatedAt'] ?? '' ), (string) ( $a['updatedAt'] ?? '' ) );
+				$sa = (int) ( $a['seq'] ?? 0 );
+				$sb = (int) ( $b['seq'] ?? 0 );
+				if ( $sa !== $sb ) {
+					return $sb <=> $sa;
+				}
+				return strcmp( (string) ( $b['modifiedAt'] ?? '' ), (string) ( $a['modifiedAt'] ?? '' ) );
 			}
 		);
 
@@ -66,7 +78,7 @@ final class Model_Data {
 	}
 
 	/**
-	 * @return array{id:string,name:string,values:array<string,string>,updatedAt:string}|null
+	 * @return array<string, mixed>|null
 	 */
 	public static function get( string $taxonomy, int $structure_id, string $instance_id ): ?array {
 		$instance_id = sanitize_key( $instance_id );
@@ -74,7 +86,7 @@ final class Model_Data {
 			return null;
 		}
 		foreach ( self::list( $taxonomy, $structure_id ) as $row ) {
-			if ( $row['id'] === $instance_id ) {
+			if ( (string) ( $row['id'] ?? '' ) === $instance_id ) {
 				return $row;
 			}
 		}
@@ -84,8 +96,8 @@ final class Model_Data {
 	/**
 	 * Create or update an instance.
 	 *
-	 * @param array<string, mixed> $payload id?, name, values (attr id → string).
-	 * @return array{id:string,name:string,values:array<string,string>,updatedAt:string}|\WP_Error
+	 * @param array<string, mixed> $payload id?, values (attr id → string). Name is ignored.
+	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function save( string $taxonomy, int $structure_id, array $payload ) {
 		if ( ! Taxonomy::is_scaffold( $taxonomy ) || $structure_id <= 0 ) {
@@ -97,48 +109,75 @@ final class Model_Data {
 			return new \WP_Error( 'wtt_bad_structure', __( 'Structure node not found.', 'wp-taxonomy-tree' ) );
 		}
 
-		$name = isset( $payload['name'] ) ? sanitize_text_field( (string) $payload['name'] ) : '';
-		if ( '' === $name ) {
-			return new \WP_Error( 'wtt_name_required', __( 'Instance name is required.', 'wp-taxonomy-tree' ) );
-		}
-
 		$allowed_attrs = self::allowed_attribute_ids( $taxonomy, $structure_id );
 		$raw_values    = isset( $payload['values'] ) && is_array( $payload['values'] ) ? $payload['values'] : array();
 		$values        = self::sanitize_values( $raw_values, $allowed_attrs );
 
+		$all     = self::load_all();
+		$key     = self::bag_key( $taxonomy, $structure_id );
+		$bag     = isset( $all[ $key ] ) && is_array( $all[ $key ] ) ? $all[ $key ] : array();
+		$changed = false;
+		$rows    = self::normalize_bag( $bag, $changed );
+
 		$id = isset( $payload['id'] ) ? sanitize_key( (string) $payload['id'] ) : '';
-		if ( '' === $id ) {
-			$id = self::new_id();
-		}
+		$now = gmdate( 'c' );
+		$user_id = get_current_user_id();
+		$user_name = self::user_display_name( $user_id );
 
-		$row = array(
-			'id'        => $id,
-			'name'      => $name,
-			'values'    => $values,
-			'updatedAt' => gmdate( 'c' ),
-		);
-
-		$all = self::load_all();
-		$key = self::bag_key( $taxonomy, $structure_id );
-		$bag = isset( $all[ $key ] ) && is_array( $all[ $key ] ) ? $all[ $key ] : array();
-
-		$found = false;
-		foreach ( $bag as $i => $existing ) {
-			if ( ! is_array( $existing ) ) {
-				continue;
-			}
-			$eid = isset( $existing['id'] ) ? sanitize_key( (string) $existing['id'] ) : '';
-			if ( $eid === $id ) {
-				$bag[ $i ] = $row;
-				$found     = true;
-				break;
+		$existing_index = null;
+		$existing       = null;
+		if ( '' !== $id ) {
+			foreach ( $rows as $i => $row ) {
+				if ( (string) ( $row['id'] ?? '' ) === $id ) {
+					$existing_index = $i;
+					$existing       = $row;
+					break;
+				}
 			}
 		}
-		if ( ! $found ) {
-			$bag[] = $row;
+
+		if ( null === $existing ) {
+			$id  = '' !== $id ? $id : self::new_id();
+			$seq = self::next_seq( $rows );
+			$row = self::enrich_labels(
+				array(
+					'id'             => $id,
+					'seq'            => $seq,
+					'createdAt'      => $now,
+					'version'        => 1,
+					'modifiedAt'     => $now,
+					'modifiedBy'     => $user_id,
+					'modifiedByName' => $user_name,
+					'values'         => $values,
+				)
+			);
+			$rows[] = $row;
+		} else {
+			$prev_values = isset( $existing['values'] ) && is_array( $existing['values'] ) ? $existing['values'] : array();
+			$version     = (int) ( $existing['version'] ?? 1 );
+			if ( $version < 1 ) {
+				$version = 1;
+			}
+			/* Version bumps only when attribute values change. */
+			if ( self::values_differ( $prev_values, $values ) ) {
+				++$version;
+			}
+			$row = self::enrich_labels(
+				array(
+					'id'             => (string) $existing['id'],
+					'seq'            => (int) ( $existing['seq'] ?? 0 ),
+					'createdAt'      => (string) ( $existing['createdAt'] ?? $now ),
+					'version'        => $version,
+					'modifiedAt'     => $now,
+					'modifiedBy'     => $user_id,
+					'modifiedByName' => $user_name,
+					'values'         => $values,
+				)
+			);
+			$rows[ $existing_index ] = $row;
 		}
 
-		$all[ $key ] = array_values( $bag );
+		$all[ $key ] = self::rows_for_persist( $rows );
 		self::persist_all( $all );
 
 		return $row;
@@ -344,6 +383,235 @@ final class Model_Data {
 	}
 
 	/**
+	 * Next running number within one host bag.
+	 *
+	 * @param list<array<string, mixed>> $rows Normalized rows.
+	 */
+	private static function next_seq( array $rows ): int {
+		$max = 0;
+		foreach ( $rows as $row ) {
+			$seq = (int) ( $row['seq'] ?? 0 );
+			if ( $seq > $max ) {
+				$max = $seq;
+			}
+		}
+		return $max + 1;
+	}
+
+	/**
+	 * Normalize a bag and backfill missing identity metadata.
+	 *
+	 * @param list<mixed> $bag Raw rows.
+	 * @param bool        $changed Set true when backfill mutated data.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function normalize_bag( array $bag, bool &$changed ): array {
+		$changed = false;
+		$raw     = array();
+		foreach ( $bag as $row ) {
+			$normalized = self::normalize_row_raw( $row, $changed );
+			if ( null !== $normalized ) {
+				$raw[] = $normalized;
+			}
+		}
+
+		/*
+		 * Backfill missing seq: keep any positive existing numbers, assign the
+		 * next free integers to rows without seq (oldest createdAt first).
+		 */
+		$needs_seq = false;
+		foreach ( $raw as $row ) {
+			if ( (int) ( $row['seq'] ?? 0 ) <= 0 ) {
+				$needs_seq = true;
+				break;
+			}
+		}
+		if ( $needs_seq ) {
+			$changed = true;
+			usort(
+				$raw,
+				static function ( array $a, array $b ): int {
+					return strcmp( (string) ( $a['createdAt'] ?? '' ), (string) ( $b['createdAt'] ?? '' ) );
+				}
+			);
+			$used = array();
+			foreach ( $raw as $row ) {
+				$s = (int) ( $row['seq'] ?? 0 );
+				if ( $s > 0 ) {
+					$used[ $s ] = true;
+				}
+			}
+			$next = 1;
+			foreach ( $raw as $i => $row ) {
+				$s = (int) ( $row['seq'] ?? 0 );
+				if ( $s > 0 ) {
+					continue;
+				}
+				while ( isset( $used[ $next ] ) ) {
+					++$next;
+				}
+				$raw[ $i ]['seq'] = $next;
+				$used[ $next ]    = true;
+				++$next;
+			}
+		}
+
+		$out = array();
+		foreach ( $raw as $row ) {
+			$out[] = self::enrich_labels( $row );
+		}
+		return $out;
+	}
+
+	/**
+	 * Persist shape without computed label fields.
+	 *
+	 * @param list<array<string, mixed>> $rows Display rows.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function rows_for_persist( array $rows ): array {
+		$out = array();
+		foreach ( $rows as $row ) {
+			$out[] = array(
+				'id'             => (string) ( $row['id'] ?? '' ),
+				'seq'            => (int) ( $row['seq'] ?? 0 ),
+				'createdAt'      => (string) ( $row['createdAt'] ?? '' ),
+				'version'        => max( 1, (int) ( $row['version'] ?? 1 ) ),
+				'modifiedAt'     => (string) ( $row['modifiedAt'] ?? '' ),
+				'modifiedBy'     => (int) ( $row['modifiedBy'] ?? 0 ),
+				'modifiedByName' => (string) ( $row['modifiedByName'] ?? '' ),
+				'values'         => isset( $row['values'] ) && is_array( $row['values'] ) ? $row['values'] : array(),
+			);
+		}
+		return array_values( $out );
+	}
+
+	/**
+	 * @param mixed $row Raw row.
+	 * @param bool  $changed Set when defaults were filled.
+	 * @return array<string, mixed>|null
+	 */
+	private static function normalize_row_raw( $row, bool &$changed ): ?array {
+		if ( ! is_array( $row ) ) {
+			return null;
+		}
+		$id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
+		if ( '' === $id ) {
+			return null;
+		}
+
+		$values = array();
+		if ( isset( $row['values'] ) && is_array( $row['values'] ) ) {
+			foreach ( $row['values'] as $k => $v ) {
+				$values[ (string) absint( $k ) ] = is_scalar( $v ) ? (string) $v : '';
+			}
+		}
+
+		$legacy_updated = isset( $row['updatedAt'] ) ? sanitize_text_field( (string) $row['updatedAt'] ) : '';
+		$now            = gmdate( 'c' );
+
+		$created_at = isset( $row['createdAt'] ) ? sanitize_text_field( (string) $row['createdAt'] ) : '';
+		if ( '' === $created_at ) {
+			$created_at = '' !== $legacy_updated ? $legacy_updated : $now;
+			$changed    = true;
+		}
+
+		$modified_at = isset( $row['modifiedAt'] ) ? sanitize_text_field( (string) $row['modifiedAt'] ) : '';
+		if ( '' === $modified_at ) {
+			$modified_at = '' !== $legacy_updated ? $legacy_updated : $created_at;
+			$changed     = true;
+		}
+
+		$version = isset( $row['version'] ) ? (int) $row['version'] : 0;
+		if ( $version < 1 ) {
+			$version = 1;
+			$changed = true;
+		}
+
+		$seq = isset( $row['seq'] ) ? (int) $row['seq'] : 0;
+		if ( $seq <= 0 && ! array_key_exists( 'seq', $row ) ) {
+			$changed = true;
+		}
+
+		$modified_by = isset( $row['modifiedBy'] ) ? absint( $row['modifiedBy'] ) : 0;
+		$by_name     = isset( $row['modifiedByName'] ) ? sanitize_text_field( (string) $row['modifiedByName'] ) : '';
+		if ( '' === $by_name && $modified_by > 0 ) {
+			$by_name = self::user_display_name( $modified_by );
+		}
+
+		return array(
+			'id'             => $id,
+			'seq'            => $seq,
+			'createdAt'      => $created_at,
+			'version'        => $version,
+			'modifiedAt'     => $modified_at,
+			'modifiedBy'     => $modified_by,
+			'modifiedByName' => $by_name,
+			'values'         => $values,
+		);
+	}
+
+	/**
+	 * Add localized date labels for admin UI.
+	 *
+	 * @param array<string, mixed> $row Row.
+	 * @return array<string, mixed>
+	 */
+	private static function enrich_labels( array $row ): array {
+		$row['createdAtLabel']  = self::format_datetime_label( (string) ( $row['createdAt'] ?? '' ) );
+		$row['modifiedAtLabel'] = self::format_datetime_label( (string) ( $row['modifiedAt'] ?? '' ) );
+		if ( '' === (string) ( $row['modifiedByName'] ?? '' ) && (int) ( $row['modifiedBy'] ?? 0 ) > 0 ) {
+			$row['modifiedByName'] = self::user_display_name( (int) $row['modifiedBy'] );
+		}
+		return $row;
+	}
+
+	private static function format_datetime_label( string $iso ): string {
+		if ( '' === $iso ) {
+			return '';
+		}
+		$ts = strtotime( $iso );
+		if ( false === $ts ) {
+			return $iso;
+		}
+		return (string) wp_date(
+			trim( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ),
+			$ts
+		);
+	}
+
+	private static function user_display_name( int $user_id ): string {
+		if ( $user_id <= 0 ) {
+			return '';
+		}
+		$user = get_userdata( $user_id );
+		if ( ! $user instanceof \WP_User ) {
+			return '#' . $user_id;
+		}
+		$name = trim( (string) $user->display_name );
+		if ( '' !== $name ) {
+			return $name;
+		}
+		return (string) $user->user_login;
+	}
+
+	/**
+	 * @param array<string, string> $a Values.
+	 * @param array<string, string> $b Values.
+	 */
+	private static function values_differ( array $a, array $b ): bool {
+		$keys = array_unique( array_merge( array_keys( $a ), array_keys( $b ) ) );
+		foreach ( $keys as $key ) {
+			$av = isset( $a[ $key ] ) ? (string) $a[ $key ] : '';
+			$bv = isset( $b[ $key ] ) ? (string) $b[ $key ] : '';
+			if ( $av !== $bv ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * @return array<int, true>
 	 */
 	private static function allowed_attribute_ids( string $taxonomy, int $structure_id ): array {
@@ -380,31 +648,5 @@ final class Model_Data {
 			$out[ (string) $attr_id ] = sanitize_textarea_field( (string) $value );
 		}
 		return $out;
-	}
-
-	/**
-	 * @param mixed $row Raw row.
-	 * @return array{id:string,name:string,values:array<string,string>,updatedAt:string}|null
-	 */
-	private static function normalize_row( $row ): ?array {
-		if ( ! is_array( $row ) ) {
-			return null;
-		}
-		$id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
-		if ( '' === $id ) {
-			return null;
-		}
-		$values = array();
-		if ( isset( $row['values'] ) && is_array( $row['values'] ) ) {
-			foreach ( $row['values'] as $k => $v ) {
-				$values[ (string) absint( $k ) ] = is_scalar( $v ) ? (string) $v : '';
-			}
-		}
-		return array(
-			'id'        => $id,
-			'name'      => isset( $row['name'] ) ? sanitize_text_field( (string) $row['name'] ) : '',
-			'values'    => $values,
-			'updatedAt' => isset( $row['updatedAt'] ) ? sanitize_text_field( (string) $row['updatedAt'] ) : '',
-		);
 	}
 }
