@@ -2,10 +2,14 @@
  * Editor styles for Collection table block.
  */
 
+/*
+ * Applied via useBlockProps — this IS the .wp-block wrapper.
+ * Do not set width/max-width here: theme :where() contentSize has 0 specificity
+ * and max-width: 100% would force full canvas width instead of the content column.
+ * Wide/full still work via supports.align + .alignwide/.alignfull.
+ */
 .wtt-collection-table-editor {
 	box-sizing: border-box;
-	width: 100%;
-	max-width: 100%;
 	border: 1px solid #c3c4c7;
 	background: #fff;
 	padding: 0.75rem;

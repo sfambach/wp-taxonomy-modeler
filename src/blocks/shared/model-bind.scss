@@ -3,6 +3,7 @@
  * (classes align with admin `.wtt-node-picker`).
  */
 
+/* Inner controls only — fill the (already content-sized) block, not the canvas. */
 .wtt-model-tree-chooser {
 	box-sizing: border-box;
 	width: 100%;

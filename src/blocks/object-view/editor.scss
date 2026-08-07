@@ -2,10 +2,13 @@
  * Editor chrome for Object view (preview host + inspector + bind flow).
  */
 
+/*
+ * Applied via useBlockProps — this IS the .wp-block wrapper.
+ * Omit width/max-width so theme contentSize constrains the default block;
+ * supports.align wide/full still expand via .alignwide/.alignfull.
+ */
 .wtt-object-view-editor {
 	box-sizing: border-box;
-	width: 100%;
-	max-width: 100%;
 	overflow-x: auto;
 	border: 1px solid #c3c4c7;
 	background: #fff;
@@ -16,6 +19,7 @@
 	min-height: 2rem;
 	width: 100%;
 	max-width: 100%;
+	box-sizing: border-box;
 	overflow-x: auto;
 }
 

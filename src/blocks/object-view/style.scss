@@ -1,11 +1,12 @@
 /**
  * Frontend / shared Object view chrome (loaded via block style + Object_Render CSS).
  * Core layout lives in assets/css/wtt-object-render.css.
+ *
+ * Do not set width/max-width on .wp-block-taxo-object-view — that overrides
+ * theme contentSize (:where() has 0 specificity). Inner surfaces fill the block.
  */
 
 .wp-block-taxo-object-view {
-	width: 100%;
-	max-width: 100%;
 	box-sizing: border-box;
 }
 
@@ -15,4 +16,5 @@
 .wp-block-taxo-object-view .wtt-object-view__form-surface {
 	width: 100%;
 	max-width: 100%;
+	box-sizing: border-box;
 }

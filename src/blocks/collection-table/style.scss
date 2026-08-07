@@ -1,9 +1,17 @@
 /**
  * Frontend / shared table chrome (align with admin preview tables).
+ * Inner fill only — block wrapper width comes from theme contentSize / align.
  */
+
+.wp-block-taxo-collection-table {
+	box-sizing: border-box;
+}
 
 .wtt-collection-table {
 	margin: 1em 0;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
 }
 
 .wtt-collection-table__title {

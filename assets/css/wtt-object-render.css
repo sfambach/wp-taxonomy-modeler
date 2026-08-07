@@ -256,10 +256,12 @@
 	background: #fff;
 }
 
+/*
+ * Block editor root (also on useBlockProps). No width/max-width — leave
+ * theme contentSize in charge; wide/full use align classes.
+ */
 .wtt-object-view-editor {
 	box-sizing: border-box;
-	width: 100%;
-	max-width: 100%;
 	overflow-x: auto;
 	border: 1px solid var(--wtt-ov-border, #c3c4c7);
 	background: #fff;
