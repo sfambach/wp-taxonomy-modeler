@@ -461,6 +461,12 @@ final class Object_Render {
 			$dto['nodeRefCreateFields']   = Composition::get_node_ref_create_fields( $taxonomy, $scope_id );
 		}
 
+		if ( 'date' === strtolower( $type_key ) && '' !== $taxonomy ) {
+			$cfg_id = $slot_id > 0 ? $slot_id : (int) ( $row['typeId'] ?? 0 );
+			$cfg    = Node_Type::get_date_config_for_node( $taxonomy, $cfg_id );
+			$dto['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
+		}
+
 		return $dto;
 	}
 
@@ -698,6 +704,25 @@ final class Object_Render {
 			$ref = self::parse_media_ref( $raw );
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Media_Render::render_html escapes.
 			echo Media_Render::render_html( $ref, array( 'compact' => $compact ) );
+			return;
+		}
+		$type_key = strtolower( trim( (string) ( $prop['typeKey'] ?? $prop['typeName'] ?? '' ) ) );
+		if ( false !== strpos( $type_key, '/' ) ) {
+			$parts    = array_map( 'trim', explode( '/', $type_key ) );
+			$type_key = strtolower( (string) end( $parts ) );
+		}
+		if ( 'date' === $type_key || 'datetime' === $type_key ) {
+			$mode = 'date';
+			if ( isset( $prop['dateConfig']['mode'] ) ) {
+				$mode = Node_Type::normalize_date_mode( (string) $prop['dateConfig']['mode'] );
+			}
+			$ts        = Node_Type::parse_date_store_value( $raw );
+			$formatted = $ts > 0 ? Node_Type::format_date_store_value( $ts, $mode ) : '';
+			if ( '' === $formatted ) {
+				echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ) . '</span>';
+				return;
+			}
+			echo esc_html( $formatted );
 			return;
 		}
 		if ( self::is_reference_prop( $prop ) ) {

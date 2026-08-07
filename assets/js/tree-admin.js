@@ -255,6 +255,17 @@
 						),
 				  }
 				: null,
+			dateConfig: n.dateConfig
+				? {
+						mode:
+							n.dateConfig.mode === 'datetime' ? 'datetime' : 'date',
+				  }
+				: n.isDatatype &&
+					  String(n.name || '')
+							.trim()
+							.toLowerCase() === 'date'
+					? { mode: 'date' }
+					: null,
 			typeBranch: n.typeBranch ? deepClone(n.typeBranch) : null,
 			isBasiseinheitUnit: !!n.isBasiseinheitUnit,
 			prefixAllowlist: n.prefixAllowlist ? deepClone(n.prefixAllowlist) : null,
@@ -364,6 +375,12 @@
 						),
 				  }
 				: n.mediaConfig || null,
+			dateConfig: d.dateConfig
+				? {
+						mode:
+							d.dateConfig.mode === 'datetime' ? 'datetime' : 'date',
+				  }
+				: n.dateConfig || null,
 			typeBranch: d.typeBranch,
 			isBasiseinheitUnit: d.isBasiseinheitUnit,
 			prefixAllowlist: d.prefixAllowlist,
@@ -383,6 +400,7 @@
 			key === 'char' ||
 			key === 'bool' ||
 			key === 'email' ||
+			key === 'date' ||
 			key === 'quantity' ||
 			key === 'display_node_name' ||
 			key === 'media'
@@ -2986,6 +3004,32 @@
 		} else {
 			state.draft.mediaConfig = null;
 		}
+		if (typeKeyFromMember({ type: state.draft.type }) === 'date') {
+			state.draft.dateConfig = typeNode.dateConfig
+				? {
+						mode:
+							typeNode.dateConfig.mode === 'datetime'
+								? 'datetime'
+								: 'date',
+				  }
+				: { mode: 'date' };
+		} else if (
+			state.draft.isDatatype &&
+			String(state.draft.name || '')
+				.trim()
+				.toLowerCase() === 'date'
+		) {
+			state.draft.dateConfig = typeNode.dateConfig
+				? {
+						mode:
+							typeNode.dateConfig.mode === 'datetime'
+								? 'datetime'
+								: 'date',
+				  }
+				: state.draft.dateConfig || { mode: 'date' };
+		} else {
+			state.draft.dateConfig = null;
+		}
 		if (typeKeyFromMember({ type: state.draft.type }) === 'display_node_name') {
 			state.draft.required = false;
 		}
@@ -3092,12 +3136,16 @@
 		state.draft.required = false;
 		state.draft.hasFooter = false;
 		state.draft.mediaConfig = null;
+		state.draft.dateConfig = null;
 		if (typeKeyFromMember({ type: state.draft.type }) === 'media') {
 			state.draft.mediaConfig = {
 				allowUpload: true,
 				allowUrl: false,
 				allowedKinds: [],
 			};
+		}
+		if (typeKeyFromMember({ type: state.draft.type }) === 'date') {
+			state.draft.dateConfig = { mode: 'date' };
 		}
 		if (!typeId) {
 			afterDraftMutation();
@@ -4823,6 +4871,10 @@
 			savePayload.media_allowed_kinds = JSON.stringify(
 				normalizeAllowedKinds(payloadDraft.mediaConfig.allowedKinds)
 			);
+		}
+		if (payloadDraft.dateConfig) {
+			savePayload.date_mode =
+				payloadDraft.dateConfig.mode === 'datetime' ? 'datetime' : 'date';
 		}
 		var prefixBranch =
 			payloadDraft.prefixBranch && payloadDraft.prefixBranch.unitAllowlistEdit
@@ -9355,7 +9407,7 @@
 			!name &&
 			!member.typeId &&
 			member.name &&
-			/^(int|char|double|text|textarea|bool|email|table|enum)$/i.test(
+			/^(int|char|double|text|textarea|bool|email|date|table|enum)$/i.test(
 				String(member.name).trim()
 			)
 		) {
@@ -9755,6 +9807,7 @@
 				key === 'textarea' ||
 				key === 'bool' ||
 				key === 'email' ||
+				key === 'date' ||
 				key === 'enum' ||
 				key === 'node_ref'
 			) {
@@ -10678,6 +10731,77 @@
 				}),
 			])
 		);
+		pane.appendChild(block);
+	}
+
+	function setDraftDateMode(mode) {
+		if (!state.draft) {
+			return;
+		}
+		mode = mode === 'datetime' ? 'datetime' : 'date';
+		if (!state.draft.dateConfig) {
+			state.draft.dateConfig = { mode: mode };
+		} else {
+			state.draft.dateConfig.mode = mode;
+		}
+		afterDraftMutation();
+	}
+
+	function renderDateSettings(n, pane) {
+		var isDateCatalog =
+			n &&
+			n.isDatatype &&
+			String(n.name || '')
+				.trim()
+				.toLowerCase() === 'date';
+		if (!n || (!n.dateConfig && !isDateCatalog)) {
+			return;
+		}
+		if (!n.dateConfig) {
+			n.dateConfig = { mode: 'date' };
+		}
+		var block = el('div', { className: 'wtt-panel wtt-date-settings' });
+		block.appendChild(
+			el('h3', {
+				className: 'wtt-panel__title wtt-date-settings__title',
+				text: i18n.dateSettings || 'Date settings',
+			})
+		);
+		block.appendChild(
+			el('p', {
+				className: 'description',
+				text:
+					i18n.dateModeHint ||
+					'Choose date-only or date+time. Instance values are stored as Unix timestamps.',
+			})
+		);
+		var row = el('div', { className: 'wtt-date-settings__mode' });
+		row.appendChild(
+			el('label', {
+				className: 'wtt-date-settings__label',
+				text: i18n.dateMode || 'Mode',
+			})
+		);
+		var select = el('select', {
+			className: 'wtt-select wtt-date-settings__select',
+			id: 'wtt-date-mode',
+		});
+		var cur = n.dateConfig.mode === 'datetime' ? 'datetime' : 'date';
+		[
+			{ value: 'date', label: i18n.dateModeDate || 'Date only' },
+			{ value: 'datetime', label: i18n.dateModeDateTime || 'Date and time' },
+		].forEach(function (opt) {
+			var o = el('option', { value: opt.value, text: opt.label });
+			if (opt.value === cur) {
+				o.selected = true;
+			}
+			select.appendChild(o);
+		});
+		select.addEventListener('change', function () {
+			setDraftDateMode(select.value);
+		});
+		row.appendChild(select);
+		block.appendChild(row);
 		pane.appendChild(block);
 	}
 
@@ -12094,6 +12218,7 @@
 			name === 'textarea' ||
 			name === 'bool' ||
 			name === 'email' ||
+			name === 'date' ||
 			name === 'table'
 		) {
 			return name;
@@ -12112,6 +12237,7 @@
 				name === 'textarea' ||
 				name === 'bool' ||
 				name === 'email' ||
+				name === 'date' ||
 				name === 'table')
 		) {
 			return name;
@@ -12142,6 +12268,7 @@
 			key === 'textarea' ||
 			key === 'bool' ||
 			key === 'email' ||
+			key === 'date' ||
 			key === 'table'
 		);
 	}
@@ -14202,6 +14329,7 @@
 				renderSetSettings(n, pane);
 				renderEnumValuesSettings(n, pane, controlsLocked);
 				renderMediaSettings(n, pane);
+				renderDateSettings(n, pane);
 			} else if (n.isSet) {
 				renderSetMembers(n, pane);
 			} else if (n.isConcreteEnum) {

@@ -641,6 +641,11 @@ final class Tree_Ajax {
 			$media_allowed_kinds = is_array( $kinds_raw ) ? $kinds_raw : array();
 		}
 
+		$date_mode = null;
+		if ( isset( $_POST['date_mode'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$date_mode = sanitize_key( (string) wp_unslash( $_POST['date_mode'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		$type_props = null;
 		if ( isset( $_POST['type_props'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$props_raw = wp_unslash( $_POST['type_props'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
@@ -700,6 +705,9 @@ final class Tree_Ajax {
 		}
 		if ( null !== $media_allowed_kinds ) {
 			$save_args['media_allowed_kinds'] = $media_allowed_kinds;
+		}
+		if ( null !== $date_mode ) {
+			$save_args['date_mode'] = $date_mode;
 		}
 		if ( null !== $type_props ) {
 			$save_args['type_props'] = $type_props;

@@ -110,6 +110,7 @@ final class Tree_Admin {
 				Demo_Data::ensure_short_descriptions( $requested );
 				Demo_Data::ensure_media_type( $requested );
 				Demo_Data::ensure_email_type( $requested );
+				Demo_Data::ensure_date_type( $requested );
 				Demo_Data::ensure_subnode_type( $requested );
 				Demo_Data::ensure_bom_columns( $requested );
 				Node_Type::ensure_table_type_props( $requested );
@@ -441,6 +442,11 @@ final class Tree_Admin {
 				'boolTrue'        => __( 'true', 'wp-taxonomy-tree' ),
 				'boolFalse'       => __( 'false', 'wp-taxonomy-tree' ),
 				'emailInvalid'    => __( 'Enter a valid email address.', 'wp-taxonomy-tree' ),
+				'dateSettings'    => __( 'Date settings', 'wp-taxonomy-tree' ),
+				'dateMode'        => __( 'Mode', 'wp-taxonomy-tree' ),
+				'dateModeDate'    => __( 'Date only', 'wp-taxonomy-tree' ),
+				'dateModeDateTime'=> __( 'Date and time', 'wp-taxonomy-tree' ),
+				'dateModeHint'    => __( 'Choose date-only or date+time. Instance values are stored as Unix timestamps (site timezone for controls).', 'wp-taxonomy-tree' ),
 				'displayNodeNameHint' => __( 'This type always shows the node name — no fixed value and no user input.', 'wp-taxonomy-tree' ),
 				'mediaSettings'   => __( 'Media settings', 'wp-taxonomy-tree' ),
 				'mediaAllowUpload'=> __( 'Allow Media Library', 'wp-taxonomy-tree' ),

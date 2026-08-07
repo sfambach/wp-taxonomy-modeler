@@ -748,6 +748,7 @@ final class Tree_Model {
 				Node_Type::get_type_id( (int) $term->term_id )
 			),
 			'mediaConfig'        => Node_Type::get_media_config_for_node( $taxonomy, (int) $term->term_id ),
+			'dateConfig'         => Node_Type::get_date_config_for_node( $taxonomy, (int) $term->term_id ),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),
 			'relationTypeTree'   => Relation::get_relation_type_tree( $taxonomy ),
 			'relationTypeOptions'=> Relation::get_assignable_type_options( $taxonomy ),

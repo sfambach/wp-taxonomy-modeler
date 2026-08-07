@@ -40,6 +40,12 @@ final class Case_Data {
 			array( 'name' => 'char', 'description' => 'Single character.', 'is_datatype' => true ),
 			array( 'name' => 'bool', 'description' => 'Boolean.', 'is_datatype' => true ),
 			array(
+				'name'        => 'date',
+				'description' => 'Calendar date or date+time (mode on type). Store: Unix timestamp.',
+				'is_datatype' => true,
+				'date_mode'   => 'date',
+			),
+			array(
 				'name'        => 'display_node_name',
 				'description' => 'Read-only: shows the host Node.name (no user input).',
 				'is_datatype' => true,
@@ -472,6 +478,7 @@ final class Case_Data {
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 		self::ensure_simple_datatypes( $taxonomy );
 		self::ensure_email_datatype( $taxonomy );
+		self::ensure_date_datatype( $taxonomy );
 		self::ensure_complex_datatypes( $taxonomy );
 		Catalog_Bindings::ensure( $taxonomy );
 		self::ensure_bauart_enum( $taxonomy );
@@ -521,6 +528,7 @@ final class Case_Data {
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 		self::ensure_simple_datatypes( $taxonomy );
 		self::ensure_email_datatype( $taxonomy );
+		self::ensure_date_datatype( $taxonomy );
 		self::ensure_complex_datatypes( $taxonomy );
 		Catalog_Bindings::ensure( $taxonomy );
 		self::ensure_bauart_enum( $taxonomy );
@@ -1741,6 +1749,59 @@ final class Case_Data {
 	}
 
 	/**
+	 * Ensure Simple → date datatype exists (idempotent). Default mode: date.
+	 *
+	 * @return int Date type term id, or 0.
+	 */
+	public static function ensure_date_datatype( string $taxonomy = Taxonomy::FS ): int {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		self::ensure_simple_datatypes( $taxonomy );
+
+		$simple = 0;
+		foreach ( self::simple_catalog_paths() as $path ) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 && Node_Type::is_datatype( $taxonomy, $id ) ) {
+				$simple = $id;
+				break;
+			}
+			if ( $id > 0 && 0 === $simple ) {
+				$simple = $id;
+			}
+		}
+		if ( $simple <= 0 ) {
+			return 0;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$date_id  = self::ensure_term(
+			$taxonomy,
+			'date',
+			$simple,
+			'Calendar date or date+time (mode on type). Store: Unix timestamp.',
+			$created,
+			$existing
+		);
+		if ( $date_id <= 0 ) {
+			$date_id = self::find_simple_catalog_leaf( $taxonomy, $simple, 'date' );
+		}
+		if ( $date_id <= 0 ) {
+			return 0;
+		}
+
+		Node_Type::set_is_datatype( $taxonomy, $date_id, true );
+		Node_Type::set_deletable( $date_id, false );
+		if ( ! metadata_exists( 'term', $date_id, Node_Type::META_KEY_DATE_MODE ) ) {
+			Node_Type::set_date_mode( $taxonomy, $date_id, 'date' );
+		}
+
+		return $date_id;
+	}
+
+	/**
 	 * Catalog datatype `table`: composition → Zeile (+ optional Kopf / Fuss band nodes).
 	 * Bands are hierarchy children under `table` (org) and composition targets (membership).
 	 * Strips obsolete English aliases Head/Line/Foot left from earlier experiments.
@@ -2407,6 +2468,9 @@ final class Case_Data {
 			}
 			if ( array_key_exists( 'multiplikator', $node ) && is_numeric( $node['multiplikator'] ) ) {
 				Node_Type::set_multiplikator( $term_id, (float) $node['multiplikator'] );
+			}
+			if ( array_key_exists( 'date_mode', $node ) ) {
+				Node_Type::set_date_mode( $taxonomy, $term_id, (string) $node['date_mode'] );
 			}
 
 			$type_name = isset( $node['type_name'] ) ? (string) $node['type_name'] : '';

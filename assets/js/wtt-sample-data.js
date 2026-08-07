@@ -45,6 +45,8 @@
 		textarea: 'Sample text\nSecond line',
 		char: 'A',
 		bool: 'true',
+		/* Unix timestamp (UTC 2024-06-15 14:30:00). Mode on type chooses date vs datetime chrome. */
+		date: '1718461800',
 		/* Read-only host name — live preview prefers member.displayName/name. */
 		display_node_name: 'Node name',
 		/*
@@ -85,6 +87,11 @@
 		email: PERSONA.email,
 		'e mail': PERSONA.email,
 		mail: PERSONA.email,
+		datum: '1718461800',
+		date: '1718461800',
+		datetime: '1718461800',
+		zeitpunkt: '1718461800',
+		timestamp: '1718461800',
 		telefon: PERSONA.phone,
 		phone: PERSONA.phone,
 		tel: PERSONA.phone,
@@ -155,6 +162,13 @@
 		}
 		if (key === 'float' || key === 'number') {
 			return 'double';
+		}
+		if (
+			key === 'datetime' ||
+			key === 'date_time' ||
+			key === 'timestamp'
+		) {
+			return 'date';
 		}
 		return key;
 	}
@@ -310,6 +324,10 @@
 		}
 		var s = String(value);
 		if (s.charAt(0) === '{' || /^https?:\/\//i.test(s)) {
+			return s;
+		}
+		/* Leave unix timestamps / pure integers alone. */
+		if (/^-?\d+$/.test(s)) {
 			return s;
 		}
 		var at = s.indexOf('@');

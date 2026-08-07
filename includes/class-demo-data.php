@@ -73,6 +73,11 @@ final class Demo_Data {
 											array( 'name' => 'char', 'description' => 'Single character.' ),
 											array( 'name' => 'bool', 'description' => 'Boolean.' ),
 											array(
+												'name'        => 'date',
+												'description' => 'Calendar date or date+time (mode on type). Store: Unix timestamp.',
+												'date_mode'   => 'date',
+											),
+											array(
 												'name'        => 'display_node_name',
 												'description' => 'Read-only: shows the host Node.name (no user input).',
 											),
@@ -2541,6 +2546,42 @@ final class Demo_Data {
 	}
 
 	/**
+	 * Ensure Simple → date type exists (idempotent). Default mode: date (calendar day).
+	 *
+	 * @return int Date type term id, or 0 on failure.
+	 */
+	public static function ensure_date_type( string $taxonomy ): int {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$simple   = self::find_term_by_path( $taxonomy, array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Simple' ) );
+		if ( $simple <= 0 ) {
+			return 0;
+		}
+
+		$date = self::ensure_term(
+			$taxonomy,
+			'date',
+			$simple,
+			'Calendar date or date+time (mode on type). Store: Unix timestamp.',
+			$created,
+			$existing
+		);
+		if ( $date > 0 ) {
+			Node_Type::set_is_datatype( $taxonomy, $date, true );
+			Node_Type::set_deletable( $date, false );
+			if ( ! metadata_exists( 'term', $date, Node_Type::META_KEY_DATE_MODE ) ) {
+				Node_Type::set_date_mode( $taxonomy, $date, 'date' );
+			}
+		}
+
+		return $date > 0 ? $date : 0;
+	}
+
+	/**
 	 * Ensure Simple → media type exists (idempotent). Also adds demo slots if missing.
 	 *
 	 * @return int Media type term id, or 0 on failure.
@@ -3049,6 +3090,10 @@ final class Demo_Data {
 				$allow_upload = array_key_exists( 'media_allow_upload', $node ) ? (bool) $node['media_allow_upload'] : true;
 				$allow_url    = array_key_exists( 'media_allow_url', $node ) ? (bool) $node['media_allow_url'] : false;
 				Node_Type::set_media_type_config( $taxonomy, $term_id, $allow_upload, $allow_url );
+			}
+
+			if ( array_key_exists( 'date_mode', $node ) ) {
+				Node_Type::set_date_mode( $taxonomy, $term_id, (string) $node['date_mode'] );
 			}
 
 			if ( '' !== $type_name ) {

@@ -65,6 +65,8 @@ final class Sample_Data {
 			'textarea'          => "Sample text\nSecond line",
 			'char'              => 'A',
 			'bool'              => 'true',
+			/* Unix timestamp (UTC 2024-06-15 14:30:00). Mode on type chooses date vs datetime chrome. */
+			'date'              => '1718461800',
 			/* Read-only host name — preview uses the live node name; placeholder for DTOs. */
 			'display_node_name' => 'Node name',
 			/* MediaRef JSON (attachment-like) for SSR / fixtures; admin prefers WTTMediaRender. */
@@ -103,6 +105,11 @@ final class Sample_Data {
 			'email'           => $p['email'],
 			'e mail'          => $p['email'],
 			'mail'            => $p['email'],
+			'datum'           => '1718461800',
+			'date'            => '1718461800',
+			'datetime'        => '1718461800',
+			'zeitpunkt'       => '1718461800',
+			'timestamp'       => '1718461800',
 			'telefon'         => $p['phone'],
 			'phone'           => $p['phone'],
 			'tel'             => $p['phone'],
@@ -286,6 +293,9 @@ final class Sample_Data {
 		}
 		if ( 'string' === $key || 'varchar' === $key ) {
 			return 'text';
+		}
+		if ( in_array( $key, array( 'datetime', 'date_time', 'timestamp' ), true ) ) {
+			return 'date';
 		}
 		if ( 'float' === $key || 'number' === $key ) {
 			return 'double';

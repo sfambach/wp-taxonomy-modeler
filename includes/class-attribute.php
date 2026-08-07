@@ -1249,6 +1249,12 @@ final class Attribute {
 				: array()
 		);
 
+		if ( 'date' === (string) $row['typeKey'] ) {
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			$cfg     = Node_Type::get_date_config_for_node( $taxonomy, $attr_id > 0 ? $attr_id : $type_id );
+			$row['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
+		}
+
 		return $row;
 	}
 
@@ -1423,7 +1429,7 @@ final class Attribute {
 	private static function is_scalar_type_key( string $key ): bool {
 		return in_array(
 			$key,
-			array( 'int', 'double', 'text', 'email', 'textarea', 'char', 'bool', 'quantity', 'media', 'display_node_name' ),
+			array( 'int', 'double', 'text', 'email', 'textarea', 'char', 'bool', 'date', 'quantity', 'media', 'display_node_name' ),
 			true
 		);
 	}

@@ -50,6 +50,12 @@ final class Node_Type {
 	/** JSON list of allowed MIME display kinds (Q65). Default empty = none enabled. */
 	public const META_KEY_MEDIA_ALLOWED_KINDS = '_wtt_media_allowed_kinds';
 
+	/**
+	 * Date type mode: `date` (calendar day) or `datetime` (date + time).
+	 * Store SoT for instance values is always a Unix timestamp (int as decimal string).
+	 */
+	public const META_KEY_DATE_MODE = '_wtt_date_mode';
+
 	/** Fixed constant value: points at a Typen-branch Node (e.g. Einheit → Ohm). */
 	public const META_KEY_FIXED_NODE = '_wtt_fixed_node_id';
 
@@ -1271,6 +1277,7 @@ final class Node_Type {
 			self::META_KEY_MEDIA_ALLOW_UPLOAD,
 			self::META_KEY_MEDIA_ALLOW_URL,
 			self::META_KEY_MEDIA_ALLOWED_KINDS,
+			self::META_KEY_DATE_MODE,
 			self::META_KEY_FIXED_NODE,
 			self::META_KEY_REF_SCOPE,
 			self::META_KEY_ALLOWED_REF_IDS,
@@ -1311,6 +1318,7 @@ final class Node_Type {
 			self::META_KEY_SET_LABEL_CHILDREN,
 			self::META_KEY_MEDIA_ALLOW_UPLOAD,
 			self::META_KEY_MEDIA_ALLOW_URL,
+			self::META_KEY_DATE_MODE,
 			self::META_KEY_FIXED_NODE,
 			self::META_KEY_REF_SCOPE,
 			self::META_KEY_ALLOWED_REF_IDS,
@@ -1988,6 +1996,16 @@ final class Node_Type {
 			}
 		}
 
+		if ( array_key_exists( 'date_mode', $settings ) ) {
+			$date_term = self::resolve_date_config_term_id( $taxonomy, $term_id );
+			if ( $date_term > 0 ) {
+				$result = self::set_date_mode( $taxonomy, $date_term, (string) $settings['date_mode'] );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+			}
+		}
+
 		$has_footer = ! empty( $settings['has_footer'] );
 		$result     = self::set_has_footer( $taxonomy, $term_id, $has_footer );
 		if ( is_wp_error( $result ) ) {
@@ -2609,6 +2627,139 @@ final class Node_Type {
 		return $cfg;
 	}
 
+	/**
+	 * Normalize date mode: `date` (default) or `datetime`.
+	 */
+	public static function normalize_date_mode( string $mode ): string {
+		$mode = strtolower( trim( $mode ) );
+		return 'datetime' === $mode ? 'datetime' : 'date';
+	}
+
+	public static function is_date_type_name( string $type_name ): bool {
+		return 'date' === self::normalize_type_name( $type_name );
+	}
+
+	/**
+	 * Resolve which term holds date mode: the date type node itself, or the assigned type.
+	 */
+	public static function resolve_date_config_term_id( string $taxonomy, int $term_id ): int {
+		$term = get_term( $term_id, $taxonomy );
+		if ( $term instanceof \WP_Term && self::is_date_type_name( $term->name ) ) {
+			return $term_id;
+		}
+		$type_id = self::get_effective_type_id( $taxonomy, $term_id );
+		if ( $type_id <= 0 ) {
+			return 0;
+		}
+		$type = get_term( $type_id, $taxonomy );
+		if ( $type instanceof \WP_Term && self::is_date_type_name( $type->name ) ) {
+			return $type_id;
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Date mode stored on the date catalog term (default `date`).
+	 */
+	public static function get_date_mode( int $term_id ): string {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_DATE_MODE ) ) {
+			return 'date';
+		}
+		return self::normalize_date_mode( (string) get_term_meta( $term_id, self::META_KEY_DATE_MODE, true ) );
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_date_mode( string $taxonomy, int $type_term_id, string $mode ) {
+		$term = get_term( $type_term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		if ( ! self::is_date_type_name( $term->name ) ) {
+			return new \WP_Error( 'wtt_not_date', __( 'Date settings apply only to the date type.', 'wp-taxonomy-tree' ) );
+		}
+		$mode = self::normalize_date_mode( $mode );
+		update_term_meta( $type_term_id, self::META_KEY_DATE_MODE, $mode );
+
+		return true;
+	}
+
+	/**
+	 * Full date config for a node (own meta on catalog type, or inherited via type assignment).
+	 *
+	 * @return array{mode:string}|null
+	 */
+	public static function get_date_config_for_node( string $taxonomy, int $term_id ): ?array {
+		$config_id = self::resolve_date_config_term_id( $taxonomy, $term_id );
+		if ( $config_id <= 0 ) {
+			return null;
+		}
+		/* Field-level override: own meta wins when present. */
+		if ( metadata_exists( 'term', $term_id, self::META_KEY_DATE_MODE ) ) {
+			return array( 'mode' => self::get_date_mode( $term_id ) );
+		}
+
+		return array( 'mode' => self::get_date_mode( $config_id ) );
+	}
+
+	/**
+	 * Parse a store value to a Unix timestamp (0 when empty/invalid).
+	 * Accepts decimal unix string, or MySQL Y-m-d / Y-m-d H:i:s (site TZ).
+	 */
+	public static function parse_date_store_value( string $raw ): int {
+		$raw = trim( $raw );
+		if ( '' === $raw ) {
+			return 0;
+		}
+		if ( preg_match( '/^-?\d+$/', $raw ) ) {
+			return (int) $raw;
+		}
+		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new \DateTimeZone( 'UTC' );
+		$dt = \DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $raw, $tz );
+		if ( $dt instanceof \DateTimeImmutable ) {
+			return $dt->getTimestamp();
+		}
+		$dt = \DateTimeImmutable::createFromFormat( 'Y-m-d', $raw, $tz );
+		if ( $dt instanceof \DateTimeImmutable ) {
+			return $dt->setTime( 0, 0, 0 )->getTimestamp();
+		}
+		$ts = strtotime( $raw );
+		return false === $ts ? 0 : (int) $ts;
+	}
+
+	/**
+	 * Format a Unix timestamp for display (site timezone).
+	 */
+	public static function format_date_store_value( int $timestamp, string $mode = 'date' ): string {
+		if ( $timestamp <= 0 ) {
+			return '';
+		}
+		$mode = self::normalize_date_mode( $mode );
+		if ( function_exists( 'wp_date' ) ) {
+			return (string) wp_date(
+				'datetime' === $mode ? 'Y-m-d H:i' : 'Y-m-d',
+				$timestamp
+			);
+		}
+		return 'datetime' === $mode
+			? gmdate( 'Y-m-d H:i', $timestamp )
+			: gmdate( 'Y-m-d', $timestamp );
+	}
+
+	/**
+	 * Normalize a user/literal value to store SoT (unix timestamp decimal string, or empty).
+	 */
+	public static function normalize_date_store_value( string $raw ): string {
+		$raw = trim( $raw );
+		if ( '' === $raw ) {
+			return '';
+		}
+		$ts = self::parse_date_store_value( $raw );
+		return $ts > 0 ? (string) $ts : '';
+	}
+
 	public static function get_fixed_node_id( int $term_id ): int {
 		$value = get_term_meta( $term_id, self::META_KEY_FIXED_NODE, true );
 		if ( ! is_numeric( $value ) ) {
@@ -3095,7 +3246,7 @@ final class Node_Type {
 
 		return in_array(
 			$name,
-			array( 'int', 'double', 'text', 'textarea', 'char', 'bool', 'email', 'quantity', 'display_node_name', 'media' ),
+			array( 'int', 'double', 'text', 'textarea', 'char', 'bool', 'email', 'date', 'quantity', 'display_node_name', 'media' ),
 			true
 		);
 	}
@@ -3136,6 +3287,9 @@ final class Node_Type {
 		if ( in_array( $name, array( 'string', 'varchar' ), true ) ) {
 			return 'text';
 		}
+		if ( in_array( $name, array( 'datetime', 'date_time', 'date-time', 'timestamp' ), true ) ) {
+			return 'date';
+		}
 		if ( in_array( $name, array( 'display node name', 'displayname', 'node_name' ), true ) ) {
 			return 'display_node_name';
 		}
@@ -3157,6 +3311,9 @@ final class Node_Type {
 		}
 		if ( 'email' === $name ) {
 			return strtolower( $literal );
+		}
+		if ( 'date' === $name ) {
+			return self::normalize_date_store_value( $literal );
 		}
 
 		return $literal;
@@ -3750,6 +3907,7 @@ final class Node_Type {
 				'typeBranch'     => $unit_qty ? null : self::get_type_branch( $taxonomy, $child_id ),
 				'quantitySchema' => $unit_qty ? self::get_quantity_schema_for_type( $taxonomy, $type_id ) : null,
 				'mediaConfig'    => self::get_media_config_for_node( $taxonomy, $child_id ),
+				'dateConfig'     => self::get_date_config_for_node( $taxonomy, $child_id ),
 				'refScopeId'     => self::get_ref_scope_id( $child_id ),
 				'viaComposition' => $via_composition,
 			);

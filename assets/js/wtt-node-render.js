@@ -35,6 +35,7 @@
 		textarea: true,
 		bool: true,
 		email: true,
+		date: true,
 	};
 
 	/** Collection / structured types with dedicated renderers. */
@@ -978,6 +979,176 @@
 		inputClass: 'wtt-node-render--bool',
 	});
 
+	/**
+	 * Date / date-time simple type.
+	 * Store SoT: Unix timestamp (decimal string). Mode from node.dateConfig.mode
+	 * (`date` | `datetime`, default date) — configured on the date catalog type.
+	 */
+	function dateModeFromNode(node) {
+		if (node && node.dateConfig && node.dateConfig.mode === 'datetime') {
+			return 'datetime';
+		}
+		return 'date';
+	}
+
+	function parseDateStore(raw) {
+		var s = raw == null ? '' : String(raw).trim();
+		if (!s) {
+			return 0;
+		}
+		if (/^-?\d+$/.test(s)) {
+			return parseInt(s, 10) || 0;
+		}
+		var normalized = s.indexOf('T') !== -1 ? s : s.replace(' ', 'T');
+		var ms = Date.parse(normalized);
+		if (!isNaN(ms)) {
+			return Math.floor(ms / 1000);
+		}
+		return 0;
+	}
+
+	function pad2(n) {
+		return n < 10 ? '0' + n : String(n);
+	}
+
+	function formatDateForInput(ts, mode) {
+		if (!(ts > 0)) {
+			return '';
+		}
+		var d = new Date(ts * 1000);
+		if (isNaN(d.getTime())) {
+			return '';
+		}
+		var y = d.getFullYear();
+		var m = pad2(d.getMonth() + 1);
+		var day = pad2(d.getDate());
+		if (mode === 'datetime') {
+			return y + '-' + m + '-' + day + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+		}
+		return y + '-' + m + '-' + day;
+	}
+
+	function formatDateForDisplay(ts, mode) {
+		if (!(ts > 0)) {
+			return '';
+		}
+		var d = new Date(ts * 1000);
+		if (isNaN(d.getTime())) {
+			return '';
+		}
+		try {
+			if (mode === 'datetime') {
+				return d.toLocaleString(undefined, {
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+				});
+			}
+			return d.toLocaleDateString(undefined, {
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+			});
+		} catch (e) {
+			return formatDateForInput(ts, mode).replace('T', ' ');
+		}
+	}
+
+	function storeFromDateInput(value, mode) {
+		var s = value == null ? '' : String(value).trim();
+		if (!s) {
+			return '';
+		}
+		var d;
+		if (mode === 'datetime') {
+			d = new Date(s);
+		} else {
+			/* date-only: local midnight of that calendar day */
+			var parts = s.split('-');
+			if (parts.length !== 3) {
+				return '';
+			}
+			d = new Date(
+				parseInt(parts[0], 10),
+				parseInt(parts[1], 10) - 1,
+				parseInt(parts[2], 10),
+				0,
+				0,
+				0,
+				0
+			);
+		}
+		if (isNaN(d.getTime())) {
+			return '';
+		}
+		return String(Math.floor(d.getTime() / 1000));
+	}
+
+	function renderDateControl(node, context) {
+		var mode = dateModeFromNode(node);
+		var compact = contextName(context) === 'table' || contextName(context) === 'compact';
+		var raw = readValue(context, '');
+		var ts = parseDateStore(raw);
+		if (!isEdit(context)) {
+			var shown = formatDateForDisplay(ts, mode);
+			return createEl('span', {
+				className:
+					'wtt-node-render__display wtt-node-render--date' +
+					(compact ? ' is-compact' : ''),
+				text: shown || '—',
+			});
+		}
+		var input = createEl('input', {
+			type: mode === 'datetime' ? 'datetime-local' : 'date',
+			className:
+				'wtt-preview-input wtt-node-render--date' +
+				(compact ? ' is-compact' : ''),
+			value: formatDateForInput(ts, mode),
+		});
+		if (context && typeof context.onInput === 'function') {
+			var emit = function () {
+				context.onInput(storeFromDateInput(input.value, mode));
+			};
+			input.addEventListener('input', emit);
+			input.addEventListener('change', emit);
+		}
+		if (context && context.valueKey) {
+			input.setAttribute('data-wtt-pv', String(context.valueKey));
+		}
+		return input;
+	}
+
+	var DateRenderer = {
+		canRender: function (node) {
+			return resolveTypeKey(node) === 'date';
+		},
+		renderContent: function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = contentContext(context, !!readonly);
+			var rawVal = ctx.value != null ? String(ctx.value) : '';
+			if (rawVal === '' || rawVal === 'Sample') {
+				var mapped = sampleForTypeKey('date', '1718461800', node);
+				if (mapped) {
+					ctx = Object.assign({}, ctx, { value: String(mapped) });
+				}
+			}
+			return renderDateControl(node, ctx);
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return composeLabeledField(this, node, context);
+		},
+		getExampleNode: function () {
+			return makeExampleScalarNode('date', '1718461800');
+		},
+	};
+
 	Registry.register(IntRenderer);
 	Registry.register(CharRenderer);
 	Registry.register(DoubleRenderer);
@@ -985,6 +1156,7 @@
 	Registry.register(EmailRenderer);
 	Registry.register(TextareaRenderer);
 	Registry.register(BoolRenderer);
+	Registry.register(DateRenderer);
 
 	/**
 	 * Enum (Q52): closed options → select. Options from node.enumOptions
