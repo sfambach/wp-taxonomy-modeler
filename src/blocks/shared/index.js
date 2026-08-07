@@ -1,5 +1,5 @@
 /**
- * Shared block bind helpers (Model table / Object view).
+ * Shared block bind helpers (Table view / Object view).
  *
  * Chooser modes (type specialization children):
  * - max choice depth ≤ 1 → flat list
@@ -10,6 +10,7 @@ export { default as ModelTreeChooser } from './model-tree-chooser';
 export { default as ModelInstancePicker } from './model-instance-picker';
 export {
 	buildPathTree,
+	subtreeAtRoot,
 	expandKeysForSelection,
 	maxChoiceDepth,
 	resolveChooserMode,

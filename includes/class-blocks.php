@@ -143,14 +143,34 @@ final class Blocks {
 			true
 		);
 		wp_register_script(
-			'wtt-node-render',
-			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-			array( 'wtt-sample-data' ),
+			'wtt-int-value',
+			WTT_PLUGIN_URL . 'assets/js/wtt-int-value.js',
+			array(),
 			WTT_VERSION,
 			true
 		);
-		if ( ! in_array( 'wtt-node-render', $deps, true ) ) {
-			$deps[] = 'wtt-node-render';
+		wp_register_script(
+			'wtt-node-render',
+			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
+			array( 'wtt-sample-data', 'wtt-int-value' ),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
+			'wtt-object-render',
+			WTT_PLUGIN_URL . 'assets/js/wtt-object-render.js',
+			array( 'wtt-node-render', 'wtt-media-render' ),
+			WTT_VERSION,
+			true
+		);
+		wp_register_style(
+			'wtt-object-render',
+			WTT_PLUGIN_URL . 'assets/css/wtt-object-render.css',
+			array( 'wtt-media-render' ),
+			WTT_VERSION
+		);
+		if ( ! in_array( 'wtt-object-render', $deps, true ) ) {
+			$deps[] = 'wtt-object-render';
 		}
 
 		wp_register_script(
@@ -161,20 +181,22 @@ final class Blocks {
 			true
 		);
 
+		$editor_style_deps = array( 'wtt-object-render' );
 		if ( is_readable( $block_dir . '/index.css' ) ) {
 			wp_register_style(
 				'taxo-collection-table-editor-style',
 				WTT_PLUGIN_URL . $base . '/index.css',
-				array(),
+				$editor_style_deps,
 				$version
 			);
 		}
 
+		$style_deps = array( 'wtt-object-render' );
 		if ( is_readable( $block_dir . '/style-index.css' ) ) {
 			wp_register_style(
 				'taxo-collection-table-style',
 				WTT_PLUGIN_URL . $base . '/style-index.css',
-				array(),
+				$style_deps,
 				$version
 			);
 		}
@@ -226,9 +248,16 @@ final class Blocks {
 			true
 		);
 		wp_register_script(
+			'wtt-int-value',
+			WTT_PLUGIN_URL . 'assets/js/wtt-int-value.js',
+			array(),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
 			'wtt-node-render',
 			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-			array( 'wtt-sample-data' ),
+			array( 'wtt-sample-data', 'wtt-int-value' ),
 			WTT_VERSION,
 			true
 		);
@@ -318,6 +347,24 @@ final class Blocks {
 			return;
 		}
 
+		wp_enqueue_media();
+		Object_Render::enqueue_assets();
+
+		wp_localize_script(
+			'wtt-object-render',
+			'wttObjectRenderI18n',
+			Object_Render::i18n()
+		);
+		wp_add_inline_script(
+			'wtt-object-render',
+			'if (window.WTTObjectRender) { window.WTTObjectRender.configure({ i18n: window.wttObjectRenderI18n || {} }); }',
+			'after'
+		);
+
+		$taxonomy = Taxonomy::FS;
+		Catalog_Bindings::ensure( $taxonomy );
+		$bindings = Catalog_Bindings::for_client( $taxonomy );
+
 		wp_localize_script(
 			$handle,
 			'wttCollectionTable',
@@ -328,32 +375,43 @@ final class Blocks {
 				'ajaxNonce'      => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
 				'treePickerMode' => Settings::tree_picker_mode(),
 				'collections'    => Composition::list_all_collections(),
+				/* Same tree source as Object View (chooser_root branch). */
+				'nodes'          => Object_Render::list_pickable_nodes( $taxonomy ),
+				'defaultTaxonomy'=> $taxonomy,
+				/* root = chooser_root; explicit focus/default = model (not chooser_focus). */
+				'chooserRoot'    => (int) ( $bindings[ Catalog_Bindings::KEY_CHOOSER_ROOT ] ?? 0 ),
+				'modelId'        => (int) ( $bindings[ Catalog_Bindings::KEY_MODEL ] ?? 0 ),
+				'bindings'       => $bindings,
 				'i18n'           => array(
-					'title'                       => __( 'Taxo Model table', 'wp-taxonomy-tree' ),
+					'title'                       => __( 'Taxo Table view', 'wp-taxonomy-tree' ),
 					'pickCollection'              => __( 'Model / node', 'wp-taxonomy-tree' ),
-					'pickHint'                    => __( 'Pick a model or schema node (e.g. Kontakt, Platine). Columns come from its attributes.', 'wp-taxonomy-tree' ),
-					'flowHint'                    => __( 'Choose a model node, then fill the rows.', 'wp-taxonomy-tree' ),
-					'flowHintInstance'            => __( 'Model bound — pick or create a dataset instance.', 'wp-taxonomy-tree' ),
+					'pickHint'                    => __( 'Pick a model or schema node (e.g. Kontakt, Platine). Columns come from its attributes; rows are all datasets for that node.', 'wp-taxonomy-tree' ),
+					'flowHint'                    => __( 'Choose a model node — the table lists all datasets for that node.', 'wp-taxonomy-tree' ),
 					'chooseModelCanvas'           => __( 'Choose a model node in the tree below.', 'wp-taxonomy-tree' ),
 					'changeModel'                 => __( 'Change model…', 'wp-taxonomy-tree' ),
-					'changeInstance'              => __( 'Change dataset…', 'wp-taxonomy-tree' ),
-					'pickInstance'                => __( 'Dataset (instance)', 'wp-taxonomy-tree' ),
-					'pickInstanceHint'            => __( 'Pick an existing model-data instance or create a new one.', 'wp-taxonomy-tree' ),
 					'createInstance'              => __( 'Create new', 'wp-taxonomy-tree' ),
 					'noInstances'                 => __( 'No instances yet. Create one to continue.', 'wp-taxonomy-tree' ),
+					'noInstancesEmpty'            => __( 'No datasets yet. Create one to add a row.', 'wp-taxonomy-tree' ),
+					'noMatchingInstances'         => __( 'No matching instances.', 'wp-taxonomy-tree' ),
+					'tableEmpty'                  => __( 'No data available.', 'wp-taxonomy-tree' ),
+					'instancesCount'              => __( '%d datasets', 'wp-taxonomy-tree' ),
+					'instanceSearch'              => __( 'Search', 'wp-taxonomy-tree' ),
+					'instanceSearchPlaceholder'   => __( 'Search…', 'wp-taxonomy-tree' ),
 					'instanceLoadFailed'          => __( 'Could not load instances.', 'wp-taxonomy-tree' ),
 					'instanceCreateFailed'        => __( 'Could not create instance.', 'wp-taxonomy-tree' ),
-					'datasetLabel'                => __( 'Dataset:', 'wp-taxonomy-tree' ),
-					'noInstance'                  => __( 'No dataset', 'wp-taxonomy-tree' ),
 					'savingInstance'              => __( 'Saving instance…', 'wp-taxonomy-tree' ),
 					'savedInstance'               => __( 'Instance saved.', 'wp-taxonomy-tree' ),
 					'addRow'                     => __( 'Add row', 'wp-taxonomy-tree' ),
 					'removeRow'                   => __( 'Remove', 'wp-taxonomy-tree' ),
+					'colActions'                  => __( 'Actions', 'wp-taxonomy-tree' ),
 					'noCollection'                => __( 'Choose a model node in the block canvas.', 'wp-taxonomy-tree' ),
 					'noCollections'               => __( 'No model nodes found. Create a node with attributes under Taxonomy Tree (e.g. Fallstudie/Model/…), then reload the editor.', 'wp-taxonomy-tree' ),
-					'noColumns'                   => __( 'This node has no attributes yet. Add attributes in Taxonomy Tree.', 'wp-taxonomy-tree' ),
+					'noColumns'                   => __( 'This node has no attributes yet. Datasets still appear with Id.', 'wp-taxonomy-tree' ),
 					'loading'                     => __( 'Loading schema…', 'wp-taxonomy-tree' ),
 					'colIndex'                    => __( '#', 'wp-taxonomy-tree' ),
+					'colVersion'                  => __( 'Version', 'wp-taxonomy-tree' ),
+					'colModified'                 => __( 'Modified', 'wp-taxonomy-tree' ),
+					'colInstanceId'               => __( 'Id', 'wp-taxonomy-tree' ),
 					'saving'                      => __( 'Saving catalog…', 'wp-taxonomy-tree' ),
 					'saved'                       => __( 'Catalog saved.', 'wp-taxonomy-tree' ),
 					'nodePickerChoose'            => __( 'Choose…', 'wp-taxonomy-tree' ),
@@ -387,8 +445,15 @@ final class Blocks {
 			return;
 		}
 
+		wp_enqueue_media();
+		Object_Render::enqueue_assets();
+
 		$i18n = Object_Render::i18n();
 		$i18n['title'] = __( 'Taxo Object view', 'wp-taxonomy-tree' );
+
+		$taxonomy = Taxonomy::FS;
+		Catalog_Bindings::ensure( $taxonomy );
+		$bindings = Catalog_Bindings::for_client( $taxonomy );
 
 		wp_localize_script(
 			'wtt-object-render',
@@ -411,7 +476,12 @@ final class Blocks {
 				'ajaxNonce'      => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
 				'treePickerMode' => Settings::tree_picker_mode(),
 				'taxonomies'     => Taxonomy::scaffold_taxonomies(),
-				'nodes'          => Object_Render::list_pickable_nodes(),
+				'nodes'          => Object_Render::list_pickable_nodes( $taxonomy ),
+				'defaultTaxonomy'=> $taxonomy,
+				/* root = chooser_root; explicit focus/default = model (not chooser_focus). */
+				'chooserRoot'    => (int) ( $bindings[ Catalog_Bindings::KEY_CHOOSER_ROOT ] ?? 0 ),
+				'modelId'        => (int) ( $bindings[ Catalog_Bindings::KEY_MODEL ] ?? 0 ),
+				'bindings'       => $bindings,
 				'i18n'           => $i18n,
 			)
 		);
@@ -658,6 +728,39 @@ final class Blocks {
 	}
 
 	/**
+	 * Structure term id from the route only (never JSON body).
+	 *
+	 * WP_REST_Request::get_param() prefers JSON over URL. Body field `id`
+	 * (instance key `md_…`) would otherwise cast to 0 and yield
+	 * "Invalid structure node." while schema GET still works.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 */
+	private static function rest_structure_id( \WP_REST_Request $request ): int {
+		$url = $request->get_url_params();
+		return isset( $url['id'] ) ? absint( $url['id'] ) : 0;
+	}
+
+	/**
+	 * Instance key from JSON body (`instanceId`, legacy non-numeric `id`).
+	 *
+	 * @param array<string, mixed> $body JSON body.
+	 */
+	private static function rest_instance_id_from_body( array $body ): string {
+		if ( isset( $body['instanceId'] ) ) {
+			return sanitize_key( (string) $body['instanceId'] );
+		}
+		/* Legacy clients sent instance key as `id` — ignore pure digits (structure id). */
+		if ( isset( $body['id'] ) ) {
+			$raw = sanitize_key( (string) $body['id'] );
+			if ( '' !== $raw && ! ctype_digit( $raw ) ) {
+				return $raw;
+			}
+		}
+		return '';
+	}
+
+	/**
 	 * Resolve taxonomy for a structure term id (optional query/body override).
 	 *
 	 * @param \WP_REST_Request $request Request.
@@ -684,9 +787,9 @@ final class Blocks {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public static function rest_model_data_list( \WP_REST_Request $request ) {
-		$structure_id = (int) $request['id'];
+		$structure_id = self::rest_structure_id( $request );
 		$taxonomy     = self::rest_resolve_structure_taxonomy( $request, $structure_id );
-		if ( '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+		if ( $structure_id <= 0 || '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ), array( 'status' => 400 ) );
 		}
 		$structure = Model_Data::structure_dto( $taxonomy, $structure_id );
@@ -709,9 +812,9 @@ final class Blocks {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public static function rest_model_data_save( \WP_REST_Request $request ) {
-		$structure_id = (int) $request['id'];
+		$structure_id = self::rest_structure_id( $request );
 		$taxonomy     = self::rest_resolve_structure_taxonomy( $request, $structure_id );
-		if ( '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+		if ( $structure_id <= 0 || '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ), array( 'status' => 400 ) );
 		}
 		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
@@ -723,7 +826,7 @@ final class Blocks {
 			$body = array();
 		}
 		$payload = array(
-			'id'     => isset( $body['id'] ) ? sanitize_key( (string) $body['id'] ) : '',
+			'id'     => self::rest_instance_id_from_body( $body ),
 			'values' => isset( $body['values'] ) && is_array( $body['values'] ) ? $body['values'] : array(),
 		);
 
@@ -798,42 +901,47 @@ final class Blocks {
 	}
 
 	/**
-	 * Frontend / SSR render. Orphan cell keys (removed columns) stay in attributes but are not shown.
+	 * Frontend / SSR render.
+	 *
+	 * Model kind: all Model_Data instances for the bound structure node
+	 * (one row per instance; columns = attribute schema). Catalog/table kinds
+	 * keep prior rows flow. Orphan cell keys stay in attributes but are not shown.
 	 *
 	 * @param array<string, mixed> $attributes Block attributes.
 	 */
 	public static function render_collection_table( array $attributes, string $content = '' ): string {
+		unset( $content );
 		$collection_id = isset( $attributes['collectionTermId'] ) ? (int) $attributes['collectionTermId'] : 0;
-		$instance_id   = isset( $attributes['instanceId'] ) ? sanitize_key( (string) $attributes['instanceId'] ) : '';
 		$taxonomy      = $collection_id > 0 ? Taxonomy::taxonomy_for_term( $collection_id ) : '';
 		$schema        = $collection_id > 0 ? Composition::get_schema( $taxonomy, $collection_id ) : null;
 
 		$columns = $schema['columns'] ?? array();
 		$kind    = $schema['kind'] ?? Composition::KIND_TABLE;
+		$rows    = array();
 
 		if ( Composition::KIND_CATALOG === $kind ) {
 			$rows = $schema['rows'] ?? array();
-		} elseif ( Composition::KIND_MODEL === $kind && '' !== $instance_id ) {
-			$inst = Model_Data::get( $taxonomy, $collection_id, $instance_id );
-			if ( null !== $inst ) {
+		} elseif ( Composition::KIND_MODEL === $kind ) {
+			$instances = Model_Data::list( $taxonomy, $collection_id );
+			foreach ( $instances as $inst ) {
+				$instance_id = sanitize_key( (string) ( $inst['id'] ?? '' ) );
+				if ( '' === $instance_id ) {
+					continue;
+				}
 				$values = isset( $inst['values'] ) && is_array( $inst['values'] ) ? $inst['values'] : array();
 				$cells  = array();
 				foreach ( $columns as $col ) {
-					$col_id         = (string) (int) ( $col['id'] ?? 0 );
+					$col_id           = (string) (int) ( $col['id'] ?? 0 );
 					$cells[ $col_id ] = isset( $values[ $col_id ] ) ? (string) $values[ $col_id ] : '';
-					/* Also accept int-keyed values from store. */
 					if ( '' === $cells[ $col_id ] && isset( $values[ (int) $col_id ] ) ) {
 						$cells[ $col_id ] = (string) $values[ (int) $col_id ];
 					}
 				}
-				$rows = array(
-					array(
-						'id'    => $instance_id,
-						'cells' => $cells,
-					),
+				$rows[] = array(
+					'id'    => $instance_id,
+					'seq'   => (int) ( $inst['seq'] ?? 0 ),
+					'cells' => $cells,
 				);
-			} else {
-				$rows = array();
 			}
 		} else {
 			$rows_raw = isset( $attributes['rows'] ) ? $attributes['rows'] : array();
@@ -849,8 +957,8 @@ final class Blocks {
 			'',
 			$kind
 		);
-		if ( Composition::KIND_MODEL === $kind && '' !== $instance_id ) {
-			$title .= ' · ' . $instance_id;
+		if ( Composition::KIND_MODEL === $kind ) {
+			$title .= ' · ' . (string) count( $rows );
 		}
 
 		ob_start();
@@ -860,23 +968,27 @@ final class Blocks {
 			echo '</div>';
 			return (string) ob_get_clean();
 		}
-		if ( Composition::KIND_MODEL === $kind && '' === $instance_id ) {
-			echo '<h3 class="wtt-collection-table__title">' . esc_html( $title ) . '</h3>';
-			echo '<p class="wtt-collection-table__empty">' . esc_html__( 'No dataset selected. Pick or create a model-data instance in the editor.', 'wp-taxonomy-tree' ) . '</p>';
-			echo '</div>';
-			return (string) ob_get_clean();
-		}
 
 		echo '<h3 class="wtt-collection-table__title">' . esc_html( $title ) . '</h3>';
-		if ( array() === $columns ) {
+
+		$show_id_col = Composition::KIND_MODEL === $kind;
+		if ( array() === $columns && ! $show_id_col ) {
 			echo '<p class="wtt-collection-table__empty">' . esc_html__( 'This node has no attributes yet. Add attributes in Taxonomy Tree.', 'wp-taxonomy-tree' ) . '</p>';
 			echo '</div>';
 			return (string) ob_get_clean();
 		}
+		if ( array() === $columns && $show_id_col ) {
+			echo '<p class="wtt-collection-table__empty">' . esc_html__( 'This node has no attributes yet. Datasets still appear with Id.', 'wp-taxonomy-tree' ) . '</p>';
+		}
+
+		$colspan = count( $columns ) + 1 + ( $show_id_col ? 1 : 0 );
 
 		echo '<div class="wtt-collection-table__wrap"><table class="wtt-collection-table__table">';
 		echo '<thead><tr>';
 		echo '<th scope="col">' . esc_html__( '#', 'wp-taxonomy-tree' ) . '</th>';
+		if ( $show_id_col ) {
+			echo '<th scope="col">' . esc_html__( 'Id', 'wp-taxonomy-tree' ) . '</th>';
+		}
 		foreach ( $columns as $col ) {
 			$label = $col['name'];
 			if ( '' !== ( $col['typeName'] ?? '' ) ) {
@@ -887,14 +999,24 @@ final class Blocks {
 		echo '</tr></thead><tbody>';
 
 		if ( array() === $rows ) {
-			echo '<tr><td colspan="' . esc_attr( (string) ( count( $columns ) + 1 ) ) . '">—</td></tr>';
+			echo '<tr><td colspan="' . esc_attr( (string) $colspan ) . '">';
+			echo esc_html(
+				Composition::KIND_MODEL === $kind
+					? __( 'No datasets yet.', 'wp-taxonomy-tree' )
+					: '—'
+			);
+			echo '</td></tr>';
 		} else {
 			foreach ( $rows as $index => $row ) {
 				echo '<tr>';
-				echo '<td>' . esc_html( (string) ( $index + 1 ) ) . '</td>';
+				$seq = isset( $row['seq'] ) ? (int) $row['seq'] : 0;
+				echo '<td>' . esc_html( $seq > 0 ? '#' . (string) $seq : (string) ( $index + 1 ) ) . '</td>';
+				if ( $show_id_col ) {
+					echo '<td><code>' . esc_html( (string) ( $row['id'] ?? '' ) ) . '</code></td>';
+				}
 				foreach ( $columns as $col ) {
-					$col_id = (string) (int) $col['id'];
-					$val    = isset( $row['cells'][ $col_id ] ) ? (string) $row['cells'][ $col_id ] : '';
+					$col_id   = (string) (int) $col['id'];
+					$val      = isset( $row['cells'][ $col_id ] ) ? (string) $row['cells'][ $col_id ] : '';
 					$type_key = strtolower( (string) ( $col['typeKey'] ?? $col['typeName'] ?? '' ) );
 					if ( 'node_ref' === $type_key ) {
 						echo '<td class="wtt-collection-table__cell--node-ref">';

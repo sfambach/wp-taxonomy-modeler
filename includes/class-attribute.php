@@ -568,8 +568,12 @@ final class Attribute {
 	}
 
 	/**
-	 * Create attribute: child term under host + type + Bindung edge.
+	 * Create attribute: slot term + type + Bindung edge (no hierarchy parent).
 	 *
+	 * Optional `$readonly` and `$fixed_values` are applied on the host after create
+	 * (same semantics as set_readonly / set_fixed_values).
+	 *
+	 * @param list<string>|string|null $fixed_values Null skips; empty clears (no-op on new).
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function add(
@@ -578,7 +582,9 @@ final class Attribute {
 		string $name,
 		int $type_id,
 		string $multiplicity = self::DEFAULT_MULTIPLICITY,
-		string $binding = self::DEFAULT_BINDING
+		string $binding = self::DEFAULT_BINDING,
+		bool $readonly = false,
+		$fixed_values = null
 	) {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
@@ -707,6 +713,23 @@ final class Attribute {
 		 */
 		Node_Type::promote_class_datatype( $taxonomy, $host_id );
 		Tree_Model::touch_modified( $host_id );
+
+		if ( $readonly ) {
+			$ro = self::set_readonly( $taxonomy, $host_id, $attr_id, true );
+			if ( is_wp_error( $ro ) ) {
+				return $ro;
+			}
+		}
+
+		if ( null !== $fixed_values ) {
+			$normalized = self::normalize_fixed_values_input( $fixed_values );
+			if ( ! empty( $normalized ) ) {
+				$fv = self::set_fixed_values( $taxonomy, $host_id, $attr_id, $normalized );
+				if ( is_wp_error( $fv ) ) {
+					return $fv;
+				}
+			}
+		}
 
 		return self::find_own_row( $taxonomy, $host_id, $attr_id );
 	}
@@ -1060,6 +1083,23 @@ final class Attribute {
 	}
 
 	/**
+	 * Whether a type node carries attribute members (own or inherited along child_of).
+	 * Shallow: uses raw edges only — safe to call from decorate_row (no recursion).
+	 */
+	public static function type_has_attributes( string $taxonomy, int $type_id ): bool {
+		if ( $type_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return false;
+		}
+		$chain = self::ancestor_chain_root_to_self( $taxonomy, $type_id );
+		foreach ( $chain as $node_id ) {
+			if ( array() !== self::list_own_raw( $taxonomy, $node_id ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Own rows without Festwert decoration (used while merging ancestors).
 	 *
 	 * @return list<array<string, mixed>>
@@ -1227,9 +1267,10 @@ final class Attribute {
 		}
 
 		/*
-		 * Festwert mode:
-		 * - literal: simple / unit quantity → enter value(s)
-		 * - catalog: pick node(s) under the attribute's type (list-picker style)
+		 * Festwert / value presentation mode (generic — no name hardcoding):
+		 * - literal: scalar / unit quantity → enter value(s)
+		 * - structure: type itself has attributes → Form(1) / Table(n) of that schema
+		 * - catalog: type has no attributes but hierarchy specializations → CatalogChoice
 		 */
 		$row['fixedMode']    = 'literal';
 		$row['fixedOptions'] = array();
@@ -1243,9 +1284,13 @@ final class Attribute {
 					Node_Type::get_enum_options( $taxonomy, $type_id )
 				);
 			} elseif ( ! $is_unit && ! self::is_scalar_type_key( (string) $row['typeKey'] ) ) {
-				$row['fixedMode']    = 'catalog';
-				$row['fixedRootId']  = $type_id;
-				$row['fixedOptions'] = self::fixed_options_under_type( $taxonomy, $type_id );
+				if ( self::type_has_attributes( $taxonomy, $type_id ) ) {
+					$row['fixedMode'] = 'structure';
+				} else {
+					$row['fixedMode']    = 'catalog';
+					$row['fixedRootId']  = $type_id;
+					$row['fixedOptions'] = self::fixed_options_under_type( $taxonomy, $type_id );
+				}
 			}
 		}
 
@@ -1292,10 +1337,34 @@ final class Attribute {
 				$mode = Node_Type::normalize_date_mode( (string) $extras['dateMode'] );
 			}
 			$row['dateConfig'] = array(
-				'mode'         => $mode,
-				'typeMode'     => $type_mode,
-				'hasOverride'  => isset( $extras['dateMode'] ),
+				'mode'        => $mode,
+				'typeMode'    => $type_mode,
+				'hasOverride' => isset( $extras['dateMode'] ),
 			);
+		}
+
+		if ( 'int' === (string) $row['typeKey'] || 'integer' === (string) $row['typeKey'] ) {
+			$type_format = Int_Value::DEFAULT_FORMAT;
+			$cfg         = Node_Type::get_int_config_for_node( $taxonomy, $type_id > 0 ? $type_id : $attr_id );
+			if ( is_array( $cfg ) && isset( $cfg['displayFormat'] ) ) {
+				$type_format = Int_Value::normalize_format_id( (string) $cfg['displayFormat'] );
+			}
+			$format = $type_format;
+			if ( isset( $extras['displayFormat'] ) && is_string( $extras['displayFormat'] ) && '' !== $extras['displayFormat'] ) {
+				$format = Int_Value::normalize_format_id( (string) $extras['displayFormat'] );
+			}
+			$row['intConfig'] = array(
+				'displayFormat' => $format,
+				'typeFormat'    => $type_format,
+				'hasOverride'   => isset( $extras['displayFormat'] ) && '' !== (string) $extras['displayFormat'],
+			);
+			$row['displayFormat'] = $format;
+		}
+
+		/* Basiseinheit unit type → Typ/Praefix/Kuerzel schema for quantity paint. */
+		$row['quantitySchema'] = null;
+		if ( $type_id > 0 && Node_Type::is_basiseinheit_unit_node( $taxonomy, $type_id ) ) {
+			$row['quantitySchema'] = Node_Type::get_quantity_schema_for_type( $taxonomy, $type_id );
 		}
 
 		if ( ! empty( $extras['compute'] ) && is_array( $extras['compute'] ) ) {
@@ -1437,7 +1506,11 @@ final class Attribute {
 			if ( ! $kid instanceof \WP_Term ) {
 				continue;
 			}
-			$id   = (int) $kid->term_id;
+			$id = (int) $kid->term_id;
+			/* Attribute slots are never CatalogChoice leaves (child_of = inheritance only). */
+			if ( self::is_slot( $id ) ) {
+				continue;
+			}
 			$name = $kid->name;
 			$next = array_merge( $path_parts, array( $name ) );
 			if ( empty( $seen[ $id ] ) ) {
@@ -1654,6 +1727,93 @@ final class Attribute {
 	}
 
 	/**
+	 * Term ids still referenced as live attribute slots or prop-bound bands.
+	 *
+	 * Uses own besteht_aus/aggregation members (including nested hosts that are
+	 * themselves slots, e.g. BOM Tabelle → Zeile → fields) + prop bindings.
+	 * Raw edges to parent=0 duplicates that lost the name merge are still
+	 * counted when they remain on a host’s own list — orphan cleanup dedupes
+	 * separately.
+	 *
+	 * @return list<int>
+	 */
+	public static function collect_referenced_term_ids( string $taxonomy ): array {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return array();
+		}
+
+		$used = array();
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$host_id = (int) $term->term_id;
+			if ( $host_id <= 0 ) {
+				continue;
+			}
+
+			/*
+			 * Nested composition hosts (Zeile under Tabelle) are often marked
+			 * as slots after Q87 detach — still walk their own members.
+			 */
+			foreach ( self::list_own_raw( $taxonomy, $host_id ) as $row ) {
+				$aid = (int) ( $row['id'] ?? 0 );
+				if ( $aid > 0 ) {
+					$used[ $aid ] = true;
+				}
+			}
+
+			foreach ( Node_Type::get_prop_bindings( $host_id ) as $child_id ) {
+				$cid = (int) $child_id;
+				if ( $cid > 0 ) {
+					$used[ $cid ] = true;
+				}
+			}
+		}
+
+		/*
+		 * Attribute-binding edges whose targets are still hierarchy children
+		 * (parent > 0) remain live structure — keep them. parent=0 edge targets
+		 * only count when already kept via list/props (effective winners).
+		 */
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$host_id = (int) $term->term_id;
+			foreach ( Relation::list_outgoing( $taxonomy, $host_id ) as $edge ) {
+				$key = (string) ( $edge['typeKey'] ?? $edge['typeName'] ?? '' );
+				if ( ! self::is_attribute_binding( $key ) ) {
+					continue;
+				}
+				$to = (int) ( $edge['toId'] ?? 0 );
+				if ( $to <= 0 || isset( $used[ $to ] ) ) {
+					continue;
+				}
+				$target = get_term( $to, $taxonomy );
+				if ( $target instanceof \WP_Term && (int) $target->parent > 0 ) {
+					$used[ $to ] = true;
+				}
+			}
+		}
+
+		$ids = array_map( 'intval', array_keys( $used ) );
+		sort( $ids );
+		return $ids;
+	}
+
+	/**
 	 * Mark term as attribute slot (hidden from hierarchy tree under hosts).
 	 */
 	public static function mark_as_slot( int $term_id ): void {
@@ -1722,6 +1882,74 @@ final class Attribute {
 		}
 
 		return $fixed;
+	}
+
+	/**
+	 * Drop besteht_aus / aggregation edges whose target term no longer exists.
+	 *
+	 * @return int Number of edges removed across all hosts.
+	 */
+	public static function prune_dangling_edges( string $taxonomy ): int {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return 0;
+		}
+
+		$pruned = 0;
+		foreach ( $terms as $host ) {
+			if ( ! $host instanceof \WP_Term ) {
+				continue;
+			}
+			$host_id = (int) $host->term_id;
+			$raw     = get_term_meta( $host_id, Relation::META_KEY, true );
+			if ( is_string( $raw ) && '' !== $raw ) {
+				$decoded = json_decode( $raw, true );
+				$raw     = is_array( $decoded ) ? $decoded : array();
+			}
+			if ( ! is_array( $raw ) || empty( $raw ) ) {
+				continue;
+			}
+			$next = array();
+			$host_pruned = 0;
+			foreach ( $raw as $edge ) {
+				if ( ! is_array( $edge ) ) {
+					continue;
+				}
+				$to_id        = (int) ( $edge['toId'] ?? 0 );
+				$key          = strtolower( (string) ( $edge['typeKey'] ?? '' ) );
+				$is_attr_edge = self::is_attribute_binding( $key )
+					|| Relation::type_keys_match( $key, Relation::TYPE_COMPOSITION )
+					|| 'composition' === $key;
+				if ( $is_attr_edge && $to_id > 0 ) {
+					$to = get_term( $to_id, $taxonomy );
+					if ( ! $to instanceof \WP_Term ) {
+						++$host_pruned;
+						continue;
+					}
+				}
+				$next[] = $edge;
+			}
+			if ( $host_pruned > 0 ) {
+				$pruned += $host_pruned;
+				if ( empty( $next ) ) {
+					delete_term_meta( $host_id, Relation::META_KEY );
+				} else {
+					update_term_meta( $host_id, Relation::META_KEY, wp_json_encode( array_values( $next ) ) );
+				}
+			}
+		}
+
+		return $pruned;
 	}
 
 	/**
@@ -2021,6 +2249,13 @@ final class Attribute {
 			$mode = (string) $extras['dateMode'];
 			if ( '' !== $mode ) {
 				$out['dateMode'] = Node_Type::normalize_date_mode( $mode );
+			}
+		}
+
+		if ( array_key_exists( 'displayFormat', $extras ) ) {
+			$fmt = trim( (string) $extras['displayFormat'] );
+			if ( '' !== $fmt ) {
+				$out['displayFormat'] = Int_Value::normalize_format_id( $fmt );
 			}
 		}
 

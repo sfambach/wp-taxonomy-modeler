@@ -1,0 +1,33 @@
+---
+description: Reuse existing field/object renderers — no new hard-coded display without asking
+alwaysApply: true
+---
+
+# Reuse existing renderers
+
+Before adding any new field, form, or table UI for taxonomy/model data:
+
+1. **Look first** — is there already a shared renderer?
+   - Object Form / Table / Compact → `WTTObjectRender` (`assets/js/wtt-object-render.js`): `renderForm`, `renderTable`, `renderCompact`, `mount`
+   - Field cells / Registry → same module + `WTTMediaRender` / node-render
+   - Admin preview → tree-admin calls into those shared surfaces (P0–P4 rules)
+2. **Reuse** that API (same chrome for admin preview, Object View, Table view).
+3. If nothing fits and you would invent a **new renderer** or **hard-coded** `<input>`/`<table>` for the same job → **stop and ask the user** before implementing.
+
+## Taxo blocks
+
+| Block | Must use |
+|-------|----------|
+| `taxo/object-view` | `WTTObjectRender.mount` / Form·Table·Compact |
+| `taxo/collection-table` (Taxo Table view) | `WTTObjectRender.renderTable` for model dataset rows (columns = attributes) |
+
+Do not hand-build attribute cells in block `edit.js` when `renderTable` / `paintFieldContent` already cover the type.
+
+## Do / don’t
+
+- **Do** extend the shared renderer when a type or layout is missing.
+- **Do** ask when unsure whether an existing surface applies.
+- **Don’t** add a parallel table/form “just for the block”.
+- **Don’t** show raw type labels in headers as a substitute for proper field views (`Name (text)` + bare `<input>`).
+
+Related: [choosers.mdc](choosers.mdc) (one chooser per purpose), [preview-checkpoints.mdc](preview-checkpoints.mdc) (unified preview).

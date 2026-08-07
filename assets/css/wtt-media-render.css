@@ -135,3 +135,25 @@
 	color: #646970;
 	font-style: italic;
 }
+
+.wtt-media-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4em;
+	min-width: 0;
+}
+
+.wtt-media-field--compact {
+	max-width: 12rem;
+}
+
+.wtt-media-field__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em;
+}
+
+.wtt-media-field__url {
+	width: 100%;
+	max-width: 22rem;
+}

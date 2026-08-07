@@ -28,6 +28,8 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_copy_terms', array( self::class, 'copy_terms' ) );
 		add_action( 'wp_ajax_wtt_delete_term', array( self::class, 'delete_term' ) );
 		add_action( 'wp_ajax_wtt_empty_trash', array( self::class, 'empty_trash' ) );
+		add_action( 'wp_ajax_wtt_hide_term', array( self::class, 'hide_term' ) );
+		add_action( 'wp_ajax_wtt_unhide_term', array( self::class, 'unhide_term' ) );
 		add_action( 'wp_ajax_wtt_reset_demo', array( self::class, 'reset_demo' ) );
 		add_action( 'wp_ajax_wtt_set_node_type', array( self::class, 'set_node_type' ) );
 		add_action( 'wp_ajax_wtt_set_node_required', array( self::class, 'set_node_required' ) );
@@ -63,6 +65,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_set_attribute_type_extras', array( self::class, 'set_attribute_type_extras' ) );
 		add_action( 'wp_ajax_wtt_duplicate_attribute', array( self::class, 'duplicate_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_enum_values', array( self::class, 'set_enum_values' ) );
+		add_action( 'wp_ajax_wtt_set_hide_root_node', array( self::class, 'set_hide_root_node' ) );
 	}
 
 	public static function get_tree(): void {
@@ -312,22 +315,83 @@ final class Tree_Ajax {
 		);
 	}
 
+	public static function hide_term(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$result  = Tree_Model::hide_term( $taxonomy, $term_id );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		$bin_id = Hidden_Nodes::find_bin_id( $taxonomy );
+		wp_send_json_success(
+			array(
+				'tree'  => Tree_Model::get_tree( $taxonomy ),
+				'binId' => $bin_id,
+			)
+		);
+	}
+
+	public static function unhide_term(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$result  = Tree_Model::unhide_term( $taxonomy, $term_id );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		wp_send_json_success(
+			array(
+				'tree'   => Tree_Model::get_tree( $taxonomy ),
+				'termId' => $term_id,
+			)
+		);
+	}
+
 	public static function reset_demo(): void {
 		self::verify_request();
 
-		if ( ! Settings::is_test_mode() ) {
+		if ( ! Settings::is_development_mode() ) {
 			self::send_error(
 				new \WP_Error(
-					'wtt_test_mode_off',
-					__( 'Reset test tree is only available in test mode.', 'wp-taxonomy-tree' ),
+					'wtt_dev_mode_off',
+					__( 'Reset case tree is only available when Development mode is enabled.', 'wp-taxonomy-tree' ),
 					array( 'status' => 403 )
 				)
 			);
 		}
 
-		$taxonomy = self::request_taxonomy();
-		if ( is_wp_error( $taxonomy ) ) {
-			self::send_error( $taxonomy );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$taxonomy = Taxonomy::FS;
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			self::send_error(
+				new \WP_Error(
+					'wtt_bad_taxonomy',
+					__( 'Case study taxonomy is not registered.', 'wp-taxonomy-tree' ),
+					array( 'status' => 400 )
+				)
+			);
 		}
 
 		$result = Case_Data::reset( $taxonomy );
@@ -340,7 +404,9 @@ final class Tree_Ajax {
 				'deleted'  => $result['deleted'],
 				'created'  => $result['created'],
 				'existing' => $result['existing'],
+				'taxonomy' => $taxonomy,
 				'tree'     => Tree_Model::get_tree( $taxonomy ),
+				'message'  => __( 'Case tree reset and reinstalled.', 'wp-taxonomy-tree' ),
 			)
 		);
 	}
@@ -544,6 +610,12 @@ final class Tree_Ajax {
 			$is_abstract_post = in_array( $raw_ab, array( '1', 'true', 'yes' ), true );
 		}
 
+		$is_template_post = '__omit__';
+		if ( isset( $_POST['is_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$raw_tpl = (string) wp_unslash( $_POST['is_template'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$is_template_post = in_array( $raw_tpl, array( '1', 'true', 'yes' ), true );
+		}
+
 		$required = isset( $_POST['required'] ) ? (string) wp_unslash( $_POST['required'] ) : '0'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$required = in_array( $required, array( '1', 'true', 'yes' ), true );
 
@@ -646,6 +718,11 @@ final class Tree_Ajax {
 			$date_mode = sanitize_key( (string) wp_unslash( $_POST['date_mode'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
+		$int_display_format = null;
+		if ( isset( $_POST['int_display_format'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$int_display_format = sanitize_key( (string) wp_unslash( $_POST['int_display_format'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		$preferred_render = null;
 		if ( isset( $_POST['preferred_render'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$preferred_render = sanitize_key( (string) wp_unslash( $_POST['preferred_render'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -702,6 +779,9 @@ final class Tree_Ajax {
 		if ( '__omit__' !== $is_abstract_post ) {
 			$save_args['is_abstract'] = $is_abstract_post;
 		}
+		if ( '__omit__' !== $is_template_post ) {
+			$save_args['is_template'] = $is_template_post;
+		}
 		if ( null !== $media_allow_upload ) {
 			$save_args['media_allow_upload'] = $media_allow_upload;
 		}
@@ -713,6 +793,9 @@ final class Tree_Ajax {
 		}
 		if ( null !== $date_mode ) {
 			$save_args['date_mode'] = $date_mode;
+		}
+		if ( null !== $int_display_format ) {
+			$save_args['int_display_format'] = $int_display_format;
 		}
 		if ( null !== $preferred_render ) {
 			$save_args['preferred_render'] = $preferred_render;
@@ -1110,8 +1193,35 @@ final class Tree_Ajax {
 		$binding = isset( $_POST['binding'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['binding'] ) )
 			: Attribute::DEFAULT_BINDING; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$readonly = isset( $_POST['readonly'] ) && '1' === (string) wp_unslash( $_POST['readonly'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-		$result = Attribute::add( $taxonomy, $host_id, $name, $type_id, $mult, $binding );
+		$fixed_values = null;
+		if ( isset( $_POST['fixed_values'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$raw = wp_unslash( $_POST['fixed_values'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( is_string( $raw ) ) {
+				$decoded = json_decode( $raw, true );
+				if ( is_array( $decoded ) ) {
+					$fixed_values = array_map( 'sanitize_text_field', $decoded );
+				} elseif ( '' !== trim( $raw ) ) {
+					$fixed_values = array( sanitize_text_field( $raw ) );
+				} else {
+					$fixed_values = array();
+				}
+			} elseif ( is_array( $raw ) ) {
+				$fixed_values = array_map( 'sanitize_text_field', $raw );
+			}
+		}
+
+		$result = Attribute::add(
+			$taxonomy,
+			$host_id,
+			$name,
+			$type_id,
+			$mult,
+			$binding,
+			$readonly,
+			$fixed_values
+		);
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}
@@ -1295,6 +1405,25 @@ final class Tree_Ajax {
 		}
 
 		self::send_relation_node_response( $taxonomy, $term_id );
+	}
+
+	/**
+	 * Persist “Hide root node” from the tree toolbar switch.
+	 */
+	public static function set_hide_root_node(): void {
+		self::verify_request();
+		if ( ! current_user_can( 'manage_options' ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$enabled = isset( $_POST['enabled'] ) && '1' === (string) wp_unslash( $_POST['enabled'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		update_option( Settings::OPTION_HIDE_ROOT_NODE, $enabled ? '1' : '0', false );
+
+		wp_send_json_success(
+			array(
+				'hideRootNode' => Settings::hide_root_node(),
+			)
+		);
 	}
 
 	public static function remove_attribute(): void {

@@ -24,6 +24,7 @@
 		previewFooter: 'Footer',
 		previewColGeneric: 'Column',
 		emailInvalid: 'Enter a valid email address.',
+		intInvalid: 'Enter a whole number.',
 	};
 
 	/** Scalar catalog types with dedicated NodeRenderers (not set/list/media/…). */
@@ -43,6 +44,7 @@
 		table: true,
 		enum: true,
 		node_ref: true,
+		quantity: true,
 	};
 
 	/**
@@ -222,10 +224,20 @@
 		if (!node) {
 			return [];
 		}
+		/*
+		 * Only true set composition expands into child fields here.
+		 * quantitySchema is painted as one trinity control by QuantityRenderer —
+		 * do not recurse Typ/Praefix/Kuerzel as separate labeled rows.
+		 */
 		if (Array.isArray(node.setMembers) && node.setMembers.length) {
 			return node.setMembers;
 		}
+		return [];
+	}
+
+	function quantitySchemaMembers(node) {
 		if (
+			node &&
 			node.quantitySchema &&
 			Array.isArray(node.quantitySchema.members) &&
 			node.quantitySchema.members.length
@@ -234,6 +246,306 @@
 		}
 		return [];
 	}
+
+	function isQuantityTypeKey(key) {
+		key = String(key || '')
+			.trim()
+			.toLowerCase();
+		return (
+			key === 'quantity' ||
+			key === 'measure' ||
+			key === 'groesse' ||
+			key === 'größe' ||
+			key === 'grose'
+		);
+	}
+
+	function qtyMemberNameKey(member) {
+		return String((member && member.name) || '')
+			.toLowerCase()
+			.replace(/ü/g, 'ue')
+			.replace(/ä/g, 'ae')
+			.replace(/ö/g, 'oe');
+	}
+
+	function findQtyMember(members, nameKey) {
+		var found = null;
+		(members || []).forEach(function (m) {
+			if (!found && qtyMemberNameKey(m) === nameKey) {
+				found = m;
+			}
+		});
+		return found;
+	}
+
+	/**
+	 * Parse stored quantity value: plain magnitude, or JSON {mag,prefix}.
+	 */
+	function parseQuantityStore(raw) {
+		var s = raw == null ? '' : String(raw).trim();
+		if (!s) {
+			return { mag: '', prefix: '' };
+		}
+		if (s.charAt(0) === '{') {
+			try {
+				var obj = JSON.parse(s);
+				if (obj && typeof obj === 'object') {
+					return {
+						mag:
+							obj.mag != null
+								? String(obj.mag)
+								: obj.v != null
+									? String(obj.v)
+									: '',
+						prefix:
+							obj.prefix != null
+								? String(obj.prefix)
+								: obj.p != null
+									? String(obj.p)
+									: '',
+					};
+				}
+			} catch (e) {
+				/* fall through */
+			}
+		}
+		var m = s.match(/^(-?\d+(?:[.,]\d+)?)/);
+		return {
+			mag: m ? m[1].replace(',', '.') : s,
+			prefix: '',
+		};
+	}
+
+	function serializeQuantityStore(mag, prefix) {
+		var m = mag != null ? String(mag) : '';
+		var p = prefix != null ? String(prefix) : '';
+		if (!p) {
+			return m;
+		}
+		return JSON.stringify({ mag: m, prefix: p });
+	}
+
+	function qtySymbolFromMembers(members) {
+		var kuerzel = findQtyMember(members, 'kuerzel');
+		return (
+			(kuerzel && kuerzel.fixed && kuerzel.fixed.name) ||
+			(kuerzel && kuerzel.fixedLiteral) ||
+			''
+		);
+	}
+
+	function qtyPrefixOptions(praefixMem) {
+		var opts = [];
+		if (!praefixMem) {
+			return opts;
+		}
+		var branch = praefixMem.typeBranch;
+		var list =
+			(branch && Array.isArray(branch.children) && branch.children) ||
+			(branch && Array.isArray(branch.options) && branch.options) ||
+			(Array.isArray(praefixMem.subtreeOptions) && praefixMem.subtreeOptions) ||
+			[];
+		list.forEach(function (o) {
+			if (!o) {
+				return;
+			}
+			var name = o.name != null ? String(o.name) : '';
+			if (!name) {
+				return;
+			}
+			opts.push({
+				id: o.id != null ? String(o.id) : name,
+				name: name,
+				letter: name === 'Mega' ? 'M' : name.length <= 2 ? name : name.charAt(0),
+			});
+		});
+		return opts;
+	}
+
+	function qtyPrefixLetter(prefixName, options) {
+		var name = String(prefixName || '');
+		if (!name) {
+			return '';
+		}
+		if (name === 'Mega') {
+			return 'M';
+		}
+		var i;
+		for (i = 0; i < (options || []).length; i++) {
+			if (options[i].name === name || options[i].id === name) {
+				return options[i].letter || name;
+			}
+		}
+		return name.length <= 2 ? name : name.charAt(0);
+	}
+
+	/**
+	 * Horizontal Typ + Praefix + Kuerzel (or bare magnitude when no schema).
+	 */
+	function renderQuantityControl(node, context) {
+		var members = quantitySchemaMembers(node);
+		var compact =
+			contextName(context) === 'table' || contextName(context) === 'compact';
+		var parsed = parseQuantityStore(readValue(context, ''));
+		var mag = parsed.mag;
+		if (!mag && node && node.sample != null && String(node.sample) !== '') {
+			mag = parseQuantityStore(node.sample).mag || String(node.sample);
+		}
+		if (!mag) {
+			mag = sampleForTypeKey('quantity', '10.5', node) || '10.5';
+		}
+
+		if (!members.length) {
+			/* Bare catalog quantity — single number. */
+			if (!isEdit(context)) {
+				return createEl('span', {
+					className:
+						'wtt-node-render__display wtt-node-render--quantity' +
+						(compact ? ' is-compact' : ''),
+					text: mag || '—',
+				});
+			}
+			var bare = createEl('input', {
+				type: 'number',
+				step: 'any',
+				inputmode: 'decimal',
+				className:
+					'wtt-preview-input wtt-node-render--quantity wtt-preview-input--num' +
+					(compact ? ' is-compact' : ''),
+				value: mag,
+			});
+			if (context && typeof context.onInput === 'function') {
+				var emitBare = function () {
+					context.onInput(bare.value);
+				};
+				bare.addEventListener('input', emitBare);
+				bare.addEventListener('change', emitBare);
+			}
+			if (context && context.valueKey) {
+				bare.setAttribute('data-wtt-pv', String(context.valueKey));
+			}
+			return bare;
+		}
+
+		var praefixMem = findQtyMember(members, 'praefix');
+		var prefixOpts = qtyPrefixOptions(praefixMem);
+		var prefixName = parsed.prefix;
+		if (!prefixName && prefixOpts.length) {
+			prefixName = prefixOpts[0].name;
+		}
+		var symbol = String(qtySymbolFromMembers(members) || '');
+		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
+
+		if (!isEdit(context)) {
+			return createEl('span', {
+				className:
+					'wtt-preview-display-value wtt-preview-quantity wtt-node-render--quantity' +
+					(compact ? ' is-compact' : ''),
+				text: String(mag || '') + String(prefixLetter || '') + symbol,
+			});
+		}
+
+		var group = createEl('div', {
+			className:
+				'wtt-preview-quantity wtt-node-render--quantity' +
+				(compact ? ' is-compact' : ''),
+		});
+		var num = createEl('input', {
+			type: 'number',
+			step: 'any',
+			inputmode: 'decimal',
+			className: 'wtt-preview-input wtt-preview-input--num',
+			value: mag,
+		});
+		if (context && context.valueKey) {
+			num.setAttribute('data-wtt-pv', String(context.valueKey));
+		}
+		group.appendChild(num);
+
+		var prefixSelect = null;
+		if (praefixMem && prefixOpts.length) {
+			prefixSelect = createEl('select', {
+				className: 'wtt-type-select wtt-preview-quantity__prefix',
+			});
+			prefixOpts.forEach(function (opt) {
+				var o = createEl('option', {
+					value: opt.name,
+					text: opt.name,
+				});
+				if (opt.name === prefixName) {
+					o.selected = true;
+				}
+				prefixSelect.appendChild(o);
+			});
+			group.appendChild(prefixSelect);
+		}
+
+		if (symbol) {
+			group.appendChild(
+				createEl('span', {
+					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
+					text: symbol,
+				})
+			);
+		}
+
+		if (context && typeof context.onInput === 'function') {
+			var emit = function () {
+				var p =
+					prefixSelect && prefixSelect.value
+						? String(prefixSelect.value)
+						: '';
+				context.onInput(serializeQuantityStore(num.value, p));
+			};
+			num.addEventListener('input', emit);
+			num.addEventListener('change', emit);
+			if (prefixSelect) {
+				prefixSelect.addEventListener('change', emit);
+			}
+		}
+		return group;
+	}
+
+	var QuantityRenderer = {
+		canRender: function (node) {
+			if (!node) {
+				return false;
+			}
+			if (quantitySchemaMembers(node).length) {
+				return true;
+			}
+			return isQuantityTypeKey(resolveTypeKey(node));
+		},
+		renderContent: function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = contentContext(context, !!readonly);
+			return renderQuantityControl(node, ctx);
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return composeLabeledField(this, node, context);
+		},
+		getExampleNode: function (probe) {
+			var sample = sampleForTypeKey('quantity', '10.5', probe);
+			var schema =
+				probe && probe.quantitySchema
+					? probe.quantitySchema
+					: null;
+			return {
+				name: 'Quantity_name',
+				displayName: 'Quantity_name',
+				typeKey: 'quantity',
+				type: { name: 'quantity' },
+				sample: sample || '10.5',
+				isExample: true,
+				quantitySchema: schema,
+			};
+		},
+	};
 
 	function contextName(context) {
 		return context && context.name ? String(context.name) : 'form';
@@ -941,13 +1253,240 @@
 		};
 	}
 
-	/* Samples: WTTSampleData.forAttribute(node) / forType — keep only control chrome here. */
-	var IntRenderer = makeScalarRenderer('int', {
-		inputType: 'number',
-		step: 1,
-		inputMode: 'numeric',
-		inputClass: 'wtt-node-render--int',
-	});
+	/**
+	 * int — one renderer (edit + display); converter/validators via WTTIntValue.
+	 * Canonical: decimal digit string. Default format: arabic (type default; attribute may override later).
+	 */
+	function intValueApi() {
+		return global.WTTIntValue || null;
+	}
+
+	function resolveIntDisplayFormat(node) {
+		var api = intValueApi();
+		var raw =
+			(node && (node.displayFormat || node.intDisplayFormat)) ||
+			(node && node.intConfig && node.intConfig.displayFormat) ||
+			(node && node.typeExtras && node.typeExtras.displayFormat) ||
+			'';
+		if (api && typeof api.normalizeFormatId === 'function') {
+			return api.normalizeFormatId(raw);
+		}
+		return 'arabic';
+	}
+
+	function syncIntValidity(input, hint, formatId) {
+		var api = intValueApi();
+		var msg = i18nLabels.intInvalid || 'Enter a whole number.';
+		var value = input.value;
+		var result = { ok: true };
+		if (api && typeof api.validateAll === 'function') {
+			result = api.validateAll(value, { allowEmpty: true });
+			if (result && result.message) {
+				msg = result.message;
+			}
+		} else if (value !== '' && value !== '-' && !/^-?\d+$/.test(value)) {
+			result = { ok: false };
+		} else if (value === '-') {
+			result = { ok: false };
+		}
+		var ok = !!(result && result.ok);
+		input.classList.toggle('is-invalid', !ok);
+		input.setAttribute('aria-invalid', ok ? 'false' : 'true');
+		if (hint) {
+			hint.textContent = ok ? '' : msg;
+			hint.hidden = ok;
+		}
+		if (!ok) {
+			input.setAttribute('title', msg);
+		} else {
+			input.removeAttribute('title');
+		}
+		return ok;
+	}
+
+	function renderIntDisplay(value, compact, formatId) {
+		var api = intValueApi();
+		var displayVal = value === '' ? '—' : value;
+		if (displayVal !== '—' && api && typeof api.format === 'function') {
+			displayVal = api.format(value, formatId) || '—';
+			if (displayVal === '') {
+				displayVal = '—';
+			}
+		}
+		var invalid =
+			displayVal !== '—' &&
+			api &&
+			typeof api.validateAll === 'function' &&
+			!api.validateAll(String(value), { allowEmpty: false }).ok;
+		if (
+			displayVal !== '—' &&
+			!api &&
+			!/^-?\d+$/.test(String(value))
+		) {
+			invalid = true;
+		}
+		return createEl('span', {
+			className:
+				'wtt-preview-display-value' +
+				(invalid ? ' is-invalid' : '') +
+				(compact ? ' wtt-preview-display-value--compact' : '') +
+				' wtt-node-render--int',
+			text: displayVal,
+			title: invalid
+				? i18nLabels.intInvalid || 'Enter a whole number.'
+				: undefined,
+		});
+	}
+
+	function renderIntEdit(opts) {
+		opts = opts || {};
+		var context = opts.context || {};
+		var formatId = opts.formatId || 'arabic';
+		var compact =
+			!!opts.compact ||
+			contextName(context) === 'table' ||
+			contextName(context) === 'tree';
+		var api = intValueApi();
+		var raw = readValue(context, opts.sample || '');
+		var value = raw;
+		if (api && typeof api.normalize === 'function' && raw !== '') {
+			value = api.normalize(raw, formatId);
+		}
+		var className =
+			'wtt-preview-input wtt-node-render--int' +
+			(compact ? ' wtt-preview-input--compact' : '');
+		var input = createEl('input', {
+			type: 'text',
+			className: className,
+			inputmode: 'numeric',
+			autocomplete: 'off',
+			value: value,
+		});
+		input.value = value;
+
+		var hint = createEl('span', {
+			className: 'wtt-node-render__int-hint',
+			hidden: true,
+		});
+		var wrap = createEl('div', {
+			className: 'wtt-node-render__int-wrap',
+		});
+		wrap.appendChild(input);
+		wrap.appendChild(hint);
+
+		function applyFiltered(nextRaw, doCanonical) {
+			var filtered =
+				api && typeof api.filterLive === 'function'
+					? api.filterLive(nextRaw, formatId)
+					: String(nextRaw || '').replace(/[^\d-]/g, '');
+			if (
+				doCanonical &&
+				api &&
+				typeof api.parse === 'function' &&
+				filtered !== '' &&
+				filtered !== '-' &&
+				api.isIntegerShape(filtered)
+			) {
+				var parsed = api.parse(filtered, formatId);
+				if (parsed != null) {
+					filtered = parsed;
+				}
+			}
+			if (input.value !== filtered) {
+				input.value = filtered;
+				try {
+					var pos = filtered.length;
+					input.setSelectionRange(pos, pos);
+				} catch (err) {
+					/* ignore */
+				}
+			}
+			syncIntValidity(input, hint, formatId);
+			if (isEdit(context) && typeof context.onInput === 'function') {
+				context.onInput(input.value);
+			}
+		}
+
+		input.addEventListener('input', function () {
+			applyFiltered(input.value, false);
+		});
+		input.addEventListener('blur', function () {
+			applyFiltered(input.value, true);
+		});
+		if (context.valueKey) {
+			input.setAttribute('data-wtt-pv', String(context.valueKey));
+		}
+		syncIntValidity(input, hint, formatId);
+		return wrap;
+	}
+
+	var IntRenderer = {
+		canRender: function (node) {
+			return resolveTypeKey(node) === 'int';
+		},
+		getExampleNode: function () {
+			return makeExampleScalarNode(
+				'int',
+				sampleForTypeKey('int', '42')
+			);
+		},
+		renderLabel: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var text = fieldCaption(node);
+			if (!text) {
+				return false;
+			}
+			return createEl('span', {
+				className: 'wtt-node-render__label',
+				text: text,
+			});
+		},
+		renderContent: function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = contentContext(context, !!readonly);
+			var formatId = resolveIntDisplayFormat(node);
+			var mappedSample = sampleForTypeKey('int', '42', node);
+			var rawVal = ctx.value != null ? String(ctx.value) : '';
+			var needsFill = rawVal === '';
+			var opts = {
+				context: ctx,
+				sample: mappedSample,
+				formatId: formatId,
+				compact:
+					contextName(ctx) === 'table' ||
+					contextName(ctx) === 'tree',
+			};
+			if (needsFill) {
+				var fill =
+					node && node.sample != null && String(node.sample) !== ''
+						? String(node.sample)
+						: mappedSample;
+				if (fill) {
+					opts.context = Object.assign({}, ctx, {
+						value: String(fill),
+					});
+				}
+			}
+			if (!isEdit(opts.context)) {
+				return renderIntDisplay(
+					readValue(opts.context, opts.sample || ''),
+					opts.compact,
+					formatId
+				);
+			}
+			return renderIntEdit(opts);
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return composeLabeledField(this, node, context);
+		},
+	};
 
 	var CharRenderer = makeScalarRenderer('char', {
 		inputType: 'text',
@@ -1170,6 +1709,7 @@
 	Registry.register(TextareaRenderer);
 	Registry.register(BoolRenderer);
 	Registry.register(DateRenderer);
+	Registry.register(QuantityRenderer);
 
 	/**
 	 * Enum (Q52): closed options → select. Options from node.enumOptions
@@ -2951,6 +3491,16 @@
 			if (opts.i18n.emailInvalid) {
 				i18nLabels.emailInvalid = String(opts.i18n.emailInvalid);
 			}
+			if (opts.i18n.intInvalid) {
+				i18nLabels.intInvalid = String(opts.i18n.intInvalid);
+			}
+		}
+		if (global.WTTIntValue && typeof global.WTTIntValue.configure === 'function') {
+			global.WTTIntValue.configure({
+				i18n: {
+					intInvalid: i18nLabels.intInvalid,
+				},
+			});
 		}
 	}
 
@@ -2980,11 +3530,14 @@
 		EmailRenderer: EmailRenderer,
 		TextareaRenderer: TextareaRenderer,
 		BoolRenderer: BoolRenderer,
+		DateRenderer: DateRenderer,
+		QuantityRenderer: QuantityRenderer,
 		TableRenderer: TableRenderer,
 		EnumRenderer: EnumRenderer,
 		NodeRefRenderer: NodeRefRenderer,
 		isValidEmail: isValidEmail,
 		compositionMembers: compositionMembers,
+		quantitySchemaMembers: quantitySchemaMembers,
 		createEl: createEl,
 		fieldCaption: fieldCaption,
 	};

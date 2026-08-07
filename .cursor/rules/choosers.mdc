@@ -1,0 +1,52 @@
+---
+description: One chooser per purpose — TreeChooser / ListChooser; rootId + focusId contract (Q90/Q92)
+alwaysApply: true
+---
+
+# Choosers (one per purpose)
+
+Canonical design for node / option pickers. Product detail: Q90 (CatalogChoice depth), Q92 (`chooser_root` / `chooser_focus`). Living note: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) (CatalogChoice / Q92).
+
+## One chooser per purpose
+
+| Purpose | Shared UI | Canonical entry |
+|---------|-----------|-----------------|
+| Taxonomy browse / node pick | **TreeChooser** | Admin: `WTTNodePicker.render` (`assets/js/wtt-node-picker.js`); `tree-admin.js` wraps it. Gutenberg: `ModelTreeChooser` — **same contract** until merged. Do **not** invent a third tree. |
+| Flat specialization / option pick | **ListChooser** | `renderOptionsSelect` (or equivalent shared list) |
+| CatalogChoice (Q90) | Depth ≤ 1 → **ListChooser**; depth ≥ 2 → **TreeChooser** | Never a third tree. `renderCatalogTreeChooser` = **debt — do not extend** |
+
+Separate domains stay separate (not Tree/List choosers):
+
+- **ModelInstancePicker** (Model_Data instances)
+- **wp.media**
+- Non-node selects (e.g. footer aggregate op)
+
+## Params (`rootId` + `focusId`)
+
+- **`rootId`** — branch root (usually binding **`chooser_root`**).
+- **`focusId`** — optional; **caller-owned**. Expand / initial focus for the picker.
+- Settings **`chooser_focus`** — **fallback only** when the caller passes no focus (e.g. attribute type picker → Data Types).
+- **Object View / Model bind:** pass **`model`** as focus — **never** override with `chooser_focus`.
+
+Resolve pickable nodes **by id only** (Q92). Do not select by name in product logic.
+
+## Do / don’t
+
+- **Do** extend the shared TreeChooser or ListChooser when a new pick surface needs chrome.
+- **Do** keep Gutenberg `ModelTreeChooser` on the admin tree contract until unified.
+- **Don’t** add a new tree or list UI for nodes/options — ask the user if the shared chooser cannot cover it.
+- **Don’t** grow `renderCatalogTreeChooser` or fork a fourth picker to “fix” divergence.
+
+Also see [reuse-renderers.mdc](reuse-renderers.mdc): reuse `WTTObjectRender` for Form/Table — do not hard-code attribute cells.
+
+## Current divergence (inventory — do not “fix” with a fourth)
+
+| Surface | Role today | Note |
+|---------|------------|------|
+| `WTTNodePicker` (`wtt-node-picker.js`) | Canonical admin TreeChooser | Prefer this for new admin node picks (e.g. Fill Model Data Structure) |
+| `renderNodeTreePicker` | Thin wrapper in `tree-admin.js` → `WTTNodePicker` | Keep wrapping; do not re-fork picker UI |
+| `ModelTreeChooser` (`src/blocks/shared/`) | Gutenberg tree\|flat\|auto | Same contract; merge later — not a second product tree |
+| `renderOptionsSelect` | Canonical ListChooser | Flat options / depth ≤ 1 CatalogChoice |
+| `renderCatalogTreeChooser` | Object-render CatalogChoice tree | **Debt** — depth ≥ 2 should converge on TreeChooser; do not extend |
+
+Agents: unify toward the shared pair; do not add another picker implementation.

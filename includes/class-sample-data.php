@@ -133,6 +133,10 @@ final class Sample_Data {
 			'street'          => $p['street'],
 			'adresse'         => $p['street'],
 			'address'         => $p['street'],
+			'hausnummer'      => '1',
+			'house number'    => '1',
+			'housenumber'     => '1',
+			'postleitzahl'    => $p['zip'],
 			'titel'           => $p['title'],
 			'title'           => $p['title'],
 			'anrede'          => $p['title'],
@@ -148,6 +152,53 @@ final class Sample_Data {
 			'notes'           => $p['note'],
 			'comment'         => $p['note'],
 			'kommentar'       => $p['note'],
+			/* PCB / Platine posts (Retro Projekt tables). */
+			'platine'         => 'ESP8266-RS232',
+			'board'           => 'ESP8266-RS232',
+			'pcb'             => 'ESP8266-RS232',
+			'bestellt wo'     => 'JLCPCB',
+			'bestellt bei'    => 'JLCPCB',
+			'ordered from'    => 'JLCPCB',
+			'gerberdatei'     => '{"source":"url","url":"https://example.com/esp8266-rs232-gerber.zip","mime":"application/zip","filename":"esp8266-rs232-gerber.zip"}',
+			'gerber'          => '{"source":"url","url":"https://example.com/esp8266-rs232-gerber.zip","mime":"application/zip","filename":"esp8266-rs232-gerber.zip"}',
+			'gerber vorhanden'=> 'true',
+			'stuck'           => '20',
+			'stück'           => '20',
+			'qty'             => '20',
+			'quantity boards' => '20',
+			'preis'           => '12',
+			'preis inclusive' => '12',
+			'besonderheiten'  => 'Lead-free, black',
+			'erfolgreich'     => 'true',
+			'preis pro stück' => '7',
+			'preisprostück'   => '7',
+			'stückpreis'      => '7',
+			'lötdauer'        => '20 Minuten',
+			'lotdauer'        => '20 Minuten',
+			'schwierigkeitsgrad' => 'Mittel',
+			'schwierigkeitsfaktor' => 'Mittel',
+			'funktion'        => 'Gut',
+			'lohnt es sich'   => 'Ja — sinnvolle Ergänzung für das Set',
+			'lohntessich'     => 'Ja — sinnvolle Ergänzung für das Set',
+			'einschränkungen' => 'Verbraucht einen ISA-Slot.',
+			'einschraenkungen'=> 'Verbraucht einen ISA-Slot.',
+			'version'         => '1.3',
+			'meine version'   => '1.3',
+			'optionen'        => "Option A — Beschreibung\nOption B — Beschreibung",
+			'protokoll'       => "30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.",
+			'änderungsprotokoll' => "30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.",
+			/* Bauteilliste/Position (BOM line — ESP8266-RS232 PCB row). */
+			'referenz'        => 'PCB',
+			'designator'      => 'PCB',
+			'wert'            => 'Leiterplatte',
+			'value'           => 'Leiterplatte',
+			'menge'           => '1',
+			'qty line'        => '1',
+			'beschreibung'    => 'ESP8266-RS232 Leiterplatte',
+			'description'     => 'ESP8266-RS232 Leiterplatte',
+			'lager'           => 'x',
+			'stock'           => 'x',
+			'status'          => '',
 		);
 	}
 
@@ -164,6 +215,43 @@ final class Sample_Data {
 		/* Type email → always persona fake address. */
 		if ( 'email' === $type_key ) {
 			return self::persona()['email'];
+		}
+
+		/* Platine.Name is a board title, not the Herbert persona. */
+		$host = '';
+		if ( is_array( $attr ) ) {
+			$host = strtolower(
+				trim(
+					(string) ( $attr['definedOnName'] ?? $attr['hostName'] ?? '' )
+				)
+			);
+		}
+		if ( 'platine' === $host ) {
+			foreach ( $name_hints as $hint ) {
+				$h = strtolower( trim( (string) $hint ) );
+				if ( in_array( $h, array( 'name', 'bezeichnung', 'titel', 'title' ), true ) ) {
+					return 'ESP8266-RS232';
+				}
+			}
+		}
+
+		/* Bauteilliste/Position line — ESP8266-RS232 first BOM row (PCB). */
+		if ( 'position' === $host ) {
+			foreach ( $name_hints as $hint ) {
+				$h = strtolower( trim( (string) $hint ) );
+				$map = array(
+					'referenz'     => 'PCB',
+					'wert'         => 'Leiterplatte',
+					'menge'        => '1',
+					'beschreibung' => 'ESP8266-RS232 Leiterplatte',
+					'preis'        => '1.80',
+					'lager'        => 'x',
+					'status'       => '',
+				);
+				if ( isset( $map[ $h ] ) ) {
+					return $map[ $h ];
+				}
+			}
 		}
 
 		foreach ( $name_hints as $hint ) {

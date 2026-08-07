@@ -3,7 +3,7 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Scaffolding ≈ **`0.0.297`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie = gold scaffold shape — not Phase-1 model sign-off.** Docs overwrite dual-tree assumptions (plan **0.7.32**); status stays scaffolding.  
+**Status:** Scaffolding ≈ **`0.0.330`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (`has_type` except root = father; root **Knoten** seed-only; no admin free `set_type`); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** chooser = nodes by id; **`_wtt_is_template`** catalog lock (#5); **`_wtt_is_datatype` debt** (#6 id+bindings decided; #12 open); **Fill Model Data** instances; Sample_Data; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie = gold scaffold shape — not Phase-1 model sign-off.** Plan **0.7.37**; status stays scaffolding.  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode
@@ -42,16 +42,16 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.
 - **Eigenschaften (property slots)** = **typed child Nodes** under a domain Node (`type_id` → Typ-Ast / unit).
 - **Decided (Q66 / Q54):** descendants **inherit property definitions** along the **`child_of`** hierarchy.
-- **Decided (Q88):** Hierarchy datatype = parent. Only **root** typed **Knoten**; every other hierarchy node’s datatype = father. Attribute members keep own catalog field types (Q87). No free type pick as primary model for hierarchy nodes.
-- Emerging type model: **Bauteilarten** (Definition schema) vs **Bauteile** (Implementation MPNs, **Q83**) vs **Composition**/Zusammenstellung. Bauteile nur als **`node_embed`** column (`ref_scope` → records). Instanz: values on nodes / rows.
+- **Decided (Q88):** Hierarchy datatype = parent. Root `type_id` → **Knoten** is **seed-only** (no admin free `set_type`). Every other hierarchy node’s datatype = father (`has_type` except root = father). Attribute members keep own catalog field types (Q87).
+- Emerging type model: **Model/Bauteil** = kinds; **Implementation/Bauteile** = MPN records (**Q83**). No Lieferant/Bestellnummer/Hersteller on kinds. Bauteile nur als **`node_embed`** column (`ref_scope` → records).
 - **Decided (Q85):** **Composition-first** — Platine `composition`→ Eigenschaften inkl. BOM; BOM `composition`→ Bauteil-Zuordnung, Position, Menge, …. Table / Collection-grid is a **view**, not the domain SoT. Avoid relations-CRUD as the product model.
-- **Decided (Q26 + Q77):** assignable **catalog** types under Type/Datentypen; **type chooser** = every effective **`is_datatype`** node (attribute/catalog + root **Knoten**); **`is_abstract`** = local folders (not selectable).
+- **Decided (Q26 + Q77 + Q92 + datatype job #6, revised 2026-08-07):** catalog types under Type/Datentypen anchors; **type chooser = nodes** scoped by **`chooser_root` / bindings** — **not** gated by `_wtt_is_datatype`; **`is_abstract`** = local folders (not selectable — keep until #12 decide). Select by **id** only; special branches/nodes → **settings** (`wtt_catalog_bindings`), never name lookup at runtime.
 - **Decided (Q59):** **Startknoten** is set by default in **Project Setup** (`start_node`).
 - **Q64 superseded:** no Parameter class — Type Nodes (`int`, `media`, …) live under Datentypen; slots are typed children.
-- **Decided (Q54 / Q35 / Q74):** Hierarchy = protected Relation **`child_of`** (tree view). Other Relations (esp. **`composition`**, **`has_type`**) via **Relation picker**. RelationTypes live in the **Relationstypen** tree. Node detail: Relations **von** / **an**.
+- **Decided (Q54 / Q35 / Q74):** Hierarchy = protected Relation **`child_of`** (tree view). Other Relations (esp. **`composition`**, **`has_type`**) via **Relation picker**. RelationTypes live in the **Relationstypen** tree. Node detail: Relations **von** / **an**. Product: non-root `has_type` = father (Q88).
 - **Decided (Q78):** Each Relation edge has **multiplicity** (`0..1` / `1` / `0..*` / `1..*`) as a **definition** constraint. Default `0..*`. **`child_of` is always `1`**.
-- **Q76 superseded for hierarchy datatype** by Q88; catalog inherit+override may remain scaffold interim. **Q77:** **`is_abstract` local only**; datatype nodes **may also have** a `type_id` (hierarchy: usually parent).
-- **Decided (Q79):** Node identity = **ID** (`term_id`). Instance names may repeat under different parents. **Data-type** names must be **unique** in the taxonomy.
+- **Q76 superseded for hierarchy datatype** by Q88; catalog inherit+override may remain scaffold interim. **Q77:** **`is_abstract` local only**; `_wtt_is_datatype` = scaffold debt (**#6** → id+bindings decided; **#12** type-role vs `type_id` still open — see OPEN-QUESTIONS). Catalog lock = **`_wtt_is_template`** (Development-mode editable).
+- **Decided (Q79, revised 2026-08-07):** Node identity / selection = **ID** (`term_id`) — never by name (config bindings exception). Instance names may repeat. Former datatype-name uniqueness = optional UX debt.
 - **Decided (Q63):** **Tree = definition**; **WP page/block = instance values**.
 - **Decided (Q61 / Q70 Fallstudie):** Tree structure named **`BOM`** = `composition` of **Name** (text) + **Tabelle** — **interim scaffold** (`type=table` legacy). Under **Q85** / **Q90**, prefer BOM as an object whose **composition members** are the line slots; do not treat catalog `table` as a required core type. Band identity = **`_wtt_prop_bindings`** where still used. Validator + **Bindings → Rules → Fixes** (**Q80**).
 - **Decided (Q57/Q58/Q60/Q62):** Optional Fuss band; per-Fuss-slot **`_wtt_footer_op`**; Menge = Stück; allowlists; WP block fills instance rows (instance Name field removed from block UI). Legacy `slot_scope` only where still used as a filter. **Q82** lean: Fuss labels via `text` + **`fixed`**.
@@ -68,7 +68,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Leaning: each RelationType has one **`label`** (no `inverse`); reverse = view (Q41).
 - Leaning: domain structures (**BOM**, **Recipe**, …) configurable as **Nodes** (schema-as-Nodes) rather than fixed PHP classes (Q46).
 - Some trees are **templates** (`Node.template`) for project-specific trees.
-- Open (**Q34/Q49**): config-first proposal — simples get `capabilities.originate_relations = false`.
+- Open (**Q34/Q48/Q49**): **Q34** — special *behavior* via **config** (not type identity; not PHP subclass). **Q48** — scalars as Typ-Ast Nodes + `type_id` (OK); visible hardcoding — **refined lean:** `implementationKey` for render-only; separate NodeConfig for settings-bearing types; composition for attribute hosts (flat A/B/C challenged 2026-08-07). **`int` (≈ 0.0.345):** renderer + Converter + validators; **Number format** UI on type + attribute override (default arabic). **Q49** — simples `capabilities.originate_relations = false` (decide with Q34).
 - Every Project and Node has a changelog (`timestamp`, `changer`, `change`, `version`).
 - Secure endpoints for the tree UI.
 - Extension points for host plugins (which taxonomies, extra row actions, side panels).
@@ -89,8 +89,8 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 
 1. Browse a hierarchical taxonomy as a tree (expand/collapse, selection memory).
 2. Create / copy / rename / describe / reorder siblings / delete (promote or cascade).
-3. Assign interim **types**: hierarchy datatype = parent (Q88; root **Knoten**); attribute/catalog types via chooser; required + fixed values; `is_datatype` / `is_abstract`.
-4. Gutenberg block **Taxo Collection table** (`taxo/collection-table`) — **legacy scaffold** (Q90 parks catalog `table`; block may remain until removal).
+3. Assign interim **types**: hierarchy datatype = parent (Q88; root **Knoten**); attribute/catalog types via node chooser (Q92 scope); required + fixed values; `is_abstract` ( `_wtt_is_datatype` = scaffold debt).
+4. Gutenberg block **Taxo Table view** (`taxo/collection-table`) — all datasets for the selected node as a table (Q90 parks catalog `table` kind; block may remain until removal).
 5. Explore **Basiseinheit** units as sets (composition members) with prefix allowlists.
 6. Preview Form + Table; sets as one field; denser chrome; adaptive picker path/name; picker search.
 7. Seed / reset **Fallstudie** (`wtt_fs`) — standard scaffold tree (`wtt_tree` retired).
@@ -115,5 +115,5 @@ Case study: [`docs/plans/case-study.md`](plans/case-study.md).
 
 ## Versioning
 
-- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.297`** (`MAJOR` stays `0` until first official release).
+- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.330`** (`MAJOR` stays `0` until first official release).
 - Scaffold domain tree: **`wtt_fs`** (Fallstudie); **`wtt_tree`** retired from product UI (legacy constant only). Neither is post `category`.

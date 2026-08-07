@@ -1,6 +1,9 @@
 /**
  * Build a nested tree from flat nodes that carry a path string (e.g. "A/B/C").
- * Pickable leaves keep their id; intermediate path segments are folder nodes (id 0).
+ *
+ * Important: each path segment is ONE node. If both a parent term (e.g. Model)
+ * and children (Model/Platine) exist, they share the same node — never a
+ * selectable leaf twin beside a synthetic folder.
  *
  * @param {Array<{id:number,name:string,path:string,taxonomy?:string,kind?:string}>} items
  * @return {Array<object>} Root nodes with { key, id, name, path, taxonomy, kind, selectable, children }.
@@ -10,14 +13,22 @@ export function buildPathTree( items ) {
 	const roots = [];
 	const byKey = new Map();
 
-	function ensureFolder( segments, taxonomy ) {
+	/**
+	 * Ensure a node exists for the full path; return it.
+	 * Folders start non-selectable (id 0); later leaf data can promote them.
+	 *
+	 * @param {string[]} segments
+	 * @param {string} taxonomy
+	 */
+	function ensureNode( segments, taxonomy ) {
 		let parentList = roots;
 		let pathSoFar = '';
+		let node = null;
 		for ( let i = 0; i < segments.length; i++ ) {
 			const seg = segments[ i ];
 			pathSoFar = pathSoFar ? `${ pathSoFar }/${ seg }` : seg;
-			const key = `${ taxonomy || '' }::folder::${ pathSoFar }`;
-			let node = byKey.get( key );
+			const key = `${ taxonomy || '' }::path::${ pathSoFar }`;
+			node = byKey.get( key );
 			if ( ! node ) {
 				node = {
 					key,
@@ -34,7 +45,7 @@ export function buildPathTree( items ) {
 			}
 			parentList = node.children;
 		}
-		return parentList;
+		return node;
 	}
 
 	list.forEach( ( item ) => {
@@ -46,40 +57,61 @@ export function buildPathTree( items ) {
 			.trim()
 			.replace( /^\/+|\/+$/g, '' );
 		const taxonomy = String( ( item && item.taxonomy ) || '' );
-		const parts = path ? path.split( '/' ).filter( Boolean ) : [ String( item.name || id ) ];
-		const leafName = parts[ parts.length - 1 ] || String( item.name || id );
-		const parentSegs = parts.slice( 0, -1 );
-		const parentList =
-			parentSegs.length > 0 ? ensureFolder( parentSegs, taxonomy ) : roots;
-
-		const leafKey = `${ taxonomy }::leaf::${ id }`;
-		let leaf = byKey.get( leafKey );
-		if ( ! leaf ) {
-			leaf = {
-				key: leafKey,
-				id,
-				name: leafName,
-				path: path || leafName,
-				taxonomy,
-				kind: String( ( item && item.kind ) || '' ),
-				selectable: true,
-				columnCount: item && item.columnCount != null ? item.columnCount : undefined,
-				attributeCount:
-					item && item.attributeCount != null
-						? item.attributeCount
-						: undefined,
-				children: [],
-			};
-			byKey.set( leafKey, leaf );
-			parentList.push( leaf );
-		} else {
-			leaf.name = leafName;
-			leaf.path = path || leafName;
-			leaf.kind = String( ( item && item.kind ) || leaf.kind || '' );
+		const parts = path
+			? path.split( '/' ).map( ( s ) => s.trim() ).filter( Boolean )
+			: [ String( item.name || id ) ];
+		const node = ensureNode( parts, taxonomy );
+		if ( ! node ) {
+			return;
+		}
+		/* Promote path node to the real term — children stay nested here. */
+		node.id = id;
+		node.name = parts[ parts.length - 1 ] || String( item.name || id );
+		node.path = path || node.path;
+		node.taxonomy = taxonomy || node.taxonomy;
+		node.kind = String( ( item && item.kind ) || node.kind || '' );
+		node.selectable = true;
+		if ( item && item.columnCount != null ) {
+			node.columnCount = item.columnCount;
+		}
+		if ( item && item.attributeCount != null ) {
+			node.attributeCount = item.attributeCount;
 		}
 	} );
 
 	return roots;
+}
+
+/**
+ * Keep only the subtree rooted at rootId (inclusive). Empty rootId → unchanged.
+ *
+ * @param {Array<object>} roots
+ * @param {number} rootId
+ * @return {Array<object>}
+ */
+export function subtreeAtRoot( roots, rootId ) {
+	const id = parseInt( rootId, 10 ) || 0;
+	if ( ! id ) {
+		return Array.isArray( roots ) ? roots : [];
+	}
+
+	function find( nodes ) {
+		for ( let i = 0; i < nodes.length; i++ ) {
+			const n = nodes[ i ];
+			if ( Number( n.id ) === id ) {
+				return [ n ];
+			}
+			if ( n.children && n.children.length ) {
+				const hit = find( n.children );
+				if ( hit ) {
+					return hit;
+				}
+			}
+		}
+		return null;
+	}
+
+	return find( Array.isArray( roots ) ? roots : [] ) || [];
 }
 
 /**
@@ -106,7 +138,9 @@ export function maxChoiceDepth( items ) {
 		const path = String( ( item && item.path ) || ( item && item.name ) || '' )
 			.trim()
 			.replace( /^\/+|\/+$/g, '' );
-		return path ? path.split( '/' ).filter( Boolean ) : [ String( item.name || item.id ) ];
+		return path
+			? path.split( '/' ).map( ( s ) => s.trim() ).filter( Boolean )
+			: [ String( item.name || item.id ) ];
 	} );
 
 	let common = paths[ 0 ].slice();
@@ -152,14 +186,21 @@ export function resolveChooserMode( items, mode = 'auto' ) {
 }
 
 /**
- * Collect expand keys for ancestors of a selected id (so the tree opens to it).
+ * Collect expand keys for ancestors of a selected/focus id.
+ * When expandFocusBranch is true (admin parity), also expand the focus node
+ * itself so its children are visible in the tree.
  *
  * @param {Array<object>} roots
- * @param {number} selectedId
+ * @param {number} targetId
+ * @param {boolean} [expandFocusBranch=true]
  * @return {Object<string, boolean>}
  */
-export function expandKeysForSelection( roots, selectedId ) {
-	const id = parseInt( selectedId, 10 ) || 0;
+export function expandKeysForSelection(
+	roots,
+	targetId,
+	expandFocusBranch = true
+) {
+	const id = parseInt( targetId, 10 ) || 0;
 	const expanded = {};
 	if ( ! id ) {
 		return expanded;
@@ -169,10 +210,15 @@ export function expandKeysForSelection( roots, selectedId ) {
 		for ( let i = 0; i < nodes.length; i++ ) {
 			const n = nodes[ i ];
 			const nextTrail = trail.concat( [ n.key ] );
-			if ( n.selectable && Number( n.id ) === id ) {
+			if ( Number( n.id ) === id ) {
+				/* Ancestors always open so the node is in view. */
 				nextTrail.slice( 0, -1 ).forEach( ( k ) => {
 					expanded[ k ] = true;
 				} );
+				/* Focus branch: expand the node itself (show children). */
+				if ( expandFocusBranch ) {
+					expanded[ n.key ] = true;
+				}
 				return true;
 			}
 			if ( n.children && n.children.length && walk( n.children, nextTrail ) ) {
@@ -182,6 +228,6 @@ export function expandKeysForSelection( roots, selectedId ) {
 		return false;
 	}
 
-	walk( roots, [] );
+	walk( Array.isArray( roots ) ? roots : [], [] );
 	return expanded;
 }

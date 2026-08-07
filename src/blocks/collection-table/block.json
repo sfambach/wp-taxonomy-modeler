@@ -2,11 +2,11 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
   "name": "taxo/collection-table",
-  "title": "Taxo Model table",
+  "title": "Taxo Table view",
   "category": "taxo",
   "icon": "editor-table",
-  "description": "Bind a model / schema node (e.g. Kontakt, Platine). Columns from attributes; pick or create a model-data instance, then fill rows.",
-  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "knoten", "node", "attributes", "form", "list"],
+  "description": "Bind a model / schema node (e.g. Kontakt, Platine). Shows all datasets for the selected node as a table — columns from attributes, one row per instance.",
+  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "knoten", "node", "attributes", "datasets", "instances"],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "collectionTermId": {

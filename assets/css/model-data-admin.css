@@ -38,6 +38,15 @@
 	margin-bottom: 0.85rem;
 }
 
+.wtt-model-data__structure-chooser {
+	width: 100%;
+}
+
+.wtt-model-data__structure-chooser .wtt-node-picker--popup-trigger {
+	width: 100%;
+	max-width: 100%;
+}
+
 .wtt-model-data__field:last-child {
 	margin-bottom: 0;
 }

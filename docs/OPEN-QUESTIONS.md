@@ -31,7 +31,7 @@
 | Q23 | What format is Change.`version`? | Semver string / integer counter / object version snapshot | Align with plugin versioning where useful; decide later | open |
 | Q24 | Which types require `prefix` and/or `base_unit`? | By type-node rules / flags / convention | **quantity** (Größe) uses unit group (prefix + base_unit); scalars like text/textarea do not | open |
 | Q25 | How are Units represented? | Separate Unit / single unit Node / prefix+base | **Decided (Q51/Q75):** Basiseinheit unit = **`set`**; members via **`composition`** (Typ + optional Praefix + Kuerzel). Präfix from Definition tree; display Praefix+Kuerzel. | decided |
-| Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | **Decided (reconcile Q77):** **Assignable types** live under the Type/Datentypen branch (`type_node`). **Type chooser** shows every Node with effective **`is_datatype`** (not limited to a hard path string). Präfix / Basiseinheit only under their anchors — never under Compositionen or Bauteile. | decided |
+| Q26 | Must type/prefix/base_unit Nodes be children of Type/Präfix/Basiseinheit? | Strict branch check / any node | **Decided (reconcile Q77/Q92, revised 2026-08-07):** Catalog simples/units live under Type / Präfix / Basiseinheit anchors. **Type chooser** = **nodes** scoped by **`chooser_root` / bindings (Q92)** — **not** gated by `_wtt_is_datatype`. Präfix / Basiseinheit only under their anchors — never under Compositionen or Bauteile. Select nodes by **id** (not name). | decided |
 | Q27 | How are type-Nodes organized? | Dedicated type tree in a project / flat list / convention | Example: Definition → Type | open |
 | Q28 | Is a quantity unit prefix+base or one node (kOhm)? | prefix+base / single node | **Decided direction:** **prefix + base_unit** (e.g. k + Ohm) | decided |
 | Q29 | Can prefix exist without base_unit (or vice versa)? | Both required together / either alone / type-dependent | Type-dependent leaning | open |
@@ -39,7 +39,7 @@
 | Q31 | Does `Node.template` apply only to the root or inherit to descendants? | Root only / inherit | Root flag leaning | open |
 | Q32 | Is the Definition tree itself a template? | Always template / never / optional | May be part of a **template Project** that is copied (Q50) rather than a separate “Definition template” flag alone | open |
 | Q33 | How are named attributes (e.g. Wert on Widerstände) modeled? | Parameter class on Node / other | **Superseded (Q64):** **typed child Nodes** (Eigenschaften) with `type_id` → Typ-Ast. No Parameter class. | superseded |
-| Q34 | How are Node specializations / type bindings modeled? | PHP subclass / `kind` flag / **configuration** + Relations | **Strong lean: configuration** + Relations for Node flags (e.g. simples `capabilities`); slot typing via child `type_id` / `has_type` (Q64 superseded), not a Node subclass | open |
+| Q34 | How are special node *behaviors* encoded (not “what type am I”)? | PHP subclass / hard `kind` flag / **configuration** + Relations | **Plain (not type binding):** Q34 is **not** “is this an int?” — that is Q48 / `type_id` / Q88. Q34 asks: when a **normal Node** needs *extra rules* (capabilities, allowlists, footer ops, …), do we invent a PHP subclass, a hard `kind` enum, or a **config bag** on the same Node? **Example:** catalog leaf `int` is still one Node in the tree; we may want “simples cannot originate Relations” (Q49). Options: `class SimpleNode extends Node` vs `kind=simple` vs `config.capabilities.originate_relations = false`. **Strong lean: configuration** (+ Relations where links are needed); no PHP Node subclass per behavior. Slot/catalog typing stays `type_id` / `has_type` (Q48). Still open pending user confirm (pairs with Q49). | open |
 | Q35 | Do node–node links need typed edges with properties? | Plain parent/child only / kinds / full Relation + RelationType | Exploring RelationType pairs + display/inherit | open |
 | Q36 | What is the core Type catalog? | Fixed list vs extensible | **Parked / superseded for Collection kinds by Q90 (2026-08-06).** Core catalog direction: **simples** + **quantity** / units + hierarchy (Q88) + attributes (Q87). Collection kinds `list` / `table` / `enum` are **not** active product types. Scaffold may still seed Complex leaves until a removal slice. | superseded |
 | Q38 | Are single/multiple enum variants types or selection methods? | enum_single+enum_multiple types / one enum + selection_mode | **Parked with Q90** — catalog `enum` out of product direction; closed values via hierarchy / Festwerte / attributes instead. | superseded |
@@ -53,8 +53,8 @@
 | Q45 | How is a quantity (Größe) bound when value sits on a Relation? | props `{value, prefix, unit}` / value on edge + unit **group** (prefix+unit) / Node only | **Leaning: Präfix+Einheit = group**; value often on edge; no loose value→prefix→unit chain | open |
 | Q51 | How do Basiseinheit and Präfix relate, and where is the scale factor (×1000)? | Unit─[allows_prefix]→Präfix + multiplikator Relation / config on Präfix / factor only on allows_prefix edge | **Decided:** allowlist; multiplikator on Präfix (same SI exponents). **to_si** = Typ × multiplikator × `prefix_root_to_si`. Mass: SI base = **kg**, prefix root = **g** (`prefix_root_to_si=1e-3`). Scaffold: unit set = **Typ** + Praefix? + Kuerzel; metas `_wtt_multiplikator`, `_wtt_prefix_root_to_si`. | decided |
 | Q46 | Are domain structures (BOM, Recipe, …) hard classes or configurable Nodes? | Always host PHP classes / schema-as-Nodes templates / hybrid DTOs | **Strong lean with Q56:** one **Composition** / UX **Zusammenstellung**; no BomList/Recipe/Build core classes | open |
-| Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / slot payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type** on the slot owns list-vs-scalar + validation; `,` is serialization | open |
-| Q48 | How are scalar data types configured and bound to slots? | Hardcoded catalog / **Nodes under Datentypen/Type** + Relation `has_type` / slot type_id only | **Aligned with Q64 superseded:** types = Nodes under Typ-Ast; slot **`type_id`** / `has_type` points at such a Node. Widget from type. | open |
+| Q47 | Where do value-shape rules live (e.g. BOM **Reference** = comma-separated RefDes list `R1,R2` / `C1…Cn`)? | Validator meta on the schema Node / Type (+ optional constraints) / slot payload / host-only | **Leaning: not on bare Node** — schema Node = slot; **type** on the slot owns list-vs-scalar + validation; `,` is serialization. **Scaffold (`int`, ≈ 0.0.345):** Converter + validators + one renderer; **Number format** UI on type (`_wtt_int_display_format`, default arabic) + attribute override via type extras `displayFormat`. | open |
+| Q48 | How are scalar data types configured and bound to slots? | Hardcoded-only catalog / **Nodes under Typ-Ast** + slot `type_id` / binding-only keys | **Plain:** Where do `int`/`text`/… live, and how does a slot say “I am an int”? **Agreed lean:** types = Typ-Ast **Nodes**; slots use **`type_id`**. **Challenge (2026-08-07):** ABC is too coarse if applied to *all* catalog kinds — split **render-only** vs **settings-bearing** vs **attribute/composed** (see detail below). Flat **C** still fine for *builtin widget keys*; settings/attrs need separate SoT. Still open pending user confirm of refined split. | open |
 | Q49 | May simple data-type Nodes originate Relations, or must that be blocked? | Special Node kind that cannot build Relations / same Node + **config** that disables Relations from simples / allow Relations | **Strong lean (with Q34):** same Node + **config** `capabilities.originate_relations = false` on simples (not a hard special kind); decide with Q34 | open |
 | Q50 | Where do default Nodes come from (Definitionsbaum anchors, fixed simples, …)? | **Generate** on Project create / **copy from a template Project** / hybrid | **Leaning: template Project** holds **simples** + **quantity** / units (Q90: not Collection enum/list/table); copy into new Projects (generate = fallback). Relates to Q30, Q32 | open |
 | Q52 | How do **list** / **table** / **enum** relate (Collection model)? | Separate types / **Collection** super-kind / enum stays apart | **Superseded by Q90 (2026-08-06).** Prior decision (Collection → list\|table\|enum) is **parked** — not active product direction. Scaffold leftovers may remain until explicit removal. | superseded |
@@ -82,24 +82,164 @@
 | Q74 | How do admins create/delete non-hierarchy Relations (esp. **`composition`**) on a Node? | Only seed edges / custom UI per type / **reusable Relation picker** | **Decided (direction):** Reusable **Relation picker** (everywhere): (1) choose **RelationType** from Relationstypen-Ast, (2) choose target **Node** via tree picker. Modes **inline / popup** (default **inline**). Node detail: add/remove/duplicate/reorder outgoing Relations (not `child_of` — that stays reparent). Child Nodes **inherit** composition membership **definitions** along `child_of` where applicable (display/merge rules with Q66). **Scaffold ≈ 0.0.140:** `_wtt_relations` + edge ids + Add/Remove/Duplicate/Move UI. | decided |
 | Q75 | What are **`set`** members — tree children or Relations? | Keep children (Q51 scaffold) / **`composition` Relations** | **Decided (refine Q51):** A Node typed **`set`** takes its **members from outgoing `composition` Relations** (targets), **not** from hierarchy children. Hierarchy (`child_of`) stays taxonomy/folder structure. Unit sets (Meter…): Typ / Praefix? / Kuerzel become **composition targets**. Preview/display still composes member values. **Scaffold ≈ 0.0.140:** members from composition; auto-migrate from children when no composition edges yet. | decided |
 | Q76 | Does a Node’s **data type** inherit down the tree? | Never / always copy / **live inherit + override** / **superseded by Q88 for hierarchy** | **Superseded for hierarchy datatype by Q88 (2026-08-06).** Catalog-type **inheriting (vererbend)** + child **override** remains **scaffold interim** for Typ-Ast / assigned catalog types (e.g. `set` chains) where still wired. Product model for hierarchy nodes: datatype = **parent** only — no free override to a catalog type. Orthogonal to **Q66** slot-definition inherit. Exception `table never inherits` was a Q76 scaffold rule; hierarchy datatype under Q88 is always the parent Node. | superseded |
-| Q77 | What is the **type chooser**; can a Typ-Ast Node also have a type? | Flat select / **tree type chooser** + **`is_datatype`** + **`is_abstract`** | **Decided (revised 2026-08-04; reconcile Q88):** **Type chooser** shows **all Nodes with effective `is_datatype`** (not limited to Typen path). Primary use after Q88: **attribute / catalog** field types + root **Knoten**. Flag **`is_datatype`** inherits along parent chain (open whether every hierarchy class still needs the flag — see Q88). Flag **`is_abstract`** is **local only**. Abstract nodes appear but **cannot be selected**. **Datatype nodes may also have a `type_id`** (hierarchy: usually parent). Cannot assign self. **Scaffold ≈ 0.0.128.** | decided |
+| Q77 | What is the **type chooser**; can a Typ-Ast Node also have a type? | Flat select / **tree type chooser** + **`is_datatype`** + **`is_abstract`** | **Revised (2026-08-07):** **Type chooser = nodes** (tree), scoped by **`chooser_root` / `chooser_focus` / catalog bindings (Q92)** — **not** filtered by `_wtt_is_datatype`. Primary use: attribute / catalog field types. Flag **`is_abstract`** remains **local only** (folders appear, not selectable). Hierarchy type = parent (**Q88**); free `set_type` dropped from admin (root seed-only). **`_wtt_is_datatype`**: former chooser gate — **debt**; remaining jobs listed under Architecture / plan decision log. Scaffold still reads the flag in places. | decided |
 | Q78 | Does a Relation need **multiplicity** (cardinality) in the definition tree? | None / on RelationType only / **on each Relation edge** | **Decided:** On each stored **Relation** edge (definition). Values: **`0..1`**, **`1`**, **`0..*`**, **`1..*`** (lower 0 or 1; upper 1 or *). Default **`0..*`**. **`child_of` always `1`** (exactly one parent; locked in UI / forced on write / repaired on read). `has_type` / `ref_scope` stay **`0..1`**. Not instance count — definition constraint. Distinct from Präfix **multiplikator**. **Scaffold ≈ 0.0.247.** | decided |
-| Q79 | Are Node **names** unique? | Taxonomy-wide / siblings only / ID only / special rule for datatypes | **Decided:** Identity = **`term_id` (ID)**, not name. Instance nodes may share names across parents (e.g. Bom→Zeile and Rezept→Zeile). **Data-type** nodes (`is_datatype`): display names **unique** in the taxonomy (case-insensitive). WP sibling-name rules still apply. **Scaffold ≈ 0.0.175.** | decided |
+| Q79 | Are Node **names** unique? | Taxonomy-wide / siblings only / ID only / special rule for datatypes | **Revised (2026-08-07):** Identity / selection SoT = **`term_id` (ID)** always — **never select nodes by name**. Exceptions: **named config bindings** (constants → ids in `wtt_catalog_bindings` / similar). Instance names may collide across parents. Former rule “datatype display names unique taxonomy-wide” is **not** selection SoT (scaffold may still enforce — **debt** to drop or keep as optional UX only). WP sibling-name rules still apply. | decided |
 | Q80 | How do validation **rules** relate to **bindings** and repairs? | Errors only / auto-mutate / **rules + optional fixes** | **Decided (direction):** **Bindings** (e.g. `_wtt_prop_bindings`) have **rules**. On failure: **0..n optional Fixes** (user-triggered; not mandatory). Example: Fuss count ≠ Zeile → “Create missing fields”. When adding a rule, decide/ask which fixes exist. Scaffold ≈ **0.0.188** (`fixes[]` + `wtt_fix_table_band_fields`). Rule: `.cursor/rules/bindings-rules-fixes.mdc`. | decided |
 | Q81 | Must Kopf / Zeile / Fuss bindings point to **distinct** children? | Allow reuse / **unique per table** | **Deferred (UAT):** Today the same direct child can be bound to Zeile and Kopf. Unique bindings (Zeile ≠ Kopf ≠ Fuss) are a candidate rule + picker filter / unbind fix — implement only if UAT shows confusion. | deferred |
 | Q82 | How are Fuss labels (“Summe”, “Gesamtpreis”) and computed aggregates made non-editable? | New type `label` / `text` + `editable` flag / **`footer_op` + existing `fixed`** | **Strong lean:** No new `label` type and no extra `editable` flag. (1) Aggregate ops (`sum`/`avg`/…) → **always read-only** (computed). (2) Static footer text → Fuss slot `footer_op=text` (or `none`) + **`fixed` literal** (e.g. “Summe”, “Gesamtpreis”) — same non-editable rule as fixed Zeile slots. (3) Editable Fuss text only if `text` and **not** fixed (rare). Example: Ref→fixed “Summe”; Menge→`sum`; Preis→`sum`; Kommentar→fixed “Gesamtpreis”. | open |
-| Q83 | Bauteile: category/schema vs master data in one tree? | DigiKey-style mix (kinds + MPNs under same root) / **split Definition vs Implementation** | **Decided:** **Bauteilarten** (kinds + slots, `is_datatype`) under **Definition**; **Bauteile** (MPN records, `type_id` → kind) under **Implementation**. `node_embed`/`ref_scope` → Bauteile records. Same Lieferanten pattern. Scaffold ≈ **0.0.207**. | decided |
+| Q83 | Bauteile: category/schema vs master data in one tree? | DigiKey-style mix / split Definition vs Implementation / **Model kinds + Implementation MPNs** | **Revised (2026-08-07):** **Kinds under Model/Bauteil** (schema nodes, address by **id** / bindings — not by name; do not rely on `_wtt_is_datatype` as chooser gate). **MPN records under Implementation/Bauteile** (`type_id` → kind id). No Lieferant / Bestellnummer / Hersteller on kinds. Dioden Arten = hierarchy under Model/Bauteil/Dioden (CatalogChoice). BOM `node_embed` → Bauteile. Scaffold ≈ **0.0.304**. | decided |
 | Q84 | How should `node_ref` pick / create catalog targets in preview cells? | Select + checkbox wall / full tree picker / **catalog chooser** (+ mini-form create) | **Decided:** Catalog chooser (chips + Choose/Change). Presentation follows **`treePickerMode`** (`popup`/`inline`, default popup). List = `nodeRefOptions` only (not full taxonomy tree). Create = mini-form (Name + scalar slots) via `wtt_create_node_ref_target` under `ref_scope`. No detail-panel jump mid-edit. Scaffold ≈ **0.0.225**. | decided |
 | Q85 | Primary mental model: relations/table-grid vs object composition? | Relations-CRUD + Collection-table DB feel / **composition-first objects** | **Decided (2026-08-05, refined):** Objects + **`besteht_aus`**. Composition ≈ **class**; each member ≈ **attribute = Name + Typ** (`node.name` + `type_id`/`has_type`). Platine/`BOM` examples unchanged. Table UI = view only. RelationType renamed **`besteht_aus`** (alias `composition`). Rule: `.cursor/rules/composition-first.mdc`. Plan **0.7.21**. | decided |
 | Q86 | How does inheritance relate to **`child_of`**? | Separate `erbt_von` / only along `child_of` / both | **Decided (2026-08-06):** Inheritance = **`child_of` hierarchy only** (Q66 slots / Q88 hierarchy datatype). RelationType **`erbt_von` dropped**. Tree parent = single inheritance path. Plan **0.7.23**. | decided |
 | Q87 | How are **Attributes** on a Node modeled (Name + Typ + Mult.)? | Typed hierarchy children / Relation props / **`besteht_aus` members** | **Decided lean (2026-08-06):** Attribute = Name + Typ (`type_id` → catalog) + Mult. via **`besteht_aus` \| `aggregation` only**. **Never `child_of` to the host** (`child_of` = inheritance only, Q54/Q86). Slot terms marked `_wtt_attribute_slot`; not shown as tree children under the host. Inherit attribute **definitions** along host `child_of` (Q66). Scaffold ≈ **0.0.254**. | decided |
-| Q88 | What is the **data type of a hierarchy child**? | Own free type / inherit parent’s catalog type_id (Q76) / **type_id = parent node** | **Decided (2026-08-06; UI simplified same day):** **Everything via hierarchy.** Root is a node (Fallstudie / **Knoten**). **Everyone else inherits** — datatype = father (derived from WP parent / `child_of`). **No Data type field/picker** in node detail (redundant with parent). Persist `type_id`=parent on create/reparent/repair; reads prefer derive-from-parent. Attribute members keep own catalog type (Q87 Attributes panel). Q76 Inheriting/override chrome removed from hierarchy detail. Scaffold ≈ **0.0.248**. | decided |
+| Q88 | What is the **data type of a hierarchy child**? | Own free type / inherit parent's catalog type_id (Q76) / **type_id = parent node** | **Decided (2026-08-06; clarified 2026-08-07):** **Everything via hierarchy.** Root is a node (Fallstudie). **Except on the root, `has_type` / effective type is always the father** (WP parent / `child_of`). **No Data type field/picker** in hierarchy node detail. Persist `type_id`=parent on create/reparent/repair; reads prefer derive-from-parent. **Free `set_type` dropped from admin** (including root). Root `type_id` → **Knoten** is **seed-only** (write by id in ensure/seed; Relations/settings ignore free assign). Do **not** promote parents with `_wtt_is_datatype` for parent-as-type. Attribute members keep own catalog type (Q87). Scaffold ≈ **`0.0.330`**. | decided |
 | Q89 | How does **node delete** work? | Hard delete / promote children / **soft-delete Trash** | **Decided (2026-08-06):** Soft-delete via Trash. **Cascade** = mark node + descendants `_wtt_trashed` (keep parent links among them). **Promote** = reparent direct children to grandparent (`term_parent` / `child_of`), then trash the node only (UI “delete node only”; restored ≈ **0.0.297**). Special **Trash** node lists deleted roots (`_wtt_trash_item_ids` JSON); Empty Trash = permanent `wp_delete_term`. Scaffold soft-delete ≈ **0.0.239**. | decided |
 | Q90 | Are Complex catalog kinds **enum** / **list** / **table** still in product? | Keep Collection model (Q52) / remove / **park** | **Decided (2026-08-06):** **Parked — out of product direction for now.** **enum** fully out: closed value sets via **hierarchy inheritance** (Q88) + attributes / Festwerte (Q87), not a Collection `enum` kind. **list** and **table** not needed (YAGNI). Scaffold may still contain Complex leaves + Enum UI + collection-table block until an explicit removal slice. Agents must **warn** before reusing these types (rule: `.cursor/rules/parked-complex-types.mdc`). Plan **0.7.26**. **CatalogChoice UI (confirmed 2026-08-06, Preis/Währung):** When an attribute’s **type node has specialization children** (hierarchy under the type — not catalog `enum`): compute **max depth** of the type’s choice subtree (direct kids only → depth `1`; any grandchild → depth `≥ 2`). **Depth ≤ 1** → flat `<select>` / simple leaf list; **depth ≥ 2** → **tree chooser** (existing node tree picker). Default/Festwert seeds the selected value when present. Scope = **typed choice under a type host** (e.g. Währung → Euro/Dollar) — not every node picker in the product (deep taxonomy / model-binding may still prefer tree). See `docs/ARCHITECTURE.md` (CatalogChoice). Plan **0.7.29**. | decided |
 | Q91 | Does a node-only domain imply **one** renderer? | Single paint path / **Registry + many type renderers** | **Decided (2026-08-06):** **No.** Domain objects are **nodes** (Q90 parks Collection kinds), but presentation stays **one Registry pipeline with many type-specific renderers** (simples `int`/`text`/… now; more when a type needs custom chrome). Contexts (`tree` / `form` / `table` / …) still differ. **Form(1 instance) / Table(n instances)** are presentation surfaces over a schema + values (`WTTObjectRender`) — not catalog `table`. Q90 does **not** collapse renderers into one class. Rule: `.cursor/rules/node-renderers.mdc`. Plan **0.7.27**. | decided |
-| Q92 | How to address template catalog folders (Data Types / Simple) across installs if names change? | Hard-coded names / slugs / **config bindings by term id** | **Decided (2026-08-06; chooser split same day):** Option **`wtt_catalog_bindings`** per taxonomy. Attribute type picker: **`chooser_root`** (branch/ast, e.g. Fallstudie) + **`chooser_focus`** (e.g. Data Types). Legacy `data_types` / `simple` / `complex` kept; empty focus migrates from `data_types`. Resolve by id; name search = fallback. Scaffold ≈ **0.0.264** (`Catalog_Bindings`). Plan **0.7.28**. | decided |
+| Q92 | How to address template catalog folders (Data Types / Simple) across installs if names change? | Hard-coded names / slugs / **config bindings by term id** | **Decided (2026-08-06; strengthened 2026-08-07; #6 closed):** Option **`wtt_catalog_bindings`** per taxonomy — **named config keys → term ids**. Attribute type picker: **`chooser_root`** (branch) + **`chooser_focus`**. Resolve **by id only**. **Never select nodes by name** in product logic; name lookup as runtime fallback is **debt to remove** (seed/migrate may still use names once to write bindings). Same rule for any special branch/leaf the product needs (quantity, legacy table, Model/Bauteil, …) — put the id in settings/bindings, do not re-find by name. Legacy helper keys `data_types` / `simple` / `complex` kept until cleaned. Scaffold ≈ **0.0.264** (`Catalog_Bindings`). | decided |
 | Q93 | When CatalogChoice type host and/or selected child have attributes, what is stored? | Selected **node id** only / id + **instance values** on host attrs / on child attrs / on **both** (pick + fill) | **Open (2026-08-06).** UI chrome already decided under Q90 (no Choice object; depth ≤ 1 list / ≥ 2 tree). Value **source of truth** TBD when the type host and/or the chosen specialization child carries its own attributes. Relates to Q16 instance values. See `docs/ARCHITECTURE.md` (CatalogChoice). Plan **0.7.30**. | open |
 | Q94 | What is the **data safety** strategy (backup / disaster recovery vs plugin export-import)? | Rely on full site/DB backup / native WXR Tools→Export / plugin JSON export-import / mix | **Open (2026-08-07) — leaning, not decided.** (1) **Primary disaster recovery** = full site/DB backup (+ uploads), **not** a plugin Export button. (2) Native **Tools → Export (WXR)** alone is **insufficient**: standard taxonomy `wtt_fs` unbound to posts; Model_Data in option `wtt_model_instances`; ID-keyed graphs break on WXR remap. (3) Plugin **JSON export/import** = later product for “copy tree between sites” (remap by path/slug); **MVP non-goal** (bulk import/export already out in `mvp-requirements`). (4) Do **not** build admin Export now for “security.” Inventory: almost all plugin data = terms + `_wtt_*` termmeta + options (**no custom tables**). See `docs/ARCHITECTURE.md` (Backup / migrate). Plan **0.7.31**+. | open |
+
+## `_wtt_is_datatype` — remaining jobs (after 2026-08-07)
+
+Earlier scaffold rationale (1–12). User decisions **resolved**: (1) chooser filter = nodes / Q92 scope; (2) free `set_type` **dropped from admin** (root = seed-only); (3) `has_type` except root = father (Q88); (4) select by **id** only (config named bindings → ids OK); (5) catalog lock → **`is_template`**; **(6) leaf / special-node detection → id + settings bindings (2026-08-07)**.
+
+| # | Job | Status |
+|---|-----|--------|
+| 1 | Chooser filter (`get_datatype_tree` / assignable options) | **Superseded** — chooser = nodes + Q92 |
+| 2 | Attribute `add` / `set_type` requires datatype | **Superseded** — free hierarchy/root `set_type` not the model; attrs keep catalog type assign |
+| 3 | `has_type` picker same gate | **Superseded** — non-root type = father; root seed-only |
+| 4 | Q79 datatype name uniqueness as selection aid | **Superseded** — id SoT; uniqueness = optional UX debt |
+| 5 | Seed / catalog **deletable lock** tied to flag | **Resolved → `is_template`** — lock uses `_wtt_is_template` + `_wtt_deletable`; editable only in **Development mode** (`wtt_development_mode`). One-time migrate from former `is_datatype` lock in `lock_seeded_catalog_deletable`. |
+| 6 | Table / quantity / catalog-leaf detection via flag (+ name) | **Decided (2026-08-07)** — **never by name**; always by **`term_id`**. Special branches/nodes the product needs (Data Types, Simple, quantity, table legacy, Model/Bauteil, …) live in **settings / catalog bindings** (`wtt_catalog_bindings`, Q92-style named keys → ids). Seed/migrate may resolve names **once** to write those ids; runtime product logic must not re-lookup by name. |
+| 7 | Q88 `promote_class_datatype` so parent is assignable | **Superseded** — parent-as-type needs no flag; promote no longer sets `is_datatype` |
+| 8 | Renderer `typeKey` fallback from node name when `isDatatype` | **Superseded** — no name selection (Q79/Q92) |
+| 9 | Seed / `ensure_datatype_flags` writing the flag | **Debt** — only needed while survivors keep the meta |
+| 10 | Admin checkbox “Is data type” | **Debt** — UI can go independently of meta |
+| 11 | Flag inherit along parent chain (Q77) | **Debt** — moot if flag removed |
+| 12 | Orthogonality: flag = “I am a type role” vs `type_id` = “my type is X” | **Open** — conceptual leftover of `_wtt_is_datatype`; see expanded notes below. Do **not** remove `is_abstract` or `_wtt_is_datatype` in docs-only passes. |
+
+**Scaffold debt:** code still reads/writes `_wtt_is_datatype` in many paths — remove in a focused slice after **#12** is decided (and after #6 code paths migrate fully to bindings); do not large-rewrite in docs-only passes. Catalog lock (#5) and leaf addressing (#6) no longer *conceptually* depend on the flag.
+
+### #12 explained — `is_datatype` vs `type_id` / has_type vs `is_abstract`
+
+Three different jobs got tangled in the old “type role” story:
+
+| Concept | Meta / field | Question it answers | Fallstudie example |
+|---------|--------------|---------------------|--------------------|
+| **`type_id` / `has_type`** | `_wtt_type_id` (+ Relation mirror) | “**What is my type?**” — this node’s datatype binding | Hierarchy: **Definition** → type = father **Fallstudie** (Q88). Attribute: **Wert** on Widerstand → type = catalog **quantity** / unit node (Q87). |
+| **`_wtt_is_datatype`** (debt) | term meta flag | Old “**I am a type role**” — this node may appear as an *assignable catalog type* / participate in datatype forests | Seed sets it on **Simple**, **int**, **media**, **set**, **Knoten**, … Historically gated the type chooser (`get_datatype_tree`). **Product chooser no longer uses it** (Q77/Q92). |
+| **`_wtt_is_abstract`** | local term meta (does **not** inherit) | “**Folder / not selectable**” in a chooser — node may show for navigation but must not be picked as a value | **Simple** and **Complex** folders: `is_abstract=true` so the admin can expand them but cannot assign “Simple” as a field type; children **int** / **text** are `is_abstract=false` and selectable. |
+
+**Orthogonal, not synonyms**
+
+- A node can have a **`type_id`** without being a “datatype role.” Example: **Implementation/BOM** has hierarchy type = father; it is *not* something you pick as an attribute’s catalog type.
+- A catalog leaf can be a “type role” (historically `is_datatype`) and still have its *own* hierarchy `type_id` = parent folder (e.g. **int** under **Simple** → father Simple / Definition chain per Q88).
+- **`is_abstract`** does **not** mean “has no type.” It only means “do not select me in the type chooser.” Abstract folders still have hierarchy datatype = parent.
+
+**What “type role” meant (#12)**
+
+Before Q77/Q92, `_wtt_is_datatype` answered: “Is this node *in the pool of things I can bind as a field type*?” That is **orthogonal** to `type_id` (“what type does *this* node have?”). After #6 + Q92, “pool membership” should come from **which branch/ids settings expose** (e.g. under `chooser_focus` → Data Types), not from a boolean flag. #12 stays open only to confirm we need **no** leftover conceptual flag once chooser scope + bindings cover it — or whether some other marker remains.
+
+**`is_abstract` today — keep until decided**
+
+User suspicion (“maybe we don’t need `is_abstract` either”) is fair but **not decided**. Current jobs:
+
+1. Type chooser: abstract nodes **visible**, **not selectable** (Q77).
+2. Seed: folder chrome under Definition/Simple/Complex, Präfixe groups, etc. (`Case_Data` / `Demo_Data`).
+3. Admin Flags checkbox + DTO `isAbstract` / `isAbstractLocal`.
+4. PRODUCT non-goal: no separate `category` data type — folders use **`is_abstract`** instead.
+
+**If `is_abstract` were dropped**, replace with an explicit rule, e.g.:
+
+| Option | Idea | Risk |
+|--------|------|------|
+| A | **Leaves only** selectable (has no children) | Breaks selectable parents that intentionally have kids (CatalogChoice hosts, `set` members, deep type trees). |
+| B | **Binding / branch rule** only (anything under `chooser_focus` except listed folder ids) | Needs maintained folder-id list in settings — overlaps Q92; doable. |
+| C | **Keep `is_abstract`** as the explicit non-selectable marker | Status quo; clear UX; small meta. |
+
+No code removal in this docs pass. Decide #12 (and whether `is_abstract` stays) in a later user turn.
+
+### “Last point” pointer (Q34 / Q48)
+
+If a summary listed open rows after the datatype-slim-down work, the **third** open product row is often **Q34** (with **Q48** / **Q49** nearby): not the same as datatype job **#12**.
+
+#### Q34 — special *behavior*, not type identity
+
+| | |
+|--|--|
+| **Asks** | How does a Node get *extra rules* beyond being a normal tree node? |
+| **Does not ask** | “What is my datatype?” → that is **`type_id` / Q48 / Q88**. |
+| **Example** | Node `int` under Simple: still a Node. Rule “simples may not start Relations” (Q49) — encode as PHP subclass, hard `kind`, or **`config.capabilities…`**? |
+| **Lean** | **Config bag** on the Node (+ Relations when the link itself is the structure). No `class IntNode`. Confirm with user; decide with Q49. |
+
+#### Q48 — types as Nodes + visible builtin key (ABC challenged against datatypes)
+
+| | |
+|--|--|
+| **Asks** | Where do scalars / catalog types live, and how does a slot bind to one? |
+| **Agreed lean** | Types = **Nodes** in the Typ-Ast hierarchy; slots store **`type_id`** (correct). |
+| **Extra ask** | Hardcoded Registry behavior must be **visible** — not guessed from display name. |
+| **Scaffold today** | `Case_Data::simple_datatype_leaves` / `complex_datatype_leaves`; Registry in `wtt-node-render.js` (`SIMPLE_SCALAR_KEYS`, `STRUCTURED_TYPE_KEYS`); media via `WTTMediaRender`; object hosts via `WTTObjectRender`. DTO/`typeKey` often = **name** — debt vs Q79/Q92. |
+
+##### Inventory → three families
+
+Sources: seed (`class-case-data.php`), Registry, media/set/quantity/table metas (`Node_Type`), Model hosts (out of “datatype” scope for ABC).
+
+| Family | Members (scaffold) | What differs |
+|--------|--------------------|--------------|
+| **Render-only** | `int`, `double`, `text`, `textarea`, `char`, `bool`, `email`; borderline `display_node_name` | Same Node shape; **widget/chrome** only (dedicated renderer). **`int` (≈ 0.0.345):** one `IntRenderer` + Converter/validators; Number format UI on type + attribute override; format ids `arabic` (default) / `roman`/`binary`/`octal`/`hex` (reserved converters). |
+| **Settings-bearing** | `media` (`allowed_kinds`, upload/url); `date` (`date_mode`); `set` (separator / joinUnits / labelChildren); `quantity` (+ unit allowlists / multiplikator on Basiseinheit); `node_ref` / `node_embed` (`ref_scope`, allowed ids); legacy `table` (prop_bindings zeile/kopf/fuss, footer ops — **Q90 parked**) | Needs **typed config meta** (and sometimes structural bindings) **beyond** “which widget”. One string key is not the settings SoT. |
+| **Attribute-bearing / composed** | Unit **set** = Typ+Praefix+Kuerzel (Q51/Q25); CatalogChoice hosts (Währung, Bauformen, Dioden Arten — **hierarchy**, Q90 depth); **Model hosts** (Kontakt, Platine, Bauteil kinds — attributes via Q87) | Fixed **slots / composition / specialization tree**, not a single renderer swap. Model hosts are **schema nodes**, not catalog simples — **out of scope** for “datatype ABC”. |
+
+Parked Complex leaves still seeded (`list` / `enum` / `table`) — do not design ABC around extending them (Q90).
+
+##### ABC vs families
+
+| Option | Render-only | Settings-bearing | Attribute / composed |
+|--------|-------------|------------------|----------------------|
+| **A** — `implementationKey` meta only | **Works** — Registry dispatch + Meta chip; no name SoT for paint. | **Partial** — key picks renderer (`media`), but **settings stay separate metas**; alone cannot express allowlists/bands. Finding “the media catalog node” across installs without bindings → name debt unless every consumer already has `type_id`. | **Wrong tool** — composition/attrs are not an implementation key. |
+| **B** — catalog bindings only (`builtin.text` → id) | **Awkward** — slot has `type_id`; paint needs key via **reverse** binding lookup (id→key) or hidden name. Visible “Builtin: text” needs that reverse map. | **Wrong layer** — bindings address **anchors**, not `allowed_kinds` / separators. Table `prop_bindings` are a *different* binding kind (instance structure), not `wtt_catalog_bindings`. | Anchors (Model, Data Types) already **Q92** — orthogonal to type widget identity. |
+| **C** — binding + `implementationKey` | **Strong** for builtins — id SoT (Q92) + visible key + fast Registry resolve. Dual-write sync is the cost. | **Still incomplete** — C only answers “which builtin”; settings need **NodeConfig / type meta** regardless. Applying C as *the* answer for media/set/quantity **overclaims**. | Same as A/B: use composition + `type_id` + Q92 for hosts; not C. |
+
+**Verdict:** Flat A/B/C is **too coarse**. C (or A + sparse `builtin.*` bindings) fits **render-only**. Settings-bearing need **implementationKey (renderer) + structured config SoT**. Attribute/composed need **edges / children**, not ABC.
+
+##### Refined model (proposed — confirm with user)
+
+```text
+Slot ──type_id──► Type Node
+                     │
+                     ├─ implementationKey?  → Registry renderer (render-only + which chrome for settings types)
+                     ├─ NodeConfig / type metas → media kinds, set separators, date_mode, ref_scope, …
+                     ├─ composition / attributes (Q87) → set members, quantity usage, Model hosts
+                     └─ catalog bindings (Q92) → anchors + optional builtin.* leaf ids (seed/migrate/product find)
+```
+
+| Layer | Job | SoT |
+|-------|-----|-----|
+| `type_id` on slot | “I am this type node” | Term meta / has_type |
+| `implementationKey` | “Paint with this builtin renderer” | Term meta on **type** node (Dev-mode chip) |
+| Type / NodeConfig metas | Settings-bearing extras | Existing `_wtt_*` (media, set, date, …) — do **not** encode as binding keys |
+| Composition / attributes | Fixed slots / trinity / hosts | Children + `besteht_aus` / aggregation |
+| `wtt_catalog_bindings` | Rename-safe **anchors** (+ optional `builtin.text` → id) | Option map key → term_id |
+| Instance `prop_bindings` | Structural anchors inside one typed node (legacy table bands) | `_wtt_prop_bindings` — Rules/Fixes; not catalog ABC |
+
+**Recommended lean (refined):** For **render-only builtins**, keep **C** (or A first, add `builtin.*` bindings when product must resolve leaves without a slot `type_id`). Do **not** pretend C replaces media/set/quantity config or Model attribute schemas.
+
+##### Still open (user)
+
+1. Confirm **split model** vs flat C-for-everything?
+2. Ship **A first** (chip + Registry), add `builtin.*` bindings only where seed/tooling needs leaf ids?
+3. Meta key name: `_wtt_implementation_key` vs reuse?
+4. Abstract folders (`Simple`, `node_pick`): empty key?
+5. Is **`date`** render-only + tiny `date_mode`, or full settings family?
+6. Is **`quantity`** a builtin key, or always “composed object” (Preis-shaped) with no scalar renderer key?
+7. Dual-write policy if C: binding wins on conflict / Dev-mode only edits key?
+
+- **Q49** pairs with Q34 (may simples originate Relations?).
+
+Datatype job **#12** is the orthogonality leftover above — not Q34/Q48.
 
 ## How to close a question
 

@@ -219,11 +219,32 @@ final class Model_Data {
 		if ( array() === $next ) {
 			unset( $all[ $key ] );
 		} else {
-			$all[ $key ] = array_values( $next );
+			$all[ $key ] = self::rows_for_persist( $next );
 		}
 		self::persist_all( $all );
 
 		return true;
+	}
+
+	/**
+	 * Drop all instance bags for one taxonomy (e.g. after Case_Data::wipe_all_terms).
+	 *
+	 * @return int Number of bags removed.
+	 */
+	public static function clear_taxonomy( string $taxonomy ): int {
+		$prefix = sanitize_key( $taxonomy ) . ':';
+		$all    = self::load_all();
+		$removed = 0;
+		foreach ( array_keys( $all ) as $key ) {
+			if ( 0 === strpos( (string) $key, $prefix ) ) {
+				unset( $all[ $key ] );
+				++$removed;
+			}
+		}
+		if ( $removed > 0 ) {
+			self::persist_all( $all );
+		}
+		return $removed;
 	}
 
 	/**
@@ -360,6 +381,112 @@ final class Model_Data {
 			}
 		);
 
+		return $out;
+	}
+
+	/**
+	 * TreeChooser payload for Fill Model Data Structure node.
+	 *
+	 * rootId = chooser_root; focusId = model (caller-owned).
+	 * Nodes with attributes are selectable; folders remain visible.
+	 *
+	 * @return array{roots:list<array<string,mixed>>,rootId:int,focusId:int}
+	 */
+	public static function structure_chooser_tree( string $taxonomy ): array {
+		if ( ! Taxonomy::is_scaffold( $taxonomy ) || ! taxonomy_exists( $taxonomy ) ) {
+			return array(
+				'roots'   => array(),
+				'rootId'  => 0,
+				'focusId' => 0,
+			);
+		}
+
+		Catalog_Bindings::ensure( $taxonomy );
+		$root_id  = Catalog_Bindings::resolve( $taxonomy, Catalog_Bindings::KEY_CHOOSER_ROOT );
+		$focus_id = Catalog_Bindings::resolve( $taxonomy, Catalog_Bindings::KEY_MODEL );
+
+		$attr_counts = array();
+		foreach ( self::list_structure_hosts( $taxonomy ) as $host ) {
+			$hid = (int) ( $host['id'] ?? 0 );
+			if ( $hid > 0 ) {
+				$attr_counts[ $hid ] = (int) ( $host['attributeCount'] ?? 0 );
+			}
+		}
+
+		$full  = Tree_Model::get_tree( $taxonomy );
+		$roots = self::picker_roots_under( $full, $root_id );
+		$roots = self::slim_picker_nodes( $roots, $attr_counts );
+
+		return array(
+			'roots'   => $roots,
+			'rootId'  => $root_id,
+			'focusId' => $focus_id,
+		);
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $nodes
+	 * @return list<array<string,mixed>>
+	 */
+	private static function picker_roots_under( array $nodes, int $root_id ): array {
+		if ( $root_id <= 0 ) {
+			return $nodes;
+		}
+		$found = self::find_node_in_tree_nodes( $nodes, $root_id );
+		if ( null === $found ) {
+			return $nodes;
+		}
+		return array( $found );
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $nodes
+	 * @return array<string,mixed>|null
+	 */
+	private static function find_node_in_tree_nodes( array $nodes, int $id ) {
+		foreach ( $nodes as $node ) {
+			if ( ! is_array( $node ) ) {
+				continue;
+			}
+			if ( (int) ( $node['id'] ?? 0 ) === $id ) {
+				return $node;
+			}
+			$kids = isset( $node['children'] ) && is_array( $node['children'] ) ? $node['children'] : array();
+			$hit  = self::find_node_in_tree_nodes( $kids, $id );
+			if ( null !== $hit ) {
+				return $hit;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $nodes
+	 * @param array<int,int>            $attr_counts
+	 * @return list<array<string,mixed>>
+	 */
+	private static function slim_picker_nodes( array $nodes, array $attr_counts ): array {
+		$out = array();
+		foreach ( $nodes as $node ) {
+			if ( ! is_array( $node ) ) {
+				continue;
+			}
+			$id    = (int) ( $node['id'] ?? 0 );
+			$count = isset( $attr_counts[ $id ] ) ? (int) $attr_counts[ $id ] : 0;
+			$kids  = isset( $node['children'] ) && is_array( $node['children'] )
+				? self::slim_picker_nodes( $node['children'], $attr_counts )
+				: array();
+			$out[] = array(
+				'id'             => $id,
+				'name'           => (string) ( $node['name'] ?? '' ),
+				'parent'         => (int) ( $node['parent'] ?? 0 ),
+				'isAbstract'     => ! empty( $node['isAbstract'] ),
+				'attributeCount' => $count,
+				'selectable'     => $count > 0,
+				'children'       => $kids,
+				'hasChildren'    => count( $kids ) > 0,
+			);
+		}
 		return $out;
 	}
 

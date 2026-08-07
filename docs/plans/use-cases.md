@@ -43,8 +43,8 @@ todos:
 | **Q64** | superseded | **No Parameter class** — Eigenschaften = typed child Nodes |
 | **Q14** | decided | Slot ownership = parent Node (typed child) |
 | **Q20** | decided | Typed PHP DTOs for Project, Node, … — **no Parameter DTO** |
-| **Q34** | strong lean | Node flags via **configuration** / Relations; typing via child `type_id` |
-| **Q48** | leaning | Types = Nodes under Typ-Ast; slot `type_id` points at them |
+| **Q34** | strong lean | **Plain:** special *behavior* via **config** (not “what type”; not PHP subclass); typing is Q48/`type_id` |
+| **Q48** | leaning | Types = Nodes + `type_id` OK; ABC challenged — render-only → key (+ optional `builtin.*`); settings → NodeConfig; attrs → composition |
 | **Q49** | strong lean | Simples: config `originate_relations=false` (not hard special kind) |
 | **Q51** | decided | allows_prefix + multiplikator; UI derives Ohm/kOhm/… |
 | **Q55** / **Q66** | decided | Children inherit property-slot defs along `parent_id`; fills = instance values |

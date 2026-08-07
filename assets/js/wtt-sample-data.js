@@ -115,6 +115,11 @@
 		street: PERSONA.street,
 		adresse: PERSONA.street,
 		address: PERSONA.street,
+		hausnummer: '1',
+		'house number': '1',
+		housenumber: '1',
+		postleitzahl: PERSONA.zip,
+		plz: PERSONA.zip,
 		titel: PERSONA.title,
 		title: PERSONA.title,
 		anrede: PERSONA.title,
@@ -130,6 +135,71 @@
 		notes: PERSONA.note,
 		comment: PERSONA.note,
 		kommentar: PERSONA.note,
+		/* PCB / Platine (Retro Projekt post tables). */
+		platine: 'ESP8266-RS232',
+		board: 'ESP8266-RS232',
+		pcb: 'ESP8266-RS232',
+		'bestellt wo': 'JLCPCB',
+		bestelltwo: 'JLCPCB',
+		'bestellt bei': 'JLCPCB',
+		bestelltbei: 'JLCPCB',
+		'ordered from': 'JLCPCB',
+		orderedfrom: 'JLCPCB',
+		gerberdatei: {
+			source: 'url',
+			url: 'https://example.com/esp8266-rs232-gerber.zip',
+			mime: 'application/zip',
+			filename: 'esp8266-rs232-gerber.zip',
+		},
+		gerber: {
+			source: 'url',
+			url: 'https://example.com/esp8266-rs232-gerber.zip',
+			mime: 'application/zip',
+			filename: 'esp8266-rs232-gerber.zip',
+		},
+		'gerber vorhanden': 'true',
+		gerbervorhanden: 'true',
+		stuck: '20',
+		stück: '20',
+		qty: '20',
+		preis: '12',
+		'preis inclusive': '12',
+		besonderheiten: 'Lead-free, black',
+		erfolgreich: 'true',
+		'preis pro stück': '7',
+		preisprostück: '7',
+		stückpreis: '7',
+		lötdauer: '20 Minuten',
+		lotdauer: '20 Minuten',
+		schwierigkeitsgrad: 'Mittel',
+		schwierigkeitsfaktor: 'Mittel',
+		funktion: 'Gut',
+		'lohnt es sich': 'Ja — sinnvolle Ergänzung für das Set',
+		lohntessich: 'Ja — sinnvolle Ergänzung für das Set',
+		einschränkungen: 'Verbraucht einen ISA-Slot.',
+		einschraenkungen: 'Verbraucht einen ISA-Slot.',
+		version: '1.3',
+		'meine version': '1.3',
+		meineversion: '1.3',
+		optionen: "Option A — Beschreibung\nOption B — Beschreibung",
+		protokoll:
+			'30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.',
+		änderungsprotokoll:
+			'30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.',
+		aenderungsprotokoll:
+			'30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.',
+		/* Bauteilliste/Position (BOM line — ESP8266-RS232 PCB row). */
+		referenz: 'PCB',
+		designator: 'PCB',
+		wert: 'Leiterplatte',
+		value: 'Leiterplatte',
+		menge: '1',
+		'qty line': '1',
+		beschreibung: 'ESP8266-RS232 Leiterplatte',
+		description: 'ESP8266-RS232 Leiterplatte',
+		lager: 'x',
+		stock: 'x',
+		status: '',
 	};
 
 	function normalizeKey(raw) {
@@ -381,12 +451,58 @@
 		if (typeKey === 'email') {
 			base = PERSONA.email;
 		} else {
+			var host = '';
+			if (attr && typeof attr === 'object') {
+				host = String(attr.definedOnName || attr.hostName || '')
+					.trim()
+					.toLowerCase();
+			}
+			/* Platine.Name is a board title, not the Herbert persona. */
+			if (host === 'platine') {
+				for (var hi = 0; hi < hints.length; hi++) {
+					var hh = String(hints[hi] || '')
+						.trim()
+						.toLowerCase();
+					if (
+						hh === 'name' ||
+						hh === 'bezeichnung' ||
+						hh === 'titel' ||
+						hh === 'title'
+					) {
+						base = 'ESP8266-RS232';
+						break;
+					}
+				}
+			}
+			/* Bauteilliste/Position — ESP8266-RS232 first BOM row (PCB). */
+			if (!base && host === 'position') {
+				var posMap = {
+					referenz: 'PCB',
+					wert: 'Leiterplatte',
+					menge: '1',
+					beschreibung: 'ESP8266-RS232 Leiterplatte',
+					preis: '1.80',
+					lager: 'x',
+					status: '',
+				};
+				for (var pi = 0; pi < hints.length; pi++) {
+					var ph = String(hints[pi] || '')
+						.trim()
+						.toLowerCase();
+					if (Object.prototype.hasOwnProperty.call(posMap, ph)) {
+						base = posMap[ph];
+						break;
+					}
+				}
+			}
 			var i;
-			for (i = 0; i < hints.length; i++) {
-				var mapped = sampleForNameHint(hints[i]);
-				if (mapped) {
-					base = mapped;
-					break;
+			if (!base) {
+				for (i = 0; i < hints.length; i++) {
+					var mapped = sampleForNameHint(hints[i]);
+					if (mapped) {
+						base = mapped;
+						break;
+					}
 				}
 			}
 			if (!base) {

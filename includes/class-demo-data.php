@@ -274,7 +274,6 @@ final class Demo_Data {
 							),
 						),
 					),
-					self::bauteilarten_catalog_node(),
 					self::bauteile_implementation_node(),
 					self::lieferanten_catalog_node(),
 					array(
@@ -461,7 +460,7 @@ final class Demo_Data {
 			'name'            => 'Lieferanten',
 			'type_name'       => 'set',
 			'type_inheriting' => true,
-			'description'     => 'Supplier / vendor catalog (electronics DigiKey, grocery Rewe, …). Each record: Url, optional Suchstring, optional Bewertung. Part/ingredient Lieferant slot = node_ref → this root.',
+			'description'     => 'Supplier / vendor catalog (electronics DigiKey, grocery Rewe, …). Each record: Url, optional Suchstring, optional Bewertung. Separate from Bauteil kinds (no Lieferant slot on parts).',
 			'children'        => array(
 				self::slot( 'Url', 'text', true, 'Homepage or catalog base URL.' ),
 				self::slot( 'Suchstring', 'text', false, 'Optional search hint / query template for the supplier site.' ),
@@ -566,76 +565,31 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Wire Bauteil kind slots named Lieferant → node_ref + ref_scope Lieferanten.
-	 * Kinds live under Bauteilarten (Q83); path is the kinds parent.
+	 * @deprecated Lieferant slots removed from Bauteil kinds (Q83 merge). No-op kept for old callers.
 	 *
-	 * @param array<int, string> $bauteilarten_path Path to Bauteilarten (kinds root).
-	 * @param array<int, string> $lieferanten_path  Path to Lieferanten.
+	 * @param array<int, string> $bauteilarten_path Unused.
+	 * @param array<int, string> $lieferanten_path  Unused.
 	 */
 	public static function ensure_lieferant_slot_ref_scopes(
 		string $taxonomy,
 		array $bauteilarten_path,
 		array $lieferanten_path
 	): void {
-		$arten = self::find_term_by_path( $taxonomy, $bauteilarten_path );
-		$scope = self::find_term_by_path( $taxonomy, $lieferanten_path );
-		if ( $arten <= 0 || $scope <= 0 ) {
-			return;
-		}
-
-		$ref_type = Node_Type::find_type_by_name( $taxonomy, $arten, 'node_ref' );
-		$kinds    = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'parent'     => $arten,
-				'hide_empty' => false,
-				'number'     => 0,
-			)
-		);
-		if ( ! is_array( $kinds ) ) {
-			return;
-		}
-
-		foreach ( $kinds as $kind ) {
-			if ( ! $kind instanceof \WP_Term ) {
-				continue;
-			}
-			$slots = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'parent'     => (int) $kind->term_id,
-					'name'       => 'Lieferant',
-					'hide_empty' => false,
-					'number'     => 0,
-				)
-			);
-			if ( ! is_array( $slots ) ) {
-				continue;
-			}
-			foreach ( $slots as $slot ) {
-				if ( ! $slot instanceof \WP_Term ) {
-					continue;
-				}
-				$sid = (int) $slot->term_id;
-				if ( $ref_type > 0 ) {
-					Node_Type::set_type_id( $taxonomy, $sid, $ref_type );
-				}
-				Node_Type::set_ref_scope_id( $taxonomy, $sid, $scope );
-			}
-		}
+		unset( $taxonomy, $bauteilarten_path, $lieferanten_path );
 	}
 
 	/**
-	 * Install / refresh Lieferanten catalog + wire Bauteilarten.*.Lieferant ref_scope (Q83).
+	 * Install / refresh Lieferanten catalog (separate from Bauteil kind slots).
 	 *
-	 * @param array<int, string> $parent_path         Parent of Lieferanten (project root or Implementation).
-	 * @param array<int, string> $bauteilarten_path   Path to Bauteilarten (kinds with Lieferant slots).
+	 * @param array<int, string> $parent_path       Parent of Lieferanten (project root or Implementation).
+	 * @param array<int, string> $bauteilarten_path Unused (BC); kinds no longer carry Lieferant slots.
 	 */
 	public static function ensure_lieferanten_catalog(
 		string $taxonomy,
 		array $parent_path,
-		array $bauteilarten_path
+		array $bauteilarten_path = array()
 	): void {
+		unset( $bauteilarten_path );
 		$parent = self::find_term_by_path( $taxonomy, $parent_path );
 		if ( $parent <= 0 ) {
 			return;
@@ -655,7 +609,6 @@ final class Demo_Data {
 		self::ensure_set_composition_members( $taxonomy );
 		self::ensure_lieferanten_records( $taxonomy, $lieferanten_path );
 		self::strip_distributor_samples_under_enum( $taxonomy );
-		self::ensure_lieferant_slot_ref_scopes( $taxonomy, $bauteilarten_path, $lieferanten_path );
 	}
 
 	/**
@@ -668,187 +621,210 @@ final class Demo_Data {
 	}
 
 	/**
-	 * DigiKey / Mouser / Conrad-style kinds (schema only — Q83). Used under Bauteilarten.
+	 * Kind name → group under Model/Bauteil (Q88 hierarchy folders).
+	 *
+	 * @return array<string, string>
+	 */
+	public static function bauteil_kind_group_map(): array {
+		return array(
+			'Widerstand'     => 'Passiv',
+			'Kondensator'    => 'Passiv',
+			'Spule'          => 'Passiv',
+			'Dioden'         => 'Halbleiter',
+			'Diode'          => 'Halbleiter',
+			'Transistor'     => 'Halbleiter',
+			'LED'            => 'Halbleiter',
+			'IC'             => 'Halbleiter',
+			'Relais'         => 'Elektromechanik',
+			'Steckverbinder' => 'Elektromechanik',
+			'Schalter'       => 'Elektromechanik',
+			'Quarz'          => 'Sonstige',
+			'Sicherung'      => 'Sonstige',
+		);
+	}
+
+	/**
+	 * DigiKey / Mouser-style kinds under Model/Bauteil, grouped (Passiv / Halbleiter / …).
+	 * No Lieferant / Bestellnummer / Hersteller on kinds.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function bauteile_kind_nodes(): array {
 		return array(
-			self::bauteil_kind(
-				'Widerstand',
-				'Resistors (DigiKey/Mouser). Primary value in Ohm.',
-				array_merge(
-					self::quantity_member_slots( 'Ohm', 'Resistance value.' ),
-					array(
-						self::slot( 'Bauform', 'text', false, 'Package / footprint (e.g. 0603, 0805, axial).' ),
-						self::slot( 'Toleranz', 'text', false, 'Tolerance (e.g. 1%, 5%).' ),
-						self::slot( 'Nennleistung', 'text', false, 'Power rating (e.g. 0.1 W, 0.125 W).' ),
-						self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-						self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-						self::slot( 'Bestellnummer', 'text', false, 'MPN / order code.' ),
-						self::slot( 'Datenblatt', 'media', false, 'Datasheet / image (Q65).' ),
-					)
-				)
-			),
-			self::bauteil_kind(
-				'Kondensator',
-				'Capacitors. Primary value in Farad; voltage rating common filter param.',
-				array_merge(
-					self::quantity_member_slots( 'Farad', 'Capacitance value.' ),
-					array(
-						self::slot( 'Nennspannung', 'text', false, 'Voltage rating (e.g. 16 V, 50 V).' ),
-						self::slot( 'Dielektrikum', 'text', false, 'Dielectric (X7R, C0G, electrolytic, film, …).' ),
-						self::slot( 'Bauform', 'text', false, 'Package (0603, radial, …).' ),
-						self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-						self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-						self::slot( 'Bestellnummer', 'text', false ),
-						self::slot( 'Datenblatt', 'media', false ),
-					)
-				)
-			),
-			self::bauteil_kind(
-				'Spule',
-				'Inductors, Coils, Chokes (DigiKey). Primary value in Henry.',
-				array_merge(
-					self::quantity_member_slots( 'Henry', 'Inductance value.' ),
-					array(
-						self::slot( 'Nennstrom', 'text', false, 'Rated current (e.g. 200 mA).' ),
-						self::slot( 'Bauform', 'text', false, 'Package / shielded vs unshielded.' ),
-						self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-						self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-						self::slot( 'Bestellnummer', 'text', false ),
-						self::slot( 'Datenblatt', 'media', false ),
-					)
-				)
-			),
-			self::bauteil_kind(
-				'Diode',
-				'Discrete diodes (rectifier, Schottky, Zener, …).',
+			self::bauteil_group(
+				'Passiv',
+				'Passive components (R / C / L).',
 				array(
-					self::slot( 'Diodentyp', 'text', true, 'e.g. Schottky, Zener, rectifier.' ),
-					self::slot( 'U_r', 'text', false, 'Reverse / Zener voltage.' ),
-					self::slot( 'I_f', 'text', false, 'Forward current.' ),
-					self::slot( 'Bauform', 'text', false, 'e.g. SOD-123, DO-214AC.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
+					self::bauteil_kind(
+						'Widerstand',
+						'Resistors (DigiKey/Mouser). Primary value in Ohm.',
+						array_merge(
+							self::quantity_member_slots( 'Ohm', 'Resistance value.' ),
+							array(
+								self::slot( 'Bauform', 'text', false, 'Package / footprint (e.g. 0603, 0805, axial).' ),
+								self::slot( 'Toleranz', 'text', false, 'Tolerance (e.g. 1%, 5%).' ),
+								self::slot( 'Nennleistung', 'text', false, 'Power rating (e.g. 0.1 W, 0.125 W).' ),
+								self::slot( 'Datenblatt', 'media', false, 'Datasheet / image (Q65).' ),
+							)
+						)
+					),
+					self::bauteil_kind(
+						'Kondensator',
+						'Capacitors. Primary value in Farad; voltage rating common filter param.',
+						array_merge(
+							self::quantity_member_slots( 'Farad', 'Capacitance value.' ),
+							array(
+								self::slot( 'Nennspannung', 'text', false, 'Voltage rating (e.g. 16 V, 50 V).' ),
+								self::slot( 'Dielektrikum', 'text', false, 'Dielectric (X7R, C0G, electrolytic, film, …).' ),
+								self::slot( 'Bauform', 'text', false, 'Package (0603, radial, …).' ),
+								self::slot( 'Datenblatt', 'media', false ),
+							)
+						)
+					),
+					self::bauteil_kind(
+						'Spule',
+						'Inductors, Coils, Chokes (DigiKey). Primary value in Henry.',
+						array_merge(
+							self::quantity_member_slots( 'Henry', 'Inductance value.' ),
+							array(
+								self::slot( 'Nennstrom', 'text', false, 'Rated current (e.g. 200 mA).' ),
+								self::slot( 'Bauform', 'text', false, 'Package / shielded vs unshielded.' ),
+								self::slot( 'Datenblatt', 'media', false ),
+							)
+						)
+					),
 				)
 			),
-			self::bauteil_kind(
-				'Transistor',
-				'Discrete transistors (BJT, MOSFET, …).',
+			self::bauteil_group(
+				'Halbleiter',
+				'Semiconductors (diodes, transistors, LEDs, ICs).',
 				array(
-					self::slot( 'Transistortyp', 'text', true, 'e.g. N-MOSFET, NPN BJT.' ),
-					self::slot( 'U_max', 'text', false, 'Vds / Vceo rating.' ),
-					self::slot( 'I_max', 'text', false, 'Id / Ic rating.' ),
-					self::slot( 'Bauform', 'text', false, 'e.g. SOT-23, TO-220.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
+					self::bauteil_kind(
+						'Dioden',
+						'Discrete diodes — choose an Art (CatalogChoice). Spec slots live on the Art later.',
+						array()
+					),
+					self::bauteil_kind(
+						'Transistor',
+						'Discrete transistors (BJT, MOSFET, …).',
+						array(
+							self::slot( 'Transistortyp', 'text', true, 'e.g. N-MOSFET, NPN BJT.' ),
+							self::slot( 'U_max', 'text', false, 'Vds / Vceo rating.' ),
+							self::slot( 'I_max', 'text', false, 'Id / Ic rating.' ),
+							self::slot( 'Bauform', 'text', false, 'e.g. SOT-23, TO-220.' ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
+					self::bauteil_kind(
+						'LED',
+						'Optoelectronics — LEDs (Conrad/Mouser Opto). Separate from Dioden Arten.',
+						array(
+							self::slot( 'Farbe', 'text', true, 'e.g. red, green, white, IR.' ),
+							self::slot( 'U_f', 'text', false, 'Forward voltage.' ),
+							self::slot( 'I_f', 'text', false, 'Forward current.' ),
+							self::slot( 'Bauform', 'text', false, 'e.g. 0603, 5 mm THT.' ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
+					self::bauteil_kind(
+						'IC',
+						'Integrated circuits / microcontrollers / interface chips.',
+						array(
+							self::slot( 'Funktion', 'text', true, 'e.g. MCU, USB-UART, LDO, OpAmp.' ),
+							self::slot( 'Gehaeuse', 'text', false, 'Package (SOP-8, QFN, …).' ),
+							self::slot( 'Versorgung', 'text', false, 'Supply voltage range.' ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
 				)
 			),
-			self::bauteil_kind(
-				'LED',
-				'Optoelectronics — LEDs (Conrad/Mouser Opto).',
+			self::bauteil_group(
+				'Elektromechanik',
+				'Electromechanical parts (relays, connectors, switches).',
 				array(
-					self::slot( 'Farbe', 'text', true, 'e.g. red, green, white, IR.' ),
-					self::slot( 'U_f', 'text', false, 'Forward voltage.' ),
-					self::slot( 'I_f', 'text', false, 'Forward current.' ),
-					self::slot( 'Bauform', 'text', false, 'e.g. 0603, 5 mm THT.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
+					self::bauteil_kind(
+						'Relais',
+						'Relays (DigiKey Relays category).',
+						array(
+							self::slot( 'Spulenspannung', 'text', true, 'Coil voltage (e.g. 5 V, 12 V).' ),
+							self::slot( 'Kontakt', 'text', false, 'Contact form / rating (e.g. SPDT 2 A).' ),
+							self::slot( 'Bauform', 'text', false ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
+					self::bauteil_kind(
+						'Steckverbinder',
+						'Connectors / Interconnects (DigiKey Connectors).',
+						array(
+							self::slot( 'Steckertyp', 'text', true, 'e.g. USB-A, Pin header, JST.' ),
+							self::slot( 'Polzahl', 'int', false, 'Number of positions / pins.' ),
+							self::slot( 'Bauform', 'text', false, 'Mounting / gender.' ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
+					self::bauteil_kind(
+						'Schalter',
+						'Switches (electromechanical).',
+						array(
+							self::slot( 'Schaltertyp', 'text', true, 'e.g. tactile, slide, toggle.' ),
+							self::slot( 'Pole', 'text', false, 'Poles / throws (SPST, SPDT, …).' ),
+							self::slot( 'Bauform', 'text', false ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
 				)
 			),
-			self::bauteil_kind(
-				'IC',
-				'Integrated circuits / microcontrollers / interface chips.',
+			self::bauteil_group(
+				'Sonstige',
+				'Other categories (frequency control, circuit protection, …).',
 				array(
-					self::slot( 'Funktion', 'text', true, 'e.g. MCU, USB-UART, LDO, OpAmp.' ),
-					self::slot( 'Gehaeuse', 'text', false, 'Package (SOP-8, QFN, …).' ),
-					self::slot( 'Versorgung', 'text', false, 'Supply voltage range.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
-				)
-			),
-			self::bauteil_kind(
-				'Relais',
-				'Relays (DigiKey Relays category).',
-				array(
-					self::slot( 'Spulenspannung', 'text', true, 'Coil voltage (e.g. 5 V, 12 V).' ),
-					self::slot( 'Kontakt', 'text', false, 'Contact form / rating (e.g. SPDT 2 A).' ),
-					self::slot( 'Bauform', 'text', false ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
-				)
-			),
-			self::bauteil_kind(
-				'Steckverbinder',
-				'Connectors / Interconnects (DigiKey Connectors).',
-				array(
-					self::slot( 'Steckertyp', 'text', true, 'e.g. USB-A, Pin header, JST.' ),
-					self::slot( 'Polzahl', 'int', false, 'Number of positions / pins.' ),
-					self::slot( 'Bauform', 'text', false, 'Mounting / gender.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
-				)
-			),
-			self::bauteil_kind(
-				'Schalter',
-				'Switches (electromechanical).',
-				array(
-					self::slot( 'Schaltertyp', 'text', true, 'e.g. tactile, slide, toggle.' ),
-					self::slot( 'Pole', 'text', false, 'Poles / throws (SPST, SPDT, …).' ),
-					self::slot( 'Bauform', 'text', false ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
-				)
-			),
-			self::bauteil_kind(
-				'Quarz',
-				'Crystals / oscillators (frequency control).',
-				array_merge(
-					self::quantity_member_slots( 'Hertz', 'Nominal frequency.' ),
-					array(
-						self::slot( 'Lastkapazitaet', 'text', false, 'Load capacitance (e.g. 18 pF).' ),
-						self::slot( 'Bauform', 'text', false, 'e.g. 3225, HC-49.' ),
-						self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-						self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-						self::slot( 'Bestellnummer', 'text', false ),
-						self::slot( 'Datenblatt', 'media', false ),
-					)
-				)
-			),
-			self::bauteil_kind(
-				'Sicherung',
-				'Fuses / circuit protection.',
-				array(
-					self::slot( 'Nennstrom', 'text', true, 'Rated current (e.g. 1 A).' ),
-					self::slot( 'Charakteristik', 'text', false, 'e.g. fast-blow, slow-blow PTC.' ),
-					self::slot( 'Nennspannung', 'text', false, 'Voltage rating.' ),
-					self::slot( 'Bauform', 'text', false, 'e.g. 1206, 5×20 mm.' ),
-					self::slot( 'Hersteller', 'text', false, 'Manufacturer / OEM — not the distributor.' ),
-					self::slot( 'Lieferant', 'node_ref', false, 'Distributor record (node_ref → Lieferanten: Url, Suchstring, Bewertung).' ),
-					self::slot( 'Bestellnummer', 'text', false ),
-					self::slot( 'Datenblatt', 'media', false ),
+					self::bauteil_kind(
+						'Quarz',
+						'Crystals / oscillators (frequency control).',
+						array_merge(
+							self::quantity_member_slots( 'Hertz', 'Nominal frequency.' ),
+							array(
+								self::slot( 'Lastkapazitaet', 'text', false, 'Load capacitance (e.g. 18 pF).' ),
+								self::slot( 'Bauform', 'text', false, 'e.g. 3225, HC-49.' ),
+								self::slot( 'Datenblatt', 'media', false ),
+							)
+						)
+					),
+					self::bauteil_kind(
+						'Sicherung',
+						'Fuses / circuit protection.',
+						array(
+							self::slot( 'Nennstrom', 'text', true, 'Rated current (e.g. 1 A).' ),
+							self::slot( 'Charakteristik', 'text', false, 'e.g. fast-blow, slow-blow PTC.' ),
+							self::slot( 'Nennspannung', 'text', false, 'Voltage rating.' ),
+							self::slot( 'Bauform', 'text', false, 'e.g. 1206, 5×20 mm.' ),
+							self::slot( 'Datenblatt', 'media', false ),
+						)
+					),
 				)
 			),
 		);
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>> $slots Property children (set members).
+	 * Abstract group folder under Model/Bauteil (inheritance only — Q88).
+	 *
+	 * @param array<int, array<string, mixed>> $kinds Kind children.
+	 * @return array<string, mixed>
+	 */
+	private static function bauteil_group( string $name, string $description, array $kinds ): array {
+		return array(
+			'name'        => $name,
+			'is_datatype' => true,
+			'is_abstract' => true,
+			'description' => $description,
+			'deletable'   => false,
+			'children'    => $kinds,
+		);
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $slots Attribute defs (Q87 — not hierarchy children).
 	 * @return array<string, mixed>
 	 */
 	private static function bauteil_kind( string $name, string $description, array $slots ): array {
@@ -857,12 +833,13 @@ final class Demo_Data {
 			'type_name'   => 'set',
 			'is_datatype' => true,
 			'description' => $description,
-			'children'    => $slots,
+			/* Q87: materialize via ensure_bauteil_kind_attributes(), not child_of. */
+			'attributes'  => $slots,
 		);
 	}
 
 	/**
-	 * Category + schema only (Definition). No MPN leaves here — those are Implementation/Bauteile (Q83).
+	 * @deprecated Q83 — kinds live under Model/Bauteil. Kept for legacy path lookups only.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -871,20 +848,20 @@ final class Demo_Data {
 			'name'        => 'Bauteilarten',
 			'is_datatype' => true,
 			'is_abstract' => true,
-			'description' => 'Part category schemas (Q83). Kinds hold slots; MPN records live under Implementation/Bauteile with type → kind.',
-			'children'    => self::bauteile_kind_nodes(),
+			'description' => 'Deprecated folder — kinds live under Model/Bauteil (Q83).',
+			'children'    => array(),
 		);
 	}
 
 	/**
-	 * Part master list (Implementation). Records are catalog leaves typed to Bauteilarten.
+	 * Part master list (Implementation): MPN records only. Kinds live under Model/Bauteil.
 	 *
 	 * @return array<string, mixed>
 	 */
 	public static function bauteile_implementation_node(): array {
 		return array(
 			'name'        => 'Bauteile',
-			'description' => 'Part master data (MPNs). Category/schema = Bauteilarten; each record has type_id → kind (Q83). BOM Bauteil Wahl = node_embed → this root.',
+			'description' => 'Part master data (MPNs). Schema kinds under Model/Bauteil; each record type_id → kind. BOM Bauteil Wahl = node_embed → this root.',
 		);
 	}
 
@@ -933,26 +910,28 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Example MPNs under Implementation/Bauteile, typed to Definition/Bauteilarten kinds (Q83).
+	 * Example MPNs under Implementation/Bauteile, typed to kinds under Model/Bauteil (Q83).
 	 *
-	 * @param array<int, string> $bauteile_path    Path ending in Bauteile (records root).
-	 * @param array<int, string> $bauteilarten_path Path ending in Bauteilarten (schemas).
+	 * @param array<int, string> $bauteile_path     Path ending in Bauteile (records root).
+	 * @param array<int, string> $bauteilarten_path Unused (BC); kinds live under Model/Bauteil.
 	 */
 	public static function ensure_bauteil_examples(
 		string $taxonomy,
 		array $bauteile_path = array(),
 		array $bauteilarten_path = array()
 	): void {
+		unset( $bauteilarten_path );
 		if ( empty( $bauteile_path ) ) {
 			$bauteile_path = array( self::ROOT_NAME, 'Bauteile' );
 		}
-		if ( empty( $bauteilarten_path ) ) {
-			$bauteilarten_path = array( self::ROOT_NAME, 'Bauteilarten' );
-		}
 		$bauteile = self::find_term_by_path( $taxonomy, $bauteile_path );
-		$arten    = self::find_term_by_path( $taxonomy, $bauteilarten_path );
-		if ( $bauteile <= 0 || $arten <= 0 ) {
+		if ( $bauteile <= 0 ) {
 			return;
+		}
+
+		$kinds_root = self::find_model_bauteil_id( $taxonomy );
+		if ( $kinds_root <= 0 ) {
+			$kinds_root = $bauteile;
 		}
 
 		$examples = self::bauteil_example_seed();
@@ -961,10 +940,7 @@ final class Demo_Data {
 		$existing = 0;
 		$position = 100;
 		foreach ( $examples as $kind_name => $leaves ) {
-			$kind_id = self::find_term_by_path(
-				$taxonomy,
-				array_merge( $bauteilarten_path, array( $kind_name ) )
-			);
+			$kind_id = self::resolve_bauteil_kind_id( $taxonomy, $kinds_root, $bauteile, $kind_name );
 			if ( $kind_id <= 0 ) {
 				continue;
 			}
@@ -980,7 +956,6 @@ final class Demo_Data {
 				if ( $term_id <= 0 ) {
 					continue;
 				}
-				/* Reparent if still under a legacy kind folder. */
 				$term = get_term( $term_id, $taxonomy );
 				if ( $term instanceof \WP_Term && (int) $term->parent !== $bauteile ) {
 					wp_update_term(
@@ -1005,34 +980,653 @@ final class Demo_Data {
 			}
 		}
 
-		self::migrate_legacy_bauteile_kind_folders( $taxonomy, $bauteile, $arten );
+		self::lift_catalog_examples_from_kinds( $taxonomy, $bauteile );
 	}
 
 	/**
-	 * Move leftover kind folders under Bauteile → records to Bauteile root; drop empty kind shells.
+	 * Resolve Model/Bauteil host id (Fallstudie or legacy roots).
 	 */
-	public static function migrate_legacy_bauteile_kind_folders(
+	public static function find_model_bauteil_id( string $taxonomy ): int {
+		$paths = array(
+			array( 'Fallstudie', 'Model', 'Bauteil' ),
+			array( self::ROOT_NAME, 'Model', 'Bauteil' ),
+		);
+		foreach ( $paths as $path ) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 ) {
+				return $id;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Find a kind under Model/Bauteil (direct or under Passiv/Halbleiter/…) or legacy Bauteile.
+	 */
+	private static function resolve_bauteil_kind_id(
 		string $taxonomy,
+		int $kinds_root,
 		int $bauteile_id,
-		int $bauteilarten_id
-	): void {
-		if ( $bauteile_id <= 0 || $bauteilarten_id <= 0 ) {
-			return;
+		string $kind_name
+	): int {
+		$aliases = array( $kind_name );
+		if ( 'Dioden' === $kind_name ) {
+			$aliases[] = 'Diode';
+		} elseif ( 'Diode' === $kind_name ) {
+			$aliases[] = 'Dioden';
 		}
 
-		$kind_names = array();
-		$arten_kids = get_terms(
+		if ( $kinds_root > 0 ) {
+			foreach ( $aliases as $alias ) {
+				$id = self::find_bauteil_kind_under( $taxonomy, $kinds_root, $alias );
+				if ( $id > 0 ) {
+					return $id;
+				}
+			}
+		}
+		if ( $bauteile_id > 0 ) {
+			foreach ( $aliases as $alias ) {
+				$id = self::find_direct_child_named( $taxonomy, $bauteile_id, $alias );
+				if ( $id > 0 ) {
+					return $id;
+				}
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Find kind by name under Model/Bauteil or one level of group folders.
+	 */
+	public static function find_bauteil_kind_under( string $taxonomy, int $model_bauteil_id, string $kind_name ): int {
+		if ( $model_bauteil_id <= 0 || '' === $kind_name ) {
+			return 0;
+		}
+		$direct = self::find_direct_child_named( $taxonomy, $model_bauteil_id, $kind_name );
+		if ( $direct > 0 ) {
+			return $direct;
+		}
+		$groups = array_unique( array_values( self::bauteil_kind_group_map() ) );
+		foreach ( $groups as $group_name ) {
+			$group_id = self::find_direct_child_named( $taxonomy, $model_bauteil_id, $group_name );
+			if ( $group_id <= 0 ) {
+				continue;
+			}
+			$id = self::find_direct_child_named( $taxonomy, $group_id, $kind_name );
+			if ( $id > 0 ) {
+				return $id;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Ensure group folders and move flat kinds under the right group.
+	 * Collapses same-name siblings under each group (WP allows duplicate names).
+	 *
+	 * @return int Number of kinds reparented into groups.
+	 */
+	public static function ensure_bauteil_kind_groups( string $taxonomy, int $model_bauteil_id ): int {
+		if ( $model_bauteil_id <= 0 ) {
+			return 0;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		self::install_node_tree(
+			$taxonomy,
+			self::bauteile_kind_nodes(),
+			$model_bauteil_id,
+			$created,
+			$existing
+		);
+
+		$map   = self::bauteil_kind_group_map();
+		$moved = 0;
+
+		$scan_parents = array( $model_bauteil_id );
+		foreach ( array_unique( array_values( $map ) ) as $group_name ) {
+			$gid = self::find_direct_child_named( $taxonomy, $model_bauteil_id, $group_name );
+			if ( $gid > 0 ) {
+				Node_Type::set_is_datatype( $taxonomy, $gid, true );
+				Node_Type::set_is_abstract( $taxonomy, $gid, true );
+				Node_Type::set_deletable( $gid, false );
+				Node_Type::apply_parent_as_type( $taxonomy, $gid );
+				$scan_parents[] = $gid;
+			}
+		}
+
+		foreach ( $scan_parents as $parent_id ) {
+			$kids = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $parent_id,
+					'hide_empty' => false,
+					'number'     => 0,
+				)
+			);
+			foreach ( (array) $kids as $kid ) {
+				if ( ! $kid instanceof \WP_Term ) {
+					continue;
+				}
+				$kind_id = (int) $kid->term_id;
+				if ( self::is_catalog_example( $kind_id ) ) {
+					continue;
+				}
+				$name = $kid->name;
+				if ( 'Diode' === $name ) {
+					$name = 'Dioden';
+				}
+				if ( ! isset( $map[ $name ] ) && ! isset( $map[ $kid->name ] ) ) {
+					continue;
+				}
+				$group_name = $map[ $name ] ?? $map[ $kid->name ];
+				$group_id   = self::find_direct_child_named( $taxonomy, $model_bauteil_id, $group_name );
+				if ( $group_id <= 0 || $group_id === $kind_id ) {
+					continue;
+				}
+
+				/* Already under the right group â€” leave for dedupe. */
+				if ( (int) $kid->parent === $group_id && 'Diode' !== $kid->name ) {
+					continue;
+				}
+
+				$existing_in_group = self::find_direct_child_named( $taxonomy, $group_id, $name );
+				if ( $existing_in_group <= 0 && 'Dioden' === $name ) {
+					$existing_in_group = self::find_direct_child_named( $taxonomy, $group_id, 'Diode' );
+				}
+
+				/*
+				 * Group already has this kind (from seed). Do not reparent a second
+				 * copy in â€” that created Halbleiter/Dioden Ã—2 etc.
+				 */
+				if ( $existing_in_group > 0 && $existing_in_group !== $kind_id ) {
+					self::retarget_type_id_refs( $taxonomy, $kind_id, $existing_in_group );
+					Node_Type::set_deletable( $kind_id, true );
+					Tree_Model::delete_term( $taxonomy, $kind_id, 'cascade' );
+					continue;
+				}
+
+				$update = array();
+				if ( (int) $kid->parent !== $group_id ) {
+					$update['parent'] = $group_id;
+				}
+				if ( 'Diode' === $kid->name ) {
+					$update['name'] = 'Dioden';
+				}
+				if ( empty( $update ) ) {
+					continue;
+				}
+				$upd = wp_update_term( $kind_id, $taxonomy, $update );
+				if ( ! is_wp_error( $upd ) ) {
+					++$moved;
+					Node_Type::apply_parent_as_type( $taxonomy, $kind_id );
+				}
+			}
+		}
+
+		/*
+		 * Soft-trash keeps the same parent — seed duplicates must be hard-deleted
+		 * or get_terms still sees Widerstand×2 etc.
+		 */
+		self::dedupe_named_children_subtree( $taxonomy, $model_bauteil_id, 4 );
+
+		return $moved;
+	}
+
+	/**
+	 * Seed Q87 attributes on Model/Bauteil kinds from bauteile_kind_nodes() blueprints.
+	 * Strips leftover hierarchy field-children that duplicate those attribute names.
+	 *
+	 * @return array{added:int,skipped:int,stripped:int}
+	 */
+	public static function ensure_bauteil_kind_attributes( string $taxonomy ): array {
+		$stats = array(
+			'added'    => 0,
+			'skipped'  => 0,
+			'stripped' => 0,
+		);
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return $stats;
+		}
+
+		$model_bauteil = self::find_model_bauteil_id( $taxonomy );
+		if ( $model_bauteil <= 0 ) {
+			return $stats;
+		}
+
+		foreach ( self::bauteile_kind_nodes() as $group ) {
+			if ( ! is_array( $group ) ) {
+				continue;
+			}
+			$kinds = isset( $group['children'] ) && is_array( $group['children'] ) ? $group['children'] : array();
+			foreach ( $kinds as $kind ) {
+				if ( ! is_array( $kind ) ) {
+					continue;
+				}
+				$kind_name = isset( $kind['name'] ) ? (string) $kind['name'] : '';
+				if ( '' === $kind_name ) {
+					continue;
+				}
+				$kind_id = self::find_bauteil_kind_under( $taxonomy, $model_bauteil, $kind_name );
+				if ( $kind_id <= 0 ) {
+					continue;
+				}
+				$slots = isset( $kind['attributes'] ) && is_array( $kind['attributes'] )
+					? $kind['attributes']
+					: array();
+				$part  = self::ensure_kind_attributes_from_slots( $taxonomy, $kind_id, $slots );
+				$stats['added']    += $part['added'];
+				$stats['skipped']  += $part['skipped'];
+				$stats['stripped'] += $part['stripped'];
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $slots
+	 * @return array{added:int,skipped:int,stripped:int}
+	 */
+	private static function ensure_kind_attributes_from_slots( string $taxonomy, int $kind_id, array $slots ): array {
+		$stats = array(
+			'added'    => 0,
+			'skipped'  => 0,
+			'stripped' => 0,
+		);
+		if ( $kind_id <= 0 ) {
+			return $stats;
+		}
+
+		$have = array();
+		foreach ( Attribute::list_own( $taxonomy, $kind_id ) as $row ) {
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = true;
+		}
+
+		$slot_names = array();
+		foreach ( $slots as $slot ) {
+			if ( ! is_array( $slot ) ) {
+				continue;
+			}
+			$name = isset( $slot['name'] ) ? trim( (string) $slot['name'] ) : '';
+			if ( '' === $name ) {
+				continue;
+			}
+			$slot_names[ strtolower( $name ) ] = $name;
+
+			$key = strtolower( $name );
+			if ( ! empty( $have[ $key ] ) ) {
+				++$stats['skipped'];
+				continue;
+			}
+
+			$type_name = isset( $slot['type_name'] ) ? trim( (string) $slot['type_name'] ) : '';
+			$type_id   = '' !== $type_name
+				? Node_Type::find_type_by_name( $taxonomy, $kind_id, $type_name )
+				: 0;
+			if ( $type_id <= 0 ) {
+				++$stats['skipped'];
+				continue;
+			}
+
+			$required = ! empty( $slot['required'] );
+			$mult     = $required ? '1' : Attribute::DEFAULT_MULTIPLICITY;
+
+			$fixed_values = null;
+			$fixed_name   = isset( $slot['fixed_node_name'] ) ? trim( (string) $slot['fixed_node_name'] ) : '';
+			if ( '' !== $fixed_name ) {
+				$fixed_id = Node_Type::find_fixed_by_name( $taxonomy, $kind_id, $fixed_name );
+				if ( $fixed_id <= 0 ) {
+					$fixed_id = Node_Type::find_type_by_name( $taxonomy, $kind_id, $fixed_name );
+				}
+				if ( $fixed_id > 0 ) {
+					$fixed_values = (string) $fixed_id;
+				}
+			}
+
+			$added = Attribute::add(
+				$taxonomy,
+				$kind_id,
+				$name,
+				$type_id,
+				$mult,
+				Attribute::DEFAULT_BINDING,
+				false,
+				$fixed_values
+			);
+			if ( is_wp_error( $added ) ) {
+				++$stats['skipped'];
+				continue;
+			}
+			$have[ $key ] = true;
+			++$stats['added'];
+		}
+
+		/* Remove leftover hierarchy field-children that mirror attribute slots. */
+		$kids = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
-				'parent'     => $bauteilarten_id,
+				'parent'     => $kind_id,
 				'hide_empty' => false,
 				'number'     => 0,
 			)
 		);
-		foreach ( (array) $arten_kids as $k ) {
-			if ( $k instanceof \WP_Term ) {
-				$kind_names[ $k->name ] = (int) $k->term_id;
+		if ( ! is_array( $kids ) ) {
+			return $stats;
+		}
+		foreach ( $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
 			}
+			$kid_id = (int) $kid->term_id;
+			$key    = strtolower( trim( $kid->name ) );
+			if ( ! isset( $slot_names[ $key ] ) ) {
+				continue;
+			}
+			if ( Attribute::is_slot( $kid_id ) ) {
+				continue;
+			}
+			Node_Type::set_deletable( $kid_id, true );
+			$result = Tree_Model::delete_term( $taxonomy, $kid_id, 'leaf' );
+			if ( ! is_wp_error( $result ) ) {
+				++$stats['stripped'];
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Recursively collapse same-name siblings under $root_id (depth-limited).
+	 *
+	 * @return int Number of duplicate terms hard-deleted.
+	 */
+	public static function dedupe_named_children_subtree( string $taxonomy, int $root_id, int $max_depth = 6 ): int {
+		if ( $root_id <= 0 ) {
+			return 0;
+		}
+
+		$removed = self::dedupe_named_children( $taxonomy, $root_id );
+		if ( $max_depth <= 0 ) {
+			return $removed;
+		}
+
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $root_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		foreach ( (array) $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$kid_id = (int) $kid->term_id;
+			if ( Trash::is_trashed( $kid_id ) || Trash::is_trash_node( $kid_id ) ) {
+				continue;
+			}
+			$removed += self::dedupe_named_children_subtree( $taxonomy, $kid_id, $max_depth - 1 );
+		}
+
+		return $removed;
+	}
+
+	/**
+	 * Legacy band/field names that often leaked to taxonomy root (parent=0).
+	 *
+	 * @return list<string>
+	 */
+	public static function root_band_orphan_names(): array {
+		return array(
+			'Einheit',
+			'Fuss',
+			'Kopf',
+			'Menge',
+			'Name',
+			'Präfix',
+			'Reference',
+			'Tabelle',
+			'Wert',
+			'Zeile',
+		);
+	}
+
+	/**
+	 * Hard-delete unreferenced parent=0 litter that matches known band/field orphan names.
+	 *
+	 * Never deletes attribute slots (Q87: slots live at parent=0 with `_wtt_attribute_slot`)
+	 * or terms still referenced by Attribute bindings / prop bindings.
+	 *
+	 * @return int Number of terms deleted.
+	 */
+	public static function purge_root_band_orphans( string $taxonomy ): int {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$orphan_names = array_fill_keys( self::root_band_orphan_names(), true );
+		$referenced   = array_fill_keys( Attribute::collect_referenced_term_ids( $taxonomy ), true );
+		$keep_names   = array(
+			Case_Data::ROOT_NAME => true,
+			self::ROOT_NAME      => true,
+		);
+
+		$roots = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => 0,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		$deleted = 0;
+		foreach ( (array) $roots as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$tid = (int) $term->term_id;
+			if ( $tid <= 0 || Trash::is_trash_node( $tid ) || Trash::is_trashed( $tid ) ) {
+				continue;
+			}
+			if ( class_exists( Hidden_Nodes::class ) && Hidden_Nodes::is_bin( $tid ) ) {
+				continue;
+			}
+			if ( isset( $keep_names[ $term->name ] ) ) {
+				continue;
+			}
+			/* Q87 attribute slots are intentionally parent=0 — never purge them here. */
+			if ( Attribute::is_slot( $tid ) ) {
+				continue;
+			}
+			if ( isset( $referenced[ $tid ] ) ) {
+				continue;
+			}
+			if ( ! isset( $orphan_names[ $term->name ] ) ) {
+				continue;
+			}
+
+			self::force_deletable_subtree( $taxonomy, $tid );
+			$result = self::delete_term_cascade( $taxonomy, $tid );
+			if ( ! is_wp_error( $result ) ) {
+				$deleted += (int) $result;
+			}
+		}
+
+		return $deleted;
+	}
+
+	/**
+	 * Collapse same-name siblings under one parent.
+	 * Keeps the richest non-trashed term; hard-deletes losers (soft-trash leaves parent unchanged).
+	 *
+	 * @return int Number of duplicate terms removed.
+	 */
+	public static function dedupe_named_children( string $taxonomy, int $parent_id ): int {
+		if ( $parent_id <= 0 ) {
+			return 0;
+		}
+
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $kids ) || count( $kids ) < 2 ) {
+			return 0;
+		}
+
+		$by_name = array();
+		foreach ( $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$key = $kid->name;
+			if ( 'Diode' === $key ) {
+				$key = 'Dioden';
+			}
+			$by_name[ $key ][] = $kid;
+		}
+
+		$removed = 0;
+		foreach ( $by_name as $list ) {
+			if ( count( $list ) < 2 ) {
+				continue;
+			}
+			usort(
+				$list,
+				static function ( \WP_Term $a, \WP_Term $b ) use ( $taxonomy ): int {
+					$ta = Trash::is_trashed( (int) $a->term_id ) ? 1 : 0;
+					$tb = Trash::is_trashed( (int) $b->term_id ) ? 1 : 0;
+					if ( $ta !== $tb ) {
+						return $ta <=> $tb;
+					}
+					$ca = self::count_active_direct_children( $taxonomy, (int) $a->term_id );
+					$cb = self::count_active_direct_children( $taxonomy, (int) $b->term_id );
+					if ( $ca !== $cb ) {
+						return $cb <=> $ca;
+					}
+					return (int) $a->term_id <=> (int) $b->term_id;
+				}
+			);
+			$keep = array_shift( $list );
+			if ( ! $keep instanceof \WP_Term ) {
+				continue;
+			}
+			$keep_id = (int) $keep->term_id;
+			if ( 'Diode' === $keep->name ) {
+				wp_update_term( $keep_id, $taxonomy, array( 'name' => 'Dioden' ) );
+			}
+			foreach ( $list as $dup ) {
+				if ( ! $dup instanceof \WP_Term ) {
+					continue;
+				}
+				$dup_id = (int) $dup->term_id;
+				self::retarget_type_id_refs( $taxonomy, $dup_id, $keep_id );
+				self::force_deletable_subtree( $taxonomy, $dup_id );
+				$deleted = self::delete_term_cascade( $taxonomy, $dup_id );
+				if ( ! is_wp_error( $deleted ) ) {
+					$removed += (int) $deleted;
+				}
+			}
+		}
+
+		return $removed;
+	}
+
+	/**
+	 * Mark a subtree deletable so seed cleanup can hard-delete duplicate kinds.
+	 */
+	private static function force_deletable_subtree( string $taxonomy, int $term_id ): void {
+		Node_Type::set_deletable( $term_id, true );
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $term_id,
+				'hide_empty' => false,
+				'number'     => 0,
+				'fields'     => 'ids',
+			)
+		);
+		foreach ( (array) $kids as $kid_id ) {
+			self::force_deletable_subtree( $taxonomy, (int) $kid_id );
+		}
+	}
+
+	private static function count_direct_children( string $taxonomy, int $parent_id ): int {
+		$ids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 0,
+				'fields'     => 'ids',
+			)
+		);
+		return is_array( $ids ) ? count( $ids ) : 0;
+	}
+
+	private static function count_active_direct_children( string $taxonomy, int $parent_id ): int {
+		$ids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 0,
+				'fields'     => 'ids',
+			)
+		);
+		if ( ! is_array( $ids ) ) {
+			return 0;
+		}
+		$n = 0;
+		foreach ( $ids as $id ) {
+			$id = (int) $id;
+			if ( Trash::is_trashed( $id ) ) {
+				continue;
+			}
+			++$n;
+		}
+		return $n;
+	}
+
+	/**
+	 * Remap nodes typed to $from_id so they point at $to_id (MPN records after kind dedupe).
+	 */
+	public static function retarget_type_id_refs( string $taxonomy, int $from_id, int $to_id ): void {
+		if ( $from_id <= 0 || $to_id <= 0 || $from_id === $to_id ) {
+			return;
+		}
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+				'fields'     => 'ids',
+				'meta_key'   => Node_Type::META_KEY,
+				'meta_value' => (string) $from_id,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return;
+		}
+		foreach ( $terms as $tid ) {
+			Node_Type::set_type_id( $taxonomy, (int) $tid, $to_id );
+		}
+	}
+
+	/**
+	 * If MPN examples were nested under a kind folder, lift them to Bauteile root (keep kind + slots).
+	 */
+	public static function lift_catalog_examples_from_kinds( string $taxonomy, int $bauteile_id ): void {
+		if ( $bauteile_id <= 0 ) {
+			return;
 		}
 
 		$kids = get_terms(
@@ -1047,18 +1641,14 @@ final class Demo_Data {
 			if ( ! $kid instanceof \WP_Term ) {
 				continue;
 			}
-			$kid_id = (int) $kid->term_id;
-			if ( self::is_catalog_example( $kid_id ) ) {
+			$kind_id = (int) $kid->term_id;
+			if ( self::is_catalog_example( $kind_id ) ) {
 				continue;
 			}
-			if ( ! isset( $kind_names[ $kid->name ] ) ) {
-				continue;
-			}
-			$kind_type_id = $kind_names[ $kid->name ];
-			$grand        = get_terms(
+			$grand = get_terms(
 				array(
 					'taxonomy'   => $taxonomy,
-					'parent'     => $kid_id,
+					'parent'     => $kind_id,
 					'hide_empty' => false,
 					'number'     => 0,
 				)
@@ -1068,50 +1658,310 @@ final class Demo_Data {
 					continue;
 				}
 				$gid = (int) $g->term_id;
-				if ( self::is_catalog_example( $gid ) ) {
-					wp_update_term(
-						$gid,
+				if ( ! self::is_catalog_example( $gid ) ) {
+					continue;
+				}
+				wp_update_term(
+					$gid,
+					$taxonomy,
+					array(
+						'parent' => $bauteile_id,
+					)
+				);
+				Node_Type::set_type_id( $taxonomy, $gid, $kind_id );
+			}
+		}
+	}
+
+	/**
+	 * Move Definition/Bauteilarten kinds under Implementation/Bauteile; drop empty Bauteilarten.
+	 *
+	 * @return int Number of kinds reparented.
+	 */
+	public static function merge_bauteilarten_into_bauteile( string $taxonomy, int $bauteile_id ): int {
+		if ( $bauteile_id <= 0 ) {
+			return 0;
+		}
+
+		$moved = 0;
+		$arten_paths = array(
+			array( 'Fallstudie', 'Definition', 'Bauteilarten' ),
+			array( 'Fallstudie', 'Bauteilarten' ),
+			array( self::ROOT_NAME, 'Bauteilarten' ),
+			array( self::ROOT_NAME, 'Definition', 'Bauteilarten' ),
+		);
+		$arten_ids = array();
+		foreach ( $arten_paths as $path ) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 ) {
+				$arten_ids[ $id ] = true;
+			}
+		}
+
+		foreach ( array_keys( $arten_ids ) as $arten_id ) {
+			if ( $arten_id === $bauteile_id ) {
+				continue;
+			}
+			$kinds = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $arten_id,
+					'hide_empty' => false,
+					'number'     => 0,
+				)
+			);
+			foreach ( (array) $kinds as $kind ) {
+				if ( ! $kind instanceof \WP_Term ) {
+					continue;
+				}
+				$kind_id   = (int) $kind->term_id;
+				$existing  = self::find_direct_child_named( $taxonomy, $bauteile_id, $kind->name );
+				if ( $existing > 0 && $existing !== $kind_id ) {
+					/* Prefer kind already under Bauteile; drop duplicate schema shell. */
+					self::strip_bauteil_kind_supplier_slots( $taxonomy, $kind_id );
+					Node_Type::set_deletable( $kind_id, true );
+					Tree_Model::delete_term( $taxonomy, $kind_id, 'cascade' );
+					continue;
+				}
+				$term = get_term( $kind_id, $taxonomy );
+				if ( $term instanceof \WP_Term && (int) $term->parent !== $bauteile_id ) {
+					$upd = wp_update_term(
+						$kind_id,
 						$taxonomy,
 						array(
 							'parent' => $bauteile_id,
 						)
 					);
-					Node_Type::set_type_id( $taxonomy, $gid, $kind_type_id );
-					continue;
+					if ( ! is_wp_error( $upd ) ) {
+						++$moved;
+					}
 				}
-				/* Slot duplicates under legacy kind — remove. */
-				wp_delete_term( $gid, $taxonomy );
+				self::strip_bauteil_kind_supplier_slots( $taxonomy, $kind_id );
 			}
-			wp_delete_term( $kid_id, $taxonomy );
+
+			/* Drop empty Bauteilarten folder. */
+			$left = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $arten_id,
+					'hide_empty' => false,
+					'number'     => 1,
+				)
+			);
+			if ( empty( $left ) ) {
+				Node_Type::set_deletable( $arten_id, true );
+				Tree_Model::delete_term( $taxonomy, $arten_id, 'leaf' );
+			}
+		}
+
+		return $moved;
+	}
+
+	/**
+	 * Remove Lieferant / Bestellnummer / Hersteller / Diodentyp from a kind.
+	 */
+	public static function strip_bauteil_kind_supplier_slots( string $taxonomy, int $kind_id ): void {
+		if ( $kind_id <= 0 ) {
+			return;
+		}
+
+		$drop = array(
+			'lieferant'     => true,
+			'bestellnummer' => true,
+			'hersteller'    => true,
+			'diodentyp'     => true,
+		);
+
+		foreach ( Attribute::list_own( $taxonomy, $kind_id ) as $row ) {
+			$key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$aid = (int) ( $row['id'] ?? 0 );
+			if ( $aid > 0 && isset( $drop[ $key ] ) ) {
+				Attribute::remove( $taxonomy, $kind_id, $aid );
+			}
+		}
+
+		foreach ( array( 'Lieferant', 'Bestellnummer', 'Hersteller', 'Diodentyp' ) as $name ) {
+			$child_id = self::find_direct_child_named( $taxonomy, $kind_id, $name );
+			if ( $child_id <= 0 ) {
+				continue;
+			}
+			Node_Type::set_deletable( $child_id, true );
+			Tree_Model::delete_term( $taxonomy, $child_id, 'leaf' );
 		}
 	}
 
 	/**
-	 * Install Bauteilarten + Bauteile split and seed examples (Q83).
+	 * Strip commercial / obsolete slots from every kind under Model/Bauteil (incl. groups).
+	 */
+	public static function strip_all_bauteil_supplier_slots( string $taxonomy, int $parent_id ): void {
+		if ( $parent_id <= 0 ) {
+			return;
+		}
+		$kind_names = array_fill_keys( array_keys( self::bauteil_example_seed() ), true );
+		$kind_names['Diode'] = true;
+		$group_names = array_fill_keys( array_values( self::bauteil_kind_group_map() ), true );
+
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		foreach ( (array) $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$kid_id = (int) $kid->term_id;
+			if ( self::is_catalog_example( $kid_id ) ) {
+				continue;
+			}
+			if ( isset( $group_names[ $kid->name ] ) ) {
+				self::strip_all_bauteil_supplier_slots( $taxonomy, $kid_id );
+				continue;
+			}
+			if ( ! isset( $kind_names[ $kid->name ] ) && ! Node_Type::is_datatype( $taxonomy, $kid_id ) ) {
+				continue;
+			}
+			self::strip_bauteil_kind_supplier_slots( $taxonomy, $kid_id );
+		}
+	}
+
+	/**
+	 * Move kind schemas from Implementation/Bauteile (and legacy Bauteilarten) under Model/Bauteil.
 	 *
-	 * @param array<int, string> $arten_parent_path Parent of Bauteilarten (Definition or project root).
-	 * @param array<int, string> $bauteile_parent_path Parent of Bauteile (Implementation or project root).
+	 * @return int Number of kinds reparented.
+	 */
+	public static function merge_kinds_into_model_bauteil( string $taxonomy, int $model_bauteil_id ): int {
+		if ( $model_bauteil_id <= 0 ) {
+			return 0;
+		}
+
+		$kind_names = array_fill_keys( array_keys( self::bauteil_example_seed() ), true );
+		$kind_names['Diode'] = true;
+
+		$sources = array();
+		$bauteile_paths = array(
+			array( 'Fallstudie', 'Implementation', 'Bauteile' ),
+			array( self::ROOT_NAME, 'Implementation', 'Bauteile' ),
+			array( self::ROOT_NAME, 'Bauteile' ),
+		);
+		foreach ( $bauteile_paths as $path ) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 ) {
+				$sources[ $id ] = true;
+			}
+		}
+		foreach (
+			array(
+				array( 'Fallstudie', 'Definition', 'Bauteilarten' ),
+				array( self::ROOT_NAME, 'Definition', 'Bauteilarten' ),
+				array( self::ROOT_NAME, 'Bauteilarten' ),
+			) as $path
+		) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 ) {
+				$sources[ $id ] = true;
+			}
+		}
+
+		$moved = 0;
+		foreach ( array_keys( $sources ) as $source_id ) {
+			if ( $source_id === $model_bauteil_id ) {
+				continue;
+			}
+			$kids = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $source_id,
+					'hide_empty' => false,
+					'number'     => 0,
+				)
+			);
+			foreach ( (array) $kids as $kid ) {
+				if ( ! $kid instanceof \WP_Term ) {
+					continue;
+				}
+				$kind_id = (int) $kid->term_id;
+				if ( self::is_catalog_example( $kind_id ) ) {
+					continue;
+				}
+				$canonical = $kid->name;
+				if ( 'Diode' === $canonical ) {
+					$canonical = 'Dioden';
+				}
+				if ( ! isset( $kind_names[ $canonical ] ) && ! isset( $kind_names[ $kid->name ] ) ) {
+					if ( ! Node_Type::is_datatype( $taxonomy, $kind_id ) ) {
+						continue;
+					}
+				}
+
+				$existing = self::find_bauteil_kind_under( $taxonomy, $model_bauteil_id, $canonical );
+				if ( $existing <= 0 && 'Dioden' === $canonical ) {
+					$existing = self::find_bauteil_kind_under( $taxonomy, $model_bauteil_id, 'Diode' );
+				}
+
+				$group_map  = self::bauteil_kind_group_map();
+				$group_name = $group_map[ $canonical ] ?? ( $group_map[ $kid->name ] ?? '' );
+				$group_id   = '' !== $group_name
+					? self::find_direct_child_named( $taxonomy, $model_bauteil_id, $group_name )
+					: 0;
+				$target_parent = $group_id > 0 ? $group_id : $model_bauteil_id;
+
+				if ( $existing > 0 && $existing !== $kind_id ) {
+					self::strip_bauteil_kind_supplier_slots( $taxonomy, $kind_id );
+					/* Prefer Model host; drop duplicate schema shell under Bauteile. */
+					Node_Type::set_deletable( $kind_id, true );
+					Tree_Model::delete_term( $taxonomy, $kind_id, 'cascade' );
+					self::strip_bauteil_kind_supplier_slots( $taxonomy, $existing );
+					continue;
+				}
+
+				$term = get_term( $kind_id, $taxonomy );
+				if ( ! $term instanceof \WP_Term ) {
+					continue;
+				}
+				$update = array( 'parent' => $target_parent );
+				if ( 'Diode' === $term->name ) {
+					$update['name'] = 'Dioden';
+				}
+				if ( (int) $term->parent !== $target_parent || isset( $update['name'] ) ) {
+					$upd = wp_update_term( $kind_id, $taxonomy, $update );
+					if ( ! is_wp_error( $upd ) ) {
+						++$moved;
+					}
+				}
+				Node_Type::set_is_datatype( $taxonomy, $kind_id, true );
+				Node_Type::apply_parent_as_type( $taxonomy, $kind_id );
+				self::strip_bauteil_kind_supplier_slots( $taxonomy, $kind_id );
+			}
+		}
+
+		self::ensure_bauteil_kind_groups( $taxonomy, $model_bauteil_id );
+
+		return $moved;
+	}
+
+	/**
+	 * Install kinds under Model/Bauteil; Bauteile keeps MPN records only.
+	 *
+	 * @param array<int, string> $arten_parent_path    Unused (BC).
+	 * @param array<int, string> $bauteile_parent_path Parent of Bauteile (Implementation).
 	 */
 	public static function ensure_bauteile_split(
 		string $taxonomy,
 		array $arten_parent_path,
 		array $bauteile_parent_path
 	): void {
-		$arten_parent = self::find_term_by_path( $taxonomy, $arten_parent_path );
-		$bau_parent   = self::find_term_by_path( $taxonomy, $bauteile_parent_path );
-		if ( $arten_parent <= 0 || $bau_parent <= 0 ) {
+		unset( $arten_parent_path );
+		$bau_parent = self::find_term_by_path( $taxonomy, $bauteile_parent_path );
+		if ( $bau_parent <= 0 ) {
 			return;
 		}
 
 		$created  = 0;
 		$existing = 0;
-		self::install_node_tree(
-			$taxonomy,
-			array( self::bauteilarten_catalog_node() ),
-			$arten_parent,
-			$created,
-			$existing
-		);
 		self::install_node_tree(
 			$taxonomy,
 			array( self::bauteile_implementation_node() ),
@@ -1120,10 +1970,47 @@ final class Demo_Data {
 			$existing
 		);
 
-		$arten_path = array_merge( $arten_parent_path, array( 'Bauteilarten' ) );
-		$bau_path   = array_merge( $bauteile_parent_path, array( 'Bauteile' ) );
+		$model_bauteil = self::find_model_bauteil_id( $taxonomy );
+		if ( $model_bauteil > 0 ) {
+			self::ensure_bauteil_kind_groups( $taxonomy, $model_bauteil );
+			self::merge_kinds_into_model_bauteil( $taxonomy, $model_bauteil );
+			self::ensure_bauteil_kind_groups( $taxonomy, $model_bauteil );
+			self::ensure_bauteil_kind_attributes( $taxonomy );
+			self::strip_all_bauteil_supplier_slots( $taxonomy, $model_bauteil );
+			Node_Type::apply_parent_as_type( $taxonomy, $model_bauteil );
+		}
+
+		$bau_path = array_merge( $bauteile_parent_path, array( 'Bauteile' ) );
+		$bauteile = self::find_term_by_path( $taxonomy, $bau_path );
+		self::merge_bauteilarten_into_bauteile( $taxonomy, $bauteile );
+		if ( $bauteile > 0 && $model_bauteil > 0 ) {
+			/* Move any remaining kinds off Bauteile onto Model/Bauteil. */
+			self::merge_kinds_into_model_bauteil( $taxonomy, $model_bauteil );
+			self::lift_catalog_examples_from_kinds( $taxonomy, $bauteile );
+		}
 		self::ensure_set_composition_members( $taxonomy );
-		self::ensure_bauteil_examples( $taxonomy, $bau_path, $arten_path );
+		if ( $model_bauteil > 0 ) {
+			self::strip_all_bauteil_supplier_slots( $taxonomy, $model_bauteil );
+		}
+		self::ensure_bauteil_examples( $taxonomy, $bau_path );
+	}
+
+	/**
+	 * @deprecated Use lift_catalog_examples_from_kinds + merge_kinds_into_model_bauteil.
+	 */
+	public static function migrate_legacy_bauteile_kind_folders(
+		string $taxonomy,
+		int $bauteile_id,
+		int $bauteilarten_id
+	): void {
+		unset( $bauteilarten_id );
+		self::lift_catalog_examples_from_kinds( $taxonomy, $bauteile_id );
+		$model = self::find_model_bauteil_id( $taxonomy );
+		if ( $model > 0 ) {
+			self::merge_kinds_into_model_bauteil( $taxonomy, $model );
+			self::strip_all_bauteil_supplier_slots( $taxonomy, $model );
+		}
+		self::strip_all_bauteil_supplier_slots( $taxonomy, $bauteile_id );
 	}
 
 	/**
@@ -1167,7 +2054,7 @@ final class Demo_Data {
 					'description'       => 'TDK multilayer inductor 10 µH, 0805.',
 				),
 			),
-			'Diode'          => array(
+			'Dioden'         => array(
 				array(
 					'name'              => '1N4148WS',
 					'short_description' => 'Switching SOD-323',
@@ -1319,15 +2206,16 @@ final class Demo_Data {
 		self::ensure_knoten_datatype( $taxonomy );
 		self::ensure_root_typed_knoten( $taxonomy );
 		self::ensure_set_composition_members( $taxonomy );
+		$bauteile_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Bauteile' ) );
+		self::merge_bauteilarten_into_bauteile( $taxonomy, $bauteile_id );
+		self::strip_all_bauteil_supplier_slots( $taxonomy, $bauteile_id );
 		self::ensure_bauteil_examples(
 			$taxonomy,
-			array( self::ROOT_NAME, 'Bauteile' ),
-			array( self::ROOT_NAME, 'Bauteilarten' )
+			array( self::ROOT_NAME, 'Bauteile' )
 		);
 		self::ensure_lieferanten_catalog(
 			$taxonomy,
-			array( self::ROOT_NAME ),
-			array( self::ROOT_NAME, 'Bauteilarten' )
+			array( self::ROOT_NAME )
 		);
 		self::ensure_subnode_type( $taxonomy );
 		Node_Type::ensure_table_type_props( $taxonomy );
@@ -1488,11 +2376,21 @@ final class Demo_Data {
 				'name'       => $name,
 				'parent'     => $parent_id,
 				'hide_empty' => false,
-				'number'     => 1,
+				'number'     => 0,
 			)
 		);
-		if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
-			return (int) $found[0]->term_id;
+		if ( ! is_array( $found ) ) {
+			return 0;
+		}
+		foreach ( $found as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$tid = (int) $term->term_id;
+			if ( Trash::is_trashed( $tid ) ) {
+				continue;
+			}
+			return $tid;
 		}
 		return 0;
 	}
@@ -1609,7 +2507,7 @@ final class Demo_Data {
 		if ( $root <= 0 || $knoten <= 0 ) {
 			return;
 		}
-		Node_Type::set_type_id( $taxonomy, $root, $knoten );
+		Node_Type::set_type_id( $taxonomy, $root, $knoten, true );
 	}
 
 	/**
@@ -1621,7 +2519,7 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Lock seeded catalog datatypes + Relationstypen.
+	 * Lock seeded catalog templates + Relationstypen.
 	 */
 	public static function ensure_deletable_flags( string $taxonomy ): void {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
@@ -3124,6 +4022,19 @@ final class Demo_Data {
 			}
 			if ( array_key_exists( 'is_abstract', $node ) ) {
 				Node_Type::set_is_abstract( $taxonomy, $term_id, (bool) $node['is_abstract'] );
+			}
+			if ( array_key_exists( 'is_template', $node ) ) {
+				Node_Type::set_is_template( $taxonomy, $term_id, (bool) $node['is_template'] );
+			} elseif (
+				( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] )
+				|| (
+					array_key_exists( 'is_datatype', $node )
+					&& true === (bool) $node['is_datatype']
+					&& ! array_key_exists( 'deletable', $node )
+				)
+			) {
+				/* Seeded protected catalog → is_template (#5 lock signal). */
+				Node_Type::set_is_template( $taxonomy, $term_id, true );
 			}
 			if ( array_key_exists( 'deletable', $node ) ) {
 				Node_Type::set_deletable( $term_id, (bool) $node['deletable'] );

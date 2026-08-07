@@ -15,6 +15,10 @@ import '../shared/model-bind.scss';
 
 const cfg = window.wttObjectView || {};
 const i18n = cfg.i18n || {};
+const defaultTaxonomy = cfg.defaultTaxonomy || 'wtt_fs';
+/* Explicit focus/default = catalog binding `model` — never chooser_focus. */
+const modelId = parseInt( cfg.modelId, 10 ) || 0;
+const chooserRoot = parseInt( cfg.chooserRoot, 10 ) || 0;
 
 function formatInstanceChip( instanceId, i18nMap ) {
 	const id = String( instanceId || '' ).trim();
@@ -106,11 +110,29 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		[ nodes, termId ]
 	);
 
-	const showTree = ! termId;
 	const showInstancePicker =
 		!! termId && ! loading && ! String( instanceId || '' ).trim();
 	const boundReady = !! termId;
 	const canEdit = !! termId && !! String( instanceId || '' ).trim();
+
+	/* Default taxonomy + select Model by binding id when unbound. */
+	useEffect( () => {
+		if ( taxonomy ) {
+			return;
+		}
+		setAttributes( { taxonomy: defaultTaxonomy } );
+	}, [ taxonomy, defaultTaxonomy, setAttributes ] );
+
+	useEffect( () => {
+		if ( termId || ! modelId ) {
+			return;
+		}
+		setAttributes( {
+			termId: modelId,
+			taxonomy: taxonomy || defaultTaxonomy,
+			instanceId: '',
+		} );
+	}, [ termId, modelId, taxonomy, defaultTaxonomy, setAttributes ] );
 
 	useEffect( () => {
 		window.wttTree = Object.assign( {}, window.wttTree || {}, {
@@ -239,7 +261,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 					method: 'POST',
 					data: {
 						taxonomy: tax || undefined,
-						id: String( instanceId ),
+						instanceId: String( instanceId ),
 						values,
 					},
 				} )
@@ -335,8 +357,8 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 
 	const clearBinding = () => {
 		setAttributes( {
-			termId: 0,
-			taxonomy: '',
+			termId: modelId || 0,
+			taxonomy: taxonomy || defaultTaxonomy,
 			instanceId: '',
 		} );
 		setView( null );
@@ -517,30 +539,25 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 				</PanelBody>
 			</InspectorControls>
 
-			{ showTree ? (
-				<>
-					<p className="wtt-object-view-editor__hint">
-						{ i18n.chooseModelCanvas ||
-							'Choose a model node in the tree below.' }
-					</p>
-					{ nodes.length === 0 ? (
-						<Notice status="info" isDismissible={ false }>
-							{ i18n.noNodes ||
-								'No nodes found in this taxonomy.' }
-						</Notice>
-					) : (
-						<ModelTreeChooser
-							items={ nodes }
-							selectedId={ termId }
-							onSelect={ onTreeSelect }
-							mode="tree"
-							i18n={ i18n }
-						/>
-					) }
-				</>
-			) : null }
+			{ nodes.length === 0 ? (
+				<Notice status="info" isDismissible={ false }>
+					{ i18n.noNodes || 'No nodes found in this taxonomy.' }
+				</Notice>
+			) : (
+				<ModelTreeChooser
+					items={ nodes }
+					rootId={ chooserRoot || 0 }
+					selectedId={ termId || modelId }
+					focusId={ modelId || 0 }
+					expandFocusBranch={ true }
+					onSelect={ onTreeSelect }
+					mode="tree"
+					i18n={ i18n }
+					className="wtt-object-view-editor__tree"
+				/>
+			) }
 
-			{ boundReady && ! showTree ? (
+			{ boundReady ? (
 				<p className="wtt-object-view-editor__hint">
 					{ ! instanceId
 						? i18n.flowHintInstance ||
@@ -554,10 +571,6 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 							( view && view.name ) ||
 							`#${ termId }` }
 					</strong>
-					{ ' ' }
-					<Button variant="link" onClick={ clearBinding }>
-						{ i18n.changeModel || 'Change model…' }
-					</Button>
 					{ instanceId ? (
 						<>
 							{ ' ' }

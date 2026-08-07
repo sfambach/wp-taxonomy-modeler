@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
 	'use strict';
 
 	var cfg = window.wttTree || {};
@@ -37,6 +37,8 @@
 		hideChildOfRelations: true,
 		/* Attribute Options detail rows: expand per attr id (UI session only). */
 		attrDetailExpanded: {},
+		/* Hide project root in tree column (from settings; default on). */
+		hideRootNode: cfg.hideRootNode !== false && cfg.hideRootNode !== 0 && cfg.hideRootNode !== '0',
 	};
 	var autosaveTimer = null;
 	var autosaveSeq = 0;
@@ -54,7 +56,7 @@
 	/**
 	 * Band bindings must be a plain object. PHP encodes empty bindings as JSON [],
 	 * and assigning keys onto an Array + JSON.stringify/deepClone drops them ("[]").
-	 * That looked Bom-only when Bom was unbound while Partner already had {"zeile":…}.
+	 * That looked Bom-only when Bom was unbound while Partner already had {"zeile":â€¦}.
 	 *
 	 * @param {unknown} raw
 	 * @return {Object<string, number>}
@@ -218,6 +220,52 @@
 		return 'form';
 	}
 
+	var INT_DISPLAY_FORMAT_IDS = [
+		'arabic',
+		'roman',
+		'binary',
+		'octal',
+		'hex',
+	];
+
+	function normalizeIntDisplayFormat(raw) {
+		var key = String(raw || 'arabic')
+			.trim()
+			.toLowerCase();
+		if (window.WTTIntValue && typeof window.WTTIntValue.normalizeFormatId === 'function') {
+			return window.WTTIntValue.normalizeFormatId(key);
+		}
+		if (INT_DISPLAY_FORMAT_IDS.indexOf(key) >= 0) {
+			return key;
+		}
+		return 'arabic';
+	}
+
+	function intDisplayFormatLabel(formatId) {
+		var id = normalizeIntDisplayFormat(formatId);
+		var map = {
+			arabic: i18n.intFormatArabic || 'Arabic (decimal)',
+			roman: i18n.intFormatRoman || 'Roman',
+			binary: i18n.intFormatBinary || 'Binary',
+			octal: i18n.intFormatOctal || 'Octal',
+			hex: i18n.intFormatHex || 'Hexadecimal',
+		};
+		return map[id] || id;
+	}
+
+	function isIntCatalogNode(n) {
+		if (!n) {
+			return false;
+		}
+		var name = String(n.name || '')
+			.trim()
+			.toLowerCase();
+		if (name !== 'int' && name !== 'integer') {
+			return false;
+		}
+		return !!n.isDatatype || !!n.intConfig;
+	}
+
 	function settingsFromNode(n) {
 		return {
 			name: n.name != null ? String(n.name) : '',
@@ -231,8 +279,10 @@
 			canInheritType: !!n.canInheritType,
 			inheritedTypeId: n.inheritedTypeId || 0,
 			typeIsParent: !!n.typeIsParent,
+			freeTypeLocked: !!n.freeTypeLocked,
 			isDatatype: !!n.isDatatype,
 			isAbstract: !!n.isAbstract,
+			isTemplate: !!n.isTemplate,
 			isDatatypeLocal: n.isDatatypeLocal == null ? null : !!n.isDatatypeLocal,
 			isAbstractLocal: n.isAbstractLocal == null ? null : !!n.isAbstractLocal,
 			datatypeTree: Array.isArray(n.datatypeTree) ? n.datatypeTree : [],
@@ -290,13 +340,25 @@
 							.toLowerCase() === 'date'
 					? { mode: 'date' }
 					: null,
+			intConfig: n.intConfig
+				? {
+						displayFormat: normalizeIntDisplayFormat(
+							n.intConfig.displayFormat
+						),
+				  }
+				: isIntCatalogNode(n)
+					? { displayFormat: 'arabic' }
+					: null,
 			preferredRender: normalizePreferredRender(n.preferredRender),
 			typeBranch: n.typeBranch ? deepClone(n.typeBranch) : null,
 			isBasiseinheitUnit: !!n.isBasiseinheitUnit,
 			prefixAllowlist: n.prefixAllowlist ? deepClone(n.prefixAllowlist) : null,
 			prefixRootToSi: n.prefixRootToSi != null ? n.prefixRootToSi : null,
 			quantitySchema: n.quantitySchema ? deepClone(n.quantitySchema) : null,
-			/* Child extras on parent (e.g. Meter): Praefix allowlist + factors — not name/description. */
+			quantityPreviewExample: n.quantityPreviewExample
+				? deepClone(n.quantityPreviewExample)
+				: null,
+			/* Child extras on parent (e.g. Meter): Praefix allowlist + factors â€” not name/description. */
 			prefixBranch: extractPrefixBranchFromNode(n),
 		};
 	}
@@ -350,8 +412,10 @@
 			canInheritType: !!d.canInheritType,
 			inheritedTypeId: d.inheritedTypeId || 0,
 			typeIsParent: !!d.typeIsParent,
+			freeTypeLocked: !!d.freeTypeLocked,
 			isDatatype: !!d.isDatatype,
 			isAbstract: !!d.isAbstract,
+			isTemplate: !!d.isTemplate,
 			isDatatypeLocal: d.isDatatypeLocal == null ? null : !!d.isDatatypeLocal,
 			isAbstractLocal: d.isAbstractLocal == null ? null : !!d.isAbstractLocal,
 			datatypeTree: Array.isArray(d.datatypeTree) ? d.datatypeTree : [],
@@ -406,12 +470,20 @@
 							d.dateConfig.mode === 'datetime' ? 'datetime' : 'date',
 				  }
 				: n.dateConfig || null,
+			intConfig: d.intConfig
+				? {
+						displayFormat: normalizeIntDisplayFormat(
+							d.intConfig.displayFormat
+						),
+				  }
+				: n.intConfig || null,
 			typeBranch: d.typeBranch,
 			isBasiseinheitUnit: d.isBasiseinheitUnit,
 			prefixAllowlist: d.prefixAllowlist,
 			prefixRootToSi: d.prefixRootToSi,
 			prefixBranch: d.prefixBranch,
 			quantitySchema: d.quantitySchema,
+			quantityPreviewExample: d.quantityPreviewExample,
 		});
 	}
 
@@ -508,7 +580,7 @@
 		if (!branch || !Array.isArray(branch.children)) {
 			return ids;
 		}
-		// Read-only filter from sibling Einheit — do not persist local disables.
+		// Read-only filter from sibling Einheit â€” do not persist local disables.
 		if (branch.unitFilter && !branch.unitAllowlistEdit) {
 			return ids;
 		}
@@ -535,7 +607,7 @@
 
 	/**
 	 * Visible dropdown label: path or name only (no shortDescription inline).
-	 * Short text goes on option/select title — see formatSelectTitle / syncSelectTitle.
+	 * Short text goes on option/select title â€” see formatSelectTitle / syncSelectTitle.
 	 */
 	function formatSelectLabel(opt) {
 		if (!opt) {
@@ -544,7 +616,7 @@
 		var name = opt.name != null ? String(opt.name) : '';
 		var path = opt.path != null ? String(opt.path) : '';
 		var label = path || name || String(opt.id != null ? opt.id : '') || '';
-		/* Canonical type name after subtree → node_embed rename. */
+		/* Canonical type name after subtree â†’ node_embed rename. */
 		if (/^subtree$/i.test(label) || /(^|\/)\s*subtree\s*$/i.test(label)) {
 			label = label.replace(/subtree/gi, 'node_embed');
 		}
@@ -569,7 +641,7 @@
 				if (!n || n.id == null) {
 					continue;
 				}
-				next = chain.concat([String(n.name || n.id)]);
+				next = chain.concat([displayNodeName(n) || String(n.id)]);
 				if ((parseInt(n.id, 10) || 0) === termId) {
 					return next;
 				}
@@ -594,7 +666,7 @@
 		var n =
 			findNodeInTree(roots || [], termId) ||
 			findNodeInTree(state.tree, termId);
-		return n && n.name ? String(n.name) : '#' + termId;
+		return n && n.name ? displayNodeName(n) : '#' + termId;
 	}
 
 	/**
@@ -618,7 +690,7 @@
 				return;
 			}
 			el.textContent = p;
-			/* Path too wide for the box → name only. */
+			/* Path too wide for the box â†’ name only. */
 			if (el.scrollWidth > el.clientWidth + 1) {
 				el.textContent = n || p;
 			}
@@ -639,12 +711,15 @@
 	}
 
 	/**
-	 * Focus id for a picker: optional preferFocus, else current selection, else focusId / last node.
+	 * Focus id for a picker.
+	 * Contract: caller-owned focusId first when preferFocus; else selectedId, then
+	 * focusId, then last tree selection. Settings chooser_focus is never read here â€”
+	 * callers that want that fallback (attribute type picker) pass it as focusId.
 	 */
 	function resolvePickerFocusId(opts) {
 		opts = opts || {};
 		var explicit = opts.focusId != null ? parseInt(opts.focusId, 10) || 0 : 0;
-		/* Attribute type: prefer chooser_focus (e.g. Data Types) over selection. */
+		/* preferFocus: expand around caller focusId even when a value is already selected. */
 		if (opts.preferFocus && explicit > 0) {
 			return explicit;
 		}
@@ -722,9 +797,9 @@
 	}
 
 	/**
-	 * One select builder for option lists (branch children, type/fixed pickers, …).
-	 * No blank placeholder option — first real option is selected when nothing matches.
-	 * shortDescription → option title (+ select title for closed hover).
+	 * One select builder for option lists (branch children, type/fixed pickers, â€¦).
+	 * No blank placeholder option â€” first real option is selected when nothing matches.
+	 * shortDescription â†’ option title (+ select title for closed hover).
 	 *
 	 * @param {Array<{id?:*,name?:string,path?:string,shortDescription?:string}>} options
 	 * @param {{
@@ -806,7 +881,7 @@
 
 	/**
 	 * CatalogChoice (Q90): max nesting under a type host.
-	 * Depth 0 = empty; 1 = only direct children → List; ≥2 → Tree.
+	 * Depth 0 = empty; 1 = only direct children â†’ List; â‰¥2 â†’ Tree.
 	 * Mirrors src/blocks/shared/build-path-tree.js maxChoiceDepth for nested roots.
 	 *
 	 * @param {Array} roots Direct children of the type (or option folders).
@@ -824,7 +899,7 @@
 				if (hasKids && kids.length) {
 					max = Math.max(max, 1 + height(kids));
 				} else if (hasKids) {
-					/* Unloaded deeper children — treat as nested (tree). */
+					/* Unloaded deeper children â€” treat as nested (tree). */
 					max = Math.max(max, 2);
 				} else {
 					max = Math.max(max, 1);
@@ -933,7 +1008,7 @@
 					return;
 				}
 				/* Intermediate nodes with children stay folders for tree mode;
-				 * for flat list also include leaf-only — skip folders. */
+				 * for flat list also include leaf-only â€” skip folders. */
 				walk(kids, pathParts);
 			});
 		}
@@ -956,7 +1031,7 @@
 			} else if (key === 'html') {
 				node.innerHTML = attrs[key];
 			} else if (key === 'draggable') {
-				/* Must be "true"/"false" — boolean true was written as attribute "draggable" (invalid). */
+				/* Must be "true"/"false" â€” boolean true was written as attribute "draggable" (invalid). */
 				node.draggable = !!attrs[key];
 				node.setAttribute('draggable', attrs[key] ? 'true' : 'false');
 			} else if (
@@ -966,7 +1041,7 @@
 				key === 'readOnly' ||
 				key === 'multiple'
 			) {
-				/* Boolean IDL properties — setAttribute alone is unreliable for checkboxes. */
+				/* Boolean IDL properties â€” setAttribute alone is unreliable for checkboxes. */
 				node[key] = !!attrs[key];
 			} else if (attrs[key] === false || attrs[key] == null) {
 				return;
@@ -1212,7 +1287,7 @@
 	function applySelectionRange(toId) {
 		toId = parseInt(toId, 10) || 0;
 		var fromId = parseInt(state.selectionAnchorId, 10) || toId;
-		var visible = flattenVisibleTreeIds(state.tree, []);
+		var visible = flattenVisibleTreeIds(getDisplayTreeRoots(), []);
 		var iFrom = visible.indexOf(fromId);
 		var iTo = visible.indexOf(toId);
 		if (iFrom < 0 && iTo < 0) {
@@ -1378,8 +1453,11 @@
 		return !!cfg.developmentMode;
 	}
 
-	/** Protected relation rows unlock when Development mode is on. */
+	/** Protected relation rows unlock when Development mode is on (except typeLocked). */
 	function isRelationRowLocked(row) {
+		if (row && row.typeLocked) {
+			return true;
+		}
 		return !!(row && row.protected && !isDevelopmentMode());
 	}
 
@@ -1404,6 +1482,10 @@
 		}
 		if (n && n.isTrash) {
 			setError(i18n.trashCannotDelete || 'The Trash node cannot be deleted.');
+			return;
+		}
+		if (n && n.isHiddenBin) {
+			setError(i18n.hiddenBinCannotHide || 'The Hidden nodes bin cannot be deleted.');
 			return;
 		}
 		if (deletable === false) {
@@ -1500,6 +1582,86 @@
 		return out;
 	}
 
+	function hideNodeById(termId) {
+		if (!termId) {
+			return;
+		}
+		var n =
+			(state.selectedNode && String(state.selectedNode.id) === String(termId) && state.selectedNode) ||
+			findNodeInTree(state.tree, termId);
+		if (n && (n.isTrash || n.isHiddenBin)) {
+			setError(
+				n.isHiddenBin
+					? i18n.hiddenBinCannotHide || 'The Hidden nodes bin cannot be hidden.'
+					: i18n.trashCannotDelete || 'The Trash node cannot be deleted.'
+			);
+			return;
+		}
+		if (n && n.hidden) {
+			unhideNodeById(termId);
+			return;
+		}
+		if (
+			!window.confirm(
+				i18n.confirmHide ||
+					'Hide this node from the tree? It stays in the database and appears under Hidden nodes.'
+			)
+		) {
+			return;
+		}
+		post('wtt_hide_term', { term_id: termId })
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				state.tree = json.data.tree || [];
+				state.error = '';
+				var binId = json.data && json.data.binId ? parseInt(json.data.binId, 10) || 0 : 0;
+				if (binId > 0) {
+					state.expanded[binId] = true;
+					return selectNode(binId);
+				}
+				state.selectedId = null;
+				state.selectedNode = null;
+				state.draft = null;
+				state.savedDraft = null;
+				persistTreeUi();
+				render();
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
+	function unhideNodeById(termId) {
+		if (!termId) {
+			return;
+		}
+		post('wtt_unhide_term', { term_id: termId })
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				state.tree = json.data.tree || [];
+				state.error = '';
+				var restoredId = parseInt(termId, 10) || 0;
+				if (restoredId > 0 && findNodeInTree(state.tree, restoredId)) {
+					return selectNode(restoredId);
+				}
+				state.selectedId = null;
+				state.selectedNode = null;
+				state.draft = null;
+				state.savedDraft = null;
+				persistTreeUi();
+				render();
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
 	function findNodeInTree(nodes, id) {
 		var i;
 		var found;
@@ -1539,725 +1701,43 @@
 		return false;
 	}
 
-	function ensurePickerExpandedBucket(key) {
-		if (!state.nodePickerExpanded) {
-			state.nodePickerExpanded = {};
-		}
-		if (!state.nodePickerExpanded[key]) {
-			state.nodePickerExpanded[key] = {};
-		}
-		return state.nodePickerExpanded[key];
-	}
 
 	/**
-	 * Unified expandable node tree picker (settings, preview, reparent).
-	 * Presentation: setting `treePickerMode` = inline | popup (default popup).
-	 * Pass presentation:'inline' / embedded:true when already inside a dialog.
-	 *
-	 * Focus options:
-	 * - focusId / preferFocus — which node is the default focus
-	 * - expandFocusBranch — when true, open ancestors and expand that node (attribute type picker sets true)
+	 * Shared TreeChooser — delegates to window.WTTNodePicker (assets/js/wtt-node-picker.js).
 	 */
+	function augmentNodePickerOpts(opts) {
+		opts = opts || {};
+		var lookup = Array.isArray(opts.lookupTrees) ? opts.lookupTrees.slice() : [];
+		if (state && state.tree) {
+			lookup.push(state.tree);
+		}
+		return Object.assign({}, opts, {
+			i18n: i18n,
+			showTypeInTree: !!(cfg && cfg.showTypeInTree),
+			treePickerMode:
+				opts.treePickerMode ||
+				(cfg && cfg.treePickerMode) ||
+				'popup',
+			lookupTrees: lookup,
+		});
+	}
+
 	function renderNodeTreePicker(opts) {
-		opts = opts || {};
-		if (treePickerPresentation(opts) === 'popup') {
-			return renderNodeTreePickerPopup(opts);
+		if (!window.WTTNodePicker || typeof window.WTTNodePicker.render !== 'function') {
+			return el('p', {
+				className: 'wtt-field-hint',
+				text: 'TreeChooser unavailable',
+			});
 		}
-		return renderNodeTreePickerInline(opts);
-	}
-
-	function renderNodeTreePickerPopup(opts) {
-		opts = opts || {};
-		var selectedId = opts.selectedId != null ? parseInt(opts.selectedId, 10) || 0 : 0;
-		var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function () {};
-		var disabled = !!opts.disabled;
-		var allowClear = opts.allowClear !== false;
-		var placeholder = opts.placeholder || (i18n.nodeRefChoose || 'Choose…');
-		var pickLabel = selectedId
-			? i18n.nodePickerChange || 'Change…'
-			: i18n.nodePickerChoose || 'Choose…';
-		var roots = opts.roots || [];
-		var allowRoot = !!opts.allowRoot;
-		var rootLabel = opts.rootLabel || (i18n.reparentRoot || 'Root (no parent)');
-
-		function labelForId(id) {
-			id = parseInt(id, 10) || 0;
-			if (allowRoot && id === 0) {
-				return rootLabel;
-			}
-			if (!id) {
-				return '';
-			}
-			var n = findNodeInTree(state.tree, id) || findNodeInTree(roots, id);
-			if (n && n.name) {
-				return n.name;
-			}
-			/* selectedLabel may be a path — use last segment as name fallback. */
-			if (opts.selectedLabel && String(opts.selectedId) === String(id)) {
-				var raw = String(opts.selectedLabel);
-				var parts = raw.split(/\s*\/\s*/);
-				return parts.length ? parts[parts.length - 1] : raw;
-			}
-			return '#' + id;
-		}
-
-		var currentName = selectedId ? labelForId(selectedId) : '';
-		var currentPath = '';
-		if (selectedId) {
-			if (opts.selectedLabel && String(opts.selectedId) === String(selectedId)) {
-				currentPath = String(opts.selectedLabel);
-			} else {
-				currentPath = buildNodePathLabel(selectedId, roots);
-			}
-		}
-		var emptyLabel = placeholder || '—';
-		var wrap = el('div', {
-			className:
-				'wtt-node-picker wtt-node-picker--popup-trigger' +
-				(disabled ? ' is-disabled' : '') +
-				(opts.className ? ' ' + opts.className : ''),
-		});
-
-		var valueEl = el('span', {
-			className:
-				'wtt-node-picker__value' + (selectedId && currentName ? '' : ' is-empty'),
-			text: selectedId && currentName ? currentName : emptyLabel,
-		});
-		if (selectedId && currentName) {
-			applyAdaptiveNodeLabel(valueEl, currentName, currentPath || currentName);
-		} else {
-			valueEl.title = emptyLabel;
-		}
-		wrap.appendChild(valueEl);
-
-		var actions = el('div', { className: 'wtt-node-picker__actions' });
-		actions.appendChild(
-			el('button', {
-				type: 'button',
-				className: 'wtt-node-picker__icon-btn wtt-node-picker__open',
-				disabled: disabled ? 'disabled' : undefined,
-				title: pickLabel,
-				'aria-label': pickLabel,
-				html: '<span class="dashicons dashicons-category" aria-hidden="true"></span>',
-				onClick: function (e) {
-					e.preventDefault();
-					if (disabled) {
-						return;
-					}
-					openNodeTreePickerDialog(opts, function (id) {
-						onSelect(id);
-					});
-				},
-			})
-		);
-
-		if (allowClear) {
-			actions.appendChild(
-				el('button', {
-					type: 'button',
-					className: 'wtt-node-picker__icon-btn wtt-node-picker__clear-icon',
-					disabled: disabled || !selectedId ? 'disabled' : undefined,
-					title: i18n.nodePickerClear || 'Clear',
-					'aria-label': i18n.nodePickerClear || 'Clear',
-					html: '<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
-					onClick: function (e) {
-						e.preventDefault();
-						if (disabled || !selectedId) {
-							return;
-						}
-						onSelect(0);
-					},
-				})
-			);
-		}
-		wrap.appendChild(actions);
-
-		return wrap;
-	}
-
-	/**
-	 * Whether to open the path to focusId and expand that node (show its children).
-	 * Explicit opts.expandFocusBranch wins; otherwise false (opt-in).
-	 */
-	function shouldExpandFocusBranch(opts) {
-		opts = opts || {};
-		if (opts.expandFocusBranch != null) {
-			return !!opts.expandFocusBranch;
-		}
-		/* Legacy alias used by some inline pickers. */
-		if (opts.expandSelectedPath != null) {
-			return !!opts.expandSelectedPath;
-		}
-		return false;
-	}
-
-	function applyFocusBranchExpand(opts, expandKey, focusId) {
-		focusId = parseInt(focusId, 10) || 0;
-		if (!focusId || !shouldExpandFocusBranch(opts)) {
-			return;
-		}
-		state.nodePickerExpanded = state.nodePickerExpanded || {};
-		var map = state.nodePickerExpanded[expandKey] || {};
-		state.nodePickerExpanded[expandKey] = map;
-		expandAncestorsInMap(opts.roots || [], focusId, map, []);
-		expandAncestorsInMap(state.tree, focusId, map, []);
-		/* Expand focus node itself so its children are visible. */
-		map[focusId] = true;
-		map[String(focusId)] = true;
+		return window.WTTNodePicker.render(augmentNodePickerOpts(opts));
 	}
 
 	function openNodeTreePickerDialog(opts, onDone) {
-		opts = opts || {};
-		var localSelected = opts.selectedId != null ? parseInt(opts.selectedId, 10) || 0 : 0;
-		var focusId = resolvePickerFocusId(opts);
-		var expandKey = opts.expandKey || 'dialog-pick';
-		var pickerHost = el('div', { className: 'wtt-node-picker-dialog__host' });
-
-		/* Fresh dialog: start collapsed; optionally open path to focus/default node. */
-		state.nodePickerExpanded = state.nodePickerExpanded || {};
-		state.nodePickerExpanded[expandKey] = {};
-		applyFocusBranchExpand(opts, expandKey, focusId);
-
-		function close() {
-			if (backdrop.parentNode) {
-				backdrop.parentNode.removeChild(backdrop);
-			}
+		if (!window.WTTNodePicker || typeof window.WTTNodePicker.openDialog !== 'function') {
+			return;
 		}
-
-		function mount() {
-			pickerHost.innerHTML = '';
-			pickerHost.appendChild(
-				renderNodeTreePickerInline(
-					Object.assign({}, opts, {
-						selectedId: localSelected,
-						expandKey: expandKey,
-						presentation: 'inline',
-						embedded: true,
-						defaultOpen: true,
-						compact: false,
-						showPickedLabel: opts.showPickedLabel !== false,
-						/* Highlight last-focus when nothing is selected yet. */
-						currentId:
-							opts.currentId != null
-								? opts.currentId
-								: localSelected
-								? localSelected
-								: focusId,
-						onSelect: function (id) {
-							localSelected = id;
-							if (typeof onDone === 'function') {
-								onDone(id);
-							}
-							close();
-						},
-					})
-				)
-			);
-		}
-		mount();
-
-		var backdrop = el('div', { className: 'wtt-dialog-backdrop' }, [
-			el('div', { className: 'wtt-dialog wtt-dialog--node-picker', role: 'dialog' }, [
-				el('h2', {
-					text: opts.dialogTitle || i18n.nodePickerTitle || 'Choose node',
-				}),
-				pickerHost,
-				el('div', { className: 'wtt-dialog__actions' }, [
-					el('button', {
-						type: 'button',
-						className: 'button',
-						text: i18n.cancel,
-						onClick: function () {
-							close();
-						},
-					}),
-				]),
-			]),
-		]);
-		backdrop.addEventListener('click', function (e) {
-			if (e.target === backdrop) {
-				close();
-			}
-		});
-		document.body.appendChild(backdrop);
-		if (focusId && shouldExpandFocusBranch(opts)) {
-			window.requestAnimationFrame(function () {
-				var row = backdrop.querySelector('.wtt-node-picker__row.is-current');
-				if (row && typeof row.scrollIntoView === 'function') {
-					row.scrollIntoView({ block: 'center', behavior: 'smooth' });
-				}
-			});
-		}
+		window.WTTNodePicker.openDialog(augmentNodePickerOpts(opts), onDone);
 	}
-
-	function renderNodeTreePickerInline(opts) {
-		opts = opts || {};
-		var roots = opts.roots || [];
-		var selectedId = opts.selectedId != null ? parseInt(opts.selectedId, 10) || 0 : 0;
-		var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function () {};
-		var blocked = opts.blockedIds || {};
-		var allowRoot = !!opts.allowRoot;
-		var rootLabel = opts.rootLabel || (i18n.reparentRoot || 'Root (no parent)');
-		var currentId = opts.currentId != null ? parseInt(opts.currentId, 10) || 0 : null;
-		var compact = !!opts.compact;
-		var disabled = !!opts.disabled;
-		var expandKey = opts.expandKey || 'default';
-		var expandedMap = ensurePickerExpandedBucket(expandKey);
-		var selectableFn =
-			typeof opts.selectable === 'function'
-				? opts.selectable
-				: function () {
-						return true;
-				  };
-		var showPickedLabel = opts.showPickedLabel !== false;
-		var pickedPrefix = opts.pickedPrefix || (i18n.nodePickerSelected || 'Selected:');
-		var placeholder = opts.placeholder || (i18n.nodeRefChoose || 'Choose node…');
-		var allowClear = opts.allowClear !== false;
-		var pendingScrollTop =
-			opts.restoreScrollTop != null ? parseInt(opts.restoreScrollTop, 10) || 0 : null;
-
-		if (!state.nodePickerOpen) {
-			state.nodePickerOpen = {};
-		}
-		if (!state.nodePickerQuery) {
-			state.nodePickerQuery = {};
-		}
-		var defaultOpen = opts.defaultOpen != null ? !!opts.defaultOpen : !compact;
-		if (state.nodePickerOpen[expandKey] == null) {
-			state.nodePickerOpen[expandKey] = defaultOpen;
-		}
-
-		var wrap = el('div', {
-			className:
-				'wtt-node-picker' +
-				(compact ? ' wtt-node-picker--compact' : '') +
-				(disabled ? ' is-disabled' : ''),
-		});
-
-		function nodeSelectable(node) {
-			if (!node || node.id == null) {
-				return false;
-			}
-			if (blocked[String(node.id)]) {
-				return false;
-			}
-			return !!selectableFn(node);
-		}
-
-		function labelForId(id) {
-			id = parseInt(id, 10) || 0;
-			if (allowRoot && id === 0) {
-				return rootLabel;
-			}
-			if (!id) {
-				return placeholder;
-			}
-			var n = findNodeInTree(state.tree, id) || findNodeInTree(roots, id);
-			return (n && n.name) || '#' + id;
-		}
-
-		function pathForId(id) {
-			id = parseInt(id, 10) || 0;
-			if (!id) {
-				return '';
-			}
-			if (opts.selectedLabel && String(opts.selectedId) === String(id)) {
-				var sl = String(opts.selectedLabel);
-				if (sl.indexOf('/') !== -1) {
-					return sl;
-				}
-			}
-			return buildNodePathLabel(id, roots) || labelForId(id);
-		}
-
-		function captureTreeScroll() {
-			var tree = wrap.querySelector('.wtt-node-picker__tree');
-			return tree ? tree.scrollTop : 0;
-		}
-
-		function restoreTreeScroll(scrollTop) {
-			window.requestAnimationFrame(function () {
-				var tree = wrap.querySelector('.wtt-node-picker__tree');
-				if (tree) {
-					tree.scrollTop = scrollTop || 0;
-				}
-			});
-		}
-
-		function pick(id) {
-			if (disabled) {
-				return;
-			}
-			id = parseInt(id, 10) || 0;
-			selectedId = id;
-			onSelect(id);
-			/* Parent may remount (reparent) or close (popup); only rebuild if still attached. */
-			if (wrap.isConnected) {
-				rebuild();
-			}
-		}
-
-		function normalizePickerQuery(raw) {
-			return String(raw || '')
-				.trim()
-				.toLowerCase();
-		}
-
-		function nodeMatchesQuery(node, q) {
-			if (!q) {
-				return true;
-			}
-			var name = String((node && node.name) || '').toLowerCase();
-			if (name.indexOf(q) !== -1) {
-				return true;
-			}
-			if (cfg.showTypeInTree && node && node.typeLabel) {
-				return String(node.typeLabel).toLowerCase().indexOf(q) !== -1;
-			}
-			return false;
-		}
-
-		function nodeOrDescendantMatches(node, q) {
-			if (!q) {
-				return true;
-			}
-			if (nodeMatchesQuery(node, q)) {
-				return true;
-			}
-			var kids = (node && node.children) || [];
-			var i;
-			for (i = 0; i < kids.length; i++) {
-				if (nodeOrDescendantMatches(kids[i], q)) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		function rebuild() {
-			var scrollTop =
-				pendingScrollTop != null ? pendingScrollTop : captureTreeScroll();
-			pendingScrollTop = null;
-			wrap.innerHTML = '';
-			var isOpen = !!state.nodePickerOpen[expandKey];
-			var query = normalizePickerQuery(state.nodePickerQuery[expandKey]);
-
-			if (showPickedLabel) {
-				var head = el('div', { className: 'wtt-node-picker__head' });
-				var toggle = el('button', {
-					type: 'button',
-					className: 'wtt-node-picker__toggle-open',
-					'aria-expanded': isOpen ? 'true' : 'false',
-					title: isOpen
-						? i18n.nodePickerCollapse || 'Collapse'
-						: i18n.nodePickerExpand || 'Expand',
-					html:
-						'<span class="dashicons dashicons-arrow-' +
-						(isOpen ? 'down' : 'right') +
-						'"></span>',
-					onClick: function (e) {
-						e.preventDefault();
-						state.nodePickerOpen[expandKey] = !state.nodePickerOpen[expandKey];
-						rebuild();
-					},
-				});
-				head.appendChild(toggle);
-				var pickedName =
-					selectedId || (allowRoot && selectedId === 0)
-						? labelForId(selectedId)
-						: placeholder;
-				var pickedPath =
-					selectedId > 0 ? pathForId(selectedId) : pickedName;
-				var pickedEl = el('span', {
-					className: 'wtt-node-picker__picked',
-				});
-				var prefixEl = el('span', {
-					className: 'wtt-node-picker__picked-prefix',
-					text: pickedPrefix + ' ',
-				});
-				var valueEl = el('span', {
-					className: 'wtt-node-picker__picked-value',
-					text: pickedName,
-				});
-				pickedEl.appendChild(prefixEl);
-				pickedEl.appendChild(valueEl);
-				head.appendChild(pickedEl);
-				if (selectedId > 0) {
-					applyAdaptiveNodeLabel(valueEl, pickedName, pickedPath || pickedName);
-				} else {
-					valueEl.title = pickedName;
-				}
-				if (allowClear && selectedId && !disabled) {
-					head.appendChild(
-						el('button', {
-							type: 'button',
-							className: 'button-link wtt-node-picker__clear',
-							text: i18n.nodePickerClear || 'Clear',
-							onClick: function (e) {
-								e.preventDefault();
-								pick(0);
-							},
-						})
-					);
-				}
-				wrap.appendChild(head);
-			}
-
-			if (!isOpen && compact) {
-				return;
-			}
-
-			var tools = el('div', { className: 'wtt-node-picker__tools' });
-			var searchWrap = el('div', { className: 'wtt-node-picker__search' });
-			var searchInput = el('input', {
-				type: 'search',
-				className: 'wtt-node-picker__search-input',
-				placeholder:
-					i18n.nodePickerSearchPlaceholder || 'Search nodes…',
-				value: state.nodePickerQuery[expandKey] || '',
-				disabled: disabled ? 'disabled' : undefined,
-				'aria-label': i18n.nodePickerSearch || 'Search',
-			});
-			searchInput.addEventListener('input', function () {
-				state.nodePickerQuery[expandKey] = searchInput.value;
-				rebuild();
-				window.requestAnimationFrame(function () {
-					var again = wrap.querySelector('.wtt-node-picker__search-input');
-					if (again) {
-						again.focus();
-						var len = again.value.length;
-						if (typeof again.setSelectionRange === 'function') {
-							again.setSelectionRange(len, len);
-						}
-					}
-				});
-			});
-			searchWrap.appendChild(searchInput);
-			tools.appendChild(searchWrap);
-			tools.appendChild(
-				el('button', {
-					type: 'button',
-					className: 'button button-small',
-					text: i18n.expandAll || 'Expand',
-					title: i18n.expandAllHint || 'Expand all nodes',
-					disabled: disabled ? 'disabled' : undefined,
-					onClick: function (e) {
-						e.preventDefault();
-						collectExpandableIds(roots).forEach(function (id) {
-							expandedMap[id] = true;
-						});
-						rebuild();
-					},
-				})
-			);
-			tools.appendChild(
-				el('button', {
-					type: 'button',
-					className: 'button button-small',
-					text: i18n.collapseAll || 'Collapse',
-					title: i18n.collapseAllHint || 'Collapse all nodes',
-					disabled: disabled ? 'disabled' : undefined,
-					onClick: function (e) {
-						e.preventDefault();
-						Object.keys(expandedMap).forEach(function (key) {
-							delete expandedMap[key];
-						});
-						rebuild();
-					},
-				})
-			);
-			wrap.appendChild(tools);
-
-			var treeHost = el('div', { className: 'wtt-node-picker__tree' });
-			var list = el('ul', { className: 'wtt-node-picker__list' });
-
-			if (allowRoot) {
-				var rootVisible =
-					!query ||
-					String(rootLabel)
-						.toLowerCase()
-						.indexOf(query) !== -1;
-				if (rootVisible) {
-					var rootLi = el('li', { className: 'wtt-node-picker__node' });
-					var rootBtn = el('button', {
-						type: 'button',
-						className:
-							'wtt-node-picker__item' +
-							(selectedId === 0 ? ' is-picked' : '') +
-							(currentId === 0 ? ' is-current' : ''),
-						text: rootLabel,
-						disabled: disabled ? 'disabled' : undefined,
-						onClick: function () {
-							pick(0);
-						},
-					});
-					rootLi.appendChild(rootBtn);
-					list.appendChild(rootLi);
-				}
-			}
-
-			function appendNodes(nodes, parentUl, depth) {
-				(nodes || []).forEach(function (n) {
-					if (!n || n.id == null) {
-						return;
-					}
-					if (query && !nodeOrDescendantMatches(n, query)) {
-						return;
-					}
-					var id = n.id;
-					var isBlocked = !!blocked[String(id)];
-					var canPick = nodeSelectable(n);
-					var kids = n.children || [];
-					var hasChildren = !!(n.hasChildren || kids.length);
-					var matchSelf = !query || nodeMatchesQuery(n, query);
-					var matchDesc =
-						query && hasChildren
-							? kids.some(function (c) {
-									return nodeOrDescendantMatches(c, query);
-							  })
-							: false;
-					/* While filtering, open branches that contain matches. */
-					var isExpanded = query
-						? !!(matchDesc || expandedMap[id])
-						: !!expandedMap[id];
-					if (query && matchDesc) {
-						expandedMap[id] = true;
-						expandedMap[String(id)] = true;
-					}
-					var li = el('li', { className: 'wtt-node-picker__node' });
-					var row = el('div', {
-						className:
-							'wtt-node-picker__row' +
-							(isBlocked ? ' is-blocked' : '') +
-							((parseInt(selectedId, 10) || 0) === (parseInt(id, 10) || 0)
-								? ' is-picked'
-								: '') +
-							(currentId != null &&
-							(parseInt(currentId, 10) || 0) === (parseInt(id, 10) || 0)
-								? ' is-current'
-								: '') +
-							(query && matchSelf ? ' is-match' : ''),
-						style: 'padding-left:' + depth * 1.1 + 'em',
-					});
-
-					if (hasChildren) {
-						row.appendChild(
-							el('button', {
-								type: 'button',
-								className: 'wtt-node-picker__twist',
-								'aria-expanded': isExpanded ? 'true' : 'false',
-								onClick: function (e) {
-									e.stopPropagation();
-									expandedMap[id] = !expandedMap[id];
-									rebuild();
-								},
-								html:
-									'<span class="dashicons dashicons-arrow-' +
-									(isExpanded ? 'down' : 'right') +
-									'"></span>',
-							})
-						);
-					} else {
-						row.appendChild(
-							el('span', {
-								className: 'wtt-node-picker__twist wtt-node-picker__twist--spacer',
-							})
-						);
-					}
-
-					var label = n.name || String(id);
-					if (cfg.showTypeInTree && n.typeLabel) {
-						label += ' [' + n.typeLabel + ']';
-					}
-					if (isBlocked) {
-						label += ' (' + (i18n.reparentBlocked || 'unavailable') + ')';
-					}
-
-					var notPickable = disabled || isBlocked || !canPick;
-					if (notPickable && !canPick && !isBlocked) {
-						row.className += ' is-not-selectable';
-					}
-					var nameTitle = '';
-					if (isBlocked) {
-						nameTitle =
-							i18n.reparentBlocked || 'unavailable';
-					} else if (!canPick && n.isAbstract) {
-						nameTitle =
-							i18n.nodePickerAbstractHint ||
-							'Abstract catalog — expand and choose a child, not this folder.';
-					} else if (!canPick) {
-						nameTitle =
-							i18n.nodePickerNotSelectable ||
-							'Not selectable in this chooser.';
-					}
-
-					var nameBtn = el('button', {
-						type: 'button',
-						className: 'wtt-node-picker__name',
-						text: label,
-						title: nameTitle || undefined,
-						disabled: notPickable ? 'disabled' : undefined,
-						onClick: function () {
-							if (notPickable) {
-								return;
-							}
-							pick(id);
-						},
-					});
-					row.appendChild(nameBtn);
-					li.appendChild(row);
-
-					if (hasChildren && isExpanded) {
-						var childUl = el('ul', { className: 'wtt-node-picker__list' });
-						appendNodes(kids, childUl, depth + 1);
-						li.appendChild(childUl);
-					}
-
-					parentUl.appendChild(li);
-				});
-			}
-
-			if (!roots.length && !allowRoot) {
-				treeHost.appendChild(
-					el('p', {
-						className: 'wtt-field-hint',
-						text: opts.emptyText || (i18n.relationsEmpty || 'None'),
-					})
-				);
-			} else {
-				appendNodes(roots, list, 0);
-				if (!list.children.length) {
-					treeHost.appendChild(
-						el('p', {
-							className: 'wtt-field-hint',
-							text:
-								query
-									? i18n.nodePickerSearchEmpty || 'No matching nodes.'
-									: opts.emptyText || (i18n.relationsEmpty || 'None'),
-						})
-					);
-				} else {
-					treeHost.appendChild(list);
-				}
-			}
-			wrap.appendChild(treeHost);
-			restoreTreeScroll(scrollTop);
-		}
-
-		var focusExpandId = resolvePickerFocusId(
-			Object.assign({}, opts, { selectedId: selectedId })
-		);
-		if (focusExpandId && shouldExpandFocusBranch(opts)) {
-			expandAncestorsInMap(roots, focusExpandId, expandedMap, []);
-			expandAncestorsInMap(state.tree, focusExpandId, expandedMap, []);
-			expandedMap[focusExpandId] = true;
-			expandedMap[String(focusExpandId)] = true;
-		}
-
-		rebuild();
-		return wrap;
-	}
-
 
 	function showReparentDialog(termId) {
 		termId = termId || state.selectedId;
@@ -2448,7 +1928,7 @@
 
 	/**
 	 * Resolve parent + optional insert-before sibling for a drop zone on target.
-	 * into → child of target (append). before/after → sibling of target.
+	 * into â†’ child of target (append). before/after â†’ sibling of target.
 	 */
 	function resolveDropPlacement(targetId, zone) {
 		targetId = parseInt(targetId, 10) || 0;
@@ -2596,7 +2076,11 @@
 
 	function expandAllTree() {
 		state.expanded = {};
-		collectExpandableIds(state.tree).forEach(function (id) {
+		var project = getProjectRootNode();
+		if (state.hideRootNode && project) {
+			state.expanded[project.id] = true;
+		}
+		collectExpandableIds(getDisplayTreeRoots()).forEach(function (id) {
 			state.expanded[id] = true;
 		});
 		persistTreeUi();
@@ -2605,6 +2089,10 @@
 
 	function collapseAllTree() {
 		state.expanded = {};
+		var project = getProjectRootNode();
+		if (state.hideRootNode && project) {
+			state.expanded[project.id] = true;
+		}
 		persistTreeUi();
 		render();
 	}
@@ -2632,6 +2120,65 @@
 			btn.disabled = true;
 		}
 		return btn;
+	}
+
+	function toolbarIconButton(icon, title, onClick, extraClass) {
+		return el('button', {
+			type: 'button',
+			className: 'wtt-toolbar__icon' + (extraClass ? ' ' + extraClass : ''),
+			title: title || '',
+			'aria-label': title || '',
+			onClick: onClick,
+			html: '<span class="dashicons dashicons-' + icon + '" aria-hidden="true"></span>',
+		});
+	}
+
+	/**
+	 * Project root (Fallstudie / sole taxonomy root) â€” still stored under that name.
+	 */
+	function getProjectRootNode() {
+		var roots = state.tree || [];
+		var i;
+		for (i = 0; i < roots.length; i++) {
+			if (roots[i] && roots[i].name === 'Fallstudie') {
+				return roots[i];
+			}
+		}
+		for (i = 0; i < roots.length; i++) {
+			if (roots[i] && roots[i].name === 'BOM Testprojekt') {
+				return roots[i];
+			}
+		}
+		if (roots.length === 1) {
+			return roots[0];
+		}
+		return null;
+	}
+
+	function displayNodeName(node) {
+		if (!node) {
+			return '';
+		}
+		if (node.name === 'Fallstudie') {
+			return i18n.taxonomyRootLabel || 'Taxonomy';
+		}
+		return node.name;
+	}
+
+	/**
+	 * Nodes shown at the top of the tree column (optionally skip project root).
+	 */
+	function getDisplayTreeRoots() {
+		var roots = state.tree || [];
+		if (!state.hideRootNode) {
+			return roots;
+		}
+		var project = getProjectRootNode();
+		if (!project) {
+			return roots;
+		}
+		state.expanded[project.id] = true;
+		return project.children || [];
 	}
 
 	/**
@@ -2663,8 +2210,10 @@
 					(state.selectedId === node.id ? ' is-active' : '') +
 					(isIdSelected(node.id) ? ' is-selected' : '') +
 					(node.isTrash ? ' is-trash' : '') +
-					(node.trashed ? ' is-trashed' : ''),
-				draggable: !node.isTrash && !node.trashed,
+					(node.isHiddenBin ? ' is-hidden-bin' : '') +
+					(node.trashed ? ' is-trashed' : '') +
+					(node.hidden ? ' is-hidden-node' : ''),
+				draggable: !node.isTrash && !node.trashed && !node.isHiddenBin && !node.hidden,
 				'data-term-id': String(termId),
 				'data-depth': String(depth),
 				style: '--wtt-depth:' + String(depth),
@@ -2680,6 +2229,10 @@
 							t.closest('.wtt-tree__actions') ||
 							t.closest('.wtt-tree__toggle'))
 					) {
+						e.preventDefault();
+						return;
+					}
+					if (node.isTrash || node.trashed || node.isHiddenBin || node.hidden) {
 						e.preventDefault();
 						return;
 					}
@@ -2809,7 +2362,7 @@
 				);
 			}
 
-			var label = node.name;
+			var label = displayNodeName(node);
 			if (cfg.showTypeInTree && node.typeLabel) {
 				label += ' [' + node.typeLabel + ']';
 			}
@@ -2866,6 +2419,9 @@
 
 			var actions = el('div', { className: 'wtt-tree__actions', draggable: false });
 			var canDelete = node.deletable !== false;
+			var canHide =
+				!node.isTrash && !node.trashed && !node.isHiddenBin && !node.hidden;
+			var canUnhide = !!node.hidden && !node.isHiddenBin;
 
 			actions.appendChild(
 				treeActionSlot(
@@ -2877,7 +2433,7 @@
 			);
 			actions.appendChild(
 				treeActionSlot(
-					canUp
+					canUp && !node.hidden && !node.isHiddenBin
 						? treeActionButton(
 								'arrow-up-alt2',
 								i18n.moveUp || 'Move up',
@@ -2890,7 +2446,7 @@
 			);
 			actions.appendChild(
 				treeActionSlot(
-					canDown
+					canDown && !node.hidden && !node.isHiddenBin
 						? treeActionButton(
 								'arrow-down-alt2',
 								i18n.moveDown || 'Move down',
@@ -2899,6 +2455,27 @@
 								}
 						  )
 						: null
+				)
+			);
+			actions.appendChild(
+				treeActionSlot(
+					canHide
+						? treeActionButton(
+								'hidden',
+								i18n.hideNode || 'Hide node',
+								function () {
+									hideNodeById(node.id);
+								}
+						  )
+						: canUnhide
+							? treeActionButton(
+									'visibility',
+									i18n.unhideNode || 'Show again',
+									function () {
+										unhideNodeById(node.id);
+									}
+							  )
+							: null
 				)
 			);
 			actions.appendChild(
@@ -3003,7 +2580,7 @@
 			state.draft.hasFooter = !!typeNode.hasFooter;
 			state.draft.isTable = true;
 			state.draft.typeInheriting = false;
-			/* Props live on the catalog `table` type — copy for band-binding UI. */
+			/* Props live on the catalog `table` type â€” copy for band-binding UI. */
 			var props =
 				Array.isArray(typeNode.typeProps) && typeNode.typeProps.length
 					? deepClone(typeNode.typeProps)
@@ -3099,6 +2676,17 @@
 		afterDraftMutation();
 	}
 
+	function setDraftIsTemplate(checked) {
+		if (!state.draft) {
+			return;
+		}
+		if (!isDevelopmentMode()) {
+			return;
+		}
+		state.draft.isTemplate = !!checked;
+		afterDraftMutation();
+	}
+
 	function setDraftTypeInheriting(checked) {
 		if (!state.draft) {
 			return;
@@ -3107,7 +2695,7 @@
 		if (state.draft.canInheritType && !state.draft.typeOverride) {
 			return;
 		}
-		/* Table is a structural container — never push type onto bands/fields. */
+		/* Table is a structural container â€” never push type onto bands/fields. */
 		if (state.draft.isTable || typeNameIs(state.draft.type, 'table')) {
 			state.draft.typeInheriting = false;
 			afterDraftMutation();
@@ -3152,7 +2740,7 @@
 		if (!state.draft || !state.selectedNode) {
 			return;
 		}
-		if (state.draft.typeIsParent) {
+		if (state.draft.typeIsParent || state.draft.freeTypeLocked) {
 			return;
 		}
 		if (state.draft.canInheritType && !state.draft.typeOverride) {
@@ -3247,10 +2835,10 @@
 	function slugifyPreview(name) {
 		var s = String(name || '')
 			.toLowerCase()
-			.replace(/ä/g, 'ae')
-			.replace(/ö/g, 'oe')
-			.replace(/ü/g, 'ue')
-			.replace(/ß/g, 'ss')
+			.replace(/Ã¤/g, 'ae')
+			.replace(/Ã¶/g, 'oe')
+			.replace(/Ã¼/g, 'ue')
+			.replace(/ÃŸ/g, 'ss')
 			.replace(/[^a-z0-9]+/g, '-')
 			.replace(/^-+|-+$/g, '');
 		return s;
@@ -3304,7 +2892,7 @@
 		}
 		state.draft.propBindings = next;
 		afterDraftMutation();
-		/* Persist band bindings immediately — snapshot draft so later stale saves cannot drop it. */
+		/* Persist band bindings immediately â€” snapshot draft so later stale saves cannot drop it. */
 		saveNodeSettings({
 			autosave: true,
 			force: true,
@@ -3354,7 +2942,7 @@
 				className: 'wtt-panel__hint',
 				text:
 					i18n.tableBandBindingsHint ||
-					'Bindings map type property → child node (not by the child\'s display name).',
+					'Bindings map type property â†’ child node (not by the child\'s display name).',
 			})
 		);
 		var body = el('div', { className: 'wtt-panel__body wtt-table-band-bindings__rows' });
@@ -3364,7 +2952,7 @@
 			var required = !!prop.required;
 			var current =
 				parseInt((n.propBindings && (n.propBindings[prop.id] || n.propBindings[prop.key])) || 0, 10) || 0;
-			var opts = [{ id: 0, name: i18n.tableBandUnbound || '— not bound —' }].concat(
+			var opts = [{ id: 0, name: i18n.tableBandUnbound || 'â€” not bound â€”' }].concat(
 				children.map(function (c) {
 					return { id: c.id, name: c.name || ('#' + c.id) };
 				})
@@ -3418,6 +3006,17 @@
 		afterDraftMutation();
 	}
 
+	function setDraftIntDisplayFormat(formatId) {
+		if (!state.draft) {
+			return;
+		}
+		if (!state.draft.intConfig) {
+			state.draft.intConfig = { displayFormat: 'arabic' };
+		}
+		state.draft.intConfig.displayFormat = normalizeIntDisplayFormat(formatId);
+		afterDraftMutation();
+	}
+
 	function setDraftFooterOp(opKey) {
 		if (!state.draft) {
 			return;
@@ -3459,7 +3058,7 @@
 			var symbol = opt.symbol != null ? String(opt.symbol) : '';
 			var option = el('option', {
 				value: key,
-				text: symbol && symbol !== '—' ? label + ' (' + symbol + ')' : label,
+				text: symbol && symbol !== 'â€”' ? label + ' (' + symbol + ')' : label,
 			});
 			if (key === current) {
 				option.selected = true;
@@ -3597,7 +3196,7 @@
 			}
 			var statusText = '';
 			if (state.autosaving) {
-				statusText = i18n.settingsSaving || 'Saving…';
+				statusText = i18n.settingsSaving || 'Savingâ€¦';
 			} else if (!dirty && state.selectedId) {
 				statusText = i18n.settingsSaved || 'Saved';
 			}
@@ -3737,7 +3336,7 @@
 		} else {
 			var statusText = '';
 			if (state.autosaving) {
-				statusText = i18n.settingsSaving || 'Saving…';
+				statusText = i18n.settingsSaving || 'Savingâ€¦';
 			} else if (state.selectedId && !dirty) {
 				statusText = i18n.settingsSaved || 'Saved';
 			}
@@ -3784,6 +3383,35 @@
 				},
 			})
 		);
+		if (n.hidden && !n.isHiddenBin) {
+			structure.appendChild(
+				el('button', {
+					type: 'button',
+					className: 'button',
+					text: i18n.unhideNode || 'Show again',
+					title:
+						i18n.unhideNodeHint ||
+						'Restore this node to the tree under its parent.',
+					onClick: function () {
+						unhideNodeById(n.id);
+					},
+				})
+			);
+		} else if (!n.isTrash && !n.trashed && !n.isHiddenBin && !n.hidden) {
+			structure.appendChild(
+				el('button', {
+					type: 'button',
+					className: 'button',
+					text: i18n.hideNode || 'Hide node',
+					title:
+						i18n.hideNodeHint ||
+						'Keep this node but hide it from the tree. Find it again under Hidden nodes.',
+					onClick: function () {
+						hideNodeById(n.id);
+					},
+				})
+			);
+		}
 		bar.appendChild(structure);
 
 		var danger = el('div', {
@@ -3879,7 +3507,7 @@
 		var prev = parseInt(state.draft.refScopeId, 10) || 0;
 		state.draft.refScopeId = next;
 		if (next !== prev) {
-			/* New catalog root → reset allowlist (default = all children). */
+			/* New catalog root â†’ reset allowlist (default = all children). */
 			state.draft.allowedRefIds = [];
 		}
 		afterDraftMutation();
@@ -3967,7 +3595,7 @@
 		return false;
 	}
 
-	/** Relationstypen folder (Relation::ROOT_NAME) or any descendant — no Preview panel. */
+	/** Relationstypen folder (Relation::ROOT_NAME) or any descendant â€” no Preview panel. */
 	function isUnderRelationstypenBranch(termId) {
 		termId = parseInt(termId, 10) || 0;
 		if (!termId) {
@@ -3988,7 +3616,7 @@
 		return false;
 	}
 
-	/** Direct children of catalog root — `node_embed` pick list. */
+	/** Direct children of catalog root â€” `node_embed` pick list. */
 	function nodeEmbedPickRoots(scopeId, allowedIds) {
 		scopeId = parseInt(scopeId, 10) || 0;
 		if (!scopeId) {
@@ -4008,7 +3636,7 @@
 		});
 	}
 
-	/** Descendants under catalog root — `node_ref` pick roots (full subtree). */
+	/** Descendants under catalog root â€” `node_ref` pick roots (full subtree). */
 	function nodeRefPickRoots(scopeId) {
 		scopeId = parseInt(scopeId, 10) || 0;
 		if (!scopeId) {
@@ -4127,7 +3755,7 @@
 	}
 
 	/**
-	 * Attribute type chooser: two bindings — branch root (ast) + focus node.
+	 * Attribute type chooser: two bindings â€” branch root (ast) + focus node.
 	 * Example Fallstudie: root=Fallstudie (full tree), focus=Data Types.
 	 * @return {Array}
 	 */
@@ -4148,7 +3776,9 @@
 	}
 
 	/**
-	 * Initial focus in attribute type chooser (Data Types / Datentypen).
+	 * Fallback focus for attribute type chooser when the picker has no own focus.
+	 * Reads catalog binding chooser_focus (legacy data_types). Object View / Model
+	 * table must NOT use this - they pass modelId as focusId instead.
 	 * @return {number}
 	 */
 	function attributeTypeChooserFocusId(n) {
@@ -4221,7 +3851,7 @@
 	function resolveRefPickLabel(member, raw) {
 		var id = parseInt(raw, 10) || 0;
 		if (!id) {
-			return raw && String(raw) !== '' ? String(raw) : '—';
+			return raw && String(raw) !== '' ? String(raw) : 'â€”';
 		}
 		var node = findNodeInTree(state.tree, id);
 		if (node && node.name) {
@@ -4361,7 +3991,7 @@
 		if (
 			!currentVal &&
 			sample &&
-			sample !== '—' &&
+			sample !== 'â€”' &&
 			sample !== '' &&
 			/^\d+$/.test(String(sample))
 		) {
@@ -4420,7 +4050,7 @@
 
 	/**
 	 * Split set members for compact layout:
-	 * primary (picks + inputs) → bools → static/fixed (wrap groups).
+	 * primary (picks + inputs) â†’ bools â†’ static/fixed (wrap groups).
 	 */
 	function partitionSetMembers(members) {
 		var picks = [];
@@ -4520,7 +4150,7 @@
 				item.appendChild(
 					el('span', {
 						className: 'wtt-set-preview__bool-mark',
-						text: on ? '☑' : '☐',
+						text: on ? 'â˜‘' : 'â˜',
 						'aria-hidden': 'true',
 					})
 				);
@@ -4564,7 +4194,7 @@
 					? String(member.fixedLiteral)
 					: '') ||
 				(parts && parts.full) ||
-				'—';
+				'â€”';
 			var item = el('span', {
 				className: 'wtt-set-preview__static-item',
 				title: name ? name + ': ' + text : text,
@@ -4586,14 +4216,14 @@
 			strip.appendChild(item);
 			/* Keep edit path wired for consistency (static still read-only). */
 			if (mode === 'edit') {
-				/* no interactive control — value is schema-fixed */
+				/* no interactive control â€” value is schema-fixed */
 			}
 		});
 		return strip;
 	}
 
 	/**
-	 * Embedded property fields of a picked catalog node — same row as the picker.
+	 * Embedded property fields of a picked catalog node â€” same row as the picker.
 	 */
 	function renderEmbeddedRefFields(pickedId, mode, opts) {
 		opts = opts || {};
@@ -4612,7 +4242,7 @@
 			host.appendChild(
 				el('p', {
 					className: 'wtt-field-hint',
-					text: i18n.loading || 'Loading…',
+					text: i18n.loading || 'Loadingâ€¦',
 				})
 			);
 			return host;
@@ -4661,7 +4291,7 @@
 		return wrap;
 	}
 
-	/** @deprecated Separate panel removed — embed fields render inline with the picker. */
+	/** @deprecated Separate panel removed â€” embed fields render inline with the picker. */
 	function withDynamicRefFields(baseNode) {
 		return baseNode;
 	}
@@ -4784,7 +4414,7 @@
 		if (!state.selectedId || !state.draft || !isSettingsDirty()) {
 			return Promise.resolve();
 		}
-		/* Snapshot now — selectNode clears draft after this promise. */
+		/* Snapshot now â€” selectNode clears draft after this promise. */
 		return saveNodeSettings({
 			autosave: true,
 			force: true,
@@ -4895,6 +4525,10 @@
 			disabled_branch_ids: JSON.stringify(disabledBranchIdsFromDraft(payloadDraft)),
 			prefix_multiplikators: JSON.stringify(prefixMultiplikatorsFromDraft(payloadDraft)),
 		};
+		/* is_template: only send when Development mode (server also enforces). */
+		if (isDevelopmentMode()) {
+			savePayload.is_template = payloadDraft.isTemplate ? '1' : '0';
+		}
 		if (payloadDraft.fussFieldContext) {
 			savePayload.footer_op = payloadDraft.footerOp != null ? String(payloadDraft.footerOp) : '';
 		}
@@ -4925,6 +4559,11 @@
 		if (payloadDraft.dateConfig) {
 			savePayload.date_mode =
 				payloadDraft.dateConfig.mode === 'datetime' ? 'datetime' : 'date';
+		}
+		if (payloadDraft.intConfig) {
+			savePayload.int_display_format = normalizeIntDisplayFormat(
+				payloadDraft.intConfig.displayFormat
+			);
 		}
 		savePayload.preferred_render = normalizePreferredRender(
 			payloadDraft.preferredRender
@@ -4974,7 +4613,7 @@
 				}
 				/*
 				 * Stale response: a newer save was queued after this request started.
-				 * Never applyLoadedNode here — that wiped fresher propBindings in the draft.
+				 * Never applyLoadedNode here â€” that wiped fresher propBindings in the draft.
 				 */
 				if (seq !== autosaveSeq) {
 					return;
@@ -5039,21 +4678,21 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.praefixChildSettingsHint ||
-					'Enable prefixes and enter each factor vs the prefix root. to_si = Typ × factor × unit root factor.',
+					'Enable prefixes and enter each factor vs the prefix root. to_si = Typ Ã— factor Ã— unit root factor.',
 			})
 		);
 		var rootRow = el('div', { className: 'wtt-type-branch__root-factor' });
 		rootRow.appendChild(
 			el('label', {
 				className: 'wtt-type-branch__factor-label',
-				text: i18n.prefixRootToSi || 'Unit: prefix root → SI base',
+				text: i18n.prefixRootToSi || 'Unit: prefix root â†’ SI base',
 			})
 		);
 		var rootInput = el('input', {
 			type: 'text',
 			className: 'wtt-type-branch__factor-input',
 			value: formatFactor(rootToSi) || '1',
-			title: i18n.prefixRootToSiHint || 'Usually 1; Kilogramm uses 0.001 (g → kg).',
+			title: i18n.prefixRootToSiHint || 'Usually 1; Kilogramm uses 0.001 (g â†’ kg).',
 		});
 		if (state.settingsSaving) {
 			rootInput.disabled = true;
@@ -5092,7 +4731,7 @@
 
 			var factorWrap = el('span', { className: 'wtt-type-branch__factor' });
 			factorWrap.appendChild(
-				el('span', { className: 'wtt-type-branch__factor-mark', text: '×' })
+				el('span', { className: 'wtt-type-branch__factor-mark', text: 'Ã—' })
 			);
 			var factorVal =
 				child.multiplikator != null && child.multiplikator !== ''
@@ -5116,7 +4755,7 @@
 				factorWrap.appendChild(
 					el('span', {
 						className: 'wtt-type-branch__to-si',
-						text: '→ SI × ' + formatFactor(factorVal * rootToSi),
+						text: 'â†’ SI Ã— ' + formatFactor(factorVal * rootToSi),
 					})
 				);
 			}
@@ -5128,7 +4767,7 @@
 	}
 
 	/**
-	 * On set parents: show each child’s extras (not name/description) under parent settings.
+	 * On set parents: show each childâ€™s extras (not name/description) under parent settings.
 	 */
 	function renderChildExtrasOnParent(n, pane) {
 		if (!n.isSet || !Array.isArray(n.setMembers) || !n.setMembers.length) {
@@ -5178,7 +4817,7 @@
 					': ' +
 					((member.type && (member.type.path || member.type.name)) ||
 						i18n.setMemberUntyped ||
-						'—')
+						'â€”')
 			);
 			if (member.required) {
 				bits.push(i18n.required || 'Required');
@@ -5188,7 +4827,7 @@
 			} else if (member.fixedLiteral) {
 				bits.push((i18n.fixedValue || 'Fixed') + ': ' + member.fixedLiteral);
 			}
-			meta.textContent = bits.join(' · ');
+			meta.textContent = bits.join(' Â· ');
 			card.appendChild(meta);
 
 			if (
@@ -5321,7 +4960,7 @@
 				end = control.selectionEnd;
 			}
 		} catch (err) {
-			/* type=email/number may throw InvalidStateError — caret cannot be read */
+			/* type=email/number may throw InvalidStateError â€” caret cannot be read */
 			start = null;
 			end = null;
 		}
@@ -5405,7 +5044,7 @@
 
 	/**
 	 * Default Editable preview value when state.previewValues has no key yet.
-	 * Uses WTTSampleData (name heuristics → type fallback) — does not overwrite session edits.
+	 * Uses WTTSampleData (name heuristics â†’ type fallback) â€” does not overwrite session edits.
 	 */
 	function previewSampleText(member) {
 		if (member && member.sample != null && String(member.sample) !== '') {
@@ -5419,7 +5058,7 @@
 		}
 		var key = typeKeyFromMember(member);
 		if (key === 'display_node_name') {
-			return member.displayName || member.name || '—';
+			return member.displayName || member.name || 'â€”';
 		}
 		if (key === 'praefixe' || key === 'basiseinheit') {
 			var opts = enabledBranchOptions(member);
@@ -5431,9 +5070,9 @@
 						break;
 					}
 				}
-				return (pick && pick.name) || '—';
+				return (pick && pick.name) || 'â€”';
 			}
-			return '—';
+			return 'â€”';
 		}
 		if (key === 'node_ref' || key === 'node_embed') {
 			return '';
@@ -5584,7 +5223,7 @@
 		var value =
 			state.draft && state.draft.slug != null && String(state.draft.slug) !== ''
 				? String(state.draft.slug)
-				: '—';
+				: 'â€”';
 		chip.textContent = label + ': ' + value;
 	}
 
@@ -5596,7 +5235,7 @@
 	function renderMetaStatic(opts) {
 		opts = opts || {};
 		var label = opts.label != null ? String(opts.label) : '';
-		var value = opts.value != null ? String(opts.value) : '—';
+		var value = opts.value != null ? String(opts.value) : 'â€”';
 		var title = opts.title || '';
 		var metaKey = opts.metaKey ? String(opts.metaKey) : '';
 		if (typeof opts.onClick === 'function') {
@@ -5695,7 +5334,7 @@
 	}
 
 	function renderFixedValueField(n, controlsLocked) {
-		// Hide entirely when not applicable — inactive stubs get noisy with many parameters.
+		// Hide entirely when not applicable â€” inactive stubs get noisy with many parameters.
 		if (!canEditFixedValue(n)) {
 			return null;
 		}
@@ -5785,7 +5424,7 @@
 					step: key === 'int' ? '1' : key === 'double' || key === 'quantity' ? 'any' : undefined,
 					maxlength: key === 'char' ? '1' : undefined,
 					value: n.fixedLiteral || '',
-					placeholder: i18n.fixedLiteralPlaceholder || 'Constant value…',
+					placeholder: i18n.fixedLiteralPlaceholder || 'Constant valueâ€¦',
 				});
 				if (controlsLocked) {
 					input.disabled = true;
@@ -5820,7 +5459,7 @@
 				allowClear: true,
 				disabled: !!controlsLocked,
 				pickedPrefix: i18n.nodePickerSelected || 'Selected:',
-				placeholder: i18n.fixedValueChoose || 'Choose node…',
+				placeholder: i18n.fixedValueChoose || 'Choose nodeâ€¦',
 				dialogTitle: i18n.fixedValue || 'Fixed value',
 				emptyText:
 					(parseInt(n.refScopeId, 10) || 0)
@@ -5848,7 +5487,7 @@
 						className: 'wtt-field-hint',
 						text:
 							i18n.fixedCatalogWholeTreeHint ||
-							'No catalog root (ref_scope) yet — pick any node in the tree, or set ref_scope first to limit to catalog children.',
+							'No catalog root (ref_scope) yet â€” pick any node in the tree, or set ref_scope first to limit to catalog children.',
 					})
 				);
 			}
@@ -5916,7 +5555,7 @@
 		return true;
 	}
 
-	/** True when the member’s quantity schema includes a Praefix slot. */
+	/** True when the memberâ€™s quantity schema includes a Praefix slot. */
 	function memberHasPraefixSlot(member) {
 		if (!member || !member.quantitySchema || !Array.isArray(member.quantitySchema.members)) {
 			return false;
@@ -5925,9 +5564,9 @@
 			var m = member.quantitySchema.members[i];
 			var key = String((m && m.name) || '')
 				.toLowerCase()
-				.replace(/ü/g, 'ue')
-				.replace(/ä/g, 'ae')
-				.replace(/ö/g, 'oe');
+				.replace(/Ã¼/g, 'ue')
+				.replace(/Ã¤/g, 'ae')
+				.replace(/Ã¶/g, 'oe');
 			if (key === 'praefix') {
 				return true;
 			}
@@ -6220,7 +5859,7 @@
 			type: 'button',
 			className: 'button button-primary',
 			text: state.enumValuesSaving
-				? i18n.enumValuesSaving || 'Saving…'
+				? i18n.enumValuesSaving || 'Savingâ€¦'
 				: i18n.enumValuesSave || 'Save enum values',
 			disabled: locked,
 			onClick: function () {
@@ -6354,6 +5993,7 @@
 
 	/**
 	 * To endpoint is pickable except child_of (reparent) and when To is this node.
+	 * has_type To is never free-editable when freeTypeLocked (Q88 / root seed).
 	 */
 	function canPickRelationTarget(row, opts) {
 		opts = opts || {};
@@ -6367,6 +6007,10 @@
 			return false;
 		}
 		if (isHasTypeRelationRow(row)) {
+			var node = opts.node;
+			if (node && (node.freeTypeLocked || node.typeIsParent)) {
+				return false;
+			}
 			return !isRelationRowLocked(row);
 		}
 		if (isRefScopeRelationRow(row)) {
@@ -6394,16 +6038,53 @@
 				otherId: parentId,
 				otherName: n.parentName || String(parentId),
 				multiplicity: '1',
-				notes: i18n.relationsProtected || 'protected — reparent only',
+				notes: i18n.relationsProtected || 'protected â€” reparent only',
 				protected: true,
 			});
 		}
 
 		/*
-		 * Q88: hierarchy datatype = parent via child_of — do not mirror as has_type.
-		 * Attribute / catalog field types still show has_type when typeId is set.
+		 * Q88: hierarchy datatype = parent via child_of — do not mirror as free has_type.
+		 * Root: seed type_id may exist — protected readout only (no admin set_type).
+		 * Attribute / catalog field types still show editable has_type when typeId is set.
 		 */
-		if (n.typeId && !n.typeIsParent) {
+		if (n.typeId && n.typeIsParent) {
+			von.push({
+				type: 'has_type',
+				typeKey: 'has_type',
+				typeId: hasTypeRelId,
+				otherId: parseInt(n.typeId, 10) || 0,
+				otherName:
+					(n.type && (n.type.path || n.type.name)) ||
+					String(n.typeId),
+				multiplicity: '0..1',
+				notes:
+					i18n.relationsHasTypeParent ||
+					'hierarchy — type is the parent (child_of); not editable',
+				protected: true,
+				typeLocked: true,
+				synthetic: true,
+				stored: false,
+			});
+		} else if (n.typeId && n.freeTypeLocked) {
+			von.push({
+				type: 'has_type',
+				typeKey: 'has_type',
+				typeId: hasTypeRelId,
+				otherId: parseInt(n.typeId, 10) || 0,
+				otherName:
+					(n.type && (n.type.path || n.type.name)) ||
+					String(n.typeId),
+				multiplicity: '0..1',
+				notes:
+					i18n.relationsHasTypeSeed ||
+					'seed — root type is not editable in admin',
+				protected: true,
+				typeLocked: true,
+				synthetic: true,
+				stored: false,
+			});
+		} else if (n.typeId && !n.typeIsParent) {
 			var typeInherited = !!n.canInheritType && !n.typeOverride;
 			von.push({
 				type: 'has_type',
@@ -6418,7 +6099,7 @@
 					? i18n.relationsHasTypeInherited ||
 					  'inherited — enable Override to change'
 					: i18n.relationsHasTypeNote ||
-					  'Data type binding (0..1). Add / remove here.',
+					  'Data type binding (0..1). Attribute / catalog field types only.',
 				protected: typeInherited,
 				synthetic: true,
 				stored: false,
@@ -6440,7 +6121,7 @@
 				multiplicity: '0..1',
 				notes:
 					i18n.relationsRefScopeNote ||
-					'Catalog root — click To to change',
+					'Catalog root â€” click To to change',
 				protected: true,
 				synthetic: true,
 				stored: false,
@@ -6473,7 +6154,7 @@
 				otherId: parseInt(child.id, 10) || 0,
 				otherName: child.name || String(child.id),
 				multiplicity: '1',
-				notes: i18n.relationsProtected || 'protected — reparent only',
+				notes: i18n.relationsProtected || 'protected â€” reparent only',
 				protected: true,
 			});
 		});
@@ -6503,7 +6184,7 @@
 					otherId: nid,
 					otherName: node.name || String(nid),
 					multiplicity: '0..*',
-					notes: i18n.relationsRefScopeNote || 'derived — change Catalog root',
+					notes: i18n.relationsRefScopeNote || 'derived â€” change Catalog root',
 					protected: true,
 					stored: false,
 				});
@@ -6749,7 +6430,7 @@
 		if (!canEdit) {
 			return el('td', {
 				className: 'wtt-relations__type',
-				text: row.type || '—',
+				text: row.type || 'â€”',
 			});
 		}
 
@@ -6793,7 +6474,7 @@
 			select.appendChild(
 				el('option', {
 					value: String(currentId || ''),
-					text: row.type || '—',
+					text: row.type || 'â€”',
 					selected: true,
 				})
 			);
@@ -6835,7 +6516,7 @@
 				el('button', {
 					type: 'button',
 					className: 'button-link wtt-relations__link wtt-relations__target-pick',
-					text: nodeName || String(id) || '—',
+					text: nodeName || String(id) || 'â€”',
 					title:
 						i18n.relationsChangeTarget ||
 						'Change target node',
@@ -6859,7 +6540,7 @@
 			);
 			return td;
 		}
-		td.appendChild(document.createTextNode(nodeName || '—'));
+		td.appendChild(document.createTextNode(nodeName || 'â€”'));
 		return td;
 	}
 
@@ -6927,7 +6608,7 @@
 	}
 
 	/**
-	 * Always: From node → Relation type → To node. Current node shown by name.
+	 * Always: From node â†’ Relation type â†’ To node. Current node shown by name.
 	 */
 	function renderRelationsTable(rows, opts) {
 		opts = opts || {};
@@ -7142,7 +6823,7 @@
 	}
 
 	/**
-	 * Type ids already used for From → To (stored edges only).
+	 * Type ids already used for From â†’ To (stored edges only).
 	 * @return Object.<string, boolean>
 	 */
 	function usedRelationTypeIdsForPair(n, fromId, toId) {
@@ -7238,6 +6919,7 @@
 			);
 			return;
 		}
+		var freeTypeLocked = !!(n && (n.freeTypeLocked || n.typeIsParent));
 		openNodeTreePickerDialog(
 			{
 				roots: typeRoots,
@@ -7253,6 +6935,10 @@
 					}
 					var name = String(node.name || '').toLowerCase();
 					if (name === 'child_of' || name === 'relationstypen') {
+						return false;
+					}
+					/* Q88 / root seed: no free has_type assign from Relations. */
+					if (freeTypeLocked && name === 'has_type') {
 						return false;
 					}
 					return !node.hasChildren;
@@ -7413,7 +7099,7 @@
 
 	/**
 	 * Same partner Node, pick another Relation type.
-	 * direction 'von': self → partner; 'an': partner → self (edge stored on partner).
+	 * direction 'von': self â†’ partner; 'an': partner â†’ self (edge stored on partner).
 	 */
 	function duplicateRelationWithOtherType(n, row, direction) {
 		var selfId = parseInt(n.id, 10) || 0;
@@ -7534,7 +7220,7 @@
 	}
 
 	/**
-	 * Flatten von/an into directed edges: from → type → to (current node = this).
+	 * Flatten von/an into directed edges: from â†’ type â†’ to (current node = this).
 	 */
 	function buildDirectedRelationRows(n, rel) {
 		var selfId = parseInt(n.id, 10) || 0;
@@ -7615,7 +7301,7 @@
 			)
 		);
 
-		/* Column order: data… → Inherited? → Actions (Actions always last). */
+		/* Column order: dataâ€¦ â†’ Inherited? â†’ Actions (Actions always last). */
 		var columns = [
 			{ label: i18n.attributesName || 'Name', className: 'wtt-col-name' },
 			{ label: i18n.attributesType || 'Type', className: 'wtt-col-type' },
@@ -7705,6 +7391,10 @@
 				placeholder: i18n.attributesName || 'Name',
 			});
 			var typeState = { id: 0, name: '' };
+			var addState = {
+				pendingFixed: [],
+				readonly: false,
+			};
 			var typeCell = el('td', { className: 'wtt-col-type' });
 			function mountAddTypePicker() {
 				typeCell.textContent = '';
@@ -7721,7 +7411,9 @@
 							}
 							typeState.id = typeId;
 							typeState.name = attributeTypeLabel(n, typeId);
+							addState.pendingFixed = [];
 							mountAddTypePicker();
+							mountAddFixedCell();
 						},
 					})
 				);
@@ -7739,8 +7431,19 @@
 					})
 				);
 			});
+			multSelect.addEventListener('change', function () {
+				var m = String(multSelect.value || '1');
+				var many = m === '0..*' || m === '1..*';
+				if (!many && addState.pendingFixed.length > 1) {
+					addState.pendingFixed = addState.pendingFixed.slice(0, 1);
+					mountAddFixedCell();
+				}
+			});
 			var bindSelect = el('select', {
 				className: 'wtt-attributes__binding-select',
+				title:
+					i18n.attributesBindingTitle ||
+					'Composition or aggregation binding',
 			});
 			attributeBindingOptions().forEach(function (opt) {
 				bindSelect.appendChild(
@@ -7751,6 +7454,149 @@
 					})
 				);
 			});
+			var fixedCell = el('td', {
+				className: 'wtt-col-fixed wtt-attributes__fixed',
+			});
+			var readonlyCell = el('td', {
+				className: 'wtt-col-readonly wtt-attributes__readonly',
+			});
+
+			function formatPendingFixedLabel(values) {
+				return (values || [])
+					.map(function (v) {
+						v = String(v || '');
+						if (/^\d+$/.test(v)) {
+							var hit = findNodeInTree(state.tree, parseInt(v, 10));
+							if (hit && hit.name) {
+								return hit.name;
+							}
+						}
+						return v;
+					})
+					.filter(Boolean)
+					.join(', ');
+			}
+
+			function buildAddAttributeDraft() {
+				var typeId = typeState.id;
+				var typeNode = typeId
+					? findNodeInTree(state.tree, typeId)
+					: null;
+				var typeKey = typeNode
+					? String(typeNode.name || '').toLowerCase()
+					: '';
+				var typeName =
+					typeState.name ||
+					(typeNode && typeNode.name) ||
+					'';
+				var isUnit = !!(typeNode && typeNode.isBasiseinheitUnit);
+				var isEnum = !!(typeNode && typeNode.isConcreteEnum);
+				var scalarKeys = {
+					int: true,
+					double: true,
+					text: true,
+					email: true,
+					textarea: true,
+					char: true,
+					bool: true,
+					date: true,
+					quantity: true,
+					media: true,
+					display_node_name: true,
+				};
+				var fixedMode = 'literal';
+				if (typeId && (isEnum || (!isUnit && !scalarKeys[typeKey]))) {
+					fixedMode = 'catalog';
+				}
+				var mult = String(multSelect.value || '1');
+				var draftName = String(nameInput.value || '').trim();
+				return {
+					id: 0,
+					name:
+						draftName ||
+						(i18n.attributesName || 'Attribute'),
+					typeId: typeId,
+					typeKey: typeKey,
+					typeName: typeName,
+					multiplicity: mult,
+					allowsMany: mult === '0..*' || mult === '1..*',
+					allowsEmpty: mult === '0..1' || mult === '0..*',
+					fixedMode: fixedMode,
+					fixedRootId: typeId,
+					fixedOptions: [],
+					fixedValues: addState.pendingFixed.slice(),
+				};
+			}
+
+			function mountAddFixedCell() {
+				fixedCell.textContent = '';
+				var hasFixed = addState.pendingFixed.length > 0;
+				var fixedLabel = formatPendingFixedLabel(addState.pendingFixed);
+				var fixedBtnAttrs = {
+					type: 'button',
+					className:
+						'button-link wtt-attributes__fixed-btn' +
+						(hasFixed ? ' has-value' : ' is-empty'),
+					title:
+						(hasFixed
+							? fixedLabel
+							: i18n.attributesFixedAdd || 'Set default') +
+						(i18n.attributesFixedHint
+							? ' â€” ' + i18n.attributesFixedHint
+							: ''),
+					'aria-label': hasFixed
+						? fixedLabel
+						: i18n.attributesFixedAdd || 'Set default',
+					onClick: function () {
+						if (!typeState.id) {
+							setError(
+								i18n.attributesTypeRequired ||
+									'Attribute type is required.'
+							);
+							return;
+						}
+						openAttributeFixedValueDialog(
+							n,
+							buildAddAttributeDraft(),
+							function () {},
+							{
+								onSave: function (values) {
+									addState.pendingFixed = Array.isArray(values)
+										? values.slice()
+										: [];
+									mountAddFixedCell();
+								},
+							}
+						);
+					},
+				};
+				if (hasFixed) {
+					fixedBtnAttrs.text = fixedLabel;
+				} else {
+					fixedBtnAttrs.html =
+						'<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span>';
+				}
+				fixedCell.appendChild(el('button', fixedBtnAttrs));
+			}
+			mountAddFixedCell();
+
+			function mountAddReadonlyCell() {
+				readonlyCell.textContent = '';
+				readonlyCell.appendChild(
+					renderSlideSwitch({
+						checked: !!addState.readonly,
+						disabled: false,
+						title:
+							i18n.attributesReadonlyHint ||
+							'When on, the attribute is not editable in forms.',
+						onChange: function (on) {
+							addState.readonly = !!on;
+						},
+					})
+				);
+			}
+			mountAddReadonlyCell();
+
 			var addBtn = el('button', {
 				type: 'button',
 				className: 'button button-primary button-small',
@@ -7771,18 +7617,29 @@
 						);
 						return;
 					}
-					post('wtt_add_attribute', {
+					var payload = {
 						term_id: hostId,
 						name: name,
 						type_id: typeState.id,
 						multiplicity: multSelect.value || '1',
 						binding: bindSelect.value || 'besteht_aus',
-					})
+						readonly: addState.readonly ? '1' : '0',
+					};
+					if (addState.pendingFixed.length) {
+						payload.fixed_values = JSON.stringify(
+							addState.pendingFixed
+						);
+					}
+					post('wtt_add_attribute', payload)
 						.then(function (json) {
 							nameInput.value = '';
 							typeState.id = 0;
 							typeState.name = '';
+							addState.pendingFixed = [];
+							addState.readonly = false;
 							mountAddTypePicker();
+							mountAddFixedCell();
+							mountAddReadonlyCell();
 							multSelect.value = '1';
 							bindSelect.value = 'besteht_aus';
 							return applyRelationMutation(json);
@@ -7802,21 +7659,8 @@
 			addTr.appendChild(
 				el('td', { className: 'wtt-col-binding' }, [bindSelect])
 			);
-			addTr.appendChild(
-				el('td', {
-					className: 'wtt-col-fixed',
-					text: '—',
-				})
-			);
-			addTr.appendChild(
-				el('td', { className: 'wtt-col-readonly' }, [
-					renderSlideSwitch({
-						checked: false,
-						disabled: true,
-						title: i18n.attributesReadonlyHint || '',
-					}),
-				])
-			);
+			addTr.appendChild(fixedCell);
+			addTr.appendChild(readonlyCell);
 			addTr.appendChild(
 				el('td', { className: 'wtt-col-hide' }, [
 					renderSlideSwitch({
@@ -7832,7 +7676,7 @@
 				addTr.appendChild(
 					el('td', {
 						className: 'wtt-col-inherited',
-						text: '—',
+						text: 'â€”',
 					})
 				);
 			}
@@ -7935,7 +7779,7 @@
 			disabled: !!opts.disabled,
 			className: 'wtt-attributes__type-picker',
 			dialogTitle: i18n.attributesPickType || 'Choose attribute type',
-			placeholder: i18n.attributesPickType || 'Choose type…',
+			placeholder: i18n.attributesPickType || 'Choose typeâ€¦',
 			pickedPrefix: i18n.nodePickerSelected || 'Selected:',
 			focusId: focusId,
 			preferFocus: true,
@@ -8051,6 +7895,7 @@
 		var compute = extras.compute || attr.compute;
 		var typeKey = String(attr.typeKey || '').toLowerCase();
 		var isDate = typeKey === 'date';
+		var isInt = typeKey === 'int' || typeKey === 'integer';
 		var hasChoice =
 			String(attr.fixedMode || '') === 'catalog' &&
 			attributeChoiceFilterRoots(attr).length > 0;
@@ -8063,9 +7908,10 @@
 		var showCompute = isNumeric || hasCompute;
 		return {
 			isDate: isDate,
+			isInt: isInt,
 			hasChoice: hasChoice,
 			showCompute: showCompute,
-			hasAny: isDate || hasChoice || showCompute,
+			hasAny: isDate || isInt || hasChoice || showCompute,
 		};
 	}
 
@@ -8149,7 +7995,7 @@
 			);
 		}
 
-		/* Type — popup tree chooser (own or inherited local override). */
+		/* Type â€” popup tree chooser (own or inherited local override). */
 		var typeLabel =
 			attr.typeName ||
 			(attr.typeId
@@ -8192,7 +8038,7 @@
 			tr.appendChild(el('td', { className: 'wtt-col-type', text: typeLabel }));
 		}
 
-		/* Mult. — own update or inherited local override. */
+		/* Mult. â€” own update or inherited local override. */
 		var currentMult = String(attr.multiplicity || '1');
 		if (editable) {
 			var select = el('select', {
@@ -8246,7 +8092,7 @@
 			);
 		}
 
-		/* Bindung — aggregation | besteht_aus (local override when inherited). */
+		/* Bindung â€” aggregation | besteht_aus (local override when inherited). */
 		var currentBinding = String(attr.binding || 'besteht_aus');
 		if (currentBinding === 'composition') {
 			currentBinding = 'besteht_aus';
@@ -8293,7 +8139,7 @@
 			);
 		}
 
-		/* Default — empty = +, else show value. */
+		/* Default â€” empty = +, else show value. */
 		var fixedCell = el('td', { className: 'wtt-col-fixed wtt-attributes__fixed' });
 		var fixedLabel =
 			attr.fixedLabel ||
@@ -8314,7 +8160,7 @@
 					? fixedLabel
 					: i18n.attributesFixedAdd || 'Set default') +
 				(i18n.attributesFixedHint
-					? ' — ' + i18n.attributesFixedHint
+					? ' â€” ' + i18n.attributesFixedHint
 					: ''),
 			'aria-label':
 				hasFixed
@@ -8336,7 +8182,7 @@
 		fixedCell.appendChild(el('button', fixedBtnAttrs));
 		tr.appendChild(fixedCell);
 
-		/* Readonly — host-scoped; own and inherited. Forced on when computed. */
+		/* Readonly â€” host-scoped; own and inherited. Forced on when computed. */
 		var readonlyCell = el('td', {
 			className: 'wtt-col-readonly wtt-attributes__readonly',
 		});
@@ -8368,7 +8214,7 @@
 		);
 		tr.appendChild(readonlyCell);
 
-		/* Hide — default OFF. Only meaningful for inherited attrs. */
+		/* Hide â€” default OFF. Only meaningful for inherited attrs. */
 		var hideCell = el('td', { className: 'wtt-col-hide wtt-attributes__hide' });
 		hideCell.appendChild(
 			renderSlideSwitch({
@@ -8397,7 +8243,7 @@
 		);
 		tr.appendChild(hideCell);
 
-		/* Inherited — only when this host has any inherited attrs. */
+		/* Inherited â€” only when this host has any inherited attrs. */
 		if (showInherited) {
 			var inhCell = el('td', {
 				className: 'wtt-col-inherited wtt-attributes__inherited',
@@ -8419,14 +8265,14 @@
 				inhCell.appendChild(
 					el('span', {
 						className: 'wtt-attributes__inherited-no',
-						text: i18n.attributesInheritedNo || '—',
+						text: i18n.attributesInheritedNo || 'â€”',
 					})
 				);
 			}
 			tr.appendChild(inhCell);
 		}
 
-		/* Actions — reorder ↑↓, hierarchy move, duplicate, trash. */
+		/* Actions â€” reorder â†‘â†“, hierarchy move, duplicate, trash. */
 		var actions = el('td', {
 			className: 'wtt-col-actions wtt-attributes__actions',
 		});
@@ -8559,7 +8405,7 @@
 				}
 			}
 
-			/* Duplicate: own or inherited → new own attribute on this host. */
+			/* Duplicate: own or inherited â†’ new own attribute on this host. */
 			actions.appendChild(
 				el('button', {
 					type: 'button',
@@ -8616,7 +8462,7 @@
 			actions.appendChild(
 				el('span', {
 					className: 'wtt-attributes__actions-na',
-					text: '—',
+					text: 'â€”',
 				})
 			);
 		}
@@ -8691,6 +8537,18 @@
 			if (sections.isDate) {
 				wrap.appendChild(
 					renderAttrDateModeDetail(
+						n,
+						attr,
+						extras,
+						detailEditable,
+						hostId,
+						attrId
+					)
+				);
+			}
+			if (sections.isInt) {
+				wrap.appendChild(
+					renderAttrIntFormatDetail(
 						n,
 						attr,
 						extras,
@@ -8818,6 +8676,66 @@
 				el('span', {
 					className: 'wtt-attributes__detail-label',
 					text: i18n.attributesDateMode || 'Date mode',
+				}),
+				select,
+			]
+		);
+	}
+
+	function renderAttrIntFormatDetail(n, attr, extras, editable, hostId, attrId) {
+		var typeFormat = normalizeIntDisplayFormat(
+			(attr.intConfig && attr.intConfig.typeFormat) ||
+				(attr.intConfig && attr.intConfig.displayFormat) ||
+				'arabic'
+		);
+		var current =
+			extras.displayFormat != null && extras.displayFormat !== ''
+				? normalizeIntDisplayFormat(extras.displayFormat)
+				: '';
+		var select = el('select', {
+			className: 'wtt-attributes__detail-select',
+			disabled: !editable,
+			onChange: function (e) {
+				var next = Object.assign({}, extras);
+				var val = e.target.value;
+				if (!val) {
+					delete next.displayFormat;
+				} else {
+					next.displayFormat = normalizeIntDisplayFormat(val);
+				}
+				saveAttributeTypeExtras(hostId, attrId, next);
+			},
+		});
+		select.appendChild(
+			el('option', {
+				value: '',
+				text:
+					(i18n.attributesIntFormatDefault || 'Type default') +
+					' (' +
+					intDisplayFormatLabel(typeFormat) +
+					')',
+				selected: !current,
+			})
+		);
+		INT_DISPLAY_FORMAT_IDS.forEach(function (id) {
+			select.appendChild(
+				el('option', {
+					value: id,
+					text: intDisplayFormatLabel(id),
+					selected: current === id,
+				})
+			);
+		});
+		return el(
+			'div',
+			{
+				className:
+					'wtt-attributes__detail-block wtt-attributes__detail-block--int',
+			},
+			[
+				el('span', {
+					className: 'wtt-attributes__detail-label',
+					text: i18n.attributesIntFormat || 'Number format',
 				}),
 				select,
 			]
@@ -9072,13 +8990,13 @@
 						className: 'wtt-attributes__compute-source',
 					});
 					var kind = src && src.kind === 'attrPath' ? 'attrPath' : 'attr';
-					var label = '—';
+					var label = 'â€”';
 					peers.forEach(function (p) {
 						if (p && parseInt(p.id, 10) === parseInt(src.attrId, 10)) {
 							label = p.name || '#' + src.attrId;
 							if (kind === 'attrPath' && src.pathAttrId) {
 								label +=
-									' → #' + String(src.pathAttrId);
+									' â†’ #' + String(src.pathAttrId);
 							}
 						}
 					});
@@ -9128,7 +9046,7 @@
 			peerSelect.appendChild(
 				el('option', {
 					value: '',
-					text: i18n.attributesComputePickSource || 'Add source…',
+					text: i18n.attributesComputePickSource || 'Add sourceâ€¦',
 				})
 			);
 			peers.forEach(function (p) {
@@ -9169,14 +9087,14 @@
 					peerSelect.value = '';
 					return;
 				}
-				/* Mult-many: need path attr on linked type — list attrs of that type host if available. */
+				/* Mult-many: need path attr on linked type â€” list attrs of that type host if available. */
 				pathSelect.style.display = '';
 				pathSelect.appendChild(
 					el('option', {
 						value: '',
 						text:
 							i18n.attributesComputePickPath ||
-							'Attribute on linked type…',
+							'Attribute on linked typeâ€¦',
 					})
 				);
 				var peer = null;
@@ -9195,7 +9113,7 @@
 						? typeNode.attributes
 						: [];
 				if (!pathAttrs.length && peer && Array.isArray(peer.fixedOptions)) {
-					/* Fallback: no live attrs — user enters id via first numeric peer attrs of host as path candidates poorly. */
+					/* Fallback: no live attrs â€” user enters id via first numeric peer attrs of host as path candidates poorly. */
 				}
 				pathAttrs.forEach(function (pa) {
 					if (!pa || pa.id == null) {
@@ -9367,7 +9285,7 @@
 	}
 
 	/**
-	 * Flat CatalogChoice dialog (Q90 depth ≤ 1) — simple <select> list.
+	 * Flat CatalogChoice dialog (Q90 depth â‰¤ 1) â€” simple <select> list.
 	 *
 	 * @param {{
 	 *   options: Array,
@@ -9487,7 +9405,7 @@
 				if (hit.children && hit.children.length) {
 					return hit.children;
 				}
-				/* Type leaf with no children — still allow picking the type itself. */
+				/* Type leaf with no children â€” still allow picking the type itself. */
 				return [hit];
 			}
 		}
@@ -9519,10 +9437,17 @@
 	}
 
 	/**
-	 * Festwert picker — catalog types use the same node tree picker as list pickers;
+	 * Festwert picker â€” catalog types use the same node tree picker as list pickers;
 	 * scalars use an editable value list (1 or many by multiplicity).
+	 *
+	 * @param {Object} n Host node.
+	 * @param {Object} attr Attribute row (id may be 0 for add-row draft).
+	 * @param {Function} [onDone]
+	 * @param {{ onSave?: function(list<string>): * }} [opts] When onSave is set,
+	 *        values are handed to that callback instead of posting AJAX.
 	 */
-	function openAttributeFixedValueDialog(n, attr, onDone) {
+	function openAttributeFixedValueDialog(n, attr, onDone, opts) {
+		opts = opts || {};
 		var hostId = parseInt(n.id, 10) || 0;
 		var attrId = parseInt(attr.id, 10) || 0;
 		var allowsMany = !!attr.allowsMany;
@@ -9539,10 +9464,14 @@
 		}
 
 		function save(values) {
+			values = values || [];
+			if (typeof opts.onSave === 'function') {
+				return Promise.resolve(opts.onSave(values)).then(finishDone);
+			}
 			return post('wtt_set_attribute_fixed', {
 				term_id: hostId,
 				attr_id: attrId,
-				values: JSON.stringify(values || []),
+				values: JSON.stringify(values),
 			})
 				.then(function (json) {
 					return applyRelationMutation(json);
@@ -9553,7 +9482,7 @@
 				});
 		}
 
-		/* Catalog / enum: CatalogChoice — depth ≤1 list, ≥2 tree (Q90). */
+		/* Catalog / enum: CatalogChoice â€” depth â‰¤1 list, â‰¥2 tree (Q90). */
 		if (useCatalog) {
 			var roots = attributeFixedCatalogRoots(n, attr);
 			var options = Array.isArray(attr.fixedOptions)
@@ -9627,7 +9556,7 @@
 							': ' +
 							(attr.name || ''),
 						placeholder:
-							i18n.attributesFixedEdit || 'Choose default…',
+							i18n.attributesFixedEdit || 'Choose defaultâ€¦',
 						selectable: function (node) {
 							return !!(node && node.id != null);
 						},
@@ -9663,9 +9592,9 @@
 					className: 'description',
 					text:
 						(attr.name || '') +
-						' · ' +
+						' Â· ' +
 						(attr.typeName || typeKey || '') +
-						' · ' +
+						' Â· ' +
 						(attr.multiplicity || '1'),
 				})
 			);
@@ -9838,9 +9767,9 @@
 				className: 'description',
 				text:
 					(attr.name || '') +
-					' · ' +
+					' Â· ' +
 					(attr.typeName || typeKey || '') +
-					' · ' +
+					' Â· ' +
 					(attr.multiplicity || '1'),
 			})
 		);
@@ -10007,7 +9936,7 @@
 			renderRelationsSectionTitle(
 				i18n.relationsTitle || 'Relations',
 				i18n.relationsHelp ||
-					'Always From node → Relation type → To node. The current node is shown by name (not a link); hover for the hint.'
+					'Always From node â†’ Relation type â†’ To node. The current node is shown by name (not a link); hover for the hint.'
 			)
 		);
 		var headActions = el('div', { className: 'wtt-relations__head-actions' });
@@ -10049,7 +9978,7 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.relationsHint ||
-					'Format: node → relation type → node. The current node is plain text (tooltip: current node). Mult. = definition multiplicity. Protected rows are derived (child_of / has_type).',
+					'Format: node â†’ relation type â†’ node. The current node is plain text (tooltip: current node). Mult. = definition multiplicity. Protected rows are derived (child_of / has_type).',
 			})
 		);
 		block.appendChild(
@@ -10100,7 +10029,7 @@
 	}
 
 	function renderSetMembers(n, pane) {
-		// Option: show child properties under parent — only for set-typed nodes.
+		// Option: show child properties under parent â€” only for set-typed nodes.
 		if (!cfg.showSetChildProps || !n.isSet || !n.setMembers || !n.setMembers.length) {
 			return;
 		}
@@ -10146,7 +10075,7 @@
 					text:
 						(member.type && (member.type.path || member.type.name)) ||
 						i18n.setMemberUntyped ||
-						'— not typed —',
+						'â€” not typed â€”',
 				})
 			);
 			row.appendChild(
@@ -10156,7 +10085,7 @@
 							((member.fixedLiteral && String(member.fixedLiteral)) ||
 								(member.fixed && (member.fixed.path || member.fixed.name)))) ||
 						i18n.fixedValueNone ||
-						'— Not fixed —',
+						'â€” Not fixed â€”',
 				})
 			);
 			row.appendChild(
@@ -10191,8 +10120,8 @@
 		}
 		name = String(name).trim().toLowerCase();
 		/*
-		 * Type-catalog leaves (isDatatype) often have no type_id — the node name
-		 * IS the type key (int, bool, …). Do not fall through to default "text".
+		 * Type-catalog leaves (isDatatype) often have no type_id â€” the node name
+		 * IS the type key (int, bool, â€¦). Do not fall through to default "text".
 		 */
 		if (
 			!name &&
@@ -10233,7 +10162,7 @@
 		if (name === 'e-mail' || name === 'e_mail' || name === 'mail') {
 			return 'email';
 		}
-		if (name === 'praefixe' || name === 'präfixe') {
+		if (name === 'praefixe' || name === 'prÃ¤fixe') {
 			return 'praefixe';
 		}
 		if (name === 'basiseinheit') {
@@ -10256,11 +10185,11 @@
 		if (name === 'node_pick' || name === 'node pick') {
 			return 'node_pick';
 		}
-		/* Informal / DE aliases → quantity (Größe). */
+		/* Informal / DE aliases â†’ quantity (GrÃ¶ÃŸe). */
 		if (
 			name === 'measure' ||
 			name === 'groesse' ||
-			name === 'größe' ||
+			name === 'grÃ¶ÃŸe' ||
 			name === 'grose'
 		) {
 			return 'quantity';
@@ -10309,9 +10238,9 @@
 			child.shortDescription != null ? String(child.shortDescription).trim() : '';
 		var long = child.description != null ? String(child.description).trim() : '';
 		if (short) {
-			line += ' — ' + short;
+			line += ' â€” ' + short;
 		} else if (long) {
-			line += ' — ' + long;
+			line += ' â€” ' + long;
 		}
 		return line;
 	}
@@ -10434,11 +10363,11 @@
 	 * Preview field views (generic)
 	 *
 	 * Call sites pass a field descriptor (set member or normalized node).
-	 * Same kind → same view everywhere (form row, table cell, unit usage, …).
+	 * Same kind â†’ same view everywhere (form row, table cell, unit usage, â€¦).
 	 *
 	 * - quantity: Typ + Praefix + Kuerzel (quantitySchema on a typed field, or
-	 *   a Basiseinheit unit node’s own setMembers)
-	 * - scalar: one control from the field’s data type / typeBranch
+	 *   a Basiseinheit unit nodeâ€™s own setMembers)
+	 * - scalar: one control from the fieldâ€™s data type / typeBranch
 	 * Editable mode writes into state.previewValues; Display reads the same keys.
 	 * ---------------------------------------------------------------------------
 	 */
@@ -10498,6 +10427,14 @@
 				typeBranch: source.typeBranch || null,
 				quantitySchema: source.quantitySchema || null,
 				mediaConfig: source.mediaConfig || null,
+				dateConfig: source.dateConfig || null,
+				intConfig: source.intConfig || null,
+				displayFormat:
+					source.displayFormat != null
+						? String(source.displayFormat)
+						: source.intConfig && source.intConfig.displayFormat
+							? String(source.intConfig.displayFormat)
+							: '',
 				enumOptions: Array.isArray(source.enumOptions)
 					? deepClone(source.enumOptions)
 					: Array.isArray(source.directChildren)
@@ -10605,7 +10542,14 @@
 		var api = nodeRenderApi();
 		if (api && api.Registry) {
 			var key = resolveNodeRenderTypeKey(normalized);
+			var hasQtySchema =
+				normalized &&
+				normalized.quantitySchema &&
+				Array.isArray(normalized.quantitySchema.members) &&
+				normalized.quantitySchema.members.length;
 			if (
+				hasQtySchema ||
+				key === 'quantity' ||
 				(api.isSimpleScalarType && api.isSimpleScalarType(key)) ||
 				key === 'int' ||
 				key === 'char' ||
@@ -10664,7 +10608,7 @@
 		);
 	}
 
-	/** @deprecated Use renderFieldView — kept as alias for call-site clarity during scaffold. */
+	/** @deprecated Use renderFieldView â€” kept as alias for call-site clarity during scaffold. */
 	function renderPreviewControl(member, opts) {
 		return renderFieldView(member, opts);
 	}
@@ -10856,7 +10800,7 @@
 			if (!scopeId) {
 				return el('p', {
 					className: 'wtt-field-hint',
-					text: i18n.refScopeNeeded || 'Set catalog root (ref_scope) first…',
+					text: i18n.refScopeNeeded || 'Set catalog root (ref_scope) firstâ€¦',
 				});
 			}
 			var allowedIds = Array.isArray(member.allowedRefIds) ? member.allowedRefIds : [];
@@ -10921,7 +10865,7 @@
 							? i18n.subtreeEmpty || 'No children under catalog root'
 							: i18n.nodeRefEmpty || 'No descendants under catalog root',
 					pickedPrefix: i18n.nodePickerSelected || 'Selected:',
-					placeholder: i18n.nodeRefChoose || 'Choose node…',
+					placeholder: i18n.nodeRefChoose || 'Choose nodeâ€¦',
 					selectable: function (n) {
 						if (key === 'node_ref') {
 							return isAllowedRefCandidate(n, scopeId, allowedIds);
@@ -10990,7 +10934,7 @@
 		return control;
 	}
 
-	/* Shared MediaRef render (Q65) — same module used later on frontend page view. */
+	/* Shared MediaRef render (Q65) â€” same module used later on frontend page view. */
 	var Media = window.WTTMediaRender || null;
 	if (Media) {
 		Media.configure({ i18n: i18n });
@@ -11145,7 +11089,7 @@
 	}
 
 	function mediaKindGridSlots() {
-		/* 9 kinds + 1 placeholder → 2 rows × 5 */
+		/* 9 kinds + 1 placeholder â†’ 2 rows Ã— 5 */
 		return mediaKindKeys().concat([null]);
 	}
 
@@ -11186,7 +11130,7 @@
 			if (kind == null) {
 				return el('span', {
 					className: 'wtt-media-kinds-grid__placeholder',
-					text: '—',
+					text: 'â€”',
 					title: i18n.mediaKindPlaceholder || 'Reserved',
 				});
 			}
@@ -11204,7 +11148,7 @@
 				cell.appendChild(
 					el('span', {
 						className: 'wtt-media-kinds-grid__off',
-						text: '·',
+						text: 'Â·',
 					})
 				);
 			}
@@ -11237,7 +11181,7 @@
 			var fieldTd = el('td', { className: 'wtt-set-preview__td-set' });
 			fieldTd.appendChild(renderMediaPreviewSurface(entry.ref, true));
 			row.appendChild(fieldTd);
-			row.appendChild(el('td', { text: '…' }));
+			row.appendChild(el('td', { text: 'â€¦' }));
 			tbody.appendChild(row);
 		});
 		table.appendChild(tbody);
@@ -11260,7 +11204,7 @@
 					className: 'wtt-field-hint wtt-field-hint--warn',
 					text:
 						i18n.mediaKindsRequired ||
-						'Select at least one MIME kind — media fields do nothing until a kind is enabled.',
+						'Select at least one MIME kind â€” media fields do nothing until a kind is enabled.',
 				})
 			);
 			return block;
@@ -11364,7 +11308,7 @@
 				className: 'wtt-media-empty',
 				text:
 					i18n.mediaKindsRequired ||
-					'Select at least one MIME kind — media fields do nothing until a kind is enabled.',
+					'Select at least one MIME kind â€” media fields do nothing until a kind is enabled.',
 			});
 		}
 
@@ -11422,7 +11366,7 @@
 			var urlInput = el('input', {
 				type: 'url',
 				className: 'wtt-preview-input wtt-media-field__url',
-				placeholder: i18n.mediaUrlPlaceholder || 'https://…',
+				placeholder: i18n.mediaUrlPlaceholder || 'https://â€¦',
 				value: ref && ref.source === 'url' ? ref.url : ref && ref.url && !cfg.allowUpload ? ref.url : '',
 			});
 			urlInput.addEventListener('change', function (e) {
@@ -11486,14 +11430,14 @@
 				className: 'description',
 				text:
 					i18n.mediaKindsRequired ||
-					'Select at least one MIME kind — media fields do nothing until a kind is enabled.',
+					'Select at least one MIME kind â€” media fields do nothing until a kind is enabled.',
 			})
 		);
 		var kindsFlow = renderMediaKindsGrid(function (kind) {
 			if (kind == null) {
 				return el('span', {
 					className: 'wtt-media-kinds-grid__placeholder',
-					text: '—',
+					text: 'â€”',
 					title: i18n.mediaKindPlaceholder || 'Reserved',
 				});
 			}
@@ -11552,6 +11496,60 @@
 			state.draft.dateConfig.mode = mode;
 		}
 		afterDraftMutation();
+	}
+
+	function renderIntSettings(n, pane) {
+		var isIntCat = isIntCatalogNode(n);
+		if (!n || (!n.intConfig && !isIntCat)) {
+			return;
+		}
+		var cfg =
+			(state.draft && state.draft.intConfig) ||
+			n.intConfig ||
+			{ displayFormat: 'arabic' };
+		var block = el('div', { className: 'wtt-panel wtt-int-settings' });
+		block.appendChild(
+			el('h3', {
+				className: 'wtt-panel__title wtt-int-settings__title',
+				text: i18n.intSettings || 'Int settings',
+			})
+		);
+		block.appendChild(
+			el('p', {
+				className: 'description',
+				text:
+					i18n.intFormatHint ||
+					'Default number format for this type. Attributes may override. Values stay decimal; arabic is fully supported — other formats are reserved.',
+			})
+		);
+		var row = el('div', { className: 'wtt-int-settings__format' });
+		row.appendChild(
+			el('label', {
+				className: 'wtt-int-settings__label',
+				text: i18n.intFormat || 'Number format',
+			})
+		);
+		var select = el('select', {
+			className: 'wtt-select wtt-int-settings__select',
+			id: 'wtt-int-display-format',
+		});
+		var cur = normalizeIntDisplayFormat(cfg.displayFormat || 'arabic');
+		INT_DISPLAY_FORMAT_IDS.forEach(function (id) {
+			var o = el('option', {
+				value: id,
+				text: intDisplayFormatLabel(id),
+			});
+			if (id === cur) {
+				o.selected = true;
+			}
+			select.appendChild(o);
+		});
+		select.addEventListener('change', function () {
+			setDraftIntDisplayFormat(select.value);
+		});
+		row.appendChild(select);
+		block.appendChild(row);
+		pane.appendChild(block);
 	}
 
 	function renderDateSettings(n, pane) {
@@ -11613,7 +11611,7 @@
 	}
 
 	/**
-	 * Caption for a set field: "Abmessung (Länge/Breite/Höhe)" from set name +
+	 * Caption for a set field: "Abmessung (LÃ¤nge/Breite/HÃ¶he)" from set name +
 	 * member shortDescription (fallback: name) + separator.
 	 * @param {string} setName
 	 * @param {Array} members
@@ -11659,7 +11657,7 @@
 	}
 
 	/**
-	 * Magnitude + unit suffix for a field (quantity → value / prefix+symbol).
+	 * Magnitude + unit suffix for a field (quantity â†’ value / prefix+symbol).
 	 * @param {*} member
 	 * @param {string|null} sharedPrefixScope When set (join-units), Praefix is read from this scope.
 	 */
@@ -11688,7 +11686,7 @@
 		var key = typeKeyFromMember(normalized);
 		if (key === 'media') {
 			var ref = parseMediaRef(text);
-			var label = '—';
+			var label = 'â€”';
 			if (ref) {
 				var kind = classifyMediaKind(ref);
 				var url = ref.url ? String(ref.url) : '';
@@ -11707,7 +11705,7 @@
 		return 'join:' + String(state.selectedId || 0);
 	}
 
-	/** Same type + quantity with Praefix → shared Praefix/Kuerzel in preview. */
+	/** Same type + quantity with Praefix â†’ shared Praefix/Kuerzel in preview. */
 	function membersAreJoinableQuantities(members) {
 		if (!canJoinSetUnits(members)) {
 			return false;
@@ -12057,7 +12055,7 @@
 			cell.appendChild(renderSetBoolStrip(parts.bools, { mode: mode }));
 		}
 		if (!parts.primary.length && !parts.bools.length && !parts.statics.length) {
-			cell.appendChild(document.createTextNode('—'));
+			cell.appendChild(document.createTextNode('â€”'));
 		}
 		/* caption order helper for callers */
 		cell.setAttribute('data-wtt-member-count', String(ordered.length));
@@ -12122,7 +12120,7 @@
 		} else if (members.length === 1) {
 			fieldTd.appendChild(renderFieldView(members[0], { compact: true, mode: mode }));
 		} else {
-			fieldTd.appendChild(document.createTextNode('—'));
+			fieldTd.appendChild(document.createTextNode('â€”'));
 		}
 		row.appendChild(fieldTd);
 		if (mode === 'edit') {
@@ -12132,12 +12130,12 @@
 					type: 'text',
 					className: 'wtt-preview-input wtt-preview-input--compact',
 					disabled: 'disabled',
-					value: '…',
+					value: 'â€¦',
 				})
 			);
 			row.appendChild(noteTd);
 		} else {
-			row.appendChild(el('td', { text: '…' }));
+			row.appendChild(el('td', { text: 'â€¦' }));
 		}
 		tbody.appendChild(row);
 		table.appendChild(tbody);
@@ -12148,13 +12146,13 @@
 	function memberNameKey(member) {
 		return String((member && member.name) || '')
 			.toLowerCase()
-			.replace(/ü/g, 'ue')
-			.replace(/ä/g, 'ae')
-			.replace(/ö/g, 'oe');
+			.replace(/Ã¼/g, 'ue')
+			.replace(/Ã¤/g, 'ae')
+			.replace(/Ã¶/g, 'oe');
 	}
 
 	/**
-	 * Basiseinheit set helpers: Praefix + Kuerzel → mm / kΩ / °C (no atomic mm node).
+	 * Basiseinheit set helpers: Praefix + Kuerzel â†’ mm / kÎ© / Â°C (no atomic mm node).
 	 */
 	function findSetMemberByKey(members, nameKey) {
 		var found = null;
@@ -12168,7 +12166,7 @@
 
 	/**
 	 * Basiseinheit unit symbol: fixed Praefix (if any) + Kuerzel.
-	 * Does not invent a sample prefix — optional Praefix stays off the unit label (Meter → m, not mm).
+	 * Does not invent a sample prefix â€” optional Praefix stays off the unit label (Meter â†’ m, not mm).
 	 */
 	function composeUnitDisplay(members) {
 		members = members || [];
@@ -12194,7 +12192,7 @@
 	}
 
 	/**
-	 * Sample prefix letter for usage demos (optional Praefix → prefer milli "m" → e.g. 10.5mm).
+	 * Sample prefix letter for usage demos (optional Praefix â†’ prefer milli "m" â†’ e.g. 10.5mm).
 	 * Empty when Praefix is absent or has no enabled options.
 	 */
 	function samplePrefixLetter(praefixMem, scope) {
@@ -12234,7 +12232,7 @@
 
 	function memberTypeLabel(member) {
 		if (!member) {
-			return '—';
+			return 'â€”';
 		}
 		var key = typeKeyFromMember(member);
 		if (key === 'node_embed') {
@@ -12243,7 +12241,7 @@
 		if (member.type && member.type.name) {
 			return String(member.type.name);
 		}
-		return key || '—';
+		return key || 'â€”';
 	}
 
 	function renderUnitSchemaDefinition(members) {
@@ -12259,7 +12257,7 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.unitSchemaHint ||
-					'This node defines the unit schema only — not an instance value.',
+					'This node defines the unit schema only â€” not an instance value.',
 			})
 		);
 		var table = el('table', { className: 'wtt-set-preview__table wtt-preview-schema__table' });
@@ -12277,13 +12275,13 @@
 		var tbody = el('tbody');
 		(members || []).forEach(function (m) {
 			var tr = el('tr');
-			var name = m.name || '—';
+			var name = m.name || 'â€”';
 			if (m.required) {
 				name += ' *';
 			}
 			tr.appendChild(el('td', { text: name }));
 			tr.appendChild(el('td', { text: memberTypeLabel(m) }));
-			var constraint = '—';
+			var constraint = 'â€”';
 			var memKey = memberNameKey(m);
 			if (m.fixed && m.fixed.name) {
 				constraint =
@@ -12292,8 +12290,8 @@
 					formatSelectLabel(m.fixed);
 			} else if (m.fixedLiteral != null && String(m.fixedLiteral) !== '') {
 				/*
-				 * Kuerzel uses a fixed symbol literal (Meter → "m"). That is NOT
-				 * the Praefix catalog node "m" (Milli) — same letter, different role.
+				 * Kuerzel uses a fixed symbol literal (Meter â†’ "m"). That is NOT
+				 * the Praefix catalog node "m" (Milli) â€” same letter, different role.
 				 */
 				if (memKey === 'kuerzel') {
 					constraint =
@@ -12316,7 +12314,7 @@
 	}
 
 	/**
-	 * Conversion table for a Basiseinheit unit (enabled prefixes × root factor → SI).
+	 * Conversion table for a Basiseinheit unit (enabled prefixes Ã— root factor â†’ SI).
 	 */
 	function renderUnitConversions(n, members) {
 		var branch =
@@ -12357,14 +12355,14 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.unitConversionsHint ||
-					'to_si = Typ × multiplikator × prefix_root_to_si.',
+					'to_si = Typ Ã— multiplikator Ã— prefix_root_to_si.',
 			})
 		);
 		wrap.appendChild(
 			el('p', {
 				className: 'wtt-unit-conversions__root',
 				text:
-					(i18n.prefixRootToSi || 'Unit: prefix root → SI base') +
+					(i18n.prefixRootToSi || 'Unit: prefix root â†’ SI base') +
 					': ' +
 					formatFactor(rootToSi),
 			})
@@ -12378,9 +12376,9 @@
 		[
 			i18n.unitConvPrefix || 'Praefix',
 			i18n.unitConvSymbol || 'Symbol',
-			i18n.unitConvFactor || '× factor',
-			i18n.unitConvToSi || '1 → SI',
-			i18n.unitConvSample || '10.5 → SI',
+			i18n.unitConvFactor || 'Ã— factor',
+			i18n.unitConvToSi || '1 â†’ SI',
+			i18n.unitConvSample || '10.5 â†’ SI',
 		].forEach(function (label) {
 			head.appendChild(el('th', { text: label, scope: 'col' }));
 		});
@@ -12431,7 +12429,7 @@
 	}
 
 	/**
-	 * Usage sample for a unit definition — same quantity field view as any unit-typed slot.
+	 * Usage sample for a unit definition â€” same quantity field view as any unit-typed slot.
 	 */
 	function renderUnitUsageForm(members, nodeName, mode) {
 		var field = asPreviewField({
@@ -12531,7 +12529,7 @@
 			return [
 				{
 					id: node.id,
-					name: node.name || '—',
+					name: node.name || 'â€”',
 					type: node.type || (node.typeLabel ? { name: node.typeLabel } : { name: 'text' }),
 					typeLabel: node.typeLabel || '',
 					required: !!node.required,
@@ -12541,7 +12539,7 @@
 		return kids.map(function (col) {
 			return {
 				id: col.id,
-				name: col.name || '—',
+				name: col.name || 'â€”',
 				type: col.type || (col.typeLabel ? { name: col.typeLabel } : { name: 'text' }),
 				typeLabel: col.typeLabel || '',
 				required: !!col.required,
@@ -12573,7 +12571,7 @@
 			var live = findNodeInTree(state.tree, col.id) || {};
 			return {
 				id: col.id,
-				name: head || col.name || '—',
+				name: head || col.name || 'â€”',
 				bodyName: col.name,
 				type: live.type || (live.typeLabel ? { name: live.typeLabel } : { name: 'text' }),
 				typeLabel: live.typeLabel || '',
@@ -12604,6 +12602,17 @@
 	}
 
 	function getPreviewMembers(n) {
+		if (
+			n.isBasiseinheitUnit &&
+			n.quantitySchema &&
+			Array.isArray(n.quantitySchema.members) &&
+			n.quantitySchema.members.length
+		) {
+			return n.quantitySchema.members;
+		}
+		if (n.isBasiseinheitUnit && n.setMembers && n.setMembers.length) {
+			return n.setMembers;
+		}
 		if (n.isSet && n.setMembers && n.setMembers.length) {
 			return n.setMembers;
 		}
@@ -12640,12 +12649,12 @@
 				var childMembers = null;
 				if (col.children && col.children.length > 1) {
 					childMembers = col.children.map(function (ch) {
-						return { name: ch.name || '—' };
+						return { name: ch.name || 'â€”' };
 					});
 				}
 				return {
 					id: col.id,
-					name: col.name || '—',
+					name: col.name || 'â€”',
 					type: col.type || (col.typeLabel ? { name: col.typeLabel } : { name: 'text' }),
 					typeLabel: col.typeLabel || '',
 					required: !!col.required,
@@ -12685,7 +12694,7 @@
 		var thead = el('thead');
 		var headRow = el('tr');
 		columns.forEach(function (col) {
-			var header = col.name || '—';
+			var header = col.name || 'â€”';
 			var childMembers = col.setMembers || col.members || null;
 			if (childMembers && childMembers.length > 1) {
 				header = setFieldCaption(col.name || '', childMembers, {
@@ -12715,7 +12724,7 @@
 				footRow.appendChild(
 					el('td', {
 						className: 'wtt-table-preview__footer-cell',
-						text: c === 0 ? (i18n.previewFooter || 'Footer') : 'Σ / —',
+						text: c === 0 ? (i18n.previewFooter || 'Footer') : 'Î£ / â€”',
 					})
 				);
 			});
@@ -12792,7 +12801,7 @@
 
 	/**
 	 * Map bound band fields into renderer band DTOs.
-	 * Zeile cells: field-type example nodes (Int_name, …) so the sample row paints.
+	 * Zeile cells: field-type example nodes (Int_name, â€¦) so the sample row paints.
 	 * Kopf: label-only (header text from the bound child names).
 	 * Fuss: footerOp + symbol sample (not scalar type examples).
 	 *
@@ -12808,7 +12817,7 @@
 			var id = f && f.id != null ? parseInt(f.id, 10) || 0 : 0;
 			var live = id > 0 ? findNodeInTree(state.tree, id) || {} : {};
 			var typeKey = bandFieldTypeKey(f, live);
-			var fieldName = (f && f.name) || live.name || '—';
+			var fieldName = (f && f.name) || live.name || 'â€”';
 
 			if (band === 'fuss') {
 				var rawOp =
@@ -12823,7 +12832,7 @@
 								key:
 									rawOp ||
 									(typeKey === 'int' || typeKey === 'double' ? 'sum' : 'text'),
-								symbol: 'Σ',
+								symbol: 'Î£',
 						  };
 				return {
 					id: id,
@@ -12913,7 +12922,7 @@
 				typeLabel: live.typeLabel || typeKey,
 				typeKey: typeKey,
 				required: !!live.required,
-				sample: '…',
+				sample: 'â€¦',
 				fixed: live.fixed || null,
 				fixedLiteral: live.fixedLiteral || '',
 				quantitySchema: live.quantitySchema || null,
@@ -12972,7 +12981,7 @@
 	}
 
 	/**
-	 * Catalog type leaves → example DTO. Table instances → live bound bands.
+	 * Catalog type leaves â†’ example DTO. Table instances â†’ live bound bands.
 	 */
 	function resolvePreviewRenderNode(n) {
 		if (n && n.isTable && !n.isTableTypeCatalog) {
@@ -13053,6 +13062,9 @@
 	}
 
 	function usesRegistryPreview(n) {
+		if (isQuantityTypeCatalogNode(n)) {
+			return false;
+		}
 		var api = nodeRenderApi();
 		if (!api || !api.Registry) {
 			return false;
@@ -13076,6 +13088,7 @@
 			key === 'bool' ||
 			key === 'email' ||
 			key === 'date' ||
+			key === 'quantity' ||
 			key === 'table'
 		);
 	}
@@ -13116,14 +13129,14 @@
 	function renderViaRegistry(n, contextName, mode, extra) {
 		var api = nodeRenderApi();
 		if (!api || !api.Registry) {
-			return el('span', { text: '—' });
+			return el('span', { text: 'â€”' });
 		}
 		var paint = resolvePreviewRenderNode(n);
 		var out = api.Registry.render(
 			paint,
 			makeNodeRenderContext(paint, contextName, mode, extra)
 		);
-		return out || el('span', { className: 'wtt-field-hint', text: '—' });
+		return out || el('span', { className: 'wtt-field-hint', text: 'â€”' });
 	}
 
 	function renderViaRegistryLabel(n, contextName, mode, extra) {
@@ -13131,7 +13144,7 @@
 		if (!api || !api.Registry || typeof api.Registry.renderLabel !== 'function') {
 			return el('span', {
 				className: 'wtt-node-render__label',
-				text: (n && (n.displayName || n.name)) || '—',
+				text: (n && (n.displayName || n.name)) || 'â€”',
 			});
 		}
 		var paint = resolvePreviewRenderNode(n);
@@ -13143,7 +13156,7 @@
 			out ||
 			el('span', {
 				className: 'wtt-node-render__label',
-				text: (paint && (paint.displayName || paint.name)) || '—',
+				text: (paint && (paint.displayName || paint.name)) || 'â€”',
 			})
 		);
 	}
@@ -13151,7 +13164,7 @@
 	function renderViaRegistryContent(n, contextName, mode, extra) {
 		var api = nodeRenderApi();
 		if (!api || !api.Registry || typeof api.Registry.renderContent !== 'function') {
-			return el('span', { text: '—' });
+			return el('span', { text: 'â€”' });
 		}
 		var paint = resolvePreviewRenderNode(n);
 		var readonly = mode === 'display';
@@ -13165,7 +13178,7 @@
 			),
 			readonly
 		);
-		return out || el('span', { className: 'wtt-field-hint', text: '—' });
+		return out || el('span', { className: 'wtt-field-hint', text: 'â€”' });
 	}
 
 	/**
@@ -13246,7 +13259,7 @@
 			} else if (labelPart) {
 				labelCell.appendChild(labelPart);
 			} else {
-				labelCell.textContent = '—';
+				labelCell.textContent = 'â€”';
 			}
 			if (opts.modeLabel) {
 				labelCell.appendChild(
@@ -13268,7 +13281,7 @@
 				cell.appendChild(
 					el('span', {
 						className: 'wtt-nr-form__placeholder',
-						text: '—',
+						text: 'â€”',
 					})
 				);
 			}
@@ -13399,7 +13412,7 @@
 		var tbody = el('tbody');
 		var tr = el('tr');
 		tr.appendChild(el('td', { text: '1' }));
-		tr.appendChild(el('td', { text: i18n.nrTableSampleA || '…' }));
+		tr.appendChild(el('td', { text: i18n.nrTableSampleA || 'â€¦' }));
 		var tdEdit = el('td', {
 			className: 'wtt-nr-table__field is-current wtt-nr-table__field--edit',
 		});
@@ -13411,7 +13424,7 @@
 		});
 		tdDisplay.appendChild(fieldDisplay);
 		tr.appendChild(tdDisplay);
-		tr.appendChild(el('td', { text: i18n.nrTableSampleB || '…' }));
+		tr.appendChild(el('td', { text: i18n.nrTableSampleB || 'â€¦' }));
 		tbody.appendChild(tr);
 		table.appendChild(tbody);
 		wrap.appendChild(table);
@@ -13549,7 +13562,7 @@
 		}
 		return (
 			(i18n.tableFixCreateFields || 'Create missing fields') +
-			' — ' +
+			' â€” ' +
 			((fix && fix.bandName) || (fix && fix.band) || '') +
 			' (' +
 			String((fix && fix.missing) || 0) +
@@ -13724,7 +13737,7 @@
 					className: 'wtt-field-hint',
 					text: n.isTableTypeCatalog
 						? i18n.tableTypePreviewHint ||
-						  'Table type — preview as table only (tree/form not applicable).'
+						  'Table type â€” preview as table only (tree/form not applicable).'
 						: i18n.tableInstancePreviewHint ||
 						  'Table preview from Kopf / Zeile / Fuss bindings (type properties).',
 				})
@@ -13768,7 +13781,7 @@
 	}
 
 	/**
-	 * Attribute host preview members (Name/E-Mail, …) — skip hidden.
+	 * Attribute host preview members (Name/E-Mail, â€¦) â€” skip hidden.
 	 * Seeds `.sample` from WTTSampleData so Editable/Display fill when previewValues empty.
 	 * @return {Array}
 	 */
@@ -13785,7 +13798,7 @@
 			)
 				.trim()
 				.toLowerCase();
-			/* typeName may be a path ("… / text") — use last segment. */
+			/* typeName may be a path ("â€¦ / text") â€” use last segment. */
 			if (typeKey.indexOf('/') !== -1) {
 				var parts = typeKey.split('/');
 				typeKey = String(parts[parts.length - 1] || '')
@@ -13840,6 +13853,11 @@
 				fixed: null,
 				fixedLiteral: '',
 				sample: '',
+				quantitySchema:
+					attr.quantitySchema &&
+					typeof attr.quantitySchema === 'object'
+						? deepClone(attr.quantitySchema)
+						: null,
 			};
 			var fest =
 				(member.fixedLabel && String(member.fixedLabel).trim()) ||
@@ -13870,8 +13888,8 @@
 	}
 
 	/**
-	 * Attribute host preview: Form(1) + Table(n) + Compact(1, H|V) × edit/display.
-	 * Samples are host-agnostic via WTTSampleData (name → type) + variantIndex for rows.
+	 * Attribute host preview: Form(1) + Table(n) + Compact(1, H|V) Ã— edit/display.
+	 * Samples are host-agnostic via WTTSampleData (name â†’ type) + variantIndex for rows.
 	 */
 	function renderAttributeHostPreview(n, members) {
 		var ObjectRender = window.WTTObjectRender;
@@ -14204,7 +14222,7 @@
 	}
 
 	/**
-	 * Hierarchy children used as automatic choice options (e.g. Währung → Euro / US Dollar).
+	 * Hierarchy children used as automatic choice options (e.g. WÃ¤hrung â†’ Euro / US Dollar).
 	 * Prefer live tree subtree so deeper levels stay a tree chooser; fall back to flat directChildren.
 	 *
 	 * @return {Array}
@@ -14242,11 +14260,102 @@
 			});
 	}
 
+	function isQuantityTypeCatalogNode(n) {
+		if (!n || !n.isDatatype) {
+			return false;
+		}
+		var key = String(n.name || n.typeKey || '')
+			.trim()
+			.toLowerCase();
+		var Sample = window.WTTSampleData;
+		if (Sample && typeof Sample.resolveTypeKey === 'function') {
+			var resolved = Sample.resolveTypeKey(key);
+			if (resolved) {
+				key = resolved;
+			}
+		}
+		return (
+			key === 'quantity' ||
+			key === 'measure' ||
+			key === 'groesse' ||
+			key === 'grÃ¶ÃŸe' ||
+			key === 'grose'
+		);
+	}
+
 	/**
-	 * No attributes + hierarchy children → automatic CatalogChoice preview (list or tree by depth).
+	 * Quantity catalog preview = fake object like Preis (number + select), not a bare control.
+	 */
+	function quantityFakeHostForPreview(n) {
+		var ex = n && n.quantityPreviewExample;
+		var attrs =
+			ex && Array.isArray(ex.attributes) && ex.attributes.length
+				? ex.attributes
+				: [];
+		var hostName =
+			(ex && ex.hostName) ||
+			i18n.quantityExampleHost ||
+			'Preis';
+		return {
+			id: n && n.id != null ? n.id : 0,
+			name: hostName,
+			preferredRender:
+				(n && n.preferredRender) ||
+				(state.draft && state.draft.preferredRender) ||
+				'form',
+			attributes: attrs,
+			_quantityExample: true,
+		};
+	}
+
+	function renderQuantityCatalogPreview(n) {
+		var host = quantityFakeHostForPreview(n);
+		var members = attributePreviewMembers(host);
+		var block = el('div', { className: 'wtt-preview__body' });
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.quantityCatalogPreviewHint ||
+					'Quantity is shown as an example object (like Preis): a number field plus a choice field. Real children (Preis, Menge, â€¦) define concrete shapes.',
+			})
+		);
+		if (!members.length) {
+			block.appendChild(
+				el('p', {
+					className: 'wtt-preview__unavailable',
+					text:
+						i18n.previewUnavailable ||
+						'Preview nicht mÃ¶glich',
+				})
+			);
+			return block;
+		}
+		var inner = renderAttributeHostPreview(host, members);
+		/* Drop duplicate preferred-render hint from nested host preview. */
+		if (inner && inner.firstChild && inner.firstChild.classList) {
+			var first = inner.firstChild;
+			if (
+				first.classList.contains('wtt-field-hint') &&
+				inner.childNodes.length > 1
+			) {
+				inner.removeChild(first);
+			}
+		}
+		while (inner && inner.firstChild) {
+			block.appendChild(inner.firstChild);
+		}
+		return block;
+	}
+
+	/**
+	 * No attributes + hierarchy children â†’ automatic CatalogChoice preview (list or tree by depth).
 	 */
 	function isAutomaticChoiceCatalogNode(n) {
 		if (!n) {
+			return false;
+		}
+		if (isQuantityTypeCatalogNode(n)) {
 			return false;
 		}
 		if (attributePreviewMembers(n).length) {
@@ -14303,7 +14412,7 @@
 	function resolveChoiceCatalogLabel(roots, id) {
 		id = parseInt(id, 10) || 0;
 		if (!id) {
-			return '—';
+			return 'â€”';
 		}
 		var hit = findNodeInTree(roots, id) || findNodeInTree(state.tree, id);
 		if (hit && hit.name) {
@@ -14313,7 +14422,7 @@
 	}
 
 	/**
-	 * CatalogChoice control (Q90): depth ≤1 → flat <select>; depth ≥2 → tree picker.
+	 * CatalogChoice control (Q90): depth â‰¤1 â†’ flat <select>; depth â‰¥2 â†’ tree picker.
 	 */
 	function renderChoiceCatalogControl(n, mode, scope) {
 		var roots = choiceCatalogPickRoots(n);
@@ -14323,7 +14432,7 @@
 		var selectedId = parseInt(raw, 10) || 0;
 		if (!selectedId && fallback) {
 			selectedId = fallback;
-			/* Seed without setPreviewValue — that would re-enter render(). */
+			/* Seed without setPreviewValue â€” that would re-enter render(). */
 			state.previewValues[previewValueKey(scope, member)] = String(fallback);
 		}
 
@@ -14382,7 +14491,7 @@
 				i18n.previewChoiceCatalogEmpty ||
 				'No child options under this node yet.',
 			pickedPrefix: i18n.nodePickerSelected || 'Selected:',
-			placeholder: i18n.nodePickerChoose || 'Choose…',
+			placeholder: i18n.nodePickerChoose || 'Chooseâ€¦',
 			selectable: function (node) {
 				return !!(node && parseInt(node.id, 10) > 0);
 			},
@@ -14466,12 +14575,12 @@
 					type: 'text',
 					className: 'wtt-preview-input wtt-preview-input--compact',
 					disabled: 'disabled',
-					value: '…',
+					value: 'â€¦',
 				})
 			);
 			row.appendChild(noteTd);
 		} else {
-			row.appendChild(el('td', { text: '…' }));
+			row.appendChild(el('td', { text: 'â€¦' }));
 		}
 		tbody.appendChild(row);
 		table.appendChild(tbody);
@@ -14480,7 +14589,7 @@
 	}
 
 	/**
-	 * Automatic CatalogChoice preview (Q90): list when depth ≤1, tree when ≥2.
+	 * Automatic CatalogChoice preview (Q90): list when depth â‰¤1, tree when â‰¥2.
 	 */
 	function renderChoiceCatalogPreview(n) {
 		var block = el('div', { className: 'wtt-preview__body' });
@@ -14492,9 +14601,9 @@
 				text:
 					mode === 'flat'
 						? i18n.previewChoiceCatalogListHint ||
-						  'CatalogChoice (depth ≤ 1): list chooser — same control as flat type pickers.'
+						  'CatalogChoice (depth â‰¤ 1): list chooser â€” same control as flat type pickers.'
 						: i18n.previewChoiceCatalogHint ||
-						  'CatalogChoice (depth ≥ 2): tree chooser — same control as nested type pickers.',
+						  'CatalogChoice (depth â‰¥ 2): tree chooser â€” same control as nested type pickers.',
 			})
 		);
 		block.appendChild(
@@ -14520,7 +14629,12 @@
 			return renderAttributeHostPreview(n, attrMembers);
 		}
 
-		/* No attributes + hierarchy children → CatalogChoice (list/tree by depth). */
+		/* Quantity catalog: fake object like Preis (number + select), not CatalogChoice. */
+		if (isQuantityTypeCatalogNode(n)) {
+			return renderQuantityCatalogPreview(n);
+		}
+
+		/* No attributes + hierarchy children â†’ CatalogChoice (list/tree by depth). */
 		if (isAutomaticChoiceCatalogNode(n)) {
 			return renderChoiceCatalogPreview(n);
 		}
@@ -14529,7 +14643,7 @@
 		var block = el('div', { className: 'wtt-preview__body' });
 
 		/*
-		 * Case-study rebuild: no attribute schema yet → empty panel (old unit/media
+		 * Case-study rebuild: no attribute schema yet â†’ empty panel (old unit/media
 		 * mega-preview stays off the hot path for hierarchy hosts).
 		 */
 		if (
@@ -14545,7 +14659,7 @@
 					className: 'wtt-field-hint',
 					text:
 						i18n.previewRebuildEmpty ||
-						'Preview rebuild — add attributes to see Form, Table, and Compact samples.',
+						'Preview rebuild â€” add attributes to see Form, Table, and Compact samples.',
 				})
 			);
 			return block;
@@ -14596,7 +14710,7 @@
 			block.appendChild(
 				el('p', {
 					className: 'wtt-preview__unavailable',
-					text: i18n.previewUnavailable || 'Preview nicht möglich',
+					text: i18n.previewUnavailable || 'Preview nicht mÃ¶glich',
 				})
 			);
 			return block;
@@ -14648,12 +14762,12 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.unifiedPreviewHint ||
-					'Form and table layouts — editable row above, display mirror below (same fields).',
+					'Form and table layouts â€” editable row above, display mirror below (same fields).',
 			})
 		);
 
 		/*
-		 * Set form = one labeled row (e.g. "Abmessung (L/B/H)"), members inline —
+		 * Set form = one labeled row (e.g. "Abmessung (L/B/H)"), members inline â€”
 		 * same composition idea as the single table cell. Non-set keeps stacked fields.
 		 * Help is one popover: parent description, then children underneath.
 		 */
@@ -14714,7 +14828,7 @@
 		} else {
 			/*
 			 * Set (and scalar) table context: the node is ONE field/column.
-			 * Set members (L/B/H, …) live inside that cell — not as sibling columns.
+			 * Set members (L/B/H, â€¦) live inside that cell â€” not as sibling columns.
 			 * Column header uses the same setFieldCaption as the form label.
 			 */
 			var tableSetOpts = n.isSet
@@ -14849,6 +14963,71 @@
 		return block;
 	}
 
+	function renderHiddenPanel(n) {
+		var block = el('div', { className: 'wtt-panel wtt-hidden-panel' });
+		block.appendChild(
+			renderRelationsSectionTitle(
+				i18n.hiddenTitle || 'Hidden nodes',
+				i18n.hiddenHelp ||
+					'Nodes marked hidden stay in the database with their parent links, but are omitted from the normal tree. Unhide to restore them.',
+				'wtt-hidden-panel__title-wrap'
+			)
+		);
+		var count = parseInt(n.hiddenCount, 10) || 0;
+		var items = Array.isArray(n.hiddenItems) ? n.hiddenItems : [];
+		block.appendChild(
+			el('p', {
+				className: 'description',
+				text: (i18n.hiddenCountLabel || 'Hidden objects') + ': ' + String(count),
+			})
+		);
+		if (items.length) {
+			var list = el('ul', { className: 'wtt-hidden-panel__list' });
+			items.forEach(function (item) {
+				var id = item && item.id != null ? parseInt(item.id, 10) || 0 : 0;
+				var row = el('li', { className: 'wtt-hidden-panel__item' });
+				row.appendChild(
+					el('button', {
+						type: 'button',
+						className: 'button-link',
+						text: (item && (item.path || item.name)) || String(id),
+						onClick: function () {
+							if (id > 0) {
+								selectNode(id);
+							}
+						},
+					})
+				);
+				row.appendChild(document.createTextNode(' '));
+				row.appendChild(
+					el('button', {
+						type: 'button',
+						className: 'button button-small',
+						text: i18n.unhideNode || 'Show again',
+						title:
+							i18n.unhideNodeHint ||
+							'Restore this node to the tree under its parent.',
+						onClick: function () {
+							if (id > 0) {
+								unhideNodeById(id);
+							}
+						},
+					})
+				);
+				list.appendChild(row);
+			});
+			block.appendChild(list);
+		} else {
+			block.appendChild(
+				el('p', {
+					className: 'wtt-empty',
+					text: i18n.hiddenEmpty || 'No hidden nodes.',
+				})
+			);
+		}
+		return block;
+	}
+
 	function renderDetail() {
 		var pane = el('div', { className: 'wtt-detail-pane' });
 		try {
@@ -14872,6 +15051,9 @@
 
 			if (n.isTrash) {
 				pane.appendChild(renderTrashPanel(n));
+			}
+			if (n.isHiddenBin) {
+				pane.appendChild(renderHiddenPanel(n));
 			}
 
 			if (n.isTable || n.isTableTypeCatalog) {
@@ -14911,14 +15093,14 @@
 					  })
 					: renderMetaStatic({
 							label: i18n.parent || 'Parent',
-							value: i18n.none || '—',
+							value: i18n.none || 'â€”',
 					  });
 
-			/* Static meta at top — strip or form-row (same flagsAsFormProp switch). */
+			/* Static meta at top â€” strip or form-row (same flagsAsFormProp switch). */
 			var staticItems = [
 				renderMetaStatic({
 					label: i18n.termId || 'ID',
-					value: n.id != null ? String(n.id) : '—',
+					value: n.id != null ? String(n.id) : 'â€”',
 					title: i18n.termIdHint || '',
 					metaKey: 'id',
 				}),
@@ -14935,7 +15117,7 @@
 					n.modified.userName ||
 					(n.modified.userId
 						? '#' + String(n.modified.userId)
-						: i18n.none || '—');
+						: i18n.none || 'â€”');
 				staticItems.push(
 					renderMetaStatic({
 						label: i18n.lastModifiedBy || 'Last modified by',
@@ -14964,6 +15146,17 @@
 					})
 				);
 			}
+			/* Always show template status in Meta (read-only outside Development mode). */
+			staticItems.push(
+				renderMetaStatic({
+					label: i18n.isTemplate || 'Is template',
+					value: n.isTemplate
+						? i18n.isTemplateYes || 'Yes'
+						: i18n.isTemplateNo || 'No',
+					title: i18n.isTemplateHint || '',
+					metaKey: 'isTemplate',
+				})
+			);
 			var staticStrip = renderMetaStrip('static', staticItems);
 			if (flagsAsFormRowEnabled()) {
 				staticStrip.classList.add('wtt-form__meta-strip--in-row');
@@ -15001,7 +15194,7 @@
 				id: 'wtt-node-short-description',
 				className: 'wtt-short-description-input regular-text',
 				value: n.shortDescription || '',
-				placeholder: '…',
+				placeholder: 'â€¦',
 			});
 			if (controlsLocked) {
 				shortInput.disabled = true;
@@ -15041,8 +15234,8 @@
 
 			/*
 			 * Q88: no Data type row on node detail — hierarchy datatype = parent (derived).
-			 * Attribute field types stay on the Attributes panel (Q87), not here.
-			 * Q76 Override / type picker chrome removed for hierarchy nodes.
+			 * Root type is seed-managed (no free set_type UI). Attribute field types stay
+			 * on the Attributes panel (Q87). Q76 Override / type picker chrome removed here.
 			 */
 
 			if (typeUsesRefScope(n)) {
@@ -15067,7 +15260,7 @@
 					disabled: !!controlsLocked,
 					blockedIds: blockedSelf,
 					pickedPrefix: i18n.nodePickerSelected || 'Selected:',
-					placeholder: i18n.refScopeChoose || 'Choose catalog root…',
+					placeholder: i18n.refScopeChoose || 'Choose catalog rootâ€¦',
 					dialogTitle: i18n.refScope || 'Catalog root (ref_scope)',
 					onSelect: function (id) {
 						setDraftRefScope(id);
@@ -15169,7 +15362,7 @@
 										allOn = false;
 									}
 								});
-								/* Default = all → store empty allowlist. */
+								/* Default = all â†’ store empty allowlist. */
 								setDraftAllowedRefIds(allOn ? [] : next);
 							});
 							label.appendChild(check);
@@ -15217,7 +15410,7 @@
 				form.appendChild(footerOpRow);
 			}
 
-			/* Flags: is_datatype / is_abstract / required. Q76 Inheriting chrome removed (Q88). */
+			/* Flags: is_datatype / is_abstract / required. is_template editable only in Development mode. */
 			var flagItems = [
 				renderMetaCheck({
 					label: i18n.isDatatype || 'Is data type',
@@ -15233,6 +15426,15 @@
 					title: i18n.isAbstractHint || '',
 					onChange: setDraftIsAbstract,
 				}),
+				isDevelopmentMode()
+					? renderMetaCheck({
+							label: i18n.isTemplate || 'Is template',
+							checked: !!n.isTemplate,
+							disabled: !!controlsLocked,
+							title: i18n.isTemplateHint || '',
+							onChange: setDraftIsTemplate,
+					  })
+					: null,
 				caseStudyMode() || isDisplayName
 					? null
 					: renderMetaCheck({
@@ -15311,6 +15513,7 @@
 
 			form.className = (form.className || '') + ' wtt-panel wtt-detail-form';
 			pane.appendChild(form);
+			renderIntSettings(n, pane);
 
 			if (n.isTable || n.isTableTypeCatalog) {
 				var bandUi = renderTableBandBindings(n, controlsLocked);
@@ -15319,9 +15522,9 @@
 				}
 			}
 
-			/* Attributes → Preview → Relations (Preview above the fold for attribute hosts). */
+			/* Attributes â†’ Preview â†’ Relations (Preview above the fold for attribute hosts). */
 			renderNodeAttributes(n, pane, controlsLocked);
-			if (!isUnderRelationstypenBranch(n.id) && !n.isTrash) {
+			if (!isUnderRelationstypenBranch(n.id) && !n.isTrash && !n.isHiddenBin) {
 				try {
 					renderNodePreview(n, pane);
 				} catch (previewErr) {
@@ -15394,24 +15597,6 @@
 		render();
 	}
 
-	function resetDemo() {
-		var msg = i18n.confirmReset || 'Reset test tree?';
-		if (!window.confirm(msg)) {
-			return;
-		}
-		post('wtt_reset_demo', {})
-			.then(function (json) {
-				if (!json || !json.success) {
-					setError((json && json.data && json.data.message) || i18n.error);
-					return;
-				}
-				applyDemoTree(json.data.tree);
-			})
-			.catch(function () {
-				setError(i18n.error);
-			});
-	}
-
 	function render() {
 		var root = document.getElementById('wtt-app');
 		var badge = document.getElementById('wtt-badge');
@@ -15452,47 +15637,46 @@
 				taxSelect
 			);
 		}
+		var iconGroup = el('div', { className: 'wtt-toolbar__icons' }, [
+			toolbarIconButton(
+				'plus-alt2',
+				i18n.expandAllHint || i18n.expandAll || 'Expand all nodes',
+				expandAllTree
+			),
+			toolbarIconButton(
+				'minus',
+				i18n.collapseAllHint || i18n.collapseAll || 'Collapse all nodes',
+				collapseAllTree
+			),
+		]);
+		toolbarChildren.push(iconGroup);
 		toolbarChildren.push(
-			el('button', {
-				type: 'button',
-				className: 'button button-primary',
-				text: i18n.addRoot,
-				onClick: function () {
-					createTerm(0);
-				},
-			}),
-			el('button', {
-				type: 'button',
-				className: 'button',
-				text: i18n.expandAll || 'Expand',
-				title: i18n.expandAllHint || 'Expand all nodes',
-				onClick: expandAllTree,
-			}),
-			el('button', {
-				type: 'button',
-				className: 'button',
-				text: i18n.collapseAll || 'Collapse',
-				title: i18n.collapseAllHint || 'Collapse all nodes',
-				onClick: collapseAllTree,
-			})
+			el('div', { className: 'wtt-toolbar__hide-root' }, [
+				renderSlideSwitch({
+					checked: !!state.hideRootNode,
+					text: i18n.hideRootNode || 'Hide root',
+					title: i18n.hideRootNodeHint || '',
+					onChange: function (on) {
+						state.hideRootNode = !!on;
+						cfg.hideRootNode = state.hideRootNode;
+						render();
+						post('wtt_set_hide_root_node', {
+							enabled: state.hideRootNode ? '1' : '0',
+						}).catch(function () {
+							/* keep local toggle; settings page remains source of truth on reload */
+						});
+					},
+				}),
+			])
 		);
-		if (cfg.testMode) {
-			toolbarChildren.push(
-				el('button', {
-					type: 'button',
-					className: 'button',
-					text: i18n.resetDemo || 'Reset test tree',
-					onClick: resetDemo,
-				})
-			);
-		}
 		var toolbar = el('div', { className: 'wtt-toolbar' }, toolbarChildren);
 
+		var displayRoots = getDisplayTreeRoots();
 		var treeList = el('ul', { className: 'wtt-tree' });
-		if (!state.tree.length) {
+		if (!displayRoots.length) {
 			treeList.appendChild(el('li', { className: 'wtt-empty', text: i18n.empty }));
 		} else {
-			renderTreeNodes(state.tree, treeList);
+			renderTreeNodes(displayRoots, treeList);
 		}
 
 		var treePane = el('div', { className: 'wtt-tree-pane' }, [toolbar, treeList]);
@@ -15513,7 +15697,8 @@
 
 		if (intro) {
 			if (state.selectedNode && state.selectedNode.name) {
-				intro.textContent = (i18n.inspecting || 'Inspecting:') + ' ' + state.selectedNode.name;
+				intro.textContent =
+					(i18n.inspecting || 'Inspecting:') + ' ' + displayNodeName(state.selectedNode);
 			} else if (state.selectedId) {
 				intro.textContent = i18n.loading || 'Loading...';
 			} else {
@@ -15575,6 +15760,7 @@
 					previewFooter: i18n.previewFooter || 'Footer',
 					previewColGeneric: i18n.previewColGeneric || 'Column',
 					emailInvalid: i18n.emailInvalid || 'Enter a valid email address.',
+					intInvalid: i18n.intInvalid || 'Enter a whole number.',
 				},
 			});
 		}

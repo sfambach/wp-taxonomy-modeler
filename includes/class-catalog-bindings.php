@@ -20,8 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Option shape per taxonomy:
  * {
- *   chooser_root: Fallstudie|BOM root (subtree shown in attribute type picker),
- *   chooser_focus: Data Types|Datentypen (initial focus/expand),
+ *   chooser_root: shared catalog/tree branch root (e.g. Fallstudie) — not chooser-only,
+ *   chooser_focus: default chooser focus/expand when caller passes none (e.g. Data Types),
+ *   model: Model folder (Object View / Model table default selection),
  *   data_types, simple, complex: legacy aliases / helpers
  * }
  */
@@ -29,11 +30,21 @@ final class Catalog_Bindings {
 
 	public const OPTION = 'wtt_catalog_bindings';
 
-	/** Subtree root shown in the attribute type tree chooser (ast). */
+	/**
+	 * Shared catalog/tree branch root (e.g. Fallstudie).
+	 * Used by type chooser, Object View tree, pickable nodes — not chooser-only.
+	 * Option key remains `chooser_root` (legacy name).
+	 */
 	public const KEY_CHOOSER_ROOT = 'chooser_root';
 
-	/** Initial focus/expand node in that chooser (e.g. Data Types). */
+	/**
+	 * Default chooser focus/expand node when the caller does not pass a focus
+	 * (e.g. Data Types for the attribute type picker).
+	 */
 	public const KEY_CHOOSER_FOCUS = 'chooser_focus';
+
+	/** Model folder — default selection for Object View / model bind. */
+	public const KEY_MODEL = 'model';
 
 	public const KEY_DATA_TYPES = 'data_types';
 
@@ -48,6 +59,7 @@ final class Catalog_Bindings {
 		return array(
 			self::KEY_CHOOSER_ROOT,
 			self::KEY_CHOOSER_FOCUS,
+			self::KEY_MODEL,
 			self::KEY_DATA_TYPES,
 			self::KEY_SIMPLE,
 			self::KEY_COMPLEX,
@@ -61,11 +73,28 @@ final class Catalog_Bindings {
 	 */
 	public static function key_labels(): array {
 		return array(
-			self::KEY_CHOOSER_ROOT  => __( 'Attribute type chooser root (branch)', 'wp-taxonomy-tree' ),
-			self::KEY_CHOOSER_FOCUS => __( 'Attribute type chooser focus', 'wp-taxonomy-tree' ),
+			self::KEY_CHOOSER_ROOT  => __( 'Root (shared tree branch)', 'wp-taxonomy-tree' ),
+			self::KEY_CHOOSER_FOCUS => __( 'Chooser default focus (fallback only)', 'wp-taxonomy-tree' ),
+			self::KEY_MODEL         => __( 'Model node (Object View / Model table)', 'wp-taxonomy-tree' ),
 			self::KEY_DATA_TYPES    => __( 'Data Types (legacy alias)', 'wp-taxonomy-tree' ),
 			self::KEY_SIMPLE        => __( 'Simple (helper)', 'wp-taxonomy-tree' ),
 			self::KEY_COMPLEX       => __( 'Complex (helper)', 'wp-taxonomy-tree' ),
+		);
+	}
+
+	/**
+	 * Short help under each Settings binding label.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function key_helps(): array {
+		return array(
+			self::KEY_CHOOSER_ROOT  => __( 'Subtree shown in shared tree choosers (e.g. Fallstudie).', 'wp-taxonomy-tree' ),
+			self::KEY_CHOOSER_FOCUS => __( 'Used only when a picker passes no focus of its own (e.g. attribute type chooser → Data Types). Not the Object View / Model table default — that is Model.', 'wp-taxonomy-tree' ),
+			self::KEY_MODEL         => __( 'Explicit default selection and focus for Object View and Model table. Wins over chooser default focus.', 'wp-taxonomy-tree' ),
+			self::KEY_DATA_TYPES    => __( 'Legacy helper; migrates into chooser default focus when that key is empty.', 'wp-taxonomy-tree' ),
+			self::KEY_SIMPLE        => __( 'Helper binding for scaffold tooling.', 'wp-taxonomy-tree' ),
+			self::KEY_COMPLEX       => __( 'Helper binding for scaffold tooling.', 'wp-taxonomy-tree' ),
 		);
 	}
 
@@ -194,10 +223,116 @@ final class Catalog_Bindings {
 		return array(
 			self::KEY_CHOOSER_ROOT  => self::resolve( $taxonomy, self::KEY_CHOOSER_ROOT ),
 			self::KEY_CHOOSER_FOCUS => $focus,
+			self::KEY_MODEL         => self::resolve( $taxonomy, self::KEY_MODEL ),
 			self::KEY_DATA_TYPES    => self::resolve( $taxonomy, self::KEY_DATA_TYPES ),
 			self::KEY_SIMPLE        => self::resolve( $taxonomy, self::KEY_SIMPLE ),
 			self::KEY_COMPLEX       => self::resolve( $taxonomy, self::KEY_COMPLEX ),
 		);
+	}
+
+	/**
+	 * Terms eligible as catalog binding targets (slots / trash excluded).
+	 *
+	 * @return list<array{id:int,path:string}>
+	 */
+	public static function list_candidate_terms( string $taxonomy ): array {
+		if ( ! Taxonomy::is_scaffold( $taxonomy ) || ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$term_id = (int) $term->term_id;
+			if ( Trash::is_trashed( $term_id ) || Trash::is_trash_node( $term_id ) ) {
+				continue;
+			}
+			if ( Attribute::is_slot( $term_id ) ) {
+				continue;
+			}
+			$out[] = array(
+				'id'   => $term_id,
+				'path' => Composition::term_path( $taxonomy, $term_id ),
+			);
+		}
+		usort(
+			$out,
+			static function ( array $a, array $b ): int {
+				return strcasecmp( $a['path'], $b['path'] );
+			}
+		);
+		return $out;
+	}
+
+	/**
+	 * Sanitize Settings form payload for option {@see self::OPTION}.
+	 *
+	 * Expected shape: { taxonomy: { key: term_id, … }, … }
+	 * Keys present in the payload replace existing values (0 = clear).
+	 * Keys omitted from a submitted taxonomy map keep their previous id.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return array<string, array<string, int>>
+	 */
+	public static function sanitize_option( $value ): array {
+		$existing = self::all();
+		if ( ! is_array( $value ) ) {
+			return $existing;
+		}
+
+		$out = $existing;
+		foreach ( $value as $taxonomy => $map ) {
+			if ( ! is_string( $taxonomy ) || ! Taxonomy::is_scaffold( $taxonomy ) || ! is_array( $map ) ) {
+				continue;
+			}
+			$prev  = isset( $existing[ $taxonomy ] ) && is_array( $existing[ $taxonomy ] )
+				? $existing[ $taxonomy ]
+				: array();
+			$clean = $prev;
+			foreach ( self::keys() as $key ) {
+				if ( ! array_key_exists( $key, $map ) ) {
+					continue;
+				}
+				$id = absint( $map[ $key ] );
+				if ( $id <= 0 ) {
+					unset( $clean[ $key ] );
+					continue;
+				}
+				if ( ! taxonomy_exists( $taxonomy ) ) {
+					unset( $clean[ $key ] );
+					continue;
+				}
+				$term = get_term( $id, $taxonomy );
+				if ( ! $term instanceof \WP_Term ) {
+					unset( $clean[ $key ] );
+					continue;
+				}
+				if ( Attribute::is_slot( $id ) || Trash::is_trashed( $id ) || Trash::is_trash_node( $id ) ) {
+					unset( $clean[ $key ] );
+					continue;
+				}
+				$clean[ $key ] = $id;
+			}
+			$clean = self::migrate_map( $clean );
+			if ( $clean ) {
+				$out[ $taxonomy ] = $clean;
+			} else {
+				unset( $out[ $taxonomy ] );
+			}
+		}
+
+		return $out;
 	}
 
 	/**
@@ -264,9 +399,23 @@ final class Catalog_Bindings {
 			}
 		}
 
+		$model = self::resolve( $taxonomy, self::KEY_MODEL );
+		if ( $model <= 0 ) {
+			$model = self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Model' ),
+				)
+			);
+			if ( $model <= 0 && $root > 0 ) {
+				$model = self::find_child_named( $taxonomy, $root, 'Model' );
+			}
+		}
+
 		$bindings = array(
 			self::KEY_CHOOSER_ROOT  => $root,
 			self::KEY_CHOOSER_FOCUS => $focus,
+			self::KEY_MODEL         => $model,
 			self::KEY_DATA_TYPES    => $data_types,
 			self::KEY_SIMPLE        => $simple,
 			self::KEY_COMPLEX       => $complex,

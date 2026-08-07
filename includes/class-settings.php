@@ -24,6 +24,9 @@ final class Settings {
 
 	public const OPTION_SHOW_TYPE_IN_TREE = 'wtt_show_type_in_tree';
 
+	/** Hide the taxonomy project root in the tree UI (show children at top level). Default ON. */
+	public const OPTION_HIDE_ROOT_NODE = 'wtt_hide_root_node';
+
 	/** Show set-member (child) properties under the selected set node’s detail panel. */
 	public const OPTION_SHOW_SET_CHILD_PROPS = 'wtt_show_set_child_props';
 
@@ -68,6 +71,13 @@ final class Settings {
 	 */
 	public static function show_type_in_tree(): bool {
 		return self::option_is_truthy( get_option( self::OPTION_SHOW_TYPE_IN_TREE, '0' ) );
+	}
+
+	/**
+	 * Hide taxonomy root in the tree column — default ON.
+	 */
+	public static function hide_root_node(): bool {
+		return self::option_is_truthy( get_option( self::OPTION_HIDE_ROOT_NODE, '1' ) );
 	}
 
 	/**
@@ -170,30 +180,79 @@ final class Settings {
 			array(
 				'fields' => array(
 					'testMode'          => self::OPTION_TEST_MODE,
+					'hideRootNode'      => self::OPTION_HIDE_ROOT_NODE,
 					'showTypeInTree'    => self::OPTION_SHOW_TYPE_IN_TREE,
 					'showSetChildProps' => self::OPTION_SHOW_SET_CHILD_PROPS,
 					'saveViaButton'     => self::OPTION_SAVE_VIA_BUTTON,
 					'treePickerMode'    => self::OPTION_TREE_PICKER_MODE,
 					'confirmNodeDelete' => self::OPTION_CONFIRM_NODE_DELETE,
 					'developmentMode'   => self::OPTION_DEVELOPMENT_MODE,
+					'catalogBindings'   => Catalog_Bindings::OPTION,
 				),
 				'saved'  => array(
 					'testMode'          => self::is_test_mode(),
+					'hideRootNode'      => self::hide_root_node(),
 					'showTypeInTree'    => self::show_type_in_tree(),
 					'showSetChildProps' => self::show_set_child_props(),
 					'saveViaButton'     => self::save_via_button(),
 					'treePickerMode'    => self::tree_picker_mode(),
 					'confirmNodeDelete' => self::confirm_node_delete(),
 					'developmentMode'   => self::is_development_mode(),
+					'catalogBindings'   => self::catalog_bindings_saved_state(),
+				),
+				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
+				'taxonomy'  => Taxonomy::FS,
+				'i18n'      => array(
+					'bindingsChange'      => __( 'Change', 'wp-taxonomy-tree' ),
+					'bindingsDone'        => __( 'Done', 'wp-taxonomy-tree' ),
+					'bindingsUnbound'     => __( '(unbound)', 'wp-taxonomy-tree' ),
+					'resetCaseTree'       => __( 'Delete and reinstall case-study tree', 'wp-taxonomy-tree' ),
+					'confirmResetCase'    => __( 'Delete all Fallstudie terms (including attribute slots), then reinstall the case-study tree? This cannot be undone.', 'wp-taxonomy-tree' ),
+					'resetCaseNeedDev'    => __( 'Enable Development mode and save settings first.', 'wp-taxonomy-tree' ),
+					'resetCaseWorking'    => __( 'Resetting…', 'wp-taxonomy-tree' ),
+					'resetCaseDone'       => __( 'Case tree reset and reinstalled.', 'wp-taxonomy-tree' ),
+					'error'               => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 				),
 			)
 		);
+	}
+
+	/**
+	 * Current binding selects for Undo (taxonomy → key → term id string).
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	private static function catalog_bindings_saved_state(): array {
+		$out = array();
+		foreach ( Taxonomy::scaffold_slugs() as $taxonomy ) {
+			if ( ! taxonomy_exists( $taxonomy ) ) {
+				continue;
+			}
+			$map = Catalog_Bindings::for_client( $taxonomy );
+			$row = array();
+			foreach ( Catalog_Bindings::keys() as $key ) {
+				$row[ $key ] = isset( $map[ $key ] ) ? (string) (int) $map[ $key ] : '0';
+			}
+			$out[ $taxonomy ] = $row;
+		}
+		return $out;
 	}
 
 	public static function register_settings(): void {
 		register_setting(
 			'wtt_settings',
 			self::OPTION_TEST_MODE,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( self::class, 'sanitize_flag' ),
+				'default'           => '1',
+			)
+		);
+
+		register_setting(
+			'wtt_settings',
+			self::OPTION_HIDE_ROOT_NODE,
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( self::class, 'sanitize_flag' ),
@@ -261,6 +320,16 @@ final class Settings {
 			)
 		);
 
+		register_setting(
+			'wtt_settings',
+			Catalog_Bindings::OPTION,
+			array(
+				'type'              => 'array',
+				'sanitize_callback' => array( Catalog_Bindings::class, 'sanitize_option' ),
+				'default'           => array(),
+			)
+		);
+
 		add_settings_section(
 			'wtt_settings_general',
 			__( 'General', 'wp-taxonomy-tree' ),
@@ -277,6 +346,14 @@ final class Settings {
 				echo '<p>' . esc_html__( 'Options for local development only. Do not enable on production sites.', 'wp-taxonomy-tree' ) . '</p>';
 			},
 			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			self::OPTION_HIDE_ROOT_NODE,
+			__( 'Hide root node', 'wp-taxonomy-tree' ),
+			array( self::class, 'render_hide_root_node_field' ),
+			self::PAGE_SLUG,
+			'wtt_settings_general'
 		);
 
 		add_settings_field(
@@ -335,12 +412,20 @@ final class Settings {
 			'wtt_settings_development'
 		);
 
+		add_settings_field(
+			'wtt_reset_case_tree',
+			__( 'Reset case tree', 'wp-taxonomy-tree' ),
+			array( self::class, 'render_reset_case_tree_field' ),
+			self::PAGE_SLUG,
+			'wtt_settings_development'
+		);
+
 		add_settings_section(
 			'wtt_settings_catalog',
 			__( 'Catalog bindings', 'wp-taxonomy-tree' ),
 			static function (): void {
 				echo '<p>' . esc_html__(
-					'Attribute type chooser uses two bindings: chooser_root (subtree shown, e.g. Fallstudie) and chooser_focus (initial expand, e.g. Data Types). Legacy data_types / simple / complex helpers remain. Bound by term id so renames stay safe; option wtt_catalog_bindings. Rebuilt when the tree screen loads if missing.',
+					'Stable term-id links for the shared catalog tree. Rarely changed — use Change to edit, then Save.',
 					'wp-taxonomy-tree'
 				) . '</p>';
 			},
@@ -349,7 +434,7 @@ final class Settings {
 
 		add_settings_field(
 			Catalog_Bindings::OPTION,
-			__( 'Attribute type chooser', 'wp-taxonomy-tree' ),
+			__( 'Current bindings', 'wp-taxonomy-tree' ),
 			array( self::class, 'render_catalog_bindings_field' ),
 			self::PAGE_SLUG,
 			'wtt_settings_catalog'
@@ -357,39 +442,115 @@ final class Settings {
 	}
 
 	public static function render_catalog_bindings_field(): void {
-		$labels = Catalog_Bindings::key_labels();
+		$labels   = Catalog_Bindings::key_labels();
+		$helps    = Catalog_Bindings::key_helps();
+		$rendered = false;
+
 		foreach ( Taxonomy::scaffold_slugs() as $taxonomy ) {
 			if ( ! taxonomy_exists( $taxonomy ) ) {
 				continue;
 			}
-			Catalog_Bindings::ensure( $taxonomy );
-			$map = Catalog_Bindings::for_client( $taxonomy );
-			echo '<p><strong>' . esc_html( $taxonomy ) . '</strong></p>';
-			echo '<ul class="ul-disc">';
+			$map        = Catalog_Bindings::for_client( $taxonomy );
+			$candidates = Catalog_Bindings::list_candidate_terms( $taxonomy );
+			$rendered   = true;
+
+			echo '<div class="wtt-catalog-bindings" data-mode="view">';
+			echo '<div class="wtt-catalog-bindings__toolbar">';
+			echo '<p class="wtt-catalog-bindings__tax"><strong>' . esc_html( $taxonomy ) . '</strong></p>';
+			echo '<button type="button" class="button wtt-catalog-bindings__toggle" data-wtt-bindings-toggle="1">';
+			echo esc_html__( 'Change', 'wp-taxonomy-tree' );
+			echo '</button>';
+			echo '</div>';
+
+			echo '<table class="widefat striped wtt-catalog-bindings__table">';
+			echo '<thead><tr>';
+			echo '<th scope="col">' . esc_html__( 'Key', 'wp-taxonomy-tree' ) . '</th>';
+			echo '<th scope="col" class="wtt-catalog-bindings__col-view">' . esc_html__( 'Term ID', 'wp-taxonomy-tree' ) . '</th>';
+			echo '<th scope="col" class="wtt-catalog-bindings__col-view">' . esc_html__( 'Node', 'wp-taxonomy-tree' ) . '</th>';
+			echo '<th scope="col" class="wtt-catalog-bindings__col-edit">' . esc_html__( 'Node', 'wp-taxonomy-tree' ) . '</th>';
+			echo '<th scope="col">' . esc_html__( 'Binding', 'wp-taxonomy-tree' ) . '</th>';
+			echo '</tr></thead><tbody>';
+
 			foreach ( Catalog_Bindings::keys() as $key ) {
-				$id    = isset( $map[ $key ] ) ? (int) $map[ $key ] : 0;
-				$label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
-				$name  = '';
+				$id       = isset( $map[ $key ] ) ? (int) $map[ $key ] : 0;
+				$label    = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
+				$help     = isset( $helps[ $key ] ) ? $helps[ $key ] : '';
+				$field_id = Catalog_Bindings::OPTION . '-' . $taxonomy . '-' . $key;
+				$name     = Catalog_Bindings::OPTION . '[' . $taxonomy . '][' . $key . ']';
+				$node     = '';
 				if ( $id > 0 ) {
 					$term = get_term( $id, $taxonomy );
 					if ( $term instanceof \WP_Term ) {
-						$name = (string) $term->name;
+						$node = (string) $term->name;
 					}
 				}
-				echo '<li>';
-				echo esc_html( $label ) . ' <code>' . esc_html( $key ) . '</code>: ';
+
+				echo '<tr>';
+				echo '<td><code>' . esc_html( $key ) . '</code></td>';
+
+				echo '<td class="wtt-catalog-bindings__col-view">';
 				if ( $id > 0 ) {
-					echo '<code>' . esc_html( (string) $id ) . '</code>';
-					if ( '' !== $name ) {
-						echo ' — ' . esc_html( $name );
-					}
+					echo '<code class="wtt-catalog-bindings__view-id">' . esc_html( (string) $id ) . '</code>';
 				} else {
-					echo esc_html__( '(unbound)', 'wp-taxonomy-tree' );
+					echo '<em class="wtt-catalog-bindings__view-id">' . esc_html__( '(unbound)', 'wp-taxonomy-tree' ) . '</em>';
 				}
-				echo '</li>';
+				echo '</td>';
+				echo '<td class="wtt-catalog-bindings__col-view">';
+				echo '<span class="wtt-catalog-bindings__view-name">' . esc_html( '' !== $node ? $node : '—' ) . '</span>';
+				echo '</td>';
+
+				echo '<td class="wtt-catalog-bindings__col-edit">';
+				echo '<select class="wtt-catalog-bindings__select" id="' . esc_attr( $field_id ) . '" name="' . esc_attr( $name ) . '" data-wtt-binding="1" data-taxonomy="' . esc_attr( $taxonomy ) . '" data-key="' . esc_attr( $key ) . '">';
+				echo '<option value="0"' . selected( $id, 0, false ) . '>' . esc_html__( '(unbound)', 'wp-taxonomy-tree' ) . '</option>';
+				foreach ( $candidates as $candidate ) {
+					$cid  = (int) $candidate['id'];
+					$path = (string) $candidate['path'];
+					echo '<option value="' . esc_attr( (string) $cid ) . '"' . selected( $id, $cid, false ) . '>';
+					echo esc_html( $path . ' (#' . $cid . ')' );
+					echo '</option>';
+				}
+				if ( $id > 0 ) {
+					$found = false;
+					foreach ( $candidates as $candidate ) {
+						if ( (int) $candidate['id'] === $id ) {
+							$found = true;
+							break;
+						}
+					}
+					if ( ! $found ) {
+						$orph = '' !== $node ? $node : __( '(missing term)', 'wp-taxonomy-tree' );
+						echo '<option value="' . esc_attr( (string) $id ) . '" selected="selected">';
+						echo esc_html( $orph . ' (#' . $id . ')' );
+						echo '</option>';
+					}
+				}
+				echo '</select>';
+				echo '</td>';
+
+				echo '<td class="wtt-catalog-bindings__desc"><label for="' . esc_attr( $field_id ) . '">' . esc_html( $label ) . '</label>';
+				if ( '' !== $help ) {
+					echo '<p class="description wtt-catalog-bindings__help">' . esc_html( $help ) . '</p>';
+				}
+				echo '</td>';
+				echo '</tr>';
 			}
-			echo '</ul>';
+
+			echo '</tbody></table>';
+			echo '</div>';
 		}
+
+		if ( ! $rendered ) {
+			echo '<p class="description"><em>' . esc_html__( 'No scaffold taxonomy registered — bindings cannot be shown yet.', 'wp-taxonomy-tree' ) . '</em></p>';
+		}
+	}
+
+	public static function render_hide_root_node_field(): void {
+		self::render_checkbox_field(
+			self::OPTION_HIDE_ROOT_NODE,
+			self::hide_root_node(),
+			__( 'Hide the taxonomy root in the tree', 'wp-taxonomy-tree' ),
+			__( 'When enabled (default), the project root is hidden and its children appear at the top level. The root is still stored as “Fallstudie” in the database; the tree label is “Taxonomy”.', 'wp-taxonomy-tree' )
+		);
 	}
 
 	public static function render_test_mode_field(): void {
@@ -397,7 +558,7 @@ final class Settings {
 			self::OPTION_TEST_MODE,
 			self::is_test_mode(),
 			__( 'Enable test mode (Testbetrieb)', 'wp-taxonomy-tree' ),
-			__( 'When enabled, the Reset test tree button is available on the tree screen. Applies only after you save.', 'wp-taxonomy-tree' )
+			__( 'Scaffold test posture (e.g. default confirm-delete off). Applies only after you save.', 'wp-taxonomy-tree' )
 		);
 	}
 
@@ -444,6 +605,29 @@ final class Settings {
 			__( 'Allow deleting all nodes and relations', 'wp-taxonomy-tree' ),
 			__( 'Development only. When enabled, catalog/system nodes are deletable and protected relations (including child_of) can be removed in the Relations UI. The Trash bin itself stays non-deletable (use Empty trash). Off by default.', 'wp-taxonomy-tree' )
 		);
+	}
+
+	public static function render_reset_case_tree_field(): void {
+		$dev_on = self::is_development_mode();
+		?>
+		<button
+			type="button"
+			class="button button-secondary"
+			id="wtt-settings-reset-case"
+			<?php disabled( ! $dev_on ); ?>
+		>
+			<?php esc_html_e( 'Delete and reinstall case-study tree', 'wp-taxonomy-tree' ); ?>
+		</button>
+		<span id="wtt-settings-reset-case-status" class="wtt-settings-reset-status" role="status" aria-live="polite"></span>
+		<p class="description">
+			<?php
+			esc_html_e(
+				'Hard-wipes all Fallstudie terms (including attribute slots), clears catalog bindings and Model Data for wtt_fs, then reinstalls the blueprint. Requires Development mode (save first if you just turned it on).',
+				'wp-taxonomy-tree'
+			);
+			?>
+		</p>
+		<?php
 	}
 
 	public static function render_tree_picker_mode_field(): void {

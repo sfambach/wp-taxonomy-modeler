@@ -44,6 +44,7 @@ final class Object_Render {
 			'none'                    => __( '—', 'wp-taxonomy-tree' ),
 			'properties'              => __( 'Properties', 'wp-taxonomy-tree' ),
 			'propertiesMany'          => __( 'Multi-value attributes', 'wp-taxonomy-tree' ),
+			'colIndex'                => __( '#', 'wp-taxonomy-tree' ),
 			'inherited'               => __( 'Inherited', 'wp-taxonomy-tree' ),
 			'hidden'                  => __( 'Hidden', 'wp-taxonomy-tree' ),
 			'emptyValue'              => __( '—', 'wp-taxonomy-tree' ),
@@ -57,6 +58,10 @@ final class Object_Render {
 			'pickInstanceHint'        => __( 'Pick an existing model-data instance or create a new one.', 'wp-taxonomy-tree' ),
 			'createInstance'          => __( 'Create new', 'wp-taxonomy-tree' ),
 			'noInstances'             => __( 'No instances yet. Create one to continue.', 'wp-taxonomy-tree' ),
+			'noMatchingInstances'     => __( 'No matching instances.', 'wp-taxonomy-tree' ),
+			'tableEmpty'              => __( 'No data available.', 'wp-taxonomy-tree' ),
+			'instanceSearch'          => __( 'Search', 'wp-taxonomy-tree' ),
+			'instanceSearchPlaceholder' => __( 'Search…', 'wp-taxonomy-tree' ),
 			'instanceLoadFailed'      => __( 'Could not load instances.', 'wp-taxonomy-tree' ),
 			'instanceCreateFailed'    => __( 'Could not create instance.', 'wp-taxonomy-tree' ),
 			'datasetLabel'            => __( 'Dataset:', 'wp-taxonomy-tree' ),
@@ -68,7 +73,7 @@ final class Object_Render {
 			'binding'                 => __( 'Binding', 'wp-taxonomy-tree' ),
 			'pickLayout'              => __( 'Layout', 'wp-taxonomy-tree' ),
 			'layoutForm'              => __( 'Form + Table (auto)', 'wp-taxonomy-tree' ),
-			'layoutTable'             => __( 'Table (all)', 'wp-taxonomy-tree' ),
+			'layoutTable'             => __( 'Table (singles)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
 			'layoutAuto'              => __( 'Node preferred', 'wp-taxonomy-tree' ),
@@ -86,6 +91,9 @@ final class Object_Render {
 			'savingInstance'          => __( 'Saving instance…', 'wp-taxonomy-tree' ),
 			'savedInstance'           => __( 'Instance saved.', 'wp-taxonomy-tree' ),
 			'editNeedsInstance'       => __( 'Pick a dataset to edit attribute values.', 'wp-taxonomy-tree' ),
+			'colVersion'              => __( 'Version', 'wp-taxonomy-tree' ),
+			'colModified'             => __( 'Modified', 'wp-taxonomy-tree' ),
+			'colInstanceId'           => __( 'Id', 'wp-taxonomy-tree' ),
 			'nodePickerSearch'        => __( 'Search', 'wp-taxonomy-tree' ),
 			'nodePickerSearchPlaceholder' => __( 'Search…', 'wp-taxonomy-tree' ),
 			'nodePickerSearchEmpty'   => __( 'No matching nodes.', 'wp-taxonomy-tree' ),
@@ -112,11 +120,20 @@ final class Object_Render {
 				true
 			);
 		}
+		if ( ! wp_script_is( 'wtt-int-value', 'registered' ) ) {
+			wp_register_script(
+				'wtt-int-value',
+				WTT_PLUGIN_URL . 'assets/js/wtt-int-value.js',
+				array(),
+				$ver,
+				true
+			);
+		}
 		if ( ! wp_script_is( 'wtt-node-render', 'registered' ) ) {
 			wp_register_script(
 				'wtt-node-render',
 				WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-				array( 'wtt-sample-data' ),
+				array( 'wtt-sample-data', 'wtt-int-value' ),
 				$ver,
 				true
 			);
@@ -148,7 +165,8 @@ final class Object_Render {
 	}
 
 	/**
-	 * Pickable nodes for the block sidebar (flat path list).
+	 * Pickable nodes for Object View / Model bind tree.
+	 * One scaffold tree: under chooser_root when bound; attribute slots excluded.
 	 *
 	 * @return list<array{id:int,name:string,path:string,taxonomy:string}>
 	 */
@@ -162,7 +180,9 @@ final class Object_Render {
 			if ( ! Taxonomy::is_scaffold( $slug ) || ! taxonomy_exists( $slug ) ) {
 				continue;
 			}
-			$terms = get_terms(
+			Catalog_Bindings::ensure( $slug );
+			$root_id = Catalog_Bindings::resolve( $slug, Catalog_Bindings::KEY_CHOOSER_ROOT );
+			$terms   = get_terms(
 				array(
 					'taxonomy'   => $slug,
 					'hide_empty' => false,
@@ -178,6 +198,12 @@ final class Object_Render {
 				}
 				$term_id = (int) $term->term_id;
 				if ( Trash::is_trashed( $term_id ) || Trash::is_trash_node( $term_id ) ) {
+					continue;
+				}
+				if ( Attribute::is_slot( $term_id ) ) {
+					continue;
+				}
+				if ( $root_id > 0 && ! self::term_is_under( $slug, $term_id, $root_id ) ) {
 					continue;
 				}
 				$out[] = array(
@@ -201,6 +227,33 @@ final class Object_Render {
 		);
 
 		return $out;
+	}
+
+	/**
+	 * Whether $term_id is $root_id or a descendant (via WP term_parent).
+	 */
+	private static function term_is_under( string $taxonomy, int $term_id, int $root_id ): bool {
+		if ( $root_id <= 0 || $term_id <= 0 ) {
+			return true;
+		}
+		if ( $term_id === $root_id ) {
+			return true;
+		}
+		$guard = 0;
+		$cur   = $term_id;
+		while ( $cur > 0 && $guard < 64 ) {
+			++$guard;
+			$term = get_term( $cur, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				return false;
+			}
+			$parent = (int) $term->parent;
+			if ( $parent === $root_id ) {
+				return true;
+			}
+			$cur = $parent;
+		}
+		return false;
 	}
 
 	/**
@@ -441,11 +494,12 @@ final class Object_Render {
 	}
 
 	/**
-	 * @param array<string, mixed> $row      Attribute row from Attribute::list.
-	 * @param string               $taxonomy Taxonomy slug (for node_ref extras).
+	 * @param array<string, mixed> $row              Attribute row from Attribute::list.
+	 * @param string               $taxonomy         Taxonomy slug (for node_ref extras).
+	 * @param bool                 $with_type_schema Include type's attributes once (for Mult many → Table(n)).
 	 * @return array<string, mixed>
 	 */
-	private static function property_dto( array $row, string $taxonomy = '' ): array {
+	private static function property_dto( array $row, string $taxonomy = '', bool $with_type_schema = true ): array {
 		$values = array();
 		if ( isset( $row['fixedValues'] ) && is_array( $row['fixedValues'] ) ) {
 			foreach ( $row['fixedValues'] as $v ) {
@@ -483,6 +537,7 @@ final class Object_Render {
 					? $row['fixedOptions']
 					: array()
 			),
+			'typeProperties'=> array(),
 		);
 
 		/* node_ref edit/display needs catalog options (same extras as Model table columns). */
@@ -504,6 +559,53 @@ final class Object_Render {
 			}
 		}
 
+		if ( 'int' === strtolower( $type_key ) || 'integer' === strtolower( $type_key ) ) {
+			if ( isset( $row['intConfig'] ) && is_array( $row['intConfig'] ) ) {
+				$dto['intConfig']     = $row['intConfig'];
+				$dto['displayFormat'] = isset( $row['intConfig']['displayFormat'] )
+					? Int_Value::normalize_format_id( (string) $row['intConfig']['displayFormat'] )
+					: Int_Value::DEFAULT_FORMAT;
+			} elseif ( isset( $row['displayFormat'] ) ) {
+				$dto['displayFormat'] = Int_Value::normalize_format_id( (string) $row['displayFormat'] );
+				$dto['intConfig']     = array( 'displayFormat' => $dto['displayFormat'] );
+			} elseif ( '' !== $taxonomy ) {
+				$cfg_term = (int) ( $row['typeId'] ?? 0 );
+				if ( $cfg_term <= 0 ) {
+					$cfg_term = $slot_id;
+				}
+				$cfg = Node_Type::get_int_config_for_node( $taxonomy, $cfg_term );
+				$fmt = is_array( $cfg ) && isset( $cfg['displayFormat'] )
+					? Int_Value::normalize_format_id( (string) $cfg['displayFormat'] )
+					: Int_Value::DEFAULT_FORMAT;
+				$dto['intConfig']     = array( 'displayFormat' => $fmt );
+				$dto['displayFormat'] = $fmt;
+			}
+		}
+
+		if ( 'media' === strtolower( $type_key ) && '' !== $taxonomy ) {
+			$type_id = (int) ( $row['typeId'] ?? 0 );
+			$cfg     = null;
+			if ( $type_id > 0 ) {
+				$cfg = Node_Type::get_media_config_for_node( $taxonomy, $type_id );
+			}
+			if ( null === $cfg && $slot_id > 0 ) {
+				$cfg = Node_Type::get_media_config_for_node( $taxonomy, $slot_id );
+			}
+			$dto['mediaConfig'] = is_array( $cfg )
+				? $cfg
+				: array(
+					'allowUpload'  => true,
+					'allowUrl'     => false,
+					'allowedKinds' => array(),
+				);
+		}
+
+		if ( isset( $row['quantitySchema'] ) && is_array( $row['quantitySchema'] ) ) {
+			$dto['quantitySchema'] = $row['quantitySchema'];
+		} else {
+			$dto['quantitySchema'] = null;
+		}
+
 		if ( isset( $row['typeExtras'] ) && is_array( $row['typeExtras'] ) ) {
 			$dto['typeExtras'] = $row['typeExtras'];
 		}
@@ -511,6 +613,22 @@ final class Object_Render {
 			$dto['computed'] = true;
 			$dto['compute']  = isset( $row['compute'] ) && is_array( $row['compute'] ) ? $row['compute'] : null;
 			$dto['readonly'] = true;
+		}
+
+		/*
+		 * Mult > 1 → list of the attribute's type. When the type itself has attributes
+		 * (structure), those become Table(n) columns. No recursive nesting of typeProperties.
+		 */
+		if ( $with_type_schema && '' !== $taxonomy ) {
+			$type_id = (int) ( $row['typeId'] ?? 0 );
+			if ( $type_id > 0 && Attribute::type_has_attributes( $taxonomy, $type_id ) ) {
+				foreach ( Attribute::list( $taxonomy, $type_id ) as $child_row ) {
+					if ( ! is_array( $child_row ) || ! empty( $child_row['hidden'] ) ) {
+						continue;
+					}
+					$dto['typeProperties'][] = self::property_dto( $child_row, $taxonomy, false );
+				}
+			}
 		}
 
 		return $dto;
@@ -581,25 +699,25 @@ final class Object_Render {
 
 		if ( array() === $properties ) {
 			echo '<p class="wtt-object-view__empty">' . esc_html( $i18n['noProperties'] ) . '</p>';
-		} elseif ( 'table' === $layout ) {
-			echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-			self::echo_properties_table( $properties, $i18n, $render_ctx );
-		} elseif ( 'compact' === $layout || 'compact-vertical' === $layout ) {
-			echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-			self::echo_properties_compact( $properties, $i18n, $layout, $render_ctx );
 		} else {
-			/* Canonical Object View: singles → Form, manys → Table. */
 			$parts  = self::partition_properties( $properties );
 			$single = $parts['single'];
 			$many   = $parts['many'];
 
+			/* Singles follow layout; multi-value attributes always render as a table. */
 			if ( array() !== $single ) {
 				echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-				echo '<div class="wtt-object-view__form" role="list">';
-				foreach ( $single as $prop ) {
-					self::echo_property_row( $prop, $i18n, $render_ctx );
+				if ( 'table' === $layout ) {
+					self::echo_properties_table( $single, $i18n, $render_ctx );
+				} elseif ( 'compact' === $layout || 'compact-vertical' === $layout ) {
+					self::echo_properties_compact( $single, $i18n, $layout, $render_ctx );
+				} else {
+					echo '<div class="wtt-object-view__form" role="list">';
+					foreach ( $single as $prop ) {
+						self::echo_property_row( $prop, $i18n, $render_ctx );
+					}
+					echo '</div>';
 				}
-				echo '</div>';
 			}
 
 			if ( array() !== $many ) {
@@ -743,6 +861,10 @@ final class Object_Render {
 	 */
 	private static function echo_typed_value( array $prop, string $raw, array $i18n, bool $compact = false, array $ctx = array() ): void {
 		$raw = trim( $raw );
+		if ( self::is_structure_prop( $prop ) ) {
+			self::echo_structure_value( $prop, $raw, $i18n, $ctx );
+			return;
+		}
 		if ( '' === $raw ) {
 			echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ) . '</span>';
 			return;
@@ -780,11 +902,62 @@ final class Object_Render {
 	}
 
 	/**
+	 * Type carries its own attributes → structure (Form/Table embed), not CatalogChoice.
+	 *
+	 * @param array<string, mixed> $prop Property DTO.
+	 */
+	private static function is_structure_prop( array $prop ): bool {
+		$tp = isset( $prop['typeProperties'] ) && is_array( $prop['typeProperties'] )
+			? $prop['typeProperties']
+			: array();
+		return array() !== $tp;
+	}
+
+	/**
+	 * SSR display for a structured attribute value (type schema fields).
+	 *
+	 * @param array<string, mixed>  $prop Property DTO.
+	 * @param string                $raw  Store string.
+	 * @param array<string, string> $i18n Strings.
+	 * @param array<string, mixed>  $ctx  Render context.
+	 */
+	private static function echo_structure_value( array $prop, string $raw, array $i18n, array $ctx ): void {
+		$columns = isset( $prop['typeProperties'] ) && is_array( $prop['typeProperties'] )
+			? $prop['typeProperties']
+			: array();
+		if ( array() === $columns ) {
+			echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ) . '</span>';
+			return;
+		}
+		$row_vals = self::many_row_values_from_store( $columns, $raw );
+		echo '<div class="wtt-object-view__structure-embed" role="list">';
+		foreach ( $columns as $col ) {
+			if ( ! is_array( $col ) ) {
+				continue;
+			}
+			$col_id   = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
+			$col_name = (string) ( $col['name'] ?? '' );
+			$cell     = isset( $row_vals[ $col_id ] ) ? (string) $row_vals[ $col_id ] : '';
+			echo '<div class="wtt-object-view__row" role="listitem">';
+			echo '<div class="wtt-object-view__label"><span class="wtt-object-view__label-text">' .
+				esc_html( '' !== $col_name ? $col_name : '—' ) .
+				'</span></div>';
+			echo '<div class="wtt-object-view__value">';
+			self::echo_typed_value( $col, $cell, $i18n, true, $ctx );
+			echo '</div></div>';
+		}
+		echo '</div>';
+	}
+
+	/**
 	 * Whether the property stores a node id reference (node_ref or CatalogChoice).
 	 *
 	 * @param array<string, mixed> $prop Property DTO.
 	 */
 	private static function is_reference_prop( array $prop ): bool {
+		if ( self::is_structure_prop( $prop ) ) {
+			return false;
+		}
 		$type_key = strtolower( trim( (string) ( $prop['typeKey'] ?? $prop['typeName'] ?? '' ) ) );
 		if ( false !== strpos( $type_key, '/' ) ) {
 			$parts    = array_map( 'trim', explode( '/', $type_key ) );
@@ -991,38 +1164,98 @@ final class Object_Render {
 	}
 
 	/**
-	 * Multiplicity-many attributes as one table (columns = attrs, rows = value indices).
+	 * Multiplicity > 1 = list of the attribute's type → plain Table(n) render.
+	 * Columns = type attributes when the type is structured; otherwise one column = the field.
 	 *
 	 * @param list<array<string, mixed>> $properties Many-valued properties.
 	 * @param array<string, string>       $i18n       Strings.
 	 * @param array<string, mixed>        $ctx        Render context.
 	 */
 	private static function echo_many_properties_table( array $properties, array $i18n, array $ctx = array() ): void {
-		$max_rows = 1;
+		echo '<div class="wtt-object-view__many-stack">';
 		foreach ( $properties as $prop ) {
-			$vals     = self::many_prop_store_values( $prop );
-			$max_rows = max( $max_rows, count( $vals ), 1 );
-		}
-
-		echo '<div class="wtt-object-view__table-wrap"><table class="wtt-object-view__table">';
-		echo '<thead><tr>';
-		foreach ( $properties as $prop ) {
-			$name = (string) ( $prop['name'] ?? '' );
-			echo '<th scope="col">' . esc_html( '' !== $name ? $name : '—' ) . '</th>';
-		}
-		echo '</tr></thead><tbody>';
-		for ( $r = 0; $r < $max_rows; $r++ ) {
-			echo '<tr>';
-			foreach ( $properties as $prop ) {
-				$vals = self::many_prop_store_values( $prop );
-				$cell = isset( $vals[ $r ] ) ? (string) $vals[ $r ] : '';
-				echo '<td>';
-				self::echo_typed_value( $prop, $cell, $i18n, true, $ctx );
-				echo '</td>';
+			if ( ! is_array( $prop ) ) {
+				continue;
 			}
-			echo '</tr>';
+			$type_props = isset( $prop['typeProperties'] ) && is_array( $prop['typeProperties'] )
+				? $prop['typeProperties']
+				: array();
+			$columns    = array() !== $type_props ? $type_props : array( $prop );
+			$raw_rows   = self::many_prop_store_values( $prop );
+			if ( array() === $raw_rows ) {
+				$raw_rows = array( '' );
+			}
+
+			$name = (string) ( $prop['name'] ?? '' );
+			echo '<div class="wtt-object-view__many-item">';
+			if ( '' !== $name ) {
+				echo '<h5 class="wtt-object-view__many-title">' . esc_html( $name ) . '</h5>';
+			}
+			echo '<div class="wtt-object-view__table-wrap">';
+			echo '<table class="wtt-object-view__table wtt-object-render__table">';
+			echo '<thead><tr>';
+			foreach ( $columns as $col ) {
+				if ( ! is_array( $col ) ) {
+					continue;
+				}
+				$col_name = (string) ( $col['name'] ?? '' );
+				echo '<th scope="col">' . esc_html( '' !== $col_name ? $col_name : '—' ) . '</th>';
+			}
+			echo '</tr></thead><tbody>';
+			foreach ( $raw_rows as $raw ) {
+				$row_vals = self::many_row_values_from_store( $columns, (string) $raw );
+				echo '<tr>';
+				foreach ( $columns as $col ) {
+					if ( ! is_array( $col ) ) {
+						continue;
+					}
+					$col_id = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
+					$cell   = isset( $row_vals[ $col_id ] ) ? (string) $row_vals[ $col_id ] : '';
+					echo '<td>';
+					self::echo_typed_value( $col, $cell, $i18n, true, $ctx );
+					echo '</td>';
+				}
+				echo '</tr>';
+			}
+			echo '</tbody></table></div></div>';
 		}
-		echo '</tbody></table></div>';
+		echo '</div>';
+	}
+
+	/**
+	 * Decode one list-row store string into column id → value.
+	 *
+	 * @param list<array<string, mixed>> $columns Column property DTOs.
+	 * @param string                     $raw     Store string.
+	 * @return array<string, string>
+	 */
+	private static function many_row_values_from_store( array $columns, string $raw ): array {
+		$raw = trim( $raw );
+		$out = array();
+		if ( '' === $raw ) {
+			return $out;
+		}
+		if ( '{' === $raw[0] ) {
+			$decoded = json_decode( $raw, true );
+			if ( is_array( $decoded ) ) {
+				$keys    = array_keys( $decoded );
+				$is_list = $keys === array_keys( $keys );
+				if ( ! $is_list ) {
+					foreach ( $decoded as $k => $v ) {
+						$out[ (string) $k ] = is_scalar( $v ) || null === $v ? (string) $v : '';
+					}
+					return $out;
+				}
+			}
+		}
+		if ( 1 === count( $columns ) ) {
+			$col    = $columns[0];
+			$col_id = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
+			if ( '' !== $col_id ) {
+				$out[ $col_id ] = $raw;
+			}
+		}
+		return $out;
 	}
 
 	/**

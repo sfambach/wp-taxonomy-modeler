@@ -74,9 +74,15 @@ final class Model_Data_Admin {
 			$ver
 		);
 		wp_enqueue_style(
+			'wtt-node-picker',
+			WTT_PLUGIN_URL . 'assets/css/wtt-node-picker.css',
+			array( 'dashicons' ),
+			$ver
+		);
+		wp_enqueue_style(
 			'wtt-model-data-admin',
 			WTT_PLUGIN_URL . 'assets/css/model-data-admin.css',
-			array( 'wtt-object-render' ),
+			array( 'wtt-object-render', 'wtt-node-picker' ),
 			$ver
 		);
 
@@ -95,9 +101,23 @@ final class Model_Data_Admin {
 			true
 		);
 		wp_register_script(
+			'wtt-int-value',
+			WTT_PLUGIN_URL . 'assets/js/wtt-int-value.js',
+			array(),
+			$ver,
+			true
+		);
+		wp_register_script(
 			'wtt-node-render',
 			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-			array( 'wtt-sample-data', 'wtt-media-render' ),
+			array( 'wtt-sample-data', 'wtt-media-render', 'wtt-int-value' ),
+			$ver,
+			true
+		);
+		wp_register_script(
+			'wtt-node-picker',
+			WTT_PLUGIN_URL . 'assets/js/wtt-node-picker.js',
+			array(),
 			$ver,
 			true
 		);
@@ -105,7 +125,7 @@ final class Model_Data_Admin {
 		wp_enqueue_script(
 			'wtt-model-data-admin',
 			WTT_PLUGIN_URL . 'assets/js/model-data-admin.js',
-			array( 'wtt-node-render', 'wtt-sample-data' ),
+			array( 'wtt-node-render', 'wtt-sample-data', 'wtt-node-picker' ),
 			$ver,
 			true
 		);
@@ -118,27 +138,33 @@ final class Model_Data_Admin {
 		}
 
 		$taxonomies = array();
+		$choosers   = array();
 		foreach ( Taxonomy::scaffold_taxonomies() as $row ) {
 			if ( ! is_array( $row ) ) {
 				continue;
 			}
+			$slug = (string) ( $row['slug'] ?? '' );
 			$taxonomies[] = array(
-				'slug'  => (string) ( $row['slug'] ?? '' ),
+				'slug'  => $slug,
 				'label' => (string) ( $row['label'] ?? $row['slug'] ?? '' ),
 			);
+			if ( '' !== $slug && taxonomy_exists( $slug ) ) {
+				$choosers[ $slug ] = Model_Data::structure_chooser_tree( $slug );
+			}
 		}
 
 		wp_localize_script(
 			'wtt-model-data-admin',
 			'wttModelData',
 			array(
-				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-				'nonce'       => wp_create_nonce( self::NONCE_ACTION ),
-				'taxonomy'    => $default,
-				'taxonomies'  => $taxonomies,
-				'hosts'       => Model_Data::list_structure_hosts(),
+				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+				'nonce'          => wp_create_nonce( self::NONCE_ACTION ),
+				'taxonomy'       => $default,
+				'taxonomies'     => $taxonomies,
+				'hosts'          => Model_Data::list_structure_hosts(),
+				'structureTrees' => $choosers,
 				'treePickerMode' => Settings::tree_picker_mode(),
-				'i18n'        => self::i18n(),
+				'i18n'           => self::i18n(),
 			)
 		);
 	}
@@ -152,8 +178,20 @@ final class Model_Data_Admin {
 			'intro'           => __( 'The taxonomy tree defines structures (types, attributes, hosts). This page manages instance data filled against a selected structure.', 'wp-taxonomy-tree' ),
 			'taxonomy'        => __( 'Taxonomy', 'wp-taxonomy-tree' ),
 			'structure'       => __( 'Structure node', 'wp-taxonomy-tree' ),
-			'structureHint'   => __( 'Pick a host that has attributes. Hosts with attributes are listed first.', 'wp-taxonomy-tree' ),
+			'structureHint'   => __( 'TreeChooser: pick a host that has attributes (folders stay visible).', 'wp-taxonomy-tree' ),
 			'chooseStructure' => __( 'Choose a structure…', 'wp-taxonomy-tree' ),
+			'nodePickerTitle' => __( 'Choose structure node', 'wp-taxonomy-tree' ),
+			'nodePickerChoose'=> __( 'Choose…', 'wp-taxonomy-tree' ),
+			'nodePickerChange'=> __( 'Change…', 'wp-taxonomy-tree' ),
+			'nodePickerClear' => __( 'Clear', 'wp-taxonomy-tree' ),
+			'nodePickerSearch'=> __( 'Search', 'wp-taxonomy-tree' ),
+			'nodePickerSearchPlaceholder' => __( 'Search nodes…', 'wp-taxonomy-tree' ),
+			'nodePickerSearchEmpty' => __( 'No matching nodes.', 'wp-taxonomy-tree' ),
+			'nodePickerNotSelectable' => __( 'No attributes on this node — expand and pick a host.', 'wp-taxonomy-tree' ),
+			'expandAll'       => __( 'Expand', 'wp-taxonomy-tree' ),
+			'collapseAll'     => __( 'Collapse', 'wp-taxonomy-tree' ),
+			'cancel'          => __( 'Cancel', 'wp-taxonomy-tree' ),
+			'attrsLabel'      => __( 'attrs', 'wp-taxonomy-tree' ),
 			'noAttributes'    => __( 'This node has no attributes yet. Add attributes on the Taxonomy Tree screen first.', 'wp-taxonomy-tree' ),
 			'instances'       => __( 'Instances', 'wp-taxonomy-tree' ),
 			'noInstances'     => __( 'No instances yet. Create one to fill attribute values.', 'wp-taxonomy-tree' ),
@@ -209,9 +247,9 @@ final class Model_Data_Admin {
 						<select id="wtt-md-taxonomy" class="wtt-model-data__select"></select>
 					</div>
 					<div class="wtt-model-data__field">
-						<label for="wtt-md-structure"><?php echo esc_html__( 'Structure node', 'wp-taxonomy-tree' ); ?></label>
-						<select id="wtt-md-structure" class="wtt-model-data__select"></select>
-						<p class="description"><?php echo esc_html__( 'Pick a host that has attributes. Hosts with attributes are listed first.', 'wp-taxonomy-tree' ); ?></p>
+						<label id="wtt-md-structure-label"><?php echo esc_html__( 'Structure node', 'wp-taxonomy-tree' ); ?></label>
+						<div id="wtt-md-structure" class="wtt-model-data__structure-chooser" role="group" aria-labelledby="wtt-md-structure-label"></div>
+						<p class="description"><?php echo esc_html__( 'TreeChooser: pick a host that has attributes (folders stay visible).', 'wp-taxonomy-tree' ); ?></p>
 					</div>
 				</aside>
 				<main class="wtt-model-data__main" aria-live="polite">

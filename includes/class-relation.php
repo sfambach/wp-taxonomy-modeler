@@ -343,10 +343,17 @@ final class Relation {
 
 	/**
 	 * Bind or clear data type via has_type (single SoT: type_id meta).
+	 * Hierarchy / root free assign is locked (Q88) — use Attributes for field types.
 	 *
 	 * @return true|\WP_Error
 	 */
 	public static function bind_has_type( string $taxonomy, int $from_id, int $to_id ) {
+		if ( Node_Type::is_free_type_assignment_locked( $taxonomy, $from_id ) ) {
+			return new \WP_Error(
+				'wtt_type_locked',
+				__( 'Free has_type is not editable here. Hierarchy type is the parent; root type is seed-managed.', 'wp-taxonomy-tree' )
+			);
+		}
 		$result = Node_Type::set_type_id( $taxonomy, $from_id, $to_id );
 		if ( is_wp_error( $result ) ) {
 			return $result;

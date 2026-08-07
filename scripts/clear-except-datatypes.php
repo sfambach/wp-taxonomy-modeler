@@ -29,8 +29,8 @@ if ( isset( $args ) && is_array( $args ) ) {
 
 /*
  * Optional taxonomy filter: tree | fs | all (default).
- * Case_Data::reset fails on protected Aggregate — prefer clear-only for wtt_fs,
- * or reset only wtt_tree via "tree".
+ * Full Fallstudie wipe + reinstall: prefer scripts/reset-case-tree.php
+ * (Case_Data::wipe_all_terms). --reset on fs still runs Case_Data::reset.
  */
 $scope = 'all';
 if ( isset( $args ) && is_array( $args ) ) {
@@ -65,11 +65,23 @@ foreach ( $taxonomies as $taxonomy => $label ) {
 			(int) $r['created'],
 			(int) $r['existing']
 		);
+		continue;
 	}
 
-	/* wtt_fs: skip Case_Data::reset (protected Aggregate); clear force-deletes instead. */
 	if ( $do_reset && \WTT\Taxonomy::FS === $taxonomy ) {
-		fwrite( STDERR, "note: wtt_fs uses clear-only (Case_Data reset blocked by protected Aggregate)\n" );
+		$r = \WTT\Case_Data::reset( $taxonomy );
+		if ( is_wp_error( $r ) ) {
+			fwrite( STDERR, "{$label} reset: " . $r->get_error_message() . "\n" );
+			exit( 1 );
+		}
+		printf(
+			"reset %s deleted=%d created=%d existing=%d\n",
+			$taxonomy,
+			(int) $r['deleted'],
+			(int) $r['created'],
+			(int) $r['existing']
+		);
+		continue;
 	}
 
 	$result = \WTT\Demo_Data::clear_except_datatypes( $taxonomy );

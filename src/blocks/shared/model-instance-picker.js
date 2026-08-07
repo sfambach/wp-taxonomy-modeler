@@ -1,31 +1,42 @@
 /**
- * Model-data instance list + Create new (Fill Model Data style).
- * Shared by Taxo Model table / Object view when binding a structure host.
+ * Model-data instance picker: searchable table with row selection.
+ * Shared by Taxo Table view / Object view when binding a structure host.
  */
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useMemo, useState } from '@wordpress/element';
 import { Button, Spinner, Notice } from '@wordpress/components';
 import apiFetch from '@wordpress/api-fetch';
 
-function formatInstanceLabel( inst, i18n ) {
-	const seq = inst && inst.seq != null ? String( inst.seq ) : '';
-	const id = inst && inst.id ? String( inst.id ) : '';
-	const modified =
-		( inst && ( inst.modifiedAtLabel || inst.modifiedAt ) ) || '';
-	const ver = inst && inst.version != null ? String( inst.version ) : '';
-	const parts = [];
-	if ( seq ) {
-		parts.push( `#${ seq }` );
+/**
+ * @param {Object} inst
+ * @return {{ seq: string, version: string, modified: string, id: string }}
+ */
+function instanceCells( inst ) {
+	return {
+		seq: inst && inst.seq != null ? String( inst.seq ) : '',
+		version: inst && inst.version != null ? String( inst.version ) : '',
+		modified:
+			( inst && ( inst.modifiedAtLabel || inst.modifiedAt ) ) || '',
+		id: inst && inst.id ? String( inst.id ) : '',
+	};
+}
+
+/**
+ * @param {Object} inst
+ * @param {string} query
+ * @return {boolean}
+ */
+function instanceMatches( inst, query ) {
+	const q = String( query || '' )
+		.trim()
+		.toLowerCase();
+	if ( ! q ) {
+		return true;
 	}
-	if ( ver ) {
-		parts.push( `v${ ver }` );
-	}
-	if ( modified ) {
-		parts.push( modified );
-	}
-	if ( ! parts.length && id ) {
-		parts.push( id );
-	}
-	return parts.join( ' · ' ) || ( i18n.unnamedInstance || 'Instance' );
+	const cells = instanceCells( inst );
+	const hay = [ cells.seq, cells.version, cells.modified, cells.id ]
+		.join( ' ' )
+		.toLowerCase();
+	return hay.includes( q );
 }
 
 /**
@@ -51,6 +62,7 @@ export default function ModelInstancePicker( {
 	const [ loading, setLoading ] = useState( false );
 	const [ creating, setCreating ] = useState( false );
 	const [ error, setError ] = useState( '' );
+	const [ query, setQuery ] = useState( '' );
 
 	useEffect( () => {
 		const id = parseInt( structureId, 10 ) || 0;
@@ -91,6 +103,11 @@ export default function ModelInstancePicker( {
 			cancelled = true;
 		};
 	}, [ structureId, taxonomy, i18n.instanceLoadFailed ] );
+
+	const filtered = useMemo(
+		() => instances.filter( ( inst ) => instanceMatches( inst, query ) ),
+		[ instances, query ]
+	);
 
 	const createNew = () => {
 		const id = parseInt( structureId, 10 ) || 0;
@@ -133,6 +150,11 @@ export default function ModelInstancePicker( {
 			} );
 	};
 
+	const colSeq = i18n.colIndex || i18n.colSeq || '#';
+	const colVersion = i18n.colVersion || 'Version';
+	const colModified = i18n.colModified || 'Modified';
+	const colId = i18n.colInstanceId || i18n.colId || 'Id';
+
 	return (
 		<div
 			className={
@@ -173,37 +195,115 @@ export default function ModelInstancePicker( {
 				</p>
 			) : null }
 			{ ! loading && instances.length > 0 ? (
-				<ul className="wtt-model-instance-picker__list">
-					{ instances.map( ( inst ) => {
-						const iid = String( ( inst && inst.id ) || '' );
-						const active = iid && iid === String( selectedId || '' );
-						return (
-							<li key={ iid || formatInstanceLabel( inst, i18n ) }>
-								<button
-									type="button"
-									className={
-										'wtt-model-instance-picker__row' +
-										( active ? ' is-active' : '' )
-									}
-									onClick={ () => {
-										if ( typeof onSelect === 'function' ) {
-											onSelect( inst );
-										}
-									} }
-								>
-									<span className="wtt-model-instance-picker__label">
-										{ formatInstanceLabel( inst, i18n ) }
-									</span>
-									{ iid ? (
-										<code className="wtt-model-instance-picker__id">
-											{ iid }
-										</code>
-									) : null }
-								</button>
-							</li>
-						);
-					} ) }
-				</ul>
+				<>
+					<div className="wtt-model-instance-picker__tools">
+						<div className="wtt-model-instance-picker__search">
+							<input
+								type="search"
+								className="wtt-model-instance-picker__search-input"
+								value={ query }
+								placeholder={
+									i18n.instanceSearchPlaceholder ||
+									i18n.nodePickerSearchPlaceholder ||
+									'Search…'
+								}
+								aria-label={
+									i18n.instanceSearch ||
+									i18n.nodePickerSearch ||
+									'Search'
+								}
+								onChange={ ( e ) => setQuery( e.target.value ) }
+							/>
+						</div>
+					</div>
+					{ filtered.length === 0 ? (
+						<p className="wtt-model-instance-picker__empty">
+							{ i18n.noMatchingInstances ||
+								'No matching instances.' }
+						</p>
+					) : (
+						<div className="wtt-model-instance-picker__wrap">
+							<table className="wtt-model-instance-picker__table">
+								<thead>
+									<tr>
+										<th scope="col">{ colSeq }</th>
+										<th scope="col">{ colVersion }</th>
+										<th scope="col">{ colModified }</th>
+										<th scope="col">{ colId }</th>
+									</tr>
+								</thead>
+								<tbody>
+									{ filtered.map( ( inst ) => {
+										const cells = instanceCells( inst );
+										const iid = cells.id;
+										const active =
+											iid &&
+											iid === String( selectedId || '' );
+										return (
+											<tr
+												key={ iid || cells.seq }
+												className={
+													'wtt-model-instance-picker__row' +
+													( active
+														? ' is-active'
+														: '' )
+												}
+												onClick={ () => {
+													if (
+														typeof onSelect ===
+														'function'
+													) {
+														onSelect( inst );
+													}
+												} }
+												onKeyDown={ ( e ) => {
+													if (
+														e.key === 'Enter' ||
+														e.key === ' '
+													) {
+														e.preventDefault();
+														if (
+															typeof onSelect ===
+															'function'
+														) {
+															onSelect( inst );
+														}
+													}
+												} }
+												tabIndex={ 0 }
+												role="button"
+												aria-pressed={ active }
+											>
+												<td className="wtt-model-instance-picker__cell--seq">
+													{ cells.seq
+														? `#${ cells.seq }`
+														: '—' }
+												</td>
+												<td className="wtt-model-instance-picker__cell--version">
+													{ cells.version
+														? `v${ cells.version }`
+														: '—' }
+												</td>
+												<td className="wtt-model-instance-picker__cell--modified">
+													{ cells.modified || '—' }
+												</td>
+												<td className="wtt-model-instance-picker__cell--id">
+													{ iid ? (
+														<code className="wtt-model-instance-picker__id">
+															{ iid }
+														</code>
+													) : (
+														'—'
+													) }
+												</td>
+											</tr>
+										);
+									} ) }
+								</tbody>
+							</table>
+						</div>
+					) }
+				</>
 			) : null }
 		</div>
 	);

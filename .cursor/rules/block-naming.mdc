@@ -5,7 +5,7 @@ All Gutenberg blocks from this plugin use the **`taxo/`** namespace.
 ## Rules
 
 - Registered name: `taxo/<slug>` (e.g. `taxo/collection-table`).
-- Public **title** starts with **`Taxo `** so the block is findable in the inserter by typing `taxo` (e.g. `Taxo Collection table`).
+- Public **title** starts with **`Taxo `** so the block is findable in the inserter by typing `taxo` (e.g. `Taxo Table view`).
 - Add keyword `taxo` (and optionally `taxo-<slug>`) in `block.json`.
 - Do **not** register new blocks under `wtt/` or other namespaces.
 - PHP constant / docs must use the same `taxo/…` name as `block.json`.

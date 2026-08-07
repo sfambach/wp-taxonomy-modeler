@@ -1,6 +1,7 @@
 <?php
 /**
  * Assert Lieferanten catalog on Fallstudie (wtt_fs).
+ * Bauteil kinds must not carry Lieferant / Bestellnummer slots (Q83 merge).
  *
  * @package WP_Taxonomy_Tree
  */
@@ -29,15 +30,15 @@ if ( $id > 0 ) {
 		}
 	}
 	echo " slots={$slots} records={$recs}";
-	$w = WTT\Demo_Data::find_term_by_path(
-		$tax,
-		array( 'Fallstudie', 'Definition', 'Bauteilarten', 'Widerstand', 'Lieferant' )
-	);
-	if ( $w > 0 ) {
-		$tid = WTT\Node_Type::get_type_id( $w );
-		$t   = $tid ? get_term( $tid ) : null;
-		$sc  = WTT\Node_Type::get_ref_scope_id( $w );
-		echo ' Widerstand.Lieferant type=' . ( $t instanceof WP_Term ? $t->name : $tid ) . ' scope=' . $sc;
-	}
+}
+
+$w = WTT\Demo_Data::find_term_by_path(
+	$tax,
+	array( 'Fallstudie', 'Implementation', 'Bauteile', 'Widerstand', 'Lieferant' )
+);
+if ( $w > 0 ) {
+	fwrite( STDERR, "Unexpected Widerstand/Lieferant slot under Bauteile\n" );
+	exit( 1 );
 }
 echo PHP_EOL;
+echo "OK lieferanten catalog (no Bauteil Lieferant slots)\n";

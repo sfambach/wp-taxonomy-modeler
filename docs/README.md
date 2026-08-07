@@ -14,11 +14,14 @@ Living project documentation for **WP Taxonomy Tree**.
 6. [`plans/example-projects.md`](plans/example-projects.md) — concrete host examples (BOM, …)
 7. [`plans/part-identity-layers.md`](plans/part-identity-layers.md) — kind / package / catalog part / BOM usage
 8. [`plans/case-study.md`](plans/case-study.md) — gold Fallstudie scaffold (`wtt_fs`)
-9. [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — questions to resolve before coding
-10. [`PRODUCT.md`](PRODUCT.md) — what the product is
-11. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built
-12. [`ROADMAP.md`](ROADMAP.md) — what ships in which phase
+9. [`MODEL-CATALOG.md`](MODEL-CATALOG.md) — Model hosts / attributes snapshot (**update only on explicit ask**)
+10. [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — questions to resolve before coding
+11. [`PRODUCT.md`](PRODUCT.md) — what the product is
+12. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built
+13. [`ROADMAP.md`](ROADMAP.md) — what ships in which phase
 
 ## Keeping docs current
 
 Any change to files under `plans/` must update the living docs in the same change. See `.cursor/rules/plan-docs-sync.mdc` and `.cursor/rules/planning-only.mdc`.
+
+**Exception:** [`MODEL-CATALOG.md`](MODEL-CATALOG.md) is refreshed only when you ask (see `.cursor/rules/model-catalog.mdc`).

@@ -2,8 +2,8 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffolding ≈ `0.0.297`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root` + `chooser_focus`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**.  
-> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold** — not Phase-1 model sign-off. **Q83–Q92** as in living docs; **CatalogChoice** under Q90 (plan **0.7.32**). Status stays **scaffolding**.  
+> **Scaffolding ≈ `0.0.345`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root`** + caller **`focusId`** (`model` for Object View; **`chooser_focus`** only as fallback when none passed). Catalog lock: **`_wtt_is_template`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** (**Taxo Table view**) = all datasets for selected node. Q83: **Bauteile** = kinds + MPNs (merged). **`int`:** Converter + validators + Number format UI (type default + attribute override).
+> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold** — not Phase-1 model sign-off. **Q83–Q92** as in living docs; **`is_datatype` slim-down** plan **0.7.37** (#6 decided; #12 open); **Q34/Q48** clarifiers; **`int` format UI** plan **0.7.41**. Status stays **scaffolding**.
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
@@ -11,7 +11,7 @@ WordPress plugin that provides a reusable **taxonomy tree environment** for hier
 1. Activate **WP Taxonomy Tree** under Plugins.
 2. Open **Taxonomy Tree** in the wp-admin menu (seed/reset demo via settings / `scripts/windows/seed-test-tree.ps1` if needed).
 3. Expand/collapse, create/copy/move/delete; assign types; explore Basiseinheit units and preview panels.
-4. Optional: `npm install && npm run build` then insert blocks **Taxo Collection table** or **Taxo Object view** (search `taxo`) on a page.
+4. Optional: `npm install && npm run build` then insert blocks **Taxo Table view** or **Taxo Object view** (search `taxo`) on a page.
 
 Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)  
 Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
@@ -91,12 +91,14 @@ See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windo
 
 | Setting | Where | Notes |
 |---------|--------|--------|
-| **Tree picker** (`popup` / `inline`) | Settings → Taxonomy Tree | Controls both the taxonomy **tree picker** and the **`node_ref` catalog chooser** in Form/Table preview **and** the Collection table block editor. Default **popup**. Reparent stays inline. |
+| **Tree picker** (`popup` / `inline`) | Settings → Taxonomy Tree | Shared **TreeChooser** (`WTTNodePicker`): taxonomy tree, `node_ref` preview, Collection table block, **and Fill Model Data Structure**. Default **popup**. Reparent stays inline. |
+| **Fill Model Data Structure** | Taxonomy Tree → Fill Model Data | **TreeChooser** under `chooser_root`, focus **`model`**. Only nodes with attributes are selectable. |
 | **`node_ref` create** | Preview / block cell → Choose → Add new… | Needs **Catalog root (`ref_scope`)** on the field. Mini-form = Name + scalar catalog slots (e.g. Lieferanten: Url, Suchstring, Bewertung). |
 | **Collection table block** | `npm run build` after JS changes | Editor uses `WTTNodeRender` for `node_ref` columns; frontend shows name chips (not raw ids). |
-| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen on **`wtt_fs`**. Legacy `tree`/`reset` args still target retired `wtt_tree` / `Demo_Data` helpers. Prefer **Reset case tree** in admin for Fallstudie. |
+| **Reset case tree** | Taxonomy Tree → Settings → Development mode | Requires **Development mode** ON (+ save). Hard-wipes all `wtt_fs` terms (incl. attribute slots), clears catalog bindings + Model Data for `wtt_fs`, reinstalls blueprint. Also: WP-CLI `eval-file scripts/reset-case-tree.php`. Opening Taxonomy Tree does **not** auto-reseed. |
+| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen on **`wtt_fs`**. Prefer **Reset case tree** / `reset-case-tree.php` for a full Fallstudie rebuild. |
 | **Attributes (Q87 trial)** | Node detail → Attributes | Name + Type + Mult. → stored as `besteht_aus` member. Default Mult. `1`. |
-| **Fill Model Data** | Taxonomy Tree → Fill Model Data | No extra settings. Pick a structure host with attributes, then add/edit instance rows (option `wtt_model_instances`). Taxonomy = structures; this page = filled data. |
+| **Catalog bindings** | Taxonomy Tree → Settings | Compact ID/Node view; **Change** to edit `chooser_root` / `model` / `chooser_focus` (+ helpers). Save to persist. Empty keys auto-fill again when the tree screen loads. |
 
 ## License
 

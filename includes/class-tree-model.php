@@ -158,6 +158,7 @@ final class Tree_Model {
 		}
 
 		Trash::ensure_trash_node( $taxonomy );
+		Hidden_Nodes::ensure_bin( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 
 		return self::nest( $taxonomy, $by_parent, 0 );
@@ -488,6 +489,11 @@ final class Tree_Model {
 		usort(
 			$siblings,
 			static function ( \WP_Term $a, \WP_Term $b ): int {
+				$ra = self::sibling_sort_rank( (int) $a->term_id );
+				$rb = self::sibling_sort_rank( (int) $b->term_id );
+				if ( $ra !== $rb ) {
+					return $ra <=> $rb;
+				}
 				$pa = self::get_position( (int) $a->term_id );
 				$pb = self::get_position( (int) $b->term_id );
 				if ( $pa !== $pb ) {
@@ -498,6 +504,19 @@ final class Tree_Model {
 		);
 
 		return $siblings;
+	}
+
+	/**
+	 * Force system bins after normal siblings: Trash near end, Hidden nodes last.
+	 */
+	private static function sibling_sort_rank( int $term_id ): int {
+		if ( Hidden_Nodes::is_bin( $term_id ) ) {
+			return 2;
+		}
+		if ( Trash::is_trash_node( $term_id ) ) {
+			return 1;
+		}
+		return 0;
 	}
 
 	/**
@@ -560,6 +579,9 @@ final class Tree_Model {
 			if ( Trash::is_trashed( $tid ) ) {
 				continue;
 			}
+			if ( Hidden_Nodes::is_hidden( $tid ) ) {
+				continue;
+			}
 			/* Attribute slots are Bindung targets only — never hierarchy children in the tree. */
 			if ( Attribute::is_slot( $tid ) ) {
 				continue;
@@ -571,13 +593,17 @@ final class Tree_Model {
 		}
 		$count = count( $visible );
 		foreach ( $visible as $index => $term ) {
-			$term_id = (int) $term->term_id;
-			$is_trash = Trash::is_trash_node( $term_id );
+			$term_id       = (int) $term->term_id;
+			$is_trash      = Trash::is_trash_node( $term_id );
+			$is_hidden_bin = Hidden_Nodes::is_bin( $term_id );
 			/*
-			 * Trash bin: do not show WP children — show soft-deleted forest instead.
+			 * Trash / Hidden bins: do not show WP children — show soft-deleted /
+			 * explicitly hidden forests instead.
 			 */
 			if ( $is_trash ) {
 				$children = Trash::build_trashed_forest( $taxonomy );
+			} elseif ( $is_hidden_bin ) {
+				$children = Hidden_Nodes::build_hidden_forest( $taxonomy );
 			} else {
 				$children = self::nest( $taxonomy, $by_parent, $term_id );
 			}
@@ -613,8 +639,11 @@ final class Tree_Model {
 				'typeOverride'   => Node_Type::is_type_override( $term_id ),
 				'isDatatype'  => Node_Type::is_datatype( $taxonomy, $term_id ),
 				'isAbstract'  => Node_Type::is_abstract( $taxonomy, $term_id ),
-				'deletable'   => $is_trash ? false : Node_Type::is_deletable( $term_id ),
+				'isTemplate'  => Node_Type::is_template( $term_id ),
+				'deletable'   => ( $is_trash || $is_hidden_bin ) ? false : Node_Type::is_deletable( $term_id ),
 				'isTrash'     => $is_trash,
+				'isHiddenBin' => $is_hidden_bin,
+				'hidden'      => false,
 				'trashed'     => false,
 				'required'    => Node_Type::is_required( $term_id ),
 				'refScopeId'  => Node_Type::get_ref_scope_id( $term_id ),
@@ -664,6 +693,8 @@ final class Tree_Model {
 			'modified'    => self::get_modified_info( (int) $term->term_id ),
 			'trashed'     => Trash::is_trashed( (int) $term->term_id ),
 			'isTrash'     => Trash::is_trash_node( (int) $term->term_id ),
+			'hidden'      => Hidden_Nodes::is_hidden( (int) $term->term_id ),
+			'isHiddenBin' => Hidden_Nodes::is_bin( (int) $term->term_id ),
 			'typeId'      => Node_Type::get_effective_type_id( $taxonomy, (int) $term->term_id ),
 			'ownTypeId'   => Node_Type::get_type_id( (int) $term->term_id ),
 			'type'        => Node_Type::get_assignment( $taxonomy, (int) $term->term_id ),
@@ -672,11 +703,15 @@ final class Tree_Model {
 			'canInheritType' => Node_Type::can_inherit_type( $taxonomy, (int) $term->term_id ),
 			'inheritedTypeId'=> Node_Type::find_inherited_type_id( $taxonomy, (int) $term->term_id ),
 			'typeIsParent'   => Node_Type::is_typed_as_parent( $taxonomy, (int) $term->term_id ),
+			'freeTypeLocked' => Node_Type::is_free_type_assignment_locked( $taxonomy, (int) $term->term_id ),
 			'typeOptions' => Node_Type::get_picker_options( $taxonomy, (int) $term->term_id ),
 			'datatypeTree'=> Node_Type::get_datatype_tree( $taxonomy ),
 			'isDatatype'  => Node_Type::is_datatype( $taxonomy, (int) $term->term_id ),
 			'isAbstract'  => Node_Type::is_abstract( $taxonomy, (int) $term->term_id ),
-			'deletable'   => Trash::is_trash_node( (int) $term->term_id ) ? false : Node_Type::is_deletable( (int) $term->term_id ),
+			'isTemplate'  => Node_Type::is_template( (int) $term->term_id ),
+			'deletable'   => (
+				Trash::is_trash_node( (int) $term->term_id ) || Hidden_Nodes::is_bin( (int) $term->term_id )
+			) ? false : Node_Type::is_deletable( (int) $term->term_id ),
 			'isDatatypeLocal' => Node_Type::get_is_datatype_local( (int) $term->term_id ),
 			'isAbstractLocal' => Node_Type::get_is_abstract_local( (int) $term->term_id ),
 			'required'    => Node_Type::is_required( (int) $term->term_id ),
@@ -745,10 +780,13 @@ final class Tree_Model {
 			'multiplikator'      => Node_Type::get_multiplikator( (int) $term->term_id ),
 			'quantitySchema'     => Node_Type::get_quantity_schema_for_type(
 				$taxonomy,
-				Node_Type::get_type_id( (int) $term->term_id )
+				Node_Type::is_basiseinheit_unit_node( $taxonomy, (int) $term->term_id )
+					? (int) $term->term_id
+					: Node_Type::get_effective_type_id( $taxonomy, (int) $term->term_id )
 			),
 			'mediaConfig'        => Node_Type::get_media_config_for_node( $taxonomy, (int) $term->term_id ),
 			'dateConfig'         => Node_Type::get_date_config_for_node( $taxonomy, (int) $term->term_id ),
+			'intConfig'          => Node_Type::get_int_config_for_node( $taxonomy, (int) $term->term_id ),
 			'preferredRender'    => Node_Type::get_preferred_render( (int) $term->term_id ),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),
 			'relationTypeTree'   => Relation::get_relation_type_tree( $taxonomy ),
@@ -759,10 +797,19 @@ final class Tree_Model {
 				$taxonomy,
 				(int) $term->term_id
 			),
+			'quantityPreviewExample' => Node_Type::is_quantity_type_catalog_node(
+				$taxonomy,
+				(int) $term->term_id
+			)
+				? Node_Type::get_quantity_preview_example( $taxonomy, (int) $term->term_id )
+				: null,
 		);
 
 		if ( Trash::is_trash_node( (int) $term->term_id ) ) {
 			$node = array_merge( $node, Trash::trash_node_payload( $taxonomy, (int) $term->term_id ) );
+		}
+		if ( Hidden_Nodes::is_bin( (int) $term->term_id ) ) {
+			$node = array_merge( $node, Hidden_Nodes::bin_payload( $taxonomy, (int) $term->term_id ) );
 		}
 
 		return $node;
@@ -816,6 +863,10 @@ final class Tree_Model {
 		);
 	}
 
+	/**
+	 * Whether the node has visible hierarchy children (same filters as nest()).
+	 * Soft-trashed / hidden / attribute-slot WP children do not count.
+	 */
 	public static function term_has_children( string $taxonomy, int $term_id ): bool {
 		$children = get_terms(
 			array(
@@ -823,11 +874,34 @@ final class Tree_Model {
 				'parent'     => $term_id,
 				'hide_empty' => false,
 				'fields'     => 'ids',
-				'number'     => 1,
+				'number'     => 0,
 			)
 		);
+		if ( ! is_array( $children ) || empty( $children ) ) {
+			return false;
+		}
 
-		return is_array( $children ) && count( $children ) > 0;
+		foreach ( $children as $cid ) {
+			$cid = (int) $cid;
+			if ( $cid <= 0 ) {
+				continue;
+			}
+			if ( Trash::is_trashed( $cid ) ) {
+				continue;
+			}
+			if ( Hidden_Nodes::is_hidden( $cid ) ) {
+				continue;
+			}
+			if ( Attribute::is_slot( $cid ) ) {
+				continue;
+			}
+			if ( $term_id > 0 && Attribute::is_own_member( $taxonomy, $term_id, $cid ) ) {
+				continue;
+			}
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -1260,6 +1334,24 @@ final class Tree_Model {
 	 */
 	public static function empty_trash( string $taxonomy ) {
 		return Trash::empty_trash( $taxonomy );
+	}
+
+	/**
+	 * Hide a node from the normal tree (keeps term + parent links).
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function hide_term( string $taxonomy, int $term_id ) {
+		return Hidden_Nodes::hide( $taxonomy, $term_id );
+	}
+
+	/**
+	 * Unhide a node so it reappears under its WP parent when visible.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function unhide_term( string $taxonomy, int $term_id ) {
+		return Hidden_Nodes::unhide( $taxonomy, $term_id );
 	}
 
 	/**

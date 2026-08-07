@@ -87,10 +87,7 @@ final class Tree_Admin {
 			Catalog_Bindings::ensure( $requested );
 		}
 
-		$select_hint   = __( 'Select a node. Fallstudie tree (Definition / Implementation) — slim detail UI; not a model sign-off.', 'wp-taxonomy-tree' );
-		$confirm_reset = __( 'Delete Fallstudie root, then reinstall the case-study tree?', 'wp-taxonomy-tree' );
-		$reset_label   = __( 'Reset case tree', 'wp-taxonomy-tree' );
-		$reset_done    = __( 'Case tree reset and reinstalled.', 'wp-taxonomy-tree' );
+		$select_hint   = __( 'Select a node. Taxonomy tree (Definition / Model) — slim detail UI; not a model sign-off.', 'wp-taxonomy-tree' );
 
 		$config = array(
 			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
@@ -101,6 +98,7 @@ final class Tree_Admin {
 			'version'    => WTT_VERSION,
 			'caseStudyMode'     => $case_study,
 			'testMode'          => Settings::is_test_mode(),
+			'hideRootNode'      => Settings::hide_root_node(),
 			'showTypeInTree'    => Settings::show_type_in_tree(),
 			'showSetChildProps' => Settings::show_set_child_props(),
 			'saveViaButton'     => Settings::save_via_button(),
@@ -111,9 +109,12 @@ final class Tree_Admin {
 			/* Trial: flags + static meta as form rows (label left, chips right). Set false to revert strip layout. */
 			'flagsAsFormRow'   => true,
 			'i18n'       => array(
-				'empty'           => __( 'No terms yet. Create a root node to start the tree.', 'wp-taxonomy-tree' ),
+				'empty'           => __( 'No terms yet under the taxonomy root.', 'wp-taxonomy-tree' ),
 				'selectHint'      => $select_hint,
 				'loading'         => __( 'Loading...', 'wp-taxonomy-tree' ),
+				'hideRootNode'    => __( 'Hide root', 'wp-taxonomy-tree' ),
+				'hideRootNodeHint'=> __( 'Hide the project root and show its children at the top level', 'wp-taxonomy-tree' ),
+				'taxonomyRootLabel' => __( 'Taxonomy', 'wp-taxonomy-tree' ),
 				'addRoot'         => __( 'Add root', 'wp-taxonomy-tree' ),
 				'expandAll'       => __( 'Expand', 'wp-taxonomy-tree' ),
 				'expandAllHint'   => __( 'Expand all nodes', 'wp-taxonomy-tree' ),
@@ -156,6 +157,16 @@ final class Tree_Admin {
 				'trashEmpty'      => __( 'Trash is empty.', 'wp-taxonomy-tree' ),
 				'trashEmptyAction'=> __( 'Empty Trash', 'wp-taxonomy-tree' ),
 				'trashEmptyConfirm' => __( 'Permanently delete all soft-deleted nodes? This cannot be undone.', 'wp-taxonomy-tree' ),
+				'hideNode'        => __( 'Hide node', 'wp-taxonomy-tree' ),
+				'hideNodeHint'    => __( 'Keep this node but hide it from the tree. Find it again under Hidden nodes.', 'wp-taxonomy-tree' ),
+				'confirmHide'     => __( 'Hide this node from the tree? It stays in the database and appears under Hidden nodes.', 'wp-taxonomy-tree' ),
+				'unhideNode'      => __( 'Show again', 'wp-taxonomy-tree' ),
+				'unhideNodeHint'  => __( 'Restore this node to the tree under its parent.', 'wp-taxonomy-tree' ),
+				'hiddenBinCannotHide' => __( 'The Hidden nodes bin cannot be hidden.', 'wp-taxonomy-tree' ),
+				'hiddenTitle'     => __( 'Hidden nodes', 'wp-taxonomy-tree' ),
+				'hiddenHelp'      => __( 'Nodes marked hidden stay in the database with their parent links, but are omitted from the normal tree. Unhide to restore them.', 'wp-taxonomy-tree' ),
+				'hiddenCountLabel'=> __( 'Hidden objects', 'wp-taxonomy-tree' ),
+				'hiddenEmpty'     => __( 'No hidden nodes.', 'wp-taxonomy-tree' ),
 				'tableBandBindingsTitle' => __( 'Bindings (type properties)', 'wp-taxonomy-tree' ),
 				'tableBandBindingsHint' => __( 'Bindings map type property → child node (not by the child’s display name).', 'wp-taxonomy-tree' ),
 				'tableBandBindingHelp' => __( 'Bind this slot to a direct child. Columns come from that child’s fields.', 'wp-taxonomy-tree' ),
@@ -167,9 +178,6 @@ final class Tree_Admin {
 				'cancel'          => __( 'Cancel', 'wp-taxonomy-tree' ),
 				'error'           => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 				'taxonomy'        => __( 'Taxonomy', 'wp-taxonomy-tree' ),
-				'resetDemo'       => $reset_label,
-				'confirmReset'    => $confirm_reset,
-				'demoReset'       => $reset_done,
 				'dataType'        => __( 'Data type', 'wp-taxonomy-tree' ),
 				'dataTypeNone'    => __( 'No type', 'wp-taxonomy-tree' ),
 				'dataTypeHint'    => __( 'Pick a non-abstract data-type node. Stored as type_id; Relations → has_type shows the same binding.', 'wp-taxonomy-tree' ),
@@ -189,6 +197,10 @@ final class Tree_Admin {
 				'isDatatypeHint'  => __( 'Marks this node as a type catalog entry (chooser forest). Children inherit the flag unless overridden. A datatype may also have its own type assigned.', 'wp-taxonomy-tree' ),
 				'isAbstract'      => __( 'Is abstract', 'wp-taxonomy-tree' ),
 				'isAbstractHint'  => __( 'Local only — not inherited. On data-type nodes: abstract types appear in the chooser but cannot be selected. On other nodes: marks this node as abstract for its own use.', 'wp-taxonomy-tree' ),
+				'isTemplate'      => __( 'Is template', 'wp-taxonomy-tree' ),
+				'isTemplateHint'  => __( 'Marks a protected catalog / system template node. Seeded templates are not deletable (unless Development mode is on). Editable only in Development mode.', 'wp-taxonomy-tree' ),
+				'isTemplateYes'   => __( 'Yes', 'wp-taxonomy-tree' ),
+				'isTemplateNo'    => __( 'No', 'wp-taxonomy-tree' ),
 				'nodeFlags'       => __( 'Flags', 'wp-taxonomy-tree' ),
 				'nodeFlagsHint'   => __( 'Type catalog flags, inheritance to children, and whether this slot is required.', 'wp-taxonomy-tree' ),
 				'nodeMeta'        => __( 'Meta', 'wp-taxonomy-tree' ),
@@ -357,7 +369,7 @@ final class Tree_Admin {
 				'relationsFrom'   => __( 'From', 'wp-taxonomy-tree' ),
 				'relationsTo'     => __( 'To', 'wp-taxonomy-tree' ),
 				'relationsThisHint' => __( 'Current node (this endpoint of the relation)', 'wp-taxonomy-tree' ),
-				'relationsHint'   => __( 'Format: node → relation type → node. Click To to change the target (except child_of — use Reparent). has_type mirrors Data type from properties; Mult. = definition multiplicity.', 'wp-taxonomy-tree' ),
+				'relationsHint'   => __( 'Format: node → relation type → node. Click To to change the target (except child_of — use Reparent). has_type for attributes / catalog fields only; hierarchy type is the parent (Q88). Mult. = definition multiplicity.', 'wp-taxonomy-tree' ),
 				'relationsEmpty'  => __( 'None', 'wp-taxonomy-tree' ),
 				'relationsType'   => __( 'Relation type', 'wp-taxonomy-tree' ),
 				'relationsTypeHint' => __( 'Relation type (e.g. composition) — not a Node. Not for child_of.', 'wp-taxonomy-tree' ),
@@ -367,8 +379,10 @@ final class Tree_Admin {
 				'relationsMult'   => __( 'Mult.', 'wp-taxonomy-tree' ),
 				'relationsMultHint' => __( 'Definition multiplicity: lower bound 0 or 1; upper bound 1 or * (many).', 'wp-taxonomy-tree' ),
 				'relationsProtected' => __( 'protected — reparent only', 'wp-taxonomy-tree' ),
-				'relationsHasTypeNote' => __( 'Data type binding (0..1). Prefer the Data type field above; Relations mirrors the same type_id.', 'wp-taxonomy-tree' ),
+				'relationsHasTypeNote' => __( 'Data type binding (0..1). Attribute / catalog field types only — not hierarchy free set_type.', 'wp-taxonomy-tree' ),
 				'relationsHasTypeInherited' => __( 'inherited — enable Override to change', 'wp-taxonomy-tree' ),
+				'relationsHasTypeParent' => __( 'hierarchy — type is the parent (child_of); not editable', 'wp-taxonomy-tree' ),
+				'relationsHasTypeSeed' => __( 'seed — root type is not editable in admin', 'wp-taxonomy-tree' ),
 				'relationsPickHasTypeTarget' => __( 'Choose data-type node (has_type target)', 'wp-taxonomy-tree' ),
 				'relationsRefScopeNote' => __( 'Catalog root — click To to change', 'wp-taxonomy-tree' ),
 				'relationsAdd'    => __( 'Add relation', 'wp-taxonomy-tree' ),
@@ -426,6 +440,17 @@ final class Tree_Admin {
 				'boolTrue'        => __( 'true', 'wp-taxonomy-tree' ),
 				'boolFalse'       => __( 'false', 'wp-taxonomy-tree' ),
 				'emailInvalid'    => __( 'Enter a valid email address.', 'wp-taxonomy-tree' ),
+				'intInvalid'      => __( 'Enter a whole number.', 'wp-taxonomy-tree' ),
+				'intSettings'     => __( 'Int settings', 'wp-taxonomy-tree' ),
+				'intFormat'       => __( 'Number format', 'wp-taxonomy-tree' ),
+				'intFormatHint'   => __( 'Default number format for this type. Attributes may override. Stored values stay decimal; arabic is fully supported — other formats are reserved.', 'wp-taxonomy-tree' ),
+				'intFormatArabic' => __( 'Arabic (decimal)', 'wp-taxonomy-tree' ),
+				'intFormatRoman'  => __( 'Roman', 'wp-taxonomy-tree' ),
+				'intFormatBinary' => __( 'Binary', 'wp-taxonomy-tree' ),
+				'intFormatOctal'  => __( 'Octal', 'wp-taxonomy-tree' ),
+				'intFormatHex'    => __( 'Hexadecimal', 'wp-taxonomy-tree' ),
+				'attributesIntFormat' => __( 'Number format', 'wp-taxonomy-tree' ),
+				'attributesIntFormatDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'dateSettings'    => __( 'Date settings', 'wp-taxonomy-tree' ),
 				'dateMode'        => __( 'Mode', 'wp-taxonomy-tree' ),
 				'dateModeDate'    => __( 'Date only', 'wp-taxonomy-tree' ),
@@ -492,6 +517,8 @@ final class Tree_Admin {
 				'setTableCellHint'=> __( 'Compact set as one table field', 'wp-taxonomy-tree' ),
 				'previewUnavailable'=> __( 'Preview nicht möglich', 'wp-taxonomy-tree' ),
 				'previewRebuildEmpty'=> __( 'Preview rebuild — add attributes to see Form, Table, and Compact samples.', 'wp-taxonomy-tree' ),
+				'quantityCatalogPreviewHint'=> __( 'Quantity is shown as an example object (like Preis): a number field plus a choice field. Real children (Preis, Menge, …) define concrete shapes.', 'wp-taxonomy-tree' ),
+				'quantityExampleHost'=> __( 'Preis', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogHint'=> __( 'CatalogChoice (depth ≥ 2): tree chooser — same control as nested type pickers.', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogListHint'=> __( 'CatalogChoice (depth ≤ 1): list chooser — same control as flat type pickers.', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogEmpty'=> __( 'No child options under this node yet.', 'wp-taxonomy-tree' ),
@@ -559,16 +586,20 @@ final class Tree_Admin {
 		}
 
 		$shared_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-media-render.js';
+		$int_js       = WTT_PLUGIN_DIR . 'assets/js/wtt-int-value.js';
 		$sample_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-sample-data.js';
 		$render_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-node-render.js';
 		$object_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-object-render.js';
 		$validator_js = WTT_PLUGIN_DIR . 'assets/js/wtt-table-validator.js';
+		$picker_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-node-picker.js';
 		$js_abs       = WTT_PLUGIN_DIR . 'assets/js/tree-admin.js';
 		$shared       = is_readable( $shared_js ) ? file_get_contents( $shared_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$int_value    = is_readable( $int_js ) ? file_get_contents( $int_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$sample       = is_readable( $sample_js ) ? file_get_contents( $sample_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$render       = is_readable( $render_js ) ? file_get_contents( $render_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$object       = is_readable( $object_js ) ? file_get_contents( $object_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$validator    = is_readable( $validator_js ) ? file_get_contents( $validator_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$picker       = is_readable( $picker_js ) ? file_get_contents( $picker_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$js           = is_readable( $js_abs ) ? file_get_contents( $js_abs ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 		$json = wp_json_encode( self::$boot_config );
@@ -582,6 +613,10 @@ final class Tree_Admin {
 
 		if ( false !== $shared && '' !== $shared ) {
 			echo "<script id=\"wtt-media-render-js\">\n" . $shared . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+
+		if ( false !== $int_value && '' !== $int_value ) {
+			echo "<script id=\"wtt-int-value-js\">\n" . $int_value . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		if ( false !== $sample && '' !== $sample ) {
@@ -598,6 +633,10 @@ final class Tree_Admin {
 
 		if ( false !== $validator && '' !== $validator ) {
 			echo "<script id=\"wtt-table-validator-js\">\n" . $validator . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+
+		if ( false !== $picker && '' !== $picker ) {
+			echo "<script id=\"wtt-node-picker-js\">\n" . $picker . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		if ( false !== $js && '' !== $js ) {

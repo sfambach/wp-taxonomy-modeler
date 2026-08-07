@@ -207,6 +207,12 @@ final class Trash {
 				__( 'The Trash node cannot be deleted.', 'wp-taxonomy-tree' )
 			);
 		}
+		if ( class_exists( Hidden_Nodes::class ) && Hidden_Nodes::is_bin( $term_id ) ) {
+			return new \WP_Error(
+				'wtt_not_deletable',
+				__( 'The Hidden nodes bin cannot be deleted.', 'wp-taxonomy-tree' )
+			);
+		}
 		if ( ! Node_Type::is_deletable( $term_id ) ) {
 			return new \WP_Error(
 				'wtt_not_deletable',
@@ -236,6 +242,12 @@ final class Trash {
 				return new \WP_Error(
 					'wtt_not_deletable',
 					__( 'Cannot trash a subtree that contains the Trash node.', 'wp-taxonomy-tree' )
+				);
+			}
+			if ( class_exists( Hidden_Nodes::class ) && Hidden_Nodes::is_bin( $id ) ) {
+				return new \WP_Error(
+					'wtt_not_deletable',
+					__( 'Cannot trash a subtree that contains the Hidden nodes bin.', 'wp-taxonomy-tree' )
 				);
 			}
 			if ( ! Node_Type::is_deletable( $id ) ) {
@@ -603,6 +615,7 @@ final class Trash {
 				'typeLabel'    => is_array( $type ) ? (string) $type['name'] : '',
 				'isDatatype'   => Node_Type::is_datatype( $taxonomy, $term_id ),
 				'isAbstract'   => Node_Type::is_abstract( $taxonomy, $term_id ),
+				'isTemplate'   => Node_Type::is_template( $term_id ),
 				'deletable'    => false,
 				'trashed'      => true,
 				'children'     => $children,

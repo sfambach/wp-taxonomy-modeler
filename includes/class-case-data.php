@@ -402,7 +402,6 @@ final class Case_Data {
 								'name'        => 'Eigene Datentypen',
 								'description' => 'User-defined types (empty).',
 							),
-							Demo_Data::bauteilarten_catalog_node(),
 						),
 					),
 					array(
@@ -411,42 +410,7 @@ final class Case_Data {
 						'children'    => array(
 							array(
 								'name'        => 'BOM',
-								'description' => 'Zusammenstellungs-Definition: composition of Name + Tabelle (Q61).',
-								'children'    => array(
-									array(
-										'name'        => 'Name',
-										'type_name'   => 'text',
-										'description' => 'Instance title field (filled on WP page).',
-									),
-									array(
-										'name'        => 'Tabelle',
-										'type_name'   => 'table',
-										'description' => 'Typed table: Zeile required; Kopf/Fuss optional.',
-										'children'    => array(
-											array(
-												'name'        => 'Zeile',
-												'description' => 'Required body band; 1..n fields.',
-												'children'    => array(
-													array(
-														'name'        => 'Reference',
-														'type_name'   => 'text',
-														'description' => 'Board references (e.g. R1,R2).',
-													),
-													array(
-														'name'        => 'Wert',
-														'type_name'   => 'text',
-														'description' => 'Value / rating display.',
-													),
-													array(
-														'name'        => 'Menge',
-														'type_name'   => 'int',
-														'description' => 'Quantity (Stück).',
-													),
-												),
-											),
-										),
-									),
-								),
+								'description' => 'Zusammenstellungs-Definition: Name + Tabelle seeded by ensure_bom_implementation (Q61/Q87 slots).',
 							),
 							Demo_Data::bauteile_implementation_node(),
 							Demo_Data::lieferanten_catalog_node(),
@@ -485,6 +449,7 @@ final class Case_Data {
 		Trash::ensure_trash_node( $taxonomy );
 		self::ensure_konstanten( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
+		Attribute::prune_dangling_edges( $taxonomy );
 		self::ensure_simple_datatypes( $taxonomy );
 		self::ensure_email_datatype( $taxonomy );
 		self::ensure_date_datatype( $taxonomy );
@@ -494,14 +459,22 @@ final class Case_Data {
 		self::ensure_table_datatype_bands( $taxonomy );
 		self::ensure_aggregate_catalog( $taxonomy );
 		self::ensure_bom_implementation( $taxonomy );
+		self::ensure_model_branch( $taxonomy );
 		self::ensure_bauteile_catalog( $taxonomy );
-		self::ensure_kontakt_model( $taxonomy );
-		self::ensure_platine_model( $taxonomy );
-		self::ensure_bauteil_model( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
+		Demo_Data::purge_root_band_orphans( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
 		self::ensure_root_typed_knoten( $taxonomy );
 		Node_Type::ensure_hierarchy_datatype_inheritance( $taxonomy );
+
+		/*
+		 * Composition members created above may still be WP children. Detach to
+		 * Q87 parent=0 slots, then re-bind table bands (set_prop_bindings now
+		 * accepts composition targets — not only hierarchy children).
+		 */
+		Attribute::migrate_detach_hierarchy( $taxonomy );
+		self::ensure_table_datatype_bands( $taxonomy );
+		self::ensure_bom_implementation( $taxonomy );
 
 		return array(
 			'created'  => $created,
@@ -512,6 +485,13 @@ final class Case_Data {
 
 	/**
 	 * Seed when the case taxonomy has no terms yet; always refresh Relationstypen.
+	 */
+	/**
+	 * First-open seed only: install blueprint when the taxonomy has zero terms.
+	 *
+	 * Does **not** re-run ensure_* / prune / purge on every Tree screen load —
+	 * that restored deleted seed nodes and stripped user attribute edges.
+	 * Explicit repair: Case_Data::install() / reset() / CLI scripts.
 	 */
 	public static function maybe_install( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
@@ -529,31 +509,6 @@ final class Case_Data {
 		if ( ! is_array( $terms ) || empty( $terms ) ) {
 			self::install( $taxonomy );
 		}
-
-		self::ensure_relation_types( $taxonomy );
-		self::ensure_knoten_datatype( $taxonomy );
-		self::ensure_root_typed_knoten( $taxonomy );
-		Trash::ensure_trash_node( $taxonomy );
-		self::ensure_konstanten( $taxonomy );
-		Attribute::migrate_detach_hierarchy( $taxonomy );
-		self::ensure_simple_datatypes( $taxonomy );
-		self::ensure_email_datatype( $taxonomy );
-		self::ensure_date_datatype( $taxonomy );
-		self::ensure_complex_datatypes( $taxonomy );
-		Catalog_Bindings::ensure( $taxonomy );
-		self::ensure_bauart_enum( $taxonomy );
-		self::ensure_table_datatype_bands( $taxonomy );
-		self::ensure_aggregate_catalog( $taxonomy );
-		self::ensure_bom_implementation( $taxonomy );
-		self::ensure_bauteile_catalog( $taxonomy );
-		self::ensure_kontakt_model( $taxonomy );
-		self::ensure_platine_model( $taxonomy );
-		self::ensure_bauteil_model( $taxonomy );
-		Demo_Data::ensure_set_composition_members( $taxonomy );
-		Demo_Data::strip_distributor_samples_under_enum( $taxonomy );
-		self::ensure_deletable_flags( $taxonomy );
-		self::ensure_root_typed_knoten( $taxonomy );
-		Node_Type::ensure_hierarchy_datatype_inheritance( $taxonomy );
 	}
 
 	/**
@@ -612,7 +567,7 @@ final class Case_Data {
 	}
 
 	/**
-	 * Lock seeded catalog datatypes + Relationstypen; user nodes stay deletable by default.
+	 * Lock seeded catalog templates + Relationstypen; user nodes stay deletable by default.
 	 */
 	public static function ensure_deletable_flags( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
@@ -954,7 +909,7 @@ final class Case_Data {
 		if ( $root <= 0 || $knoten <= 0 ) {
 			return;
 		}
-		Node_Type::set_type_id( $taxonomy, $root, $knoten );
+		Node_Type::set_type_id( $taxonomy, $root, $knoten, true );
 	}
 
 	/**
@@ -987,7 +942,86 @@ final class Case_Data {
 	}
 
 	/**
-	 * Delete Fallstudie root and reinstall.
+	 * Hard-delete every term in the case taxonomy (Fallstudie, attribute slots,
+	 * Trash/Hidden bins, band orphans). Soft-delete / deletable flags are ignored.
+	 *
+	 * Safe for scaffold reset only — does not touch posts, users, or other taxonomies.
+	 *
+	 * @return int|\WP_Error Number of terms permanently deleted.
+	 */
+	public static function wipe_all_terms( string $taxonomy = Taxonomy::FS ) {
+		if ( Taxonomy::FS !== $taxonomy ) {
+			return new \WP_Error(
+				'wtt_bad_taxonomy',
+				__( 'Case study wipe only applies to wtt_fs.', 'wp-taxonomy-tree' )
+			);
+		}
+
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$can_delete = ( defined( 'WP_CLI' ) && WP_CLI )
+			|| ( defined( 'WTT_ALLOW_DEMO_MUTATIONS' ) && WTT_ALLOW_DEMO_MUTATIONS )
+			|| current_user_can( Capabilities::delete_terms( $taxonomy ) );
+		if ( ! $can_delete ) {
+			return new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) );
+		}
+
+		$ids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+				'fields'     => 'ids',
+			)
+		);
+		if ( ! is_array( $ids ) || empty( $ids ) ) {
+			Catalog_Bindings::set_for_taxonomy( $taxonomy, array() );
+			Model_Data::clear_taxonomy( $taxonomy );
+			return 0;
+		}
+
+		$ids = array_map( 'intval', $ids );
+		usort(
+			$ids,
+			static function ( int $a, int $b ) use ( $taxonomy ): int {
+				$da = count( get_ancestors( $a, $taxonomy ) );
+				$db = count( get_ancestors( $b, $taxonomy ) );
+				return $db <=> $da;
+			}
+		);
+
+		$deleted = 0;
+		foreach ( $ids as $term_id ) {
+			if ( $term_id <= 0 ) {
+				continue;
+			}
+			$term = get_term( $term_id, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			Node_Type::set_deletable( $term_id, true );
+			$result = wp_delete_term( $term_id, $taxonomy );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			if ( false !== $result && 0 !== $result ) {
+				++$deleted;
+			}
+		}
+
+		Catalog_Bindings::set_for_taxonomy( $taxonomy, array() );
+		Model_Data::clear_taxonomy( $taxonomy );
+
+		return $deleted;
+	}
+
+	/**
+	 * Wipe all wtt_fs terms (including Q87 attribute slots), then reinstall blueprint.
+	 *
+	 * Unlike Tree_Model::delete_term, this hard-deletes protected catalog nodes so
+	 * reset cannot leave Aggregate / slots / Trash litter behind.
 	 *
 	 * @return array{deleted:int,created:int,existing:int,taxonomy:string}|\WP_Error
 	 */
@@ -1003,13 +1037,17 @@ final class Case_Data {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Not a hierarchical taxonomy.', 'wp-taxonomy-tree' ) );
 		}
 
-		$can_edit   = ( defined( 'WP_CLI' ) && WP_CLI ) || current_user_can( Capabilities::edit_terms( $taxonomy ) );
-		$can_delete = ( defined( 'WP_CLI' ) && WP_CLI ) || current_user_can( Capabilities::delete_terms( $taxonomy ) );
+		$can_edit   = ( defined( 'WP_CLI' ) && WP_CLI )
+			|| ( defined( 'WTT_ALLOW_DEMO_MUTATIONS' ) && WTT_ALLOW_DEMO_MUTATIONS )
+			|| current_user_can( Capabilities::edit_terms( $taxonomy ) );
+		$can_delete = ( defined( 'WP_CLI' ) && WP_CLI )
+			|| ( defined( 'WTT_ALLOW_DEMO_MUTATIONS' ) && WTT_ALLOW_DEMO_MUTATIONS )
+			|| current_user_can( Capabilities::delete_terms( $taxonomy ) );
 		if ( ! $can_edit || ! $can_delete ) {
 			return new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) );
 		}
 
-		$deleted = self::delete_root_by_name( $taxonomy, self::ROOT_NAME );
+		$deleted = self::wipe_all_terms( $taxonomy );
 		if ( is_wp_error( $deleted ) ) {
 			return $deleted;
 		}
@@ -1019,20 +1057,13 @@ final class Case_Data {
 			return $install;
 		}
 
-		self::ensure_relation_types( $taxonomy );
-		self::ensure_knoten_datatype( $taxonomy );
-		self::ensure_root_typed_knoten( $taxonomy );
-		Trash::ensure_trash_node( $taxonomy );
-		self::ensure_konstanten( $taxonomy );
+		/* install() already ran ensures; refresh model hosts + catalog locks after wipe. */
+		self::ensure_model_branch( $taxonomy );
+		Catalog_Bindings::ensure( $taxonomy );
+		Node_Type::ensure_hierarchy_datatype_inheritance( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
-		/* install() already ran complex/simple ensures; refresh bands after reset. */
-		self::ensure_complex_datatypes( $taxonomy );
-		self::ensure_bauart_enum( $taxonomy );
 		self::ensure_table_datatype_bands( $taxonomy );
-		self::ensure_aggregate_catalog( $taxonomy );
 		self::ensure_bom_implementation( $taxonomy );
-		self::ensure_bauteile_catalog( $taxonomy );
-		Demo_Data::ensure_set_composition_members( $taxonomy );
 
 		return array(
 			'deleted'  => $deleted,
@@ -1560,8 +1591,181 @@ final class Case_Data {
 	}
 
 	/**
-	 * Seed Fallstudie/Model/Kontakt with attributes Name(text) + E-Mail(email).
-	 * Attributes via Attribute::add (besteht_aus) — never child_of to the host.
+	 * Idempotent Model-branch repair only (hosts + Bauteil groups/kinds/Arten + attributes).
+	 * Does not wipe unrelated Fallstudie roots (Implementation, Definition, …).
+	 *
+	 * @return array{
+	 *   kontaktId:int,
+	 *   platineId:int,
+	 *   bauteilId:int,
+	 *   diodenId:int,
+	 *   kindAttrs:array{added:int,skipped:int,stripped:int},
+	 *   purgedTrashedFields:int
+	 * }
+	 */
+	public static function ensure_model_branch( string $taxonomy = Taxonomy::FS ): array {
+		$empty = array(
+			'kontaktId'           => 0,
+			'platineId'           => 0,
+			'bauteilId'           => 0,
+			'bauteillisteId'      => 0,
+			'positionId'          => 0,
+			'diodenId'            => 0,
+			'kindAttrs'           => array(
+				'added'    => 0,
+				'skipped'  => 0,
+				'stripped' => 0,
+			),
+			'purgedTrashedFields'  => 0,
+		);
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return $empty;
+		}
+
+		$kontakt_id = self::ensure_kontakt_model( $taxonomy );
+		$platine_id = self::ensure_platine_model( $taxonomy );
+		$bauteil    = self::ensure_bauteil_model( $taxonomy );
+		$bauteil_id = (int) ( $bauteil['targetId'] ?? 0 );
+
+		if ( $bauteil_id > 0 ) {
+			Demo_Data::ensure_bauteil_kind_groups( $taxonomy, $bauteil_id );
+		}
+
+		$bauteilliste = self::ensure_bauteilliste_model( $taxonomy );
+		$dioden_id    = self::ensure_dioden_model( $taxonomy );
+		$kind_attrs   = Demo_Data::ensure_bauteil_kind_attributes( $taxonomy );
+		Attribute::migrate_detach_hierarchy( $taxonomy );
+		$purged = self::purge_model_trashed_field_litter( $taxonomy );
+
+		return array(
+			'kontaktId'           => $kontakt_id,
+			'platineId'           => $platine_id,
+			'bauteilId'           => $bauteil_id,
+			'bauteillisteId'      => (int) ( $bauteilliste['bauteillisteId'] ?? 0 ),
+			'positionId'          => (int) ( $bauteilliste['positionId'] ?? 0 ),
+			'diodenId'            => $dioden_id,
+			'kindAttrs'           => $kind_attrs,
+			'purgedTrashedFields' => $purged,
+		);
+	}
+
+	/**
+	 * Hard-delete soft-trashed leftover field terms under Model/Bauteil.
+	 * Those were pre-Q87 hierarchy field-children; kinds keep real attributes as slots.
+	 *
+	 * @return int Number of terms permanently deleted.
+	 */
+	public static function purge_model_trashed_field_litter( string $taxonomy = Taxonomy::FS ): int {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$bauteil_id = Demo_Data::find_model_bauteil_id( $taxonomy );
+		if ( $bauteil_id <= 0 ) {
+			return 0;
+		}
+
+		$ids = self::collect_trashed_descendants( $taxonomy, $bauteil_id );
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		/* Deepest first. */
+		usort(
+			$ids,
+			static function ( int $a, int $b ) use ( $taxonomy ): int {
+				return self::term_depth( $taxonomy, $b ) <=> self::term_depth( $taxonomy, $a );
+			}
+		);
+
+		$deleted = 0;
+		foreach ( $ids as $id ) {
+			if ( Attribute::is_slot( $id ) ) {
+				continue;
+			}
+			/* Never delete live kind / group / Art hosts — only soft-trashed litter. */
+			if ( ! Trash::is_trashed( $id ) ) {
+				continue;
+			}
+			Node_Type::set_deletable( $id, true );
+			$result = wp_delete_term( $id, $taxonomy );
+			if ( ! is_wp_error( $result ) && false !== $result ) {
+				++$deleted;
+			}
+		}
+
+		if ( $deleted > 0 && class_exists( Trash::class ) ) {
+			$trash_id = Trash::find_trash_node_id( $taxonomy );
+			if ( $trash_id > 0 ) {
+				/* Rebuild trash item list without hard-deleted ids. */
+				$items = Trash::list_all_trashed_ids( $taxonomy );
+				$keep  = array();
+				foreach ( $items as $tid ) {
+					$tid = (int) $tid;
+					if ( $tid > 0 && get_term( $tid, $taxonomy ) instanceof \WP_Term ) {
+						$keep[] = $tid;
+					}
+				}
+				update_term_meta( $trash_id, Trash::META_KEY_TRASH_ITEMS, wp_json_encode( array_values( array_unique( $keep ) ) ) );
+			}
+		}
+
+		return $deleted;
+	}
+
+	/**
+	 * @return list<int>
+	 */
+	private static function collect_trashed_descendants( string $taxonomy, int $root_id ): array {
+		$out   = array();
+		$queue = array( $root_id );
+		while ( ! empty( $queue ) ) {
+			$parent = (int) array_shift( $queue );
+			$kids   = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $parent,
+					'hide_empty' => false,
+					'number'     => 0,
+				)
+			);
+			foreach ( (array) $kids as $kid ) {
+				if ( ! $kid instanceof \WP_Term ) {
+					continue;
+				}
+				$kid_id = (int) $kid->term_id;
+				$queue[] = $kid_id;
+				if ( Trash::is_trashed( $kid_id ) ) {
+					$out[] = $kid_id;
+				}
+			}
+		}
+		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * Term depth for delete ordering (0 = root).
+	 */
+	private static function term_depth( string $taxonomy, int $term_id ): int {
+		$depth = 0;
+		$guard = 0;
+		$id    = $term_id;
+		while ( $id > 0 && $guard++ < 40 ) {
+			$term = get_term( $id, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				break;
+			}
+			$id = (int) $term->parent;
+			if ( $id > 0 ) {
+				++$depth;
+			}
+		}
+		return $depth;
+	}
+
+	/**
+	 * Seed Fallstudie/Model/Kontakt with person + address attributes.
+	 * Titel, Name, Vorname, E-Mail, Telefon, Strasse, Hausnummer, Postleitzahl, Ort.
 	 *
 	 * @return int Kontakt host term id, or 0.
 	 */
@@ -1595,7 +1799,7 @@ final class Case_Data {
 			$taxonomy,
 			'Kontakt',
 			$model_id,
-			'Contact person schema: Name + E-Mail attributes.',
+			'Contact person + address: Titel, Name, Vorname, E-Mail, Telefon, Strasse, Hausnummer, Postleitzahl, Ort.',
 			$created,
 			$existing
 		);
@@ -1609,25 +1813,98 @@ final class Case_Data {
 			$email_id = self::ensure_email_datatype( $taxonomy );
 		}
 
+		Node_Type::set_is_datatype( $taxonomy, $kontakt_id, true );
+		Node_Type::set_deletable( $kontakt_id, false );
+
+		$wanted = array(
+			'Titel'        => $text_id,
+			'Name'         => $text_id,
+			'Vorname'      => $text_id,
+			'E-Mail'       => $email_id,
+			'Telefon'      => $text_id,
+			'Strasse'      => $text_id,
+			'Hausnummer'   => $text_id,
+			'Postleitzahl' => $text_id,
+			'Ort'          => $text_id,
+		);
+
 		$have = array();
 		foreach ( Attribute::list_own( $taxonomy, $kontakt_id ) as $row ) {
-			$key            = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
-			$have[ $key ] = true;
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = (int) ( $row['id'] ?? 0 );
 		}
 
-		if ( $text_id > 0 && empty( $have['name'] ) ) {
-			Attribute::add( $taxonomy, $kontakt_id, 'Name', $text_id );
+		$keep = array();
+		foreach ( $wanted as $name => $type_id ) {
+			$key = strtolower( $name );
+			if ( 'e-mail' === $key ) {
+				$key_aliases = array( 'e-mail', 'email' );
+			} else {
+				$key_aliases = array( $key );
+			}
+			$exists = false;
+			foreach ( $key_aliases as $alias ) {
+				if ( ! empty( $have[ $alias ] ) ) {
+					$keep[ $have[ $alias ] ] = true;
+					$exists                  = true;
+					break;
+				}
+			}
+			if ( $exists || $type_id <= 0 ) {
+				continue;
+			}
+			$added = Attribute::add( $taxonomy, $kontakt_id, $name, $type_id );
+			if ( ! is_wp_error( $added ) && isset( $added['id'] ) ) {
+				$keep[ (int) $added['id'] ] = true;
+			}
 		}
-		if ( $email_id > 0 && empty( $have['e-mail'] ) && empty( $have['email'] ) ) {
-			Attribute::add( $taxonomy, $kontakt_id, 'E-Mail', $email_id );
+
+		/* Drop leftover slots (Firma, Anrede, Nachname, …) not in the restored set. */
+		foreach ( Attribute::list_own( $taxonomy, $kontakt_id ) as $row ) {
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id <= 0 || isset( $keep[ $attr_id ] ) ) {
+				continue;
+			}
+			$key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			foreach ( array_keys( $wanted ) as $wanted_name ) {
+				$wkey = strtolower( $wanted_name );
+				if ( $key === $wkey || ( 'e-mail' === $wkey && 'email' === $key ) ) {
+					continue 2;
+				}
+			}
+			Attribute::remove( $taxonomy, $kontakt_id, $attr_id );
+		}
+
+		/* Canonical display order. */
+		$by_name = array();
+		foreach ( Attribute::list_own( $taxonomy, $kontakt_id ) as $row ) {
+			$by_name[ strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ] = (int) ( $row['id'] ?? 0 );
+		}
+		$order_ids = array();
+		foreach ( array_keys( $wanted ) as $wanted_name ) {
+			$wkey = strtolower( $wanted_name );
+			if ( isset( $by_name[ $wkey ] ) && $by_name[ $wkey ] > 0 ) {
+				$order_ids[] = $by_name[ $wkey ];
+			} elseif ( 'e-mail' === $wkey && ! empty( $by_name['email'] ) ) {
+				$order_ids[] = $by_name['email'];
+			}
+		}
+		if ( ! empty( $order_ids ) ) {
+			update_term_meta( $kontakt_id, Attribute::META_KEY_ORDER, $order_ids );
 		}
 
 		return $kontakt_id;
 	}
 
 	/**
-	 * Seed Fallstudie/Model/Platine with attribute Name(text).
-	 * Preview sample: Name = "Prototype PCB".
+	 * Seed Fallstudie/Model/Platine with attributes mirroring site PCB posts.
+	 *
+	 * Retro Projekt template tables (all slots):
+	 * 1) Fakten / order: Gerber, Bestellt wo, Stück, Preis, Besonderheiten, Version
+	 * 2) Varianten / Optionen
+	 * 3) Aufbau / review: Erfolgreich, Preis Pro Stück, Lötdauer, Schwierigkeitsgrad,
+	 *    Funktion, Lohnt es sich, Einschränkungen
+	 * 4) Protokoll: dated change log (stored as textarea; multi-row journal in posts)
 	 *
 	 * @return int Platine host term id, or 0.
 	 */
@@ -1635,6 +1912,8 @@ final class Case_Data {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
 			return 0;
 		}
+
+		$kontakt_id = self::ensure_kontakt_model( $taxonomy );
 
 		$root_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME ) );
 		if ( $root_id <= 0 ) {
@@ -1659,7 +1938,7 @@ final class Case_Data {
 			$taxonomy,
 			'Platine',
 			$model_id,
-			'PCB / board schema: Name attribute (preview sample Prototype PCB).',
+			'PCB / board schema from Retro Projekt posts — full Fakten, Optionen, Aufbau, Protokoll tables.',
 			$created,
 			$existing
 		);
@@ -1667,18 +1946,209 @@ final class Case_Data {
 			return 0;
 		}
 
-		$text_id = self::find_case_datatype_id( $taxonomy, 'text' );
-		$have    = array();
+		Node_Type::set_is_datatype( $taxonomy, $platine_id, true );
+		Node_Type::set_deletable( $platine_id, false );
+		Node_Type::apply_parent_as_type( $taxonomy, $platine_id );
+
+		$text_id     = self::find_case_datatype_id( $taxonomy, 'text' );
+		$textarea_id = self::find_case_datatype_id( $taxonomy, 'textarea' );
+		$int_id      = self::find_case_datatype_id( $taxonomy, 'int' );
+		$double_id   = self::find_case_datatype_id( $taxonomy, 'double' );
+		$bool_id     = self::find_case_datatype_id( $taxonomy, 'bool' );
+		$media_id    = self::find_case_datatype_id( $taxonomy, 'media' );
+
+		$have = array();
 		foreach ( Attribute::list_own( $taxonomy, $platine_id ) as $row ) {
 			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
 			$have[ $key ] = true;
 		}
 
-		if ( $text_id > 0 && empty( $have['name'] ) ) {
-			Attribute::add( $taxonomy, $platine_id, 'Name', $text_id );
+		/*
+		 * Full template. Aliases folded into one slot:
+		 * Preis inclusive / Preis + Steuer… → Preis
+		 * Schwierigkeitsfaktor → Schwierigkeitsgrad
+		 * Meine Version → Version
+		 * Datum/Beschreibung journal → Protokoll
+		 * Option table → Optionen
+		 */
+		$wanted = array(
+			/* Identity */
+			'Name'               => $text_id,
+			'Version'            => $text_id,
+			/* Fakten / fab order */
+			'Gerber vorhanden'   => $bool_id,
+			'Gerberdatei'        => $media_id,
+			'Bestellt wo'        => $kontakt_id,
+			'Stück'              => $int_id,
+			'Preis'              => $double_id,
+			'Besonderheiten'     => $text_id,
+			/* Varianten */
+			'Optionen'           => $textarea_id,
+			/* Aufbau / review */
+			'Erfolgreich'        => $bool_id,
+			'Preis Pro Stück'    => $double_id,
+			'Lötdauer'           => $text_id,
+			'Schwierigkeitsgrad' => $text_id,
+			'Funktion'           => $text_id,
+			'Lohnt es sich'      => $textarea_id,
+			'Einschränkungen'    => $textarea_id,
+			/* Change log (dated rows in posts) */
+			'Protokoll'          => $textarea_id,
+		);
+		foreach ( $wanted as $name => $type_id ) {
+			$key = strtolower( $name );
+			if ( $type_id <= 0 || ! empty( $have[ $key ] ) ) {
+				continue;
+			}
+			$mult = '1';
+			if ( in_array( $name, array( 'Optionen', 'Protokoll', 'Lohnt es sich', 'Einschränkungen' ), true ) ) {
+				$mult = '0..1';
+			}
+			if ( in_array( $name, array( 'Version', 'Besonderheiten', 'Schwierigkeitsgrad' ), true ) ) {
+				$mult = '0..1';
+			}
+			Attribute::add( $taxonomy, $platine_id, $name, $type_id, $mult );
 		}
 
 		return $platine_id;
+	}
+
+	/**
+	 * Seed Fallstudie/Model/Bauteilliste/Position from Retro Projekt BOM tables.
+	 *
+	 * Hierarchy: Bauteilliste (abstract list folder) → Position (line schema).
+	 * Line columns match post headers:
+	 * Referenz | Wert | Menge | Beschreibung | Preis | Lager | Status
+	 * plus optional Bauteil pick → Model/Bauteil.
+	 *
+	 * Sample line (ESP8266-RS232): PCB | Leiterplatte | 1 | … | 1.80 | x |
+	 *
+	 * Not a Collection `table`/`list` type (Q90 parked) — attribute host like Platine/Kontakt.
+	 *
+	 * @return array{bauteillisteId:int,positionId:int}
+	 */
+	public static function ensure_bauteilliste_model( string $taxonomy = Taxonomy::FS ): array {
+		$empty = array(
+			'bauteillisteId' => 0,
+			'positionId'     => 0,
+		);
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return $empty;
+		}
+
+		$root_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME ) );
+		if ( $root_id <= 0 ) {
+			return $empty;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$model_id = self::ensure_term(
+			$taxonomy,
+			'Model',
+			$root_id,
+			'Example schema hosts for Form/Table preview (Kontakt, Platine, …).',
+			$created,
+			$existing
+		);
+		if ( $model_id <= 0 ) {
+			return $empty;
+		}
+
+		$bauteil = self::ensure_bauteil_model( $taxonomy );
+		$bauteil_id = (int) ( $bauteil['targetId'] ?? 0 );
+
+		$list_id = self::ensure_term(
+			$taxonomy,
+			'Bauteilliste',
+			$model_id,
+			'BOM / parts list folder. Line schema lives on child Position (post table columns).',
+			$created,
+			$existing
+		);
+		if ( $list_id <= 0 ) {
+			return $empty;
+		}
+
+		Node_Type::set_is_datatype( $taxonomy, $list_id, true );
+		Node_Type::set_is_abstract( $taxonomy, $list_id, true );
+		Node_Type::set_deletable( $list_id, false );
+		Node_Type::apply_parent_as_type( $taxonomy, $list_id );
+
+		$position_id = self::ensure_term(
+			$taxonomy,
+			'Position',
+			$list_id,
+			'One BOM line: Referenz, Wert, Menge, Beschreibung, Preis, Lager, Status, optional Bauteil.',
+			$created,
+			$existing
+		);
+		if ( $position_id <= 0 ) {
+			return array(
+				'bauteillisteId' => $list_id,
+				'positionId'     => 0,
+			);
+		}
+
+		Node_Type::set_is_datatype( $taxonomy, $position_id, true );
+		Node_Type::set_is_abstract( $taxonomy, $position_id, false );
+		Node_Type::set_deletable( $position_id, false );
+		Node_Type::apply_parent_as_type( $taxonomy, $position_id );
+
+		$text_id   = self::find_case_datatype_id( $taxonomy, 'text' );
+		$int_id    = self::find_case_datatype_id( $taxonomy, 'int' );
+		$double_id = self::find_case_datatype_id( $taxonomy, 'double' );
+
+		$wanted = array(
+			'Referenz'      => $text_id,
+			'Wert'          => $text_id,
+			'Menge'         => $int_id,
+			'Beschreibung'  => $text_id,
+			'Preis'         => $double_id,
+			'Lager'         => $text_id,
+			'Status'        => $text_id,
+		);
+		if ( $bauteil_id > 0 && Node_Type::is_datatype( $taxonomy, $bauteil_id ) ) {
+			$wanted['Bauteil'] = $bauteil_id;
+		}
+
+		$have = array();
+		foreach ( Attribute::list_own( $taxonomy, $position_id ) as $row ) {
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = (int) ( $row['id'] ?? 0 );
+		}
+
+		foreach ( $wanted as $name => $type_id ) {
+			$key = strtolower( $name );
+			if ( $type_id <= 0 || ! empty( $have[ $key ] ) ) {
+				continue;
+			}
+			$mult = '1';
+			if ( in_array( $name, array( 'Beschreibung', 'Lager', 'Status', 'Bauteil', 'Preis' ), true ) ) {
+				$mult = '0..1';
+			}
+			Attribute::add( $taxonomy, $position_id, $name, $type_id, $mult );
+		}
+
+		$by_name = array();
+		foreach ( Attribute::list_own( $taxonomy, $position_id ) as $row ) {
+			$by_name[ strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ] = (int) ( $row['id'] ?? 0 );
+		}
+		$order_ids = array();
+		foreach ( array_keys( $wanted ) as $wanted_name ) {
+			$wkey = strtolower( $wanted_name );
+			if ( isset( $by_name[ $wkey ] ) && $by_name[ $wkey ] > 0 ) {
+				$order_ids[] = $by_name[ $wkey ];
+			}
+		}
+		if ( ! empty( $order_ids ) ) {
+			update_term_meta( $position_id, Attribute::META_KEY_ORDER, $order_ids );
+		}
+
+		return array(
+			'bauteillisteId' => $list_id,
+			'positionId'     => $position_id,
+		);
 	}
 
 	/**
@@ -1735,6 +2205,11 @@ final class Case_Data {
 			return $empty;
 		}
 
+		Node_Type::set_is_datatype( $taxonomy, $target_id, true );
+		Node_Type::set_is_abstract( $taxonomy, $target_id, true );
+		Node_Type::set_deletable( $target_id, false );
+		Node_Type::apply_parent_as_type( $taxonomy, $target_id );
+
 		$result               = $empty;
 		$result['targetId']   = $target_id;
 		$result['prunedEdges'] = self::prune_dangling_composition_edges( $taxonomy, $target_id );
@@ -1786,6 +2261,193 @@ final class Case_Data {
 		$result['skipped'] = array_values( array_unique( $result['skipped'] ) );
 
 		return $result;
+	}
+
+	/**
+	 * Diode type leaves under Model/Bauteil/Halbleiter/Dioden (CatalogChoice / Q90).
+	 * LED is a sibling kind under Halbleiter — not an Art here.
+	 *
+	 * @return list<array{name:string,short_description?:string,description:string}>
+	 */
+	public static function dioden_arten_leaves(): array {
+		return array(
+			array(
+				'name'              => 'Schalt',
+				'short_description' => 'Signal',
+				'description'       => 'Small-signal / switching diode (e.g. 1N4148).',
+			),
+			array(
+				'name'              => 'Schottky',
+				'short_description' => 'Schottky',
+				'description'       => 'Schottky barrier diode (low Vf).',
+			),
+			array(
+				'name'              => 'Zener',
+				'short_description' => 'Zener',
+				'description'       => 'Zener / voltage-reference diode (Vz).',
+			),
+			array(
+				'name'              => 'Gleichrichter',
+				'short_description' => 'Rectifier',
+				'description'       => 'Power rectifier diode.',
+			),
+			array(
+				'name'              => 'TVS',
+				'short_description' => 'TVS',
+				'description'       => 'Transient voltage suppressor.',
+			),
+			array(
+				'name'              => 'LDD',
+				'short_description' => 'LDD',
+				'description'       => 'Laser diode (LDD).',
+			),
+		);
+	}
+
+	/**
+	 * Seed Halbleiter/Dioden with Arten only (CatalogChoice). Strip leftover slot children / LED art.
+	 *
+	 * @return int Dioden host term id, or 0.
+	 */
+	public static function ensure_dioden_model( string $taxonomy = Taxonomy::FS ): int {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$bauteil = self::ensure_bauteil_model( $taxonomy );
+		$bauteil_id = (int) ( $bauteil['targetId'] ?? 0 );
+		if ( $bauteil_id <= 0 ) {
+			return 0;
+		}
+
+		Demo_Data::ensure_bauteil_kind_groups( $taxonomy, $bauteil_id );
+
+		$created  = 0;
+		$existing = 0;
+
+		$halbleiter_id = self::find_child_named( $taxonomy, $bauteil_id, 'Halbleiter' );
+		$parent_id     = $halbleiter_id > 0 ? $halbleiter_id : $bauteil_id;
+
+		/* Prefer Dioden under Halbleiter; adopt flat Diode/Dioden under Bauteil. */
+		$dioden_id = Demo_Data::find_bauteil_kind_under( $taxonomy, $bauteil_id, 'Dioden' );
+		if ( $dioden_id <= 0 ) {
+			$dioden_id = Demo_Data::find_bauteil_kind_under( $taxonomy, $bauteil_id, 'Diode' );
+			if ( $dioden_id > 0 ) {
+				wp_update_term(
+					$dioden_id,
+					$taxonomy,
+					array(
+						'name'   => 'Dioden',
+						'parent' => $parent_id,
+					)
+				);
+			}
+		}
+		if ( $dioden_id <= 0 ) {
+			$dioden_id = self::ensure_term(
+				$taxonomy,
+				'Dioden',
+				$parent_id,
+				'Diode specialization host: choose an Art (CatalogChoice). Children = Arten only.',
+				$created,
+				$existing,
+				array( 'Diode' )
+			);
+		} elseif ( $halbleiter_id > 0 ) {
+			$term = get_term( $dioden_id, $taxonomy );
+			if ( $term instanceof \WP_Term && (int) $term->parent !== $halbleiter_id ) {
+				wp_update_term(
+					$dioden_id,
+					$taxonomy,
+					array(
+						'parent' => $halbleiter_id,
+					)
+				);
+			}
+		}
+		if ( $dioden_id <= 0 ) {
+			return 0;
+		}
+
+		Node_Type::set_is_datatype( $taxonomy, $dioden_id, true );
+		Node_Type::set_is_abstract( $taxonomy, $dioden_id, false );
+		Node_Type::set_deletable( $dioden_id, false );
+		Node_Type::apply_parent_as_type( $taxonomy, $dioden_id );
+
+		$arten_names = array();
+		foreach ( self::dioden_arten_leaves() as $leaf ) {
+			$name = (string) ( $leaf['name'] ?? '' );
+			if ( '' === $name ) {
+				continue;
+			}
+			$arten_names[ $name ] = true;
+			$art_id = self::ensure_term(
+				$taxonomy,
+				$name,
+				$dioden_id,
+				(string) ( $leaf['description'] ?? '' ),
+				$created,
+				$existing
+			);
+			if ( $art_id <= 0 ) {
+				continue;
+			}
+			if ( ! empty( $leaf['short_description'] ) ) {
+				Tree_Model::set_short_description(
+					$taxonomy,
+					$art_id,
+					(string) $leaf['short_description']
+				);
+			}
+			Node_Type::set_is_datatype( $taxonomy, $art_id, true );
+			Node_Type::set_is_abstract( $taxonomy, $art_id, false );
+			Node_Type::set_deletable( $art_id, false );
+			Node_Type::apply_parent_as_type( $taxonomy, $art_id );
+		}
+
+		self::cleanup_dioden_host_children( $taxonomy, $dioden_id, $arten_names );
+
+		return $dioden_id;
+	}
+
+	/**
+	 * Keep only CatalogChoice Arten under Dioden — drop slot leftovers (U_r, Bauform, …) and LED art.
+	 *
+	 * @param array<string, true> $arten_names Canonical Art names to keep.
+	 */
+	private static function cleanup_dioden_host_children( string $taxonomy, int $dioden_id, array $arten_names ): void {
+		if ( $dioden_id <= 0 ) {
+			return;
+		}
+
+		/* Also drop attribute slots that duplicate old hierarchy fields. */
+		foreach ( Attribute::list_own( $taxonomy, $dioden_id ) as $row ) {
+			$aid = (int) ( $row['id'] ?? 0 );
+			if ( $aid > 0 ) {
+				Attribute::remove( $taxonomy, $dioden_id, $aid );
+			}
+		}
+
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $dioden_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		foreach ( (array) $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$name = $kid->name;
+			if ( isset( $arten_names[ $name ] ) ) {
+				continue;
+			}
+			/* LED lives as Halbleiter/LED kind — not under Dioden. */
+			Node_Type::set_deletable( (int) $kid->term_id, true );
+			Tree_Model::delete_term( $taxonomy, (int) $kid->term_id, 'cascade' );
+		}
 	}
 
 	/**
@@ -2125,8 +2787,8 @@ final class Case_Data {
 
 	/**
 	 * Catalog datatype `table`: composition → Zeile (+ optional Kopf / Fuss band nodes).
-	 * Bands are hierarchy children under `table` (org) and composition targets (membership).
-	 * Strips obsolete English aliases Head/Line/Foot left from earlier experiments.
+	 * Bands may live at parent=0 after Q87 detach — resolve via composition / bindings
+	 * before creating new children under `table`.
 	 */
 	public static function ensure_table_datatype_bands( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
@@ -2162,27 +2824,45 @@ final class Case_Data {
 			'Kopf'  => 'Optional header band; same field count as Zeile when used.',
 			'Fuss'  => 'Optional footer band; same field count as Zeile when used.',
 		);
+		$bindings = Node_Type::get_prop_bindings( $table_id );
 		$band_ids = array();
 		foreach ( $bands as $name => $description ) {
-			$band_id = self::ensure_term( $taxonomy, $name, $table_id, $description, $created, $existing );
+			$key     = strtolower( $name );
+			$band_id = isset( $bindings[ $key ] ) ? (int) $bindings[ $key ] : 0;
+			if ( $band_id <= 0 || ! get_term( $band_id, $taxonomy ) instanceof \WP_Term ) {
+				$band_id = self::find_composition_member_named( $taxonomy, $table_id, $name );
+			}
+			if ( $band_id <= 0 ) {
+				$band_id = self::find_child_named( $taxonomy, $table_id, $name );
+			}
+			if ( $band_id <= 0 ) {
+				$band_id = self::ensure_term( $taxonomy, $name, $table_id, $description, $created, $existing );
+			}
 			if ( $band_id <= 0 ) {
 				continue;
 			}
-			$band_ids[ strtolower( $name ) ] = $band_id;
-			self::ensure_composition_edge( $taxonomy, $table_id, $comp_type, $band_id, 'Zeile' === $name ? '1' : '0..1' );
+			$band_ids[ $key ] = $band_id;
+			self::ensure_composition_edge(
+				$taxonomy,
+				$table_id,
+				$comp_type,
+				$band_id,
+				'Zeile' === $name ? '1' : '0..1'
+			);
 		}
 
 		/* Catalog table: band SoT = prop bindings (names are labels only). */
-		$bindings = array();
+		$next_bindings = array();
 		foreach ( array( 'kopf', 'zeile', 'fuss' ) as $key ) {
 			if ( isset( $band_ids[ $key ] ) ) {
-				$bindings[ $key ] = $band_ids[ $key ];
+				$next_bindings[ $key ] = $band_ids[ $key ];
 			}
 		}
-		if ( ! empty( $bindings ) ) {
-			Node_Type::set_prop_bindings( $taxonomy, $table_id, $bindings );
+		if ( ! empty( $next_bindings ) ) {
+			Node_Type::set_prop_bindings( $taxonomy, $table_id, $next_bindings );
 		}
 
+		self::dedupe_composition_members_by_name( $taxonomy, $table_id );
 		self::strip_obsolete_table_band_aliases( $taxonomy, $table_id );
 	}
 
@@ -2289,7 +2969,8 @@ final class Case_Data {
 	}
 
 	/**
-	 * Definition/Bauteilarten + Implementation/Bauteile + Lieferanten (Q83 split).
+	 * Implementation/Bauteile (MPN records) + Lieferanten; kinds under Model/Bauteil (Q83).
+	 * No-op when Fallstudie/Implementation is absent (intentionally removed).
 	 */
 	public static function ensure_bauteile_catalog( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
@@ -2297,15 +2978,14 @@ final class Case_Data {
 		}
 
 		$impl_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Implementation' ) );
-		$def_id  = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Definition' ) );
-		if ( $impl_id <= 0 || $def_id <= 0 ) {
+		if ( $impl_id <= 0 ) {
 			return;
 		}
 
 		$created  = 0;
 		$existing = 0;
 
-		/* Ensure node_ref exists for Bauteil.Lieferant / Bauteil picks. */
+		/* Ensure node_ref exists for catalog picks (BOM Bauteil Wahl etc.). */
 		$complex_id = 0;
 		foreach (
 			array(
@@ -2350,18 +3030,21 @@ final class Case_Data {
 
 		Demo_Data::ensure_bauteile_split(
 			$taxonomy,
-			array( self::ROOT_NAME, 'Definition' ),
+			array(),
 			array( self::ROOT_NAME, 'Implementation' )
 		);
 		Demo_Data::ensure_lieferanten_catalog(
 			$taxonomy,
-			array( self::ROOT_NAME, 'Implementation' ),
-			array( self::ROOT_NAME, 'Definition', 'Bauteilarten' )
+			array( self::ROOT_NAME, 'Implementation' )
 		);
 	}
 
 	/**
 	 * Implementation → BOM = Name + Tabelle; Tabelle → Zeile → fields (idempotent).
+	 *
+	 * Composition (`besteht_aus`) members may live at parent=0 after Q87 detach.
+	 * Always resolve by existing composition edge / Attribute list before creating
+	 * new WP children — otherwise each ensure recreates Name/Tabelle/Zeile fields.
 	 */
 	public static function ensure_bom_implementation( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
@@ -2400,37 +3083,37 @@ final class Case_Data {
 			return;
 		}
 
-		$name_id = self::find_child_named( $taxonomy, $bom_id, 'Name' );
-		if ( $name_id <= 0 ) {
-			$name_id = self::ensure_term(
-				$taxonomy,
-				'Name',
-				$bom_id,
-				'Instance title field (filled on WP page).',
-				$created,
-				$existing
-			);
-		}
-		self::ensure_type_named( $taxonomy, $name_id, 'text' );
-		self::ensure_composition_edge( $taxonomy, $bom_id, $comp_type, $name_id, '1' );
-
-		$tabelle_id = self::find_bom_table_child( $taxonomy, $bom_id );
+		$name_id = self::find_or_create_composition_member(
+			$taxonomy,
+			$bom_id,
+			$comp_type,
+			'Name',
+			'Instance title field (filled on WP page).',
+			'text',
+			$created,
+			$existing
+		);
+		$tabelle_id = self::find_or_create_composition_member(
+			$taxonomy,
+			$bom_id,
+			$comp_type,
+			'Tabelle',
+			'Typed table: bind Zeile (and optional Kopf/Fuss) via type properties.',
+			'table',
+			$created,
+			$existing
+		);
 		if ( $tabelle_id <= 0 ) {
-			$tabelle_id = self::ensure_term(
-				$taxonomy,
-				'Tabelle',
-				$bom_id,
-				'Typed table: bind Zeile (and optional Kopf/Fuss) via type properties.',
-				$created,
-				$existing
-			);
+			return;
 		}
-		self::ensure_type_named( $taxonomy, $tabelle_id, 'table' );
-		self::ensure_composition_edge( $taxonomy, $bom_id, $comp_type, $tabelle_id, '1' );
 		self::strip_composition_to_table_catalog( $taxonomy, $tabelle_id );
+		self::dedupe_composition_members_by_name( $taxonomy, $bom_id );
 
 		$bindings = Node_Type::get_prop_bindings( $tabelle_id );
 		$zeile_id = isset( $bindings['zeile'] ) ? (int) $bindings['zeile'] : 0;
+		if ( $zeile_id <= 0 || ! get_term( $zeile_id, $taxonomy ) instanceof \WP_Term ) {
+			$zeile_id = self::find_composition_member_named( $taxonomy, $tabelle_id, 'Zeile' );
+		}
 		if ( $zeile_id <= 0 ) {
 			$zeile_id = self::find_child_named( $taxonomy, $tabelle_id, 'Zeile' );
 		}
@@ -2458,104 +3141,258 @@ final class Case_Data {
 				$existing
 			);
 		}
+		if ( $zeile_id <= 0 ) {
+			return;
+		}
 		self::ensure_composition_edge( $taxonomy, $tabelle_id, $comp_type, $zeile_id, '1' );
 
 		$bindings['zeile'] = $zeile_id;
 		Node_Type::set_prop_bindings( $taxonomy, $tabelle_id, $bindings );
 
-		/* Seed default columns only when the bound Zeile band has no fields yet. */
-		$existing_fields = get_terms(
+		$field_types = array(
+			'Reference' => 'text',
+			'Bauteil'   => 'text',
+			'Menge'     => 'int',
+			'Kommentar' => 'textarea',
+			'Preis'     => 'double',
+			'Bestellt'  => 'bool',
+			'Vorhanden' => 'bool',
+			'Wert'      => 'text',
+			'Name'      => 'text',
+			'E-Mail'    => 'email',
+			'Email'     => 'email',
+		);
+
+		$seed_fields = array(
+			'Reference' => array( 'text', 'Board references (e.g. R1,R2).' ),
+			'Wert'      => array( 'text', 'Value / rating display.' ),
+			'Menge'     => array( 'int', 'Quantity (Stück).' ),
+		);
+
+		/* Existing band fields = composition members (may be parent=0 slots). */
+		$have = array();
+		foreach ( self::composition_member_terms( $taxonomy, $zeile_id ) as $member ) {
+			$have[ strtolower( $member->name ) ] = (int) $member->term_id;
+			if ( isset( $field_types[ $member->name ] ) && Node_Type::get_type_id( (int) $member->term_id ) <= 0 ) {
+				self::ensure_type_named( $taxonomy, (int) $member->term_id, $field_types[ $member->name ] );
+			}
+		}
+		/* Legacy: still-attached hierarchy children (pre-detach). */
+		$kids = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
 				'parent'     => $zeile_id,
 				'hide_empty' => false,
-				'number'     => 1,
-				'fields'     => 'ids',
+				'number'     => 0,
 			)
 		);
-		$has_fields = is_array( $existing_fields ) && ! empty( $existing_fields );
+		foreach ( (array) $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$key = strtolower( $kid->name );
+			if ( ! isset( $have[ $key ] ) ) {
+				$have[ $key ] = (int) $kid->term_id;
+				self::ensure_composition_edge( $taxonomy, $zeile_id, $comp_type, (int) $kid->term_id, '1' );
+			}
+			if ( isset( $field_types[ $kid->name ] ) && Node_Type::get_type_id( (int) $kid->term_id ) <= 0 ) {
+				self::ensure_type_named( $taxonomy, (int) $kid->term_id, $field_types[ $kid->name ] );
+			}
+		}
 
-		$field_types = array(
-			'Reference'  => 'text',
-			'Bauteil'    => 'text',
-			'Menge'      => 'int',
-			'Kommentar'  => 'textarea',
-			'Preis'      => 'double',
-			'Bestellt'   => 'bool',
-			'Vorhanden'  => 'bool',
-			'Wert'       => 'text',
-			'Name'       => 'text',
-			'E-Mail'     => 'email',
-			'Email'      => 'email',
-		);
-
-		if ( ! $has_fields ) {
-			$fields = array(
-				'Reference' => array( 'text', 'Board references (e.g. R1,R2).' ),
-				'Wert'      => array( 'text', 'Value / rating display.' ),
-				'Menge'     => array( 'int', 'Quantity (Stück).' ),
-			);
-			foreach ( $fields as $fname => $meta ) {
-				$field_id = self::find_child_named( $taxonomy, $zeile_id, $fname );
-				if ( $field_id <= 0 ) {
-					$field_id = self::ensure_term(
-						$taxonomy,
-						$fname,
-						$zeile_id,
-						(string) $meta[1],
-						$created,
-						$existing
-					);
+		if ( empty( $have ) ) {
+			foreach ( $seed_fields as $fname => $meta ) {
+				$type_id = self::find_case_datatype_id( $taxonomy, (string) $meta[0] );
+				if ( $type_id <= 0 ) {
+					continue;
 				}
-				self::ensure_type_named( $taxonomy, $field_id, (string) $meta[0] );
-				self::ensure_composition_edge( $taxonomy, $zeile_id, $comp_type, $field_id, '1' );
+				$added = Attribute::add( $taxonomy, $zeile_id, $fname, $type_id );
+				if ( ! is_wp_error( $added ) && is_array( $added ) ) {
+					$fid = (int) ( $added['id'] ?? 0 );
+					if ( $fid > 0 && '' !== (string) $meta[1] ) {
+						wp_update_term( $fid, $taxonomy, array( 'description' => (string) $meta[1] ) );
+					}
+				}
 			}
 		} else {
-			$kids = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'parent'     => $zeile_id,
-					'hide_empty' => false,
-					'number'     => 0,
-				)
+			foreach ( $seed_fields as $fname => $meta ) {
+				$key = strtolower( $fname );
+				if ( isset( $have[ $key ] ) ) {
+					continue;
+				}
+				$type_id = self::find_case_datatype_id( $taxonomy, (string) $meta[0] );
+				if ( $type_id <= 0 ) {
+					continue;
+				}
+				Attribute::add( $taxonomy, $zeile_id, $fname, $type_id );
+			}
+		}
+
+		self::dedupe_composition_members_by_name( $taxonomy, $zeile_id );
+	}
+
+	/**
+	 * Resolve a composition/attribute member by name (edge target), else WP child.
+	 */
+	private static function find_composition_member_named( string $taxonomy, int $from_id, string $name ): int {
+		$name_l = strtolower( trim( $name ) );
+		if ( $from_id <= 0 || '' === $name_l ) {
+			return 0;
+		}
+		foreach ( self::composition_member_terms( $taxonomy, $from_id ) as $term ) {
+			if ( strtolower( $term->name ) === $name_l ) {
+				return (int) $term->term_id;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * @return list<\WP_Term>
+	 */
+	private static function composition_member_terms( string $taxonomy, int $from_id ): array {
+		$out  = array();
+		$seen = array();
+		foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $from_id, Relation::TYPE_COMPOSITION ) as $edge ) {
+			$to_id = (int) ( $edge['toId'] ?? 0 );
+			if ( $to_id <= 0 || isset( $seen[ $to_id ] ) ) {
+				continue;
+			}
+			$term = get_term( $to_id, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$seen[ $to_id ] = true;
+			$out[]          = $term;
+		}
+		return $out;
+	}
+
+	/**
+	 * Find existing composition member / child, or create + edge (typed).
+	 */
+	private static function find_or_create_composition_member(
+		string $taxonomy,
+		int $host_id,
+		int $comp_type,
+		string $name,
+		string $description,
+		string $type_name,
+		int &$created,
+		int &$existing
+	): int {
+		$member_id = self::find_composition_member_named( $taxonomy, $host_id, $name );
+		if ( $member_id <= 0 ) {
+			$member_id = self::find_child_named( $taxonomy, $host_id, $name );
+		}
+		if ( $member_id <= 0 && 'Tabelle' === $name ) {
+			$member_id = self::find_bom_table_child( $taxonomy, $host_id );
+		}
+		if ( $member_id <= 0 ) {
+			$member_id = self::ensure_term(
+				$taxonomy,
+				$name,
+				$host_id,
+				$description,
+				$created,
+				$existing
 			);
-			if ( is_array( $kids ) ) {
-				$terms = array();
-				foreach ( $kids as $kid ) {
-					if ( $kid instanceof \WP_Term ) {
-						$terms[] = $kid;
-					}
-				}
-				usort(
-					$terms,
-					static function ( \WP_Term $a, \WP_Term $b ): int {
-						$pa = Tree_Model::get_position( (int) $a->term_id );
-						$pb = Tree_Model::get_position( (int) $b->term_id );
-						if ( $pa !== $pb ) {
-							return $pa <=> $pb;
-						}
-						return strcasecmp( $a->name, $b->name );
-					}
+		}
+		if ( $member_id <= 0 ) {
+			return 0;
+		}
+		if ( '' !== $type_name ) {
+			self::ensure_type_named( $taxonomy, $member_id, $type_name );
+		}
+		self::ensure_composition_edge( $taxonomy, $host_id, $comp_type, $member_id, '1' );
+		return $member_id;
+	}
+
+	/**
+	 * Keep one composition edge per member name; hard-delete duplicate targets
+	 * when they are attribute slots not referenced elsewhere.
+	 */
+	private static function dedupe_composition_members_by_name( string $taxonomy, int $host_id ): void {
+		if ( $host_id <= 0 ) {
+			return;
+		}
+		$by_name = array();
+		foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $host_id, Relation::TYPE_COMPOSITION ) as $edge ) {
+			$to_id  = (int) ( $edge['toId'] ?? 0 );
+			$edge_id = (string) ( $edge['id'] ?? '' );
+			if ( $to_id <= 0 || '' === $edge_id ) {
+				continue;
+			}
+			$term = get_term( $to_id, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$key = strtolower( $term->name );
+			if ( ! isset( $by_name[ $key ] ) ) {
+				$by_name[ $key ] = array(
+					'keep'  => $to_id,
+					'dups'  => array(),
 				);
-				foreach ( $terms as $kid ) {
-					$fname = $kid->name;
-					if ( isset( $field_types[ $fname ] ) && Node_Type::get_type_id( (int) $kid->term_id ) <= 0 ) {
-						self::ensure_type_named( $taxonomy, (int) $kid->term_id, $field_types[ $fname ] );
-					}
-					self::ensure_composition_edge( $taxonomy, $zeile_id, $comp_type, (int) $kid->term_id, '1' );
+				continue;
+			}
+			$by_name[ $key ]['dups'][] = array(
+				'toId'   => $to_id,
+				'edgeId' => $edge_id,
+			);
+		}
+
+		$referenced = array_fill_keys( Attribute::collect_referenced_term_ids( $taxonomy ), true );
+		foreach ( $by_name as $row ) {
+			$keep = (int) $row['keep'];
+			foreach ( $row['dups'] as $dup ) {
+				$to_id   = (int) $dup['toId'];
+				$edge_id = (string) $dup['edgeId'];
+				Relation::remove( $taxonomy, $host_id, 0, $to_id, $edge_id );
+				if ( $to_id === $keep ) {
+					continue;
 				}
+				/* Only purge unused attribute-slot duplicates — never hierarchy hosts. */
+				if ( ! Attribute::is_slot( $to_id ) ) {
+					continue;
+				}
+				unset( $referenced[ $keep ] );
+				if ( isset( $referenced[ $to_id ] ) ) {
+					continue;
+				}
+				/* Recompute after remove: still referenced by another host? */
+				$still = false;
+				foreach ( Attribute::collect_referenced_term_ids( $taxonomy ) as $rid ) {
+					if ( (int) $rid === $to_id ) {
+						$still = true;
+						break;
+					}
+				}
+				if ( $still ) {
+					continue;
+				}
+				Node_Type::set_deletable( $to_id, true );
+				wp_delete_term( $to_id, $taxonomy );
 			}
 		}
 	}
 
 	/**
-	 * Prefer an existing table-typed child (e.g. Kontent / Tabelle) under BOM.
+	 * Prefer an existing table-typed composition member or child under BOM.
 	 */
 	private static function find_bom_table_child( string $taxonomy, int $bom_id ): int {
 		foreach ( array( 'Tabelle', 'Table', 'Kontent', 'Content' ) as $name ) {
+			$id = self::find_composition_member_named( $taxonomy, $bom_id, $name );
+			if ( $id > 0 ) {
+				return $id;
+			}
 			$id = self::find_child_named( $taxonomy, $bom_id, $name );
 			if ( $id > 0 ) {
 				return $id;
+			}
+		}
+		foreach ( self::composition_member_terms( $taxonomy, $bom_id ) as $member ) {
+			if ( Node_Type::has_type_named( $taxonomy, (int) $member->term_id, 'table' ) ) {
+				return (int) $member->term_id;
 			}
 		}
 		$kids = get_terms(
@@ -2699,7 +3536,9 @@ final class Case_Data {
 	}
 
 	/**
-	 * @return int|\WP_Error Number of roots deleted (cascade).
+	 * Legacy helper — prefer wipe_all_terms() for reset (slots + protected nodes).
+	 *
+	 * @return int|\WP_Error Number of terms hard-deleted under named root(s).
 	 */
 	private static function delete_root_by_name( string $taxonomy, string $name ) {
 		$found = get_terms(
@@ -2723,11 +3562,11 @@ final class Case_Data {
 			if ( ! $term instanceof \WP_Term ) {
 				continue;
 			}
-			$removed = Tree_Model::delete_term( $taxonomy, (int) $term->term_id, 'cascade' );
+			$removed = self::hard_delete_term_cascade( $taxonomy, (int) $term->term_id );
 			if ( is_wp_error( $removed ) ) {
 				return $removed;
 			}
-			++$deleted;
+			$deleted += (int) $removed;
 		}
 
 		return $deleted;
@@ -2775,6 +3614,19 @@ final class Case_Data {
 			}
 			if ( array_key_exists( 'is_abstract', $node ) ) {
 				Node_Type::set_is_abstract( $taxonomy, $term_id, (bool) $node['is_abstract'] );
+			}
+			if ( array_key_exists( 'is_template', $node ) ) {
+				Node_Type::set_is_template( $taxonomy, $term_id, (bool) $node['is_template'] );
+			} elseif (
+				( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] )
+				|| (
+					array_key_exists( 'is_datatype', $node )
+					&& true === (bool) $node['is_datatype']
+					&& ! array_key_exists( 'deletable', $node )
+				)
+			) {
+				/* Seeded protected catalog → is_template (#5 lock signal). */
+				Node_Type::set_is_template( $taxonomy, $term_id, true );
 			}
 			if ( array_key_exists( 'deletable', $node ) ) {
 				Node_Type::set_deletable( $term_id, (bool) $node['deletable'] );

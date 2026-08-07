@@ -160,6 +160,26 @@
 					? attr.nodeRefCreateFields.slice()
 					: [],
 				sample: attr.sample != null ? String(attr.sample) : '',
+				quantitySchema:
+					attr.quantitySchema &&
+					typeof attr.quantitySchema === 'object'
+						? attr.quantitySchema
+						: null,
+				dateConfig: attr.dateConfig || null,
+				intConfig: attr.intConfig || null,
+				displayFormat:
+					attr.displayFormat != null
+						? String(attr.displayFormat)
+						: attr.intConfig && attr.intConfig.displayFormat
+							? String(attr.intConfig.displayFormat)
+							: '',
+				mediaConfig:
+					attr.mediaConfig && typeof attr.mediaConfig === 'object'
+						? attr.mediaConfig
+						: null,
+				typeProperties: Array.isArray(attr.typeProperties)
+					? attr.typeProperties.slice()
+					: [],
 			};
 			/* Festwert wins over generic type sample (e.g. Einheit → Ohm). */
 			if (fest) {
@@ -327,10 +347,27 @@
 		if (!field) {
 			return false;
 		}
+		/* Structure types embed Form/Table of typeProperties — never CatalogChoice. */
+		if (isStructureField(field)) {
+			return false;
+		}
 		if (String(field.fixedMode || '') === 'catalog') {
 			return true;
 		}
 		return catalogOptionsForField(field).length > 0;
+	}
+
+	/**
+	 * Whether the field embeds its type's attribute schema (Form/Table).
+	 * @param {object|null} field
+	 * @return {boolean}
+	 */
+	function isStructureField(field) {
+		return !!(
+			field &&
+			Array.isArray(field.typeProperties) &&
+			field.typeProperties.length > 0
+		);
 	}
 
 	function isNodeRefField(field) {
@@ -448,42 +485,39 @@
 
 	function paintMediaEdit(field, value, opts) {
 		opts = opts || {};
+		var Media = global.WTTMediaRender;
 		var raw = value != null ? String(value) : '';
-		var wrap = createEl('div', {
-			className: 'wtt-object-render__media-edit',
-		});
-		/* Sensible stub until Media_Render gains an edit surface. */
-		var input = createEl('input', {
-			type: 'text',
-			className: 'wtt-preview-input wtt-object-render__input',
-			value: raw,
-			placeholder: 'URL or media JSON',
-		});
-		if (typeof opts.onInput === 'function') {
-			input.addEventListener('input', function () {
-				opts.onInput(input.value);
-			});
-			input.addEventListener('change', function () {
-				opts.onInput(input.value);
+		if (Media && typeof Media.renderField === 'function') {
+			return Media.renderField(raw, {
+				mode: 'edit',
+				compact:
+					opts.contextName === 'table' ||
+					opts.contextName === 'compact',
+				mediaConfig: (field && field.mediaConfig) || null,
+				el: createEl,
+				onChange:
+					typeof opts.onInput === 'function'
+						? function (next) {
+								opts.onInput(next == null ? '' : String(next));
+						  }
+						: null,
 			});
 		}
-		wrap.appendChild(input);
-		if (raw) {
-			var Media = global.WTTMediaRender;
-			var ref =
-				Media && typeof Media.parseRef === 'function'
-					? Media.parseRef(raw)
-					: null;
-			if (Media && typeof Media.renderSurface === 'function') {
-				wrap.appendChild(
-					Media.renderSurface(ref, {
-						compact: true,
-						el: createEl,
-					})
-				);
-			}
+		/* Fallback display-only when Media_Render edit API is missing. */
+		var ref =
+			Media && typeof Media.parseRef === 'function'
+				? Media.parseRef(raw)
+				: null;
+		if (Media && typeof Media.renderSurface === 'function') {
+			return Media.renderSurface(ref, {
+				compact: true,
+				el: createEl,
+			});
 		}
-		return wrap;
+		return createEl('span', {
+			className: 'wtt-object-render__display',
+			text: '—',
+		});
 	}
 
 	function resolveCatalogLabel(options, value) {
@@ -666,6 +700,13 @@
 			options,
 			field && field.choiceDepth
 		);
+		/* Table / compact cells: always flat <select> — no nested tree chrome. */
+		if (
+			opts.contextName === 'table' ||
+			opts.contextName === 'compact'
+		) {
+			mode = 'flat';
+		}
 
 		if (readonly) {
 			var label = resolveCatalogLabel(options, selected);
@@ -691,7 +732,7 @@
 					}
 					var option = createEl('option', {
 						value: id,
-						text: opt.name || opt.path || id,
+						text: opt.path || opt.name || id,
 					});
 					if (id === selected || (!selected && !select.value)) {
 						option.selected = true;
@@ -721,6 +762,72 @@
 				}
 			}
 		);
+	}
+
+	/**
+	 * Embed the attribute type's schema via Form (Mult≤1 cell) — same surfaces, no special chrome.
+	 *
+	 * @param {object} field
+	 * @param {string} value
+	 * @param {object} opts
+	 * @return {HTMLElement}
+	 */
+	function paintStructureEmbed(field, value, opts) {
+		opts = opts || {};
+		var readonly = !!opts.readonly || !!(field && field.readonly);
+		var attrs = schemaFieldsForManyProp(field);
+		var instance = {
+			attributes: attrs,
+			values: rowValuesFromStore(attrs, value != null ? String(value) : ''),
+		};
+		return renderForm(instance, {
+			readonly: readonly,
+			referenceMode: opts.referenceMode,
+			className: 'wtt-object-render__structure-embed',
+			onFieldInput: readonly
+				? null
+				: function (innerField, next) {
+						var idKey = valueKey(innerField);
+						instance.values[idKey] =
+							next == null ? '' : String(next);
+						if (typeof opts.onInput === 'function') {
+							opts.onInput(
+								encodeStructureStore(instance.values, attrs)
+							);
+						}
+				  },
+		});
+	}
+
+	/**
+	 * @param {object} values
+	 * @param {Array} attrs
+	 * @return {string}
+	 */
+	function encodeStructureStore(values, attrs) {
+		values = values || {};
+		attrs = attrs || [];
+		var obj = {};
+		var any = false;
+		attrs.forEach(function (field) {
+			var k = valueKey(field);
+			var v = values[k] != null ? String(values[k]) : '';
+			obj[k] = v;
+			if (v !== '') {
+				any = true;
+			}
+		});
+		if (!any) {
+			return '';
+		}
+		if (attrs.length === 1) {
+			return obj[valueKey(attrs[0])] || '';
+		}
+		try {
+			return JSON.stringify(obj);
+		} catch (e) {
+			return '';
+		}
 	}
 
 	function paintFieldContent(field, value, opts) {
@@ -756,6 +863,39 @@
 				className: 'wtt-object-render__display',
 				text: label || '—',
 			});
+		}
+
+		/* Quantity trinity (schema on unit-typed attrs) before CatalogChoice. */
+		var hasQty =
+			field &&
+			field.quantitySchema &&
+			Array.isArray(field.quantitySchema.members) &&
+			field.quantitySchema.members.length;
+		if (hasQty) {
+			var RegQty = registry();
+			var ctxQty = {
+				name: opts.contextName || 'form',
+				mode: readonly ? 'display' : 'edit',
+				bare: true,
+				hideLabel: true,
+				value: value != null ? String(value) : '',
+				onInput:
+					readonly || typeof opts.onInput !== 'function'
+						? null
+						: opts.onInput,
+			};
+			var nodeQty = fieldNode(field, value);
+			if (RegQty && typeof RegQty.renderContent === 'function') {
+				var paintedQty = RegQty.renderContent(nodeQty, ctxQty, readonly);
+				if (paintedQty) {
+					return paintedQty;
+				}
+			}
+		}
+
+		/* Structured type (has attributes) → embed Form of type schema, not CatalogChoice. */
+		if (isStructureField(field)) {
+			return paintStructureEmbed(field, value, opts);
 		}
 
 		/* Display-only referenceMode; edit path keeps pickers / controls. */
@@ -892,11 +1032,12 @@
 
 		var wrap = createEl('div', {
 			className:
-				'wtt-object-render wtt-object-render--table wtt-set-preview__table-wrap' +
+				'wtt-object-render wtt-object-render--table wtt-set-preview__table-wrap wtt-object-view__table-wrap' +
 				(options.className ? ' ' + options.className : ''),
 		});
 		var table = createEl('table', {
-			className: 'wtt-set-preview__table wtt-object-render__table',
+			className:
+				'wtt-set-preview__table wtt-object-render__table wtt-object-view__table',
 		});
 		var thead = createEl('thead');
 		var headRow = createEl('tr');
@@ -912,35 +1053,50 @@
 		table.appendChild(thead);
 
 		var tbody = createEl('tbody');
-		instances.forEach(function (instance, rowIndex) {
-			var tr = createEl('tr');
-			fields.forEach(function (field) {
-				var td = createEl('td');
-				var current = readValue(instance, field);
-				var fieldReadonly = readonly || !!field.readonly;
-				td.appendChild(
-					paintFieldContent(field, current, {
-						readonly: fieldReadonly,
-						contextName: 'table',
-						referenceMode: options.referenceMode,
-						onInput: fieldReadonly
-							? null
-							: function (next) {
-									if (typeof options.onFieldInput === 'function') {
-										options.onFieldInput(
-											field,
-											next,
-											instance,
-											rowIndex
-										);
-									}
-							  },
-					})
-				);
-				tr.appendChild(td);
+		if (0 === instances.length) {
+			var emptyTr = createEl('tr', {
+				className: 'wtt-object-render__table-empty-row',
 			});
-			tbody.appendChild(tr);
-		});
+			var emptyTd = createEl('td', {
+				className: 'wtt-object-render__table-empty',
+				text:
+					options.emptyMessage ||
+					t('tableEmpty', 'No data available.'),
+			});
+			emptyTd.colSpan = Math.max(1, fields.length);
+			emptyTr.appendChild(emptyTd);
+			tbody.appendChild(emptyTr);
+		} else {
+			instances.forEach(function (instance, rowIndex) {
+				var tr = createEl('tr');
+				fields.forEach(function (field) {
+					var td = createEl('td');
+					var current = readValue(instance, field);
+					var fieldReadonly = readonly || !!field.readonly;
+					td.appendChild(
+						paintFieldContent(field, current, {
+							readonly: fieldReadonly,
+							contextName: 'table',
+							referenceMode: options.referenceMode,
+							onInput: fieldReadonly
+								? null
+								: function (next) {
+										if (typeof options.onFieldInput === 'function') {
+											options.onFieldInput(
+												field,
+												next,
+												instance,
+												rowIndex
+											);
+										}
+								  },
+						})
+					);
+					tr.appendChild(td);
+				});
+				tbody.appendChild(tr);
+			});
+		}
 		table.appendChild(tbody);
 		wrap.appendChild(table);
 		return wrap;
@@ -1170,6 +1326,25 @@
 					? prop.nodeRefCreateFields.slice()
 					: [],
 				sample: '',
+				quantitySchema:
+					prop.quantitySchema && typeof prop.quantitySchema === 'object'
+						? prop.quantitySchema
+						: null,
+				dateConfig: prop.dateConfig || null,
+				intConfig: prop.intConfig || null,
+				displayFormat:
+					prop.displayFormat != null
+						? String(prop.displayFormat)
+						: prop.intConfig && prop.intConfig.displayFormat
+							? String(prop.intConfig.displayFormat)
+							: '',
+				mediaConfig:
+					prop.mediaConfig && typeof prop.mediaConfig === 'object'
+						? prop.mediaConfig
+						: null,
+				typeProperties: Array.isArray(prop.typeProperties)
+					? prop.typeProperties.slice()
+					: [],
 			};
 			var val = '';
 			var media = isMediaProp(prop) || isMediaTypeKey(field.typeKey);
@@ -1387,6 +1562,25 @@
 			nodeRefCreateFields: Array.isArray(prop.nodeRefCreateFields)
 				? prop.nodeRefCreateFields.slice()
 				: [],
+			mediaConfig:
+				prop.mediaConfig && typeof prop.mediaConfig === 'object'
+					? prop.mediaConfig
+					: null,
+			dateConfig: prop.dateConfig || null,
+			intConfig: prop.intConfig || null,
+			displayFormat:
+				prop.displayFormat != null
+					? String(prop.displayFormat)
+					: prop.intConfig && prop.intConfig.displayFormat
+						? String(prop.intConfig.displayFormat)
+						: '',
+			quantitySchema:
+				prop.quantitySchema && typeof prop.quantitySchema === 'object'
+					? prop.quantitySchema
+					: null,
+			typeProperties: Array.isArray(prop.typeProperties)
+				? prop.typeProperties.slice()
+				: [],
 		};
 	}
 
@@ -1416,6 +1610,9 @@
 	}
 
 	/**
+	 * Multiplicity > 1 = list of the attribute's type → plain renderTable (Table(n)).
+	 * No special many UI: columns = type attributes when structured, else the field itself.
+	 *
 	 * @param {HTMLElement} section
 	 * @param {Array} manyProps
 	 * @param {{ readonly?: boolean, referenceMode?: string, onFieldInput?: function }} [opts]
@@ -1423,94 +1620,193 @@
 	function appendManyTable(section, manyProps, opts) {
 		opts = opts || {};
 		var readonly = !!opts.readonly;
-		var maxRows = 1;
-		manyProps.forEach(function (prop) {
-			prop._displayValues = manyPropStoreValues(prop);
-			maxRows = Math.max(maxRows, prop._displayValues.length, 1);
+		var stack = createEl('div', {
+			className: 'wtt-object-view__many-stack',
 		});
-		/* Editable many: keep a spare empty row so users can add another value. */
-		if (!readonly) {
-			maxRows = Math.max(maxRows + 1, 2);
-		}
+		(manyProps || []).forEach(function (prop) {
+			if (!prop || typeof prop !== 'object') {
+				return;
+			}
+			var attrs = schemaFieldsForManyProp(prop);
+			var instances = instancesForManyProp(prop, attrs, readonly);
+			var hostField = fieldFromProp(prop);
 
-		var wrap = createEl('div', {
-			className: 'wtt-object-view__table-wrap',
-		});
-		var table = createEl('table', {
-			className: 'wtt-object-view__table',
-		});
-		var thead = createEl('thead');
-		var headRow = createEl('tr');
-		manyProps.forEach(function (prop) {
-			headRow.appendChild(
-				createEl('th', {
+			var item = createEl('div', {
+				className: 'wtt-object-view__many-item',
+			});
+			item.appendChild(
+				createEl('h5', {
+					className: 'wtt-object-view__many-title',
 					text: prop.name || '—',
-					scope: 'col',
 				})
 			);
+			item.appendChild(
+				renderTable(instances, {
+					readonly: readonly || !!prop.readonly,
+					referenceMode: opts.referenceMode,
+					attributes: attrs,
+					className: 'wtt-object-view__table',
+					onFieldInput: readonly
+						? null
+						: function (field, next, instance, rowIndex) {
+								var idKey = valueKey(field);
+								if (!instance.values) {
+									instance.values = {};
+								}
+								instance.values[idKey] =
+									next == null ? '' : String(next);
+								if (typeof opts.onFieldInput === 'function') {
+									opts.onFieldInput(
+										hostField,
+										encodeManyInstances(instances, attrs),
+										null,
+										rowIndex
+									);
+								}
+						  },
+				})
+			);
+			stack.appendChild(item);
 		});
-		thead.appendChild(headRow);
-		table.appendChild(thead);
-		var tbody = createEl('tbody');
-		var r;
-		for (r = 0; r < maxRows; r++) {
-			var tr = createEl('tr');
-			manyProps.forEach(function (prop) {
-				var vals = prop._displayValues || [];
-				var cell = vals[r] != null ? String(vals[r]) : '';
-				var td = createEl('td');
-				var field = fieldFromProp(prop);
-				var fieldReadonly = readonly || !!prop.readonly;
-				if (fieldReadonly && !cell) {
-					td.appendChild(
-						createEl('span', {
-							className: 'wtt-object-view__empty-value',
-							text: '—',
-						})
-					);
-				} else {
-					(function (propRef, rowIndex, fieldRef) {
-						td.appendChild(
-							paintFieldContent(fieldRef, cell, {
-								readonly: fieldReadonly,
-								contextName: 'table',
-								referenceMode: opts.referenceMode,
-								onInput: fieldReadonly
-									? null
-									: function (next) {
-											var nextVals = (
-												propRef._displayValues || []
-											).slice();
-											while (nextVals.length <= rowIndex) {
-												nextVals.push('');
-											}
-											nextVals[rowIndex] =
-												next == null ? '' : String(next);
-											propRef._displayValues = nextVals;
-											propRef.values = nextVals.slice();
-											if (
-												typeof opts.onFieldInput ===
-												'function'
-											) {
-												opts.onFieldInput(
-													fieldRef,
-													encodeManyStoreValues(nextVals),
-													null,
-													rowIndex
-												);
-											}
-									  },
-							})
-						);
-					})(prop, r, field);
-				}
-				tr.appendChild(td);
+		section.appendChild(stack);
+	}
+
+	/**
+	 * Columns for a many-valued attribute: type schema when present, else the field.
+	 * @param {object} prop
+	 * @return {Array}
+	 */
+	function schemaFieldsForManyProp(prop) {
+		var typeProps = Array.isArray(prop.typeProperties)
+			? prop.typeProperties
+			: [];
+		if (typeProps.length) {
+			return typeProps.map(function (p) {
+				return fieldFromProp(p);
 			});
-			tbody.appendChild(tr);
 		}
-		table.appendChild(tbody);
-		wrap.appendChild(table);
-		section.appendChild(wrap);
+		return [fieldFromProp(prop)];
+	}
+
+	/**
+	 * @param {Array} attrs
+	 * @return {object}
+	 */
+	function emptyRowValues(attrs) {
+		var values = {};
+		(attrs || []).forEach(function (field) {
+			values[valueKey(field)] = '';
+		});
+		return values;
+	}
+
+	/**
+	 * Decode one list-row store string into values map.
+	 * @param {Array} attrs
+	 * @param {string} raw
+	 * @return {object}
+	 */
+	function rowValuesFromStore(attrs, raw) {
+		var s = raw == null ? '' : String(raw).trim();
+		var values = emptyRowValues(attrs);
+		if (!s) {
+			return values;
+		}
+		if (s.charAt(0) === '{') {
+			try {
+				var obj = JSON.parse(s);
+				if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+					Object.keys(obj).forEach(function (k) {
+						values[String(k)] =
+							obj[k] == null ? '' : String(obj[k]);
+					});
+					return values;
+				}
+			} catch (e) {
+				/* fall through to scalar */
+			}
+		}
+		if (attrs.length === 1) {
+			values[valueKey(attrs[0])] = s;
+		}
+		return values;
+	}
+
+	/**
+	 * @param {object} prop
+	 * @param {Array} attrs
+	 * @param {boolean} readonly
+	 * @return {Array}
+	 */
+	function instancesForManyProp(prop, attrs, readonly) {
+		var raws = manyPropStoreValues(prop);
+		var list = raws.map(function (raw) {
+			return {
+				attributes: attrs,
+				values: rowValuesFromStore(attrs, raw),
+			};
+		});
+		if (!list.length) {
+			list.push({
+				attributes: attrs,
+				values: emptyRowValues(attrs),
+			});
+		}
+		/* Spare empty row so the user can add another list entry. */
+		if (!readonly) {
+			list.push({
+				attributes: attrs,
+				values: emptyRowValues(attrs),
+			});
+		}
+		return list;
+	}
+
+	/**
+	 * Encode Table(n) instances back to the host attribute store string.
+	 * @param {Array} instances
+	 * @param {Array} attrs
+	 * @return {string}
+	 */
+	function encodeManyInstances(instances, attrs) {
+		attrs = attrs || [];
+		var structured = attrs.length > 1;
+		var singleKey = attrs.length === 1 ? valueKey(attrs[0]) : '';
+		var rows = [];
+		(instances || []).forEach(function (inst) {
+			var vals = (inst && inst.values) || {};
+			if (structured) {
+				var obj = {};
+				var any = false;
+				attrs.forEach(function (field) {
+					var k = valueKey(field);
+					var v = vals[k] != null ? String(vals[k]) : '';
+					obj[k] = v;
+					if (v !== '') {
+						any = true;
+					}
+				});
+				if (any) {
+					rows.push(obj);
+				}
+				return;
+			}
+			var scalar = vals[singleKey] != null ? String(vals[singleKey]) : '';
+			if (scalar !== '') {
+				rows.push(scalar);
+			}
+		});
+		if (!rows.length) {
+			return '';
+		}
+		if (!structured && rows.length === 1) {
+			return rows[0];
+		}
+		try {
+			return JSON.stringify(rows);
+		} catch (e) {
+			return structured ? '' : rows.join(',');
+		}
 	}
 
 	/**
@@ -1627,39 +1923,8 @@
 					text: t('noProperties', 'This node has no attributes.'),
 				})
 			);
-		} else if (layout === 'table') {
-			section.appendChild(
-				createEl('h4', {
-					className: 'wtt-object-view__section-title',
-					text: t('properties', 'Properties'),
-				})
-			);
-			section.appendChild(
-				renderTable([instanceFromView(view)], {
-					readonly: paintOpts.readonly,
-					referenceMode: paintOpts.referenceMode,
-					onFieldInput: paintOpts.onFieldInput,
-					className: 'wtt-object-view__table',
-				})
-			);
-		} else if (layout === 'compact' || layout === 'compact-vertical') {
-			section.appendChild(
-				createEl('h4', {
-					className: 'wtt-object-view__section-title',
-					text: t('properties', 'Properties'),
-				})
-			);
-			section.appendChild(
-				renderCompact(instanceFromView(view), {
-					readonly: paintOpts.readonly,
-					referenceMode: paintOpts.referenceMode,
-					onFieldInput: paintOpts.onFieldInput,
-					orientation:
-						layout === 'compact-vertical' ? 'vertical' : 'horizontal',
-					className: 'wtt-object-view__compact',
-				})
-			);
 		} else {
+			/* Singles follow layout; multi-value attributes always render as a table. */
 			if (parts.single.length) {
 				section.appendChild(
 					createEl('h4', {
@@ -1667,23 +1932,47 @@
 						text: t('properties', 'Properties'),
 					})
 				);
-				section.appendChild(
-					renderForm(instanceFromView(view, parts.single), {
-						readonly: paintOpts.readonly,
-						referenceMode: paintOpts.referenceMode,
-						onFieldInput: paintOpts.onFieldInput,
-						className: 'wtt-object-view__form-surface',
-					})
-				);
+				if (layout === 'table') {
+					section.appendChild(
+						renderTable([instanceFromView(view, parts.single)], {
+							readonly: paintOpts.readonly,
+							referenceMode: paintOpts.referenceMode,
+							onFieldInput: paintOpts.onFieldInput,
+							className: 'wtt-object-view__table',
+						})
+					);
+				} else if (
+					layout === 'compact' ||
+					layout === 'compact-vertical'
+				) {
+					section.appendChild(
+						renderCompact(instanceFromView(view, parts.single), {
+							readonly: paintOpts.readonly,
+							referenceMode: paintOpts.referenceMode,
+							onFieldInput: paintOpts.onFieldInput,
+							orientation:
+								layout === 'compact-vertical'
+									? 'vertical'
+									: 'horizontal',
+							className: 'wtt-object-view__compact',
+						})
+					);
+				} else {
+					section.appendChild(
+						renderForm(instanceFromView(view, parts.single), {
+							readonly: paintOpts.readonly,
+							referenceMode: paintOpts.referenceMode,
+							onFieldInput: paintOpts.onFieldInput,
+							className: 'wtt-object-view__form-surface',
+						})
+					);
+				}
 			}
 			if (parts.many.length) {
 				section.appendChild(
 					createEl('h4', {
 						className: 'wtt-object-view__section-title',
-						text: t(
-							'propertiesMany',
-							'Multi-value attributes'
-						),
+						text: t('propertiesMany', 'Multi-value attributes'),
 					})
 				);
 				appendManyTable(section, parts.many, paintOpts);

@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.32-plan"
+version: "0.7.41-plan"
 last_updated: "2026-08-07"
 related_docs:
   - README.md
@@ -76,7 +76,7 @@ todos:
     content: "Q74 scaffold: Relationstypen seed; _wtt_relations CRUD; Add/Remove UI (not child_of); merge synthetic von/an"
     status: completed
   - id: scaffold-type-inherit-q76-q77
-    content: "Q76 catalog inherit+override interim; Q77 is_datatype + local is_abstract; Q88 hierarchy datatype=parent (root Knoten)"
+    content: "Q76 catalog inherit interim; Q77 chooser=nodes + is_abstract; is_datatype debt; Q88 hierarchy datatype=parent (root Knoten)"
     status: completed
   - id: scaffold-set-composition-q75
     content: "Q75: set members from composition Relation targets (migrate off hierarchy children)"
@@ -121,11 +121,12 @@ Fallstudie **`wtt_fs`** proved the working model below (now the only standard sc
 | Fuss **`_wtt_footer_op`** + Aggregate catalog (Q57) | Op on Fuss **slot**; column type stays Zeile value type |
 | **`set` members = `composition`** (Q75) | Overwrites “scaffold still uses children until Q75” |
 | Hierarchy = **`child_of`** (Q54); no Parameter class (Q64) | Overwrite open/lean rows that still say `parent_id` / Parameter |
-| Type chooser = **`is_datatype`** + local **`is_abstract`** (Q77); datatype may have `type_id` | Overwrite “datatype ⇒ no type_id” |
+| Type chooser = **nodes** + Q92 scope; **`is_abstract`** local (Q77 revised); `_wtt_is_datatype` = debt; catalog lock = **`is_template`** | Overwrite “chooser = is_datatype forest” |
+| Select nodes by **id** only; named config bindings → ids (Q79/Q92; **#6 decided**) | Kill name-based selection SoT; special branches in settings |
 | Still open / lean | **Q53** kind binding; **Q82** Fuss label via `fixed`; **Q81** unique band bindings (UAT) |
-| **Q83** Bauteilarten vs Bauteile | **Definition** = category/schema; **Implementation** = MPN records (`type` → kind) |
+| **Q83** Bauteile catalog | **Model/Bauteil** = kinds; **Implementation/Bauteile** = MPN records |
 | **Q85 composition-first** | Platine→BOM→Zeilen-Teile via **`composition`**; table UI = view — escape relations/table-DB prison |
-| **Q88 hierarchy datatype** | Only **root** typed **Knoten**; every hierarchy child’s datatype = **parent** (no free type pick on hierarchy nodes). Attribute members keep own field types (Q87) |
+| **Q88 hierarchy datatype** | Non-root: datatype = **parent** (`has_type` = father). Root: **seed-only** `type_id` → **Knoten** (no admin free `set_type`). Attribute members keep own field types (Q87) |
 
 Details: [`docs/plans/case-study.md`](case-study.md), [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md).
 
@@ -177,7 +178,7 @@ Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP 
 | Tree model | Nest / walk / create / rename (**slug sync** from name) / description / short_description / copy sibling / move ↑↓ / delete (promote \| cascade) |
 | Transport | **Admin-AJAX** + nonce + taxonomy caps (Q1 leaning for admin MVP) |
 | Admin UI | Split tree + detail; expand/collapse + selection persistence; toolbar Add child / Copy / Save / Undo / Delete; detail **Meta** / **Flags**; Fallstudie slim mode (no dual taxonomy switcher) |
-| Types (interim) | **Q88:** hierarchy datatype = parent (root = **Knoten**; type UI read-only for typed-as-parent). Attribute / catalog field types still chooser (`is_datatype`); **Q76** inherit+override = scaffold interim for catalog types; **Q77** local `is_abstract`; `set` / `table` / simples; required; fixed |
+| Types (interim) | **Q88:** hierarchy datatype = parent (`has_type` except root = father); root `type_id` → **Knoten** is **seed-only** (no admin free `set_type`). Attribute / catalog field types via **node chooser** (Q92); **Q76** inherit+override = scaffold interim for catalog types; **Q77** local `is_abstract`; `_wtt_is_datatype` = debt; **`is_template`** = protected catalog lock (#5); `set` / simples; required; fixed |
 | Q51 / Q75 | Basiseinheit unit = **set**; members = outgoing **`composition`** (Typ + optional Praefix + fixed Kuerzel); allowlist; display compose (mm / kΩ) |
 | Q74 Relations | `class-relation.php`; `_wtt_relations` JSON (edge ids + **multiplicity Q78**); Relationstypen seed; AJAX CRUD; UI von/an |
 | Table / BOM | **BOM** under Implementation = Name + Tabelle via composition; bands Zeile/Kopf?/Fuss? via **`_wtt_prop_bindings`**; validator; Fuss **`_wtt_footer_op`** + Aggregate catalog (**Q57**); Bindings→Rules→Fixes (**Q80**) — **Q90** table kind legacy |
@@ -389,6 +390,15 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-06 | **Q93 opened:** CatalogChoice **value SoT** when type host and/or selected child has attributes — node id only vs id + instance values (host / child / both). UI chrome stays Q90; no Choice object. Plan **0.7.30**. |
 | 2026-08-07 | **Q94 opened:** Data safety — lean full site/DB backup for DR; WXR insufficient for unbound taxonomies + options + ID graphs; plugin JSON export/import later (copy tree); no admin Export now. Plan **0.7.31**. |
 | 2026-08-07 | **Gold scaffold = Fallstudie only:** product taxonomy **`wtt_fs`**; **`wtt_tree` / BOM Testprojekt retired** from UI, seeds, pickers; `Case_Data` = reference seed; `Demo_Data` helpers kept; live `wtt_tree` terms deleted via `retire-wtt-tree.php`. Scaffold ≈ **`0.0.297`**. Plan **0.7.32**. |
+| 2026-08-07 | **Q83 revised:** Kinds under **Model/Bauteil**; MPNs under **Implementation/Bauteile**; strip Hersteller/Lieferant/Bestellnummer on kinds. Scaffold ≈ **`0.0.304`**. Plan **0.7.33**. |
+| 2026-08-07 | **`_wtt_is_datatype` slim-down (user):** (1) type chooser = **nodes** / Q92 — not gated by flag; (2) free **`set_type`** only root (may drop); (3) **`has_type` except root = father** (Q88); (4) **never select by name** — always id (config named bindings → ids OK). Q26/Q77/Q79/Q83/Q88/Q92 revised; remaining flag jobs = catalog lock, leaf detection, conceptual role (#5/#6/#12). Scaffold code still reads flag = **debt**. Plan **0.7.34**. |
+| 2026-08-07 | **#5 catalog lock → `is_template`:** term meta `_wtt_is_template`; DTO `isTemplate`; editable only in **Development mode** (`wtt_development_mode`); Meta readout always; `lock_seeded_catalog_deletable` keys on `is_template` (+ migrate from `is_datatype`). Scaffold ≈ **`0.0.315`**. Plan **0.7.35**. |
+| 2026-08-07 | **Q88 root `set_type` dropped from admin:** free type assign locked for hierarchy + root (`freeTypeLocked`); root `type_id` → **Knoten** remains **seed-only** (`set_type_id(…, allow_seed)`); no `is_datatype` promote on parent-as-type; Relations `has_type` protected/read-only for hierarchy/root. Scaffold ≈ **`0.0.330`**. Plan **0.7.36**. |
+| 2026-08-07 | **`_wtt_is_datatype` job #6 decided:** node binding / special branch-leaf addressing **never by name** — always **`term_id`**; needed branches/nodes stored in **settings** (`wtt_catalog_bindings` / Q92). **#12** expanded (type role vs `type_id` vs `is_abstract`; keep `is_abstract` until explicit decide). **Q34/Q48** plain-language clarifiers. Docs-only; no flag removal. Plan **0.7.37**. |
+| 2026-08-07 | **Q34 clarified** (behavior/config ≠ type identity). **Q48 lean:** types-as-Nodes OK; hardcoding must be **visible** — recommend **C** (catalog `builtin.*` binding + node `implementationKey` Meta chip; Registry off key, not name). Docs-only. Plan **0.7.38**. |
+| 2026-08-07 | **Q48 challenged against real datatypes:** inventory Simple/Complex/Registry/media/set/quantity/table + Model hosts; classify **render-only** vs **settings-bearing** vs **attribute/composed**. Flat A/B/C too coarse — refined: `implementationKey` (+ optional `builtin.*`) for render; NodeConfig metas for settings; composition/Q87 for attrs; Q92 for anchors. Docs-only. Plan **0.7.39**. |
+| 2026-08-07 | **`int` value slice:** one Registry renderer (edit+display) + Converter (`WTTIntValue` / `Int_Value`) + validators 1..n (`integer_shape`); prevent non-integer input; canonical decimal string; format default **arabic** (roman/binary/octal/hex reserved). Scaffold ≈ **`0.0.339`**. Plan **0.7.40**. |
+| 2026-08-07 | **`int` Number format UI:** type default `_wtt_int_display_format` + **Int settings** panel; attribute override in Options (`displayFormat` type extras). Preferred render remains Form/Table only. Scaffold ≈ **`0.0.345`**. Plan **0.7.41**. |
 
 ## Change protocol
 

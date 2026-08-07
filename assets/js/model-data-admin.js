@@ -70,6 +70,77 @@
 		});
 	}
 
+	function structureTreeForTaxonomy() {
+		var trees = cfg.structureTrees || {};
+		var payload = trees[state.taxonomy] || {};
+		return {
+			roots: Array.isArray(payload.roots) ? payload.roots : [],
+			rootId: parseInt(payload.rootId, 10) || 0,
+			focusId: parseInt(payload.focusId, 10) || 0,
+		};
+	}
+
+	function hostPathForId(id) {
+		id = parseInt(id, 10) || 0;
+		if (!id) {
+			return '';
+		}
+		var hosts = hostsForTaxonomy();
+		var i;
+		for (i = 0; i < hosts.length; i++) {
+			if ((parseInt(hosts[i].id, 10) || 0) === id) {
+				return hosts[i].path || hosts[i].name || '';
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Structure node = TreeChooser (shared WTTNodePicker), not a path <select>.
+	 */
+	function fillStructureSelect() {
+		var host = $('wtt-md-structure');
+		if (!host) {
+			return;
+		}
+		host.innerHTML = '';
+		if (!window.WTTNodePicker || typeof window.WTTNodePicker.render !== 'function') {
+			host.appendChild(
+				document.createTextNode(t('error', 'TreeChooser unavailable'))
+			);
+			return;
+		}
+		var tree = structureTreeForTaxonomy();
+		var selectedLabel = hostPathForId(state.structureId);
+		host.appendChild(
+			window.WTTNodePicker.render({
+				roots: tree.roots,
+				selectedId: state.structureId || 0,
+				selectedLabel: selectedLabel,
+				focusId: tree.focusId || tree.rootId || 0,
+				expandFocusBranch: true,
+				preferFocus: !state.structureId,
+				treePickerMode: cfg.treePickerMode || 'popup',
+				allowClear: true,
+				showPickedLabel: cfg.treePickerMode === 'inline',
+				placeholder: t('chooseStructure', 'Choose a structure…'),
+				dialogTitle: t('nodePickerTitle', 'Choose structure node'),
+				expandKey: 'model-data-structure:' + String(state.taxonomy || ''),
+				i18n: i18n,
+				selectable: function (node) {
+					return !!(node && (node.selectable || (node.attributeCount || 0) > 0));
+				},
+				onSelect: function (id) {
+					state.structureId = parseInt(id, 10) || 0;
+					state.editingId = '';
+					state.meta = null;
+					fillStructureSelect();
+					loadStructure();
+				},
+			})
+		);
+	}
+
 	function fillTaxonomySelect() {
 		var sel = $('wtt-md-taxonomy');
 		if (!sel) {
@@ -85,38 +156,6 @@
 			}
 			sel.appendChild(opt);
 		});
-	}
-
-	function fillStructureSelect() {
-		var sel = $('wtt-md-structure');
-		if (!sel) {
-			return;
-		}
-		sel.innerHTML = '';
-		var placeholder = document.createElement('option');
-		placeholder.value = '0';
-		placeholder.textContent = t('chooseStructure', 'Choose a structure…');
-		sel.appendChild(placeholder);
-
-		hostsForTaxonomy().forEach(function (h) {
-			var opt = document.createElement('option');
-			opt.value = String(h.id);
-			var label = h.path || h.name || String(h.id);
-			if (h.attributeCount > 0) {
-				label +=
-					' (' +
-					h.attributeCount +
-					' ' +
-					t('attrsLabel', 'attrs') +
-					')';
-			}
-			opt.textContent = label;
-			if (h.attributeCount <= 0) {
-				opt.className = 'wtt-model-data__opt--empty';
-			}
-			sel.appendChild(opt);
-		});
-		sel.value = String(state.structureId || 0);
 	}
 
 	function dash(value) {
@@ -709,15 +748,6 @@
 				state.editingId = '';
 				state.meta = null;
 				fillStructureSelect();
-				loadStructure();
-			});
-		}
-		var structSel = $('wtt-md-structure');
-		if (structSel) {
-			structSel.addEventListener('change', function () {
-				state.structureId = parseInt(structSel.value, 10) || 0;
-				state.editingId = '';
-				state.meta = null;
 				loadStructure();
 			});
 		}

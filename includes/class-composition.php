@@ -84,6 +84,12 @@ final class Composition {
 			return array();
 		}
 
+		Catalog_Bindings::ensure( $taxonomy );
+		$root_id  = Catalog_Bindings::resolve( $taxonomy, Catalog_Bindings::KEY_CHOOSER_ROOT );
+		$model_id = Catalog_Bindings::resolve( $taxonomy, Catalog_Bindings::KEY_MODEL );
+		/* Prefer Model subtree for block bind; fall back to chooser_root. */
+		$scope_id = $model_id > 0 ? $model_id : $root_id;
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
@@ -95,13 +101,20 @@ final class Composition {
 			return array();
 		}
 
-		$out = array();
+		$out  = array();
+		$seen = array();
 		foreach ( $terms as $term ) {
 			if ( ! $term instanceof \WP_Term ) {
 				continue;
 			}
 			$term_id = (int) $term->term_id;
 			if ( Trash::is_trashed( $term_id ) || Trash::is_trash_node( $term_id ) ) {
+				continue;
+			}
+			if ( $scope_id > 0
+				&& $term_id !== $scope_id
+				&& ! self::term_is_under( $taxonomy, $term_id, $scope_id )
+			) {
 				continue;
 			}
 			/* Skip dedicated table/catalog roots — those use their own kinds. */
@@ -111,11 +124,25 @@ final class Composition {
 			if ( self::is_catalog_list_root( $taxonomy, $term_id ) ) {
 				continue;
 			}
-			$columns = self::get_attribute_columns( $taxonomy, $term_id );
-			if ( array() === $columns ) {
+			if ( Attribute::is_slot( $term_id ) ) {
 				continue;
 			}
-			$out[] = array(
+			$columns = self::get_attribute_columns( $taxonomy, $term_id );
+			/*
+			 * Bound Model folder is always listed.
+			 * Under Model: keep direct children (Kontakt, Platine, …) even with 0 attrs,
+			 * plus any deeper node that already has attributes.
+			 * Do not list deep catalog leaves (Wert/Bauform/…) as bind targets.
+			 */
+			if ( array() === $columns && $term_id !== $model_id ) {
+				$parent_id = (int) $term->parent;
+				$direct    = $model_id > 0 && $parent_id === $model_id;
+				if ( ! $direct ) {
+					continue;
+				}
+			}
+			$seen[ $term_id ] = true;
+			$out[]            = array(
 				'id'          => $term_id,
 				'name'        => $term->name,
 				'path'        => self::term_path( $taxonomy, $term_id ),
@@ -124,6 +151,25 @@ final class Composition {
 				'hasFooter'   => false,
 				'columnCount' => count( $columns ),
 			);
+		}
+
+		if ( $model_id > 0 && empty( $seen[ $model_id ] ) ) {
+			$model_term = get_term( $model_id, $taxonomy );
+			if ( $model_term instanceof \WP_Term
+				&& ! Trash::is_trashed( $model_id )
+				&& ! Trash::is_trash_node( $model_id )
+				&& ( $root_id <= 0 || self::term_is_under( $taxonomy, $model_id, $root_id ) )
+			) {
+				$out[] = array(
+					'id'          => $model_id,
+					'name'        => $model_term->name,
+					'path'        => self::term_path( $taxonomy, $model_id ),
+					'taxonomy'    => $taxonomy,
+					'kind'        => self::KIND_MODEL,
+					'hasFooter'   => false,
+					'columnCount' => 0,
+				);
+			}
 		}
 
 		usort(
@@ -357,8 +403,17 @@ final class Composition {
 			);
 		}
 
+		/* Bound Model folder (or other scaffold node) may have 0 attributes — still bindable. */
 		if ( ! Node_Type::has_type_named( $taxonomy, $collection_id, 'table' ) ) {
-			return null;
+			return array(
+				'id'        => $collection_id,
+				'name'      => $term->name,
+				'path'      => self::term_path( $taxonomy, $collection_id ),
+				'taxonomy'  => $taxonomy,
+				'kind'      => self::KIND_MODEL,
+				'hasFooter' => false,
+				'columns'   => array(),
+			);
 		}
 		if ( Node_Type::is_table_type_catalog( $taxonomy, $collection_id ) ) {
 			return null;

@@ -1,9 +1,9 @@
 <?php
 /**
- * Node data-type assignment (has_type scaffold over term meta).
+ * Node data-type assignment (has_type / type_id scaffold over term meta).
  *
- * Types are chosen from Nodes with is_datatype (abstract folders may be selected).
- * Datatype nodes may themselves have a type_id (own schema / base type).
+ * Hierarchy (Q88): non-root datatype = WP parent; root type is seed-managed.
+ * Attribute / catalog field types: chooser = nodes (Q92); is_datatype gate = debt.
  *
  * @package WP_Taxonomy_Tree
  */
@@ -55,6 +55,9 @@ final class Node_Type {
 	 * Store SoT for instance values is always a Unix timestamp (int as decimal string).
 	 */
 	public const META_KEY_DATE_MODE = '_wtt_date_mode';
+
+	/** Int number display/edit format (arabic|roman|binary|octal|hex). */
+	public const META_KEY_INT_DISPLAY_FORMAT = '_wtt_int_display_format';
 
 	/** Preferred Object View / admin preview layout for this node. */
 	public const META_KEY_PREFERRED_RENDER = '_wtt_preferred_render';
@@ -115,8 +118,16 @@ final class Node_Type {
 	/**
 	 * Q77: Node is a data-type catalog entry (empty meta = inherit from parent).
 	 * Values: '1' | '0' | '' (inherit).
+	 * Scaffold debt — product chooser no longer gated by this flag.
 	 */
 	public const META_KEY_IS_DATATYPE = '_wtt_is_datatype';
+
+	/**
+	 * Protected catalog / template node (seeded system leaves, RelationTypes, …).
+	 * Values: '1' | absent/other = false. Local boolean — no inherit.
+	 * Catalog deletable lock (#5) keys off this flag; editable in Development mode only.
+	 */
+	public const META_KEY_IS_TEMPLATE = '_wtt_is_template';
 
 	/**
 	 * Whether the term may be deleted in the admin tree.
@@ -472,6 +483,25 @@ final class Node_Type {
 		if ( is_array( $children ) ) {
 			foreach ( $children as $cid ) {
 				$allowed_children[ (int) $cid ] = true;
+			}
+		}
+
+		/*
+		 * Q87: composition / attribute members may live at parent=0 after detach.
+		 * Table band bindings (zeile/kopf/fuss) must still accept those targets.
+		 */
+		foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $term_id, Relation::TYPE_COMPOSITION ) as $edge ) {
+			$to_id = (int) ( $edge['toId'] ?? 0 );
+			if ( $to_id > 0 ) {
+				$allowed_children[ $to_id ] = true;
+			}
+		}
+		foreach ( array( Relation::TYPE_AGGREGATION, 'aggregation' ) as $agg_key ) {
+			foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $term_id, $agg_key ) as $edge ) {
+				$to_id = (int) ( $edge['toId'] ?? 0 );
+				if ( $to_id > 0 ) {
+					$allowed_children[ $to_id ] = true;
+				}
 			}
 		}
 
@@ -1016,6 +1046,10 @@ final class Node_Type {
 		if ( ! $term instanceof \WP_Term ) {
 			return false;
 		}
+		/* Attribute slots keep their own catalog field type (Q87) — never hierarchy datatype. */
+		if ( class_exists( Attribute::class ) && Attribute::is_slot( $term_id ) ) {
+			return false;
+		}
 		$parent_id = (int) $term->parent;
 		if ( $parent_id <= 0 ) {
 			return false;
@@ -1023,11 +1057,42 @@ final class Node_Type {
 		if ( class_exists( Trash::class ) && Trash::is_trash_node( $parent_id ) ) {
 			return false;
 		}
-		/* Attribute members keep their own catalog field type (Q87) — not hierarchy datatype. */
+		/* Legacy: edge-linked members under a host (pre-slot parent=0) still excluded. */
 		if ( Attribute::is_own_member( $taxonomy, $parent_id, $term_id ) ) {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * True when the term is a taxonomy root (WP parent = 0).
+	 */
+	public static function is_root_level_term( string $taxonomy, int $term_id ): bool {
+		if ( $term_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return false;
+		}
+		$term = get_term( $term_id, $taxonomy );
+		return $term instanceof \WP_Term && 0 === (int) $term->parent;
+	}
+
+	/**
+	 * Product model: free set_type / has_type assign is not editable in admin.
+	 * Hierarchy children → father (Q88). Root → seed-only type_id (no admin picker).
+	 * Attribute slot field types remain freely assignable (slots are parent=0 but
+	 * are not taxonomy roots — Q87 / Q92; do not confuse with hierarchy set_type).
+	 */
+	public static function is_free_type_assignment_locked( string $taxonomy, int $term_id ): bool {
+		/* Attribute slots live at WP parent=0; still editable field types. */
+		if ( class_exists( Attribute::class ) && Attribute::is_slot( $term_id ) ) {
+			return false;
+		}
+		if ( self::is_hierarchy_datatype_subject( $taxonomy, $term_id ) ) {
+			return true;
+		}
+		if ( class_exists( Trash::class ) && ( Trash::is_trash_node( $term_id ) || Trash::is_trashed( $term_id ) ) ) {
+			return false;
+		}
+		return self::is_root_level_term( $taxonomy, $term_id );
 	}
 
 	/**
@@ -1040,7 +1105,7 @@ final class Node_Type {
 
 	/**
 	 * Q88: Persist datatype of a hierarchy child as the parent.
-	 * Promotes parent to is_datatype when needed (being a parent implies datatype).
+	 * Does not promote parent to is_datatype (parent-as-type needs no flag).
 	 * Attribute members excluded. Does not copy type presets from the parent.
 	 *
 	 * @return true|\WP_Error
@@ -1057,17 +1122,6 @@ final class Node_Type {
 			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
 		}
 		$parent_id = (int) $child->parent;
-
-		/*
-		 * Being a hierarchy parent implies datatype (Q88). Skip abstract catalog folders
-		 * (Simple/Complex) so they stay non-selectable in the type chooser.
-		 */
-		if ( ! self::is_abstract( $taxonomy, $parent_id ) && ! self::is_datatype( $taxonomy, $parent_id ) ) {
-			$promoted = self::set_is_datatype( $taxonomy, $parent_id, true );
-			if ( is_wp_error( $promoted ) ) {
-				return $promoted;
-			}
-		}
 
 		return self::assign_hierarchy_parent_type_id( $taxonomy, $child_id, $parent_id );
 	}
@@ -1092,7 +1146,8 @@ final class Node_Type {
 	}
 
 	/**
-	 * Mark a class node as datatype and type hierarchy children as this parent.
+	 * Sync hierarchy children’s datatype to this parent (Q88).
+	 * Does not set `_wtt_is_datatype` — parent-as-type needs no flag.
 	 *
 	 * @return true|\WP_Error
 	 */
@@ -1103,12 +1158,6 @@ final class Node_Type {
 		$host = get_term( $host_id, $taxonomy );
 		if ( ! $host instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
-		}
-		if ( ! self::is_abstract( $taxonomy, $host_id ) ) {
-			$flagged = self::set_is_datatype( $taxonomy, $host_id, true );
-			if ( is_wp_error( $flagged ) ) {
-				return $flagged;
-			}
 		}
 		return self::sync_children_parent_as_type( $taxonomy, $host_id );
 	}
@@ -1284,6 +1333,7 @@ final class Node_Type {
 			self::META_KEY_MEDIA_ALLOW_URL,
 			self::META_KEY_MEDIA_ALLOWED_KINDS,
 			self::META_KEY_DATE_MODE,
+			self::META_KEY_INT_DISPLAY_FORMAT,
 			self::META_KEY_FIXED_NODE,
 			self::META_KEY_REF_SCOPE,
 			self::META_KEY_ALLOWED_REF_IDS,
@@ -1325,6 +1375,7 @@ final class Node_Type {
 			self::META_KEY_MEDIA_ALLOW_UPLOAD,
 			self::META_KEY_MEDIA_ALLOW_URL,
 			self::META_KEY_DATE_MODE,
+			self::META_KEY_INT_DISPLAY_FORMAT,
 			self::META_KEY_FIXED_NODE,
 			self::META_KEY_REF_SCOPE,
 			self::META_KEY_ALLOWED_REF_IDS,
@@ -1347,9 +1398,13 @@ final class Node_Type {
 	}
 
 	/**
+	 * Assign catalog / field type_id (or hierarchy parent / seed root type).
+	 *
+	 * @param bool $allow_seed When true, allow writing type_id on root-level terms
+	 *                         (seed / repair). Admin and Relations must leave this false.
 	 * @return true|\WP_Error
 	 */
-	public static function set_type_id( string $taxonomy, int $term_id, int $type_id ) {
+	public static function set_type_id( string $taxonomy, int $term_id, int $type_id, bool $allow_seed = false ) {
 		$term = get_term( $term_id, $taxonomy );
 		if ( ! $term instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
@@ -1360,6 +1415,12 @@ final class Node_Type {
 				return new \WP_Error(
 					'wtt_type_locked',
 					__( 'Specialization type is the parent node and cannot be cleared yet.', 'wp-taxonomy-tree' )
+				);
+			}
+			if ( self::is_free_type_assignment_locked( $taxonomy, $term_id ) && ! $allow_seed ) {
+				return new \WP_Error(
+					'wtt_type_locked',
+					__( 'Root type is seed-managed and cannot be cleared from the admin UI.', 'wp-taxonomy-tree' )
 				);
 			}
 			delete_term_meta( $term_id, self::META_KEY );
@@ -1377,14 +1438,32 @@ final class Node_Type {
 		}
 
 		/*
-		 * Q88: hierarchy datatype = parent only (no free pick).
+		 * Q88: hierarchy datatype = parent only (no free pick, no is_datatype gate).
 		 * Attribute members are excluded (own catalog type remains editable).
 		 */
 		$parent_id = (int) $term->parent;
-		if ( self::is_hierarchy_datatype_subject( $taxonomy, $term_id ) && $type_id !== $parent_id ) {
+		if ( self::is_hierarchy_datatype_subject( $taxonomy, $term_id ) ) {
+			if ( $type_id !== $parent_id ) {
+				return new \WP_Error(
+					'wtt_type_locked',
+					__( 'Hierarchy datatype is the parent node and is not editable.', 'wp-taxonomy-tree' )
+				);
+			}
+			return self::assign_hierarchy_parent_type_id( $taxonomy, $term_id, $parent_id );
+		}
+
+		/*
+		 * Root: free set_type dropped — seed may write type_id by id ($allow_seed).
+		 * Idempotent re-save of the current type is allowed without the seed flag.
+		 */
+		if ( self::is_free_type_assignment_locked( $taxonomy, $term_id ) && ! $allow_seed ) {
+			$current = self::get_type_id( $term_id );
+			if ( $current === $type_id ) {
+				return true;
+			}
 			return new \WP_Error(
 				'wtt_type_locked',
-				__( 'Hierarchy datatype is the parent node and is not editable.', 'wp-taxonomy-tree' )
+				__( 'Root type is seed-managed and is not editable in the admin UI.', 'wp-taxonomy-tree' )
 			);
 		}
 
@@ -1880,17 +1959,39 @@ final class Node_Type {
 				return $result;
 			}
 		}
+		/*
+		 * is_template: Development mode only. Non-dev callers must omit the key;
+		 * if present without Development mode, reject (do not silently apply).
+		 */
+		if ( array_key_exists( 'is_template', $settings ) ) {
+			if ( ! Settings::is_development_mode() ) {
+				return new \WP_Error(
+					'wtt_template_dev_only',
+					__( 'The template flag can only be changed in Development mode.', 'wp-taxonomy-tree' ),
+					array( 'status' => 403 )
+				);
+			}
+			$tpl_val = is_bool( $settings['is_template'] )
+				? $settings['is_template']
+				: ! empty( $settings['is_template'] );
+			$result = self::set_is_template( $taxonomy, $term_id, $tpl_val );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		}
 		/* Q77 revise: datatype nodes may also carry a type_id (own schema / base type). */
 
 		/*
-		 * Q88: hierarchy datatype = parent. No free type pick — ignore posted type chrome.
-		 * Attribute members / roots still use type_id from settings (field types, Knoten).
+		 * Q88: hierarchy datatype = parent. Root type is seed-managed (no admin set_type).
+		 * Attribute members / catalog field types still use posted type_id.
 		 */
 		if ( self::is_hierarchy_datatype_subject( $taxonomy, $term_id ) ) {
 			$result = self::apply_parent_as_type( $taxonomy, $term_id );
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}
+		} elseif ( self::is_free_type_assignment_locked( $taxonomy, $term_id ) ) {
+			/* Root: ignore posted type chrome; seed owns type_id. */
 		} else {
 			if ( array_key_exists( 'type_override', $settings ) ) {
 				$result = self::set_type_override( $taxonomy, $term_id, ! empty( $settings['type_override'] ) );
@@ -2006,6 +2107,20 @@ final class Node_Type {
 			$date_term = self::resolve_date_config_term_id( $taxonomy, $term_id );
 			if ( $date_term > 0 ) {
 				$result = self::set_date_mode( $taxonomy, $date_term, (string) $settings['date_mode'] );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+			}
+		}
+
+		if ( array_key_exists( 'int_display_format', $settings ) ) {
+			$int_term = self::resolve_int_config_term_id( $taxonomy, $term_id );
+			if ( $int_term > 0 ) {
+				$result = self::set_int_display_format(
+					$taxonomy,
+					$int_term,
+					(string) $settings['int_display_format']
+				);
 				if ( is_wp_error( $result ) ) {
 					return $result;
 				}
@@ -2765,6 +2880,79 @@ final class Node_Type {
 		}
 
 		return array( 'mode' => self::get_date_mode( $config_id ) );
+	}
+
+	public static function is_int_type_name( string $type_name ): bool {
+		return 'int' === self::normalize_type_name( $type_name );
+	}
+
+	/**
+	 * Resolve which term holds int format: the int type node itself, or the assigned type.
+	 */
+	public static function resolve_int_config_term_id( string $taxonomy, int $term_id ): int {
+		$term = get_term( $term_id, $taxonomy );
+		if ( $term instanceof \WP_Term && self::is_int_type_name( $term->name ) ) {
+			return $term_id;
+		}
+		$type_id = self::get_effective_type_id( $taxonomy, $term_id );
+		if ( $type_id <= 0 ) {
+			return 0;
+		}
+		$type = get_term( $type_id, $taxonomy );
+		if ( $type instanceof \WP_Term && self::is_int_type_name( $type->name ) ) {
+			return $type_id;
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Int display format on the int catalog term (default arabic).
+	 */
+	public static function get_int_display_format( int $term_id ): string {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_INT_DISPLAY_FORMAT ) ) {
+			return Int_Value::DEFAULT_FORMAT;
+		}
+		return Int_Value::normalize_format_id(
+			(string) get_term_meta( $term_id, self::META_KEY_INT_DISPLAY_FORMAT, true )
+		);
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_int_display_format( string $taxonomy, int $type_term_id, string $format_id ) {
+		$term = get_term( $type_term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		if ( ! self::is_int_type_name( $term->name ) ) {
+			return new \WP_Error(
+				'wtt_not_int',
+				__( 'Number format settings apply only to the int type.', 'wp-taxonomy-tree' )
+			);
+		}
+		$format_id = Int_Value::normalize_format_id( $format_id );
+		update_term_meta( $type_term_id, self::META_KEY_INT_DISPLAY_FORMAT, $format_id );
+
+		return true;
+	}
+
+	/**
+	 * Full int config for a node (own meta on catalog type, or via type assignment).
+	 *
+	 * @return array{displayFormat:string}|null
+	 */
+	public static function get_int_config_for_node( string $taxonomy, int $term_id ): ?array {
+		$config_id = self::resolve_int_config_term_id( $taxonomy, $term_id );
+		if ( $config_id <= 0 ) {
+			return null;
+		}
+		if ( metadata_exists( 'term', $term_id, self::META_KEY_INT_DISPLAY_FORMAT ) ) {
+			return array( 'displayFormat' => self::get_int_display_format( $term_id ) );
+		}
+
+		return array( 'displayFormat' => self::get_int_display_format( $config_id ) );
 	}
 
 	/**
@@ -3550,14 +3738,17 @@ final class Node_Type {
 
 	/**
 	 * Whether this term may be deleted. Default true when meta is absent.
-	 * Development mode forces true for every node except the Trash bin.
+	 * Development mode forces true for every node except the Trash / Hidden bins.
 	 */
 	public static function is_deletable( int $term_id ): bool {
 		if ( $term_id <= 0 ) {
 			return false;
 		}
-		/* Trash bin is never deletable as a term (empty trash is the path). */
+		/* Trash bin / Hidden bin are never deletable as terms. */
 		if ( class_exists( Trash::class ) && Trash::is_trash_node( $term_id ) ) {
+			return false;
+		}
+		if ( class_exists( Hidden_Nodes::class ) && Hidden_Nodes::is_bin( $term_id ) ) {
 			return false;
 		}
 		if ( Settings::is_development_mode() ) {
@@ -3581,7 +3772,37 @@ final class Node_Type {
 	}
 
 	/**
-	 * Lock seeded catalog datatype terms (not under “Eigene Datentypen”) and optional extra ids.
+	 * Local template / protected-catalog flag (no inherit).
+	 */
+	public static function is_template( int $term_id ): bool {
+		if ( $term_id <= 0 ) {
+			return false;
+		}
+		return '1' === (string) get_term_meta( $term_id, self::META_KEY_IS_TEMPLATE, true );
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_is_template( string $taxonomy, int $term_id, bool $value ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		if ( true === $value ) {
+			update_term_meta( $term_id, self::META_KEY_IS_TEMPLATE, '1' );
+		} else {
+			delete_term_meta( $term_id, self::META_KEY_IS_TEMPLATE );
+		}
+		return true;
+	}
+
+	/**
+	 * Lock seeded template catalog terms (not under “Eigene Datentypen”) and optional extra ids.
+	 * Migrates former is_datatype-based lock to is_template once (idempotent).
 	 *
 	 * @param list<int> $extra_ids
 	 */
@@ -3623,10 +3844,17 @@ final class Node_Type {
 				continue;
 			}
 			$tid = (int) $term->term_id;
-			if ( ! self::is_datatype( $taxonomy, $tid ) ) {
+			if ( self::is_ancestor_or_self( $taxonomy, $tid, $eigene_ids ) ) {
 				continue;
 			}
-			if ( self::is_ancestor_or_self( $taxonomy, $tid, $eigene_ids ) ) {
+			/*
+			 * Bridge: older seeds locked via is_datatype. Promote once so lock
+			 * keys solely on is_template going forward.
+			 */
+			if ( ! self::is_template( $tid ) && self::is_datatype( $taxonomy, $tid ) ) {
+				self::set_is_template( $taxonomy, $tid, true );
+			}
+			if ( ! self::is_template( $tid ) ) {
 				continue;
 			}
 			self::set_deletable( $tid, false );
@@ -3635,6 +3863,7 @@ final class Node_Type {
 		foreach ( $extra_ids as $id ) {
 			$id = (int) $id;
 			if ( $id > 0 ) {
+				self::set_is_template( $taxonomy, $id, true );
 				self::set_deletable( $id, false );
 			}
 		}
@@ -4035,6 +4264,164 @@ final class Node_Type {
 	}
 
 	/**
+	 * True when the term is the Complex catalog leaf `quantity` (Größe).
+	 */
+	public static function is_quantity_type_catalog_node( string $taxonomy, int $term_id ): bool {
+		if ( $term_id <= 0 || ! self::is_datatype( $taxonomy, $term_id ) ) {
+			return false;
+		}
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return false;
+		}
+		$key = self::normalize_type_name( (string) $term->name );
+		return 'quantity' === $key;
+	}
+
+	/**
+	 * Fake object attributes for quantity catalog preview (Preis-shaped: number + select).
+	 * Prefers a real child named Preis; else first child with a scalar + a catalog attr;
+	 * else a synthetic Wert + Praefix pair.
+	 *
+	 * @return array{hostId:int,hostName:string,attributes:list<array<string, mixed>>}
+	 */
+	public static function get_quantity_preview_example( string $taxonomy, int $quantity_id ): array {
+		$empty = array(
+			'hostId'     => 0,
+			'hostName'   => 'Preis',
+			'attributes' => array(),
+		);
+		if ( $quantity_id <= 0 || ! self::is_quantity_type_catalog_node( $taxonomy, $quantity_id ) ) {
+			return $empty;
+		}
+
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $quantity_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $children ) ) {
+			$children = array();
+		}
+
+		$prefer = null;
+		$fallback = null;
+		foreach ( $children as $child ) {
+			if ( ! $child instanceof \WP_Term ) {
+				continue;
+			}
+			$attrs = Attribute::list( $taxonomy, (int) $child->term_id );
+			if ( array() === $attrs ) {
+				continue;
+			}
+			if ( 'preis' === strtolower( (string) $child->name ) ) {
+				$prefer = array( $child, $attrs );
+				break;
+			}
+			if ( null === $fallback && self::attrs_look_like_quantity_example( $attrs ) ) {
+				$fallback = array( $child, $attrs );
+			}
+		}
+		$pick = $prefer ?? $fallback;
+		if ( null !== $pick ) {
+			/** @var \WP_Term $host */
+			$host = $pick[0];
+			/** @var list<array<string, mixed>> $attrs */
+			$attrs = $pick[1];
+			return array(
+				'hostId'     => (int) $host->term_id,
+				'hostName'   => (string) $host->name,
+				'attributes' => $attrs,
+			);
+		}
+
+		return array(
+			'hostId'     => 0,
+			'hostName'   => 'Preis',
+			'attributes' => self::synthesize_quantity_example_attributes( $taxonomy, $quantity_id ),
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $attrs Attribute rows.
+	 */
+	private static function attrs_look_like_quantity_example( array $attrs ): bool {
+		$has_number = false;
+		$has_choice = false;
+		foreach ( $attrs as $row ) {
+			$key = strtolower( (string) ( $row['typeKey'] ?? '' ) );
+			if ( in_array( $key, array( 'double', 'int', 'quantity' ), true ) ) {
+				$has_number = true;
+			}
+			if ( 'catalog' === (string) ( $row['fixedMode'] ?? '' ) ) {
+				$has_choice = true;
+			}
+		}
+		return $has_number && $has_choice;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	private static function synthesize_quantity_example_attributes( string $taxonomy, int $quantity_id ): array {
+		$prefix_root = self::find_prefixes_root( $taxonomy, $quantity_id );
+		$options     = array();
+		if ( $prefix_root > 0 ) {
+			$branch = self::build_type_branch( $taxonomy, $prefix_root, array() );
+			if ( is_array( $branch ) && isset( $branch['children'] ) && is_array( $branch['children'] ) ) {
+				foreach ( $branch['children'] as $child ) {
+					if ( ! is_array( $child ) ) {
+						continue;
+					}
+					$id   = (int) ( $child['id'] ?? 0 );
+					$name = (string) ( $child['name'] ?? '' );
+					if ( $id <= 0 || '' === $name ) {
+						continue;
+					}
+					if ( array_key_exists( 'enabled', $child ) && ! $child['enabled'] ) {
+						continue;
+					}
+					$options[] = array(
+						'id'   => $id,
+						'name' => $name,
+						'path' => $name,
+					);
+				}
+			}
+		}
+
+		$wert = array(
+			'id'           => -1,
+			'name'         => 'Wert',
+			'typeId'       => 0,
+			'typeKey'      => 'double',
+			'typeName'     => 'double',
+			'multiplicity' => '1',
+			'fixedMode'    => 'literal',
+			'fixedOptions' => array(),
+			'quantitySchema' => null,
+		);
+
+		$praefix = array(
+			'id'           => -2,
+			'name'         => 'Praefix',
+			'typeId'       => $prefix_root,
+			'typeKey'      => 'praefixe',
+			'typeName'     => 'Praefixe',
+			'multiplicity' => '1',
+			'fixedMode'    => array() !== $options ? 'catalog' : 'literal',
+			'fixedOptions' => $options,
+			'choiceDepth'  => Attribute::choice_depth_from_options( $options ),
+			'quantitySchema' => null,
+		);
+
+		return array( $wert, $praefix );
+	}
+
+	/**
 	 * Schema members of a Basiseinheit unit (Typ / Praefix / Kuerzel) — no nested quantitySchema.
 	 *
 	 * @return array<int, array<string, mixed>>
@@ -4088,6 +4475,112 @@ final class Node_Type {
 				'typeBranch'   => self::get_type_branch( $taxonomy, $child_id ),
 			);
 		}
+
+		if ( array() === $members ) {
+			/*
+			 * Fallstudie gold: Basiseinheit units are leaves (symbol in shortDescription).
+			 * Synthesize Typ + Praefix + Kuerzel so QuantityRenderer can paint the trinity.
+			 */
+			return self::synthesize_unit_quantity_members( $taxonomy, $unit_term_id );
+		}
+
+		return $members;
+	}
+
+	/**
+	 * Synthetic Typ / Praefix / Kuerzel for leaf Basiseinheit units (no set children).
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function synthesize_unit_quantity_members( string $taxonomy, int $unit_term_id ): array {
+		$unit = get_term( $unit_term_id, $taxonomy );
+		if ( ! $unit instanceof \WP_Term ) {
+			return array();
+		}
+
+		$symbol = Tree_Model::get_short_description( $unit_term_id );
+		$symbol = is_string( $symbol ) ? trim( $symbol ) : '';
+
+		$double_id   = 0;
+		$double_term = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'name'       => 'double',
+				'hide_empty' => false,
+				'number'     => 1,
+			)
+		);
+		if ( is_array( $double_term ) && isset( $double_term[0] ) && $double_term[0] instanceof \WP_Term ) {
+			$double_id = (int) $double_term[0]->term_id;
+		}
+
+		$prefix_root = self::find_prefixes_root( $taxonomy, $unit_term_id );
+		$prefix_branch = null;
+		if ( $prefix_root > 0 ) {
+			$prefix_branch = self::build_type_branch( $taxonomy, $prefix_root, array() );
+			if ( null !== $prefix_branch ) {
+				$prefix_branch = self::apply_unit_prefix_filter_to_branch(
+					$taxonomy,
+					$unit_term_id,
+					$prefix_branch
+				);
+			}
+		}
+
+		$members = array(
+			array(
+				'id'           => 0,
+				'name'         => 'Typ',
+				'description'  => '',
+				'typeId'       => $double_id,
+				'required'     => true,
+				'type'         => array(
+					'id'   => $double_id,
+					'name' => 'double',
+				),
+				'fixedEnabled' => false,
+				'fixedLiteral' => '',
+				'fixedNodeId'  => 0,
+				'fixed'        => null,
+				'typeBranch'   => null,
+			),
+		);
+
+		if ( null !== $prefix_branch ) {
+			$members[] = array(
+				'id'           => 0,
+				'name'         => 'Praefix',
+				'description'  => '',
+				'typeId'       => $prefix_root,
+				'required'     => false,
+				'type'         => array(
+					'id'   => $prefix_root,
+					'name' => (string) ( $prefix_branch['typeName'] ?? 'Praefixe' ),
+				),
+				'fixedEnabled' => false,
+				'fixedLiteral' => '',
+				'fixedNodeId'  => 0,
+				'fixed'        => null,
+				'typeBranch'   => $prefix_branch,
+			);
+		}
+
+		$members[] = array(
+			'id'           => 0,
+			'name'         => 'Kuerzel',
+			'description'  => '',
+			'typeId'       => 0,
+			'required'     => true,
+			'type'         => array(
+				'id'   => 0,
+				'name' => 'text',
+			),
+			'fixedEnabled' => '' !== $symbol,
+			'fixedLiteral' => $symbol,
+			'fixedNodeId'  => 0,
+			'fixed'        => null,
+			'typeBranch'   => null,
+		);
 
 		return $members;
 	}

@@ -8,6 +8,7 @@
  *   .kindLabel(kind) / .displayLabel(ref)
  *   .renderSurface(ref, { compact, el })  → HTMLElement
  *   .renderSurfaceHtml(ref, { compact }) → string (SSR-friendly markup)
+ *   .renderField(raw|ref, { mode, compact, mediaConfig, onChange, el }) → HTMLElement
  *   .sampleEntries() → [{ kind, ref }, …] for galleries
  *
  * @package WP_Taxonomy_Tree
@@ -251,6 +252,18 @@
 	function isLiveHref(href) {
 		return !!(href && href.charAt(0) !== '#' && href.indexOf('data:') !== 0);
 	}
+
+	var KINDS = [
+		'image',
+		'video',
+		'audio',
+		'pdf',
+		'archive',
+		'office',
+		'text',
+		'file',
+		'link',
+	];
 
 	var SAMPLE_IMAGE =
 		'data:image/svg+xml,' +
@@ -532,6 +545,259 @@
 		return '<div class="' + cls + '">' + body + badge + '</div>';
 	}
 
+	/**
+	 * @param {object|null|undefined} cfg
+	 * @return {{ allowUpload: boolean, allowUrl: boolean, allowedKinds: string[] }}
+	 */
+	function normalizeFieldConfig(cfg) {
+		var known = {};
+		KINDS.forEach(function (k) {
+			known[k] = true;
+		});
+		var kinds = [];
+		var seen = {};
+		(Array.isArray(cfg && cfg.allowedKinds) ? cfg.allowedKinds : []).forEach(function (kind) {
+			var key = String(kind || '')
+				.trim()
+				.toLowerCase();
+			if (!key || !known[key] || seen[key]) {
+				return;
+			}
+			seen[key] = true;
+			kinds.push(key);
+		});
+		return {
+			allowUpload: !cfg || cfg.allowUpload !== false,
+			allowUrl: !!(cfg && cfg.allowUrl),
+			allowedKinds: kinds,
+		};
+	}
+
+	function libraryTypeForKinds(kinds) {
+		var list = Array.isArray(kinds) ? kinds : [];
+		if (!list.length) {
+			return null;
+		}
+		var map = {
+			image: 'image',
+			video: 'video',
+			audio: 'audio',
+			pdf: 'application/pdf',
+			archive: 'application',
+			office: 'application',
+			text: 'text',
+			file: '',
+			link: '',
+		};
+		var types = [];
+		var seen = {};
+		list.forEach(function (kind) {
+			var t = map[kind];
+			if (t && !seen[t]) {
+				seen[t] = true;
+				types.push(t);
+			}
+		});
+		if (!types.length) {
+			return null;
+		}
+		return types.length === 1 ? types[0] : types;
+	}
+
+	function isKindAllowed(cfg, kind) {
+		var allowed = (cfg && cfg.allowedKinds) || [];
+		if (!allowed.length) {
+			/* Empty allowlist → all kinds (instance fill; type preview may still require kinds). */
+			return true;
+		}
+		return allowed.indexOf(String(kind || '')) !== -1;
+	}
+
+	function openMediaLibrary(onPicked, allowedKinds) {
+		if (!global.wp || !global.wp.media) {
+			return;
+		}
+		var kinds = Array.isArray(allowedKinds) ? allowedKinds : [];
+		var frameOpts = {
+			title: t('mediaFrameTitle', 'Select media'),
+			button: { text: t('mediaFrameButton', 'Use this file') },
+			multiple: false,
+		};
+		var libraryType = libraryTypeForKinds(kinds);
+		if (libraryType) {
+			frameOpts.library = { type: libraryType };
+		}
+		var frame = global.wp.media(frameOpts);
+		frame.on('select', function () {
+			var att = frame.state().get('selection').first();
+			if (!att) {
+				return;
+			}
+			var data = att.toJSON();
+			var thumb = '';
+			if (data.sizes && data.sizes.thumbnail && data.sizes.thumbnail.url) {
+				thumb = data.sizes.thumbnail.url;
+			} else if (data.sizes && data.sizes.medium && data.sizes.medium.url) {
+				thumb = data.sizes.medium.url;
+			}
+			var picked = normalizeRef({
+				source: 'attachment',
+				attachment_id: data.id,
+				url: data.url || '',
+				mime: data.mime || data.mime_type || '',
+				filename: data.filename || data.title || '',
+				thumb: thumb || data.url || '',
+			});
+			if (kinds.length && picked) {
+				var kind = classifyKind(picked);
+				if (!isKindAllowed({ allowedKinds: kinds }, kind)) {
+					return;
+				}
+			}
+			onPicked(picked);
+		});
+		frame.open();
+	}
+
+	/**
+	 * Editable / display media control — never dumps raw MediaRef JSON into a text input.
+	 *
+	 * @param {string|object|null} rawOrRef Store JSON, url, id, or ref object.
+	 * @param {{
+	 *   mode?: 'edit'|'display',
+	 *   compact?: boolean,
+	 *   mediaConfig?: object,
+	 *   onChange?: function(string),
+	 *   el?: function
+	 * }} [opts]
+	 * @return {HTMLElement}
+	 */
+	function renderField(rawOrRef, opts) {
+		opts = opts || {};
+		var elFn = typeof opts.el === 'function' ? opts.el : createEl;
+		var mode = opts.mode === 'display' ? 'display' : 'edit';
+		var compact = !!opts.compact;
+		var cfg = normalizeFieldConfig(opts.mediaConfig);
+		var onChange =
+			typeof opts.onChange === 'function' ? opts.onChange : null;
+		var ref =
+			rawOrRef == null || typeof rawOrRef === 'string'
+				? parseRef(rawOrRef)
+				: normalizeRef(rawOrRef);
+
+		if (ref) {
+			var refKind = classifyKind(ref);
+			if (refKind && !isKindAllowed(cfg, refKind)) {
+				ref = null;
+			}
+		}
+
+		if (mode === 'display') {
+			return renderSurface(ref, { compact: compact, el: elFn });
+		}
+
+		var wrap = elFn('div', {
+			className:
+				'wtt-media-field' + (compact ? ' wtt-media-field--compact' : ''),
+		});
+
+		function emit(nextRef) {
+			ref = nextRef;
+			if (onChange) {
+				onChange(toStore(nextRef));
+			}
+			rebuild();
+		}
+
+		function rebuild() {
+			while (wrap.firstChild) {
+				wrap.removeChild(wrap.firstChild);
+			}
+			wrap.appendChild(renderSurface(ref, { compact: compact, el: elFn }));
+
+			var actions = elFn('div', { className: 'wtt-media-field__actions' });
+			if (cfg.allowUpload) {
+				var pickBtn = elFn('button', {
+					type: 'button',
+					className: 'button button-small',
+					text: ref
+						? t('mediaChange', 'Change')
+						: t('mediaSelect', 'Select media'),
+				});
+				pickBtn.addEventListener('click', function (e) {
+					e.preventDefault();
+					openMediaLibrary(function (picked) {
+						if (!picked) {
+							return;
+						}
+						emit(picked);
+					}, cfg.allowedKinds);
+				});
+				actions.appendChild(pickBtn);
+			}
+			if (ref) {
+				var clearBtn = elFn('button', {
+					type: 'button',
+					className: 'button button-small',
+					text: t('mediaClear', 'Clear'),
+				});
+				clearBtn.addEventListener('click', function (e) {
+					e.preventDefault();
+					emit(null);
+				});
+				actions.appendChild(clearBtn);
+			}
+			wrap.appendChild(actions);
+
+			if (cfg.allowUrl) {
+				var urlInput = elFn('input', {
+					type: 'url',
+					className: 'wtt-preview-input wtt-media-field__url',
+					placeholder: t('mediaUrlPlaceholder', 'https://…'),
+					value:
+						ref && ref.source === 'url'
+							? ref.url
+							: ref && ref.url && !cfg.allowUpload
+								? ref.url
+								: '',
+				});
+				urlInput.addEventListener('change', function (e) {
+					var url = String(e.target.value || '').trim();
+					if (!url) {
+						emit(null);
+						return;
+					}
+					var urlRef = normalizeRef({
+						source: 'url',
+						attachment_id: 0,
+						url: url,
+						mime: '',
+						filename: '',
+						thumb: '',
+					});
+					var urlKind = classifyKind(urlRef);
+					if (urlKind && !isKindAllowed(cfg, urlKind)) {
+						return;
+					}
+					emit(urlRef);
+				});
+				wrap.appendChild(urlInput);
+			}
+
+			if (!cfg.allowUpload && !cfg.allowUrl) {
+				wrap.appendChild(
+					elFn('span', {
+						className: 'description',
+						text: t('mediaEmpty', 'No media'),
+					})
+				);
+			}
+		}
+
+		rebuild();
+		return wrap;
+	}
+
 	global.WTTMediaRender = {
 		configure: configure,
 		parseRef: parseRef,
@@ -545,7 +811,8 @@
 		sampleEntries: sampleEntries,
 		renderSurface: renderSurface,
 		renderSurfaceHtml: renderSurfaceHtml,
+		renderField: renderField,
 		SAMPLE_IMAGE: SAMPLE_IMAGE,
-		KINDS: ['image', 'video', 'audio', 'pdf', 'archive', 'office', 'text', 'file', 'link'],
+		KINDS: KINDS,
 	};
 })(typeof window !== 'undefined' ? window : this);

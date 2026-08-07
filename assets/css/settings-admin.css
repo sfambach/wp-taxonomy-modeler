@@ -47,3 +47,76 @@
 .wtt-settings-actions .button {
 	margin: 0;
 }
+
+.wtt-catalog-bindings {
+	max-width: 42rem;
+}
+
+.wtt-catalog-bindings__toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5em 1em;
+	margin: 0 0 0.5em;
+}
+
+.wtt-catalog-bindings__tax {
+	margin: 0;
+}
+
+.wtt-catalog-bindings + .wtt-catalog-bindings {
+	margin-top: 1.25em;
+}
+
+.wtt-catalog-bindings__table {
+	border: 1px solid #c3c4c7;
+}
+
+.wtt-catalog-bindings__table th,
+.wtt-catalog-bindings__table td {
+	padding: 0.45em 0.65em;
+	vertical-align: middle;
+}
+
+.wtt-catalog-bindings__table code {
+	font-size: 12px;
+}
+
+.wtt-settings-reset-status {
+	display: inline-block;
+	margin-left: 0.75em;
+	vertical-align: middle;
+	color: #50575e;
+}
+
+.wtt-settings-reset-status.is-ok {
+	color: #007017;
+}
+
+.wtt-settings-reset-status.is-error {
+	color: #b32d2e;
+}
+
+.wtt-catalog-bindings__desc {
+	color: #50575e;
+}
+
+.wtt-catalog-bindings__help {
+	display: none;
+	margin: 0.25em 0 0;
+	max-width: 22rem;
+}
+
+.wtt-catalog-bindings[data-mode="view"] .wtt-catalog-bindings__col-edit,
+.wtt-catalog-bindings[data-mode="view"] .wtt-catalog-bindings__help {
+	display: none;
+}
+
+.wtt-catalog-bindings[data-mode="edit"] .wtt-catalog-bindings__col-view {
+	display: none;
+}
+
+.wtt-catalog-bindings[data-mode="edit"] .wtt-catalog-bindings__help {
+	display: block;
+}

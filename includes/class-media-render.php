@@ -49,6 +49,12 @@ final class Media_Render {
 			'mediaKindsLabel'      => __( 'Allowed MIME kinds', 'wp-taxonomy-tree' ),
 			'mediaKindsSelectedHint' => __( 'Rendering only:', 'wp-taxonomy-tree' ),
 			'mediaKindPlaceholder' => __( 'Reserved', 'wp-taxonomy-tree' ),
+			'mediaSelect'          => __( 'Select media', 'wp-taxonomy-tree' ),
+			'mediaChange'          => __( 'Change', 'wp-taxonomy-tree' ),
+			'mediaClear'           => __( 'Clear', 'wp-taxonomy-tree' ),
+			'mediaUrlPlaceholder'  => __( 'https://…', 'wp-taxonomy-tree' ),
+			'mediaFrameTitle'      => __( 'Select media', 'wp-taxonomy-tree' ),
+			'mediaFrameButton'     => __( 'Use this file', 'wp-taxonomy-tree' ),
 		);
 	}
 

@@ -2,7 +2,7 @@
 name: Data structure — Project, Node, Changelog
 overview: Core objects Project, Node (property slots as typed children), Relation/RelationType-as-Nodes, Changelog. Hierarchy = protected child_of Relation (Q54). Inheritance along child_of (Q66 slots; Q88 hierarchy datatype = parent). Parameter class discarded. Planning artifact only.
 status: draft
-version: "0.7.28-plan"
+version: "0.7.36-plan"
 last_updated: "2026-08-07"
 related_plans:
   - docs/plans/project-plan.md
@@ -103,14 +103,14 @@ classDiagram
   Relation --> Node : relation_type
   Relation --> Multiplicity
   CompositionRow --> Node : cell_values_by_slot
-  note for Node "parent/children via child_of\nQ88 datatype=parent (root=Knoten)\nProperty slots = typed children\nInherit defs Q66"
+  note for Node "parent/children via child_of\nQ88 datatype=parent (root=Knoten seed)\nProperty slots = typed children\nInherit defs Q66"
   note for Relation "Hierarchy + other edges\nQ54/Q35\nmultiplicity Q78"
 ```
 
 ## Current class diagram (detailed)
 
 Conceptual domain model (planning — not implemented PHP).  
-**Q64 superseded:** no Parameter class. **Eigenschaften** = typisierte Kind-Knoten. **Q54:** no writable `parent_id` field — parent/children derived from **`child_of`**. **Q66:** inherit slot definitions along the `child_of` chain. **Q88:** hierarchy datatype = parent (root = **Knoten**).
+**Q64 superseded:** no Parameter class. **Eigenschaften** = typisierte Kind-Knoten. **Q54:** no writable `parent_id` field — parent/children derived from **`child_of`**. **Q66:** inherit slot definitions along the `child_of` chain. **Q88:** hierarchy datatype = parent (root = **Knoten**, seed-only).
 
 ### Type Node vs Eigenschaft vs domain Node (read this first)
 
@@ -386,7 +386,7 @@ classDiagram
   }
 
   note for Project "relation_type_node = Relationstypen-Ast\nstart_node Q59\ntype catalog under type_node Q26"
-  note for Node "No writable parent_id\nparent/children from child_of\nQ88 hierarchy datatype=parent\nroot type_id → Knoten\nattrs keep own type Q87\nInherit defs Q66\nprop_bindings Q70/Q80\nis_datatype Q77\nset/BOM/table via composition Q75"
+  note for Node "No writable parent_id\nparent/children from child_of\nQ88 hierarchy datatype=parent\nroot type_id → Knoten seed-only\nattrs keep own type Q87\nInherit defs Q66\nprop_bindings Q70/Q80\nis_template = catalog lock #5\nis_datatype = scaffold debt Q77\nset/BOM/table via composition Q75"
   note for NodeConfig "prop_bindings: type prop → child id\nlegacy slot_scope Q70 filter\nsystem/display for RelationType Nodes\nComposition allowlists Q60\ntype_inheriting/override Q76 interim\nfooter_op on Fuss slots Q57"
   note for Relation "Exactly one child_of per non-root\nfrom=child to=parent\ncannot delete hierarchy edge\nother types additive\nRelation picker Q74"
   note for CompositionFooter "Fuss band optional\nsame field count as Zeile when present\nops: none|text|sum|avg|min|max|count\navg=Durchschnitt/Mittelwert"
@@ -981,14 +981,14 @@ NPN UI → shows inherited slot defs (+ any NPN-only property children)
 
 Not agreed on Relation display details — refine with Q35/Q41–Q43.
 
-### Example tree: Bauteile (Q83 split)
+### Example tree: Bauteile (Q83 merged)
 
-**Do not** put kinds and MPN records under one root.
+Kinds and MPN records live under **one** Implementation root (former Definition/Bauteilarten removed).
 
 ```text
-Definition / Bauteilarten          ← category + schema (is_datatype kinds)
-  └── Widerstand (set)             ← slots: Wert, Bauform, Lieferant, …
-Implementation / Bauteile          ← master data (records)
+Implementation / Bauteile          ← kinds + master data
+  ├── Widerstand (set / is_datatype)  ← slots: Wert, Bauform, … (no Lieferant/Bestellnummer)
+  ├── Kondensator …
   └── RC0603FR-071K0L              ← type_id → Widerstand; catalog leaf
 ```
 
@@ -996,7 +996,7 @@ BOM `node_embed` / `ref_scope` → **Bauteile** (records). Kind filter later (**
 
 ### Example tree: Bauteile (legacy planning sketch — taxonomy edges)
 
-Separate planning tree historically mixed `is_a` kinds with parameters. Prefer the **Q83** split above for Implementation vs Definition.
+Separate planning tree historically mixed `is_a` kinds with parameters. Prefer the **Q83 merged** tree above.
 
 ```text
 Bauteile                                              â† ROOT of this example
@@ -1104,10 +1104,13 @@ Fallstudie (root)     type_id → Knoten
     Model / …           type_id → Definition
 ```
 
-- Root only: base node (**Knoten**). **Everyone else inherits** (datatype = father).
-- **No Data type field** in node detail — hierarchy is the type.
+- Root only: base node (**Knoten**) via **seed** (`type_id` by id) — **no admin free `set_type`**.
+- **Except root, `has_type` / effective type = father.**
+- **No Data type field** in hierarchy node detail — hierarchy is the type.
+- Free **`set_type`** is not the model (dropped from admin for hierarchy + root).
 - Attribute members: own catalog `type_id` via Attributes panel (Q87) — not Q88.
 - Create / reparent / repair persist `type_id` = parent; reads derive from WP parent.
+- Do **not** promote parents with `_wtt_is_datatype` for assignability.
 
 **Catalog type inherit (Q76 — demoted for hierarchy datatype):**
 
@@ -1119,7 +1122,7 @@ Parent: type_id=set, config.type_inheriting=true   ← scaffold interim / Typ-As
 
 Q76 does **not** replace Q88 for hierarchy nodes. Hierarchy detail no longer shows Inheriting/Override; catalog-type chains may still use meta internally.
 
-**Type chooser (Q77):** forest of Nodes with effective **`is_datatype`**. Primary use: **attribute / catalog** field types (Attributes panel). Flag **`is_datatype`** / **`is_abstract`** remain on nodes. Hierarchy classes may be promoted to `is_datatype` so parent-as-type is assignable.
+**Type chooser (Q77, revised 2026-08-07):** **nodes** in a tree, scoped by **`chooser_root` / `chooser_focus` / catalog bindings (Q92)** — **not** filtered by `_wtt_is_datatype`. Primary use: attribute / catalog field types. Flag **`is_abstract`** local (folders not selectable). Flag **`_wtt_is_datatype`** = **scaffold debt** (survivors: conceptual role **#12** — see OPEN-QUESTIONS; **#6** leaf/branch addressing = **id + settings**). Catalog lock (#5) = **`_wtt_is_template`** (Development-mode editable). Select targets by **id** only (named config bindings → ids OK).
 
 ```mermaid
 flowchart TD
@@ -1129,12 +1132,14 @@ flowchart TD
   E[Node typed set] --> F[compositionMembers]
   F --> G[Display compose]
   R[Hierarchy node] --> S{is root?}
-  S -->|yes| T[type_id → Knoten]
-  S -->|no| U[datatype = parent Q88]
+  S -->|yes| T[type_id → Knoten seed-only]
+  S -->|no| U[has_type / datatype = parent Q88]
   U --> V[No Data type UI — inherit]
-  H[Attribute / catalog type] --> I{is_datatype + not abstract?}
-  I -->|yes selectable| M[Pick catalog type_id]
-  I -->|abstract folder| N[Expand only — not selectable]
+  T --> W[No admin free set_type]
+  H[Attribute / catalog type] --> I[Node chooser Q92 scope]
+  I --> J{is_abstract?}
+  J -->|no selectable| M[Pick type_id by term id]
+  J -->|yes folder| N[Expand only — not selectable]
 ```
 
 ```text

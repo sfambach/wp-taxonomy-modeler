@@ -142,30 +142,70 @@
 	font-size: 12px;
 }
 
-.wtt-model-instance-picker__list {
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	max-height: min(36vh, 14rem);
+.wtt-model-instance-picker__tools {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-bottom: 0.4rem;
+}
+
+.wtt-model-instance-picker__search {
+	flex: 1 1 12rem;
+}
+
+.wtt-model-instance-picker__search-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.3rem 0.5rem;
+	border: 1px solid #8c8f94;
+	border-radius: 2px;
+	font-size: 13px;
+	line-height: 1.4;
+	background: #fff;
+}
+
+.wtt-model-instance-picker__search-input:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: 2px solid transparent;
+}
+
+.wtt-model-instance-picker__wrap {
+	max-height: min(36vh, 16rem);
 	overflow: auto;
 	border: 1px solid #dcdcde;
+	background: #fff;
+}
+
+.wtt-model-instance-picker__table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	line-height: 1.35;
+}
+
+.wtt-model-instance-picker__table th,
+.wtt-model-instance-picker__table td {
+	padding: 0.4rem 0.55rem;
+	text-align: left;
+	vertical-align: middle;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.wtt-model-instance-picker__table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: #f6f7f7;
+	color: #1d2327;
+	font-weight: 600;
+	border-bottom: 1px solid #dcdcde;
+	white-space: nowrap;
 }
 
 .wtt-model-instance-picker__row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0.35rem 0.75rem;
-	width: 100%;
-	margin: 0;
-	padding: 0.45rem 0.55rem;
-	border: 0;
-	border-bottom: 1px solid #f0f0f1;
-	background: #fff;
-	text-align: left;
 	cursor: pointer;
-	font-size: 13px;
+	background: #fff;
 }
 
 .wtt-model-instance-picker__row:hover {
@@ -177,8 +217,20 @@
 	font-weight: 600;
 }
 
+.wtt-model-instance-picker__row:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+}
+
+.wtt-model-instance-picker__cell--seq,
+.wtt-model-instance-picker__cell--version {
+	white-space: nowrap;
+	width: 1%;
+}
+
 .wtt-model-instance-picker__id {
 	font-size: 11px;
 	color: #646970;
 	font-weight: 400;
+	word-break: break-all;
 }

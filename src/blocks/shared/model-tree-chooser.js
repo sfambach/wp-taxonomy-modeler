@@ -1,15 +1,26 @@
 /**
- * Embedded chooser (shared by Taxo Model table / Object view).
+ * Embedded chooser (shared by Taxo Table view / Object view).
  * Visual language matches admin `.wtt-node-picker` (search + twisty tree).
+ *
+ * Params (aligned with admin tree-admin.js):
+ * - rootId — branch to show (caller usually passes catalog binding chooser_root)
+ * - selectedId — currently bound / highlighted node
+ * - focusId — explicit focus/expand from the caller (e.g. modelId). This component
+ *   never reads settings chooser_focus; callers that want that fallback pass it
+ *   themselves as focusId (attribute type picker in tree-admin.js).
+ * - expandFocusBranch — open ancestors + expand focus so children are visible
+ *
+ * Expand target: selectedId, else focusId. No baked-in chooser_focus.
  *
  * Modes:
  * - `tree` — always tree (taxonomy browse, e.g. Model table bind)
  * - `flat` — flat selectable list
  * - `auto` — type specialization children: max choice depth ≤ 1 → flat, ≥ 2 → tree
  */
-import { useMemo, useState, useCallback } from '@wordpress/element';
+import { useMemo, useState, useCallback, useEffect } from '@wordpress/element';
 import {
 	buildPathTree,
+	subtreeAtRoot,
 	expandKeysForSelection,
 	resolveChooserMode,
 } from './build-path-tree';
@@ -165,7 +176,10 @@ function TreeNode( {
 /**
  * @param {Object} props
  * @param {Array} props.items Flat pickable nodes with path.
- * @param {number} [props.selectedId]
+ * @param {number} [props.rootId] Branch root — only this subtree is shown.
+ * @param {number} [props.selectedId] Current selection (wins for expand when set).
+ * @param {number} [props.focusId] Caller-owned focus when nothing selected yet (e.g. modelId).
+ * @param {boolean} [props.expandFocusBranch=true] Expand focus node so children are visible.
  * @param {Function} props.onSelect (node) => void — node has id, name, path, taxonomy, kind
  * @param {'tree'|'flat'|'auto'} [props.mode] Taxonomy browse → `tree`; type children → `auto`.
  * @param {Object} [props.i18n]
@@ -173,7 +187,10 @@ function TreeNode( {
  */
 export default function ModelTreeChooser( {
 	items,
+	rootId = 0,
 	selectedId = 0,
+	focusId = 0,
+	expandFocusBranch = true,
 	onSelect,
 	mode = 'tree',
 	i18n = {},
@@ -183,11 +200,26 @@ export default function ModelTreeChooser( {
 		() => resolveChooserMode( items, mode ),
 		[ items, mode ]
 	);
-	const roots = useMemo( () => buildPathTree( items ), [ items ] );
+	const roots = useMemo( () => {
+		const full = buildPathTree( items );
+		return subtreeAtRoot( full, rootId );
+	}, [ items, rootId ] );
+
 	const [ query, setQuery ] = useState( '' );
+	const expandTarget = selectedId || focusId || 0;
 	const [ expanded, setExpanded ] = useState( () =>
-		expandKeysForSelection( roots, selectedId )
+		expandKeysForSelection( roots, expandTarget, expandFocusBranch )
 	);
+
+	useEffect( () => {
+		if ( ! expandTarget ) {
+			return;
+		}
+		setExpanded( ( prev ) => ( {
+			...prev,
+			...expandKeysForSelection( roots, expandTarget, expandFocusBranch ),
+		} ) );
+	}, [ roots, expandTarget, expandFocusBranch ] );
 
 	const { nodes: visible, forceExpand } = useMemo(
 		() => filterTree( roots, query ),
