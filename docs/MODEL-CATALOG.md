@@ -567,17 +567,7 @@ CatalogChoice Arten (no extra slots on the kind host):
 
 ---
 
-## How to refresh
-
-User phrase examples (German or English):
-
-- „Model-Katalog aktualisieren“
-- „Modelle speichern“
-- „update model catalog“
-
-Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
-
-### Rezept (thought experiment — same composition spine)
+## Rezept (thought experiment — same composition spine)
 
 Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenliste[1] → Zutatenzeile*; Wert → Zutat catalog; Menge = `quantity`.
 
@@ -599,4 +589,4 @@ Do **not** drop planned sections on a routine refresh — only change them when 
 
 - [Partner (planned)](#partner-planned--replace-flat-kontakt)
 - [Platine + Bauteilliste (planned)](#platine--bauteilliste-planned)
-- Rezept thought-experiment / scaling note
+- [Rezept (thought experiment)](#rezept-thought-experiment--same-composition-spine) / scaling note
