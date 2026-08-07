@@ -4,5 +4,15 @@
  */
 
 .wp-block-taxo-object-view {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.wp-block-taxo-object-view .wtt-object-view,
+.wp-block-taxo-object-view .wtt-object-view__properties,
+.wp-block-taxo-object-view .wtt-object-view__form,
+.wp-block-taxo-object-view .wtt-object-view__form-surface {
+	width: 100%;
 	max-width: 100%;
 }

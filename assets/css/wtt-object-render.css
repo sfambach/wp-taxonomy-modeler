@@ -9,6 +9,7 @@
 	--wtt-ov-bg: #fff;
 	--wtt-ov-head: #f0f0f1;
 	box-sizing: border-box;
+	width: 100%;
 	max-width: 100%;
 	margin: 1em 0;
 	padding: 0.85rem 1rem;
@@ -80,17 +81,20 @@
 }
 
 .wtt-object-view__properties {
+	width: 100%;
 	max-width: 100%;
 	min-width: 0;
 }
 
+/* Fill the host block / preview column — do not cap at a reading-width rem. */
 .wtt-object-view__form,
 .wtt-object-view__form-surface,
 .wtt-object-render--form {
 	display: flex;
 	flex-direction: column;
 	gap: 0;
-	max-width: min(100%, 52rem);
+	width: 100%;
+	max-width: 100%;
 	box-sizing: border-box;
 	border: 1px solid var(--wtt-ov-border);
 	border-radius: 2px;
@@ -254,6 +258,7 @@
 
 .wtt-object-view-editor {
 	box-sizing: border-box;
+	width: 100%;
 	max-width: 100%;
 	overflow-x: auto;
 	border: 1px solid var(--wtt-ov-border, #c3c4c7);

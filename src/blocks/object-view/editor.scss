@@ -4,6 +4,7 @@
 
 .wtt-object-view-editor {
 	box-sizing: border-box;
+	width: 100%;
 	max-width: 100%;
 	overflow-x: auto;
 	border: 1px solid #c3c4c7;
@@ -13,6 +14,7 @@
 
 .wtt-object-view-editor__preview {
 	min-height: 2rem;
+	width: 100%;
 	max-width: 100%;
 	overflow-x: auto;
 }
@@ -27,5 +29,6 @@
 	margin: 0;
 	border: none;
 	padding: 0;
+	width: 100%;
 	max-width: 100%;
 }
