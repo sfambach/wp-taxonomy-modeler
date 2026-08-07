@@ -191,6 +191,175 @@ Open decisions before seed: Person without Organisation (yes for private custome
 
 ---
 
+## Platine + Bauteilliste (planned)
+
+> **Status:** Planning in progress 2026-08-07. **Not yet seeded** in this shape.  
+> Live scaffold still has a flat `Model/Platine` and `Model/Bauteilliste/Position` (see [Current scaffold](#current-scaffold-platine--bauteilliste)).
+
+### Intended tree shape
+
+```text
+Model/
+  Platine/                      ← board project
+    → PlatinenVersion [1..*]    ← besteht_aus (Rev A, v1.1, …)
+      → Bauteilliste [1]        ← besteht_aus — always owned by that version
+        → Position [0..*]       ← besteht_aus BOM lines
+  Bauteil/                      ← catalog (unchanged kinds) — Position.Wert picks here
+  Partner/                      ← PlatinenVersion.Bestellt_wo
+```
+
+**Invariants**
+
+- A Platine has **one or more** versions.
+- Every version has **exactly one** Bauteilliste (may have 0 positions).
+- No Bauteilliste without a PlatinenVersion.
+- **Protokoll** is out (not modeled).
+
+### Class diagram
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Platine {
+    +text Name [1]
+    +textarea Beschreibung [0..1]
+    +textarea Lohnt_es_sich [0..1]
+    +textarea Einschraenkungen [0..1]
+  }
+
+  class PlatinenVersion {
+    +text Version [1]
+    +bool Gerber_vorhanden [1]
+    +media Gerberdatei [0..1]
+    +Partner Bestellt_wo [0..1]
+    +int Stueck [1]
+    +double Preis [0..1]
+    +text Besonderheiten [0..1]
+    +textarea Optionen [0..1]
+    +bool Erfolgreich [0..1]
+    +double Preis_Pro_Stueck [0..1]
+    +text Loetdauer [0..1]
+    +text Schwierigkeitsgrad [0..1]
+    +text Funktion [0..1]
+  }
+
+  class Bauteilliste {
+    +text Name [0..1]
+  }
+
+  class Position {
+    +RefDesListe Referenz [1]
+    +Bauteil Wert [1]
+    +int Menge [1]
+    +text Beschreibung [0..1]
+    +double Preis [0..1]
+    +text Lager [0..1]
+    +text Status [0..1]
+  }
+
+  class Partner {
+    <<abstract>>
+  }
+  class Bauteil {
+    <<abstract>>
+  }
+
+  Platine "1" *-- "1..*" PlatinenVersion : besteht_aus
+  PlatinenVersion "1" *-- "1" Bauteilliste : besteht_aus
+  Bauteilliste "1" *-- "0..*" Position : besteht_aus
+  PlatinenVersion --> Partner : Bestellt_wo
+  Position --> Bauteil : Wert
+```
+
+### Platine
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 1 | Board project title |
+| Beschreibung | textarea | 0..1 | Optional overview |
+| Lohnt es sich | textarea | 0..1 | Cross-version review |
+| Einschränkungen | textarea | 0..1 | Cross-version notes |
+| Versionen | PlatinenVersion | 1..* | `besteht_aus` |
+
+### PlatinenVersion
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Version | text | 1 | e.g. Rev A, v1.1 |
+| Gerber vorhanden | bool | 1 | |
+| Gerberdatei | media | 0..1 | |
+| Bestellt wo | Partner | 0..1 | Fab / vendor |
+| Stück | int | 1 | Order qty for this revision |
+| Preis | double | 0..1 | |
+| Besonderheiten | text | 0..1 | |
+| Optionen | textarea | 0..1 | |
+| Erfolgreich | bool | 0..1 | Build review |
+| Preis Pro Stück | double | 0..1 | |
+| Lötdauer | text | 0..1 | |
+| Schwierigkeitsgrad | text | 0..1 | |
+| Funktion | text | 0..1 | |
+| Bauteilliste | Bauteilliste | 1 | `besteht_aus` — always |
+
+### Bauteilliste
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 0..1 | Optional list label |
+| Positionen | Position | 0..* | `besteht_aus` |
+
+### Position
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Referenz | RefDesListe | 1 | Board placements — see below |
+| Wert | Bauteil | 1 | Catalog pick (`Model/Bauteil`) |
+| Menge | int | 1 | Stück; should match expanded RefDes count |
+| Beschreibung | text | 0..1 | |
+| Preis | double | 0..1 | |
+| Lager | text | 0..1 | |
+| Status | text | 0..1 | e.g. bestellt / da / DNI |
+
+### Design requirement — Referenz (RefDes)
+
+**UX (preferred input):** compact board notation the user already uses:
+
+- Single: `R1`
+- List: `R1, R4, R6`
+- Range: `R1-R5`
+- Mixed: `R1-R5, R8` / `C1, C3-C6, C10`
+
+**Storage (canonical):** expand to an ordered list of **positions** (individual RefDes strings), e.g. `R1-R5, R8` → `["R1","R2","R3","R4","R5","R8"]`.
+
+| Layer | Shape | Job |
+|-------|-------|-----|
+| Input / display | compact string | Authoring comfort |
+| Stored value | `string[]` positions | Query, validate, interactive BOM |
+| Menge | `int` | = `len(positions)` (derive or check — Q58) |
+
+**Why expand:** enables an **interactive BOM** — when the user selects a catalog Bauteil (or a Position line), highlight the corresponding placements on the board (by RefDes). Compact form alone is awkward for hit-testing and uniqueness checks.
+
+**Rules (planning)**
+
+- Token: letter prefix + integer (`R1`, `C12`, `U3`); range keeps same prefix, start ≤ end.
+- Separators: comma; whitespace ignored.
+- Within one **PlatinenVersion**, each expanded RefDes is unique across all positions.
+- Type ownership / converter+validators follow **Q47** (same pattern as `int`: input form ≠ canonical store).
+
+### Migration notes (when adopting into tree)
+
+| Current scaffold | Planned |
+|------------------|---------|
+| Flat `Platine.Version` text | `PlatinenVersion` composition [1..*] |
+| `Platine` owns order/build fields | Move to `PlatinenVersion` |
+| `Platine.Protokoll` | **Dropped** |
+| `Bauteilliste` sibling under Model | Owned by `PlatinenVersion` (`besteht_aus` [1]) |
+| `Position.Wert` text + optional `Bauteil` | Single **Wert → Bauteil** (catalog) |
+| `Position.Referenz` free text | RefDesListe: compact UX → expanded positions |
+| `Bestellt wo` → Kontakt | → Partner |
+
+---
+
 ## Current scaffold: Kontakt
 
 > Live seed today (`ensure_kontakt_model`). Superseded by [Partner (planned)](#partner-planned--replace-flat-kontakt) when adopted.
@@ -211,14 +380,18 @@ Person + address (also used as type for Platine **Bestellt wo**).
 
 ---
 
-## Platine
+## Current scaffold: Platine / Bauteilliste
+
+> Live seed today (`ensure_platine_model`, `ensure_bauteilliste_model`). Superseded by [Platine + Bauteilliste (planned)](#platine--bauteilliste-planned) when adopted.
+
+### Platine (flat)
 
 PCB / board — mirrors Retro Projekt post tables (Fakten, Optionen, Aufbau, Protokoll).
 
 | Attribute | Type | Mult. | Notes |
 |-----------|------|-------|--------|
 | Name | text | 1 | Board title |
-| Version | text | 0..1 | e.g. Meine Version |
+| Version | text | 0..1 | e.g. Meine Version — **planned:** own object |
 | Gerber vorhanden | bool | 1 | |
 | Gerberdatei | media | 1 | |
 | Bestellt wo | Kontakt | 1 | Fab / vendor — **planned:** Partner |
@@ -233,7 +406,20 @@ PCB / board — mirrors Retro Projekt post tables (Fakten, Optionen, Aufbau, Pro
 | Funktion | text | 1 | Schlecht / OK / Gut / Klasse |
 | Lohnt es sich | textarea | 1 | |
 | Einschränkungen | textarea | 1 | |
-| Protokoll | textarea | 0..1 | Dated change log |
+| Protokoll | textarea | 0..1 | **Planned: drop** |
+
+### Bauteilliste → Position
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Referenz | text | 1 | **Planned:** RefDesListe |
+| Wert | text | 1 | **Planned:** Bauteil catalog |
+| Menge | int | 1 | |
+| Beschreibung | text | 0..1 | |
+| Preis | double | 0..1 | |
+| Lager | text | 0..1 | |
+| Status | text | 0..1 | |
+| Bauteil | Bauteil | 0..1 | **Planned:** merge into Wert |
 
 ---
 
@@ -379,4 +565,7 @@ User phrase examples (German or English):
 
 Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
 
-Do **not** drop the [Partner (planned)](#partner-planned--replace-flat-kontakt) section on a routine refresh — only change it when the user revises the Partner plan or asks to adopt it into the tree seed.
+Do **not** drop planned sections on a routine refresh — only change them when the user revises the plan or asks to adopt into the tree seed:
+
+- [Partner (planned)](#partner-planned--replace-flat-kontakt)
+- [Platine + Bauteilliste (planned)](#platine--bauteilliste-planned)

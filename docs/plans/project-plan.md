@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.41-plan"
+version: "0.7.42-plan"
 last_updated: "2026-08-07"
 related_docs:
   - README.md
@@ -399,6 +399,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-07 | **Q48 challenged against real datatypes:** inventory Simple/Complex/Registry/media/set/quantity/table + Model hosts; classify **render-only** vs **settings-bearing** vs **attribute/composed**. Flat A/B/C too coarse — refined: `implementationKey` (+ optional `builtin.*`) for render; NodeConfig metas for settings; composition/Q87 for attrs; Q92 for anchors. Docs-only. Plan **0.7.39**. |
 | 2026-08-07 | **`int` value slice:** one Registry renderer (edit+display) + Converter (`WTTIntValue` / `Int_Value`) + validators 1..n (`integer_shape`); prevent non-integer input; canonical decimal string; format default **arabic** (roman/binary/octal/hex reserved). Scaffold ≈ **`0.0.339`**. Plan **0.7.40**. |
 | 2026-08-07 | **`int` Number format UI:** type default `_wtt_int_display_format` + **Int settings** panel; attribute override in Options (`displayFormat` type extras). Preferred render remains Form/Table only. Scaffold ≈ **`0.0.345`**. Plan **0.7.41**. |
+| 2026-08-07 | **Model planning — Partner + Platine/Bauteilliste:** Partner family (Organisation/Person/Adresse/Rollen) replaces flat Kontakt; Platine → PlatinenVersion[1..\*] → Bauteilliste[1] → Position\*; Wert = Bauteil catalog; Protokoll dropped. **Q47 RefDes design req:** compact UX (`R1-R5, R8`) → canonical expanded positions `string[]` for interactive BOM highlight. Catalog: `docs/MODEL-CATALOG.md`. Docs-only. Plan **0.7.42**. |
 
 ## Change protocol
 
