@@ -497,6 +497,7 @@ final class Case_Data {
 		self::ensure_bauteile_catalog( $taxonomy );
 		self::ensure_kontakt_model( $taxonomy );
 		self::ensure_platine_model( $taxonomy );
+		self::ensure_bauteil_model( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
 		self::ensure_root_typed_knoten( $taxonomy );
@@ -547,6 +548,7 @@ final class Case_Data {
 		self::ensure_bauteile_catalog( $taxonomy );
 		self::ensure_kontakt_model( $taxonomy );
 		self::ensure_platine_model( $taxonomy );
+		self::ensure_bauteil_model( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
 		Demo_Data::strip_distributor_samples_under_enum( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
@@ -1677,6 +1679,317 @@ final class Case_Data {
 		}
 
 		return $platine_id;
+	}
+
+	/**
+	 * Ensure Fallstudie/Model/Bauteil exists once; merge stray Bauteil hierarchy nodes into it.
+	 *
+	 * Does not touch Bom Zeile (etc.) attribute slots named Bauteil — those are typed picks
+	 * of Model/Bauteil, not duplicate hosts.
+	 *
+	 * @return array{targetId:int,merged:list<string>,skipped:list<string>,trashed:list<int>,prunedEdges:int}
+	 */
+	public static function ensure_bauteil_model( string $taxonomy = Taxonomy::FS ): array {
+		$empty = array(
+			'targetId'     => 0,
+			'merged'       => array(),
+			'skipped'      => array(),
+			'trashed'      => array(),
+			'prunedEdges'  => 0,
+		);
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return $empty;
+		}
+
+		$root_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME ) );
+		if ( $root_id <= 0 ) {
+			return $empty;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$model_id = self::ensure_term(
+			$taxonomy,
+			'Model',
+			$root_id,
+			'Example schema hosts for Form/Table/Compact preview (Kontakt, Platine, …).',
+			$created,
+			$existing
+		);
+		if ( $model_id <= 0 ) {
+			return $empty;
+		}
+
+		$target_id = self::find_child_named( $taxonomy, $model_id, 'Bauteil' );
+		if ( $target_id <= 0 ) {
+			$target_id = self::ensure_term(
+				$taxonomy,
+				'Bauteil',
+				$model_id,
+				'Part schema host (specializations via child_of; properties via attributes).',
+				$created,
+				$existing
+			);
+		}
+		if ( $target_id <= 0 ) {
+			return $empty;
+		}
+
+		$result               = $empty;
+		$result['targetId']   = $target_id;
+		$result['prunedEdges'] = self::prune_dangling_composition_edges( $taxonomy, $target_id );
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'name'       => 'Bauteil',
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return $result;
+		}
+
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$stray_id = (int) $term->term_id;
+			if ( $stray_id === $target_id ) {
+				continue;
+			}
+
+			/* Owned attribute slot (e.g. Bom Zeile → Bauteil pick) — keep. */
+			if ( Attribute::is_slot( $stray_id ) ) {
+				$hosts = self::attribute_host_ids( $taxonomy, $stray_id );
+				if ( ! empty( $hosts ) ) {
+					$result['skipped'][] = 'slot#' . $stray_id . '@' . implode( ',', $hosts );
+					continue;
+				}
+			}
+
+			$merge = self::merge_bauteil_host_into( $taxonomy, $stray_id, $target_id );
+			$result['merged']  = array_merge( $result['merged'], $merge['merged'] );
+			$result['skipped'] = array_merge( $result['skipped'], $merge['skipped'] );
+
+			if ( class_exists( Trash::class ) ) {
+				Trash::move_to_trash( $taxonomy, $stray_id );
+				$result['trashed'][] = $stray_id;
+			} else {
+				Tree_Model::delete_term( $taxonomy, $stray_id, 'cascade' );
+				$result['trashed'][] = $stray_id;
+			}
+		}
+
+		$result['merged']  = array_values( array_unique( $result['merged'] ) );
+		$result['skipped'] = array_values( array_unique( $result['skipped'] ) );
+
+		return $result;
+	}
+
+	/**
+	 * Whether an attribute name is commercial / order-spec (skip on Model/Bauteil merge).
+	 */
+	public static function is_commercial_bauteil_attr_name( string $name ): bool {
+		$key = strtolower( trim( $name ) );
+		$key = str_replace( array( ' ', '_', '-', '.' ), '', $key );
+		if ( '' === $key ) {
+			return false;
+		}
+		$exact = array( 'hersteller', 'lieferant', 'bestellnummer', 'bestellnr', 'sku', 'ean', 'mpn', 'datenblatt' );
+		if ( in_array( $key, $exact, true ) ) {
+			return true;
+		}
+		if ( str_starts_with( $key, 'hersteller' ) || str_starts_with( $key, 'lieferant' ) ) {
+			return true;
+		}
+		if ( str_starts_with( $key, 'bestell' ) ) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Host ids that own an attribute slot via besteht_aus / aggregation.
+	 *
+	 * @return list<int>
+	 */
+	private static function attribute_host_ids( string $taxonomy, int $attr_id ): array {
+		$hosts = array();
+		foreach ( Relation::list_incoming( $taxonomy, $attr_id ) as $edge ) {
+			$key = (string) ( $edge['typeKey'] ?? '' );
+			if ( ! Attribute::is_attribute_binding( $key ) ) {
+				continue;
+			}
+			$from = (int) ( $edge['fromId'] ?? 0 );
+			if ( $from > 0 ) {
+				$hosts[] = $from;
+			}
+		}
+		return array_values( array_unique( $hosts ) );
+	}
+
+	/**
+	 * Drop besteht_aus / aggregation edges whose target term no longer exists.
+	 */
+	private static function prune_dangling_composition_edges( string $taxonomy, int $host_id ): int {
+		if ( $host_id <= 0 ) {
+			return 0;
+		}
+		$raw = get_term_meta( $host_id, Relation::META_KEY, true );
+		if ( is_string( $raw ) && '' !== $raw ) {
+			$decoded = json_decode( $raw, true );
+			$raw     = is_array( $decoded ) ? $decoded : array();
+		}
+		if ( ! is_array( $raw ) || empty( $raw ) ) {
+			return 0;
+		}
+		$pruned = 0;
+		$next   = array();
+		foreach ( $raw as $edge ) {
+			if ( ! is_array( $edge ) ) {
+				continue;
+			}
+			$to_id       = (int) ( $edge['toId'] ?? 0 );
+			$key         = strtolower( (string) ( $edge['typeKey'] ?? '' ) );
+			$is_attr_edge = Attribute::is_attribute_binding( $key )
+				|| Relation::type_keys_match( $key, Relation::TYPE_COMPOSITION )
+				|| 'composition' === $key;
+			if ( $is_attr_edge && $to_id > 0 ) {
+				$to = get_term( $to_id, $taxonomy );
+				if ( ! $to instanceof \WP_Term ) {
+					++$pruned;
+					continue;
+				}
+			}
+			$next[] = $edge;
+		}
+		if ( $pruned > 0 ) {
+			if ( empty( $next ) ) {
+				delete_term_meta( $host_id, Relation::META_KEY );
+			} else {
+				update_term_meta( $host_id, Relation::META_KEY, wp_json_encode( array_values( $next ) ) );
+			}
+		}
+		return $pruned;
+	}
+
+	/**
+	 * Copy missing non-commercial attributes from $source_id onto $target_id.
+	 * Hierarchy field-children on the source become attributes when they look like slots.
+	 *
+	 * @return array{merged:list<string>,skipped:list<string>}
+	 */
+	private static function merge_bauteil_host_into( string $taxonomy, int $source_id, int $target_id ): array {
+		$merged  = array();
+		$skipped = array();
+		if ( $source_id <= 0 || $target_id <= 0 || $source_id === $target_id ) {
+			return array(
+				'merged'  => $merged,
+				'skipped' => $skipped,
+			);
+		}
+
+		$have = array();
+		foreach ( Attribute::list_own( $taxonomy, $target_id ) as $row ) {
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = true;
+		}
+
+		$candidates = array();
+		foreach ( Attribute::list_own( $taxonomy, $source_id ) as $row ) {
+			$candidates[] = array(
+				'name'         => (string) ( $row['name'] ?? '' ),
+				'typeId'       => (int) ( $row['typeId'] ?? 0 ),
+				'multiplicity' => (string) ( $row['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY ),
+				'binding'      => (string) ( $row['binding'] ?? Attribute::DEFAULT_BINDING ),
+			);
+		}
+
+		/* Hierarchy children that look like attribute fields (typed leaves), not specializations. */
+		$specialize = array( 'passiv', 'aktiv', 'diode', 'widerstand', 'kondensator', 'spule', 'led', 'transistor', 'ic' );
+		$kids       = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $source_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( is_array( $kids ) ) {
+			foreach ( $kids as $kid ) {
+				if ( ! $kid instanceof \WP_Term ) {
+					continue;
+				}
+				$kid_key = strtolower( trim( $kid->name ) );
+				if ( in_array( $kid_key, $specialize, true ) ) {
+					/* Reparent missing specialization under target. */
+					$existing = self::find_child_named( $taxonomy, $target_id, $kid->name );
+					if ( $existing <= 0 ) {
+						wp_update_term( (int) $kid->term_id, $taxonomy, array( 'parent' => $target_id ) );
+						$merged[] = 'child:' . $kid->name;
+					} else {
+						$skipped[] = 'child-exists:' . $kid->name;
+					}
+					continue;
+				}
+				if ( Attribute::is_slot( (int) $kid->term_id ) ) {
+					continue;
+				}
+				$type_id = Node_Type::get_type_id( (int) $kid->term_id );
+				if ( $type_id <= 0 ) {
+					$skipped[] = 'untyped-child:' . $kid->name;
+					continue;
+				}
+				$candidates[] = array(
+					'name'         => $kid->name,
+					'typeId'       => $type_id,
+					'multiplicity' => Attribute::DEFAULT_MULTIPLICITY,
+					'binding'      => Attribute::DEFAULT_BINDING,
+				);
+			}
+		}
+
+		foreach ( $candidates as $cand ) {
+			$name = trim( (string) ( $cand['name'] ?? '' ) );
+			if ( '' === $name ) {
+				continue;
+			}
+			if ( self::is_commercial_bauteil_attr_name( $name ) ) {
+				$skipped[] = 'commercial:' . $name;
+				continue;
+			}
+			$key = strtolower( $name );
+			if ( ! empty( $have[ $key ] ) ) {
+				$skipped[] = 'exists:' . $name;
+				continue;
+			}
+			$type_id = (int) ( $cand['typeId'] ?? 0 );
+			if ( $type_id <= 0 || ! Node_Type::is_datatype( $taxonomy, $type_id ) ) {
+				$skipped[] = 'bad-type:' . $name;
+				continue;
+			}
+			$added = Attribute::add(
+				$taxonomy,
+				$target_id,
+				$name,
+				$type_id,
+				(string) ( $cand['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY ),
+				(string) ( $cand['binding'] ?? Attribute::DEFAULT_BINDING )
+			);
+			if ( is_wp_error( $added ) ) {
+				$skipped[] = 'add-fail:' . $name . ':' . $added->get_error_code();
+				continue;
+			}
+			$have[ $key ] = true;
+			$merged[]     = $name;
+		}
+
+		return array(
+			'merged'  => $merged,
+			'skipped' => $skipped,
+		);
 	}
 
 	/**
