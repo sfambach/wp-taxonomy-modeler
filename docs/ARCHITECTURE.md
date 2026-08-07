@@ -330,6 +330,12 @@ Nested `children` is only a view over parent links. Cycles and multi-parent link
 
 If custom tables appear, follow repository relational-database rules.
 
+### Backup / migrate (Q94 — open)
+
+**Inventory (scaffold):** almost all plugin data = WP **terms** + `_wtt_*` **term meta** + **options** (e.g. `wtt_model_instances`, `wtt_catalog_bindings`). **No custom tables.**
+
+**Leaning (not decided):** Primary disaster recovery = **full site/DB backup (+ uploads)** — not a plugin Export button. Native Tools → Export (WXR) alone is insufficient (`wtt_tree` / `wtt_fs` unbound to posts; option-stored Model_Data; ID-keyed graphs break on WXR remap). A plugin **JSON** export/import (remap by path/slug) may come later for copy-between-sites; **MVP non-goal** — do not build admin Export now for “security.”
+
 ## Tree model responsibilities (planned)
 
 - Treat trees as root nodes + descendants (no Tree entity).
