@@ -358,6 +358,36 @@ Stored line quantities are for **one** board (one PlatinenVersion Bauteilliste).
 
 Same pattern, different unit of “copies”: boards vs portions. Scaling UI/host — not a separate stored list per *N*.
 
+### Design note — nested composition (assemblies / Unterrezepte)
+
+A composition may **include other compositions** of the same kind — not only catalog leaves.
+
+| Domain | Leaf line | Nested line |
+|--------|-----------|-------------|
+| Electronics | Position.Wert → **Bauteil** (catalog) | Assembly / Gerät → **Platine** (or PlatinenVersion) × Menge |
+| Kitchen | Zutatenzeile.Wert → **Zutat** (catalog) | Rezept → **Unterrezept** × Faktor / Portionen |
+
+Examples:
+
+- Gerät / Zusammenstellung besteht aus Platine A + Platine B (+ Gehäuse-Bauteile …).
+- Hauptgericht-Rezept verweist auf Sauce-Rezept / Teig-Rezept als Unterrezept.
+
+Planning shape (same spine, recursive pick):
+
+```text
+Zusammenstellung / Gerät
+  → Zeile: Wert = Platine | Bauteil, Menge = int
+
+RezeptVersion
+  → Zutatenzeile: Wert = Zutat | Rezept, Menge = quantity | Portionen-Faktor
+```
+
+Rules (leaning):
+
+- Nested target is a **composition host** (Platine / Rezept), not flattened copy of its list at edit time.
+- Scaling still applies: *N* devices → scale each nested Platine’s Bauteilliste; *P* portions → scale nested recipe lines (host may expand for shopping list).
+- Avoid cycles: A must not nest A (directly or indirectly).
+
 ### Migration notes (when adopting into tree)
 
 | Current scaffold | Planned |
@@ -572,6 +602,8 @@ CatalogChoice Arten (no extra slots on the kind host):
 Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenliste[1] → Zutatenzeile*; Wert → Zutat catalog; Menge = `quantity`.
 
 **Scaling (recorded):** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [scaling note](#design-note--scaling-same-idea-as-rezept)).
+
+**Nested (recorded):** Rezept may include **Unterrezepte** — same idea as a Gerät/Zusammenstellung made of **several Platinen** (see [nested composition](#design-note--nested-composition-assemblies--unterrezepte)).
 
 ---
 
