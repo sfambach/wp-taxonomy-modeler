@@ -316,12 +316,28 @@ classDiagram
 | Attribute | Type | Mult. | Notes |
 |-----------|------|-------|--------|
 | Referenz | RefDesListe | 1 | Board placements — see below |
-| Wert | Bauteil | 1 | Catalog pick (`Model/Bauteil`) |
+| Wert | Bauteil | 1 | Catalog pick — see [UR — Bauteil entry](#ur--bauteil-entry-in-bom-search--create-on-leave) |
 | Menge | int | 1 | Stück; should match expanded RefDes count |
 | Beschreibung | text | 0..1 | |
 | Preis | double | 0..1 | |
 | Lager | text | 0..1 | |
 | Status | text | 0..1 | e.g. bestellt / da / DNI |
+
+### UR — Bauteil entry in BOM (search + create on leave)
+
+**Wert** on a Position is entered **like a search** (type-ahead against the Bauteil catalog), not only via a separate tree picker.
+
+Flow:
+
+1. User types in the Wert field (e.g. `Widerstand 1k`, `1k`, MPN fragment).
+2. Matches from the catalog appear (kinds and/or MPN records under `Model/Bauteil` / Implementation records).
+3. If the user **leaves the field** and there is **no exact usable hit**, ask: **create new Bauteil?**
+4. On yes: open a short create/refine step — pick or confirm kind (often already exists, e.g. **Widerstand**), then enter the missing specialization (e.g. **1k** not yet created), then bind the new/chosen record as Wert.
+5. On no: stay editable so the user can refine the query or pick another hit.
+
+Typical case: kind **Widerstand** exists; concrete value/MPN **1k** does not → create under that kind, not a new kind from scratch.
+
+Leaning: create path must land on the correct **kind** (Q83) + instance/record; avoid duplicate kinds by name search. Interactive BOM (highlight) uses the bound catalog id after save.
 
 ### UR — Referenz (RefDes)
 
