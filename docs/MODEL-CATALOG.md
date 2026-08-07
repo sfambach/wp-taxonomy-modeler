@@ -15,7 +15,185 @@ Snapshot of **Model/** attribute hosts and Bauteil kinds as seeded in the scaffo
 
 ---
 
-## Kontakt
+## Partner (planned — replace flat Kontakt)
+
+> **Status:** Planning agreed 2026-08-07. **Not yet seeded** under `Fallstudie/Model`.  
+> Adopt into the tree later: replace flat `Model/Kontakt` with this host family.  
+> Until then, the scaffold still seeds **Kontakt** (see [Current scaffold: Kontakt](#current-scaffold-kontakt)).
+
+B2B-style partner model for BOM / procurement / returns:
+
+- One **Organisation** (e.g. Conrad, Reichelt) has many **Person** contacts.
+- Roles are **multi-valued** (Lieferant *and* Kunde / Empfänger) — not `child_of` kinds.
+- **Adresse** is a reusable composition host (billing / shipping / returns).
+
+### Intended tree shape
+
+```text
+Model/
+  Partner/                 ← abstract host (is_abstract)
+    Organisation/          ← child_of Partner
+    Person/                ← child_of Partner
+  Adresse/                 ← schema host (composition target)
+  PartnerRolle/            ← CatalogChoice (depth ≤ 1 → ListChooser)
+    Lieferant | Kunde | Support | Empfänger | Absender | Hersteller
+  AdressArt/               ← CatalogChoice
+    Hauptadresse | Lieferadresse | Rechnungsadresse | Retourenadresse
+```
+
+### Class diagram
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Partner {
+    <<abstract>>
+    +text Name [1]
+    +PartnerRolle[] Rollen [1..*]
+    +text Notiz [0..1]
+    +bool Aktiv [1]
+  }
+
+  class Organisation {
+    +text Rechtsform [0..1]
+    +text USt_IdNr [0..1]
+    +text Webseite [0..1]
+    +text Kundennummer_bei_uns [0..1]
+    +text Unsere_KdNr_bei_Partner [0..1]
+  }
+
+  class Person {
+    +text Anrede [0..1]
+    +text Titel [0..1]
+    +text Vorname [1]
+    +text Nachname [1]
+    +text Funktion [0..1]
+    +email E-Mail [0..1]
+    +text Telefon [0..1]
+    +text Mobil [0..1]
+  }
+
+  class Adresse {
+    +AdressArt Art [1]
+    +text Strasse [1]
+    +text Hausnummer [0..1]
+    +text Postleitzahl [1]
+    +text Ort [1]
+    +text Land [1]
+    +text Zusatz [0..1]
+  }
+
+  class PartnerRolle {
+    <<CatalogChoice>>
+  }
+  class Lieferant
+  class Kunde
+  class Support
+  class Empfaenger
+  class Absender
+  class Hersteller
+
+  class AdressArt {
+    <<CatalogChoice>>
+  }
+  class Hauptadresse
+  class Lieferadresse
+  class Rechnungsadresse
+  class Retourenadresse
+
+  Partner <|-- Organisation : child_of
+  Partner <|-- Person : child_of
+
+  PartnerRolle <|-- Lieferant
+  PartnerRolle <|-- Kunde
+  PartnerRolle <|-- Support
+  PartnerRolle <|-- Empfaenger
+  PartnerRolle <|-- Absender
+  PartnerRolle <|-- Hersteller
+
+  AdressArt <|-- Hauptadresse
+  AdressArt <|-- Lieferadresse
+  AdressArt <|-- Rechnungsadresse
+  AdressArt <|-- Retourenadresse
+
+  Organisation "1" *-- "0..*" Adresse : besteht_aus
+  Organisation "1" *-- "0..*" Person : besteht_aus Ansprechpartner
+  Person "0..1" --> "0..1" Organisation : gehoert_zu
+  Person "0..*" *-- "0..*" Adresse : besteht_aus
+```
+
+### Partner (abstract host)
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 1 | Display name (org or person label) |
+| Rollen | PartnerRolle | 1..* | Multi-role; not hierarchy kinds |
+| Notiz | text | 0..1 | Free note |
+| Aktiv | bool | 1 | Soft disable |
+
+### Organisation (`child_of` Partner)
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Rechtsform | text | 0..1 | GmbH, SE, … |
+| USt-IdNr | text | 0..1 | VAT id |
+| Webseite | text | 0..1 | |
+| Kundennummer bei uns | text | 0..1 | Our account number for this partner |
+| Unsere KdNr bei Partner | text | 0..1 | Their customer number for us |
+| Adresse | Adresse | 0..* | `besteht_aus` |
+| Ansprechpartner | Person | 0..* | `besteht_aus` — people at this org |
+
+### Person (`child_of` Partner)
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Anrede | text | 0..1 | |
+| Titel | text | 0..1 | Dr., … |
+| Vorname | text | 1 | |
+| Nachname | text | 1 | |
+| Funktion | text | 0..1 | Job role at org / context |
+| E-Mail | email | 0..1 | |
+| Telefon | text | 0..1 | |
+| Mobil | text | 0..1 | |
+| gehört zu | Organisation | 0..1 | Optional; private customer has none |
+| Adresse | Adresse | 0..* | `besteht_aus` when person has own address |
+
+### Adresse
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Art | AdressArt | 1 | CatalogChoice |
+| Strasse | text | 1 | |
+| Hausnummer | text | 0..1 | |
+| Postleitzahl | text | 1 | |
+| Ort | text | 1 | |
+| Land | text | 1 | |
+| Zusatz | text | 0..1 | c/o, floor, … |
+
+### PartnerRolle (CatalogChoice)
+
+Lieferant, Kunde, Support, Empfänger, Absender, Hersteller.
+
+### AdressArt (CatalogChoice)
+
+Hauptadresse, Lieferadresse, Rechnungsadresse, Retourenadresse.
+
+### Migration notes (when adopting into tree)
+
+| Current scaffold | Planned |
+|------------------|---------|
+| `Model/Kontakt` (flat person+address) | `Model/Partner` + `Organisation` / `Person` + `Adresse` |
+| Platine **Bestellt wo** → Kontakt | → Partner (prefer Organisation / Lieferant) |
+| Relais attribute named Kontakt (text) | Unrelated — keep as text slot on Relais |
+
+Open decisions before seed: Person without Organisation (yes for private customers); whether `Bestellt wo` binds `Partner` or only `Organisation`.
+
+---
+
+## Current scaffold: Kontakt
+
+> Live seed today (`ensure_kontakt_model`). Superseded by [Partner (planned)](#partner-planned--replace-flat-kontakt) when adopted.
 
 Person + address (also used as type for Platine **Bestellt wo**).
 
@@ -43,7 +221,7 @@ PCB / board — mirrors Retro Projekt post tables (Fakten, Optionen, Aufbau, Pro
 | Version | text | 0..1 | e.g. Meine Version |
 | Gerber vorhanden | bool | 1 | |
 | Gerberdatei | media | 1 | |
-| Bestellt wo | Kontakt | 1 | Fab / vendor |
+| Bestellt wo | Kontakt | 1 | Fab / vendor — **planned:** Partner |
 | Stück | int | 1 | Order qty |
 | Preis | double | 1 | Order total (aliases: Preis inclusive, …) |
 | Besonderheiten | text | 1 | Lead-free, color, … |
@@ -199,4 +377,6 @@ User phrase examples (German or English):
 - „Modelle speichern“
 - „update model catalog“
 
-Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the snapshot tables above; bump **Last snapshot** / plugin version note.
+Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
+
+Do **not** drop the [Partner (planned)](#partner-planned--replace-flat-kontakt) section on a routine refresh — only change it when the user revises the Partner plan or asks to adopt it into the tree seed.
