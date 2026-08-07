@@ -81,57 +81,16 @@ final class Tree_Admin {
 
 		$case_study = Taxonomy::is_case_study( $requested );
 
-		// Scaffold: seed active taxonomy when empty; BOM ensures only on wtt_tree.
+		// Scaffold: Fallstudie (wtt_fs) only — no BOM Demo_Data auto-seed.
 		if ( current_user_can( Capabilities::edit_terms( $requested ) ) ) {
-			if ( $case_study ) {
-				Case_Data::maybe_install( $requested );
-			} else {
-				$bom = get_terms(
-					array(
-						'taxonomy'   => $requested,
-						'name'       => Demo_Data::ROOT_NAME,
-						'parent'     => 0,
-						'hide_empty' => false,
-						'number'     => 1,
-					)
-				);
-				if ( ! is_array( $bom ) || empty( $bom ) ) {
-					Demo_Data::install( $requested );
-				}
-				Demo_Data::migrate_basiseinheit_wert_to_typ( $requested );
-				Demo_Data::migrate_abmessung_t_to_h( $requested );
-				Demo_Data::migrate_subtree_type_to_node_embed( $requested );
-				Demo_Data::ensure_node_pick_type_group( $requested );
-				Demo_Data::ensure_datatype_flags( $requested );
-				Demo_Data::ensure_type_inheritance( $requested );
-				Demo_Data::ensure_relation_types( $requested );
-				Demo_Data::ensure_set_composition_members( $requested );
-				Demo_Data::ensure_prefix_multiplikators( $requested );
-				Demo_Data::ensure_short_descriptions( $requested );
-				Demo_Data::ensure_media_type( $requested );
-				Demo_Data::ensure_email_type( $requested );
-				Demo_Data::ensure_date_type( $requested );
-				Demo_Data::ensure_subnode_type( $requested );
-				Demo_Data::ensure_bom_columns( $requested );
-				Node_Type::ensure_table_type_props( $requested );
-				Demo_Data::ensure_deletable_flags( $requested );
-				Demo_Data::strip_distributor_samples_under_enum( $requested );
-			}
+			Case_Data::maybe_install( $requested );
 			Catalog_Bindings::ensure( $requested );
 		}
 
-		$select_hint = $case_study
-			? __( 'Select a node. Case-study tree (Definition / Implementation) — slim detail UI; not a model sign-off.', 'wp-taxonomy-tree' )
-			: __( 'Select a node to inspect it. Domain model (Project / Node; Eigenschaften = typed children) is still in planning - this screen is the taxonomy-tree scaffold.', 'wp-taxonomy-tree' );
-		$confirm_reset = $case_study
-			? __( 'Delete Fallstudie root, then reinstall the case-study tree?', 'wp-taxonomy-tree' )
-			: __( 'Delete BOM Testprojekt (and old Passive Components / Semiconductors stubs), then reinstall the full demo tree?', 'wp-taxonomy-tree' );
-		$reset_label = $case_study
-			? __( 'Reset case tree', 'wp-taxonomy-tree' )
-			: __( 'Reset test tree', 'wp-taxonomy-tree' );
-		$reset_done = $case_study
-			? __( 'Case tree reset and reinstalled.', 'wp-taxonomy-tree' )
-			: __( 'Test tree reset and reinstalled.', 'wp-taxonomy-tree' );
+		$select_hint   = __( 'Select a node. Fallstudie tree (Definition / Implementation) — slim detail UI; not a model sign-off.', 'wp-taxonomy-tree' );
+		$confirm_reset = __( 'Delete Fallstudie root, then reinstall the case-study tree?', 'wp-taxonomy-tree' );
+		$reset_label   = __( 'Reset case tree', 'wp-taxonomy-tree' );
+		$reset_done    = __( 'Case tree reset and reinstalled.', 'wp-taxonomy-tree' );
 
 		$config = array(
 			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),

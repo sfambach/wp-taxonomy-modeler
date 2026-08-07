@@ -334,7 +334,7 @@ final class Case_Data {
 		return array(
 			array(
 				'name'        => self::ROOT_NAME,
-				'description' => 'Case-study Project: Definition (types + constants) and empty Implementation. Parallel to BOM Testprojekt — not a model sign-off.',
+				'description' => 'Case-study Project: Definition (types + constants) and empty Implementation. Standard scaffold tree — not a model sign-off.',
 				'children'    => array(
 					array(
 						'name'        => 'Definition',

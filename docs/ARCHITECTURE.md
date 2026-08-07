@@ -2,7 +2,7 @@
 
 > Living technical documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-**Status:** Target architecture — domain model still planning; **scaffold ≈ `0.0.295`** ships a term-based admin tree on **`wtt_tree`** (BOM) and parallel **`wtt_fs`** (Fallstudie, slim UI — **not** model sign-off) + Relations (Q74–Q78) + set=`composition` (Q75) + catalog type inherit interim (Q76/Q77) + **Q88 hierarchy datatype = parent (no Data type UI)** + **Q90 Complex enum/list/table parked** + **Q91 Registry ≠ one renderer** + Form(1)/Table(n) object surfaces + **Q92 `chooser_root`/`chooser_focus`** + Fill Model Data + Sample_Data + BOM Name+Tabelle / **Q83 Bauteilarten vs Bauteile** / **Q85 composition-first** / **Q86 inherit=`child_of`** / **Q87 attributes** / table bands (legacy) / Bindings→Rules→Fixes (Q80) + Trash soft-delete (Q89) + preview UX. **Parameter class discarded** (slots = typed child Nodes). Docs absorb Fallstudie (plan **0.7.30**); status stays scaffolding.
+**Status:** Target architecture — domain model still planning; **scaffold ≈ `0.0.296`** ships a term-based admin tree on **`wtt_fs` (Fallstudie)** as the **only standard scaffold tree** (`wtt_tree` / BOM Testprojekt **retired** from UI, seeds, and pickers — constant kept for legacy helpers) + Relations (Q74–Q78) + set=`composition` (Q75) + catalog type inherit interim (Q76/Q77) + **Q88 hierarchy datatype = parent (no Data type UI)** + **Q90 Complex enum/list/table parked** + **Q91 Registry ≠ one renderer** + Form(1)/Table(n) object surfaces + **Q92 `chooser_root`/`chooser_focus`** + Fill Model Data + Sample_Data + BOM Name+Tabelle / **Q83 Bauteilarten vs Bauteile** / **Q85 composition-first** / **Q86 inherit=`child_of`** / **Q87 attributes** / table bands (legacy) / Bindings→Rules→Fixes (Q80) + Trash soft-delete (Q89) + preview UX. **Parameter class discarded** (slots = typed child Nodes). Docs absorb Fallstudie (plan **0.7.30**); status stays scaffolding.
 
 ## Planning note
 
@@ -144,7 +144,7 @@ wp-taxonomy-tree/
   wp-taxonomy-tree.php              # bootstrap, WTT_VERSION
   includes/
     class-plugin.php                # wires hooks
-    class-taxonomy.php              # wtt_tree + wtt_fs (not bound to posts)
+    class-taxonomy.php              # wtt_fs standard scaffold; wtt_tree legacy constant only
     class-case-data.php             # Fallstudie seed (Definition / Implementation)
     class-media-render.php          # Q65 MediaRef SSR + enqueue
     class-object-render.php         # Object View DTO + Form HTML (block + shared)
@@ -335,7 +335,7 @@ If custom tables appear, follow repository relational-database rules.
 
 **Inventory (scaffold):** almost all plugin data = WP **terms** + `_wtt_*` **term meta** + **options** (e.g. `wtt_model_instances`, `wtt_catalog_bindings`). **No custom tables.**
 
-**Leaning (not decided):** Primary disaster recovery = **full site/DB backup (+ uploads)** — not a plugin Export button. Native Tools → Export (WXR) alone is insufficient (`wtt_tree` / `wtt_fs` unbound to posts; option-stored Model_Data; ID-keyed graphs break on WXR remap). A plugin **JSON** export/import (remap by path/slug) may come later for copy-between-sites; **MVP non-goal** — do not build admin Export now for “security.”
+**Leaning (not decided):** Primary disaster recovery = **full site/DB backup (+ uploads)** — not a plugin Export button. Native Tools → Export (WXR) alone is insufficient (`wtt_fs` unbound to posts; option-stored Model_Data; ID-keyed graphs break on WXR remap). A plugin **JSON** export/import (remap by path/slug) may come later for copy-between-sites; **MVP non-goal** — do not build admin Export now for “security.”
 
 ## Tree model responsibilities (planned)
 
@@ -362,7 +362,7 @@ If custom tables appear, follow repository relational-database rules.
 
 **Preview / backend / frontend:** one pipeline — sample map for values + `getExampleNode` for preview DTOs, then `WTTNodeRender.Registry.render(node, context)`. Empty `previewValues` fall back to the map; session edits are never overwritten.
 
-**Object / attribute-host surfaces (scaffold ≈ `0.0.295`):** `WTTObjectRender` paints **Form(1 instance)**, **Table(n instances)**, and **Compact(1 instance, horizontal + vertical dense strips)** over a schema node’s attributes — not the parked Collection catalog type `table` (Q90). Field cells call `Registry.renderContent` by `typeKey`. Admin preview shows **only the node’s preferred render** (`_wtt_preferred_render`) as Editable + Display (not all surfaces). Object View block `layout=auto` uses that preferred; explicit block layout overrides. Samples: central **name→then type** map (`Sample_Data` / Herbert persona); Kontakt rows reuse that persona; **Platine** uses static Name=`Prototype PCB`. Seed: `Fallstudie/Model/Kontakt` + Name(`text`) + E-Mail(`email`), `Fallstudie/Model/Platine` + Name(`text`), and single `Fallstudie/Model/Bauteil` via `Case_Data::ensure_kontakt_model` / `ensure_platine_model` / `ensure_bauteil_model` (merges stray hierarchy Bauteil hosts; keeps Bom Zeile’s Bauteil attribute slot).
+**Object / attribute-host surfaces (scaffold ≈ `0.0.296`):** `WTTObjectRender` paints **Form(1 instance)**, **Table(n instances)**, and **Compact(1 instance, horizontal + vertical dense strips)** over a schema node’s attributes — not the parked Collection catalog type `table` (Q90). Field cells call `Registry.renderContent` by `typeKey`. Admin preview shows **only the node’s preferred render** (`_wtt_preferred_render`) as Editable + Display (not all surfaces). Object View block `layout=auto` uses that preferred; explicit block layout overrides. Samples: central **name→then type** map (`Sample_Data` / Herbert persona); Kontakt rows reuse that persona; **Platine** uses static Name=`Prototype PCB`. Seed: `Fallstudie/Model/Kontakt` + Name(`text`) + E-Mail(`email`), `Fallstudie/Model/Platine` + Name(`text`), and single `Fallstudie/Model/Bauteil` via `Case_Data::ensure_kontakt_model` / `ensure_platine_model` / `ensure_bauteil_model` (merges stray hierarchy Bauteil hosts; keeps Bom Zeile’s Bauteil attribute slot).
 
 **Object View block:** whole-node chrome (`Object_Render` / `WTTObjectRender.mount`) binds a live node (+ optional instance). Canonical layout (**Form + Table auto**): horizontal readonly meta strip (ID / Parent / Slug / …) → Form for attributes with Mult ≤ 1 → Table for Mult many (`0..*` / `1..*`). Overrides: Table (all) / Compact. Block-level **`renderDepth`** / **`referenceMode`** control nest vs ref paint (editor editable when instance bound). Per-attribute render settings deferred.
 

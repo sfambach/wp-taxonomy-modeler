@@ -18,10 +18,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Taxonomy {
 
-	/** Domain tree — not bound to posts; separate from blog `category`. */
+	/**
+	 * Legacy BOM Testprojekt taxonomy — kept for Demo_Data helpers / cleanup scripts.
+	 * Not an active scaffold peer (not in scaffold_slugs / admin switcher).
+	 */
 	public const TREE = 'wtt_tree';
 
-	/** Case-study tree — slim Definition / Implementation sample (parallel to BOM). */
+	/** Standard scaffold tree — Fallstudie (Definition / Implementation). */
 	public const FS = 'wtt_fs';
 
 	public static function register(): void {
@@ -29,12 +32,13 @@ final class Taxonomy {
 	}
 
 	public static function register_taxonomies(): void {
+		/* Still register TREE so legacy scripts and one-shot cleanup can resolve terms. */
 		self::register_one(
 			self::TREE,
 			array(
-				'name'          => __( 'Taxonomy Tree', 'wp-taxonomy-tree' ),
+				'name'          => __( 'Taxonomy Tree (legacy BOM)', 'wp-taxonomy-tree' ),
 				'singular_name' => __( 'Tree node', 'wp-taxonomy-tree' ),
-				'menu_name'     => __( 'Taxonomy Tree', 'wp-taxonomy-tree' ),
+				'menu_name'     => __( 'Taxonomy Tree (legacy)', 'wp-taxonomy-tree' ),
 			)
 		);
 
@@ -82,20 +86,20 @@ final class Taxonomy {
 	}
 
 	public static function default_slug(): string {
-		return self::TREE;
+		return self::FS;
 	}
 
 	public static function is_scaffold( string $taxonomy ): bool {
-		return self::TREE === $taxonomy || self::FS === $taxonomy;
+		return self::FS === $taxonomy;
 	}
 
 	/**
-	 * Scaffold taxonomy slugs (domain trees only).
+	 * Active scaffold taxonomy slugs (product tree only).
 	 *
 	 * @return list<string>
 	 */
 	public static function scaffold_slugs(): array {
-		return array( self::TREE, self::FS );
+		return array( self::FS );
 	}
 
 	/**
@@ -122,7 +126,7 @@ final class Taxonomy {
 	}
 
 	/**
-	 * Taxonomies offered in the scaffold tree UI (excludes blog category).
+	 * Taxonomies offered in the scaffold tree UI (excludes blog category and legacy BOM).
 	 *
 	 * @return array<int, array{slug:string,label:string}>
 	 */
@@ -130,7 +134,7 @@ final class Taxonomy {
 		self::register_taxonomies();
 
 		$out = array();
-		foreach ( array( self::TREE, self::FS ) as $slug ) {
+		foreach ( self::scaffold_slugs() as $slug ) {
 			if ( ! taxonomy_exists( $slug ) ) {
 				continue;
 			}

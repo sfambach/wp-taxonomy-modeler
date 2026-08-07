@@ -3,7 +3,7 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Scaffolding ≈ **`0.0.270`** (admin tree on `wtt_tree` + Fallstudie `wtt_fs`; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie is exploratory — not model sign-off.** Docs absorb Fallstudie learnings (plan **0.7.30**); status stays scaffolding.  
+**Status:** Scaffolding ≈ **`0.0.296`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie is exploratory — not model sign-off.** Docs absorb Fallstudie learnings (plan **0.7.30**); status stays scaffolding.  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode
@@ -93,7 +93,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 4. Gutenberg block **Taxo Collection table** (`taxo/collection-table`) — **legacy scaffold** (Q90 parks catalog `table`; block may remain until removal).
 5. Explore **Basiseinheit** units as sets (composition members) with prefix allowlists.
 6. Preview Form + Table; sets as one field; denser chrome; adaptive picker path/name; picker search.
-7. Seed / reset **BOM Testprojekt** (`wtt_tree`) and **Fallstudie** (`wtt_fs`).
+7. Seed / reset **Fallstudie** (`wtt_fs`) — standard scaffold tree (`wtt_tree` retired).
 8. **Relations von/an** (Q74) + multiplicity (Q78); **set** members via `composition` (Q75).
 9. **Table bands** + validator + prop bindings + footer ops (Fallstudie-proven).
 10. Case-study slim UI: Composition + Relations always shown; no Data type picker (Flags stay).
@@ -115,5 +115,5 @@ Case study: [`docs/plans/case-study.md`](plans/case-study.md).
 
 ## Versioning
 
-- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.270`** (`MAJOR` stays `0` until first official release).
-- Scaffold domain trees: **`wtt_tree`** (BOM Testprojekt) and parallel **`wtt_fs`** (Fallstudie); neither is post `category`.
+- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.296`** (`MAJOR` stays `0` until first official release).
+- Scaffold domain tree: **`wtt_fs`** (Fallstudie); **`wtt_tree`** retired from product UI (legacy constant only). Neither is post `category`.

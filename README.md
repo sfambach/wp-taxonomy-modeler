@@ -2,7 +2,7 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffolding ≈ `0.0.270`** — runnable admin tree on **`wtt_tree`** (BOM) plus parallel **`wtt_fs`** Fallstudie (slim UI). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root` + `chooser_focus`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**.  
+> **Scaffolding ≈ `0.0.296`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root` + `chooser_focus`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**.  
 > Full Project / Node domain still planning. **Case study** is exploratory only — not model sign-off. **Q83–Q92** as in living docs; **CatalogChoice** under Q90 (plan **0.7.29**). Status stays **scaffolding**.  
 > Major version digit changes only for official releases (first release → `1.0.0`).
 

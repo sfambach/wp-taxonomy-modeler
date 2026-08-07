@@ -142,7 +142,7 @@ final class Composition {
 	 * @return list<array{id:int,name:string,path:string,taxonomy:string,kind:string,hasFooter:bool,columnCount:int}>
 	 */
 	public static function list_table_collections( string $taxonomy = '' ): array {
-		$taxonomy = '' !== $taxonomy ? $taxonomy : Taxonomy::TREE;
+		$taxonomy = '' !== $taxonomy ? $taxonomy : Taxonomy::FS;
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return array();
 		}
@@ -204,7 +204,7 @@ final class Composition {
 	 * @return list<array{id:int,name:string,path:string,taxonomy:string,kind:string,hasFooter:bool,columnCount:int}>
 	 */
 	public static function list_catalog_collections( string $taxonomy = '' ): array {
-		$taxonomy = '' !== $taxonomy ? $taxonomy : Taxonomy::TREE;
+		$taxonomy = '' !== $taxonomy ? $taxonomy : Taxonomy::FS;
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return array();
 		}

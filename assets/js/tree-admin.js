@@ -4,7 +4,7 @@
 	var cfg = window.wttTree || {};
 	var i18n = cfg.i18n || {};
 	var state = {
-		taxonomy: cfg.taxonomy || 'wtt_tree',
+		taxonomy: cfg.taxonomy || 'wtt_fs',
 		tree: Array.isArray(cfg.tree) ? cfg.tree : [],
 		selectedId: null,
 		selectedIds: {},
@@ -119,7 +119,7 @@
 	}
 
 	function uiStorageKey(taxonomy) {
-		return 'wtt.treeUi.v1.' + String(taxonomy || 'wtt_tree');
+		return 'wtt.treeUi.v1.' + String(taxonomy || 'wtt_fs');
 	}
 
 	function collectTreeIds(nodes, out) {
@@ -4117,9 +4117,7 @@
 		var rootId = parseInt(bindings.chooser_root, 10) || 0;
 		var root = findCatalogNodeById(rootId, state.tree);
 		if (!root) {
-			root =
-				findNamedInTree(state.tree, 'Fallstudie') ||
-				findNamedInTree(state.tree, 'BOM Testprojekt');
+			root = findNamedInTree(state.tree, 'Fallstudie');
 		}
 		if (root) {
 			return [root];
@@ -15355,7 +15353,7 @@
 			if (!n || !n.id) {
 				return;
 			}
-			if (n.name === 'BOM Testprojekt' || n.name === 'Fallstudie') {
+			if (n.name === 'Fallstudie') {
 				state.expanded[n.id] = true;
 			}
 		});

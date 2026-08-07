@@ -330,9 +330,7 @@ final class Tree_Ajax {
 			self::send_error( $taxonomy );
 		}
 
-		$result = Taxonomy::is_case_study( $taxonomy )
-			? Case_Data::reset( $taxonomy )
-			: Demo_Data::reset( $taxonomy );
+		$result = Case_Data::reset( $taxonomy );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}
