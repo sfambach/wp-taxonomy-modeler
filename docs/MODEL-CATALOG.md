@@ -358,35 +358,49 @@ Stored line quantities are for **one** board (one PlatinenVersion Bauteilliste).
 
 Same pattern, different unit of “copies”: boards vs portions. Scaling UI/host — not a separate stored list per *N*.
 
-### Design note — nested composition (assemblies / Unterrezepte)
+### Design note — nested composition (Gerät / Menü)
 
-A composition may **include other compositions** of the same kind — not only catalog leaves.
+A higher-level composition may **bundle several** lower compositions — not only catalog leaves.
 
-| Domain | Leaf line | Nested line |
-|--------|-----------|-------------|
-| Electronics | Position.Wert → **Bauteil** (catalog) | Assembly / Gerät → **Platine** (or PlatinenVersion) × Menge |
-| Kitchen | Zutatenzeile.Wert → **Zutat** (catalog) | Rezept → **Unterrezept** × Faktor / Portionen |
+| Domain | Leaf line | Bundle (nested compositions) |
+|--------|-----------|------------------------------|
+| Electronics | Position.Wert → **Bauteil** | **Gerät** / Zusammenstellung → mehrere **Platinen** (+ ggf. Bauteile) |
+| Kitchen | Zutatenzeile.Wert → **Zutat** | **Menü** → mehrere **Rezepte** (Vorspeise, Haupt, Dessert, …) |
 
 Examples:
 
-- Gerät / Zusammenstellung besteht aus Platine A + Platine B (+ Gehäuse-Bauteile …).
-- Hauptgericht-Rezept verweist auf Sauce-Rezept / Teig-Rezept als Unterrezept.
+- Gerät besteht aus Platine A + Platine B (+ Gehäuse-Bauteile …).
+- Menü besteht aus Suppe-Rezept + Hauptgericht-Rezept + Dessert-Rezept.
 
-Planning shape (same spine, recursive pick):
+Planning shape (same spine):
 
 ```text
-Zusammenstellung / Gerät
+Gerät / Zusammenstellung
   → Zeile: Wert = Platine | Bauteil, Menge = int
 
-RezeptVersion
-  → Zutatenzeile: Wert = Zutat | Rezept, Menge = quantity | Portionen-Faktor
+Menü
+  → Zeile: Wert = Rezept, Portionen/Faktor = …
 ```
+
+Optional later: a Rezept may still reference another Rezept as Unterrezept (Sauce/Teig) — separate from **Menü**, which is the clear parallel to Gerät.
 
 Rules (leaning):
 
-- Nested target is a **composition host** (Platine / Rezept), not flattened copy of its list at edit time.
-- Scaling still applies: *N* devices → scale each nested Platine’s Bauteilliste; *P* portions → scale nested recipe lines (host may expand for shopping list).
+- Nested target is a **composition host** (Platine / Rezept), not a flattened copy of its list at edit time.
+- Scaling still applies: *N* devices → each nested Platine’s Bauteilliste; Menü for *P* Personen → each Rezept scaled (host may expand for shopping list).
 - Avoid cycles: A must not nest A (directly or indirectly).
+
+### Design note — order / shopping list (Lieferant ↔ REWE)
+
+After scaling (and expanding nested Gerät/Menü), the flattened line list feeds **procurement**:
+
+| Domain | Action | Partner / channel |
+|--------|--------|-------------------|
+| Bauteilliste / BOM | Bestellung beim **Lieferant** aufgeben | Partner (Rolle Lieferant), z. B. Conrad, Reichelt |
+| Rezept / Menü | **Einkaufsliste** erstellen bzw. Lieferung bestellen | Partner (Rolle Lieferant/Kunde-Kanal), z. B. REWE |
+
+Same pipeline: composition → scale → aggregate lines → send/order.  
+UI and checkout = host; Partner model supplies who/where.
 
 ### Migration notes (when adopting into tree)
 
@@ -603,7 +617,7 @@ Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenli
 
 **Scaling (recorded):** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [scaling note](#design-note--scaling-same-idea-as-rezept)).
 
-**Nested (recorded):** Rezept may include **Unterrezepte** — same idea as a Gerät/Zusammenstellung made of **several Platinen** (see [nested composition](#design-note--nested-composition-assemblies--unterrezepte)).
+**Nested (recorded):** **Menü** = mehrere Rezepte — same idea as **Gerät** = mehrere Platinen (see [nested composition](#design-note--nested-composition-gerät--menü)).
 
 ---
 
