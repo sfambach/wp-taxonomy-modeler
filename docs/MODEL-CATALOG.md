@@ -346,6 +346,18 @@ classDiagram
 - Within one **PlatinenVersion**, each expanded RefDes is unique across all positions.
 - Type ownership / converter+validators follow **Q47** (same pattern as `int`: input form ≠ canonical store).
 
+### Design note — scaling (same idea as Rezept)
+
+Stored line quantities are for **one** board (one PlatinenVersion Bauteilliste).  
+**Umrechnen auf mehrere Platinen:** multiply each Position.Menge by board count *N*.
+
+| Domain | Base | Scale factor | Result |
+|--------|------|--------------|--------|
+| Bauteilliste / BOM | Mengen for **1** Platine | *N* Platinen | Einkauf / Bestellung × *N* |
+| Rezept / Zutatenliste | Mengen for base **Portionen** | *P* Personen / Portionen | Zutaten × (*P* / base) |
+
+Same pattern, different unit of “copies”: boards vs portions. Scaling UI/host — not a separate stored list per *N*.
+
 ### Migration notes (when adopting into tree)
 
 | Current scaffold | Planned |
@@ -565,7 +577,26 @@ User phrase examples (German or English):
 
 Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
 
+### Rezept (thought experiment — same composition spine)
+
+Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenliste[1] → Zutatenzeile*; Wert → Zutat catalog; Menge = `quantity`.
+
+**Scaling (recorded):** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [scaling note](#design-note--scaling-same-idea-as-rezept)).
+
+---
+
+## How to refresh
+
+User phrase examples (German or English):
+
+- „Model-Katalog aktualisieren“
+- „Modelle speichern“
+- „update model catalog“
+
+Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
+
 Do **not** drop planned sections on a routine refresh — only change them when the user revises the plan or asks to adopt into the tree seed:
 
 - [Partner (planned)](#partner-planned--replace-flat-kontakt)
 - [Platine + Bauteilliste (planned)](#platine--bauteilliste-planned)
+- Rezept thought-experiment / scaling note
