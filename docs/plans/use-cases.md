@@ -2,8 +2,8 @@
 name: Use cases
 overview: Planning use cases for WP Taxonomy Tree — short structured scenarios, not UML diagrams. Reflect Q64 superseded / Q66 inherit; Q14/Q20/Q51; Q34/Q49 proposal pending confirm.
 status: draft
-version: "0.1.8-plan"
-last_updated: "2026-08-02"
+version: "0.1.9-plan"
+last_updated: "2026-08-07"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -288,15 +288,29 @@ Cards below split **tree environment** vs **host BOM**.
 | Field | Content |
 |-------|---------|
 | **Actor** | User |
-| **Goal** | Record 1…N board references and Menge in **Stück** |
-| **Trigger** | Edits a BOM line |
-| **Preconditions** | Part selected (UC-20); BOM list exists |
-| **Main flow** | 1. User enters references (e.g. R1, R2, R5)<br>2. System sets Menge = count(references) in **Stück** (`int`, Q58)<br>3. User may add description, price, stock flag<br>4. Bauform may come from part or be set on the line<br>5. Saves line |
-| **Variants** | Duplicate refs; qty override (if ever allowed) |
-| **Outcome** | BOM line with refs, part, Menge (Stück), meta |
+| **Goal** | Record 1…N board placements (RefDes) and Menge in **Stück** |
+| **Trigger** | Edits a BOM line (Position under a PlatinenVersion Bauteilliste) |
+| **Preconditions** | Catalog Bauteil available (UC-20); Bauteilliste exists for the version |
+| **Main flow** | 1. User enters **Referenz** in compact form (`R1`, `R1,R4,R6`, `R1-R5`, `R1-R5, R8`)<br>2. System expands to canonical **position list** and sets Menge = count(positions) in **Stück** (`int`, Q58)<br>3. User picks **Wert** = Bauteil from catalog<br>4. Optional description, price, stock/status<br>5. Saves line |
+| **Variants** | Invalid range; duplicate RefDes in same PlatinenVersion; Menge mismatch |
+| **Outcome** | Position with compact UX, stored positions[], catalog Wert, Menge |
 | **MVP?** | later — **host** / Composition |
-| **Touches** | CompositionRow; part → Node id; Reference shape Q47 |
-| **Notes** | Menge ≠ `quantity` (Größe). Q58 |
+| **Touches** | Position; Bauteil catalog; RefDesListe (Q47) |
+| **Notes** | Menge ≠ `quantity` (Größe). Q58. See MODEL-CATALOG Platine planned. |
+
+### UC-21c — Interactive BOM: highlight board positions
+
+| Field | Content |
+|-------|---------|
+| **Actor** | User |
+| **Goal** | See where a BOM line’s Bauteil sits on the Platine |
+| **Trigger** | Selects a Position line or its catalog Wert in an interactive BOM view |
+| **Preconditions** | Positions stored as expanded RefDes list (UC-21 / Q47); board view available for that PlatinenVersion |
+| **Main flow** | 1. User selects a BOM line (or Bauteil used on the board)<br>2. System reads stored position list for that line<br>3. UI highlights matching RefDes placements on the board |
+| **Outcome** | Visual link line ↔ board placements |
+| **MVP?** | later — interactive BOM |
+| **Touches** | Position.Referenz canonical store; board view |
+| **Notes** | Compact string alone is insufficient for hit-testing — expand-on-save is a recorded **UR** (User Requirement). |
 
 ### UC-21b — Fill Name when placing a BOM on a page
 
