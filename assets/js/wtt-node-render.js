@@ -968,8 +968,13 @@
 		inputClass: 'wtt-node-render--text',
 	});
 
+	/*
+	 * Use type=text + inputmode=email so caret survives preview re-renders.
+	 * Native type=email often refuses selectionStart/setSelectionRange → cursor jumps to start.
+	 */
 	var EmailRenderer = makeScalarRenderer('email', {
-		inputType: 'email',
+		inputType: 'text',
+		inputMode: 'email',
 		inputClass: 'wtt-node-render--email',
 		placeholder: 'herbert@home.de',
 		autocomplete: 'email',
@@ -2097,15 +2102,20 @@
 					});
 				} else {
 					var inputType = 'text';
+					var inputMode = '';
 					if (typeName === 'int' || typeName === 'double') {
 						inputType = 'number';
 					} else if (typeName === 'email') {
-						inputType = 'email';
+						/* text + inputmode: caret survives; still email keyboard on mobile */
+						inputType = 'text';
+						inputMode = 'email';
 					}
 					control = createEl('input', {
 						type: inputType,
 						className: 'wtt-node-ref-chooser__input',
 						step: typeName === 'double' ? 'any' : undefined,
+						inputmode: inputMode || undefined,
+						autocomplete: typeName === 'email' ? 'email' : undefined,
 					});
 				}
 				if (field.description) {

@@ -5311,10 +5311,24 @@
 	}
 
 	function rememberPreviewFocus(control, key) {
+		var start = null;
+		var end = null;
+		try {
+			if (typeof control.selectionStart === 'number') {
+				start = control.selectionStart;
+			}
+			if (typeof control.selectionEnd === 'number') {
+				end = control.selectionEnd;
+			}
+		} catch (err) {
+			/* type=email/number may throw InvalidStateError — caret cannot be read */
+			start = null;
+			end = null;
+		}
 		state.previewFocus = {
 			key: key,
-			start: typeof control.selectionStart === 'number' ? control.selectionStart : null,
-			end: typeof control.selectionEnd === 'number' ? control.selectionEnd : null,
+			start: start,
+			end: end,
 		};
 	}
 
