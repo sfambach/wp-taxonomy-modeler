@@ -719,10 +719,7 @@ final class Object_Render {
 	private static function echo_many_properties_table( array $properties, array $i18n ): void {
 		$max_rows = 1;
 		foreach ( $properties as $prop ) {
-			$vals = isset( $prop['values'] ) && is_array( $prop['values'] ) ? $prop['values'] : array();
-			if ( array() === $vals && '' !== (string) ( $prop['valueLabel'] ?? '' ) ) {
-				$vals = array( (string) $prop['valueLabel'] );
-			}
+			$vals     = self::many_prop_store_values( $prop );
 			$max_rows = max( $max_rows, count( $vals ), 1 );
 		}
 
@@ -736,10 +733,7 @@ final class Object_Render {
 		for ( $r = 0; $r < $max_rows; $r++ ) {
 			echo '<tr>';
 			foreach ( $properties as $prop ) {
-				$vals = isset( $prop['values'] ) && is_array( $prop['values'] ) ? $prop['values'] : array();
-				if ( array() === $vals && '' !== (string) ( $prop['valueLabel'] ?? '' ) ) {
-					$vals = array( (string) $prop['valueLabel'] );
-				}
+				$vals = self::many_prop_store_values( $prop );
 				$cell = isset( $vals[ $r ] ) ? (string) $vals[ $r ] : '';
 				echo '<td>';
 				self::echo_typed_value( $prop, $cell, $i18n, true );
@@ -748,6 +742,30 @@ final class Object_Render {
 			echo '</tr>';
 		}
 		echo '</tbody></table></div>';
+	}
+
+	/**
+	 * Store strings for a many-valued property.
+	 * Media: keep JSON/ref store values; do not substitute display-only valueLabel (filename).
+	 *
+	 * @param array<string, mixed> $prop Property DTO.
+	 * @return list<string>
+	 */
+	private static function many_prop_store_values( array $prop ): array {
+		$vals = isset( $prop['values'] ) && is_array( $prop['values'] ) ? $prop['values'] : array();
+		$out  = array();
+		foreach ( $vals as $v ) {
+			$out[] = is_scalar( $v ) ? (string) $v : '';
+		}
+		if ( array() === $out ) {
+			$label = (string) ( $prop['valueLabel'] ?? '' );
+			if ( '' !== $label ) {
+				if ( ! self::is_media_prop( $prop ) || ( isset( $label[0] ) && '{' === $label[0] ) ) {
+					$out[] = $label;
+				}
+			}
+		}
+		return $out;
 	}
 
 	/**

@@ -200,9 +200,56 @@
 	}
 
 	function isMediaTypeKey(typeKey) {
-		return String(typeKey || '')
+		var key = String(typeKey || '')
 			.trim()
-			.toLowerCase() === 'media';
+			.toLowerCase();
+		if (!key) {
+			return false;
+		}
+		if (key.indexOf('/') !== -1) {
+			var parts = key.split('/');
+			key = String(parts[parts.length - 1] || '')
+				.trim()
+				.toLowerCase();
+		}
+		return key === 'media';
+	}
+
+	function isMediaProp(prop) {
+		return (
+			isMediaTypeKey(prop && prop.typeKey) ||
+			isMediaTypeKey(prop && prop.typeName)
+		);
+	}
+
+	/**
+	 * Store strings for a many-valued property (never use display-only valueLabel for media).
+	 *
+	 * @param {object} prop
+	 * @return {string[]}
+	 */
+	function manyPropStoreValues(prop) {
+		var vals = Array.isArray(prop.values) ? prop.values.slice() : [];
+		if (!vals.length && prop.valueLabel != null && String(prop.valueLabel) !== '') {
+			var label = String(prop.valueLabel);
+			/* Media: valueLabel may be a human filename — only reuse when it is store JSON. */
+			if (!isMediaProp(prop) || label.charAt(0) === '{') {
+				vals = [label];
+			}
+		}
+		if (!vals.length) {
+			var Sample = sampleApi();
+			var sample =
+				Sample && typeof Sample.forAttribute === 'function'
+					? String(Sample.forAttribute(prop) || '')
+					: '';
+			if (sample) {
+				vals = [sample];
+			}
+		}
+		return vals.map(function (v) {
+			return v == null ? '' : String(v);
+		});
 	}
 
 	/**
@@ -942,6 +989,7 @@
 				sample: '',
 			};
 			var val = '';
+			var media = isMediaProp(prop) || isMediaTypeKey(field.typeKey);
 			if (
 				Object.prototype.hasOwnProperty.call(instanceValues, idKey) &&
 				String(instanceValues[idKey] || '') !== ''
@@ -953,10 +1001,15 @@
 				prop.values.length
 			) {
 				val = String(prop.values[0]);
-			} else if (prop.valueLabel != null && String(prop.valueLabel) !== '') {
-				val = String(prop.valueLabel);
 			} else if (Array.isArray(prop.values) && prop.values.length) {
+				/* Prefer store values[] over display valueLabel (media JSON vs filename). */
 				val = String(prop.values[0]);
+			} else if (
+				prop.valueLabel != null &&
+				String(prop.valueLabel) !== '' &&
+				(!media || String(prop.valueLabel).charAt(0) === '{')
+			) {
+				val = String(prop.valueLabel);
 			}
 			if (!val && Sample && typeof Sample.forAttribute === 'function') {
 				val = String(Sample.forAttribute(field) || '');
@@ -1104,22 +1157,8 @@
 	function appendManyTable(section, manyProps) {
 		var maxRows = 1;
 		manyProps.forEach(function (prop) {
-			var vals = Array.isArray(prop.values) ? prop.values : [];
-			if (!vals.length && prop.valueLabel) {
-				vals = [String(prop.valueLabel)];
-			}
-			if (!vals.length) {
-				var Sample = sampleApi();
-				var sample =
-					Sample && typeof Sample.forAttribute === 'function'
-						? String(Sample.forAttribute(prop) || '')
-						: '';
-				if (sample) {
-					vals = [sample];
-				}
-			}
-			prop._displayValues = vals;
-			maxRows = Math.max(maxRows, vals.length, 1);
+			prop._displayValues = manyPropStoreValues(prop);
+			maxRows = Math.max(maxRows, prop._displayValues.length, 1);
 		});
 
 		var wrap = createEl('div', {
@@ -1148,13 +1187,28 @@
 				var vals = prop._displayValues || [];
 				var cell = vals[r] != null ? String(vals[r]) : '';
 				var td = createEl('td');
-				if (cell) {
-					td.textContent = cell;
-				} else {
+				if (!cell) {
 					td.appendChild(
 						createEl('span', {
 							className: 'wtt-object-view__empty-value',
 							text: '—',
+						})
+					);
+				} else {
+					/* Typed paint (media → WTTMediaRender); never dump store JSON as text. */
+					var field = {
+						id: prop.id != null ? prop.id : prop.name,
+						name: prop.name || '',
+						typeKey: prop.typeKey || prop.typeName || 'text',
+						typeName: prop.typeName || '',
+						typeId: prop.typeId || 0,
+						multiplicity: prop.multiplicity || '0..*',
+						readonly: true,
+					};
+					td.appendChild(
+						paintFieldContent(field, cell, {
+							readonly: true,
+							contextName: 'table',
 						})
 					);
 				}
