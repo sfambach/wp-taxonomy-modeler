@@ -170,6 +170,15 @@
 		) {
 			return 'date';
 		}
+		/* Informal / DE aliases → quantity (Größe). Not Messung; not BOM Menge. */
+		if (
+			key === 'measure' ||
+			key === 'groesse' ||
+			key === 'größe' ||
+			key === 'grose'
+		) {
+			return 'quantity';
+		}
 		return key;
 	}
 

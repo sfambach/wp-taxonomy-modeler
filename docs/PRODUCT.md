@@ -58,7 +58,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - Types are **Nodes under the Type branch** — no separate `TypeKind` class.
 - **Decided (Q90):** Complex catalog kinds **`enum` / `list` / `table` parked** — not active product types. Closed values → hierarchy inheritance + attributes / Festwerte. Scaffold may still show leftover Complex leaves / Enum UI / collection-table until removal. **CatalogChoice:** when a type has specialization children, flat `<select>` if max depth ≤ 1, else tree chooser; Festwert seeds the value (Preis/Währung, 2026-08-06). **Value SoT** (id only vs pick + fill when host/child have attributes) → **Q93** (open).
 - **Decided (Q91):** Node-only domain ≠ one renderer — **Registry + many type-specific renderers** (simples now; more later).
-- `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück).
+- `quantity` = Größe (Zahl × Einheit); not a measurement act; not BOM Menge (Stück). Alias **`measure`** normalizes to `quantity` (catalog leaf name stays `quantity`).
 - Simple **`display_node_name`**: read-only display of the host node’s name (no user input).
 - Simple **`media` (Q65):** WP Media Library and/or external URL (one type). Config: `allow_upload`, optional `allow_url`, optional **`allow_url_mirror`**. **`allowed_kinds`** default none. Render by MIME.
 - **Decided (Q51 + Q75):** Basiseinheit allowlist for Präfixe; unit = **`set`** whose members are **`composition`** targets (Typ / Praefix? / Kuerzel).

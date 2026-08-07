@@ -191,6 +191,14 @@
 		if (name === 'integer') {
 			name = 'int';
 		}
+		if (
+			name === 'measure' ||
+			name === 'groesse' ||
+			name === 'größe' ||
+			name === 'grose'
+		) {
+			name = 'quantity';
+		}
 		if (!name && node.isDatatype && node.name) {
 			name = String(node.name).trim().toLowerCase();
 		}

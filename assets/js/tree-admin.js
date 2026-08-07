@@ -35,6 +35,8 @@
 		dragMoveIds: null,
 		/* Relations UI: hide synthetic child_of rows (default on). */
 		hideChildOfRelations: true,
+		/* Attribute Options detail rows: expand per attr id (UI session only). */
+		attrDetailExpanded: {},
 	};
 	var autosaveTimer = null;
 	var autosaveSeq = 0;
@@ -10126,6 +10128,15 @@
 		}
 		if (name === 'node_pick' || name === 'node pick') {
 			return 'node_pick';
+		}
+		/* Informal / DE aliases → quantity (Größe). */
+		if (
+			name === 'measure' ||
+			name === 'groesse' ||
+			name === 'größe' ||
+			name === 'grose'
+		) {
+			return 'quantity';
 		}
 		return name || 'text';
 	}

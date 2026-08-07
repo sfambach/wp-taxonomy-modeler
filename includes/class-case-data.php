@@ -67,6 +67,15 @@ final class Case_Data {
 	public static function complex_datatype_leaves(): array {
 		return array(
 			array(
+				'name'              => 'quantity',
+				'description'       => 'Größe: value + optional prefix + base unit (not a measurement act; not BOM Menge). Alias: measure.',
+				'short_description' => 'Größe',
+				'is_datatype'       => true,
+				'deletable'         => false,
+				/* Former informal names → rename in place via ensure_term. */
+				'aliases'           => array( 'measure', 'Größe', 'Groesse' ),
+			),
+			array(
 				'name'        => 'list',
 				'description' => 'Collection with exactly one column; rows open.',
 				'is_datatype' => true,

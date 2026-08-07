@@ -92,7 +92,12 @@ final class Demo_Data {
 									array(
 										'name'     => 'Complex',
 										'children' => array(
-											array( 'name' => 'quantity', 'description' => 'Groesse: value + optional prefix + base unit (not a measurement act).' ),
+											array(
+												'name'              => 'quantity',
+												'description'       => 'Größe: value + optional prefix + base unit (not a measurement act; not BOM Menge). Alias: measure.',
+												'short_description' => 'Größe',
+												'aliases'           => array( 'measure', 'Größe', 'Groesse' ),
+											),
 											array(
 												'name'        => 'subnode',
 												'description' => 'Direct child (Unterknoten) of the host node. Type catalog entry for table props (Kopf/Zeile/Fuss): binding must be a direct child.',

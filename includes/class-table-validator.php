@@ -686,13 +686,7 @@ final class Table_Validator {
 		$field_id = (int) ( $field['id'] ?? 0 );
 		$type     = $field_id > 0 ? Node_Type::get_assignment( $taxonomy, $field_id ) : null;
 		$type_name = is_array( $type ) ? (string) ( $type['name'] ?? '' ) : '';
-		$type_key  = strtolower( trim( $type_name ) );
-		if ( 'integer' === $type_key ) {
-			$type_key = 'int';
-		}
-		if ( 'boolean' === $type_key ) {
-			$type_key = 'bool';
-		}
+		$type_key  = Node_Type::normalize_type_key( $type_name );
 		if ( '' === $type_key ) {
 			$type_key = 'text';
 		}

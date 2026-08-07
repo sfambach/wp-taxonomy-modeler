@@ -3336,6 +3336,14 @@ final class Node_Type {
 		return 'display_node_name' === self::normalize_type_name( $type_name );
 	}
 
+	/**
+	 * Canonical type key for pickers / schema (aliases → SoT leaf name).
+	 * e.g. datetime→date, measure→quantity, integer→int.
+	 */
+	public static function normalize_type_key( string $type_name ): string {
+		return self::normalize_type_name( $type_name );
+	}
+
 	private static function normalize_type_name( string $type_name ): string {
 		$name = strtolower( trim( $type_name ) );
 		if ( 'integer' === $name ) {
@@ -3355,6 +3363,10 @@ final class Node_Type {
 		}
 		if ( in_array( $name, array( 'display node name', 'displayname', 'node_name' ), true ) ) {
 			return 'display_node_name';
+		}
+		/* Informal / DE aliases → quantity (Größe). Not Messung; not BOM Menge. */
+		if ( in_array( $name, array( 'measure', 'groesse', 'größe', 'grose' ), true ) ) {
+			return 'quantity';
 		}
 
 		return $name;
@@ -4289,6 +4301,9 @@ final class Node_Type {
 		} elseif ( 'basiseinheit' === $key || 'basiseinheiten' === $key ) {
 			$aliases[] = 'Basiseinheit';
 			$aliases[] = 'Basiseinheiten';
+		} elseif ( in_array( $key, array( 'measure', 'groesse', 'größe', 'grose', 'quantity' ), true ) ) {
+			$aliases[] = 'quantity';
+			$aliases[] = 'measure';
 		}
 
 		foreach ( $aliases as $alias ) {
