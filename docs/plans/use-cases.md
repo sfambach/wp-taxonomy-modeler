@@ -310,7 +310,7 @@ Cards below split **tree environment** vs **host BOM**.
 | **Outcome** | Visual link line ↔ board placements |
 | **MVP?** | later — interactive BOM |
 | **Touches** | Position.Referenz canonical store; board view |
-| **Notes** | Compact string alone is insufficient for hit-testing — expand-on-save is the design requirement. |
+| **Notes** | Compact string alone is insufficient for hit-testing — expand-on-save is a recorded **UR** (User Requirement). |
 
 ### UC-21b — Fill Name when placing a BOM on a page
 

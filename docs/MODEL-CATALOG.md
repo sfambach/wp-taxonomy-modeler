@@ -5,6 +5,9 @@ Snapshot of **Model/** attribute hosts and Bauteil kinds as seeded in the scaffo
 > **Update policy:** Agents refresh this file **only when the user explicitly asks**
 > (e.g. “Model-Katalog aktualisieren”, “Modelle speichern”, “update model catalog”).
 > Do **not** rewrite it on routine seed/ensure/UI work.
+>
+> **Abbreviation:** In chat, **UR** always means **User Requirement** (not “nur”).
+> Sections titled **UR — …** below are recorded user requirements for later tree/product work.
 
 | Field | Value |
 |-------|--------|
@@ -320,7 +323,7 @@ classDiagram
 | Lager | text | 0..1 | |
 | Status | text | 0..1 | e.g. bestellt / da / DNI |
 
-### Design requirement — Referenz (RefDes)
+### UR — Referenz (RefDes)
 
 **UX (preferred input):** compact board notation the user already uses:
 
@@ -346,7 +349,7 @@ classDiagram
 - Within one **PlatinenVersion**, each expanded RefDes is unique across all positions.
 - Type ownership / converter+validators follow **Q47** (same pattern as `int`: input form ≠ canonical store).
 
-### Design note — scaling (same idea as Rezept)
+### UR — scaling (Rezept ↔ Bauteilliste)
 
 Stored line quantities are for **one** board (one PlatinenVersion Bauteilliste).  
 **Umrechnen auf mehrere Platinen:** multiply each Position.Menge by board count *N*.
@@ -358,7 +361,7 @@ Stored line quantities are for **one** board (one PlatinenVersion Bauteilliste).
 
 Same pattern, different unit of “copies”: boards vs portions. Scaling UI/host — not a separate stored list per *N*.
 
-### Design note — nested composition (Gerät / Menü)
+### UR — nested composition (Gerät / Menü)
 
 A higher-level composition may **bundle several** lower compositions — not only catalog leaves.
 
@@ -390,7 +393,7 @@ Rules (leaning):
 - Scaling still applies: *N* devices → each nested Platine’s Bauteilliste; Menü for *P* Personen → each Rezept scaled (host may expand for shopping list).
 - Avoid cycles: A must not nest A (directly or indirectly).
 
-### Design note — order / shopping list (Lieferant ↔ REWE)
+### UR — order / shopping list (Lieferant ↔ REWE)
 
 After scaling (and expanding nested Gerät/Menü), the flattened line list feeds **procurement**:
 
@@ -615,9 +618,11 @@ CatalogChoice Arten (no extra slots on the kind host):
 
 Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenliste[1] → Zutatenzeile*; Wert → Zutat catalog; Menge = `quantity`.
 
-**Scaling (recorded):** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [scaling note](#design-note--scaling-same-idea-as-rezept)).
+**UR — scaling:** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [UR — scaling](#ur--scaling-rezept--bauteilliste)).
 
-**Nested (recorded):** **Menü** = mehrere Rezepte — same idea as **Gerät** = mehrere Platinen (see [nested composition](#design-note--nested-composition-gerät--menü)).
+**UR — nested:** **Menü** = mehrere Rezepte — same idea as **Gerät** = mehrere Platinen (see [UR — nested](#ur--nested-composition-gerät--menü)).
+
+**UR — order / shopping:** BOM → Bestellung beim Lieferant; Rezept/Menü → Einkaufsliste / Lieferung (z. B. REWE) — see [UR — order](#ur--order--shopping-list-lieferant--rewe).
 
 ---
 

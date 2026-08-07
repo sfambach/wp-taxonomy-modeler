@@ -7,6 +7,11 @@ alwaysApply: true
 
 Canonical snapshot: [`docs/MODEL-CATALOG.md`](../../docs/MODEL-CATALOG.md)
 
+## Abbreviation
+
+In this project chat, **UR** = **User Requirement** (never read as German “nur”).  
+When the user says e.g. “UR festhalten”, record it as a **UR — …** section (or bullet) in `docs/MODEL-CATALOG.md` if it is model-related.
+
 ## Rule
 
 - **Do not** rewrite, expand, or “sync” `docs/MODEL-CATALOG.md` during routine coding, seed/ensure, UI, or plan-doc sync.
@@ -15,6 +20,7 @@ Canonical snapshot: [`docs/MODEL-CATALOG.md`](../../docs/MODEL-CATALOG.md)
   - “Modelle speichern”
   - “update model catalog”
   - “schreib die Modelle ins Dokument”
+  - “UR festhalten” / “als UR speichern” (model-related user requirements)
 
 ## When updating (on request)
 
