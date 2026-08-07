@@ -3,7 +3,7 @@
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
 > **Scaffolding ≈ `0.0.296`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root` + `chooser_focus`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**.  
-> Full Project / Node domain still planning. **Case study** is exploratory only — not model sign-off. **Q83–Q92** as in living docs; **CatalogChoice** under Q90 (plan **0.7.29**). Status stays **scaffolding**.  
+> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold** — not Phase-1 model sign-off. **Q83–Q92** as in living docs; **CatalogChoice** under Q90 (plan **0.7.32**). Status stays **scaffolding**.  
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
@@ -27,7 +27,7 @@ Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`d
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
-| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Parallel Fallstudie (`wtt_fs`) — slim Definition/Implementation tree |
+| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Gold Fallstudie scaffold (`wtt_fs`) — Definition / Implementation tree |
 | [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
@@ -94,7 +94,7 @@ See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windo
 | **Tree picker** (`popup` / `inline`) | Settings → Taxonomy Tree | Controls both the taxonomy **tree picker** and the **`node_ref` catalog chooser** in Form/Table preview **and** the Collection table block editor. Default **popup**. Reparent stays inline. |
 | **`node_ref` create** | Preview / block cell → Choose → Add new… | Needs **Catalog root (`ref_scope`)** on the field. Mini-form = Name + scalar catalog slots (e.g. Lieferanten: Url, Suchstring, Bewertung). |
 | **Collection table block** | `npm run build` after JS changes | Editor uses `WTTNodeRender` for `node_ref` columns; frontend shows name chips (not raw ids). |
-| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `tree` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen; deletes BOM/Bauteile/… Use `reset` only for `wtt_tree` (reinstalls types first). `wtt_fs` is clear-only (Case_Data reset blocked by protected Aggregate). |
+| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen on **`wtt_fs`**. Legacy `tree`/`reset` args still target retired `wtt_tree` / `Demo_Data` helpers. Prefer **Reset case tree** in admin for Fallstudie. |
 | **Attributes (Q87 trial)** | Node detail → Attributes | Name + Type + Mult. → stored as `besteht_aus` member. Default Mult. `1`. |
 | **Fill Model Data** | Taxonomy Tree → Fill Model Data | No extra settings. Pick a structure host with attributes, then add/edit instance rows (option `wtt_model_instances`). Taxonomy = structures; this page = filled data. |
 

@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 \WTT\Taxonomy::register_taxonomies();
+/* Legacy Demo_Data helper — product scaffold uses Case_Data / wtt_fs (Reset case tree). */
 $taxonomy = \WTT\Taxonomy::TREE;
 $result   = \WTT\Demo_Data::reset( $taxonomy );
 if ( is_wp_error( $result ) ) {

@@ -1,8 +1,8 @@
 ---
 name: Case study (wtt_fs)
-overview: Parallel slim taxonomy tree for Definition / Implementation exploration — not a model sign-off for the full BOM domain.
+overview: Gold standard scaffold taxonomy — Fallstudie Definition / Implementation tree. Not Phase-1 domain sign-off.
 status: scaffolding
-version: "0.1.7-slice"
+version: "0.2.0-slice"
 last_updated: "2026-08-07"
 related_docs:
   - docs/plans/project-plan.md
@@ -10,7 +10,7 @@ related_docs:
   - README.md
 todos:
   - id: tax-wtt-fs
-    content: "Register taxonomy wtt_fs + admin switcher"
+    content: "Register taxonomy wtt_fs as sole scaffold (default_slug / scaffold_slugs)"
     status: completed
   - id: seed-case
     content: "Case_Data seed (Definition + Implementation BOM = Name + Tabelle + Zeile)"
@@ -21,21 +21,23 @@ todos:
   - id: relations-visible
     content: "Show Composition + Relations list in case study; seed Relationstypen"
     status: completed
+  - id: retire-wtt-tree
+    content: "Retire wtt_tree from UI/seeds/pickers; Demo_Data helpers remain; retire-wtt-tree.php"
+    status: completed
 ---
 
-# Case study — `wtt_fs`
+# Case study — `wtt_fs` (gold scaffold)
 
-Parallel feature branch / taxonomy for a **schlanke Fallstudie**. Does **not** replace or rewrite `wtt_tree` / BOM Testprojekt, and is **not** planning sign-off for the overall domain model.
+**Standard product scaffold tree.** `Case_Data` is the reference seed. **`wtt_tree` / BOM Testprojekt is retired** as a parallel product tree (legacy constant + `Demo_Data` helpers only). Still **not** planning sign-off for the full domain model.
 
 ## Locked decisions
 
 | ID | Choice |
 |----|--------|
-| Taxonomy | Own `wtt_fs` (not a second root inside `wtt_tree`; renamed from interim `wtt_case`) |
-| UI | Slim detail pane when `taxonomy === wtt_fs` (`cfg.caseStudyMode`); **no Data type picker** (Flags stay); **Composition + Relations list always shown** (Q74/Q75) |
-| Git | Feature branch `feature/case-study-wtt-case` (branch name kept; slug is `wtt_fs`) |
-| Hosting | Inside `wp-taxonomy-tree` (no sibling host plugin for this slice) |
-| Hierarchy datatype (Q88) | Root **Fallstudie** typed **Knoten**; each hierarchy child datatype = parent (e.g. Definition → Fallstudie). Attribute members keep catalog field types. |
+| Taxonomy | **`wtt_fs` only** in `scaffold_slugs` / admin UI (renamed from interim `wtt_case`). `Taxonomy::TREE` kept for legacy helpers. |
+| UI | Slim detail pane (`cfg.caseStudyMode`); **no Data type picker** (Flags stay); **Composition + Relations list always shown** (Q74/Q75); no dual taxonomy switcher |
+| Seed | `Case_Data` auto-install when empty; **Reset case tree** → `Case_Data::reset` |
+| Hierarchy datatype (Q88) | Root **Fallstudie** typed **Knoten**; each hierarchy child datatype = parent. Attribute members keep catalog field types. |
 
 ## Seed outline
 
@@ -46,7 +48,7 @@ Fallstudie                    type → Knoten (root only; Q88)
 │   │   ├── int, double, text, textarea, char, bool
 │   │   ├── display_node_name
 │   │   └── media
-│   ├── Complex         (is_datatype + is_abstract)
+│   ├── Complex         (is_datatype + is_abstract)  ← Q90 parked kinds may still seed
 │   │   ├── list, table, enum (Bauart options), set
 │   │   └── node_pick → node_embed / node_ref
 │   ├── Konstanten
@@ -70,27 +72,27 @@ Fallstudie                    type → Knoten (root only; Q88)
     └── Lieferanten     (Url / Suchstring / Bewertung + supplier records)
 ```
 
-**Q88 example chain (general rule):** Fallstudie→Knoten; Definition→Fallstudie; a further child under Definition (e.g. Aggregation in the product example)→Definition; and so on. Seed may still lag on promoting every folder to `is_datatype` so children can assign the parent.
+**Q88 example chain:** Fallstudie→Knoten; Definition→Fallstudie; further children inherit father. Attribute members (`besteht_aus`) keep own field types (Q87).
 
-**Q83:** Do not nest kinds and MPNs under one Bauteile root. Categories/schemas = **Definition/Bauteilarten**; master data = **Implementation/Bauteile**. BOM `node_embed` → Bauteile records.
+**Q83:** Categories/schemas = **Definition/Bauteilarten**; master data = **Implementation/Bauteile**.
 
 ## Implementation map
 
 | Piece | Location |
 |-------|----------|
-| Taxonomy | `Taxonomy::FS`, `is_scaffold()`, `scaffold_taxonomies()` |
-| Seed / reset | `includes/class-case-data.php` (+ `ensure_relation_types`, `ensure_konstanten`, `ensure_bom_implementation`, table bands). Präfixe seed uses **live display names** (pico/nano/…); letter symbols live in `short_description`. Obsolete short siblings (p/n/u/…) are stripped on ensure when the renamed canonical exists. |
+| Taxonomy | `Taxonomy::FS`, `default_slug()`, `is_scaffold()`, `scaffold_slugs()` = `[FS]` |
+| Seed / reset | `includes/class-case-data.php` |
 | Table validator | `includes/class-table-validator.php` + `assets/js/wtt-table-validator.js` |
-| Admin boot | `Tree_Admin::build_config()` — seed case when empty; BOM ensures skipped |
-| Slim UI | `assets/js/tree-admin.js` — `caseStudyMode()`; Relations always rendered |
+| Admin boot | `Tree_Admin::build_config()` — `Case_Data::maybe_install` only |
+| Slim UI | `assets/js/tree-admin.js` — `caseStudyMode()` |
+| Retire BOM | `scripts/retire-wtt-tree.php`; `Demo_Data` class retained |
 
 ## Local DB note
 
-Terms under the old slug `wtt_case` are not migrated. Open the Fallstudie taxonomy once (empty `wtt_fs` auto-seeds) or use **Reset case tree**.
+Terms under the old slug `wtt_case` are not migrated. Empty `wtt_fs` auto-seeds on open, or use **Reset case tree**. Live `wtt_tree` terms may be deleted with `retire-wtt-tree.php`.
 
 ## Out of scope
 
-- Reworking or deleting BOM Testprojekt
-- Global UI slimming on `wtt_tree`
-- Full Basiseinheit set schema (Typ/Praefix/Kuerzel composition) under Fallstudie — catalog leaves only for now
-- Reworking BOM Testprojekt (`wtt_tree`) to the new Name+Tabelle shape (docs aligned; demo seed may lag)
+- Reviving `wtt_tree` as a second product tree
+- Treating Fallstudie as Phase-1 domain sign-off
+- Full removal of parked Complex enum/list/table seed leaves (Q90) until an explicit removal slice

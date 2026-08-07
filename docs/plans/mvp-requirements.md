@@ -2,8 +2,8 @@
 name: MVP requirements
 overview: Testable requirements for the first implementable plugin version (0.0.1 development line). Planning artifact only.
 status: draft
-version: "0.1.1-plan"
-last_updated: "2026-08-05"
+version: "0.1.2-plan"
+last_updated: "2026-08-07"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/planning-phase.md
@@ -15,7 +15,7 @@ related_plans:
 
 ## Product statement
 
-Administrators can manage one or more **hierarchical** WordPress taxonomies in a dedicated tree screen. Host plugins can later attach behavior when a term is selected. Domain-specific Composition / table-band / instance services are **not** part of this tree MVP — they remain exploratory scaffold (Fallstudie / `wtt_fs`) until planning sign-off adds them as FRs.
+Administrators can manage hierarchical WordPress taxonomies in a dedicated tree screen. Host plugins can later attach behavior when a term is selected. Domain-specific Composition / table-band / instance services are **not** part of this tree MVP — they remain exploratory scaffold on **Fallstudie (`wtt_fs`)** until planning sign-off adds them as FRs.
 
 ## Personas
 

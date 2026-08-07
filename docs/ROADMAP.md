@@ -2,9 +2,9 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.31-plan** (2026-08-07).
+Last synced from plan version **0.7.32-plan** (2026-08-07).
 
-**Current mode: scaffolding** — early runnable admin tree on **`wtt_tree`**; parallel Fallstudie **`wtt_fs`** (slim UI, **not** model sign-off). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.270`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE; **CatalogChoice** depth rule under Q90; **Q93** CatalogChoice value SoT open; **Q94** data safety (backup vs plugin JSON export) open (plan **0.7.31**). Status stays scaffolding — not Phase-1 green light.
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI (`Case_Data` = reference seed). Taxonomy = structures; **Fill Model Data** = instances. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**. Plugin ≈ **`0.0.296`**. **Q83–Q92** as in OPEN-QUESTIONS / ARCHITECTURE; **CatalogChoice** depth rule under Q90; **Q93** CatalogChoice value SoT open; **Q94** data safety open; **gold Fallstudie-only** (plan **0.7.32**). Status stays scaffolding — not Phase-1 green light.
 
 - Node presentation: **one Registry pipeline**, many type-specific renderers (Q91); Form(1)/Table(n) object surfaces (`WTTObjectRender`); samples = **name→then type** map (not methods on nodes).
 - Attribute type chooser: **`chooser_root` + `chooser_focus`** (full branch + focus), not Data-Types-only.
@@ -53,15 +53,15 @@ Last synced from plan version **0.7.31-plan** (2026-08-07).
 | Item | Status |
 |------|--------|
 | Plugin bootstrap PHP 8.x OOP (`WTT_VERSION`, text domain) | Done |
-| Dedicated taxonomy `wtt_tree` (no post categories in tree UI) | Done |
-| Parallel Fallstudie taxonomy `wtt_fs` (slim UI; not model sign-off) | Done (≈ `0.0.139`) |
+| Dedicated taxonomy `wtt_fs` Fallstudie (no post categories; gold scaffold) | Done (≈ `0.0.296`) |
+| Legacy `wtt_tree` retired from UI / seeds / pickers (`Demo_Data` helpers kept) | Done (≈ `0.0.296`) |
 | Tree model over `WP_Term` (nest, create, rename+slug sync, description, short_description, copy, move, delete) | Done |
 | Admin-AJAX + caps + nonce | Done |
-| Admin split UI (tree + detail + toolbar; Meta/Flags form-row trial) | Done |
+| Admin split UI (tree + detail + toolbar; Fallstudie slim mode) | Done |
 | Interim types: assign type, set members, table footer, required, fixed value | Done |
 | Q51 / Q75: unit set + composition members + prefix allowlist | Done |
 | Set options: separator, join units, label children; set = one Form/Table field | Done |
-| Demo BOM + Fallstudie seed + reset/sync scripts | Done |
+| Case_Data Fallstudie seed + reset (`retire-wtt-tree.php` for legacy cleanup) | Done |
 | Settings + denser chrome + picker search / adaptive path | Done (UX may reverse) |
 | Gutenberg `taxo/object-view` | Done |
 | Gutenberg `taxo/collection-table` | Done — **Q90 legacy** (do not extend) |

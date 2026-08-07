@@ -23,7 +23,8 @@ if ( ! class_exists( 'WTT\\Taxonomy' ) ) {
 	exit( 1 );
 }
 \WTT\Taxonomy::register_taxonomies();
-$taxonomy = \WTT\Taxonomy::TREE;
+/* Prefer Fallstudie; Demo_Data helpers still accept Taxonomy::TREE for legacy. */
+$taxonomy = \WTT\Taxonomy::FS;
 
 /**
  * @return int

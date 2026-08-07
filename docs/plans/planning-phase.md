@@ -1,9 +1,9 @@
 ---
 name: Planning phase
-overview: Expand and freeze product/technical planning. Early scaffold preview is allowed when the user asks; full domain implementation still waits for sign-off. Fallstudie learnings absorbed into docs (plan 0.7.17) without exiting scaffolding.
+overview: Expand and freeze product/technical planning. Early scaffold preview is allowed when the user asks; full domain implementation still waits for sign-off. Gold scaffold = Fallstudie wtt_fs only (plan 0.7.32); status stays scaffolding.
 status: active
-version: "0.1.2-plan"
-last_updated: "2026-08-05"
+version: "0.1.3-plan"
+last_updated: "2026-08-07"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -31,7 +31,7 @@ todos:
     content: "Shared Changelog/Change (timestamp, changer, change) on Project and Node"
     status: completed
   - id: absorb-fallstudie
-    content: "Absorb Fallstudie (wtt_fs) into living docs — plan 0.7.17; status stays scaffolding"
+    content: "Gold Fallstudie (wtt_fs) only — retire parallel wtt_tree; plan 0.7.32; status stays scaffolding"
     status: completed
   - id: resolve-open-questions
     content: "Resolve or defer OPEN-QUESTIONS — Q54/Q64–Q80 decided or superseded; remaining: Q53, Q81, Q82 lean, transport/storage Qs"

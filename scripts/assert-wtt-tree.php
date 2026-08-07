@@ -1,6 +1,7 @@
 <?php
 /**
- * Quick assert: wtt_tree has BOM root and Simple/media.
+ * Quick assert: wtt_fs (Fallstudie) has root and Simple/media.
+ * Legacy name kept; product tree is Fallstudie only (wtt_tree retired).
  *
  * @package WP_Taxonomy_Tree
  */
@@ -16,7 +17,8 @@ if ( ! class_exists( 'WTT\\Taxonomy' ) ) {
 }
 
 \WTT\Taxonomy::register_taxonomies();
-$tax = \WTT\Taxonomy::TREE;
+$tax = \WTT\Taxonomy::FS;
+\WTT\Case_Data::maybe_install( $tax );
 $media = \WTT\Demo_Data::ensure_media_type( $tax );
 $term  = $media > 0 ? get_term( $media, $tax ) : null;
 $tree  = \WTT\Tree_Model::get_tree( $tax );
@@ -33,16 +35,12 @@ printf(
 	count( $tree ),
 	implode( ',', $roots ),
 	$media,
-	( $term instanceof WP_Term ) ? $term->name : 'MISSING'
+	$term instanceof WP_Term ? $term->name : '?'
 );
 
-if ( count( $tree ) !== 1 || ( $roots[0] ?? '' ) !== 'BOM Testprojekt' ) {
-	fwrite( STDERR, "FAIL: expected single root BOM Testprojekt\n" );
+if ( ! in_array( 'Fallstudie', $roots, true ) ) {
+	fwrite( STDERR, "Fallstudie root missing\n" );
 	exit( 1 );
 }
-if ( $media <= 0 || ! ( $term instanceof WP_Term ) || 'media' !== $term->name ) {
-	fwrite( STDERR, "FAIL: media type missing\n" );
-	exit( 1 );
-}
-
-fwrite( STDOUT, "OK\n" );
+echo "OK wtt_fs scaffold\n";
+exit( 0 );

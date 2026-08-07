@@ -3,7 +3,7 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Scaffolding ≈ **`0.0.296`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie is exploratory — not model sign-off.** Docs absorb Fallstudie learnings (plan **0.7.30**); status stays scaffolding.  
+**Status:** Scaffolding ≈ **`0.0.296`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie = gold scaffold shape — not Phase-1 model sign-off.** Docs overwrite dual-tree assumptions (plan **0.7.32**); status stays scaffolding.  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode
@@ -37,7 +37,7 @@ WP Taxonomy Tree is a WordPress plugin that will provide a **taxonomy tree envir
 - A **root node** is the same **Node** object with **no `child_of`** parent (not a different type).
 - A **project** is practically the **taxonomy** (**Q18** strong leaning); Trees live under the Project; Nodes have no taxonomy field.
 - Default Nodes (Definitionsbaum + simples + quantity / units): **lean template Project copy** (**Q50**); generate remains a fallback.
-- **Pure Template** (**read-only**) = Datentypen (simples; **no** product reliance on catalog `enum`/`list`/`table` — **Q90**) + Präfix + Standard-Basiseinheiten (Meter, Liter, …); **BOM demo** belongs in an **editable BOM Testprojekt**.
+- **Pure Template** (**read-only**) = Datentypen (simples; **no** product reliance on catalog `enum`/`list`/`table` — **Q90**) + Präfix + Standard-Basiseinheiten (Meter, Liter, …); editable product examples live under Fallstudie **Implementation** (BOM / Bauteile), not a parallel `wtt_tree` project.
 - **Project** always has a **Definitionsbaum** and stores anchors for Type, Präfix, Basiseinheit, **Relationstypen**.
 - A filled **quantity** (*Größe*, not Messung) is **value + prefix + unit** (e.g. `10 mm`); composite from `int`/`double` + Präfix + Basiseinheit.
 - **Eigenschaften (property slots)** = **typed child Nodes** under a domain Node (`type_id` → Typ-Ast / unit).

@@ -1,9 +1,8 @@
 <?php
 /**
- * Sync Demo_Data blueprint into the live taxonomy (non-destructive).
+ * Sync Demo_Data blueprint into legacy wtt_tree (non-destructive).
  *
- * Adds missing blueprint nodes and re-applies type / fixed / required / branch meta.
- * Does not delete user-created terms outside the blueprint paths.
+ * Product scaffold uses Case_Data / wtt_fs. This script remains for Demo_Data helpers only.
  *
  * Usage (from WordPress root):
  *   php wp-cli.phar --user=admin eval-file path/to/sync-demo-tree.php

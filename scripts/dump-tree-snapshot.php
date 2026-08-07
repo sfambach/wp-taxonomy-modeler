@@ -5,7 +5,7 @@
  * Usage (from WordPress root):
  *   php wp-cli.phar --user=admin eval-file path/to/dump-tree-snapshot.php
  *   php wp-cli.phar --user=admin eval-file path/to/dump-tree-snapshot.php category
- *   php wp-cli.phar --user=admin eval-file path/to/dump-tree-snapshot.php wtt_tree
+ *   php wp-cli.phar --user=admin eval-file path/to/dump-tree-snapshot.php wtt_fs
  *
  * @package WP_Taxonomy_Tree
  */

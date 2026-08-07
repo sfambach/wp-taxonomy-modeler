@@ -2,8 +2,8 @@
 name: Data structure — Project, Node, Changelog
 overview: Core objects Project, Node (property slots as typed children), Relation/RelationType-as-Nodes, Changelog. Hierarchy = protected child_of Relation (Q54). Inheritance along child_of (Q66 slots; Q88 hierarchy datatype = parent). Parameter class discarded. Planning artifact only.
 status: draft
-version: "0.7.27-plan"
-last_updated: "2026-08-06"
+version: "0.7.28-plan"
+last_updated: "2026-08-07"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md

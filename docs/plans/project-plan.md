@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.31-plan"
+version: "0.7.32-plan"
 last_updated: "2026-08-07"
 related_docs:
   - README.md
@@ -61,7 +61,10 @@ todos:
     content: "Secure Admin-AJAX endpoints (capability + nonce) for the tree UI"
     status: completed
   - id: scaffold-types-units
-    content: "Interim type/set/fixed/allowlist meta + Basiseinheit unit=set; demo BOM Testprojekt seed"
+    content: "Interim type/set/fixed/allowlist meta + Basiseinheit unit=set; Case_Data Fallstudie seed (wtt_fs)"
+    status: completed
+  - id: scaffold-fallstudie-only
+    content: "Single product taxonomy wtt_fs; retire wtt_tree from UI/seeds/pickers (Demo_Data helpers kept)"
     status: completed
   - id: scaffold-settings-preview
     content: "Plugin settings (test mode, tree labels, set child props, save-via-button) + unified Form/Table preview"
@@ -100,11 +103,15 @@ Still in parallel:
 - living documentation / open questions / MVP requirements
 - exploring UX in the scaffold (may reverse preview experiments — see `.cursor/rules/preview-checkpoints.mdc`)
 
-**Not yet:** treating the scaffold or Fallstudie as planning sign-off; real Relation edge table (still term-meta); Composition instance rows beyond block attrs; host extension API; returning to “main” BOM domain implementation without an explicit ask.
+**Not yet:** treating the scaffold as planning sign-off; real Relation edge table (still term-meta); Composition instance rows beyond block attrs; host extension API without an explicit ask.
+
+## Gold scaffold shape (2026-08-07)
+
+**Single product taxonomy = Fallstudie (`wtt_fs`).** `Case_Data` is the reference seed. **`wtt_tree` / BOM Testprojekt is retired** from UI, auto-seed, and block pickers (`Taxonomy::TREE` + `Demo_Data` helpers remain for legacy scripts / cleanup only). **Status stays `scaffolding`** — not Phase-1 / domain sign-off.
 
 ## Fallstudie → planning absorb (2026-08-05)
 
-Parallel taxonomy **`wtt_fs`** proved the working model below. **Status stays `scaffolding`** — absorb into docs only; do **not** treat this as Phase-1 / domain sign-off.
+Fallstudie **`wtt_fs`** proved the working model below (now the only standard scaffold tree). **Status stays `scaffolding`** — absorb into docs only; do **not** treat this as Phase-1 / domain sign-off.
 
 | Proven in Fallstudie | Planning consequence |
 |----------------------|----------------------|
@@ -160,28 +167,28 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 - Planning checklist, MVP requirements, open questions, and data structure (**Project**, **Node**; tree = root node; Eigenschaften = typed children).
 - Local WordPress development environment (Windows Laragon + Cloud VM notes).
 
-### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.270`)
+### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.296`)
 
-Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP terms + term meta. Parallel Fallstudie **`wtt_fs`** (slim UI) explores Definition / Implementation without replacing `wtt_tree`.
+Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP terms + term meta. **Only** Fallstudie **`wtt_fs`** (`Case_Data`); slim Definition / Implementation UI.
 
 | Area | Scaffold status |
 |------|-----------------|
-| Bootstrap | PHP 8.x OOP plugin (`WTT_VERSION`); text domain `wp-taxonomy-tree`; taxonomies **`wtt_tree`** + **`wtt_fs`** |
+| Bootstrap | PHP 8.x OOP plugin (`WTT_VERSION`); text domain `wp-taxonomy-tree`; **standard taxonomy `wtt_fs` only** (`wtt_tree` legacy constant / Demo_Data helpers) |
 | Tree model | Nest / walk / create / rename (**slug sync** from name) / description / short_description / copy sibling / move ↑↓ / delete (promote \| cascade) |
 | Transport | **Admin-AJAX** + nonce + taxonomy caps (Q1 leaning for admin MVP) |
-| Admin UI | Split tree + detail; expand/collapse + selection persistence; toolbar Add child / Copy / Save / Undo / Delete; detail **Meta** / **Flags** form-row trial (`flagsAsFormRow`); case-study slim mode |
+| Admin UI | Split tree + detail; expand/collapse + selection persistence; toolbar Add child / Copy / Save / Undo / Delete; detail **Meta** / **Flags**; Fallstudie slim mode (no dual taxonomy switcher) |
 | Types (interim) | **Q88:** hierarchy datatype = parent (root = **Knoten**; type UI read-only for typed-as-parent). Attribute / catalog field types still chooser (`is_datatype`); **Q76** inherit+override = scaffold interim for catalog types; **Q77** local `is_abstract`; `set` / `table` / simples; required; fixed |
 | Q51 / Q75 | Basiseinheit unit = **set**; members = outgoing **`composition`** (Typ + optional Praefix + fixed Kuerzel); allowlist; display compose (mm / kΩ) |
 | Q74 Relations | `class-relation.php`; `_wtt_relations` JSON (edge ids + **multiplicity Q78**); Relationstypen seed; AJAX CRUD; UI von/an |
-| Table / BOM | **BOM** = Name + Tabelle via composition; bands Zeile/Kopf?/Fuss? via **`_wtt_prop_bindings`**; validator; Fuss **`_wtt_footer_op`** + Aggregate catalog (**Q57**); Bindings→Rules→Fixes (**Q80**) |
+| Table / BOM | **BOM** under Implementation = Name + Tabelle via composition; bands Zeile/Kopf?/Fuss? via **`_wtt_prop_bindings`**; validator; Fuss **`_wtt_footer_op`** + Aggregate catalog (**Q57**); Bindings→Rules→Fixes (**Q80**) — **Q90** table kind legacy |
 | Set options | Term meta: `setSeparator`, `setJoinUnits`, `setLabelChildren`; Form/Table treat multi-member set as **one field** |
 | short_description | `_wtt_short_description`; labels, help, tooltips, dropdowns |
-| Demo seed | BOM Testprojekt (`wtt_tree`) + Fallstudie seed (`wtt_fs` / `Case_Data`); sync/reset scripts |
+| Demo seed | **`Case_Data`** on `wtt_fs` (reference); `Demo_Data` helpers kept for legacy scripts; `scripts/retire-wtt-tree.php` clears live `wtt_tree` |
 | Settings | Test mode; show type in tree; show set child properties; save-via-button |
 | Preview | Attribute hosts: **Form(1)+Table(n)** × edit/readonly via `WTTObjectRender`; samples name→type map; units/media legacy paths remain |
 | Fill Model Data | Working page before Settings; instances in option `wtt_model_instances` |
 | Catalog bindings (Q92) | `chooser_root` + `chooser_focus` (term ids); legacy `data_types`/`simple`/`complex` |
-| Block | **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy** |
+| Block | **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**; pickers use `scaffold_slugs()` → FS only |
 | Dropdowns / pickers | Shared selects; tree picker + search; multiplicity: required `1`/`1..*` → swap only (no clear) |
 | Not in scaffold | Real Relation edge table (still term-meta); Q66 inherit UI; unique band bindings (**Q81** UAT); Q82 fixed-Fuss labels; Composition instance services beyond block attrs; REST; host hooks; `child_of` as sole hierarchy persistence (term_parent still used); removal of parked enum/list/table scaffold |
 
@@ -381,6 +388,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-06 | **CatalogChoice UI (Q90 note):** Attribute type with specialization children — max choice-subtree depth ≤ 1 → flat `<select>`; depth ≥ 2 → tree chooser; Festwert seeds selection. Typed choice under type host only (e.g. Währung), not every product picker. Docs + admin-ux rule; no new Q id. Plan **0.7.29**. |
 | 2026-08-06 | **Q93 opened:** CatalogChoice **value SoT** when type host and/or selected child has attributes — node id only vs id + instance values (host / child / both). UI chrome stays Q90; no Choice object. Plan **0.7.30**. |
 | 2026-08-07 | **Q94 opened:** Data safety — lean full site/DB backup for DR; WXR insufficient for unbound taxonomies + options + ID graphs; plugin JSON export/import later (copy tree); no admin Export now. Plan **0.7.31**. |
+| 2026-08-07 | **Gold scaffold = Fallstudie only:** product taxonomy **`wtt_fs`**; **`wtt_tree` / BOM Testprojekt retired** from UI, seeds, pickers; `Case_Data` = reference seed; `Demo_Data` helpers kept; live `wtt_tree` terms deleted via `retire-wtt-tree.php`. Scaffold ≈ **`0.0.296`**. Plan **0.7.32**. |
 
 ## Change protocol
 

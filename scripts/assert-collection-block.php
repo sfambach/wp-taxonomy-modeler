@@ -1,15 +1,16 @@
 <?php
 /**
  * Smoke: list table Collections + render sample HTML for first with columns.
+ * Uses standard scaffold taxonomy wtt_fs (Fallstudie).
  *
  * Usage: wp eval-file …/scripts/assert-collection-block.php
  *
  * @package WP_Taxonomy_Tree
  */
 
-$tax = \WTT\Taxonomy::TREE;
-\WTT\Demo_Data::ensure_media_type( $tax );
-\WTT\Demo_Data::ensure_bom_columns( $tax );
+$tax = \WTT\Taxonomy::FS;
+\WTT\Taxonomy::register_taxonomies();
+\WTT\Case_Data::maybe_install( $tax );
 
 $list = \WTT\Composition::list_table_collections( $tax );
 echo 'Collections: ' . count( $list ) . PHP_EOL;
