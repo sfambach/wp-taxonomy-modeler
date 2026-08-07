@@ -2,8 +2,8 @@
 name: Case study (wtt_fs)
 overview: Parallel slim taxonomy tree for Definition / Implementation exploration — not a model sign-off for the full BOM domain.
 status: scaffolding
-version: "0.1.6-slice"
-last_updated: "2026-08-06"
+version: "0.1.7-slice"
+last_updated: "2026-08-07"
 related_docs:
   - docs/plans/project-plan.md
   - docs/ROADMAP.md
@@ -50,7 +50,7 @@ Fallstudie                    type → Knoten (root only; Q88)
 │   │   ├── list, table, enum (Bauart options), set
 │   │   └── node_pick → node_embed / node_ref
 │   ├── Konstanten
-│   │   ├── Präfixe (p, n, u, m, c, k, Mega + multiplikator)
+│   │   ├── Präfixe (pico, nano, Micro, Milli, Centi, Kilo, Mega; short_description = p/n/u/m/c/k)
 │   │   └── Basiseinheiten (… + Henry, Hertz, Stück)
 │   ├── Eigene Datentypen
 │   ├── Knoten                (base type catalog leaf for roots)
@@ -79,7 +79,7 @@ Fallstudie                    type → Knoten (root only; Q88)
 | Piece | Location |
 |-------|----------|
 | Taxonomy | `Taxonomy::FS`, `is_scaffold()`, `scaffold_taxonomies()` |
-| Seed / reset | `includes/class-case-data.php` (+ `ensure_relation_types`, `ensure_konstanten`, `ensure_bom_implementation`, table bands) |
+| Seed / reset | `includes/class-case-data.php` (+ `ensure_relation_types`, `ensure_konstanten`, `ensure_bom_implementation`, table bands). Präfixe seed uses **live display names** (pico/nano/…); letter symbols live in `short_description`. Obsolete short siblings (p/n/u/…) are stripped on ensure when the renamed canonical exists. |
 | Table validator | `includes/class-table-validator.php` + `assets/js/wtt-table-validator.js` |
 | Admin boot | `Tree_Admin::build_config()` — seed case when empty; BOM ensures skipped |
 | Slim UI | `assets/js/tree-admin.js` — `caseStudyMode()`; Relations always rendered |

@@ -142,50 +142,61 @@ final class Case_Data {
 		$simple_leaves  = self::simple_datatype_leaves();
 		$complex_leaves = self::complex_datatype_leaves();
 
+		/*
+		 * Display names mirror the live Fallstudie tree (full SI names).
+		 * short_description keeps the letter symbol (p/n/u/…). aliases = obsolete
+		 * short seed names so ensure_term renames instead of duplicating.
+		 */
 		$prefix_leaves = array(
 			array(
-				'name'              => 'p',
-				'short_description' => 'Pico',
+				'name'              => 'pico',
+				'aliases'           => array( 'p' ),
+				'short_description' => 'p',
 				'description'       => 'SI prefix pico (10⁻¹²).',
 				'multiplikator'     => 1.0e-12,
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
-				'name'              => 'n',
-				'short_description' => 'Nano',
+				'name'              => 'nano',
+				'aliases'           => array( 'n' ),
+				'short_description' => 'n',
 				'description'       => 'SI prefix nano (10⁻⁹).',
 				'multiplikator'     => 1.0e-9,
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
-				'name'              => 'u',
-				'short_description' => 'Micro',
+				'name'              => 'Micro',
+				'aliases'           => array( 'u', 'µ', 'micro' ),
+				'short_description' => 'u',
 				'description'       => 'SI prefix micro (10⁻⁶).',
 				'multiplikator'     => 1.0e-6,
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
-				'name'              => 'm',
-				'short_description' => 'Milli',
+				'name'              => 'Milli',
+				'aliases'           => array( 'm', 'milli' ),
+				'short_description' => 'm',
 				'description'       => 'SI prefix milli (10⁻³); with Meter → mm.',
 				'multiplikator'     => 1.0e-3,
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
-				'name'              => 'c',
-				'short_description' => 'Centi',
+				'name'              => 'Centi',
+				'aliases'           => array( 'c', 'centi' ),
+				'short_description' => 'c',
 				'description'       => 'SI prefix centi (10⁻²).',
 				'multiplikator'     => 1.0e-2,
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
-				'name'              => 'k',
-				'short_description' => 'Kilo',
+				'name'              => 'Kilo',
+				'aliases'           => array( 'k', 'kilo' ),
+				'short_description' => 'k',
 				'description'       => 'SI prefix kilo (10³).',
 				'multiplikator'     => 1.0e3,
 				'is_datatype'       => true,
@@ -193,6 +204,7 @@ final class Case_Data {
 			),
 			array(
 				'name'              => 'Mega',
+				'aliases'           => array( 'M' ),
 				'short_description' => 'Mega',
 				'description'       => 'SI prefix mega (10⁶); name Mega avoids slug clash with milli m.',
 				'multiplikator'     => 1.0e6,
@@ -207,14 +219,14 @@ final class Case_Data {
 			array(
 				'name'              => 'Meter',
 				'short_description' => 'm',
-				'description'       => 'Length; prefixes u/m/c/k.',
+				'description'       => 'Length; prefixes Micro/Milli/Centi/Kilo.',
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Liter',
 				'short_description' => 'l',
-				'description'       => 'Volume; prefixes m/c/k.',
+				'description'       => 'Volume; prefixes Milli/Centi/Kilo.',
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
@@ -228,7 +240,7 @@ final class Case_Data {
 			array(
 				'name'              => 'Sekunde',
 				'short_description' => 's',
-				'description'       => 'Time; prefixes p/n/u/m.',
+				'description'       => 'Time; prefixes pico/nano/Micro/Milli.',
 				'is_datatype'       => true,
 				'is_abstract'       => false,
 			),
@@ -677,9 +689,68 @@ final class Case_Data {
 			Trash::restore_subtree( $taxonomy, $parent_id );
 			Node_Type::set_deletable( $parent_id, false );
 			self::configure_konstanten_bauformen( $taxonomy, $parent_id );
+			self::strip_obsolete_prefix_aliases( $taxonomy, $parent_id );
 		}
 
 		Demo_Data::ensure_prefix_multiplikators( $taxonomy );
+	}
+
+	/**
+	 * Map of obsolete short SI seed names → canonical display names under Präfixe.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function obsolete_prefix_alias_map(): array {
+		return array(
+			'p'     => 'pico',
+			'n'     => 'nano',
+			'u'     => 'Micro',
+			'µ'     => 'Micro',
+			'micro' => 'Micro',
+			'm'     => 'Milli',
+			'milli' => 'Milli',
+			'c'     => 'Centi',
+			'centi' => 'Centi',
+			'k'     => 'Kilo',
+			'kilo'  => 'Kilo',
+		);
+	}
+
+	/**
+	 * Remove obsolete short-name Präfixe siblings when the renamed canonical exists.
+	 * Keeps the live renamed terms (pico/nano/…); moves leftovers to Trash.
+	 */
+	private static function strip_obsolete_prefix_aliases( string $taxonomy, int $konstanten_id ): void {
+		$praefixe_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Präfixe' )
+		);
+		if ( $praefixe_id <= 0 ) {
+			$praefixe_id = self::find_child_named( $taxonomy, $konstanten_id, 'Präfixe' );
+		}
+		if ( $praefixe_id <= 0 ) {
+			$praefixe_id = self::find_child_named( $taxonomy, $konstanten_id, 'Praefixe' );
+		}
+		if ( $praefixe_id <= 0 ) {
+			return;
+		}
+
+		foreach ( self::obsolete_prefix_alias_map() as $obsolete => $canonical ) {
+			if ( $obsolete === $canonical ) {
+				continue;
+			}
+			$obs_id = self::find_child_named( $taxonomy, $praefixe_id, $obsolete );
+			if ( $obs_id <= 0 ) {
+				continue;
+			}
+			$can_id = self::find_child_named( $taxonomy, $praefixe_id, $canonical );
+			if ( $can_id <= 0 || $can_id === $obs_id ) {
+				continue;
+			}
+			/* Prefer keeping the canonical; trash the obsolete short duplicate. */
+			Node_Type::set_deletable( $obs_id, true );
+			Tree_Model::delete_term( $taxonomy, $obs_id, 'leaf' );
+		}
 	}
 
 	/**
@@ -2290,7 +2361,26 @@ final class Case_Data {
 			}
 
 			$description = isset( $node['description'] ) ? (string) $node['description'] : '';
-			$term_id     = self::ensure_term( $taxonomy, $name, $parent_id, $description, $created, $existing );
+			$aliases     = array();
+			if ( isset( $node['aliases'] ) && is_array( $node['aliases'] ) ) {
+				foreach ( $node['aliases'] as $alias ) {
+					$alias = is_string( $alias ) ? trim( $alias ) : '';
+					if ( '' !== $alias && $alias !== $name ) {
+						$aliases[] = $alias;
+					}
+				}
+			}
+			$slug    = isset( $node['slug'] ) ? sanitize_title( (string) $node['slug'] ) : '';
+			$term_id = self::ensure_term(
+				$taxonomy,
+				$name,
+				$parent_id,
+				$description,
+				$created,
+				$existing,
+				$aliases,
+				$slug
+			);
 			if ( $term_id <= 0 ) {
 				continue;
 			}
@@ -2331,14 +2421,112 @@ final class Case_Data {
 		}
 	}
 
+	/**
+	 * Idempotent term ensure: match by name, then slug, then aliases (rename alias → name).
+	 *
+	 * @param array<int, string> $aliases Former names under the same parent.
+	 */
 	private static function ensure_term(
 		string $taxonomy,
 		string $name,
 		int $parent_id,
 		string $description,
 		int &$created,
-		int &$existing
+		int &$existing,
+		array $aliases = array(),
+		string $slug = ''
 	): int {
+		$term = self::find_child_term( $taxonomy, $parent_id, $name );
+		if ( $term instanceof \WP_Term ) {
+			++$existing;
+			return self::refresh_existing_term( $taxonomy, $term, $description, $slug );
+		}
+
+		if ( '' !== $slug ) {
+			$by_slug = self::find_child_by_slug( $taxonomy, $parent_id, $slug );
+			if ( $by_slug instanceof \WP_Term ) {
+				++$existing;
+				if ( $by_slug->name !== $name ) {
+					wp_update_term(
+						(int) $by_slug->term_id,
+						$taxonomy,
+						array(
+							'name' => $name,
+							'slug' => $slug,
+						)
+					);
+					$by_slug = get_term( (int) $by_slug->term_id, $taxonomy );
+				}
+				if ( $by_slug instanceof \WP_Term ) {
+					return self::refresh_existing_term( $taxonomy, $by_slug, $description, $slug );
+				}
+			}
+		}
+
+		foreach ( $aliases as $alias ) {
+			$alias_term = self::find_child_term( $taxonomy, $parent_id, $alias );
+			if ( ! $alias_term instanceof \WP_Term ) {
+				continue;
+			}
+			/*
+			 * Alias found and canonical missing: rename in place (stable term_id).
+			 * When both exist, strip_obsolete_* removes the alias sibling later.
+			 */
+			$canonical = self::find_child_term( $taxonomy, $parent_id, $name );
+			if ( $canonical instanceof \WP_Term ) {
+				break;
+			}
+			$update = array( 'name' => $name );
+			if ( '' !== $slug ) {
+				$update['slug'] = $slug;
+			}
+			$renamed = wp_update_term( (int) $alias_term->term_id, $taxonomy, $update );
+			if ( is_wp_error( $renamed ) ) {
+				continue;
+			}
+			$alias_term = get_term( (int) $alias_term->term_id, $taxonomy );
+			if ( $alias_term instanceof \WP_Term ) {
+				++$existing;
+				return self::refresh_existing_term( $taxonomy, $alias_term, $description, $slug );
+			}
+		}
+
+		$insert = array(
+			'parent'      => max( 0, $parent_id ),
+			'description' => $description,
+		);
+		if ( '' !== $slug ) {
+			$insert['slug'] = $slug;
+		}
+
+		$result = wp_insert_term( $name, $taxonomy, $insert );
+
+		if ( is_wp_error( $result ) ) {
+			if ( 'term_exists' === $result->get_error_code() ) {
+				$term_id = (int) $result->get_error_data();
+				if ( $term_id > 0 ) {
+					++$existing;
+					$existing_term = get_term( $term_id, $taxonomy );
+					if ( $existing_term instanceof \WP_Term ) {
+						return self::refresh_existing_term( $taxonomy, $existing_term, $description, $slug );
+					}
+					return $term_id;
+				}
+			}
+			return 0;
+		}
+
+		++$created;
+		return (int) $result['term_id'];
+	}
+
+	/**
+	 * @return \WP_Term|null
+	 */
+	private static function find_child_term( string $taxonomy, int $parent_id, string $name ) {
+		if ( '' === $name ) {
+			return null;
+		}
 		$found = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
@@ -2348,44 +2536,54 @@ final class Case_Data {
 				'number'     => 1,
 			)
 		);
-
 		if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
-			++$existing;
-			$term_id = (int) $found[0]->term_id;
-			if ( Trash::is_trashed( $term_id ) ) {
-				Trash::restore_subtree( $taxonomy, $term_id );
-			}
-			if ( '' !== $description && Tree_Model::decode_term_description( (string) $found[0]->description ) !== $description ) {
-				wp_update_term(
-					$term_id,
-					$taxonomy,
-					array( 'description' => $description )
-				);
-			}
-			return $term_id;
+			return $found[0];
 		}
+		return null;
+	}
 
-		$result = wp_insert_term(
-			$name,
-			$taxonomy,
+	/**
+	 * @return \WP_Term|null
+	 */
+	private static function find_child_by_slug( string $taxonomy, int $parent_id, string $slug ) {
+		if ( '' === $slug ) {
+			return null;
+		}
+		$found = get_terms(
 			array(
-				'parent'      => max( 0, $parent_id ),
-				'description' => $description,
+				'taxonomy'   => $taxonomy,
+				'slug'       => $slug,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 1,
 			)
 		);
-
-		if ( is_wp_error( $result ) ) {
-			if ( 'term_exists' === $result->get_error_code() ) {
-				$term_id = (int) $result->get_error_data();
-				if ( $term_id > 0 ) {
-					++$existing;
-					return $term_id;
-				}
-			}
-			return 0;
+		if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
+			return $found[0];
 		}
+		return null;
+	}
 
-		++$created;
-		return (int) $result['term_id'];
+	private static function refresh_existing_term(
+		string $taxonomy,
+		\WP_Term $term,
+		string $description,
+		string $slug = ''
+	): int {
+		$term_id = (int) $term->term_id;
+		if ( Trash::is_trashed( $term_id ) ) {
+			Trash::restore_subtree( $taxonomy, $term_id );
+		}
+		$update = array();
+		if ( '' !== $description && Tree_Model::decode_term_description( (string) $term->description ) !== $description ) {
+			$update['description'] = $description;
+		}
+		if ( '' !== $slug && $term->slug !== $slug ) {
+			$update['slug'] = $slug;
+		}
+		if ( ! empty( $update ) ) {
+			wp_update_term( $term_id, $taxonomy, $update );
+		}
+		return $term_id;
 	}
 }

@@ -1,0 +1,1399 @@
+{
+    "exportedAt": "2026-08-07T05:56:05+00:00",
+    "taxonomy": "wtt_fs",
+    "plugin": "0.0.286",
+    "tree": [
+        {
+            "id": 1668,
+            "name": "Fallstudie",
+            "slug": "fallstudie",
+            "description": "Case-study Project: Definition (types + constants) and empty Implementation. Parallel to BOM Testprojekt — not a model sign-off.",
+            "shortDescription": "",
+            "typeId": 2865,
+            "typeName": "",
+            "required": false,
+            "position": 0,
+            "children": [
+                {
+                    "id": 1669,
+                    "name": "Definition",
+                    "slug": "definition",
+                    "description": "Type catalog and constant folders for the case study.",
+                    "shortDescription": "",
+                    "typeId": 1668,
+                    "typeName": "",
+                    "required": false,
+                    "position": 0,
+                    "children": [
+                        {
+                            "id": 2816,
+                            "name": "Aggregate",
+                            "slug": "aggregate",
+                            "description": "Fuss aggregate operations (Q57). Op is chosen on each Fuss field slot; type stays the column value type.",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": [
+                                {
+                                    "id": 2820,
+                                    "name": "avg",
+                                    "slug": "avg",
+                                    "description": "Average",
+                                    "shortDescription": "Ø",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2823,
+                                    "name": "count",
+                                    "slug": "count",
+                                    "description": "Count",
+                                    "shortDescription": "n",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2822,
+                                    "name": "max",
+                                    "slug": "max",
+                                    "description": "Maximum",
+                                    "shortDescription": "max",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2821,
+                                    "name": "min",
+                                    "slug": "min",
+                                    "description": "Minimum",
+                                    "shortDescription": "min",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2817,
+                                    "name": "none",
+                                    "slug": "none",
+                                    "description": "None",
+                                    "shortDescription": "",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2819,
+                                    "name": "sum",
+                                    "slug": "sum",
+                                    "description": "Sum",
+                                    "shortDescription": "Σ",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2818,
+                                    "name": "text",
+                                    "slug": "text",
+                                    "description": "Text",
+                                    "shortDescription": "",
+                                    "typeId": 2816,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2865,
+                            "name": "Knoten",
+                            "slug": "knoten",
+                            "description": "General assignable node type (project roots and ordinary nodes).",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 1,
+                            "children": []
+                        },
+                        {
+                            "id": 2928,
+                            "name": "Konstanten",
+                            "slug": "konstanten",
+                            "description": "SI prefixes and base units (catalog).",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 2,
+                            "children": [
+                                {
+                                    "id": 2929,
+                                    "name": "Präfixe",
+                                    "slug": "praefixe",
+                                    "description": "SI prefixes. multiplikator = scale vs the unit’s prefix root (Q51).",
+                                    "shortDescription": "",
+                                    "typeId": 2928,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": [
+                                        {
+                                            "id": 2994,
+                                            "name": "p",
+                                            "slug": "p",
+                                            "description": "SI prefix pico (10⁻¹²).",
+                                            "shortDescription": "Pico",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2930,
+                                            "name": "pico",
+                                            "slug": "pico",
+                                            "description": "SI prefix pico (10⁻¹²).",
+                                            "shortDescription": "p",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2995,
+                                            "name": "n",
+                                            "slug": "n",
+                                            "description": "SI prefix nano (10⁻⁹).",
+                                            "shortDescription": "Nano",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2931,
+                                            "name": "nano",
+                                            "slug": "nano",
+                                            "description": "SI prefix nano (10⁻⁹).",
+                                            "shortDescription": "n",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2932,
+                                            "name": "Micro",
+                                            "slug": "micro",
+                                            "description": "SI prefix micro (10⁻⁶).",
+                                            "shortDescription": "u",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2996,
+                                            "name": "u",
+                                            "slug": "u",
+                                            "description": "SI prefix micro (10⁻⁶).",
+                                            "shortDescription": "Micro",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2997,
+                                            "name": "m",
+                                            "slug": "m",
+                                            "description": "SI prefix milli (10⁻³); with Meter → mm.",
+                                            "shortDescription": "Milli",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2933,
+                                            "name": "Milli",
+                                            "slug": "milli",
+                                            "description": "SI prefix milli (10⁻³); with Meter → mm.",
+                                            "shortDescription": "m",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2998,
+                                            "name": "c",
+                                            "slug": "c",
+                                            "description": "SI prefix centi (10⁻²).",
+                                            "shortDescription": "Centi",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2934,
+                                            "name": "Centi",
+                                            "slug": "centi",
+                                            "description": "SI prefix centi (10⁻²).",
+                                            "shortDescription": "c",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2999,
+                                            "name": "k",
+                                            "slug": "k",
+                                            "description": "SI prefix kilo (10³).",
+                                            "shortDescription": "Kilo",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2935,
+                                            "name": "Kilo",
+                                            "slug": "kilo",
+                                            "description": "SI prefix kilo (10³).",
+                                            "shortDescription": "k",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2936,
+                                            "name": "Mega",
+                                            "slug": "mega",
+                                            "description": "SI prefix mega (10⁶); name Mega avoids slug clash with milli m.",
+                                            "shortDescription": "Mega",
+                                            "typeId": 2929,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 6,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 2937,
+                                    "name": "Basiseinheiten",
+                                    "slug": "basiseinheiten",
+                                    "description": "Base units (catalog). Short description = symbol / Kuerzel.",
+                                    "shortDescription": "",
+                                    "typeId": 2928,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": [
+                                        {
+                                            "id": 2938,
+                                            "name": "Meter",
+                                            "slug": "meter",
+                                            "description": "Length; prefixes u/m/c/k.",
+                                            "shortDescription": "m",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2939,
+                                            "name": "Liter",
+                                            "slug": "liter",
+                                            "description": "Volume; prefixes m/c/k.",
+                                            "shortDescription": "l",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2940,
+                                            "name": "Kilogramm",
+                                            "slug": "kilogramm",
+                                            "description": "SI base kg; prefixes attach to gram (mg/kg/Mg).",
+                                            "shortDescription": "g",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2941,
+                                            "name": "Sekunde",
+                                            "slug": "sekunde",
+                                            "description": "Time; prefixes p/n/u/m.",
+                                            "shortDescription": "s",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2942,
+                                            "name": "Kelvin",
+                                            "slug": "kelvin",
+                                            "description": "Thermodynamic temperature; no prefixes.",
+                                            "shortDescription": "K",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2943,
+                                            "name": "Celsius",
+                                            "slug": "celsius",
+                                            "description": "Celsius temperature; no SI prefixes.",
+                                            "shortDescription": "°C",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2944,
+                                            "name": "Ampere",
+                                            "slug": "ampere",
+                                            "description": "Electric current.",
+                                            "shortDescription": "A",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 6,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2945,
+                                            "name": "Ohm",
+                                            "slug": "ohm",
+                                            "description": "Resistance; k+Ω → kΩ.",
+                                            "shortDescription": "Ω",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 7,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2946,
+                                            "name": "Farad",
+                                            "slug": "farad",
+                                            "description": "Capacitance; no k/Mega.",
+                                            "shortDescription": "F",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 8,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2947,
+                                            "name": "Watt",
+                                            "slug": "watt",
+                                            "description": "Power.",
+                                            "shortDescription": "W",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 9,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2948,
+                                            "name": "Volt",
+                                            "slug": "volt",
+                                            "description": "Voltage.",
+                                            "shortDescription": "V",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 10,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2949,
+                                            "name": "Henry",
+                                            "slug": "henry",
+                                            "description": "Inductance; DigiKey Inductors / Coils / Chokes.",
+                                            "shortDescription": "H",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 11,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2950,
+                                            "name": "Hertz",
+                                            "slug": "hertz",
+                                            "description": "Frequency; crystals / oscillators.",
+                                            "shortDescription": "Hz",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 12,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2951,
+                                            "name": "Stück",
+                                            "slug": "stueck",
+                                            "description": "Count / Menge; no prefixes.",
+                                            "shortDescription": "Stk",
+                                            "typeId": 2937,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 13,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 3000,
+                                    "name": "Bauformen",
+                                    "slug": "bauformen",
+                                    "description": "Package / footprint constants (axial, radial, SMD sizes).",
+                                    "shortDescription": "",
+                                    "typeId": 2928,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": [
+                                        {
+                                            "id": 3009,
+                                            "name": "Durchloch Axial",
+                                            "slug": "durchloch-axial",
+                                            "description": "Leads left/right of body (e.g. resistors, older capacitors).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3010,
+                                            "name": "Durchloch Radial",
+                                            "slug": "durchloch-radial",
+                                            "description": "Both leads on one side (e.g. many capacitors).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3011,
+                                            "name": "SMD 0201",
+                                            "slug": "smd-0201",
+                                            "description": "Imperial 0201 (metric 0603).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3012,
+                                            "name": "SMD 0402",
+                                            "slug": "smd-0402",
+                                            "description": "Imperial 0402 (metric 1005).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3013,
+                                            "name": "SMD 0603",
+                                            "slug": "smd-0603",
+                                            "description": "Imperial 0603 (metric 1608).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3014,
+                                            "name": "SMD 0805",
+                                            "slug": "smd-0805",
+                                            "description": "Imperial 0805 (metric 2012).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3015,
+                                            "name": "SMD 1206",
+                                            "slug": "smd-1206",
+                                            "description": "Imperial 1206 (metric 3216).",
+                                            "shortDescription": "",
+                                            "typeId": 3000,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 6,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 3024,
+                                    "name": "Montage Art",
+                                    "slug": "montage-art",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 2928,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 3,
+                                    "children": [
+                                        {
+                                            "id": 3025,
+                                            "name": "Durchloch",
+                                            "slug": "durchloch",
+                                            "description": "",
+                                            "shortDescription": "TH",
+                                            "typeId": 3024,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3026,
+                                            "name": "Oberflächenmontage",
+                                            "slug": "oberflaechenmontage",
+                                            "description": "",
+                                            "shortDescription": "SMD",
+                                            "typeId": 3024,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3072,
+                                            "name": "Weitegehen Durchloch",
+                                            "slug": "weitegehen-durchloch",
+                                            "description": "",
+                                            "shortDescription": "Most TH",
+                                            "typeId": 3024,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3073,
+                                            "name": "Weitgehend SMD",
+                                            "slug": "weitgehend-smd",
+                                            "description": "",
+                                            "shortDescription": "Most SMD",
+                                            "typeId": 3024,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 3043,
+                                    "name": "Währung",
+                                    "slug": "waehrung-konstanten",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 2928,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 4,
+                                    "children": [
+                                        {
+                                            "id": 3044,
+                                            "name": "Euro",
+                                            "slug": "euro",
+                                            "description": "",
+                                            "shortDescription": "€",
+                                            "typeId": 3043,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 3045,
+                                            "name": "US Dollar",
+                                            "slug": "us-dollar",
+                                            "description": "",
+                                            "shortDescription": "$",
+                                            "typeId": 3043,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2843,
+                            "name": "Data Types",
+                            "slug": "data-types",
+                            "description": "",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 3,
+                            "children": [
+                                {
+                                    "id": 1670,
+                                    "name": "Simple",
+                                    "slug": "simple",
+                                    "description": "Scalar and simple reference types.",
+                                    "shortDescription": "",
+                                    "typeId": 2843,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": [
+                                        {
+                                            "id": 2824,
+                                            "name": "int",
+                                            "slug": "int",
+                                            "description": "Whole number.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2825,
+                                            "name": "double",
+                                            "slug": "double",
+                                            "description": "Floating point.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2826,
+                                            "name": "text",
+                                            "slug": "text-simple",
+                                            "description": "Single-line text.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2523,
+                                            "name": "email",
+                                            "slug": "email",
+                                            "description": "Email address (validated input).",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2827,
+                                            "name": "textarea",
+                                            "slug": "textarea",
+                                            "description": "Multi-line text.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2828,
+                                            "name": "char",
+                                            "slug": "char",
+                                            "description": "Single character.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 5,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2829,
+                                            "name": "bool",
+                                            "slug": "bool",
+                                            "description": "Boolean.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 6,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2830,
+                                            "name": "display_node_name",
+                                            "slug": "display_node_name",
+                                            "description": "Read-only: shows the host Node.name (no user input).",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 7,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2831,
+                                            "name": "media",
+                                            "slug": "media",
+                                            "description": "WP Media Library and/or URL (Q65). MIME-based display.",
+                                            "shortDescription": "",
+                                            "typeId": 1670,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 8,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 1679,
+                                    "name": "Complex",
+                                    "slug": "complex",
+                                    "description": "Collection kinds (list / table / enum / set).",
+                                    "shortDescription": "",
+                                    "typeId": 2843,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": [
+                                        {
+                                            "id": 2970,
+                                            "name": "list",
+                                            "slug": "list",
+                                            "description": "Collection with exactly one column; rows open.",
+                                            "shortDescription": "",
+                                            "typeId": 1679,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2971,
+                                            "name": "table",
+                                            "slug": "table",
+                                            "description": "Collection with n columns; rows open.",
+                                            "shortDescription": "",
+                                            "typeId": 1679,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2972,
+                                            "name": "enum",
+                                            "slug": "enum",
+                                            "description": "Like list + closed options under the column.",
+                                            "shortDescription": "",
+                                            "typeId": 1679,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": [
+                                                {
+                                                    "id": 3001,
+                                                    "name": "Bauart",
+                                                    "slug": "bauart-enum",
+                                                    "description": "Concrete enum for footprints / package styles (0201, 0603, axial, …).",
+                                                    "shortDescription": "",
+                                                    "typeId": 2972,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": [
+                                                        {
+                                                            "id": 3002,
+                                                            "name": "Option",
+                                                            "slug": "option-bauart-enum",
+                                                            "description": "Single enum column - has_type text (proto).",
+                                                            "shortDescription": "",
+                                                            "typeId": 3001,
+                                                            "typeName": "",
+                                                            "required": false,
+                                                            "position": 0,
+                                                            "children": [
+                                                                {
+                                                                    "id": 3003,
+                                                                    "name": "0201",
+                                                                    "slug": "0201",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 0,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 3004,
+                                                                    "name": "0402",
+                                                                    "slug": "0402",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 1,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 3005,
+                                                                    "name": "0603",
+                                                                    "slug": "0603",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 2,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 3006,
+                                                                    "name": "0805",
+                                                                    "slug": "0805",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 3,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 3007,
+                                                                    "name": "1206",
+                                                                    "slug": "1206",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 4,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 3008,
+                                                                    "name": "axial",
+                                                                    "slug": "axial",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 3002,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 5,
+                                                                    "children": []
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "id": 2982,
+                                                    "name": "Dioden Typen",
+                                                    "slug": "dioden-typen",
+                                                    "description": "",
+                                                    "shortDescription": "",
+                                                    "typeId": 2972,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": [
+                                                        {
+                                                            "id": 2987,
+                                                            "name": "Option",
+                                                            "slug": "option",
+                                                            "description": "",
+                                                            "shortDescription": "",
+                                                            "typeId": 2982,
+                                                            "typeName": "",
+                                                            "required": false,
+                                                            "position": 0,
+                                                            "children": [
+                                                                {
+                                                                    "id": 2990,
+                                                                    "name": "LED",
+                                                                    "slug": "led",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 2987,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 0,
+                                                                    "children": []
+                                                                },
+                                                                {
+                                                                    "id": 2988,
+                                                                    "name": "Schottky",
+                                                                    "slug": "schottky",
+                                                                    "description": "",
+                                                                    "shortDescription": "",
+                                                                    "typeId": 2987,
+                                                                    "typeName": "",
+                                                                    "required": false,
+                                                                    "position": 1,
+                                                                    "children": []
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 2973,
+                                            "name": "set",
+                                            "slug": "set",
+                                            "description": "Collection of named members; schema = child nodes.",
+                                            "shortDescription": "",
+                                            "typeId": 1679,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 3,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2974,
+                                            "name": "node_pick",
+                                            "slug": "node_pick",
+                                            "description": "Shared parent (Q73): ref_scope + allowed catalog children.",
+                                            "shortDescription": "",
+                                            "typeId": 1679,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 4,
+                                            "children": [
+                                                {
+                                                    "id": 2975,
+                                                    "name": "node_embed",
+                                                    "slug": "node_embed",
+                                                    "description": "Pick under catalog root; embed target fields.",
+                                                    "shortDescription": "",
+                                                    "typeId": 2974,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 0,
+                                                    "children": []
+                                                },
+                                                {
+                                                    "id": 2976,
+                                                    "name": "node_ref",
+                                                    "slug": "node_ref",
+                                                    "description": "Pick under catalog root; store id only.",
+                                                    "shortDescription": "",
+                                                    "typeId": 2974,
+                                                    "typeName": "",
+                                                    "required": false,
+                                                    "position": 1,
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 3039,
+                                    "name": "Zusammengesetzt",
+                                    "slug": "zusammengesetzt",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 2843,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 2,
+                                    "children": [
+                                        {
+                                            "id": 3040,
+                                            "name": "Preis",
+                                            "slug": "preis-zusammengesetzt",
+                                            "description": "",
+                                            "shortDescription": "",
+                                            "typeId": 3039,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1693,
+                            "name": "Relationstypen",
+                            "slug": "relationstypen",
+                            "description": "RelationType catalog (Q35/Q54/Q74). Additive types such as composition are chosen here.",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 4,
+                            "children": [
+                                {
+                                    "id": 2838,
+                                    "name": "besteht_aus",
+                                    "slug": "besteht_aus",
+                                    "description": "Domain composition / besteht aus (Q75/Q85 set members).",
+                                    "shortDescription": "",
+                                    "typeId": 1693,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2511,
+                                    "name": "child_of",
+                                    "slug": "child_of",
+                                    "description": "Hierarchy Kind von (system). Not creatable via Add relation — use Reparent.",
+                                    "shortDescription": "",
+                                    "typeId": 1693,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2512,
+                                    "name": "has_type",
+                                    "slug": "has_type",
+                                    "description": "Data-type binding (has_type). Managed via Relations UI; persists as type_id (Q74).",
+                                    "shortDescription": "",
+                                    "typeId": 1693,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                },
+                                {
+                                    "id": 2513,
+                                    "name": "ref_scope",
+                                    "slug": "ref_scope",
+                                    "description": "Catalog root for node_embed / node_ref (system).",
+                                    "shortDescription": "",
+                                    "typeId": 1693,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2844,
+                            "name": "Views",
+                            "slug": "views",
+                            "description": "",
+                            "shortDescription": "",
+                            "typeId": 1669,
+                            "typeName": "",
+                            "required": false,
+                            "position": 5,
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": 2845,
+                    "name": "Relationstypen",
+                    "slug": "relationstypen-fallstudie",
+                    "description": "RelationType catalog (Q35/Q54/Q74). Additive types such as composition are chosen here.",
+                    "shortDescription": "",
+                    "typeId": 1668,
+                    "typeName": "",
+                    "required": false,
+                    "position": 1,
+                    "children": [
+                        {
+                            "id": 2955,
+                            "name": "aggregation",
+                            "slug": "aggregation",
+                            "description": "Aggregation — member lives on when the host object no longer exists (attribute Bindung).",
+                            "shortDescription": "",
+                            "typeId": 2845,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": []
+                        },
+                        {
+                            "id": 2849,
+                            "name": "besteht_aus",
+                            "slug": "besteht_aus-relationstypen-fallstudie",
+                            "description": "Composition / besteht aus — dies with the object (Q75/Q85; attribute Bindung).",
+                            "shortDescription": "",
+                            "typeId": 2845,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": []
+                        },
+                        {
+                            "id": 2846,
+                            "name": "child_of",
+                            "slug": "child_of-relationstypen-fallstudie",
+                            "description": "Hierarchy Kind von (system). Multiplicity always 1 (exactly one parent). Not creatable via Add relation — use Reparent.",
+                            "shortDescription": "",
+                            "typeId": 2845,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": []
+                        },
+                        {
+                            "id": 2847,
+                            "name": "has_type",
+                            "slug": "has_type-relationstypen-fallstudie",
+                            "description": "Data-type binding (has_type). Managed via Relations UI; persists as type_id (Q74).",
+                            "shortDescription": "",
+                            "typeId": 2845,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": []
+                        },
+                        {
+                            "id": 2848,
+                            "name": "ref_scope",
+                            "slug": "ref_scope-relationstypen-fallstudie",
+                            "description": "Catalog root for node_embed / node_ref (system).",
+                            "shortDescription": "",
+                            "typeId": 2845,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": 2839,
+                    "name": "Model",
+                    "slug": "model",
+                    "description": "Example schema hosts for Form/Table preview (Kontakt, Platine, …).",
+                    "shortDescription": "",
+                    "typeId": 1668,
+                    "typeName": "",
+                    "required": false,
+                    "position": 2,
+                    "children": [
+                        {
+                            "id": 2832,
+                            "name": "Bauteil",
+                            "slug": "bauteil",
+                            "description": "Ist eine Komponente zum Platinenbau und erfüllte eine bestimme elektrische funtkionaltität",
+                            "shortDescription": "Teil",
+                            "typeId": 2839,
+                            "typeName": "",
+                            "required": false,
+                            "position": 0,
+                            "children": [
+                                {
+                                    "id": 2864,
+                                    "name": "Passiv",
+                                    "slug": "passiv",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 2832,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 0,
+                                    "children": [
+                                        {
+                                            "id": 2833,
+                                            "name": "Widerstand",
+                                            "slug": "widerstand",
+                                            "description": "",
+                                            "shortDescription": "",
+                                            "typeId": 2864,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 0,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2834,
+                                            "name": "Kondensator",
+                                            "slug": "kondensator",
+                                            "description": "",
+                                            "shortDescription": "",
+                                            "typeId": 2864,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 1,
+                                            "children": []
+                                        },
+                                        {
+                                            "id": 2958,
+                                            "name": "Spule",
+                                            "slug": "spule",
+                                            "description": "",
+                                            "shortDescription": "",
+                                            "typeId": 2864,
+                                            "typeName": "",
+                                            "required": false,
+                                            "position": 2,
+                                            "children": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "id": 2957,
+                                    "name": "Diode",
+                                    "slug": "diode",
+                                    "description": "",
+                                    "shortDescription": "",
+                                    "typeId": 2832,
+                                    "typeName": "",
+                                    "required": false,
+                                    "position": 1,
+                                    "children": []
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2841,
+                            "name": "Kontakt",
+                            "slug": "kontakt",
+                            "description": "Contact person schema: Name + E-Mail attributes.",
+                            "shortDescription": "",
+                            "typeId": 2839,
+                            "typeName": "",
+                            "required": false,
+                            "position": 1,
+                            "children": []
+                        },
+                        {
+                            "id": 3028,
+                            "name": "Platine",
+                            "slug": "platine",
+                            "description": "PCB / board schema: Name attribute (preview sample Prototype PCB).",
+                            "shortDescription": "",
+                            "typeId": 2839,
+                            "typeName": "",
+                            "required": false,
+                            "position": 2,
+                            "children": []
+                        },
+                        {
+                            "id": 3027,
+                            "name": "Bauteiliste",
+                            "slug": "bauteiliste",
+                            "description": "Bauteil listen für Platinen",
+                            "shortDescription": "Bom",
+                            "typeId": 2839,
+                            "typeName": "",
+                            "required": false,
+                            "position": 3,
+                            "children": []
+                        },
+                        {
+                            "id": 3032,
+                            "name": "Bom Zeile",
+                            "slug": "bom-zeile",
+                            "description": "",
+                            "shortDescription": "",
+                            "typeId": 2839,
+                            "typeName": "",
+                            "required": false,
+                            "position": 4,
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": 2959,
+                    "name": "Trash",
+                    "slug": "wtt-trash",
+                    "description": "Soft-deleted nodes. Empty to permanently remove.",
+                    "shortDescription": "",
+                    "typeId": 0,
+                    "typeName": "",
+                    "required": false,
+                    "position": 3,
+                    "children": []
+                }
+            ]
+        }
+    ]
+}

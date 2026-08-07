@@ -4118,7 +4118,8 @@ final class Node_Type {
 	}
 
 	/**
-	 * Resolve a fixed-value catalog node by name (e.g. Praefix "m", Basiseinheit "Ohm").
+	 * Resolve a fixed-value catalog node by name (e.g. Praefix "m"/"Milli", Basiseinheit "Ohm").
+	 * Also matches Präfixe short_description (letter symbol) when display names were renamed.
 	 */
 	public static function find_fixed_by_name( string $taxonomy, int $context_term_id, string $name ): int {
 		$name = trim( $name );
@@ -4135,17 +4136,45 @@ final class Node_Type {
 			)
 		);
 
-		if ( ! is_array( $matches ) ) {
+		if ( is_array( $matches ) ) {
+			foreach ( $matches as $term ) {
+				if ( ! $term instanceof \WP_Term ) {
+					continue;
+				}
+				$node_id = (int) $term->term_id;
+				if ( self::is_fixed_value_candidate( $taxonomy, $context_term_id, $node_id ) ) {
+					return $node_id;
+				}
+			}
+		}
+
+		$prefixes_root = self::find_prefixes_root( $taxonomy, $context_term_id );
+		if ( $prefixes_root <= 0 ) {
 			return 0;
 		}
 
-		foreach ( $matches as $term ) {
-			if ( ! $term instanceof \WP_Term ) {
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $prefixes_root,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $children ) ) {
+			return 0;
+		}
+
+		$needle_slug = sanitize_title( $name );
+		foreach ( $children as $child ) {
+			if ( ! $child instanceof \WP_Term ) {
 				continue;
 			}
-			$node_id = (int) $term->term_id;
-			if ( self::is_fixed_value_candidate( $taxonomy, $context_term_id, $node_id ) ) {
-				return $node_id;
+			$short = Tree_Model::get_short_description( (int) $child->term_id );
+			if ( $name === $short || $needle_slug === (string) $child->slug ) {
+				if ( self::is_fixed_value_candidate( $taxonomy, $context_term_id, (int) $child->term_id ) ) {
+					return (int) $child->term_id;
+				}
 			}
 		}
 

@@ -140,13 +140,13 @@ final class Demo_Data {
 								'name'        => 'Praefixe',
 								'description' => 'SI prefixes. multiplikator = scale vs the unit’s prefix root (Q51). Same factors for Meter and mass — mass differs via unit prefix_root_to_si (g→kg).',
 								'children'    => array(
-									array( 'name' => 'p', 'short_description' => 'Pico', 'description' => 'SI prefix pico (10⁻¹²).', 'multiplikator' => 1.0e-12 ),
-									array( 'name' => 'n', 'short_description' => 'Nano', 'description' => 'SI prefix nano (10⁻⁹).', 'multiplikator' => 1.0e-9 ),
-									array( 'name' => 'u', 'short_description' => 'Micro', 'description' => 'SI prefix micro (10⁻⁶); proto: µ.', 'multiplikator' => 1.0e-6 ),
-									array( 'name' => 'm', 'short_description' => 'Milli', 'description' => 'SI prefix milli (10⁻³); with Meter symbol → mm (Millimeter).', 'multiplikator' => 1.0e-3 ),
-									array( 'name' => 'c', 'short_description' => 'Centi', 'description' => 'SI prefix centi (10⁻²).', 'multiplikator' => 1.0e-2 ),
-									array( 'name' => 'k', 'short_description' => 'Kilo', 'description' => 'SI prefix kilo (10³).', 'multiplikator' => 1.0e3 ),
-									array( 'name' => 'Mega', 'short_description' => 'Mega', 'description' => 'SI prefix mega (10⁶); node name Mega avoids slug clash with milli m.', 'multiplikator' => 1.0e6 ),
+									array( 'name' => 'pico', 'aliases' => array( 'p' ), 'short_description' => 'p', 'description' => 'SI prefix pico (10^-12).', 'multiplikator' => 1.0e-12 ),
+									array( 'name' => 'nano', 'aliases' => array( 'n' ), 'short_description' => 'n', 'description' => 'SI prefix nano (10^-9).', 'multiplikator' => 1.0e-9 ),
+									array( 'name' => 'Micro', 'aliases' => array( 'u', 'micro' ), 'short_description' => 'u', 'description' => 'SI prefix micro (10^-6).', 'multiplikator' => 1.0e-6 ),
+									array( 'name' => 'Milli', 'aliases' => array( 'm', 'milli' ), 'short_description' => 'm', 'description' => 'SI prefix milli (10^-3); with Meter symbol -> mm.', 'multiplikator' => 1.0e-3 ),
+									array( 'name' => 'Centi', 'aliases' => array( 'c', 'centi' ), 'short_description' => 'c', 'description' => 'SI prefix centi (10^-2).', 'multiplikator' => 1.0e-2 ),
+									array( 'name' => 'Kilo', 'aliases' => array( 'k', 'kilo' ), 'short_description' => 'k', 'description' => 'SI prefix kilo (10^3).', 'multiplikator' => 1.0e3 ),
+									array( 'name' => 'Mega', 'short_description' => 'Mega', 'description' => 'SI prefix mega (10^6); name Mega avoids slug clash with milli.', 'multiplikator' => 1.0e6 ),
 								),
 							),
 							array(
@@ -2340,13 +2340,23 @@ final class Demo_Data {
 		}
 
 		$factors = array(
-			'p'    => 1.0e-12,
-			'n'    => 1.0e-9,
-			'u'    => 1.0e-6,
-			'm'    => 1.0e-3,
-			'c'    => 1.0e-2,
-			'k'    => 1.0e3,
-			'Mega' => 1.0e6,
+			'p'     => 1.0e-12,
+			'pico'  => 1.0e-12,
+			'n'     => 1.0e-9,
+			'nano'  => 1.0e-9,
+			'u'     => 1.0e-6,
+			'Micro' => 1.0e-6,
+			'micro' => 1.0e-6,
+			'm'     => 1.0e-3,
+			'Milli' => 1.0e-3,
+			'milli' => 1.0e-3,
+			'c'     => 1.0e-2,
+			'Centi' => 1.0e-2,
+			'centi' => 1.0e-2,
+			'k'     => 1.0e3,
+			'Kilo'  => 1.0e3,
+			'kilo'  => 1.0e3,
+			'Mega'  => 1.0e6,
 		);
 
 		$roots = array();
@@ -2414,16 +2424,22 @@ final class Demo_Data {
 		}
 
 		$map = array(
-			'L'    => 'Länge',
-			'B'    => 'Breite',
-			'H'    => 'Höhe',
-			'p'    => 'Pico',
-			'n'    => 'Nano',
-			'u'    => 'Micro',
-			'm'    => 'Milli',
-			'c'    => 'Centi',
-			'k'    => 'Kilo',
-			'Mega' => 'Mega',
+			'L'     => 'Länge',
+			'B'     => 'Breite',
+			'H'     => 'Höhe',
+			'p'     => 'Pico',
+			'n'     => 'Nano',
+			'u'     => 'Micro',
+			'm'     => 'Milli',
+			'c'     => 'Centi',
+			'k'     => 'Kilo',
+			'Mega'  => 'Mega',
+			'pico'  => 'p',
+			'nano'  => 'n',
+			'Micro' => 'u',
+			'Milli' => 'm',
+			'Centi' => 'c',
+			'Kilo'  => 'k',
 		);
 
 		$updated = 0;
@@ -2453,7 +2469,7 @@ final class Demo_Data {
 				if ( in_array( $name, array( 'L', 'B', 'H' ), true ) && 'Abmessung' !== $parent_name ) {
 					continue;
 				}
-				if ( in_array( $name, array( 'p', 'n', 'u', 'm', 'c', 'k', 'Mega' ), true ) && 'Praefixe' !== $parent_name ) {
+				if ( in_array( $name, array( 'p', 'n', 'u', 'm', 'c', 'k', 'Mega', 'pico', 'nano', 'Micro', 'Milli', 'Centi', 'Kilo' ), true ) && 'Praefixe' !== $parent_name && 'Präfixe' !== $parent_name ) {
 					continue;
 				}
 				Tree_Model::set_short_description( $taxonomy, $term_id, $short );
@@ -3009,7 +3025,16 @@ final class Demo_Data {
 
 			$description = isset( $node['description'] ) ? (string) $node['description'] : '';
 			$type_name   = isset( $node['type_name'] ) ? (string) $node['type_name'] : '';
-			$term_id     = self::ensure_term( $taxonomy, $name, $parent_id, $description, $created, $existing );
+			$aliases     = array();
+			if ( isset( $node['aliases'] ) && is_array( $node['aliases'] ) ) {
+				foreach ( $node['aliases'] as $alias ) {
+					$alias = is_string( $alias ) ? trim( $alias ) : '';
+					if ( '' !== $alias && $alias !== $name ) {
+						$aliases[] = $alias;
+					}
+				}
+			}
+			$term_id = self::ensure_term( $taxonomy, $name, $parent_id, $description, $created, $existing, $aliases );
 			if ( $term_id <= 0 ) {
 				continue;
 			}
@@ -3134,13 +3159,17 @@ final class Demo_Data {
 		}
 	}
 
+	/**
+	 * @param array<int, string> $aliases Former names under the same parent (rename in place).
+	 */
 	private static function ensure_term(
 		string $taxonomy,
 		string $name,
 		int $parent_id,
 		string $description,
 		int &$created,
-		int &$existing
+		int &$existing,
+		array $aliases = array()
 	): int {
 		$found = get_terms(
 			array(
@@ -3156,6 +3185,51 @@ final class Demo_Data {
 			++$existing;
 			$term_id = (int) $found[0]->term_id;
 			if ( '' !== $description && Tree_Model::decode_term_description( (string) $found[0]->description ) !== $description ) {
+				wp_update_term(
+					$term_id,
+					$taxonomy,
+					array( 'description' => $description )
+				);
+			}
+			return $term_id;
+		}
+
+		foreach ( $aliases as $alias ) {
+			$alias_found = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'name'       => $alias,
+					'parent'     => $parent_id,
+					'hide_empty' => false,
+					'number'     => 1,
+				)
+			);
+			if ( ! is_array( $alias_found ) || ! isset( $alias_found[0] ) || ! ( $alias_found[0] instanceof \WP_Term ) ) {
+				continue;
+			}
+			$canonical = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'name'       => $name,
+					'parent'     => $parent_id,
+					'hide_empty' => false,
+					'number'     => 1,
+				)
+			);
+			if ( is_array( $canonical ) && isset( $canonical[0] ) && $canonical[0] instanceof \WP_Term ) {
+				break;
+			}
+			$renamed = wp_update_term(
+				(int) $alias_found[0]->term_id,
+				$taxonomy,
+				array( 'name' => $name )
+			);
+			if ( is_wp_error( $renamed ) ) {
+				continue;
+			}
+			++$existing;
+			$term_id = (int) $alias_found[0]->term_id;
+			if ( '' !== $description ) {
 				wp_update_term(
 					$term_id,
 					$taxonomy,
