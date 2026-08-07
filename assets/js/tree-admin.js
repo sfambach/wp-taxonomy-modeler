@@ -8072,29 +8072,7 @@
 		var canReorderDown =
 			ownEditable && peerIndex >= 0 && peerIndex < ownPeers.length - 1;
 
-		/* Name (+ Options disclosure when detail panels exist). */
-		var nameChildren = [];
-		if (detailSections.hasAny) {
-			nameChildren.push(
-				el('button', {
-					type: 'button',
-					className: 'button-link wtt-attributes__options-toggle',
-					'aria-expanded': detailExpanded ? 'true' : 'false',
-					'data-attr-id': String(attrId),
-					title: i18n.attributesOptions || 'Options',
-					'aria-label': i18n.attributesOptions || 'Options',
-					html:
-						'<span class="dashicons dashicons-arrow-' +
-						(detailExpanded ? 'down' : 'right') +
-						'" aria-hidden="true"></span>',
-					onClick: function (e) {
-						e.preventDefault();
-						state.attrDetailExpanded[attrId] = !detailExpanded;
-						renderDetail();
-					},
-				})
-			);
-		}
+		/* Name */
 		if (ownEditable) {
 			var nameInput = el('input', {
 				type: 'text',
@@ -8123,17 +8101,19 @@
 						});
 				},
 			});
-			nameChildren.push(nameInput);
 			tr.appendChild(
 				el('td', { className: 'wtt-col-name' }, [
-					el('div', { className: 'wtt-attributes__name-wrap' }, nameChildren),
+					el('div', { className: 'wtt-attributes__name-wrap' }, [
+						nameInput,
+					]),
 				])
 			);
 		} else {
-			nameChildren.push(el('span', { text: attr.name || '' }));
 			tr.appendChild(
 				el('td', { className: 'wtt-col-name wtt-attributes__name' }, [
-					el('div', { className: 'wtt-attributes__name-wrap' }, nameChildren),
+					el('div', { className: 'wtt-attributes__name-wrap' }, [
+						el('span', { text: attr.name || '' }),
+					]),
 				])
 			);
 		}
@@ -8612,11 +8592,12 @@
 		tr.appendChild(actions);
 
 		frag.appendChild(tr);
-		if (detailSections.hasAny && detailExpanded) {
+		if (detailSections.hasAny) {
 			var detail = renderAttributeDetailRow(n, attr, editable, {
 				colCount: colCount,
 				inherited: inherited,
 				sections: detailSections,
+				expanded: detailExpanded,
 			});
 			if (detail) {
 				frag.appendChild(detail);
@@ -8626,13 +8607,14 @@
 	}
 
 	/**
-	 * Detail row under an attribute: dateMode, choiceFilter, compute.
-	 * Collapsed by default; only rendered when Options is expanded.
+	 * Options bar + detail under an attribute: dateMode, choiceFilter, compute.
+	 * Always shows a full-width rule with a right chevron; panels only when expanded.
 	 */
 	function renderAttributeDetailRow(n, attr, editable, opts) {
 		opts = opts || {};
 		var colCount = parseInt(opts.colCount, 10) || 8;
 		var inherited = !!opts.inherited;
+		var expanded = !!opts.expanded;
 		var hostId = parseInt(n.id, 10) || 0;
 		var attrId = parseInt(attr.id, 10) || 0;
 		var extras = attr.typeExtras && typeof attr.typeExtras === 'object'
@@ -8647,50 +8629,93 @@
 			return null;
 		}
 
-		var detailEditable = editable && !inherited;
-		var wrap = el('div', { className: 'wtt-attributes__detail' });
-
-		if (sections.isDate) {
-			wrap.appendChild(
-				renderAttrDateModeDetail(n, attr, extras, detailEditable, hostId, attrId)
-			);
-		}
-		if (sections.hasChoice) {
-			wrap.appendChild(
-				renderAttrChoiceFilterDetail(
-					n,
-					attr,
-					extras,
-					detailEditable,
-					hostId,
-					attrId
-				)
-			);
-		}
-		if (sections.showCompute) {
-			wrap.appendChild(
-				renderAttrComputeDetail(
-					n,
-					attr,
-					extras,
-					detailEditable,
-					hostId,
-					attrId
-				)
-			);
-		}
-
-		return el('tr', {
-			className:
-				'wtt-attributes__detail-row' +
-				(inherited ? ' is-inherited' : ''),
-			'data-attr-id': String(attrId),
-		}, [
-			el('td', {
-				colSpan: colCount,
-				className: 'wtt-attributes__detail-cell',
-			}, [wrap]),
+		var optionsLabel = i18n.attributesOptions || 'Options';
+		var bar = el('div', { className: 'wtt-attributes__options-bar' }, [
+			el('hr', { className: 'wtt-attributes__options-line' }),
+			el('button', {
+				type: 'button',
+				className: 'wtt-attributes__options-toggle',
+				'aria-expanded': expanded ? 'true' : 'false',
+				'data-attr-id': String(attrId),
+				title: optionsLabel,
+				'aria-label': optionsLabel,
+				html:
+					'<span class="dashicons dashicons-arrow-' +
+					(expanded ? 'up' : 'down') +
+					'" aria-hidden="true"></span>',
+				onClick: function (e) {
+					e.preventDefault();
+					e.stopPropagation();
+					state.attrDetailExpanded[attrId] = !expanded;
+					render();
+				},
+			}),
 		]);
+
+		var cellChildren = [bar];
+		if (expanded) {
+			var detailEditable = editable && !inherited;
+			var wrap = el('div', { className: 'wtt-attributes__detail' });
+
+			if (sections.isDate) {
+				wrap.appendChild(
+					renderAttrDateModeDetail(
+						n,
+						attr,
+						extras,
+						detailEditable,
+						hostId,
+						attrId
+					)
+				);
+			}
+			if (sections.hasChoice) {
+				wrap.appendChild(
+					renderAttrChoiceFilterDetail(
+						n,
+						attr,
+						extras,
+						detailEditable,
+						hostId,
+						attrId
+					)
+				);
+			}
+			if (sections.showCompute) {
+				wrap.appendChild(
+					renderAttrComputeDetail(
+						n,
+						attr,
+						extras,
+						detailEditable,
+						hostId,
+						attrId
+					)
+				);
+			}
+			cellChildren.push(wrap);
+		}
+
+		return el(
+			'tr',
+			{
+				className:
+					'wtt-attributes__detail-row' +
+					(inherited ? ' is-inherited' : '') +
+					(expanded ? ' is-expanded' : ''),
+				'data-attr-id': String(attrId),
+			},
+			[
+				el(
+					'td',
+					{
+						colSpan: colCount,
+						className: 'wtt-attributes__detail-cell',
+					},
+					cellChildren
+				),
+			]
+		);
 	}
 
 	function saveAttributeTypeExtras(hostId, attrId, extras) {
