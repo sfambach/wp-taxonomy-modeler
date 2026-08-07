@@ -405,11 +405,14 @@ final class Blocks {
 			$handle,
 			'wttObjectView',
 			array(
-				'restBase'   => esc_url_raw( rest_url( 'wtt/v1' ) ),
-				'nonce'      => wp_create_nonce( 'wp_rest' ),
-				'taxonomies' => Taxonomy::scaffold_taxonomies(),
-				'nodes'      => Object_Render::list_pickable_nodes(),
-				'i18n'       => $i18n,
+				'restBase'       => esc_url_raw( rest_url( 'wtt/v1' ) ),
+				'nonce'          => wp_create_nonce( 'wp_rest' ),
+				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+				'ajaxNonce'      => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
+				'treePickerMode' => Settings::tree_picker_mode(),
+				'taxonomies'     => Taxonomy::scaffold_taxonomies(),
+				'nodes'          => Object_Render::list_pickable_nodes(),
+				'i18n'           => $i18n,
 			)
 		);
 	}

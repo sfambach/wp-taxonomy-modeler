@@ -25,6 +25,15 @@
       "type": "string",
       "default": "form",
       "enum": ["form", "table", "compact", "compact-vertical"]
+    },
+    "renderDepth": {
+      "type": "number",
+      "default": 1
+    },
+    "referenceMode": {
+      "type": "string",
+      "default": "link",
+      "enum": ["none", "link", "summary", "embed"]
     }
   },
   "supports": {

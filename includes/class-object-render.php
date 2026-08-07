@@ -71,6 +71,19 @@ final class Object_Render {
 			'layoutTable'             => __( 'Table (all)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
+			'renderingPanel'          => __( 'Rendering', 'wp-taxonomy-tree' ),
+			'pickRenderDepth'         => __( 'Render depth', 'wp-taxonomy-tree' ),
+			'renderDepthHelp'         => __( 'How deep nested objects are expanded. 1 = this node and its attributes; 0 = meta only.', 'wp-taxonomy-tree' ),
+			'pickReferenceMode'       => __( 'Reference rendering', 'wp-taxonomy-tree' ),
+			'referenceModeHelp'       => __( 'How node references and catalog picks are shown when not editing.', 'wp-taxonomy-tree' ),
+			'referenceModeNone'       => __( 'None (omit)', 'wp-taxonomy-tree' ),
+			'referenceModeLink'       => __( 'Link / name', 'wp-taxonomy-tree' ),
+			'referenceModeSummary'    => __( 'Summary', 'wp-taxonomy-tree' ),
+			'referenceModeEmbed'      => __( 'Embed (nested view)', 'wp-taxonomy-tree' ),
+			'referenceEmbedDeferred'  => __( 'Nested embed requires depth ≥ 2; showing summary until full nest is available.', 'wp-taxonomy-tree' ),
+			'savingInstance'          => __( 'Saving instance…', 'wp-taxonomy-tree' ),
+			'savedInstance'           => __( 'Instance saved.', 'wp-taxonomy-tree' ),
+			'editNeedsInstance'       => __( 'Pick a dataset to edit attribute values.', 'wp-taxonomy-tree' ),
 			'nodePickerSearch'        => __( 'Search', 'wp-taxonomy-tree' ),
 			'nodePickerSearchPlaceholder' => __( 'Search…', 'wp-taxonomy-tree' ),
 			'nodePickerSearchEmpty'   => __( 'No matching nodes.', 'wp-taxonomy-tree' ),
@@ -237,7 +250,7 @@ final class Object_Render {
 			if ( ! empty( $row['hidden'] ) ) {
 				continue;
 			}
-			$properties[] = self::property_dto( $row );
+			$properties[] = self::property_dto( $row, $taxonomy );
 		}
 
 		return array(
@@ -293,9 +306,10 @@ final class Object_Render {
 			}
 			$aid = (string) (int) ( $prop['id'] ?? 0 );
 			if ( '' !== $aid && '0' !== $aid && isset( $values[ $aid ] ) && '' !== trim( (string) $values[ $aid ] ) ) {
-				$raw              = (string) $values[ $aid ];
-				$prop['values']   = array( $raw );
-				$prop['valueLabel'] = self::display_label_for_prop( $prop, $raw );
+				$raw                = (string) $values[ $aid ];
+				$prop['values']     = self::decode_store_values( $raw );
+				$first              = isset( $prop['values'][0] ) ? (string) $prop['values'][0] : $raw;
+				$prop['valueLabel'] = self::display_label_for_prop( $prop, $first );
 				$prop['hasInstanceValue'] = true;
 			}
 			$out_props[] = $prop;
@@ -368,10 +382,37 @@ final class Object_Render {
 	}
 
 	/**
-	 * @param array<string, mixed> $row Attribute row from Attribute::list.
+	 * Decode a Model_Data store string into one or more display/edit values.
+	 * JSON arrays become multiple values; scalars stay a one-element list.
+	 *
+	 * @return list<string>
+	 */
+	public static function decode_store_values( string $raw ): array {
+		$raw = trim( $raw );
+		if ( '' === $raw ) {
+			return array();
+		}
+		if ( '[' === $raw[0] ) {
+			$decoded = json_decode( $raw, true );
+			if ( is_array( $decoded ) ) {
+				$out = array();
+				foreach ( $decoded as $item ) {
+					if ( is_scalar( $item ) || null === $item ) {
+						$out[] = (string) $item;
+					}
+				}
+				return $out;
+			}
+		}
+		return array( $raw );
+	}
+
+	/**
+	 * @param array<string, mixed> $row      Attribute row from Attribute::list.
+	 * @param string               $taxonomy Taxonomy slug (for node_ref extras).
 	 * @return array<string, mixed>
 	 */
-	private static function property_dto( array $row ): array {
+	private static function property_dto( array $row, string $taxonomy = '' ): array {
 		$values = array();
 		if ( isset( $row['fixedValues'] ) && is_array( $row['fixedValues'] ) ) {
 			foreach ( $row['fixedValues'] as $v ) {
@@ -379,12 +420,14 @@ final class Object_Render {
 			}
 		}
 
-		return array(
-			'id'            => (int) ( $row['id'] ?? 0 ),
+		$slot_id  = (int) ( $row['id'] ?? 0 );
+		$type_key = (string) ( $row['typeKey'] ?? '' );
+		$dto      = array(
+			'id'            => $slot_id,
 			'name'          => (string) ( $row['name'] ?? '' ),
 			'typeId'        => (int) ( $row['typeId'] ?? 0 ),
 			'typeName'      => (string) ( $row['typeName'] ?? '' ),
-			'typeKey'       => (string) ( $row['typeKey'] ?? '' ),
+			'typeKey'       => $type_key,
 			'multiplicity'  => (string) ( $row['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY ),
 			'allowsMany'    => ! empty( $row['allowsMany'] )
 				|| Attribute::multiplicity_allows_many(
@@ -408,19 +451,32 @@ final class Object_Render {
 					: array()
 			),
 		);
+
+		/* node_ref edit/display needs catalog options (same extras as Model table columns). */
+		if ( 'node_ref' === strtolower( $type_key ) && $slot_id > 0 && '' !== $taxonomy ) {
+			$scope_id                     = Node_Type::get_ref_scope_id( $slot_id );
+			$dto['refScopeId']            = $scope_id;
+			$dto['fieldMultiplicity']     = Node_Type::get_field_multiplicity( $slot_id );
+			$dto['nodeRefOptions']        = Node_Type::get_node_ref_options_for_slot( $taxonomy, $slot_id );
+			$dto['nodeRefCreateFields']   = Composition::get_node_ref_create_fields( $taxonomy, $scope_id );
+		}
+
+		return $dto;
 	}
 
 	/**
 	 * SSR / dynamic block HTML.
 	 * Default (form/auto): node meta strip → Form for Mult≤1 → Table for Mult many.
 	 *
-	 * @param array<string, mixed> $attributes Block attributes (termId, taxonomy, instanceId, layout).
+	 * @param array<string, mixed> $attributes Block attributes (termId, taxonomy, instanceId, layout, renderDepth, referenceMode).
 	 */
 	public static function render_html( array $attributes ): string {
 		$term_id     = isset( $attributes['termId'] ) ? (int) $attributes['termId'] : 0;
 		$taxonomy    = isset( $attributes['taxonomy'] ) ? sanitize_key( (string) $attributes['taxonomy'] ) : '';
 		$instance_id = isset( $attributes['instanceId'] ) ? sanitize_key( (string) $attributes['instanceId'] ) : '';
 		$layout      = self::normalize_layout( isset( $attributes['layout'] ) ? (string) $attributes['layout'] : 'form' );
+		$depth       = self::normalize_render_depth( isset( $attributes['renderDepth'] ) ? $attributes['renderDepth'] : 1 );
+		$ref_mode    = self::normalize_reference_mode( isset( $attributes['referenceMode'] ) ? (string) $attributes['referenceMode'] : 'link' );
 		$view        = $term_id > 0 ? self::get_view( $taxonomy, $term_id ) : null;
 		if ( null !== $view && '' !== $instance_id ) {
 			$view = self::with_instance_values( $view, $instance_id );
@@ -430,7 +486,11 @@ final class Object_Render {
 		self::enqueue_assets();
 
 		ob_start();
-		echo '<div class="wtt-object-view wtt-object-view--layout-' . esc_attr( $layout ) . '">';
+		echo '<div class="wtt-object-view wtt-object-view--layout-' . esc_attr( $layout ) .
+			' wtt-object-view--depth-' . esc_attr( (string) $depth ) .
+			' wtt-object-view--ref-' . esc_attr( $ref_mode ) . '"';
+		echo ' data-wtt-render-depth="' . esc_attr( (string) $depth ) . '"';
+		echo ' data-wtt-reference-mode="' . esc_attr( $ref_mode ) . '">';
 
 		if ( null === $view ) {
 			$msg = $term_id > 0 ? $i18n['notFound'] : $i18n['empty'];
@@ -448,10 +508,21 @@ final class Object_Render {
 
 		self::echo_meta_strip( $view, $i18n );
 
+		/* Depth 0 = meta-only (header + pills). */
+		if ( $depth < 1 ) {
+			echo '</div>';
+			return (string) ob_get_clean();
+		}
+
 		$properties = isset( $view['properties'] ) && is_array( $view['properties'] )
 			? $view['properties']
 			: array();
 		$properties = self::enrich_property_samples( $properties );
+		$render_ctx = array(
+			'renderDepth'   => $depth,
+			'referenceMode' => $ref_mode,
+			'remainingDepth'=> max( 0, $depth - 1 ),
+		);
 
 		echo '<section class="wtt-object-view__properties" aria-label="' . esc_attr( $i18n['properties'] ) . '">';
 
@@ -459,10 +530,10 @@ final class Object_Render {
 			echo '<p class="wtt-object-view__empty">' . esc_html( $i18n['noProperties'] ) . '</p>';
 		} elseif ( 'table' === $layout ) {
 			echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-			self::echo_properties_table( $properties, $i18n );
+			self::echo_properties_table( $properties, $i18n, $render_ctx );
 		} elseif ( 'compact' === $layout || 'compact-vertical' === $layout ) {
 			echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-			self::echo_properties_compact( $properties, $i18n, $layout );
+			self::echo_properties_compact( $properties, $i18n, $layout, $render_ctx );
 		} else {
 			/* Canonical Object View: singles → Form, manys → Table. */
 			$parts  = self::partition_properties( $properties );
@@ -473,7 +544,7 @@ final class Object_Render {
 				echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
 				echo '<div class="wtt-object-view__form" role="list">';
 				foreach ( $single as $prop ) {
-					self::echo_property_row( $prop, $i18n );
+					self::echo_property_row( $prop, $i18n, $render_ctx );
 				}
 				echo '</div>';
 			}
@@ -482,7 +553,7 @@ final class Object_Render {
 				echo '<h4 class="wtt-object-view__section-title">' . esc_html(
 					$i18n['propertiesMany'] ?? __( 'Multi-value attributes', 'wp-taxonomy-tree' )
 				) . '</h4>';
-				self::echo_many_properties_table( $many, $i18n );
+				self::echo_many_properties_table( $many, $i18n, $render_ctx );
 			}
 
 			if ( array() === $single && array() === $many ) {
@@ -609,14 +680,15 @@ final class Object_Render {
 	}
 
 	/**
-	 * Echo a typed property value (media via Media_Render; never dump raw JSON).
+	 * Echo a typed property value (media via Media_Render; refs via referenceMode; never dump raw JSON).
 	 *
 	 * @param array<string, mixed>  $prop  Property DTO.
 	 * @param string                $raw   Store or display string.
 	 * @param array<string, string> $i18n  Strings.
 	 * @param bool                  $compact Compact media chrome.
+	 * @param array<string, mixed>  $ctx     renderDepth / referenceMode / remainingDepth.
 	 */
-	private static function echo_typed_value( array $prop, string $raw, array $i18n, bool $compact = false ): void {
+	private static function echo_typed_value( array $prop, string $raw, array $i18n, bool $compact = false, array $ctx = array() ): void {
 		$raw = trim( $raw );
 		if ( '' === $raw ) {
 			echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ) . '</span>';
@@ -628,7 +700,143 @@ final class Object_Render {
 			echo Media_Render::render_html( $ref, array( 'compact' => $compact ) );
 			return;
 		}
+		if ( self::is_reference_prop( $prop ) ) {
+			self::echo_reference_value( $prop, $raw, $i18n, $ctx );
+			return;
+		}
 		echo esc_html( $raw );
+	}
+
+	/**
+	 * Whether the property stores a node id reference (node_ref or CatalogChoice).
+	 *
+	 * @param array<string, mixed> $prop Property DTO.
+	 */
+	private static function is_reference_prop( array $prop ): bool {
+		$type_key = strtolower( trim( (string) ( $prop['typeKey'] ?? $prop['typeName'] ?? '' ) ) );
+		if ( false !== strpos( $type_key, '/' ) ) {
+			$parts    = array_map( 'trim', explode( '/', $type_key ) );
+			$type_key = strtolower( (string) end( $parts ) );
+		}
+		if ( 'node_ref' === $type_key || 'node_embed' === $type_key || 'node_pick' === $type_key ) {
+			return true;
+		}
+		if ( 'catalog' === strtolower( (string) ( $prop['fixedMode'] ?? '' ) ) ) {
+			return true;
+		}
+		$opts = isset( $prop['fixedOptions'] ) && is_array( $prop['fixedOptions'] ) ? $prop['fixedOptions'] : array();
+		$refs = isset( $prop['nodeRefOptions'] ) && is_array( $prop['nodeRefOptions'] ) ? $prop['nodeRefOptions'] : array();
+		return array() !== $opts || array() !== $refs;
+	}
+
+	/**
+	 * Render a reference value according to referenceMode (SSR / frontend display).
+	 *
+	 * @param array<string, mixed>  $prop Property DTO.
+	 * @param string                $raw  Store value (id or comma-ids).
+	 * @param array<string, string> $i18n Strings.
+	 * @param array<string, mixed>  $ctx  Render context.
+	 */
+	private static function echo_reference_value( array $prop, string $raw, array $i18n, array $ctx ): void {
+		$mode = self::normalize_reference_mode( isset( $ctx['referenceMode'] ) ? (string) $ctx['referenceMode'] : 'link' );
+		if ( 'none' === $mode ) {
+			echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ) . '</span>';
+			return;
+		}
+
+		$label = self::reference_display_label( $prop, $raw );
+		if ( '' === $label ) {
+			$label = $raw;
+		}
+
+		if ( 'summary' === $mode || 'embed' === $mode ) {
+			$type_name = (string) ( $prop['typeName'] ?? $prop['typeKey'] ?? '' );
+			$summary   = $label;
+			if ( '' !== $type_name ) {
+				$summary .= ' · ' . $type_name;
+			}
+			/* Full nested Object View embed (depth≥2) is deferred — fall back to summary chrome. */
+			$class = 'embed' === $mode
+				? 'wtt-object-view__ref wtt-object-view__ref--embed-stub'
+				: 'wtt-object-view__ref wtt-object-view__ref--summary';
+			$title = 'embed' === $mode
+				? (string) ( $i18n['referenceEmbedDeferred'] ?? '' )
+				: '';
+			echo '<span class="' . esc_attr( $class ) . '"';
+			if ( '' !== $title ) {
+				echo ' title="' . esc_attr( $title ) . '"';
+			}
+			echo '>' . esc_html( $summary ) . '</span>';
+			return;
+		}
+
+		/* link (default): name/path as plain text. */
+		echo '<span class="wtt-object-view__ref wtt-object-view__ref--link">' . esc_html( $label ) . '</span>';
+	}
+
+	/**
+	 * Resolve a human label for a stored reference id (or comma-list).
+	 *
+	 * @param array<string, mixed> $prop Property DTO.
+	 * @param string               $raw  Store value.
+	 */
+	private static function reference_display_label( array $prop, string $raw ): string {
+		$opts = array();
+		if ( isset( $prop['nodeRefOptions'] ) && is_array( $prop['nodeRefOptions'] ) ) {
+			$opts = $prop['nodeRefOptions'];
+		} elseif ( isset( $prop['fixedOptions'] ) && is_array( $prop['fixedOptions'] ) ) {
+			$opts = $prop['fixedOptions'];
+		}
+		$ids = preg_split( '/\s*,\s*/', trim( $raw ) ) ?: array();
+		$labels = array();
+		foreach ( $ids as $id_raw ) {
+			$id = (string) absint( $id_raw );
+			if ( '' === $id || '0' === $id ) {
+				if ( '' !== trim( (string) $id_raw ) ) {
+					$labels[] = (string) $id_raw;
+				}
+				continue;
+			}
+			$found = '';
+			foreach ( $opts as $opt ) {
+				if ( ! is_array( $opt ) ) {
+					continue;
+				}
+				if ( (string) (int) ( $opt['id'] ?? 0 ) === $id ) {
+					$found = (string) ( $opt['path'] ?? $opt['name'] ?? $id );
+					break;
+				}
+			}
+			$labels[] = '' !== $found ? $found : '#' . $id;
+		}
+		return implode( ', ', $labels );
+	}
+
+	/**
+	 * Clamp render depth (0 = meta-only; 1 = attributes; 2+ reserved for nest).
+	 *
+	 * @param mixed $raw Raw attribute.
+	 */
+	public static function normalize_render_depth( $raw ): int {
+		$n = is_numeric( $raw ) ? (int) $raw : 1;
+		if ( $n < 0 ) {
+			$n = 0;
+		}
+		if ( $n > 5 ) {
+			$n = 5;
+		}
+		return $n;
+	}
+
+	/**
+	 * @param string $mode Raw referenceMode.
+	 */
+	public static function normalize_reference_mode( string $mode ): string {
+		$key = strtolower( trim( $mode ) );
+		if ( in_array( $key, array( 'none', 'link', 'summary', 'embed' ), true ) ) {
+			return $key;
+		}
+		return 'link';
 	}
 
 	/**
@@ -715,8 +923,9 @@ final class Object_Render {
 	 *
 	 * @param list<array<string, mixed>> $properties Many-valued properties.
 	 * @param array<string, string>       $i18n       Strings.
+	 * @param array<string, mixed>        $ctx        Render context.
 	 */
-	private static function echo_many_properties_table( array $properties, array $i18n ): void {
+	private static function echo_many_properties_table( array $properties, array $i18n, array $ctx = array() ): void {
 		$max_rows = 1;
 		foreach ( $properties as $prop ) {
 			$vals     = self::many_prop_store_values( $prop );
@@ -736,7 +945,7 @@ final class Object_Render {
 				$vals = self::many_prop_store_values( $prop );
 				$cell = isset( $vals[ $r ] ) ? (string) $vals[ $r ] : '';
 				echo '<td>';
-				self::echo_typed_value( $prop, $cell, $i18n, true );
+				self::echo_typed_value( $prop, $cell, $i18n, true, $ctx );
 				echo '</td>';
 			}
 			echo '</tr>';
@@ -791,8 +1000,9 @@ final class Object_Render {
 	/**
 	 * @param list<array<string, mixed>> $properties Properties.
 	 * @param array<string, string>       $i18n       Strings.
+	 * @param array<string, mixed>        $ctx        Render context.
 	 */
-	private static function echo_properties_table( array $properties, array $i18n ): void {
+	private static function echo_properties_table( array $properties, array $i18n, array $ctx = array() ): void {
 		echo '<div class="wtt-object-view__table-wrap"><table class="wtt-object-view__table">';
 		echo '<thead><tr>';
 		foreach ( $properties as $prop ) {
@@ -809,7 +1019,7 @@ final class Object_Render {
 			}
 			$value = self::property_raw_value( $prop );
 			echo '<td>';
-			self::echo_typed_value( $prop, $value, $i18n, true );
+			self::echo_typed_value( $prop, $value, $i18n, true, $ctx );
 			echo '</td>';
 		}
 		echo '</tr></tbody></table></div>';
@@ -819,8 +1029,9 @@ final class Object_Render {
 	 * @param list<array<string, mixed>> $properties Properties.
 	 * @param array<string, string>       $i18n       Strings.
 	 * @param string                      $layout     compact|compact-vertical.
+	 * @param array<string, mixed>        $ctx        Render context.
 	 */
-	private static function echo_properties_compact( array $properties, array $i18n, string $layout ): void {
+	private static function echo_properties_compact( array $properties, array $i18n, string $layout, array $ctx = array() ): void {
 		$orient = 'compact-vertical' === $layout ? 'vertical' : 'horizontal';
 		echo '<div class="wtt-object-view__compact wtt-object-view__compact--' . esc_attr( $orient ) . '">';
 		foreach ( $properties as $prop ) {
@@ -832,7 +1043,7 @@ final class Object_Render {
 			echo '<div class="wtt-object-view__compact-field">';
 			echo '<span class="wtt-object-view__compact-label">' . esc_html( '' !== $name ? $name : '—' ) . '</span>';
 			echo '<span class="wtt-object-view__compact-value">';
-			self::echo_typed_value( $prop, $value, $i18n, true );
+			self::echo_typed_value( $prop, $value, $i18n, true, $ctx );
 			echo '</span></div>';
 		}
 		echo '</div>';
@@ -841,8 +1052,9 @@ final class Object_Render {
 	/**
 	 * @param array<string, mixed>  $prop Property DTO.
 	 * @param array<string, string> $i18n Strings.
+	 * @param array<string, mixed>  $ctx  Render context.
 	 */
-	private static function echo_property_row( array $prop, array $i18n ): void {
+	private static function echo_property_row( array $prop, array $i18n, array $ctx = array() ): void {
 		$name       = (string) ( $prop['name'] ?? '' );
 		$type_name  = (string) ( $prop['typeName'] ?? '' );
 		$value      = self::property_raw_value( $prop );
@@ -872,7 +1084,7 @@ final class Object_Render {
 		}
 		echo '</div>';
 		echo '<div class="wtt-object-view__value">';
-		self::echo_typed_value( $prop, $value, $i18n, false );
+		self::echo_typed_value( $prop, $value, $i18n, false, $ctx );
 		echo '</div>';
 		echo '</div>';
 	}

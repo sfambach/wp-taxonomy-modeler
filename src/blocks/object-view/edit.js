@@ -2,11 +2,12 @@ import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
 import {
 	PanelBody,
 	SelectControl,
+	RangeControl,
 	Button,
 	Spinner,
 	Notice,
 } from '@wordpress/components';
-import { useEffect, useState, useRef, useMemo } from '@wordpress/element';
+import { useEffect, useState, useRef, useMemo, useCallback } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import ModelTreeChooser from '../shared/model-tree-chooser';
 import ModelInstancePicker from '../shared/model-instance-picker';
@@ -23,12 +24,57 @@ function formatInstanceChip( instanceId, i18nMap ) {
 	return id;
 }
 
+/**
+ * Collect attr-id → store string from a live Object View DTO + pending edits map.
+ *
+ * @param {object|null} view
+ * @param {Record<string, string>} pending
+ * @return {Record<string, string>}
+ */
+function collectInstanceValues( view, pending ) {
+	const out = {};
+	const props =
+		view && Array.isArray( view.properties ) ? view.properties : [];
+	const fromView =
+		view && view.instanceValues && typeof view.instanceValues === 'object'
+			? view.instanceValues
+			: {};
+	props.forEach( ( prop ) => {
+		const id = prop && prop.id != null ? String( prop.id ) : '';
+		if ( ! id || id === '0' ) {
+			return;
+		}
+		if ( Object.prototype.hasOwnProperty.call( pending, id ) ) {
+			out[ id ] = String( pending[ id ] ?? '' );
+			return;
+		}
+		if ( Object.prototype.hasOwnProperty.call( fromView, id ) ) {
+			out[ id ] = String( fromView[ id ] ?? '' );
+			return;
+		}
+		if ( Array.isArray( prop.values ) && prop.values.length ) {
+			out[ id ] =
+				prop.values.length > 1
+					? JSON.stringify( prop.values.map( String ) )
+					: String( prop.values[ 0 ] );
+		}
+	} );
+	Object.keys( pending ).forEach( ( id ) => {
+		if ( ! Object.prototype.hasOwnProperty.call( out, id ) ) {
+			out[ id ] = String( pending[ id ] ?? '' );
+		}
+	} );
+	return out;
+}
+
 export default function ObjectViewEdit( { attributes, setAttributes } ) {
 	const {
 		termId = 0,
 		taxonomy = '',
 		instanceId = '',
 		layout = 'form',
+		renderDepth = 1,
+		referenceMode = 'link',
 	} = attributes;
 	const blockProps = useBlockProps( {
 		className: 'wtt-object-view-editor',
@@ -43,7 +89,16 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 	const [ view, setView ] = useState( null );
 	const [ loading, setLoading ] = useState( false );
 	const [ error, setError ] = useState( '' );
+	const [ saveNote, setSaveNote ] = useState( '' );
+	const [ saving, setSaving ] = useState( false );
+	const [ pendingValues, setPendingValues ] = useState( {} );
 	const previewRef = useRef( null );
+	const saveTimer = useRef( null );
+	const pendingRef = useRef( {} );
+	const viewRef = useRef( null );
+
+	pendingRef.current = pendingValues;
+	viewRef.current = view;
 
 	const selectedNode = useMemo(
 		() =>
@@ -55,6 +110,21 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 	const showInstancePicker =
 		!! termId && ! loading && ! String( instanceId || '' ).trim();
 	const boundReady = !! termId;
+	const canEdit = !! termId && !! String( instanceId || '' ).trim();
+
+	useEffect( () => {
+		window.wttTree = Object.assign( {}, window.wttTree || {}, {
+			ajaxUrl: cfg.ajaxUrl || '',
+			nonce: cfg.ajaxNonce || '',
+			taxonomy: taxonomy || '',
+			treePickerMode: cfg.treePickerMode || 'popup',
+			i18n: Object.assign(
+				{},
+				( window.wttTree && window.wttTree.i18n ) || {},
+				i18n
+			),
+		} );
+	}, [ taxonomy ] );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -100,11 +170,13 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		if ( ! termId ) {
 			setView( null );
 			setError( '' );
+			setPendingValues( {} );
 			return undefined;
 		}
 		let cancelled = false;
 		setLoading( true );
 		setError( '' );
+		setPendingValues( {} );
 		const params = new URLSearchParams();
 		if ( taxonomy ) {
 			params.set( 'taxonomy', taxonomy );
@@ -143,6 +215,67 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		};
 	}, [ termId, taxonomy, instanceId, setAttributes ] );
 
+	const persistInstance = useCallback(
+		( nextPending ) => {
+			if ( ! canEdit || ! termId ) {
+				return;
+			}
+			if ( saveTimer.current ) {
+				clearTimeout( saveTimer.current );
+			}
+			saveTimer.current = setTimeout( () => {
+				const values = collectInstanceValues(
+					viewRef.current,
+					nextPending || pendingRef.current
+				);
+				const tax =
+					taxonomy ||
+					( viewRef.current && viewRef.current.taxonomy ) ||
+					'';
+				setSaving( true );
+				setSaveNote( i18n.savingInstance || 'Saving instance…' );
+				apiFetch( {
+					path: `/wtt/v1/model-data/${ termId }`,
+					method: 'POST',
+					data: {
+						taxonomy: tax || undefined,
+						id: String( instanceId ),
+						values,
+					},
+				} )
+					.then( () => {
+						setSaving( false );
+						setSaveNote( i18n.savedInstance || 'Instance saved.' );
+					} )
+					.catch( ( err ) => {
+						setSaving( false );
+						setError( ( err && err.message ) || 'Save failed' );
+						setSaveNote( '' );
+					} );
+			}, 450 );
+		},
+		[ canEdit, termId, taxonomy, instanceId ]
+	);
+
+	const onFieldInput = useCallback(
+		( field, next ) => {
+			if ( ! canEdit || ! field ) {
+				return;
+			}
+			const id = field.id != null ? String( field.id ) : '';
+			if ( ! id || id === '0' ) {
+				return;
+			}
+			const merged = {
+				...pendingRef.current,
+				[ id ]: next == null ? '' : String( next ),
+			};
+			setPendingValues( merged );
+			persistInstance( merged );
+		},
+		[ canEdit, persistInstance ]
+	);
+
 	useEffect( () => {
 		const host = previewRef.current;
 		const api = window.WTTObjectRender;
@@ -150,7 +283,15 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 			return undefined;
 		}
 		if ( api && typeof api.mount === 'function' ) {
-			api.mount( host, view, { layout: layout || 'form' } );
+			api.mount( host, view, {
+				layout: layout || 'form',
+				renderDepth:
+					typeof renderDepth === 'number' ? renderDepth : 1,
+				referenceMode: referenceMode || 'link',
+				mode: canEdit ? 'edit' : 'display',
+				readonly: ! canEdit,
+				onFieldInput: canEdit ? onFieldInput : null,
+			} );
 		} else {
 			host.textContent = '';
 			if ( view && view.name ) {
@@ -164,7 +305,22 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 				host.textContent = '';
 			}
 		};
-	}, [ view, layout ] );
+	}, [
+		view,
+		layout,
+		renderDepth,
+		referenceMode,
+		canEdit,
+		onFieldInput,
+	] );
+
+	useEffect( () => {
+		return () => {
+			if ( saveTimer.current ) {
+				clearTimeout( saveTimer.current );
+			}
+		};
+	}, [] );
 
 	const onTreeSelect = ( node ) => {
 		const id = node && node.id != null ? parseInt( node.id, 10 ) || 0 : 0;
@@ -174,6 +330,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 			instanceId: '',
 		} );
 		setError( '' );
+		setSaveNote( '' );
 	};
 
 	const clearBinding = () => {
@@ -184,15 +341,21 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		} );
 		setView( null );
 		setError( '' );
+		setSaveNote( '' );
+		setPendingValues( {} );
 	};
 
 	const clearInstance = () => {
 		setAttributes( { instanceId: '' } );
+		setSaveNote( '' );
+		setPendingValues( {} );
 	};
 
 	const onPickInstance = ( inst ) => {
 		const id = inst && inst.id ? String( inst.id ) : '';
 		setAttributes( { instanceId: id } );
+		setSaveNote( '' );
+		setPendingValues( {} );
 	};
 
 	const taxonomyOptions = [
@@ -285,6 +448,65 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 						} }
 					/>
 				</PanelBody>
+				{ /* TODO(per-attribute): later allow per-attribute renderDepth / referenceMode overrides. */ }
+				<PanelBody
+					title={ i18n.renderingPanel || 'Rendering' }
+					initialOpen={ false }
+				>
+					<RangeControl
+						label={ i18n.pickRenderDepth || 'Render depth' }
+						help={
+							i18n.renderDepthHelp ||
+							'How deep nested objects are expanded. 1 = this node and its attributes; 0 = meta only.'
+						}
+						value={
+							typeof renderDepth === 'number' ? renderDepth : 1
+						}
+						onChange={ ( next ) => {
+							const n =
+								typeof next === 'number' && ! Number.isNaN( next )
+									? next
+									: 1;
+							setAttributes( {
+								renderDepth: Math.max( 0, Math.min( 5, n ) ),
+							} );
+						} }
+						min={ 0 }
+						max={ 5 }
+						step={ 1 }
+					/>
+					<SelectControl
+						label={ i18n.pickReferenceMode || 'Reference rendering' }
+						help={
+							i18n.referenceModeHelp ||
+							'How node references and catalog picks are shown when not editing.'
+						}
+						value={ referenceMode || 'link' }
+						options={ [
+							{
+								label: i18n.referenceModeNone || 'None (omit)',
+								value: 'none',
+							},
+							{
+								label: i18n.referenceModeLink || 'Link / name',
+								value: 'link',
+							},
+							{
+								label: i18n.referenceModeSummary || 'Summary',
+								value: 'summary',
+							},
+							{
+								label:
+									i18n.referenceModeEmbed ||
+									'Embed (nested view)',
+								value: 'embed',
+							},
+						] }
+						onChange={ ( next ) => {
+							setAttributes( { referenceMode: next || 'link' } );
+						} }
+					/>
+				</PanelBody>
 			</InspectorControls>
 
 			{ showTree ? (
@@ -355,10 +577,24 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 				/>
 			) : null }
 
+			{ boundReady && ! canEdit && ! showInstancePicker && ! loading ? (
+				<p className="wtt-object-view-editor__hint">
+					{ i18n.editNeedsInstance ||
+						'Pick a dataset to edit attribute values.' }
+				</p>
+			) : null }
+
 			{ error ? (
 				<Notice status="error" isDismissible={ false }>
 					{ error }
 				</Notice>
+			) : null }
+
+			{ saveNote || saving ? (
+				<p className="wtt-object-view-editor__hint">
+					{ saveNote }
+					{ saving ? '…' : '' }
+				</p>
 			) : null }
 
 			{ loading ? <Spinner /> : null }
