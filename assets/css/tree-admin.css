@@ -3582,10 +3582,45 @@
 	font-style: italic;
 }
 
+.wtt-attributes__name-wrap {
+	display: flex;
+	align-items: center;
+	gap: 0.25em;
+	min-width: 0;
+}
+
+.wtt-attributes__name-wrap .wtt-attributes__name-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	width: auto;
+	max-width: 100%;
+}
+
+.wtt-attributes__options-toggle {
+	flex: 0 0 auto;
+	padding: 0 !important;
+	width: 1.5em;
+	height: 1.5em;
+	line-height: 1;
+	color: #50575e;
+}
+
+.wtt-attributes__options-toggle:hover,
+.wtt-attributes__options-toggle:focus {
+	color: #1d2327;
+}
+
+.wtt-attributes__options-toggle .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+}
+
 .wtt-attributes__detail-row > td {
 	background: #f6f7f7;
 	border-top: none;
-	padding: 0.5em 1em 0.75em 1.5em;
+	padding: 0.45em 1em 0.65em 2.25em;
 }
 
 .wtt-attributes__detail-row.is-inherited > td {
@@ -3594,36 +3629,58 @@
 
 .wtt-attributes__detail {
 	display: flex;
-	flex-direction: column;
-	gap: 0.65em;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 0.75em 1.25em;
 }
 
 .wtt-attributes__detail-block {
 	display: flex;
-	flex-wrap: wrap;
-	align-items: flex-start;
-	gap: 0.5em 0.75em;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.35em;
+	flex: 1 1 11em;
+	min-width: 10em;
+	max-width: 22em;
+}
+
+.wtt-attributes__detail-block--choice {
+	flex: 1 1 14em;
+	max-width: 26em;
+}
+
+.wtt-attributes__detail-block--compute {
+	flex: 1 1 16em;
+	max-width: 28em;
 }
 
 .wtt-attributes__detail-label {
 	font-weight: 600;
-	min-width: 6.5em;
+	min-width: 0;
 	color: #1d2327;
-	padding-top: 0.35em;
+	padding-top: 0;
 }
 
 .wtt-attributes__detail-select {
-	max-width: 16em;
+	max-width: 100%;
+	width: auto;
+}
+
+.wtt-attributes__detail-block .wtt-field-hint {
+	margin: 0.15em 0 0;
+	max-width: 26em;
 }
 
 .wtt-attributes__choice-tree {
-	flex: 1 1 100%;
+	width: 100%;
 	max-height: 10em;
 	overflow: auto;
 	border: 1px solid #dcdcde;
 	background: #fff;
 	padding: 0.35em 0.5em;
 	margin: 0;
+	box-sizing: border-box;
 }
 
 .wtt-attributes__choice-item {
@@ -3633,7 +3690,7 @@
 }
 
 .wtt-attributes__compute-sources {
-	flex: 1 1 100%;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: 0.25em;
@@ -3646,7 +3703,7 @@
 }
 
 .wtt-attributes__compute-add {
-	flex: 1 1 100%;
+	width: 100%;
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5em;

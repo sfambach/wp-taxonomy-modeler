@@ -7991,6 +7991,53 @@
 		return label;
 	}
 
+	/**
+	 * Choice-filter tree roots for an attribute (catalog specialization children).
+	 *
+	 * @param {Object} attr
+	 * @return {Array<Object>}
+	 */
+	function attributeChoiceFilterRoots(attr) {
+		var rootId = parseInt(attr.fixedRootId || attr.typeId, 10) || 0;
+		var roots = rootId > 0 ? nodeRefPickRoots(rootId) : [];
+		if ((!roots || !roots.length) && Array.isArray(attr.fixedOptions) && attr.fixedOptions.length) {
+			roots = buildChoiceTreeFromFixedOptions(attr.fixedOptions);
+		}
+		return Array.isArray(roots) ? roots : [];
+	}
+
+	/**
+	 * Which Options panels apply for an attribute (hide N/A chrome).
+	 *
+	 * @param {Object} attr
+	 * @return {{isDate:boolean,hasChoice:boolean,showCompute:boolean,hasAny:boolean}}
+	 */
+	function attributeDetailSections(attr) {
+		var extras =
+			attr.typeExtras && typeof attr.typeExtras === 'object'
+				? attr.typeExtras
+				: {};
+		var compute = extras.compute || attr.compute;
+		var typeKey = String(attr.typeKey || '').toLowerCase();
+		var isDate = typeKey === 'date';
+		var hasChoice =
+			String(attr.fixedMode || '') === 'catalog' &&
+			attributeChoiceFilterRoots(attr).length > 0;
+		var isNumeric =
+			typeKey === 'int' ||
+			typeKey === 'integer' ||
+			typeKey === 'double' ||
+			typeKey === 'float';
+		var hasCompute = !!(compute && compute.op);
+		var showCompute = isNumeric || hasCompute;
+		return {
+			isDate: isDate,
+			hasChoice: hasChoice,
+			showCompute: showCompute,
+			hasAny: isDate || hasChoice || showCompute,
+		};
+	}
+
 	function renderAttributeRow(n, attr, editable, rowOpts) {
 		rowOpts = rowOpts || {};
 		var showInherited = !!rowOpts.showInherited;
@@ -8001,13 +8048,18 @@
 		var inherited = !!attr.inherited;
 		var hidden = !!attr.hidden;
 		var ownEditable = editable && !inherited;
+		var detailSections = attributeDetailSections(attr);
+		var detailExpanded = !!state.attrDetailExpanded[attrId];
 		var frag = document.createDocumentFragment();
 		var tr = el('tr', {
 			className:
 				'wtt-attributes__row' +
 				(inherited ? ' wtt-attributes__row--inherited' : '') +
 				(hidden ? ' wtt-attributes__row--hidden' : '') +
-				(attr.computed ? ' wtt-attributes__row--computed' : ''),
+				(attr.computed ? ' wtt-attributes__row--computed' : '') +
+				(detailSections.hasAny && detailExpanded
+					? ' is-options-open'
+					: ''),
 		});
 
 		var peerIndex = -1;
@@ -8020,7 +8072,29 @@
 		var canReorderDown =
 			ownEditable && peerIndex >= 0 && peerIndex < ownPeers.length - 1;
 
-		/* Name */
+		/* Name (+ Options disclosure when detail panels exist). */
+		var nameChildren = [];
+		if (detailSections.hasAny) {
+			nameChildren.push(
+				el('button', {
+					type: 'button',
+					className: 'button-link wtt-attributes__options-toggle',
+					'aria-expanded': detailExpanded ? 'true' : 'false',
+					'data-attr-id': String(attrId),
+					title: i18n.attributesOptions || 'Options',
+					'aria-label': i18n.attributesOptions || 'Options',
+					html:
+						'<span class="dashicons dashicons-arrow-' +
+						(detailExpanded ? 'down' : 'right') +
+						'" aria-hidden="true"></span>',
+					onClick: function (e) {
+						e.preventDefault();
+						state.attrDetailExpanded[attrId] = !detailExpanded;
+						renderDetail();
+					},
+				})
+			);
+		}
 		if (ownEditable) {
 			var nameInput = el('input', {
 				type: 'text',
@@ -8049,11 +8123,17 @@
 						});
 				},
 			});
-			tr.appendChild(el('td', { className: 'wtt-col-name' }, [nameInput]));
+			nameChildren.push(nameInput);
+			tr.appendChild(
+				el('td', { className: 'wtt-col-name' }, [
+					el('div', { className: 'wtt-attributes__name-wrap' }, nameChildren),
+				])
+			);
 		} else {
+			nameChildren.push(el('span', { text: attr.name || '' }));
 			tr.appendChild(
 				el('td', { className: 'wtt-col-name wtt-attributes__name' }, [
-					el('span', { text: attr.name || '' }),
+					el('div', { className: 'wtt-attributes__name-wrap' }, nameChildren),
 				])
 			);
 		}
@@ -8532,18 +8612,22 @@
 		tr.appendChild(actions);
 
 		frag.appendChild(tr);
-		var detail = renderAttributeDetailRow(n, attr, editable, {
-			colCount: colCount,
-			inherited: inherited,
-		});
-		if (detail) {
-			frag.appendChild(detail);
+		if (detailSections.hasAny && detailExpanded) {
+			var detail = renderAttributeDetailRow(n, attr, editable, {
+				colCount: colCount,
+				inherited: inherited,
+				sections: detailSections,
+			});
+			if (detail) {
+				frag.appendChild(detail);
+			}
 		}
 		return frag;
 	}
 
 	/**
 	 * Detail row under an attribute: dateMode, choiceFilter, compute.
+	 * Collapsed by default; only rendered when Options is expanded.
 	 */
 	function renderAttributeDetailRow(n, attr, editable, opts) {
 		opts = opts || {};
@@ -8558,39 +8642,20 @@
 			extras.compute = attr.compute;
 		}
 
-		var typeKey = String(attr.typeKey || '').toLowerCase();
-		var isDate = typeKey === 'date';
-		var hasChoice =
-			String(attr.fixedMode || '') === 'catalog' &&
-			(Array.isArray(attr.fixedOptions)
-				? attr.fixedOptions.length > 0
-				: false ||
-				  (parseInt(attr.fixedRootId, 10) || 0) > 0);
-		/* Show choice filter whenever catalog mode (even if currently filtered empty). */
-		if (String(attr.fixedMode || '') === 'catalog') {
-			hasChoice = true;
-		}
-		var isNumeric =
-			typeKey === 'int' ||
-			typeKey === 'integer' ||
-			typeKey === 'double' ||
-			typeKey === 'float';
-		var hasCompute = !!(extras.compute && extras.compute.op);
-		var showCompute = isNumeric || hasCompute;
-
-		if (!isDate && !hasChoice && !showCompute) {
+		var sections = opts.sections || attributeDetailSections(attr);
+		if (!sections.hasAny) {
 			return null;
 		}
 
 		var detailEditable = editable && !inherited;
 		var wrap = el('div', { className: 'wtt-attributes__detail' });
 
-		if (isDate) {
+		if (sections.isDate) {
 			wrap.appendChild(
 				renderAttrDateModeDetail(n, attr, extras, detailEditable, hostId, attrId)
 			);
 		}
-		if (hasChoice) {
+		if (sections.hasChoice) {
 			wrap.appendChild(
 				renderAttrChoiceFilterDetail(
 					n,
@@ -8602,7 +8667,7 @@
 				)
 			);
 		}
-		if (showCompute) {
+		if (sections.showCompute) {
 			wrap.appendChild(
 				renderAttrComputeDetail(
 					n,
@@ -8619,6 +8684,7 @@
 			className:
 				'wtt-attributes__detail-row' +
 				(inherited ? ' is-inherited' : ''),
+			'data-attr-id': String(attrId),
 		}, [
 			el('td', {
 				colSpan: colCount,
@@ -8689,13 +8755,17 @@
 				selected: current === 'datetime',
 			})
 		);
-		return el('div', { className: 'wtt-attributes__detail-block' }, [
-			el('span', {
-				className: 'wtt-attributes__detail-label',
-				text: i18n.attributesDateMode || 'Date mode',
-			}),
-			select,
-		]);
+		return el(
+			'div',
+			{ className: 'wtt-attributes__detail-block wtt-attributes__detail-block--date' },
+			[
+				el('span', {
+					className: 'wtt-attributes__detail-label',
+					text: i18n.attributesDateMode || 'Date mode',
+				}),
+				select,
+			]
+		);
 	}
 
 	function renderAttrChoiceFilterDetail(n, attr, extras, editable, hostId, attrId) {
@@ -8709,14 +8779,12 @@
 			selected[parseInt(id, 10)] = true;
 		});
 
-		var rootId = parseInt(attr.fixedRootId || attr.typeId, 10) || 0;
-		var roots = rootId > 0 ? nodeRefPickRoots(rootId) : [];
-		/* Fallback: build shallow list from fixedOptions. */
-		if ((!roots || !roots.length) && Array.isArray(attr.fixedOptions)) {
-			roots = buildChoiceTreeFromFixedOptions(attr.fixedOptions);
-		}
+		var roots = attributeChoiceFilterRoots(attr);
 
-		var block = el('div', { className: 'wtt-attributes__detail-block' });
+		var block = el('div', {
+			className:
+				'wtt-attributes__detail-block wtt-attributes__detail-block--choice',
+		});
 		block.appendChild(
 			el('span', {
 				className: 'wtt-attributes__detail-label',
@@ -8876,7 +8944,10 @@
 		var peers = Array.isArray(n.attributes) ? n.attributes : [];
 		var selfId = parseInt(attr.id, 10) || 0;
 
-		var block = el('div', { className: 'wtt-attributes__detail-block' });
+		var block = el('div', {
+			className:
+				'wtt-attributes__detail-block wtt-attributes__detail-block--compute',
+		});
 		block.appendChild(
 			el('span', {
 				className: 'wtt-attributes__detail-label',

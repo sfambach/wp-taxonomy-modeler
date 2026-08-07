@@ -356,6 +356,7 @@ final class Tree_Admin {
 				'attributesFixedHint' => __( 'Default value(s) on this node (own or inherited attribute). Catalog types: pick from the type tree (list picker). Multiplicity controls how many values.', 'wp-taxonomy-tree' ),
 				'attributesFixedEmpty' => __( 'This type has no selectable values yet.', 'wp-taxonomy-tree' ),
 				'attributesDuplicate' => __( 'Duplicate', 'wp-taxonomy-tree' ),
+				'attributesOptions' => __( 'Options', 'wp-taxonomy-tree' ),
 				'attributesDateMode' => __( 'Date mode', 'wp-taxonomy-tree' ),
 				'attributesDateModeDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'attributesChoiceFilter' => __( 'Choice filter', 'wp-taxonomy-tree' ),
