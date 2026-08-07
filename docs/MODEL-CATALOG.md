@@ -14,7 +14,29 @@ Snapshot of **Model/** attribute hosts and Bauteil kinds as seeded in the scaffo
 | Taxonomy | `wtt_fs` |
 | Path | `Fallstudie/Model/…` |
 | Last snapshot | 2026-08-07 |
-| Plugin ≈ | `0.0.343` |
+| Plugin ≈ | `0.0.345` |
+| Planning capture | Partner, Platine/Bauteilliste, Rezept/Zutat, Gerät/Menü + URs (not seeded) |
+
+### Planned Model index
+
+| Host / family | Status | Role |
+|---------------|--------|------|
+| [Partner](#partner-planned--replace-flat-kontakt) | planned | Organisation / Person / Adresse / Rollen |
+| [Platine + Bauteilliste](#platine--bauteilliste-planned) | planned | Board → Version → BOM → Position |
+| [Rezept + Zutatenliste](#rezept--zutatenliste-planned) | planned | Rezept → Version → Zutaten → Zeile |
+| [Gerät / Menü](#gerät--menü-planned-nested-bundles) | planned | Nested bundles of Platinen / Rezepte |
+| [Bauteil](#bauteil) | **seeded** | Part kinds (Passiv / Halbleiter / …) |
+| Kontakt, flat Platine/Bauteilliste | **seeded (legacy)** | Until planned hosts adopted |
+
+### UR index (User Requirements)
+
+| UR | Summary |
+|----|---------|
+| [Bauteil entry](#ur--bauteil-entry-in-bom-search--create-on-leave) | Search-as-type; create/refine on leave if missing |
+| [Referenz](#ur--referenz-refdes) | Compact RefDes UX → expanded positions |
+| [Scaling](#ur--scaling-rezept--bauteilliste) | ×N Platinen ⇔ ×P Personen |
+| [Nested](#ur--nested-composition-gerät--menü) | Gerät = Platinen; Menü = Rezepte |
+| [Order / shopping](#ur--order--shopping-list-lieferant--rewe) | Lieferant-Bestellung ⇔ Einkaufsliste / REWE |
 
 ---
 
