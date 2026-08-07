@@ -652,15 +652,180 @@ CatalogChoice Arten (no extra slots on the kind host):
 
 ---
 
-## Rezept (thought experiment — same composition spine)
+## Rezept + Zutatenliste (planned)
 
-Mirror of Platine/BOM (not seeded): Rezept → RezeptVersion[1..*] → Zutatenliste[1] → Zutatenzeile*; Wert → Zutat catalog; Menge = `quantity`.
+> **Status:** Planning agreed as BOM mirror 2026-08-07. **Not seeded.**  
+> Same composition spine as Platine / Bauteilliste.
 
-**UR — scaling:** Umrechnen Rezept auf mehrere Personen — same idea as Bauteilliste × mehrere Platinen (see [UR — scaling](#ur--scaling-rezept--bauteilliste)).
+### Intended tree shape
 
-**UR — nested:** **Menü** = mehrere Rezepte — same idea as **Gerät** = mehrere Platinen (see [UR — nested](#ur--nested-composition-gerät--menü)).
+```text
+Model/
+  Rezept/                       ← dish / recipe project
+    → RezeptVersion [1..*]      ← besteht_aus
+      → Zutatenliste [1]        ← besteht_aus — always owned by that version
+        → Zutatenzeile [0..*]
+  Zutat/                        ← ingredient catalog (parallel to Bauteil)
+  Partner/                      ← optional shopping channel
+```
 
-**UR — order / shopping:** BOM → Bestellung beim Lieferant; Rezept/Menü → Einkaufsliste / Lieferung (z. B. REWE) — see [UR — order](#ur--order--shopping-list-lieferant--rewe).
+**Invariants**
+
+- A Rezept has **one or more** versions.
+- Every version has **exactly one** Zutatenliste (0 lines allowed).
+- No Zutatenliste without a RezeptVersion.
+
+### Class diagram
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Rezept {
+    +text Name [1]
+    +textarea Beschreibung [0..1]
+    +text Kueche [0..1]
+    +text[] Ernaehrung [0..*]
+  }
+
+  class RezeptVersion {
+    +text Version [1]
+    +int Portionen [1]
+    +int Zubereitungszeit_min [0..1]
+    +text Schwierigkeit [0..1]
+    +media Foto [0..1]
+  }
+
+  class Zutatenliste {
+    +text Name [0..1]
+  }
+
+  class Zutatenzeile {
+    +Zutat Wert [1]
+    +quantity Menge [1]
+    +text Notiz [0..1]
+    +bool Optional [0..1]
+  }
+
+  class Zutat {
+    <<abstract Katalog>>
+  }
+
+  Rezept "1" *-- "1..*" RezeptVersion : besteht_aus
+  RezeptVersion "1" *-- "1" Zutatenliste : besteht_aus
+  Zutatenliste "1" *-- "0..*" Zutatenzeile : besteht_aus
+  Zutatenzeile --> Zutat : Wert
+```
+
+### Rezept
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 1 | Dish title |
+| Beschreibung | textarea | 0..1 | |
+| Küche | text | 0..1 | e.g. italienisch |
+| Ernährung | text | 0..* | vegan, … (CatalogChoice later) |
+| Versionen | RezeptVersion | 1..* | `besteht_aus` |
+
+### RezeptVersion
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Version | text | 1 | Rev / variant label |
+| Portionen | int | 1 | Base portions for scaling |
+| Zubereitungszeit | int | 0..1 | Minutes |
+| Schwierigkeit | text | 0..1 | |
+| Foto | media | 0..1 | |
+| Zutatenliste | Zutatenliste | 1 | `besteht_aus` — always |
+
+### Zutatenliste
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 0..1 | |
+| Zeilen | Zutatenzeile | 0..* | `besteht_aus` |
+
+### Zutatenzeile
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Wert | Zutat | 1 | Catalog pick (parallel to Bauteil) |
+| Menge | quantity | 1 | Zahl + Präfix? + Einheit (not Stück-only) |
+| Notiz | text | 0..1 | |
+| Optional | bool | 0..1 | |
+
+### Zutat (catalog — planned)
+
+Ingredient kinds under `Model/Zutat` (Gemüse, Gewürze, …) — mirror of Bauteil groups; detail slots TBD when adopted. Entry UX should follow the same [search + create on leave](#ur--bauteil-entry-in-bom-search--create-on-leave) pattern.
+
+### BOM ↔ Rezept map
+
+| BOM / Platine | Rezept |
+|---------------|--------|
+| Platine | Rezept |
+| PlatinenVersion | RezeptVersion |
+| Bauteilliste | Zutatenliste |
+| Position | Zutatenzeile |
+| Wert → Bauteil | Wert → Zutat |
+| Menge `int` (Stück) | Menge `quantity` |
+| Referenz (RefDes) | — (no board placements) |
+| Bestellt wo / Lieferant | Einkaufskanal (Partner) |
+
+Related URs: [scaling](#ur--scaling-rezept--bauteilliste), [nested Menü](#ur--nested-composition-gerät--menü), [order / shopping](#ur--order--shopping-list-lieferant--rewe).
+
+---
+
+## Gerät / Menü (planned — nested bundles)
+
+> **Status:** Planning note 2026-08-07. **Not seeded.**  
+> Higher-level compositions that bundle several Platinen or Rezepte. See [UR — nested](#ur--nested-composition-gerät--menü).
+
+### Intended tree shape
+
+```text
+Model/
+  Gerät/                        ← electronics assembly
+    → Gerätezeile [0..*]        ← Wert = Platine | Bauteil, Menge = int
+  Menü/                         ← meal / menu
+    → Menüzeile [0..*]          ← Wert = Rezept, Portionen/Faktor
+```
+
+### Class diagram
+
+```mermaid
+classDiagram
+  direction TB
+
+  class Geraet {
+    +text Name [1]
+    +textarea Beschreibung [0..1]
+  }
+  class Geraetezeile {
+    +Platine_oder_Bauteil Wert [1]
+    +int Menge [1]
+  }
+  class Menue {
+    +text Name [1]
+    +textarea Beschreibung [0..1]
+  }
+  class Menuezeile {
+    +Rezept Wert [1]
+    +int Portionen_Faktor [1]
+  }
+
+  Geraet "1" *-- "0..*" Geraetezeile : besteht_aus
+  Menue "1" *-- "0..*" Menuezeile : besteht_aus
+  Geraetezeile --> Platine : Wert
+  Geraetezeile --> Bauteil : Wert
+  Menuezeile --> Rezept : Wert
+```
+
+| Bundle | Lines pick | Scale / order |
+|--------|------------|---------------|
+| Gerät | Platine and/or Bauteil | ×N devices → expand nested Bauteillisten → Lieferant order |
+| Menü | Rezept | ×P Personen → expand Zutatenlisten → Einkaufsliste / REWE |
+
+Unterrezept (Sauce inside a dish) remains optional and **distinct** from Menü.
 
 ---
 
@@ -671,6 +836,7 @@ User phrase examples (German or English):
 - „Model-Katalog aktualisieren“
 - „Modelle speichern“
 - „update model catalog“
+- „UR festhalten“ (model-related User Requirements)
 
 Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the **seeded** snapshot tables above; bump **Last snapshot** / plugin version note.
 
@@ -678,4 +844,6 @@ Do **not** drop planned sections on a routine refresh — only change them when 
 
 - [Partner (planned)](#partner-planned--replace-flat-kontakt)
 - [Platine + Bauteilliste (planned)](#platine--bauteilliste-planned)
-- [Rezept (thought experiment)](#rezept-thought-experiment--same-composition-spine) / scaling note
+- [Rezept + Zutatenliste (planned)](#rezept--zutatenliste-planned)
+- [Gerät / Menü (planned)](#gerät--menü-planned-nested-bundles)
+- All **UR — …** sections
