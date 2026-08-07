@@ -23,8 +23,8 @@
     },
     "layout": {
       "type": "string",
-      "default": "form",
-      "enum": ["form", "table", "compact", "compact-vertical"]
+      "default": "auto",
+      "enum": ["auto", "form", "table", "compact", "compact-vertical"]
     },
     "renderDepth": {
       "type": "number",

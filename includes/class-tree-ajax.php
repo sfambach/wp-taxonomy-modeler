@@ -60,6 +60,8 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_set_attribute_multiplicity', array( self::class, 'set_attribute_multiplicity' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_binding', array( self::class, 'set_attribute_binding' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_fixed', array( self::class, 'set_attribute_fixed' ) );
+		add_action( 'wp_ajax_wtt_set_attribute_type_extras', array( self::class, 'set_attribute_type_extras' ) );
+		add_action( 'wp_ajax_wtt_duplicate_attribute', array( self::class, 'duplicate_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_enum_values', array( self::class, 'set_enum_values' ) );
 	}
 
@@ -646,6 +648,11 @@ final class Tree_Ajax {
 			$date_mode = sanitize_key( (string) wp_unslash( $_POST['date_mode'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
+		$preferred_render = null;
+		if ( isset( $_POST['preferred_render'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$preferred_render = sanitize_key( (string) wp_unslash( $_POST['preferred_render'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		$type_props = null;
 		if ( isset( $_POST['type_props'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$props_raw = wp_unslash( $_POST['type_props'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
@@ -708,6 +715,9 @@ final class Tree_Ajax {
 		}
 		if ( null !== $date_mode ) {
 			$save_args['date_mode'] = $date_mode;
+		}
+		if ( null !== $preferred_render ) {
+			$save_args['preferred_render'] = $preferred_render;
 		}
 		if ( null !== $type_props ) {
 			$save_args['type_props'] = $type_props;
@@ -1390,6 +1400,59 @@ final class Tree_Ajax {
 		$hidden  = isset( $_POST['hidden'] ) && '1' === (string) wp_unslash( $_POST['hidden'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::set_hidden( $taxonomy, $host_id, $attr_id, $hidden );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	public static function set_attribute_type_extras(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$extras = array();
+		if ( isset( $_POST['extras'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$raw = wp_unslash( $_POST['extras'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( is_string( $raw ) ) {
+				$decoded = json_decode( $raw, true );
+				$extras  = is_array( $decoded ) ? $decoded : array();
+			} elseif ( is_array( $raw ) ) {
+				$extras = $raw;
+			}
+		}
+
+		$result = Attribute::set_type_extras( $taxonomy, $host_id, $attr_id, $extras );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	public static function duplicate_attribute(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$result = Attribute::duplicate( $taxonomy, $host_id, $attr_id );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}

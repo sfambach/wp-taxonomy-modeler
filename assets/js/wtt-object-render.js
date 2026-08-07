@@ -1238,7 +1238,7 @@
 	function normalizeLayout(layout) {
 		var key = String(layout || 'form').toLowerCase();
 		if (key === 'auto') {
-			return 'form';
+			return 'auto';
 		}
 		if (key === 'table' || key === 'list') {
 			return 'table';
@@ -1250,6 +1250,25 @@
 			return 'compact-vertical';
 		}
 		return 'form';
+	}
+
+	function resolveLayout(layout, view) {
+		var raw =
+			layout != null && String(layout) !== ''
+				? layout
+				: 'auto';
+		var key = normalizeLayout(raw);
+		if (key === 'auto') {
+			var preferred =
+				(view && view.preferredRender) ||
+				(view && view.preferred_render) ||
+				'form';
+			key = normalizeLayout(preferred);
+			if (key === 'auto') {
+				key = 'form';
+			}
+		}
+		return key;
 	}
 
 	function appendMetaStrip(root, view) {
@@ -1519,7 +1538,10 @@
 			return;
 		}
 		host.textContent = '';
-		var layout = normalizeLayout(options.layout || (view && view.layout));
+		var layout = resolveLayout(
+			options.layout != null ? options.layout : view && view.layout,
+			view
+		);
 		var depth = normalizeRenderDepth(
 			options.renderDepth != null
 				? options.renderDepth

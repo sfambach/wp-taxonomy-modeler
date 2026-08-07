@@ -71,6 +71,8 @@ final class Object_Render {
 			'layoutTable'             => __( 'Table (all)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
+			'layoutAuto'              => __( 'Node preferred', 'wp-taxonomy-tree' ),
+			'layoutAutoHelp'          => __( 'Use the preferred render stored on the bound node.', 'wp-taxonomy-tree' ),
 			'renderingPanel'          => __( 'Rendering', 'wp-taxonomy-tree' ),
 			'pickRenderDepth'         => __( 'Render depth', 'wp-taxonomy-tree' ),
 			'renderDepthHelp'         => __( 'How deep nested objects are expanded. 1 = this node and its attributes; 0 = meta only.', 'wp-taxonomy-tree' ),
@@ -267,6 +269,7 @@ final class Object_Render {
 			'typeId'           => $type_id,
 			'typeName'         => $type_name,
 			'typeKey'          => $type_key,
+			'preferredRender'  => Node_Type::get_preferred_render( $term_id ),
 			'properties'       => $properties,
 			'instanceId'       => '',
 			'instanceValues'   => new \stdClass(),
@@ -314,6 +317,36 @@ final class Object_Render {
 			}
 			$out_props[] = $prop;
 		}
+
+		/* Derive computed attributes on read (flat-list Aggregate ops). */
+		$value_map = $values;
+		foreach ( $out_props as $prop ) {
+			$aid = (string) (int) ( $prop['id'] ?? 0 );
+			if ( '' === $aid || '0' === $aid ) {
+				continue;
+			}
+			if ( isset( $prop['values'][0] ) ) {
+				$value_map[ $aid ] = $prop['values'][0];
+			}
+		}
+		foreach ( $out_props as $i => $prop ) {
+			if ( empty( $prop['computed'] ) && empty( $prop['compute'] ) ) {
+				continue;
+			}
+			$computed = Attribute::evaluate_compute( $prop, $out_props, $value_map );
+			if ( null === $computed || '' === $computed ) {
+				continue;
+			}
+			$out_props[ $i ]['values']           = array( $computed );
+			$out_props[ $i ]['valueLabel']       = $computed;
+			$out_props[ $i ]['hasInstanceValue'] = true;
+			$out_props[ $i ]['readonly']         = true;
+			$aid                                 = (string) (int) ( $prop['id'] ?? 0 );
+			if ( '' !== $aid && '0' !== $aid ) {
+				$values[ $aid ] = $computed;
+			}
+		}
+
 		$view['properties']     = $out_props;
 		$view['instanceValues'] = (object) $values;
 		return $view;
@@ -461,10 +494,23 @@ final class Object_Render {
 			$dto['nodeRefCreateFields']   = Composition::get_node_ref_create_fields( $taxonomy, $scope_id );
 		}
 
-		if ( 'date' === strtolower( $type_key ) && '' !== $taxonomy ) {
-			$cfg_id = $slot_id > 0 ? $slot_id : (int) ( $row['typeId'] ?? 0 );
-			$cfg    = Node_Type::get_date_config_for_node( $taxonomy, $cfg_id );
-			$dto['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
+		if ( 'date' === strtolower( $type_key ) ) {
+			if ( isset( $row['dateConfig'] ) && is_array( $row['dateConfig'] ) ) {
+				$dto['dateConfig'] = $row['dateConfig'];
+			} elseif ( '' !== $taxonomy ) {
+				$cfg_id            = $slot_id > 0 ? $slot_id : (int) ( $row['typeId'] ?? 0 );
+				$cfg               = Node_Type::get_date_config_for_node( $taxonomy, $cfg_id );
+				$dto['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
+			}
+		}
+
+		if ( isset( $row['typeExtras'] ) && is_array( $row['typeExtras'] ) ) {
+			$dto['typeExtras'] = $row['typeExtras'];
+		}
+		if ( ! empty( $row['computed'] ) || ( isset( $row['compute'] ) && is_array( $row['compute'] ) ) ) {
+			$dto['computed'] = true;
+			$dto['compute']  = isset( $row['compute'] ) && is_array( $row['compute'] ) ? $row['compute'] : null;
+			$dto['readonly'] = true;
 		}
 
 		return $dto;
@@ -480,13 +526,14 @@ final class Object_Render {
 		$term_id     = isset( $attributes['termId'] ) ? (int) $attributes['termId'] : 0;
 		$taxonomy    = isset( $attributes['taxonomy'] ) ? sanitize_key( (string) $attributes['taxonomy'] ) : '';
 		$instance_id = isset( $attributes['instanceId'] ) ? sanitize_key( (string) $attributes['instanceId'] ) : '';
-		$layout      = self::normalize_layout( isset( $attributes['layout'] ) ? (string) $attributes['layout'] : 'form' );
+		$raw_layout  = isset( $attributes['layout'] ) ? (string) $attributes['layout'] : 'auto';
 		$depth       = self::normalize_render_depth( isset( $attributes['renderDepth'] ) ? $attributes['renderDepth'] : 1 );
 		$ref_mode    = self::normalize_reference_mode( isset( $attributes['referenceMode'] ) ? (string) $attributes['referenceMode'] : 'link' );
 		$view        = $term_id > 0 ? self::get_view( $taxonomy, $term_id ) : null;
 		if ( null !== $view && '' !== $instance_id ) {
 			$view = self::with_instance_values( $view, $instance_id );
 		}
+		$layout = self::resolve_layout( $raw_layout, $view );
 		$i18n = self::i18n();
 
 		self::enqueue_assets();
@@ -1000,6 +1047,22 @@ final class Object_Render {
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Resolve block layout: auto/empty → node preferredRender; else explicit override.
+	 *
+	 * @param array<string, mixed>|null $view View DTO.
+	 */
+	public static function resolve_layout( string $layout, ?array $view ): string {
+		$key = strtolower( trim( $layout ) );
+		if ( '' === $key || 'auto' === $key ) {
+			$preferred = is_array( $view ) && isset( $view['preferredRender'] )
+				? (string) $view['preferredRender']
+				: 'form';
+			return self::normalize_layout( $preferred );
+		}
+		return self::normalize_layout( $key );
 	}
 
 	/**

@@ -51,6 +51,12 @@ final class Attribute {
 	public const META_KEY_SLOT = '_wtt_attribute_slot';
 
 	/**
+	 * Term meta on host: map attribute term id → type extras
+	 * (dateMode, choiceFilter, compute). Same host-map pattern as fixed values.
+	 */
+	public const META_KEY_TYPE_EXTRAS = '_wtt_attribute_type_extras';
+
+	/**
 	 * Normalize Bindung to aggregation | besteht_aus (composition alias → besteht_aus).
 	 */
 	public static function normalize_binding( string $binding ): string {
@@ -1243,6 +1249,32 @@ final class Attribute {
 			}
 		}
 
+		$attr_id = (int) ( $row['id'] ?? 0 );
+		$extras  = self::get_type_extras_for_attr( $host_id, $attr_id );
+		if ( empty( $extras ) && ! empty( $row['inherited'] ) ) {
+			$defined_on = (int) ( $row['definedOnId'] ?? 0 );
+			if ( $defined_on > 0 && $defined_on !== $host_id ) {
+				$extras = self::get_type_extras_for_attr( $defined_on, $attr_id );
+			}
+		}
+		$row['typeExtras'] = $extras;
+
+		/* Choice filter (include|exclude subtrees) against catalog fixedOptions. */
+		if (
+			'catalog' === (string) ( $row['fixedMode'] ?? '' )
+			&& isset( $extras['choiceFilter'] )
+			&& is_array( $extras['choiceFilter'] )
+		) {
+			$row['fixedOptions'] = self::apply_choice_filter(
+				$taxonomy,
+				$type_id,
+				isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
+					? $row['fixedOptions']
+					: array(),
+				$extras['choiceFilter']
+			);
+		}
+
 		$row['choiceDepth'] = self::choice_depth_from_options(
 			isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
 				? $row['fixedOptions']
@@ -1250,9 +1282,29 @@ final class Attribute {
 		);
 
 		if ( 'date' === (string) $row['typeKey'] ) {
-			$attr_id = (int) ( $row['id'] ?? 0 );
-			$cfg     = Node_Type::get_date_config_for_node( $taxonomy, $attr_id > 0 ? $attr_id : $type_id );
-			$row['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
+			$type_mode = 'date';
+			$cfg       = Node_Type::get_date_config_for_node( $taxonomy, $type_id > 0 ? $type_id : $attr_id );
+			if ( is_array( $cfg ) && isset( $cfg['mode'] ) ) {
+				$type_mode = Node_Type::normalize_date_mode( (string) $cfg['mode'] );
+			}
+			$mode = $type_mode;
+			if ( isset( $extras['dateMode'] ) && is_string( $extras['dateMode'] ) && '' !== $extras['dateMode'] ) {
+				$mode = Node_Type::normalize_date_mode( (string) $extras['dateMode'] );
+			}
+			$row['dateConfig'] = array(
+				'mode'         => $mode,
+				'typeMode'     => $type_mode,
+				'hasOverride'  => isset( $extras['dateMode'] ),
+			);
+		}
+
+		if ( ! empty( $extras['compute'] ) && is_array( $extras['compute'] ) ) {
+			$row['compute']  = $extras['compute'];
+			$row['readonly'] = true;
+			$row['computed'] = true;
+		} else {
+			$row['compute']  = null;
+			$row['computed'] = false;
 		}
 
 		return $row;
@@ -1670,6 +1722,467 @@ final class Attribute {
 		}
 
 		return $fixed;
+	}
+
+	/**
+	 * Duplicate an effective attribute onto this host as a new own attribute.
+	 * Inherited rows become a local own copy (not an override of the same name).
+	 *
+	 * @return array<string, mixed>|\WP_Error Decorated own row.
+	 */
+	public static function duplicate( string $taxonomy, int $host_id, int $attr_id ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$host = get_term( $host_id, $taxonomy );
+		if ( ! $host instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Host node not found.', 'wp-taxonomy-tree' ) );
+		}
+
+		$found = self::find_effective_row( $taxonomy, $host_id, $attr_id );
+		if ( null === $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Attribute not found on this node.', 'wp-taxonomy-tree' ) );
+		}
+
+		$type_id = (int) ( $found['typeId'] ?? 0 );
+		if ( $type_id <= 0 ) {
+			return new \WP_Error( 'wtt_bad_attribute', __( 'Attribute type is required.', 'wp-taxonomy-tree' ) );
+		}
+
+		$base_name = (string) ( $found['name'] ?? '' );
+		if ( '' === $base_name ) {
+			return new \WP_Error( 'wtt_bad_attribute', __( 'Attribute name is required.', 'wp-taxonomy-tree' ) );
+		}
+
+		$new_name = self::unique_copy_name( $taxonomy, $host_id, $base_name );
+		$created  = self::add(
+			$taxonomy,
+			$host_id,
+			$new_name,
+			$type_id,
+			(string) ( $found['multiplicity'] ?? self::DEFAULT_MULTIPLICITY ),
+			(string) ( $found['binding'] ?? self::DEFAULT_BINDING )
+		);
+		if ( is_wp_error( $created ) ) {
+			return $created;
+		}
+
+		$new_id = (int) ( $created['id'] ?? 0 );
+		if ( $new_id <= 0 ) {
+			return new \WP_Error( 'wtt_create_failed', __( 'Could not create attribute node.', 'wp-taxonomy-tree' ) );
+		}
+
+		/* Copy type extras from source attribute id (own host map or ancestor). */
+		$source_extras = self::resolve_type_extras_for_attr( $taxonomy, $host_id, $attr_id, $found );
+		if ( ! empty( $source_extras ) ) {
+			$set = self::set_type_extras( $taxonomy, $host_id, $new_id, $source_extras );
+			if ( is_wp_error( $set ) ) {
+				return $set;
+			}
+		}
+
+		/* Copy fixed/default values under the new name when present on this host for the source name. */
+		$fixed = self::fixed_values_for_name( $host_id, $base_name );
+		if ( ! empty( $fixed ) ) {
+			$map              = self::get_fixed_values_map( $host_id );
+			$map[ $new_name ] = count( $fixed ) > 1 ? $fixed : $fixed[0];
+			self::store_fixed_values_map( $host_id, $map );
+		}
+
+		Tree_Model::touch_modified( $host_id );
+		$row = self::find_own_row( $taxonomy, $host_id, $new_id );
+		return is_array( $row ) ? $row : $created;
+	}
+
+	/**
+	 * Set / replace type extras for one attribute on a host.
+	 *
+	 * @param array<string, mixed>|null $extras Null clears.
+	 * @return true|\WP_Error
+	 */
+	public static function set_type_extras( string $taxonomy, int $host_id, int $attr_id, $extras ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$host = get_term( $host_id, $taxonomy );
+		if ( ! $host instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Host node not found.', 'wp-taxonomy-tree' ) );
+		}
+		$found = self::find_effective_row( $taxonomy, $host_id, $attr_id );
+		if ( null === $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Attribute not found on this node.', 'wp-taxonomy-tree' ) );
+		}
+
+		$map        = self::get_type_extras_map( $host_id );
+		$key        = (string) $attr_id;
+		$normalized = array();
+		if ( null === $extras || array() === $extras ) {
+			unset( $map[ $key ] );
+		} else {
+			$normalized = self::normalize_type_extras( $extras );
+			if ( array() === $normalized ) {
+				unset( $map[ $key ] );
+			} else {
+				$map[ $key ] = $normalized;
+			}
+		}
+		self::store_type_extras_map( $host_id, $map );
+
+		/* Computed ⇒ force readonly on this host. */
+		if ( isset( $normalized['compute'] ) && is_array( $normalized['compute'] ) ) {
+			self::set_readonly( $taxonomy, $host_id, $attr_id, true );
+		}
+
+		Tree_Model::touch_modified( $host_id );
+		return true;
+	}
+
+	/**
+	 * Flat-list compute: collect numeric contributions then apply Footer_Ops.
+	 *
+	 * @param list<array<string, mixed>> $attributes Effective attribute rows.
+	 * @param array<string, mixed>       $values     Attr id → scalar|list|nested values map.
+	 * @return string|null Display string or null when nothing to compute.
+	 */
+	public static function evaluate_compute( array $attr_row, array $attributes, array $values ): ?string {
+		$extras  = isset( $attr_row['typeExtras'] ) && is_array( $attr_row['typeExtras'] )
+			? $attr_row['typeExtras']
+			: array();
+		$compute = isset( $extras['compute'] ) && is_array( $extras['compute'] )
+			? $extras['compute']
+			: ( isset( $attr_row['compute'] ) && is_array( $attr_row['compute'] ) ? $attr_row['compute'] : null );
+		if ( null === $compute ) {
+			return null;
+		}
+		$op = isset( $compute['op'] ) ? strtolower( sanitize_key( (string) $compute['op'] ) ) : '';
+		if ( '' === $op || ! isset( Footer_Ops::catalog()[ $op ] ) ) {
+			return null;
+		}
+		$sources = isset( $compute['sources'] ) && is_array( $compute['sources'] ) ? $compute['sources'] : array();
+		$by_id   = array();
+		foreach ( $attributes as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$id = (int) ( $row['id'] ?? 0 );
+			if ( $id > 0 ) {
+				$by_id[ $id ] = $row;
+			}
+		}
+
+		$flat = array();
+		foreach ( $sources as $src ) {
+			if ( ! is_array( $src ) ) {
+				continue;
+			}
+			$kind = isset( $src['kind'] ) ? sanitize_key( (string) $src['kind'] ) : 'attr';
+			$aid  = isset( $src['attrId'] ) ? (int) $src['attrId'] : 0;
+			if ( $aid <= 0 ) {
+				continue;
+			}
+			$raw = $values[ (string) $aid ] ?? $values[ $aid ] ?? null;
+			if ( 'attrPath' === $kind ) {
+				$path_id = isset( $src['pathAttrId'] ) ? (int) $src['pathAttrId'] : 0;
+				if ( $path_id <= 0 ) {
+					continue;
+				}
+				$items = is_array( $raw ) ? $raw : ( null === $raw || '' === $raw ? array() : array( $raw ) );
+				foreach ( $items as $item ) {
+					$n = self::extract_numeric_from_path_item( $item, $path_id );
+					if ( null !== $n ) {
+						$flat[] = $n;
+					}
+				}
+				continue;
+			}
+			foreach ( self::flatten_numeric_values( $raw ) as $n ) {
+				$flat[] = $n;
+			}
+		}
+
+		return Footer_Ops::evaluate( $op, $flat );
+	}
+
+	/**
+	 * @param mixed $raw Scalar or list.
+	 * @return list<float>
+	 */
+	private static function flatten_numeric_values( $raw ): array {
+		if ( null === $raw || '' === $raw || false === $raw ) {
+			return array();
+		}
+		$items = is_array( $raw ) ? $raw : array( $raw );
+		$out   = array();
+		foreach ( $items as $item ) {
+			if ( is_array( $item ) ) {
+				continue;
+			}
+			if ( is_numeric( $item ) ) {
+				$out[] = (float) $item;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * @param mixed $item Linked object values map or scalar.
+	 */
+	private static function extract_numeric_from_path_item( $item, int $path_attr_id ): ?float {
+		if ( ! is_array( $item ) ) {
+			return null;
+		}
+		$raw = $item[ (string) $path_attr_id ] ?? $item[ $path_attr_id ] ?? null;
+		if ( is_array( $raw ) ) {
+			$raw = $raw[0] ?? null;
+		}
+		if ( null === $raw || '' === $raw || ! is_numeric( $raw ) ) {
+			return null;
+		}
+		return (float) $raw;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function get_type_extras_for_attr( int $host_id, int $attr_id ): array {
+		if ( $attr_id <= 0 ) {
+			return array();
+		}
+		$map = self::get_type_extras_map( $host_id );
+		$key = (string) $attr_id;
+		if ( ! isset( $map[ $key ] ) || ! is_array( $map[ $key ] ) ) {
+			return array();
+		}
+		return self::normalize_type_extras( $map[ $key ] );
+	}
+
+	/**
+	 * Prefer host map; for inherited attrs also try definedOnId map.
+	 *
+	 * @param array<string, mixed> $found Effective row.
+	 * @return array<string, mixed>
+	 */
+	private static function resolve_type_extras_for_attr(
+		string $taxonomy,
+		int $host_id,
+		int $attr_id,
+		array $found
+	): array {
+		$local = self::get_type_extras_for_attr( $host_id, $attr_id );
+		if ( ! empty( $local ) ) {
+			return $local;
+		}
+		$defined_on = (int) ( $found['definedOnId'] ?? 0 );
+		if ( $defined_on > 0 && $defined_on !== $host_id ) {
+			return self::get_type_extras_for_attr( $defined_on, $attr_id );
+		}
+		unset( $taxonomy );
+		return array();
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function get_type_extras_map( int $host_id ): array {
+		$raw = get_term_meta( $host_id, self::META_KEY_TYPE_EXTRAS, true );
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $raw as $key => $val ) {
+			$key = (string) $key;
+			if ( '' === $key || ! is_array( $val ) ) {
+				continue;
+			}
+			$out[ $key ] = $val;
+		}
+		return $out;
+	}
+
+	/**
+	 * @param array<string, array<string, mixed>> $map Map.
+	 */
+	private static function store_type_extras_map( int $host_id, array $map ): void {
+		if ( empty( $map ) ) {
+			delete_term_meta( $host_id, self::META_KEY_TYPE_EXTRAS );
+			return;
+		}
+		update_term_meta( $host_id, self::META_KEY_TYPE_EXTRAS, $map );
+	}
+
+	/**
+	 * @param array<string, mixed> $extras Raw extras.
+	 * @return array<string, mixed>
+	 */
+	public static function normalize_type_extras( array $extras ): array {
+		$out = array();
+
+		if ( array_key_exists( 'dateMode', $extras ) ) {
+			$mode = (string) $extras['dateMode'];
+			if ( '' !== $mode ) {
+				$out['dateMode'] = Node_Type::normalize_date_mode( $mode );
+			}
+		}
+
+		if ( isset( $extras['choiceFilter'] ) && is_array( $extras['choiceFilter'] ) ) {
+			$cf = self::normalize_choice_filter( $extras['choiceFilter'] );
+			if ( ! empty( $cf['ids'] ) ) {
+				$out['choiceFilter'] = $cf;
+			}
+		}
+
+		if ( isset( $extras['compute'] ) && is_array( $extras['compute'] ) ) {
+			$compute = self::normalize_compute( $extras['compute'] );
+			if ( null !== $compute ) {
+				$out['compute'] = $compute;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * @param array<string, mixed> $filter Filter.
+	 * @return array{mode:string,ids:list<int>}
+	 */
+	public static function normalize_choice_filter( array $filter ): array {
+		$mode = isset( $filter['mode'] ) ? strtolower( sanitize_key( (string) $filter['mode'] ) ) : 'include';
+		if ( 'exclude' !== $mode ) {
+			$mode = 'include';
+		}
+		$ids = array();
+		$raw = isset( $filter['ids'] ) && is_array( $filter['ids'] ) ? $filter['ids'] : array();
+		foreach ( $raw as $id ) {
+			$id = (int) $id;
+			if ( $id > 0 ) {
+				$ids[] = $id;
+			}
+		}
+		return array(
+			'mode' => $mode,
+			'ids'  => array_values( array_unique( $ids ) ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $compute Compute config.
+	 * @return array{op:string,sources:list<array<string,mixed>>}|null
+	 */
+	public static function normalize_compute( array $compute ): ?array {
+		$op = isset( $compute['op'] ) ? strtolower( sanitize_key( (string) $compute['op'] ) ) : '';
+		$allowed = array(
+			Footer_Ops::SUM,
+			Footer_Ops::AVG,
+			Footer_Ops::MIN,
+			Footer_Ops::MAX,
+			Footer_Ops::COUNT,
+		);
+		if ( ! in_array( $op, $allowed, true ) ) {
+			return null;
+		}
+		$sources = array();
+		$raw     = isset( $compute['sources'] ) && is_array( $compute['sources'] ) ? $compute['sources'] : array();
+		foreach ( $raw as $src ) {
+			if ( ! is_array( $src ) ) {
+				continue;
+			}
+			$kind = isset( $src['kind'] ) ? sanitize_key( (string) $src['kind'] ) : 'attr';
+			$aid  = isset( $src['attrId'] ) ? (int) $src['attrId'] : 0;
+			if ( $aid <= 0 ) {
+				continue;
+			}
+			if ( 'attrPath' === $kind ) {
+				$path = isset( $src['pathAttrId'] ) ? (int) $src['pathAttrId'] : 0;
+				if ( $path <= 0 ) {
+					continue;
+				}
+				$sources[] = array(
+					'kind'       => 'attrPath',
+					'attrId'     => $aid,
+					'pathAttrId' => $path,
+				);
+				continue;
+			}
+			$sources[] = array(
+				'kind'   => 'attr',
+				'attrId' => $aid,
+			);
+		}
+		if ( empty( $sources ) ) {
+			return null;
+		}
+		return array(
+			'op'      => $op,
+			'sources' => $sources,
+		);
+	}
+
+	/**
+	 * Filter catalog options by include|exclude subtree roots (descendants included).
+	 *
+	 * @param list<array<string, mixed>> $options Options.
+	 * @param array{mode?:string,ids?:list<int>} $filter Filter.
+	 * @return list<array<string, mixed>>
+	 */
+	public static function apply_choice_filter(
+		string $taxonomy,
+		int $scope_id,
+		array $options,
+		array $filter
+	): array {
+		$filter = self::normalize_choice_filter( $filter );
+		$ids    = $filter['ids'];
+		if ( empty( $ids ) ) {
+			return $options;
+		}
+		$mode   = $filter['mode'];
+		$out    = array();
+		foreach ( $options as $opt ) {
+			if ( ! is_array( $opt ) ) {
+				continue;
+			}
+			$oid = (int) ( $opt['id'] ?? 0 );
+			if ( $oid <= 0 ) {
+				continue;
+			}
+			$under = Node_Type::is_ref_candidate_under_allowlist( $taxonomy, $oid, $scope_id, $ids );
+			if ( 'exclude' === $mode ) {
+				if ( ! $under ) {
+					$out[] = $opt;
+				}
+			} elseif ( $under ) {
+				$out[] = $opt;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Unique copy name on host (own attributes).
+	 */
+	private static function unique_copy_name( string $taxonomy, int $host_id, string $base ): string {
+		/* translators: %s: original attribute name */
+		$suffix = __( ' (copy)', 'wp-taxonomy-tree' );
+		$taken  = array();
+		foreach ( self::list_own_raw( $taxonomy, $host_id ) as $row ) {
+			$n = (string) ( $row['name'] ?? '' );
+			if ( '' !== $n ) {
+				$taken[ $n ] = true;
+			}
+		}
+		$candidate = $base . $suffix;
+		if ( ! isset( $taken[ $candidate ] ) ) {
+			return $candidate;
+		}
+		$n = 2;
+		while ( $n < 100 ) {
+			$candidate = $base . $suffix . ' ' . (string) $n;
+			if ( ! isset( $taken[ $candidate ] ) ) {
+				return $candidate;
+			}
+			++$n;
+		}
+		return $base . $suffix . ' ' . wp_generate_password( 4, false );
 	}
 
 	/**

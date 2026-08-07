@@ -72,7 +72,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		termId = 0,
 		taxonomy = '',
 		instanceId = '',
-		layout = 'form',
+		layout = 'auto',
 		renderDepth = 1,
 		referenceMode = 'link',
 	} = attributes;
@@ -284,7 +284,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		}
 		if ( api && typeof api.mount === 'function' ) {
 			api.mount( host, view, {
-				layout: layout || 'form',
+				layout: layout || 'auto',
 				renderDepth:
 					typeof renderDepth === 'number' ? renderDepth : 1,
 				referenceMode: referenceMode || 'link',
@@ -422,8 +422,16 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 					) }
 					<SelectControl
 						label={ i18n.pickLayout || 'Layout' }
-						value={ layout || 'form' }
+						help={
+							i18n.layoutAutoHelp ||
+							'Node preferred uses the layout stored on the bound node.'
+						}
+						value={ layout || 'auto' }
 						options={ [
+							{
+								label: i18n.layoutAuto || 'Node preferred',
+								value: 'auto',
+							},
 							{
 								label: i18n.layoutForm || 'Form + Table (auto)',
 								value: 'form',
@@ -444,7 +452,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 							},
 						] }
 						onChange={ ( next ) => {
-							setAttributes( { layout: next || 'form' } );
+							setAttributes( { layout: next || 'auto' } );
 						} }
 					/>
 				</PanelBody>

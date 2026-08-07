@@ -56,6 +56,12 @@ final class Node_Type {
 	 */
 	public const META_KEY_DATE_MODE = '_wtt_date_mode';
 
+	/** Preferred Object View / admin preview layout for this node. */
+	public const META_KEY_PREFERRED_RENDER = '_wtt_preferred_render';
+
+	/** Allowed preferred render keys (match Object View layout). */
+	public const PREFERRED_RENDER_KEYS = array( 'form', 'table', 'compact', 'compact-vertical' );
+
 	/** Fixed constant value: points at a Typen-branch Node (e.g. Einheit → Ohm). */
 	public const META_KEY_FIXED_NODE = '_wtt_fixed_node_id';
 
@@ -2006,6 +2012,13 @@ final class Node_Type {
 			}
 		}
 
+		if ( array_key_exists( 'preferred_render', $settings ) ) {
+			$result = self::set_preferred_render( $taxonomy, $term_id, (string) $settings['preferred_render'] );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		}
+
 		$has_footer = ! empty( $settings['has_footer'] );
 		$result     = self::set_has_footer( $taxonomy, $term_id, $has_footer );
 		if ( is_wp_error( $result ) ) {
@@ -2633,6 +2646,56 @@ final class Node_Type {
 	public static function normalize_date_mode( string $mode ): string {
 		$mode = strtolower( trim( $mode ) );
 		return 'datetime' === $mode ? 'datetime' : 'date';
+	}
+
+	/**
+	 * Normalize preferred render layout key (form|table|compact|compact-vertical).
+	 */
+	public static function normalize_preferred_render( string $layout ): string {
+		$key = strtolower( trim( $layout ) );
+		if ( 'compact-horizontal' === $key || 'compact-h' === $key ) {
+			$key = 'compact';
+		}
+		if ( 'compact-v' === $key ) {
+			$key = 'compact-vertical';
+		}
+		if ( 'list' === $key ) {
+			$key = 'table';
+		}
+		if ( in_array( $key, self::PREFERRED_RENDER_KEYS, true ) ) {
+			return $key;
+		}
+		return 'form';
+	}
+
+	/**
+	 * Preferred Object View / admin preview surface for this node.
+	 */
+	public static function get_preferred_render( int $term_id ): string {
+		if ( $term_id <= 0 ) {
+			return 'form';
+		}
+		return self::normalize_preferred_render(
+			(string) get_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, true )
+		);
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_preferred_render( string $taxonomy, int $term_id, string $layout ) {
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Node not found.', 'wp-taxonomy-tree' ) );
+		}
+		$layout = self::normalize_preferred_render( $layout );
+		if ( 'form' === $layout ) {
+			delete_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER );
+		} else {
+			update_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, $layout );
+		}
+		Tree_Model::touch_modified( $term_id );
+		return true;
 	}
 
 	public static function is_date_type_name( string $type_name ): bool {

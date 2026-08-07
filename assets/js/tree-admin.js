@@ -194,6 +194,28 @@
 		}
 	}
 
+	function normalizePreferredRender(raw) {
+		var key = String(raw || 'form').toLowerCase();
+		if (key === 'compact-h' || key === 'compact-horizontal') {
+			key = 'compact';
+		}
+		if (key === 'compact-v') {
+			key = 'compact-vertical';
+		}
+		if (key === 'list') {
+			key = 'table';
+		}
+		if (
+			key === 'form' ||
+			key === 'table' ||
+			key === 'compact' ||
+			key === 'compact-vertical'
+		) {
+			return key;
+		}
+		return 'form';
+	}
+
 	function settingsFromNode(n) {
 		return {
 			name: n.name != null ? String(n.name) : '',
@@ -266,6 +288,7 @@
 							.toLowerCase() === 'date'
 					? { mode: 'date' }
 					: null,
+			preferredRender: normalizePreferredRender(n.preferredRender),
 			typeBranch: n.typeBranch ? deepClone(n.typeBranch) : null,
 			isBasiseinheitUnit: !!n.isBasiseinheitUnit,
 			prefixAllowlist: n.prefixAllowlist ? deepClone(n.prefixAllowlist) : null,
@@ -3366,6 +3389,14 @@
 		afterDraftMutation();
 	}
 
+	function setDraftPreferredRender(layout) {
+		if (!state.draft) {
+			return;
+		}
+		state.draft.preferredRender = normalizePreferredRender(layout);
+		afterDraftMutation();
+	}
+
 	function setDraftFooterOp(opKey) {
 		if (!state.draft) {
 			return;
@@ -4876,6 +4907,9 @@
 			savePayload.date_mode =
 				payloadDraft.dateConfig.mode === 'datetime' ? 'datetime' : 'date';
 		}
+		savePayload.preferred_render = normalizePreferredRender(
+			payloadDraft.preferredRender
+		);
 		var prefixBranch =
 			payloadDraft.prefixBranch && payloadDraft.prefixBranch.unitAllowlistEdit
 				? payloadDraft.prefixBranch
@@ -7617,12 +7651,14 @@
 			);
 		} else {
 			attrs.forEach(function (attr) {
-				tbody.appendChild(
-					renderAttributeRow(n, attr, editable, {
-						showInherited: showInherited,
-						ownPeers: ownPeers,
-					})
-				);
+				var frag = renderAttributeRow(n, attr, editable, {
+					showInherited: showInherited,
+					ownPeers: ownPeers,
+					colCount: colCount,
+				});
+				if (frag) {
+					tbody.appendChild(frag);
+				}
 			});
 		}
 		table.appendChild(tbody);
@@ -7957,16 +7993,19 @@
 		rowOpts = rowOpts || {};
 		var showInherited = !!rowOpts.showInherited;
 		var ownPeers = Array.isArray(rowOpts.ownPeers) ? rowOpts.ownPeers : [];
+		var colCount = parseInt(rowOpts.colCount, 10) || 8;
 		var hostId = parseInt(n.id, 10) || 0;
 		var attrId = parseInt(attr.id, 10) || 0;
 		var inherited = !!attr.inherited;
 		var hidden = !!attr.hidden;
 		var ownEditable = editable && !inherited;
+		var frag = document.createDocumentFragment();
 		var tr = el('tr', {
 			className:
 				'wtt-attributes__row' +
 				(inherited ? ' wtt-attributes__row--inherited' : '') +
-				(hidden ? ' wtt-attributes__row--hidden' : ''),
+				(hidden ? ' wtt-attributes__row--hidden' : '') +
+				(attr.computed ? ' wtt-attributes__row--computed' : ''),
 		});
 
 		var peerIndex = -1;
@@ -8204,18 +8243,24 @@
 		fixedCell.appendChild(el('button', fixedBtnAttrs));
 		tr.appendChild(fixedCell);
 
-		/* Readonly — host-scoped; own and inherited. */
+		/* Readonly — host-scoped; own and inherited. Forced on when computed. */
 		var readonlyCell = el('td', {
 			className: 'wtt-col-readonly wtt-attributes__readonly',
 		});
+		var isComputed = !!(attr.computed || (attr.compute && attr.compute.op));
 		readonlyCell.appendChild(
 			renderSlideSwitch({
-				checked: !!attr.readonly,
-				disabled: !editable,
-				title:
-					i18n.attributesReadonlyHint ||
-					'When on, the attribute is not editable in forms.',
+				checked: isComputed || !!attr.readonly,
+				disabled: !editable || isComputed,
+				title: isComputed
+					? i18n.attributesComputedRoHint ||
+					  'Computed attributes are always read-only.'
+					: i18n.attributesReadonlyHint ||
+					  'When on, the attribute is not editable in forms.',
 				onChange: function (on) {
+					if (isComputed) {
+						return;
+					}
 					post('wtt_set_attribute_readonly', {
 						term_id: hostId,
 						attr_id: attrId,
@@ -8288,55 +8333,153 @@
 			tr.appendChild(inhCell);
 		}
 
-		/* Actions — reorder ↑↓, hierarchy move (tree+arrow), trash. */
+		/* Actions — reorder ↑↓, hierarchy move, duplicate, trash. */
 		var actions = el('td', {
 			className: 'wtt-col-actions wtt-attributes__actions',
 		});
-		if (ownEditable) {
-			actions.appendChild(
-				el('button', {
-					type: 'button',
-					className:
-						'button-link wtt-row-edit-table__action wtt-attributes__reorder-up',
-					disabled: !canReorderUp,
-					title: i18n.attributesReorderUp || 'Move up',
-					'aria-label': i18n.attributesReorderUp || 'Move up',
-					html:
-						'<span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span>',
-					onClick: function () {
-						if (!canReorderUp) {
-							return;
-						}
-						post('wtt_reorder_attribute', {
-							term_id: hostId,
-							attr_id: attrId,
-							delta: -1,
+		if (editable) {
+			if (ownEditable) {
+				actions.appendChild(
+					el('button', {
+						type: 'button',
+						className:
+							'button-link wtt-row-edit-table__action wtt-attributes__reorder-up',
+						disabled: !canReorderUp,
+						title: i18n.attributesReorderUp || 'Move up',
+						'aria-label': i18n.attributesReorderUp || 'Move up',
+						html:
+							'<span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span>',
+						onClick: function () {
+							if (!canReorderUp) {
+								return;
+							}
+							post('wtt_reorder_attribute', {
+								term_id: hostId,
+								attr_id: attrId,
+								delta: -1,
+							})
+								.then(applyRelationMutation)
+								.catch(function () {
+									setError(i18n.error);
+								});
+						},
+					})
+				);
+				actions.appendChild(
+					el('button', {
+						type: 'button',
+						className:
+							'button-link wtt-row-edit-table__action wtt-attributes__reorder-down',
+						disabled: !canReorderDown,
+						title: i18n.attributesReorderDown || 'Move down',
+						'aria-label': i18n.attributesReorderDown || 'Move down',
+						html:
+							'<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>',
+						onClick: function () {
+							if (!canReorderDown) {
+								return;
+							}
+							post('wtt_reorder_attribute', {
+								term_id: hostId,
+								attr_id: attrId,
+								delta: 1,
+							})
+								.then(applyRelationMutation)
+								.catch(function () {
+									setError(i18n.error);
+								});
+						},
+					})
+				);
+
+				var parentId = parseInt(n.parent, 10) || 0;
+				var parentNode =
+					parentId > 0 ? findNodeInTree(state.tree, parentId) : null;
+				var canMoveToParent =
+					parentId > 0 && !(parentNode && parentNode.isTrash);
+				var moveChildRoots = attributeMoveChildRoots(n);
+				var canMoveToChild = moveChildRoots.length > 0;
+				if (canMoveToParent) {
+					actions.appendChild(
+						el('button', {
+							type: 'button',
+							className:
+								'button-link wtt-row-edit-table__action wtt-attributes__move-parent',
+							title:
+								i18n.attributesMoveToParentHint ||
+								i18n.attributesMoveToParent ||
+								'Move to parent',
+							'aria-label':
+								i18n.attributesMoveToParent || 'Move to parent',
+							html:
+								'<span class="wtt-attributes__hier-move" aria-hidden="true">' +
+								'<span class="dashicons dashicons-networking"></span>' +
+								'<span class="dashicons dashicons-arrow-up-alt2"></span>' +
+								'</span>',
+							onClick: function () {
+								if (
+									!window.confirm(
+										i18n.attributesMoveToParentConfirm ||
+											'Move this attribute to the parent node?'
+									)
+								) {
+									return;
+								}
+								post('wtt_move_attribute_to_parent', {
+									term_id: hostId,
+									attr_id: attrId,
+								})
+									.then(applyRelationMutation)
+									.catch(function () {
+										setError(i18n.error);
+									});
+							},
 						})
-							.then(applyRelationMutation)
-							.catch(function () {
-								setError(i18n.error);
-							});
-					},
-				})
-			);
+					);
+				}
+				if (canMoveToChild) {
+					actions.appendChild(
+						el('button', {
+							type: 'button',
+							className:
+								'button-link wtt-row-edit-table__action wtt-attributes__move-child',
+							title:
+								i18n.attributesMoveToChildHint ||
+								i18n.attributesMoveToChild ||
+								'Move to child',
+							'aria-label':
+								i18n.attributesMoveToChild || 'Move to child',
+							html:
+								'<span class="wtt-attributes__hier-move" aria-hidden="true">' +
+								'<span class="dashicons dashicons-networking"></span>' +
+								'<span class="dashicons dashicons-arrow-down-alt2"></span>' +
+								'</span>',
+							onClick: function () {
+								openAttributeMoveToChildPicker(
+									n,
+									attrId,
+									moveChildRoots
+								);
+							},
+						})
+					);
+				}
+			}
+
+			/* Duplicate: own or inherited → new own attribute on this host. */
 			actions.appendChild(
 				el('button', {
 					type: 'button',
 					className:
-						'button-link wtt-row-edit-table__action wtt-attributes__reorder-down',
-					disabled: !canReorderDown,
-					title: i18n.attributesReorderDown || 'Move down',
-					'aria-label': i18n.attributesReorderDown || 'Move down',
+						'button-link wtt-row-edit-table__action wtt-attributes__duplicate',
+					title: i18n.attributesDuplicate || 'Duplicate',
+					'aria-label': i18n.attributesDuplicate || 'Duplicate',
 					html:
-						'<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>',
+						'<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>',
 					onClick: function () {
-						if (!canReorderDown) {
-							return;
-						}
-						post('wtt_reorder_attribute', {
+						post('wtt_duplicate_attribute', {
 							term_id: hostId,
 							attr_id: attrId,
-							delta: 1,
 						})
 							.then(applyRelationMutation)
 							.catch(function () {
@@ -8346,40 +8489,25 @@
 				})
 			);
 
-			var parentId = parseInt(n.parent, 10) || 0;
-			var parentNode =
-				parentId > 0 ? findNodeInTree(state.tree, parentId) : null;
-			var canMoveToParent =
-				parentId > 0 && !(parentNode && parentNode.isTrash);
-			var moveChildRoots = attributeMoveChildRoots(n);
-			var canMoveToChild = moveChildRoots.length > 0;
-			if (canMoveToParent) {
+			if (ownEditable) {
 				actions.appendChild(
 					el('button', {
 						type: 'button',
 						className:
-							'button-link wtt-row-edit-table__action wtt-attributes__move-parent',
-						title:
-							i18n.attributesMoveToParentHint ||
-							i18n.attributesMoveToParent ||
-							'Move to parent',
-						'aria-label':
-							i18n.attributesMoveToParent || 'Move to parent',
-						html:
-							'<span class="wtt-attributes__hier-move" aria-hidden="true">' +
-							'<span class="dashicons dashicons-networking"></span>' +
-							'<span class="dashicons dashicons-arrow-up-alt2"></span>' +
-							'</span>',
+							'button-link-delete wtt-row-edit-table__trash wtt-attributes__remove',
+						title: i18n.attributesRemove || 'Remove',
+						'aria-label': i18n.attributesRemove || 'Remove',
+						html: '<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
 						onClick: function () {
 							if (
 								!window.confirm(
-									i18n.attributesMoveToParentConfirm ||
-										'Move this attribute to the parent node?'
+									i18n.attributesRemoveConfirm ||
+										'Remove this attribute?'
 								)
 							) {
 								return;
 							}
-							post('wtt_move_attribute_to_parent', {
+							post('wtt_remove_attribute', {
 								term_id: hostId,
 								attr_id: attrId,
 							})
@@ -8391,61 +8519,6 @@
 					})
 				);
 			}
-			if (canMoveToChild) {
-				actions.appendChild(
-					el('button', {
-						type: 'button',
-						className:
-							'button-link wtt-row-edit-table__action wtt-attributes__move-child',
-						title:
-							i18n.attributesMoveToChildHint ||
-							i18n.attributesMoveToChild ||
-							'Move to child',
-						'aria-label':
-							i18n.attributesMoveToChild || 'Move to child',
-						html:
-							'<span class="wtt-attributes__hier-move" aria-hidden="true">' +
-							'<span class="dashicons dashicons-networking"></span>' +
-							'<span class="dashicons dashicons-arrow-down-alt2"></span>' +
-							'</span>',
-						onClick: function () {
-							openAttributeMoveToChildPicker(
-								n,
-								attrId,
-								moveChildRoots
-							);
-						},
-					})
-				);
-			}
-			actions.appendChild(
-				el('button', {
-					type: 'button',
-					className:
-						'button-link-delete wtt-row-edit-table__trash wtt-attributes__remove',
-					title: i18n.attributesRemove || 'Remove',
-					'aria-label': i18n.attributesRemove || 'Remove',
-					html: '<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
-					onClick: function () {
-						if (
-							!window.confirm(
-								i18n.attributesRemoveConfirm ||
-									'Remove this attribute?'
-							)
-						) {
-							return;
-						}
-						post('wtt_remove_attribute', {
-							term_id: hostId,
-							attr_id: attrId,
-						})
-							.then(applyRelationMutation)
-							.catch(function () {
-								setError(i18n.error);
-							});
-					},
-				})
-			);
 		} else {
 			actions.appendChild(
 				el('span', {
@@ -8456,7 +8529,603 @@
 		}
 		tr.appendChild(actions);
 
-		return tr;
+		frag.appendChild(tr);
+		var detail = renderAttributeDetailRow(n, attr, editable, {
+			colCount: colCount,
+			inherited: inherited,
+		});
+		if (detail) {
+			frag.appendChild(detail);
+		}
+		return frag;
+	}
+
+	/**
+	 * Detail row under an attribute: dateMode, choiceFilter, compute.
+	 */
+	function renderAttributeDetailRow(n, attr, editable, opts) {
+		opts = opts || {};
+		var colCount = parseInt(opts.colCount, 10) || 8;
+		var inherited = !!opts.inherited;
+		var hostId = parseInt(n.id, 10) || 0;
+		var attrId = parseInt(attr.id, 10) || 0;
+		var extras = attr.typeExtras && typeof attr.typeExtras === 'object'
+			? Object.assign({}, attr.typeExtras)
+			: {};
+		if (attr.compute && !extras.compute) {
+			extras.compute = attr.compute;
+		}
+
+		var typeKey = String(attr.typeKey || '').toLowerCase();
+		var isDate = typeKey === 'date';
+		var hasChoice =
+			String(attr.fixedMode || '') === 'catalog' &&
+			(Array.isArray(attr.fixedOptions)
+				? attr.fixedOptions.length > 0
+				: false ||
+				  (parseInt(attr.fixedRootId, 10) || 0) > 0);
+		/* Show choice filter whenever catalog mode (even if currently filtered empty). */
+		if (String(attr.fixedMode || '') === 'catalog') {
+			hasChoice = true;
+		}
+		var isNumeric =
+			typeKey === 'int' ||
+			typeKey === 'integer' ||
+			typeKey === 'double' ||
+			typeKey === 'float';
+		var hasCompute = !!(extras.compute && extras.compute.op);
+		var showCompute = isNumeric || hasCompute;
+
+		if (!isDate && !hasChoice && !showCompute) {
+			return null;
+		}
+
+		var detailEditable = editable && !inherited;
+		var wrap = el('div', { className: 'wtt-attributes__detail' });
+
+		if (isDate) {
+			wrap.appendChild(
+				renderAttrDateModeDetail(n, attr, extras, detailEditable, hostId, attrId)
+			);
+		}
+		if (hasChoice) {
+			wrap.appendChild(
+				renderAttrChoiceFilterDetail(
+					n,
+					attr,
+					extras,
+					detailEditable,
+					hostId,
+					attrId
+				)
+			);
+		}
+		if (showCompute) {
+			wrap.appendChild(
+				renderAttrComputeDetail(
+					n,
+					attr,
+					extras,
+					detailEditable,
+					hostId,
+					attrId
+				)
+			);
+		}
+
+		return el('tr', {
+			className:
+				'wtt-attributes__detail-row' +
+				(inherited ? ' is-inherited' : ''),
+		}, [
+			el('td', {
+				colSpan: colCount,
+				className: 'wtt-attributes__detail-cell',
+			}, [wrap]),
+		]);
+	}
+
+	function saveAttributeTypeExtras(hostId, attrId, extras) {
+		return post('wtt_set_attribute_type_extras', {
+			term_id: hostId,
+			attr_id: attrId,
+			extras: JSON.stringify(extras || {}),
+		})
+			.then(applyRelationMutation)
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
+	function renderAttrDateModeDetail(n, attr, extras, editable, hostId, attrId) {
+		var typeMode =
+			(attr.dateConfig && attr.dateConfig.typeMode) ||
+			(attr.dateConfig && attr.dateConfig.mode) ||
+			'date';
+		var current =
+			extras.dateMode != null && extras.dateMode !== ''
+				? extras.dateMode
+				: '';
+		var select = el('select', {
+			className: 'wtt-attributes__detail-select',
+			disabled: !editable,
+			onChange: function (e) {
+				var next = Object.assign({}, extras);
+				var val = e.target.value;
+				if (!val) {
+					delete next.dateMode;
+				} else {
+					next.dateMode = val === 'datetime' ? 'datetime' : 'date';
+				}
+				saveAttributeTypeExtras(hostId, attrId, next);
+			},
+		});
+		select.appendChild(
+			el('option', {
+				value: '',
+				text:
+					(i18n.attributesDateModeDefault || 'Type default') +
+					' (' +
+					(typeMode === 'datetime'
+						? i18n.dateModeDateTime || 'Date and time'
+						: i18n.dateModeDate || 'Date only') +
+					')',
+				selected: !current,
+			})
+		);
+		select.appendChild(
+			el('option', {
+				value: 'date',
+				text: i18n.dateModeDate || 'Date only',
+				selected: current === 'date',
+			})
+		);
+		select.appendChild(
+			el('option', {
+				value: 'datetime',
+				text: i18n.dateModeDateTime || 'Date and time',
+				selected: current === 'datetime',
+			})
+		);
+		return el('div', { className: 'wtt-attributes__detail-block' }, [
+			el('span', {
+				className: 'wtt-attributes__detail-label',
+				text: i18n.attributesDateMode || 'Date mode',
+			}),
+			select,
+		]);
+	}
+
+	function renderAttrChoiceFilterDetail(n, attr, extras, editable, hostId, attrId) {
+		var filter =
+			extras.choiceFilter && typeof extras.choiceFilter === 'object'
+				? extras.choiceFilter
+				: { mode: 'include', ids: [] };
+		var mode = filter.mode === 'exclude' ? 'exclude' : 'include';
+		var selected = {};
+		(Array.isArray(filter.ids) ? filter.ids : []).forEach(function (id) {
+			selected[parseInt(id, 10)] = true;
+		});
+
+		var rootId = parseInt(attr.fixedRootId || attr.typeId, 10) || 0;
+		var roots = rootId > 0 ? nodeRefPickRoots(rootId) : [];
+		/* Fallback: build shallow list from fixedOptions. */
+		if ((!roots || !roots.length) && Array.isArray(attr.fixedOptions)) {
+			roots = buildChoiceTreeFromFixedOptions(attr.fixedOptions);
+		}
+
+		var block = el('div', { className: 'wtt-attributes__detail-block' });
+		block.appendChild(
+			el('span', {
+				className: 'wtt-attributes__detail-label',
+				text: i18n.attributesChoiceFilter || 'Choice filter',
+			})
+		);
+
+		var modeSelect = el('select', {
+			className: 'wtt-attributes__detail-select',
+			disabled: !editable,
+			onChange: function (e) {
+				var nextMode = e.target.value === 'exclude' ? 'exclude' : 'include';
+				var next = Object.assign({}, extras);
+				var ids = Object.keys(selected)
+					.map(function (k) {
+						return parseInt(k, 10);
+					})
+					.filter(function (id) {
+						return id > 0 && selected[id];
+					});
+				if (!ids.length) {
+					delete next.choiceFilter;
+				} else {
+					next.choiceFilter = { mode: nextMode, ids: ids };
+				}
+				saveAttributeTypeExtras(hostId, attrId, next);
+			},
+		});
+		modeSelect.appendChild(
+			el('option', {
+				value: 'include',
+				text: i18n.attributesChoiceInclude || 'Include',
+				selected: mode === 'include',
+			})
+		);
+		modeSelect.appendChild(
+			el('option', {
+				value: 'exclude',
+				text: i18n.attributesChoiceExclude || 'Exclude',
+				selected: mode === 'exclude',
+			})
+		);
+		block.appendChild(modeSelect);
+
+		var treeWrap = el('div', {
+			className: 'wtt-attributes__choice-tree',
+		});
+		function persistFilter() {
+			var next = Object.assign({}, extras);
+			var ids = Object.keys(selected)
+				.map(function (k) {
+					return parseInt(k, 10);
+				})
+				.filter(function (id) {
+					return id > 0 && selected[id];
+				});
+			if (!ids.length) {
+				delete next.choiceFilter;
+			} else {
+				next.choiceFilter = {
+					mode: modeSelect.value === 'exclude' ? 'exclude' : 'include',
+					ids: ids,
+				};
+			}
+			saveAttributeTypeExtras(hostId, attrId, next);
+		}
+		function paintNode(node, depth) {
+			if (!node || node.id == null) {
+				return;
+			}
+			var id = parseInt(node.id, 10) || 0;
+			if (!id) {
+				return;
+			}
+			var row = el('label', {
+				className: 'wtt-attributes__choice-item',
+				style: 'padding-left:' + String(depth * 12) + 'px',
+			});
+			var check = el('input', {
+				type: 'checkbox',
+				disabled: !editable,
+				checked: !!selected[id],
+			});
+			check.addEventListener('change', function () {
+				if (check.checked) {
+					selected[id] = true;
+				} else {
+					delete selected[id];
+				}
+				persistFilter();
+			});
+			row.appendChild(check);
+			row.appendChild(
+				document.createTextNode(' ' + (node.name || '#' + id))
+			);
+			treeWrap.appendChild(row);
+			(Array.isArray(node.children) ? node.children : []).forEach(function (
+				child
+			) {
+				paintNode(child, depth + 1);
+			});
+		}
+		if (roots && roots.length) {
+			roots.forEach(function (r) {
+				paintNode(r, 0);
+			});
+		} else {
+			treeWrap.appendChild(
+				el('span', {
+					className: 'wtt-field-hint',
+					text:
+						i18n.attributesChoiceEmpty ||
+						'No specialization children under this type.',
+				})
+			);
+		}
+		block.appendChild(treeWrap);
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.attributesChoiceFilterHint ||
+					'Empty = no filter. Checked nodes include or exclude their whole subtree.',
+			})
+		);
+		return block;
+	}
+
+	function buildChoiceTreeFromFixedOptions(options) {
+		var byId = {};
+		var roots = [];
+		(options || []).forEach(function (opt) {
+			if (!opt || opt.id == null) {
+				return;
+			}
+			var id = parseInt(opt.id, 10) || 0;
+			if (!id) {
+				return;
+			}
+			byId[id] = {
+				id: id,
+				name: opt.name || String(id),
+				children: [],
+			};
+		});
+		Object.keys(byId).forEach(function (k) {
+			roots.push(byId[k]);
+		});
+		return roots;
+	}
+
+	function renderAttrComputeDetail(n, attr, extras, editable, hostId, attrId) {
+		var compute =
+			extras.compute && typeof extras.compute === 'object'
+				? Object.assign({ sources: [] }, extras.compute)
+				: { op: '', sources: [] };
+		var peers = Array.isArray(n.attributes) ? n.attributes : [];
+		var selfId = parseInt(attr.id, 10) || 0;
+
+		var block = el('div', { className: 'wtt-attributes__detail-block' });
+		block.appendChild(
+			el('span', {
+				className: 'wtt-attributes__detail-label',
+				text: i18n.attributesCompute || 'Compute',
+			})
+		);
+
+		var opSelect = el('select', {
+			className: 'wtt-attributes__detail-select',
+			disabled: !editable,
+		});
+		opSelect.appendChild(
+			el('option', {
+				value: '',
+				text: i18n.attributesComputeOff || 'Off',
+				selected: !compute.op,
+			})
+		);
+		[
+			{ key: 'sum', label: i18n.footerOpSum || 'Sum' },
+			{ key: 'avg', label: i18n.footerOpAvg || 'Average' },
+			{ key: 'min', label: i18n.footerOpMin || 'Minimum' },
+			{ key: 'max', label: i18n.footerOpMax || 'Maximum' },
+			{ key: 'count', label: i18n.footerOpCount || 'Count' },
+		].forEach(function (op) {
+			opSelect.appendChild(
+				el('option', {
+					value: op.key,
+					text: op.label,
+					selected: compute.op === op.key,
+				})
+			);
+		});
+
+		function persistCompute(nextCompute) {
+			var next = Object.assign({}, extras);
+			if (!nextCompute || !nextCompute.op || !nextCompute.sources.length) {
+				delete next.compute;
+			} else {
+				next.compute = nextCompute;
+			}
+			saveAttributeTypeExtras(hostId, attrId, next);
+		}
+
+		opSelect.addEventListener('change', function () {
+			var op = opSelect.value;
+			if (!op) {
+				persistCompute(null);
+				return;
+			}
+			persistCompute({
+				op: op,
+				sources: Array.isArray(compute.sources) ? compute.sources : [],
+			});
+		});
+		block.appendChild(opSelect);
+
+		var sourcesWrap = el('div', {
+			className: 'wtt-attributes__compute-sources',
+		});
+		function paintSources() {
+			sourcesWrap.textContent = '';
+			(Array.isArray(compute.sources) ? compute.sources : []).forEach(
+				function (src, idx) {
+					var row = el('div', {
+						className: 'wtt-attributes__compute-source',
+					});
+					var kind = src && src.kind === 'attrPath' ? 'attrPath' : 'attr';
+					var label = '—';
+					peers.forEach(function (p) {
+						if (p && parseInt(p.id, 10) === parseInt(src.attrId, 10)) {
+							label = p.name || '#' + src.attrId;
+							if (kind === 'attrPath' && src.pathAttrId) {
+								label +=
+									' → #' + String(src.pathAttrId);
+							}
+						}
+					});
+					row.appendChild(
+						el('span', {
+							className: 'wtt-attributes__compute-source-label',
+							text: label,
+						})
+					);
+					if (editable) {
+						row.appendChild(
+							el('button', {
+								type: 'button',
+								className:
+									'button-link-delete wtt-row-edit-table__trash',
+								title: i18n.attributesComputeRemoveSource || 'Remove source',
+								'aria-label':
+									i18n.attributesComputeRemoveSource ||
+									'Remove source',
+								html:
+									'<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
+								onClick: function () {
+									var nextSources = (compute.sources || []).slice();
+									nextSources.splice(idx, 1);
+									persistCompute({
+										op: compute.op || opSelect.value || 'sum',
+										sources: nextSources,
+									});
+								},
+							})
+						);
+					}
+					sourcesWrap.appendChild(row);
+				}
+			);
+		}
+		paintSources();
+		block.appendChild(sourcesWrap);
+
+		if (editable) {
+			var addWrap = el('div', {
+				className: 'wtt-attributes__compute-add',
+			});
+			var peerSelect = el('select', {
+				className: 'wtt-attributes__detail-select',
+			});
+			peerSelect.appendChild(
+				el('option', {
+					value: '',
+					text: i18n.attributesComputePickSource || 'Add source…',
+				})
+			);
+			peers.forEach(function (p) {
+				if (!p || parseInt(p.id, 10) === selfId) {
+					return;
+				}
+				var many = !!p.allowsMany;
+				peerSelect.appendChild(
+					el('option', {
+						value: String(p.id) + (many ? ':many' : ''),
+						text:
+							(p.name || '#' + p.id) +
+							(many ? ' (0..*)' : ''),
+					})
+				);
+			});
+			var pathSelect = el('select', {
+				className: 'wtt-attributes__detail-select',
+				style: 'display:none',
+			});
+			peerSelect.addEventListener('change', function () {
+				var val = peerSelect.value;
+				pathSelect.style.display = 'none';
+				pathSelect.textContent = '';
+				if (!val) {
+					return;
+				}
+				var parts = val.split(':');
+				var pid = parseInt(parts[0], 10) || 0;
+				var many = parts[1] === 'many';
+				if (!many) {
+					var nextSources = (compute.sources || []).slice();
+					nextSources.push({ kind: 'attr', attrId: pid });
+					persistCompute({
+						op: compute.op || opSelect.value || 'sum',
+						sources: nextSources,
+					});
+					peerSelect.value = '';
+					return;
+				}
+				/* Mult-many: need path attr on linked type — list attrs of that type host if available. */
+				pathSelect.style.display = '';
+				pathSelect.appendChild(
+					el('option', {
+						value: '',
+						text:
+							i18n.attributesComputePickPath ||
+							'Attribute on linked type…',
+					})
+				);
+				var peer = null;
+				peers.forEach(function (p) {
+					if (p && parseInt(p.id, 10) === pid) {
+						peer = p;
+					}
+				});
+				var typeId = peer ? parseInt(peer.typeId, 10) || 0 : 0;
+				/* Load attributes of the type node from selectedNode cache if same tree. */
+				var typeNode = typeId
+					? findNodeInTree(state.tree, typeId)
+					: null;
+				var pathAttrs =
+					typeNode && Array.isArray(typeNode.attributes)
+						? typeNode.attributes
+						: [];
+				if (!pathAttrs.length && peer && Array.isArray(peer.fixedOptions)) {
+					/* Fallback: no live attrs — user enters id via first numeric peer attrs of host as path candidates poorly. */
+				}
+				pathAttrs.forEach(function (pa) {
+					if (!pa || pa.id == null) {
+						return;
+					}
+					pathSelect.appendChild(
+						el('option', {
+							value: String(pa.id),
+							text: pa.name || '#' + pa.id,
+						})
+					);
+				});
+				if (!pathAttrs.length) {
+					pathSelect.appendChild(
+						el('option', {
+							value: '',
+							disabled: true,
+							text:
+								i18n.attributesComputeNoPathAttrs ||
+								'No attributes on linked type (select type node once to cache).',
+						})
+					);
+				}
+				pathSelect._sourceAttrId = pid;
+			});
+			pathSelect.addEventListener('change', function () {
+				var pathId = parseInt(pathSelect.value, 10) || 0;
+				var srcId = parseInt(pathSelect._sourceAttrId, 10) || 0;
+				if (!pathId || !srcId) {
+					return;
+				}
+				var nextSources = (compute.sources || []).slice();
+				nextSources.push({
+					kind: 'attrPath',
+					attrId: srcId,
+					pathAttrId: pathId,
+				});
+				persistCompute({
+					op: compute.op || opSelect.value || 'sum',
+					sources: nextSources,
+				});
+				peerSelect.value = '';
+				pathSelect.value = '';
+				pathSelect.style.display = 'none';
+			});
+			addWrap.appendChild(peerSelect);
+			addWrap.appendChild(pathSelect);
+			block.appendChild(addWrap);
+		}
+
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.attributesComputeHint ||
+					'Aggregate over a flat list of source values (sum/avg/min/max/count). Computed fields are read-only.',
+			})
+		);
+		return block;
 	}
 
 	/**
@@ -13068,31 +13737,39 @@
 	 */
 	function renderAttributeHostPreview(n, members) {
 		var ObjectRender = window.WTTObjectRender;
+		var preferred = normalizePreferredRender(
+			(state.draft && state.draft.preferredRender) ||
+				n.preferredRender ||
+				'form'
+		);
 		var block = el('div', { className: 'wtt-preview__body' });
 		block.appendChild(
 			el('p', {
 				className: 'wtt-field-hint',
 				text:
-					i18n.previewAttributeHostHint ||
-					'Form = one filled instance; Table = list of sample instances; Compact = dense H/V strip. Editable samples stay in this session only.',
+					i18n.previewPreferredOnlyHint ||
+					'Preview shows only the preferred render for this node (Editable + Display only). Change Preferred render in node settings.',
 			})
 		);
 
 		if (!ObjectRender || typeof ObjectRender.renderForm !== 'function') {
-			block.appendChild(
-				renderPreviewSurface(
-					i18n.previewAsForm || 'Form',
-					renderSetFormPreview(members, { mode: 'edit' }),
-					renderSetFormPreview(members, { mode: 'display' })
-				)
-			);
-			block.appendChild(
-				renderPreviewSurface(
-					i18n.previewAsTable || 'Table',
-					renderMultiColumnTablePreview(members, 'edit', false),
-					renderMultiColumnTablePreview(members, 'display', false)
-				)
-			);
+			if (preferred === 'table') {
+				block.appendChild(
+					renderPreviewSurface(
+						i18n.previewAsTable || 'Table',
+						renderMultiColumnTablePreview(members, 'edit', false),
+						renderMultiColumnTablePreview(members, 'display', false)
+					)
+				);
+			} else {
+				block.appendChild(
+					renderPreviewSurface(
+						i18n.previewAsForm || 'Form',
+						renderSetFormPreview(members, { mode: 'edit' }),
+						renderSetFormPreview(members, { mode: 'display' })
+					)
+				);
+			}
 			return block;
 		}
 
@@ -13101,10 +13778,15 @@
 			typeof ObjectRender.buildExampleInstance === 'function'
 				? ObjectRender.buildExampleInstance(n, attrs)
 				: { attributes: members, values: {} };
+		one = applyComputedPreviewValues(one, attrs);
+
 		var many =
 			typeof ObjectRender.buildExampleList === 'function'
 				? ObjectRender.buildExampleList(n, 3, attrs)
 				: [one];
+		many = many.map(function (inst) {
+			return applyComputedPreviewValues(inst, attrs);
+		});
 
 		function applyStoredValues(instance, scope) {
 			var fields = (instance && instance.attributes) || [];
@@ -13113,11 +13795,16 @@
 				var key = previewValueKey(scope, field);
 				if (Object.prototype.hasOwnProperty.call(state.previewValues, key)) {
 					var idKey =
-						field && field.id != null ? String(field.id) : String(field.name || '');
+						field && field.id != null
+							? String(field.id)
+							: String(field.name || '');
 					values[idKey] = state.previewValues[key];
 				}
 			});
-			return Object.assign({}, instance, { values: values });
+			return applyComputedPreviewValues(
+				Object.assign({}, instance, { values: values }),
+				attrs
+			);
 		}
 
 		var formInstance = applyStoredValues(one, 'obj-form');
@@ -13126,44 +13813,192 @@
 		});
 
 		function onFormFieldInput(field, next) {
+			if (field && (field.computed || field.compute)) {
+				return;
+			}
 			setPreviewValue('obj-form', field, next);
 		}
 		function onTableFieldInput(field, next, _inst, rowIndex) {
+			if (field && (field.computed || field.compute)) {
+				return;
+			}
 			setPreviewValue('obj-table-' + String(rowIndex || 0), field, next);
 		}
 
-		block.appendChild(
-			renderPreviewSurface(
-				i18n.previewAsForm || 'Form',
-				ObjectRender.renderForm(formInstance, {
-					readonly: false,
-					onFieldInput: onFormFieldInput,
-				}),
-				ObjectRender.renderForm(formInstance, { readonly: true })
-			)
-		);
-		block.appendChild(
-			renderPreviewSurface(
-				i18n.previewAsTable || 'Table',
-				ObjectRender.renderTable(tableInstances, {
-					readonly: false,
-					onFieldInput: onTableFieldInput,
-					attributes: (one && one.attributes) || members,
-				}),
-				ObjectRender.renderTable(tableInstances, {
-					readonly: true,
-					attributes: (one && one.attributes) || members,
-				})
-			)
-		);
+		var titleMap = {
+			form: i18n.previewAsForm || 'Form',
+			table: i18n.previewAsTable || 'Table',
+			compact: i18n.previewCompactHorizontal || 'Compact (horizontal)',
+			'compact-vertical':
+				i18n.previewCompactVertical || 'Compact (vertical)',
+		};
 
-		if (typeof ObjectRender.renderCompact === 'function') {
+		if (preferred === 'table') {
 			block.appendChild(
-				renderCompactPreviewSection(formInstance, onFormFieldInput)
+				renderPreviewSurface(
+					titleMap.table,
+					ObjectRender.renderTable(tableInstances, {
+						readonly: false,
+						onFieldInput: onTableFieldInput,
+						attributes: (one && one.attributes) || members,
+					}),
+					ObjectRender.renderTable(tableInstances, {
+						readonly: true,
+						attributes: (one && one.attributes) || members,
+					})
+				)
+			);
+		} else if (
+			preferred === 'compact' ||
+			preferred === 'compact-vertical'
+		) {
+			if (typeof ObjectRender.renderCompact === 'function') {
+				var orient =
+					preferred === 'compact-vertical' ? 'vertical' : 'horizontal';
+				block.appendChild(
+					renderPreviewSurface(
+						titleMap[preferred],
+						ObjectRender.renderCompact(formInstance, {
+							readonly: false,
+							orientation: orient,
+							onFieldInput: onFormFieldInput,
+						}),
+						ObjectRender.renderCompact(formInstance, {
+							readonly: true,
+							orientation: orient,
+						})
+					)
+				);
+			}
+		} else {
+			block.appendChild(
+				renderPreviewSurface(
+					titleMap.form,
+					ObjectRender.renderForm(formInstance, {
+						readonly: false,
+						onFieldInput: onFormFieldInput,
+					}),
+					ObjectRender.renderForm(formInstance, { readonly: true })
+				)
 			);
 		}
 
 		return block;
+	}
+
+	/**
+	 * Derive computed attribute sample values (flat-list Aggregate ops).
+	 */
+	function applyComputedPreviewValues(instance, attrs) {
+		if (!instance) {
+			return instance;
+		}
+		var values = Object.assign({}, instance.values || {});
+		var list = Array.isArray(attrs)
+			? attrs
+			: Array.isArray(instance.attributes)
+				? instance.attributes
+				: [];
+		list.forEach(function (attr) {
+			if (!attr || !(attr.computed || (attr.compute && attr.compute.op))) {
+				return;
+			}
+			var result = evaluateAttributeCompute(attr, list, values);
+			if (result == null || result === '') {
+				return;
+			}
+			var idKey =
+				attr.id != null ? String(attr.id) : String(attr.name || '');
+			values[idKey] = result;
+			attr = Object.assign({}, attr, {
+				readonly: true,
+				computed: true,
+			});
+		});
+		var nextAttrs = Array.isArray(instance.attributes)
+			? instance.attributes.map(function (a) {
+					if (a && (a.computed || (a.compute && a.compute.op))) {
+						return Object.assign({}, a, { readonly: true, computed: true });
+					}
+					return a;
+			  })
+			: instance.attributes;
+		return Object.assign({}, instance, {
+			values: values,
+			attributes: nextAttrs,
+		});
+	}
+
+	function evaluateAttributeCompute(attr, attributes, values) {
+		var compute =
+			(attr.typeExtras && attr.typeExtras.compute) || attr.compute;
+		if (!compute || !compute.op) {
+			return null;
+		}
+		var op = String(compute.op || '').toLowerCase();
+		var flat = [];
+		(Array.isArray(compute.sources) ? compute.sources : []).forEach(
+			function (src) {
+				if (!src) {
+					return;
+				}
+				var aid = parseInt(src.attrId, 10) || 0;
+				if (!aid) {
+					return;
+				}
+				var raw = values[String(aid)];
+				if (src.kind === 'attrPath') {
+					var pathId = parseInt(src.pathAttrId, 10) || 0;
+					var items = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+					items.forEach(function (item) {
+						if (!item || typeof item !== 'object') {
+							return;
+						}
+						var v = item[String(pathId)];
+						if (Array.isArray(v)) {
+							v = v[0];
+						}
+						if (v != null && v !== '' && !isNaN(Number(v))) {
+							flat.push(Number(v));
+						}
+					});
+					return;
+				}
+				var list = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+				list.forEach(function (v) {
+					if (v != null && v !== '' && !isNaN(Number(v))) {
+						flat.push(Number(v));
+					}
+				});
+			}
+		);
+		if (op === 'count') {
+			return String(flat.length);
+		}
+		if (!flat.length) {
+			return null;
+		}
+		var result;
+		if (op === 'sum') {
+			result = flat.reduce(function (a, b) {
+				return a + b;
+			}, 0);
+		} else if (op === 'avg') {
+			result =
+				flat.reduce(function (a, b) {
+					return a + b;
+				}, 0) / flat.length;
+		} else if (op === 'min') {
+			result = Math.min.apply(null, flat);
+		} else if (op === 'max') {
+			result = Math.max.apply(null, flat);
+		} else {
+			return null;
+		}
+		if (Math.abs(result - Math.round(result)) < 1e-9) {
+			return String(Math.round(result));
+		}
+		return String(Math.round(result * 1e6) / 1e6);
 	}
 
 	/**
@@ -14283,6 +15118,58 @@
 			} else {
 				form.appendChild(flagsStrip);
 			}
+
+			var preferredSelect = el('select', {
+				className: 'wtt-preferred-render-select',
+				disabled: !!controlsLocked,
+				onChange: function (e) {
+					setDraftPreferredRender(e.target.value);
+				},
+			});
+			[
+				{
+					value: 'form',
+					label: i18n.preferredRenderForm || 'Form',
+				},
+				{
+					value: 'table',
+					label: i18n.preferredRenderTable || 'Table',
+				},
+				{
+					value: 'compact',
+					label: i18n.preferredRenderCompact || 'Compact (horizontal)',
+				},
+				{
+					value: 'compact-vertical',
+					label:
+						i18n.preferredRenderCompactVertical ||
+						'Compact (vertical)',
+				},
+			].forEach(function (opt) {
+				preferredSelect.appendChild(
+					el('option', {
+						value: opt.value,
+						text: opt.label,
+						selected:
+							normalizePreferredRender(
+								(state.draft && state.draft.preferredRender) ||
+									(n && n.preferredRender) ||
+									'form'
+							) === opt.value,
+					})
+				);
+			});
+			form.appendChild(
+				formRow(
+					i18n.preferredRender || 'Preferred render',
+					[preferredSelect],
+					{
+						help:
+							i18n.preferredRenderHint ||
+							'Default layout for admin preview and Object View (when the block layout is Node preferred).',
+					}
+				)
+			);
 
 			form.className = (form.className || '') + ' wtt-panel wtt-detail-form';
 			pane.appendChild(form);

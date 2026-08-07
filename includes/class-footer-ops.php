@@ -174,4 +174,48 @@ final class Footer_Ops {
 		}
 		return $out;
 	}
+
+	/**
+	 * Evaluate an aggregate op over a flat list of numbers (Q57 / computed attrs).
+	 *
+	 * @param list<float|int|string> $values Numeric contributions.
+	 * @return string|null Display string, or null when empty / unknown op.
+	 */
+	public static function evaluate( string $op, array $values ): ?string {
+		$op = strtolower( sanitize_key( $op ) );
+		if ( self::COUNT === $op ) {
+			return (string) count( $values );
+		}
+		$nums = array();
+		foreach ( $values as $v ) {
+			if ( is_numeric( $v ) ) {
+				$nums[] = (float) $v;
+			}
+		}
+		if ( array() === $nums ) {
+			return null;
+		}
+		switch ( $op ) {
+			case self::SUM:
+				return self::format_number( array_sum( $nums ) );
+			case self::AVG:
+				return self::format_number( array_sum( $nums ) / count( $nums ) );
+			case self::MIN:
+				return self::format_number( min( $nums ) );
+			case self::MAX:
+				return self::format_number( max( $nums ) );
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Compact display for computed / footer samples.
+	 */
+	private static function format_number( float $n ): string {
+		if ( abs( $n - round( $n ) ) < 0.0000001 ) {
+			return (string) (int) round( $n );
+		}
+		return rtrim( rtrim( number_format( $n, 6, '.', '' ), '0' ), '.' );
+	}
 }
