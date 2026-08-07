@@ -11,10 +11,17 @@ alwaysApply: false
 
 ## Model
 
-- Soft-delete flag: `_wtt_trashed` on the node **and all descendants**.
-- **Parent/child links stay** (WP `term_parent` unchanged).
+- Soft-delete flag: `_wtt_trashed` on the deleted node (and on descendants only for **cascade**).
 - Special **Trash** node: `_wtt_is_trash=1`, not deletable.
 - Trash attribute/list: `_wtt_trash_item_ids` = JSON list of soft-delete **roots** (never a bare PHP array — avoids Array-to-string warnings).
+
+## Delete modes
+
+| UI | API `mode` | Behavior |
+|----|------------|----------|
+| Delete node only (trash icon) | `promote` | Reparent **direct** children to the deleted node’s parent (`term_parent` / `child_of` SoT), then soft-delete **only** that node. |
+| Delete branch (networking icon) | `cascade` | Soft-delete node **and all descendants**; keep WP `term_parent` among them. |
+| (internal) | `leaf` | Soft-delete node only; **errors** if it still has children. |
 
 ## Tree UI
 
@@ -24,7 +31,8 @@ alwaysApply: false
 
 ## Do / don’t
 
-- **Do** route UI delete → `Trash::move_to_trash` (not hard delete).
+- **Do** route UI delete → `Tree_Model::delete_term` → `Trash::move_to_trash` (not hard delete).
+- **Do** honor promote vs cascade — UI must send the matching `mode` (never force cascade for “node only”).
 - **Don’t** allow deleting the Trash node itself.
 - **Don’t** show soft-deleted nodes outside the Trash view.
 ---

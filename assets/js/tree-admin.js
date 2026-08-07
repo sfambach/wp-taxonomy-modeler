@@ -1387,7 +1387,8 @@
 	 * @param {string|number} termId
 	 * @param {boolean} hasChildren
 	 * @param {{deletable?:boolean, mode?:'node'|'branch'|'leaf'|'promote'|'cascade'}} [opts]
-	 *   Soft-delete: node + descendants move to Trash (hierarchy kept).
+	 *   Soft-delete: node/promote = children move up then trash node only;
+	 *   branch/cascade = trash node + descendants.
 	 */
 	function deleteNodeById(termId, hasChildren, opts) {
 		opts = opts || {};
@@ -1410,15 +1411,33 @@
 			return;
 		}
 
+		var uiMode = opts.mode || 'node';
+		var apiMode =
+			uiMode === 'branch' || uiMode === 'cascade'
+				? 'cascade'
+				: uiMode === 'leaf'
+					? 'leaf'
+					: 'promote';
+
 		var ask = confirmNodeDeleteEnabled();
-		var msg = hasChildren
-			? i18n.confirmMoveToTrashBranch ||
-			  'Move this node and all descendants to Trash? Parent/child links are kept.'
-			: i18n.confirmMoveToTrash || 'Move this node to Trash?';
+		var msg;
+		if (apiMode === 'cascade') {
+			msg =
+				i18n.confirmMoveToTrashBranch ||
+				i18n.confirmBranch ||
+				'Move this node and all descendants to Trash? Parent/child links are kept.';
+		} else if (hasChildren) {
+			msg =
+				i18n.confirmPromoteToTrash ||
+				i18n.confirmNodeOnly ||
+				'Move this node to Trash? Children move up one level.';
+		} else {
+			msg = i18n.confirmMoveToTrash || i18n.confirmLeaf || 'Move this node to Trash?';
+		}
 		if (ask && !window.confirm(msg)) {
 			return;
 		}
-		runDelete('cascade', termId);
+		runDelete(apiMode, termId);
 	}
 
 	function runDelete(mode, termId) {

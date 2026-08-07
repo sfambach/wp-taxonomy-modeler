@@ -1142,14 +1142,115 @@ final class Tree_Model {
 	}
 
 	/**
-	 * Soft-delete (move to Trash). Modes leaf/promote/cascade all mark the
-	 * node and its descendants as trashed; hierarchy parent links are kept.
+	 * Soft-delete (move to Trash).
+	 *
+	 * Modes (Q89 + promote/cascade):
+	 * - leaf: trash this node only; fails if it still has children.
+	 * - promote: reparent direct children to this node’s parent (term_parent /
+	 *   child_of SoT), then trash this node only.
+	 * - cascade: trash this node and all descendants (parent links among them kept).
 	 *
 	 * @return true|\WP_Error
 	 */
 	public static function delete_term( string $taxonomy, int $term_id, string $mode = 'leaf' ) {
-		unset( $mode );
-		return Trash::move_to_trash( $taxonomy, $term_id );
+		if ( ! in_array( $mode, array( 'leaf', 'promote', 'cascade' ), true ) ) {
+			$mode = 'leaf';
+		}
+
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+
+		$has_children = self::term_has_children( $taxonomy, $term_id );
+
+		if ( $has_children && 'leaf' === $mode ) {
+			return new \WP_Error(
+				'wtt_has_children',
+				__( 'Term has children. Choose promote or cascade.', 'wp-taxonomy-tree' )
+			);
+		}
+
+		if ( $has_children && 'promote' === $mode ) {
+			$promoted = self::promote_direct_children( $taxonomy, $term );
+			if ( is_wp_error( $promoted ) ) {
+				return $promoted;
+			}
+		}
+
+		return Trash::move_to_trash( $taxonomy, $term_id, 'cascade' === $mode );
+	}
+
+	/**
+	 * Reparent direct children of $term to its parent (or root), preserving order
+	 * at the deleted node’s former sibling position.
+	 *
+	 * @return true|\WP_Error
+	 */
+	private static function promote_direct_children( string $taxonomy, \WP_Term $term ) {
+		$term_id    = (int) $term->term_id;
+		$new_parent = (int) $term->parent;
+
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $term_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $children ) || empty( $children ) ) {
+			return true;
+		}
+
+		$child_ids = array();
+		foreach ( $children as $child ) {
+			if ( ! $child instanceof \WP_Term ) {
+				continue;
+			}
+			$cid = (int) $child->term_id;
+			if ( Trash::is_trash_node( $cid ) ) {
+				return new \WP_Error(
+					'wtt_not_deletable',
+					__( 'Cannot promote: the Trash node is a direct child.', 'wp-taxonomy-tree' )
+				);
+			}
+			$child_ids[] = $cid;
+		}
+		if ( empty( $child_ids ) ) {
+			return true;
+		}
+
+		$before_id = self::next_sibling_term_id( $taxonomy, $term );
+		$result    = self::reparent_terms( $taxonomy, $child_ids, $new_parent, $before_id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Next sibling of $term under the same parent (by position), or 0 if last.
+	 */
+	private static function next_sibling_term_id( string $taxonomy, \WP_Term $term ): int {
+		$parent_id = (int) $term->parent;
+		$term_id   = (int) $term->term_id;
+		$siblings  = self::sort_sibling_terms( self::get_sibling_terms( $taxonomy, $parent_id ) );
+		$found     = false;
+		foreach ( $siblings as $sib ) {
+			if ( ! $sib instanceof \WP_Term ) {
+				continue;
+			}
+			$id = (int) $sib->term_id;
+			if ( $found ) {
+				return $id;
+			}
+			if ( $id === $term_id ) {
+				$found = true;
+			}
+		}
+		return 0;
 	}
 
 	/**

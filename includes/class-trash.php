@@ -184,11 +184,16 @@ final class Trash {
 	}
 
 	/**
-	 * Soft-delete $term_id and all descendants; keep hierarchy; register root in Trash list.
+	 * Soft-delete $term_id; optionally include descendants (cascade).
+	 *
+	 * When $include_descendants is false (promote / node-only), only this term
+	 * is marked trashed — callers must reparent children first.
+	 * When true (cascade / branch), the node and all descendants are marked;
+	 * WP term_parent links among them are kept.
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function move_to_trash( string $taxonomy, int $term_id ) {
+	public static function move_to_trash( string $taxonomy, int $term_id, bool $include_descendants = true ) {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
 		}
@@ -220,9 +225,11 @@ final class Trash {
 			);
 		}
 
-		$ids = self::collect_descendant_ids( $taxonomy, $term_id );
-		$ids[] = $term_id;
-		$ids   = array_values( array_unique( array_map( 'intval', $ids ) ) );
+		$ids = array( $term_id );
+		if ( $include_descendants ) {
+			$ids = array_merge( self::collect_descendant_ids( $taxonomy, $term_id ), $ids );
+		}
+		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
 
 		foreach ( $ids as $id ) {
 			if ( self::is_trash_node( $id ) ) {

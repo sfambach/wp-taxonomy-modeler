@@ -2,7 +2,7 @@
 
 Living project documentation for **WP Taxonomy Tree**.
 
-**Current mode: scaffolding** — early runnable admin tree ≈ **`0.0.296`** on **`wtt_fs` (Fallstudie) only** (`wtt_tree` retired); domain planning continues (Parameter class discarded). Plan **0.7.32** (gold Fallstudie — not Phase-1 sign-off).
+**Current mode: scaffolding** — early runnable admin tree ≈ **`0.0.297`** on **`wtt_fs` (Fallstudie) only** (`wtt_tree` retired); domain planning continues (Parameter class discarded). Plan **0.7.32** (gold Fallstudie — not Phase-1 sign-off).
 
 ## Start here
 

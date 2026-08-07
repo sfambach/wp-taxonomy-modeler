@@ -3,7 +3,7 @@
 > Living product documentation. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
 **Plugin:** WP Taxonomy Tree  
-**Status:** Scaffolding ≈ **`0.0.296`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie = gold scaffold shape — not Phase-1 model sign-off.** Docs overwrite dual-tree assumptions (plan **0.7.32**); status stays scaffolding.  
+**Status:** Scaffolding ≈ **`0.0.297`** (admin tree on **`wtt_fs` Fallstudie** only — **`wtt_tree` retired**; Relations Q74–Q78; set=`composition` Q75; **Q88 hierarchy datatype = parent** (root **Knoten**); **Q90** Complex `enum`/`list`/`table` **parked**; **Q91** Registry + many type renderers; **Q92** `chooser_root`/`chooser_focus` catalog bindings; **Fill Model Data** instances; Sample_Data name→type map; attribute-host Form/Table preview). Full Project/Node domain still planning (Parameter class discarded). **Fallstudie = gold scaffold shape — not Phase-1 model sign-off.** Docs overwrite dual-tree assumptions (plan **0.7.32**); status stays scaffolding.  
 **Audience:** WordPress site builders and plugin developers who need hierarchical taxonomy management
 
 ## Current mode
@@ -115,5 +115,5 @@ Case study: [`docs/plans/case-study.md`](plans/case-study.md).
 
 ## Versioning
 
-- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.296`** (`MAJOR` stays `0` until first official release).
+- Plugin started at **`0.0.1`**; scaffold currently ≈ **`0.0.297`** (`MAJOR` stays `0` until first official release).
 - Scaffold domain tree: **`wtt_fs`** (Fallstudie); **`wtt_tree`** retired from product UI (legacy constant only). Neither is post `category`.

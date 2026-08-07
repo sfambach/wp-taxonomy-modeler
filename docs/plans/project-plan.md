@@ -167,7 +167,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 - Planning checklist, MVP requirements, open questions, and data structure (**Project**, **Node**; tree = root node; Eigenschaften = typed children).
 - Local WordPress development environment (Windows Laragon + Cloud VM notes).
 
-### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.296`)
+### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.297`)
 
 Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP terms + term meta. **Only** Fallstudie **`wtt_fs`** (`Case_Data`); slim Definition / Implementation UI.
 
@@ -388,7 +388,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-06 | **CatalogChoice UI (Q90 note):** Attribute type with specialization children — max choice-subtree depth ≤ 1 → flat `<select>`; depth ≥ 2 → tree chooser; Festwert seeds selection. Typed choice under type host only (e.g. Währung), not every product picker. Docs + admin-ux rule; no new Q id. Plan **0.7.29**. |
 | 2026-08-06 | **Q93 opened:** CatalogChoice **value SoT** when type host and/or selected child has attributes — node id only vs id + instance values (host / child / both). UI chrome stays Q90; no Choice object. Plan **0.7.30**. |
 | 2026-08-07 | **Q94 opened:** Data safety — lean full site/DB backup for DR; WXR insufficient for unbound taxonomies + options + ID graphs; plugin JSON export/import later (copy tree); no admin Export now. Plan **0.7.31**. |
-| 2026-08-07 | **Gold scaffold = Fallstudie only:** product taxonomy **`wtt_fs`**; **`wtt_tree` / BOM Testprojekt retired** from UI, seeds, pickers; `Case_Data` = reference seed; `Demo_Data` helpers kept; live `wtt_tree` terms deleted via `retire-wtt-tree.php`. Scaffold ≈ **`0.0.296`**. Plan **0.7.32**. |
+| 2026-08-07 | **Gold scaffold = Fallstudie only:** product taxonomy **`wtt_fs`**; **`wtt_tree` / BOM Testprojekt retired** from UI, seeds, pickers; `Case_Data` = reference seed; `Demo_Data` helpers kept; live `wtt_tree` terms deleted via `retire-wtt-tree.php`. Scaffold ≈ **`0.0.297`**. Plan **0.7.32**. |
 
 ## Change protocol
 
