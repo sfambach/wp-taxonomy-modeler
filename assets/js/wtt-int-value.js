@@ -2,8 +2,7 @@
  * Integer value — normalize / convert / validators (1..n).
  *
  * Canonical storage: decimal digit string ("42", "-7") — no float, no separators.
- * Display/edit format default: arabic. Other format ids (roman, binary, octal, hex)
- * are reserved; only arabic is implemented in this slice.
+ * Display formats: arabic (default), roman, binary, octal, hex.
  *
  * @package WP_Taxonomy_Tree
  */
@@ -16,6 +15,23 @@
 	var messages = {
 		intInvalid: 'Enter a whole number.',
 	};
+
+	/** Classic Roman map (1..3999). */
+	var ROMAN_TABLE = [
+		[1000, 'M'],
+		[900, 'CM'],
+		[500, 'D'],
+		[400, 'CD'],
+		[100, 'C'],
+		[90, 'XC'],
+		[50, 'L'],
+		[40, 'XL'],
+		[10, 'X'],
+		[9, 'IX'],
+		[5, 'V'],
+		[4, 'IV'],
+		[1, 'I'],
+	];
 
 	function configure(opts) {
 		opts = opts || {};
@@ -58,7 +74,7 @@
 	}
 
 	/**
-	 * Live filter for the active format (unimplemented → arabic).
+	 * Live filter for the active format (edit still uses arabic digits).
 	 *
 	 * @param {string} raw
 	 * @param {string} [formatId]
@@ -135,14 +151,34 @@
 	}
 
 	/**
-	 * Format canonical for display.
+	 * @param {number} n Positive integer in classic Roman range.
+	 * @return {string}
+	 */
+	function toRoman(n) {
+		var out = '';
+		var rest = n;
+		var i;
+		for (i = 0; i < ROMAN_TABLE.length; i++) {
+			var pair = ROMAN_TABLE[i];
+			var value = pair[0];
+			var glyph = pair[1];
+			while (rest >= value) {
+				out += glyph;
+				rest -= value;
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Format canonical for display using the preferred converter id.
 	 *
 	 * @param {string|number|null|undefined} canonical
-	 * @param {string} [formatId] Non-arabic reserved — falls back to arabic this slice.
+	 * @param {string} [formatId]
 	 * @return {string}
 	 */
 	function format(canonical, formatId) {
-		normalizeFormatId(formatId);
+		var id = normalizeFormatId(formatId);
 		if (canonical == null || canonical === '') {
 			return '';
 		}
@@ -150,7 +186,36 @@
 		if (!isIntegerShape(s)) {
 			return s;
 		}
-		return canonicalizeArabic(s);
+		var arabic = canonicalizeArabic(s);
+		if (id === 'arabic') {
+			return arabic;
+		}
+
+		var neg = arabic.charAt(0) === '-';
+		var absStr = neg ? arabic.slice(1) : arabic;
+		/* Keep digit string for bases; Number is fine within JS safe integer for samples. */
+		var absNum = parseInt(absStr, 10);
+		if (!isFinite(absNum)) {
+			return arabic;
+		}
+
+		var body = '';
+		if (id === 'roman') {
+			/* Classic Roman: 1..3999. Outside range → arabic fallback. */
+			if (neg || absNum < 1 || absNum > 3999) {
+				return arabic;
+			}
+			body = toRoman(absNum);
+		} else if (id === 'binary') {
+			body = absNum.toString(2);
+		} else if (id === 'octal') {
+			body = absNum.toString(8);
+		} else if (id === 'hex') {
+			body = absNum.toString(16).toUpperCase();
+		} else {
+			return arabic;
+		}
+		return neg ? '-' + body : body;
 	}
 
 	/**

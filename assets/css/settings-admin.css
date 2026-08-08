@@ -120,3 +120,94 @@
 .wtt-catalog-bindings[data-mode="edit"] .wtt-catalog-bindings__help {
 	display: block;
 }
+
+.wtt-tree-icons-settings {
+	max-width: 44rem;
+}
+
+.wtt-tree-icons-settings__list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+	gap: 0.35em 0.75em;
+	margin: 0.65em 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.wtt-tree-icons-settings__item label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	margin: 0;
+	line-height: 1.35;
+}
+
+.wtt-tree-icons-settings__item .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	color: #50575e;
+}
+
+.wtt-tree-icons-settings__label {
+	font-size: 12px;
+	color: #1d2327;
+}
+
+/* Boolean slide switch (Confirm dialogs; match tree-admin chrome). */
+.wtt-settings-form .wtt-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	cursor: pointer;
+	user-select: none;
+	margin: 0;
+}
+
+.wtt-settings-form .wtt-switch__input {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.wtt-settings-form .wtt-switch__track {
+	position: relative;
+	display: inline-block;
+	width: 2.25em;
+	height: 1.25em;
+	border-radius: 999px;
+	background: #c3c4c7;
+	border: 1px solid #8c8f94;
+	transition: background 0.15s ease, border-color 0.15s ease;
+	flex-shrink: 0;
+}
+
+.wtt-settings-form .wtt-switch__thumb {
+	position: absolute;
+	top: 1px;
+	left: 1px;
+	width: calc(1.25em - 4px);
+	height: calc(1.25em - 4px);
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	transition: transform 0.15s ease;
+}
+
+.wtt-settings-form .wtt-switch.is-on .wtt-switch__track,
+.wtt-settings-form .wtt-switch__input:checked + .wtt-switch__track {
+	background: #2271b1;
+	border-color: #135e96;
+}
+
+.wtt-settings-form .wtt-switch.is-on .wtt-switch__thumb,
+.wtt-settings-form .wtt-switch__input:checked + .wtt-switch__track .wtt-switch__thumb {
+	transform: translateX(1em);
+}
+
+.wtt-settings-form .wtt-switch__text {
+	font-size: 13px;
+	color: #1d2327;
+	line-height: 1.4;
+}

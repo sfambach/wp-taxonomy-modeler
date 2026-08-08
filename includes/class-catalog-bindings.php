@@ -6,6 +6,9 @@
  * nodes; install-specific term ids still differ across sites. Resolve by
  * option binding, not display name.
  *
+ * Q96: Registry builtins use keys `builtin.<registryId>` → catalog term id
+ * (e.g. `builtin.int`). Reverse lookup: term id → Registry id.
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -23,7 +26,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   chooser_root: shared catalog/tree branch root (e.g. Fallstudie) — not chooser-only,
  *   chooser_focus: default chooser focus/expand when caller passes none (e.g. Data Types),
  *   model: Model folder (Object View / Model table default selection),
- *   data_types, simple, complex: legacy aliases / helpers
+ *   data_types, simple, complex: legacy aliases / helpers,
+ *   builtin.int, builtin.bool, …: Q96 Registry ↔ Simple/Complex leaf term ids
  * }
  */
 final class Catalog_Bindings {
@@ -52,10 +56,15 @@ final class Catalog_Bindings {
 
 	public const KEY_COMPLEX = 'complex';
 
+	/** Prefix for Q96 Registry builtin bindings (`builtin.int`, …). */
+	public const BUILTIN_PREFIX = 'builtin.';
+
 	/**
+	 * Folder / anchor keys (not Registry builtins).
+	 *
 	 * @return list<string>
 	 */
-	public static function keys(): array {
+	public static function folder_keys(): array {
 		return array(
 			self::KEY_CHOOSER_ROOT,
 			self::KEY_CHOOSER_FOCUS,
@@ -67,12 +76,102 @@ final class Catalog_Bindings {
 	}
 
 	/**
+	 * Known Registry ids seeded under Simple (+ quantity / node_ref under Complex).
+	 *
+	 * @return list<string>
+	 */
+	public static function builtin_registry_ids(): array {
+		return array(
+			'int',
+			'double',
+			'text',
+			'textarea',
+			'char',
+			'bool',
+			'email',
+			'date',
+			'media',
+			'display_node_name',
+			'quantity',
+			'node_ref',
+		);
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public static function builtin_keys(): array {
+		$keys = array();
+		foreach ( self::builtin_registry_ids() as $registry_id ) {
+			$keys[] = self::builtin_key( $registry_id );
+		}
+		return $keys;
+	}
+
+	/**
+	 * Option key for a Registry id (`int` → `builtin.int`).
+	 */
+	public static function builtin_key( string $registry_id ): string {
+		$id = strtolower( trim( $registry_id ) );
+		if ( class_exists( Node_Type::class ) ) {
+			$id = Node_Type::normalize_type_name( $id );
+		}
+		return self::BUILTIN_PREFIX . $id;
+	}
+
+	public static function is_builtin_key( string $key ): bool {
+		return 0 === strpos( $key, self::BUILTIN_PREFIX );
+	}
+
+	/**
+	 * Registry id from a builtin option key (`builtin.int` → `int`).
+	 */
+	public static function registry_id_from_key( string $key ): string {
+		if ( ! self::is_builtin_key( $key ) ) {
+			return '';
+		}
+		return substr( $key, strlen( self::BUILTIN_PREFIX ) );
+	}
+
+	/**
+	 * Bound term id for a Registry builtin (0 when unbound / missing).
+	 */
+	public static function term_id_for_builtin( string $taxonomy, string $registry_id ): int {
+		return self::resolve( $taxonomy, self::builtin_key( $registry_id ) );
+	}
+
+	/**
+	 * Reverse lookup: catalog term id → Registry id via `builtin.*` bindings.
+	 */
+	public static function registry_id_for_term( string $taxonomy, int $term_id ): string {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+			return '';
+		}
+		$map = self::for_taxonomy( $taxonomy );
+		foreach ( self::builtin_registry_ids() as $registry_id ) {
+			$key = self::builtin_key( $registry_id );
+			if ( isset( $map[ $key ] ) && absint( $map[ $key ] ) === $term_id ) {
+				return $registry_id;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public static function keys(): array {
+		return array_merge( self::folder_keys(), self::builtin_keys() );
+	}
+
+	/**
 	 * Human-readable labels for Settings (key → label).
 	 *
 	 * @return array<string, string>
 	 */
 	public static function key_labels(): array {
-		return array(
+		$labels = array(
 			self::KEY_CHOOSER_ROOT  => __( 'Root (shared tree branch)', 'wp-taxonomy-tree' ),
 			self::KEY_CHOOSER_FOCUS => __( 'Chooser default focus (fallback only)', 'wp-taxonomy-tree' ),
 			self::KEY_MODEL         => __( 'Model node (Object View / Model table)', 'wp-taxonomy-tree' ),
@@ -80,6 +179,14 @@ final class Catalog_Bindings {
 			self::KEY_SIMPLE        => __( 'Simple (helper)', 'wp-taxonomy-tree' ),
 			self::KEY_COMPLEX       => __( 'Complex (helper)', 'wp-taxonomy-tree' ),
 		);
+		foreach ( self::builtin_registry_ids() as $registry_id ) {
+			/* translators: %s: Registry id (e.g. int, bool). */
+			$labels[ self::builtin_key( $registry_id ) ] = sprintf(
+				__( 'Builtin: %s', 'wp-taxonomy-tree' ),
+				$registry_id
+			);
+		}
+		return $labels;
 	}
 
 	/**
@@ -88,7 +195,7 @@ final class Catalog_Bindings {
 	 * @return array<string, string>
 	 */
 	public static function key_helps(): array {
-		return array(
+		$helps = array(
 			self::KEY_CHOOSER_ROOT  => __( 'Subtree shown in shared tree choosers (e.g. Fallstudie).', 'wp-taxonomy-tree' ),
 			self::KEY_CHOOSER_FOCUS => __( 'Used only when a picker passes no focus of its own (e.g. attribute type chooser → Data Types). Not the Object View / Model table default — that is Model.', 'wp-taxonomy-tree' ),
 			self::KEY_MODEL         => __( 'Explicit default selection and focus for Object View and Model table. Wins over chooser default focus.', 'wp-taxonomy-tree' ),
@@ -96,6 +203,11 @@ final class Catalog_Bindings {
 			self::KEY_SIMPLE        => __( 'Helper binding for scaffold tooling.', 'wp-taxonomy-tree' ),
 			self::KEY_COMPLEX       => __( 'Helper binding for scaffold tooling.', 'wp-taxonomy-tree' ),
 		);
+		$builtin_help = __( 'Q96: Registry id ↔ catalog leaf term id (rename-safe).', 'wp-taxonomy-tree' );
+		foreach ( self::builtin_keys() as $key ) {
+			$helps[ $key ] = $builtin_help;
+		}
+		return $helps;
 	}
 
 	/**
@@ -113,7 +225,7 @@ final class Catalog_Bindings {
 				$clean[ $key ] = $id;
 			}
 		}
-		$focus = isset( $clean[ self::KEY_CHOOSER_FOCUS ] ) ? $clean[ self::KEY_CHOOSER_FOCUS ] : 0;
+		$focus  = isset( $clean[ self::KEY_CHOOSER_FOCUS ] ) ? $clean[ self::KEY_CHOOSER_FOCUS ] : 0;
 		$legacy = isset( $clean[ self::KEY_DATA_TYPES ] ) ? $clean[ self::KEY_DATA_TYPES ] : 0;
 		if ( $focus <= 0 && $legacy > 0 ) {
 			$clean[ self::KEY_CHOOSER_FOCUS ] = $legacy;
@@ -129,8 +241,8 @@ final class Catalog_Bindings {
 		if ( ! is_array( $raw ) ) {
 			return array();
 		}
-		$out      = array();
-		$persist  = false;
+		$out     = array();
+		$persist = false;
 		foreach ( $raw as $taxonomy => $map ) {
 			if ( ! is_string( $taxonomy ) || ! Taxonomy::is_scaffold( $taxonomy ) || ! is_array( $map ) ) {
 				continue;
@@ -220,7 +332,7 @@ final class Catalog_Bindings {
 		if ( $focus <= 0 ) {
 			$focus = self::resolve( $taxonomy, self::KEY_DATA_TYPES );
 		}
-		return array(
+		$out = array(
 			self::KEY_CHOOSER_ROOT  => self::resolve( $taxonomy, self::KEY_CHOOSER_ROOT ),
 			self::KEY_CHOOSER_FOCUS => $focus,
 			self::KEY_MODEL         => self::resolve( $taxonomy, self::KEY_MODEL ),
@@ -228,6 +340,11 @@ final class Catalog_Bindings {
 			self::KEY_SIMPLE        => self::resolve( $taxonomy, self::KEY_SIMPLE ),
 			self::KEY_COMPLEX       => self::resolve( $taxonomy, self::KEY_COMPLEX ),
 		);
+		foreach ( self::builtin_registry_ids() as $registry_id ) {
+			$key         = self::builtin_key( $registry_id );
+			$out[ $key ] = self::resolve( $taxonomy, $key );
+		}
+		return $out;
 	}
 
 	/**
@@ -412,13 +529,17 @@ final class Catalog_Bindings {
 			}
 		}
 
-		$bindings = array(
-			self::KEY_CHOOSER_ROOT  => $root,
-			self::KEY_CHOOSER_FOCUS => $focus,
-			self::KEY_MODEL         => $model,
-			self::KEY_DATA_TYPES    => $data_types,
-			self::KEY_SIMPLE        => $simple,
-			self::KEY_COMPLEX       => $complex,
+		/* Merge so folder ensure does not wipe Q96 builtin.* keys. */
+		$bindings = array_merge(
+			self::for_taxonomy( $taxonomy ),
+			array(
+				self::KEY_CHOOSER_ROOT  => $root,
+				self::KEY_CHOOSER_FOCUS => $focus,
+				self::KEY_MODEL         => $model,
+				self::KEY_DATA_TYPES    => $data_types,
+				self::KEY_SIMPLE        => $simple,
+				self::KEY_COMPLEX       => $complex,
+			)
 		);
 		self::set_for_taxonomy( $taxonomy, $bindings );
 		return array_filter( $bindings );
@@ -485,15 +606,150 @@ final class Catalog_Bindings {
 			}
 		}
 
-		$bindings = array(
-			self::KEY_CHOOSER_ROOT  => $root,
-			self::KEY_CHOOSER_FOCUS => $focus,
-			self::KEY_DATA_TYPES    => $data_types,
-			self::KEY_SIMPLE        => $simple,
-			self::KEY_COMPLEX       => $complex,
+		$bindings = array_merge(
+			self::for_taxonomy( $taxonomy ),
+			array(
+				self::KEY_CHOOSER_ROOT  => $root,
+				self::KEY_CHOOSER_FOCUS => $focus,
+				self::KEY_DATA_TYPES    => $data_types,
+				self::KEY_SIMPLE        => $simple,
+				self::KEY_COMPLEX       => $complex,
+			)
 		);
 		self::set_for_taxonomy( $taxonomy, $bindings );
 		return array_filter( $bindings );
+	}
+
+	/**
+	 * Seed / repair `builtin.<registryId>` → Simple/Complex leaf term ids (Q96).
+	 * Idempotent. Seed may match leaf names once; runtime resolve uses ids.
+	 *
+	 * @return array<string, int> Full taxonomy binding map after ensure.
+	 */
+	public static function ensure_builtins( string $taxonomy ): array {
+		if ( ! Taxonomy::is_scaffold( $taxonomy ) || ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+
+		$simple = self::resolve( $taxonomy, self::KEY_SIMPLE );
+		if ( $simple <= 0 ) {
+			$simple = self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Definition', 'Data Types', 'Simple' ),
+					array( 'Fallstudie', 'Definition', 'Datentypen', 'Simple' ),
+					array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Simple' ),
+				)
+			);
+		}
+
+		$complex = self::resolve( $taxonomy, self::KEY_COMPLEX );
+		if ( $complex <= 0 ) {
+			$complex = self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Definition', 'Data Types', 'Complex' ),
+					array( 'Fallstudie', 'Definition', 'Datentypen', 'Complex' ),
+					array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Complex' ),
+				)
+			);
+		}
+
+		$map = self::for_taxonomy( $taxonomy );
+		foreach ( self::builtin_registry_ids() as $registry_id ) {
+			$key = self::builtin_key( $registry_id );
+			if ( self::resolve( $taxonomy, $key ) > 0 ) {
+				$map[ $key ] = self::resolve( $taxonomy, $key );
+				continue;
+			}
+
+			$term_id = self::find_builtin_leaf_term( $taxonomy, $registry_id, $simple, $complex );
+			if ( $term_id > 0 ) {
+				$map[ $key ] = $term_id;
+			}
+		}
+
+		self::set_for_taxonomy( $taxonomy, $map );
+		return self::for_taxonomy( $taxonomy );
+	}
+
+	/**
+	 * Locate a seeded catalog leaf for a Registry id (seed/migrate name match only).
+	 */
+	private static function find_builtin_leaf_term(
+		string $taxonomy,
+		string $registry_id,
+		int $simple_id,
+		int $complex_id
+	): int {
+		$simple_ids = array(
+			'int',
+			'double',
+			'text',
+			'textarea',
+			'char',
+			'bool',
+			'email',
+			'date',
+			'media',
+			'display_node_name',
+		);
+
+		if ( in_array( $registry_id, $simple_ids, true ) ) {
+			if ( $simple_id <= 0 ) {
+				return 0;
+			}
+			$id = self::find_child_named( $taxonomy, $simple_id, $registry_id );
+			if ( $id > 0 ) {
+				return $id;
+			}
+			/* Seed aliases (debt — write binding once, then resolve by id). */
+			$aliases = array(
+				'int'  => array( 'integer' ),
+				'bool' => array( 'boolean' ),
+				'double' => array( 'float', 'number' ),
+			);
+			if ( isset( $aliases[ $registry_id ] ) ) {
+				foreach ( $aliases[ $registry_id ] as $alias ) {
+					$id = self::find_child_named( $taxonomy, $simple_id, $alias );
+					if ( $id > 0 ) {
+						return $id;
+					}
+				}
+			}
+			return 0;
+		}
+
+		if ( 'quantity' === $registry_id ) {
+			if ( $complex_id > 0 ) {
+				foreach ( array( 'quantity', 'measure', 'Größe', 'Groesse' ) as $name ) {
+					$id = self::find_child_named( $taxonomy, $complex_id, $name );
+					if ( $id > 0 ) {
+						return $id;
+					}
+				}
+			}
+			return self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Definition', 'Data Types', 'Complex', 'quantity' ),
+					array( 'Fallstudie', 'Definition', 'Datentypen', 'Complex', 'quantity' ),
+				)
+			);
+		}
+
+		if ( 'node_ref' === $registry_id ) {
+			return self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Definition', 'Data Types', 'Complex', 'node_pick', 'node_ref' ),
+					array( 'Fallstudie', 'Definition', 'Datentypen', 'Complex', 'node_pick', 'node_ref' ),
+					array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Complex', 'node_pick', 'node_ref' ),
+				)
+			);
+		}
+
+		return 0;
 	}
 
 	/**
@@ -503,10 +759,12 @@ final class Catalog_Bindings {
 	 */
 	public static function ensure( string $taxonomy ): array {
 		if ( Taxonomy::FS === $taxonomy ) {
-			return self::ensure_case_study( $taxonomy );
+			self::ensure_case_study( $taxonomy );
+			return self::ensure_builtins( $taxonomy );
 		}
 		if ( Taxonomy::TREE === $taxonomy ) {
-			return self::ensure_bom( $taxonomy );
+			self::ensure_bom( $taxonomy );
+			return self::ensure_builtins( $taxonomy );
 		}
 		return array();
 	}

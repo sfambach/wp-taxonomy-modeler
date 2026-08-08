@@ -156,6 +156,7 @@ final class Trash {
 
 		$ids   = self::collect_descendant_ids( $taxonomy, $term_id );
 		$ids[] = $term_id;
+		$ids   = array_merge( $ids, self::collect_owned_attribute_slot_ids( $taxonomy, $ids ) );
 		$ids   = array_values( array_unique( array_map( 'intval', $ids ) ) );
 
 		$restored = 0;
@@ -235,6 +236,8 @@ final class Trash {
 		if ( $include_descendants ) {
 			$ids = array_merge( self::collect_descendant_ids( $taxonomy, $term_id ), $ids );
 		}
+		/* Attribute slots are not WP children — cascade them with the host (Q87 / Q97). */
+		$ids = array_merge( $ids, self::collect_owned_attribute_slot_ids( $taxonomy, $ids ) );
 		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
 
 		foreach ( $ids as $id ) {
@@ -478,6 +481,36 @@ final class Trash {
 	}
 
 	/**
+	 * Attribute slot term ids owned by any of $host_ids via besteht_aus / aggregation (Q87).
+	 * Not WP children of the host — must be collected explicitly for Trash cascade (Q97).
+	 *
+	 * @param list<int> $host_ids Host term ids already in the trash set.
+	 * @return list<int>
+	 */
+	private static function collect_owned_attribute_slot_ids( string $taxonomy, array $host_ids ): array {
+		if ( ! class_exists( Attribute::class ) ) {
+			return array();
+		}
+		$out  = array();
+		$seen = array_fill_keys( array_map( 'intval', $host_ids ), true );
+		foreach ( $host_ids as $host_id ) {
+			$host_id = (int) $host_id;
+			if ( $host_id <= 0 ) {
+				continue;
+			}
+			foreach ( Attribute::list_own( $taxonomy, $host_id ) as $row ) {
+				$slot_id = (int) ( $row['id'] ?? 0 );
+				if ( $slot_id <= 0 || isset( $seen[ $slot_id ] ) ) {
+					continue;
+				}
+				$seen[ $slot_id ] = true;
+				$out[]            = $slot_id;
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * @return list<int>
 	 */
 	public static function list_all_trashed_ids( string $taxonomy ): array {
@@ -613,8 +646,6 @@ final class Trash {
 				'typeId'       => Node_Type::get_effective_type_id( $taxonomy, $term_id ),
 				'ownTypeId'    => Node_Type::get_type_id( $term_id ),
 				'typeLabel'    => is_array( $type ) ? (string) $type['name'] : '',
-				'isDatatype'   => Node_Type::is_datatype( $taxonomy, $term_id ),
-				'isAbstract'   => Node_Type::is_abstract( $taxonomy, $term_id ),
 				'isTemplate'   => Node_Type::is_template( $term_id ),
 				'deletable'    => false,
 				'trashed'      => true,

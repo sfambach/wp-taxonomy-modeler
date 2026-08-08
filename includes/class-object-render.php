@@ -76,11 +76,33 @@ final class Object_Render {
 			'layoutTable'             => __( 'Table (singles)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
+			'layoutEmbed'             => __( 'Embed (pick + fill)', 'wp-taxonomy-tree' ),
 			'layoutAuto'              => __( 'Node preferred', 'wp-taxonomy-tree' ),
 			'layoutAutoHelp'          => __( 'Use the preferred render stored on the bound node.', 'wp-taxonomy-tree' ),
+			'embedPickHint'           => __( 'Choose kind…', 'wp-taxonomy-tree' ),
+			'embedNoChoices'          => __( 'No specialization children under this node.', 'wp-taxonomy-tree' ),
+			'embedLoading'            => __( 'Loading…', 'wp-taxonomy-tree' ),
+			'embedNoFields'           => __( 'Selected node has no attributes.', 'wp-taxonomy-tree' ),
+			'embedPickPart'           => __( 'Pick part…', 'wp-taxonomy-tree' ),
+			'embedChangePart'         => __( 'Change…', 'wp-taxonomy-tree' ),
+			'embedPhaseATitle'        => __( 'Choose part kind', 'wp-taxonomy-tree' ),
+			'embedPhaseBTitle'        => __( 'Pick or create part', 'wp-taxonomy-tree' ),
+			'embedPhaseBHint'         => __( 'Filter existing Model data for this kind, pick a match, or create from the form.', 'wp-taxonomy-tree' ),
+			'embedFilterLabel'        => __( 'Filter (AND)', 'wp-taxonomy-tree' ),
+			'embedMatches'            => __( 'Matches', 'wp-taxonomy-tree' ),
+			'embedNoMatches'          => __( 'No matching instances.', 'wp-taxonomy-tree' ),
+			'embedCreateBind'         => __( 'Create and bind', 'wp-taxonomy-tree' ),
+			'embedBackKind'           => __( '← Kind', 'wp-taxonomy-tree' ),
+			'embedRequiredEmpty'      => __( 'Required — pick or create a part.', 'wp-taxonomy-tree' ),
+			'embedInstanceApiMissing' => __( 'Model data API unavailable — cannot list or create instances.', 'wp-taxonomy-tree' ),
+			'nodePickerTitle'         => __( 'Choose node', 'wp-taxonomy-tree' ),
+			'nodePickerClear'         => __( 'Clear', 'wp-taxonomy-tree' ),
+			'cancel'                  => __( 'Cancel', 'wp-taxonomy-tree' ),
+			'colIndex'                => __( '#', 'wp-taxonomy-tree' ),
 			'renderingPanel'          => __( 'Rendering', 'wp-taxonomy-tree' ),
 			'pickRenderDepth'         => __( 'Render depth', 'wp-taxonomy-tree' ),
-			'renderDepthHelp'         => __( 'How deep nested objects are expanded. 1 = this node and its attributes; 0 = meta only.', 'wp-taxonomy-tree' ),
+			'renderDepthHelp'         => __( 'How deep nested objects are expanded. 0 = meta only; 1 = this node and its direct attributes (site default). Deeper values nest related objects. Change the site default under Taxonomy Tree → Settings.', 'wp-taxonomy-tree' ),
+			'renderDepthSiteDefault'  => __( 'Site default', 'wp-taxonomy-tree' ),
 			'pickReferenceMode'       => __( 'Reference rendering', 'wp-taxonomy-tree' ),
 			'referenceModeHelp'       => __( 'How node references and catalog picks are shown when not editing.', 'wp-taxonomy-tree' ),
 			'referenceModeNone'       => __( 'None (omit)', 'wp-taxonomy-tree' ),
@@ -91,6 +113,11 @@ final class Object_Render {
 			'savingInstance'          => __( 'Saving instance…', 'wp-taxonomy-tree' ),
 			'savedInstance'           => __( 'Instance saved.', 'wp-taxonomy-tree' ),
 			'editNeedsInstance'       => __( 'Pick a dataset to edit attribute values.', 'wp-taxonomy-tree' ),
+			'addLine'                 => __( 'Add line', 'wp-taxonomy-tree' ),
+			'noRelatedLines'          => __( 'No related lines yet.', 'wp-taxonomy-tree' ),
+			'lineCreated'             => __( 'Line created.', 'wp-taxonomy-tree' ),
+			'lineSaved'               => __( 'Line saved.', 'wp-taxonomy-tree' ),
+			'relatedLinesHint'        => __( 'Composition/aggregation Mult many rows for this instance (not a global orphan list).', 'wp-taxonomy-tree' ),
 			'colVersion'              => __( 'Version', 'wp-taxonomy-tree' ),
 			'colModified'             => __( 'Modified', 'wp-taxonomy-tree' ),
 			'colInstanceId'           => __( 'Id', 'wp-taxonomy-tree' ),
@@ -129,11 +156,20 @@ final class Object_Render {
 				true
 			);
 		}
+		if ( ! wp_script_is( 'wtt-converter', 'registered' ) ) {
+			wp_register_script(
+				'wtt-converter',
+				WTT_PLUGIN_URL . 'assets/js/wtt-converter.js',
+				array( 'wtt-int-value' ),
+				$ver,
+				true
+			);
+		}
 		if ( ! wp_script_is( 'wtt-node-render', 'registered' ) ) {
 			wp_register_script(
 				'wtt-node-render',
 				WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-				array( 'wtt-sample-data', 'wtt-int-value' ),
+				array( 'wtt-sample-data', 'wtt-int-value', 'wtt-converter' ),
 				$ver,
 				true
 			);
@@ -323,6 +359,11 @@ final class Object_Render {
 			'typeName'         => $type_name,
 			'typeKey'          => $type_key,
 			'preferredRender'  => Node_Type::get_preferred_render( $term_id ),
+			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, $term_id ),
+			'validators'         => Node_Type::get_validators_for_node( $taxonomy, $term_id ),
+			'embedChoiceOptions' => ( 'embed' === Node_Type::get_preferred_render( $term_id ) )
+				? Attribute::choice_options_under_type( $taxonomy, $term_id )
+				: array(),
 			'properties'       => $properties,
 			'instanceId'       => '',
 			'instanceValues'   => new \stdClass(),
@@ -361,6 +402,49 @@ final class Object_Render {
 				continue;
 			}
 			$aid = (string) (int) ( $prop['id'] ?? 0 );
+			/*
+			 * Q97: Mult many structured attrs (BOM Position, …) read related Model_Data
+			 * via links[] — not an inline blob on the parent attribute slot.
+			 */
+			if ( '' !== $instance_id && Model_Data::is_related_dataset_attr( $taxonomy, $prop ) ) {
+				$type_id   = (int) ( $prop['typeId'] ?? 0 );
+				$binding   = Attribute::normalize_binding( (string) ( $prop['binding'] ?? Attribute::DEFAULT_BINDING ) );
+				$related   = Model_Data::list_related( $taxonomy, $term_id, $instance_id, $binding, $type_id );
+				$type_cols = isset( $prop['typeProperties'] ) && is_array( $prop['typeProperties'] )
+					? $prop['typeProperties']
+					: array();
+				$rel_inst  = array();
+				foreach ( $related as $link_row ) {
+					$child = isset( $link_row['instance'] ) && is_array( $link_row['instance'] )
+						? $link_row['instance']
+						: null;
+					if ( null === $child ) {
+						continue;
+					}
+					$child_vals = isset( $child['values'] ) && is_array( $child['values'] ) ? $child['values'] : array();
+					$norm_vals  = array();
+					foreach ( $child_vals as $ck => $cv ) {
+						$norm_vals[ (string) $ck ] = is_scalar( $cv ) ? (string) $cv : '';
+					}
+					$rel_inst[] = array(
+						'id'         => (string) ( $child['id'] ?? $link_row['instanceId'] ?? '' ),
+						'seq'        => (int) ( $child['seq'] ?? 0 ),
+						'attributes' => $type_cols,
+						'values'     => $norm_vals,
+						'structureId'=> (int) ( $link_row['structureId'] ?? $type_id ),
+						'relation'   => (string) ( $link_row['relation'] ?? $binding ),
+					);
+				}
+				$prop['relatedInstances']     = $rel_inst;
+				$prop['usesRelatedInstances'] = true;
+				$prop['isRelatedDataset']     = true;
+				$prop['values']               = array();
+				$prop['valueLabel']           = '';
+				$prop['hasInstanceValue']     = array() !== $rel_inst;
+				unset( $values[ $aid ] );
+				$out_props[] = $prop;
+				continue;
+			}
 			if ( '' !== $aid && '0' !== $aid && isset( $values[ $aid ] ) && '' !== trim( (string) $values[ $aid ] ) ) {
 				$raw                = (string) $values[ $aid ];
 				$prop['values']     = self::decode_store_values( $raw );
@@ -494,6 +578,33 @@ final class Object_Render {
 	}
 
 	/**
+	 * Encode one or more scalar values into a Model_Data store string (Q106).
+	 * One value → plain string; several → JSON array string (matches JS encodeManyStoreValues).
+	 *
+	 * @param list<string|mixed> $values Scalar defaults (nested maps skipped).
+	 */
+	public static function encode_store_values( array $values ): string {
+		$cleaned = array();
+		foreach ( $values as $v ) {
+			if ( is_array( $v ) ) {
+				continue;
+			}
+			$s = trim( (string) $v );
+			if ( '' !== $s ) {
+				$cleaned[] = $s;
+			}
+		}
+		if ( array() === $cleaned ) {
+			return '';
+		}
+		if ( 1 === count( $cleaned ) ) {
+			return $cleaned[0];
+		}
+		$json = wp_json_encode( array_values( $cleaned ) );
+		return false === $json ? $cleaned[0] : $json;
+	}
+
+	/**
 	 * @param array<string, mixed> $row              Attribute row from Attribute::list.
 	 * @param string               $taxonomy         Taxonomy slug (for node_ref extras).
 	 * @param bool                 $with_type_schema Include type's attributes once (for Mult many → Table(n)).
@@ -503,7 +614,12 @@ final class Object_Render {
 		$values = array();
 		if ( isset( $row['fixedValues'] ) && is_array( $row['fixedValues'] ) ) {
 			foreach ( $row['fixedValues'] as $v ) {
-				$values[] = (string) $v;
+				/* Q106: scalars are strings; related Mult defaults may be nested value maps. */
+				if ( is_array( $v ) ) {
+					$values[] = $v;
+				} else {
+					$values[] = (string) $v;
+				}
 			}
 		}
 
@@ -529,6 +645,9 @@ final class Object_Render {
 			'valueLabel'    => (string) ( $row['fixedLabel'] ?? '' ),
 			'values'        => $values,
 			'fixedMode'     => (string) ( $row['fixedMode'] ?? '' ),
+			'fixedRootId'   => (int) ( $row['fixedRootId'] ?? 0 ) > 0
+				? (int) $row['fixedRootId']
+				: (int) ( $row['typeId'] ?? 0 ),
 			'fixedOptions'  => isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
 				? array_values( $row['fixedOptions'] )
 				: array(),
@@ -538,6 +657,24 @@ final class Object_Render {
 					: array()
 			),
 			'typeProperties'=> array(),
+			'typePreferredRender' => isset( $row['typePreferredRender'] )
+				? Node_Type::normalize_preferred_render( (string) $row['typePreferredRender'] )
+				: (
+					(int) ( $row['typeId'] ?? 0 ) > 0
+						? Node_Type::get_preferred_render( (int) $row['typeId'] )
+						: 'form'
+				),
+			'preferredRender' => isset( $row['preferredRender'] )
+				? Node_Type::normalize_preferred_render( (string) $row['preferredRender'] )
+				: (
+					isset( $row['typePreferredRender'] )
+						? Node_Type::normalize_preferred_render( (string) $row['typePreferredRender'] )
+						: (
+							$slot_id > 0
+								? Node_Type::get_preferred_render( $slot_id )
+								: 'form'
+						)
+				),
 		);
 
 		/* node_ref edit/display needs catalog options (same extras as Model table columns). */
@@ -560,6 +697,9 @@ final class Object_Render {
 		}
 
 		if ( 'int' === strtolower( $type_key ) || 'integer' === strtolower( $type_key ) ) {
+			if ( isset( $row['preferredConverter'] ) && is_string( $row['preferredConverter'] ) && '' !== $row['preferredConverter'] ) {
+				$dto['preferredConverter'] = Node_Type::normalize_preferred_converter( (string) $row['preferredConverter'] );
+			}
 			if ( isset( $row['intConfig'] ) && is_array( $row['intConfig'] ) ) {
 				$dto['intConfig']     = $row['intConfig'];
 				$dto['displayFormat'] = isset( $row['intConfig']['displayFormat'] )
@@ -579,6 +719,9 @@ final class Object_Render {
 					: Int_Value::DEFAULT_FORMAT;
 				$dto['intConfig']     = array( 'displayFormat' => $fmt );
 				$dto['displayFormat'] = $fmt;
+			}
+			if ( empty( $dto['preferredConverter'] ) && ! empty( $dto['displayFormat'] ) ) {
+				$dto['preferredConverter'] = (string) $dto['displayFormat'];
 			}
 		}
 
@@ -631,6 +774,11 @@ final class Object_Render {
 			}
 		}
 
+		/* Q97: Mult many + structured type → related Model_Data rows (links[]), not host blob. */
+		if ( '' !== $taxonomy && Model_Data::is_related_dataset_attr( $taxonomy, $row ) ) {
+			$dto['isRelatedDataset'] = true;
+		}
+
 		return $dto;
 	}
 
@@ -645,7 +793,11 @@ final class Object_Render {
 		$taxonomy    = isset( $attributes['taxonomy'] ) ? sanitize_key( (string) $attributes['taxonomy'] ) : '';
 		$instance_id = isset( $attributes['instanceId'] ) ? sanitize_key( (string) $attributes['instanceId'] ) : '';
 		$raw_layout  = isset( $attributes['layout'] ) ? (string) $attributes['layout'] : 'auto';
-		$depth       = self::normalize_render_depth( isset( $attributes['renderDepth'] ) ? $attributes['renderDepth'] : 1 );
+		$depth       = self::normalize_render_depth(
+			array_key_exists( 'renderDepth', $attributes )
+				? $attributes['renderDepth']
+				: Settings::default_render_depth()
+		);
 		$ref_mode    = self::normalize_reference_mode( isset( $attributes['referenceMode'] ) ? (string) $attributes['referenceMode'] : 'link' );
 		$view        = $term_id > 0 ? self::get_view( $taxonomy, $term_id ) : null;
 		if ( null !== $view && '' !== $instance_id ) {
@@ -711,6 +863,9 @@ final class Object_Render {
 					self::echo_properties_table( $single, $i18n, $render_ctx );
 				} elseif ( 'compact' === $layout || 'compact-vertical' === $layout ) {
 					self::echo_properties_compact( $single, $i18n, $layout, $render_ctx );
+				} elseif ( 'embed' === $layout ) {
+					/* Interactive pick+fill is JS; SSR falls back to compact of host attrs. */
+					self::echo_properties_compact( $single, $i18n, 'compact', $render_ctx );
 				} else {
 					echo '<div class="wtt-object-view__form" role="list">';
 					foreach ( $single as $prop ) {
@@ -1181,10 +1336,6 @@ final class Object_Render {
 				? $prop['typeProperties']
 				: array();
 			$columns    = array() !== $type_props ? $type_props : array( $prop );
-			$raw_rows   = self::many_prop_store_values( $prop );
-			if ( array() === $raw_rows ) {
-				$raw_rows = array( '' );
-			}
 
 			$name = (string) ( $prop['name'] ?? '' );
 			echo '<div class="wtt-object-view__many-item">';
@@ -1202,20 +1353,61 @@ final class Object_Render {
 				echo '<th scope="col">' . esc_html( '' !== $col_name ? $col_name : '—' ) . '</th>';
 			}
 			echo '</tr></thead><tbody>';
-			foreach ( $raw_rows as $raw ) {
-				$row_vals = self::many_row_values_from_store( $columns, (string) $raw );
-				echo '<tr>';
-				foreach ( $columns as $col ) {
-					if ( ! is_array( $col ) ) {
-						continue;
+
+			/* Prefer related Model_Data rows (Q97 BOM) over inline Mult many store blobs. */
+			$related = isset( $prop['relatedInstances'] ) && is_array( $prop['relatedInstances'] )
+				? $prop['relatedInstances']
+				: array();
+			$uses_related = ! empty( $prop['usesRelatedInstances'] )
+				|| ! empty( $prop['isRelatedDataset'] )
+				|| array() !== $related;
+			if ( $uses_related ) {
+				if ( array() === $related ) {
+					echo '<tr><td colspan="' . esc_attr( (string) max( 1, count( $columns ) ) ) . '">';
+					echo '<span class="wtt-object-view__empty-value">' . esc_html( $i18n['emptyValue'] ?? '—' ) . '</span>';
+					echo '</td></tr>';
+				} else {
+					foreach ( $related as $row_inst ) {
+						if ( ! is_array( $row_inst ) ) {
+							continue;
+						}
+						$row_vals = isset( $row_inst['values'] ) && is_array( $row_inst['values'] )
+							? $row_inst['values']
+							: array();
+						echo '<tr>';
+						foreach ( $columns as $col ) {
+							if ( ! is_array( $col ) ) {
+								continue;
+							}
+							$col_id = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
+							$cell   = isset( $row_vals[ $col_id ] ) ? (string) $row_vals[ $col_id ] : '';
+							echo '<td>';
+							self::echo_typed_value( $col, $cell, $i18n, true, $ctx );
+							echo '</td>';
+						}
+						echo '</tr>';
 					}
-					$col_id = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
-					$cell   = isset( $row_vals[ $col_id ] ) ? (string) $row_vals[ $col_id ] : '';
-					echo '<td>';
-					self::echo_typed_value( $col, $cell, $i18n, true, $ctx );
-					echo '</td>';
 				}
-				echo '</tr>';
+			} else {
+				$raw_rows = self::many_prop_store_values( $prop );
+				if ( array() === $raw_rows ) {
+					$raw_rows = array( '' );
+				}
+				foreach ( $raw_rows as $raw ) {
+					$row_vals = self::many_row_values_from_store( $columns, (string) $raw );
+					echo '<tr>';
+					foreach ( $columns as $col ) {
+						if ( ! is_array( $col ) ) {
+							continue;
+						}
+						$col_id = isset( $col['id'] ) ? (string) $col['id'] : (string) ( $col['name'] ?? '' );
+						$cell   = isset( $row_vals[ $col_id ] ) ? (string) $row_vals[ $col_id ] : '';
+						echo '<td>';
+						self::echo_typed_value( $col, $cell, $i18n, true, $ctx );
+						echo '</td>';
+					}
+					echo '</tr>';
+				}
 			}
 			echo '</tbody></table></div></div>';
 		}
@@ -1314,6 +1506,9 @@ final class Object_Render {
 		}
 		if ( 'compact-vertical' === $key || 'compact-v' === $key ) {
 			return 'compact-vertical';
+		}
+		if ( 'embed' === $key || 'pick-fill' === $key || 'pick_fill' === $key || 'compact-embed' === $key ) {
+			return 'embed';
 		}
 		return 'form';
 	}

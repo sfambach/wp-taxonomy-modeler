@@ -15,17 +15,47 @@
 	var i18n = cfg.i18n || {};
 	var state = {
 		taxonomy: cfg.taxonomy || '',
-		structureId: 0,
+		structureId: parseInt(cfg.focusHostId, 10) || 0,
 		structure: null,
 		instances: [],
 		editingId: '',
 		meta: null,
 		values: {},
 		dirty: false,
+		relatedField: null,
+		relatedRows: [],
+		relatedSaveTimer: null,
+		conflictCount: 0,
 	};
 
 	function t(key, fallback) {
 		return i18n[key] != null && i18n[key] !== '' ? String(i18n[key]) : fallback || key;
+	}
+
+	/**
+	 * Q107: Settings `dialogOnValidationWarnings` (default OFF).
+	 * Data entry may save with errors (keep red !) and always with warnings.
+	 * When a future save path returns warnings[], call this before continuing.
+	 *
+	 * @param {{ warnings?: string[] }|null|undefined} result
+	 * @param {string} [message]
+	 * @returns {boolean} true = proceed
+	 */
+	function confirmValidationWarningsIfNeeded(result, message) {
+		if (!cfg.dialogOnValidationWarnings) {
+			return true;
+		}
+		var warnings = result && Array.isArray(result.warnings) ? result.warnings : [];
+		if (!warnings.length) {
+			return true;
+		}
+		var msg =
+			message ||
+			t(
+				'dialogOnValidationWarnings',
+				'Validation warnings are present. Continue anyway?'
+			);
+		return window.confirm(msg);
 	}
 
 	function $(id) {
@@ -187,6 +217,54 @@
 			return when + ' · ' + who;
 		}
 		return when;
+	}
+
+	/**
+	 * UR-S1: red circle + ! → Model versions focused on this host (click only).
+	 */
+	function renderConflictBadge() {
+		var slot = $('wtt-md-conflict-badge');
+		if (!slot) {
+			return;
+		}
+		slot.innerHTML = '';
+		var count = parseInt(state.conflictCount, 10) || 0;
+		var hostId = parseInt(state.structureId, 10) || 0;
+		if (!hostId || count <= 0) {
+			slot.hidden = true;
+			return;
+		}
+		var base =
+			cfg.modelVersionsUrl ||
+			'admin.php?page=wp-taxonomy-tree-model-versions';
+		var url;
+		try {
+			url = new URL(base, window.location.origin);
+		} catch (e) {
+			url = new URL(
+				'admin.php?page=wp-taxonomy-tree-model-versions',
+				window.location.origin
+			);
+		}
+		url.searchParams.set('host_id', String(hostId));
+		var labelTpl =
+			t(
+				'modelVersionConflictCount',
+				'%d model version conflicts — open Conflict resolver'
+			) ||
+			t(
+				'modelVersionConflictBadge',
+				'Model version conflicts — open Conflict resolver'
+			);
+		var label = String(labelTpl).replace('%d', String(count));
+		var link = document.createElement('a');
+		link.className = 'wtt-conflict-badge';
+		link.href = url.toString();
+		link.title = label;
+		link.setAttribute('aria-label', label);
+		link.textContent = '!';
+		slot.appendChild(link);
+		slot.hidden = false;
 	}
 
 	function showInstancesPanel(show) {
@@ -358,42 +436,417 @@
 		};
 	}
 
+	/**
+	 * First Mult many structured attribute (Bauteilliste → Position, …).
+	 * Those rows live in links[] — not as a host scalar / global orphan list.
+	 */
+	function relatedDatasetField() {
+		var fields =
+			state.structure && Array.isArray(state.structure.fields)
+				? state.structure.fields
+				: [];
+		var i;
+		for (i = 0; i < fields.length; i++) {
+			if (fields[i] && fields[i].isRelatedDataset) {
+				return fields[i];
+			}
+		}
+		return null;
+	}
+
+	function scalarFields() {
+		var fields =
+			state.structure && Array.isArray(state.structure.fields)
+				? state.structure.fields
+				: [];
+		return fields.filter(function (field) {
+			return !(field && field.isRelatedDataset);
+		});
+	}
+
+	/**
+	 * Q106: scalar default templates → Model_Data store string.
+	 * Mult-many → full list (JSON array when >1); Mult-1 → first only.
+	 * Nested maps (related Mult) are skipped — those materialize via links.
+	 *
+	 * @param {object} field
+	 * @returns {string}
+	 */
+	function encodeFixedSeed(field) {
+		if (!field || !Array.isArray(field.fixedValues) || !field.fixedValues.length) {
+			return '';
+		}
+		var scalars = [];
+		field.fixedValues.forEach(function (v) {
+			if (v != null && typeof v === 'object') {
+				return;
+			}
+			var s = String(v == null ? '' : v).trim();
+			if (s !== '') {
+				scalars.push(s);
+			}
+		});
+		if (!scalars.length) {
+			return '';
+		}
+		var many =
+			!!field.allowsMany ||
+			field.multiplicity === '0..*' ||
+			field.multiplicity === '1..*';
+		if (!many) {
+			return scalars[0];
+		}
+		if (scalars.length === 1) {
+			return scalars[0];
+		}
+		try {
+			return JSON.stringify(scalars);
+		} catch (e) {
+			return scalars[0];
+		}
+	}
+
+	/**
+	 * Seed empty scalar slots from schema default templates (open-new / fill).
+	 *
+	 * @param {object} [values]
+	 * @returns {object}
+	 */
+	function applyScalarDefaults(values) {
+		var out = Object.assign({}, values || {});
+		scalarFields().forEach(function (field) {
+			var attrId = String(field.id);
+			var cur = out[attrId] != null ? String(out[attrId]).trim() : '';
+			if (cur !== '') {
+				return;
+			}
+			var seed = encodeFixedSeed(field);
+			if (seed !== '') {
+				out[attrId] = seed;
+			}
+		});
+		return out;
+	}
+
+	function relatedAttrs(field) {
+		if (!field) {
+			return [];
+		}
+		if (Array.isArray(field.typeProperties) && field.typeProperties.length) {
+			/* Pass embed / CatalogChoice chrome through for UR-B6 Wert→Bauteil cells. */
+			return field.typeProperties.map(function (p) {
+				return {
+					id: p.id,
+					name: p.name || '',
+					typeKey: p.typeKey || p.typeName || 'text',
+					typeName: p.typeName || '',
+					typeId: p.typeId || 0,
+					fixedRootId: p.fixedRootId || p.typeId || 0,
+					fixedMode: p.fixedMode || '',
+					fixedOptions: Array.isArray(p.fixedOptions)
+						? p.fixedOptions
+						: [],
+					choiceDepth: p.choiceDepth != null ? p.choiceDepth : 0,
+					typeProperties: Array.isArray(p.typeProperties)
+						? p.typeProperties
+						: [],
+					typePreferredRender: p.typePreferredRender || '',
+					preferredRender:
+						p.preferredRender || p.typePreferredRender || '',
+					multiplicity: p.multiplicity || '1',
+					allowsMany: !!p.allowsMany,
+					allowsEmpty:
+						p.allowsEmpty != null
+							? !!p.allowsEmpty
+							: String(p.multiplicity || '1') === '0..1' ||
+							  String(p.multiplicity || '1') === '0..*',
+					readonly: !!p.readonly,
+				};
+			});
+		}
+		return [];
+	}
+
+	function relatedInstancesForTable(field, rows) {
+		var attrs = relatedAttrs(field);
+		return (rows || []).map(function (linkRow) {
+			var inst = (linkRow && linkRow.instance) || {};
+			var vals = {};
+			var raw = inst.values && typeof inst.values === 'object' ? inst.values : {};
+			Object.keys(raw).forEach(function (k) {
+				vals[String(k)] = raw[k] == null ? '' : String(raw[k]);
+			});
+			return {
+				id: String(inst.id || linkRow.instanceId || ''),
+				attributes: attrs,
+				values: vals,
+				structureId:
+					parseInt(linkRow.structureId || field.typeId, 10) || 0,
+			};
+		});
+	}
+
+	function showRelatedPanel(show) {
+		var panel = $('wtt-md-related');
+		if (panel) {
+			panel.hidden = !show;
+		}
+	}
+
+	function updateAddLineButton() {
+		var btn = $('wtt-md-add-line');
+		if (!btn) {
+			return;
+		}
+		var field = state.relatedField;
+		var can =
+			!!field &&
+			!!state.editingId &&
+			(parseInt(field.typeId, 10) || 0) > 0;
+		btn.disabled = !can;
+		btn.title = can
+			? t('addLine', 'Add line')
+			: t(
+					'addLineNeedSave',
+					'Save the parent instance before adding related lines.'
+				);
+	}
+
+	function renderRelatedLines() {
+		var field = relatedDatasetField();
+		state.relatedField = field;
+		var host = $('wtt-md-related-table');
+		var title = $('wtt-md-related-title');
+		var hint = $('wtt-md-related-hint');
+		var ObjectRender = window.WTTObjectRender;
+
+		if (!field) {
+			showRelatedPanel(false);
+			state.relatedRows = [];
+			if (host) {
+				host.innerHTML = '';
+			}
+			updateAddLineButton();
+			return;
+		}
+
+		showRelatedPanel(true);
+		if (title) {
+			title.textContent =
+				field.name || t('relatedLines', 'Related lines');
+		}
+		if (hint) {
+			hint.textContent = t(
+				'relatedLinesHint',
+				'Composition/aggregation Mult many rows for this instance (not a global orphan list).'
+			);
+		}
+		updateAddLineButton();
+
+		if (!host) {
+			return;
+		}
+		host.innerHTML = '';
+
+		if (!state.editingId) {
+			var need = document.createElement('p');
+			need.className = 'description';
+			need.textContent = t(
+				'addLineNeedSave',
+				'Save the parent instance before adding related lines.'
+			);
+			host.appendChild(need);
+			return;
+		}
+
+		var attrs = relatedAttrs(field);
+		var instances = relatedInstancesForTable(field, state.relatedRows);
+
+		if (
+			!ObjectRender ||
+			typeof ObjectRender.renderTable !== 'function' ||
+			!attrs.length
+		) {
+			var empty = document.createElement('p');
+			empty.className = 'description';
+			empty.textContent = t('noRelatedLines', 'No related lines yet.');
+			host.appendChild(empty);
+			return;
+		}
+
+		if (!instances.length) {
+			var none = document.createElement('p');
+			none.className = 'description';
+			none.textContent = t('noRelatedLines', 'No related lines yet.');
+			host.appendChild(none);
+		}
+
+		host.appendChild(
+			ObjectRender.renderTable(instances, {
+				readonly: false,
+				attributes: attrs,
+				className: 'wtt-object-view__table wtt-model-data__bom-table',
+				onFieldInput: function (col, next, instance) {
+					if (!instance || !instance.id) {
+						return;
+					}
+					var idKey =
+						col && col.id != null
+							? String(col.id)
+							: String((col && col.name) || '');
+					if (!instance.values) {
+						instance.values = {};
+					}
+					instance.values[idKey] = next == null ? '' : String(next);
+					scheduleSaveLine(instance);
+				},
+			})
+		);
+	}
+
+	function loadRelatedLines() {
+		var field = relatedDatasetField();
+		state.relatedField = field;
+		if (!field || !state.editingId) {
+			state.relatedRows = [];
+			renderRelatedLines();
+			return Promise.resolve();
+		}
+		return post('wtt_model_data_related', {
+			id: state.editingId,
+			child_structure_id: parseInt(field.typeId, 10) || 0,
+			relation: field.binding || 'besteht_aus',
+		})
+			.then(function (json) {
+				if (!json || !json.success) {
+					state.relatedRows = [];
+					renderRelatedLines();
+					return;
+				}
+				state.relatedRows = Array.isArray(json.data.related)
+					? json.data.related
+					: [];
+				renderRelatedLines();
+			})
+			.catch(function () {
+				state.relatedRows = [];
+				renderRelatedLines();
+			});
+	}
+
+	function scheduleSaveLine(instance) {
+		if (state.relatedSaveTimer) {
+			clearTimeout(state.relatedSaveTimer);
+		}
+		state.relatedSaveTimer = setTimeout(function () {
+			state.relatedSaveTimer = null;
+			saveRelatedLine(instance);
+		}, 400);
+	}
+
+	function saveRelatedLine(instance) {
+		var field = state.relatedField || relatedDatasetField();
+		if (!field || !instance || !instance.id) {
+			return;
+		}
+		post('wtt_model_data_save_line', {
+			id: state.editingId,
+			child_structure_id: parseInt(field.typeId, 10) || 0,
+			child_instance_id: String(instance.id),
+			relation: field.binding || 'besteht_aus',
+			values: instance.values || {},
+		}).then(function (json) {
+			if (!json || !json.success) {
+				setStatus(
+					(json && json.data && json.data.message) || t('error', 'Error'),
+					true
+				);
+				return;
+			}
+			if (Array.isArray(json.data.related)) {
+				state.relatedRows = json.data.related;
+				renderRelatedLines();
+			}
+			setStatus(t('lineSaved', 'Line saved.'));
+		}).catch(function () {
+			setStatus(t('error', 'Error'), true);
+		});
+	}
+
+	function onAddLine() {
+		var field = state.relatedField || relatedDatasetField();
+		if (!field || !state.editingId) {
+			setStatus(
+				t(
+					'addLineNeedSave',
+					'Save the parent instance before adding related lines.'
+				),
+				true
+			);
+			return;
+		}
+		setStatus(t('loading', 'Loading…'));
+		post('wtt_model_data_create_line', {
+			id: state.editingId,
+			child_structure_id: parseInt(field.typeId, 10) || 0,
+			relation: field.binding || 'besteht_aus',
+			values: {},
+		})
+			.then(function (json) {
+				if (!json || !json.success) {
+					setStatus(
+						(json && json.data && json.data.message) ||
+							t('error', 'Error'),
+						true
+					);
+					return;
+				}
+				state.relatedRows = Array.isArray(json.data.related)
+					? json.data.related
+					: [];
+				renderRelatedLines();
+				setStatus(t('lineCreated', 'Line created.'));
+			})
+			.catch(function () {
+				setStatus(t('error', 'Error'), true);
+			});
+	}
+
 	function renderFields() {
 		var host = $('wtt-md-fields');
 		if (!host) {
 			return;
 		}
 		host.innerHTML = '';
-		var fields =
-			state.structure && Array.isArray(state.structure.fields)
-				? state.structure.fields
-				: [];
+		var fields = scalarFields();
 
 		if (!fields.length) {
-			var hint = document.createElement('p');
-			hint.className = 'description';
-			hint.textContent = t(
-				'noAttributes',
-				'This node has no attributes yet.'
-			);
-			host.appendChild(hint);
+			var all =
+				state.structure && Array.isArray(state.structure.fields)
+					? state.structure.fields
+					: [];
+			if (!all.length) {
+				var hint = document.createElement('p');
+				hint.className = 'description';
+				hint.textContent = t(
+					'noAttributes',
+					'This node has no attributes yet.'
+				);
+				host.appendChild(hint);
+			}
 			return;
 		}
 
 		var api = window.WTTNodeRender;
 		fields.forEach(function (field) {
 			var attrId = String(field.id);
-			var fixed =
-				Array.isArray(field.fixedValues) && field.fixedValues.length
-					? String(field.fixedValues[0])
-					: '';
-			var isReadonly = !!field.readonly || fixed !== '';
+			/* Q106: defaults are templates/seeds, not locks (RO is separate — OQ-A3). */
+			var seed = encodeFixedSeed(field);
+			var isReadonly = !!field.readonly;
 			var value =
-				fixed !== ''
-					? fixed
-					: state.values[attrId] != null
-						? String(state.values[attrId])
-						: '';
+				state.values[attrId] != null && String(state.values[attrId]) !== ''
+					? String(state.values[attrId])
+					: seed;
 
 			var row = document.createElement('div');
 			row.className = 'wtt-object-view__row wtt-model-data__field-row';
@@ -413,11 +866,11 @@
 				badge.textContent = t('inherited', 'Inherited');
 				label.appendChild(badge);
 			}
-			if (fixed !== '') {
-				var fixedBadge = document.createElement('span');
-				fixedBadge.className = 'wtt-object-view__badge';
-				fixedBadge.textContent = t('fixed', 'Fixed');
-				label.appendChild(fixedBadge);
+			if (seed !== '' && !isReadonly) {
+				var defaultBadge = document.createElement('span');
+				defaultBadge.className = 'wtt-object-view__badge';
+				defaultBadge.textContent = t('defaultValue', 'Default');
+				label.appendChild(defaultBadge);
 			}
 			row.appendChild(label);
 
@@ -441,7 +894,9 @@
 						onInput: isReadonly
 							? null
 							: function (next) {
-									state.values[attrId] = String(next == null ? '' : next);
+									state.values[attrId] = String(
+										next == null ? '' : next
+									);
 									state.dirty = true;
 								},
 					},
@@ -454,15 +909,43 @@
 			} else if (isReadonly) {
 				valueHost.textContent = value || '—';
 			} else {
-				var input = document.createElement('input');
-				input.type = 'text';
-				input.className = 'regular-text';
-				input.value = value;
-				input.addEventListener('input', function () {
-					state.values[attrId] = input.value;
-					state.dirty = true;
-				});
-				valueHost.appendChild(input);
+				/*
+				 * OQ-R6 lean B: unregistered scalars use Registry default path when
+				 * present; otherwise a plain text control (no parallel Form UI).
+				 */
+				var defaultRendered =
+					api &&
+					api.Registry &&
+					typeof api.Registry.renderContent === 'function'
+						? api.Registry.renderContent(
+								fieldNode(field),
+								{
+									name: 'form',
+									mode: 'edit',
+									value: value,
+									onInput: function (next) {
+										state.values[attrId] = String(
+											next == null ? '' : next
+										);
+										state.dirty = true;
+									},
+								},
+								false
+							)
+						: null;
+				if (defaultRendered) {
+					valueHost.appendChild(defaultRendered);
+				} else {
+					var input = document.createElement('input');
+					input.type = 'text';
+					input.className = 'regular-text';
+					input.value = value;
+					input.addEventListener('input', function () {
+						state.values[attrId] = input.value;
+						state.dirty = true;
+					});
+					valueHost.appendChild(input);
+				}
 			}
 
 			row.appendChild(valueHost);
@@ -502,8 +985,10 @@
 	function openNew() {
 		state.editingId = '';
 		state.meta = null;
-		state.values = {};
+		/* Q106: seed all scalar default templates into the draft (Mult-many = full list). */
+		state.values = applyScalarDefaults({});
 		state.dirty = false;
+		state.relatedRows = [];
 		var title = $('wtt-md-editor-title');
 		if (title) {
 			title.textContent = t('newInstance', 'New instance');
@@ -511,6 +996,7 @@
 		showEditor(true);
 		renderIdentity();
 		renderFields();
+		renderRelatedLines();
 		renderInstanceList();
 		setStatus('');
 	}
@@ -531,6 +1017,7 @@
 		renderIdentity();
 		renderFields();
 		renderInstanceList();
+		loadRelatedLines();
 		setStatus('');
 	}
 
@@ -541,11 +1028,13 @@
 			state.instances = [];
 			state.editingId = '';
 			state.meta = null;
+			state.conflictCount = 0;
 			if (newBtn) {
 				newBtn.disabled = true;
 			}
 			showEditor(false);
 			showInstancesPanel(false);
+			renderConflictBadge();
 			renderInstanceList();
 			setStatus('');
 			return;
@@ -561,6 +1050,7 @@
 			}
 			state.structure = json.data.structure || null;
 			state.instances = json.data.instances || [];
+			state.conflictCount = parseInt(json.data.conflictCount, 10) || 0;
 			if (newBtn) {
 				newBtn.disabled = !(
 					state.structure &&
@@ -568,6 +1058,7 @@
 					state.structure.fields.length
 				);
 			}
+			renderConflictBadge();
 			renderInstanceList();
 			if (
 				state.structure &&
@@ -603,19 +1094,15 @@
 	}
 
 	function collectValues() {
-		var out = Object.assign({}, state.values);
-		var fields =
+		var out = applyScalarDefaults(state.values);
+		/* Strip related-dataset slots — lines are links[], not host values. */
+		var all =
 			state.structure && Array.isArray(state.structure.fields)
 				? state.structure.fields
 				: [];
-		fields.forEach(function (field) {
-			var attrId = String(field.id);
-			if (
-				Array.isArray(field.fixedValues) &&
-				field.fixedValues.length &&
-				(out[attrId] == null || out[attrId] === '')
-			) {
-				out[attrId] = String(field.fixedValues[0]);
+		all.forEach(function (field) {
+			if (field && field.isRelatedDataset) {
+				delete out[String(field.id)];
 			}
 		});
 		return out;
@@ -635,6 +1122,7 @@
 				return;
 			}
 			state.instances = json.data.instances || [];
+			state.conflictCount = parseInt(json.data.conflictCount, 10) || 0;
 			if (json.data.instance) {
 				state.editingId = json.data.instance.id;
 				applyInstanceMeta(json.data.instance);
@@ -642,7 +1130,9 @@
 			}
 			state.dirty = false;
 			renderIdentity();
+			renderConflictBadge();
 			renderInstanceList();
+			loadRelatedLines();
 			var title = $('wtt-md-editor-title');
 			if (title && state.meta) {
 				title.textContent =
@@ -674,8 +1164,10 @@
 				return;
 			}
 			state.instances = json.data.instances || [];
+			state.conflictCount = parseInt(json.data.conflictCount, 10) || 0;
 			state.editingId = '';
 			state.meta = null;
+			renderConflictBadge();
 			renderInstanceList();
 			if (state.instances.length) {
 				openInstance(state.instances[0]);
@@ -691,21 +1183,18 @@
 	function onFillSamples() {
 		/* Prefer client map when available; fall back to PHP Sample_Data via AJAX. */
 		var Sample = window.WTTSampleData;
-		var fields =
-			state.structure && Array.isArray(state.structure.fields)
-				? state.structure.fields
-				: [];
+		var fields = scalarFields();
 		var filledLocal = false;
+		var beforeDefaults = JSON.stringify(state.values || {});
+		state.values = applyScalarDefaults(state.values);
+		if (JSON.stringify(state.values || {}) !== beforeDefaults) {
+			filledLocal = true;
+		}
 		if (Sample && typeof Sample.forType === 'function') {
 			fields.forEach(function (field) {
 				var attrId = String(field.id);
 				var cur = state.values[attrId] != null ? String(state.values[attrId]).trim() : '';
 				if (cur !== '') {
-					return;
-				}
-				if (Array.isArray(field.fixedValues) && field.fixedValues.length) {
-					state.values[attrId] = String(field.fixedValues[0]);
-					filledLocal = true;
 					return;
 				}
 				var sample = Sample.forType(field.typeKey || field);
@@ -747,6 +1236,7 @@
 				state.structureId = 0;
 				state.editingId = '';
 				state.meta = null;
+				configureObjectRenderApi();
 				fillStructureSelect();
 				loadStructure();
 			});
@@ -767,17 +1257,143 @@
 		if (samplesBtn) {
 			samplesBtn.addEventListener('click', onFillSamples);
 		}
+		var addLineBtn = $('wtt-md-add-line');
+		if (addLineBtn) {
+			addLineBtn.addEventListener('click', onAddLine);
+		}
+	}
+
+	/**
+	 * Wire shared ObjectRender embed (UR-B6) to Fill Model Data AJAX.
+	 */
+	function configureObjectRenderApi() {
+		var ObjectRender = window.WTTObjectRender;
+		if (!ObjectRender) {
+			return;
+		}
+		if (typeof ObjectRender.setSchemaLoader === 'function') {
+			ObjectRender.setSchemaLoader(function (termId) {
+				var id = parseInt(termId, 10) || 0;
+				if (id <= 0) {
+					return Promise.resolve({ attributes: [] });
+				}
+				/* Reuse model-data get against the kind structure id. */
+				var body = new FormData();
+				body.append('action', 'wtt_model_data_get');
+				body.append('nonce', cfg.nonce || '');
+				body.append('taxonomy', state.taxonomy);
+				body.append('structure_id', String(id));
+				return fetch(cfg.ajaxUrl || ajaxurl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: body,
+				})
+					.then(function (res) {
+						return res.json();
+					})
+					.then(function (json) {
+						var fields =
+							json &&
+							json.success &&
+							json.data &&
+							json.data.structure &&
+							Array.isArray(json.data.structure.fields)
+								? json.data.structure.fields
+								: [];
+						return { attributes: fields };
+					});
+			});
+		}
+		if (typeof ObjectRender.configure === 'function') {
+			ObjectRender.configure({
+				taxonomy: state.taxonomy,
+				i18n: i18n,
+				modelDataApi: {
+					taxonomy: state.taxonomy,
+					listInstances: function (structureId, taxonomy) {
+						var body = new FormData();
+						body.append('action', 'wtt_model_data_get');
+						body.append('nonce', cfg.nonce || '');
+						body.append(
+							'taxonomy',
+							taxonomy || state.taxonomy || ''
+						);
+						body.append(
+							'structure_id',
+							String(parseInt(structureId, 10) || 0)
+						);
+						return fetch(cfg.ajaxUrl || ajaxurl, {
+							method: 'POST',
+							credentials: 'same-origin',
+							body: body,
+						})
+							.then(function (res) {
+								return res.json();
+							})
+							.then(function (json) {
+								if (!json || !json.success) {
+									return [];
+								}
+								return Array.isArray(json.data.instances)
+									? json.data.instances
+									: [];
+							});
+					},
+					createInstance: function (structureId, values, taxonomy) {
+						var body = new FormData();
+						body.append('action', 'wtt_model_data_save');
+						body.append('nonce', cfg.nonce || '');
+						body.append(
+							'taxonomy',
+							taxonomy || state.taxonomy || ''
+						);
+						body.append(
+							'structure_id',
+							String(parseInt(structureId, 10) || 0)
+						);
+						body.append('id', '');
+						body.append(
+							'values',
+							JSON.stringify(values && typeof values === 'object' ? values : {})
+						);
+						return fetch(cfg.ajaxUrl || ajaxurl, {
+							method: 'POST',
+							credentials: 'same-origin',
+							body: body,
+						})
+							.then(function (res) {
+								return res.json();
+							})
+							.then(function (json) {
+								if (!json || !json.success) {
+									throw new Error(
+										(json &&
+											json.data &&
+											json.data.message) ||
+											t('error', 'Error')
+									);
+								}
+								return json.data.instance || null;
+							});
+					},
+				},
+			});
+		}
 	}
 
 	function init() {
 		if (!$('wtt-model-data-app')) {
 			return;
 		}
+		configureObjectRenderApi();
 		fillTaxonomySelect();
 		fillStructureSelect();
 		bind();
 		showEditor(false);
 		renderInstanceList();
+		if (state.structureId > 0) {
+			loadStructure();
+		}
 	}
 
 	if (document.readyState === 'loading') {

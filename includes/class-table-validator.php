@@ -33,12 +33,14 @@ final class Table_Validator {
 	 *   ok:bool,
 	 *   blocking:bool,
 	 *   errors:list<string>,
+	 *   warnings:list<string>,
 	 *   bands:array{
 	 *     zeile:?array{id:int,name:string,fieldCount:int,fields:list<array{id:int,name:string}>},
 	 *     kopf:?array{id:int,name:string,fieldCount:int,fields:list<array{id:int,name:string}>},
 	 *     fuss:?array{id:int,name:string,fieldCount:int,fields:list<array{id:int,name:string}>}
 	 *   },
-	 *   isCatalog:bool
+	 *   isCatalog:bool,
+	 *   fixes:list<array<string,mixed>>
 	 * }
 	 */
 	public static function validate( string $taxonomy, int $term_id ): array {
@@ -52,6 +54,8 @@ final class Table_Validator {
 			'ok'        => false,
 			'blocking'  => false,
 			'errors'    => array(),
+			/* Q107: soft severity slot (always allowed to save); concrete rules later. */
+			'warnings'  => array(),
 			'bands'     => $empty_bands,
 			'isCatalog' => false,
 			'fixes'     => array(),
@@ -116,6 +120,8 @@ final class Table_Validator {
 			'ok'        => empty( $errors ),
 			'blocking'  => $blocking,
 			'errors'    => $errors,
+			/* Forward compat (Q107): e.g. aggregation unassigned — not invented here yet. */
+			'warnings'  => array(),
 			'bands'     => $bands,
 			'isCatalog' => $is_catalog,
 			'fixes'     => self::collect_fixes( $bands, $is_catalog ),
@@ -686,14 +692,18 @@ final class Table_Validator {
 		$field_id = (int) ( $field['id'] ?? 0 );
 		$type     = $field_id > 0 ? Node_Type::get_assignment( $taxonomy, $field_id ) : null;
 		$type_name = is_array( $type ) ? (string) ( $type['name'] ?? '' ) : '';
-		$type_key  = Node_Type::normalize_type_key( $type_name );
+		$type_id   = $field_id > 0 ? Node_Type::get_type_id( $field_id ) : 0;
+		/* Q96: prefer builtin.* binding; leaf name = debt fallback. */
+		$type_key = $type_id > 0
+			? Node_Type::registry_id_for_type_term( $taxonomy, $type_id )
+			: Node_Type::normalize_type_key( $type_name );
 		if ( '' === $type_key ) {
 			$type_key = 'text';
 		}
 		$out = array(
 			'id'       => $field_id,
 			'name'     => (string) ( $field['name'] ?? '' ),
-			'typeId'   => Node_Type::get_type_id( $field_id ),
+			'typeId'   => $type_id,
 			'typeName' => $type_name,
 			'typeKey'  => $type_key,
 			'footerOp' => Node_Type::get_footer_op( $field_id ),

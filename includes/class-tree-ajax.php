@@ -63,9 +63,11 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_set_attribute_binding', array( self::class, 'set_attribute_binding' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_fixed', array( self::class, 'set_attribute_fixed' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_type_extras', array( self::class, 'set_attribute_type_extras' ) );
+		add_action( 'wp_ajax_wtt_set_attribute_preferred_render', array( self::class, 'set_attribute_preferred_render' ) );
 		add_action( 'wp_ajax_wtt_duplicate_attribute', array( self::class, 'duplicate_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_enum_values', array( self::class, 'set_enum_values' ) );
 		add_action( 'wp_ajax_wtt_set_hide_root_node', array( self::class, 'set_hide_root_node' ) );
+		add_action( 'wp_ajax_wtt_set_show_model_data_counts', array( self::class, 'set_show_model_data_counts' ) );
 	}
 
 	public static function get_tree(): void {
@@ -593,23 +595,6 @@ final class Tree_Ajax {
 		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$short_description = isset( $_POST['short_description'] ) ? sanitize_text_field( wp_unslash( $_POST['short_description'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-		$is_datatype_post = '__omit__';
-		if ( isset( $_POST['is_datatype'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$raw_dt = (string) wp_unslash( $_POST['is_datatype'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( 'inherit' === $raw_dt || '' === $raw_dt ) {
-				$is_datatype_post = null;
-			} else {
-				$is_datatype_post = in_array( $raw_dt, array( '1', 'true', 'yes' ), true );
-			}
-		}
-
-		$is_abstract_post = '__omit__';
-		if ( isset( $_POST['is_abstract'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$raw_ab = (string) wp_unslash( $_POST['is_abstract'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			/* Q77: abstract is local-only — no inherit tri-state. */
-			$is_abstract_post = in_array( $raw_ab, array( '1', 'true', 'yes' ), true );
-		}
-
 		$is_template_post = '__omit__';
 		if ( isset( $_POST['is_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$raw_tpl = (string) wp_unslash( $_POST['is_template'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -656,6 +641,11 @@ final class Tree_Ajax {
 			$fixed_literal = sanitize_textarea_field( wp_unslash( $_POST['fixed_literal'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 		$fixed_node_id = isset( $_POST['fixed_node_id'] ) ? absint( wp_unslash( $_POST['fixed_node_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$readonly_post = null;
+		if ( isset( $_POST['readonly'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$raw_ro        = (string) wp_unslash( $_POST['readonly'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$readonly_post = in_array( $raw_ro, array( '1', 'true', 'yes' ), true );
+		}
 		$ref_scope_id  = isset( $_POST['ref_scope_id'] ) ? absint( wp_unslash( $_POST['ref_scope_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$field_multiplicity = isset( $_POST['field_multiplicity'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['field_multiplicity'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -723,9 +713,29 @@ final class Tree_Ajax {
 			$int_display_format = sanitize_key( (string) wp_unslash( $_POST['int_display_format'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
+		$preferred_converter = null;
+		if ( isset( $_POST['preferred_converter'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$preferred_converter = sanitize_key( (string) wp_unslash( $_POST['preferred_converter'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		$preferred_render = null;
 		if ( isset( $_POST['preferred_render'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$preferred_render = sanitize_key( (string) wp_unslash( $_POST['preferred_render'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		$validators = null;
+		if ( isset( $_POST['validators'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$val_raw = wp_unslash( $_POST['validators'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( is_string( $val_raw ) ) {
+				$decoded_val = json_decode( $val_raw, true );
+				$val_raw     = is_array( $decoded_val ) ? $decoded_val : array();
+			}
+			$validators = is_array( $val_raw ) ? $val_raw : array();
+		}
+
+		$icon = null;
+		if ( isset( $_POST['icon'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$icon = Tree_Icons::normalize_key( sanitize_text_field( wp_unslash( (string) $_POST['icon'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
 		$type_props = null;
@@ -770,14 +780,11 @@ final class Tree_Ajax {
 			'prefix_multiplikators' => $multi_raw,
 			'prefix_root_to_si'     => $prefix_root_to_si,
 		);
+		if ( null !== $readonly_post ) {
+			$save_args['readonly'] = $readonly_post;
+		}
 		if ( null !== $footer_op ) {
 			$save_args['footer_op'] = $footer_op;
-		}
-		if ( '__omit__' !== $is_datatype_post ) {
-			$save_args['is_datatype'] = $is_datatype_post;
-		}
-		if ( '__omit__' !== $is_abstract_post ) {
-			$save_args['is_abstract'] = $is_abstract_post;
 		}
 		if ( '__omit__' !== $is_template_post ) {
 			$save_args['is_template'] = $is_template_post;
@@ -794,11 +801,19 @@ final class Tree_Ajax {
 		if ( null !== $date_mode ) {
 			$save_args['date_mode'] = $date_mode;
 		}
-		if ( null !== $int_display_format ) {
-			$save_args['int_display_format'] = $int_display_format;
+		if ( null !== $preferred_converter ) {
+			$save_args['preferred_converter'] = $preferred_converter;
+		} elseif ( null !== $int_display_format ) {
+			$save_args['preferred_converter'] = $int_display_format;
 		}
 		if ( null !== $preferred_render ) {
 			$save_args['preferred_render'] = $preferred_render;
+		}
+		if ( null !== $validators ) {
+			$save_args['validators'] = $validators;
+		}
+		if ( null !== $icon ) {
+			$save_args['icon'] = $icon;
 		}
 		if ( null !== $type_props ) {
 			$save_args['type_props'] = $type_props;
@@ -1132,15 +1147,8 @@ final class Tree_Ajax {
 					break;
 				}
 			}
-		} elseif ( Relation::TYPE_HAS_TYPE === $type_key ) {
-			$old_to = Node_Type::get_type_id( $term_id );
 		} elseif ( Relation::TYPE_REF_SCOPE === $type_key ) {
 			$old_to = Node_Type::get_ref_scope_id( $term_id );
-		} elseif ( $type_id > 0 ) {
-			$type_term = get_term( $type_id, $taxonomy );
-			if ( $type_term instanceof \WP_Term && Relation::is_has_type_name( $type_term->name ) ) {
-				$old_to = Node_Type::get_type_id( $term_id );
-			}
 		}
 
 		$result = Relation::update_to( $taxonomy, $term_id, $to_id, $edge_id, $type_id, $type_key );
@@ -1174,6 +1182,50 @@ final class Tree_Ajax {
 		);
 	}
 
+	/**
+	 * Sanitize Default value payload (Q106): scalar strings and nested value maps.
+	 *
+	 * @param array<int|string, mixed> $raw Decoded JSON / POST array.
+	 * @return list<string|array<string,string>>
+	 */
+	private static function sanitize_fixed_values_payload( array $raw ): array {
+		$out = array();
+		foreach ( $raw as $item ) {
+			if ( is_array( $item ) ) {
+				$map = array();
+				foreach ( $item as $k => $v ) {
+					if ( is_array( $v ) ) {
+						continue;
+					}
+					$aid = absint( $k );
+					if ( $aid <= 0 ) {
+						continue;
+					}
+					$map[ (string) $aid ] = sanitize_text_field( (string) $v );
+				}
+				if ( array() !== $map ) {
+					$out[] = $map;
+				}
+				continue;
+			}
+			$s = sanitize_text_field( (string) $item );
+			if ( '' !== $s ) {
+				$out[] = $s;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Bump host schema version after a successful structural attribute mutation (UR-S1).
+	 */
+	private static function bump_model_version_after_structural( string $taxonomy, int $host_id ): void {
+		if ( $host_id <= 0 || ! class_exists( Model_Version::class ) ) {
+			return;
+		}
+		Model_Version::bump( $taxonomy, $host_id );
+	}
+
 	public static function add_attribute(): void {
 		self::verify_request();
 		$taxonomy = self::request_taxonomy();
@@ -1201,14 +1253,14 @@ final class Tree_Ajax {
 			if ( is_string( $raw ) ) {
 				$decoded = json_decode( $raw, true );
 				if ( is_array( $decoded ) ) {
-					$fixed_values = array_map( 'sanitize_text_field', $decoded );
+					$fixed_values = self::sanitize_fixed_values_payload( $decoded );
 				} elseif ( '' !== trim( $raw ) ) {
 					$fixed_values = array( sanitize_text_field( $raw ) );
 				} else {
 					$fixed_values = array();
 				}
 			} elseif ( is_array( $raw ) ) {
-				$fixed_values = array_map( 'sanitize_text_field', $raw );
+				$fixed_values = self::sanitize_fixed_values_payload( $raw );
 			}
 		}
 
@@ -1226,6 +1278,7 @@ final class Tree_Ajax {
 			self::send_error( $result );
 		}
 
+		self::bump_model_version_after_structural( $taxonomy, $host_id );
 		self::send_relation_node_response( $taxonomy, $host_id );
 	}
 
@@ -1258,6 +1311,11 @@ final class Tree_Ajax {
 			self::send_error( $result );
 		}
 
+		/* Structural only when type or multiplicity changes — rename is cosmetic. */
+		if ( isset( $changes['typeId'] ) || isset( $changes['multiplicity'] ) ) {
+			self::bump_model_version_after_structural( $taxonomy, $host_id );
+		}
+
 		self::send_relation_node_response( $taxonomy, $host_id );
 	}
 
@@ -1280,6 +1338,7 @@ final class Tree_Ajax {
 			self::send_error( $result );
 		}
 
+		self::bump_model_version_after_structural( $taxonomy, $host_id );
 		self::send_relation_node_response( $taxonomy, $host_id );
 	}
 
@@ -1304,6 +1363,7 @@ final class Tree_Ajax {
 			self::send_error( $result );
 		}
 
+		self::bump_model_version_after_structural( $taxonomy, $host_id );
 		self::send_relation_node_response( $taxonomy, $host_id );
 	}
 
@@ -1352,12 +1412,12 @@ final class Tree_Ajax {
 			if ( is_string( $raw ) ) {
 				$decoded = json_decode( $raw, true );
 				if ( is_array( $decoded ) ) {
-					$values = array_map( 'sanitize_text_field', $decoded );
+					$values = self::sanitize_fixed_values_payload( $decoded );
 				} else {
 					$values = array( sanitize_text_field( $raw ) );
 				}
 			} elseif ( is_array( $raw ) ) {
-				$values = array_map( 'sanitize_text_field', $raw );
+				$values = self::sanitize_fixed_values_payload( $raw );
 			}
 		}
 
@@ -1426,6 +1486,25 @@ final class Tree_Ajax {
 		);
 	}
 
+	/**
+	 * Persist “Show Model Data counts” from the tree toolbar switch.
+	 */
+	public static function set_show_model_data_counts(): void {
+		self::verify_request();
+		if ( ! current_user_can( 'manage_options' ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$enabled = isset( $_POST['enabled'] ) && '1' === (string) wp_unslash( $_POST['enabled'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		update_option( Settings::OPTION_SHOW_MODEL_DATA_COUNTS, $enabled ? '1' : '0', false );
+
+		wp_send_json_success(
+			array(
+				'showModelDataCounts' => Settings::show_model_data_counts(),
+			)
+		);
+	}
+
 	public static function remove_attribute(): void {
 		self::verify_request();
 		$taxonomy = self::request_taxonomy();
@@ -1444,6 +1523,7 @@ final class Tree_Ajax {
 			self::send_error( $result );
 		}
 
+		self::bump_model_version_after_structural( $taxonomy, $host_id );
 		self::send_relation_node_response( $taxonomy, $host_id );
 	}
 
@@ -1559,6 +1639,49 @@ final class Tree_Ajax {
 		}
 
 		$result = Attribute::set_type_extras( $taxonomy, $host_id, $attr_id, $extras );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	/**
+	 * Preferred render on the attribute slot term (same meta as nodes).
+	 */
+	public static function set_attribute_preferred_render(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$raw     = isset( $_POST['preferred_render'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? sanitize_key( (string) wp_unslash( $_POST['preferred_render'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '';
+
+		if ( $host_id <= 0 || $attr_id <= 0 ) {
+			self::send_error( new \WP_Error( 'wtt_bad_request', __( 'Invalid attribute.', 'wp-taxonomy-tree' ) ) );
+		}
+		if ( ! Attribute::is_slot( $attr_id ) ) {
+			self::send_error( new \WP_Error( 'wtt_not_found', __( 'Attribute not found on this node.', 'wp-taxonomy-tree' ) ) );
+		}
+
+		/* Empty = inherit type preferred (clear slot override). */
+		if ( '' === $raw || 'inherit' === $raw || 'default' === $raw ) {
+			delete_term_meta( $attr_id, Node_Type::META_KEY_PREFERRED_RENDER );
+			Tree_Model::touch_modified( $attr_id );
+			Tree_Model::touch_modified( $host_id );
+			self::send_relation_node_response( $taxonomy, $host_id );
+			return;
+		}
+
+		$result = Node_Type::set_preferred_render( $taxonomy, $attr_id, $raw );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}

@@ -187,18 +187,17 @@ final class Sample_Data {
 			'optionen'        => "Option A — Beschreibung\nOption B — Beschreibung",
 			'protokoll'       => "30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.",
 			'änderungsprotokoll' => "30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.",
-			/* Bauteilliste/Position (BOM line — ESP8266-RS232 PCB row). */
+			/* Bauteillisten Position (minimal BOM line — ESP8266-RS232 PCB). */
 			'referenz'        => 'PCB',
 			'designator'      => 'PCB',
-			'wert'            => 'Leiterplatte',
-			'value'           => 'Leiterplatte',
+			'wert'            => '',
 			'menge'           => '1',
 			'qty line'        => '1',
 			'beschreibung'    => 'ESP8266-RS232 Leiterplatte',
 			'description'     => 'ESP8266-RS232 Leiterplatte',
-			'lager'           => 'x',
-			'stock'           => 'x',
-			'status'          => '',
+			'auf lager'       => 'true',
+			'auflager'        => 'true',
+			'in stock'        => 'true',
 		);
 	}
 
@@ -235,18 +234,37 @@ final class Sample_Data {
 			}
 		}
 
-		/* Bauteilliste/Position line — ESP8266-RS232 first BOM row (PCB). */
-		if ( 'position' === $host ) {
+		/* Lieferant.Name — fab / distributor, not persona. */
+		if ( 'lieferant' === $host ) {
+			foreach ( $name_hints as $hint ) {
+				$h = strtolower( trim( (string) $hint ) );
+				if ( in_array( $h, array( 'name', 'firma', 'lieferant' ), true ) ) {
+					return 'JLCPCB';
+				}
+			}
+		}
+
+		/* Bauteilliste.Name */
+		if ( 'bauteilliste' === $host ) {
+			foreach ( $name_hints as $hint ) {
+				$h = strtolower( trim( (string) $hint ) );
+				if ( in_array( $h, array( 'name', 'bezeichnung', 'titel', 'title' ), true ) ) {
+					return 'ESP8266-RS232 BOM';
+				}
+			}
+		}
+
+		/* Bauteillisten Position line — ESP8266-RS232 first BOM row (PCB). */
+		$host_norm = preg_replace( '/\s+/', '', $host );
+		if ( in_array( $host_norm, array( 'position', 'bauteillistenposition' ), true ) ) {
 			foreach ( $name_hints as $hint ) {
 				$h = strtolower( trim( (string) $hint ) );
 				$map = array(
 					'referenz'     => 'PCB',
-					'wert'         => 'Leiterplatte',
 					'menge'        => '1',
 					'beschreibung' => 'ESP8266-RS232 Leiterplatte',
-					'preis'        => '1.80',
-					'lager'        => 'x',
-					'status'       => '',
+					'auf lager'    => 'true',
+					'auflager'     => 'true',
 				);
 				if ( isset( $map[ $h ] ) ) {
 					return $map[ $h ];
@@ -318,14 +336,28 @@ final class Sample_Data {
 		}
 
 		if ( is_int( $type_node_or_id ) || ( is_string( $type_node_or_id ) && ctype_digit( $type_node_or_id ) ) ) {
-			$term = get_term( (int) $type_node_or_id );
+			$term_id = (int) $type_node_or_id;
+			$term    = get_term( $term_id );
 			if ( $term instanceof \WP_Term && ! is_wp_error( $term ) ) {
+				$taxonomy = (string) $term->taxonomy;
+				/* Q96: prefer builtin.* binding; leaf name = debt fallback. */
+				$from_binding = Node_Type::registry_id_for_type_term( $taxonomy, $term_id );
+				if ( '' !== $from_binding ) {
+					return self::normalize_key( $from_binding );
+				}
 				return self::normalize_key( (string) $term->name );
 			}
 			return '';
 		}
 
 		if ( $type_node_or_id instanceof \WP_Term ) {
+			$from_binding = Node_Type::registry_id_for_type_term(
+				(string) $type_node_or_id->taxonomy,
+				(int) $type_node_or_id->term_id
+			);
+			if ( '' !== $from_binding ) {
+				return self::normalize_key( $from_binding );
+			}
 			return self::normalize_key( (string) $type_node_or_id->name );
 		}
 

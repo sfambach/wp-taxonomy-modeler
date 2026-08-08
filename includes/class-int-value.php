@@ -3,7 +3,8 @@
  * Integer value — normalize / convert / validators (1..n).
  *
  * Canonical storage: decimal digit string ("42", "-7").
- * Default display/edit format: arabic. Other format ids reserved for later slices.
+ * Display formats: arabic (default), roman, binary, octal, hex.
+ * JS SoT for preview: assets/js/wtt-int-value.js (keep format() in sync).
  *
  * @package WP_Taxonomy_Tree
  */
@@ -18,6 +19,27 @@ final class Int_Value {
 
 	/** @var list<string> */
 	public const FORMAT_IDS = array( 'arabic', 'roman', 'binary', 'octal', 'hex' );
+
+	/**
+	 * Classic Roman map (1..3999).
+	 *
+	 * @var list<array{0:int,1:string}>
+	 */
+	private const ROMAN_TABLE = array(
+		array( 1000, 'M' ),
+		array( 900, 'CM' ),
+		array( 500, 'D' ),
+		array( 400, 'CD' ),
+		array( 100, 'C' ),
+		array( 90, 'XC' ),
+		array( 50, 'L' ),
+		array( 40, 'XL' ),
+		array( 10, 'X' ),
+		array( 9, 'IX' ),
+		array( 5, 'V' ),
+		array( 4, 'IV' ),
+		array( 1, 'I' ),
+	);
 
 	/**
 	 * @param string $format_id Format id.
@@ -121,12 +143,14 @@ final class Int_Value {
 	}
 
 	/**
+	 * Format canonical for display using the preferred converter id.
+	 *
 	 * @param string|null $canonical Canonical value.
-	 * @param string      $format_id Format id (non-arabic reserved → arabic).
+	 * @param string      $format_id Format id (arabic|roman|binary|octal|hex).
 	 * @return string
 	 */
 	public static function format( ?string $canonical, string $format_id = self::DEFAULT_FORMAT ): string {
-		self::normalize_format_id( $format_id );
+		$id = self::normalize_format_id( $format_id );
 		if ( null === $canonical || '' === $canonical ) {
 			return '';
 		}
@@ -134,7 +158,54 @@ final class Int_Value {
 		if ( ! self::is_integer_shape( $s ) ) {
 			return $s;
 		}
-		return self::canonicalize_arabic( $s );
+		$arabic = self::canonicalize_arabic( $s );
+		if ( 'arabic' === $id ) {
+			return $arabic;
+		}
+
+		$neg    = str_starts_with( $arabic, '-' );
+		$abs_str = $neg ? substr( $arabic, 1 ) : $arabic;
+		if ( ! ctype_digit( $abs_str ) ) {
+			return $arabic;
+		}
+		/* PHP int is enough for sample/preview magnitudes. */
+		$abs_num = (int) $abs_str;
+
+		$body = '';
+		if ( 'roman' === $id ) {
+			if ( $neg || $abs_num < 1 || $abs_num > 3999 ) {
+				return $arabic;
+			}
+			$body = self::to_roman( $abs_num );
+		} elseif ( 'binary' === $id ) {
+			$body = decbin( $abs_num );
+		} elseif ( 'octal' === $id ) {
+			$body = decoct( $abs_num );
+		} elseif ( 'hex' === $id ) {
+			$body = strtoupper( dechex( $abs_num ) );
+		} else {
+			return $arabic;
+		}
+
+		return $neg ? '-' . $body : $body;
+	}
+
+	/**
+	 * @param int $n Positive integer in classic Roman range.
+	 * @return string
+	 */
+	private static function to_roman( int $n ): string {
+		$out  = '';
+		$rest = $n;
+		foreach ( self::ROMAN_TABLE as $pair ) {
+			$value = (int) $pair[0];
+			$glyph = (string) $pair[1];
+			while ( $rest >= $value ) {
+				$out  .= $glyph;
+				$rest -= $value;
+			}
+		}
+		return $out;
 	}
 
 	/**

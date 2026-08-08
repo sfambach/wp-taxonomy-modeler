@@ -161,7 +161,50 @@ final class Tree_Model {
 		Hidden_Nodes::ensure_bin( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 
-		return self::nest( $taxonomy, $by_parent, 0 );
+		$tree = self::nest( $taxonomy, $by_parent, 0 );
+		self::attach_model_data_counts( $taxonomy, $tree );
+		return $tree;
+	}
+
+	/**
+	 * Attach modelDataCount for structure hosts (attribute schema) — batch, no N+1 bag reads.
+	 *
+	 * @param list<array<string, mixed>> $nodes Tree roots (mutated in place).
+	 */
+	private static function attach_model_data_counts( string $taxonomy, array &$nodes ): void {
+		if ( ! class_exists( Model_Data::class ) || empty( $nodes ) ) {
+			return;
+		}
+
+		$counts = Model_Data::counts_by_structure( $taxonomy, false );
+		$hosts  = Model_Data::structure_host_id_set( $taxonomy );
+		if ( empty( $hosts ) ) {
+			return;
+		}
+
+		self::walk_attach_model_data_counts( $nodes, $counts, $hosts );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $nodes
+	 * @param array<int, int>            $counts
+	 * @param array<int, true>           $hosts
+	 */
+	private static function walk_attach_model_data_counts( array &$nodes, array $counts, array $hosts ): void {
+		foreach ( $nodes as &$node ) {
+			if ( ! is_array( $node ) ) {
+				continue;
+			}
+			$id = (int) ( $node['id'] ?? 0 );
+			if ( $id > 0 && isset( $hosts[ $id ] ) ) {
+				$node['modelDataCount'] = (int) ( $counts[ $id ] ?? 0 );
+				$node['isModelDataHost'] = true;
+			}
+			if ( ! empty( $node['children'] ) && is_array( $node['children'] ) ) {
+				self::walk_attach_model_data_counts( $node['children'], $counts, $hosts );
+			}
+		}
+		unset( $node );
 	}
 
 	public static function get_position( int $term_id ): int {
@@ -625,6 +668,7 @@ final class Tree_Model {
 				'slug'        => $term->slug,
 				'description' => self::decode_term_description( (string) $term->description ),
 				'shortDescription' => self::get_short_description( $term_id ),
+				'icon'        => Tree_Icons::get( $term_id ),
 				'parent'      => (int) $term->parent,
 				'count'       => (int) $term->count,
 				'position'    => self::get_position( $term_id ),
@@ -637,8 +681,6 @@ final class Tree_Model {
 				'typeLabel'   => is_array( $type ) ? ( 'subtree' === strtolower( (string) $type['name'] ) ? 'node_embed' : (string) $type['name'] ) : '',
 				'typeInheriting' => Node_Type::is_type_inheriting( $term_id ),
 				'typeOverride'   => Node_Type::is_type_override( $term_id ),
-				'isDatatype'  => Node_Type::is_datatype( $taxonomy, $term_id ),
-				'isAbstract'  => Node_Type::is_abstract( $taxonomy, $term_id ),
 				'isTemplate'  => Node_Type::is_template( $term_id ),
 				'deletable'   => ( $is_trash || $is_hidden_bin ) ? false : Node_Type::is_deletable( $term_id ),
 				'isTrash'     => $is_trash,
@@ -686,6 +728,7 @@ final class Tree_Model {
 			'slug'        => $term->slug,
 			'description' => self::decode_term_description( (string) $term->description ),
 			'shortDescription' => self::get_short_description( (int) $term->term_id ),
+			'icon'        => Tree_Icons::get( (int) $term->term_id ),
 			'parent'      => (int) $term->parent,
 			'parentName'  => $parent_name,
 			'count'       => (int) $term->count,
@@ -706,14 +749,10 @@ final class Tree_Model {
 			'freeTypeLocked' => Node_Type::is_free_type_assignment_locked( $taxonomy, (int) $term->term_id ),
 			'typeOptions' => Node_Type::get_picker_options( $taxonomy, (int) $term->term_id ),
 			'datatypeTree'=> Node_Type::get_datatype_tree( $taxonomy ),
-			'isDatatype'  => Node_Type::is_datatype( $taxonomy, (int) $term->term_id ),
-			'isAbstract'  => Node_Type::is_abstract( $taxonomy, (int) $term->term_id ),
 			'isTemplate'  => Node_Type::is_template( (int) $term->term_id ),
 			'deletable'   => (
 				Trash::is_trash_node( (int) $term->term_id ) || Hidden_Nodes::is_bin( (int) $term->term_id )
 			) ? false : Node_Type::is_deletable( (int) $term->term_id ),
-			'isDatatypeLocal' => Node_Type::get_is_datatype_local( (int) $term->term_id ),
-			'isAbstractLocal' => Node_Type::get_is_abstract_local( (int) $term->term_id ),
 			'required'    => Node_Type::is_required( (int) $term->term_id ),
 			'hasFooter'   => Node_Type::has_footer( (int) $term->term_id ),
 			'footerOp'    => Node_Type::get_footer_op( (int) $term->term_id ),
@@ -742,6 +781,8 @@ final class Tree_Model {
 				: array(),
 			'isConcreteEnum' => Node_Type::is_concrete_enum_type( $taxonomy, (int) $term->term_id ),
 			'isSet'       => Node_Type::is_set_typed( $taxonomy, (int) $term->term_id ),
+			'isAttributeSlot' => Attribute::is_slot( (int) $term->term_id ),
+			'readonly'    => Node_Type::is_readonly( (int) $term->term_id ),
 			'fixedEnabled'=> Node_Type::is_fixed_enabled( (int) $term->term_id ),
 			'fixedLiteral'=> Node_Type::get_fixed_literal( (int) $term->term_id ),
 			'fixedNodeId' => Node_Type::get_fixed_node_id( (int) $term->term_id ),
@@ -787,7 +828,12 @@ final class Tree_Model {
 			'mediaConfig'        => Node_Type::get_media_config_for_node( $taxonomy, (int) $term->term_id ),
 			'dateConfig'         => Node_Type::get_date_config_for_node( $taxonomy, (int) $term->term_id ),
 			'intConfig'          => Node_Type::get_int_config_for_node( $taxonomy, (int) $term->term_id ),
+			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, (int) $term->term_id ),
+			'validators'         => Node_Type::get_validators_for_node( $taxonomy, (int) $term->term_id ),
 			'preferredRender'    => Node_Type::get_preferred_render( (int) $term->term_id ),
+			'embedChoiceOptions' => ( 'embed' === Node_Type::get_preferred_render( (int) $term->term_id ) )
+				? Attribute::choice_options_under_type( $taxonomy, (int) $term->term_id )
+				: array(),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),
 			'relationTypeTree'   => Relation::get_relation_type_tree( $taxonomy ),
 			'relationTypeOptions'=> Relation::get_assignable_type_options( $taxonomy ),
@@ -797,6 +843,16 @@ final class Tree_Model {
 				$taxonomy,
 				(int) $term->term_id
 			),
+			/* UR-S1: gate structural-change confirm when host has live instances. */
+			'hasModelInstances' => class_exists( Model_Data::class )
+				&& count( Model_Data::list( $taxonomy, (int) $term->term_id, false ) ) > 0,
+			'modelVersion'      => class_exists( Model_Version::class )
+				? Model_Version::get( $taxonomy, (int) $term->term_id )
+				: 1,
+			/* UR-S1: red-badge → Model versions deep-link when stamps diverge. */
+			'conflictCount'     => class_exists( Model_Version::class )
+				? Model_Version::conflict_count( $taxonomy, (int) $term->term_id )
+				: 0,
 			'quantityPreviewExample' => Node_Type::is_quantity_type_catalog_node(
 				$taxonomy,
 				(int) $term->term_id
@@ -804,6 +860,24 @@ final class Tree_Model {
 				? Node_Type::get_quantity_preview_example( $taxonomy, (int) $term->term_id )
 				: null,
 		);
+
+		/* Model_Data host label counts (attribute schema → Fill Model Data). */
+		$model_data_count  = null;
+		$is_model_data_host = false;
+		if ( class_exists( Model_Data::class ) ) {
+			$visible_attrs = 0;
+			foreach ( $node['attributes'] as $attr_row ) {
+				if ( is_array( $attr_row ) && empty( $attr_row['hidden'] ) ) {
+					++$visible_attrs;
+				}
+			}
+			if ( $visible_attrs > 0 ) {
+				$is_model_data_host = true;
+				$model_data_count   = count( Model_Data::list( $taxonomy, (int) $term->term_id, false ) );
+			}
+		}
+		$node['modelDataCount']  = $model_data_count;
+		$node['isModelDataHost'] = $is_model_data_host;
 
 		if ( Trash::is_trash_node( (int) $term->term_id ) ) {
 			$node = array_merge( $node, Trash::trash_node_payload( $taxonomy, (int) $term->term_id ) );
@@ -925,7 +999,7 @@ final class Tree_Model {
 				return new \WP_Error( 'wtt_empty_name', __( 'Name is required.', 'wp-taxonomy-tree' ) );
 			}
 			if ( $term->name !== $name ) {
-				if ( Node_Type::is_datatype( $taxonomy, $term_id ) ) {
+				if ( Node_Type::is_under_type_catalog( $taxonomy, $term_id ) ) {
 					$unique = Node_Type::assert_unique_datatype_name( $taxonomy, $name, $term_id );
 					if ( is_wp_error( $unique ) ) {
 						return $unique;
@@ -1183,10 +1257,10 @@ final class Tree_Model {
 
 		/*
 		 * Q79: identity = term_id; instance names may repeat under different parents.
-		 * Effective datatypes (incl. children of datatype folders) need unique names.
+		 * Nodes under the type catalog branch need unique sibling names.
 		 */
-		if ( $parent > 0 && Node_Type::is_datatype( $taxonomy, $parent ) ) {
-			$unique = Node_Type::assert_unique_datatype_name( $taxonomy, $name, 0 );
+		if ( $parent > 0 && Node_Type::is_under_type_catalog( $taxonomy, $parent ) ) {
+			$unique = Node_Type::assert_unique_datatype_name( $taxonomy, $name, 0, $parent );
 			if ( is_wp_error( $unique ) ) {
 				return $unique;
 			}
@@ -1210,6 +1284,11 @@ final class Tree_Model {
 
 		/* Q88: child's datatype is the parent (everyone inherits). */
 		Node_Type::apply_parent_as_type( $taxonomy, $term_id );
+		Node_Type::ensure_preferred_render( $taxonomy, $term_id );
+		Node_Type::ensure_preferred_converter( $taxonomy, $term_id );
+		Node_Type::ensure_validators( $taxonomy, $term_id );
+		/* Q95: standard-by-name first, else parent copy; later parent edits do not cascade. */
+		Tree_Icons::apply_on_create( $taxonomy, $term_id, max( 0, $parent ) );
 		self::touch_modified( $term_id );
 
 		return self::get_node( $taxonomy, $term_id );

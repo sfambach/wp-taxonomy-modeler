@@ -20,6 +20,14 @@ const defaultTaxonomy = cfg.defaultTaxonomy || 'wtt_fs';
 const modelId = parseInt( cfg.modelId, 10 ) || 0;
 const chooserRoot = parseInt( cfg.chooserRoot, 10 ) || 0;
 
+function siteDefaultRenderDepth() {
+	const n = parseInt( cfg.defaultRenderDepth, 10 );
+	if ( Number.isNaN( n ) ) {
+		return 1;
+	}
+	return Math.max( 0, Math.min( 5, n ) );
+}
+
 function formatInstanceChip( instanceId, i18nMap ) {
 	const id = String( instanceId || '' ).trim();
 	if ( ! id ) {
@@ -46,6 +54,13 @@ function collectInstanceValues( view, pending ) {
 	props.forEach( ( prop ) => {
 		const id = prop && prop.id != null ? String( prop.id ) : '';
 		if ( ! id || id === '0' ) {
+			return;
+		}
+		/* Q97: related Mult many lives in links[] — never persist as host attr blob. */
+		if (
+			prop &&
+			( prop.usesRelatedInstances || prop.isRelatedDataset )
+		) {
 			return;
 		}
 		if ( Object.prototype.hasOwnProperty.call( pending, id ) ) {
@@ -77,7 +92,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		taxonomy = '',
 		instanceId = '',
 		layout = 'auto',
-		renderDepth = 1,
+		renderDepth = siteDefaultRenderDepth(),
 		referenceMode = 'link',
 	} = attributes;
 	const blockProps = useBlockProps( {
@@ -96,8 +111,10 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 	const [ saveNote, setSaveNote ] = useState( '' );
 	const [ saving, setSaving ] = useState( false );
 	const [ pendingValues, setPendingValues ] = useState( {} );
+	const [ viewTick, setViewTick ] = useState( 0 );
 	const previewRef = useRef( null );
 	const saveTimer = useRef( null );
+	const relatedSaveTimers = useRef( {} );
 	const pendingRef = useRef( {} );
 	const viewRef = useRef( null );
 
@@ -298,6 +315,137 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		[ canEdit, persistInstance ]
 	);
 
+	const reloadView = useCallback( () => {
+		if ( ! termId ) {
+			return Promise.resolve();
+		}
+		const params = new URLSearchParams();
+		if ( taxonomy ) {
+			params.set( 'taxonomy', taxonomy );
+		}
+		if ( instanceId ) {
+			params.set( 'instanceId', instanceId );
+		}
+		const qs = params.toString() ? `?${ params.toString() }` : '';
+		return apiFetch( {
+			path: `/wtt/v1/object-view/${ termId }${ qs }`,
+		} )
+			.then( ( data ) => {
+				setView( data );
+				setViewTick( ( n ) => n + 1 );
+				if ( data && data.taxonomy && data.taxonomy !== taxonomy ) {
+					setAttributes( { taxonomy: data.taxonomy } );
+				}
+			} )
+			.catch( ( err ) => {
+				setError(
+					( err && err.message ) ||
+						i18n.notFound ||
+						'Node not found.'
+				);
+			} );
+	}, [ termId, taxonomy, instanceId, setAttributes ] );
+
+	const onRelatedFieldInput = useCallback(
+		( prop, field, next, instance ) => {
+			if ( ! canEdit || ! prop || ! instance || ! instance.id ) {
+				return;
+			}
+			const childSid =
+				parseInt( instance.structureId, 10 ) ||
+				parseInt( prop.typeId, 10 ) ||
+				0;
+			if ( childSid <= 0 ) {
+				return;
+			}
+			const idKey =
+				field && field.id != null
+					? String( field.id )
+					: String( ( field && field.name ) || '' );
+			if ( ! instance.values ) {
+				instance.values = {};
+			}
+			instance.values[ idKey ] = next == null ? '' : String( next );
+
+			const timerKey = String( instance.id );
+			if ( relatedSaveTimers.current[ timerKey ] ) {
+				clearTimeout( relatedSaveTimers.current[ timerKey ] );
+			}
+			relatedSaveTimers.current[ timerKey ] = setTimeout( () => {
+				delete relatedSaveTimers.current[ timerKey ];
+				const tax =
+					taxonomy ||
+					( viewRef.current && viewRef.current.taxonomy ) ||
+					'';
+				setSaving( true );
+				setSaveNote( i18n.savingInstance || 'Saving instance…' );
+				apiFetch( {
+					path: `/wtt/v1/model-data/${ childSid }`,
+					method: 'POST',
+					data: {
+						taxonomy: tax || undefined,
+						instanceId: String( instance.id ),
+						values: instance.values || {},
+					},
+				} )
+					.then( () => {
+						setSaving( false );
+						setSaveNote( i18n.lineSaved || 'Line saved.' );
+					} )
+					.catch( ( err ) => {
+						setSaving( false );
+						setError( ( err && err.message ) || 'Save failed' );
+						setSaveNote( '' );
+					} );
+			}, 400 );
+		},
+		[ canEdit, taxonomy ]
+	);
+
+	const onAddRelatedLine = useCallback(
+		( prop ) => {
+			if ( ! canEdit || ! prop || ! termId || ! instanceId ) {
+				return;
+			}
+			const childSid = parseInt( prop.typeId, 10 ) || 0;
+			if ( childSid <= 0 ) {
+				return;
+			}
+			const tax =
+				taxonomy ||
+				( viewRef.current && viewRef.current.taxonomy ) ||
+				'';
+			const relation =
+				( prop.binding && String( prop.binding ) ) || 'besteht_aus';
+			setSaving( true );
+			setSaveNote( i18n.loading || 'Loading…' );
+			apiFetch( {
+				path: `/wtt/v1/model-data/${ termId }/create-linked`,
+				method: 'POST',
+				data: {
+					taxonomy: tax || undefined,
+					parentInstanceId: String( instanceId ),
+					childStructureId: childSid,
+					relation,
+					values: {},
+				},
+			} )
+				.then( () => {
+					setSaveNote( i18n.lineCreated || 'Line created.' );
+					return reloadView();
+				} )
+				.then( () => {
+					setSaving( false );
+				} )
+				.catch( ( err ) => {
+					setSaving( false );
+					setError( ( err && err.message ) || 'Create failed' );
+					setSaveNote( '' );
+				} );
+		},
+		[ canEdit, termId, instanceId, taxonomy, reloadView ]
+	);
+
 	useEffect( () => {
 		const host = previewRef.current;
 		const api = window.WTTObjectRender;
@@ -308,11 +456,15 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 			api.mount( host, view, {
 				layout: layout || 'auto',
 				renderDepth:
-					typeof renderDepth === 'number' ? renderDepth : 1,
+					typeof renderDepth === 'number'
+						? renderDepth
+						: siteDefaultRenderDepth(),
 				referenceMode: referenceMode || 'link',
 				mode: canEdit ? 'edit' : 'display',
 				readonly: ! canEdit,
 				onFieldInput: canEdit ? onFieldInput : null,
+				onRelatedFieldInput: canEdit ? onRelatedFieldInput : null,
+				onAddRelatedLine: canEdit ? onAddRelatedLine : null,
 			} );
 		} else {
 			host.textContent = '';
@@ -329,11 +481,14 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		};
 	}, [
 		view,
+		viewTick,
 		layout,
 		renderDepth,
 		referenceMode,
 		canEdit,
 		onFieldInput,
+		onRelatedFieldInput,
+		onAddRelatedLine,
 	] );
 
 	useEffect( () => {
@@ -341,6 +496,10 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 			if ( saveTimer.current ) {
 				clearTimeout( saveTimer.current );
 			}
+			Object.keys( relatedSaveTimers.current ).forEach( ( key ) => {
+				clearTimeout( relatedSaveTimers.current[ key ] );
+			} );
+			relatedSaveTimers.current = {};
 		};
 	}, [] );
 
@@ -472,6 +631,10 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 									'Compact (vertical)',
 								value: 'compact-vertical',
 							},
+							{
+								label: i18n.layoutEmbed || 'Embed (pick + fill)',
+								value: 'embed',
+							},
 						] }
 						onChange={ ( next ) => {
 							setAttributes( { layout: next || 'auto' } );
@@ -486,17 +649,26 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 					<RangeControl
 						label={ i18n.pickRenderDepth || 'Render depth' }
 						help={
-							i18n.renderDepthHelp ||
-							'How deep nested objects are expanded. 1 = this node and its attributes; 0 = meta only.'
+							( i18n.renderDepthHelp ||
+								'How deep nested objects are expanded. 0 = meta only; 1 = this node and its direct attributes.' ) +
+							' ' +
+							( i18n.renderDepthSiteDefault ||
+								'Site default' ) +
+							': ' +
+							String( siteDefaultRenderDepth() ) +
+							'.'
 						}
 						value={
-							typeof renderDepth === 'number' ? renderDepth : 1
+							typeof renderDepth === 'number'
+								? renderDepth
+								: siteDefaultRenderDepth()
 						}
 						onChange={ ( next ) => {
+							const fallback = siteDefaultRenderDepth();
 							const n =
 								typeof next === 'number' && ! Number.isNaN( next )
 									? next
-									: 1;
+									: fallback;
 							setAttributes( {
 								renderDepth: Math.max( 0, Math.min( 5, n ) ),
 							} );

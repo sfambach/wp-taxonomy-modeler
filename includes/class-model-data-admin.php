@@ -5,6 +5,9 @@
  * Taxonomy Tree menu item (before Settings): manage instance data against
  * structure hosts (attributes). Persistence via Model_Data.
  *
+ * Deep-link: ?page=wp-taxonomy-tree-model-data&host_id={id}[&taxonomy=slug]
+ * (also accepts structure_id) preselects that structure in the TreeChooser.
+ *
  * Layout: sidebar = taxonomy + structure pickers; main = form editor for one
  * instance, with automatic **list view** of instances below (identity columns).
  *
@@ -35,7 +38,11 @@ final class Model_Data_Admin {
 		add_action( 'wp_ajax_wtt_model_data_get', array( self::class, 'ajax_get' ) );
 		add_action( 'wp_ajax_wtt_model_data_save', array( self::class, 'ajax_save' ) );
 		add_action( 'wp_ajax_wtt_model_data_delete', array( self::class, 'ajax_delete' ) );
+		add_action( 'wp_ajax_wtt_model_data_restore', array( self::class, 'ajax_restore' ) );
 		add_action( 'wp_ajax_wtt_model_data_samples', array( self::class, 'ajax_samples' ) );
+		add_action( 'wp_ajax_wtt_model_data_related', array( self::class, 'ajax_related' ) );
+		add_action( 'wp_ajax_wtt_model_data_create_line', array( self::class, 'ajax_create_line' ) );
+		add_action( 'wp_ajax_wtt_model_data_save_line', array( self::class, 'ajax_save_line' ) );
 	}
 
 	public static function register_menu(): void {
@@ -47,6 +54,56 @@ final class Model_Data_Admin {
 			self::PAGE_SLUG,
 			array( self::class, 'render_page' )
 		);
+	}
+
+	/**
+	 * Admin URL for Fill Model Data, optionally focused on a structure host.
+	 */
+	public static function page_url( int $host_id = 0, string $taxonomy = '' ): string {
+		$args = array( 'page' => self::PAGE_SLUG );
+		if ( $host_id > 0 ) {
+			$args['host_id'] = $host_id;
+		}
+		$taxonomy = sanitize_key( $taxonomy );
+		if ( '' !== $taxonomy ) {
+			$args['taxonomy'] = $taxonomy;
+		}
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Focus host id from request (`host_id`, `structure_id`, or legacy `structureId`).
+	 */
+	public static function request_focus_host_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['host_id'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return absint( wp_unslash( $_GET['host_id'] ) );
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['structure_id'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return absint( wp_unslash( $_GET['structure_id'] ) );
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['structureId'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return absint( wp_unslash( $_GET['structureId'] ) );
+		}
+		return 0;
+	}
+
+	/**
+	 * Optional taxonomy slug from request for deep-link focus.
+	 */
+	public static function request_focus_taxonomy(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['taxonomy'] ) ) {
+			return '';
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tax = sanitize_key( wp_unslash( $_GET['taxonomy'] ) );
+		return Taxonomy::is_scaffold( $tax ) ? $tax : '';
 	}
 
 	public static function enqueue_assets( string $hook_suffix ): void {
@@ -121,11 +178,18 @@ final class Model_Data_Admin {
 			$ver,
 			true
 		);
+		wp_register_script(
+			'wtt-object-render',
+			WTT_PLUGIN_URL . 'assets/js/wtt-object-render.js',
+			array( 'wtt-node-render', 'wtt-media-render', 'wtt-sample-data' ),
+			$ver,
+			true
+		);
 
 		wp_enqueue_script(
 			'wtt-model-data-admin',
 			WTT_PLUGIN_URL . 'assets/js/model-data-admin.js',
-			array( 'wtt-node-render', 'wtt-sample-data', 'wtt-node-picker' ),
+			array( 'wtt-node-render', 'wtt-sample-data', 'wtt-node-picker', 'wtt-object-render' ),
 			$ver,
 			true
 		);
@@ -135,6 +199,31 @@ final class Model_Data_Admin {
 		if ( Taxonomy::is_scaffold( Taxonomy::FS ) && taxonomy_exists( Taxonomy::FS ) ) {
 			/* Prefer Fallstudie / Model area when present. */
 			$default = Taxonomy::FS;
+		}
+
+		$focus_host = self::request_focus_host_id();
+		$focus_tax  = self::request_focus_taxonomy();
+		if ( '' !== $focus_tax ) {
+			$default = $focus_tax;
+		} elseif ( $focus_host > 0 ) {
+			/* Resolve taxonomy from host list when only host_id is in the URL. */
+			$resolved = false;
+			foreach ( Model_Data::list_structure_hosts() as $host ) {
+				if ( (int) ( $host['id'] ?? 0 ) === $focus_host ) {
+					$tax = (string) ( $host['taxonomy'] ?? '' );
+					if ( '' !== $tax && Taxonomy::is_scaffold( $tax ) ) {
+						$default  = $tax;
+						$resolved = true;
+					}
+					break;
+				}
+			}
+			if ( ! $resolved ) {
+				$term_tax = Taxonomy::taxonomy_for_term( $focus_host );
+				if ( '' !== $term_tax && Taxonomy::is_scaffold( $term_tax ) ) {
+					$default = $term_tax;
+				}
+			}
 		}
 
 		$taxonomies = array();
@@ -157,14 +246,19 @@ final class Model_Data_Admin {
 			'wtt-model-data-admin',
 			'wttModelData',
 			array(
-				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
-				'nonce'          => wp_create_nonce( self::NONCE_ACTION ),
-				'taxonomy'       => $default,
-				'taxonomies'     => $taxonomies,
-				'hosts'          => Model_Data::list_structure_hosts(),
-				'structureTrees' => $choosers,
-				'treePickerMode' => Settings::tree_picker_mode(),
-				'i18n'           => self::i18n(),
+				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+				'nonce'            => wp_create_nonce( self::NONCE_ACTION ),
+				'taxonomy'         => $default,
+				'taxonomies'       => $taxonomies,
+				'hosts'            => Model_Data::list_structure_hosts(),
+				'structureTrees'   => $choosers,
+				'treePickerMode'               => Settings::tree_picker_mode(),
+				'dialogOnValidationWarnings'   => Settings::dialog_on_validation_warnings(),
+				'focusHostId'                  => $focus_host,
+				'modelVersionsUrl'             => class_exists( Model_Version_Admin::class )
+					? Model_Version_Admin::page_url()
+					: admin_url( 'admin.php?page=wp-taxonomy-tree-model-versions' ),
+				'i18n'                         => self::i18n(),
 			)
 		);
 	}
@@ -209,6 +303,10 @@ final class Model_Data_Admin {
 			'save'            => __( 'Save', 'wp-taxonomy-tree' ),
 			'delete'          => __( 'Delete', 'wp-taxonomy-tree' ),
 			'confirmDelete'   => __( 'Delete this instance? This cannot be undone.', 'wp-taxonomy-tree' ),
+			'dialogOnValidationWarnings' => __(
+				'Validation warnings are present. Continue anyway?',
+				'wp-taxonomy-tree'
+			),
 			'fillSamples'     => __( 'Fill samples', 'wp-taxonomy-tree' ),
 			'fillSamplesHint' => __( 'Fill empty fields from the central type → sample map.', 'wp-taxonomy-tree' ),
 			'saved'           => __( 'Instance saved.', 'wp-taxonomy-tree' ),
@@ -217,8 +315,18 @@ final class Model_Data_Admin {
 			'error'           => __( 'Something went wrong.', 'wp-taxonomy-tree' ),
 			'attrsLabel'      => __( 'attrs', 'wp-taxonomy-tree' ),
 			'fixed'           => __( 'Fixed', 'wp-taxonomy-tree' ),
+			'defaultValue'    => __( 'Default', 'wp-taxonomy-tree' ),
 			'inherited'       => __( 'Inherited', 'wp-taxonomy-tree' ),
 			'selectStructure' => __( 'Select a structure node to list and edit instances.', 'wp-taxonomy-tree' ),
+			'modelVersionConflictBadge' => __(
+				'Model version conflicts — open Conflict resolver',
+				'wp-taxonomy-tree'
+			),
+			/* translators: %d: number of conflicting instances */
+			'modelVersionConflictCount' => __(
+				'%d model version conflicts — open Conflict resolver',
+				'wp-taxonomy-tree'
+			),
 			'versionShort'    => __( 'v', 'wp-taxonomy-tree' ),
 			'colNumber'       => __( 'Number', 'wp-taxonomy-tree' ),
 			'colId'           => __( 'Id', 'wp-taxonomy-tree' ),
@@ -227,6 +335,13 @@ final class Model_Data_Admin {
 			'colModified'     => __( 'Last modified', 'wp-taxonomy-tree' ),
 			'openInstance'    => __( 'Open instance', 'wp-taxonomy-tree' ),
 			'activeInstance'  => __( 'Editing', 'wp-taxonomy-tree' ),
+			'relatedLines'    => __( 'Related lines', 'wp-taxonomy-tree' ),
+			'relatedLinesHint'=> __( 'Composition/aggregation Mult many rows for this instance (not a global orphan list).', 'wp-taxonomy-tree' ),
+			'addLine'         => __( 'Add line', 'wp-taxonomy-tree' ),
+			'addLineNeedSave' => __( 'Save the parent instance before adding related lines.', 'wp-taxonomy-tree' ),
+			'noRelatedLines'  => __( 'No related lines yet.', 'wp-taxonomy-tree' ),
+			'lineSaved'       => __( 'Line saved.', 'wp-taxonomy-tree' ),
+			'lineCreated'     => __( 'Line created.', 'wp-taxonomy-tree' ),
 		);
 	}
 
@@ -269,6 +384,16 @@ final class Model_Data_Admin {
 							<h3 id="wtt-md-attrs-title"><?php echo esc_html__( 'Attributes', 'wp-taxonomy-tree' ); ?></h3>
 							<div id="wtt-md-fields" class="wtt-object-view__form wtt-model-data__fields" role="list"></div>
 						</section>
+						<section id="wtt-md-related" class="wtt-model-data__related" hidden aria-labelledby="wtt-md-related-title">
+							<div class="wtt-model-data__related-toolbar">
+								<h3 id="wtt-md-related-title"><?php echo esc_html__( 'Related lines', 'wp-taxonomy-tree' ); ?></h3>
+								<button type="button" class="button" id="wtt-md-add-line" disabled>
+									<?php echo esc_html__( 'Add line', 'wp-taxonomy-tree' ); ?>
+								</button>
+							</div>
+							<p id="wtt-md-related-hint" class="description wtt-model-data__related-hint"></p>
+							<div id="wtt-md-related-table" class="wtt-model-data__related-table"></div>
+						</section>
 						<p class="wtt-model-data__actions">
 							<button type="button" class="button button-primary" id="wtt-md-save">
 								<?php echo esc_html__( 'Save', 'wp-taxonomy-tree' ); ?>
@@ -283,7 +408,10 @@ final class Model_Data_Admin {
 					</div>
 					<section id="wtt-md-instances" class="wtt-model-data__list-view" hidden aria-labelledby="wtt-md-instances-title">
 						<div class="wtt-model-data__list-toolbar">
-							<h2 id="wtt-md-instances-title"><?php echo esc_html__( 'Instances', 'wp-taxonomy-tree' ); ?></h2>
+							<div class="wtt-model-data__list-heading">
+								<h2 id="wtt-md-instances-title"><?php echo esc_html__( 'Instances', 'wp-taxonomy-tree' ); ?></h2>
+								<span id="wtt-md-conflict-badge" class="wtt-model-data__conflict-slot" hidden></span>
+							</div>
 							<button type="button" class="button" id="wtt-md-new" disabled>
 								<?php echo esc_html__( 'New instance', 'wp-taxonomy-tree' ); ?>
 							</button>
@@ -328,8 +456,11 @@ final class Model_Data_Admin {
 
 		wp_send_json_success(
 			array(
-				'structure' => $structure,
-				'instances' => Model_Data::list( $taxonomy, $structure_id ),
+				'structure'     => $structure,
+				'instances'     => Model_Data::list( $taxonomy, $structure_id ),
+				'conflictCount' => class_exists( Model_Version::class )
+					? Model_Version::conflict_count( $taxonomy, $structure_id )
+					: 0,
 			)
 		);
 	}
@@ -357,8 +488,11 @@ final class Model_Data_Admin {
 
 		wp_send_json_success(
 			array(
-				'instance'  => $result,
-				'instances' => Model_Data::list( $taxonomy, $structure_id ),
+				'instance'      => $result,
+				'instances'     => Model_Data::list( $taxonomy, $structure_id ),
+				'conflictCount' => class_exists( Model_Version::class )
+					? Model_Version::conflict_count( $taxonomy, $structure_id )
+					: 0,
 			)
 		);
 	}
@@ -375,7 +509,35 @@ final class Model_Data_Admin {
 		}
 
 		$id = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$result = Model_Data::delete( $taxonomy, $structure_id, $id );
+		$purge = isset( $_POST['purge'] ) && '1' === (string) wp_unslash( $_POST['purge'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$result = Model_Data::delete( $taxonomy, $structure_id, $id, $purge );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		wp_send_json_success(
+			array(
+				'instances'     => Model_Data::list( $taxonomy, $structure_id ),
+				'conflictCount' => class_exists( Model_Version::class )
+					? Model_Version::conflict_count( $taxonomy, $structure_id )
+					: 0,
+			)
+		);
+	}
+
+	public static function ajax_restore(): void {
+		self::verify_request();
+		$taxonomy     = self::request_taxonomy();
+		$structure_id = self::request_structure_id();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$id     = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$result = Model_Data::restore( $taxonomy, $structure_id, $id );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}
@@ -404,6 +566,122 @@ final class Model_Data_Admin {
 		wp_send_json_success(
 			array(
 				'values' => $filled,
+			)
+		);
+	}
+
+	/**
+	 * Related child instances for the open parent (BOM lines via links[]).
+	 */
+	public static function ajax_related(): void {
+		self::verify_request();
+		$taxonomy     = self::request_taxonomy();
+		$structure_id = self::request_structure_id();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! Capabilities::user_can_manage( $taxonomy ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$parent_id = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$child_sid = isset( $_POST['child_structure_id'] ) ? absint( wp_unslash( $_POST['child_structure_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$relation  = isset( $_POST['relation'] ) ? (string) wp_unslash( $_POST['relation'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( '' === $parent_id ) {
+			self::send_error( new \WP_Error( 'wtt_bad_id', __( 'Invalid instance id.', 'wp-taxonomy-tree' ) ) );
+		}
+
+		wp_send_json_success(
+			array(
+				'related' => Model_Data::list_related(
+					$taxonomy,
+					$structure_id,
+					$parent_id,
+					$relation,
+					$child_sid
+				),
+			)
+		);
+	}
+
+	/**
+	 * Create a Position (or other related) Model_Data row and link it to the parent.
+	 */
+	public static function ajax_create_line(): void {
+		self::verify_request();
+		$taxonomy     = self::request_taxonomy();
+		$structure_id = self::request_structure_id();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$parent_id = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$child_sid = isset( $_POST['child_structure_id'] ) ? absint( wp_unslash( $_POST['child_structure_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$relation  = isset( $_POST['relation'] ) ? (string) wp_unslash( $_POST['relation'] ) : Model_Data::LINK_COMPOSITION; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$values    = self::request_values_json();
+
+		$result = Model_Data::create_linked(
+			$taxonomy,
+			$structure_id,
+			$parent_id,
+			$child_sid,
+			$relation,
+			$values
+		);
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Save values on a related child instance (line row edit).
+	 */
+	public static function ajax_save_line(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$child_sid = isset( $_POST['child_structure_id'] ) ? absint( wp_unslash( $_POST['child_structure_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$child_id  = isset( $_POST['child_instance_id'] ) ? sanitize_key( wp_unslash( (string) $_POST['child_instance_id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$parent_id = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( (string) $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$relation  = isset( $_POST['relation'] ) ? (string) wp_unslash( $_POST['relation'] ) : Model_Data::LINK_COMPOSITION; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$values    = self::request_values_json();
+
+		$result = Model_Data::save(
+			$taxonomy,
+			$child_sid,
+			array(
+				'id'     => $child_id,
+				'values' => $values,
+			)
+		);
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		$structure_id = self::request_structure_id();
+		wp_send_json_success(
+			array(
+				'child'   => $result,
+				'related' => '' !== $parent_id
+					? Model_Data::list_related(
+						$taxonomy,
+						$structure_id,
+						$parent_id,
+						$relation,
+						$child_sid
+					)
+					: array(),
 			)
 		);
 	}

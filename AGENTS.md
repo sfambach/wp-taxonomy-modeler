@@ -6,7 +6,7 @@
 
 `wp-taxonomy-tree` is a **WordPress plugin** (hierarchical taxonomy tree).
 Mode is still **scaffolding + planning**: runnable admin tree over WP terms
-(≈ plugin **`0.0.270`**), plus planning docs and prototypes. Full Project / Node /
+(≈ plugin **`0.0.359`**), plus planning docs and prototypes. Full Project / Node /
 Parameter domain is not signed off yet. Has **`package.json`** + `@wordpress/scripts`
 for Gutenberg blocks (`npm run build` / `npm run start`). PHP plugin loaded via
 `wp-content/plugins/` (same pattern as sibling `wp-electronic-parts`).

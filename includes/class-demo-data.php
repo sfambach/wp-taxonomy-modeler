@@ -48,15 +48,11 @@ final class Demo_Data {
 				'children'    => array(
 					array(
 						'name'        => 'Typen',
-						'description' => 'Type branch (Q26/Q77): is_datatype + is_abstract; children inherit. Selectable types are non-abstract leaves.',
-						'is_datatype' => true,
-						'is_abstract' => true,
+						'description' => 'Type branch (Q26/Q77): selectable types under the catalog binding (Q92).',
 						'children'    => array(
 							array(
 								'name'        => 'Datentypen',
 								'description' => 'Simple (scalars + node_ref) and Complex (quantity, node_embed, Collection).',
-								'is_datatype' => true,
-								'is_abstract' => true,
 								'children'    => array(
 									array(
 										'name'        => 'Knoten',
@@ -123,7 +119,7 @@ final class Demo_Data {
 																'name'        => 'RefDes',
 																'description' => 'BOM open list for board references (R1, R2, ...).',
 																'children'    => array(
-																	array( 'name' => 'Element', 'description' => 'Single list column - has_type text (proto).' ),
+																	array( 'name' => 'Element', 'description' => 'Single list column - type text (proto).' ),
 																),
 															),
 														),
@@ -278,16 +274,11 @@ final class Demo_Data {
 					self::lieferanten_catalog_node(),
 					array(
 						'name'        => 'Relationstypen',
-						'description' => 'RelationType catalog (Q35/Q54/Q74). Seed: child_of, has_type, ref_scope (system/synthetic) + composition (additive).',
-						'is_abstract' => true,
+						'description' => 'RelationType catalog (Q35/Q54/Q74). Seed: child_of, ref_scope (system/synthetic) + composition (additive).',
 						'children'    => array(
 							array(
 								'name'        => 'child_of',
 								'description' => 'Hierarchy Kind von (system). Multiplicity always 1. Not creatable via Add relation — use Reparent.',
-							),
-							array(
-								'name'        => 'has_type',
-								'description' => 'Data-type binding. Managed via Relations UI; persists as type_id (not a stored edge).',
 							),
 							array(
 								'name'        => 'ref_scope',
@@ -815,8 +806,6 @@ final class Demo_Data {
 	private static function bauteil_group( string $name, string $description, array $kinds ): array {
 		return array(
 			'name'        => $name,
-			'is_datatype' => true,
-			'is_abstract' => true,
 			'description' => $description,
 			'deletable'   => false,
 			'children'    => $kinds,
@@ -831,7 +820,6 @@ final class Demo_Data {
 		return array(
 			'name'        => $name,
 			'type_name'   => 'set',
-			'is_datatype' => true,
 			'description' => $description,
 			/* Q87: materialize via ensure_bauteil_kind_attributes(), not child_of. */
 			'attributes'  => $slots,
@@ -846,8 +834,6 @@ final class Demo_Data {
 	public static function bauteilarten_catalog_node(): array {
 		return array(
 			'name'        => 'Bauteilarten',
-			'is_datatype' => true,
-			'is_abstract' => true,
 			'description' => 'Deprecated folder — kinds live under Model/Bauteil (Q83).',
 			'children'    => array(),
 		);
@@ -1088,8 +1074,6 @@ final class Demo_Data {
 		foreach ( array_unique( array_values( $map ) ) as $group_name ) {
 			$gid = self::find_direct_child_named( $taxonomy, $model_bauteil_id, $group_name );
 			if ( $gid > 0 ) {
-				Node_Type::set_is_datatype( $taxonomy, $gid, true );
-				Node_Type::set_is_abstract( $taxonomy, $gid, true );
 				Node_Type::set_deletable( $gid, false );
 				Node_Type::apply_parent_as_type( $taxonomy, $gid );
 				$scan_parents[] = $gid;
@@ -1821,7 +1805,7 @@ final class Demo_Data {
 				self::strip_all_bauteil_supplier_slots( $taxonomy, $kid_id );
 				continue;
 			}
-			if ( ! isset( $kind_names[ $kid->name ] ) && ! Node_Type::is_datatype( $taxonomy, $kid_id ) ) {
+			if ( ! isset( $kind_names[ $kid->name ] ) && ! Node_Type::is_under_type_catalog( $taxonomy, $kid_id ) ) {
 				continue;
 			}
 			self::strip_bauteil_kind_supplier_slots( $taxonomy, $kid_id );
@@ -1892,7 +1876,7 @@ final class Demo_Data {
 					$canonical = 'Dioden';
 				}
 				if ( ! isset( $kind_names[ $canonical ] ) && ! isset( $kind_names[ $kid->name ] ) ) {
-					if ( ! Node_Type::is_datatype( $taxonomy, $kind_id ) ) {
+					if ( ! Node_Type::is_under_type_catalog( $taxonomy, $kind_id ) ) {
 						continue;
 					}
 				}
@@ -1932,7 +1916,6 @@ final class Demo_Data {
 						++$moved;
 					}
 				}
-				Node_Type::set_is_datatype( $taxonomy, $kind_id, true );
 				Node_Type::apply_parent_as_type( $taxonomy, $kind_id );
 				self::strip_bauteil_kind_supplier_slots( $taxonomy, $kind_id );
 			}
@@ -2233,7 +2216,7 @@ final class Demo_Data {
 	/**
 	 * Concrete footprint enum under catalog `enum` (Q52).
 	 *
-	 * Shape: enum → Bauart → Option ─[has_type]→ text → closed options.
+	 * Shape: enum → Bauart → Option typed as text → closed options.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -2241,12 +2224,11 @@ final class Demo_Data {
 		return array(
 			'name'        => 'Bauart',
 			'description' => 'Concrete enum for footprints / package styles (0201, 0603, axial, …).',
-			'is_datatype' => true,
 			'deletable'   => false,
 			'children'    => array(
 				array(
 					'name'        => 'Option',
-					'description' => 'Single enum column - has_type text (proto).',
+					'description' => 'Single enum column - type text (proto).',
 					'type_name'   => 'text',
 					'children'    => array(
 						array( 'name' => '0201' ),
@@ -2295,8 +2277,6 @@ final class Demo_Data {
 		}
 
 		Trash::restore_subtree( $taxonomy, $bauart_id );
-		Node_Type::set_is_datatype( $taxonomy, $bauart_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $bauart_id, false );
 		Node_Type::set_deletable( $bauart_id, false );
 
 		$option_id = 0;
@@ -2352,7 +2332,7 @@ final class Demo_Data {
 				continue;
 			}
 			$id = (int) $term->term_id;
-			if ( Node_Type::is_datatype( $taxonomy, $id ) ) {
+			if ( ($id > 0 && get_term( $id, $taxonomy ) instanceof \WP_Term) ) {
 				return $id;
 			}
 			if ( 0 === $fallback ) {
@@ -2423,7 +2403,6 @@ final class Demo_Data {
 
 		$seeds = array(
 			'child_of'     => 'Hierarchy Kind von (system). Multiplicity always 1 (exactly one parent). Not creatable via Add relation — use Reparent.',
-			'has_type'     => 'Data-type binding (has_type). Managed via Relations UI; persists as type_id (Q74).',
 			'ref_scope'    => 'Catalog root for node_embed / node_ref (system). Derived from ref_scope setting.',
 			'besteht_aus'  => 'Composition / besteht aus — dies with the object (Q75/Q85; attribute Bindung).',
 			'aggregation'  => 'Aggregation — member lives on when the host object no longer exists (attribute Bindung).',
@@ -2444,8 +2423,6 @@ final class Demo_Data {
 		self::migrate_composition_relation_type_name( $taxonomy, $folder );
 		Relation::migrate_drop_erbt_von( $taxonomy );
 		Relation::repair_child_of_multiplicity( $taxonomy );
-		Node_Type::set_is_abstract( $taxonomy, $folder, true );
-		Node_Type::set_is_datatype( $taxonomy, $folder, false );
 		Node_Type::set_deletable( $folder, false );
 	}
 
@@ -2462,8 +2439,6 @@ final class Demo_Data {
 			array( self::ROOT_NAME, 'Typen', 'Datentypen', 'Knoten' )
 		);
 		if ( $existing > 0 ) {
-			Node_Type::set_is_datatype( $taxonomy, $existing, true );
-			Node_Type::set_is_abstract( $taxonomy, $existing, false );
 			Node_Type::set_deletable( $existing, false );
 			return $existing;
 		}
@@ -2489,8 +2464,6 @@ final class Demo_Data {
 		if ( $id <= 0 ) {
 			return 0;
 		}
-		Node_Type::set_is_datatype( $taxonomy, $id, true );
-		Node_Type::set_is_abstract( $taxonomy, $id, false );
 		Node_Type::set_deletable( $id, false );
 		return $id;
 	}
@@ -2533,7 +2506,7 @@ final class Demo_Data {
 		);
 		if ( $folder > 0 ) {
 			$extra[] = $folder;
-			foreach ( array( 'child_of', 'has_type', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' ) as $name ) {
+			foreach ( array( 'child_of', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' ) as $name ) {
 				$id = Relation::find_type_id_by_name( $taxonomy, $name );
 				if ( $id > 0 ) {
 					$extra[] = $id;
@@ -2686,79 +2659,11 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Q77: Typen = is_datatype (inherited). is_abstract is local-only (folders mark abstract explicitly).
-	 * Set members under units / Abmessung are not datatype catalog nodes.
+	 * Q77 / Q92: no type-role or abstract flags — chooser scope is bindings only.
+	 * Kept as a named seed hook for callers; intentionally a no-op.
 	 */
 	public static function ensure_datatype_flags( string $taxonomy ): void {
-		$typen = self::find_term_by_path( $taxonomy, array( 'BOM Testprojekt', 'Typen' ) );
-		if ( $typen <= 0 ) {
-			$all = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'name'       => 'Typen',
-					'hide_empty' => false,
-					'number'     => 1,
-				)
-			);
-			if ( is_array( $all ) && isset( $all[0] ) && $all[0] instanceof \WP_Term ) {
-				$typen = (int) $all[0]->term_id;
-			}
-		}
-		if ( $typen <= 0 ) {
-			return;
-		}
-
-		Node_Type::set_is_datatype( $taxonomy, $typen, true );
-		Node_Type::set_is_abstract( $taxonomy, $typen, true );
-
-		$abstract_names = array(
-			'Datentypen'   => true,
-			'Simple'       => true,
-			'Complex'      => true,
-			'Collection'   => true,
-			'node_pick'    => true,
-			'Praefixe'     => true,
-			'Basiseinheit' => true,
-			'Bauformen'    => true,
-		);
-
-		$descendants = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'child_of'   => $typen,
-				'hide_empty' => false,
-				'number'     => 0,
-			)
-		);
-		if ( ! is_array( $descendants ) ) {
-			return;
-		}
-
-		foreach ( $descendants as $term ) {
-			if ( ! $term instanceof \WP_Term ) {
-				continue;
-			}
-			$id     = (int) $term->term_id;
-			$parent = (int) $term->parent;
-
-			/* Slot children of set-typed catalog nodes (units, Abmessung, …) are not types. */
-			if (
-				$parent > 0
-				&& ( Node_Type::is_basiseinheit_unit_node( $taxonomy, $parent ) || Node_Type::is_set_typed( $taxonomy, $parent ) )
-			) {
-				Node_Type::set_is_datatype( $taxonomy, $id, false );
-				Node_Type::set_is_abstract( $taxonomy, $id, null );
-				continue;
-			}
-
-			Node_Type::set_is_datatype( $taxonomy, $id, null );
-
-			if ( isset( $abstract_names[ $term->name ] ) ) {
-				Node_Type::set_is_abstract( $taxonomy, $id, true );
-			} else {
-				Node_Type::set_is_abstract( $taxonomy, $id, false );
-			}
-		}
+		unset( $taxonomy );
 	}
 
 	/**
@@ -3441,8 +3346,8 @@ final class Demo_Data {
 			$existing
 		);
 		if ( $email > 0 ) {
-			Node_Type::set_is_datatype( $taxonomy, $email, true );
 			Node_Type::set_deletable( $email, false );
+			Node_Type::ensure_validators( $taxonomy, $email );
 		}
 
 		return $email > 0 ? $email : 0;
@@ -3474,11 +3379,11 @@ final class Demo_Data {
 			$existing
 		);
 		if ( $date > 0 ) {
-			Node_Type::set_is_datatype( $taxonomy, $date, true );
 			Node_Type::set_deletable( $date, false );
 			if ( ! metadata_exists( 'term', $date, Node_Type::META_KEY_DATE_MODE ) ) {
 				Node_Type::set_date_mode( $taxonomy, $date, 'date' );
 			}
+			Node_Type::ensure_validators( $taxonomy, $date );
 		}
 
 		return $date > 0 ? $date : 0;
@@ -3511,6 +3416,7 @@ final class Demo_Data {
 		);
 		if ( $media > 0 ) {
 			Node_Type::set_media_type_config( $taxonomy, $media, true, false );
+			Node_Type::ensure_validators( $taxonomy, $media );
 		}
 
 		$rezept = self::find_term_by_path(
@@ -3999,6 +3905,10 @@ final class Demo_Data {
 				Node_Type::set_date_mode( $taxonomy, $term_id, (string) $node['date_mode'] );
 			}
 
+			Node_Type::ensure_preferred_render( $taxonomy, $term_id );
+			Node_Type::ensure_preferred_converter( $taxonomy, $term_id );
+			Node_Type::ensure_validators( $taxonomy, $term_id );
+
 			if ( '' !== $type_name ) {
 				$type_id = Node_Type::find_type_by_name( $taxonomy, $term_id, $type_name );
 				if ( $type_id > 0 ) {
@@ -4017,29 +3927,14 @@ final class Demo_Data {
 				Node_Type::set_required( $taxonomy, $term_id, (bool) $node['required'] );
 			}
 
-			if ( array_key_exists( 'is_datatype', $node ) ) {
-				Node_Type::set_is_datatype( $taxonomy, $term_id, (bool) $node['is_datatype'] );
-			}
-			if ( array_key_exists( 'is_abstract', $node ) ) {
-				Node_Type::set_is_abstract( $taxonomy, $term_id, (bool) $node['is_abstract'] );
-			}
 			if ( array_key_exists( 'is_template', $node ) ) {
 				Node_Type::set_is_template( $taxonomy, $term_id, (bool) $node['is_template'] );
-			} elseif (
-				( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] )
-				|| (
-					array_key_exists( 'is_datatype', $node )
-					&& true === (bool) $node['is_datatype']
-					&& ! array_key_exists( 'deletable', $node )
-				)
-			) {
+			} elseif ( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] ) {
 				/* Seeded protected catalog → is_template (#5 lock signal). */
 				Node_Type::set_is_template( $taxonomy, $term_id, true );
 			}
 			if ( array_key_exists( 'deletable', $node ) ) {
 				Node_Type::set_deletable( $term_id, (bool) $node['deletable'] );
-			} elseif ( array_key_exists( 'is_datatype', $node ) && true === (bool) $node['is_datatype'] ) {
-				Node_Type::set_deletable( $term_id, false );
 			}
 
 			if ( array_key_exists( 'has_footer', $node ) ) {

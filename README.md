@@ -2,8 +2,8 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffolding ≈ `0.0.345`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instance store. Attribute-host Preview: Form(1)+Table(n) via `WTTObjectRender`. Samples: name→then type map (`Sample_Data`). Catalog chooser: **`chooser_root`** + caller **`focusId`** (`model` for Object View; **`chooser_focus`** only as fallback when none passed). Catalog lock: **`_wtt_is_template`**. Gutenberg **`taxo/object-view`** (current); **`taxo/collection-table`** (**Taxo Table view**) = all datasets for selected node. Q83: **Bauteile** = kinds + MPNs (merged). **`int`:** Converter + validators + Number format UI (type default + attribute override).
-> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold** — not Phase-1 model sign-off. **Q83–Q92** as in living docs; **`is_datatype` slim-down** plan **0.7.37** (#6 decided; #12 open); **Q34/Q48** clarifiers; **`int` format UI** plan **0.7.41**. Status stays **scaffolding**.
+> **Scaffolding ≈ `0.0.376`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instances with **Q97** links (composition cascade). **Q93** host ids only; **Q98 / UR-S1** Model versions; preferred **`embed`** ≠ catalog `node_embed`; refs → **Model** only (no Implementation SoT). Gutenberg **`taxo/object-view`** + **Taxo Table view** — presentation parity.
+> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold**. Plan **0.7.52**. Status stays **scaffolding**. Release-1 target = BOM in Gutenberg + frontend table → **`1.0.0`**.
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
@@ -27,7 +27,8 @@ Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`d
 | [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
 | [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
-| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Gold Fallstudie scaffold (`wtt_fs`) — Definition / Implementation tree |
+| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Gold Fallstudie scaffold (`wtt_fs`) — Definition / Model (+ Implementation debt) |
+| [`docs/plans/blocks-lane.md`](docs/plans/blocks-lane.md) | Gutenberg blocks lane (multi-agent; `taxo/*`) |
 | [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |

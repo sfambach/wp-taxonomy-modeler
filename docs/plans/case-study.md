@@ -1,9 +1,9 @@
 ---
 name: Case study (wtt_fs)
-overview: Gold standard scaffold taxonomy — Fallstudie Definition / Implementation tree. Not Phase-1 domain sign-off.
+overview: Gold standard scaffold taxonomy — Fallstudie Definition / Model (+ legacy Implementation debt). Not Phase-1 domain sign-off.
 status: scaffolding
-version: "0.2.3-slice"
-last_updated: "2026-08-07"
+version: "0.2.4-slice"
+last_updated: "2026-08-08"
 related_docs:
   - docs/plans/project-plan.md
   - docs/ROADMAP.md
@@ -45,11 +45,11 @@ todos:
 ```text
 Fallstudie                    type → Knoten (root only; Q88)
 ├── Definition                type → Fallstudie
-│   ├── Simple          (scaffold may still set is_datatype + is_abstract)   type → Definition
+│   ├── Simple                                 type → Definition
 │   │   ├── int, double, text, textarea, char, bool
 │   │   ├── display_node_name
 │   │   └── media
-│   ├── Complex         (scaffold may still set is_datatype + is_abstract)  ← Q90 parked kinds may still seed
+│   ├── Complex                               ← Q90 parked kinds may still seed
 │   │   ├── list, table, enum (Bauart options), set
 │   │   └── node_pick → node_embed / node_ref
 │   ├── Konstanten
@@ -58,18 +58,20 @@ Fallstudie                    type → Knoten (root only; Q88)
 │   ├── Eigene Datentypen
 │   └── Knoten                (base type catalog leaf for roots)
 ├── Relationstypen            type → Fallstudie
-│   ├── child_of, has_type, ref_scope (system)
+│   ├── child_of, ref_scope (system)
 │   └── composition / besteht_aus / aggregation (Bindung)
-└── Implementation            type → Fallstudie
-    ├── BOM
+└── Implementation            type → Fallstudie   ← scaffold debt (Q83/OQ-B2: product SoT = Model only)
+    ├── BOM                   ← legacy Name+Tabelle bands (Q90 table debt)
           composition → Name (text)
           composition → Tabelle (type=table)
                             composition → Zeile → Reference, Wert, Menge
-    ├── Bauteile        (Q83: MPN records only; type_id → Model/Bauteil kind)
+    ├── Bauteile        (legacy MPN seed — migrate/target Model)
     │   └── RC0603…, CL10B…, …
     ├── Lieferanten     (Url / Suchstring / Bewertung + supplier records)
 └── Model
-    ├── Kontakt, Platine
+    ├── Kontakt, Platine (slim: + Bauteilliste)
+    ├── Bauteilliste    (Name + Position[0..*] → Bauteillisten Position — composition Q97)
+    ├── Bauteillisten Position  (Referenz, Wert→Bauteil, Menge, Beschreibung, Auf Lager)
     └── Bauteil
         ├── Passiv → Widerstand, Kondensator, Spule
         ├── Halbleiter → Dioden, Transistor, LED, IC
@@ -80,11 +82,13 @@ Fallstudie                    type → Knoten (root only; Q88)
 
 **Q88 example chain:** Fallstudie→Knoten; Definition→Fallstudie; further children inherit father. Attribute members (`besteht_aus`) keep own field types (Q87).
 
-**Q83:** Kinds under **Model/Bauteil** (grouped); master MPNs under **Implementation/Bauteile**.
+**Q83 / OQ-B2:** Product = **Model/Bauteil** (kinds + records by id). **No Implementation/ SoT** — scaffold Implementation folder above is **debt**. Line refs → Model only.
+
+**Q85 Model BOM:** Platine → Bauteilliste → Bauteillisten Position[…] (**composition** / Q97; not Collection `table`).
 
 **Model/Dioden:** Hierarchy Arten under `Model/Bauteil/Halbleiter/Dioden` for CatalogChoice (Q90).
 
-## Implementation map
+## Scaffold map (code)
 
 | Piece | Location |
 |-------|----------|

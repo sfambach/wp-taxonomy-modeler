@@ -1,0 +1,21 @@
+/**
+ * Cleanup admin shell (v1 health).
+ */
+
+.wtt-cleanup__health {
+	margin-top: 1.5em;
+	max-width: 720px;
+}
+
+.wtt-cleanup__ok {
+	color: #1d2327;
+}
+
+.wtt-cleanup__conflict {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.wtt-cleanup__actions {
+	margin-top: 1em;
+}

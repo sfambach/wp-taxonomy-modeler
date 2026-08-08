@@ -1,0 +1,37 @@
+---
+description: Multi-agent lanes — own your zone; plan is SoT; do not stomp other lanes
+alwaysApply: true
+---
+
+# Multi-agent lanes
+
+Several Cursor agents may work in this repo at once. **Play together** — do not overwrite another lane’s unfinished work.
+
+## Source of truth
+
+- **Product / design intent:** [`docs/plans/project-plan.md`](../../docs/plans/project-plan.md) (+ linked slices) — including **[Presentation surfaces](../../docs/plans/project-plan.md#presentation-surfaces-architecture)** (parity; blocks as views).
+- Design changes from any lane → **append** to the plan / OPEN-QUESTIONS / living docs (decision-log row). Do **not** rewrite another lane’s recent decision-log entries or wholesale replace unrelated sections.
+
+## Lanes (ownership)
+
+| Lane | Primary ownership (prefer edit here) |
+|------|--------------------------------------|
+| **blocks** | `src/blocks/**`, `build/blocks/**` (via `npm run build`), `includes/class-blocks.php`, block REST routes in that class, block SCSS; slice [`docs/plans/blocks-lane.md`](../../docs/plans/blocks-lane.md) |
+| **tree / admin** | `assets/js/tree-admin.js`, `assets/css/tree-admin.css`, `includes/class-tree-*.php`, `class-case-data.php`, `class-settings.php`, seed/ensure scripts |
+| **shared render** | `assets/js/wtt-object-render.js`, `wtt-node-render.js`, `wtt-media-render.js`, `includes/class-object-render.php`, `class-media-render.php`, `class-sample-data.php` — **shared**; smallest possible diffs; extend API rather than fork for one consumer |
+| **model / domain meta** | `class-attribute.php`, `class-node-type.php`, `class-relation.php`, `class-model-data*.php`, catalog bindings |
+| **planning** | `docs/plans/**`, living docs, `.cursor/rules/**` (process rules) |
+
+## Do / don’t
+
+- **Do** stay in your lane unless a fix is blocked (then touch the **minimum** shared surface and leave a short plan note).
+- **Do** reuse existing renderers / choosers (`reuse-renderers.mdc`, `choosers.mdc`) — blocks must not invent parallel Form/Table/tree UIs.
+- **Do** treat **admin ↔ block editor ↔ frontend** as one paint path for object chrome (parity). If admin view works and the block/frontend does not, fix the shared renderer or its wiring — not a third UI.
+- **Do** bump plugin patch only for your lane’s user-visible change; keep version strings in sync for files **you** touch.
+- **Don’t** reformat or “cleanup” large files outside your lane.
+- **Don’t** revert another agent’s uncommitted or just-landed work in shared files without asking the user.
+- **Don’t** park/unpark Q90 Complex types from the blocks lane without an explicit user override.
+
+## Blocks lane focus (this chat)
+
+When the conversation is the **Blocks lane**: prefer Gutenberg work (`taxo/object-view`, shared block helpers; `taxo/collection-table` = Q90 legacy — do not extend). Tree/admin/model changes only when required for the block; prefer asking or a tiny shared-render hook.

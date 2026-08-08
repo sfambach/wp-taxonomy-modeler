@@ -57,8 +57,32 @@ final class Blocks {
 	}
 
 	public static function register_block(): void {
+		add_filter( 'register_block_type_args', array( self::class, 'filter_object_view_block_args' ), 10, 2 );
 		self::register_collection_table_block();
 		self::register_object_view_block();
+	}
+
+	/**
+	 * Seed Object View renderDepth default from plugin Settings (site-wide).
+	 *
+	 * @param array<string, mixed> $args       Block type args.
+	 * @param string               $block_name Block name.
+	 * @return array<string, mixed>
+	 */
+	public static function filter_object_view_block_args( array $args, string $block_name ): array {
+		if ( self::OBJECT_VIEW_BLOCK !== $block_name ) {
+			return $args;
+		}
+		if ( ! isset( $args['attributes'] ) || ! is_array( $args['attributes'] ) ) {
+			$args['attributes'] = array();
+		}
+		if ( ! isset( $args['attributes']['renderDepth'] ) || ! is_array( $args['attributes']['renderDepth'] ) ) {
+			$args['attributes']['renderDepth'] = array(
+				'type' => 'number',
+			);
+		}
+		$args['attributes']['renderDepth']['default'] = Settings::default_render_depth();
+		return $args;
 	}
 
 	private static function register_collection_table_block(): void {
@@ -150,9 +174,23 @@ final class Blocks {
 			true
 		);
 		wp_register_script(
+			'wtt-converter',
+			WTT_PLUGIN_URL . 'assets/js/wtt-converter.js',
+			array( 'wtt-int-value' ),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
+			'wtt-validator',
+			WTT_PLUGIN_URL . 'assets/js/wtt-validator.js',
+			array(),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
 			'wtt-node-render',
 			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-			array( 'wtt-sample-data', 'wtt-int-value' ),
+			array( 'wtt-sample-data', 'wtt-int-value', 'wtt-converter', 'wtt-validator' ),
 			WTT_VERSION,
 			true
 		);
@@ -255,9 +293,23 @@ final class Blocks {
 			true
 		);
 		wp_register_script(
+			'wtt-converter',
+			WTT_PLUGIN_URL . 'assets/js/wtt-converter.js',
+			array( 'wtt-int-value' ),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
+			'wtt-validator',
+			WTT_PLUGIN_URL . 'assets/js/wtt-validator.js',
+			array(),
+			WTT_VERSION,
+			true
+		);
+		wp_register_script(
 			'wtt-node-render',
 			WTT_PLUGIN_URL . 'assets/js/wtt-node-render.js',
-			array( 'wtt-sample-data', 'wtt-int-value' ),
+			array( 'wtt-sample-data', 'wtt-int-value', 'wtt-converter', 'wtt-validator' ),
 			WTT_VERSION,
 			true
 		);
@@ -385,8 +437,8 @@ final class Blocks {
 				'i18n'           => array(
 					'title'                       => __( 'Taxo Table view', 'wp-taxonomy-tree' ),
 					'pickCollection'              => __( 'Model / node', 'wp-taxonomy-tree' ),
-					'pickHint'                    => __( 'Pick a model or schema node (e.g. Kontakt, Platine). Columns come from its attributes; rows are all datasets for that node.', 'wp-taxonomy-tree' ),
-					'flowHint'                    => __( 'Choose a model node — the table lists all datasets for that node.', 'wp-taxonomy-tree' ),
+					'pickHint'                    => __( 'Pick a schema node (e.g. Position for BOM lines). Columns = attributes; rows = all datasets. Same table on the frontend.', 'wp-taxonomy-tree' ),
+					'flowHint'                    => __( 'BOM lines: choose Position — the table lists every line. Or bind Kontakt / Lieferant / …', 'wp-taxonomy-tree' ),
 					'chooseModelCanvas'           => __( 'Choose a model node in the tree below.', 'wp-taxonomy-tree' ),
 					'changeModel'                 => __( 'Change model…', 'wp-taxonomy-tree' ),
 					'createInstance'              => __( 'Create new', 'wp-taxonomy-tree' ),
@@ -475,6 +527,7 @@ final class Blocks {
 				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
 				'ajaxNonce'      => wp_create_nonce( Tree_Ajax::NONCE_ACTION ),
 				'treePickerMode' => Settings::tree_picker_mode(),
+				'defaultRenderDepth' => Settings::default_render_depth(),
 				'taxonomies'     => Taxonomy::scaffold_taxonomies(),
 				'nodes'          => Object_Render::list_pickable_nodes( $taxonomy ),
 				'defaultTaxonomy'=> $taxonomy,
@@ -617,6 +670,78 @@ final class Blocks {
 							'required'          => true,
 							'sanitize_callback' => 'absint',
 						),
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'wtt/v1',
+			'/model-data/(?P<id>\d+)/related/(?P<instanceId>[a-z0-9_]+)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( self::class, 'rest_model_data_related' ),
+				'permission_callback' => static function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'args'                => array(
+					'id'         => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+					'instanceId' => array(
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'taxonomy'   => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'relation'   => array(
+						'type'              => 'string',
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_key',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'wtt/v1',
+			'/model-data/(?P<id>\d+)/link',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( self::class, 'rest_model_data_link' ),
+				'permission_callback' => static function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'args'                => array(
+					'id' => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'wtt/v1',
+			'/model-data/(?P<id>\d+)/create-linked',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( self::class, 'rest_model_data_create_linked' ),
+				'permission_callback' => static function () {
+					return current_user_can( 'edit_posts' );
+				},
+				'args'                => array(
+					'id' => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
 					),
 				),
 			)
@@ -845,6 +970,108 @@ final class Blocks {
 	}
 
 	/**
+	 * Related child instances for a parent (OQ-B1 — e.g. BOM lines via composition).
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public static function rest_model_data_related( \WP_REST_Request $request ) {
+		$structure_id = self::rest_structure_id( $request );
+		$taxonomy     = self::rest_resolve_structure_taxonomy( $request, $structure_id );
+		$instance_id  = sanitize_key( (string) $request->get_param( 'instanceId' ) );
+		$relation     = sanitize_key( (string) $request->get_param( 'relation' ) );
+		if ( $structure_id <= 0 || '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) || '' === $instance_id ) {
+			return new \WP_Error( 'wtt_bad_request', __( 'Invalid request.', 'wp-taxonomy-tree' ), array( 'status' => 400 ) );
+		}
+		$parent = Model_Data::get( $taxonomy, $structure_id, $instance_id, true );
+		if ( null === $parent ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Instance not found.', 'wp-taxonomy-tree' ), array( 'status' => 404 ) );
+		}
+		return new \WP_REST_Response(
+			array(
+				'parent'  => $parent,
+				'related' => Model_Data::list_related( $taxonomy, $structure_id, $instance_id, $relation ),
+			),
+			200
+		);
+	}
+
+	/**
+	 * Link a child Model_Data instance to a parent (composition or aggregation).
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public static function rest_model_data_link( \WP_REST_Request $request ) {
+		$structure_id = self::rest_structure_id( $request );
+		$taxonomy     = self::rest_resolve_structure_taxonomy( $request, $structure_id );
+		if ( $structure_id <= 0 || '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ), array( 'status' => 400 ) );
+		}
+		$body = $request->get_json_params();
+		if ( ! is_array( $body ) ) {
+			$body = array();
+		}
+		$parent_id = isset( $body['parentInstanceId'] ) ? sanitize_key( (string) $body['parentInstanceId'] ) : '';
+		$child_sid = isset( $body['childStructureId'] ) ? absint( $body['childStructureId'] ) : 0;
+		$child_id  = isset( $body['childInstanceId'] ) ? sanitize_key( (string) $body['childInstanceId'] ) : '';
+		$relation  = isset( $body['relation'] ) ? (string) $body['relation'] : Model_Data::LINK_COMPOSITION;
+
+		$result = Model_Data::link( $taxonomy, $structure_id, $parent_id, $child_sid, $child_id, $relation );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'parent'  => $result,
+				'related' => Model_Data::list_related( $taxonomy, $structure_id, $parent_id, $relation ),
+			),
+			200
+		);
+	}
+
+	/**
+	 * Create a child Model_Data row and composition/aggregation-link it to the parent (Q97 BOM line).
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public static function rest_model_data_create_linked( \WP_REST_Request $request ) {
+		$structure_id = self::rest_structure_id( $request );
+		$taxonomy     = self::rest_resolve_structure_taxonomy( $request, $structure_id );
+		if ( $structure_id <= 0 || '' === $taxonomy || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ), array( 'status' => 400 ) );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			return new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) );
+		}
+
+		$body = $request->get_json_params();
+		if ( ! is_array( $body ) ) {
+			$body = array();
+		}
+		$parent_id = isset( $body['parentInstanceId'] ) ? sanitize_key( (string) $body['parentInstanceId'] ) : '';
+		$child_sid = isset( $body['childStructureId'] ) ? absint( $body['childStructureId'] ) : 0;
+		$relation  = isset( $body['relation'] ) ? (string) $body['relation'] : Model_Data::LINK_COMPOSITION;
+		$values    = isset( $body['values'] ) && is_array( $body['values'] ) ? $body['values'] : array();
+
+		$result = Model_Data::create_linked(
+			$taxonomy,
+			$structure_id,
+			$parent_id,
+			$child_sid,
+			$relation,
+			$values
+		);
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return new \WP_REST_Response( $result, 200 );
+	}
+
+	/**
 	 * @param \WP_REST_Request $request Request.
 	 * @return \WP_REST_Response
 	 */
@@ -971,49 +1198,29 @@ final class Blocks {
 
 		echo '<h3 class="wtt-collection-table__title">' . esc_html( $title ) . '</h3>';
 
-		$show_id_col = Composition::KIND_MODEL === $kind;
-		if ( array() === $columns && ! $show_id_col ) {
+		$show_id_col = false;
+		if ( array() === $columns ) {
 			echo '<p class="wtt-collection-table__empty">' . esc_html__( 'This node has no attributes yet. Add attributes in Taxonomy Tree.', 'wp-taxonomy-tree' ) . '</p>';
 			echo '</div>';
 			return (string) ob_get_clean();
 		}
-		if ( array() === $columns && $show_id_col ) {
-			echo '<p class="wtt-collection-table__empty">' . esc_html__( 'This node has no attributes yet. Datasets still appear with Id.', 'wp-taxonomy-tree' ) . '</p>';
-		}
 
-		$colspan = count( $columns ) + 1 + ( $show_id_col ? 1 : 0 );
+		$colspan = count( $columns );
 
 		echo '<div class="wtt-collection-table__wrap"><table class="wtt-collection-table__table">';
 		echo '<thead><tr>';
-		echo '<th scope="col">' . esc_html__( '#', 'wp-taxonomy-tree' ) . '</th>';
-		if ( $show_id_col ) {
-			echo '<th scope="col">' . esc_html__( 'Id', 'wp-taxonomy-tree' ) . '</th>';
-		}
 		foreach ( $columns as $col ) {
-			$label = $col['name'];
-			if ( '' !== ( $col['typeName'] ?? '' ) ) {
-				$label .= ' (' . $col['typeName'] . ')';
-			}
-			echo '<th scope="col">' . esc_html( $label ) . '</th>';
+			echo '<th scope="col">' . esc_html( (string) ( $col['name'] ?? '' ) ) . '</th>';
 		}
 		echo '</tr></thead><tbody>';
 
 		if ( array() === $rows ) {
-			echo '<tr><td colspan="' . esc_attr( (string) $colspan ) . '">';
-			echo esc_html(
-				Composition::KIND_MODEL === $kind
-					? __( 'No datasets yet.', 'wp-taxonomy-tree' )
-					: '—'
-			);
+			echo '<tr><td class="wtt-collection-table__empty-cell" colspan="' . esc_attr( (string) $colspan ) . '">';
+			echo esc_html__( 'No data available.', 'wp-taxonomy-tree' );
 			echo '</td></tr>';
 		} else {
-			foreach ( $rows as $index => $row ) {
+			foreach ( $rows as $row ) {
 				echo '<tr>';
-				$seq = isset( $row['seq'] ) ? (int) $row['seq'] : 0;
-				echo '<td>' . esc_html( $seq > 0 ? '#' . (string) $seq : (string) ( $index + 1 ) ) . '</td>';
-				if ( $show_id_col ) {
-					echo '<td><code>' . esc_html( (string) ( $row['id'] ?? '' ) ) . '</code></td>';
-				}
 				foreach ( $columns as $col ) {
 					$col_id   = (string) (int) $col['id'];
 					$val      = isset( $row['cells'][ $col_id ] ) ? (string) $row['cells'][ $col_id ] : '';

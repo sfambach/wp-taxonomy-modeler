@@ -5,8 +5,8 @@
   "title": "Taxo Table view",
   "category": "taxo",
   "icon": "editor-table",
-  "description": "Bind a model / schema node (e.g. Kontakt, Platine). Shows all datasets for the selected node as a table — columns from attributes, one row per instance.",
-  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "knoten", "node", "attributes", "datasets", "instances"],
+  "description": "Bind a schema node (e.g. Position for BOM lines, Kontakt). Shows all datasets as a table — columns from attributes, one row per instance. Frontend is the same table (read-only).",
+  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "bom", "position", "bauteilliste", "knoten", "node", "attributes", "datasets", "instances"],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "collectionTermId": {

@@ -79,6 +79,10 @@
 		if (Array.isArray(attr.fixedValues) && attr.fixedValues.length) {
 			return attr.fixedValues
 				.map(function (v) {
+					/* Q106 nested default maps — skip object rows in scalar label. */
+					if (v != null && typeof v === 'object') {
+						return '';
+					}
 					return String(v);
 				})
 				.filter(Boolean)
@@ -131,6 +135,10 @@
 				typeName: typeKey,
 				type: { name: typeKey },
 				typeId: parseInt(attr.typeId, 10) || 0,
+				fixedRootId:
+					parseInt(attr.fixedRootId, 10) ||
+					parseInt(attr.typeId, 10) ||
+					0,
 				multiplicity: String(attr.multiplicity || '1'),
 				fieldMultiplicity: String(
 					attr.fieldMultiplicity || attr.multiplicity || '1'
@@ -167,12 +175,30 @@
 						: null,
 				dateConfig: attr.dateConfig || null,
 				intConfig: attr.intConfig || null,
+				typeExtras:
+					attr.typeExtras && typeof attr.typeExtras === 'object'
+						? attr.typeExtras
+						: null,
 				displayFormat:
 					attr.displayFormat != null
 						? String(attr.displayFormat)
-						: attr.intConfig && attr.intConfig.displayFormat
-							? String(attr.intConfig.displayFormat)
-							: '',
+						: attr.preferredConverter != null
+							? String(attr.preferredConverter)
+							: attr.intConfig && attr.intConfig.displayFormat
+								? String(attr.intConfig.displayFormat)
+								: attr.typeExtras && attr.typeExtras.displayFormat
+									? String(attr.typeExtras.displayFormat)
+									: '',
+				preferredConverter:
+					attr.preferredConverter != null
+						? String(attr.preferredConverter)
+						: attr.displayFormat != null
+							? String(attr.displayFormat)
+							: attr.intConfig && attr.intConfig.displayFormat
+								? String(attr.intConfig.displayFormat)
+								: attr.typeExtras && attr.typeExtras.preferredConverter
+									? String(attr.typeExtras.preferredConverter)
+									: '',
 				mediaConfig:
 					attr.mediaConfig && typeof attr.mediaConfig === 'object'
 						? attr.mediaConfig
@@ -180,6 +206,10 @@
 				typeProperties: Array.isArray(attr.typeProperties)
 					? attr.typeProperties.slice()
 					: [],
+				typePreferredRender: String(attr.typePreferredRender || ''),
+				preferredRender: String(
+					attr.preferredRender || attr.typePreferredRender || ''
+				),
 			};
 			/* Festwert wins over generic type sample (e.g. Einheit → Ohm). */
 			if (fest) {
@@ -800,6 +830,796 @@
 	}
 
 	/**
+	 * Preferred-render embed store (UR-B6 / Q93): id-only on host.
+	 * Accepts Model_Data instance id (`md_…`), legacy kind term id, or old `{pick,values}` JSON.
+	 */
+	function parseEmbedStore(raw) {
+		var out = { pick: '', values: {}, instanceId: '', kindId: '' };
+		var s = raw != null ? String(raw).trim() : '';
+		if (!s) {
+			return out;
+		}
+		if (/^md_[a-z0-9_]+$/i.test(s)) {
+			out.instanceId = s;
+			out.pick = s;
+			return out;
+		}
+		if (/^\d+$/.test(s)) {
+			out.kindId = s;
+			out.pick = s;
+			return out;
+		}
+		try {
+			var obj = JSON.parse(s);
+			if (obj && typeof obj === 'object') {
+				var p =
+					obj.pick != null
+						? String(obj.pick)
+						: obj.p != null
+							? String(obj.p)
+							: obj.instanceId != null
+								? String(obj.instanceId)
+								: '';
+				if (/^md_/i.test(p)) {
+					out.instanceId = p;
+				} else if (/^\d+$/.test(p)) {
+					out.kindId = p;
+				}
+				out.pick = p;
+				var vals = obj.values || obj.v;
+				if (vals && typeof vals === 'object') {
+					Object.keys(vals).forEach(function (k) {
+						out.values[String(k)] =
+							vals[k] == null ? '' : String(vals[k]);
+					});
+				}
+				return out;
+			}
+		} catch (e) {
+			/* plain fallback */
+		}
+		out.pick = s;
+		return out;
+	}
+
+	/** Q93: emit id only (Model_Data instance id preferred). */
+	function encodeEmbedStore(pick, values) {
+		var p = pick != null ? String(pick).trim() : '';
+		if (/^md_/i.test(p) || /^\d+$/.test(p)) {
+			return p;
+		}
+		if (!p) {
+			return '';
+		}
+		/* Legacy path — still emit pick when present; do not reintroduce values bag. */
+		return p;
+	}
+
+	function encodeEmbedBind(instanceId) {
+		var id = instanceId != null ? String(instanceId).trim() : '';
+		return id;
+	}
+
+	function isEmbedPreferredField(field) {
+		var key = String(
+			(field && (field.typePreferredRender || field.preferredRender)) || ''
+		)
+			.trim()
+			.toLowerCase();
+		return (
+			key === 'embed' ||
+			key === 'pick-fill' ||
+			key === 'pick_fill' ||
+			key === 'compact-embed'
+		);
+	}
+
+	var schemaLoaderFn = null;
+	var schemaCache = {};
+	/** @type {{ taxonomy?: string, listInstances?: Function, createInstance?: Function, resolveInstance?: Function }} */
+	var modelDataApi = {};
+	/** Last kind term id picked in embed popup (focus fallback). */
+	var lastEmbedKindId = 0;
+
+	function setSchemaLoader(fn) {
+		schemaLoaderFn = typeof fn === 'function' ? fn : null;
+	}
+
+	function loadNodeSchema(termId) {
+		termId = parseInt(termId, 10) || 0;
+		if (termId <= 0) {
+			return Promise.resolve({ attributes: [] });
+		}
+		var key = String(termId);
+		if (schemaCache[key]) {
+			return Promise.resolve(schemaCache[key]);
+		}
+		if (!schemaLoaderFn) {
+			return Promise.resolve({ attributes: [] });
+		}
+		return Promise.resolve(schemaLoaderFn(termId)).then(function (schema) {
+			var normalized = {
+				attributes: normalizeAttributes(
+					(schema && (schema.attributes || schema.properties || schema.fields)) ||
+						[]
+				),
+			};
+			schemaCache[key] = normalized;
+			return normalized;
+		});
+	}
+
+	/**
+	 * Build TreeChooser roots from flat fixedOptions (branch under type root only).
+	 * @param {Array} options
+	 * @param {number} [rootId]
+	 * @return {Array}
+	 */
+	function buildEmbedKindRoots(options, rootId) {
+		var roots = [];
+		var byKey = {};
+		var rootLabel = 'Bauteil';
+
+		function ensureFolder(segments) {
+			var parentList = roots;
+			var pathSoFar = '';
+			var i;
+			for (i = 0; i < segments.length; i++) {
+				pathSoFar = pathSoFar
+					? pathSoFar + '/' + segments[i]
+					: segments[i];
+				var key = 'folder::' + pathSoFar;
+				var node = byKey[key];
+				if (!node) {
+					node = {
+						key: key,
+						id: 0,
+						name: segments[i],
+						selectable: false,
+						children: [],
+					};
+					byKey[key] = node;
+					parentList.push(node);
+				}
+				parentList = node.children;
+			}
+			return parentList;
+		}
+
+		(options || []).forEach(function (opt) {
+			if (!opt || opt.id == null) {
+				return;
+			}
+			var path = String(opt.path || opt.name || '')
+				.trim()
+				.replace(/\s*\/\s*/g, '/')
+				.replace(/^\/+|\/+$/g, '');
+			var parts = path
+				? path.split('/').filter(Boolean)
+				: [String(opt.name || opt.id)];
+			var leafName = parts[parts.length - 1] || String(opt.name || opt.id);
+			var parentSegs = parts.slice(0, -1);
+			var parentList =
+				parentSegs.length > 0 ? ensureFolder(parentSegs) : roots;
+			parentList.push({
+				key: 'leaf::' + String(opt.id),
+				id: parseInt(opt.id, 10) || 0,
+				name: leafName,
+				selectable: true,
+				children: [],
+			});
+		});
+
+		if (!roots.length && rootId > 0) {
+			return [
+				{
+					id: rootId,
+					name: rootLabel,
+					selectable: true,
+					children: [],
+				},
+			];
+		}
+		/* Present options as a single branch under the type root (Model/Bauteil). */
+		if (roots.length && rootId > 0) {
+			return [
+				{
+					id: rootId,
+					name: rootLabel,
+					selectable: false,
+					children: roots,
+				},
+			];
+		}
+		return roots;
+	}
+
+	function instanceMatchesAndFilter(inst, filterValues, attrs) {
+		var values =
+			inst && inst.values && typeof inst.values === 'object'
+				? inst.values
+				: {};
+		var i;
+		for (i = 0; i < (attrs || []).length; i++) {
+			var field = attrs[i];
+			if (!field) {
+				continue;
+			}
+			var k = valueKey(field);
+			var want = filterValues[k] != null ? String(filterValues[k]).trim() : '';
+			if (!want) {
+				continue;
+			}
+			var have = values[k] != null ? String(values[k]) : '';
+			if (have.toLowerCase().indexOf(want.toLowerCase()) === -1) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function formatEmbedInstanceLabel(inst) {
+		if (!inst) {
+			return '';
+		}
+		var seq = parseInt(inst.seq, 10) || 0;
+		var id = inst.id != null ? String(inst.id) : '';
+		if (seq > 0) {
+			return '#' + seq + (id ? ' · ' + id : '');
+		}
+		return id || '—';
+	}
+
+	/**
+	 * UR-B6 popup: (A) TreeChooser kind under branch root; (B) Form filter + Model_Data list/create.
+	 * Host store = instance id only (Q93).
+	 *
+	 * @param {{ choiceOptions?: Array, value?: string, readonly?: boolean, loadSchema?: function, onChange?: function, className?: string, field?: object, rootId?: number, required?: boolean }} options
+	 * @return {HTMLElement}
+	 */
+	function renderEmbed(options) {
+		options = options || {};
+		var readonly = !!options.readonly;
+		var choiceOptions = Array.isArray(options.choiceOptions)
+			? options.choiceOptions
+			: [];
+		var field = options.field || null;
+		var rootId =
+			parseInt(options.rootId, 10) ||
+			(field && (parseInt(field.fixedRootId, 10) || parseInt(field.typeId, 10))) ||
+			0;
+		var required =
+			options.required != null
+				? !!options.required
+				: !!(field && field.allowsEmpty === false);
+		var store = parseEmbedStore(options.value);
+		var boundId = store.instanceId || '';
+		var boundLabel = boundId
+			? boundId
+			: store.kindId
+				? resolveCatalogLabel(choiceOptions, store.kindId) ||
+				  '#' + store.kindId
+				: '';
+
+		var root = createEl('div', {
+			className:
+				'wtt-object-render wtt-object-render--embed wtt-object-render--embed-b6' +
+				(readonly ? ' is-display' : ' is-edit') +
+				(required && !boundId ? ' is-invalid' : '') +
+				(options.className ? ' ' + options.className : ''),
+		});
+
+		var labelEl = createEl('span', {
+			className: 'wtt-object-render__embed-pick-label',
+			text: boundLabel || (readonly ? '—' : t('embedPickHint', 'Choose kind…')),
+		});
+		root.appendChild(labelEl);
+
+		if (required && !boundId && !readonly) {
+			root.appendChild(
+				createEl('span', {
+					className: 'wtt-object-render__embed-error',
+					title: t(
+						'embedRequiredEmpty',
+						'Required — pick or create a part.'
+					),
+					text: '!',
+				})
+			);
+		}
+
+		function emitBind(instanceId, label) {
+			boundId = instanceId != null ? String(instanceId) : '';
+			boundLabel = label || boundId;
+			labelEl.textContent =
+				boundLabel || t('embedPickHint', 'Choose kind…');
+			if (required) {
+				if (boundId) {
+					root.classList.remove('is-invalid');
+					var err = root.querySelector('.wtt-object-render__embed-error');
+					if (err && err.parentNode) {
+						err.parentNode.removeChild(err);
+					}
+				} else if (!root.querySelector('.wtt-object-render__embed-error')) {
+					root.classList.add('is-invalid');
+					root.appendChild(
+						createEl('span', {
+							className: 'wtt-object-render__embed-error',
+							title: t(
+								'embedRequiredEmpty',
+								'Required — pick or create a part.'
+							),
+							text: '!',
+						})
+					);
+				}
+			}
+			if (typeof options.onChange === 'function') {
+				options.onChange(encodeEmbedBind(boundId));
+			}
+		}
+
+		function openB6Popup() {
+			ensureDefaultModelDataApi();
+			var Picker = global.WTTNodePicker;
+			var kindRoots = buildEmbedKindRoots(choiceOptions, rootId);
+			if (!kindRoots.length) {
+				window.alert(
+					t(
+						'embedNoChoices',
+						'No specialization children under this node.'
+					)
+				);
+				return;
+			}
+
+			var phase = 'A';
+			var kindId =
+				parseInt(store.kindId, 10) ||
+				lastEmbedKindId ||
+				0;
+			var filterValues = {};
+			var kindAttrs = [];
+			var instances = [];
+
+			var body = createEl('div', {
+				className: 'wtt-object-render__embed-dialog-body',
+			});
+			var titleEl = createEl('h2', {
+				text: t('embedPhaseATitle', 'Choose part kind'),
+			});
+
+			function close() {
+				if (backdrop.parentNode) {
+					backdrop.parentNode.removeChild(backdrop);
+				}
+			}
+
+			function paintPhaseA() {
+				phase = 'A';
+				titleEl.textContent = t('embedPhaseATitle', 'Choose part kind');
+				body.textContent = '';
+				var focusId = kindId || lastEmbedKindId || rootId || 0;
+				if (Picker && typeof Picker.render === 'function') {
+					body.appendChild(
+						Picker.render({
+							roots: kindRoots,
+							selectedId: kindId || 0,
+							focusId: focusId,
+							expandFocusBranch: true,
+							presentation: 'inline',
+							embedded: true,
+							defaultOpen: true,
+							showPickedLabel: true,
+							dialogTitle: t('embedPhaseATitle', 'Choose part kind'),
+							i18n: i18nStrings,
+							selectable: function (node) {
+								return !!(node && node.selectable && node.id);
+							},
+							onSelect: function (id) {
+								kindId = parseInt(id, 10) || 0;
+								if (kindId > 0) {
+									lastEmbedKindId = kindId;
+									paintPhaseB();
+								}
+							},
+						})
+					);
+				} else {
+					/* Fallback: reuse catalog tree chooser (debt — prefer WTTNodePicker). */
+					body.appendChild(
+						renderCatalogTreeChooser(
+							choiceOptions,
+							kindId,
+							function (id) {
+								kindId = parseInt(id, 10) || 0;
+								if (kindId > 0) {
+									lastEmbedKindId = kindId;
+									paintPhaseB();
+								}
+							}
+						)
+					);
+				}
+				backBtn.hidden = true;
+			}
+
+			function refreshMatches() {
+				var listHost = body.querySelector(
+					'.wtt-object-render__embed-matches'
+				);
+				if (!listHost) {
+					return;
+				}
+				listHost.textContent = '';
+				var matched = (instances || []).filter(function (inst) {
+					return instanceMatchesAndFilter(inst, filterValues, kindAttrs);
+				});
+				if (!matched.length) {
+					listHost.appendChild(
+						createEl('p', {
+							className: 'description',
+							text: t('embedNoMatches', 'No matching instances.'),
+						})
+					);
+					return;
+				}
+				var table = createEl('table', {
+					className:
+						'wtt-model-instance-picker__table wtt-object-render__embed-instance-table',
+				});
+				var thead = createEl('thead');
+				var hr = createEl('tr');
+				hr.appendChild(
+					createEl('th', { text: t('colIndex', '#') })
+				);
+				hr.appendChild(
+					createEl('th', { text: t('colVersion', 'Version') })
+				);
+				hr.appendChild(
+					createEl('th', { text: t('colModified', 'Modified') })
+				);
+				hr.appendChild(
+					createEl('th', { text: t('colInstanceId', 'Id') })
+				);
+				thead.appendChild(hr);
+				table.appendChild(thead);
+				var tbody = createEl('tbody');
+				matched.forEach(function (inst) {
+					var tr = createEl('tr', {
+						className: 'wtt-model-instance-picker__row',
+						onClick: function () {
+							emitBind(
+								inst.id,
+								formatEmbedInstanceLabel(inst)
+							);
+							close();
+						},
+					});
+					var seq = parseInt(inst.seq, 10) || 0;
+					tr.appendChild(
+						createEl('td', {
+							text: seq > 0 ? '#' + seq : '—',
+						})
+					);
+					tr.appendChild(
+						createEl('td', {
+							text: inst.version != null ? 'v' + inst.version : '—',
+						})
+					);
+					tr.appendChild(
+						createEl('td', {
+							text:
+								inst.modifiedAtLabel ||
+								inst.modifiedAt ||
+								'—',
+						})
+					);
+					tr.appendChild(
+						createEl('td', {
+							html:
+								'<code>' +
+								String(inst.id || '')
+									.replace(/</g, '&lt;')
+									.replace(/>/g, '&gt;') +
+								'</code>',
+						})
+					);
+					tbody.appendChild(tr);
+				});
+				table.appendChild(tbody);
+				listHost.appendChild(table);
+			}
+
+			function paintPhaseB() {
+				phase = 'B';
+				titleEl.textContent = t('embedPhaseBTitle', 'Pick or create part');
+				body.textContent = '';
+				body.appendChild(
+					createEl('p', {
+						className: 'description',
+						text: t(
+							'embedPhaseBHint',
+							'Filter existing Model data for this kind, pick a match, or create from the form.'
+						),
+					})
+				);
+				backBtn.hidden = false;
+
+				var filterHost = createEl('div', {
+					className: 'wtt-object-render__embed-filter',
+				});
+				filterHost.appendChild(
+					createEl('strong', {
+						text: t('embedFilterLabel', 'Filter (AND)'),
+					})
+				);
+				var formHost = createEl('div', {
+					className: 'wtt-object-render__embed-filter-form',
+				});
+				filterHost.appendChild(formHost);
+				body.appendChild(filterHost);
+
+				var matchesWrap = createEl('div', {
+					className: 'wtt-object-render__embed-matches-wrap',
+				});
+				matchesWrap.appendChild(
+					createEl('strong', {
+						text: t('embedMatches', 'Matches'),
+					})
+				);
+				var listHost = createEl('div', {
+					className: 'wtt-object-render__embed-matches',
+				});
+				listHost.appendChild(
+					createEl('span', {
+						className: 'wtt-field-hint',
+						text: t('embedLoading', 'Loading…'),
+					})
+				);
+				matchesWrap.appendChild(listHost);
+				body.appendChild(matchesWrap);
+
+				var actionsRow = createEl('div', {
+					className: 'wtt-object-render__embed-phase-actions',
+				});
+				var createBtn = createEl('button', {
+					type: 'button',
+					className: 'button button-primary',
+					text: t('embedCreateBind', 'Create and bind'),
+				});
+				actionsRow.appendChild(createBtn);
+				body.appendChild(actionsRow);
+
+				var loader =
+					typeof options.loadSchema === 'function'
+						? options.loadSchema
+						: loadNodeSchema;
+
+				Promise.resolve(loader(kindId)).then(function (schema) {
+					kindAttrs = normalizeAttributes(
+						(schema && schema.attributes) || []
+					);
+					formHost.textContent = '';
+					if (!kindAttrs.length) {
+						formHost.appendChild(
+							createEl('span', {
+								className: 'wtt-field-hint',
+								text: t(
+									'embedNoFields',
+									'Selected node has no attributes.'
+								),
+							})
+						);
+					} else {
+						filterValues = {};
+						formHost.appendChild(
+							renderForm(
+								{ attributes: kindAttrs, values: filterValues },
+								{
+									readonly: false,
+									className:
+										'wtt-object-render__embed-filter-inner',
+									onFieldInput: function (innerField, next) {
+										var k = valueKey(innerField);
+										filterValues[k] =
+											next == null ? '' : String(next);
+										refreshMatches();
+									},
+								}
+							)
+						);
+					}
+
+					var listFn = modelDataApi.listInstances;
+					if (typeof listFn !== 'function') {
+						listHost.textContent = '';
+						listHost.appendChild(
+							createEl('p', {
+								className: 'description',
+								text: t(
+									'embedInstanceApiMissing',
+									'Model data API unavailable — cannot list or create instances.'
+								),
+							})
+						);
+						/* TODO(UR-B6): AND-filter polish + REST wiring on all surfaces. */
+						createBtn.disabled = true;
+						return;
+					}
+
+					Promise.resolve(
+						listFn(kindId, modelDataApi.taxonomy || '')
+					).then(function (rows) {
+						instances = Array.isArray(rows) ? rows : [];
+						refreshMatches();
+					}).catch(function () {
+						instances = [];
+						listHost.textContent = '';
+						listHost.appendChild(
+							createEl('p', {
+								className: 'description',
+								text: t('error', 'Something went wrong.'),
+							})
+						);
+					});
+				});
+
+				createBtn.addEventListener('click', function () {
+					var createFn = modelDataApi.createInstance;
+					if (typeof createFn !== 'function') {
+						window.alert(
+							t(
+								'embedInstanceApiMissing',
+								'Model data API unavailable — cannot list or create instances.'
+							)
+						);
+						return;
+					}
+					/* Minimal Mult/required check on create form (= filter values). */
+					var missing = [];
+					kindAttrs.forEach(function (a) {
+						if (!a || a.allowsEmpty !== false) {
+							return;
+						}
+						var k = valueKey(a);
+						var v =
+							filterValues[k] != null
+								? String(filterValues[k]).trim()
+								: '';
+						if (!v) {
+							missing.push(a.name || k);
+						}
+					});
+					if (missing.length) {
+						window.alert(
+							t(
+								'embedRequiredEmpty',
+								'Required — pick or create a part.'
+							) +
+								'\n' +
+								missing.join(', ')
+						);
+						return;
+					}
+					createBtn.disabled = true;
+					Promise.resolve(
+						createFn(
+							kindId,
+							Object.assign({}, filterValues),
+							modelDataApi.taxonomy || ''
+						)
+					)
+						.then(function (created) {
+							createBtn.disabled = false;
+							if (!created || !created.id) {
+								window.alert(
+									t('error', 'Something went wrong.')
+								);
+								return;
+							}
+							emitBind(
+								created.id,
+								formatEmbedInstanceLabel(created)
+							);
+							close();
+						})
+						.catch(function () {
+							createBtn.disabled = false;
+							window.alert(t('error', 'Something went wrong.'));
+						});
+				});
+			}
+
+			var backBtn = createEl('button', {
+				type: 'button',
+				className: 'button',
+				text: t('embedBackKind', '← Kind'),
+				onClick: function () {
+					paintPhaseA();
+				},
+			});
+			backBtn.hidden = true;
+
+			var backdrop = createEl('div', {
+				className: 'wtt-dialog-backdrop wtt-object-render__embed-backdrop',
+			});
+			var dialog = createEl('div', {
+				className: 'wtt-dialog wtt-dialog--embed-b6',
+				role: 'dialog',
+			});
+			dialog.appendChild(titleEl);
+			dialog.appendChild(body);
+			dialog.appendChild(
+				createEl('div', { className: 'wtt-dialog__actions' }, [
+					backBtn,
+					createEl('button', {
+						type: 'button',
+						className: 'button',
+						text: t('cancel', 'Cancel'),
+						onClick: function () {
+							close();
+						},
+					}),
+				])
+			);
+			backdrop.appendChild(dialog);
+			backdrop.addEventListener('click', function (e) {
+				if (e.target === backdrop) {
+					close();
+				}
+			});
+			document.body.appendChild(backdrop);
+			paintPhaseA();
+		}
+
+		if (!readonly) {
+			root.appendChild(
+				createEl('button', {
+					type: 'button',
+					className: 'button button-small wtt-object-render__embed-open',
+					text: boundId
+						? t('embedChangePart', 'Change…')
+						: t('embedPickPart', 'Pick part…'),
+					onClick: function (e) {
+						e.preventDefault();
+						openB6Popup();
+					},
+				})
+			);
+		}
+
+		return root;
+	}
+
+	function paintEmbedField(field, value, opts) {
+		opts = opts || {};
+		var required =
+			field &&
+			field.allowsEmpty === false &&
+			!multiplicityAllowsMany(field.multiplicity);
+		return renderEmbed({
+			field: field,
+			choiceOptions: catalogOptionsForField(field),
+			rootId:
+				parseInt(field && field.fixedRootId, 10) ||
+				parseInt(field && field.typeId, 10) ||
+				0,
+			value: value != null ? String(value) : '',
+			readonly: !!opts.readonly || !!(field && field.readonly),
+			required: !!required,
+			loadSchema: opts.loadSchema,
+			className: 'wtt-object-render__embed-field',
+			onChange:
+				typeof opts.onInput === 'function'
+					? function (next) {
+							opts.onInput(next);
+					  }
+					: null,
+		});
+	}
+
+	/**
 	 * @param {object} values
 	 * @param {Array} attrs
 	 * @return {string}
@@ -891,6 +1711,11 @@
 					return paintedQty;
 				}
 			}
+		}
+
+		/* Preferred render embed on the type node: pick child + compact fill. */
+		if (isEmbedPreferredField(field)) {
+			return paintEmbedField(field, value, opts);
 		}
 
 		/* Structured type (has attributes) → embed Form of type schema, not CatalogChoice. */
@@ -1254,14 +2079,76 @@
 	}
 
 	/**
-	 * Merge i18n (and future options) from PHP localize / Object_Render::enqueue_assets.
-	 * @param {{ i18n?: Record<string, string> }} [opts]
+	 * Default Model_Data bridge via wp.apiFetch REST when page did not wire AJAX.
+	 */
+	function ensureDefaultModelDataApi() {
+		if (
+			typeof modelDataApi.listInstances === 'function' &&
+			typeof modelDataApi.createInstance === 'function'
+		) {
+			return;
+		}
+		var apiFetch =
+			global.wp && global.wp.apiFetch ? global.wp.apiFetch : null;
+		if (typeof apiFetch !== 'function') {
+			return;
+		}
+		if (typeof modelDataApi.listInstances !== 'function') {
+			modelDataApi.listInstances = function (structureId, taxonomy) {
+				var id = parseInt(structureId, 10) || 0;
+				var qs = taxonomy
+					? '?taxonomy=' + encodeURIComponent(String(taxonomy))
+					: '';
+				return apiFetch({
+					path: '/wtt/v1/model-data/' + id + qs,
+				}).then(function (data) {
+					return data && Array.isArray(data.instances)
+						? data.instances
+						: [];
+				});
+			};
+		}
+		if (typeof modelDataApi.createInstance !== 'function') {
+			modelDataApi.createInstance = function (
+				structureId,
+				values,
+				taxonomy
+			) {
+				var id = parseInt(structureId, 10) || 0;
+				return apiFetch({
+					path: '/wtt/v1/model-data/' + id,
+					method: 'POST',
+					data: {
+						taxonomy: taxonomy || modelDataApi.taxonomy || undefined,
+						values:
+							values && typeof values === 'object' ? values : {},
+					},
+				}).then(function (data) {
+					return data && data.instance ? data.instance : null;
+				});
+			};
+		}
+	}
+
+	/**
+	 * Merge i18n / Model_Data API from PHP localize / page boot.
+	 * @param {{ i18n?: Record<string, string>, taxonomy?: string, modelDataApi?: object }} [opts]
 	 */
 	function configure(opts) {
 		opts = opts || {};
 		if (opts.i18n && typeof opts.i18n === 'object') {
 			i18nStrings = Object.assign({}, i18nStrings, opts.i18n);
 		}
+		if (opts.taxonomy != null && String(opts.taxonomy) !== '') {
+			modelDataApi.taxonomy = String(opts.taxonomy);
+		}
+		if (opts.modelDataApi && typeof opts.modelDataApi === 'object') {
+			modelDataApi = Object.assign({}, modelDataApi, opts.modelDataApi);
+			if (opts.taxonomy != null && String(opts.taxonomy) !== '') {
+				modelDataApi.taxonomy = String(opts.taxonomy);
+			}
+		}
+		ensureDefaultModelDataApi();
 	}
 
 	function multiplicityAllowsMany(mult) {
@@ -1335,15 +2222,31 @@
 				displayFormat:
 					prop.displayFormat != null
 						? String(prop.displayFormat)
-						: prop.intConfig && prop.intConfig.displayFormat
-							? String(prop.intConfig.displayFormat)
-							: '',
+						: prop.preferredConverter != null
+							? String(prop.preferredConverter)
+							: prop.intConfig && prop.intConfig.displayFormat
+								? String(prop.intConfig.displayFormat)
+								: '',
+				preferredConverter:
+					prop.preferredConverter != null
+						? String(prop.preferredConverter)
+						: prop.displayFormat != null
+							? String(prop.displayFormat)
+							: prop.intConfig && prop.intConfig.displayFormat
+								? String(prop.intConfig.displayFormat)
+								: '',
 				mediaConfig:
 					prop.mediaConfig && typeof prop.mediaConfig === 'object'
 						? prop.mediaConfig
 						: null,
 				typeProperties: Array.isArray(prop.typeProperties)
 					? prop.typeProperties.slice()
+					: [],
+				binding: prop.binding || '',
+				isRelatedDataset: !!prop.isRelatedDataset,
+				usesRelatedInstances: !!prop.usesRelatedInstances,
+				relatedInstances: Array.isArray(prop.relatedInstances)
+					? prop.relatedInstances.slice()
 					: [],
 			};
 			var val = '';
@@ -1423,6 +2326,14 @@
 		}
 		if (key === 'compact-vertical' || key === 'compact-v') {
 			return 'compact-vertical';
+		}
+		if (
+			key === 'embed' ||
+			key === 'pick-fill' ||
+			key === 'pick_fill' ||
+			key === 'compact-embed'
+		) {
+			return 'embed';
 		}
 		return 'form';
 	}
@@ -1610,16 +2521,30 @@
 	}
 
 	/**
-	 * Multiplicity > 1 = list of the attribute's type → plain renderTable (Table(n)).
-	 * No special many UI: columns = type attributes when structured, else the field itself.
+	 * Multiplicity > 1 = list of the attribute's type → collection Table(n) (OQ-R8).
+	 * Related Model_Data (Q97): edit via onRelatedFieldInput / onAddRelatedLine — not host blob.
 	 *
 	 * @param {HTMLElement} section
 	 * @param {Array} manyProps
-	 * @param {{ readonly?: boolean, referenceMode?: string, onFieldInput?: function }} [opts]
+	 * @param {{
+	 *   readonly?: boolean,
+	 *   referenceMode?: string,
+	 *   onFieldInput?: function,
+	 *   onRelatedFieldInput?: function,
+	 *   onAddRelatedLine?: function
+	 * }} [opts]
 	 */
 	function appendManyTable(section, manyProps, opts) {
 		opts = opts || {};
 		var readonly = !!opts.readonly;
+		var onRelatedFieldInput =
+			typeof opts.onRelatedFieldInput === 'function'
+				? opts.onRelatedFieldInput
+				: null;
+		var onAddRelatedLine =
+			typeof opts.onAddRelatedLine === 'function'
+				? opts.onAddRelatedLine
+				: null;
 		var stack = createEl('div', {
 			className: 'wtt-object-view__many-stack',
 		});
@@ -1628,25 +2553,73 @@
 				return;
 			}
 			var attrs = schemaFieldsForManyProp(prop);
-			var instances = instancesForManyProp(prop, attrs, readonly);
+			var usesRelated = propUsesRelatedInstances(prop);
+			/*
+			 * Related Mult many: Preferred paints unit cells inside the collection
+			 * Table; edit goes to child Model_Data via callbacks (not host JSON).
+			 */
+			var relatedEditable =
+				usesRelated &&
+				!readonly &&
+				!prop.readonly &&
+				(!!onRelatedFieldInput || !!onAddRelatedLine);
+			var rowReadonly =
+				readonly || !!prop.readonly || (usesRelated && !relatedEditable);
+			var instances = instancesForManyProp(prop, attrs, rowReadonly);
 			var hostField = fieldFromProp(prop);
 
 			var item = createEl('div', {
-				className: 'wtt-object-view__many-item',
+				className:
+					'wtt-object-view__many-item' +
+					(usesRelated ? ' wtt-object-view__many-item--related' : ''),
 			});
-			item.appendChild(
+			var titleRow = createEl('div', {
+				className: 'wtt-object-view__many-title-row',
+			});
+			titleRow.appendChild(
 				createEl('h5', {
 					className: 'wtt-object-view__many-title',
 					text: prop.name || '—',
 				})
 			);
+			if (relatedEditable && onAddRelatedLine) {
+				titleRow.appendChild(
+					createEl('button', {
+						type: 'button',
+						className:
+							'button button-small wtt-object-view__add-line',
+						text: t('addLine', 'Add line'),
+						onClick: function (e) {
+							if (e && e.preventDefault) {
+								e.preventDefault();
+							}
+							onAddRelatedLine(prop);
+						},
+					})
+				);
+			}
+			item.appendChild(titleRow);
+			if (usesRelated && relatedEditable) {
+				item.appendChild(
+					createEl('p', {
+						className: 'description wtt-object-view__related-hint',
+						text: t(
+							'relatedLinesHint',
+							'Composition/aggregation Mult many rows for this instance (not a global orphan list).'
+						),
+					})
+				);
+			}
 			item.appendChild(
 				renderTable(instances, {
-					readonly: readonly || !!prop.readonly,
+					readonly: rowReadonly,
 					referenceMode: opts.referenceMode,
 					attributes: attrs,
 					className: 'wtt-object-view__table',
-					onFieldInput: readonly
+					emptyMessage: usesRelated
+						? t('noRelatedLines', 'No related lines yet.')
+						: t('tableEmpty', 'No data available.'),
+					onFieldInput: rowReadonly
 						? null
 						: function (field, next, instance, rowIndex) {
 								var idKey = valueKey(field);
@@ -1655,6 +2628,22 @@
 								}
 								instance.values[idKey] =
 									next == null ? '' : String(next);
+								if (usesRelated) {
+									if (
+										!instance.id ||
+										typeof onRelatedFieldInput !== 'function'
+									) {
+										return;
+									}
+									onRelatedFieldInput(
+										prop,
+										field,
+										next,
+										instance,
+										rowIndex
+									);
+									return;
+								}
 								if (typeof opts.onFieldInput === 'function') {
 									opts.onFieldInput(
 										hostField,
@@ -1669,6 +2658,23 @@
 			stack.appendChild(item);
 		});
 		section.appendChild(stack);
+	}
+
+	/**
+	 * Q97 related-dataset Mult many (Bauteilliste → Position, …).
+	 * @param {object} prop
+	 * @return {boolean}
+	 */
+	function propUsesRelatedInstances(prop) {
+		if (!prop || typeof prop !== 'object') {
+			return false;
+		}
+		return (
+			!!prop.usesRelatedInstances ||
+			!!prop.isRelatedDataset ||
+			(Array.isArray(prop.relatedInstances) &&
+				prop.relatedInstances.length > 0)
+		);
 	}
 
 	/**
@@ -1739,6 +2745,35 @@
 	 * @return {Array}
 	 */
 	function instancesForManyProp(prop, attrs, readonly) {
+		/*
+		 * Q97 / OQ-R8: Mult > 1 related Model_Data → collection Table of linked
+		 * rows. Prefer relatedInstances; never invent an inline spare host blob.
+		 * New lines come from create_linked (Add line), not encodeManyInstances.
+		 */
+		if (propUsesRelatedInstances(prop)) {
+			var related = Array.isArray(prop.relatedInstances)
+				? prop.relatedInstances
+				: [];
+			if (!related.length) {
+				return [];
+			}
+			return related.map(function (row) {
+				var vals =
+					row && row.values && typeof row.values === 'object'
+						? Object.assign({}, row.values)
+						: emptyRowValues(attrs);
+				return {
+					id: row && row.id ? String(row.id) : '',
+					attributes: attrs,
+					values: vals,
+					structureId:
+						row && row.structureId != null
+							? parseInt(row.structureId, 10) || 0
+							: parseInt(prop.typeId, 10) || 0,
+				};
+			});
+		}
+
 		var raws = manyPropStoreValues(prop);
 		var list = raws.map(function (raw) {
 			return {
@@ -1822,7 +2857,9 @@
 	 *   referenceMode?: string,
 	 *   readonly?: boolean,
 	 *   mode?: 'edit'|'display',
-	 *   onFieldInput?: function
+	 *   onFieldInput?: function,
+	 *   onRelatedFieldInput?: function,
+	 *   onAddRelatedLine?: function
 	 * }} [options]
 	 * TODO(per-attribute): individual attributes may later carry their own
 	 * renderDepth / referenceMode overrides — keep mount options as the block-
@@ -1858,6 +2895,14 @@
 			readonly: readonly,
 			referenceMode: refMode,
 			onFieldInput: onFieldInput,
+			onRelatedFieldInput:
+				typeof options.onRelatedFieldInput === 'function'
+					? options.onRelatedFieldInput
+					: null,
+			onAddRelatedLine:
+				typeof options.onAddRelatedLine === 'function'
+					? options.onAddRelatedLine
+					: null,
 		};
 
 		if (!view) {
@@ -1917,12 +2962,33 @@
 			(view && Array.isArray(view.properties) ? view.properties : []) || [];
 
 		if (!allProps.length) {
-			section.appendChild(
-				createEl('p', {
-					className: 'wtt-object-view__empty',
-					text: t('noProperties', 'This node has no attributes.'),
-				})
-			);
+			if (
+				layout === 'embed' &&
+				Array.isArray(view.embedChoiceOptions) &&
+				view.embedChoiceOptions.length
+			) {
+				section.appendChild(
+					renderEmbed({
+						choiceOptions: view.embedChoiceOptions,
+						value:
+							view.instanceValues &&
+							typeof view.instanceValues === 'object' &&
+							view.instanceValues.__embed != null
+								? String(view.instanceValues.__embed)
+								: '',
+						readonly: !!paintOpts.readonly,
+						className: 'wtt-object-view__embed',
+						onChange: paintOpts.onEmbedChange || null,
+					})
+				);
+			} else {
+				section.appendChild(
+					createEl('p', {
+						className: 'wtt-object-view__empty',
+						text: t('noProperties', 'This node has no attributes.'),
+					})
+				);
+			}
 		} else {
 			/* Singles follow layout; multi-value attributes always render as a table. */
 			if (parts.single.length) {
@@ -1955,6 +3021,23 @@
 									? 'vertical'
 									: 'horizontal',
 							className: 'wtt-object-view__compact',
+						})
+					);
+				} else if (layout === 'embed') {
+					section.appendChild(
+						renderEmbed({
+							choiceOptions: Array.isArray(view.embedChoiceOptions)
+								? view.embedChoiceOptions
+								: [],
+							value:
+								view.instanceValues &&
+								typeof view.instanceValues === 'object' &&
+								view.instanceValues.__embed != null
+									? String(view.instanceValues.__embed)
+									: '',
+							readonly: !!paintOpts.readonly,
+							className: 'wtt-object-view__embed',
+							onChange: paintOpts.onEmbedChange || null,
 						})
 					);
 				} else {
@@ -1993,6 +3076,10 @@
 		renderForm: renderForm,
 		renderTable: renderTable,
 		renderCompact: renderCompact,
+		renderEmbed: renderEmbed,
+		setSchemaLoader: setSchemaLoader,
+		parseEmbedStore: parseEmbedStore,
+		encodeEmbedStore: encodeEmbedStore,
 		buildExampleInstance: buildExampleInstance,
 		buildExampleList: buildExampleList,
 	};

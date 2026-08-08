@@ -1,5 +1,8 @@
+/* Full admin content width; WP .wrap already keeps ~20px side margins. */
 .wtt-wrap {
-	max-width: 1200px;
+	max-width: none;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 /* Shared detail chrome — form / bands / relations / settings / preview */
@@ -69,6 +72,36 @@
 .wtt-table-band-bindings__rows select {
 	width: 100%;
 	max-width: 28rem;
+}
+
+.wtt-form-section {
+	margin: 0.85em 0 1em;
+	padding: 0.75em 0.9em 0.85em;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fcfcfc;
+}
+
+.wtt-form-section__title {
+	margin: 0 0 0.25em;
+	font-size: 13px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.wtt-form-section__hint {
+	margin: 0 0 0.65em;
+	color: #646970;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.wtt-form-section .wtt-form__row:first-of-type {
+	margin-top: 0.35em;
+}
+
+.wtt-form-section--display {
+	background: #f6f7f7;
 }
 
 .wtt-detail-form {
@@ -155,10 +188,28 @@
 	gap: 0.15em;
 }
 
-.wtt-toolbar__hide-root {
+.wtt-toolbar__hide-root,
+.wtt-toolbar__toggles {
 	display: inline-flex;
+	flex-wrap: wrap;
 	align-items: center;
+	gap: 0.65em;
 	margin-left: auto;
+}
+
+.wtt-tree__model-count {
+	flex: 0 0 auto;
+	margin-left: 0.15em;
+	font-weight: 600;
+	color: #2271b1;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.wtt-tree__model-count:hover,
+.wtt-tree__model-count:focus {
+	color: #135e96;
+	text-decoration: underline;
 }
 
 .wtt-toolbar__icon {
@@ -460,6 +511,25 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+}
+
+.wtt-tree__icon {
+	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	line-height: 1;
+	color: #646970;
+}
+
+.wtt-tree__name-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .wtt-tree__actions {
@@ -591,6 +661,34 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 0.35em;
+}
+
+/* UR-S1: red circle + ! → Model versions (Conflict resolver deep-link). */
+.wtt-conflict-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.35em;
+	height: 1.35em;
+	min-width: 1.35em;
+	border-radius: 50%;
+	background: #d63638;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+	text-decoration: none;
+	vertical-align: middle;
+	box-sizing: border-box;
+	cursor: pointer;
+}
+
+a.wtt-conflict-badge:hover,
+a.wtt-conflict-badge:focus {
+	color: #fff;
+	background: #b32d2e;
+	box-shadow: 0 0 0 1px #fff, 0 0 0 3px #d63638;
+	outline: none;
 }
 
 .wtt-relations__title-wrap--an {
@@ -985,13 +1083,55 @@
 	margin-top: 0.15em;
 }
 
-.wtt-object-render--compact {
+.wtt-object-render--embed {
+	display: flex;
+	flex-flow: row wrap;
+	align-items: flex-start;
+	gap: 0.35em 0.55em;
 	margin: 0;
-	padding: 0.35em 0.4em;
+	padding: 0.25em 0.35em;
 	background: #f6f7f7;
 	border: 1px solid #c3c4c7;
 	border-radius: 2px;
 	box-sizing: border-box;
+	max-width: 100%;
+}
+
+.wtt-object-render--embed-compact {
+	align-items: center;
+}
+
+.wtt-object-render__embed-pick {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 14rem;
+}
+
+.wtt-object-render__embed-select {
+	max-width: 14rem;
+	width: auto;
+}
+
+.wtt-object-render__embed-fields {
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+
+.wtt-object-render__embed-fields .wtt-object-render--compact,
+.wtt-object-render__embed-compact-inner {
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.wtt-object-render__embed-pick-label {
+	font-weight: 600;
+}
+
+.wtt-set-preview__cell .wtt-object-render--embed,
+.wtt-object-render__table .wtt-object-render--embed {
+	/* Table column already names the field — keep strip dense. */
+	width: 100%;
 }
 
 .wtt-object-render--compact-horizontal {
@@ -1938,12 +2078,154 @@
 .wtt-form.wtt-detail .wtt-name-input,
 .wtt-form.wtt-detail .wtt-short-description-input,
 .wtt-form.wtt-detail .wtt-description-input,
-.wtt-form.wtt-detail .wtt-type-select {
+.wtt-form.wtt-detail .wtt-type-select,
+.wtt-form.wtt-detail .wtt-icon-select {
 	min-width: 0;
 	width: 100%;
 	max-width: 100%;
 	border-radius: 3px;
 	box-shadow: none;
+}
+
+.wtt-icon-select-wrap {
+	position: relative;
+	display: block;
+	width: 100%;
+	max-width: 100%;
+}
+
+.wtt-icon-select-wrap .wtt-icon-select {
+	width: 100%;
+	max-width: 100%;
+	padding-left: 2.25em;
+	box-sizing: border-box;
+}
+
+.wtt-icon-select__preview {
+	position: absolute;
+	left: 0.55em;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 1em;
+	height: 1em;
+	aspect-ratio: 1 / 1;
+	flex: none;
+	font-size: 16px;
+	line-height: 1;
+	color: #50575e;
+	pointer-events: none;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.wtt-icon-select__preview.dashicons {
+	width: 1em;
+	height: 1em;
+	font-size: 16px;
+}
+
+.wtt-icon-select__preview.dashicons::before {
+	width: 1em;
+	height: 1em;
+	font-size: 16px;
+	line-height: 1;
+}
+
+/* Icon list chooser — ListChooser + paintIcon (native <option> cannot show icons). */
+.wtt-icon-list-chooser {
+	position: relative;
+	width: 100%;
+	max-width: 100%;
+}
+
+.wtt-icon-list-chooser__trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5em;
+	width: 100%;
+	max-width: 100%;
+	min-height: 30px;
+	text-align: left;
+	box-sizing: border-box;
+}
+
+.wtt-icon-list-chooser__face {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.wtt-icon-list-chooser__icon,
+.wtt-icon-list-chooser__icon-slot {
+	flex: 0 0 1em;
+	width: 1em;
+	height: 1em;
+	aspect-ratio: 1 / 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 16px;
+	line-height: 1;
+	color: #50575e;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+
+.wtt-icon-list-chooser__label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.wtt-icon-list-chooser__caret {
+	flex: 0 0 auto;
+	opacity: 0.7;
+}
+
+.wtt-icon-list-chooser__panel {
+	position: absolute;
+	z-index: 100020;
+	left: 0;
+	right: 0;
+	top: calc(100% + 2px);
+	margin: 0;
+	padding: 0.25em 0;
+	list-style: none;
+	max-height: 16em;
+	overflow: auto;
+	background: #fff;
+	border: 1px solid #8c8f94;
+	border-radius: 3px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.wtt-icon-list-chooser__option {
+	display: flex;
+	align-items: center;
+	gap: 0.45em;
+	margin: 0;
+	padding: 0.35em 0.65em;
+	cursor: pointer;
+	line-height: 1.3;
+}
+
+.wtt-icon-list-chooser__option:hover,
+.wtt-icon-list-chooser__option:focus {
+	background: #f0f0f1;
+	outline: none;
+}
+
+.wtt-icon-list-chooser__option.is-selected {
+	background: #dcdcde;
+	font-weight: 600;
 }
 
 .wtt-form.wtt-detail .wtt-description-input {

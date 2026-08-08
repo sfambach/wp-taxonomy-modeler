@@ -198,6 +198,25 @@ final class Attribute {
 			}
 			if ( isset( $readonly_ids[ $attr_id ] ) ) {
 				$row['readonly'] = true;
+				/* Keep slot meta in sync when host already had RO before slot sync existed. */
+				if ( $attr_id > 0 && ! Node_Type::has_readonly_meta( $attr_id ) ) {
+					Node_Type::set_readonly( $taxonomy, $attr_id, true );
+				}
+			} elseif (
+				$attr_id > 0
+				&& empty( $row['inherited'] )
+				&& Node_Type::is_fixed_enabled( $attr_id )
+			) {
+				/*
+				 * Lean migration: own slot with Fixed-as-lock → host RO + slot RO.
+				 * Does not delete fixed* meta. Inherited stays host-override only (OQ-A3).
+				 */
+				Node_Type::maybe_migrate_fixed_lock_to_readonly( $attr_id );
+				$ids                 = self::get_readonly_ids( $host_id );
+				$ids[ $attr_id ]     = true;
+				self::store_readonly_ids( $host_id, array_keys( $ids ) );
+				$readonly_ids[ $attr_id ] = true;
+				$row['readonly']          = true;
 			}
 			$out[] = self::decorate_row( $row, $taxonomy, $host_id );
 		}
@@ -247,6 +266,8 @@ final class Attribute {
 
 	/**
 	 * Mark an effective attribute readonly on this host (own or inherited).
+	 * Syncs the lock onto the attribute slot term. Host list remains SoT for
+	 * OQ-A3 (RO default off; heir may switch on without mutating father’s override).
 	 *
 	 * @return true|\WP_Error
 	 */
@@ -270,19 +291,79 @@ final class Attribute {
 		$ids = self::get_readonly_ids( $host_id );
 		if ( $readonly ) {
 			$ids[ $attr_id ] = true;
+			self::store_readonly_ids( $host_id, array_keys( $ids ) );
+			$slot = Node_Type::set_readonly( $taxonomy, $attr_id, true );
+			if ( is_wp_error( $slot ) ) {
+				return $slot;
+			}
 		} else {
 			unset( $ids[ $attr_id ] );
+			self::store_readonly_ids( $host_id, array_keys( $ids ) );
+			if ( ! self::slot_readonly_held_elsewhere( $taxonomy, $host_id, $attr_id ) ) {
+				$slot = Node_Type::set_readonly( $taxonomy, $attr_id, false );
+				if ( is_wp_error( $slot ) ) {
+					return $slot;
+				}
+			}
 		}
-		self::store_readonly_ids( $host_id, array_keys( $ids ) );
 		Tree_Model::touch_modified( $host_id );
 
 		return true;
 	}
 
 	/**
-	 * Set default value(s) on the current host for an effective attribute (own or inherited).
+	 * Whether another host on the inheritance chain still marks this attribute RO
+	 * (OQ-A3: do not clear slot RO when an ancestor/owner still holds it).
+	 */
+	private static function slot_readonly_held_elsewhere( string $taxonomy, int $host_id, int $attr_id ): bool {
+		$chain = self::ancestor_chain_root_to_self( $taxonomy, $host_id );
+		foreach ( $chain as $node_id ) {
+			if ( (int) $node_id === $host_id ) {
+				continue;
+			}
+			$ids = self::get_readonly_ids( (int) $node_id );
+			if ( isset( $ids[ $attr_id ] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * When slot-node readonly is toggled from node settings, mirror onto owning hosts’
+	 * `_wtt_attribute_readonly` lists (meta only — no Nested set_readonly).
+	 */
+	public static function sync_hosts_readonly_from_slot( string $taxonomy, int $slot_id, bool $readonly ): void {
+		if ( $slot_id <= 0 || ! self::is_slot( $slot_id ) || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+		foreach ( Relation::list_incoming( $taxonomy, $slot_id ) as $edge ) {
+			$type_key = (string) ( $edge['typeKey'] ?? '' );
+			if ( ! self::is_attribute_binding( $type_key ) ) {
+				continue;
+			}
+			$host_id = (int) ( $edge['fromId'] ?? 0 );
+			if ( $host_id <= 0 ) {
+				continue;
+			}
+			$ids = self::get_readonly_ids( $host_id );
+			if ( $readonly ) {
+				$ids[ $slot_id ] = true;
+			} else {
+				unset( $ids[ $slot_id ] );
+			}
+			self::store_readonly_ids( $host_id, array_keys( $ids ) );
+			Tree_Model::touch_modified( $host_id );
+		}
+	}
+
+	/**
+	 * Set default value template(s) on the current host for an effective attribute (Q106).
 	 *
-	 * @param list<string>|string|null $values Null / empty clears.
+	 * Always a list sized by Mult: `0`/`1` → at most one entry; `0..*`/`1..*` → many.
+	 * Scalars store strings; related Mult may store nested value maps (default rows).
+	 *
+	 * @param list<string|array<string,string>>|string|null $values Null / empty clears.
 	 * @return true|\WP_Error
 	 */
 	public static function set_fixed_values( string $taxonomy, int $host_id, int $attr_id, $values ) {
@@ -393,10 +474,10 @@ final class Attribute {
 		if ( ! $type instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_bad_type', __( 'Data type not found.', 'wp-taxonomy-tree' ) );
 		}
-		if ( ! Node_Type::is_datatype( $taxonomy, $type_id ) ) {
+		if ( ! Node_Type::is_assignable_type( $taxonomy, $host_id, $type_id ) ) {
 			return new \WP_Error(
 				'wtt_bad_type',
-				__( 'Choose a data-type node.', 'wp-taxonomy-tree' )
+				__( 'Choose an existing type node.', 'wp-taxonomy-tree' )
 			);
 		}
 
@@ -606,10 +687,10 @@ final class Attribute {
 		if ( ! $type instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_bad_type', __( 'Data type not found.', 'wp-taxonomy-tree' ) );
 		}
-		if ( ! Node_Type::is_datatype( $taxonomy, $type_id ) ) {
+		if ( ! Node_Type::is_assignable_type( $taxonomy, $host_id, $type_id ) ) {
 			return new \WP_Error(
 				'wtt_bad_type',
-				__( 'Choose a data-type node.', 'wp-taxonomy-tree' )
+				__( 'Choose an existing type node.', 'wp-taxonomy-tree' )
 			);
 		}
 
@@ -709,6 +790,11 @@ final class Attribute {
 		}
 
 		/*
+		 * Preferred render: inherit type node's preferred until the slot overrides
+		 * (no meta written here — Attributes UI can change it).
+		 */
+
+		/*
 		 * Class with attributes is a datatype; hierarchy children type as this parent.
 		 */
 		Node_Type::promote_class_datatype( $taxonomy, $host_id );
@@ -778,6 +864,8 @@ final class Attribute {
 			if ( is_wp_error( $typed ) ) {
 				return $typed;
 			}
+			/* Type changed — drop slot override so Preferred follows the new type default. */
+			delete_term_meta( $attr_id, Node_Type::META_KEY_PREFERRED_RENDER );
 		}
 
 		if ( array_key_exists( 'multiplicity', $changes ) ) {
@@ -1250,7 +1338,6 @@ final class Attribute {
 		$name   = (string) ( $row['name'] ?? '' );
 		$values = self::fixed_values_for_name( $host_id, $name );
 		$row['fixedValues'] = $values;
-		$row['fixedLabel']  = self::format_fixed_label( $taxonomy, $values );
 		$row['allowsMany']  = self::multiplicity_allows_many( (string) ( $row['multiplicity'] ?? self::DEFAULT_MULTIPLICITY ) );
 		$row['allowsEmpty'] = self::multiplicity_allows_empty( (string) ( $row['multiplicity'] ?? self::DEFAULT_MULTIPLICITY ) );
 
@@ -1260,11 +1347,11 @@ final class Attribute {
 		$type_id = (int) ( $row['typeId'] ?? 0 );
 		$row['typeKey'] = '';
 		if ( $type_id > 0 ) {
-			$type = get_term( $type_id, $taxonomy );
-			if ( $type instanceof \WP_Term ) {
-				$row['typeKey'] = strtolower( $type->name );
-			}
+			/* Q96: prefer builtin.* binding; leaf name = debt fallback. */
+			$row['typeKey'] = Node_Type::registry_id_for_type_term( $taxonomy, $type_id );
 		}
+
+		$row['fixedLabel'] = self::format_fixed_label( $taxonomy, $values, (string) $row['typeKey'] );
 
 		/*
 		 * Festwert / value presentation mode (generic — no name hardcoding):
@@ -1294,6 +1381,28 @@ final class Attribute {
 			}
 		}
 
+		/* Slot preferred: own meta = override; else inherit type preferred (editable in UI). */
+		$row['typePreferredRender'] = $type_id > 0
+			? Node_Type::get_preferred_render( $type_id )
+			: 'form';
+		$attr_id_for_pref = (int) ( $row['id'] ?? 0 );
+		$has_pref_override = $attr_id_for_pref > 0
+			&& metadata_exists( 'term', $attr_id_for_pref, Node_Type::META_KEY_PREFERRED_RENDER );
+		$row['preferredRenderOverride'] = $has_pref_override;
+		$row['preferredRender']         = $has_pref_override
+			? Node_Type::get_preferred_render( $attr_id_for_pref )
+			: (string) $row['typePreferredRender'];
+		if (
+			'embed' === $row['typePreferredRender']
+			&& $type_id > 0
+			&& empty( $row['fixedOptions'] )
+			&& ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $type_id )
+			&& ! self::is_scalar_type_key( (string) $row['typeKey'] )
+		) {
+			$row['fixedRootId']  = $type_id;
+			$row['fixedOptions'] = self::fixed_options_under_type( $taxonomy, $type_id );
+		}
+
 		$attr_id = (int) ( $row['id'] ?? 0 );
 		$extras  = self::get_type_extras_for_attr( $host_id, $attr_id );
 		if ( empty( $extras ) && ! empty( $row['inherited'] ) ) {
@@ -1306,9 +1415,13 @@ final class Attribute {
 
 		/* Choice filter (include|exclude subtrees) against catalog fixedOptions. */
 		if (
-			'catalog' === (string) ( $row['fixedMode'] ?? '' )
+			(
+				'catalog' === (string) ( $row['fixedMode'] ?? '' )
+				|| 'embed' === (string) ( $row['typePreferredRender'] ?? '' )
+			)
 			&& isset( $extras['choiceFilter'] )
 			&& is_array( $extras['choiceFilter'] )
+			&& ! empty( $row['fixedOptions'] )
 		) {
 			$row['fixedOptions'] = self::apply_choice_filter(
 				$taxonomy,
@@ -1349,17 +1462,34 @@ final class Attribute {
 			if ( is_array( $cfg ) && isset( $cfg['displayFormat'] ) ) {
 				$type_format = Int_Value::normalize_format_id( (string) $cfg['displayFormat'] );
 			}
+			if ( $type_id > 0 ) {
+				$from_type = Node_Type::get_preferred_converter( $type_id );
+				if ( '' !== $from_type ) {
+					$type_format = Int_Value::normalize_format_id( $from_type );
+				}
+			}
 			$format = $type_format;
-			if ( isset( $extras['displayFormat'] ) && is_string( $extras['displayFormat'] ) && '' !== $extras['displayFormat'] ) {
+			if ( isset( $extras['preferredConverter'] ) && is_string( $extras['preferredConverter'] ) && '' !== $extras['preferredConverter'] ) {
+				$format = Int_Value::normalize_format_id( (string) $extras['preferredConverter'] );
+			} elseif ( isset( $extras['displayFormat'] ) && is_string( $extras['displayFormat'] ) && '' !== $extras['displayFormat'] ) {
 				$format = Int_Value::normalize_format_id( (string) $extras['displayFormat'] );
 			}
+			$has_conv_override =
+				( isset( $extras['preferredConverter'] ) && '' !== (string) $extras['preferredConverter'] )
+				|| ( isset( $extras['displayFormat'] ) && '' !== (string) $extras['displayFormat'] );
 			$row['intConfig'] = array(
 				'displayFormat' => $format,
 				'typeFormat'    => $type_format,
-				'hasOverride'   => isset( $extras['displayFormat'] ) && '' !== (string) $extras['displayFormat'],
+				'hasOverride'   => $has_conv_override,
 			);
-			$row['displayFormat'] = $format;
+			$row['displayFormat']       = $format;
+			$row['preferredConverter']  = $format;
+			$row['typePreferredConverter'] = $type_format;
 		}
+
+		$row['validators'] = $type_id > 0
+			? Node_Type::get_validators_for_node( $taxonomy, $type_id )
+			: array();
 
 		/* Basiseinheit unit type → Typ/Praefix/Kuerzel schema for quantity paint. */
 		$row['quantitySchema'] = null;
@@ -1469,6 +1599,15 @@ final class Attribute {
 	 *
 	 * @return list<array{id:int,name:string,path:string,shortDescription?:string}>
 	 */
+	/**
+	 * CatalogChoice / embed pick list: descendants under a type host (by id).
+	 *
+	 * @return list<array{id:int,name:string,path:string,shortDescription?:string}>
+	 */
+	public static function choice_options_under_type( string $taxonomy, int $type_id ): array {
+		return self::fixed_options_under_type( $taxonomy, $type_id );
+	}
+
 	private static function fixed_options_under_type( string $taxonomy, int $type_id ): array {
 		if ( $type_id <= 0 ) {
 			return array();
@@ -1529,26 +1668,57 @@ final class Attribute {
 	/**
 	 * @param list<string> $values
 	 */
-	private static function format_fixed_label( string $taxonomy, array $values ): string {
+	/**
+	 * Human label for stored Festwert / default values.
+	 *
+	 * Bool → true/false (i18n). Catalog picks → term names. Digits are only
+	 * treated as term ids when > 0 (so bool "0" is never a term lookup).
+	 *
+	 * @param list<string|array<string,string>> $values Stored wire values / nested maps.
+	 */
+	private static function format_fixed_label( string $taxonomy, array $values, string $type_key = '' ): string {
 		if ( empty( $values ) ) {
 			return '';
 		}
-		$labels = array();
+		$type_key = strtolower( trim( $type_key ) );
+		$labels   = array();
 		foreach ( $values as $v ) {
+			if ( is_array( $v ) ) {
+				/* Q106 nested default row — compact placeholder until Form/Table editor lands. */
+				$labels[] = __( '(default row)', 'wp-taxonomy-tree' );
+				continue;
+			}
 			$v = (string) $v;
 			if ( '' === $v ) {
 				continue;
 			}
+			if ( 'bool' === $type_key ) {
+				$labels[] = self::is_truthy_bool( $v )
+					? __( 'true', 'wp-taxonomy-tree' )
+					: __( 'false', 'wp-taxonomy-tree' );
+				continue;
+			}
 			if ( ctype_digit( $v ) ) {
-				$term = get_term( (int) $v, $taxonomy );
-				if ( $term instanceof \WP_Term ) {
-					$labels[] = $term->name;
-					continue;
+				$term_id = (int) $v;
+				if ( $term_id > 0 ) {
+					$term = get_term( $term_id, $taxonomy );
+					if ( $term instanceof \WP_Term ) {
+						$labels[] = $term->name;
+						continue;
+					}
 				}
 			}
 			$labels[] = $v;
 		}
 		return implode( ', ', $labels );
+	}
+
+	/**
+	 * Wire bool truthiness (0/1, true/false, yes/no).
+	 */
+	private static function is_truthy_bool( string $value ): bool {
+		$s = strtolower( trim( $value ) );
+		return in_array( $s, array( '1', 'true', 'yes', 'on' ), true );
 	}
 
 	private static function is_scalar_type_key( string $key ): bool {
@@ -1560,7 +1730,7 @@ final class Attribute {
 	}
 
 	/**
-	 * @return list<string>
+	 * @return list<string|array<string,string>>
 	 */
 	private static function fixed_values_for_name( int $host_id, string $name ): array {
 		if ( '' === $name ) {
@@ -1617,8 +1787,10 @@ final class Attribute {
 	}
 
 	/**
+	 * Normalize default templates (Q106): scalar strings and/or nested value maps.
+	 *
 	 * @param mixed $values
-	 * @return list<string>
+	 * @return list<string|array<string,string>>
 	 */
 	private static function normalize_fixed_values_input( $values ): array {
 		if ( null === $values || false === $values ) {
@@ -1631,14 +1803,47 @@ final class Attribute {
 		if ( ! is_array( $values ) ) {
 			return array();
 		}
-		$out = array();
+		$out          = array();
+		$seen_scalars = array();
 		foreach ( $values as $v ) {
-			$s = trim( (string) $v );
-			if ( '' !== $s ) {
-				$out[] = $s;
+			if ( is_array( $v ) ) {
+				$map = self::normalize_fixed_value_map( $v );
+				if ( array() !== $map ) {
+					$out[] = $map;
+				}
+				continue;
 			}
+			$s = trim( (string) $v );
+			if ( '' === $s || isset( $seen_scalars[ $s ] ) ) {
+				continue;
+			}
+			$seen_scalars[ $s ] = true;
+			$out[]              = $s;
 		}
-		return array_values( array_unique( $out ) );
+		return array_values( $out );
+	}
+
+	/**
+	 * One related-Mult default row: attr id → scalar string.
+	 *
+	 * @param array<mixed, mixed> $raw
+	 * @return array<string, string>
+	 */
+	private static function normalize_fixed_value_map( array $raw ): array {
+		$map = array();
+		foreach ( $raw as $key => $val ) {
+			if ( is_array( $val ) ) {
+				continue;
+			}
+			$attr_key = is_int( $key ) || ( is_string( $key ) && ctype_digit( $key ) )
+				? (string) absint( $key )
+				: sanitize_key( (string) $key );
+			if ( '' === $attr_key || '0' === $attr_key ) {
+				continue;
+			}
+			$map[ $attr_key ] = sanitize_text_field( (string) $val );
+		}
+		return $map;
 	}
 
 	/**
@@ -2252,10 +2457,17 @@ final class Attribute {
 			}
 		}
 
-		if ( array_key_exists( 'displayFormat', $extras ) ) {
+		if ( array_key_exists( 'preferredConverter', $extras ) ) {
+			$fmt = trim( (string) $extras['preferredConverter'] );
+			if ( '' !== $fmt ) {
+				$out['preferredConverter'] = Node_Type::normalize_preferred_converter( $fmt );
+				$out['displayFormat']      = Int_Value::normalize_format_id( $out['preferredConverter'] );
+			}
+		} elseif ( array_key_exists( 'displayFormat', $extras ) ) {
 			$fmt = trim( (string) $extras['displayFormat'] );
 			if ( '' !== $fmt ) {
-				$out['displayFormat'] = Int_Value::normalize_format_id( $fmt );
+				$out['displayFormat']      = Int_Value::normalize_format_id( $fmt );
+				$out['preferredConverter'] = $out['displayFormat'];
 			}
 		}
 

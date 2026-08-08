@@ -38,7 +38,7 @@ Sibling catalog holds pickable records (e.g. Name, E-Mail). Analog: Bauteil.**Li
 - PHP exposes **`nodeRefOptions`** via `Node_Type::get_node_ref_options_for_slot` and **`nodeRefCreateFields`** via `Composition::get_node_ref_create_fields` on `get_node` / table band fields.
 - Options are **records only**: table Kopf/Zeile/Fuss bands and set composition slots (and their subtrees) are excluded — e.g. Kontakte shows `contact c`, not `Zeilendefinition / Rolle / …`.
 - Create endpoint: **`wtt_create_node_ref_target`** (returns `{ option, nodeRefOptions }`).
-- **Field multiplicity** (Properties) controls single vs multi pick — not Relations Mult. on `has_type` / `ref_scope` (those stay `0..1`).
+- **Field multiplicity** (Properties) controls single vs multi pick — not Relations Mult. on `ref_scope` (stays `0..1`).
 - Preview / table cells go through **Registry** — do not leave `node_ref` cells as plain text or a naked checkbox wall.
 
 ## Do / don’t

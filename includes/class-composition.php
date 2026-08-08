@@ -522,8 +522,14 @@ final class Composition {
 			}
 			$type_name = (string) ( $row['typeName'] ?? '' );
 			$type_key  = (string) ( $row['typeKey'] ?? '' );
+			$type_id   = (int) ( $row['typeId'] ?? 0 );
+			if ( '' === $type_key && $type_id > 0 ) {
+				/* Q96: prefer builtin.* binding; name = debt fallback. */
+				$type_key = Node_Type::registry_id_for_type_term( $taxonomy, $type_id );
+			}
 			if ( '' === $type_key && '' !== $type_name ) {
-				$type_key = strtolower( $type_name );
+				/* Debt: leaf name match when builtin.* unbound. */
+				$type_key = Node_Type::normalize_type_name( $type_name );
 				if ( false !== strpos( $type_key, '/' ) ) {
 					$parts    = explode( '/', $type_key );
 					$type_key = trim( (string) end( $parts ) );

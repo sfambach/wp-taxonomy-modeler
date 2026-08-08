@@ -21,6 +21,10 @@
 		var input = form.querySelector('input[name="' + optionName + '"][type="checkbox"]');
 		if (input) {
 			input.checked = !!value;
+			var switchLabel = input.closest('.wtt-switch');
+			if (switchLabel) {
+				switchLabel.classList.toggle('is-on', !!value);
+			}
 		}
 	}
 
@@ -33,6 +37,41 @@
 		var input = form.querySelector('select[name="' + optionName + '"]');
 		if (input) {
 			input.value = String(value || '');
+		}
+	}
+
+	function numberValue(optionName, fallback) {
+		var input = form.querySelector('input[name="' + optionName + '"][type="number"]');
+		if (!input) {
+			return typeof fallback === 'number' ? fallback : 0;
+		}
+		var n = parseInt(input.value, 10);
+		if (isNaN(n)) {
+			return typeof fallback === 'number' ? fallback : 0;
+		}
+		if (n < 0) {
+			n = 0;
+		}
+		if (n > 5) {
+			n = 5;
+		}
+		return n;
+	}
+
+	function setNumber(optionName, value) {
+		var input = form.querySelector('input[name="' + optionName + '"][type="number"]');
+		if (input) {
+			var n = parseInt(value, 10);
+			if (isNaN(n)) {
+				n = 1;
+			}
+			if (n < 0) {
+				n = 0;
+			}
+			if (n > 5) {
+				n = 5;
+			}
+			input.value = String(n);
 		}
 	}
 
@@ -130,16 +169,58 @@
 		}
 	}
 
+	function treeIconKeysState() {
+		var optionName = fields.treeIconKeys || 'wtt_tree_icon_keys';
+		var out = [];
+		form.querySelectorAll('input[type="checkbox"][name="' + optionName + '[]"]').forEach(function (input) {
+			if (input.checked) {
+				out.push(String(input.value || ''));
+			}
+		});
+		return out;
+	}
+
+	function setTreeIconKeys(keys) {
+		var optionName = fields.treeIconKeys || 'wtt_tree_icon_keys';
+		var set = {};
+		(keys || []).forEach(function (key) {
+			set[String(key)] = true;
+		});
+		form.querySelectorAll('input[type="checkbox"][name="' + optionName + '[]"]').forEach(function (input) {
+			input.checked = !!set[String(input.value || '')];
+		});
+	}
+
+	function iconKeysEqual(a, b) {
+		var left = (a || []).slice().map(String).sort();
+		var right = (b || []).slice().map(String).sort();
+		return JSON.stringify(left) === JSON.stringify(right);
+	}
+
 	function currentState() {
 		return {
 			testMode: checkboxValue(fields.testMode || 'wtt_test_mode'),
 			hideRootNode: checkboxValue(fields.hideRootNode || 'wtt_hide_root_node'),
 			showTypeInTree: checkboxValue(fields.showTypeInTree || 'wtt_show_type_in_tree'),
+			showModelDataCounts: checkboxValue(
+				fields.showModelDataCounts || 'wtt_show_model_data_counts'
+			),
 			showSetChildProps: checkboxValue(fields.showSetChildProps || 'wtt_show_set_child_props'),
 			saveViaButton: checkboxValue(fields.saveViaButton || 'wtt_save_via_button'),
 			treePickerMode: selectValue(fields.treePickerMode || 'wtt_tree_picker_mode') || 'popup',
 			confirmNodeDelete: checkboxValue(fields.confirmNodeDelete || 'wtt_confirm_node_delete'),
+			warnStructuralModelChange: checkboxValue(
+				fields.warnStructuralModelChange || 'wtt_warn_structural_model_change'
+			),
+			dialogOnValidationWarnings: checkboxValue(
+				fields.dialogOnValidationWarnings || 'wtt_dialog_on_validation_warnings'
+			),
+			defaultRenderDepth: numberValue(
+				fields.defaultRenderDepth || 'wtt_default_render_depth',
+				1
+			),
 			developmentMode: checkboxValue(fields.developmentMode || 'wtt_development_mode'),
+			treeIconKeys: treeIconKeysState(),
 			catalogBindings: catalogBindingsState(),
 		};
 	}
@@ -148,11 +229,28 @@
 		setCheckbox(fields.testMode || 'wtt_test_mode', !!saved.testMode);
 		setCheckbox(fields.hideRootNode || 'wtt_hide_root_node', !!saved.hideRootNode);
 		setCheckbox(fields.showTypeInTree || 'wtt_show_type_in_tree', !!saved.showTypeInTree);
+		setCheckbox(
+			fields.showModelDataCounts || 'wtt_show_model_data_counts',
+			!!saved.showModelDataCounts
+		);
 		setCheckbox(fields.showSetChildProps || 'wtt_show_set_child_props', !!saved.showSetChildProps);
 		setCheckbox(fields.saveViaButton || 'wtt_save_via_button', !!saved.saveViaButton);
 		setSelect(fields.treePickerMode || 'wtt_tree_picker_mode', saved.treePickerMode || 'popup');
 		setCheckbox(fields.confirmNodeDelete || 'wtt_confirm_node_delete', !!saved.confirmNodeDelete);
+		setCheckbox(
+			fields.warnStructuralModelChange || 'wtt_warn_structural_model_change',
+			!!saved.warnStructuralModelChange
+		);
+		setCheckbox(
+			fields.dialogOnValidationWarnings || 'wtt_dialog_on_validation_warnings',
+			!!saved.dialogOnValidationWarnings
+		);
+		setNumber(
+			fields.defaultRenderDepth || 'wtt_default_render_depth',
+			saved.defaultRenderDepth != null ? saved.defaultRenderDepth : 1
+		);
 		setCheckbox(fields.developmentMode || 'wtt_development_mode', !!saved.developmentMode);
+		setTreeIconKeys(saved.treeIconKeys || []);
 		setCatalogBindings(saved.catalogBindings || {});
 		updateDirty();
 	}
@@ -163,11 +261,17 @@
 			current.testMode !== !!saved.testMode ||
 			current.hideRootNode !== !!saved.hideRootNode ||
 			current.showTypeInTree !== !!saved.showTypeInTree ||
+			current.showModelDataCounts !== !!saved.showModelDataCounts ||
 			current.showSetChildProps !== !!saved.showSetChildProps ||
 			current.saveViaButton !== !!saved.saveViaButton ||
 			current.treePickerMode !== String(saved.treePickerMode || 'popup') ||
 			current.confirmNodeDelete !== !!saved.confirmNodeDelete ||
+			current.warnStructuralModelChange !== !!saved.warnStructuralModelChange ||
+			current.dialogOnValidationWarnings !== !!saved.dialogOnValidationWarnings ||
+			current.defaultRenderDepth !==
+				(saved.defaultRenderDepth != null ? Number(saved.defaultRenderDepth) : 1) ||
 			current.developmentMode !== !!saved.developmentMode ||
+			!iconKeysEqual(current.treeIconKeys, saved.treeIconKeys || []) ||
 			!bindingsEqual(current.catalogBindings, saved.catalogBindings || {})
 		);
 	}

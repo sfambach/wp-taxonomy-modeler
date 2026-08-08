@@ -32,28 +32,28 @@ final class Case_Data {
 	 */
 	public static function simple_datatype_leaves(): array {
 		return array(
-			array( 'name' => 'int', 'description' => 'Whole number.', 'is_datatype' => true ),
-			array( 'name' => 'double', 'description' => 'Floating point.', 'is_datatype' => true ),
-			array( 'name' => 'text', 'description' => 'Single-line text.', 'is_datatype' => true ),
-			array( 'name' => 'email', 'description' => 'Email address (validated input).', 'is_datatype' => true ),
-			array( 'name' => 'textarea', 'description' => 'Multi-line text.', 'is_datatype' => true ),
-			array( 'name' => 'char', 'description' => 'Single character.', 'is_datatype' => true ),
-			array( 'name' => 'bool', 'description' => 'Boolean.', 'is_datatype' => true ),
+			array( 'name' => 'int', 'description' => 'Whole number.', 'deletable' => false ),
+			array( 'name' => 'double', 'description' => 'Floating point.', 'deletable' => false ),
+			array( 'name' => 'text', 'description' => 'Single-line text.', 'deletable' => false ),
+			array( 'name' => 'email', 'description' => 'Email address (validated input).', 'deletable' => false ),
+			array( 'name' => 'textarea', 'description' => 'Multi-line text.', 'deletable' => false ),
+			array( 'name' => 'char', 'description' => 'Single character.', 'deletable' => false ),
+			array( 'name' => 'bool', 'description' => 'Boolean.', 'deletable' => false ),
 			array(
 				'name'        => 'date',
 				'description' => 'Calendar date or date+time (mode on type). Store: Unix timestamp.',
-				'is_datatype' => true,
 				'date_mode'   => 'date',
+				'deletable'   => false,
 			),
 			array(
 				'name'        => 'display_node_name',
 				'description' => 'Read-only: shows the host Node.name (no user input).',
-				'is_datatype' => true,
+				'deletable'   => false,
 			),
 			array(
 				'name'        => 'media',
 				'description' => 'WP Media Library and/or URL (Q65). MIME-based display.',
-				'is_datatype' => true,
+				'deletable'   => false,
 			),
 		);
 	}
@@ -70,7 +70,6 @@ final class Case_Data {
 				'name'              => 'quantity',
 				'description'       => 'Größe: value + optional prefix + base unit (not a measurement act; not BOM Menge). Alias: measure.',
 				'short_description' => 'Größe',
-				'is_datatype'       => true,
 				'deletable'         => false,
 				/* Former informal names → rename in place via ensure_term. */
 				'aliases'           => array( 'measure', 'Größe', 'Groesse' ),
@@ -78,19 +77,16 @@ final class Case_Data {
 			array(
 				'name'        => 'list',
 				'description' => 'Collection with exactly one column; rows open.',
-				'is_datatype' => true,
 				'deletable'   => false,
 			),
 			array(
 				'name'        => 'table',
 				'description' => 'Collection with n columns; rows open.',
-				'is_datatype' => true,
 				'deletable'   => false,
 			),
 			array(
 				'name'        => 'enum',
 				'description' => 'Like list + closed options under the column.',
-				'is_datatype' => true,
 				'deletable'   => false,
 				'children'    => array(
 					Demo_Data::bauart_enum_node(),
@@ -99,26 +95,21 @@ final class Case_Data {
 			array(
 				'name'        => 'set',
 				'description' => 'Collection of named members; schema = child nodes.',
-				'is_datatype' => true,
 				'deletable'   => false,
 			),
 			array(
 				'name'        => 'node_pick',
 				'description' => 'Shared parent (Q73): ref_scope + allowed catalog children.',
-				'is_datatype' => true,
-				'is_abstract' => true,
 				'deletable'   => false,
 				'children'    => array(
 					array(
 						'name'        => 'node_embed',
 						'description' => 'Pick under catalog root; embed target fields.',
-						'is_datatype' => true,
 						'deletable'   => false,
 					),
 					array(
 						'name'        => 'node_ref',
 						'description' => 'Pick under catalog root; store id only.',
-						'is_datatype' => true,
 						'deletable'   => false,
 					),
 				),
@@ -136,8 +127,6 @@ final class Case_Data {
 			return array(
 				'name'        => $name,
 				'description' => $description,
-				'is_datatype' => true,
-				'is_abstract' => false,
 				'deletable'   => false,
 			);
 		};
@@ -169,8 +158,6 @@ final class Case_Data {
 				'short_description' => 'p',
 				'description'       => 'SI prefix pico (10⁻¹²).',
 				'multiplikator'     => 1.0e-12,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'nano',
@@ -178,8 +165,6 @@ final class Case_Data {
 				'short_description' => 'n',
 				'description'       => 'SI prefix nano (10⁻⁹).',
 				'multiplikator'     => 1.0e-9,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Micro',
@@ -187,8 +172,6 @@ final class Case_Data {
 				'short_description' => 'u',
 				'description'       => 'SI prefix micro (10⁻⁶).',
 				'multiplikator'     => 1.0e-6,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Milli',
@@ -196,8 +179,6 @@ final class Case_Data {
 				'short_description' => 'm',
 				'description'       => 'SI prefix milli (10⁻³); with Meter → mm.',
 				'multiplikator'     => 1.0e-3,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Centi',
@@ -205,8 +186,6 @@ final class Case_Data {
 				'short_description' => 'c',
 				'description'       => 'SI prefix centi (10⁻²).',
 				'multiplikator'     => 1.0e-2,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Kilo',
@@ -214,8 +193,6 @@ final class Case_Data {
 				'short_description' => 'k',
 				'description'       => 'SI prefix kilo (10³).',
 				'multiplikator'     => 1.0e3,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Mega',
@@ -223,8 +200,6 @@ final class Case_Data {
 				'short_description' => 'Mega',
 				'description'       => 'SI prefix mega (10⁶); name Mega avoids slug clash with milli m.',
 				'multiplikator'     => 1.0e6,
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 		);
 
@@ -235,99 +210,71 @@ final class Case_Data {
 				'name'              => 'Meter',
 				'short_description' => 'm',
 				'description'       => 'Length; prefixes Micro/Milli/Centi/Kilo.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Liter',
 				'short_description' => 'l',
 				'description'       => 'Volume; prefixes Milli/Centi/Kilo.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Kilogramm',
 				'short_description' => 'g',
 				'description'       => 'SI base kg; prefixes attach to gram (mg/kg/Mg).',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Sekunde',
 				'short_description' => 's',
 				'description'       => 'Time; prefixes pico/nano/Micro/Milli.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Kelvin',
 				'short_description' => 'K',
 				'description'       => 'Thermodynamic temperature; no prefixes.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Celsius',
 				'short_description' => '°C',
 				'description'       => 'Celsius temperature; no SI prefixes.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Ampere',
 				'short_description' => 'A',
 				'description'       => 'Electric current.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Ohm',
 				'short_description' => 'Ω',
 				'description'       => 'Resistance; k+Ω → kΩ.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Farad',
 				'short_description' => 'F',
 				'description'       => 'Capacitance; no k/Mega.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Watt',
 				'short_description' => 'W',
 				'description'       => 'Power.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Volt',
 				'short_description' => 'V',
 				'description'       => 'Voltage.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Henry',
 				'short_description' => 'H',
 				'description'       => 'Inductance; DigiKey Inductors / Coils / Chokes.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Hertz',
 				'short_description' => 'Hz',
 				'description'       => 'Frequency; crystals / oscillators.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 			array(
 				'name'              => 'Stück',
 				'short_description' => 'Stk',
 				'description'       => 'Count / Menge; no prefixes.',
-				'is_datatype'       => true,
-				'is_abstract'       => false,
 			),
 		);
 
@@ -343,27 +290,19 @@ final class Case_Data {
 							array(
 								'name'        => 'Knoten',
 								'description' => 'General assignable node type (project roots and ordinary nodes).',
-								'is_datatype' => true,
-								'is_abstract' => false,
 							),
 							array(
 								'name'        => 'Data Types',
 								'description' => 'Simple (scalars) and Complex (collections / picks).',
-								'is_datatype' => true,
-								'is_abstract' => true,
 								'children'    => array(
 									array(
 										'name'        => 'Simple',
 										'description' => 'Scalar and simple reference types.',
-										'is_datatype' => true,
-										'is_abstract' => true,
 										'children'    => $simple_leaves,
 									),
 									array(
 										'name'        => 'Complex',
 										'description' => 'Collection kinds (list / table / enum / set).',
-										'is_datatype' => true,
-										'is_abstract' => true,
 										'children'    => $complex_leaves,
 									),
 								),
@@ -375,24 +314,18 @@ final class Case_Data {
 									array(
 										'name'        => 'Präfixe',
 										'description' => 'SI prefixes. multiplikator = scale vs the unit’s prefix root (Q51).',
-										'is_datatype' => true,
-										'is_abstract' => true,
 										'deletable'   => false,
 										'children'    => $prefix_leaves,
 									),
 									array(
 										'name'        => 'Basiseinheiten',
 										'description' => 'Base units (catalog). Short description = symbol / Kuerzel.',
-										'is_datatype' => true,
-										'is_abstract' => true,
 										'deletable'   => false,
 										'children'    => $unit_leaves,
 									),
 									array(
 										'name'        => 'Bauformen',
 										'description' => 'Package / footprint constants (axial, radial, SMD sizes).',
-										'is_datatype' => true,
-										'is_abstract' => true,
 										'deletable'   => false,
 										'children'    => $bauformen_leaves,
 									),
@@ -508,7 +441,15 @@ final class Case_Data {
 		);
 		if ( ! is_array( $terms ) || empty( $terms ) ) {
 			self::install( $taxonomy );
+			return;
 		}
+
+		/*
+		 * Tree already seeded: still run lightweight catalog ensures so Simple
+		 * icons / leaf repairs land without a full reinstall (admin page load).
+		 */
+		self::ensure_simple_datatypes( $taxonomy );
+		Catalog_Bindings::ensure( $taxonomy );
 	}
 
 	/**
@@ -581,7 +522,7 @@ final class Case_Data {
 		);
 		if ( $folder > 0 ) {
 			$extra[] = $folder;
-			$seeds   = array( 'child_of', 'has_type', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' );
+			$seeds   = array( 'child_of', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' );
 			foreach ( $seeds as $name ) {
 				$id = Relation::find_type_id_by_name( $taxonomy, $name );
 				if ( $id > 0 ) {
@@ -755,8 +696,6 @@ final class Case_Data {
 		}
 
 		Trash::restore_subtree( $taxonomy, $bauformen_id );
-		Node_Type::set_is_datatype( $taxonomy, $bauformen_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $bauformen_id, true );
 		Node_Type::set_deletable( $bauformen_id, false );
 
 		$kids = get_terms(
@@ -776,8 +715,6 @@ final class Case_Data {
 			}
 			$kid_id = (int) $kid->term_id;
 			Trash::restore_subtree( $taxonomy, $kid_id );
-			Node_Type::set_is_datatype( $taxonomy, $kid_id, true );
-			Node_Type::set_is_abstract( $taxonomy, $kid_id, false );
 			Node_Type::set_deletable( $kid_id, false );
 		}
 	}
@@ -825,7 +762,6 @@ final class Case_Data {
 
 		$seeds = array(
 			'child_of'     => 'Hierarchy Kind von (system). Multiplicity always 1 (exactly one parent). Not creatable via Add relation — use Reparent.',
-			'has_type'     => 'Data-type binding (has_type). Managed via Relations UI; persists as type_id (Q74).',
 			'ref_scope'    => 'Catalog root for node_embed / node_ref (system).',
 			'besteht_aus'  => 'Composition / besteht aus — dies with the object (Q75/Q85; attribute Bindung).',
 			'aggregation'  => 'Aggregation — member lives on when the host object no longer exists (attribute Bindung).',
@@ -846,8 +782,6 @@ final class Case_Data {
 		Relation::migrate_composition_type_name( $taxonomy );
 		Relation::migrate_drop_erbt_von( $taxonomy );
 		Relation::repair_child_of_multiplicity( $taxonomy );
-		Node_Type::set_is_abstract( $taxonomy, $folder, true );
-		Node_Type::set_is_datatype( $taxonomy, $folder, false );
 		Node_Type::set_deletable( $folder, false );
 	}
 
@@ -864,8 +798,6 @@ final class Case_Data {
 			array( self::ROOT_NAME, 'Definition', 'Knoten' )
 		);
 		if ( $existing > 0 ) {
-			Node_Type::set_is_datatype( $taxonomy, $existing, true );
-			Node_Type::set_is_abstract( $taxonomy, $existing, false );
 			Node_Type::set_deletable( $existing, false );
 			return $existing;
 		}
@@ -891,8 +823,6 @@ final class Case_Data {
 		if ( $id <= 0 ) {
 			return 0;
 		}
-		Node_Type::set_is_datatype( $taxonomy, $id, true );
-		Node_Type::set_is_abstract( $taxonomy, $id, false );
 		Node_Type::set_deletable( $id, false );
 		return $id;
 	}
@@ -1125,8 +1055,8 @@ final class Case_Data {
 		usort(
 			$ordered,
 			static function ( int $a, int $b ) use ( $taxonomy ): int {
-				$da = Node_Type::is_datatype( $taxonomy, $a ) ? 0 : 1;
-				$db = Node_Type::is_datatype( $taxonomy, $b ) ? 0 : 1;
+				$da = ($a > 0 && get_term( $a, $taxonomy ) instanceof \WP_Term) ? 0 : 1;
+				$db = ($b > 0 && get_term( $b, $taxonomy ) instanceof \WP_Term) ? 0 : 1;
 				return $da <=> $db;
 			}
 		);
@@ -1153,12 +1083,8 @@ final class Case_Data {
 			if ( $simple <= 0 ) {
 				return $out;
 			}
-			Node_Type::set_is_datatype( $taxonomy, $simple, true );
-			Node_Type::set_is_abstract( $taxonomy, $simple, true );
 			Node_Type::set_deletable( $simple, false );
-		} elseif ( ! Node_Type::is_datatype( $taxonomy, $simple ) ) {
-			Node_Type::set_is_datatype( $taxonomy, $simple, true );
-			Node_Type::set_is_abstract( $taxonomy, $simple, true );
+		} elseif ( ! ($simple > 0 && get_term( $simple, $taxonomy ) instanceof \WP_Term) ) {
 			Node_Type::set_deletable( $simple, false );
 		}
 
@@ -1169,10 +1095,94 @@ final class Case_Data {
 		$out['created']   = $created;
 		$out['existing']  = $existing;
 
+		/* Type defaults when meta empty (preferred render/converter + validators). */
+		self::ensure_simple_datatype_defaults( $taxonomy, $simple );
+
+		/* Tree icons: standard-by-name on Simple + known scalar leaves (force catalog standards). */
+		self::ensure_simple_datatype_icons( $taxonomy, $simple );
+
 		/* Merge + remove legacy Definition/Simple (not under Data Types). */
 		$out['removed'] += self::purge_legacy_definition_simple( $taxonomy, $simple );
 
+		/* Q96: write builtin.* → leaf term ids after Simple leaves exist. */
+		Catalog_Bindings::ensure_builtins( $taxonomy );
+
 		return $out;
+	}
+
+	/**
+	 * Seed preferred render/converter + default validators on Simple leaves
+	 * when meta is missing (idempotent; does not overwrite customized lists).
+	 */
+	private static function ensure_simple_datatype_defaults( string $taxonomy, int $simple_id ): void {
+		if ( $simple_id <= 0 ) {
+			return;
+		}
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $simple_id,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+			)
+		);
+		if ( ! is_array( $children ) ) {
+			return;
+		}
+		foreach ( $children as $child_id ) {
+			$term_id = (int) $child_id;
+			if ( $term_id <= 0 ) {
+				continue;
+			}
+			Node_Type::ensure_preferred_render( $taxonomy, $term_id );
+			Node_Type::ensure_preferred_converter( $taxonomy, $term_id );
+			Node_Type::ensure_validators( $taxonomy, $term_id );
+		}
+	}
+
+	/**
+	 * Apply standard icons on Simple + every child leaf (implanted catalog only).
+	 *
+	 * Force-applies `standard_for_name` when meta is empty or differs from the standard
+	 * (e.g. leftover `hammer` on Simple). Scoped to this Simple parent + its WP children —
+	 * does not cascade into user project trees. Simple parent falls back to `marker`.
+	 */
+	private static function ensure_simple_datatype_icons( string $taxonomy, int $simple_id ): void {
+		if ( $simple_id <= 0 ) {
+			return;
+		}
+
+		$apply_term = static function ( int $term_id, bool $is_simple_parent = false ) use ( $taxonomy ): void {
+			$term = get_term( $term_id, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				return;
+			}
+			$key = Tree_Icons::standard_for_name( (string) $term->name );
+			if ( '' === $key && $is_simple_parent ) {
+				$key = 'marker';
+			}
+			if ( '' === $key ) {
+				return;
+			}
+			Tree_Icons::apply_standard( $taxonomy, $term_id, $key );
+		};
+
+		$apply_term( $simple_id, true );
+
+		$children = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $simple_id,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+			)
+		);
+		if ( ! is_array( $children ) ) {
+			return;
+		}
+		foreach ( $children as $child_id ) {
+			$apply_term( (int) $child_id, false );
+		}
 	}
 
 	/**
@@ -1234,8 +1244,6 @@ final class Case_Data {
 			}
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $complex, true );
-		Node_Type::set_is_abstract( $taxonomy, $complex, true );
 		Node_Type::set_deletable( $complex, false );
 		$out['restored'] += Trash::restore_subtree( $taxonomy, $complex );
 
@@ -1256,13 +1264,7 @@ final class Case_Data {
 				continue;
 			}
 			$out['restored'] += Trash::restore_subtree( $taxonomy, $leaf_id );
-			Node_Type::set_is_datatype( $taxonomy, $leaf_id, true );
 			Node_Type::set_deletable( $leaf_id, false );
-			if ( array_key_exists( 'is_abstract', $leaf ) ) {
-				Node_Type::set_is_abstract( $taxonomy, $leaf_id, (bool) $leaf['is_abstract'] );
-			} else {
-				Node_Type::set_is_abstract( $taxonomy, $leaf_id, false );
-			}
 			$kids = isset( $leaf['children'] ) && is_array( $leaf['children'] ) ? $leaf['children'] : array();
 			foreach ( $kids as $kid ) {
 				$kid_name = isset( $kid['name'] ) ? (string) $kid['name'] : '';
@@ -1274,21 +1276,18 @@ final class Case_Data {
 					continue;
 				}
 				$out['restored'] += Trash::restore_subtree( $taxonomy, $kid_id );
-				Node_Type::set_is_datatype( $taxonomy, $kid_id, true );
 				Node_Type::set_deletable( $kid_id, false );
-				Node_Type::set_is_abstract(
-					$taxonomy,
-					$kid_id,
-					array_key_exists( 'is_abstract', $kid ) ? (bool) $kid['is_abstract'] : false
-				);
 			}
 		}
+
+		/* Q96: bind quantity / node_ref after Complex leaves exist. */
+		Catalog_Bindings::ensure_builtins( $taxonomy );
 
 		return $out;
 	}
 
 	/**
-	 * Pick the Simple catalog to keep: Data Types/Datentypen first, else any is_datatype.
+	 * Pick the Simple catalog to keep: Data Types/Datentypen path first, else first candidate.
 	 *
 	 * @param list<int> $found_ids Candidate Simple term ids.
 	 */
@@ -1310,7 +1309,7 @@ final class Case_Data {
 		}
 
 		foreach ( $found_ids as $simple_id ) {
-			if ( Node_Type::is_datatype( $taxonomy, $simple_id ) ) {
+			if ( ($simple_id > 0 && get_term( $simple_id, $taxonomy ) instanceof \WP_Term) ) {
 				return $simple_id;
 			}
 		}
@@ -1326,7 +1325,6 @@ final class Case_Data {
 
 	/**
 	 * Ensure Definition/Data Types folder exists (parent of Simple + Complex).
-	 * Marks the folder as abstract datatype so the type forest nests Simple/Complex under it.
 	 */
 	private static function ensure_data_types_folder( string $taxonomy ): int {
 		$def = self::find_term_by_path(
@@ -1361,10 +1359,6 @@ final class Case_Data {
 				$created,
 				$count
 			);
-		}
-		if ( $existing > 0 ) {
-			Node_Type::set_is_datatype( $taxonomy, $existing, true );
-			Node_Type::set_is_abstract( $taxonomy, $existing, true );
 		}
 		return $existing > 0 ? $existing : 0;
 	}
@@ -1510,7 +1504,7 @@ final class Case_Data {
 	/**
 	 * Restore catalog leaf names when a datatype was renamed in the UI but the
 	 * slug still identifies the seed leaf (e.g. name Namen, slug text-simple).
-	 * Does not set is_datatype — install_nodes / the install target owns flags.
+	 * Does not set catalog flags — install_nodes / the install target owns template/deletable.
 	 *
 	 * @return int Number of terms renamed.
 	 */
@@ -1622,8 +1616,8 @@ final class Case_Data {
 			return $empty;
 		}
 
+		/* Top-down BOM spine (no Model/Lieferant in this cut). */
 		$kontakt_id = self::ensure_kontakt_model( $taxonomy );
-		$platine_id = self::ensure_platine_model( $taxonomy );
 		$bauteil    = self::ensure_bauteil_model( $taxonomy );
 		$bauteil_id = (int) ( $bauteil['targetId'] ?? 0 );
 
@@ -1632,8 +1626,10 @@ final class Case_Data {
 		}
 
 		$bauteilliste = self::ensure_bauteilliste_model( $taxonomy );
-		$dioden_id    = self::ensure_dioden_model( $taxonomy );
-		$kind_attrs   = Demo_Data::ensure_bauteil_kind_attributes( $taxonomy );
+		$platine_id   = self::ensure_platine_model( $taxonomy );
+		self::purge_model_lieferant( $taxonomy );
+		$dioden_id  = self::ensure_dioden_model( $taxonomy );
+		$kind_attrs = Demo_Data::ensure_bauteil_kind_attributes( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 		$purged = self::purge_model_trashed_field_litter( $taxonomy );
 
@@ -1764,6 +1760,66 @@ final class Case_Data {
 	}
 
 	/**
+	 * Remove Model/Lieferant host (out of this BOM cut — user asked to omit suppliers).
+	 * Does not touch Implementation/Lieferanten.
+	 */
+	public static function purge_model_lieferant( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		$position_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Model', 'Position' )
+		);
+		if ( $position_id > 0 ) {
+			foreach ( Attribute::list_own( $taxonomy, $position_id ) as $row ) {
+				$key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+				if ( 'lieferant' !== $key ) {
+					continue;
+				}
+				$attr_id = (int) ( $row['id'] ?? 0 );
+				if ( $attr_id > 0 ) {
+					Attribute::remove( $taxonomy, $position_id, $attr_id );
+				}
+			}
+		}
+
+		$lieferant_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Model', 'Lieferant' )
+		);
+		if ( $lieferant_id <= 0 ) {
+			return;
+		}
+
+		foreach ( Attribute::list_own( $taxonomy, $lieferant_id ) as $row ) {
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id > 0 ) {
+				Attribute::remove( $taxonomy, $lieferant_id, $attr_id );
+			}
+		}
+
+		Node_Type::set_deletable( $lieferant_id, true );
+		/* Hard-delete — Tree_Model::delete_term only soft-trashes. */
+		$result = wp_delete_term( $lieferant_id, $taxonomy );
+		if ( is_wp_error( $result ) || false === $result ) {
+			/* Retry after clearing type locks. */
+			wp_delete_term( $lieferant_id, $taxonomy );
+		}
+	}
+
+	/**
+	 * @deprecated Model/Lieferant omitted from top-down BOM cut; use purge_model_lieferant().
+	 *
+	 * @return int Always 0.
+	 */
+	public static function ensure_lieferant_model( string $taxonomy = Taxonomy::FS ): int {
+		self::purge_model_lieferant( $taxonomy );
+		return 0;
+	}
+
+	/**
 	 * Seed Fallstudie/Model/Kontakt with person + address attributes.
 	 * Titel, Name, Vorname, E-Mail, Telefon, Strasse, Hausnummer, Postleitzahl, Ort.
 	 *
@@ -1813,7 +1869,6 @@ final class Case_Data {
 			$email_id = self::ensure_email_datatype( $taxonomy );
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $kontakt_id, true );
 		Node_Type::set_deletable( $kontakt_id, false );
 
 		$wanted = array(
@@ -1897,14 +1952,10 @@ final class Case_Data {
 	}
 
 	/**
-	 * Seed Fallstudie/Model/Platine with attributes mirroring site PCB posts.
+	 * Seed Fallstudie/Model/Platine — slim board host (BOM spine only).
 	 *
-	 * Retro Projekt template tables (all slots):
-	 * 1) Fakten / order: Gerber, Bestellt wo, Stück, Preis, Besonderheiten, Version
-	 * 2) Varianten / Optionen
-	 * 3) Aufbau / review: Erfolgreich, Preis Pro Stück, Lötdauer, Schwierigkeitsgrad,
-	 *    Funktion, Lohnt es sich, Einschränkungen
-	 * 4) Protokoll: dated change log (stored as textarea; multi-row journal in posts)
+	 * Keeps identity + fab order + link to Bauteilliste. Review / Protokoll /
+	 * Optionen extras dropped for the top-down BOM cut.
 	 *
 	 * @return int Platine host term id, or 0.
 	 */
@@ -1914,6 +1965,8 @@ final class Case_Data {
 		}
 
 		$kontakt_id = self::ensure_kontakt_model( $taxonomy );
+		$liste      = self::ensure_bauteilliste_model( $taxonomy );
+		$list_id    = (int) ( $liste['bauteillisteId'] ?? 0 );
 
 		$root_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME ) );
 		if ( $root_id <= 0 ) {
@@ -1938,7 +1991,7 @@ final class Case_Data {
 			$taxonomy,
 			'Platine',
 			$model_id,
-			'PCB / board schema from Retro Projekt posts — full Fakten, Optionen, Aufbau, Protokoll tables.',
+			'PCB / board: Name, fab order, Bauteilliste (BOM). Slim top-down cut.',
 			$created,
 			$existing
 		);
@@ -1946,84 +1999,53 @@ final class Case_Data {
 			return 0;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $platine_id, true );
 		Node_Type::set_deletable( $platine_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $platine_id );
 
-		$text_id     = self::find_case_datatype_id( $taxonomy, 'text' );
-		$textarea_id = self::find_case_datatype_id( $taxonomy, 'textarea' );
-		$int_id      = self::find_case_datatype_id( $taxonomy, 'int' );
-		$double_id   = self::find_case_datatype_id( $taxonomy, 'double' );
-		$bool_id     = self::find_case_datatype_id( $taxonomy, 'bool' );
-		$media_id    = self::find_case_datatype_id( $taxonomy, 'media' );
+		$text_id   = self::find_case_datatype_id( $taxonomy, 'text' );
+		$int_id    = self::find_case_datatype_id( $taxonomy, 'int' );
+		$double_id = self::find_case_datatype_id( $taxonomy, 'double' );
+		$bool_id   = self::find_case_datatype_id( $taxonomy, 'bool' );
+		$media_id  = self::find_case_datatype_id( $taxonomy, 'media' );
 
-		$have = array();
-		foreach ( Attribute::list_own( $taxonomy, $platine_id ) as $row ) {
-			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
-			$have[ $key ] = true;
-		}
-
-		/*
-		 * Full template. Aliases folded into one slot:
-		 * Preis inclusive / Preis + Steuer… → Preis
-		 * Schwierigkeitsfaktor → Schwierigkeitsgrad
-		 * Meine Version → Version
-		 * Datum/Beschreibung journal → Protokoll
-		 * Option table → Optionen
-		 */
 		$wanted = array(
-			/* Identity */
-			'Name'               => $text_id,
-			'Version'            => $text_id,
-			/* Fakten / fab order */
-			'Gerber vorhanden'   => $bool_id,
-			'Gerberdatei'        => $media_id,
-			'Bestellt wo'        => $kontakt_id,
-			'Stück'              => $int_id,
-			'Preis'              => $double_id,
-			'Besonderheiten'     => $text_id,
-			/* Varianten */
-			'Optionen'           => $textarea_id,
-			/* Aufbau / review */
-			'Erfolgreich'        => $bool_id,
-			'Preis Pro Stück'    => $double_id,
-			'Lötdauer'           => $text_id,
-			'Schwierigkeitsgrad' => $text_id,
-			'Funktion'           => $text_id,
-			'Lohnt es sich'      => $textarea_id,
-			'Einschränkungen'    => $textarea_id,
-			/* Change log (dated rows in posts) */
-			'Protokoll'          => $textarea_id,
+			'Name'             => $text_id,
+			'Version'          => $text_id,
+			'Gerber vorhanden' => $bool_id,
+			'Gerberdatei'      => $media_id,
+			'Bestellt wo'      => $kontakt_id,
+			'Stück'            => $int_id,
+			'Preis'            => $double_id,
+			'Besonderheiten'   => $text_id,
 		);
-		foreach ( $wanted as $name => $type_id ) {
-			$key = strtolower( $name );
-			if ( $type_id <= 0 || ! empty( $have[ $key ] ) ) {
-				continue;
-			}
-			$mult = '1';
-			if ( in_array( $name, array( 'Optionen', 'Protokoll', 'Lohnt es sich', 'Einschränkungen' ), true ) ) {
-				$mult = '0..1';
-			}
-			if ( in_array( $name, array( 'Version', 'Besonderheiten', 'Schwierigkeitsgrad' ), true ) ) {
-				$mult = '0..1';
-			}
-			Attribute::add( $taxonomy, $platine_id, $name, $type_id, $mult );
+		if ( $list_id > 0 && ($list_id > 0 && get_term( $list_id, $taxonomy ) instanceof \WP_Term) ) {
+			$wanted['Bauteilliste'] = $list_id;
 		}
+
+		$mult = array(
+			'Version'        => '0..1',
+			'Besonderheiten' => '0..1',
+			'Bauteilliste'   => '0..1',
+		);
+		/* Platine → Bauteilliste = aggregation (same pattern as Bauteilliste → Position). */
+		$bindings = array(
+			'Bauteilliste' => 'aggregation',
+		);
+		self::sync_model_host_attributes( $taxonomy, $platine_id, $wanted, $mult, true, $bindings );
 
 		return $platine_id;
 	}
 
 	/**
-	 * Seed Fallstudie/Model/Bauteilliste/Position from Retro Projekt BOM tables.
+	 * Top-down BOM under Model: Bauteilliste + Bauteillisten Position (siblings, Q85).
 	 *
-	 * Hierarchy: Bauteilliste (abstract list folder) → Position (line schema).
-	 * Line columns match post headers:
-	 * Referenz | Wert | Menge | Beschreibung | Preis | Lager | Status
-	 * plus optional Bauteil pick → Model/Bauteil.
+	 * Bauteilliste           = Name + Position[0..*] (besteht_aus → Bauteillisten Position)
+	 * Bauteillisten Position = minimal line: Referenz, Wert→Bauteil, Menge, Beschreibung, Auf Lager
 	 *
-	 * Sample line (ESP8266-RS232): PCB | Leiterplatte | 1 | … | 1.80 | x |
-	 *
-	 * Not a Collection `table`/`list` type (Q90 parked) — attribute host like Platine/Kontakt.
+	 * Platine → Bauteilliste uses Bindung **aggregation**.
+	 * Bauteilliste → Position uses Bindung **besteht_aus** (composition).
+	 * Line host is a sibling under Model (not child_of Bauteilliste).
+	 * Wert Mult = `1`; Model/Bauteil preferred render = `embed` (UR-B6 / Q93 id-only).
 	 *
 	 * @return array{bauteillisteId:int,positionId:int}
 	 */
@@ -2055,14 +2077,13 @@ final class Case_Data {
 			return $empty;
 		}
 
-		$bauteil = self::ensure_bauteil_model( $taxonomy );
-		$bauteil_id = (int) ( $bauteil['targetId'] ?? 0 );
+		$bauteil_id = (int) ( self::ensure_bauteil_model( $taxonomy )['targetId'] ?? 0 );
 
 		$list_id = self::ensure_term(
 			$taxonomy,
 			'Bauteilliste',
 			$model_id,
-			'BOM / parts list folder. Line schema lives on child Position (post table columns).',
+			'BOM / parts list (Q85): Name + Position lines → Bauteillisten Position. Alias: BOM.',
 			$created,
 			$existing
 		);
@@ -2070,19 +2091,55 @@ final class Case_Data {
 			return $empty;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $list_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $list_id, true );
 		Node_Type::set_deletable( $list_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $list_id );
 
-		$position_id = self::ensure_term(
-			$taxonomy,
-			'Position',
-			$list_id,
-			'One BOM line: Referenz, Wert, Menge, Beschreibung, Preis, Lager, Status, optional Bauteil.',
-			$created,
-			$existing
-		);
+		$line_name = 'Bauteillisten Position';
+
+		/* Prefer canonical name; migrate legacy "Position" sibling or nested child. */
+		$position_id = self::find_child_named( $taxonomy, $model_id, $line_name );
+		if ( $position_id <= 0 ) {
+			$legacy = self::find_child_named( $taxonomy, $model_id, 'Position' );
+			if ( $legacy <= 0 ) {
+				$legacy = self::find_child_named( $taxonomy, $list_id, 'Position' );
+				if ( $legacy <= 0 ) {
+					$legacy = self::find_child_named( $taxonomy, $list_id, $line_name );
+				}
+			}
+			if ( $legacy > 0 ) {
+				$term = get_term( $legacy, $taxonomy );
+				if ( $term instanceof \WP_Term && (int) $term->parent !== $model_id ) {
+					$reparented = Tree_Model::reparent_term( $taxonomy, $legacy, $model_id, true );
+					if ( is_wp_error( $reparented ) ) {
+						$legacy = 0;
+					}
+				}
+				if ( $legacy > 0 ) {
+					$term = get_term( $legacy, $taxonomy );
+					if ( $term instanceof \WP_Term && $term->name !== $line_name ) {
+						wp_update_term(
+							$legacy,
+							$taxonomy,
+							array(
+								'name' => $line_name,
+								'slug' => sanitize_title( $line_name . '-' . $legacy ),
+							)
+						);
+					}
+					$position_id = $legacy;
+				}
+			}
+		}
+		if ( $position_id <= 0 ) {
+			$position_id = self::ensure_term(
+				$taxonomy,
+				$line_name,
+				$model_id,
+				'Minimal BOM line: Referenz, Wert (Bauteil), Menge, Beschreibung, Auf Lager.',
+				$created,
+				$existing
+			);
+		}
 		if ( $position_id <= 0 ) {
 			return array(
 				'bauteillisteId' => $list_id,
@@ -2090,65 +2147,252 @@ final class Case_Data {
 			);
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $position_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $position_id, false );
 		Node_Type::set_deletable( $position_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $position_id );
 
-		$text_id   = self::find_case_datatype_id( $taxonomy, 'text' );
-		$int_id    = self::find_case_datatype_id( $taxonomy, 'int' );
-		$double_id = self::find_case_datatype_id( $taxonomy, 'double' );
+		$text_id = self::find_case_datatype_id( $taxonomy, 'text' );
+		$int_id  = self::find_case_datatype_id( $taxonomy, 'int' );
+		$bool_id = self::find_case_datatype_id( $taxonomy, 'bool' );
 
-		$wanted = array(
+		$line_wanted = array(
 			'Referenz'      => $text_id,
-			'Wert'          => $text_id,
+			'Wert'          => ( $bauteil_id > 0 && get_term( $bauteil_id, $taxonomy ) instanceof \WP_Term ) ? $bauteil_id : $text_id,
 			'Menge'         => $int_id,
 			'Beschreibung'  => $text_id,
-			'Preis'         => $double_id,
-			'Lager'         => $text_id,
-			'Status'        => $text_id,
+			'Auf Lager'     => $bool_id,
 		);
-		if ( $bauteil_id > 0 && Node_Type::is_datatype( $taxonomy, $bauteil_id ) ) {
-			$wanted['Bauteil'] = $bauteil_id;
-		}
 
-		$have = array();
-		foreach ( Attribute::list_own( $taxonomy, $position_id ) as $row ) {
-			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
-			$have[ $key ] = (int) ( $row['id'] ?? 0 );
-		}
+		/* Wert Mult `1` = required part pick (UR-B6); empty draft = error badge, save OK (Q107). */
+		$line_mult = array(
+			'Referenz'     => '1',
+			'Wert'         => '1',
+			'Menge'        => '1',
+			'Beschreibung' => '0..1',
+			'Auf Lager'    => '0..1',
+		);
+		self::sync_model_host_attributes( $taxonomy, $position_id, $line_wanted, $line_mult, true );
 
-		foreach ( $wanted as $name => $type_id ) {
-			$key = strtolower( $name );
-			if ( $type_id <= 0 || ! empty( $have[ $key ] ) ) {
-				continue;
-			}
-			$mult = '1';
-			if ( in_array( $name, array( 'Beschreibung', 'Lager', 'Status', 'Bauteil', 'Preis' ), true ) ) {
-				$mult = '0..1';
-			}
-			Attribute::add( $taxonomy, $position_id, $name, $type_id, $mult );
+		$list_wanted = array(
+			'Name' => $text_id,
+		);
+		if ( $position_id > 0 && get_term( $position_id, $taxonomy ) instanceof \WP_Term ) {
+			$list_wanted['Position'] = $position_id;
 		}
+		$list_mult = array(
+			'Position' => '0..*',
+		);
+		$list_bindings = array(
+			'Position' => 'besteht_aus',
+		);
+		self::sync_model_host_attributes( $taxonomy, $list_id, $list_wanted, $list_mult, true, $list_bindings );
 
-		$by_name = array();
-		foreach ( Attribute::list_own( $taxonomy, $position_id ) as $row ) {
-			$by_name[ strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ] = (int) ( $row['id'] ?? 0 );
-		}
-		$order_ids = array();
-		foreach ( array_keys( $wanted ) as $wanted_name ) {
-			$wkey = strtolower( $wanted_name );
-			if ( isset( $by_name[ $wkey ] ) && $by_name[ $wkey ] > 0 ) {
-				$order_ids[] = $by_name[ $wkey ];
-			}
-		}
-		if ( ! empty( $order_ids ) ) {
-			update_term_meta( $position_id, Attribute::META_KEY_ORDER, $order_ids );
-		}
+		self::ensure_position_sample_instances( $taxonomy, $position_id );
+		self::ensure_bauteilliste_sample_instance( $taxonomy, $list_id );
+		self::ensure_bauteilliste_composition_link( $taxonomy, $list_id, $position_id );
 
 		return array(
 			'bauteillisteId' => $list_id,
 			'positionId'     => $position_id,
 		);
+	}
+
+	/**
+	 * Seed one sample BOM line under Position when none exist (ESP8266-RS232 PCB row).
+	 */
+	private static function ensure_position_sample_instances( string $taxonomy, int $position_id ): void {
+		if ( $position_id <= 0 ) {
+			return;
+		}
+		$existing = Model_Data::list( $taxonomy, $position_id );
+		if ( array() !== $existing ) {
+			return;
+		}
+
+		$values = array();
+		foreach ( Attribute::list( $taxonomy, $position_id ) as $row ) {
+			if ( ! empty( $row['hidden'] ) ) {
+				continue;
+			}
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id <= 0 ) {
+				continue;
+			}
+			$hint               = $row;
+			$hint['hostName']   = 'Bauteillisten Position';
+			$hint['definedOnName'] = 'Bauteillisten Position';
+			$values[ (string) $attr_id ] = Sample_Data::for_attribute( $hint );
+		}
+		if ( array() === $values ) {
+			return;
+		}
+		Model_Data::save(
+			$taxonomy,
+			$position_id,
+			array(
+				'values' => $values,
+			)
+		);
+	}
+
+	/**
+	 * Seed one sample Bauteilliste (named BOM) when none exist.
+	 */
+	private static function ensure_bauteilliste_sample_instance( string $taxonomy, int $list_id ): void {
+		if ( $list_id <= 0 ) {
+			return;
+		}
+		$existing = Model_Data::list( $taxonomy, $list_id );
+		if ( array() !== $existing ) {
+			return;
+		}
+
+		$values = array();
+		foreach ( Attribute::list( $taxonomy, $list_id ) as $row ) {
+			if ( ! empty( $row['hidden'] ) ) {
+				continue;
+			}
+			$name = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			/* Skip Position[0..*] — lines live as Position Model_Data, not embedded here for the sample. */
+			if ( 'position' === $name ) {
+				continue;
+			}
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id <= 0 ) {
+				continue;
+			}
+			$hint                  = $row;
+			$hint['hostName']      = 'Bauteilliste';
+			$hint['definedOnName'] = 'Bauteilliste';
+			$values[ (string) $attr_id ] = Sample_Data::for_attribute( $hint );
+		}
+		if ( array() === $values ) {
+			return;
+		}
+		Model_Data::save(
+			$taxonomy,
+			$list_id,
+			array(
+				'values' => $values,
+			)
+		);
+	}
+
+	/**
+	 * OQ-B1: sample Position line is linked to sample Bauteilliste via composition (not inline blob).
+	 */
+	private static function ensure_bauteilliste_composition_link( string $taxonomy, int $list_id, int $position_id ): void {
+		if ( $list_id <= 0 || $position_id <= 0 ) {
+			return;
+		}
+		$lists = Model_Data::list( $taxonomy, $list_id );
+		$lines = Model_Data::list( $taxonomy, $position_id );
+		if ( array() === $lists || array() === $lines ) {
+			return;
+		}
+		/* Prefer oldest list + oldest line (stable seed). */
+		usort(
+			$lists,
+			static function ( array $a, array $b ): int {
+				return strcmp( (string) ( $a['createdAt'] ?? '' ), (string) ( $b['createdAt'] ?? '' ) );
+			}
+		);
+		usort(
+			$lines,
+			static function ( array $a, array $b ): int {
+				return strcmp( (string) ( $a['createdAt'] ?? '' ), (string) ( $b['createdAt'] ?? '' ) );
+			}
+		);
+		$parent_id = (string) ( $lists[0]['id'] ?? '' );
+		$child_id  = (string) ( $lines[0]['id'] ?? '' );
+		if ( '' === $parent_id || '' === $child_id ) {
+			return;
+		}
+		Model_Data::link(
+			$taxonomy,
+			$list_id,
+			$parent_id,
+			$position_id,
+			$child_id,
+			Model_Data::LINK_COMPOSITION
+		);
+	}
+
+	/**
+	 * Sync own attributes on a Model host to an exact wanted map (add / order / optional strip).
+	 *
+	 * @param array<string,int>    $wanted          Attribute name → type term id.
+	 * @param array<string,string> $multiplicity    Optional name → multiplicity (default 1).
+	 * @param bool                 $remove_extras   Drop own slots not in $wanted.
+	 * @param array<string,string> $bindings        Optional name → Bindung (besteht_aus|aggregation).
+	 */
+	private static function sync_model_host_attributes(
+		string $taxonomy,
+		int $host_id,
+		array $wanted,
+		array $multiplicity = array(),
+		bool $remove_extras = true,
+		array $bindings = array()
+	): void {
+		if ( $host_id <= 0 || empty( $wanted ) ) {
+			return;
+		}
+
+		$have = array();
+		foreach ( Attribute::list_own( $taxonomy, $host_id ) as $row ) {
+			$key          = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			$have[ $key ] = (int) ( $row['id'] ?? 0 );
+		}
+
+		$keep = array();
+		foreach ( $wanted as $name => $type_id ) {
+			$key  = strtolower( (string) $name );
+			$mult = isset( $multiplicity[ $name ] ) ? (string) $multiplicity[ $name ] : '1';
+			$bind = isset( $bindings[ $name ] )
+				? Attribute::normalize_binding( (string) $bindings[ $name ] )
+				: Attribute::DEFAULT_BINDING;
+			if ( ! empty( $have[ $key ] ) ) {
+				$attr_id = $have[ $key ];
+				$keep[ $attr_id ] = true;
+				Attribute::set_multiplicity( $taxonomy, $host_id, $attr_id, $mult );
+				Attribute::set_binding( $taxonomy, $host_id, $attr_id, $bind );
+				if ( $type_id > 0 ) {
+					Attribute::set_type( $taxonomy, $host_id, $attr_id, (int) $type_id );
+				}
+				continue;
+			}
+			if ( $type_id <= 0 ) {
+				continue;
+			}
+			$added = Attribute::add( $taxonomy, $host_id, (string) $name, (int) $type_id, $mult, $bind );
+			if ( ! is_wp_error( $added ) && isset( $added['id'] ) ) {
+				$keep[ (int) $added['id'] ] = true;
+			}
+		}
+
+		if ( $remove_extras ) {
+			foreach ( Attribute::list_own( $taxonomy, $host_id ) as $row ) {
+				$attr_id = (int) ( $row['id'] ?? 0 );
+				if ( $attr_id <= 0 || isset( $keep[ $attr_id ] ) ) {
+					continue;
+				}
+				Attribute::remove( $taxonomy, $host_id, $attr_id );
+			}
+		}
+
+		$by_name = array();
+		foreach ( Attribute::list_own( $taxonomy, $host_id ) as $row ) {
+			$by_name[ strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ] = (int) ( $row['id'] ?? 0 );
+		}
+		$order_ids = array();
+		foreach ( array_keys( $wanted ) as $wanted_name ) {
+			$wkey = strtolower( (string) $wanted_name );
+			if ( isset( $by_name[ $wkey ] ) && $by_name[ $wkey ] > 0 ) {
+				$order_ids[] = $by_name[ $wkey ];
+			}
+		}
+		if ( ! empty( $order_ids ) ) {
+			update_term_meta( $host_id, Attribute::META_KEY_ORDER, $order_ids );
+		}
 	}
 
 	/**
@@ -2205,10 +2449,10 @@ final class Case_Data {
 			return $empty;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $target_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $target_id, true );
 		Node_Type::set_deletable( $target_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $target_id );
+		/* UR-B6 / Q72: pick+fill chrome = preferred render embed (not catalog node_embed). */
+		Node_Type::set_preferred_render( $taxonomy, $target_id, 'embed' );
 
 		$result               = $empty;
 		$result['targetId']   = $target_id;
@@ -2369,8 +2613,6 @@ final class Case_Data {
 			return 0;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $dioden_id, true );
-		Node_Type::set_is_abstract( $taxonomy, $dioden_id, false );
 		Node_Type::set_deletable( $dioden_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $dioden_id );
 
@@ -2399,8 +2641,6 @@ final class Case_Data {
 					(string) $leaf['short_description']
 				);
 			}
-			Node_Type::set_is_datatype( $taxonomy, $art_id, true );
-			Node_Type::set_is_abstract( $taxonomy, $art_id, false );
 			Node_Type::set_deletable( $art_id, false );
 			Node_Type::apply_parent_as_type( $taxonomy, $art_id );
 		}
@@ -2628,7 +2868,7 @@ final class Case_Data {
 				continue;
 			}
 			$type_id = (int) ( $cand['typeId'] ?? 0 );
-			if ( $type_id <= 0 || ! Node_Type::is_datatype( $taxonomy, $type_id ) ) {
+			if ( $type_id <= 0 || ! ( get_term( $type_id, $taxonomy ) instanceof \WP_Term ) ) {
 				$skipped[] = 'bad-type:' . $name;
 				continue;
 			}
@@ -2669,7 +2909,7 @@ final class Case_Data {
 		$simple = 0;
 		foreach ( self::simple_catalog_paths() as $path ) {
 			$id = self::find_term_by_path( $taxonomy, $path );
-			if ( $id > 0 && Node_Type::is_datatype( $taxonomy, $id ) ) {
+			if ( $id > 0 && ($id > 0 && get_term( $id, $taxonomy ) instanceof \WP_Term) ) {
 				$simple = $id;
 				break;
 			}
@@ -2698,7 +2938,6 @@ final class Case_Data {
 			return 0;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $email_id, true );
 		Node_Type::set_deletable( $email_id, false );
 
 		/* Retype common contact fields that were seeded as text. */
@@ -2747,7 +2986,7 @@ final class Case_Data {
 		$simple = 0;
 		foreach ( self::simple_catalog_paths() as $path ) {
 			$id = self::find_term_by_path( $taxonomy, $path );
-			if ( $id > 0 && Node_Type::is_datatype( $taxonomy, $id ) ) {
+			if ( $id > 0 && ($id > 0 && get_term( $id, $taxonomy ) instanceof \WP_Term) ) {
 				$simple = $id;
 				break;
 			}
@@ -2776,7 +3015,6 @@ final class Case_Data {
 			return 0;
 		}
 
-		Node_Type::set_is_datatype( $taxonomy, $date_id, true );
 		Node_Type::set_deletable( $date_id, false );
 		if ( ! metadata_exists( 'term', $date_id, Node_Type::META_KEY_DATE_MODE ) ) {
 			Node_Type::set_date_mode( $taxonomy, $date_id, 'date' );
@@ -3006,18 +3244,14 @@ final class Case_Data {
 					array(
 						'name'        => 'node_pick',
 						'description' => 'Shared parent (Q73): ref_scope + allowed catalog children.',
-						'is_datatype' => true,
-						'is_abstract' => true,
 						'children'    => array(
 							array(
 								'name'        => 'node_embed',
 								'description' => 'Pick under catalog root; embed target fields.',
-								'is_datatype' => true,
 							),
 							array(
 								'name'        => 'node_ref',
 								'description' => 'Pick under catalog root; store id only.',
-								'is_datatype' => true,
 							),
 						),
 					),
@@ -3451,7 +3685,7 @@ final class Case_Data {
 
 	/**
 	 * Fallstudie datatype leaves live under Definition/Data Types/Simple|Complex.
-	 * Also accept legacy Definition/Simple|Complex and Datentypen paths. Prefer is_datatype.
+	 * Also accept legacy Definition/Simple|Complex and Datentypen paths.
 	 */
 	private static function find_case_datatype_id( string $taxonomy, string $type_name ): int {
 		$paths = array(
@@ -3472,7 +3706,7 @@ final class Case_Data {
 			if ( $found <= 0 ) {
 				continue;
 			}
-			if ( Node_Type::is_datatype( $taxonomy, $found ) ) {
+			if ( ($found > 0 && get_term( $found, $taxonomy ) instanceof \WP_Term) ) {
 				return $found;
 			}
 			if ( 0 === $fallback ) {
@@ -3487,7 +3721,7 @@ final class Case_Data {
 				continue;
 			}
 			$leaf = self::find_simple_catalog_leaf( $taxonomy, $simple, $type_name );
-			if ( $leaf > 0 && Node_Type::is_datatype( $taxonomy, $leaf ) ) {
+			if ( $leaf > 0 && ($leaf > 0 && get_term( $leaf, $taxonomy ) instanceof \WP_Term) ) {
 				return $leaf;
 			}
 			if ( $leaf > 0 && 0 === $fallback ) {
@@ -3515,7 +3749,7 @@ final class Case_Data {
 	}
 
 	/**
-	 * Type binding is has_type / type_id — not composition to the catalog `table` node.
+	 * Type binding is type_id / parent-as-type — not composition to the catalog `table` node.
 	 */
 	private static function strip_composition_to_table_catalog( string $taxonomy, int $from_id ): void {
 		if ( $from_id <= 0 ) {
@@ -3609,29 +3843,14 @@ final class Case_Data {
 
 			Tree_Model::set_position( $term_id, (int) $index );
 
-			if ( array_key_exists( 'is_datatype', $node ) ) {
-				Node_Type::set_is_datatype( $taxonomy, $term_id, (bool) $node['is_datatype'] );
-			}
-			if ( array_key_exists( 'is_abstract', $node ) ) {
-				Node_Type::set_is_abstract( $taxonomy, $term_id, (bool) $node['is_abstract'] );
-			}
 			if ( array_key_exists( 'is_template', $node ) ) {
 				Node_Type::set_is_template( $taxonomy, $term_id, (bool) $node['is_template'] );
-			} elseif (
-				( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] )
-				|| (
-					array_key_exists( 'is_datatype', $node )
-					&& true === (bool) $node['is_datatype']
-					&& ! array_key_exists( 'deletable', $node )
-				)
-			) {
+			} elseif ( array_key_exists( 'deletable', $node ) && false === (bool) $node['deletable'] ) {
 				/* Seeded protected catalog → is_template (#5 lock signal). */
 				Node_Type::set_is_template( $taxonomy, $term_id, true );
 			}
 			if ( array_key_exists( 'deletable', $node ) ) {
 				Node_Type::set_deletable( $term_id, (bool) $node['deletable'] );
-			} elseif ( array_key_exists( 'is_datatype', $node ) && true === (bool) $node['is_datatype'] ) {
-				Node_Type::set_deletable( $term_id, false );
 			}
 			if ( array_key_exists( 'short_description', $node ) ) {
 				Tree_Model::set_short_description(
@@ -3755,7 +3974,10 @@ final class Case_Data {
 		}
 
 		++$created;
-		return (int) $result['term_id'];
+		$term_id = (int) $result['term_id'];
+		/* Q95: standard-by-name first, else parent copy (same as Tree_Model::create). */
+		Tree_Icons::apply_on_create( $taxonomy, $term_id, max( 0, $parent_id ) );
+		return $term_id;
 	}
 
 	/**

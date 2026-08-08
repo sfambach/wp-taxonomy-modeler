@@ -3,7 +3,7 @@
  * Additive Relations between Nodes (Q74 / Q75 scaffold).
  *
  * Hierarchy child_of stays synthetic — reparent only (not Add relation).
- * has_type is managed via the Relations UI but persists as type_id meta (one SoT).
+ * Field / catalog type_id is set via Node_Type (not a RelationType).
  * ref_scope is synthetic (meta); To target is editable in Relations (not via Add edge).
  * child_of To is never editable here — reparent only.
  * Stored edges support add / remove / reorder / change To via stable edge ids.
@@ -42,9 +42,6 @@ final class Relation {
 	 * Aggregation: member lives on when the host object is gone (attribute Bindung).
 	 */
 	public const TYPE_AGGREGATION = 'aggregation';
-
-	/** Data-type binding (Relations UI → type_id meta; not stored in _wtt_relations). */
-	public const TYPE_HAS_TYPE = 'has_type';
 
 	/** Catalog-root binding for node_ref / node_embed (meta; Relations To editable). */
 	public const TYPE_REF_SCOPE = 'ref_scope';
@@ -317,11 +314,6 @@ final class Relation {
 			);
 		}
 
-		/* has_type: Relations UI writes type_id — do not store a parallel edge. */
-		if ( self::is_has_type_name( $type->name ) ) {
-			return self::bind_has_type( $taxonomy, $from_id, $to_id );
-		}
-
 		if ( self::has_identical( $from_id, $type_id, $to_id ) ) {
 			return new \WP_Error(
 				'wtt_duplicate_relation',
@@ -342,44 +334,17 @@ final class Relation {
 	}
 
 	/**
-	 * Bind or clear data type via has_type (single SoT: type_id meta).
-	 * Hierarchy / root free assign is locked (Q88) — use Attributes for field types.
-	 *
-	 * @return true|\WP_Error
-	 */
-	public static function bind_has_type( string $taxonomy, int $from_id, int $to_id ) {
-		if ( Node_Type::is_free_type_assignment_locked( $taxonomy, $from_id ) ) {
-			return new \WP_Error(
-				'wtt_type_locked',
-				__( 'Free has_type is not editable here. Hierarchy type is the parent; root type is seed-managed.', 'wp-taxonomy-tree' )
-			);
-		}
-		$result = Node_Type::set_type_id( $taxonomy, $from_id, $to_id );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-		if ( $to_id > 0 && Node_Type::can_inherit_type( $taxonomy, $from_id ) ) {
-			Node_Type::set_type_override( $taxonomy, $from_id, true );
-		}
-		return true;
-	}
-
-	public static function is_has_type_name( string $name ): bool {
-		return self::TYPE_HAS_TYPE === strtolower( trim( $name ) );
-	}
-
-	/**
 	 * Fixed multiplicity for a RelationType name, or null if free (Q78).
 	 *
 	 * child_of always exactly one parent (hierarchy invariant).
-	 * has_type / ref_scope stay 0..1 (synthetic bindings).
+	 * ref_scope stays 0..1 (synthetic binding).
 	 */
 	public static function fixed_multiplicity_for_type_name( string $name ): ?string {
 		$key = strtolower( trim( $name ) );
 		if ( self::TYPE_CHILD_OF === $key ) {
 			return '1';
 		}
-		if ( self::TYPE_HAS_TYPE === $key || self::TYPE_REF_SCOPE === $key ) {
+		if ( self::TYPE_REF_SCOPE === $key ) {
 			return '0..1';
 		}
 		return null;
@@ -413,18 +378,6 @@ final class Relation {
 		$from = get_term( $from_id, $taxonomy );
 		if ( ! $from instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
-		}
-
-		/* has_type binding lives in type_id meta — clear when RelationType is has_type. */
-		if ( $type_id > 0 ) {
-			$type = get_term( $type_id, $taxonomy );
-			if ( $type instanceof \WP_Term && self::is_has_type_name( $type->name ) ) {
-				$current = Node_Type::get_type_id( $from_id );
-				if ( $to_id <= 0 || $current === $to_id || $current <= 0 ) {
-					return self::bind_has_type( $taxonomy, $from_id, 0 );
-				}
-				return true;
-			}
 		}
 
 		$edges   = self::read_edges( $from_id );
@@ -484,12 +437,6 @@ final class Relation {
 			return new \WP_Error(
 				'wtt_protected_relation',
 				__( 'Cannot assign a protected relation type here.', 'wp-taxonomy-tree' )
-			);
-		}
-		if ( self::is_has_type_name( $type->name ) ) {
-			return new \WP_Error(
-				'wtt_bad_relation_type',
-				__( 'has_type is set via Add relation (target = data-type node), not by renaming an edge.', 'wp-taxonomy-tree' )
 			);
 		}
 		if ( ! self::is_under_relation_types( $taxonomy, $new_type_id ) ) {
@@ -582,11 +529,10 @@ final class Relation {
 	 * Change the To node of a Relation (outgoing from $from_id).
 	 *
 	 * - child_of: rejected (reparent only)
-	 * - has_type: rebinds type_id meta
 	 * - ref_scope: rebinds catalog-root meta
 	 * - stored edges: updates toId on the edge
 	 *
-	 * @param string $type_key Optional type name when there is no edge id (has_type / ref_scope).
+	 * @param string $type_key Optional type name when there is no edge id (ref_scope).
 	 * @return true|\WP_Error
 	 */
 	public static function update_to(
@@ -657,9 +603,6 @@ final class Relation {
 				'wtt_protected_relation',
 				__( 'child_of target is fixed here — use Reparent.', 'wp-taxonomy-tree' )
 			);
-		}
-		if ( self::TYPE_HAS_TYPE === $type_key ) {
-			return self::bind_has_type( $taxonomy, $from_id, $new_to_id );
 		}
 		if ( self::TYPE_REF_SCOPE === $type_key ) {
 			return Node_Type::set_ref_scope_id( $taxonomy, $from_id, $new_to_id );

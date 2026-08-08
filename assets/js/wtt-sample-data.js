@@ -188,18 +188,16 @@
 			'30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.',
 		aenderungsprotokoll:
 			'30.08.2025 — Beitrag erstellt und Platine bestellt.\n09.09.2025 — Platinen eingetroffen.',
-		/* Bauteilliste/Position (BOM line — ESP8266-RS232 PCB row). */
+		/* Bauteillisten Position (minimal BOM line — ESP8266-RS232 PCB). */
 		referenz: 'PCB',
 		designator: 'PCB',
-		wert: 'Leiterplatte',
-		value: 'Leiterplatte',
 		menge: '1',
 		'qty line': '1',
 		beschreibung: 'ESP8266-RS232 Leiterplatte',
 		description: 'ESP8266-RS232 Leiterplatte',
-		lager: 'x',
-		stock: 'x',
-		status: '',
+		'auf lager': 'true',
+		auflager: 'true',
+		'in stock': 'true',
 	};
 
 	function normalizeKey(raw) {
@@ -279,20 +277,62 @@
 	 * @param {string|number|object|null} typeNodeOrKey
 	 * @return {string}
 	 */
+	/**
+	 * Q96: reverse-lookup Registry id from catalogBindings (`builtin.*` → term id).
+	 * @param {number|string} termId
+	 * @return {string}
+	 */
+	function registryIdFromBindings(termId) {
+		var id = parseInt(termId, 10) || 0;
+		if (id <= 0) {
+			return '';
+		}
+		var bindings =
+			(global.wttTree && global.wttTree.catalogBindings) ||
+			null;
+		if (!bindings || typeof bindings !== 'object') {
+			return '';
+		}
+		var prefix = 'builtin.';
+		var key;
+		for (key in bindings) {
+			if (
+				!Object.prototype.hasOwnProperty.call(bindings, key) ||
+				key.indexOf(prefix) !== 0
+			) {
+				continue;
+			}
+			if ((parseInt(bindings[key], 10) || 0) === id) {
+				return normalizeKey(key.slice(prefix.length));
+			}
+		}
+		return '';
+	}
+
 	function resolveTypeKey(typeNodeOrKey) {
 		if (typeNodeOrKey == null) {
 			return '';
 		}
 		if (typeof typeNodeOrKey === 'string' || typeof typeNodeOrKey === 'number') {
 			var asStr = String(typeNodeOrKey).trim();
-			/* Numeric ids alone are not resolvable client-side without a term name. */
+			/* Q96: numeric id → builtin.* binding when available. */
 			if (/^\d+$/.test(asStr)) {
-				return '';
+				return registryIdFromBindings(asStr);
 			}
 			return normalizeKey(asStr);
 		}
 		if (typeof typeNodeOrKey !== 'object') {
 			return '';
+		}
+		var fromBind = registryIdFromBindings(
+			typeNodeOrKey.typeId != null
+				? typeNodeOrKey.typeId
+				: typeNodeOrKey.type && typeNodeOrKey.type.id != null
+					? typeNodeOrKey.type.id
+					: typeNodeOrKey.id
+		);
+		if (fromBind) {
+			return fromBind;
 		}
 		var fields = ['typeKey', 'typeName', 'typeLabel'];
 		var i;
@@ -474,16 +514,47 @@
 					}
 				}
 			}
-			/* Bauteilliste/Position — ESP8266-RS232 first BOM row (PCB). */
-			if (!base && host === 'position') {
+			/* Lieferant.Name — fab / distributor. */
+			if (!base && host === 'lieferant') {
+				for (var li = 0; li < hints.length; li++) {
+					var lh = String(hints[li] || '')
+						.trim()
+						.toLowerCase();
+					if (lh === 'name' || lh === 'firma' || lh === 'lieferant') {
+						base = 'JLCPCB';
+						break;
+					}
+				}
+			}
+			/* Bauteilliste.Name */
+			if (!base && host === 'bauteilliste') {
+				for (var bi = 0; bi < hints.length; bi++) {
+					var bh = String(hints[bi] || '')
+						.trim()
+						.toLowerCase();
+					if (
+						bh === 'name' ||
+						bh === 'bezeichnung' ||
+						bh === 'titel' ||
+						bh === 'title'
+					) {
+						base = 'ESP8266-RS232 BOM';
+						break;
+					}
+				}
+			}
+			/* Bauteillisten Position — ESP8266-RS232 first BOM row (PCB). */
+			var hostNorm = String(host || '').replace(/\s+/g, '');
+			if (
+				!base &&
+				(hostNorm === 'position' || hostNorm === 'bauteillistenposition')
+			) {
 				var posMap = {
 					referenz: 'PCB',
-					wert: 'Leiterplatte',
 					menge: '1',
 					beschreibung: 'ESP8266-RS232 Leiterplatte',
-					preis: '1.80',
-					lager: 'x',
-					status: '',
+					'auf lager': 'true',
+					auflager: 'true',
 				};
 				for (var pi = 0; pi < hints.length; pi++) {
 					var ph = String(hints[pi] || '')

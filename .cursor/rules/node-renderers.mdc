@@ -32,12 +32,22 @@ Do **not** invent parallel “preview HTML” for a type that already has a rend
 2. It selects a registered **renderer** that `canRender` the node (by type key, e.g. `int`, `char`).
 3. Call sites pick the part they need:
    - **`getExampleNode(typeKey|node)`** — DTO for preview (e.g. `Int_name` for `int`; table with Kopf/Zeile/Fuss)
-   - **`renderLabel(node, context)`** — field designation (form label, tree name, table column title)
+   - **`renderLabel(node, context)`** — field designation (form label, table column title)
    - **`renderContent(node, context, readonly)`** — field value / control; `readonly === true` forces display-only output
+   - **`renderTreeNode(node, context)`** — taxonomy **admin tree** row name chrome (`context.name === 'tree'`); optional `node.icon` (**Q95**) before the label when set
    - **`render(node, context)`** — composed label + content (or composition of children); returns **`false`** if the renderer cannot handle the node
 4. If the node has **composition** members, the Registry calls **`render` again** for each child (same contexts).
 
-Do not fork a second display stack for “preview,” blocks, or admin chrome. **Preview, admin backend, and frontend** all use `Registry.render`.
+## Tree icons (Q95)
+
+- Storage: term meta `_wtt_icon` on the node (Dashicon key or CSS `circle`/`dot`).
+- Allowlist: Settings option `wtt_tree_icon_keys` (`WTT\Tree_Icons`).
+- Create: copy parent icon once; later parent edits do not cascade.
+- Paint: `defaultRenderTreeNode` / type `renderTreeNode` — icon before name; empty / disallowed → no icon.
+
+**`renderTreeNode` contract:** Every registered renderer that paints nodes **must** expose `renderTreeNode`. `Registry.register` attaches `defaultRenderTreeNode` when missing. Admin tree (`tree-admin.js`) paints names only via `Registry.renderTreeNode` — not hard-coded label spans. Hierarchy hosts without a matching type renderer still get the default name chrome.
+
+Do not fork a second display stack for “preview,” blocks, or admin chrome. **Preview, admin backend, and frontend** all use `Registry.render` / shared `WTTObjectRender` / `Object_Render` — **presentation parity** (plan **0.7.49**). Gaps are bugs, not a third UI.
 
 Scaffold module: `assets/js/wtt-node-render.js` (`WTTNodeRender.Registry`, `IntRenderer`, `CharRenderer`).
 
@@ -47,7 +57,7 @@ A node looks different per context. At least:
 
 | Context | Typical surface |
 |---------|-----------------|
-| **tree** | Hierarchy chrome / compact field in tree preview |
+| **tree** | Admin taxonomy tree row name — **`Registry.renderTreeNode`** (required on every node renderer) |
 | **list** | Flat / tabular list rows |
 | **form** | Labeled controls (edit / display) — **one instance** via `WTTObjectRender.renderForm` |
 | **table** | Column / cell — **list of instances** via `WTTObjectRender.renderTable` (≠ parked catalog `table`) |
@@ -77,7 +87,8 @@ Attribute-host preview uses **`WTTObjectRender`** Form(1)/Table(n); field cells 
 
 ## Do / don’t
 
-- **Do** register a new renderer when a new type needs custom chrome (`canRender` + `getExampleNode` + `render*`).
+- **Do** register a new renderer when a new type needs custom chrome (`canRender` + `getExampleNode` + `render*` + **`renderTreeNode`**).
+- **Do** implement **`renderTreeNode`** on every node renderer (or rely on Registry auto-default); do not hard-code tree name HTML in `tree-admin.js`.
 - **Do** keep data loading / DTOs out of renderer chrome (renderers consume node payload + context options).
 - **Do** register one renderer per simple scalar type (`int`, `char`, `double`, `text`, `textarea`, `bool`, `email`).
 - **Do** treat **one Registry ≠ one renderer** (Q91) — many type handlers share one dispatch pipeline.

@@ -326,7 +326,6 @@ final class Hidden_Nodes {
 			'typeId'           => Node_Type::get_effective_type_id( $taxonomy, $term_id ),
 			'ownTypeId'        => Node_Type::get_type_id( $term_id ),
 			'typeLabel'        => is_array( $type ) ? (string) $type['name'] : '',
-			'isDatatype'       => Node_Type::is_datatype( $taxonomy, $term_id ),
 			'isAbstract'       => Node_Type::is_abstract( $taxonomy, $term_id ),
 			'isTemplate'       => Node_Type::is_template( $term_id ),
 			'deletable'        => Node_Type::is_deletable( $term_id ),

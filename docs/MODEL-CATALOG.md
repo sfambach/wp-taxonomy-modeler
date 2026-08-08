@@ -1,6 +1,6 @@
 # Model catalog (Fallstudie / `wtt_fs`)
 
-Snapshot of **Model/** attribute hosts and Bauteil kinds as seeded in the scaffold.
+Snapshot of **Model/** attribute hosts for the top-down **BOM** spine (Q85 composition-first).
 
 > **Update policy:** Agents refresh this file **only when the user explicitly asks**
 > (e.g. “Model-Katalog aktualisieren”, “Modelle speichern”, “update model catalog”).
@@ -10,14 +10,37 @@ Snapshot of **Model/** attribute hosts and Bauteil kinds as seeded in the scaffo
 |-------|--------|
 | Taxonomy | `wtt_fs` |
 | Path | `Fallstudie/Model/…` |
-| Last snapshot | 2026-08-07 |
-| Plugin ≈ | `0.0.343` |
+| Last snapshot | 2026-08-08 |
+| Plugin ≈ | `0.0.349` |
+
+---
+
+## Top-down BOM spine
+
+```text
+Platine
+  ├── Name, Version, Gerber…, Bestellt wo → Kontakt, Stück, Preis, …  (besteht_aus)
+  └── Bauteilliste → Bauteilliste                                      (aggregation)
+        ├── Name                                                       (besteht_aus)
+        └── Position[0..*] → Bauteillisten Position                    (aggregation)
+              ├── Referenz (text)
+              ├── Wert → Bauteil
+              ├── Menge (int)
+              ├── Beschreibung (text, 0..1)
+              └── Auf Lager (bool, 0..1)
+```
+
+Not a Collection `table`/`list` type (Q90 parked). Table UI = view of composition.
+
+Lieferant / supplier catalog is **out of this cut** (left for later).
+
+**Aggregation** = Platine owns/links Bauteilliste; Bauteilliste owns/links line objects (same Bindung pattern).
 
 ---
 
 ## Kontakt
 
-Person + address (also used as type for Platine **Bestellt wo**).
+Person + address (also type for Platine **Bestellt wo**).
 
 | Attribute | Type | Mult. |
 |-----------|------|-------|
@@ -33,35 +56,54 @@ Person + address (also used as type for Platine **Bestellt wo**).
 
 ---
 
+## Bauteillisten Position
+
+Minimal BOM line object (sibling under `Model/`, formerly `Position`).
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Referenz | text | 1 | Designator (PCB, R1, …) |
+| Wert | Bauteil | 1 | Part pick (kind / catalog) |
+| Menge | int | 1 | Stück (Q58) |
+| Beschreibung | text | 0..1 | |
+| Auf Lager | bool | 0..1 | In stock |
+
+Sample line (ESP8266-RS232): `PCB | (Bauteil) | 1 | ESP8266-RS232 Leiterplatte | true`
+
+---
+
+## Bauteilliste
+
+BOM / parts list (alias concept: **BOM**).
+
+| Attribute | Type | Mult. | Notes |
+|-----------|------|-------|--------|
+| Name | text | 1 | |
+| Position | Bauteillisten Position | 0..* | **aggregation** |
+
+---
+
 ## Platine
 
-PCB / board — mirrors Retro Projekt post tables (Fakten, Optionen, Aufbau, Protokoll).
+PCB / board — **slim** cut (review / Optionen / Protokoll extras removed for now).
 
 | Attribute | Type | Mult. | Notes |
 |-----------|------|-------|--------|
 | Name | text | 1 | Board title |
-| Version | text | 0..1 | e.g. Meine Version |
+| Version | text | 0..1 | |
 | Gerber vorhanden | bool | 1 | |
 | Gerberdatei | media | 1 | |
-| Bestellt wo | Kontakt | 1 | Fab / vendor |
+| Bestellt wo | Kontakt | 1 | Fab contact |
 | Stück | int | 1 | Order qty |
-| Preis | double | 1 | Order total (aliases: Preis inclusive, …) |
-| Besonderheiten | text | 1 | Lead-free, color, … |
-| Optionen | textarea | 0..1 | Variants table |
-| Erfolgreich | bool | 1 | Build review |
-| Preis Pro Stück | double | 1 | |
-| Lötdauer | text | 1 | |
-| Schwierigkeitsgrad | text | 1 | alias: Schwierigkeitsfaktor |
-| Funktion | text | 1 | Schlecht / OK / Gut / Klasse |
-| Lohnt es sich | textarea | 1 | |
-| Einschränkungen | textarea | 1 | |
-| Protokoll | textarea | 0..1 | Dated change log |
+| Preis | double | 1 | Order total |
+| Besonderheiten | text | 0..1 | |
+| Bauteilliste | Bauteilliste | 0..1 | Linked BOM — **aggregation** |
 
 ---
 
 ## Bauteil
 
-Kind host under `Model/Bauteil`. Groups = inheritance folders (Q88). MPN records live under Implementation/Bauteile when that branch exists (Q83).
+Kind host under `Model/Bauteil`. Groups = inheritance folders (Q88). MPN records live under Implementation/Bauteile when that branch exists (Q83). No Lieferant / Bestellnummer / Hersteller on kinds.
 
 ### Passiv
 
@@ -199,4 +241,4 @@ User phrase examples (German or English):
 - „Modelle speichern“
 - „update model catalog“
 
-Then: re-read live `Fallstudie/Model` (Attribute::list_own + Bauteil groups/kinds) and replace the snapshot tables above; bump **Last snapshot** / plugin version note.
+Then re-read live `wtt_fs` → `Fallstudie/Model` and replace the tables above.

@@ -5,6 +5,7 @@
  *   WTTNodeRender.Registry.render(node, context)
  *   WTTNodeRender.Registry.renderLabel(node, context) — field designation
  *   WTTNodeRender.Registry.renderContent(node, context, readonly) — value / control
+ *   WTTNodeRender.Registry.renderTreeNode(node, context) — taxonomy tree row name
  *
  * Context: { name: 'tree'|'form'|'table'|…, mode: 'edit'|'display', value, onInput, … }
  * `readonly` on renderContent forces display output (no editable control).
@@ -18,6 +19,8 @@
 
 	var renderers = [];
 	var resolveTypeKeyFn = null;
+	/** Q96: catalogBindings map (`builtin.int` → term id) for id→Registry reverse lookup. */
+	var catalogBindingsMap = null;
 	var i18nLabels = {
 		boolTrue: 'true',
 		boolFalse: 'false',
@@ -177,6 +180,24 @@
 		if (!node) {
 			return '';
 		}
+		/*
+		 * Q96: prefer typeId / self id → builtin.* binding over leaf name.
+		 * Name match below remains debt fallback when bindings are unbound.
+		 */
+		var typeId =
+			node.typeId != null
+				? node.typeId
+				: node.type && node.type.id != null
+					? node.type.id
+					: 0;
+		var fromTypeBind = registryIdFromBindings(typeId);
+		if (fromTypeBind) {
+			return fromTypeBind;
+		}
+		var fromSelfBind = registryIdFromBindings(node.id);
+		if (fromSelfBind) {
+			return fromSelfBind;
+		}
 		var name = '';
 		if (typeof node.type === 'string') {
 			name = node.type;
@@ -201,13 +222,62 @@
 		) {
 			name = 'quantity';
 		}
-		if (!name && node.isDatatype && node.name) {
-			name = String(node.name).trim().toLowerCase();
+		var leaf = node.name
+			? String(node.name)
+					.trim()
+					.toLowerCase()
+			: '';
+		if (leaf === 'integer') {
+			leaf = 'int';
 		}
-		if (!name && node.name && !node.typeId) {
-			name = String(node.name).trim().toLowerCase();
+		if (leaf === 'boolean') {
+			leaf = 'bool';
+		}
+		if (leaf === 'float' || leaf === 'number') {
+			leaf = 'double';
+		}
+		/*
+		 * Debt: type-catalog leaf name is the type (int); Q88 may set type to the
+		 * parent branch (Simple). Prefer a known leaf name over a non-scalar type.
+		 */
+		if (
+			leaf &&
+			(SIMPLE_SCALAR_KEYS[leaf] || STRUCTURED_TYPE_KEYS[leaf]) &&
+			(!name ||
+				(!SIMPLE_SCALAR_KEYS[name] && !STRUCTURED_TYPE_KEYS[name]))
+		) {
+			return leaf;
+		}
+		if (!name && leaf && !node.typeId) {
+			name = leaf;
 		}
 		return name;
+	}
+
+	/**
+	 * Q96: term id → Registry id via `builtin.*` catalog bindings.
+	 * @param {number|string} termId
+	 * @return {string}
+	 */
+	function registryIdFromBindings(termId) {
+		var id = parseInt(termId, 10) || 0;
+		if (id <= 0 || !catalogBindingsMap || typeof catalogBindingsMap !== 'object') {
+			return '';
+		}
+		var prefix = 'builtin.';
+		var key;
+		for (key in catalogBindingsMap) {
+			if (
+				!Object.prototype.hasOwnProperty.call(catalogBindingsMap, key) ||
+				key.indexOf(prefix) !== 0
+			) {
+				continue;
+			}
+			if ((parseInt(catalogBindingsMap[key], 10) || 0) === id) {
+				return String(key.slice(prefix.length)).toLowerCase();
+			}
+		}
+		return '';
 	}
 
 	function resolveTypeKey(node) {
@@ -349,17 +419,46 @@
 			if (!o) {
 				return;
 			}
+			/* Unit allowlist marks disabled prefixes with enabled:false. */
+			if (Object.prototype.hasOwnProperty.call(o, 'enabled') && !o.enabled) {
+				return;
+			}
 			var name = o.name != null ? String(o.name) : '';
 			if (!name) {
 				return;
 			}
+			var mult = o.multiplikator;
+			var multNum =
+				mult != null && mult !== '' && isFinite(Number(mult)) && Number(mult) > 0
+					? Number(mult)
+					: null;
 			opts.push({
 				id: o.id != null ? String(o.id) : name,
 				name: name,
 				letter: name === 'Mega' ? 'M' : name.length <= 2 ? name : name.charAt(0),
+				multiplikator: multNum,
 			});
 		});
 		return opts;
+	}
+
+	function quantityApi() {
+		return (
+			(global.WTTConverter && global.WTTConverter.Quantity) || null
+		);
+	}
+
+	function qtyPrefixRootToSi(node) {
+		var schema = node && node.quantitySchema;
+		if (!schema) {
+			return 1;
+		}
+		var raw =
+			schema.prefixRootToSi != null
+				? schema.prefixRootToSi
+				: schema.prefix_root_to_si;
+		var n = Number(raw);
+		return isFinite(n) && n > 0 ? n : 1;
 	}
 
 	function qtyPrefixLetter(prefixName, options) {
@@ -429,10 +528,8 @@
 
 		var praefixMem = findQtyMember(members, 'praefix');
 		var prefixOpts = qtyPrefixOptions(praefixMem);
-		var prefixName = parsed.prefix;
-		if (!prefixName && prefixOpts.length) {
-			prefixName = prefixOpts[0].name;
-		}
+		/* Optional Praefix: empty = bare (multiplikator 1). Do not invent a prefix. */
+		var prefixName = parsed.prefix ? String(parsed.prefix) : '';
 		var symbol = String(qtySymbolFromMembers(members) || '');
 		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
 
@@ -467,13 +564,28 @@
 			prefixSelect = createEl('select', {
 				className: 'wtt-type-select wtt-preview-quantity__prefix',
 			});
+			/* Bare / none — Q51 optional Praefix; Q109 treats multiplikator as 1. */
+			var noneLabel =
+				(global.wttTree &&
+					global.wttTree.i18n &&
+					global.wttTree.i18n.unitConvNone) ||
+				'(none)';
+			var noneOpt = createEl('option', {
+				value: '',
+				text: String(noneLabel),
+			});
+			if (!prefixName) {
+				noneOpt.selected = true;
+			}
+			prefixSelect.appendChild(noneOpt);
 			prefixOpts.forEach(function (opt) {
 				var o = createEl('option', {
 					value: opt.name,
 					text: opt.name,
 				});
-				if (opt.name === prefixName) {
+				if (opt.name === prefixName || String(opt.id) === prefixName) {
 					o.selected = true;
+					noneOpt.selected = false;
 				}
 				prefixSelect.appendChild(o);
 			});
@@ -500,13 +612,34 @@
 			num.addEventListener('input', emit);
 			num.addEventListener('change', emit);
 			if (prefixSelect) {
-				prefixSelect.addEventListener('change', emit);
+				/* Q109: Präfix change → rescale Typ so to_si stays constant. */
+				var prevPrefix = prefixSelect.value;
+				prefixSelect.addEventListener('change', function () {
+					var nextPrefix = prefixSelect.value;
+					var qty = quantityApi();
+					if (qty && typeof qty.rescaleOnPrefixChange === 'function') {
+						var rescaled = qty.rescaleOnPrefixChange(
+							num.value,
+							prevPrefix,
+							nextPrefix,
+							prefixOpts,
+							qtyPrefixRootToSi(node)
+						);
+						if (rescaled != null) {
+							num.value = rescaled;
+						}
+					}
+					prevPrefix = nextPrefix;
+					emit();
+				});
 			}
 		}
 		return group;
 	}
 
 	var QuantityRenderer = {
+		id: 'quantity',
+		label: 'Quantity',
 		canRender: function (node) {
 			if (!node) {
 				return false;
@@ -929,7 +1062,30 @@
 	}
 
 	function findRenderer(node, context) {
+		var preferred =
+			node &&
+			(node.preferredRender ||
+				node.preferred_render ||
+				(node.typePreferredRender != null ? node.typePreferredRender : ''));
+		preferred = String(preferred || '')
+			.trim()
+			.toLowerCase();
 		var i;
+		if (preferred) {
+			for (i = 0; i < renderers.length; i++) {
+				var prefR = renderers[i];
+				var prefId = String((prefR && prefR.id) || '')
+					.trim()
+					.toLowerCase();
+				if (prefId !== preferred) {
+					continue;
+				}
+				if (typeof prefR.canRender === 'function' && !prefR.canRender(node, context)) {
+					continue;
+				}
+				return prefR;
+			}
+		}
 		for (i = 0; i < renderers.length; i++) {
 			var renderer = renderers[i];
 			if (typeof renderer.canRender === 'function' && !renderer.canRender(node, context)) {
@@ -972,6 +1128,113 @@
 		return result;
 	}
 
+	/**
+	 * Paint a tree icon key (Dashicon). Square chrome.
+	 * Shared by tree rows, icon list chooser, and closed-select preview.
+	 *
+	 * @param {string} iconKey
+	 * @param {string} [extraClass]
+	 * @return {HTMLElement|null}
+	 */
+	function paintIcon(iconKey, extraClass) {
+		var key = iconKey != null ? String(iconKey).replace(/^dashicons-/, '') : '';
+		key = key.replace(/[^a-z0-9\-]/gi, '').toLowerCase();
+		if (!key) {
+			return null;
+		}
+		var extra = extraClass ? ' ' + String(extraClass) : '';
+		return createEl('span', {
+			className: 'dashicons dashicons-' + key + ' wtt-tree__icon' + extra,
+			'aria-hidden': 'true',
+		});
+	}
+
+	/**
+	 * Default taxonomy-tree name chrome (span.wtt-tree__name).
+	 * Used when no type renderer matches, or as the baseline each renderer gets.
+	 *
+	 * Context flags:
+	 *   showType — append [typeLabel]
+	 *   displayName — override node.name (e.g. Fallstudie → Taxonomy)
+	 *
+	 * @return {HTMLElement}
+	 */
+	function defaultRenderTreeNode(node, context) {
+		context = context || {};
+		var label = '';
+		if (context.displayName != null && String(context.displayName) !== '') {
+			label = String(context.displayName);
+		} else if (node && node.displayName != null && String(node.displayName) !== '') {
+			label = String(node.displayName);
+		} else if (node && node.name != null) {
+			label = String(node.name);
+		}
+		if (context.showType && node && node.typeLabel) {
+			label += ' [' + String(node.typeLabel) + ']';
+		}
+		var children = [];
+		var iconEl = paintIcon(node && node.icon != null ? node.icon : '');
+		if (iconEl) {
+			children.push(iconEl);
+		}
+		children.push(
+			createEl('span', {
+				className: 'wtt-tree__name-text',
+				text: label,
+			})
+		);
+		var nameEl = createEl(
+			'span',
+			{
+				className: 'wtt-tree__name',
+			},
+			children
+		);
+		if (node && node.shortDescription) {
+			nameEl.title = String(node.shortDescription);
+		} else if (node && node.description) {
+			nameEl.title = String(node.description);
+		}
+		return nameEl;
+	}
+
+	/**
+	 * Every registered renderer that paints nodes must expose renderTreeNode.
+	 * Missing implementations get the default taxonomy-tree name chrome.
+	 */
+	function ensureRenderTreeNode(renderer) {
+		if (!renderer || typeof renderer.renderTreeNode === 'function') {
+			return;
+		}
+		renderer.renderTreeNode = function (node, context) {
+			if (typeof this.canRender === 'function' && !this.canRender(node, context)) {
+				return false;
+			}
+			return defaultRenderTreeNode(node, context);
+		};
+	}
+
+	function invokeTreeNode(node, context) {
+		context = Object.assign(
+			{
+				name: 'tree',
+				mode: 'display',
+			},
+			context || {}
+		);
+		if (!node) {
+			return null;
+		}
+		var renderer = findRenderer(node, context);
+		if (renderer && typeof renderer.renderTreeNode === 'function') {
+			var result = renderer.renderTreeNode(node, context);
+			if (result !== false && result != null) {
+				return result;
+			}
+		}
+		return defaultRenderTreeNode(node, context);
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Registry                                                              */
 	/* ------------------------------------------------------------------ */
@@ -981,11 +1244,71 @@
 			if (
 				!renderer ||
 				(typeof renderer.render !== 'function' &&
-					typeof renderer.renderContent !== 'function')
+					typeof renderer.renderContent !== 'function' &&
+					typeof renderer.renderTreeNode !== 'function')
 			) {
 				return;
 			}
+			if (!renderer.id) {
+				renderer.id = String(renderer.label || 'renderer-' + renderers.length)
+					.trim()
+					.toLowerCase()
+					.replace(/\s+/g, '_');
+			}
+			ensureRenderTreeNode(renderer);
 			renderers.push(renderer);
+		},
+
+		/**
+		 * Compatible field renderers for Preferred render select (canRender only).
+		 * @return {Array<{id:string,label:string}>}
+		 */
+		listCompatible: function (node, context) {
+			context = context || { name: 'form', mode: 'edit' };
+			var out = [];
+			var seen = {};
+			var i;
+			for (i = 0; i < renderers.length; i++) {
+				var r = renderers[i];
+				if (!r || typeof r.canRender !== 'function') {
+					continue;
+				}
+				if (!r.canRender(node, context)) {
+					continue;
+				}
+				var id = String(r.id || '')
+					.trim()
+					.toLowerCase();
+				if (!id || seen[id]) {
+					continue;
+				}
+				seen[id] = true;
+				out.push({
+					id: id,
+					label: String(r.label || id),
+				});
+			}
+			return out;
+		},
+
+		getById: function (id) {
+			id = String(id || '')
+				.trim()
+				.toLowerCase();
+			if (!id) {
+				return null;
+			}
+			var i;
+			for (i = 0; i < renderers.length; i++) {
+				if (
+					String((renderers[i] && renderers[i].id) || '')
+						.trim()
+						.toLowerCase() === id
+				) {
+					return renderers[i];
+				}
+			}
+			return null;
 		},
 
 		/**
@@ -1004,6 +1327,19 @@
 		renderContent: function (node, context, readonly) {
 			return invokeContent(node, context, !!readonly);
 		},
+
+		/**
+		 * Taxonomy tree row — node name chrome in the admin tree.
+		 * Type renderer when canRender; otherwise defaultRenderTreeNode.
+		 * Context: { name:'tree', mode:'display', showType?, displayName?, depth? }.
+		 * @return {HTMLElement|null}
+		 */
+		renderTreeNode: function (node, context) {
+			return invokeTreeNode(node, context);
+		},
+
+		/** Shared default tree-name chrome (also attached by ensureRenderTreeNode). */
+		defaultRenderTreeNode: defaultRenderTreeNode,
 
 		/**
 		 * Example node DTO for preview of a type (or of a live node's type).
@@ -1167,6 +1503,8 @@
 
 	function makeScalarRenderer(typeKey, controlOpts) {
 		return {
+			id: typeKey,
+			label: typeKey.charAt(0).toUpperCase() + typeKey.slice(1),
 			canRender: function (node) {
 				return resolveTypeKey(node) === typeKey;
 			},
@@ -1244,6 +1582,15 @@
 				}
 				return renderScalarControl(opts);
 			},
+			/**
+			 * Taxonomy tree name for nodes of this type (admin tree column).
+			 */
+			renderTreeNode: function (node, context) {
+				if (!this.canRender(node, context)) {
+					return false;
+				}
+				return defaultRenderTreeNode(node, context);
+			},
 			render: function (node, context) {
 				if (!this.canRender(node, context)) {
 					return false;
@@ -1254,18 +1601,30 @@
 	}
 
 	/**
-	 * int — one renderer (edit + display); converter/validators via WTTIntValue.
-	 * Canonical: decimal digit string. Default format: arabic (type default; attribute may override later).
+	 * int — one renderer (edit + display); converters via WTTConverter / WTTIntValue.
+	 * Canonical: decimal digit string. Preferred converter from node (default arabic).
 	 */
 	function intValueApi() {
 		return global.WTTIntValue || null;
 	}
 
+	function converterRegistry() {
+		return (global.WTTConverter && global.WTTConverter.Registry) || null;
+	}
+
 	function resolveIntDisplayFormat(node) {
+		var reg = converterRegistry();
+		if (reg && typeof reg.resolvePreferredId === 'function') {
+			var fromReg = reg.resolvePreferredId(node);
+			if (fromReg) {
+				return fromReg;
+			}
+		}
 		var api = intValueApi();
 		var raw =
-			(node && (node.displayFormat || node.intDisplayFormat)) ||
+			(node && (node.preferredConverter || node.displayFormat || node.intDisplayFormat)) ||
 			(node && node.intConfig && node.intConfig.displayFormat) ||
+			(node && node.typeExtras && node.typeExtras.preferredConverter) ||
 			(node && node.typeExtras && node.typeExtras.displayFormat) ||
 			'';
 		if (api && typeof api.normalizeFormatId === 'function') {
@@ -1274,20 +1633,56 @@
 		return 'arabic';
 	}
 
-	function syncIntValidity(input, hint, formatId) {
+	function formatIntWithConverter(value, formatId, node) {
+		var reg = converterRegistry();
+		if (reg) {
+			var c = typeof reg.getById === 'function' ? reg.getById(formatId) : null;
+			if (c && typeof c.format === 'function') {
+				return c.format(value, node);
+			}
+			if (typeof reg.formatPreferred === 'function' && node) {
+				return reg.formatPreferred(value, node);
+			}
+		}
 		var api = intValueApi();
+		if (api && typeof api.format === 'function') {
+			return api.format(value, formatId);
+		}
+		return value == null ? '' : String(value);
+	}
+
+	function syncIntValidity(input, hint, formatId, node) {
 		var msg = i18nLabels.intInvalid || 'Enter a whole number.';
 		var value = input.value;
 		var result = { ok: true };
-		if (api && typeof api.validateAll === 'function') {
-			result = api.validateAll(value, { allowEmpty: true });
+		var VReg =
+			window.WTTValidator && window.WTTValidator.Registry
+				? window.WTTValidator.Registry
+				: null;
+		if (VReg && typeof VReg.validateAll === 'function') {
+			var probe = Object.assign({}, node || {}, {
+				typeKey: 'int',
+				validators:
+					(node && node.validators) ||
+					(input && input._wttValidators) ||
+					[],
+			});
+			result = VReg.validateAll(probe, value, { allowEmpty: true });
 			if (result && result.message) {
 				msg = result.message;
 			}
-		} else if (value !== '' && value !== '-' && !/^-?\d+$/.test(value)) {
-			result = { ok: false };
-		} else if (value === '-') {
-			result = { ok: false };
+		} else {
+			var api = intValueApi();
+			if (api && typeof api.validateAll === 'function') {
+				result = api.validateAll(value, { allowEmpty: true });
+				if (result && result.message) {
+					msg = result.message;
+				}
+			} else if (value !== '' && value !== '-' && !/^-?\d+$/.test(value)) {
+				result = { ok: false };
+			} else if (value === '-') {
+				result = { ok: false };
+			}
 		}
 		var ok = !!(result && result.ok);
 		input.classList.toggle('is-invalid', !ok);
@@ -1304,11 +1699,12 @@
 		return ok;
 	}
 
-	function renderIntDisplay(value, compact, formatId) {
+	function renderIntDisplay(value, compact, formatId, node) {
 		var api = intValueApi();
 		var displayVal = value === '' ? '—' : value;
-		if (displayVal !== '—' && api && typeof api.format === 'function') {
-			displayVal = api.format(value, formatId) || '—';
+		if (displayVal !== '—') {
+			var formatted = formatIntWithConverter(value, formatId, node);
+			displayVal = formatted || '—';
 			if (displayVal === '') {
 				displayVal = '—';
 			}
@@ -1342,6 +1738,7 @@
 		opts = opts || {};
 		var context = opts.context || {};
 		var formatId = opts.formatId || 'arabic';
+		var node = opts.node || null;
 		var compact =
 			!!opts.compact ||
 			contextName(context) === 'table' ||
@@ -1401,7 +1798,7 @@
 					/* ignore */
 				}
 			}
-			syncIntValidity(input, hint, formatId);
+			syncIntValidity(input, hint, formatId, node);
 			if (isEdit(context) && typeof context.onInput === 'function') {
 				context.onInput(input.value);
 			}
@@ -1416,11 +1813,13 @@
 		if (context.valueKey) {
 			input.setAttribute('data-wtt-pv', String(context.valueKey));
 		}
-		syncIntValidity(input, hint, formatId);
+		syncIntValidity(input, hint, formatId, node);
 		return wrap;
 	}
 
 	var IntRenderer = {
+		id: 'int',
+		label: 'Int',
 		canRender: function (node) {
 			return resolveTypeKey(node) === 'int';
 		},
@@ -1456,6 +1855,7 @@
 				context: ctx,
 				sample: mappedSample,
 				formatId: formatId,
+				node: node,
 				compact:
 					contextName(ctx) === 'table' ||
 					contextName(ctx) === 'tree',
@@ -1475,7 +1875,8 @@
 				return renderIntDisplay(
 					readValue(opts.context, opts.sample || ''),
 					opts.compact,
-					formatId
+					formatId,
+					node
 				);
 			}
 			return renderIntEdit(opts);
@@ -1673,6 +2074,8 @@
 	}
 
 	var DateRenderer = {
+		id: 'date',
+		label: 'Date',
 		canRender: function (node) {
 			return resolveTypeKey(node) === 'date';
 		},
@@ -1720,6 +2123,8 @@
 	 * Prefer hierarchy + attributes / Default value for closed values.
 	 */
 	var EnumRenderer = {
+		id: 'enum',
+		label: 'Enum',
 		canRender: function (node) {
 			return resolveTypeKey(node) === 'enum';
 		},
@@ -1827,9 +2232,11 @@
 	 * node_ref (Q73): pick id(s) under catalog root (ref_scope).
 	 * Options from node.nodeRefOptions; multiplicity 0..* / 1..* → multi-select.
 	 * Catalog chooser (popup/inline via treePickerMode): search, list, mini-form create.
-	 * Distinct from Relation Mult. on has_type / ref_scope edges.
+	 * Distinct from Relation Mult. on ref_scope edges.
 	 */
 	var NodeRefRenderer = {
+		id: 'node_ref',
+		label: 'Node ref',
 		canRender: function (node) {
 			return resolveTypeKey(node) === 'node_ref';
 		},
@@ -2906,6 +3313,8 @@
 	 * Attribute-host Form/Table surfaces use WTTObjectRender (not this renderer).
 	 */
 	var TableRenderer = {
+		id: 'table',
+		label: 'Table',
 		canRender: function (node, context) {
 			if (resolveTypeKey(node) !== 'table') {
 				return false;
@@ -3472,6 +3881,9 @@
 
 	function configure(opts) {
 		opts = opts || {};
+		if (opts.catalogBindings && typeof opts.catalogBindings === 'object') {
+			catalogBindingsMap = opts.catalogBindings;
+		}
 		if (typeof opts.resolveTypeKey === 'function') {
 			resolveTypeKeyFn = opts.resolveTypeKey;
 		}
@@ -3510,6 +3922,12 @@
 		isSimpleScalarType: isSimpleScalarType,
 		isStructuredType: isStructuredType,
 		isRegisteredType: isRegisteredType,
+		isTruthyBool: isTruthyBool,
+		formatBoolLabel: function (value) {
+			return isTruthyBool(value)
+				? i18nLabels.boolTrue || 'true'
+				: i18nLabels.boolFalse || 'false';
+		},
 		exampleFieldName: exampleFieldName,
 		getExampleNode: function (nodeOrTypeKey) {
 			return Registry.getExampleNode(nodeOrTypeKey);
@@ -3523,6 +3941,8 @@
 		multiplicityAllowsEmpty: multiplicityAllowsEmpty,
 		multiplicityAllowsRemoveOne: multiplicityAllowsRemoveOne,
 		Registry: Registry,
+		paintIcon: paintIcon,
+		defaultRenderTreeNode: defaultRenderTreeNode,
 		IntRenderer: IntRenderer,
 		CharRenderer: CharRenderer,
 		DoubleRenderer: DoubleRenderer,

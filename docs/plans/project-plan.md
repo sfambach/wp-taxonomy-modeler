@@ -2,8 +2,8 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.41-plan"
-last_updated: "2026-08-07"
+version: "0.7.72-plan"
+last_updated: "2026-08-08"
 related_docs:
   - README.md
   - docs/PRODUCT.md
@@ -14,6 +14,7 @@ related_docs:
   - .cursor/rules/planning-only.mdc
   - .cursor/rules/clean-model-guidelines.mdc
   - .cursor/rules/block-naming.mdc
+  - .cursor/rules/agent-lanes.mdc
   - .cursor/rules/node-renderers.mdc
   - .cursor/rules/composition-first.mdc
   - .cursor/rules/parked-complex-types.mdc
@@ -26,6 +27,7 @@ related_plans:
   - docs/plans/example-projects.md
   - docs/plans/part-identity-layers.md
   - docs/plans/case-study.md
+  - docs/plans/blocks-lane.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
@@ -45,6 +47,12 @@ todos:
   - id: docs-sync
     content: "Keep PRODUCT, ARCHITECTURE, ROADMAP, and OPEN-QUESTIONS aligned with this plan on every plan change"
     status: in_progress
+  - id: multi-agent-lanes
+    content: "agent-lanes.mdc + blocks-lane.md — parallel agents own zones; plan SoT; no stomp (absorbed architecturally in 0.7.49)"
+    status: completed
+  - id: presentation-parity
+    content: "Q63+Q91: one object paint path admin ↔ block editor ↔ frontend; blocks are views (Q85); slice docs/plans/blocks-lane.md"
+    status: completed
   - id: docs-absorb-fallstudie
     content: "Absorb Fallstudie (wtt_fs) learnings into living docs — overwrite Parameter/parent_id/slot_scope-primary assumptions; status stays scaffolding"
     status: completed
@@ -67,7 +75,13 @@ todos:
     content: "Single product taxonomy wtt_fs; retire wtt_tree from UI/seeds/pickers (Demo_Data helpers kept)"
     status: completed
   - id: scaffold-settings-preview
-    content: "Plugin settings (test mode, tree labels, set child props, save-via-button) + unified Form/Table preview"
+    content: "Plugin settings (test mode, tree labels, set child props, save-via-button, tree icon allowlist) + unified Form/Table preview"
+    status: completed
+  - id: scaffold-tree-icons-q95
+    content: "Q95: optional per-node tree icon (_wtt_icon); Settings allowlist; create standard-by-name else parent copy; renderTreeNode before name; Simple seed marker"
+    status: completed
+  - id: scaffold-preferred-render-validators
+    content: "Preferred render/converter + Validators 0..n as per-node meta; Registry mirrors; ensure_* create-time seed; Q96 leaf-name interim bind"
     status: completed
   - id: scaffold-set-preview-ux
     content: "Set = one field; separator/join-units/label-children; short_description; dropdown unify"
@@ -76,7 +90,7 @@ todos:
     content: "Q74 scaffold: Relationstypen seed; _wtt_relations CRUD; Add/Remove UI (not child_of); merge synthetic von/an"
     status: completed
   - id: scaffold-type-inherit-q76-q77
-    content: "Q76 catalog inherit interim; Q77 chooser=nodes + is_abstract; is_datatype debt; Q88 hierarchy datatype=parent (root Knoten)"
+    content: "Q76 catalog inherit interim; Q77 chooser=nodes + Q92 only; Q88 hierarchy datatype=father (root Knoten; _wtt_type_id only)"
     status: completed
   - id: scaffold-set-composition-q75
     content: "Q75: set members from composition Relation targets (migrate off hierarchy children)"
@@ -121,14 +135,43 @@ Fallstudie **`wtt_fs`** proved the working model below (now the only standard sc
 | Fuss **`_wtt_footer_op`** + Aggregate catalog (Q57) | Op on Fuss **slot**; column type stays Zeile value type |
 | **`set` members = `composition`** (Q75) | Overwrites “scaffold still uses children until Q75” |
 | Hierarchy = **`child_of`** (Q54); no Parameter class (Q64) | Overwrite open/lean rows that still say `parent_id` / Parameter |
-| Type chooser = **nodes** + Q92 scope; **`is_abstract`** local (Q77 revised); `_wtt_is_datatype` = debt; catalog lock = **`is_template`** | Overwrite “chooser = is_datatype forest” |
-| Select nodes by **id** only; named config bindings → ids (Q79/Q92; **#6 decided**) | Kill name-based selection SoT; special branches in settings |
+| Type chooser = **nodes** + Q92 scope only (Q77); catalog lock = **`is_template`** | Overwrite “chooser = type-role forest” / folder-gate meta |
+| Select nodes by **id** only; named config bindings → ids (Q79/Q92) | Kill name-based selection SoT; special branches in settings |
 | Still open / lean | **Q53** kind binding; **Q82** Fuss label via `fixed`; **Q81** unique band bindings (UAT) |
-| **Q83** Bauteile catalog | **Model/Bauteil** = kinds; **Implementation/Bauteile** = MPN records |
+| **Q83** Bauteile catalog | **Model only** (kinds + records); **no Implementation/** SoT (OQ-B2) |
 | **Q85 composition-first** | Platine→BOM→Zeilen-Teile via **`composition`**; table UI = view — escape relations/table-DB prison |
-| **Q88 hierarchy datatype** | Non-root: datatype = **parent** (`has_type` = father). Root: **seed-only** `type_id` → **Knoten** (no admin free `set_type`). Attribute members keep own field types (Q87) |
+| **Q88 hierarchy datatype** | Non-root: datatype = **father** (`_wtt_type_id` = WP parent). Root: **seed-only** `type_id` → **Knoten** (no admin free `set_type`). Attribute members keep own field types (Q87) |
+| **Q95 optional tree icons** | Per-node `_wtt_icon`; Settings Dashicon allowlist; create **standard-by-name else parent copy**; no later cascade; Simple seed **`marker`**; Identity vs Display UI; `renderTreeNode` before name |
+| **Preferred render / converter / validators** | Per-node meta (`_wtt_preferred_*`, `_wtt_validators`); Registry pattern (JS+PHP); `ensure_*` seeds type defaults when empty; **no live father-walk**; Q96 leaf-name interim for Simple Registry bind |
+| **Presentation parity (Q63 + Q91)** | Same object chrome (**Registry** + `WTTObjectRender` / `Object_Render`) for **admin preview ↔ block editor ↔ frontend**. Blocks are **views** over definition + instances (Q85) — not a second UI stack |
+| **Parallel work lanes** | Process only: agents own zones (blocks / tree / shared-render / model / planning); **append** plan decisions; do not stomp — [`.cursor/rules/agent-lanes.mdc`](../../.cursor/rules/agent-lanes.mdc) |
 
 Details: [`docs/plans/case-study.md`](case-study.md), [`docs/OPEN-QUESTIONS.md`](../OPEN-QUESTIONS.md).
+
+## Presentation surfaces (architecture)
+
+This is **product architecture**, not a lane tip. It unifies already-decided threads:
+
+| Layer | Job | SoT questions |
+|-------|-----|----------------|
+| **Definition tree** (admin) | Structure, types, attributes, relations | Q54 / Q87 / Q88 |
+| **Instances** | Filled values (Fill Model Data / page) | Q16 / Q63 |
+| **Presentation** | How schema + values look and edit | **Q91** Registry + many type renderers; Preferred render/converter/validators |
+
+**Surfaces that must share one paint path** (parity):
+
+1. Admin attribute-host / object preview  
+2. Gutenberg **`taxo/object-view`** (editor + dynamic frontend)  
+3. Multi-instance **Taxo Table view** (`taxo/collection-table`) where it reuses object/table chrome  
+
+**Complements, does not replace:**
+
+- **Q63** — tree = definition; page/block = instance values (blocks bind structure + optional instance).  
+- **Q85** — composition-first; blocks are **views**, not the domain SoT.  
+- **Q62** — Gutenberg exposes instances; Object View = one host; Table view = all instances for a host (catalog `table` kind remains **Q90** parked).  
+- **Q90** — do not grow Collection `enum`/`list`/`table` product features via blocks.
+
+Implementation backlog for the Gutenberg zone: [`docs/plans/blocks-lane.md`](blocks-lane.md). Shared renderer rules: [`.cursor/rules/node-renderers.mdc`](../../.cursor/rules/node-renderers.mdc), [`.cursor/rules/reuse-renderers.mdc`](../../.cursor/rules/reuse-renderers.mdc).
 
 ## Problem
 
@@ -168,7 +211,7 @@ Ship **WP Taxonomy Tree** as a focused WordPress plugin that provides a reusable
 - Planning checklist, MVP requirements, open questions, and data structure (**Project**, **Node**; tree = root node; Eigenschaften = typed children).
 - Local WordPress development environment (Windows Laragon + Cloud VM notes).
 
-### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.297`)
+### Phase 0b — Early scaffold (in progress, plugin ≈ `0.0.369`)
 
 Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP terms + term meta. **Only** Fallstudie **`wtt_fs`** (`Case_Data`); slim Definition / Implementation UI.
 
@@ -178,18 +221,20 @@ Runnable preview — **not** full domain sign-off. Thin UI over hierarchical WP 
 | Tree model | Nest / walk / create / rename (**slug sync** from name) / description / short_description / copy sibling / move ↑↓ / delete (promote \| cascade) |
 | Transport | **Admin-AJAX** + nonce + taxonomy caps (Q1 leaning for admin MVP) |
 | Admin UI | Split tree + detail; expand/collapse + selection persistence; toolbar Add child / Copy / Save / Undo / Delete; detail **Meta** / **Flags**; Fallstudie slim mode (no dual taxonomy switcher) |
-| Types (interim) | **Q88:** hierarchy datatype = parent (`has_type` except root = father); root `type_id` → **Knoten** is **seed-only** (no admin free `set_type`). Attribute / catalog field types via **node chooser** (Q92); **Q76** inherit+override = scaffold interim for catalog types; **Q77** local `is_abstract`; `_wtt_is_datatype` = debt; **`is_template`** = protected catalog lock (#5); `set` / simples; required; fixed |
+| Types (interim) | **Q88:** hierarchy datatype = father (`_wtt_type_id` = WP parent); root `type_id` → **Knoten** is **seed-only** (no admin free `set_type`). Attribute / catalog field types via **node chooser** (Q92); **Q76** inherit+override = scaffold interim for catalog types; **Q77** chooser = Q92 only; **`is_template`** = protected catalog lock; `set` / simples; required; fixed |
 | Q51 / Q75 | Basiseinheit unit = **set**; members = outgoing **`composition`** (Typ + optional Praefix + fixed Kuerzel); allowlist; display compose (mm / kΩ) |
 | Q74 Relations | `class-relation.php`; `_wtt_relations` JSON (edge ids + **multiplicity Q78**); Relationstypen seed; AJAX CRUD; UI von/an |
 | Table / BOM | **BOM** under Implementation = Name + Tabelle via composition; bands Zeile/Kopf?/Fuss? via **`_wtt_prop_bindings`**; validator; Fuss **`_wtt_footer_op`** + Aggregate catalog (**Q57**); Bindings→Rules→Fixes (**Q80**) — **Q90** table kind legacy |
 | Set options | Term meta: `setSeparator`, `setJoinUnits`, `setLabelChildren`; Form/Table treat multi-member set as **one field** |
 | short_description | `_wtt_short_description`; labels, help, tooltips, dropdowns |
 | Demo seed | **`Case_Data`** on `wtt_fs` (reference); `Demo_Data` helpers kept for legacy scripts; `scripts/retire-wtt-tree.php` clears live `wtt_tree` |
-| Settings | Test mode; show type in tree; show set child properties; save-via-button |
+| Settings | Test mode; show type in tree; show set child properties; save-via-button; warn before structural model changes (UR-S1) |
 | Preview | Attribute hosts: **Form(1)+Table(n)** × edit/readonly via `WTTObjectRender`; samples name→type map; units/media legacy paths remain |
+| Presentation parity | **Same** `WTTObjectRender` / Registry path for admin preview, **`taxo/object-view`** editor, and frontend SSR (`Object_Render`) — gaps = bugs, not block-only features |
 | Fill Model Data | Working page before Settings; instances in option `wtt_model_instances` |
 | Catalog bindings (Q92) | `chooser_root` + `chooser_focus` (term ids); legacy `data_types`/`simple`/`complex` |
-| Block | **`taxo/object-view`** (current); **`taxo/collection-table`** = **Q90 legacy**; pickers use `scaffold_slugs()` → FS only |
+| Blocks (views) | **`taxo/object-view`** = primary single-host / optional instance; **`taxo/collection-table`** = all instances for host (**Taxo Table view**; catalog `table` kind Q90-parked); pickers `scaffold_slugs()` → FS only |
+| Collaboration | Multi-agent **lanes** (process): blocks / tree-admin / shared-render / model / planning — append plan, no stomp |
 | Dropdowns / pickers | Shared selects; tree picker + search; multiplicity: required `1`/`1..*` → swap only (no clear) |
 | Not in scaffold | Real Relation edge table (still term-meta); Q66 inherit UI; unique band bindings (**Q81** UAT); Q82 fixed-Fuss labels; Composition instance services beyond block attrs; REST; host hooks; `child_of` as sole hierarchy persistence (term_parent still used); removal of parked enum/list/table scaffold |
 
@@ -363,7 +408,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-03 | **Q73:** Parent type **`node_pick`** (Complex) with children **`node_embed`** / **`node_ref`**. Shared **`ref_scope`** + **`allowed_ref_ids`** (direct children; empty = all). Scaffold **0.0.100**. Plan **0.7.4**. |
 | 2026-08-03 | **Block naming:** Gutenberg namespace **`taxo/`**; titles start with **Taxo** (e.g. `taxo/collection-table` → **Taxo Collection table**). Renamed from `wtt/collection-table`. Rule: `.cursor/rules/block-naming.mdc`. Scaffold **0.0.102**. Plan **0.7.5**. |
 | 2026-08-03 | **Q74–Q77:** Reusable **Relation picker** (type → node; inline default); **`set` members = `composition` Relations** (refine Q51); **type inherit + override**; **type chooser** + **`is_datatype`** (Typen-Ast; no type_id on datatype nodes). Plan **0.7.6**. |
-| 2026-08-03 | **Scaffold catch-up ≈ `0.0.123`:** **Q74** Relation CRUD (term-meta edges + Relationstypen seed + UI); **Q76/Q77** inherit+override + `is_datatype` / local `is_abstract`; slug sync on rename; detail Meta/Flags form-row trial; set-preview primary+static inline. **Q75** still pending. Plan **0.7.7**. |
+| 2026-08-03 | **Scaffold catch-up ≈ `0.0.123`:** **Q74** Relation CRUD (term-meta edges + Relationstypen seed + UI); **Q76/Q77** inherit+override + `is_datatype` (later removed); slug sync on rename; detail Meta/Flags form-row trial; set-preview primary+static inline. **Q75** still pending. Plan **0.7.7**. |
 | 2026-08-04 | **Q77 revise:** datatype nodes **may have a `type_id`** (unlocked in UI/PHP). Self-assignment forbidden. Scaffold **0.0.128**. Plan **0.7.8**. |
 | 2026-08-04 | **Node renderers:** data/view split; dispatcher picks context renderer (tree / list / form / table / …); recursive children; **preview = render current node** in that context (no separate preview path). Rule `.cursor/rules/node-renderers.mdc`. Plan **0.7.10**. |
 | 2026-08-04 | **Q74/Q75 scaffold ≈ `0.0.140`:** generic Relations list on every node — add / remove / duplicate / reorder (edge ids); **set members** from outgoing **`composition`** Relations; migrate children → composition when empty. Plan **0.7.11**. |
@@ -391,14 +436,47 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-07 | **Q94 opened:** Data safety — lean full site/DB backup for DR; WXR insufficient for unbound taxonomies + options + ID graphs; plugin JSON export/import later (copy tree); no admin Export now. Plan **0.7.31**. |
 | 2026-08-07 | **Gold scaffold = Fallstudie only:** product taxonomy **`wtt_fs`**; **`wtt_tree` / BOM Testprojekt retired** from UI, seeds, pickers; `Case_Data` = reference seed; `Demo_Data` helpers kept; live `wtt_tree` terms deleted via `retire-wtt-tree.php`. Scaffold ≈ **`0.0.297`**. Plan **0.7.32**. |
 | 2026-08-07 | **Q83 revised:** Kinds under **Model/Bauteil**; MPNs under **Implementation/Bauteile**; strip Hersteller/Lieferant/Bestellnummer on kinds. Scaffold ≈ **`0.0.304`**. Plan **0.7.33**. |
-| 2026-08-07 | **`_wtt_is_datatype` slim-down (user):** (1) type chooser = **nodes** / Q92 — not gated by flag; (2) free **`set_type`** only root (may drop); (3) **`has_type` except root = father** (Q88); (4) **never select by name** — always id (config named bindings → ids OK). Q26/Q77/Q79/Q83/Q88/Q92 revised; remaining flag jobs = catalog lock, leaf detection, conceptual role (#5/#6/#12). Scaffold code still reads flag = **debt**. Plan **0.7.34**. |
+| 2026-08-07 | **`_wtt_is_datatype` slim-down (user):** (1) type chooser = **nodes** / Q92 — not gated by flag; (2) free **`set_type`** only root (may drop); (3) **`has_type` except root = father** (Q88); (4) **never select by name** — always id (config named bindings → ids OK). Q26/Q77/Q79/Q83/Q88/Q92 revised; remaining flag jobs = catalog lock, leaf detection, conceptual role. Scaffold code still reads flag = **debt**. Plan **0.7.34**. |
 | 2026-08-07 | **#5 catalog lock → `is_template`:** term meta `_wtt_is_template`; DTO `isTemplate`; editable only in **Development mode** (`wtt_development_mode`); Meta readout always; `lock_seeded_catalog_deletable` keys on `is_template` (+ migrate from `is_datatype`). Scaffold ≈ **`0.0.315`**. Plan **0.7.35**. |
 | 2026-08-07 | **Q88 root `set_type` dropped from admin:** free type assign locked for hierarchy + root (`freeTypeLocked`); root `type_id` → **Knoten** remains **seed-only** (`set_type_id(…, allow_seed)`); no `is_datatype` promote on parent-as-type; Relations `has_type` protected/read-only for hierarchy/root. Scaffold ≈ **`0.0.330`**. Plan **0.7.36**. |
-| 2026-08-07 | **`_wtt_is_datatype` job #6 decided:** node binding / special branch-leaf addressing **never by name** — always **`term_id`**; needed branches/nodes stored in **settings** (`wtt_catalog_bindings` / Q92). **#12** expanded (type role vs `type_id` vs `is_abstract`; keep `is_abstract` until explicit decide). **Q34/Q48** plain-language clarifiers. Docs-only; no flag removal. Plan **0.7.37**. |
+| 2026-08-07 | **`_wtt_is_datatype` job #6 decided:** node binding / special branch-leaf addressing **never by name** — always **`term_id`**; needed branches/nodes stored in **settings** (`wtt_catalog_bindings` / Q92). **Q34/Q48** plain-language clarifiers. Docs-only; no flag removal. Plan **0.7.37**. |
 | 2026-08-07 | **Q34 clarified** (behavior/config ≠ type identity). **Q48 lean:** types-as-Nodes OK; hardcoding must be **visible** — recommend **C** (catalog `builtin.*` binding + node `implementationKey` Meta chip; Registry off key, not name). Docs-only. Plan **0.7.38**. |
 | 2026-08-07 | **Q48 challenged against real datatypes:** inventory Simple/Complex/Registry/media/set/quantity/table + Model hosts; classify **render-only** vs **settings-bearing** vs **attribute/composed**. Flat A/B/C too coarse — refined: `implementationKey` (+ optional `builtin.*`) for render; NodeConfig metas for settings; composition/Q87 for attrs; Q92 for anchors. Docs-only. Plan **0.7.39**. |
 | 2026-08-07 | **`int` value slice:** one Registry renderer (edit+display) + Converter (`WTTIntValue` / `Int_Value`) + validators 1..n (`integer_shape`); prevent non-integer input; canonical decimal string; format default **arabic** (roman/binary/octal/hex reserved). Scaffold ≈ **`0.0.339`**. Plan **0.7.40**. |
 | 2026-08-07 | **`int` Number format UI:** type default `_wtt_int_display_format` + **Int settings** panel; attribute override in Options (`displayFormat` type extras). Preferred render remains Form/Table only. Scaffold ≈ **`0.0.345`**. Plan **0.7.41**. |
+| 2026-08-08 | **Typing vocabulary closed:** product language drops RelationType **`has_type`** and flag **`_wtt_is_datatype` / `is_datatype`**. Typing SoT = **`_wtt_type_id` only**; hierarchy effective type = father (Q88 / WP parent). Chooser pool = **Q92** scope (no type-role flag). Catalog lock remains **`is_template`**. Docs-only. Plan **0.7.42**. |
+| 2026-08-08 | **Preferred render + typing teardown (scaffold ≈ 0.0.352):** Remove RelationType `has_type` + `_wtt_is_datatype` from code/seeds/UI. Preferred render on nodes; attribute slots may **copy** type preferred once (`canRender`-filtered) — later refined to create-time seed / no live cascade (**0.7.48**). Plan **0.7.43**. Next: BOM top-down after tree Go. |
+| 2026-08-08 | **`is_abstract` removed from product language:** no `_wtt_is_abstract` / folder-gate on the type chooser. Chooser = **Q92 only** (`chooser_root` / `chooser_focus` / catalog bindings). Docs rewrite (Q77, Node diagram, living docs). Scaffold ≈ **`0.0.353`**. Plan **0.7.44**. |
+| 2026-08-08 | **Q95 optional tree icons:** Every node may have optional `_wtt_icon` (Dashicon key). Settings = allowlist (`wtt_tree_icon_keys`). Node Properties picker. **Copy-on-create** from parent when set; later parent edits do **not** cascade; **no** live father-walk at render. Tree paint via `Registry.renderTreeNode` (icon before name). Standard seed: Simple → `marker`; scalars via name map. Scaffold ≈ **`0.0.358`**. Plan **0.7.45**. |
+| 2026-08-08 | **Q95 icon catalog cleanup:** Dropped CSS example keys `circle` / `dot` (Marker already covers the circle glyph). Simple standard/seed → **`marker`**. Empty chooser chrome bug fixed by removal. Scaffold ≈ **`0.0.366`**. Plan **0.7.46**. |
+| 2026-08-08 | **Validators 0..n on nodes:** `_wtt_validators` + `WTTValidator.Registry` (defaults per basic type; Expression; error text; optional fix labels). Int edit uses Registry.validateAll. Parallel to Preferred render/converter. Scaffold ≈ **`0.0.359`**. |
+| 2026-08-08 | **Q96 opened (Registry↔node bind):** After removing type-role flags, Q88 father ≠ field key. Scaffold: simples match by **leaf name** ↔ Registry id; complex hosts still open. Converter `typeKeyOf` fixed for int under Simple. Scaffold ≈ **`0.0.362`**. |
+| 2026-08-08 | **Multi-agent lanes:** Parallel Cursor agents own zones (blocks / tree-admin / shared-render / model / planning). Plan remains SoT for design; lanes **append** decisions, do not stomp each other’s files. Blocks focus slice: [`docs/plans/blocks-lane.md`](blocks-lane.md). Rule: [`.cursor/rules/agent-lanes.mdc`](../../.cursor/rules/agent-lanes.mdc). Docs-only. Plan **0.7.47**. |
+| 2026-08-08 | **Scaffold absorb — presentation meta (≈ 0.0.369):** Preferred render / converter / validators = **per-node meta** (create-time `ensure_*` when empty; later parent/type edits do **not** cascade — same pattern as Q95 icons / Q71 presets). Registry for Render + Converter + Validator (JS + PHP). Simple defaults: int→`integer_shape`, double→`number_shape`, email→`email_shape`, char→`char_shape`, date→`date_shape` (flexible parse), media→`media_shape`; text/bool none. **Bool** default switch render. Shape validators = Binding→Rule→Fix mindset; message-only unless optional fixes added (never auto-run). **Q95** create priority = standard-by-name first, else parent copy; Identity vs Display admin UI. **Q96** remains open (simples: leaf name ↔ Registry id interim). Docs merge; preserves lanes / Q90–Q94 / composition-first. Plan **0.7.48**. |
+| 2026-08-08 | **Presentation surfaces absorbed (architecture):** Elevate **admin ↔ block editor ↔ frontend parity** and Gutenberg blocks as **views** into the primary plan (complements **Q63** / **Q91** / **Q85** / **Q62**; does not reopen Q90). Multi-agent lanes stay **process** (own zones, append decisions). Blocks slice remains [`blocks-lane.md`](blocks-lane.md). Docs-only. Plan **0.7.49**. |
+| 2026-08-08 | **Q97 decided (BOM storage & cascade):** Instance data under the corresponding **Model_Data** bag; parent reads children via **`links[]`** (`besteht_aus` \| `aggregation`) — not inline `lines[]`. Composition soft-trash cascades; aggregation does not. Schema: Bauteilliste→Position = composition. Trash also cascades attribute slots. Q93 lean = id-only on host. Scaffold ≈ **0.0.370**. Release-1 goal = BOM end-to-end. Plan **0.7.50**. |
+| 2026-08-08 | **Recursive boxed paint (canonical):** `render(node)` → preferred for father → foreach attr: Mult≤1 recurse unit / Mult>1 collection frame (Table) then recurse items. Mult>1 = list (data); Table = presentation when items have attrs. Preferred not overwritten. Heterogeneous nested Bauteil kinds parked. Living doc: ARCHITECTURE. Plan **0.7.51**. |
+| 2026-08-08 | **Docs sync (session laws):** Q72 → preferred **`embed`** (catalog `node_embed` debt); Q83 → **Model-only** (no Implementation SoT); Q93 **decided** id-only; **Q98** = UR-S1 model versioning concept. Living docs + OPEN-QUESTIONS. Plan **0.7.52**. |
+| 2026-08-08 | **OQ-A3 / Read-only vs Fixed-lock:** Attribute **Read-only** is SoT for “user cannot edit”; syncs to slot `_wtt_readonly`. **Default value** (`_wtt_attribute_fixed_values`) stays seed-only. Fixed-as-lock UI deprecated on attribute slots / model hosts; legacy `fixedEnabled` on slots treated as RO for paint (meta kept). **Q104 Mandatory** not in this slice. Scaffold ≈ **`0.0.381`**. Plan **0.7.53**. |
+| 2026-08-08 | **Q107 decided (warning severity):** Envelope `{ ok, errors[], warnings[], fixes[] }`; save-with-warnings always; save-with-errors by context (data entry allow + badge; schema admin block). Settings **Confirm dialogs** + `wtt_dialog_on_validation_warnings` (default OFF). Scaffold ≈ **`0.0.382`**. Plan **0.7.54**. |
+| 2026-08-08 | **Q106 decided (attribute defaults):** Defaults = schema **templates** (list by Mult), not live Model_Data. Scalars = value list; related Mult = nested value maps (e.g. default BOM lines). Materialize on instance create; delete with attribute; no Q98 bump when only defaults change. Slot SoT preferred; host `_wtt_attribute_fixed_values` interim. Plan **0.7.55**. |
+| 2026-08-08 | **Q102 decided (composition bottom-up):** Create via parent (`create_linked`) happy path. Orphan composition child = invalid + red **!** (no silent parent create). Aggregation without Platine stays valid. Fixes later (link / discard). Plan **0.7.56**. |
+| 2026-08-08 | **Q103 decided (Gutenberg save):** **Public frontend display-only** (no visitor Model_Data entry in R1). Block editor **Save mode** = `autosave` \| `button` (default **button**). Admin Fill Model Data unchanged. **Parked later:** community BOM suggest/review. Plan **0.7.57**; refined **0.7.59**. |
+| 2026-08-08 | **R1 B6 chrome (UR-B6):** Line **Wert** → type **Model/Bauteil**; paint via **preferred/default renderer `embed`** (pick part → fill Model data; id on line — Q93). Not catalog `node_ref`/`node_embed` as the product mechanism (OQ-R1/R3). Plan **0.7.60**. |
+| 2026-08-08 | **UR-B6 UX locked:** Embed popup — (A) TreeChooser kind under branch root only; (B) attr Form as filter + Model_Data list; create = same form if no match. Plan **0.7.61**. |
+| 2026-08-08 | **UR-B6 Wert Mult:** **`1`** (required; empty draft = error + save OK per Q107). Pick or create in embed popup. No known counterexample to filter+create — revisit if one appears. Plan **0.7.62**. |
+| 2026-08-08 | **Q108 opened (lean):** Uniform nodes (Simple = Node); tree **need not show all `child_of` children**; typing SoT (`child_of` / implements / type_id) still open. Plan **0.7.63**. |
+| 2026-08-08 | **Q108 lean + name:** RelationType **`attribute_typeof`**; **Attributes-wizard only**; invariants (Mult `1`, one edge, no chains/misuse). Scaffold `_wtt_type_id` interim until migrate. Plan **0.7.64**. |
+| 2026-08-08 | **Batch decided (scaffold = product):** **Q1** AJAX+REST; **Q5** `WTT\`/`wtt_`; **Q7** rename+reparent; **Q11** WP terms; **Q16** instances in-core; **Q46** no BOM PHP classes; **Q47** validators on node; **Q94** site backup DR, no R1 export button. Plan **0.7.65**. |
+| 2026-08-08 | **Q96 decided:** Registry bind via catalog **`builtin.<id>` → term id** (Q92 family); rename-safe; name match = debt. Plan **0.7.66**. |
+| 2026-08-08 | **Q34 decided:** special behavior = **config** (+ Relations); no PHP subclass / hard kind. Q49 enforcement separate. Plan **0.7.67**. |
+| 2026-08-08 | **Q49 decided:** Builtin Simples — **no** hierarchy kids, **no** attributes as host, **no** outgoing Relations; may be **`attribute_typeof` target**. Constraints via validators/Options/composed types. Plan **0.7.68**. |
+| 2026-08-08 | **Q49 revised:** Simples **may** have specialization children (reusable Config presets: validators, Roman converter, …). Soft lean: still no attrs-as-host / no outgoing Relations. Plan **0.7.69**. |
+| 2026-08-08 | Confirmed Q49 soft lean (no attrs on Simple leaves; percent = validator specialty). Opened **Q109** — measure/quantity + unit/prefix switch recalculation (next). Plan **0.7.70**. |
+| 2026-08-08 | **Q109 decided:** quantity = display triple; same-Basiseinheit Präfix switch → **rescale Typ** (physical constant); no silent cross-unit. Plan **0.7.71**. |
+| 2026-08-08 | **Q110 opened:** currency/money ≠ measure — EUR→USD needs **FX rates**, not Präfix multiplikator. Plan **0.7.72**. |
+| 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
+| 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 
 ## Change protocol
 

@@ -2,8 +2,8 @@
 name: Data structure — Project, Node, Changelog
 overview: Core objects Project, Node (property slots as typed children), Relation/RelationType-as-Nodes, Changelog. Hierarchy = protected child_of Relation (Q54). Inheritance along child_of (Q66 slots; Q88 hierarchy datatype = parent). Parameter class discarded. Planning artifact only.
 status: draft
-version: "0.7.36-plan"
-last_updated: "2026-08-07"
+version: "0.7.50-plan"
+last_updated: "2026-08-08"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -103,7 +103,7 @@ classDiagram
   Relation --> Node : relation_type
   Relation --> Multiplicity
   CompositionRow --> Node : cell_values_by_slot
-  note for Node "parent/children via child_of\nQ88 datatype=parent (root=Knoten seed)\nProperty slots = typed children\nInherit defs Q66"
+  note for Node "parent/children via child_of\nQ88 datatype=parent (root=Knoten seed)\nProperty slots = typed children\nInherit defs Q66\nicon + preferred R/C/V (create-time seed)"
   note for Relation "Hierarchy + other edges\nQ54/Q35\nmultiplicity Q78"
 ```
 
@@ -116,7 +116,7 @@ Conceptual domain model (planning — not implemented PHP).
 
 | Role | Example | Is a tree Node? | Job |
 |------|---------|-----------------|-----|
-| **Type catalog Node** | `int`, `media`, `node_embed`, `node_ref` under Datentypen | **Yes** (only under Typ-Ast) | Describes *what kind of value* a slot / attribute may hold |
+| **Type catalog Node** | `int`, `media`, `node_ref` under Datentypen (+ scaffold debt `node_embed` / `node_pick`) | **Yes** (only under Typ-Ast) | Describes *what kind of value* a slot / attribute may hold |
 | **Eigenschaft / attribute member** | Child `Anzahl` under `Rezept`, typed `int` | **Yes** (`besteht_aus` / composition member; not hierarchy datatype) | Named slot; `type_id` → Type catalog Node (own field type — **not** parent) |
 | **RelationType Node** | `child_of`, `besteht_aus`, … under Relationstypen | **Yes** (only under relation_type_node) | Classifies a Relation edge |
 | **Domain / hierarchy Node** | `Fallstudie`, `Definition`, `Aggregation`, `Widerstand`, `BOM` | **Yes** | Hierarchy class; **datatype = parent** (Q88); owns attributes |
@@ -150,7 +150,7 @@ Datatype catalog `table` (under Collection / Complex)
 Definitionsbaum / Relationstypen
   ├── child_of (system) — hierarchy + inheritance path (Q66/Q86/Q88)
   ├── besteht_aus — domain composition / besteht aus (set members, BOM members, …; legacy key `composition`)
-  └── has_type / ref_scope — helpers (system / synthetic)
+  └── ref_scope — helper (system / synthetic)
 ```
 
 **Scaffold today:** still stores hierarchy as WP term parent — maps to conceptual `child_of` later.
@@ -203,9 +203,11 @@ classDiagram
     +name: string
     +short_description: string
     +description: string
+    +icon: string?
+    +preferred_render: string?
+    +preferred_converter: string?
+    +validators: ValidatorEntry[]?
     +template: bool
-    +is_datatype: bool
-    +is_abstract: bool
     +position: int?
     +project_id: Id?
     +type_id: Id?
@@ -236,6 +238,21 @@ classDiagram
     +recordChange(changer, body, version) void
   }
 
+  class ValidatorEntry {
+    <<value object>>
+    +id: string
+    +errorText: string
+    +expression: string?
+    +isDefault: bool?
+    +fixes: FixHint[]?
+  }
+
+  class FixHint {
+    <<value object>>
+    +label: string
+    +hint: string?
+  }
+
   class NodeConfig {
     <<value object>>
     +required: bool?
@@ -260,6 +277,7 @@ classDiagram
     +boundBand(key) Node?
     +isSystem() bool
     +mayOriginateRelations() bool
+    +mayHostAttributes() bool
     +allowsType(typeId) bool
     +allowsBaseUnit(unitId) bool
     +hasFooter() bool
@@ -296,6 +314,7 @@ classDiagram
   class Capabilities {
     <<value object>>
     +originate_relations: bool
+    +host_attributes: bool
   }
 
   class Relation {
@@ -386,7 +405,7 @@ classDiagram
   }
 
   note for Project "relation_type_node = Relationstypen-Ast\nstart_node Q59\ntype catalog under type_node Q26"
-  note for Node "No writable parent_id\nparent/children from child_of\nQ88 hierarchy datatype=parent\nroot type_id → Knoten seed-only\nattrs keep own type Q87\nInherit defs Q66\nprop_bindings Q70/Q80\nis_template = catalog lock #5\nis_datatype = scaffold debt Q77\nset/BOM/table via composition Q75"
+  note for Node "No writable parent_id\nparent/children from child_of\nQ88 hierarchy datatype=father\nroot type_id → Knoten seed-only\nattrs keep own type Q87\nInherit defs Q66\nprop_bindings Q70/Q80\nis_template = catalog lock\ntyping = _wtt_type_id only\nset/BOM/table via composition Q75\noptional icon Q95 (create: standard-by-name else parent copy)\npreferred_render/converter + validators 0..n\n(create-time ensure_* seed; no live cascade)\nRegistry bind interim = leaf name (Q96 open)"
   note for NodeConfig "prop_bindings: type prop → child id\nlegacy slot_scope Q70 filter\nsystem/display for RelationType Nodes\nComposition allowlists Q60\ntype_inheriting/override Q76 interim\nfooter_op on Fuss slots Q57"
   note for Relation "Exactly one child_of per non-root\nfrom=child to=parent\ncannot delete hierarchy edge\nother types additive\nRelation picker Q74"
   note for CompositionFooter "Fuss band optional\nsame field count as Zeile when present\nops: none|text|sum|avg|min|max|count\navg=Durchschnitt/Mittelwert"
@@ -401,6 +420,8 @@ classDiagram
   Project "1" --> "1" Changelog : changelog
   Node "0..1" --> "0..1" Node : type_id
   Node "1" --> "0..1" NodeConfig : config
+  Node "1" --> "*" ValidatorEntry : validators
+  ValidatorEntry --> FixHint : fixes
   NodeConfig --> Capabilities : capabilities
   NodeConfig --> CompositionFooter : footer
   NodeConfig --> MediaTypeConfig : media
@@ -539,11 +560,13 @@ flowchart TB
 - **Relations** are first-class; **RelationTypes** are Nodes under **`relation_type_node`** (seed `child_of`, `composition`). — **decided (Q35/Q54)**
 - Every **hierarchy** Node has `type_id` → parent (root → **Knoten**) — **Q88**. Attribute members have `type_id` → Typ-Ast / unit; optional `prefix` / `base_unit` where the type needs them |
 - A filled **quantity** reading is **`value` + `prefix` + `base_unit`** (Einheit), e.g. `10` + `m` + `Meter` â†’ `"10 mm"`. â€” **agreed** (where the value is stored: Q16 reopen)
-- **Core types (Q36 / Q90):** **simple types** (`int`, `double`, `text`, `textarea`, `char`, `bool`, `display_node_name`, **`media`**, `node_ref`) + **quantity** / units + **`node_embed`** / **`node_pick`** — **agreed**. Collection kinds **`list` / `table` / `enum` parked (Q90)** — not active product types.
+- **Core types (Q36 / Q90):** **simple types** (`int`, `double`, `text`, `textarea`, `char`, `bool`, `display_node_name`, **`media`**, `node_ref`) + **quantity** / units — **agreed**. Preferred render **`embed`** for pick+fill (Q72 superseded — **not** product type `node_embed`). Scaffold may still show `node_embed` / `node_pick` = **debt**. Collection kinds **`list` / `table` / `enum` parked (Q90)** — not active product types.
 - **`media` (Q65):** one simple type for files/images/links. Value = **MediaRef**. Config: `allow_upload` / `allow_url` / **`allow_url_mirror`** + **`allowed_kinds`** (MIME display kinds; default **none** — at least one kind required). **Mirror:** origin `url` + local `attachment_id` (not XOR). — **decided** (kinds 2026-08-02; url_mirror 2026-08-02)
-- **Closed values:** prefer hierarchy specialization + attributes / Festwerte (Q87/Q88) — **not** catalog `enum` (Q90). **CatalogChoice:** type choice-subtree depth ≤ 1 → flat select; depth ≥ 2 → tree chooser; Festwert seeds selection. **Value SoT** when host/child have attributes → **Q93** (open).
+- **Closed values:** prefer hierarchy specialization + attributes / Festwerte (Q87/Q88) — **not** catalog `enum` (Q90). **CatalogChoice:** type choice-subtree depth ≤ 1 → flat select; depth ≥ 2 → tree chooser; Festwert seeds selection. **Value SoT** when host/child have attributes → **Q93 decided** (id only on host; values on Model).
 - **Basiseinheit unit = set** Typ + Praefix? + Kuerzel — **decided (Q51)**
 - Every **Node** has **description** + optional **short_description** — **decided**
+- Optional **icon** on every Node (**Q95**) — default none; Settings allowlist; create **standard-by-name else parent copy** (no live father-walk / cascade) — **decided**
+- **Preferred render** (1), **Preferred converter** (1), **Validators** (0..n) on Nodes — per-node meta; create-time `ensure_*` seeds type defaults when empty; later parent/type edits do **not** cascade (aligns Q71 snapshot) — **scaffold-proven** (Q47 open for product SoT nuance; **Q96** open for Registry↔node bind)
 - **Project ≈ taxonomy** — **strong leaning (Q18)**
 - Default Nodes — **leaning (Q50):** template Project copy
 
@@ -612,6 +635,10 @@ Tree = all nodes reachable by following inverse `child_of` from a root.
 | `name` | yes | string | Display name of the node |
 | `short_description` | yes* | string | Compact expansion of `name` (e.g. L → Länge); may be empty |
 | `description` | yes* | string | Longer text; may be empty |
+| `icon` | no | string? | Optional tree icon key (**Q95**); empty = none. Scaffold: `_wtt_icon` + Settings allowlist; create: standard-by-name else parent copy |
+| `preferred_render` | no | string? | Preferred presentation layout or field renderer id (`_wtt_preferred_render`). Create-time seed; not live-inherited |
+| `preferred_converter` | no | string? | Preferred value converter id (`_wtt_preferred_converter`). Create-time seed; not live-inherited |
+| `validators` | no | ValidatorEntry[]? | 0..n shape/expression validators (`_wtt_validators`). Create-time type defaults when empty; Binding→Rule→Fix mindset |
 | `template` | yes | bool | `true` = this node heads/belongs to a **template** tree |
 | `type_id` | ? | identifier | **Hierarchy (Q88):** parent Node (root → **Knoten**). **Attribute (Q87):** Type catalog under Typ-Ast |
 | `config` | ? | NodeConfig | Slot scope, RelationType flags, Composition allowlists, … |
@@ -622,6 +649,8 @@ Hierarchy parent is **not** a writable field — use `parent()` derived from `ch
 \* `short_description` / `description` may be empty strings.
 
 **NodeConfig set display (scaffold lean):** for nodes typed `set`, optional `set_separator` (default `/`), `set_join_units`, `set_label_children` control Form/Table caption and joined quantity display. Unit sets use members **Typ** + optional Praefix + fixed Kuerzel (not â€œWertâ€).
+
+**Capabilities (Q49 / Q34):** Builtin Simples **may** have `child_of` specialization children (same inheritance axis as domain types) — reusable **Config presets** (validators, preferred converter e.g. Roman `int`, …). Child resolves Registry chrome via ancestor builtin (Q96); own metas override. Soft lean: `originate_relations=false`, `host_attributes=false` (no hard enforcement yet). Attribute Options remain for one-off overrides; prefer a specialized type node when the preset is reused.
 
 #### Planned optional Node fields (not decided yet)
 
@@ -981,22 +1010,22 @@ NPN UI → shows inherited slot defs (+ any NPN-only property children)
 
 Not agreed on Relation display details — refine with Q35/Q41–Q43.
 
-### Example tree: Bauteile (Q83 merged)
+### Example tree: Bauteile (Q83 / OQ-B2 — Model only)
 
-Kinds and MPN records live under **one** Implementation root (former Definition/Bauteilarten removed).
+Kinds and part/MPN records live under **Model** (no product **Implementation/** SoT). Scaffold may still seed Implementation/Bauteile — **debt**.
 
 ```text
-Implementation / Bauteile          ← kinds + master data
-  ├── Widerstand (set / is_datatype)  ← slots: Wert, Bauform, … (no Lieferant/Bestellnummer)
-  ├── Kondensator …
-  └── RC0603FR-071K0L              ← type_id → Widerstand; catalog leaf
+Model / Bauteil                    ← kinds + records (by id)
+  ├── Passiv → Widerstand …        ← slots: Wert, Bauform, … (no Lieferant/Bestellnummer)
+  ├── Halbleiter → Dioden / …
+  └── (MPN / part leaves under kinds; type_id → kind)
 ```
 
-BOM `node_embed` / `ref_scope` → **Bauteile** (records). Kind filter later (**Q53**).
+BOM/line refs → **Model/Bauteil** (`node_ref` + preferred **`embed`** chrome; catalog `node_embed` = debt). Kind filter later (**Q53**).
 
 ### Example tree: Bauteile (legacy planning sketch — taxonomy edges)
 
-Separate planning tree historically mixed `is_a` kinds with parameters. Prefer the **Q83 merged** tree above.
+Separate planning tree historically mixed `is_a` kinds with parameters. Prefer the **Model-only** tree above.
 
 ```text
 Bauteile                                              â† ROOT of this example
@@ -1084,13 +1113,13 @@ What is filtering out of the examples: a small **Type** catalog in the Definitio
 | Type key | Meaning | Built from |
 |----------|---------|------------|
 | `quantity` (*Größe* / Wert mit Einheit — not Messung) | Displayable Größe with unit | **`int` or `double`** + optional **Präfix** + **Basiseinheit** |
-| `node_embed` (ex-`subtree`) | Pick under catalog root; embed target fields | Relation **`ref_scope`** → root; options = **allowed direct children** (default all); after pick fill property children of target |
-| `node_ref` | Scoped Node pointer (id only) | **`ref_scope`** → root; options = **allowed children + descendants** (default all descendants); value = target Node id (no embed) |
-| `node_pick` (Q73) | Parent type for shared pick settings | Typ-Ast under Complex; children `node_embed` / `node_ref`; shared **`ref_scope`** + **`allowed_ref_ids`** |
+| `node_ref` | Scoped Node pointer; **id only** on host (Q93) | **`ref_scope`** → root; options = allowlisted children + descendants (empty = all); value = target Node id |
+| Preferred **`embed`** (Q72) | Pick + compact fill chrome | **Layout**, not a catalog type. Values on referenced Model |
+| `node_embed` / `node_pick` | **Scaffold debt** (UR-R11) | Historical pick+fill type / parent; do not extend as product |
 | `set` (Q75 refine) | Composed multi-field value | **Members = `composition` Relation targets** (not `child_of` children). Display join via `set_*` config |
-| `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `text`) + **selection method** |
+| `enum` | Choice from a defined option set | **Several values of one scalar** (leaning: `text`) + **selection method** — **Q90 parked** |
 
-### Relation picker, type inherit, `is_datatype` (Q74–Q77 / Q88)
+### Relation picker, type inherit, typing (Q74–Q77 / Q88)
 
 **Relation picker (Q74):** reusable UI — pick RelationType (Relationstypen-Ast) → pick target Node (tree picker). Presentation **inline** (default) or **popup**. Used for create/delete of non-`child_of` Relations on a Node (esp. **`composition`** / **`besteht_aus`**).
 
@@ -1105,12 +1134,11 @@ Fallstudie (root)     type_id → Knoten
 ```
 
 - Root only: base node (**Knoten**) via **seed** (`type_id` by id) — **no admin free `set_type`**.
-- **Except root, `has_type` / effective type = father.**
+- **Except root, effective `_wtt_type_id` = father** (WP parent / `child_of`).
 - **No Data type field** in hierarchy node detail — hierarchy is the type.
 - Free **`set_type`** is not the model (dropped from admin for hierarchy + root).
 - Attribute members: own catalog `type_id` via Attributes panel (Q87) — not Q88.
 - Create / reparent / repair persist `type_id` = parent; reads derive from WP parent.
-- Do **not** promote parents with `_wtt_is_datatype` for assignability.
 
 **Catalog type inherit (Q76 — demoted for hierarchy datatype):**
 
@@ -1122,7 +1150,7 @@ Parent: type_id=set, config.type_inheriting=true   ← scaffold interim / Typ-As
 
 Q76 does **not** replace Q88 for hierarchy nodes. Hierarchy detail no longer shows Inheriting/Override; catalog-type chains may still use meta internally.
 
-**Type chooser (Q77, revised 2026-08-07):** **nodes** in a tree, scoped by **`chooser_root` / `chooser_focus` / catalog bindings (Q92)** — **not** filtered by `_wtt_is_datatype`. Primary use: attribute / catalog field types. Flag **`is_abstract`** local (folders not selectable). Flag **`_wtt_is_datatype`** = **scaffold debt** (survivors: conceptual role **#12** — see OPEN-QUESTIONS; **#6** leaf/branch addressing = **id + settings**). Catalog lock (#5) = **`_wtt_is_template`** (Development-mode editable). Select targets by **id** only (named config bindings → ids OK).
+**Type chooser (Q77):** **nodes** in a tree, scoped by **`chooser_root` / `chooser_focus` / catalog bindings (Q92)** only — no folder-gate meta. Primary use: attribute / catalog field types. Catalog lock = **`_wtt_is_template`** (Development-mode editable). Select targets by **id** only (named config bindings → ids OK).
 
 ```mermaid
 flowchart TD
@@ -1133,13 +1161,11 @@ flowchart TD
   F --> G[Display compose]
   R[Hierarchy node] --> S{is root?}
   S -->|yes| T[type_id → Knoten seed-only]
-  S -->|no| U[has_type / datatype = parent Q88]
+  S -->|no| U[_wtt_type_id = father Q88]
   U --> V[No Data type UI — inherit]
   T --> W[No admin free set_type]
   H[Attribute / catalog type] --> I[Node chooser Q92 scope]
-  I --> J{is_abstract?}
-  J -->|no selectable| M[Pick type_id by term id]
-  J -->|yes folder| N[Expand only — not selectable]
+  I --> M[Pick type_id by term id]
 ```
 
 ```text

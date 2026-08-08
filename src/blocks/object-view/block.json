@@ -24,7 +24,7 @@
     "layout": {
       "type": "string",
       "default": "auto",
-      "enum": ["auto", "form", "table", "compact", "compact-vertical"]
+      "enum": ["auto", "form", "table", "compact", "compact-vertical", "embed"]
     },
     "renderDepth": {
       "type": "number",
