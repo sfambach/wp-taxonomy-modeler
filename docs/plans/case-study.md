@@ -45,16 +45,14 @@ todos:
 ```text
 Fallstudie                    type → Knoten (root only; Q88)
 ├── Definition                type → Fallstudie
-│   ├── Simple                                 type → Definition
-│   │   ├── int, double, text, textarea, char, bool
-│   │   ├── display_node_name
-│   │   └── media
-│   ├── Complex                               ← Q90 parked kinds may still seed
-│   │   ├── list, table, enum (Bauart options), set
-│   │   └── node_pick → node_embed / node_ref
-│   ├── Konstanten
-│   │   ├── Präfixe (pico, nano, Micro, Milli, Centi, Kilo, Mega; short_description = p/n/u/m/c/k)
-│   │   └── Basiseinheiten (… + Henry, Hertz, Stück)
+│   ├── Data Types
+│   │   ├── Simple            int, double, text, …, media, quantity, …
+│   │   ├── Complex           ← Q90 parked kinds may still seed
+│   │   ├── Präfixe           pico…Mega (multiplikator) — married to units via allowlist
+│   │   ├── Unit              (Q120 unit datatype)
+│   │   │   ├── With prefix   → Meter, Ohm, Farad, …
+│   │   │   └── Without prefix → Kelvin, Celsius, Stück, Währung (Euro/…)
+│   │   └── Bauformen
 │   ├── Eigene Datentypen
 │   └── Knoten                (base type catalog leaf for roots)
 ├── Relationstypen            type → Fallstudie

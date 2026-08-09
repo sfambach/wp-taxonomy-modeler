@@ -3,7 +3,7 @@
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
 > **Scaffolding ≈ `0.0.376`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instances with **Q97** links (composition cascade). **Q93** host ids only; **Q98 / UR-S1** Model versions; preferred **`embed`** ≠ catalog `node_embed`; refs → **Model** only (no Implementation SoT). Gutenberg **`taxo/object-view`** + **Taxo Table view** — presentation parity.
-> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold**. Plan **0.7.52**. Status stays **scaffolding**. Release-1 target = BOM in Gutenberg + frontend table → **`1.0.0`**.
+> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold**. Plan **0.7.82**. Status stays **scaffolding**. Release-1 target = BOM in Gutenberg + frontend table → **`1.0.0`**.
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)

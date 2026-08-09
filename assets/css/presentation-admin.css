@@ -1,0 +1,20 @@
+/* Node presentation admin list (Q117). */
+.wtt-presentation-admin .wtt-pres-empty {
+	color: #a7aaad;
+}
+
+.wtt-presentation-admin .wtt-pres-incomplete {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.wtt-presentation-admin .wtt-pres-ok {
+	color: #1e7e34;
+}
+
+.wtt-presentation-admin .column-icon .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	vertical-align: middle;
+}

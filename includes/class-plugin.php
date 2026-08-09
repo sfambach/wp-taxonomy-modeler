@@ -34,6 +34,8 @@ final class Plugin {
 		Model_Data_Admin::register();
 		Model_Version_Admin::register();
 		Cleanup_Admin::register();
+		Node_Presentation::register();
+		Node_Presentation_Admin::register();
 		Settings::register();
 		Tree_Ajax::register();
 	}

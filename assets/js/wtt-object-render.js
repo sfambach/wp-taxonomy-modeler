@@ -559,10 +559,56 @@
 		for (i = 0; i < (options || []).length; i++) {
 			var opt = options[i];
 			if (opt && String(opt.id) === id) {
+				var short =
+					opt.shortDescription != null
+						? String(opt.shortDescription).trim()
+						: '';
+				if (short && short.length <= 3) {
+					return short;
+				}
 				return opt.name || opt.path || id;
 			}
 		}
 		return id;
+	}
+
+	function isPrefixChoiceField(field) {
+		var key = String((field && field.name) || '')
+			.toLowerCase()
+			.replace(/\u00fc/g, 'ue')
+			.replace(/\u00e4/g, 'ae')
+			.replace(/\u00f6/g, 'oe');
+		return (
+			key === 'praefix' ||
+			key === 'prefix' ||
+			key === 'prafix'
+		);
+	}
+
+	function catalogOptionLabel(opt, preferSymbol) {
+		if (!opt) {
+			return '';
+		}
+		if (preferSymbol) {
+			var short =
+				opt.shortDescription != null
+					? String(opt.shortDescription).trim()
+					: '';
+			if (short && short.length <= 3) {
+				return short;
+			}
+			var name = opt.name != null ? String(opt.name) : '';
+			if (name === 'Mega') {
+				return 'M';
+			}
+			if (name && name.length > 2) {
+				return name.charAt(0).toLowerCase();
+			}
+			if (name) {
+				return name;
+			}
+		}
+		return opt.path || opt.name || String(opt.id != null ? opt.id : '');
 	}
 
 	/**
@@ -747,9 +793,13 @@
 		}
 
 		if (mode === 'flat' || options.length <= 1) {
+			var preferSymbol = isPrefixChoiceField(field);
 			var select = createEl('select', {
-				className: 'wtt-type-select wtt-catalog-choice-select',
+				className:
+					'wtt-type-select wtt-catalog-choice-select' +
+					(preferSymbol ? ' wtt-preview-input--prefix' : ''),
 			});
+			var realCount = 0;
 			if (!options.length) {
 				select.appendChild(
 					createEl('option', { value: '', text: '—' })
@@ -760,10 +810,16 @@
 					if (!id) {
 						return;
 					}
+					realCount += 1;
 					var option = createEl('option', {
 						value: id,
-						text: opt.path || opt.name || id,
+						text: catalogOptionLabel(opt, preferSymbol),
 					});
+					if (preferSymbol && (opt.name || opt.path)) {
+						option.title = String(opt.path || opt.name);
+					} else if (opt.shortDescription) {
+						option.title = String(opt.shortDescription);
+					}
 					if (id === selected || (!selected && !select.value)) {
 						option.selected = true;
 						selected = id;
@@ -780,6 +836,10 @@
 					opts.onInput(select.value);
 				});
 			}
+			applySoleRequiredListLock(select, realCount, {
+				allowEmpty: fieldListSelectAllowsEmpty(field),
+				disabled: false,
+			});
 			return select;
 		}
 
@@ -907,6 +967,7 @@
 			.trim()
 			.toLowerCase();
 		return (
+			key === 'embeddedrenderer' ||
 			key === 'embed' ||
 			key === 'pick-fill' ||
 			key === 'pick_fill' ||
@@ -2156,6 +2217,50 @@
 		return m === '0..*' || m === '1..*';
 	}
 
+	/** Zero-lower multiplicity → optional list-select (Q116). */
+	function multiplicityAllowsEmpty(mult) {
+		var m = String(mult == null || mult === '' ? '1' : mult).trim();
+		return m === '0' || m === '0..1' || m === '0..*';
+	}
+
+	/**
+	 * Q116: required list-select with exactly one real option → select + disable.
+	 * @param {HTMLSelectElement} control
+	 * @param {number} realOptionCount
+	 * @param {{ allowEmpty?: boolean, disabled?: boolean, title?: string }} [opts]
+	 */
+	function applySoleRequiredListLock(control, realOptionCount, opts) {
+		opts = opts || {};
+		if (!control) {
+			return;
+		}
+		control.classList.remove('is-sole-locked');
+		if (opts.disabled) {
+			control.disabled = true;
+			return;
+		}
+		var count = parseInt(realOptionCount, 10) || 0;
+		if (!opts.allowEmpty && count === 1) {
+			control.disabled = true;
+			control.classList.add('is-sole-locked');
+			control.title =
+				opts.title ||
+				'Only one choice — selected automatically.';
+			return;
+		}
+		control.disabled = false;
+	}
+
+	function fieldListSelectAllowsEmpty(field) {
+		if (field && field.required === false) {
+			return true;
+		}
+		if (field && field.required === true) {
+			return false;
+		}
+		return multiplicityAllowsEmpty(field && field.multiplicity);
+	}
+
 	/**
 	 * Map Object_Render view DTO → Form/Table/Compact instance shape.
 	 * @param {object|null} view
@@ -2313,29 +2418,36 @@
 		return { single: single, many: many };
 	}
 
+	/**
+	 * Object-view layout wire ids (Q113). Legacy form|table|compact|embed accepted.
+	 */
 	function normalizeLayout(layout) {
-		var key = String(layout || 'form').toLowerCase();
+		var key = String(layout == null || layout === '' ? 'FormRenderer' : layout)
+			.trim()
+			.toLowerCase();
 		if (key === 'auto') {
 			return 'auto';
 		}
-		if (key === 'table' || key === 'list') {
-			return 'table';
-		}
-		if (key === 'compact' || key === 'compact-horizontal' || key === 'compact-h') {
-			return 'compact';
-		}
-		if (key === 'compact-vertical' || key === 'compact-v') {
-			return 'compact-vertical';
-		}
-		if (
-			key === 'embed' ||
-			key === 'pick-fill' ||
-			key === 'pick_fill' ||
-			key === 'compact-embed'
-		) {
-			return 'embed';
-		}
-		return 'form';
+		var map = {
+			form: 'FormRenderer',
+			formrenderer: 'FormRenderer',
+			table: 'TableRenderer',
+			tablerenderer: 'TableRenderer',
+			list: 'TableRenderer',
+			compact: 'CompactRenderer',
+			compactrenderer: 'CompactRenderer',
+			'compact-horizontal': 'CompactRenderer',
+			'compact-h': 'CompactRenderer',
+			'compact-vertical': 'CompactVerticalRenderer',
+			compactverticalrenderer: 'CompactVerticalRenderer',
+			'compact-v': 'CompactVerticalRenderer',
+			embed: 'EmbeddedRenderer',
+			embeddedrenderer: 'EmbeddedRenderer',
+			'pick-fill': 'EmbeddedRenderer',
+			pick_fill: 'EmbeddedRenderer',
+			'compact-embed': 'EmbeddedRenderer',
+		};
+		return map[key] || 'FormRenderer';
 	}
 
 	function resolveLayout(layout, view) {
@@ -2348,10 +2460,10 @@
 			var preferred =
 				(view && view.preferredRender) ||
 				(view && view.preferred_render) ||
-				'form';
+				'FormRenderer';
 			key = normalizeLayout(preferred);
 			if (key === 'auto') {
-				key = 'form';
+				key = 'FormRenderer';
 			}
 		}
 		return key;
@@ -2963,7 +3075,7 @@
 
 		if (!allProps.length) {
 			if (
-				layout === 'embed' &&
+				layout === 'EmbeddedRenderer' &&
 				Array.isArray(view.embedChoiceOptions) &&
 				view.embedChoiceOptions.length
 			) {
@@ -2998,7 +3110,7 @@
 						text: t('properties', 'Properties'),
 					})
 				);
-				if (layout === 'table') {
+				if (layout === 'TableRenderer') {
 					section.appendChild(
 						renderTable([instanceFromView(view, parts.single)], {
 							readonly: paintOpts.readonly,
@@ -3008,8 +3120,8 @@
 						})
 					);
 				} else if (
-					layout === 'compact' ||
-					layout === 'compact-vertical'
+					layout === 'CompactRenderer' ||
+					layout === 'CompactVerticalRenderer'
 				) {
 					section.appendChild(
 						renderCompact(instanceFromView(view, parts.single), {
@@ -3017,13 +3129,13 @@
 							referenceMode: paintOpts.referenceMode,
 							onFieldInput: paintOpts.onFieldInput,
 							orientation:
-								layout === 'compact-vertical'
+								layout === 'CompactVerticalRenderer'
 									? 'vertical'
 									: 'horizontal',
 							className: 'wtt-object-view__compact',
 						})
 					);
-				} else if (layout === 'embed') {
+				} else if (layout === 'EmbeddedRenderer') {
 					section.appendChild(
 						renderEmbed({
 							choiceOptions: Array.isArray(view.embedChoiceOptions)

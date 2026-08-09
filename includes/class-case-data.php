@@ -142,9 +142,41 @@ final class Case_Data {
 		);
 	}
 
+	/**
+	 * Currency catalog under Definition/Konstanten/Währung (CatalogChoice host).
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	public static function waehrung_catalog_leaves(): array {
+		return array(
+			array(
+				'name'              => 'Euro',
+				'short_description' => '€',
+				'description'       => 'Euro (EUR).',
+				'deletable'         => false,
+			),
+			array(
+				'name'              => 'US Dollar',
+				'short_description' => '$',
+				'description'       => 'US Dollar (USD).',
+				'aliases'           => array( 'Dollar' ),
+				'deletable'         => false,
+			),
+			array(
+				'name'              => 'Pound',
+				'short_description' => '£',
+				'description'       => 'Pound Sterling (GBP).',
+				'aliases'           => array( 'Pound Sterling', 'GBP' ),
+				'deletable'         => false,
+			),
+		);
+	}
+
 	public static function blueprint(): array {
 		$simple_leaves  = self::simple_datatype_leaves();
 		$complex_leaves = self::complex_datatype_leaves();
+		$bauformen_leaves = self::bauformen_catalog_leaves();
+		$waehrung_leaves  = self::waehrung_catalog_leaves();
 
 		/*
 		 * Display names mirror the live Fallstudie tree (full SI names).
@@ -203,9 +235,7 @@ final class Case_Data {
 			),
 		);
 
-		$bauformen_leaves = self::bauformen_catalog_leaves();
-
-		$unit_leaves = array(
+		$units_with_prefix = array(
 			array(
 				'name'              => 'Meter',
 				'short_description' => 'm',
@@ -225,16 +255,6 @@ final class Case_Data {
 				'name'              => 'Sekunde',
 				'short_description' => 's',
 				'description'       => 'Time; prefixes pico/nano/Micro/Milli.',
-			),
-			array(
-				'name'              => 'Kelvin',
-				'short_description' => 'K',
-				'description'       => 'Thermodynamic temperature; no prefixes.',
-			),
-			array(
-				'name'              => 'Celsius',
-				'short_description' => '°C',
-				'description'       => 'Celsius temperature; no SI prefixes.',
 			),
 			array(
 				'name'              => 'Ampere',
@@ -271,6 +291,19 @@ final class Case_Data {
 				'short_description' => 'Hz',
 				'description'       => 'Frequency; crystals / oscillators.',
 			),
+		);
+
+		$units_without_prefix = array(
+			array(
+				'name'              => 'Kelvin',
+				'short_description' => 'K',
+				'description'       => 'Thermodynamic temperature; no prefixes.',
+			),
+			array(
+				'name'              => 'Celsius',
+				'short_description' => '°C',
+				'description'       => 'Celsius temperature; no SI prefixes.',
+			),
 			array(
 				'name'              => 'Stück',
 				'short_description' => 'Stk',
@@ -281,11 +314,11 @@ final class Case_Data {
 		return array(
 			array(
 				'name'        => self::ROOT_NAME,
-				'description' => 'Case-study Project: Definition (types + constants) and empty Implementation. Standard scaffold tree — not a model sign-off.',
+				'description' => 'Case-study Project: Definition (type catalog) and Implementation samples. Standard scaffold tree — not a model sign-off.',
 				'children'    => array(
 					array(
 						'name'        => 'Definition',
-						'description' => 'Type catalog and constant folders for the case study.',
+						'description' => 'Type catalog: simples, complex, prefixes, units (Q120).',
 						'children'    => array(
 							array(
 								'name'        => 'Knoten',
@@ -293,7 +326,7 @@ final class Case_Data {
 							),
 							array(
 								'name'        => 'Data Types',
-								'description' => 'Simple (scalars) and Complex (collections / picks).',
+								'description' => 'Simple / Complex scalars; Prefix catalog; Unit type (with / without prefix); package and currency catalogs.',
 								'children'    => array(
 									array(
 										'name'        => 'Simple',
@@ -305,27 +338,46 @@ final class Case_Data {
 										'description' => 'Collection kinds (list / table / enum / set).',
 										'children'    => $complex_leaves,
 									),
-								),
-							),
-							array(
-								'name'        => 'Konstanten',
-								'description' => 'SI prefixes, base units, and package / Bauformen catalog.',
-								'children'    => array(
 									array(
 										'name'        => 'Präfixe',
-										'description' => 'SI prefixes. multiplikator = scale vs the unit’s prefix root (Q51).',
+										'description' => 'Global prefix catalog. multiplikator = scale vs the unit’s prefix root (Q51). Married to units via allowlist.',
 										'deletable'   => false,
 										'children'    => $prefix_leaves,
 									),
 									array(
-										'name'        => 'Basiseinheiten',
-										'description' => 'Base units (catalog). Short description = symbol / Kuerzel.',
+										'name'        => 'Unit',
+										'description' => 'Unit datatype (Q120). Concrete units live under With prefix / Without prefix — not under Konstanten.',
 										'deletable'   => false,
-										'children'    => $unit_leaves,
+										'children'    => array(
+											array(
+												'name'        => 'With prefix',
+												'description' => 'Units that may marry SI prefixes (allowlist on each unit).',
+												'deletable'   => false,
+												'children'    => $units_with_prefix,
+											),
+											array(
+												'name'        => 'Without prefix',
+												'description' => 'Units with prefix allowlist empty (Stück, temperature, currency host).',
+												'deletable'   => false,
+												'children'    => array_merge(
+													$units_without_prefix,
+													array(
+														array(
+															'name'        => 'Währung',
+															'description' => 'Currency catalog (Euro / US Dollar / Pound). Short description = symbol. CatalogChoice host for Preis.',
+															'deletable'   => false,
+															'aliases'     => array( 'Waehrung', 'Currency' ),
+															'slug'        => 'waehrung-units',
+															'children'    => $waehrung_leaves,
+														),
+													)
+												),
+											),
+										),
 									),
 									array(
 										'name'        => 'Bauformen',
-										'description' => 'Package / footprint constants (axial, radial, SMD sizes).',
+										'description' => 'Package / footprint catalog (axial, radial, SMD sizes).',
 										'deletable'   => false,
 										'children'    => $bauformen_leaves,
 									),
@@ -449,7 +501,9 @@ final class Case_Data {
 		 * icons / leaf repairs land without a full reinstall (admin page load).
 		 */
 		self::ensure_simple_datatypes( $taxonomy );
+		self::ensure_konstanten( $taxonomy );
 		Catalog_Bindings::ensure( $taxonomy );
+		Node_Presentation::fill_taxonomy_from_legacy( $taxonomy );
 	}
 
 	/**
@@ -535,79 +589,394 @@ final class Case_Data {
 	}
 
 	/**
-	 * Ensure Definition/Konstanten with Präfixe + Basiseinheiten + Bauformen (idempotent).
-	 * Creates the Konstanten folder when Definition exists but Konstanten was removed (e.g. Q85 clear).
+	 * Ensure Data Types unit catalog (Q120): Präfixe + Unit/{With|Without} prefix + Bauformen.
+	 * Migrates legacy Definition/Konstanten children, then trashes empty Konstanten.
+	 * Alias kept as ensure_konstanten for existing call sites.
 	 */
 	public static function ensure_konstanten( string $taxonomy = Taxonomy::FS ): void {
+		self::ensure_unit_catalog( $taxonomy );
+	}
+
+	/**
+	 * @see ensure_konstanten()
+	 */
+	public static function ensure_unit_catalog( string $taxonomy = Taxonomy::FS ): void {
 		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
 			return;
 		}
 
-		$blueprint = self::blueprint();
-		$root      = isset( $blueprint[0] ) && is_array( $blueprint[0] ) ? $blueprint[0] : null;
-		if ( null === $root ) {
-			return;
-		}
-
-		$definition = null;
-		foreach ( (array) ( $root['children'] ?? array() ) as $child ) {
-			if ( is_array( $child ) && 'Definition' === ( $child['name'] ?? '' ) ) {
-				$definition = $child;
-				break;
-			}
-		}
-		if ( null === $definition ) {
-			return;
-		}
-
-		$konstanten = null;
-		foreach ( (array) ( $definition['children'] ?? array() ) as $child ) {
-			if ( is_array( $child ) && 'Konstanten' === ( $child['name'] ?? '' ) ) {
-				$konstanten = $child;
-				break;
-			}
-		}
-		if ( null === $konstanten ) {
-			return;
-		}
-
-		$definition_id = self::find_term_by_path(
-			$taxonomy,
-			array( self::ROOT_NAME, 'Definition' )
-		);
-		if ( $definition_id <= 0 ) {
+		$data_types_id = self::ensure_data_types_folder( $taxonomy );
+		if ( $data_types_id <= 0 ) {
 			return;
 		}
 
 		$created  = 0;
 		$existing = 0;
-		$parent_id = self::find_term_by_path(
+
+		/* Install / refresh subtree from blueprint under Data Types (Prefix, Unit, Bauformen). */
+		$dt_blueprint = self::data_types_unit_catalog_blueprint();
+		if ( $dt_blueprint ) {
+			self::install_nodes( $taxonomy, $dt_blueprint, $data_types_id, $created, $existing );
+		}
+
+		$prefixes_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Präfixe' )
+		);
+		$unit_id     = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit' )
+		);
+		$with_id     = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit', 'With prefix' )
+		);
+		$without_id  = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit', 'Without prefix' )
+		);
+		$bauformen_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Bauformen' )
+		);
+
+		/* Migrate out of legacy Konstanten. */
+		$konstanten_id = self::find_term_by_path(
 			$taxonomy,
 			array( self::ROOT_NAME, 'Definition', 'Konstanten' )
 		);
-		if ( $parent_id <= 0 ) {
-			/* Recreate Konstanten + children in one pass (folder was deleted). */
-			self::install_nodes( $taxonomy, array( $konstanten ), $definition_id, $created, $existing );
-			$parent_id = self::find_term_by_path(
+		if ( $konstanten_id > 0 ) {
+			$legacy_prefixes = self::find_child_named( $taxonomy, $konstanten_id, 'Präfixe' );
+			if ( $legacy_prefixes <= 0 ) {
+				$legacy_prefixes = self::find_child_named( $taxonomy, $konstanten_id, 'Praefixe' );
+			}
+			if ( $legacy_prefixes > 0 && $prefixes_id > 0 && $legacy_prefixes !== $prefixes_id ) {
+				self::reparent_all_children( $taxonomy, $legacy_prefixes, $prefixes_id );
+				self::maybe_trash_empty_folder( $taxonomy, $legacy_prefixes );
+			} elseif ( $legacy_prefixes > 0 && $prefixes_id <= 0 ) {
+				wp_update_term( $legacy_prefixes, $taxonomy, array( 'parent' => $data_types_id ) );
+				$prefixes_id = $legacy_prefixes;
+			}
+
+			$legacy_base = self::find_child_named( $taxonomy, $konstanten_id, 'Basiseinheiten' );
+			if ( $legacy_base <= 0 ) {
+				$legacy_base = self::find_child_named( $taxonomy, $konstanten_id, 'Basiseinheit' );
+			}
+			if ( $legacy_base > 0 && $with_id > 0 && $without_id > 0 ) {
+				self::reparent_units_into_prefix_buckets( $taxonomy, $legacy_base, $with_id, $without_id );
+				self::maybe_trash_empty_folder( $taxonomy, $legacy_base );
+			}
+
+			$legacy_bau = self::find_child_named( $taxonomy, $konstanten_id, 'Bauformen' );
+			if ( $legacy_bau > 0 && $bauformen_id > 0 && $legacy_bau !== $bauformen_id ) {
+				self::reparent_all_children( $taxonomy, $legacy_bau, $bauformen_id );
+				self::maybe_trash_empty_folder( $taxonomy, $legacy_bau );
+			} elseif ( $legacy_bau > 0 && $bauformen_id <= 0 ) {
+				wp_update_term( $legacy_bau, $taxonomy, array( 'parent' => $data_types_id ) );
+				$bauformen_id = $legacy_bau;
+			}
+
+			$legacy_cur = self::find_child_named( $taxonomy, $konstanten_id, 'Währung' );
+			if ( $legacy_cur <= 0 ) {
+				$legacy_cur = self::find_child_named( $taxonomy, $konstanten_id, 'Waehrung' );
+			}
+			if ( $legacy_cur > 0 && $without_id > 0 ) {
+				$cur_term = get_term( $legacy_cur, $taxonomy );
+				if ( $cur_term instanceof \WP_Term && (int) $cur_term->parent !== $without_id ) {
+					wp_update_term( $legacy_cur, $taxonomy, array( 'parent' => $without_id ) );
+				}
+			}
+
+			self::maybe_trash_empty_folder( $taxonomy, $konstanten_id );
+			/* If Konstanten still has leftovers, trash the whole legacy folder. */
+			$konstanten_still = self::find_term_by_path(
 				$taxonomy,
 				array( self::ROOT_NAME, 'Definition', 'Konstanten' )
 			);
-		} else {
-			$folders = isset( $konstanten['children'] ) && is_array( $konstanten['children'] )
-				? $konstanten['children']
-				: array();
-			self::install_nodes( $taxonomy, $folders, $parent_id, $created, $existing );
+			if ( $konstanten_still > 0 && ! Trash::is_trashed( $konstanten_still ) ) {
+				Trash::move_to_trash( $taxonomy, $konstanten_still, true );
+			}
 		}
 
-		if ( $parent_id > 0 ) {
-			/* Soft-deleted catalogs stay invisible in get_tree until restored. */
-			Trash::restore_subtree( $taxonomy, $parent_id );
-			Node_Type::set_deletable( $parent_id, false );
-			self::configure_konstanten_bauformen( $taxonomy, $parent_id );
-			self::strip_obsolete_prefix_aliases( $taxonomy, $parent_id );
+		if ( $prefixes_id > 0 ) {
+			Trash::restore_subtree( $taxonomy, $prefixes_id );
+			Node_Type::set_deletable( $prefixes_id, false );
+			self::strip_obsolete_prefix_aliases( $taxonomy, $prefixes_id );
+		}
+		if ( $unit_id > 0 ) {
+			Trash::restore_subtree( $taxonomy, $unit_id );
+			Node_Type::set_deletable( $unit_id, false );
+		}
+		if ( $with_id > 0 ) {
+			Node_Type::set_deletable( $with_id, false );
+		}
+		if ( $without_id > 0 ) {
+			Node_Type::set_deletable( $without_id, false );
+			self::configure_konstanten_waehrung( $taxonomy, $without_id );
+		}
+		if ( $bauformen_id > 0 ) {
+			Trash::restore_subtree( $taxonomy, $bauformen_id );
+			Node_Type::set_deletable( $bauformen_id, false );
+			self::configure_konstanten_bauformen( $taxonomy, $data_types_id );
 		}
 
 		Demo_Data::ensure_prefix_multiplikators( $taxonomy );
+		self::ensure_quantity_preis_example( $taxonomy );
+	}
+
+	/**
+	 * Blueprint slices for Data Types: Präfixe, Unit buckets, Bauformen (no Simple/Complex).
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	private static function data_types_unit_catalog_blueprint(): array {
+		$full = self::blueprint();
+		$root = isset( $full[0] ) && is_array( $full[0] ) ? $full[0] : null;
+		if ( null === $root ) {
+			return array();
+		}
+		foreach ( (array) ( $root['children'] ?? array() ) as $child ) {
+			if ( ! is_array( $child ) || 'Definition' !== ( $child['name'] ?? '' ) ) {
+				continue;
+			}
+			foreach ( (array) ( $child['children'] ?? array() ) as $def_child ) {
+				if ( ! is_array( $def_child ) || 'Data Types' !== ( $def_child['name'] ?? '' ) ) {
+					continue;
+				}
+				$out = array();
+				foreach ( (array) ( $def_child['children'] ?? array() ) as $dt_child ) {
+					if ( ! is_array( $dt_child ) ) {
+						continue;
+					}
+					$name = (string) ( $dt_child['name'] ?? '' );
+					if ( in_array( $name, array( 'Präfixe', 'Unit', 'Bauformen' ), true ) ) {
+						$out[] = $dt_child;
+					}
+				}
+				return $out;
+			}
+		}
+		return array();
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private static function unit_names_without_prefix(): array {
+		return array( 'Kelvin', 'Celsius', 'Stück', 'Stuck', 'Stueck' );
+	}
+
+	private static function reparent_all_children( string $taxonomy, int $from_parent, int $to_parent ): void {
+		if ( $from_parent <= 0 || $to_parent <= 0 || $from_parent === $to_parent ) {
+			return;
+		}
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $from_parent,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $kids ) ) {
+			return;
+		}
+		foreach ( $kids as $kid ) {
+			if ( $kid instanceof \WP_Term ) {
+				wp_update_term( (int) $kid->term_id, $taxonomy, array( 'parent' => $to_parent ) );
+			}
+		}
+	}
+
+	private static function reparent_units_into_prefix_buckets(
+		string $taxonomy,
+		int $legacy_base,
+		int $with_id,
+		int $without_id
+	): void {
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $legacy_base,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $kids ) ) {
+			return;
+		}
+		$without = array_fill_keys( self::unit_names_without_prefix(), true );
+		foreach ( $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$target = isset( $without[ $kid->name ] ) ? $without_id : $with_id;
+			if ( (int) $kid->parent !== $target ) {
+				wp_update_term( (int) $kid->term_id, $taxonomy, array( 'parent' => $target ) );
+			}
+		}
+	}
+
+	private static function maybe_trash_empty_folder( string $taxonomy, int $term_id ): void {
+		if ( $term_id <= 0 ) {
+			return;
+		}
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $term_id,
+				'hide_empty' => false,
+				'number'     => 1,
+			)
+		);
+		if ( is_array( $kids ) && ! empty( $kids ) ) {
+			return;
+		}
+		Trash::move_to_trash( $taxonomy, $term_id, false );
+	}
+
+	/**
+	 * Flags + restore for Währung catalog folder and leaves (under Unit/Without prefix).
+	 * Children inherit type = Währung (CatalogChoice host for Preis).
+	 */
+	private static function configure_konstanten_waehrung( string $taxonomy, int $parent_hint ): void {
+		$waehrung_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit', 'Without prefix', 'Währung' )
+		);
+		if ( $waehrung_id <= 0 ) {
+			$waehrung_id = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Währung' )
+			);
+		}
+		if ( $waehrung_id <= 0 && $parent_hint > 0 ) {
+			$found = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'name'       => 'Währung',
+					'parent'     => $parent_hint,
+					'hide_empty' => false,
+					'number'     => 1,
+				)
+			);
+			if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
+				$waehrung_id = (int) $found[0]->term_id;
+			}
+		}
+		if ( $waehrung_id <= 0 ) {
+			return;
+		}
+
+		Trash::restore_subtree( $taxonomy, $waehrung_id );
+		Node_Type::set_deletable( $waehrung_id, false );
+
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $waehrung_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $kids ) ) {
+			return;
+		}
+		foreach ( $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$kid_id = (int) $kid->term_id;
+			Trash::restore_subtree( $taxonomy, $kid_id );
+			Node_Type::set_deletable( $kid_id, false );
+			/* Specialization under Währung — type = father (Q88 / CatalogChoice). */
+			Node_Type::set_type_id( $taxonomy, $kid_id, $waehrung_id, true );
+		}
+	}
+
+	/**
+	 * Quantity → Preis example: Wert + Währung (not SI Basiseinheit).
+	 * Keeps quantity catalog preview on money chrome (€ / $ / £).
+	 */
+	private static function ensure_quantity_preis_example( string $taxonomy ): void {
+		$quantity_id = self::find_case_datatype_id( $taxonomy, 'quantity' );
+		if ( $quantity_id <= 0 ) {
+			return;
+		}
+		$waehrung_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit', 'Without prefix', 'Währung' )
+		);
+		if ( $waehrung_id <= 0 ) {
+			$waehrung_id = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Währung' )
+			);
+		}
+		if ( $waehrung_id <= 0 ) {
+			return;
+		}
+		$double_id = self::find_case_datatype_id( $taxonomy, 'double' );
+		if ( $double_id <= 0 ) {
+			return;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		$preis_id = self::ensure_term(
+			$taxonomy,
+			'Preis',
+			$quantity_id,
+			'Money amount + currency (quantity example).',
+			$created,
+			$existing,
+			array(),
+			'preis-quantity'
+		);
+		if ( $preis_id <= 0 ) {
+			return;
+		}
+
+		Node_Type::set_deletable( $preis_id, false );
+		Node_Type::set_type_id( $taxonomy, $preis_id, $quantity_id, true );
+		Node_Type::ensure_preferred_render( $taxonomy, $preis_id );
+		/* Prefer Quantity chrome when the type default is QuantityRenderer. */
+		$qty_pref = (string) get_term_meta( $quantity_id, '_wtt_preferred_render', true );
+		if ( '' !== $qty_pref ) {
+			update_term_meta( $preis_id, '_wtt_preferred_render', $qty_pref );
+		} else {
+			update_term_meta( $preis_id, '_wtt_preferred_render', 'QuantityRenderer' );
+		}
+
+		$wanted = array(
+			'Wert'    => $double_id,
+			'Währung' => $waehrung_id,
+		);
+		self::sync_model_host_attributes( $taxonomy, $preis_id, $wanted, array(), true, array() );
+
+		/* Festwert Euro when present — constant currency symbol beside the amount. */
+		$euro_id = self::find_child_named( $taxonomy, $waehrung_id, 'Euro' );
+		if ( $euro_id <= 0 ) {
+			return;
+		}
+		$attrs = Attribute::list_own( $taxonomy, $preis_id );
+		foreach ( $attrs as $row ) {
+			if ( ! is_array( $row ) || 'Währung' !== (string) ( $row['name'] ?? '' ) ) {
+				continue;
+			}
+			$slot_id = (int) ( $row['id'] ?? 0 );
+			if ( $slot_id <= 0 ) {
+				continue;
+			}
+			$existing_fixed = isset( $row['fixedValues'] ) && is_array( $row['fixedValues'] )
+				? $row['fixedValues']
+				: array();
+			if ( array() !== $existing_fixed ) {
+				break;
+			}
+			Attribute::set_fixed_values( $taxonomy, $preis_id, $slot_id, (string) $euro_id );
+			break;
+		}
 	}
 
 	/**
@@ -635,16 +1004,28 @@ final class Case_Data {
 	 * Remove obsolete short-name Präfixe siblings when the renamed canonical exists.
 	 * Keeps the live renamed terms (pico/nano/…); moves leftovers to Trash.
 	 */
-	private static function strip_obsolete_prefix_aliases( string $taxonomy, int $konstanten_id ): void {
+	private static function strip_obsolete_prefix_aliases( string $taxonomy, int $prefixes_or_parent_id ): void {
 		$praefixe_id = self::find_term_by_path(
 			$taxonomy,
-			array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Präfixe' )
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Präfixe' )
 		);
 		if ( $praefixe_id <= 0 ) {
-			$praefixe_id = self::find_child_named( $taxonomy, $konstanten_id, 'Präfixe' );
+			$praefixe_id = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Präfixe' )
+			);
 		}
 		if ( $praefixe_id <= 0 ) {
-			$praefixe_id = self::find_child_named( $taxonomy, $konstanten_id, 'Praefixe' );
+			$praefixe_id = self::find_child_named( $taxonomy, $prefixes_or_parent_id, 'Präfixe' );
+		}
+		if ( $praefixe_id <= 0 ) {
+			$praefixe_id = self::find_child_named( $taxonomy, $prefixes_or_parent_id, 'Praefixe' );
+		}
+		if ( $praefixe_id <= 0 && $prefixes_or_parent_id > 0 ) {
+			$term = get_term( $prefixes_or_parent_id, $taxonomy );
+			if ( $term instanceof \WP_Term && in_array( $term->name, array( 'Präfixe', 'Praefixe' ), true ) ) {
+				$praefixe_id = $prefixes_or_parent_id;
+			}
 		}
 		if ( $praefixe_id <= 0 ) {
 			return;
@@ -671,18 +1052,24 @@ final class Case_Data {
 	/**
 	 * Flags + restore for Konstanten/Bauformen catalog folder and leaves.
 	 */
-	private static function configure_konstanten_bauformen( string $taxonomy, int $konstanten_id ): void {
+	private static function configure_konstanten_bauformen( string $taxonomy, int $parent_hint ): void {
 		$bauformen_id = self::find_term_by_path(
 			$taxonomy,
-			array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Bauformen' )
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Bauformen' )
 		);
 		if ( $bauformen_id <= 0 ) {
-			/* Fallback: direct child of Konstanten (path may lag after create). */
+			$bauformen_id = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Konstanten', 'Bauformen' )
+			);
+		}
+		if ( $bauformen_id <= 0 && $parent_hint > 0 ) {
+			/* Fallback: direct child of hint (Data Types or legacy Konstanten). */
 			$found = get_terms(
 				array(
 					'taxonomy'   => $taxonomy,
 					'name'       => 'Bauformen',
-					'parent'     => $konstanten_id,
+					'parent'     => $parent_hint,
 					'hide_empty' => false,
 					'number'     => 1,
 				)
@@ -1914,6 +2301,15 @@ final class Case_Data {
 			}
 		}
 
+		/* Q111: Model hosts → aggregation (repair existing slots). */
+		foreach ( Attribute::list_own( $taxonomy, $kontakt_id ) as $row ) {
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id <= 0 ) {
+				continue;
+			}
+			Attribute::set_binding( $taxonomy, $kontakt_id, $attr_id, 'aggregation' );
+		}
+
 		/* Drop leftover slots (Firma, Anrede, Nachname, …) not in the restored set. */
 		foreach ( Attribute::list_own( $taxonomy, $kontakt_id ) as $row ) {
 			$attr_id = (int) ( $row['id'] ?? 0 );
@@ -2027,7 +2423,7 @@ final class Case_Data {
 			'Besonderheiten' => '0..1',
 			'Bauteilliste'   => '0..1',
 		);
-		/* Platine → Bauteilliste = aggregation (same pattern as Bauteilliste → Position). */
+		/* Platine → Bauteilliste = aggregation; other Model attrs default aggregation (Q111). */
 		$bindings = array(
 			'Bauteilliste' => 'aggregation',
 		);
@@ -2181,7 +2577,9 @@ final class Case_Data {
 		$list_mult = array(
 			'Position' => '0..*',
 		);
+		/* Only list→Position is composition; Name and line fields use aggregation (Q111). */
 		$list_bindings = array(
+			'Name'     => 'aggregation',
 			'Position' => 'besteht_aus',
 		);
 		self::sync_model_host_attributes( $taxonomy, $list_id, $list_wanted, $list_mult, true, $list_bindings );
@@ -2452,7 +2850,7 @@ final class Case_Data {
 		Node_Type::set_deletable( $target_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $target_id );
 		/* UR-B6 / Q72: pick+fill chrome = preferred render embed (not catalog node_embed). */
-		Node_Type::set_preferred_render( $taxonomy, $target_id, 'embed' );
+		Node_Type::set_preferred_render( $taxonomy, $target_id, Renderer::Embedded->value );
 
 		$result               = $empty;
 		$result['targetId']   = $target_id;

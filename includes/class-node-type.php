@@ -73,8 +73,14 @@ final class Node_Type {
 	/** Preferred Object View / admin preview layout for this node. */
 	public const META_KEY_PREFERRED_RENDER = '_wtt_preferred_render';
 
-	/** Allowed preferred render keys (match Object View layout). */
-	public const PREFERRED_RENDER_KEYS = array( 'form', 'table', 'compact', 'compact-vertical', 'embed' );
+	/** Allowed preferred render keys (match Object View layout / Q113 Renderer enum). */
+	public const PREFERRED_RENDER_KEYS = array(
+		'FormRenderer',
+		'TableRenderer',
+		'CompactRenderer',
+		'CompactVerticalRenderer',
+		'EmbeddedRenderer',
+	);
 
 	/** Fixed constant value: points at a Typen-branch Node (e.g. Einheit → Ohm). */
 	public const META_KEY_FIXED_NODE = '_wtt_fixed_node_id';
@@ -1711,16 +1717,41 @@ final class Node_Type {
 	}
 
 	/**
-	 * Direct child of Typen/Basiseinheit (e.g. Meter, Ohm, Farad).
+	 * Concrete unit leaf under Unit/With|Without prefix (Q120) or legacy Basiseinheiten.
+	 * CatalogChoice hosts under Without prefix (e.g. Währung) are excluded.
 	 */
 	public static function is_basiseinheit_unit_node( string $taxonomy, int $term_id ): bool {
-		$base_root = self::find_base_units_root( $taxonomy, $term_id );
-		if ( $base_root <= 0 ) {
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! ( $term instanceof \WP_Term ) ) {
 			return false;
 		}
+		$parent_id = (int) $term->parent;
+		if ( $parent_id <= 0 ) {
+			return false;
+		}
+		if ( in_array( $term->name, array( 'Währung', 'Waehrung', 'Currency', 'Bauformen' ), true ) ) {
+			return false;
+		}
+		if ( self::is_unit_prefix_bucket( $taxonomy, $parent_id ) ) {
+			return true;
+		}
+		$base_root = self::find_base_units_root( $taxonomy, $term_id );
+		return $base_root > 0 && $parent_id === $base_root;
+	}
 
+	/**
+	 * Whether term is Unit/With prefix or Unit/Without prefix.
+	 */
+	public static function is_unit_prefix_bucket( string $taxonomy, int $term_id ): bool {
 		$term = get_term( $term_id, $taxonomy );
-		return $term instanceof \WP_Term && (int) $term->parent === $base_root;
+		if ( ! ( $term instanceof \WP_Term ) ) {
+			return false;
+		}
+		if ( ! in_array( $term->name, array( 'With prefix', 'Without prefix', 'Mit Präfix', 'Ohne Präfix' ), true ) ) {
+			return false;
+		}
+		$parent = get_term( (int) $term->parent, $taxonomy );
+		return $parent instanceof \WP_Term && in_array( $parent->name, array( 'Unit', 'Units' ), true );
 	}
 
 	/**
@@ -2014,8 +2045,9 @@ final class Node_Type {
 		$is_attr_slot = class_exists( Attribute::class ) && Attribute::is_slot( $term_id );
 
 		/*
-		 * Read-only replaces Fixed-as-lock (attribute slots). Default value seeding
-		 * stays on Attribute::_wtt_attribute_fixed_values — do not confuse with lock.
+		 * Read-only replaces Fixed-as-lock (attribute slots). Node Default value
+		 * uses `_wtt_fixed_*` (Q115 UI rename); attribute instance defaults stay
+		 * on Attribute::_wtt_attribute_fixed_values — do not confuse with lock.
 		 */
 		$readonly_applied = null;
 		if ( array_key_exists( 'readonly', $settings ) ) {
@@ -2791,30 +2823,10 @@ final class Node_Type {
 	}
 
 	/**
-	 * Normalize preferred render key: object layouts or field renderer ids (int, bool, …).
+	 * Normalize preferred render key: object layouts or field renderer ids (Q113).
 	 */
 	public static function normalize_preferred_render( string $layout ): string {
-		$key = strtolower( trim( $layout ) );
-		if ( 'compact-horizontal' === $key || 'compact-h' === $key ) {
-			$key = 'compact';
-		}
-		if ( 'compact-v' === $key ) {
-			$key = 'compact-vertical';
-		}
-		if ( 'list' === $key ) {
-			$key = 'table';
-		}
-		if ( 'pick-fill' === $key || 'pick_fill' === $key || 'compact-embed' === $key ) {
-			$key = 'embed';
-		}
-		if ( in_array( $key, self::PREFERRED_RENDER_KEYS, true ) ) {
-			return $key;
-		}
-		/* Field renderer registry ids — keep well-formed keys. */
-		if ( 1 === preg_match( '/^[a-z][a-z0-9_-]*$/', $key ) ) {
-			return $key;
-		}
-		return 'form';
+		return Renderer::normalize( $layout );
 	}
 
 	private static function is_scalar_or_known_renderer_key( string $key ): bool {
@@ -2884,25 +2896,31 @@ final class Node_Type {
 
 	/**
 	 * Default preferred render for a new node or attribute slot.
-	 * Typed scalars → type key (e.g. int); otherwise form.
+	 * Typed scalars → field Renderer id; otherwise FormRenderer.
 	 */
 	public static function default_preferred_render_for_term( string $taxonomy, int $term_id ): string {
 		$canon = self::registry_id_for_type_term( $taxonomy, $term_id );
-		if ( '' !== $canon && self::is_scalar_or_known_renderer_key( $canon ) ) {
-			return $canon;
+		if ( '' !== $canon ) {
+			$from_canon = Renderer::try_from_legacy( $canon );
+			if ( $from_canon instanceof Renderer ) {
+				return $from_canon->value;
+			}
 		}
 		$type_id = self::get_type_id( $term_id );
 		if ( $type_id > 0 ) {
 			$from_type_term = self::registry_id_for_type_term( $taxonomy, $type_id );
-			if ( '' !== $from_type_term && self::is_scalar_or_known_renderer_key( $from_type_term ) ) {
-				return $from_type_term;
+			if ( '' !== $from_type_term ) {
+				$mapped = Renderer::try_from_legacy( $from_type_term );
+				if ( $mapped instanceof Renderer ) {
+					return $mapped->value;
+				}
 			}
 			$from_type = self::get_preferred_render( $type_id );
-			if ( 'form' !== $from_type ) {
+			if ( Renderer::Form->value !== $from_type ) {
 				return $from_type;
 			}
 		}
-		return 'form';
+		return Renderer::Form->value;
 	}
 
 	/**
@@ -2910,7 +2928,7 @@ final class Node_Type {
 	 */
 	public static function ensure_preferred_render( string $taxonomy, int $term_id ): string {
 		if ( $term_id <= 0 ) {
-			return 'form';
+			return Renderer::Form->value;
 		}
 		if ( metadata_exists( 'term', $term_id, self::META_KEY_PREFERRED_RENDER ) ) {
 			return self::get_preferred_render( $term_id );
@@ -2925,7 +2943,7 @@ final class Node_Type {
 	 */
 	public static function get_preferred_render( int $term_id ): string {
 		if ( $term_id <= 0 ) {
-			return 'form';
+			return Renderer::Form->value;
 		}
 		return self::normalize_preferred_render(
 			(string) get_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, true )
@@ -2941,7 +2959,7 @@ final class Node_Type {
 			return new \WP_Error( 'wtt_not_found', __( 'Node not found.', 'wp-taxonomy-tree' ) );
 		}
 		$layout = self::normalize_preferred_render( $layout );
-		if ( 'form' === $layout ) {
+		if ( Renderer::Form->value === $layout ) {
 			delete_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER );
 		} else {
 			update_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, $layout );
@@ -4867,9 +4885,12 @@ final class Node_Type {
 						continue;
 					}
 					$options[] = array(
-						'id'   => $id,
-						'name' => $name,
-						'path' => $name,
+						'id'               => $id,
+						'name'             => $name,
+						'path'             => $name,
+						'shortDescription' => isset( $child['shortDescription'] )
+							? (string) $child['shortDescription']
+							: Tree_Model::get_short_description( $id ),
 					);
 				}
 			}
@@ -5520,7 +5541,24 @@ final class Node_Type {
 			return 0;
 		}
 
-		/* Demo: Typen/Praefixe — Fallstudie: Definition/Konstanten/Präfixe. */
+		/* Q120: Definition/Data Types/Präfixe. */
+		$data_types = self::find_named_child_any(
+			$taxonomy,
+			$typen_id,
+			array( 'Data Types', 'Datentypen' )
+		);
+		if ( $data_types > 0 ) {
+			$under_dt = self::find_named_child_any(
+				$taxonomy,
+				$data_types,
+				array( 'Präfixe', 'Praefixe' )
+			);
+			if ( $under_dt > 0 ) {
+				return $under_dt;
+			}
+		}
+
+		/* Demo: Typen/Praefixe — legacy Konstanten/Präfixe. */
 		$direct = self::find_named_child_any(
 			$taxonomy,
 			$typen_id,
@@ -5548,7 +5586,27 @@ final class Node_Type {
 			return 0;
 		}
 
-		/* Demo: Typen/Basiseinheit — Fallstudie: Definition/Konstanten/Basiseinheiten. */
+		/* Q120: Unit/With prefix as primary folder for single-root callers. */
+		$data_types = self::find_named_child_any(
+			$taxonomy,
+			$typen_id,
+			array( 'Data Types', 'Datentypen' )
+		);
+		if ( $data_types > 0 ) {
+			$unit = self::find_named_child_any( $taxonomy, $data_types, array( 'Unit', 'Units' ) );
+			if ( $unit > 0 ) {
+				$with = self::find_named_child_any(
+					$taxonomy,
+					$unit,
+					array( 'With prefix', 'Mit Präfix' )
+				);
+				if ( $with > 0 ) {
+					return $with;
+				}
+			}
+		}
+
+		/* Demo / legacy Basiseinheit(en). */
 		$direct = self::find_named_child_any(
 			$taxonomy,
 			$typen_id,

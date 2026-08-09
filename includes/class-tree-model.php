@@ -831,7 +831,7 @@ final class Tree_Model {
 			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, (int) $term->term_id ),
 			'validators'         => Node_Type::get_validators_for_node( $taxonomy, (int) $term->term_id ),
 			'preferredRender'    => Node_Type::get_preferred_render( (int) $term->term_id ),
-			'embedChoiceOptions' => ( 'embed' === Node_Type::get_preferred_render( (int) $term->term_id ) )
+			'embedChoiceOptions' => ( Renderer::Embedded->value === Node_Type::get_preferred_render( (int) $term->term_id ) )
 				? Attribute::choice_options_under_type( $taxonomy, (int) $term->term_id )
 				: array(),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),

@@ -338,10 +338,24 @@
 			.replace(/ö/g, 'oe');
 	}
 
+	function qtyMemberRoleAliases(role) {
+		var map = {
+			typ: ['typ', 'wert', 'value', 'magnitude', 'betrag'],
+			praefix: ['praefix', 'prefix', 'prafix'],
+			kuerzel: ['kuerzel', 'einheit', 'unit', 'symbol', 'waehrung', 'currency'],
+		};
+		return map[role] || [role];
+	}
+
 	function findQtyMember(members, nameKey) {
+		var aliases = qtyMemberRoleAliases(nameKey);
 		var found = null;
 		(members || []).forEach(function (m) {
-			if (!found && qtyMemberNameKey(m) === nameKey) {
+			if (found) {
+				return;
+			}
+			var key = qtyMemberNameKey(m);
+			if (aliases.indexOf(key) !== -1) {
 				found = m;
 			}
 		});
@@ -354,7 +368,7 @@
 	function parseQuantityStore(raw) {
 		var s = raw == null ? '' : String(raw).trim();
 		if (!s) {
-			return { mag: '', prefix: '' };
+			return { mag: '', prefix: '', unit: '' };
 		}
 		if (s.charAt(0) === '{') {
 			try {
@@ -373,6 +387,12 @@
 								: obj.p != null
 									? String(obj.p)
 									: '',
+						unit:
+							obj.unit != null
+								? String(obj.unit)
+								: obj.u != null
+									? String(obj.u)
+									: '',
 					};
 				}
 			} catch (e) {
@@ -383,25 +403,89 @@
 		return {
 			mag: m ? m[1].replace(',', '.') : s,
 			prefix: '',
+			unit: '',
 		};
 	}
 
-	function serializeQuantityStore(mag, prefix) {
+	function serializeQuantityStore(mag, prefix, unit) {
 		var m = mag != null ? String(mag) : '';
 		var p = prefix != null ? String(prefix) : '';
-		if (!p) {
+		var u = unit != null ? String(unit) : '';
+		if (!p && !u) {
 			return m;
 		}
-		return JSON.stringify({ mag: m, prefix: p });
+		var out = { mag: m };
+		if (p) {
+			out.prefix = p;
+		}
+		if (u) {
+			out.unit = u;
+		}
+		return JSON.stringify(out);
 	}
 
 	function qtySymbolFromMembers(members) {
 		var kuerzel = findQtyMember(members, 'kuerzel');
-		return (
-			(kuerzel && kuerzel.fixed && kuerzel.fixed.name) ||
-			(kuerzel && kuerzel.fixedLiteral) ||
-			''
-		);
+		if (!kuerzel) {
+			return '';
+		}
+		var fixed = kuerzel.fixed;
+		if (fixed && typeof fixed === 'object') {
+			var short =
+				fixed.shortDescription != null
+					? String(fixed.shortDescription).trim()
+					: '';
+			if (short && short.length <= 3) {
+				return short;
+			}
+			if (fixed.name) {
+				return String(fixed.name);
+			}
+		}
+		if (kuerzel.fixedLiteral) {
+			return String(kuerzel.fixedLiteral);
+		}
+		var ownShort =
+			kuerzel.shortDescription != null
+				? String(kuerzel.shortDescription).trim()
+				: '';
+		if (ownShort && ownShort.length <= 3) {
+			return ownShort;
+		}
+		return '';
+	}
+
+	/**
+	 * SI prefix closed-label: shortDescription / symbol when short, else letter heuristic.
+	 * Full display name stays on option title for hover.
+	 */
+	function qtyPrefixSymbolFromOption(o) {
+		if (!o) {
+			return '';
+		}
+		var short =
+			o.shortDescription != null
+				? String(o.shortDescription).trim()
+				: o.symbol != null
+					? String(o.symbol).trim()
+					: '';
+		if (short && short.length <= 3) {
+			return short;
+		}
+		var name = o.name != null ? String(o.name) : '';
+		if (!name) {
+			return '';
+		}
+		if (name === 'Mega') {
+			return 'M';
+		}
+		if (name === 'Micro' || name === 'µ' || name === 'μ') {
+			return 'µ';
+		}
+		if (name.length <= 2) {
+			return name;
+		}
+		return name.charAt(0).toLowerCase();
 	}
 
 	function qtyPrefixOptions(praefixMem) {
@@ -414,6 +498,7 @@
 			(branch && Array.isArray(branch.children) && branch.children) ||
 			(branch && Array.isArray(branch.options) && branch.options) ||
 			(Array.isArray(praefixMem.subtreeOptions) && praefixMem.subtreeOptions) ||
+			(Array.isArray(praefixMem.fixedOptions) && praefixMem.fixedOptions) ||
 			[];
 		list.forEach(function (o) {
 			if (!o) {
@@ -432,10 +517,13 @@
 				mult != null && mult !== '' && isFinite(Number(mult)) && Number(mult) > 0
 					? Number(mult)
 					: null;
+			var letter = qtyPrefixSymbolFromOption(o);
 			opts.push({
 				id: o.id != null ? String(o.id) : name,
 				name: name,
-				letter: name === 'Mega' ? 'M' : name.length <= 2 ? name : name.charAt(0),
+				letter: letter || name,
+				shortDescription:
+					o.shortDescription != null ? String(o.shortDescription) : '',
 				multiplikator: multNum,
 			});
 		});
@@ -466,25 +554,75 @@
 		if (!name) {
 			return '';
 		}
-		if (name === 'Mega') {
-			return 'M';
+		var i;
+		for (i = 0; i < (options || []).length; i++) {
+			var opt = options[i];
+			if (
+				opt &&
+				(opt.name === name ||
+					String(opt.id) === name ||
+					opt.letter === name)
+			) {
+				return opt.letter || qtyPrefixSymbolFromOption(opt) || name;
+			}
+		}
+		return qtyPrefixSymbolFromOption({ name: name });
+	}
+
+	function qtyUnitOptions(unitMem) {
+		var opts = [];
+		if (!unitMem) {
+			return opts;
+		}
+		var branch = unitMem.typeBranch;
+		var list =
+			(branch && Array.isArray(branch.children) && branch.children) ||
+			(Array.isArray(unitMem.fixedOptions) && unitMem.fixedOptions) ||
+			(Array.isArray(unitMem.subtreeOptions) && unitMem.subtreeOptions) ||
+			[];
+		list.forEach(function (o) {
+			if (!o) {
+				return;
+			}
+			if (Object.prototype.hasOwnProperty.call(o, 'enabled') && !o.enabled) {
+				return;
+			}
+			var name = o.name != null ? String(o.name) : '';
+			if (!name) {
+				return;
+			}
+			var letter = qtyPrefixSymbolFromOption(o);
+			opts.push({
+				id: o.id != null ? String(o.id) : name,
+				name: name,
+				letter: letter || name,
+			});
+		});
+		return opts;
+	}
+
+	function qtyUnitLabel(unitName, options) {
+		var name = String(unitName || '');
+		if (!name) {
+			return '';
 		}
 		var i;
 		for (i = 0; i < (options || []).length; i++) {
-			if (options[i].name === name || options[i].id === name) {
-				return options[i].letter || name;
+			var opt = options[i];
+			if (opt && (opt.name === name || String(opt.id) === name)) {
+				return opt.letter || name;
 			}
 		}
-		return name.length <= 2 ? name : name.charAt(0);
+		return name;
 	}
 
 	/**
 	 * Horizontal Typ + Praefix + Kuerzel (or bare magnitude when no schema).
+	 * Always compact — quantity is one field, not three wide form rows.
 	 */
 	function renderQuantityControl(node, context) {
 		var members = quantitySchemaMembers(node);
-		var compact =
-			contextName(context) === 'table' || contextName(context) === 'compact';
+		var compact = true;
 		var parsed = parseQuantityStore(readValue(context, ''));
 		var mag = parsed.mag;
 		if (!mag && node && node.sample != null && String(node.sample) !== '') {
@@ -505,9 +643,9 @@
 				});
 			}
 			var bare = createEl('input', {
-				type: 'number',
-				step: 'any',
+				type: 'text',
 				inputmode: 'decimal',
+				autocomplete: 'off',
 				className:
 					'wtt-preview-input wtt-node-render--quantity wtt-preview-input--num' +
 					(compact ? ' is-compact' : ''),
@@ -530,27 +668,35 @@
 		var prefixOpts = qtyPrefixOptions(praefixMem);
 		/* Optional Praefix: empty = bare (multiplikator 1). Do not invent a prefix. */
 		var prefixName = parsed.prefix ? String(parsed.prefix) : '';
+		var unitMem = findQtyMember(members, 'kuerzel');
+		var unitOpts = qtyUnitOptions(unitMem);
 		var symbol = String(qtySymbolFromMembers(members) || '');
+		var unitName = '';
+		if (!symbol && unitMem) {
+			unitName =
+				(parsed.unit != null && String(parsed.unit)) ||
+				(unitMem.sample != null && String(unitMem.sample)) ||
+				(unitOpts[0] && unitOpts[0].name) ||
+				'';
+			symbol = qtyUnitLabel(unitName, unitOpts);
+		}
 		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
 
 		if (!isEdit(context)) {
 			return createEl('span', {
 				className:
-					'wtt-preview-display-value wtt-preview-quantity wtt-node-render--quantity' +
-					(compact ? ' is-compact' : ''),
+					'wtt-preview-display-value wtt-preview-quantity wtt-node-render--quantity is-compact',
 				text: String(mag || '') + String(prefixLetter || '') + symbol,
 			});
 		}
 
 		var group = createEl('div', {
-			className:
-				'wtt-preview-quantity wtt-node-render--quantity' +
-				(compact ? ' is-compact' : ''),
+			className: 'wtt-preview-quantity wtt-node-render--quantity is-compact',
 		});
 		var num = createEl('input', {
-			type: 'number',
-			step: 'any',
+			type: 'text',
 			inputmode: 'decimal',
+			autocomplete: 'off',
 			className: 'wtt-preview-input wtt-preview-input--num',
 			value: mag,
 		});
@@ -562,7 +708,8 @@
 		var prefixSelect = null;
 		if (praefixMem && prefixOpts.length) {
 			prefixSelect = createEl('select', {
-				className: 'wtt-type-select wtt-preview-quantity__prefix',
+				className:
+					'wtt-type-select wtt-preview-quantity__prefix wtt-preview-input--prefix',
 			});
 			/* Bare / none — Q51 optional Praefix; Q109 treats multiplikator as 1. */
 			var noneLabel =
@@ -581,7 +728,8 @@
 			prefixOpts.forEach(function (opt) {
 				var o = createEl('option', {
 					value: opt.name,
-					text: opt.name,
+					text: opt.letter || opt.name,
+					title: opt.name,
 				});
 				if (opt.name === prefixName || String(opt.id) === prefixName) {
 					o.selected = true;
@@ -592,7 +740,25 @@
 			group.appendChild(prefixSelect);
 		}
 
-		if (symbol) {
+		var unitSelect = null;
+		if (!qtySymbolFromMembers(members) && unitOpts.length) {
+			unitSelect = createEl('select', {
+				className:
+					'wtt-type-select wtt-preview-quantity__unit wtt-preview-input--compact',
+			});
+			unitOpts.forEach(function (opt) {
+				var o = createEl('option', {
+					value: opt.name,
+					text: opt.letter || opt.name,
+					title: opt.name,
+				});
+				if (opt.name === unitName || String(opt.id) === unitName) {
+					o.selected = true;
+				}
+				unitSelect.appendChild(o);
+			});
+			group.appendChild(unitSelect);
+		} else if (symbol) {
 			group.appendChild(
 				createEl('span', {
 					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
@@ -607,7 +773,11 @@
 					prefixSelect && prefixSelect.value
 						? String(prefixSelect.value)
 						: '';
-				context.onInput(serializeQuantityStore(num.value, p));
+				var u =
+					unitSelect && unitSelect.value
+						? String(unitSelect.value)
+						: '';
+				context.onInput(serializeQuantityStore(num.value, p, u));
 			};
 			num.addEventListener('input', emit);
 			num.addEventListener('change', emit);
@@ -632,6 +802,9 @@
 					prevPrefix = nextPrefix;
 					emit();
 				});
+			}
+			if (unitSelect) {
+				unitSelect.addEventListener('change', emit);
 			}
 		}
 		return group;
@@ -1752,9 +1925,14 @@
 		var className =
 			'wtt-preview-input wtt-node-render--int' +
 			(compact ? ' wtt-preview-input--compact' : '');
+		/*
+		 * Int renderer owns ±1 steppers (native number arrows, step=1).
+		 * Double / quantity magnitudes stay type=text — no arrows there.
+		 */
 		var input = createEl('input', {
-			type: 'text',
+			type: 'number',
 			className: className,
+			step: '1',
 			inputmode: 'numeric',
 			autocomplete: 'off',
 			value: value,
@@ -1897,8 +2075,8 @@
 	});
 
 	var DoubleRenderer = makeScalarRenderer('double', {
-		inputType: 'number',
-		step: 'any',
+		/* text + decimal keyboard — no native spinner arrows (those are int-only UX). */
+		inputType: 'text',
 		inputMode: 'decimal',
 		inputClass: 'wtt-node-render--double',
 	});
@@ -3050,17 +3228,17 @@
 				} else {
 					var inputType = 'text';
 					var inputMode = '';
-					if (typeName === 'int' || typeName === 'double') {
-						inputType = 'number';
+					if (typeName === 'int') {
+						inputMode = 'numeric';
+					} else if (typeName === 'double') {
+						inputMode = 'decimal';
 					} else if (typeName === 'email') {
 						/* text + inputmode: caret survives; still email keyboard on mobile */
-						inputType = 'text';
 						inputMode = 'email';
 					}
 					control = createEl('input', {
 						type: inputType,
 						className: 'wtt-node-ref-chooser__input',
-						step: typeName === 'double' ? 'any' : undefined,
 						inputmode: inputMode || undefined,
 						autocomplete: typeName === 'email' ? 'email' : undefined,
 					});

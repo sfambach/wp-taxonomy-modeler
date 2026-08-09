@@ -2,7 +2,7 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.72-plan** (2026-08-08).
+Last synced from plan version **0.7.82-plan** (2026-08-09).
 
 **Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI (`Case_Data` = reference seed). Taxonomy = structures; **Fill Model Data** = instances (**Q97** links + composition soft-trash). Gutenberg **`taxo/object-view`** / **Taxo Table view**; **Q98 / UR-S1 Model versions** (concept locked; stamp + structural warn/bump + conflict badge); **Cleanup v1**; plugin ≈ **`0.0.376`**. Release-1 target = BOM end-to-end (**`1.0.0`**). Product: **Model-only refs** (no Implementation SoT); preferred **`embed`** ≠ catalog `node_embed`. Status stays scaffolding — not Phase-1 green light.
 
@@ -54,6 +54,14 @@ Last synced from plan version **0.7.72-plan** (2026-08-08).
 | **Q82** Fuss labels via `fixed` + footer_op | Open (strong lean) |
 | **Q109** Measure/quantity + unit/prefix switch recalculation | **Decided** — rescale Typ on Präfix change; display triple SoT |
 | **Q110** Currency/money switch (FX, e.g. EUR→USD) | Parked (hold; ≠ Q109; with Q99 later) |
+| **Q111** Inline vs linked value storage (from type) | **Revised** — **Bindung**: Composition=embedded, Aggregation=linked |
+| **Q112** Rename Preferred render `embed`? | **Decided** — key `embed`; UI **Embedded renderer** |
+| **Q113** Unified renderer registry + Preferred storage / gray-out | Parked build; **shape:** `enum Renderer: string` → `IntRenderer` / `FormRenderer` / … |
+| **Q114** Attribute Options = Node Preferred R/C/V chrome | **Decided** — side-by-side Preferred ≈ `0.0.389` |
+| **Q115** Settings Fixed → Read-only + Default on nodes | **Decided** — gray RO outside slots; gray Default on builtin Simples ≈ `0.0.390` |
+| **Q116** Required list-select sole option → auto + gray | **Decided** — optional (0-lower Mult) stays open ≈ `0.0.392` |
+| **Q117** Presentation texts + icon off node | **Decided** — `wtt_node_presentation` store; admin list ≈ `0.0.393` |
+| **Q118** Detail: Node properties vs Display | **Decided** — foldable Presentation next |
 | **Q53** Collection kind binding | Deferred (Q90) |
 | Open questions remaining | In progress |
 | Local WordPress development environment | In progress (Windows + Cloud notes) |
@@ -70,7 +78,7 @@ Last synced from plan version **0.7.72-plan** (2026-08-08).
 | Tree model over `WP_Term` (nest, create, rename+slug sync, description, short_description, copy, move, delete) | Done |
 | Admin-AJAX + caps + nonce | Done |
 | Admin split UI (tree + detail + toolbar; Fallstudie slim mode) | Done |
-| Interim types: assign type, set members, table footer, required, fixed value | Done |
+| Interim types: assign type, set members, table footer, required, fixed value | Done (Q115: Fixed UI → Read-only + Default value ≈ `0.0.390`) |
 | Q51 / Q75: unit set + composition members + prefix allowlist | Done |
 | Set options: separator, join units, label children; set = one Form/Table field | Done |
 | Case_Data Fallstudie seed + reset (`retire-wtt-tree.php` for legacy cleanup) | Done |

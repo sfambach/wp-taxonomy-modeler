@@ -21,8 +21,8 @@ final class Attribute {
 
 	public const DEFAULT_MULTIPLICITY = '1';
 
-	/** Default Bindung: composition (dies with object). */
-	public const DEFAULT_BINDING = 'besteht_aus';
+	/** Default Bindung: aggregation (Model rule — composition only for list Position). */
+	public const DEFAULT_BINDING = 'aggregation';
 
 	/** Allowed attribute Bindung keys (RelationType slugs). */
 	public const BINDINGS = array( 'besteht_aus', 'aggregation' );
@@ -1384,7 +1384,7 @@ final class Attribute {
 		/* Slot preferred: own meta = override; else inherit type preferred (editable in UI). */
 		$row['typePreferredRender'] = $type_id > 0
 			? Node_Type::get_preferred_render( $type_id )
-			: 'form';
+			: Renderer::Form->value;
 		$attr_id_for_pref = (int) ( $row['id'] ?? 0 );
 		$has_pref_override = $attr_id_for_pref > 0
 			&& metadata_exists( 'term', $attr_id_for_pref, Node_Type::META_KEY_PREFERRED_RENDER );
@@ -1393,7 +1393,7 @@ final class Attribute {
 			? Node_Type::get_preferred_render( $attr_id_for_pref )
 			: (string) $row['typePreferredRender'];
 		if (
-			'embed' === $row['typePreferredRender']
+			Renderer::Embedded->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
 			&& $type_id > 0
 			&& empty( $row['fixedOptions'] )
 			&& ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $type_id )
@@ -1417,7 +1417,7 @@ final class Attribute {
 		if (
 			(
 				'catalog' === (string) ( $row['fixedMode'] ?? '' )
-				|| 'embed' === (string) ( $row['typePreferredRender'] ?? '' )
+				|| Renderer::Embedded->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
 			)
 			&& isset( $extras['choiceFilter'] )
 			&& is_array( $extras['choiceFilter'] )
@@ -1487,9 +1487,19 @@ final class Attribute {
 			$row['typePreferredConverter'] = $type_format;
 		}
 
-		$row['validators'] = $type_id > 0
+		$type_validators = $type_id > 0
 			? Node_Type::get_validators_for_node( $taxonomy, $type_id )
 			: array();
+		$has_validators_override =
+			isset( $extras['validators'] ) && is_array( $extras['validators'] );
+		$row['validatorsOverride'] = $has_validators_override;
+		$row['typeValidators']     = $type_validators;
+		$row['validators']         = $has_validators_override
+			? Validator::effective_list(
+				Validator::normalize_list( $extras['validators'] ),
+				(string) ( $row['typeKey'] ?? '' )
+			)
+			: $type_validators;
 
 		/* Basiseinheit unit type → Typ/Praefix/Kuerzel schema for quantity paint. */
 		$row['quantitySchema'] = null;
@@ -2478,6 +2488,13 @@ final class Attribute {
 			}
 		}
 
+		if ( isset( $extras['validators'] ) && is_array( $extras['validators'] ) ) {
+			$validators = Validator::normalize_list( $extras['validators'] );
+			if ( array() !== $validators ) {
+				$out['validators'] = $validators;
+			}
+		}
+
 		if ( isset( $extras['compute'] ) && is_array( $extras['compute'] ) ) {
 			$compute = self::normalize_compute( $extras['compute'] );
 			if ( null !== $compute ) {
@@ -2493,9 +2510,13 @@ final class Attribute {
 	 * @return array{mode:string,ids:list<int>}
 	 */
 	public static function normalize_choice_filter( array $filter ): array {
-		$mode = isset( $filter['mode'] ) ? strtolower( sanitize_key( (string) $filter['mode'] ) ) : 'include';
-		if ( 'exclude' !== $mode ) {
-			$mode = 'include';
+		/*
+		 * Product UI is allow-all + uncheck to exclude (mode=exclude).
+		 * Legacy mode=include is still applied for stored extras.
+		 */
+		$mode = isset( $filter['mode'] ) ? strtolower( sanitize_key( (string) $filter['mode'] ) ) : 'exclude';
+		if ( 'include' !== $mode ) {
+			$mode = 'exclude';
 		}
 		$ids = array();
 		$raw = isset( $filter['ids'] ) && is_array( $filter['ids'] ) ? $filter['ids'] : array();

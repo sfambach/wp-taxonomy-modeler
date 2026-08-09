@@ -76,7 +76,7 @@ final class Object_Render {
 			'layoutTable'             => __( 'Table (singles)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
-			'layoutEmbed'             => __( 'Embed (pick + fill)', 'wp-taxonomy-tree' ),
+			'layoutEmbed'             => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
 			'layoutAuto'              => __( 'Node preferred', 'wp-taxonomy-tree' ),
 			'layoutAutoHelp'          => __( 'Use the preferred render stored on the bound node.', 'wp-taxonomy-tree' ),
 			'embedPickHint'           => __( 'Choose kind…', 'wp-taxonomy-tree' ),
@@ -361,7 +361,7 @@ final class Object_Render {
 			'preferredRender'  => Node_Type::get_preferred_render( $term_id ),
 			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, $term_id ),
 			'validators'         => Node_Type::get_validators_for_node( $taxonomy, $term_id ),
-			'embedChoiceOptions' => ( 'embed' === Node_Type::get_preferred_render( $term_id ) )
+			'embedChoiceOptions' => ( Renderer::Embedded->value === Node_Type::get_preferred_render( $term_id ) )
 				? Attribute::choice_options_under_type( $taxonomy, $term_id )
 				: array(),
 			'properties'       => $properties,
@@ -662,7 +662,7 @@ final class Object_Render {
 				: (
 					(int) ( $row['typeId'] ?? 0 ) > 0
 						? Node_Type::get_preferred_render( (int) $row['typeId'] )
-						: 'form'
+						: Renderer::Form->value
 				),
 			'preferredRender' => isset( $row['preferredRender'] )
 				? Node_Type::normalize_preferred_render( (string) $row['preferredRender'] )
@@ -672,7 +672,7 @@ final class Object_Render {
 						: (
 							$slot_id > 0
 								? Node_Type::get_preferred_render( $slot_id )
-								: 'form'
+								: Renderer::Form->value
 						)
 				),
 		);
@@ -859,13 +859,13 @@ final class Object_Render {
 			/* Singles follow layout; multi-value attributes always render as a table. */
 			if ( array() !== $single ) {
 				echo '<h4 class="wtt-object-view__section-title">' . esc_html( $i18n['properties'] ) . '</h4>';
-				if ( 'table' === $layout ) {
+				if ( Renderer::Table->value === $layout ) {
 					self::echo_properties_table( $single, $i18n, $render_ctx );
-				} elseif ( 'compact' === $layout || 'compact-vertical' === $layout ) {
+				} elseif ( Renderer::Compact->value === $layout || Renderer::CompactVertical->value === $layout ) {
 					self::echo_properties_compact( $single, $i18n, $layout, $render_ctx );
-				} elseif ( 'embed' === $layout ) {
+				} elseif ( Renderer::Embedded->value === $layout ) {
 					/* Interactive pick+fill is JS; SSR falls back to compact of host attrs. */
-					self::echo_properties_compact( $single, $i18n, 'compact', $render_ctx );
+					self::echo_properties_compact( $single, $i18n, Renderer::Compact->value, $render_ctx );
 				} else {
 					echo '<div class="wtt-object-view__form" role="list">';
 					foreach ( $single as $prop ) {
@@ -1484,33 +1484,23 @@ final class Object_Render {
 		if ( '' === $key || 'auto' === $key ) {
 			$preferred = is_array( $view ) && isset( $view['preferredRender'] )
 				? (string) $view['preferredRender']
-				: 'form';
+				: Renderer::Form->value;
 			return self::normalize_layout( $preferred );
 		}
 		return self::normalize_layout( $key );
 	}
 
 	/**
+	 * Normalize to object-layout wire id (Q113). Legacy form|table|embed accepted.
+	 *
 	 * @param string $layout Raw layout attribute.
 	 */
 	private static function normalize_layout( string $layout ): string {
-		$key = strtolower( trim( $layout ) );
-		if ( 'auto' === $key ) {
-			return 'form';
+		$found = Renderer::try_from_legacy( $layout );
+		if ( $found instanceof Renderer && $found->is_object_layout() ) {
+			return $found->value;
 		}
-		if ( 'table' === $key || 'list' === $key ) {
-			return 'table';
-		}
-		if ( 'compact' === $key || 'compact-horizontal' === $key || 'compact-h' === $key ) {
-			return 'compact';
-		}
-		if ( 'compact-vertical' === $key || 'compact-v' === $key ) {
-			return 'compact-vertical';
-		}
-		if ( 'embed' === $key || 'pick-fill' === $key || 'pick_fill' === $key || 'compact-embed' === $key ) {
-			return 'embed';
-		}
-		return 'form';
+		return Renderer::Form->value;
 	}
 
 	/**
@@ -1544,11 +1534,12 @@ final class Object_Render {
 	/**
 	 * @param list<array<string, mixed>> $properties Properties.
 	 * @param array<string, string>       $i18n       Strings.
-	 * @param string                      $layout     compact|compact-vertical.
+	 * @param string                      $layout     CompactRenderer|CompactVerticalRenderer (legacy compact* accepted).
 	 * @param array<string, mixed>        $ctx        Render context.
 	 */
 	private static function echo_properties_compact( array $properties, array $i18n, string $layout, array $ctx = array() ): void {
-		$orient = 'compact-vertical' === $layout ? 'vertical' : 'horizontal';
+		$layout = self::normalize_layout( $layout );
+		$orient = Renderer::CompactVertical->value === $layout ? 'vertical' : 'horizontal';
 		echo '<div class="wtt-object-view__compact wtt-object-view__compact--' . esc_attr( $orient ) . '">';
 		foreach ( $properties as $prop ) {
 			if ( ! is_array( $prop ) ) {

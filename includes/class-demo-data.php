@@ -1288,6 +1288,15 @@ final class Demo_Data {
 			++$stats['added'];
 		}
 
+		/* Q111: Model/Bauteil kinds → aggregation (repair create-only leftovers). */
+		foreach ( Attribute::list_own( $taxonomy, $kind_id ) as $row ) {
+			$attr_id = (int) ( $row['id'] ?? 0 );
+			if ( $attr_id <= 0 ) {
+				continue;
+			}
+			Attribute::set_binding( $taxonomy, $kind_id, $attr_id, Attribute::DEFAULT_BINDING );
+		}
+
 		/* Remove leftover hierarchy field-children that mirror attribute slots. */
 		$kids = get_terms(
 			array(

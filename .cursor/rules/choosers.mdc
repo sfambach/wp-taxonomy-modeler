@@ -34,6 +34,7 @@ Resolve pickable nodes **by id only** (Q92). Do not select by name in product lo
 
 - **Do** extend the shared TreeChooser or ListChooser when a new pick surface needs chrome.
 - **Do** keep Gutenberg `ModelTreeChooser` on the admin tree contract until unified.
+- **Do** apply **Q116** on ListChooser / flat `<select>`: required + exactly one real option → auto-select and gray; optional (zero-lower Mult) stays open.
 - **Don’t** add a new tree or list UI for nodes/options — ask the user if the shared chooser cannot cover it.
 - **Don’t** grow `renderCatalogTreeChooser` or fork a fourth picker to “fix” divergence.
 

@@ -203,60 +203,93 @@
 		}
 	}
 
-	var OBJECT_LAYOUT_PREFERRED = [
-		{ value: 'form', labelKey: 'preferredRenderForm', fallback: 'Form' },
-		{ value: 'table', labelKey: 'preferredRenderTable', fallback: 'Table' },
+	/* Q113: Preferred / object layout wire ids (legacy form|table|… accepted on read). */
+	var PREFERRED_LAYOUTS = [
 		{
-			value: 'compact',
+			value: 'FormRenderer',
+			labelKey: 'preferredRenderForm',
+			fallback: 'Form',
+		},
+		{
+			value: 'TableRenderer',
+			labelKey: 'preferredRenderTable',
+			fallback: 'Table',
+		},
+		{
+			value: 'CompactRenderer',
 			labelKey: 'preferredRenderCompact',
 			fallback: 'Compact (horizontal)',
 		},
 		{
-			value: 'compact-vertical',
+			value: 'CompactVerticalRenderer',
 			labelKey: 'preferredRenderCompactVertical',
 			fallback: 'Compact (vertical)',
 		},
 		{
-			value: 'embed',
+			value: 'EmbeddedRenderer',
 			labelKey: 'preferredRenderEmbed',
-			fallback: 'Embed (pick + fill)',
+			fallback: 'Embedded renderer',
 		},
 	];
 
+	/**
+	 * Normalize preferred render: object layouts → FormRenderer|…;
+	 * field paint ids stay short (int, bool, …) for Registry; IntRenderer→int.
+	 */
 	function normalizePreferredRender(raw) {
-		var key = String(raw || 'form')
-			.trim()
-			.toLowerCase();
-		if (key === 'compact-h' || key === 'compact-horizontal') {
-			key = 'compact';
+		var s = String(raw == null || raw === '' ? 'FormRenderer' : raw).trim();
+		var key = s.toLowerCase();
+		var objectMap = {
+			form: 'FormRenderer',
+			formrenderer: 'FormRenderer',
+			table: 'TableRenderer',
+			tablerenderer: 'TableRenderer',
+			list: 'TableRenderer',
+			compact: 'CompactRenderer',
+			compactrenderer: 'CompactRenderer',
+			'compact-horizontal': 'CompactRenderer',
+			'compact-h': 'CompactRenderer',
+			'compact-vertical': 'CompactVerticalRenderer',
+			compactverticalrenderer: 'CompactVerticalRenderer',
+			'compact-v': 'CompactVerticalRenderer',
+			embed: 'EmbeddedRenderer',
+			embeddedrenderer: 'EmbeddedRenderer',
+			'pick-fill': 'EmbeddedRenderer',
+			pick_fill: 'EmbeddedRenderer',
+			'compact-embed': 'EmbeddedRenderer',
+		};
+		if (objectMap[key]) {
+			return objectMap[key];
 		}
-		if (key === 'compact-v') {
-			key = 'compact-vertical';
-		}
-		if (key === 'list') {
-			key = 'table';
-		}
-		if (
-			key === 'pick-fill' ||
-			key === 'pick_fill' ||
-			key === 'compact-embed'
-		) {
-			key = 'embed';
-		}
-		if (
-			key === 'form' ||
-			key === 'table' ||
-			key === 'compact' ||
-			key === 'compact-vertical' ||
-			key === 'embed'
-		) {
-			return key;
+		/* PHP field wire ids → Registry short paint ids (do not rename Registry). */
+		var fieldWireToShort = {
+			intrenderer: 'int',
+			integer: 'int',
+			doublerenderer: 'double',
+			float: 'double',
+			textrenderer: 'text',
+			textarearenderer: 'textarea',
+			charrenderer: 'char',
+			boolrenderer: 'bool',
+			boolean: 'bool',
+			emailrenderer: 'email',
+			daterenderer: 'date',
+			datetime: 'date',
+			mediarenderer: 'media',
+			displaynodenamerenderer: 'display_node_name',
+			display_node_name: 'display_node_name',
+			quantityrenderer: 'quantity',
+			noderefrenderer: 'node_ref',
+			node_ref: 'node_ref',
+		};
+		if (fieldWireToShort[key]) {
+			return fieldWireToShort[key];
 		}
 		/* Field renderer ids (int, bool, …) — keep when well-formed. */
 		if (/^[a-z][a-z0-9_-]*$/.test(key)) {
 			return key;
 		}
-		return 'form';
+		return 'FormRenderer';
 	}
 
 	/**
@@ -309,8 +342,8 @@
 			}
 		});
 		if (hasAttrs || !(fieldOpts && fieldOpts.length)) {
-			OBJECT_LAYOUT_PREFERRED.forEach(function (o) {
-				if (o.value === 'embed') {
+			PREFERRED_LAYOUTS.forEach(function (o) {
+				if (o.value === 'EmbeddedRenderer') {
 					var choices = (n && n.embedChoiceOptions) || [];
 					if (!choices.length && hasAttrs) {
 						/* embed needs specialization children — skip when none */
@@ -324,7 +357,10 @@
 			});
 		}
 		if (!opts.length) {
-			add('form', (i18n && i18n.preferredRenderForm) || 'Form');
+			add(
+				'FormRenderer',
+				(i18n && i18n.preferredRenderForm) || 'Form'
+			);
 		}
 		return opts;
 	}
@@ -332,7 +368,7 @@
 	function defaultPreferredRenderForNode(n) {
 		var opts = listCompatiblePreferredOptions(n);
 		if (!opts.length) {
-			return 'form';
+			return 'FormRenderer';
 		}
 		var cur = normalizePreferredRender(n && n.preferredRender);
 		var i;
@@ -837,11 +873,42 @@
 		var name = opt.name != null ? String(opt.name) : '';
 		var path = opt.path != null ? String(opt.path) : '';
 		var label = path || name || String(opt.id != null ? opt.id : '') || '';
-		/* Canonical type name after subtree â†’ node_embed rename. */
+		/* Canonical type name after subtree → node_embed rename. */
 		if (/^subtree$/i.test(label) || /(^|\/)\s*subtree\s*$/i.test(label)) {
 			label = label.replace(/subtree/gi, 'node_embed');
 		}
 		return label;
+	}
+
+	/**
+	 * SI / compact symbol for list options (Präfix letter, unit short).
+	 * Prefer shortDescription when ≤ 3 chars; else letter heuristic on name.
+	 */
+	function formatSelectSymbolLabel(opt) {
+		if (!opt) {
+			return '';
+		}
+		var short =
+			opt.shortDescription != null
+				? String(opt.shortDescription).trim()
+				: '';
+		if (short && short.length <= 3) {
+			return short;
+		}
+		var name = opt.name != null ? String(opt.name) : '';
+		if (!name) {
+			return formatSelectLabel(opt);
+		}
+		if (name === 'Mega') {
+			return 'M';
+		}
+		if (name === 'Micro' || name === 'µ' || name === 'μ') {
+			return 'µ';
+		}
+		if (name.length <= 2) {
+			return name;
+		}
+		return name.charAt(0).toLowerCase();
 	}
 
 	/**
@@ -1032,6 +1099,65 @@
 	 *   emptyLabel?: string
 	 * }} opts
 	 */
+	/**
+	 * Q116 — Sole required list-select lock.
+	 * When a ListChooser / <select> is required (no zero-lower / allowEmpty) and
+	 * exactly one real option exists: keep that value selected and disable (gray).
+	 * Multiple options → leave selectable. Optional fields stay selectable even with one choice.
+	 *
+	 * @param {HTMLSelectElement} control
+	 * @param {number} realOptionCount Options with non-empty value
+	 * @param {{
+	 *   allowEmpty?: boolean,
+	 *   disabled?: boolean,
+	 *   title?: string
+	 * }} [opts]
+	 * @return {{ locked: boolean }}
+	 */
+	function applySoleRequiredListLock(control, realOptionCount, opts) {
+		opts = opts || {};
+		if (!control) {
+			return { locked: false };
+		}
+		control.classList.remove('is-sole-locked');
+		if (opts.disabled) {
+			control.disabled = true;
+			return { locked: false };
+		}
+		var allowEmpty = opts.allowEmpty === true;
+		var count = parseInt(realOptionCount, 10) || 0;
+		if (!allowEmpty && count === 1) {
+			control.disabled = true;
+			control.classList.add('is-sole-locked');
+			control.title =
+				opts.title ||
+				(i18n && i18n.soleSelectLockedHint) ||
+				'Only one choice — selected automatically.';
+			return { locked: true };
+		}
+		control.disabled = false;
+		return { locked: false };
+	}
+
+	/**
+	 * Count <option> entries with a non-empty value (placeholders / “none” excluded).
+	 * @param {HTMLSelectElement} control
+	 * @return {number}
+	 */
+	function countRealSelectOptions(control) {
+		if (!control || !control.options) {
+			return 0;
+		}
+		var n = 0;
+		var i;
+		for (i = 0; i < control.options.length; i++) {
+			if (String(control.options[i].value || '') !== '') {
+				n += 1;
+			}
+		}
+		return n;
+	}
+
 	function renderOptionsSelect(options, opts) {
 		opts = opts || {};
 		var list = (options || []).filter(function (opt) {
@@ -1040,9 +1166,7 @@
 		var control = el('select', {
 			className: opts.className || 'wtt-type-select',
 		});
-		if (opts.disabled) {
-			control.disabled = true;
-		}
+		var allowEmpty = opts.allowEmpty === true || !!opts.emptyLabel;
 		if (!list.length) {
 			if (opts.emptyLabel) {
 				control.appendChild(
@@ -1055,9 +1179,15 @@
 			if (typeof opts.onChange === 'function') {
 				control.addEventListener('change', opts.onChange);
 			}
+			applySoleRequiredListLock(control, 0, {
+				allowEmpty: allowEmpty,
+				disabled: !!opts.disabled,
+				title: opts.soleLockTitle,
+			});
 			return control;
 		}
 		var selected = false;
+		var symbolLabels = !!opts.symbolLabels;
 		list.forEach(function (opt) {
 			var value =
 				typeof opts.getValue === 'function'
@@ -1068,10 +1198,14 @@
 			if (value === '') {
 				return;
 			}
-			var tip = formatSelectTitle(opt);
+			var tip = symbolLabels
+				? formatSelectLabel(opt) || String(opt.name || '')
+				: formatSelectTitle(opt);
 			var optionAttrs = {
 				value: value,
-				text: formatSelectLabel(opt) || value,
+				text: symbolLabels
+					? formatSelectSymbolLabel(opt) || value
+					: formatSelectLabel(opt) || value,
 			};
 			if (tip) {
 				optionAttrs.title = tip;
@@ -1097,6 +1231,11 @@
 		if (typeof opts.onChange === 'function') {
 			control.addEventListener('change', opts.onChange);
 		}
+		applySoleRequiredListLock(control, countRealSelectOptions(control), {
+			allowEmpty: allowEmpty,
+			disabled: !!opts.disabled,
+			title: opts.soleLockTitle,
+		});
 		return control;
 	}
 
@@ -1809,6 +1948,49 @@
 
 	function copySelectedAsSibling() {
 		copySelected();
+	}
+
+	/**
+	 * Duplicate one tree node as next sibling (same parent, name + " (copy)").
+	 *
+	 * @param {number} termId
+	 */
+	function copyNodeById(termId) {
+		var id = parseInt(termId, 10) || 0;
+		if (!id) {
+			return;
+		}
+		post('wtt_copy_terms', { term_ids: JSON.stringify([id]) })
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				state.tree = json.data.tree || [];
+				var nodes = Array.isArray(json.data.nodes) ? json.data.nodes : [];
+				var primary =
+					nodes[0] && nodes[0].id != null
+						? parseInt(nodes[0].id, 10) || 0
+						: 0;
+				if (primary > 0) {
+					setSelectionIds([primary]);
+					state.selectionAnchorId = primary;
+					applyLoadedNode(nodes[0]);
+					state.selectedId = primary;
+					var parent =
+						(nodes[0] && nodes[0].parent) ||
+						(json.data.node && json.data.node.parent);
+					if (parent) {
+						state.expanded[parent] = true;
+					}
+				}
+				state.error = '';
+				persistTreeUi();
+				render();
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
 	}
 
 	function copySelected() {
@@ -2973,6 +3155,22 @@
 			);
 			actions.appendChild(
 				treeActionSlot(
+					!node.isTrash && !node.trashed && !node.isHiddenBin
+						? treeActionButton(
+								'admin-page',
+								i18n.duplicateNodeHint ||
+									i18n.duplicateNode ||
+									i18n.copy ||
+									'Duplicate',
+								function () {
+									copyNodeById(node.id);
+								}
+						  )
+						: null
+				)
+			);
+			actions.appendChild(
+				treeActionSlot(
 					canUp && !node.hidden && !node.isHiddenBin
 						? treeActionButton(
 								'arrow-up-alt2',
@@ -3409,6 +3607,100 @@
 		key = key.replace(/[^a-z0-9\-]/gi, '').toLowerCase();
 		state.draft.icon = key;
 		afterDraftMutation({ silent: !!opts.silent });
+	}
+
+	/**
+	 * Q117/Q118: lazy presentation foldable under Display (texts live in store, not Identity).
+	 *
+	 * @param {object} node
+	 * @return {HTMLElement}
+	 */
+	function renderPresentationFoldable(node) {
+		var termId = node && node.id != null ? parseInt(node.id, 10) || 0 : 0;
+		var wrap = el('details', {
+			className: 'wtt-presentation-fold',
+		});
+		wrap.appendChild(
+			el('summary', {
+				className: 'wtt-presentation-fold__summary',
+				text: i18n.presentationFoldTitle || 'Presentation texts',
+			})
+		);
+		var body = el('div', {
+			className: 'wtt-presentation-fold__body',
+		});
+		body.appendChild(
+			el('p', {
+				className: 'description',
+				text:
+					i18n.presentationFoldHint ||
+					'Locale texts (form / table / select / symbol / help) live in the presentation store — not as Identity fields.',
+			})
+		);
+		var status = el('p', {
+			className: 'wtt-presentation-fold__status description',
+			text: i18n.presentationFoldLoading || 'Loading…',
+		});
+		body.appendChild(status);
+		var linkWrap = el('p', { className: 'wtt-presentation-fold__actions' });
+		var editLink = el('a', {
+			className: 'button button-secondary',
+			href: '#',
+			text: i18n.presentationEditLink || 'Edit presentation…',
+		});
+		editLink.addEventListener('click', function (e) {
+			e.preventDefault();
+			var base = cfg.presentationPageUrl != null ? String(cfg.presentationPageUrl) : '';
+			if (!base || termId <= 0) {
+				return;
+			}
+			var sep = base.indexOf('?') >= 0 ? '&' : '?';
+			window.location.href = base + sep + 'term_id=' + encodeURIComponent(String(termId));
+		});
+		linkWrap.appendChild(editLink);
+		body.appendChild(linkWrap);
+		wrap.appendChild(body);
+
+		var loaded = false;
+		wrap.addEventListener('toggle', function () {
+			if (!wrap.open || loaded || termId <= 0) {
+				return;
+			}
+			loaded = true;
+			post('wtt_get_node_presentation', { term_id: String(termId) })
+				.then(function (json) {
+					if (!json || !json.success || !json.data) {
+						status.textContent =
+							i18n.presentationFoldError || 'Could not load presentation.';
+						return;
+					}
+					var values = json.data.values || {};
+					var locale = json.data.locale != null ? String(json.data.locale) : '';
+					var keys = ['form', 'table', 'select', 'symbol', 'help'];
+					var lines = [];
+					keys.forEach(function (k) {
+						var v = values[k] != null ? String(values[k]).trim() : '';
+						if (v) {
+							lines.push(k + ': ' + v);
+						}
+					});
+					status.textContent = lines.length
+						? (locale ? '(' + locale + ') ' : '') + lines.join(' · ')
+						: i18n.presentationFoldEmpty ||
+						  'No presentation texts yet — use Edit presentation or Fill from legacy.';
+					if (json.data.listUrl) {
+						editLink.href = String(json.data.listUrl);
+					}
+				})
+				.catch(function () {
+					status.textContent =
+						i18n.presentationFoldError || 'Could not load presentation.';
+				});
+		});
+
+		return formRow(i18n.presentationFoldTitle || 'Presentation', [wrap], {
+			help: i18n.presentationFoldHint || '',
+		});
 	}
 
 	function setDraftPropBinding(propKey, childId) {
@@ -5472,12 +5764,18 @@
 
 	function enabledBranchOptions(member) {
 		var branch = member && member.typeBranch;
-		if (!branch || !Array.isArray(branch.children)) {
-			return [];
+		if (branch && Array.isArray(branch.children)) {
+			return branch.children.filter(function (child) {
+				return child && child.enabled !== false;
+			});
 		}
-		return branch.children.filter(function (child) {
-			return child && child.enabled !== false;
-		});
+		/* CatalogChoice attrs (e.g. Präfix / Einheit) expose options as fixedOptions. */
+		if (member && Array.isArray(member.fixedOptions) && member.fixedOptions.length) {
+			return member.fixedOptions.filter(function (child) {
+				return child && child.enabled !== false;
+			});
+		}
+		return [];
 	}
 
 	function previewValueKey(scope, member) {
@@ -5657,6 +5955,16 @@
 		return String(getPreviewValue(scope, member, previewSampleText(member)));
 	}
 
+	function isPraefixMemberName(member) {
+		var key = memberNameKey(member);
+		return (
+			key === 'praefix' ||
+			key === 'prefix' ||
+			key === 'prafix' ||
+			key === 'prufix'
+		);
+	}
+
 	function renderBranchSelect(member, opts) {
 		opts = opts || {};
 		var compact = !!opts.compact;
@@ -5664,10 +5972,20 @@
 		var scope = opts.scope;
 		var sample = opts.sample != null ? String(opts.sample) : '';
 		var options = enabledBranchOptions(member);
+		var symbolLabels =
+			opts.symbolLabels === true ||
+			(opts.symbolLabels !== false && isPraefixMemberName(member));
 		var control = renderOptionsSelect(options, {
-			className: 'wtt-preview-input' + (compact ? ' wtt-preview-input--prefix' : ''),
+			className:
+				'wtt-preview-input' +
+				(compact
+					? symbolLabels
+						? ' wtt-preview-input--prefix'
+						: ' wtt-preview-input--compact'
+					: ''),
 			disabled: !editable,
 			selectedValue: sample,
+			symbolLabels: symbolLabels,
 			getValue: function (child) {
 				return String(child.name || child.id);
 			},
@@ -5755,12 +6073,84 @@
 		});
 	}
 
-	function canEditFixedValue(n) {
+	/**
+	 * Q96: this term is a Registry builtin Simple/Complex catalog leaf
+	 * (bound as builtin.<id> → term id), not a specialization or field slot.
+	 */
+	function isBuiltinCatalogLeaf(n) {
+		if (!n) {
+			return false;
+		}
+		if (registryIdFromCatalogBindings(n.id)) {
+			return true;
+		}
+		/* Soft fallback when bindings lag: template leaf named like a registry id. */
+		var selfKey = String(n.name || '')
+			.trim()
+			.toLowerCase();
+		if (!selfKey || !n.isTemplate) {
+			return false;
+		}
+		var known = {
+			int: 1,
+			integer: 1,
+			double: 1,
+			float: 1,
+			text: 1,
+			textarea: 1,
+			char: 1,
+			bool: 1,
+			boolean: 1,
+			email: 1,
+			date: 1,
+			datetime: 1,
+			media: 1,
+			quantity: 1,
+			display_node_name: 1,
+			node_ref: 1,
+			node_embed: 1,
+			node_pick: 1,
+		};
+		if (!known[selfKey]) {
+			return false;
+		}
+		return typeof isUnderTypenBranch === 'function'
+			? !!isUnderTypenBranch(n.id)
+			: true;
+	}
+
+	/**
+	 * Q115: Read-only is editable only on fillable attribute slots (OQ-A3).
+	 * Elsewhere the control is shown grayed for chrome consistency.
+	 */
+	function canEditReadonly(n) {
+		return !!(n && n.isAttributeSlot);
+	}
+
+	function shouldShowReadonly(n) {
+		if (!n || n.isTrash || n.isHiddenBin) {
+			return false;
+		}
+		return !!(
+			n.isAttributeSlot ||
+			n.isModelDataHost ||
+			isBuiltinCatalogLeaf(n) ||
+			n.typeId
+		);
+	}
+
+	/**
+	 * Node Default value (legacy `_wtt_fixed_*`): presets / field constants — not a lock.
+	 * Attribute instance defaults stay on the host Attributes panel (Q106).
+	 */
+	function canEditDefaultValue(n) {
 		if (!n || !n.typeId || n.isSet || n.isTable) {
 			return false;
 		}
-		/* Attribute slots / model hosts: lock = Read-only; Default value is separate. */
 		if (n.isAttributeSlot || n.isModelDataHost) {
+			return false;
+		}
+		if (isBuiltinCatalogLeaf(n)) {
 			return false;
 		}
 		if (typeKeyFromMember(n) === 'display_node_name' || typeKeyFromMember(n) === 'media') {
@@ -5769,8 +6159,26 @@
 		return true;
 	}
 
+	function shouldShowDefaultValue(n) {
+		if (!n || n.isAttributeSlot || n.isModelDataHost || n.isSet || n.isTable) {
+			return false;
+		}
+		if (isBuiltinCatalogLeaf(n)) {
+			return true;
+		}
+		return canEditDefaultValue(n);
+	}
+
+	/** @deprecated Use canEditDefaultValue — kept as alias for older call sites. */
+	function canEditFixedValue(n) {
+		return canEditDefaultValue(n);
+	}
+
 	function setDraftReadonly(on) {
 		if (!state.draft) {
+			return;
+		}
+		if (!canEditReadonly(state.draft)) {
 			return;
 		}
 		state.draft.readonly = !!on;
@@ -5957,33 +6365,79 @@
 		return row;
 	}
 
-	function fixedFieldHelpText(n) {
+	function defaultValueFieldHelpText(n) {
 		var parts = [];
-		if (i18n.fixedValueHint) {
-			parts.push(i18n.fixedValueHint);
+		if (isBuiltinCatalogLeaf(n)) {
+			parts.push(
+				i18n.nodeDefaultGrayHint ||
+					'Builtin Simple leaves do not store a default here. Specializations and typed fields may set Default value; attribute defaults stay in the Attributes panel.'
+			);
+			return parts.join('\n\n');
+		}
+		if (i18n.nodeDefaultHint || i18n.fixedValueHint) {
+			parts.push(
+				i18n.nodeDefaultHint ||
+					i18n.fixedValueHint ||
+					'Optional default seed for this node (not a lock). Read-only is separate.'
+			);
 		}
 		if (n && n.fixedEnabled) {
 			if (supportsFixedLiteral(n.type)) {
-				if (i18n.fixedLiteralHint) {
-					parts.push(i18n.fixedLiteralHint);
+				if (i18n.nodeDefaultLiteralHint || i18n.fixedLiteralHint) {
+					parts.push(i18n.nodeDefaultLiteralHint || i18n.fixedLiteralHint);
 				}
-			} else if (i18n.fixedCatalogHint) {
-				parts.push(i18n.fixedCatalogHint);
+			} else if (i18n.nodeDefaultCatalogHint || i18n.fixedCatalogHint) {
+				parts.push(i18n.nodeDefaultCatalogHint || i18n.fixedCatalogHint);
 			}
 		}
 		return parts.join('\n\n');
 	}
 
-	function renderFixedValueField(n, controlsLocked) {
-		// Hide entirely when not applicable â€” inactive stubs get noisy with many parameters.
-		if (!canEditFixedValue(n)) {
+	/** @deprecated Use defaultValueFieldHelpText. */
+	function fixedFieldHelpText(n) {
+		return defaultValueFieldHelpText(n);
+	}
+
+	/**
+	 * Default value editor (legacy fixed meta). When forceMuted, show gray stub only.
+	 */
+	function renderFixedValueField(n, controlsLocked, forceMuted) {
+		var muted = !!forceMuted || !canEditDefaultValue(n);
+		if (muted && !shouldShowDefaultValue(n)) {
 			return null;
+		}
+		if (muted) {
+			var stub = el('div', {
+				className: 'wtt-fixed-control wtt-fixed-control--muted',
+			});
+			stub.appendChild(
+				el('span', {
+					className: 'wtt-muted-label',
+					text:
+						i18n.nodeDefaultUnavailable ||
+						i18n.fixedValueUnavailable ||
+						'Default value is not editable on builtin Simple types.',
+				})
+			);
+			return stub;
 		}
 
 		var mode = el('div', { className: 'wtt-fixed-mode' });
 		[
-			{ value: false, label: i18n.fixedValueOff || 'No fixed value' },
-			{ value: true, label: i18n.fixedValueOn || 'Use fixed value' },
+			{
+				value: false,
+				label:
+					i18n.nodeDefaultOff ||
+					i18n.fixedValueOff ||
+					'No default value',
+			},
+			{
+				value: true,
+				label:
+					i18n.nodeDefaultOn ||
+					i18n.fixedValueOn ||
+					'Use default value',
+			},
 		].forEach(function (opt, index) {
 			var id = 'wtt-fixed-mode-' + (opt.value ? 'on' : 'off');
 			var label = el('label', {
@@ -6100,8 +6554,14 @@
 				allowClear: true,
 				disabled: !!controlsLocked,
 				pickedPrefix: i18n.nodePickerSelected || 'Selected:',
-				placeholder: i18n.fixedValueChoose || 'Choose nodeâ€¦',
-				dialogTitle: i18n.fixedValue || 'Fixed value',
+				placeholder:
+					i18n.nodeDefaultChoose ||
+					i18n.fixedValueChoose ||
+					'Choose node…',
+				dialogTitle:
+					i18n.attributesFixedTitle ||
+					i18n.fixedValue ||
+					'Default value',
 				emptyText:
 					(parseInt(n.refScopeId, 10) || 0)
 						? i18n.subtreeEmpty || 'No children under catalog root'
@@ -6136,7 +6596,15 @@
 		}
 
 		var fixedSelect = renderOptionsSelect(
-			[{ id: 0, name: i18n.fixedValueChoose || 'Choose node' }].concat(
+			[
+				{
+					id: 0,
+					name:
+						i18n.nodeDefaultChoose ||
+						i18n.fixedValueChoose ||
+						'Choose node',
+				},
+			].concat(
 				(Array.isArray(n.fixedOptions) ? n.fixedOptions : []).filter(function (opt) {
 					return opt && opt.id != null;
 				})
@@ -6145,8 +6613,10 @@
 				className: 'wtt-type-select',
 				disabled: !!controlsLocked,
 				selectedValue: n.fixedNodeId || 0,
+				allowEmpty: false,
 				getValue: function (opt) {
-					return String(opt.id);
+					var id = parseInt(opt.id, 10) || 0;
+					return id > 0 ? String(id) : '';
 				},
 				onChange: function (e) {
 					setDraftFixed(parseInt(e.target.value, 10) || 0);
@@ -8103,7 +8573,7 @@
 					el('option', {
 						value: opt.value,
 						text: opt.label,
-						selected: opt.value === 'besteht_aus',
+						selected: opt.value === 'aggregation',
 					})
 				);
 			});
@@ -8278,7 +8748,7 @@
 						name: name,
 						type_id: typeState.id,
 						multiplicity: multSelect.value || '1',
-						binding: bindSelect.value || 'besteht_aus',
+						binding: bindSelect.value || 'aggregation',
 						readonly: addState.readonly ? '1' : '0',
 					};
 					if (addState.pendingFixed.length) {
@@ -8297,7 +8767,7 @@
 							mountAddFixedCell();
 							mountAddReadonlyCell();
 							multSelect.value = '1';
-							bindSelect.value = 'besteht_aus';
+							bindSelect.value = 'aggregation';
 							return applyRelationMutation(json);
 						})
 						.catch(function () {
@@ -8352,20 +8822,20 @@
 	function attributeBindingOptions() {
 		return [
 			{
+				value: 'aggregation',
+				label: i18n.attributesBindingAggregation || 'Aggregation',
+			},
+			{
 				value: 'besteht_aus',
 				label:
 					i18n.attributesBindingComposition ||
 					'Composition (besteht_aus)',
 			},
-			{
-				value: 'aggregation',
-				label: i18n.attributesBindingAggregation || 'Aggregation',
-			},
 		];
 	}
 
 	function bindingLabelForKey(key) {
-		key = String(key || 'besteht_aus');
+		key = String(key || 'aggregation');
 		if (key === 'composition') {
 			key = 'besteht_aus';
 		}
@@ -8803,7 +9273,7 @@
 		}
 
 		/* Bindung â€” aggregation | besteht_aus (local override when inherited). */
-		var currentBinding = String(attr.binding || 'besteht_aus');
+		var currentBinding = String(attr.binding || 'aggregation');
 		if (currentBinding === 'composition') {
 			currentBinding = 'besteht_aus';
 		}
@@ -8888,15 +9358,18 @@
 		fixedCell.appendChild(el('button', fixedBtnAttrs));
 		tr.appendChild(fixedCell);
 
-		/* Readonly â€” host-scoped; own and inherited. Forced on when computed. */
-		var readonlyCell = el('td', {
-			className: 'wtt-col-readonly wtt-attributes__readonly',
-		});
+		/* Readonly — host-scoped; own and inherited. Forced on when computed. */
 		var isComputed = !!(attr.computed || (attr.compute && attr.compute.op));
+		var roDisabled = !editable || isComputed;
+		var readonlyCell = el('td', {
+			className:
+				'wtt-col-readonly wtt-attributes__readonly' +
+				(roDisabled ? ' is-muted' : ''),
+		});
 		readonlyCell.appendChild(
 			renderSlideSwitch({
 				checked: isComputed || !!attr.readonly,
-				disabled: !editable || isComputed,
+				disabled: roDisabled,
 				title: isComputed
 					? i18n.attributesComputedRoHint ||
 					  'Computed attributes are always read-only.'
@@ -9199,8 +9672,60 @@
 	}
 
 	/**
-	 * Options bar + detail under an attribute: dateMode, choiceFilter, compute.
+	 * True when attribute Options differ from pure type defaults.
+	 *
+	 * @param {Object} attr
+	 * @return {boolean}
+	 */
+	function attributeDetailHasOverrides(attr) {
+		if (!attr) {
+			return false;
+		}
+		var extras =
+			attr.typeExtras && typeof attr.typeExtras === 'object'
+				? attr.typeExtras
+				: {};
+		if (attr.preferredRenderOverride) {
+			return true;
+		}
+		if (attr.validatorsOverride) {
+			return true;
+		}
+		if (extras.preferredConverter || extras.displayFormat) {
+			return true;
+		}
+		if (extras.dateMode) {
+			return true;
+		}
+		if (
+			extras.choiceFilter &&
+			Array.isArray(extras.choiceFilter.ids) &&
+			extras.choiceFilter.ids.length
+		) {
+			return true;
+		}
+		if (extras.compute && extras.compute.op) {
+			return true;
+		}
+		if (
+			attr.dateConfig &&
+			attr.dateConfig.hasOverride
+		) {
+			return true;
+		}
+		if (
+			attr.intConfig &&
+			attr.intConfig.hasOverride
+		) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Options bar + detail under an attribute: choices | render/converter/validators.
 	 * Always shows a full-width rule with a right chevron; panels only when expanded.
+	 * Configured overrides keep the Options control visually active when collapsed.
 	 */
 	function renderAttributeDetailRow(n, attr, editable, opts) {
 		opts = opts || {};
@@ -9221,17 +9746,31 @@
 			return null;
 		}
 
-		var optionsLabel = i18n.attributesOptions || 'Options';
-		var bar = el('div', { className: 'wtt-attributes__options-bar' }, [
+		var configured = attributeDetailHasOverrides(attr);
+		var optionsLabel = configured
+			? i18n.attributesOptionsConfigured || 'Settings'
+			: i18n.attributesOptions || 'Options';
+		var bar = el('div', {
+			className:
+				'wtt-attributes__options-bar' +
+				(configured ? ' is-configured' : ''),
+		}, [
 			el('hr', { className: 'wtt-attributes__options-line' }),
 			el('button', {
 				type: 'button',
-				className: 'wtt-attributes__options-toggle',
+				className:
+					'wtt-attributes__options-toggle' +
+					(configured ? ' is-configured' : ''),
 				'aria-expanded': expanded ? 'true' : 'false',
 				'data-attr-id': String(attrId),
 				title: optionsLabel,
 				'aria-label': optionsLabel,
 				html:
+					(configured
+						? '<span class="wtt-attributes__options-badge">' +
+						  String(optionsLabel) +
+						  '</span>'
+						: '') +
 					'<span class="dashicons dashicons-arrow-' +
 					(expanded ? 'up' : 'down') +
 					'" aria-hidden="true"></span>',
@@ -9248,43 +9787,18 @@
 		if (expanded) {
 			var detailEditable = editable && !inherited;
 			var wrap = el('div', { className: 'wtt-attributes__detail' });
+			var layout = el('div', {
+				className: 'wtt-attributes__detail-layout',
+			});
+			var left = el('div', {
+				className: 'wtt-attributes__detail-col wtt-attributes__detail-col--choices',
+			});
+			var right = el('div', {
+				className: 'wtt-attributes__detail-col wtt-attributes__detail-col--chrome',
+			});
 
-			wrap.appendChild(
-				renderAttrPreferredRenderDetail(
-					n,
-					attr,
-					detailEditable,
-					hostId,
-					attrId
-				)
-			);
-
-			if (sections.isDate) {
-				wrap.appendChild(
-					renderAttrDateModeDetail(
-						n,
-						attr,
-						extras,
-						detailEditable,
-						hostId,
-						attrId
-					)
-				);
-			}
-			if (sections.isInt) {
-				wrap.appendChild(
-					renderAttrIntFormatDetail(
-						n,
-						attr,
-						extras,
-						detailEditable,
-						hostId,
-						attrId
-					)
-				);
-			}
 			if (sections.hasChoice) {
-				wrap.appendChild(
+				left.appendChild(
 					renderAttrChoiceFilterDetail(
 						n,
 						attr,
@@ -9295,6 +9809,46 @@
 					)
 				);
 			}
+
+			right.appendChild(
+				renderAttrPreferredChromePair(
+					n,
+					attr,
+					extras,
+					detailEditable,
+					hostId,
+					attrId
+				)
+			);
+			right.appendChild(
+				renderAttrValidatorsDetail(
+					n,
+					attr,
+					extras,
+					detailEditable,
+					hostId,
+					attrId
+				)
+			);
+			if (sections.isDate) {
+				right.appendChild(
+					renderAttrDateModeDetail(
+						n,
+						attr,
+						extras,
+						detailEditable,
+						hostId,
+						attrId
+					)
+				);
+			}
+
+			if (left.childNodes.length) {
+				layout.appendChild(left);
+			}
+			layout.appendChild(right);
+			wrap.appendChild(layout);
+
 			if (sections.showCompute) {
 				wrap.appendChild(
 					renderAttrComputeDetail(
@@ -9316,7 +9870,8 @@
 				className:
 					'wtt-attributes__detail-row' +
 					(inherited ? ' is-inherited' : '') +
-					(expanded ? ' is-expanded' : ''),
+					(expanded ? ' is-expanded' : '') +
+					(configured ? ' is-configured' : ''),
 				'data-attr-id': String(attrId),
 			},
 			[
@@ -9359,8 +9914,8 @@
 	function preferredRenderOptionLabel(value) {
 		value = normalizePreferredRender(value);
 		var i;
-		for (i = 0; i < OBJECT_LAYOUT_PREFERRED.length; i++) {
-			var o = OBJECT_LAYOUT_PREFERRED[i];
+		for (i = 0; i < PREFERRED_LAYOUTS.length; i++) {
+			var o = PREFERRED_LAYOUTS[i];
 			if (o.value === value) {
 				return (i18n && i18n[o.labelKey]) || o.fallback || value;
 			}
@@ -9368,9 +9923,9 @@
 		return value.charAt(0).toUpperCase() + value.slice(1);
 	}
 
-	function renderAttrPreferredRenderDetail(n, attr, editable, hostId, attrId) {
+	function renderAttrPreferredChromePair(n, attr, extras, editable, hostId, attrId) {
 		var typeDefault = normalizePreferredRender(
-			attr.typePreferredRender || 'form'
+			attr.typePreferredRender || 'FormRenderer'
 		);
 		var hasOverride = !!attr.preferredRenderOverride;
 		var probe = {
@@ -9384,15 +9939,15 @@
 				? attr.preferredRender
 				: typeDefault,
 		};
-		var opts = listCompatiblePreferredOptions(probe);
-		var select = el('select', {
+		var renderOpts = listCompatiblePreferredOptions(probe);
+		var renderSelect = el('select', {
 			className: 'wtt-attributes__detail-select',
 			disabled: !editable,
 			onChange: function (e) {
 				saveAttributePreferredRender(hostId, attrId, e.target.value);
 			},
 		});
-		select.appendChild(
+		renderSelect.appendChild(
 			el('option', {
 				value: '',
 				text:
@@ -9403,8 +9958,8 @@
 				selected: !hasOverride,
 			})
 		);
-		opts.forEach(function (o) {
-			select.appendChild(
+		renderOpts.forEach(function (o) {
+			renderSelect.appendChild(
 				el('option', {
 					value: o.value,
 					text: o.label,
@@ -9415,19 +9970,144 @@
 				})
 			);
 		});
+		/*
+		 * Attribute Preferred is an override (Type default = empty) → allowEmpty.
+		 * Sole lock only if no empty option and one real choice (should not happen here).
+		 */
+		applySoleRequiredListLock(
+			renderSelect,
+			countRealSelectOptions(renderSelect),
+			{
+				allowEmpty: true,
+				disabled: !editable,
+			}
+		);
+
+		var typeFormat = normalizePreferredConverter(
+			attr.typePreferredConverter ||
+				attr.preferredConverter ||
+				(attr.intConfig && attr.intConfig.typeFormat) ||
+				(attr.intConfig && attr.intConfig.displayFormat) ||
+				''
+		);
+		var currentConv = normalizePreferredConverter(
+			(extras.preferredConverter != null && extras.preferredConverter !== ''
+				? extras.preferredConverter
+				: extras.displayFormat) || ''
+		);
+		var convProbe = {
+			id: attr.id,
+			name: attr.name,
+			typeKey: attr.typeKey || '',
+			type: attr.typeKey ? { name: attr.typeKey } : null,
+			typeId: attr.typeId,
+			preferredConverter: currentConv || typeFormat || '',
+		};
+		var convOpts = listCompatiblePreferredConverterOptions(convProbe);
+		var converterSelect = el('select', {
+			className: 'wtt-attributes__detail-select',
+			disabled: !editable || !convOpts.length,
+			onChange: function (e) {
+				var next = Object.assign({}, extras);
+				var val = e.target.value;
+				if (!val) {
+					delete next.displayFormat;
+					delete next.preferredConverter;
+				} else {
+					next.preferredConverter = normalizePreferredConverter(val);
+					next.displayFormat = next.preferredConverter;
+				}
+				saveAttributeTypeExtras(hostId, attrId, next);
+			},
+		});
+		if (!convOpts.length) {
+			converterSelect.appendChild(
+				el('option', {
+					value: '',
+					text:
+						i18n.preferredConverterNoneShort ||
+						i18n.preferredConverterNone ||
+						'None',
+					title:
+						i18n.preferredConverterNone ||
+						'None (no converters for this type)',
+				})
+			);
+		} else {
+			converterSelect.appendChild(
+				el('option', {
+					value: '',
+					text:
+						(i18n.attributesPreferredConverterDefault ||
+							'Type default') +
+						(typeFormat
+							? ' (' +
+							  preferredConverterOptionLabel(typeFormat, typeFormat) +
+							  ')'
+							: ''),
+					selected: !currentConv,
+				})
+			);
+			convOpts.forEach(function (o) {
+				converterSelect.appendChild(
+					el('option', {
+						value: o.value,
+						text: o.label,
+						selected: !!currentConv && currentConv === o.value,
+					})
+				);
+			});
+		}
+		applySoleRequiredListLock(
+			converterSelect,
+			countRealSelectOptions(converterSelect),
+			{
+				allowEmpty: true,
+				disabled: !editable || !convOpts.length,
+			}
+		);
+
 		return el(
 			'div',
 			{
 				className:
-					'wtt-attributes__detail-block wtt-attributes__detail-block--preferred',
+					'wtt-attributes__detail-block wtt-attributes__detail-block--preferred-stack',
 			},
 			[
-				el('span', {
-					className: 'wtt-attributes__detail-label',
-					text: i18n.preferredRender || 'Preferred render',
-				}),
-				select,
+				el('div', { className: 'wtt-preferred-stack' }, [
+					el('div', { className: 'wtt-preferred-stack__item' }, [
+						el('span', {
+							className: 'wtt-preferred-pair__label',
+							text:
+								i18n.preferredRenderShort ||
+								i18n.preferredRender ||
+								'Render',
+						}),
+						renderSelect,
+					]),
+					el('div', { className: 'wtt-preferred-stack__item' }, [
+						el('span', {
+							className: 'wtt-preferred-pair__label',
+							text:
+								i18n.preferredConverterShort ||
+								i18n.preferredConverter ||
+								'Converter',
+						}),
+						converterSelect,
+					]),
+				]),
 			]
+		);
+	}
+
+	function renderAttrPreferredRenderDetail(n, attr, editable, hostId, attrId) {
+		return renderAttrPreferredChromePair(
+			n,
+			attr,
+			(attr && attr.typeExtras) || {},
+			editable,
+			hostId,
+			attrId
 		);
 	}
 
@@ -9574,18 +10254,53 @@
 		);
 	}
 
+	function collectChoiceFilterNodeIds(roots) {
+		var ids = [];
+		function walk(node) {
+			if (!node || node.id == null) {
+				return;
+			}
+			var id = parseInt(node.id, 10) || 0;
+			if (id > 0) {
+				ids.push(id);
+			}
+			(Array.isArray(node.children) ? node.children : []).forEach(walk);
+		}
+		(roots || []).forEach(walk);
+		return ids;
+	}
+
+	/**
+	 * Choice allowlist UI: all options checked by default; uncheck = exclude.
+	 * Persists as { mode:'exclude', ids:[unchecked] }. Legacy include filters migrate in UI.
+	 */
 	function renderAttrChoiceFilterDetail(n, attr, extras, editable, hostId, attrId) {
 		var filter =
 			extras.choiceFilter && typeof extras.choiceFilter === 'object'
 				? extras.choiceFilter
-				: { mode: 'include', ids: [] };
-		var mode = filter.mode === 'exclude' ? 'exclude' : 'include';
-		var selected = {};
-		(Array.isArray(filter.ids) ? filter.ids : []).forEach(function (id) {
-			selected[parseInt(id, 10)] = true;
-		});
-
+				: null;
 		var roots = attributeChoiceFilterRoots(attr);
+		var allIds = collectChoiceFilterNodeIds(roots);
+		var excluded = {};
+
+		if (filter && Array.isArray(filter.ids) && filter.ids.length) {
+			if (filter.mode === 'include') {
+				/* Legacy include → treat unchecked = everything not listed. */
+				var includeSet = {};
+				filter.ids.forEach(function (id) {
+					includeSet[parseInt(id, 10)] = true;
+				});
+				allIds.forEach(function (id) {
+					if (!includeSet[id]) {
+						excluded[id] = true;
+					}
+				});
+			} else {
+				filter.ids.forEach(function (id) {
+					excluded[parseInt(id, 10)] = true;
+				});
+			}
+		}
 
 		var block = el('div', {
 			className:
@@ -9594,66 +10309,26 @@
 		block.appendChild(
 			el('span', {
 				className: 'wtt-attributes__detail-label',
-				text: i18n.attributesChoiceFilter || 'Choice filter',
+				text: i18n.attributesChoiceFilter || 'Choices',
 			})
 		);
-
-		var modeSelect = el('select', {
-			className: 'wtt-attributes__detail-select',
-			disabled: !editable,
-			onChange: function (e) {
-				var nextMode = e.target.value === 'exclude' ? 'exclude' : 'include';
-				var next = Object.assign({}, extras);
-				var ids = Object.keys(selected)
-					.map(function (k) {
-						return parseInt(k, 10);
-					})
-					.filter(function (id) {
-						return id > 0 && selected[id];
-					});
-				if (!ids.length) {
-					delete next.choiceFilter;
-				} else {
-					next.choiceFilter = { mode: nextMode, ids: ids };
-				}
-				saveAttributeTypeExtras(hostId, attrId, next);
-			},
-		});
-		modeSelect.appendChild(
-			el('option', {
-				value: 'include',
-				text: i18n.attributesChoiceInclude || 'Include',
-				selected: mode === 'include',
-			})
-		);
-		modeSelect.appendChild(
-			el('option', {
-				value: 'exclude',
-				text: i18n.attributesChoiceExclude || 'Exclude',
-				selected: mode === 'exclude',
-			})
-		);
-		block.appendChild(modeSelect);
 
 		var treeWrap = el('div', {
 			className: 'wtt-attributes__choice-tree',
 		});
 		function persistFilter() {
 			var next = Object.assign({}, extras);
-			var ids = Object.keys(selected)
+			var ids = Object.keys(excluded)
 				.map(function (k) {
 					return parseInt(k, 10);
 				})
 				.filter(function (id) {
-					return id > 0 && selected[id];
+					return id > 0 && excluded[id];
 				});
 			if (!ids.length) {
 				delete next.choiceFilter;
 			} else {
-				next.choiceFilter = {
-					mode: modeSelect.value === 'exclude' ? 'exclude' : 'include',
-					ids: ids,
-				};
+				next.choiceFilter = { mode: 'exclude', ids: ids };
 			}
 			saveAttributeTypeExtras(hostId, attrId, next);
 		}
@@ -9672,13 +10347,13 @@
 			var check = el('input', {
 				type: 'checkbox',
 				disabled: !editable,
-				checked: !!selected[id],
+				checked: !excluded[id],
 			});
 			check.addEventListener('change', function () {
 				if (check.checked) {
-					selected[id] = true;
+					delete excluded[id];
 				} else {
-					delete selected[id];
+					excluded[id] = true;
 				}
 				persistFilter();
 			});
@@ -9713,7 +10388,208 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.attributesChoiceFilterHint ||
-					'Empty = no filter. Checked nodes include or exclude their whole subtree.',
+					'All choices start enabled. Uncheck a node to exclude it (and its subtree).',
+			})
+		);
+		return block;
+	}
+
+	/**
+	 * Compact attribute validators (type default or local override in typeExtras).
+	 */
+	function renderAttrValidatorsDetail(n, attr, extras, editable, hostId, attrId) {
+		var reg = validatorRegistry();
+		var probe = {
+			id: attr.id,
+			name: attr.name,
+			typeKey: attr.typeKey || '',
+			type: attr.typeKey ? { name: attr.typeKey } : null,
+			typeId: attr.typeId,
+			validators: attr.validators || [],
+		};
+		var compatible = reg && typeof reg.listCompatible === 'function'
+			? reg.listCompatible(probe) || []
+			: [];
+		var typeList = Array.isArray(attr.typeValidators)
+			? attr.typeValidators
+			: Array.isArray(attr.validators)
+				? attr.validators
+				: [];
+		var hasOverride = !!attr.validatorsOverride;
+		var list = hasOverride
+			? normalizeValidatorsList(extras.validators, probe)
+			: normalizeValidatorsList(typeList, probe);
+
+		if (!compatible.length && !list.length && !hasOverride) {
+			return el('div', {
+				className:
+					'wtt-attributes__detail-block wtt-attributes__detail-block--validators is-empty',
+			}, [
+				el('span', {
+					className: 'wtt-attributes__detail-label',
+					text: i18n.attributesValidators || 'Validators',
+				}),
+				el('span', {
+					className: 'wtt-field-hint',
+					text:
+						i18n.preferredConverterNoneShort ||
+						'None',
+				}),
+			]);
+		}
+
+		function persist(nextList, asOverride) {
+			var next = Object.assign({}, extras);
+			if (!asOverride) {
+				delete next.validators;
+			} else {
+				next.validators = normalizeValidatorsList(nextList, probe);
+			}
+			saveAttributeTypeExtras(hostId, attrId, next);
+		}
+
+		var block = el('div', {
+			className:
+				'wtt-attributes__detail-block wtt-attributes__detail-block--validators',
+		});
+		var head = el('div', { className: 'wtt-attributes__validators-head' });
+		head.appendChild(
+			el('span', {
+				className: 'wtt-attributes__detail-label',
+				text: i18n.attributesValidators || 'Validators',
+			})
+		);
+		if (hasOverride && editable) {
+			head.appendChild(
+				el('button', {
+					type: 'button',
+					className: 'button-link',
+					text:
+						i18n.attributesValidatorsReset ||
+						'Reset to type default',
+					onClick: function (e) {
+						e.preventDefault();
+						persist([], false);
+					},
+				})
+			);
+		} else if (!hasOverride) {
+			head.appendChild(
+				el('span', {
+					className: 'wtt-field-hint wtt-attributes__validators-default',
+					text:
+						i18n.attributesValidatorsDefault || 'Type default',
+				})
+			);
+		}
+		block.appendChild(head);
+
+		var listEl = el('ul', { className: 'wtt-attributes__validators-list' });
+		list.forEach(function (entry, idx) {
+			if (!entry) {
+				return;
+			}
+			var label =
+				(reg && reg.labelFor && reg.labelFor(entry.id)) ||
+				entry.id ||
+				'—';
+			var li = el('li', { className: 'wtt-attributes__validators-item' });
+			li.appendChild(
+				el('span', {
+					className: 'wtt-attributes__validators-id',
+					text: label,
+				})
+			);
+			var err = el('input', {
+				type: 'text',
+				className: 'wtt-attributes__detail-select',
+				value: entry.errorText || '',
+				disabled: !editable,
+				placeholder: i18n.validatorColError || 'Error text',
+				onBlur: function (e) {
+					var val = e.target.value;
+					if (String(entry.errorText || '') === String(val)) {
+						return;
+					}
+					var next = list.map(function (row, i) {
+						if (i !== idx) {
+							return row;
+						}
+						return Object.assign({}, row, {
+							errorText: val,
+						});
+					});
+					persist(next, true);
+				},
+			});
+			li.appendChild(err);
+			if (editable) {
+				li.appendChild(
+					el('button', {
+						type: 'button',
+						className:
+							'button-link-delete wtt-attributes__validators-trash',
+						title: i18n.remove || 'Remove',
+						'aria-label': i18n.remove || 'Remove',
+						html: '<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
+						onClick: function (e) {
+							e.preventDefault();
+							var next = list.filter(function (_row, i) {
+								return i !== idx;
+							});
+							persist(next, true);
+						},
+					})
+				);
+			}
+			listEl.appendChild(li);
+		});
+		block.appendChild(listEl);
+
+		if (editable && compatible.length) {
+			var addSelect = el('select', {
+				className: 'wtt-attributes__detail-select',
+			});
+			addSelect.appendChild(
+				el('option', {
+					value: '',
+					text: i18n.validatorAdd || 'Add validator…',
+				})
+			);
+			compatible.forEach(function (def) {
+				if (!def || !def.id) {
+					return;
+				}
+				addSelect.appendChild(
+					el('option', {
+						value: def.id,
+						text: def.label || def.id,
+					})
+				);
+			});
+			addSelect.addEventListener('change', function () {
+				var id = addSelect.value;
+				if (!id) {
+					return;
+				}
+				var next = list.concat([
+					{
+						id: id,
+						errorText: '',
+						expression: id === 'expression' ? '' : undefined,
+					},
+				]);
+				persist(next, true);
+			});
+			block.appendChild(addSelect);
+		}
+
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.attributesValidatorsHint ||
+					'Override type validators for this attribute. Empty override uses the type list.',
 			})
 		);
 		return block;
@@ -10156,6 +11032,7 @@
 			var select = renderOptionsSelect(options, {
 				className: 'wtt-type-select wtt-catalog-choice-select',
 				selectedValue: picked,
+				allowEmpty: allowClear,
 				getValue: function (opt) {
 					return opt.id != null ? String(opt.id) : '';
 				},
@@ -11290,10 +12167,12 @@
 						? deepClone(source.directChildren)
 						: [],
 				preferredRender: normalizePreferredRender(
-					source.preferredRender || source.typePreferredRender || 'form'
+					source.preferredRender ||
+						source.typePreferredRender ||
+						'FormRenderer'
 				),
 				typePreferredRender: normalizePreferredRender(
-					source.typePreferredRender || 'form'
+					source.typePreferredRender || 'FormRenderer'
 				),
 			};
 		}
@@ -11343,9 +12222,22 @@
 				(kuerzelMem && kuerzelMem.fixed && kuerzelMem.fixed.name) ||
 				(kuerzelMem && kuerzelMem.fixedLiteral) ||
 				'';
+			if (!symbol && kuerzelMem) {
+				symbol = livePreviewText(scope, kuerzelMem) || '';
+			}
+			if (symbol) {
+				symbol = formatSelectSymbolLabel({
+					name: symbol,
+					shortDescription:
+						(kuerzelMem && kuerzelMem.shortDescription) || '',
+				});
+			}
 			return el('span', {
 				className: 'wtt-preview-display-value wtt-preview-quantity',
-				text: sample + String(prefixPart || '') + String(symbol || composeUnitDisplay(members) || ''),
+				text:
+					sample +
+					String(prefixPart || '') +
+					String(symbol || composeUnitDisplay(members) || ''),
 			});
 		}
 
@@ -11357,9 +12249,10 @@
 		} else {
 			var fallbackTyp = { name: 'Typ', type: { name: 'double' } };
 			var num = el('input', {
-				type: 'number',
+				type: 'text',
 				className: 'wtt-preview-input wtt-preview-input--num',
-				step: 'any',
+				inputmode: 'decimal',
+				autocomplete: 'off',
 				value: sample,
 			});
 			bindPreviewControl(num, scope, fallbackTyp);
@@ -11418,9 +12311,35 @@
 			group.appendChild(
 				el('span', {
 					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
-					text: symbolText,
+					text: formatSelectSymbolLabel({
+						name: symbolText,
+						shortDescription:
+							(kuerzel && kuerzel.shortDescription) ||
+							(kuerzel && kuerzel.fixed && kuerzel.fixed.shortDescription) ||
+							'',
+					}),
 				})
 			);
+		} else if (kuerzel && enabledBranchOptions(kuerzel).length) {
+			group.appendChild(
+				renderBranchSelect(kuerzel, {
+					compact: true,
+					sample: livePreviewText(scope, kuerzel),
+					editable: true,
+					scope: scope,
+					symbolLabels: true,
+				})
+			);
+		} else if (kuerzel) {
+			var liveUnit = livePreviewText(scope, kuerzel);
+			if (liveUnit) {
+				group.appendChild(
+					el('span', {
+						className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
+						text: formatSelectSymbolLabel({ name: liveUnit }),
+					})
+				);
+			}
 		}
 		return group;
 	}
@@ -11791,10 +12710,11 @@
 
 		if (key === 'int' || key === 'double' || key === 'quantity') {
 			control = el('input', {
-				type: 'number',
+				type: 'text',
 				className: 'wtt-preview-input' + (compact ? ' wtt-preview-input--num' : ''),
 				placeholder: key === 'int' ? '0' : '0.0',
-				step: key === 'int' ? '1' : 'any',
+				inputmode: key === 'int' ? 'numeric' : 'decimal',
+				autocomplete: 'off',
 				value: sample,
 			});
 			if (editable) {
@@ -12398,61 +13318,33 @@
 	}
 
 	function renderPreferredConverterRow(n, form, controlsLocked) {
-		var reg = converterRegistry();
-		if (!reg) {
-			return;
-		}
-		var opts = listCompatiblePreferredConverterOptions(n);
+		appendPreferredRenderConverterPair(n, form, controlsLocked);
+	}
+
+	/**
+	 * Preferred render + converter side by side (Q114 — less vertical chrome).
+	 */
+	function appendPreferredRenderConverterPair(n, form, controlsLocked) {
 		var preferredSelect = el('select', {
-			className: 'wtt-preferred-converter-select',
-			disabled: !!controlsLocked || !opts.length,
+			className: 'wtt-preferred-render-select',
+			disabled: !!controlsLocked,
 			onChange: function (e) {
-				setDraftPreferredConverter(e.target.value);
+				setDraftPreferredRender(e.target.value);
 			},
 		});
-		if (!opts.length) {
-			preferredSelect.appendChild(
-				el('option', {
-					value: '',
-					text:
-						i18n.preferredConverterNone ||
-						'None (no converters for this type)',
-				})
-			);
-			form.appendChild(
-				formRow(
-					i18n.preferredConverter || 'Preferred converter',
-					[preferredSelect],
-					{
-						help:
-							i18n.preferredConverterHint ||
-							'Only converters that apply to this node’s type. Used when painting display values.',
-					}
-				)
-			);
-			return;
-		}
-		var preferredCur = defaultPreferredConverterForNode(
+		var preferredOpts = listCompatiblePreferredOptions(n);
+		var preferredCur = defaultPreferredRenderForNode(
 			Object.assign({}, n, {
-				preferredConverter:
-					(state.draft && state.draft.preferredConverter) ||
-					(n && n.preferredConverter) ||
-					(state.draft &&
-						state.draft.intConfig &&
-						state.draft.intConfig.displayFormat) ||
-					(n && n.intConfig && n.intConfig.displayFormat) ||
-					'',
+				preferredRender:
+					(state.draft && state.draft.preferredRender) ||
+					(n && n.preferredRender) ||
+					'FormRenderer',
 			})
 		);
-		if (state.draft && state.draft.preferredConverter !== preferredCur) {
-			state.draft.preferredConverter = preferredCur;
-			if (!state.draft.intConfig) {
-				state.draft.intConfig = { displayFormat: preferredCur };
-			} else {
-				state.draft.intConfig.displayFormat = preferredCur;
-			}
+		if (state.draft && state.draft.preferredRender !== preferredCur) {
+			state.draft.preferredRender = preferredCur;
 		}
-		opts.forEach(function (opt) {
+		preferredOpts.forEach(function (opt) {
 			preferredSelect.appendChild(
 				el('option', {
 					value: opt.value,
@@ -12461,16 +13353,114 @@
 				})
 			);
 		});
-		form.appendChild(
-			formRow(
-				i18n.preferredConverter || 'Preferred converter',
-				[preferredSelect],
-				{
-					help:
-						i18n.preferredConverterHint ||
-						'Only converters that apply to this node’s type. Used when painting display values.',
+		/* Q116: required Preferred — sole option → auto + gray. */
+		applySoleRequiredListLock(
+			preferredSelect,
+			preferredOpts.length,
+			{
+				allowEmpty: false,
+				disabled: !!controlsLocked,
+				title:
+					i18n.soleSelectLockedHint ||
+					'Only one choice — selected automatically.',
+			}
+		);
+
+		var reg = converterRegistry();
+		var convOpts = reg ? listCompatiblePreferredConverterOptions(n) : [];
+		var converterSelect = el('select', {
+			className: 'wtt-preferred-converter-select',
+			disabled: !!controlsLocked || !convOpts.length,
+			onChange: function (e) {
+				setDraftPreferredConverter(e.target.value);
+			},
+		});
+		if (!convOpts.length) {
+			converterSelect.appendChild(
+				el('option', {
+					value: '',
+					text:
+						i18n.preferredConverterNoneShort ||
+						i18n.preferredConverterNone ||
+						'None',
+					title:
+						i18n.preferredConverterNone ||
+						'None (no converters for this type)',
+				})
+			);
+			applySoleRequiredListLock(converterSelect, 0, {
+				allowEmpty: true,
+				disabled: true,
+			});
+		} else {
+			var preferredConvCur = defaultPreferredConverterForNode(
+				Object.assign({}, n, {
+					preferredConverter:
+						(state.draft && state.draft.preferredConverter) ||
+						(n && n.preferredConverter) ||
+						(state.draft &&
+							state.draft.intConfig &&
+							state.draft.intConfig.displayFormat) ||
+						(n && n.intConfig && n.intConfig.displayFormat) ||
+						'',
+				})
+			);
+			if (state.draft && state.draft.preferredConverter !== preferredConvCur) {
+				state.draft.preferredConverter = preferredConvCur;
+				if (!state.draft.intConfig) {
+					state.draft.intConfig = { displayFormat: preferredConvCur };
+				} else {
+					state.draft.intConfig.displayFormat = preferredConvCur;
 				}
-			)
+			}
+			convOpts.forEach(function (opt) {
+				converterSelect.appendChild(
+					el('option', {
+						value: opt.value,
+						text: opt.label,
+						selected: preferredConvCur === opt.value,
+					})
+				);
+			});
+			applySoleRequiredListLock(converterSelect, convOpts.length, {
+				allowEmpty: false,
+				disabled: !!controlsLocked,
+				title:
+					i18n.soleSelectLockedHint ||
+					'Only one choice — selected automatically.',
+			});
+		}
+
+		var pair = el('div', { className: 'wtt-preferred-pair' }, [
+			el('div', { className: 'wtt-preferred-pair__item' }, [
+				el('span', {
+					className: 'wtt-preferred-pair__label',
+					text:
+						i18n.preferredRenderShort ||
+						i18n.preferredRender ||
+						'Render',
+				}),
+				preferredSelect,
+			]),
+			el('div', { className: 'wtt-preferred-pair__item' }, [
+				el('span', {
+					className: 'wtt-preferred-pair__label',
+					text:
+						i18n.preferredConverterShort ||
+						i18n.preferredConverter ||
+						'Converter',
+				}),
+				converterSelect,
+			]),
+		]);
+
+		form.appendChild(
+			formRow(i18n.preferredChrome || 'Preferred', [pair], {
+				className: 'wtt-form__row--preferred-pair',
+				help:
+					i18n.preferredChromeHint ||
+					'Render = how the node is painted; converter = how values are transformed for display. Only options that apply to this type.',
+			})
 		);
 	}
 
@@ -12525,30 +13515,43 @@
 			return;
 		}
 
+		var showExpr = list.some(function (entry) {
+			return entry && entry.id === 'expression';
+		});
+
 		var table = el('table', {
 			className: 'wtt-row-edit-table wtt-validators-table widefat',
 		});
-		var thead = el('thead');
-		thead.appendChild(
-			el('tr', null, [
+		var headCells = [
+			el('th', {
+				className: 'wtt-validators-table__col-id',
+				text: i18n.validatorColId || 'Validator',
+			}),
+			el('th', {
+				className: 'wtt-validators-table__col-error',
+				text: i18n.validatorColError || 'Error text',
+			}),
+		];
+		if (showExpr) {
+			headCells.push(
 				el('th', {
-					text: i18n.validatorColId || 'Validator',
-				}),
-				el('th', {
-					text: i18n.validatorColError || 'Error text',
-				}),
-				el('th', {
+					className: 'wtt-validators-table__col-expr',
 					text: i18n.validatorColExpression || 'Expression',
-				}),
-				el('th', {
-					text: i18n.validatorColFix || 'Fix',
-				}),
-				el('th', {
-					className: 'wtt-col-actions',
-					text: i18n.validatorColActions || 'Actions',
-				}),
-			])
+				})
+			);
+		}
+		headCells.push(
+			el('th', {
+				className: 'wtt-validators-table__col-fix',
+				text: i18n.validatorColFix || 'Fix',
+			}),
+			el('th', {
+				className: 'wtt-col-actions',
+				text: i18n.validatorColActions || 'Actions',
+			})
 		);
+		var thead = el('thead');
+		thead.appendChild(el('tr', null, headCells));
 		table.appendChild(thead);
 		var tbody = el('tbody');
 
@@ -12572,7 +13575,7 @@
 
 			var errorInput = el('input', {
 				type: 'text',
-				className: 'regular-text',
+				className: 'wtt-validators-table__input',
 				value: entry.errorText || '',
 				disabled: !!controlsLocked,
 				onChange: function (e) {
@@ -12588,30 +13591,35 @@
 				},
 			});
 
-			var exprCell;
-			if (isExpr) {
-				exprCell = el('input', {
-					type: 'text',
-					className: 'regular-text',
-					value: entry.expression || '',
-					disabled: !!controlsLocked,
-					title:
-						i18n.validatorExpressionHint ||
-						'Use value in a boolean expression',
-					onChange: function (e) {
-						var next = list.map(function (row, i) {
-							if (i !== idx) {
-								return row;
-							}
-							return Object.assign({}, row, {
-								expression: e.target.value,
+			var exprCell = null;
+			if (showExpr) {
+				if (isExpr) {
+					exprCell = el('input', {
+						type: 'text',
+						className: 'wtt-validators-table__input',
+						value: entry.expression || '',
+						disabled: !!controlsLocked,
+						title:
+							i18n.validatorExpressionHint ||
+							'Use value in a boolean expression',
+						onChange: function (e) {
+							var next = list.map(function (row, i) {
+								if (i !== idx) {
+									return row;
+								}
+								return Object.assign({}, row, {
+									expression: e.target.value,
+								});
 							});
-						});
-						rewrite(next);
-					},
-				});
-			} else {
-				exprCell = el('span', { className: 'description', text: '—' });
+							rewrite(next);
+						},
+					});
+				} else {
+					exprCell = el('span', {
+						className: 'description',
+						text: '—',
+					});
+				}
 			}
 
 			var fixLabel =
@@ -12620,10 +13628,16 @@
 					: '';
 			var fixInput = el('input', {
 				type: 'text',
-				className: 'regular-text',
+				className: 'wtt-validators-table__input',
 				value: fixLabel,
 				disabled: !!controlsLocked,
-				placeholder: i18n.validatorFixHint || 'Optional fix label',
+				placeholder:
+					i18n.validatorFixPlaceholder ||
+					i18n.validatorFixHint ||
+					'Optional fix label',
+				title:
+					i18n.validatorFixHint ||
+					'Optional fix label (shown when validation fails)',
 				onChange: function (e) {
 					var val = String(e.target.value || '').trim();
 					var next = list.map(function (row, i) {
@@ -12665,19 +13679,34 @@
 				trashBtn = el('span', { className: 'description', text: '—' });
 			}
 
-			tbody.appendChild(
-				el('tr', null, [
-					el('td', { text: label }),
-					el('td', null, [errorInput]),
-					el('td', null, [exprCell]),
-					el('td', null, [fixInput]),
-					el('td', { className: 'wtt-col-actions' }, [trashBtn]),
-				])
+			var rowCells = [
+				el('td', {
+					className: 'wtt-validators-table__col-id',
+					text: label,
+				}),
+				el('td', { className: 'wtt-validators-table__col-error' }, [
+					errorInput,
+				]),
+			];
+			if (showExpr) {
+				rowCells.push(
+					el('td', { className: 'wtt-validators-table__col-expr' }, [
+						exprCell,
+					])
+				);
+			}
+			rowCells.push(
+				el('td', { className: 'wtt-validators-table__col-fix' }, [
+					fixInput,
+				]),
+				el('td', { className: 'wtt-col-actions' }, [trashBtn])
 			);
+			tbody.appendChild(el('tr', null, rowCells));
 		});
 		table.appendChild(tbody);
 
 		var addSelect = el('select', {
+			className: 'wtt-validators-editor__add-select',
 			disabled: !!controlsLocked,
 		});
 		addSelect.appendChild(
@@ -12728,11 +13757,12 @@
 		});
 
 		var wrap = el('div', { className: 'wtt-validators-editor' }, [
-			table,
+			el('div', { className: 'wtt-validators-editor__scroll' }, [table]),
 			el('div', { className: 'wtt-validators-editor__add' }, [addSelect]),
 		]);
 		form.appendChild(
 			formRow(i18n.validators || 'Validators', [wrap], {
+				className: 'wtt-form__row--block wtt-form__row--validators',
 				help:
 					i18n.validatorsHint ||
 					'0..n value checks. Type default stays; add more including Expression.',
@@ -13357,18 +14387,31 @@
 	function memberNameKey(member) {
 		return String((member && member.name) || '')
 			.toLowerCase()
+			.replace(/\u00fc/g, 'ue')
+			.replace(/\u00e4/g, 'ae')
+			.replace(/\u00f6/g, 'oe')
 			.replace(/Ã¼/g, 'ue')
 			.replace(/Ã¤/g, 'ae')
 			.replace(/Ã¶/g, 'oe');
 	}
 
 	/**
-	 * Basiseinheit set helpers: Praefix + Kuerzel â†’ mm / kÎ© / Â°C (no atomic mm node).
+	 * Basiseinheit / quantity member lookup (Typ|Wert, Praefix, Kuerzel|Einheit).
 	 */
 	function findSetMemberByKey(members, nameKey) {
+		var aliases = {
+			typ: ['typ', 'wert', 'value', 'magnitude', 'betrag'],
+			praefix: ['praefix', 'prefix', 'prafix'],
+			kuerzel: ['kuerzel', 'einheit', 'unit', 'symbol', 'waehrung', 'currency'],
+		};
+		var keys = aliases[nameKey] || [nameKey];
 		var found = null;
 		(members || []).forEach(function (m) {
-			if (!found && memberNameKey(m) === nameKey) {
+			if (found) {
+				return;
+			}
+			var key = memberNameKey(m);
+			if (keys.indexOf(key) !== -1) {
 				found = m;
 			}
 		});
@@ -13410,30 +14453,42 @@
 		if (!praefixMem) {
 			return '';
 		}
+		var opts = enabledBranchOptions(praefixMem);
+		function letterForName(name) {
+			var n = String(name || '');
+			if (!n) {
+				return '';
+			}
+			var i;
+			for (i = 0; i < opts.length; i++) {
+				if (opts[i] && (opts[i].name === n || String(opts[i].id) === n)) {
+					return formatSelectSymbolLabel(opts[i]);
+				}
+			}
+			return formatSelectSymbolLabel({ name: n });
+		}
 		if (praefixMem.fixed && praefixMem.fixed.name) {
-			return praefixMem.fixed.name === 'Mega' ? 'M' : String(praefixMem.fixed.name);
+			return letterForName(praefixMem.fixed.name);
 		}
 		if (praefixMem.fixedLiteral) {
-			return String(praefixMem.fixedLiteral);
+			return letterForName(praefixMem.fixedLiteral);
 		}
 		var live = scope != null ? getPreviewValue(scope, praefixMem, null) : null;
 		if (live != null && String(live) !== '') {
-			var liveName = String(live);
-			return liveName === 'Mega' ? 'M' : liveName;
+			return letterForName(live);
 		}
-		var opts = enabledBranchOptions(praefixMem);
 		if (!opts.length) {
 			return '';
 		}
 		var pick = opts[0];
 		for (var pi = 0; pi < opts.length; pi++) {
-			if (opts[pi] && opts[pi].name === 'm') {
+			var sym = formatSelectSymbolLabel(opts[pi]);
+			if (sym === 'm' || (opts[pi] && opts[pi].name === 'Milli')) {
 				pick = opts[pi];
 				break;
 			}
 		}
-		var name = (pick && pick.name) || '';
-		return name === 'Mega' ? 'M' : name;
+		return formatSelectSymbolLabel(pick);
 	}
 
 	/** Basiseinheit unit (= set schema Typ/Praefix/Kuerzel), not a fillable instance. */
@@ -15228,7 +16283,7 @@
 		var preferred = normalizePreferredRender(
 			(state.draft && state.draft.preferredRender) ||
 				n.preferredRender ||
-				'form'
+				'FormRenderer'
 		);
 		var block = el('div', { className: 'wtt-preview__body' });
 		block.appendChild(
@@ -15241,7 +16296,7 @@
 		);
 
 		if (!ObjectRender || typeof ObjectRender.renderForm !== 'function') {
-			if (preferred === 'table') {
+			if (preferred === 'TableRenderer') {
 				block.appendChild(
 					renderPreviewSurface(
 						i18n.previewAsTable || 'Table',
@@ -15314,18 +16369,52 @@
 		}
 
 		var titleMap = {
-			form: i18n.previewAsForm || 'Form',
-			table: i18n.previewAsTable || 'Table',
-			compact: i18n.previewCompactHorizontal || 'Compact (horizontal)',
-			'compact-vertical':
+			FormRenderer: i18n.previewAsForm || 'Form',
+			TableRenderer: i18n.previewAsTable || 'Table',
+			CompactRenderer:
+				i18n.previewCompactHorizontal || 'Compact (horizontal)',
+			CompactVerticalRenderer:
 				i18n.previewCompactVertical || 'Compact (vertical)',
-			embed: i18n.previewEmbed || 'Embed (pick + fill)',
+			EmbeddedRenderer: i18n.previewEmbed || 'Embedded renderer',
+			quantity: i18n.previewQuantity || 'Quantity',
 		};
 
-		if (preferred === 'table') {
+		if (preferred === 'quantity') {
+			var qtyMembers = Array.isArray(formInstance.attributes)
+				? formInstance.attributes
+				: members;
+			var qtyScope = 'obj-qty';
+			qtyMembers.forEach(function (field) {
+				var key = previewValueKey(qtyScope, field);
+				if (
+					!Object.prototype.hasOwnProperty.call(state.previewValues, key) &&
+					formInstance.values
+				) {
+					var idKey =
+						field && field.id != null
+							? String(field.id)
+							: String((field && field.name) || '');
+					if (
+						Object.prototype.hasOwnProperty.call(
+							formInstance.values,
+							idKey
+						)
+					) {
+						state.previewValues[key] = formInstance.values[idKey];
+					}
+				}
+			});
 			block.appendChild(
 				renderPreviewSurface(
-					titleMap.table,
+					titleMap.quantity,
+					renderQuantityView(qtyMembers, 'edit', qtyScope),
+					renderQuantityView(qtyMembers, 'display', qtyScope)
+				)
+			);
+		} else if (preferred === 'TableRenderer') {
+			block.appendChild(
+				renderPreviewSurface(
+					titleMap.TableRenderer,
 					ObjectRender.renderTable(tableInstances, {
 						readonly: false,
 						onFieldInput: onTableFieldInput,
@@ -15338,12 +16427,14 @@
 				)
 			);
 		} else if (
-			preferred === 'compact' ||
-			preferred === 'compact-vertical'
+			preferred === 'CompactRenderer' ||
+			preferred === 'CompactVerticalRenderer'
 		) {
 			if (typeof ObjectRender.renderCompact === 'function') {
 				var orient =
-					preferred === 'compact-vertical' ? 'vertical' : 'horizontal';
+					preferred === 'CompactVerticalRenderer'
+						? 'vertical'
+						: 'horizontal';
 				block.appendChild(
 					renderPreviewSurface(
 						titleMap[preferred],
@@ -15360,7 +16451,7 @@
 				);
 			}
 		} else if (
-			preferred === 'embed' &&
+			preferred === 'EmbeddedRenderer' &&
 			typeof ObjectRender.renderEmbed === 'function'
 		) {
 			var embedKey = 'obj-embed-' + String((n && n.id) || 0);
@@ -15375,7 +16466,7 @@
 				: [];
 			block.appendChild(
 				renderPreviewSurface(
-					titleMap.embed,
+					titleMap.EmbeddedRenderer,
 					ObjectRender.renderEmbed({
 						choiceOptions: embedChoices,
 						value: embedVal,
@@ -15395,7 +16486,7 @@
 		} else {
 			block.appendChild(
 				renderPreviewSurface(
-					titleMap.form,
+					titleMap.FormRenderer,
 					ObjectRender.renderForm(formInstance, {
 						readonly: false,
 						onFieldInput: onFormFieldInput,
@@ -15650,7 +16741,7 @@
 	}
 
 	/**
-	 * Quantity catalog preview = fake object like Preis (number + select), not a bare control.
+	 * Quantity catalog preview = compact QuantityRenderer (Preis-shaped attrs as trinity).
 	 */
 	function quantityFakeHostForPreview(n) {
 		var ex = n && n.quantityPreviewExample;
@@ -15665,10 +16756,8 @@
 		return {
 			id: n && n.id != null ? n.id : 0,
 			name: hostName,
-			preferredRender:
-				(n && n.preferredRender) ||
-				(state.draft && state.draft.preferredRender) ||
-				'form',
+			/* Catalog type preferred Quantity → one compact control, not Form rows. */
+			preferredRender: 'quantity',
 			attributes: attrs,
 			_quantityExample: true,
 		};
@@ -15683,7 +16772,7 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.quantityCatalogPreviewHint ||
-					'Quantity is shown as an example object (like Preis): a number field plus a choice field. Real children (Preis, Menge, â€¦) define concrete shapes.',
+					'Quantity uses the Quantity renderer (compact magnitude + prefix + unit). Example shape follows Preis when present.',
 			})
 		);
 		if (!members.length) {
@@ -15823,6 +16912,7 @@
 			return renderOptionsSelect(flatOpts, {
 				className: 'wtt-type-select wtt-catalog-choice-select',
 				selectedValue: selectedId,
+				allowEmpty: false,
 				getValue: function (opt) {
 					return opt.id != null ? String(opt.id) : '';
 				},
@@ -16563,7 +17653,7 @@
 					className: 'wtt-form-section__hint',
 					text:
 						i18n.nodeIdentityHint ||
-						'Core properties of this node (name and descriptions).',
+						'Core properties of this node (name, flags, defaults).',
 				})
 			);
 			identitySection.appendChild(
@@ -16572,54 +17662,11 @@
 					help: i18n.nameHint || '',
 				})
 			);
-
-			var shortInput = el('input', {
-				type: 'text',
-				id: 'wtt-node-short-description',
-				className: 'wtt-short-description-input regular-text',
-				value: n.shortDescription || '',
-				placeholder: 'â€¦',
-			});
-			if (controlsLocked) {
-				shortInput.disabled = true;
-			}
-			shortInput.addEventListener('input', function (e) {
-				setDraftShortDescription(e.target.value, { silent: true });
-			});
-			identitySection.appendChild(
-				formRow(i18n.shortDescription || 'Short description', [shortInput], {
-					htmlFor: 'wtt-node-short-description',
-					help: i18n.shortDescriptionHint || '',
-				})
-			);
-
-			var descInput = el('textarea', {
-				id: 'wtt-node-description',
-				className: 'wtt-description-input large-text',
-				rows: '3',
-			});
-			descInput.value = n.description || '';
-			if (controlsLocked) {
-				descInput.disabled = true;
-			}
-			descInput.addEventListener('input', function (e) {
-				setDraftDescription(e.target.value, { silent: true });
-			});
-			identitySection.appendChild(
-				formRow(i18n.description || 'Description', [descInput], {
-					htmlFor: 'wtt-node-description',
-					className: 'wtt-form__row--description',
-					help: {
-						description: i18n.descriptionHint || '',
-						helpChildren: n.helpChildren || [],
-					},
-				})
-			);
 			form.appendChild(identitySection);
 
 			/*
-			 * Display: presentation chrome. Choice key stored on node (_wtt_icon);
-			 * picker options come from Settings allowlist (not identity fields).
+			 * Display: icon + presentation texts (Q117/Q118).
+			 * Description / short description left Identity — edit via Presentation.
 			 */
 			var iconOptions = Array.isArray(cfg.treeIcons) ? cfg.treeIcons : [];
 			var currentIcon = n.icon != null ? String(n.icon) : '';
@@ -16646,7 +17693,7 @@
 					className: 'wtt-form-section__hint',
 					text:
 						i18n.nodeDisplayHint ||
-						'Presentation chrome for the tree. Icon key is saved on the node; the allowed list comes from Settings.',
+						'Presentation chrome for the tree. Texts and icon live in the presentation store (Q117).',
 				})
 			);
 			displaySection.appendChild(
@@ -16654,6 +17701,7 @@
 					help: i18n.iconHint || '',
 				})
 			);
+			displaySection.appendChild(renderPresentationFoldable(n));
 			form.appendChild(displaySection);
 
 			/*
@@ -16819,40 +17867,65 @@
 				);
 			}
 
-			var fixedControl = renderFixedValueField(n, controlsLocked);
-			if (fixedControl) {
-				form.appendChild(
-					formRow(i18n.fixedValue || 'Fixed value', [fixedControl], {
-						className: 'wtt-form__row--fixed',
-						help: fixedFieldHelpText(n),
-					})
-				);
-			}
-
-			/* Attribute slot: Read-only lock (replaces Fixed-as-lock). */
-			if (n.isAttributeSlot) {
+			/* Q115: Read-only always in chrome; grayed when not a fillable slot. */
+			if (shouldShowReadonly(n)) {
+				var roEditable = canEditReadonly(n) && !controlsLocked;
 				form.appendChild(
 					formRow(
-						i18n.nodeReadonly || i18n.attributesReadonlyTitle || 'Read-only',
+						i18n.nodeReadonly ||
+							i18n.attributesReadonlyTitle ||
+							'Read-only',
 						[
 							renderSlideSwitch({
 								checked: !!n.readonly,
-								disabled: !!controlsLocked,
-								title:
-									i18n.nodeReadonlyHint ||
-									i18n.attributesReadonlyHint ||
-									'When on, this field is not editable in forms.',
+								disabled: !roEditable,
+								title: roEditable
+									? i18n.nodeReadonlyHint ||
+									  i18n.attributesReadonlyHint ||
+									  'When on, this field is not editable in forms.'
+									: i18n.nodeReadonlyGrayHint ||
+									  'Read-only applies to attribute slots (and the Attributes panel). Grayed on type catalog leaves and structure hosts.',
 								onChange: setDraftReadonly,
 							}),
 						],
 						{
-							className: 'wtt-form__row--readonly',
-							help:
-								i18n.nodeReadonlyHint ||
-								'Lock replaces Fixed value for attribute slots. Default value seeding stays in the Attributes panel.',
+							className:
+								'wtt-form__row--readonly' +
+								(roEditable ? '' : ' is-muted'),
+							help: roEditable
+								? i18n.nodeReadonlyHint ||
+								  'When on, this field is not editable in forms. Default value seeding is separate (Attributes panel or Default value below).'
+								: i18n.nodeReadonlyGrayHint ||
+								  'Read-only applies to attribute slots. Grayed here — edit RO on the attribute or open the slot.',
 						}
 					)
 				);
+			}
+
+			/* Q115: Default value (node `_wtt_fixed_*`); grayed on builtin Simples. */
+			if (shouldShowDefaultValue(n)) {
+				var defaultMuted = !canEditDefaultValue(n) || !!controlsLocked;
+				var defaultControl = renderFixedValueField(
+					n,
+					controlsLocked || defaultMuted,
+					defaultMuted && isBuiltinCatalogLeaf(n)
+				);
+				if (defaultControl) {
+					form.appendChild(
+						formRow(
+							i18n.attributesFixedTitle ||
+								i18n.fixedValue ||
+								'Default value',
+							[defaultControl],
+							{
+								className:
+									'wtt-form__row--fixed wtt-form__row--default' +
+									(defaultMuted ? ' is-muted' : ''),
+								help: defaultValueFieldHelpText(n),
+							}
+						)
+					);
+				}
 			}
 
 			var footerOpRow = renderFooterOpPicker(n, controlsLocked);
@@ -16895,45 +17968,6 @@
 				form.appendChild(flagsStrip);
 			}
 
-			var preferredSelect = el('select', {
-				className: 'wtt-preferred-render-select',
-				disabled: !!controlsLocked,
-				onChange: function (e) {
-					setDraftPreferredRender(e.target.value);
-				},
-			});
-			var preferredOpts = listCompatiblePreferredOptions(n);
-			var preferredCur = defaultPreferredRenderForNode(
-				Object.assign({}, n, {
-					preferredRender:
-						(state.draft && state.draft.preferredRender) ||
-						(n && n.preferredRender) ||
-						'form',
-				})
-			);
-			if (state.draft && state.draft.preferredRender !== preferredCur) {
-				state.draft.preferredRender = preferredCur;
-			}
-			preferredOpts.forEach(function (opt) {
-				preferredSelect.appendChild(
-					el('option', {
-						value: opt.value,
-						text: opt.label,
-						selected: preferredCur === opt.value,
-					})
-				);
-			});
-			form.appendChild(
-				formRow(
-					i18n.preferredRender || 'Preferred render',
-					[preferredSelect],
-					{
-						help:
-							i18n.preferredRenderHint ||
-							'Only renderers that can paint this node. Used for admin preview and Object View (when layout is Node preferred).',
-					}
-				)
-			);
 			renderPreferredConverterRow(n, form, controlsLocked);
 			renderValidatorsSection(n, form, controlsLocked);
 

@@ -2,9 +2,9 @@
 /**
  * Plugin Name:       WP Taxonomy Tree
  * Description:       Hierarchical taxonomy tree environment for wp-admin (scaffold preview).
- * Version:           0.0.386
+ * Version:           0.0.402
  * Requires at least: 6.4
- * Requires PHP:      8.0
+ * Requires PHP:      8.1
  * Author:            Stefan Fambach
  * License:           GPL-2.0-or-later
  * Text Domain:       wp-taxonomy-tree
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WTT_VERSION', '0.0.386' );
+define( 'WTT_VERSION', '0.0.402' );
 define( 'WTT_PLUGIN_FILE', __FILE__ );
 define( 'WTT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 /*
@@ -47,7 +47,10 @@ require_once WTT_PLUGIN_DIR . 'includes/class-model-version-admin.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-cleanup-admin.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-settings.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-tree-icons.php';
+require_once WTT_PLUGIN_DIR . 'includes/class-node-presentation.php';
+require_once WTT_PLUGIN_DIR . 'includes/class-node-presentation-admin.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-catalog-bindings.php';
+require_once WTT_PLUGIN_DIR . 'includes/enum-renderer.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-node-type.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-relation.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-attribute.php';

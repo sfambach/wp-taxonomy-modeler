@@ -37,6 +37,40 @@ function formatInstanceChip( instanceId, i18nMap ) {
 }
 
 /**
+ * Object layout wire ids (Q113). Accepts legacy form|table|compact|embed on read.
+ *
+ * @param {string} raw
+ * @return {string}
+ */
+function normalizeObjectLayoutAttr( raw ) {
+	const s = String( raw == null ? '' : raw ).trim();
+	if ( ! s || s === 'auto' ) {
+		return s || 'auto';
+	}
+	const key = s.toLowerCase();
+	const map = {
+		form: 'FormRenderer',
+		formrenderer: 'FormRenderer',
+		table: 'TableRenderer',
+		tablerenderer: 'TableRenderer',
+		list: 'TableRenderer',
+		compact: 'CompactRenderer',
+		compactrenderer: 'CompactRenderer',
+		'compact-horizontal': 'CompactRenderer',
+		'compact-h': 'CompactRenderer',
+		'compact-vertical': 'CompactVerticalRenderer',
+		compactverticalrenderer: 'CompactVerticalRenderer',
+		'compact-v': 'CompactVerticalRenderer',
+		embed: 'EmbeddedRenderer',
+		embeddedrenderer: 'EmbeddedRenderer',
+		'pick-fill': 'EmbeddedRenderer',
+		pick_fill: 'EmbeddedRenderer',
+		'compact-embed': 'EmbeddedRenderer',
+	};
+	return map[ key ] || 'FormRenderer';
+}
+
+/**
  * Collect attr-id → store string from a live Object View DTO + pending edits map.
  *
  * @param {object|null} view
@@ -454,7 +488,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 		}
 		if ( api && typeof api.mount === 'function' ) {
 			api.mount( host, view, {
-				layout: layout || 'auto',
+				layout: normalizeObjectLayoutAttr( layout || 'auto' ),
 				renderDepth:
 					typeof renderDepth === 'number'
 						? renderDepth
@@ -607,7 +641,7 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 							i18n.layoutAutoHelp ||
 							'Node preferred uses the layout stored on the bound node.'
 						}
-						value={ layout || 'auto' }
+						value={ normalizeObjectLayoutAttr( layout || 'auto' ) }
 						options={ [
 							{
 								label: i18n.layoutAuto || 'Node preferred',
@@ -615,29 +649,35 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 							},
 							{
 								label: i18n.layoutForm || 'Form + Table (auto)',
-								value: 'form',
+								value: 'FormRenderer',
 							},
 							{
 								label: i18n.layoutTable || 'Table (all)',
-								value: 'table',
+								value: 'TableRenderer',
 							},
 							{
 								label: i18n.layoutCompact || 'Compact (horizontal)',
-								value: 'compact',
+								value: 'CompactRenderer',
 							},
 							{
 								label:
 									i18n.layoutCompactVertical ||
 									'Compact (vertical)',
-								value: 'compact-vertical',
+								value: 'CompactVerticalRenderer',
 							},
 							{
-								label: i18n.layoutEmbed || 'Embed (pick + fill)',
-								value: 'embed',
+								label: i18n.layoutEmbed || 'Embedded renderer',
+								value: 'EmbeddedRenderer',
 							},
 						] }
 						onChange={ ( next ) => {
-							setAttributes( { layout: next || 'auto' } );
+							const v = next || 'auto';
+							setAttributes( {
+								layout:
+									v === 'auto'
+										? 'auto'
+										: normalizeObjectLayoutAttr( v ),
+							} );
 						} }
 					/>
 				</PanelBody>

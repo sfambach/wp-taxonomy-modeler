@@ -2,8 +2,8 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.72-plan"
-last_updated: "2026-08-08"
+version: "0.7.87-plan"
+last_updated: "2026-08-09"
 related_docs:
   - README.md
   - docs/PRODUCT.md
@@ -475,6 +475,21 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-08 | Confirmed Q49 soft lean (no attrs on Simple leaves; percent = validator specialty). Opened **Q109** — measure/quantity + unit/prefix switch recalculation (next). Plan **0.7.70**. |
 | 2026-08-08 | **Q109 decided:** quantity = display triple; same-Basiseinheit Präfix switch → **rescale Typ** (physical constant); no silent cross-unit. Plan **0.7.71**. |
 | 2026-08-08 | **Q110 opened:** currency/money ≠ measure — EUR→USD needs **FX rates**, not Präfix multiplikator. Plan **0.7.72**. |
+| 2026-08-09 | **Q111 decided:** value storage **from type** — Simples + `quantity` always **inline** on host; identity/structure → linked Model_Data (Q97). No `is_datatype` flag; picker `inline` ≠ storage. Plan **0.7.73**. |
+| 2026-08-09 | **Q111 revised:** **Bindung** = storage SoT — Composition → embedded in parent; Aggregation → linked Model. Amends Q97 BOM-lines-as-linked. **Q112** opened (rename Preferred `embed`). Plan **0.7.74**. |
+| 2026-08-09 | **Q112 decided:** Preferred key stays `embed`; UI label **Embedded renderer**. Plan **0.7.75**. |
+| 2026-08-09 | **Q113 parked:** Preferred/renderer assignment as type config; one Registry lean; gray-out if only one renderer — think later. Plan **0.7.76**. |
+| 2026-08-09 | **Q113 shape locked:** `enum Renderer: string` with values `IntRenderer`, `FormRenderer`, `EmbeddedRenderer`, … — build still parked. Plan **0.7.77**. |
+| 2026-08-09 | **Q111 seed:** Model DEFAULT Bindung = aggregation; Position = composition. **Q113 scaffold:** enum + object layout wire ids ≈ **0.0.388**. Plan **0.7.78**. |
+| 2026-08-09 | **Q114:** Attribute Options = same Node R/C/V chrome; Preferred render+converter **side by side** ≈ **0.0.389**. Plan **0.7.79**. |
+| 2026-08-09 | **Q115:** Settings Fixed → **Read-only** + **Default value** (node `_wtt_fixed_*`); gray RO outside slots; gray Default on builtin Simples; specializations editable ≈ **0.0.390**. Plan **0.7.80**. |
+| 2026-08-09 | **Q116:** Required list-select with **one** choice → auto-select + gray; optional (zero-lower Mult) stays open; Preferred + CatalogChoice + `renderOptionsSelect` ≈ **0.0.392**. Plan **0.7.81**. |
+| 2026-08-09 | **Q117/Q118:** Node presentation store (texts + locale-invariant icon) + admin list; detail Display regroup. Store+list ≈ **0.0.393**. Plan **0.7.82**. |
+| 2026-08-09 | **Q119 decided lean:** money = precise major-unit store; ISO 4217 minor for entry scale; display via Preferred converters (adaptive digits default; not Preis hard-code); FX stays **Q110** parked. Same conceptual family as Q109 unit rescale, different math. Plan **0.7.83**. |
+| 2026-08-09 | **Q120 decided lean:** Quantity = fixed triple Value+Prefix?+Unit; unit **kind** + **dimension**; conversion engines separated (prefix rescale / same-dimension UoM / FX / money minor) — SAP-like, not hard-coded on Preis/Ohm; Q24 closed. Plan **0.7.84**. |
+| 2026-08-09 | **Q120 refined:** Basiseinheiten/Währung folders = browse knots; product = **unit rule profiles** (prefix on/off, dimension, conversion engine). Meter↔inch same story as EUR↔GBP, different engine. **Q121** opened (canonical vs entry store / rounding). Plan **0.7.85**. |
+| 2026-08-09 | **Q121 decided lean:** money store **canonical EUR** + foreign-entry **snapshot** (amount, currency, rate, date). Physical m↔inch canonical later. Next focus: **unit↔prefix marriage** (catalog) before field/input UX. Plan **0.7.86**. |
+| 2026-08-09 | **Q120 tree reshape ≈ 0.0.402:** Drop **Konstanten**; under **Data Types**: Präfixe + **Unit**/{With prefix, Without prefix} + Bauformen. Quantity marries a selectable unit. Plan **0.7.87**. |
 | 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
 | 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 
