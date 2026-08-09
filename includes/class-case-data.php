@@ -735,6 +735,7 @@ final class Case_Data {
 		}
 		if ( $without_id > 0 ) {
 			self::dedupe_same_name_children( $taxonomy, $without_id );
+			self::cleanup_currency_flat_siblings( $taxonomy, $without_id );
 			self::configure_konstanten_waehrung( $taxonomy, $without_id );
 		}
 		if ( $bauformen_id > 0 ) {
@@ -929,6 +930,83 @@ final class Case_Data {
 			}
 			if ( $changed ) {
 				update_term_meta( (int) $term->term_id, $meta_key, array_values( $next ) );
+			}
+		}
+	}
+
+	/**
+	 * Without prefix must host Währung as CatalogChoice folder — not flat Euro/Dollar siblings.
+	 * Removes accidental seed duplicates beside the Währung host.
+	 */
+	private static function cleanup_currency_flat_siblings( string $taxonomy, int $without_prefix_id ): void {
+		if ( $without_prefix_id <= 0 ) {
+			return;
+		}
+		$waehrung_id = self::find_child_named( $taxonomy, $without_prefix_id, 'Währung' );
+		if ( $waehrung_id <= 0 ) {
+			$waehrung_id = self::find_child_named( $taxonomy, $without_prefix_id, 'Waehrung' );
+		}
+		if ( $waehrung_id <= 0 ) {
+			$waehrung_id = self::find_child_named( $taxonomy, $without_prefix_id, 'Currency' );
+		}
+		if ( $waehrung_id <= 0 ) {
+			return;
+		}
+
+		$currency_names = array();
+		$host_kids      = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $waehrung_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( is_array( $host_kids ) ) {
+			foreach ( $host_kids as $kid ) {
+				if ( $kid instanceof \WP_Term ) {
+					$currency_names[ $kid->name ] = true;
+				}
+			}
+		}
+		/* Always treat common leaves as currency even if host empty. */
+		foreach ( array( 'Euro', 'US Dollar', 'Pound', 'Dollar', 'GBP' ) as $n ) {
+			$currency_names[ $n ] = true;
+		}
+
+		$siblings = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $without_prefix_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $siblings ) ) {
+			return;
+		}
+		foreach ( $siblings as $sib ) {
+			if ( ! $sib instanceof \WP_Term ) {
+				continue;
+			}
+			$sid = (int) $sib->term_id;
+			if ( $sid === $waehrung_id ) {
+				continue;
+			}
+			if ( ! isset( $currency_names[ $sib->name ] ) ) {
+				continue;
+			}
+			/* Prefer keeping the copy under Währung host. */
+			$under_host = self::find_child_named( $taxonomy, $waehrung_id, $sib->name );
+			if ( $under_host <= 0 ) {
+				/* Move stray into host instead of deleting. */
+				wp_update_term( $sid, $taxonomy, array( 'parent' => $waehrung_id ) );
+				continue;
+			}
+			Node_Type::set_deletable( $sid, true );
+			$result = wp_delete_term( $sid, $taxonomy );
+			if ( is_wp_error( $result ) || false === $result ) {
+				Trash::move_to_trash( $taxonomy, $sid, true );
 			}
 		}
 	}
