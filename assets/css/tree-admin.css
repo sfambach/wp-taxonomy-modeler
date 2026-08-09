@@ -125,6 +125,56 @@
 	margin: 0.5rem 0 0;
 }
 
+.wtt-relations-fold {
+	margin: 0;
+}
+
+.wtt-relations-fold__summary {
+	cursor: pointer;
+	font-weight: 600;
+	list-style: none;
+}
+
+.wtt-relations-fold__summary::-webkit-details-marker {
+	display: none;
+}
+
+.wtt-relations-fold__summary::before {
+	content: '\25B8';
+	display: inline-block;
+	margin-right: 0.35em;
+	transform: translateY(-0.05em);
+}
+
+.wtt-relations-fold[open] > .wtt-relations-fold__summary::before {
+	content: '\25BE';
+}
+
+.wtt-relations-fold__count {
+	margin-left: 0.4em;
+	vertical-align: middle;
+}
+
+.wtt-relations-fold__body {
+	margin-top: 0.65rem;
+}
+
+.wtt-relations-fold__status {
+	margin: 0.35rem 0;
+}
+
+.wtt-relations-fold .wtt-relations__head {
+	margin-top: 0;
+}
+
+.wtt-allowed-prefixes .wtt-type-branch--embedded {
+	margin-top: 0.35rem;
+}
+
+.wtt-allowed-prefixes .wtt-type-branch__list--factors {
+	margin: 0.35rem 0 0;
+}
+
 .wtt-detail-form {
 	padding-top: 0.65em;
 }
@@ -1539,8 +1589,9 @@ a.wtt-conflict-badge:focus {
 }
 
 .wtt-preview-input--prefix {
-	width: 3.75rem;
-	max-width: 3.75rem;
+	width: 2.35rem;
+	max-width: 2.6rem;
+	min-width: 1.85rem;
 }
 
 .wtt-preview-input--compact {
@@ -1729,7 +1780,7 @@ a.wtt-conflict-badge:focus {
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
-	gap: 0.2em;
+	gap: 0.08em;
 	max-width: 100%;
 }
 
@@ -1738,8 +1789,8 @@ a.wtt-conflict-badge:focus {
 .wtt-node-render--quantity > .wtt-preview-input,
 .wtt-node-render--quantity > .wtt-preview-input--num {
 	width: auto;
-	min-width: 3.5em;
-	max-width: 6em;
+	min-width: 3.25em;
+	max-width: 5.5em;
 	flex: 0 1 auto;
 }
 
@@ -1748,21 +1799,33 @@ a.wtt-conflict-badge:focus {
 .wtt-preview-quantity__prefix,
 .wtt-preview-input--prefix {
 	width: auto;
-	min-width: 2.25em;
-	max-width: 3.5em;
+	min-width: 1.85em;
+	max-width: 2.6em;
 	flex: 0 0 auto;
+	padding-left: 0.15em;
+	padding-right: 0.1em;
 }
 
 .wtt-preview-quantity__unit {
 	width: auto;
-	min-width: 2.5em;
-	max-width: 5em;
+	min-width: 2.25em;
+	max-width: 4.5em;
 	flex: 0 1 auto;
+}
+
+.wtt-preview-input--unit-labeled,
+.wtt-preview-quantity > select.wtt-preview-input--unit-labeled {
+	min-width: 5.5em;
+	max-width: 11em;
+	flex: 0 1 auto;
+	padding-left: 0.25em;
+	padding-right: 0.2em;
 }
 
 .wtt-preview-quantity__symbol {
 	font-size: 12px;
 	flex: 0 0 auto;
+	margin-left: 0.05em;
 }
 
 .wtt-object-render--form .wtt-object-render__control .wtt-preview-quantity,
@@ -1780,7 +1843,7 @@ a.wtt-conflict-badge:focus {
 
 .wtt-object-render--form .wtt-object-render__control > select.wtt-preview-input--prefix,
 .wtt-object-render--form .wtt-object-render__control > select.wtt-catalog-choice-select.wtt-preview-input--prefix {
-	max-width: 3.5em;
+	max-width: 2.6em;
 }
 
 .wtt-set-preview__badge {
@@ -3897,6 +3960,36 @@ a.wtt-conflict-badge:focus {
 	color: #646970;
 }
 
+.wtt-attributes__row--shadows td {
+	background: #fcf9e8;
+}
+
+.wtt-attributes__shadow-banner {
+	margin: 0.35em 0 0.65em;
+	padding: 0.45em 0.65em;
+}
+
+.wtt-attributes__row--rule-error td:first-child {
+	box-shadow: inset 3px 0 0 #d63638;
+}
+
+.wtt-attributes__shadow-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.15em;
+	height: 1.15em;
+	padding: 0 0.2em;
+	border-radius: 50%;
+	background: #dba617;
+	color: #1d2327;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+	cursor: help;
+	flex: 0 0 auto;
+}
+
 .wtt-attributes__row--hidden td {
 	opacity: 0.55;
 }
@@ -4044,8 +4137,9 @@ a.wtt-conflict-badge:focus {
 
 .wtt-attributes__name-wrap {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.25em;
+	gap: 0.35em;
 	min-width: 0;
 }
 

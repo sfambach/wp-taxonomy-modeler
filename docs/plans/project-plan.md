@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.87-plan"
+version: "0.7.97-plan"
 last_updated: "2026-08-09"
 related_docs:
   - README.md
@@ -28,6 +28,9 @@ related_plans:
   - docs/plans/part-identity-layers.md
   - docs/plans/case-study.md
   - docs/plans/blocks-lane.md
+  - docs/plans/relation-vs-object-concept.md
+  - docs/plans/q123-doc-pass-questions.md
+  - docs/DEVELOPER-ATTRIBUTE-MODEL.md
 todos:
   - id: planning-phase
     content: "Complete planning-phase checklist (scope, questions, MVP requirements, sign-off) — no implementation"
@@ -107,6 +110,41 @@ todos:
 
 > **Source of truth for intent.** When this plan changes, update the linked documentation in the same change (`docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/OPEN-QUESTIONS.md`, and the README summary).
 
+## Catch-up desk — 2026-08-09 (~14:00)
+
+Short board after a long chat. **Locked design** vs **open UX / next detail**. Revisit bullets with the user only where marked *discuss*.
+
+### Locked (do not re-litigate unless asked)
+
+| ID | One-liner |
+|----|-----------|
+| **Q119** | Money: store precise **major unit** (EUR); entry scale per attribute (Euro vs Cent); display via Preferred converters (adaptive digits default). Not hard-coded on Preis. |
+| **Q110** | FX Euro↔Dollar: **parked** (not R1). |
+| **Q120** | Quantity = **Value + Prefix? + Unit**. Catalog folders = browse knots. Difference = **rules** on the unit (prefix allowlist, dimension, conversion engine). |
+| **Q121** | Money: canonical **EUR** + foreign-entry **snapshot** `{amount, currency, rate, date}`. Physical canonical later. |
+| **Q122** | Type properties + inheritance override **everywhere**. Composed types expose **component attribute** settings (same surfaces as on those type nodes) — **dynamic** from the model graph, never hard-coded. |
+| **Q123** | Attributes = **Relation only**; **`Settings.data` + `Settings.view`**; recursive walk; hybrid overrides. Diagrams: [`DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md). OQ-W1…W16 closed. |
+| **Tree ≈ 0.0.402+** | No **Konstanten**. Under **Data Types**: Präfixe + **Unit**/{With prefix, Without prefix→Währung…} + Bauformen. |
+| **Q74 lazy ≈ 0.0.405** | Relations panel **collapsed by default**; RelationType catalog loaded on expand (`wtt_get_relation_types`), not on every `get_node`. |
+
+### Open design / construction sites (*discuss when needed*)
+
+1. ~~**Unit↔prefix UX for non-power users**~~ — **Lean A done ≈ `0.0.406`:** panel **Allowed prefixes** on unit settings (Fallstudie-visible). Quantity prefix empty option = **—** (not `(none)`); tighter quantity gaps. Folder ID bindings (rename-safe) still optional later.
+2. **Attributes panel** — earlier lean: **collapsed + lazy** by default (same family as Relations). Not done yet.
+3. **Money converters / entry-scale** — Q119 lean locked; scaffold wiring (Preferred + entry scale on attribute) still to build when we pick that slice.
+4. **Q121 snapshot persistence** — lean locked; Model_Data shape / paint not implemented.
+5. **Physical canonical store** (m↔inch) — same story as money, lower urgency.
+6. ~~**Q122 scaffold debt — Default / component settings:**~~ **Done ≈ `0.0.414`:** Default dialog = type paint (`paintFieldContent`); CatalogChoice only for true catalog `fixedMode`.
+
+### Scaffold shipped today (plugin ≈ `0.0.406`)
+
+- Unit catalog reshape + migrate/dedupe/currency-flat cleanup.
+- Relations fold + lazy RelationType catalog (≈ `0.0.405`).
+- Allowed prefixes wizard on unit detail + quantity chrome polish (≈ `0.0.406`).
+- Presentation foldable (Q117/Q118) already in tree Display.
+
+---
+
 ## Current mode: scaffolding (+ planning)
 
 **Status: `scaffolding`.** Full Project / Node domain is still planned (**Parameter class discarded** — Eigenschaften = typed child Nodes); the user asked for a **runnable admin preview** over WordPress terms. That early scaffold is allowed (see [`.cursor/rules/planning-only.mdc`](../../.cursor/rules/planning-only.mdc)).
@@ -142,7 +180,7 @@ Fallstudie **`wtt_fs`** proved the working model below (now the only standard sc
 | **Q85 composition-first** | Platine→BOM→Zeilen-Teile via **`composition`**; table UI = view — escape relations/table-DB prison |
 | **Q88 hierarchy datatype** | Non-root: datatype = **father** (`_wtt_type_id` = WP parent). Root: **seed-only** `type_id` → **Knoten** (no admin free `set_type`). Attribute members keep own field types (Q87) |
 | **Q95 optional tree icons** | Per-node `_wtt_icon`; Settings Dashicon allowlist; create **standard-by-name else parent copy**; no later cascade; Simple seed **`marker`**; Identity vs Display UI; `renderTreeNode` before name |
-| **Preferred render / converter / validators** | Per-node meta (`_wtt_preferred_*`, `_wtt_validators`); Registry pattern (JS+PHP); `ensure_*` seeds type defaults when empty; **no live father-walk**; Q96 leaf-name interim for Simple Registry bind |
+| **Preferred render / converter / validators** | **Product (Q123):** Preferred ∈ `Settings.view`, validators ∈ `Settings.data`; hybrid live + Relation override deltas; same Render walk as Settings. **Scaffold debt:** `_wtt_preferred_*` / `_wtt_validators` create-time seed. Registry (JS+PHP); Q96 id bind |
 | **Presentation parity (Q63 + Q91)** | Same object chrome (**Registry** + `WTTObjectRender` / `Object_Render`) for **admin preview ↔ block editor ↔ frontend**. Blocks are **views** over definition + instances (Q85) — not a second UI stack |
 | **Parallel work lanes** | Process only: agents own zones (blocks / tree / shared-render / model / planning); **append** plan decisions; do not stomp — [`.cursor/rules/agent-lanes.mdc`](../../.cursor/rules/agent-lanes.mdc) |
 
@@ -490,6 +528,43 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-09 | **Q120 refined:** Basiseinheiten/Währung folders = browse knots; product = **unit rule profiles** (prefix on/off, dimension, conversion engine). Meter↔inch same story as EUR↔GBP, different engine. **Q121** opened (canonical vs entry store / rounding). Plan **0.7.85**. |
 | 2026-08-09 | **Q121 decided lean:** money store **canonical EUR** + foreign-entry **snapshot** (amount, currency, rate, date). Physical m↔inch canonical later. Next focus: **unit↔prefix marriage** (catalog) before field/input UX. Plan **0.7.86**. |
 | 2026-08-09 | **Q120 tree reshape ≈ 0.0.402:** Drop **Konstanten**; under **Data Types**: Präfixe + **Unit**/{With prefix, Without prefix} + Bauformen. Quantity marries a selectable unit. Plan **0.7.87**. |
+| 2026-08-09 | **Catch-up desk** after long afternoon chat: locked Q119–Q121 + tree reshape; open UX = unit/prefix non-power surface, Attributes lazy fold, money converter/snapshot scaffold. Relations lazy fold ≈ **0.0.405**. Plan **0.7.88**. |
+| 2026-08-09 | **Allowed prefixes wizard ≈ 0.0.406** on unit detail (Fallstudie); quantity empty-prefix = **—**; tighter quantity margins. Catch-up item 1 closed. |
+| 2026-08-09 | **Fix Praefix/Einheit Default picker ≈ 0.0.407:** attribute type_ids still pointed at empty Konstanten folders after Unit catalog move — remap to Data Types Präfixe/Unit + resolve empty catalog roots in `fixed_options`. |
+| 2026-08-09 | **Attribute shadow warning ≈ 0.0.408:** own attr with same name as ancestor hides inheritance — flag `shadowsInherited` + amber UI (banner + !). Keep local only when specialization-specific (e.g. Nennspannung on Kondensator). |
+| 2026-08-09 | **Attribute rule RO→default ≈ 0.0.409:** read-only without default (non-computed) is illegal; fixes clear RO or set default (`Attribute_Validator` + banner). Plan **0.7.89**. |
+| 2026-08-09 | **Q91/OQ-R8/Q120 debt close ≈ 0.0.411:** **UnitRenderer** (Prefix?+Symbol); **QuantityRenderer** = one-row Value+Unit compositor (no tree-admin trinity hardcode). Presentation edit **Back to node** jumpback. Plan **0.7.90**. |
+| 2026-08-09 | **Q122 decided:** Type properties set on the type; override along inheritance — **same law everywhere**. Composed types expose **component attribute** property surfaces (Default, Preferred, Choices/allowlists, …) as on those nodes; visibility **dynamic** from the attribute/type graph (not hard-coded). Scaffold debt: Festwert dialogs still catalog\|scalar — next cleanup toward Registry Quantity/Unit defaults. Plan **0.7.91**. |
+| 2026-08-09 | **Default picker = type paint ≈ `0.0.414`:** Festwert dialog mounts the attribute’s type via `paintFieldContent` (Preferred + settings); CatalogChoice only for true `fixedMode=catalog`. Plan **0.7.92**. |
+| 2026-08-09 | **Relation vs Object whiteboard** saved: [`relation-vs-object-concept.md`](relation-vs-object-concept.md). Clean lean: Attribute panel settings (name, type, default, RO, hide, Mult, Bindung) belong on the **Relation** when modeling relation-first; Attribute UI = projection. Does not override Q87 scaffold yet. Plan **0.7.93**. |
+| 2026-08-09 | **Settings capsule lean:** forget aux Attribute node for now. **Settings on Relation** only for **`besteht_aus` + `aggregation`**. Inventory other RelationTypes for reduction (`composition` alias, `ref_scope`, `attribute_typeof`). |
+| 2026-08-09 | **RelationTypes reduce:** product **`composition`** alias dropped (migrate/read-only legacy → `besteht_aus`). **`attribute_typeof` superseded** — type = Relation target; Settings of type on composition/aggregation capsule. **`ref_scope` park/likely drop** — was `node_ref`/`node_embed` catalog root (Q73); job → Settings/bindings. Keep: `child_of`, `besteht_aus`, `aggregation`. Plan **0.7.94**. |
+| 2026-08-09 | **Deprecated hard:** `ref_scope`, `node_embed`, `node_ref`, `node_pick` (Q72/Q73/Q84). Pick+fill = preferred `embed` + composition/aggregation. Plan **0.7.95**. |
+| 2026-08-09 | **Q123:** composition/aggregation Relation needs **`name`** (e.g. Wert) — no aux node to hold the label. |
+| 2026-08-09 | **Q123 crux:** attribute Settings UI + host render = **recursive walk** down composition/aggregation targets (collect Settings / Preferred paint at each level). |
+| 2026-08-09 | **Doc pass after Q123 sharpen:** living docs pointed at Settings capsule + walk; **open tensions** listed as **OQ-W1…W16** in [`q123-doc-pass-questions.md`](q123-doc-pass-questions.md) — do not invent answers. Plan **0.7.96**. |
+| 2026-08-09 | **Note:** `With prefix` = **father knot**; Unit may target it or a **specialization child** — Settings/render walk must reflect choice + inherited father settings (OQ-W11). |
+| 2026-08-09 | **OQ-W1 decided:** attributes = **Relation only** — no slot terms. OQ-W2 still open (live walk vs snapshot — explain to user). |
+| 2026-08-09 | **OQ-W2 decided: hybrid** — live below; used above only if not overwritten on Relation. Next: OQ-W3 nested override storage. |
+| 2026-08-09 | **OQ-W3 decided:** overrides on **current** Relation/node Settings; need **overridden?** marker per field/path for hybrid resolve. Next: OQ-W4 field split. |
+| 2026-08-09 | **OQ-W3 clarify:** store **only override deltas**; display other Settings via live walk. Presence in override map = overwritten (marker). |
+| 2026-08-09 | **OQ-W3:** no separate overwritten flag — **key in delta map** is enough; reset = delete key. |
+| 2026-08-09 | **OQ-W4 decided:** Relation edge = name, target, Bindung, Mult, RO, Hide/BO, Default seed; type Settings = walk + override deltas only (Preferred, allowlists, …). Next: OQ-W5 inherit. |
+| 2026-08-09 | **OQ-W5 confirmed:** inherit attrs along `child_of` (Q66) + hide; Relation-only storage. Next: OQ-W6. |
+| 2026-08-09 | **OQ-W6 decided:** node Settings and attribute Settings = **same recursive walk** (subnodes included). Next: OQ-W7 write target. |
+| 2026-08-09 | **OQ-W7 lean:** write = **override on current** only; do not setup/push defaults into subnodes; child may override. Next: OQ-W8 walk limits. |
+| 2026-08-09 | **OQ-W8 decided:** walk to **leaf**; **break cycles** (node already on path). Next: OQ-W9. |
+| 2026-08-09 | **OQ-W9 decided:** same Settings/Render walk for composition and aggregation. Next: OQ-W10 size vs quantity. |
+| 2026-08-09 | **OQ-W10 decided:** keep **quantity** + **size** as inheriting child with extra settings; no hard-code by name `size`. Next: OQ-W11. |
+| 2026-08-09 | **OQ-W11 decided:** `With prefix` **composed of** Praefix + Kuerzel Relations (A); then Settings. Unit restrict target vs Choices = impl detail. Next: OQ-W12. |
+| 2026-08-09 | **OQ-W12 decided:** instance keys = **Relation id**; rename cosmetic (Q98) already id-safe in Model_Data. Next: OQ-W13. |
+| 2026-08-09 | **OQ-W13 decided:** delete host → composition **dies with** host; aggregation **targets remain**, **Relation removed**. Catalog types untouched. Next: OQ-W14. |
+| 2026-08-09 | **OQ-W13+Q111 remark:** composition = inline data; aggregation = data on related object. **OQ-W14:** keep Relations panel + Attributes **wizard** (same Relations). Next: OQ-W15. |
+| 2026-08-09 | **OQ-W15 decided:** `node_ref` / `ref_scope` (/`node_embed`/`node_pick`) **deprecated — do not use** until a use case. Next: OQ-W16 Preferred storage. |
+| 2026-08-09 | **OQ-W16 lean:** Preferred R/C/V ∈ **Settings** (same override law); challenges noted (paint cache, validator lists, Q117 split, meta migrate). **OQ-W1…W16 doc pass closed.** Plan **0.7.96**. |
+| 2026-08-09 | **OQ-W16 refined:** two categories under same walk/override law — **Data Settings** (validators, allowlists, …) vs **View Settings** (Preferred R/C, output chrome); Presentation (Q117) stays labels/icon. Preferred ∈ view, not mixed unlabeled with data. |
+| 2026-08-09 | **OQ-W16 locked:** `Settings.data` + `Settings.view`; same walk/override; Preferred ∈ view; Q117 Presentation separate. |
+| 2026-08-09 | **Q123 docs sync:** living docs + [`DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md) (diagrams for developers / later user docs). Plan **0.7.97**. |
 | 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
 | 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 

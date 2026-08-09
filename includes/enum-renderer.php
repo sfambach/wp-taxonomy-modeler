@@ -31,6 +31,7 @@ enum Renderer: string {
 	case Media            = 'MediaRenderer';
 	case DisplayNodeName  = 'DisplayNodeNameRenderer';
 	case Quantity         = 'QuantityRenderer';
+	case Unit             = 'UnitRenderer';
 	case NodeRef          = 'NodeRefRenderer';
 	case Form             = 'FormRenderer';
 	case Table            = 'TableRenderer';
@@ -90,6 +91,8 @@ enum Renderer: string {
 			'media'             => self::Media,
 			'display_node_name' => self::DisplayNodeName,
 			'quantity'          => self::Quantity,
+			'unit'              => self::Unit,
+			'basiseinheit'      => self::Unit,
 			'node_ref'          => self::NodeRef,
 			'form'              => self::Form,
 			'table'             => self::Table,

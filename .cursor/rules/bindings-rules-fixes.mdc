@@ -63,6 +63,13 @@ Validation payload should allow:
 | Zeile has 0 fields | `create_zeile_field` — create one text column |
 | Kopf/Fuss count ≠ Zeile | `create_fields` — pad missing fields |
 
+## Attribute rules (scaffold ≈ 0.0.409)
+
+| Rule | Fix |
+|------|-----|
+| Read-only without default (non-computed) | `clear_readonly` — turn RO off |
+| same | `set_default` — open Default value dialog (UI) |
+
 **Deferred (UAT):** unique band bindings (Zeile ≠ Kopf ≠ Fuss — same child not reusable). Do not implement until UAT shows pain; then add rule + optional fix (filter picker / unbind).
 
 Living doc: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) (Bindings / Rules / Fixes).

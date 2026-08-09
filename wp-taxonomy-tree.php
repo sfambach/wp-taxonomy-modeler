@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       WP Taxonomy Tree
  * Description:       Hierarchical taxonomy tree environment for wp-admin (scaffold preview).
- * Version:           0.0.404
+ * Version:           0.0.414
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            Stefan Fambach
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WTT_VERSION', '0.0.404' );
+define( 'WTT_VERSION', '0.0.414' );
 define( 'WTT_PLUGIN_FILE', __FILE__ );
 define( 'WTT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 /*
@@ -54,6 +54,7 @@ require_once WTT_PLUGIN_DIR . 'includes/enum-renderer.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-node-type.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-relation.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-attribute.php';
+require_once WTT_PLUGIN_DIR . 'includes/class-attribute-validator.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-trash.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-hidden-nodes.php';
 require_once WTT_PLUGIN_DIR . 'includes/class-tree-model.php';

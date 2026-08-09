@@ -576,7 +576,7 @@ final class Case_Data {
 		);
 		if ( $folder > 0 ) {
 			$extra[] = $folder;
-			$seeds   = array( 'child_of', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' );
+			$seeds   = array( 'child_of', 'ref_scope', 'besteht_aus', 'aggregation' );
 			foreach ( $seeds as $name ) {
 				$id = Relation::find_type_id_by_name( $taxonomy, $name );
 				if ( $id > 0 ) {
@@ -744,7 +744,239 @@ final class Case_Data {
 		}
 
 		Demo_Data::ensure_prefix_multiplikators( $taxonomy );
+		self::ensure_with_prefix_default_allowlists( $taxonomy );
 		self::ensure_quantity_preis_example( $taxonomy );
+		self::remap_stale_unit_catalog_attribute_types( $taxonomy );
+	}
+
+	/**
+	 * With-prefix unit leaves inherit Meter’s SI allowlist when still empty
+	 * (Ohm/Farad/… otherwise show Value+Unit with no Präfix chrome).
+	 */
+	private static function ensure_with_prefix_default_allowlists( string $taxonomy ): void {
+		$with_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit', 'With prefix' )
+		);
+		if ( $with_id <= 0 ) {
+			return;
+		}
+
+		$meter_id = self::find_child_named( $taxonomy, $with_id, 'Meter' );
+		$template = $meter_id > 0
+			? Node_Type::get_allowed_prefix_ids( $meter_id )
+			: array();
+		if ( array() === $template ) {
+			$prefixes_id = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Data Types', 'Präfixe' )
+			);
+			if ( $prefixes_id <= 0 ) {
+				$prefixes_id = self::find_term_by_path(
+					$taxonomy,
+					array( self::ROOT_NAME, 'Definition', 'Data Types', 'Praefixe' )
+				);
+			}
+			if ( $prefixes_id > 0 ) {
+				$kids = get_terms(
+					array(
+						'taxonomy'   => $taxonomy,
+						'parent'     => $prefixes_id,
+						'hide_empty' => false,
+						'fields'     => 'ids',
+						'number'     => 0,
+					)
+				);
+				if ( is_array( $kids ) ) {
+					foreach ( $kids as $kid_id ) {
+						$template[] = (int) $kid_id;
+					}
+				}
+			}
+		}
+		if ( array() === $template ) {
+			return;
+		}
+
+		$units = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $with_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $units ) ) {
+			return;
+		}
+		foreach ( $units as $unit ) {
+			if ( ! $unit instanceof \WP_Term ) {
+				continue;
+			}
+			$uid = (int) $unit->term_id;
+			if ( ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $uid ) ) {
+				continue;
+			}
+			$have = Node_Type::get_allowed_prefix_ids( $uid );
+			if ( array() === $have && array() !== $template ) {
+				Node_Type::set_allowed_prefix_ids( $taxonomy, $uid, $template );
+			}
+			/* Q91/Q120: unit leaf Preferred = UnitRenderer (Prefix? + Symbol). */
+			$pref = Node_Type::get_preferred_render( $uid );
+			if (
+				Renderer::Form->value === $pref
+				|| Renderer::Quantity->value === $pref
+			) {
+				Node_Type::set_preferred_render( $taxonomy, $uid, Renderer::Unit->value );
+			}
+		}
+
+		/* Kilogramm symbol is kg (not g). */
+		$kg_id = self::find_child_named( $taxonomy, $with_id, 'Kilogramm' );
+		if ( $kg_id > 0 ) {
+			$short = Tree_Model::get_short_description( $kg_id );
+			if ( 'g' === $short || '' === $short ) {
+				Tree_Model::set_short_description( $taxonomy, $kg_id, 'kg' );
+			}
+		}
+	}
+
+	/**
+	 * After Konstanten→Data Types migrate, attribute slots may still type_id the
+	 * empty legacy Präfixe / Basiseinheiten folders — Default value pickers then
+	 * only show the empty folder name. Rebind to live Data Types roots.
+	 */
+	private static function remap_stale_unit_catalog_attribute_types( string $taxonomy ): void {
+		$live_prefixes = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Präfixe' )
+		);
+		if ( $live_prefixes <= 0 ) {
+			$live_prefixes = self::find_term_by_path(
+				$taxonomy,
+				array( self::ROOT_NAME, 'Definition', 'Data Types', 'Praefixe' )
+			);
+		}
+		$live_unit = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Unit' )
+		);
+		if ( $live_prefixes <= 0 && $live_unit <= 0 ) {
+			return;
+		}
+
+		$stale_prefix = array();
+		$stale_unit   = array();
+		foreach ( array( 'Präfixe', 'Praefixe' ) as $pname ) {
+			$hits = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'hide_empty' => false,
+					'name'       => $pname,
+					'number'     => 0,
+				)
+			);
+			if ( ! is_array( $hits ) ) {
+				continue;
+			}
+			foreach ( $hits as $hit ) {
+				if ( ! $hit instanceof \WP_Term ) {
+					continue;
+				}
+				$id = (int) $hit->term_id;
+				if ( $live_prefixes > 0 && $id === $live_prefixes ) {
+					continue;
+				}
+				$kids = get_terms(
+					array(
+						'taxonomy'   => $taxonomy,
+						'parent'     => $id,
+						'hide_empty' => false,
+						'fields'     => 'ids',
+						'number'     => 1,
+					)
+				);
+				if ( is_array( $kids ) && array() === $kids ) {
+					$stale_prefix[ $id ] = true;
+				}
+			}
+		}
+		foreach ( array( 'Basiseinheiten', 'Basiseinheit' ) as $uname ) {
+			$hits = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'hide_empty' => false,
+					'name'       => $uname,
+					'number'     => 0,
+				)
+			);
+			if ( ! is_array( $hits ) ) {
+				continue;
+			}
+			foreach ( $hits as $hit ) {
+				if ( ! $hit instanceof \WP_Term ) {
+					continue;
+				}
+				$id = (int) $hit->term_id;
+				$kids = get_terms(
+					array(
+						'taxonomy'   => $taxonomy,
+						'parent'     => $id,
+						'hide_empty' => false,
+						'fields'     => 'ids',
+						'number'     => 1,
+					)
+				);
+				if ( is_array( $kids ) && array() === $kids ) {
+					$stale_unit[ $id ] = true;
+				}
+			}
+		}
+
+		if ( array() === $stale_prefix && array() === $stale_unit ) {
+			return;
+		}
+
+		$slots = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+				'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'     => Node_Type::META_KEY,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+		if ( ! is_array( $slots ) ) {
+			return;
+		}
+
+		foreach ( $slots as $slot ) {
+			if ( ! $slot instanceof \WP_Term ) {
+				continue;
+			}
+			$slot_id = (int) $slot->term_id;
+			if ( ! Attribute::is_slot( $slot_id ) ) {
+				continue;
+			}
+			$type_id = (int) get_term_meta( $slot_id, Node_Type::META_KEY, true );
+			if ( $type_id <= 0 ) {
+				continue;
+			}
+			$target = 0;
+			if ( $live_prefixes > 0 && isset( $stale_prefix[ $type_id ] ) ) {
+				$target = $live_prefixes;
+			} elseif ( $live_unit > 0 && isset( $stale_unit[ $type_id ] ) ) {
+				$target = $live_unit;
+			}
+			if ( $target <= 0 || $target === $type_id ) {
+				continue;
+			}
+			Node_Type::set_type_id( $taxonomy, $slot_id, $target, true );
+		}
 	}
 
 	/**

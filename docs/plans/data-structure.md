@@ -2,8 +2,8 @@
 name: Data structure — Project, Node, Changelog
 overview: Core objects Project, Node (property slots as typed children), Relation/RelationType-as-Nodes, Changelog. Hierarchy = protected child_of Relation (Q54). Inheritance along child_of (Q66 slots; Q88 hierarchy datatype = parent). Parameter class discarded. Planning artifact only.
 status: draft
-version: "0.7.50-plan"
-last_updated: "2026-08-08"
+version: "0.7.97-plan"
+last_updated: "2026-08-09"
 related_plans:
   - docs/plans/project-plan.md
   - docs/plans/mvp-requirements.md
@@ -687,9 +687,19 @@ Hierarchy parent is **not** a writable field — use `parent()` derived from `ch
 
 ## 2. Eigenschaften (property slots) — Parameter class discarded
 
-> **Q64 superseded (2026-08-02).** There is **no Parameter class**. Configurable attributes (`Wert`, `Anzahl`, `Bauform`, …) are **typed child Nodes** under the owning Node (same as the scaffold).
+> **Q64 superseded (2026-08-02).** There is **no Parameter class**.
+>
+> **Q123 locked (2026-08-09):** Product attributes are **`besteht_aus` / `aggregation` Relations** (`name` + type target + Settings deltas) — **not** hierarchy children and **not** slot terms. Canonical diagrams + model: [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md). Text below that still says “typed child Nodes” / “slots” is **historical / scaffold debt** until a migrate rewrite of this section.
 
-### Core idea
+### Core idea (product — Q123)
+
+```text
+Widerstand —[besteht_aus name=Wert]→ size
+size —[name=Value]→ double
+size —[name=Unit]→ With prefix
+```
+
+### Historical scaffold sketch (slots — debt)
 
 ```text
 Node "Widerstand"
@@ -700,7 +710,6 @@ Node "Widerstand"
 Node "R 1k 0603"  parent_id → Widerstand
   inherits property-slot definitions (Q66); fills instance values later
 ```
-
 | From | To | Cardinality | Status |
 |------|----|-------------|--------|
 | Owner Node → property children | several | `0..n` | **decided** |

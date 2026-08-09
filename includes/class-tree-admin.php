@@ -66,6 +66,20 @@ final class Tree_Admin {
 	}
 
 	/**
+	 * Admin URL for the Taxonomy Tree screen, optionally selecting a term.
+	 */
+	public static function page_url( int $term_id = 0, string $taxonomy = '' ): string {
+		$args = array( 'page' => self::PAGE_SLUG );
+		if ( '' !== $taxonomy ) {
+			$args['taxonomy'] = $taxonomy;
+		}
+		if ( $term_id > 0 ) {
+			$args['term_id'] = $term_id;
+		}
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
 	 * @return array<string, mixed>
 	 */
 	private static function build_config(): array {
@@ -77,6 +91,15 @@ final class Tree_Admin {
 		$requested = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : $default;
 		if ( ! Taxonomy::is_scaffold( $requested ) || ! Tree_Model::is_hierarchical_taxonomy( $requested ) ) {
 			$requested = $default;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$focus_term = isset( $_GET['term_id'] ) ? absint( wp_unslash( $_GET['term_id'] ) ) : 0;
+		if ( $focus_term > 0 ) {
+			$focus_term_obj = get_term( $focus_term, $requested );
+			if ( ! ( $focus_term_obj instanceof \WP_Term ) || is_wp_error( $focus_term_obj ) ) {
+				$focus_term = 0;
+			}
 		}
 
 		$case_study = Taxonomy::is_case_study( $requested );
@@ -98,6 +121,7 @@ final class Tree_Admin {
 			'tree'       => Tree_Model::get_tree( $requested ),
 			'version'    => WTT_VERSION,
 			'presentationPageUrl' => Node_Presentation_Admin::page_url( 0, $requested ),
+			'initialTermId'       => $focus_term,
 			'caseStudyMode'     => $case_study,
 			'testMode'          => Settings::is_test_mode(),
 			'hideRootNode'           => Settings::hide_root_node(),
@@ -158,6 +182,7 @@ final class Tree_Admin {
 				'presentationFoldEmpty' => __( 'No presentation texts yet — use Edit presentation or Fill from legacy.', 'wp-taxonomy-tree' ),
 				'presentationFoldError' => __( 'Could not load presentation.', 'wp-taxonomy-tree' ),
 				'presentationEditLink'  => __( 'Edit presentation…', 'wp-taxonomy-tree' ),
+				'presentationBackToNode' => __( 'Back to node', 'wp-taxonomy-tree' ),
 				'slug'            => __( 'Slug', 'wp-taxonomy-tree' ),
 				'slugHint'        => __( 'Derived from the name (updates when you rename). WordPress may append -2 if the slug already exists.', 'wp-taxonomy-tree' ),
 				'goToParent'      => __( 'Open parent in tree and settings', 'wp-taxonomy-tree' ),
@@ -302,6 +327,10 @@ final class Tree_Admin {
 				'setMemberUntyped'=> __( 'not typed', 'wp-taxonomy-tree' ),
 				'setParent'       => __( 'Member of set', 'wp-taxonomy-tree' ),
 				'relationsTitle'  => __( 'Relations', 'wp-taxonomy-tree' ),
+				'relationsFoldLoading' => __( 'Loading…', 'wp-taxonomy-tree' ),
+				'relationsFoldCollapsedHint' => __( 'Expand to load Relation types and edit edges. Power-user surface — left collapsed by default.', 'wp-taxonomy-tree' ),
+				'relationsFoldError' => __( 'Could not load relation types.', 'wp-taxonomy-tree' ),
+				'relationsStoredCountHint' => __( 'Stored relation edges (plus synthetic rows when expanded)', 'wp-taxonomy-tree' ),
 				'attributesTitle' => __( 'Attributes', 'wp-taxonomy-tree' ),
 				'attributesHelp'  => __( 'Name + type + multiplicity + Bindung. Inherited along child_of; Hide inherited; Default value and Readonly on this node. Actions column is always last.', 'wp-taxonomy-tree' ),
 				'attributesEmpty' => __( 'No attributes yet.', 'wp-taxonomy-tree' ),
@@ -368,6 +397,15 @@ final class Tree_Admin {
 				'attributesMoveToChildEmpty' => __( 'No eligible children to move this attribute to.', 'wp-taxonomy-tree' ),
 				'attributesUntyped' => __( 'not typed', 'wp-taxonomy-tree' ),
 				'attributesInheritedFrom' => __( 'Inherited from %s', 'wp-taxonomy-tree' ),
+				'attributesShadowsTitle' => __( 'Shadows inherited', 'wp-taxonomy-tree' ),
+				/* translators: %s: ancestor host name (e.g. Passiv) */
+				'attributesShadowsHint' => __( 'Local copy hides the inherited “%s” definition. Remove this attribute to use inheritance from the parent.', 'wp-taxonomy-tree' ),
+				'attributesShadowsBanner' => __( 'Some local attributes shadow inherited ones (same name). Remove the local copy to inherit from the parent — keep local only when the field is specialization-specific.', 'wp-taxonomy-tree' ),
+				'attributesReadonlyNeedsDefaultBanner' => __( 'Read-only attributes need a default value.', 'wp-taxonomy-tree' ),
+				/* translators: %s: attribute name */
+				'attributesReadonlyNeedsDefaultError' => __( '“%s” is read-only but has no default value.', 'wp-taxonomy-tree' ),
+				'attributesFixClearReadonly' => __( 'Clear read-only', 'wp-taxonomy-tree' ),
+				'attributesFixSetDefault' => __( 'Set default value', 'wp-taxonomy-tree' ),
 				'attributesHide' => __( 'Hide', 'wp-taxonomy-tree' ),
 				'attributesShow' => __( 'Show', 'wp-taxonomy-tree' ),
 				'attributesHidden' => __( 'hidden', 'wp-taxonomy-tree' ),
@@ -573,7 +611,11 @@ final class Tree_Admin {
 				'unitConvFactor'  => __( '× factor', 'wp-taxonomy-tree' ),
 				'unitConvToSi'    => __( '1 → SI', 'wp-taxonomy-tree' ),
 				'unitConvSample'  => __( '10.5 → SI', 'wp-taxonomy-tree' ),
-				'unitConvNone'    => __( '(none)', 'wp-taxonomy-tree' ),
+				'unitConvNone'    => __( '—', 'wp-taxonomy-tree' ),
+				'unitConvNoneTitle' => __( 'No prefix', 'wp-taxonomy-tree' ),
+				'allowedPrefixesTitle' => __( 'Allowed prefixes', 'wp-taxonomy-tree' ),
+				'allowedPrefixesHint' => __( 'Which SI prefixes this unit may use (catalog marriage). Empty = value + unit only, no prefix. Factors live on each Präfix node.', 'wp-taxonomy-tree' ),
+				'allowedPrefixesMissing' => __( 'This unit has no editable prefix slot yet (typical for Without-prefix catalog units).', 'wp-taxonomy-tree' ),
 				'setPreview'      => __( 'Preview', 'wp-taxonomy-tree' ),
 				'unifiedPreviewHint' => __( 'Form and table — editable above, display mirror below (same fields).', 'wp-taxonomy-tree' ),
 				'previewSchema'   => __( 'Definition', 'wp-taxonomy-tree' ),
@@ -602,6 +644,7 @@ final class Tree_Admin {
 				'quantityCatalogPreviewHint'=> __( 'Quantity uses the Quantity renderer: compact magnitude + SI prefix symbol + unit (example follows Preis when present).', 'wp-taxonomy-tree' ),
 				'quantityExampleHost'=> __( 'Preis', 'wp-taxonomy-tree' ),
 				'previewQuantity' => __( 'Quantity', 'wp-taxonomy-tree' ),
+				'previewUnit'     => __( 'Unit', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogHint'=> __( 'CatalogChoice (depth ≥ 2): tree chooser — same control as nested type pickers.', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogListHint'=> __( 'CatalogChoice (depth ≤ 1): list chooser — same control as flat type pickers.', 'wp-taxonomy-tree' ),
 				'previewChoiceCatalogEmpty'=> __( 'No child options under this node yet.', 'wp-taxonomy-tree' ),

@@ -251,9 +251,93 @@
 	}
 
 	function fieldNode(field, value) {
+		var pref = normalizeFieldPreferredPaintId(field);
+		var hostAttrs = [];
+		if (Array.isArray(field && field.attributes) && field.attributes.length) {
+			hostAttrs = field.attributes;
+		} else if (
+			Array.isArray(field && field.typeProperties) &&
+			field.typeProperties.length
+		) {
+			hostAttrs = field.typeProperties;
+		}
 		return Object.assign({}, field, {
-			sample: value != null && String(value) !== '' ? String(value) : field.sample || '',
+			sample:
+				value != null && String(value) !== ''
+					? String(value)
+					: field.sample || '',
+			preferredRender: pref || field.preferredRender || '',
+			typePreferredRender:
+				pref || field.typePreferredRender || field.preferredRender || '',
+			attributes: hostAttrs,
 		});
+	}
+
+	/**
+	 * Preferred wire (QuantityRenderer) → Registry paint id (quantity).
+	 */
+	function normalizePaintId(raw) {
+		var key = String(raw == null ? '' : raw)
+			.trim()
+			.toLowerCase();
+		if (!key) {
+			return '';
+		}
+		var wireToShort = {
+			quantityrenderer: 'quantity',
+			unitrenderer: 'unit',
+			basiseinheit: 'unit',
+			intrenderer: 'int',
+			doublerenderer: 'double',
+			textrenderer: 'text',
+			textarearenderer: 'textarea',
+			charrenderer: 'char',
+			boolrenderer: 'bool',
+			emailrenderer: 'email',
+			daterenderer: 'date',
+			mediarenderer: 'media',
+			displaynodenamerenderer: 'display_node_name',
+			noderefrenderer: 'node_ref',
+			formrenderer: 'form',
+			tablerenderer: 'table',
+			compactrenderer: 'compact',
+			compactverticalrenderer: 'compactvertical',
+			embeddedrenderer: 'embed',
+		};
+		if (wireToShort[key]) {
+			return wireToShort[key];
+		}
+		if (key.length > 8 && key.slice(-8) === 'renderer') {
+			return key.slice(0, -8);
+		}
+		return key;
+	}
+
+	/**
+	 * Field paint Preferred: object layouts (Form/Table/…) belong to hosts.
+	 * On an attribute cell, fall back to the type's Preferred (e.g. size → Quantity).
+	 * Same Registry call as when the type node itself is previewed.
+	 */
+	function resolveFieldPreferredPaint(field) {
+		var typePref = normalizePaintId(field && field.typePreferredRender);
+		var slotPref = normalizePaintId(field && field.preferredRender);
+		var objectLayouts = {
+			form: true,
+			table: true,
+			compact: true,
+			compactvertical: true,
+			embed: true,
+			'pick-fill': true,
+			pick_fill: true,
+		};
+		if (!slotPref || objectLayouts[slotPref]) {
+			return typePref || slotPref || '';
+		}
+		return slotPref;
+	}
+
+	function normalizeFieldPreferredPaintId(field) {
+		return resolveFieldPreferredPaint(field);
 	}
 
 	function isMediaTypeKey(typeKey) {
@@ -1752,7 +1836,12 @@
 			field.quantitySchema &&
 			Array.isArray(field.quantitySchema.members) &&
 			field.quantitySchema.members.length;
-		if (hasQty) {
+		var prefPaint = resolveFieldPreferredPaint(field);
+		/*
+		 * Type Preferred Quantity/Unit (or unit schema): same Registry path as
+		 * previewing the type node itself — never a nested Form of typeProperties.
+		 */
+		if (hasQty || prefPaint === 'quantity' || prefPaint === 'unit') {
 			var RegQty = registry();
 			var ctxQty = {
 				name: opts.contextName || 'form',
@@ -1766,6 +1855,15 @@
 						: opts.onInput,
 			};
 			var nodeQty = fieldNode(field, value);
+			nodeQty.preferredRender = prefPaint;
+			nodeQty.typePreferredRender = prefPaint;
+			/* Host attrs for Quantity compositor (size = Value + Unit). */
+			if (
+				(!Array.isArray(nodeQty.attributes) || !nodeQty.attributes.length) &&
+				Array.isArray(field.typeProperties)
+			) {
+				nodeQty.attributes = field.typeProperties;
+			}
 			if (RegQty && typeof RegQty.renderContent === 'function') {
 				var paintedQty = RegQty.renderContent(nodeQty, ctxQty, readonly);
 				if (paintedQty) {
@@ -1779,8 +1877,13 @@
 			return paintEmbedField(field, value, opts);
 		}
 
-		/* Structured type (has attributes) → embed Form of type schema, not CatalogChoice. */
-		if (isStructureField(field)) {
+		/* Structured type (has attributes) → embed Form of type schema, not CatalogChoice.
+		 * Quantity-preferred hosts already painted above — do not fall back to nested Form. */
+		if (
+			isStructureField(field) &&
+			prefPaint !== 'quantity' &&
+			prefPaint !== 'unit'
+		) {
 			return paintStructureEmbed(field, value, opts);
 		}
 
@@ -3189,6 +3292,7 @@
 		renderTable: renderTable,
 		renderCompact: renderCompact,
 		renderEmbed: renderEmbed,
+		paintFieldContent: paintFieldContent,
 		setSchemaLoader: setSchemaLoader,
 		parseEmbedStore: parseEmbedStore,
 		encodeEmbedStore: encodeEmbedStore,

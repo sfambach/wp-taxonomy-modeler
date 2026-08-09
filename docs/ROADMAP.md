@@ -2,9 +2,11 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.82-plan** (2026-08-09).
+Last synced from plan version **0.7.97-plan** (2026-08-09).
 
-**Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI (`Case_Data` = reference seed). Taxonomy = structures; **Fill Model Data** = instances (**Q97** links + composition soft-trash). Gutenberg **`taxo/object-view`** / **Taxo Table view**; **Q98 / UR-S1 Model versions** (concept locked; stamp + structural warn/bump + conflict badge); **Cleanup v1**; plugin ≈ **`0.0.376`**. Release-1 target = BOM end-to-end (**`1.0.0`**). Product: **Model-only refs** (no Implementation SoT); preferred **`embed`** ≠ catalog `node_embed`. Status stays scaffolding — not Phase-1 green light.
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI. **Q123 locked** (Relation-only attributes, `Settings.data`/`view`, recursive walk) — see [`DEVELOPER-ATTRIBUTE-MODEL.md`](DEVELOPER-ATTRIBUTE-MODEL.md). Plugin ≈ **`0.0.414`** (scaffold still has slots — migrate debt). Release-1 target = BOM end-to-end (**`1.0.0`**). Status stays scaffolding — not Phase-1 green light.
+
+See plan **[Catch-up desk](plans/project-plan.md#catch-up-desk--2026-08-09-1400)** for the short locked vs open board.
 
 - Node presentation: **one Registry pipeline**, many type-specific renderers (Q91); Form(1)/Table(n) object surfaces (`WTTObjectRender`); Preferred render/converter/validators = **per-node meta** (not live father-walk); samples = **name→then type** map (not methods on nodes) — map keys via bindings/ids where possible (**debt**: kill name SoT; **Q96** for Registry bind).
 - **Parity:** same object chrome for admin preview, `taxo/object-view`, and frontend SSR — gaps are bugs (plan **0.7.49**).
@@ -62,6 +64,11 @@ Last synced from plan version **0.7.82-plan** (2026-08-09).
 | **Q116** Required list-select sole option → auto + gray | **Decided** — optional (0-lower Mult) stays open ≈ `0.0.392` |
 | **Q117** Presentation texts + icon off node | **Decided** — `wtt_node_presentation` store; admin list ≈ `0.0.393` |
 | **Q118** Detail: Node properties vs Display | **Decided** — foldable Presentation next |
+| **Q120** Quantity anatomy + unit rules | **Decided** — Value+Prefix?+Unit; rules on unit |
+| **Q121** Money/physical canonical vs entry store | **Decided lean** — money EUR + FX snapshot |
+| **Q122** Type properties / composed component settings | **Decided** — inherit override everywhere; composed = dynamic component surfaces |
+| **Q123** Attribute / Settings model | **Locked** — Relation-only; Settings.data/view; walk; see DEVELOPER-ATTRIBUTE-MODEL |
+| **RelationTypes** | `child_of`, `besteht_aus`, `aggregation`; deprecated pick types |
 | **Q53** Collection kind binding | Deferred (Q90) |
 | Open questions remaining | In progress |
 | Local WordPress development environment | In progress (Windows + Cloud notes) |

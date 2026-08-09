@@ -2515,7 +2515,7 @@ final class Demo_Data {
 		);
 		if ( $folder > 0 ) {
 			$extra[] = $folder;
-			foreach ( array( 'child_of', 'ref_scope', 'besteht_aus', 'composition', 'aggregation' ) as $name ) {
+			foreach ( array( 'child_of', 'ref_scope', 'besteht_aus', 'aggregation' ) as $name ) {
 				$id = Relation::find_type_id_by_name( $taxonomy, $name );
 				if ( $id > 0 ) {
 					$extra[] = $id;

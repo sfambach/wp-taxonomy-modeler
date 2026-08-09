@@ -1773,9 +1773,11 @@ final class Node_Type {
 		foreach ( $children as $child ) {
 			$child_id   = (int) $child->term_id;
 			$prefixes[] = array(
-				'id'      => $child_id,
-				'name'    => $child->name,
-				'enabled' => isset( $allowed_map[ $child_id ] ),
+				'id'               => $child_id,
+				'name'             => $child->name,
+				'shortDescription' => Tree_Model::get_short_description( $child_id ),
+				'multiplikator'    => self::get_multiplikator( $child_id ),
+				'enabled'          => isset( $allowed_map[ $child_id ] ),
 			);
 		}
 
@@ -2899,6 +2901,10 @@ final class Node_Type {
 	 * Typed scalars → field Renderer id; otherwise FormRenderer.
 	 */
 	public static function default_preferred_render_for_term( string $taxonomy, int $term_id ): string {
+		/* Q120: concrete unit leaf → UnitRenderer (Prefix? + Symbol), not Form. */
+		if ( self::is_basiseinheit_unit_node( $taxonomy, $term_id ) ) {
+			return Renderer::Unit->value;
+		}
 		$canon = self::registry_id_for_type_term( $taxonomy, $term_id );
 		if ( '' !== $canon ) {
 			$from_canon = Renderer::try_from_legacy( $canon );
@@ -4982,7 +4988,7 @@ final class Node_Type {
 		if ( array() === $members ) {
 			/*
 			 * Fallstudie gold: Basiseinheit units are leaves (symbol in shortDescription).
-			 * Synthesize Typ + Praefix + Kuerzel so QuantityRenderer can paint the trinity.
+			 * Synthesize Typ + Praefix + Kuerzel so Unit/Quantity Registry paint can use quantitySchema.
 			 */
 			return self::synthesize_unit_quantity_members( $taxonomy, $unit_term_id );
 		}

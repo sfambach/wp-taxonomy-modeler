@@ -45,6 +45,9 @@ final class Attribute {
 	 */
 	public const META_KEY_READONLY = '_wtt_attribute_readonly';
 
+	/** Guard: shallow typeProperties only (avoid recursive Attribute::list). */
+	private static bool $type_props_loading = false;
+
 	/**
 	 * Marks a term as an attribute slot (besteht_aus / aggregation only — not child_of host).
 	 */
@@ -186,7 +189,30 @@ final class Attribute {
 				$row['definedOnName'] = $def instanceof \WP_Term ? $def->name : '';
 				$row['hidden']        = false;
 				$row['readonly']      = false;
-				$by_name[ $row['name'] ] = $row;
+				$row['shadowsInherited']     = false;
+				$row['shadowsDefinedOnId']   = 0;
+				$row['shadowsDefinedOnName'] = '';
+				$row['shadowedAttrId']       = 0;
+
+				$name_key = (string) ( $row['name'] ?? '' );
+				/*
+				 * Own row with the same name as an ancestor definition hides the
+				 * inherited slot (child wins). Flag shadowing so the UI can warn.
+				 */
+				if (
+					$is_self
+					&& '' !== $name_key
+					&& isset( $by_name[ $name_key ] )
+					&& ! empty( $by_name[ $name_key ]['inherited'] )
+				) {
+					$prev = $by_name[ $name_key ];
+					$row['shadowsInherited']     = true;
+					$row['shadowsDefinedOnId']   = (int) ( $prev['definedOnId'] ?? 0 );
+					$row['shadowsDefinedOnName'] = (string) ( $prev['definedOnName'] ?? '' );
+					$row['shadowedAttrId']       = (int) ( $prev['id'] ?? 0 );
+				}
+
+				$by_name[ $name_key ] = $row;
 			}
 		}
 
@@ -1375,7 +1401,7 @@ final class Attribute {
 					$row['fixedMode'] = 'structure';
 				} else {
 					$row['fixedMode']    = 'catalog';
-					$row['fixedRootId']  = $type_id;
+					$row['fixedRootId']  = self::resolve_catalog_choice_root( $taxonomy, $type_id );
 					$row['fixedOptions'] = self::fixed_options_under_type( $taxonomy, $type_id );
 				}
 			}
@@ -1507,6 +1533,32 @@ final class Attribute {
 			$row['quantitySchema'] = Node_Type::get_quantity_schema_for_type( $taxonomy, $type_id );
 		}
 
+		/*
+		 * Structure type (has own attributes, e.g. size = Value + Unit): shallow
+		 * typeProperties so Quantity Preferred can compose without a second round-trip.
+		 * Nested typeProperties stay empty (one level only).
+		 */
+		$row['typeProperties'] = array();
+		if (
+			$type_id > 0
+			&& ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $type_id )
+			&& self::type_has_attributes( $taxonomy, $type_id )
+			&& ! self::$type_props_loading
+		) {
+			self::$type_props_loading = true;
+			try {
+				foreach ( self::list( $taxonomy, $type_id ) as $child_row ) {
+					if ( ! is_array( $child_row ) || ! empty( $child_row['hidden'] ) ) {
+						continue;
+					}
+					$child_row['typeProperties'] = array();
+					$row['typeProperties'][]     = $child_row;
+				}
+			} finally {
+				self::$type_props_loading = false;
+			}
+		}
+
 		if ( ! empty( $extras['compute'] ) && is_array( $extras['compute'] ) ) {
 			$row['compute']  = $extras['compute'];
 			$row['readonly'] = true;
@@ -1622,10 +1674,69 @@ final class Attribute {
 		if ( $type_id <= 0 ) {
 			return array();
 		}
+		$type_id = self::resolve_catalog_choice_root( $taxonomy, $type_id );
+		if ( $type_id <= 0 ) {
+			return array();
+		}
 		$options = array();
 		$seen    = array();
 		self::collect_descendants_as_fixed_options( $taxonomy, $type_id, array(), $options, $seen );
 		return $options;
+	}
+
+	/**
+	 * Empty legacy Konstanten folders (Präfixe / Basiseinheiten) → live Data Types roots.
+	 */
+	private static function resolve_catalog_choice_root( string $taxonomy, int $type_id ): int {
+		if ( $type_id <= 0 ) {
+			return 0;
+		}
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $type_id,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+				'number'     => 1,
+			)
+		);
+		if ( is_array( $kids ) && array() !== $kids ) {
+			return $type_id;
+		}
+
+		$term = get_term( $type_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return $type_id;
+		}
+		$name = (string) $term->name;
+		if ( in_array( $name, array( 'Präfixe', 'Praefixe' ), true ) ) {
+			$live = 0;
+			if ( class_exists( Case_Data::class ) ) {
+				$live = Case_Data::find_term_by_path(
+					$taxonomy,
+					array( Case_Data::ROOT_NAME, 'Definition', 'Data Types', 'Präfixe' )
+				);
+				if ( $live <= 0 ) {
+					$live = Case_Data::find_term_by_path(
+						$taxonomy,
+						array( Case_Data::ROOT_NAME, 'Definition', 'Data Types', 'Praefixe' )
+					);
+				}
+			}
+			return $live > 0 ? $live : $type_id;
+		}
+		if ( in_array( $name, array( 'Basiseinheiten', 'Basiseinheit' ), true ) ) {
+			$live = 0;
+			if ( class_exists( Case_Data::class ) ) {
+				$live = Case_Data::find_term_by_path(
+					$taxonomy,
+					array( Case_Data::ROOT_NAME, 'Definition', 'Data Types', 'Unit' )
+				);
+			}
+			return $live > 0 ? $live : $type_id;
+		}
+
+		return $type_id;
 	}
 
 	/**
@@ -1664,15 +1775,53 @@ final class Attribute {
 			$next = array_merge( $path_parts, array( $name ) );
 			if ( empty( $seen[ $id ] ) ) {
 				$seen[ $id ] = true;
-				$options[]   = array(
+				$option      = array(
 					'id'               => $id,
 					'name'             => $name,
 					'path'             => implode( ' / ', $next ),
 					'shortDescription' => Tree_Model::get_short_description( $id ),
 				);
+				if ( Node_Type::is_basiseinheit_unit_node( $taxonomy, $id ) ) {
+					$option['allowedPrefixes'] = self::unit_allowed_prefix_options(
+						$taxonomy,
+						$id
+					);
+				}
+				$options[] = $option;
 			}
 			self::collect_descendants_as_fixed_options( $taxonomy, $id, $next, $options, $seen );
 		}
+	}
+
+	/**
+	 * Enabled SI prefixes for a unit leaf (empty = no prefix chrome).
+	 *
+	 * @return list<array{id:int,name:string,shortDescription:string,multiplikator:?float,enabled:bool}>
+	 */
+	private static function unit_allowed_prefix_options( string $taxonomy, int $unit_id ): array {
+		$allow = Node_Type::get_prefix_allowlist( $taxonomy, $unit_id );
+		if ( ! is_array( $allow ) || empty( $allow['prefixes'] ) || ! is_array( $allow['prefixes'] ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $allow['prefixes'] as $row ) {
+			if ( ! is_array( $row ) || empty( $row['enabled'] ) ) {
+				continue;
+			}
+			$pid = (int) ( $row['id'] ?? 0 );
+			if ( $pid <= 0 ) {
+				continue;
+			}
+			$mult = Node_Type::get_multiplikator( $pid );
+			$out[] = array(
+				'id'               => $pid,
+				'name'             => (string) ( $row['name'] ?? '' ),
+				'shortDescription' => Tree_Model::get_short_description( $pid ),
+				'multiplikator'    => null !== $mult && $mult > 0.0 ? $mult : null,
+				'enabled'          => true,
+			);
+		}
+		return $out;
 	}
 
 	/**
@@ -1708,6 +1857,11 @@ final class Attribute {
 					: __( 'false', 'wp-taxonomy-tree' );
 				continue;
 			}
+			$qty_label = self::format_quantity_wire_label( $v );
+			if ( '' !== $qty_label ) {
+				$labels[] = $qty_label;
+				continue;
+			}
 			if ( ctype_digit( $v ) ) {
 				$term_id = (int) $v;
 				if ( $term_id > 0 ) {
@@ -1721,6 +1875,28 @@ final class Attribute {
 			$labels[] = $v;
 		}
 		return implode( ', ', $labels );
+	}
+
+	/**
+	 * Compact label for Quantity/Unit store JSON {mag,prefix,unit}.
+	 */
+	private static function format_quantity_wire_label( string $raw ): string {
+		$raw = trim( $raw );
+		if ( '' === $raw || '{' !== $raw[0] ) {
+			return '';
+		}
+		$decoded = json_decode( $raw, true );
+		if ( ! is_array( $decoded ) ) {
+			return '';
+		}
+		$mag    = isset( $decoded['mag'] ) ? trim( (string) $decoded['mag'] ) : '';
+		$prefix = isset( $decoded['prefix'] ) ? trim( (string) $decoded['prefix'] ) : '';
+		$unit   = isset( $decoded['unit'] ) ? trim( (string) $decoded['unit'] ) : '';
+		if ( '' === $mag && '' === $prefix && '' === $unit ) {
+			return '';
+		}
+		$parts = array_filter( array( $mag, $prefix, $unit ), static fn( $p ) => '' !== $p );
+		return implode( ' ', $parts );
 	}
 
 	/**

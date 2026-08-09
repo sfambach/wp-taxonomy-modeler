@@ -2,8 +2,8 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffolding ≈ `0.0.376`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instances with **Q97** links (composition cascade). **Q93** host ids only; **Q98 / UR-S1** Model versions; preferred **`embed`** ≠ catalog `node_embed`; refs → **Model** only (no Implementation SoT). Gutenberg **`taxo/object-view`** + **Taxo Table view** — presentation parity.
-> Full Project / Node domain still planning. **Fallstudie (`wtt_fs`) = gold scaffold**. Plan **0.7.82**. Status stays **scaffolding**. Release-1 target = BOM in Gutenberg + frontend table → **`1.0.0`**.
+> **Scaffolding ≈ `0.0.414`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instances (**Q97**). **Q123 locked:** attributes = composition/aggregation Relations (`Settings.data`/`view`); diagrams in [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md) (scaffold slots = debt). Gutenberg **`taxo/object-view`** + **Taxo Table view**.
+> Full Project / Node domain still planning. **Fallstudie = gold scaffold**. Plan **0.7.97**. Status stays **scaffolding**. Release-1 → **`1.0.0`**.
 > Major version digit changes only for official releases (first release → `1.0.0`).
 
 ## Try the scaffold (local)
@@ -29,6 +29,9 @@ Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`d
 | [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
 | [`docs/plans/case-study.md`](docs/plans/case-study.md) | Gold Fallstudie scaffold (`wtt_fs`) — Definition / Model (+ Implementation debt) |
 | [`docs/plans/blocks-lane.md`](docs/plans/blocks-lane.md) | Gutenberg blocks lane (multi-agent; `taxo/*`) |
+| [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md) | **Developer** guide — Q123 Attribute/Relation/Settings + diagrams (also for later user docs) |
+| [`docs/plans/relation-vs-object-concept.md`](docs/plans/relation-vs-object-concept.md) | Agreed whiteboard summary (Q123) |
+| [`docs/plans/q123-doc-pass-questions.md`](docs/plans/q123-doc-pass-questions.md) | OQ-W1…W16 decision log (closed) |
 | [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
 | [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |

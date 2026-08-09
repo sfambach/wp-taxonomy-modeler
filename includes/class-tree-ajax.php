@@ -37,6 +37,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_set_node_fixed', array( self::class, 'set_node_fixed' ) );
 		add_action( 'wp_ajax_wtt_set_branch_child', array( self::class, 'set_branch_child' ) );
 		add_action( 'wp_ajax_wtt_get_type_branch', array( self::class, 'get_type_branch' ) );
+		add_action( 'wp_ajax_wtt_get_relation_types', array( self::class, 'get_relation_types' ) );
 		add_action( 'wp_ajax_wtt_save_node_settings', array( self::class, 'save_node_settings' ) );
 		add_action( 'wp_ajax_wtt_move_term', array( self::class, 'move_term' ) );
 		add_action( 'wp_ajax_wtt_reparent_term', array( self::class, 'reparent_term' ) );
@@ -58,6 +59,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_reorder_attribute', array( self::class, 'reorder_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_hidden', array( self::class, 'set_attribute_hidden' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_readonly', array( self::class, 'set_attribute_readonly' ) );
+		add_action( 'wp_ajax_wtt_fix_attribute_rule', array( self::class, 'fix_attribute_rule' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_type', array( self::class, 'set_attribute_type' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_multiplicity', array( self::class, 'set_attribute_multiplicity' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_binding', array( self::class, 'set_attribute_binding' ) );
@@ -574,6 +576,29 @@ final class Tree_Ajax {
 				'isSet'          => $type_id > 0 ? Node_Type::is_set_typed( $taxonomy, $type_id ) : false,
 				'isUnitQuantity' => null !== $quantity,
 				'quantitySchema' => $quantity,
+			)
+		);
+	}
+
+	/**
+	 * Taxonomy-wide RelationType catalog for the Relations panel (lazy).
+	 */
+	public static function get_relation_types(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		wp_send_json_success(
+			array(
+				'relationTypeTree'               => Relation::get_relation_type_tree( $taxonomy ),
+				'relationTypeOptions'            => Relation::get_assignable_type_options( $taxonomy ),
+				'relationMultiplicityOptions'    => Relation::multiplicity_options(),
 			)
 		);
 	}
@@ -1730,6 +1755,42 @@ final class Tree_Ajax {
 		}
 
 		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	/**
+	 * Apply an attribute rule fix (clear_readonly). set_default is UI-only.
+	 */
+	public static function fix_attribute_rule(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$action  = isset( $_POST['fix_action'] ) ? sanitize_key( wp_unslash( $_POST['fix_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$result = Attribute_Validator::apply_fix( $taxonomy, $host_id, $attr_id, $action );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		$node = Tree_Model::get_node( $taxonomy, $host_id );
+		if ( is_wp_error( $node ) ) {
+			self::send_error( $node );
+		}
+
+		wp_send_json_success(
+			array(
+				'node'       => $node,
+				'tree'       => Tree_Model::get_tree( $taxonomy ),
+				'validation' => $result['validation'] ?? null,
+			)
+		);
 	}
 
 	/**

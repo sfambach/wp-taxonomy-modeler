@@ -12,6 +12,8 @@ alwaysApply: false
 
 Domain thinking is **objects + `besteht_aus` (composition)**, not a relational database or Relations-CRUD prison.
 
+**Q123 attribute model (locked):** [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](../../docs/DEVELOPER-ATTRIBUTE-MODEL.md) — Relation-only attributes, `Settings.data`/`view`, recursive walk.
+
 ## Class / attribute analogy
 
 A **Composition** is like a **class**. Each member is an **attribute**:
@@ -27,8 +29,8 @@ class BOM {                 ← Composition (Objekt / Klasse)
 | OOP | Tree / Relations |
 |-----|------------------|
 | Class | Composition node (e.g. Platine, BOM) |
-| Attribute **name** | Member node **`name`** (required, never anonymous) |
-| Attribute **type** | Member **`_wtt_type_id`** |
+| Attribute **name** | **`Relation.name`** on `besteht_aus`/`aggregation` (Q123; scaffold may still use slot term name) |
+| Attribute **type** | **Relation target** (Q108/Q123); scaffold interim `_wtt_type_id` on slot |
 | Attribute **multiplicity** | On **`besteht_aus`** edge (Q78); default **`1`** (Q87 trial) |
 | Field list | Outgoing **`besteht_aus`** targets (order = member order) |
 | Inheritance | Along **`child_of`** only (Q66/Q86) — no separate `erbt_von`; attributes merge by name (child wins); inherited may be **hidden** on child; **Festwert** lives on the current node |
@@ -55,22 +57,24 @@ BOM                              ← Composition
 | Keep | Demote / view-only |
 |------|--------------------|
 | `besteht_aus` = aggregation (typed named members) | Relations picker as the default product model |
-| Typed named slots as Eigenschaften | “Table” as the primary domain noun |
+| Typed named members as Eigenschaften (`Relation.name` + target) | “Table” as the primary domain noun |
 | `child_of` = hierarchy + inheritance path | Band/`prop_bindings` as mental SoT |
-| `node_ref` where a slot points at a catalog record | Cells/CSV/grid as the object model |
+| Preferred **`embed`** + composition to Model hosts | Catalog **`node_ref` / `node_embed` / `ref_scope`** (deprecated Q72) |
 | Table UI as **presentation** of composition | Persisting “rows/cells” as the conceptual API |
 
 ## Language
 
-- Prefer: Composition, Attribut (Name + Typ), Instanz, Slot, Record, Zuordnung.
-- RelationType key: **`besteht_aus`** (legacy alias `composition`).
+- Prefer: Composition, Attribut (`Relation.name` + target type), Instanz, Record, Zuordnung.
+- RelationType key: **`besteht_aus`** (legacy alias `composition` — migrate only).
+- “Slot” = scaffold debt only (not product vocabulary after Q123).
 - Prefer block/product names that say **Composition / BOM instance**, not “Collection table database”.
 - `table` datatype = optional **display contract** (Zeile/Kopf/Fuss), not “Platine is a table”.
 
 ## Do / don’t
 
-- **Do** model Platine → BOM → line parts as nested composition with **named typed** members.
-- **Do** keep `ref_scope` as a helper Relation, not the spine; typing = **`_wtt_type_id`** / Q88 only.
+- **Do** model Platine → BOM → line parts as nested composition with **named typed** members (`Relation.name` + target).
+- **Do** treat typing as **Relation target** (Q108/Q123); Settings via capsule + recursive walk when implementing.
+- **Don’t** revive `ref_scope` / `node_ref` / `node_embed` as product types (deprecated).
 - **Don’t** invent more Relation types to replace composition aggregates.
 - **Don’t** teach users “add a DB row”; teach “add a line object / fill attributes”.
-- **Don’t** allow anonymous `besteht_aus` targets (always a Name + Type).
+- **Don’t** allow anonymous `besteht_aus` targets (always a Name + Type/target).

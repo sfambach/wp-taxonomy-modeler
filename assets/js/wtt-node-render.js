@@ -617,8 +617,179 @@
 	}
 
 	/**
-	 * Horizontal Typ + Praefix + Kuerzel (or bare magnitude when no schema).
-	 * Always compact — quantity is one field, not three wide form rows.
+	 * Unit combi only: Prefix? + Symbol (Q120 marriage). No magnitude.
+	 * Used by UnitRenderer alone and inside QuantityRenderer (OQ-R8).
+	 */
+	function renderUnitControl(node, context) {
+		var members = quantitySchemaMembers(node);
+		var parsed = parseQuantityStore(readValue(context, ''));
+		var praefixMem = findQtyMember(members, 'praefix');
+		var prefixOpts = qtyPrefixOptions(praefixMem);
+		var prefixName = parsed.prefix ? String(parsed.prefix) : '';
+		var unitMem = findQtyMember(members, 'kuerzel');
+		var unitOpts = qtyUnitOptions(unitMem);
+		var symbol = String(qtySymbolFromMembers(members) || '');
+		var unitName = '';
+		if (!symbol && unitMem) {
+			unitName =
+				(parsed.unit != null && String(parsed.unit)) ||
+				(unitMem.sample != null && String(unitMem.sample)) ||
+				(unitOpts[0] && unitOpts[0].name) ||
+				'';
+			symbol = qtyUnitLabel(unitName, unitOpts);
+		}
+		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
+
+		if (!isEdit(context)) {
+			return createEl('span', {
+				className:
+					'wtt-preview-display-value wtt-preview-quantity wtt-node-render--unit is-compact',
+				text: String(prefixLetter || '') + String(symbol || '—'),
+			});
+		}
+
+		var group = createEl('div', {
+			className: 'wtt-preview-quantity wtt-node-render--unit is-compact',
+		});
+		var prefixSelect = null;
+		if (praefixMem && prefixOpts.length) {
+			prefixSelect = createEl('select', {
+				className:
+					'wtt-type-select wtt-preview-quantity__prefix wtt-preview-input--prefix',
+			});
+			var noneLabel =
+				(global.wttTree &&
+					global.wttTree.i18n &&
+					global.wttTree.i18n.unitConvNone) ||
+				'—';
+			var noneTitle =
+				(global.wttTree &&
+					global.wttTree.i18n &&
+					global.wttTree.i18n.unitConvNoneTitle) ||
+				'No prefix';
+			var noneOpt = createEl('option', {
+				value: '',
+				text: String(noneLabel),
+				title: String(noneTitle),
+			});
+			if (!prefixName) {
+				noneOpt.selected = true;
+			}
+			prefixSelect.appendChild(noneOpt);
+			prefixOpts.forEach(function (opt) {
+				var o = createEl('option', {
+					value: opt.name,
+					text: opt.letter || opt.name,
+					title: opt.name,
+				});
+				if (opt.name === prefixName || String(opt.id) === prefixName) {
+					o.selected = true;
+					noneOpt.selected = false;
+				}
+				prefixSelect.appendChild(o);
+			});
+			prefixSelect.title = prefixSelect.value
+				? prefixSelect.options[prefixSelect.selectedIndex].title ||
+				  prefixSelect.options[prefixSelect.selectedIndex].text
+				: String(noneTitle);
+			group.appendChild(prefixSelect);
+		}
+
+		var unitSelect = null;
+		if (!qtySymbolFromMembers(members) && unitOpts.length) {
+			unitSelect = createEl('select', {
+				className:
+					'wtt-type-select wtt-preview-quantity__unit wtt-preview-input--unit-labeled',
+			});
+			unitOpts.forEach(function (opt) {
+				var label =
+					(opt.letter || '') && opt.name && opt.letter !== opt.name
+						? String(opt.letter) + ' · ' + String(opt.name)
+						: opt.letter || opt.name;
+				var o = createEl('option', {
+					value: opt.name,
+					text: label,
+					title: opt.name,
+				});
+				if (opt.name === unitName || String(opt.id) === unitName) {
+					o.selected = true;
+				}
+				unitSelect.appendChild(o);
+			});
+			group.appendChild(unitSelect);
+		} else if (symbol) {
+			group.appendChild(
+				createEl('span', {
+					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
+					text: symbol,
+				})
+			);
+		} else {
+			group.appendChild(
+				createEl('span', {
+					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
+					text: '—',
+				})
+			);
+		}
+
+		if (context && typeof context.onUnitPartChange === 'function') {
+			var emitUnit = function () {
+				context.onUnitPartChange({
+					prefix:
+						prefixSelect && prefixSelect.value
+							? String(prefixSelect.value)
+							: '',
+					unit:
+						unitSelect && unitSelect.value
+							? String(unitSelect.value)
+							: '',
+				});
+			};
+			if (prefixSelect) {
+				var prevPrefix = prefixSelect.value;
+				prefixSelect.addEventListener('change', function () {
+					var nextPrefix = prefixSelect.value;
+					if (typeof context.onPrefixRescale === 'function') {
+						context.onPrefixRescale(prevPrefix, nextPrefix, prefixOpts);
+					}
+					prevPrefix = nextPrefix;
+					var selOpt = prefixSelect.options[prefixSelect.selectedIndex];
+					prefixSelect.title =
+						(selOpt && (selOpt.title || selOpt.text)) || noneTitle;
+					emitUnit();
+				});
+			}
+			if (unitSelect) {
+				unitSelect.addEventListener('change', emitUnit);
+			}
+		} else if (context && typeof context.onInput === 'function') {
+			var emitSolo = function () {
+				context.onInput(
+					serializeQuantityStore(
+						'',
+						prefixSelect && prefixSelect.value
+							? String(prefixSelect.value)
+							: '',
+						unitSelect && unitSelect.value
+							? String(unitSelect.value)
+							: ''
+					)
+				);
+			};
+			if (prefixSelect) {
+				prefixSelect.addEventListener('change', emitSolo);
+			}
+			if (unitSelect) {
+				unitSelect.addEventListener('change', emitSolo);
+			}
+		}
+		return group;
+	}
+
+	/**
+	 * Quantity = Value renderer chrome + Unit renderer chrome in one row (OQ-R8).
+	 * Does not re-implement Typ/Praefix/Kuerzel internals.
 	 */
 	function renderQuantityControl(node, context) {
 		var members = quantitySchemaMembers(node);
@@ -633,7 +804,7 @@
 		}
 
 		if (!members.length) {
-			/* Bare catalog quantity — single number. */
+			/* Bare catalog quantity — magnitude only (no unit leaf). */
 			if (!isEdit(context)) {
 				return createEl('span', {
 					className:
@@ -664,30 +835,30 @@
 			return bare;
 		}
 
-		var praefixMem = findQtyMember(members, 'praefix');
-		var prefixOpts = qtyPrefixOptions(praefixMem);
-		/* Optional Praefix: empty = bare (multiplikator 1). Do not invent a prefix. */
-		var prefixName = parsed.prefix ? String(parsed.prefix) : '';
-		var unitMem = findQtyMember(members, 'kuerzel');
-		var unitOpts = qtyUnitOptions(unitMem);
-		var symbol = String(qtySymbolFromMembers(members) || '');
-		var unitName = '';
-		if (!symbol && unitMem) {
-			unitName =
-				(parsed.unit != null && String(parsed.unit)) ||
-				(unitMem.sample != null && String(unitMem.sample)) ||
-				(unitOpts[0] && unitOpts[0].name) ||
-				'';
-			symbol = qtyUnitLabel(unitName, unitOpts);
-		}
-		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
+		var prefixOpts = qtyPrefixOptions(findQtyMember(members, 'praefix'));
+		var unitProbe = {
+			name: (node && (node.name || node.displayName)) || 'Unit',
+			typeKey: 'unit',
+			quantitySchema: node.quantitySchema,
+			sample: serializeQuantityStore('', parsed.prefix, parsed.unit),
+		};
 
 		if (!isEdit(context)) {
-			return createEl('span', {
+			var unitDisp = renderUnitControl(unitProbe, contentContext(context, true));
+			var wrap = createEl('span', {
 				className:
 					'wtt-preview-display-value wtt-preview-quantity wtt-node-render--quantity is-compact',
-				text: String(mag || '') + String(prefixLetter || '') + symbol,
 			});
+			wrap.appendChild(
+				createEl('span', {
+					className: 'wtt-node-render--quantity__mag',
+					text: String(mag || ''),
+				})
+			);
+			if (unitDisp) {
+				wrap.appendChild(unitDisp);
+			}
+			return wrap;
 		}
 
 		var group = createEl('div', {
@@ -705,110 +876,167 @@
 		}
 		group.appendChild(num);
 
-		var prefixSelect = null;
-		if (praefixMem && prefixOpts.length) {
-			prefixSelect = createEl('select', {
-				className:
-					'wtt-type-select wtt-preview-quantity__prefix wtt-preview-input--prefix',
-			});
-			/* Bare / none — Q51 optional Praefix; Q109 treats multiplikator as 1. */
-			var noneLabel =
-				(global.wttTree &&
-					global.wttTree.i18n &&
-					global.wttTree.i18n.unitConvNone) ||
-				'(none)';
-			var noneOpt = createEl('option', {
-				value: '',
-				text: String(noneLabel),
-			});
-			if (!prefixName) {
-				noneOpt.selected = true;
-			}
-			prefixSelect.appendChild(noneOpt);
-			prefixOpts.forEach(function (opt) {
-				var o = createEl('option', {
-					value: opt.name,
-					text: opt.letter || opt.name,
-					title: opt.name,
-				});
-				if (opt.name === prefixName || String(opt.id) === prefixName) {
-					o.selected = true;
-					noneOpt.selected = false;
-				}
-				prefixSelect.appendChild(o);
-			});
-			group.appendChild(prefixSelect);
-		}
-
-		var unitSelect = null;
-		if (!qtySymbolFromMembers(members) && unitOpts.length) {
-			unitSelect = createEl('select', {
-				className:
-					'wtt-type-select wtt-preview-quantity__unit wtt-preview-input--compact',
-			});
-			unitOpts.forEach(function (opt) {
-				var o = createEl('option', {
-					value: opt.name,
-					text: opt.letter || opt.name,
-					title: opt.name,
-				});
-				if (opt.name === unitName || String(opt.id) === unitName) {
-					o.selected = true;
-				}
-				unitSelect.appendChild(o);
-			});
-			group.appendChild(unitSelect);
-		} else if (symbol) {
-			group.appendChild(
-				createEl('span', {
-					className: 'wtt-preview-fixed-text wtt-preview-quantity__symbol',
-					text: symbol,
-				})
-			);
-		}
-
-		if (context && typeof context.onInput === 'function') {
-			var emit = function () {
-				var p =
-					prefixSelect && prefixSelect.value
-						? String(prefixSelect.value)
-						: '';
-				var u =
-					unitSelect && unitSelect.value
-						? String(unitSelect.value)
-						: '';
-				context.onInput(serializeQuantityStore(num.value, p, u));
-			};
-			num.addEventListener('input', emit);
-			num.addEventListener('change', emit);
-			if (prefixSelect) {
-				/* Q109: Präfix change → rescale Typ so to_si stays constant. */
-				var prevPrefix = prefixSelect.value;
-				prefixSelect.addEventListener('change', function () {
-					var nextPrefix = prefixSelect.value;
-					var qty = quantityApi();
-					if (qty && typeof qty.rescaleOnPrefixChange === 'function') {
-						var rescaled = qty.rescaleOnPrefixChange(
-							num.value,
-							prevPrefix,
-							nextPrefix,
-							prefixOpts,
-							qtyPrefixRootToSi(node)
-						);
-						if (rescaled != null) {
-							num.value = rescaled;
-						}
+		var unitPart = { prefix: parsed.prefix || '', unit: parsed.unit || '' };
+		var unitCtx = Object.assign({}, context, {
+			value: serializeQuantityStore('', unitPart.prefix, unitPart.unit),
+			onInput: null,
+			onUnitPartChange: function (part) {
+				unitPart.prefix = part.prefix || '';
+				unitPart.unit = part.unit || '';
+				emitAll();
+			},
+			onPrefixRescale: function (oldKey, newKey, opts) {
+				var qty = quantityApi();
+				if (qty && typeof qty.rescaleOnPrefixChange === 'function') {
+					var rescaled = qty.rescaleOnPrefixChange(
+						num.value,
+						oldKey,
+						newKey,
+						opts || prefixOpts,
+						qtyPrefixRootToSi(node)
+					);
+					if (rescaled != null) {
+						num.value = rescaled;
 					}
-					prevPrefix = nextPrefix;
-					emit();
-				});
-			}
-			if (unitSelect) {
-				unitSelect.addEventListener('change', emit);
+				}
+			},
+		});
+		var unitEl = renderUnitControl(unitProbe, unitCtx);
+		if (unitEl) {
+			group.appendChild(unitEl);
+		}
+
+		function emitAll() {
+			if (context && typeof context.onInput === 'function') {
+				context.onInput(
+					serializeQuantityStore(num.value, unitPart.prefix, unitPart.unit)
+				);
 			}
 		}
+		num.addEventListener('input', emitAll);
+		num.addEventListener('change', emitAll);
 		return group;
 	}
+
+	function isUnitTypeKey(key) {
+		key = String(key || '')
+			.trim()
+			.toLowerCase();
+		return (
+			key === 'unit' ||
+			key === 'basiseinheit' ||
+			key === 'meter' ||
+			key === 'ohm' ||
+			key === 'farad' ||
+			key === 'henry'
+		);
+	}
+
+	var UnitRenderer = {
+		id: 'unit',
+		label: 'Unit',
+		canRender: function (node) {
+			if (!node) {
+				return false;
+			}
+			if (node.isBasiseinheitUnit) {
+				return true;
+			}
+			if (quantitySchemaMembers(node).length) {
+				/* Unit leaf / field typed as unit — not bare quantity catalog. */
+				if (isQuantityTypeKey(resolveTypeKey(node))) {
+					return false;
+				}
+				return true;
+			}
+			if (
+				normalizePreferredPaintId(
+					node.preferredRender || node.typePreferredRender
+				) === 'unit'
+			) {
+				return true;
+			}
+			if (
+				Array.isArray(node.fixedOptions) &&
+				node.fixedOptions.length &&
+				node.fixedOptions.some(function (o) {
+					return (
+						o &&
+						Array.isArray(o.allowedPrefixes) &&
+						o.allowedPrefixes.length
+					);
+				})
+			) {
+				return true;
+			}
+			return isUnitTypeKey(resolveTypeKey(node));
+		},
+		renderContent: function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = contentContext(context, !!readonly);
+			/* Catalog unit choices → schema from selected option + allowlist. */
+			if (
+				(!quantitySchemaMembers(node).length ||
+					normalizePreferredPaintId(
+						node.preferredRender || node.typePreferredRender
+					) === 'unit') &&
+				Array.isArray(node.fixedOptions) &&
+				node.fixedOptions.length
+			) {
+				var composed = quantityNodeFromHostAttrs(
+					{
+						name: node.name || 'Unit',
+						typeKey: 'unit',
+						preferredRender: 'unit',
+						attributes: [
+							{ name: 'Value', typeKey: 'double' },
+							{
+								name: 'Unit',
+								fixedOptions: node.fixedOptions,
+								fixedValues: node.fixedValues,
+								quantitySchema: node.quantitySchema,
+							},
+						],
+					},
+					ctx
+				);
+				if (composed && composed.quantitySchema) {
+					return renderUnitControl(
+						Object.assign({}, node, {
+							typeKey: 'unit',
+							quantitySchema: composed.quantitySchema,
+						}),
+						ctx
+					);
+				}
+			}
+			return renderUnitControl(node, ctx);
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return composeLabeledField(this, node, context);
+		},
+		getExampleNode: function (probe) {
+			var schema =
+				probe && probe.quantitySchema
+					? probe.quantitySchema
+					: null;
+			return {
+				name: 'Unit_name',
+				displayName: 'Unit_name',
+				typeKey: 'unit',
+				type: { name: 'unit' },
+				isExample: true,
+				isBasiseinheitUnit: true,
+				quantitySchema: schema,
+				sample: '',
+			};
+		},
+	};
 
 	var QuantityRenderer = {
 		id: 'quantity',
@@ -820,6 +1048,16 @@
 			if (quantitySchemaMembers(node).length) {
 				return true;
 			}
+			var hostAttrs = quantityHostAttrList(node);
+			if (
+				hostAttrs.length >= 2 &&
+				quantityHostLooksLikeValueUnit(hostAttrs)
+			) {
+				return true;
+			}
+			if (normalizePreferredPaintId(node.preferredRender || node.typePreferredRender) === 'quantity') {
+				return true;
+			}
 			return isQuantityTypeKey(resolveTypeKey(node));
 		},
 		renderContent: function (node, context, readonly) {
@@ -827,6 +1065,24 @@
 				return false;
 			}
 			var ctx = contentContext(context, !!readonly);
+			var hostAttrs = quantityHostAttrList(node);
+			/* Host with Value + Unit attrs → compose via schema from selected unit. */
+			if (
+				(!quantitySchemaMembers(node).length ||
+					isQuantityTypeKey(resolveTypeKey(node)) ||
+					normalizePreferredPaintId(node.preferredRender || node.typePreferredRender) ===
+						'quantity') &&
+				hostAttrs.length >= 2 &&
+				quantityHostLooksLikeValueUnit(hostAttrs)
+			) {
+				var composed = quantityNodeFromHostAttrs(
+					Object.assign({}, node, { attributes: hostAttrs }),
+					ctx
+				);
+				if (composed) {
+					return renderQuantityControl(composed, ctx);
+				}
+			}
 			return renderQuantityControl(node, ctx);
 		},
 		render: function (node, context) {
@@ -852,6 +1108,162 @@
 			};
 		},
 	};
+
+	function quantityHostAttrList(node) {
+		if (!node) {
+			return [];
+		}
+		if (Array.isArray(node.attributes) && node.attributes.length) {
+			return node.attributes;
+		}
+		if (Array.isArray(node.typeProperties) && node.typeProperties.length) {
+			return node.typeProperties;
+		}
+		return [];
+	}
+
+	function quantityHostLooksLikeValueUnit(attrs) {
+		var hasVal = false;
+		var hasUnit = false;
+		(attrs || []).forEach(function (a) {
+			if (!a) {
+				return;
+			}
+			var n = String(a.name || '')
+				.toLowerCase()
+				.replace(/\u00fc/g, 'ue');
+			var key = String(a.typeKey || a.typeName || '')
+				.trim()
+				.toLowerCase();
+			if (
+				n === 'wert' ||
+				n === 'value' ||
+				n === 'betrag' ||
+				n === 'typ' ||
+				key === 'double' ||
+				key === 'int'
+			) {
+				hasVal = true;
+			}
+			if (
+				n === 'einheit' ||
+				n === 'unit' ||
+				n === 'kuerzel' ||
+				n === 'waehrung' ||
+				(a.quantitySchema && a.quantitySchema.members) ||
+				(Array.isArray(a.fixedOptions) && a.fixedOptions.length)
+			) {
+				hasUnit = true;
+			}
+		});
+		return hasVal && hasUnit;
+	}
+
+	function quantityNodeFromHostAttrs(node, context) {
+		var attrs = Array.isArray(node.attributes) ? node.attributes : [];
+		var valueAttr = null;
+		var unitAttr = null;
+		attrs.forEach(function (a) {
+			if (!a) {
+				return;
+			}
+			var n = String(a.name || '')
+				.toLowerCase()
+				.replace(/\u00fc/g, 'ue');
+			if (!valueAttr && (n === 'wert' || n === 'value' || n === 'betrag' || n === 'typ')) {
+				valueAttr = a;
+			}
+			if (!unitAttr && (n === 'einheit' || n === 'unit' || n === 'kuerzel' || n === 'waehrung')) {
+				unitAttr = a;
+			}
+		});
+		if (!valueAttr) {
+			attrs.forEach(function (a) {
+				var key = String((a && (a.typeKey || a.typeName)) || '')
+					.trim()
+					.toLowerCase();
+				if (!valueAttr && (key === 'double' || key === 'int')) {
+					valueAttr = a;
+				}
+			});
+		}
+		if (!unitAttr) {
+			attrs.forEach(function (a) {
+				if (
+					!unitAttr &&
+					a &&
+					((a.quantitySchema && a.quantitySchema.members) ||
+						(Array.isArray(a.fixedOptions) && a.fixedOptions.length))
+				) {
+					unitAttr = a;
+				}
+			});
+		}
+		if (!valueAttr || !unitAttr) {
+			return null;
+		}
+
+		var schema = unitAttr.quantitySchema || null;
+		if (
+			(!schema || !Array.isArray(schema.members) || !schema.members.length) &&
+			Array.isArray(unitAttr.fixedOptions) &&
+			unitAttr.fixedOptions.length
+		) {
+			var picked =
+				(context && context.unitPick) ||
+				(unitAttr.fixedValues && unitAttr.fixedValues[0]) ||
+				unitAttr.fixedOptions[0].name ||
+				unitAttr.fixedOptions[0].id;
+			var opt = null;
+			unitAttr.fixedOptions.forEach(function (o) {
+				if (
+					!opt &&
+					o &&
+					(o.name === picked ||
+						String(o.id) === String(picked) ||
+						String(o.id) === String(picked))
+				) {
+					opt = o;
+				}
+			});
+			if (!opt) {
+				opt = unitAttr.fixedOptions[0];
+			}
+			/*
+			 * Catalog unit choice: prefer attached allowedPrefixes → synthetic
+			 * quantitySchema members (Praefix + fixed Kuerzel).
+			 */
+			var prefixes = Array.isArray(opt.allowedPrefixes)
+				? opt.allowedPrefixes.filter(function (p) {
+						return p && p.enabled !== false;
+				  })
+				: [];
+			var praefixMem = {
+				name: 'Praefix',
+				fixedOptions: prefixes,
+				typeBranch: { children: prefixes },
+			};
+			var kuerzelMem = {
+				name: 'Kuerzel',
+				fixedEnabled: true,
+				fixedLiteral: opt.shortDescription || opt.name || '',
+				shortDescription: opt.shortDescription || '',
+			};
+			schema = {
+				unitId: opt.id || 0,
+				unitName: opt.name || '',
+				members: [praefixMem, kuerzelMem],
+			};
+		}
+
+		return {
+			name: node.name || 'Quantity',
+			typeKey: 'quantity',
+			quantitySchema: schema,
+			sample: '10.5',
+			attributes: attrs,
+		};
+	}
 
 	function contextName(context) {
 		return context && context.name ? String(context.name) : 'form';
@@ -1234,15 +1646,56 @@
 		return wrap;
 	}
 
+	/**
+	 * Preferred wire ids (QuantityRenderer) → Registry short ids (quantity).
+	 * Mirrors tree-admin normalizePreferredRender field map.
+	 */
+	function normalizePreferredPaintId(raw) {
+		var key = String(raw == null ? '' : raw)
+			.trim()
+			.toLowerCase();
+		if (!key) {
+			return '';
+		}
+		var wireToShort = {
+			intrenderer: 'int',
+			integer: 'int',
+			doublerenderer: 'double',
+			float: 'double',
+			textrenderer: 'text',
+			textarearenderer: 'textarea',
+			charrenderer: 'char',
+			boolrenderer: 'bool',
+			boolean: 'bool',
+			emailrenderer: 'email',
+			daterenderer: 'date',
+			datetime: 'date',
+			mediarenderer: 'media',
+			displaynodenamerenderer: 'display_node_name',
+			display_node_name: 'display_node_name',
+			quantityrenderer: 'quantity',
+			unitrenderer: 'unit',
+			basiseinheit: 'unit',
+			noderefrenderer: 'node_ref',
+			node_ref: 'node_ref',
+		};
+		if (wireToShort[key]) {
+			return wireToShort[key];
+		}
+		/* Strip trailing "Renderer" if present (QuantityRenderer → quantity). */
+		if (key.length > 8 && key.slice(-8) === 'renderer') {
+			return key.slice(0, -8);
+		}
+		return key;
+	}
+
 	function findRenderer(node, context) {
 		var preferred =
 			node &&
 			(node.preferredRender ||
 				node.preferred_render ||
 				(node.typePreferredRender != null ? node.typePreferredRender : ''));
-		preferred = String(preferred || '')
-			.trim()
-			.toLowerCase();
+		preferred = normalizePreferredPaintId(preferred);
 		var i;
 		if (preferred) {
 			for (i = 0; i < renderers.length; i++) {
@@ -2290,6 +2743,7 @@
 	Registry.register(TextareaRenderer);
 	Registry.register(BoolRenderer);
 	Registry.register(DateRenderer);
+	Registry.register(UnitRenderer);
 	Registry.register(QuantityRenderer);
 
 	/**
@@ -4130,6 +4584,7 @@
 		BoolRenderer: BoolRenderer,
 		DateRenderer: DateRenderer,
 		QuantityRenderer: QuantityRenderer,
+		UnitRenderer: UnitRenderer,
 		TableRenderer: TableRenderer,
 		EnumRenderer: EnumRenderer,
 		NodeRefRenderer: NodeRefRenderer,

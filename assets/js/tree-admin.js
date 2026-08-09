@@ -35,6 +35,11 @@
 		dragMoveIds: null,
 		/* Relations UI: hide synthetic child_of rows (default on). */
 		hideChildOfRelations: true,
+		/* Relations panel: collapsed by default; stay open across re-renders until node change. */
+		relationsPanelOpen: false,
+		/* Taxonomy-wide RelationType catalog (lazy via wtt_get_relation_types). */
+		relationCatalog: null,
+		relationCatalogLoading: null,
 		/* Attribute Options detail rows: expand per attr id (UI session only). */
 		attrDetailExpanded: {},
 		/* Hide project root in tree column (from settings; default on). */
@@ -279,6 +284,9 @@
 			displaynodenamerenderer: 'display_node_name',
 			display_node_name: 'display_node_name',
 			quantityrenderer: 'quantity',
+			unitrenderer: 'unit',
+			unit: 'unit',
+			basiseinheit: 'unit',
 			noderefrenderer: 'node_ref',
 			node_ref: 'node_ref',
 		};
@@ -543,6 +551,9 @@
 			isTable: !!n.isTable,
 			isTableTypeCatalog: !!n.isTableTypeCatalog,
 			tableValidation: n.tableValidation ? deepClone(n.tableValidation) : null,
+			attributeValidation: n.attributeValidation
+				? deepClone(n.attributeValidation)
+				: null,
 			typeProps: Array.isArray(n.typeProps) ? deepClone(n.typeProps) : [],
 			effectiveTypeProps: Array.isArray(n.effectiveTypeProps)
 				? deepClone(n.effectiveTypeProps)
@@ -680,6 +691,8 @@
 			isTable: d.isTable,
 			isTableTypeCatalog: !!d.isTableTypeCatalog,
 			tableValidation: d.tableValidation || n.tableValidation || null,
+			attributeValidation:
+				d.attributeValidation || n.attributeValidation || null,
 			typeProps: Array.isArray(d.typeProps) ? d.typeProps : [],
 			effectiveTypeProps: Array.isArray(d.effectiveTypeProps) ? d.effectiveTypeProps : [],
 			propBindings: normalizePropBindings(d.propBindings),
@@ -909,6 +922,21 @@
 			return name;
 		}
 		return name.charAt(0).toLowerCase();
+	}
+
+	/**
+	 * Wider quantity unit/prefix option: "Ω · Ohm" / "M · Mega".
+	 */
+	function formatSelectLabeledSymbol(opt) {
+		if (!opt) {
+			return '';
+		}
+		var sym = formatSelectSymbolLabel(opt);
+		var name = formatSelectLabel(opt) || String(opt.name || '');
+		if (sym && name && sym !== name) {
+			return sym + ' · ' + name;
+		}
+		return name || sym || '';
 	}
 
 	/**
@@ -1188,6 +1216,7 @@
 		}
 		var selected = false;
 		var symbolLabels = !!opts.symbolLabels;
+		var labeledSymbols = !!opts.labeledSymbols;
 		list.forEach(function (opt) {
 			var value =
 				typeof opts.getValue === 'function'
@@ -1198,14 +1227,17 @@
 			if (value === '') {
 				return;
 			}
-			var tip = symbolLabels
-				? formatSelectLabel(opt) || String(opt.name || '')
-				: formatSelectTitle(opt);
+			var tip =
+				labeledSymbols || symbolLabels
+					? formatSelectLabel(opt) || String(opt.name || '')
+					: formatSelectTitle(opt);
 			var optionAttrs = {
 				value: value,
-				text: symbolLabels
-					? formatSelectSymbolLabel(opt) || value
-					: formatSelectLabel(opt) || value,
+				text: labeledSymbols
+					? formatSelectLabeledSymbol(opt) || value
+					: symbolLabels
+						? formatSelectSymbolLabel(opt) || value
+						: formatSelectLabel(opt) || value,
 			};
 			if (tip) {
 				optionAttrs.title = tip;
@@ -1784,6 +1816,7 @@
 			expandAncestorsOf(termId);
 			state.selectedId = termId;
 			state.selectedNode = null;
+			state.relationsPanelOpen = false;
 			state.draft = null;
 			state.savedDraft = null;
 			state.settingsSaving = false;
@@ -3655,7 +3688,12 @@
 				return;
 			}
 			var sep = base.indexOf('?') >= 0 ? '&' : '?';
-			window.location.href = base + sep + 'term_id=' + encodeURIComponent(String(termId));
+			window.location.href =
+				base +
+				sep +
+				'term_id=' +
+				encodeURIComponent(String(termId)) +
+				'&return=tree';
 		});
 		linkWrap.appendChild(editLink);
 		body.appendChild(linkWrap);
@@ -5518,21 +5556,21 @@
 				className: 'wtt-field-hint',
 				text:
 					i18n.praefixChildSettingsHint ||
-					'Enable prefixes and enter each factor vs the prefix root. to_si = Typ Ã— factor Ã— unit root factor.',
+					'Enable prefixes and enter each factor vs the prefix root. to_si = Typ × factor × unit root factor.',
 			})
 		);
 		var rootRow = el('div', { className: 'wtt-type-branch__root-factor' });
 		rootRow.appendChild(
 			el('label', {
 				className: 'wtt-type-branch__factor-label',
-				text: i18n.prefixRootToSi || 'Unit: prefix root â†’ SI base',
+				text: i18n.prefixRootToSi || 'Unit: prefix root → SI base',
 			})
 		);
 		var rootInput = el('input', {
 			type: 'text',
 			className: 'wtt-type-branch__factor-input',
 			value: formatFactor(rootToSi) || '1',
-			title: i18n.prefixRootToSiHint || 'Usually 1; Kilogramm uses 0.001 (g â†’ kg).',
+			title: i18n.prefixRootToSiHint || 'Usually 1; Kilogramm uses 0.001 (g → kg).',
 		});
 		if (state.settingsSaving) {
 			rootInput.disabled = true;
@@ -5571,7 +5609,7 @@
 
 			var factorWrap = el('span', { className: 'wtt-type-branch__factor' });
 			factorWrap.appendChild(
-				el('span', { className: 'wtt-type-branch__factor-mark', text: 'Ã—' })
+				el('span', { className: 'wtt-type-branch__factor-mark', text: '×' })
 			);
 			var factorVal =
 				child.multiplikator != null && child.multiplikator !== ''
@@ -5595,7 +5633,7 @@
 				factorWrap.appendChild(
 					el('span', {
 						className: 'wtt-type-branch__to-si',
-						text: 'â†’ SI Ã— ' + formatFactor(factorVal * rootToSi),
+						text: '→ SI × ' + formatFactor(factorVal * rootToSi),
 					})
 				);
 			}
@@ -5607,7 +5645,86 @@
 	}
 
 	/**
-	 * On set parents: show each childâ€™s extras (not name/description) under parent settings.
+	 * Unit settings wizard: Allowed prefixes (catalog marriage). Visible in Fallstudie too —
+	 * Child extras / Type branch are skipped in caseStudyMode.
+	 *
+	 * @param {object} n
+	 * @param {HTMLElement} pane
+	 */
+	function renderAllowedPrefixesWizard(n, pane) {
+		if (!n || !n.isBasiseinheitUnit) {
+			return;
+		}
+		var branch = null;
+		if (
+			state.draft &&
+			state.draft.prefixBranch &&
+			state.draft.prefixBranch.unitAllowlistEdit
+		) {
+			branch = state.draft.prefixBranch;
+		} else if (n.prefixBranch && n.prefixBranch.unitAllowlistEdit) {
+			branch = n.prefixBranch;
+		} else if (Array.isArray(n.setMembers)) {
+			for (var i = 0; i < n.setMembers.length; i++) {
+				var m = n.setMembers[i];
+				if (
+					m &&
+					memberNameKey(m) === 'praefix' &&
+					m.typeBranch &&
+					m.typeBranch.unitAllowlistEdit
+				) {
+					branch = m.typeBranch;
+					break;
+				}
+			}
+		}
+
+		var block = el('div', {
+			className: 'wtt-panel wtt-allowed-prefixes',
+		});
+		block.appendChild(
+			el('h3', {
+				className: 'wtt-panel__title',
+				text: i18n.allowedPrefixesTitle || 'Allowed prefixes',
+			})
+		);
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.allowedPrefixesHint ||
+					'Which SI prefixes this unit may use (catalog marriage). Empty = value + unit only, no prefix.',
+			})
+		);
+		if (!branch || !Array.isArray(branch.children)) {
+			block.appendChild(
+				el('p', {
+					className: 'description',
+					text:
+						i18n.allowedPrefixesMissing ||
+						'This unit has no editable prefix slot yet (typical for Without-prefix catalog units).',
+				})
+			);
+			pane.appendChild(block);
+			return;
+		}
+		/* Keep draft in sync so checkbox edits persist through save. */
+		if (state.draft && !state.draft.prefixBranch) {
+			state.draft.prefixBranch = deepClone(branch);
+			branch = state.draft.prefixBranch;
+		} else if (
+			state.draft &&
+			state.draft.prefixBranch &&
+			state.draft.prefixBranch.unitAllowlistEdit
+		) {
+			branch = state.draft.prefixBranch;
+		}
+		renderPrefixAllowlistEditor(branch, block);
+		pane.appendChild(block);
+	}
+
+	/**
+	 * On set parents: show each child’s extras (not name/description) under parent settings.
 	 */
 	function renderChildExtrasOnParent(n, pane) {
 		if (!n.isSet || !Array.isArray(n.setMembers) || !n.setMembers.length) {
@@ -5667,16 +5784,10 @@
 			} else if (member.fixedLiteral) {
 				bits.push((i18n.fixedValue || 'Fixed') + ': ' + member.fixedLiteral);
 			}
-			meta.textContent = bits.join(' Â· ');
+			meta.textContent = bits.join(' · ');
 			card.appendChild(meta);
 
-			if (
-				memberNameKey(member) === 'praefix' &&
-				n.prefixBranch &&
-				n.prefixBranch.unitAllowlistEdit
-			) {
-				renderPrefixAllowlistEditor(n.prefixBranch, card);
-			}
+			/* Prefix allowlist lives in Allowed prefixes wizard on the unit — not duplicated here. */
 
 			block.appendChild(card);
 		});
@@ -5974,18 +6085,27 @@
 		var options = enabledBranchOptions(member);
 		var symbolLabels =
 			opts.symbolLabels === true ||
-			(opts.symbolLabels !== false && isPraefixMemberName(member));
+			(opts.symbolLabels !== false &&
+				!opts.labeledSymbols &&
+				isPraefixMemberName(member));
+		var labeledSymbols = !!opts.labeledSymbols;
 		var control = renderOptionsSelect(options, {
 			className:
 				'wtt-preview-input' +
 				(compact
-					? symbolLabels
-						? ' wtt-preview-input--prefix'
-						: ' wtt-preview-input--compact'
+					? labeledSymbols
+						? ' wtt-preview-input--unit-labeled'
+						: symbolLabels
+							? ' wtt-preview-input--prefix'
+							: ' wtt-preview-input--compact'
 					: ''),
 			disabled: !editable,
 			selectedValue: sample,
 			symbolLabels: symbolLabels,
+			labeledSymbols: labeledSymbols,
+			emptyLabel: opts.emptyLabel,
+			emptyValue: opts.emptyValue != null ? opts.emptyValue : '',
+			allowEmpty: opts.allowEmpty === true || !!opts.emptyLabel,
 			getValue: function (child) {
 				return String(child.name || child.id);
 			},
@@ -6399,6 +6519,69 @@
 	}
 
 	/**
+	 * Whether node Settings Default should mount type paint (Registry).
+	 *
+	 * @param {object} n
+	 * @return {boolean}
+	 */
+	function nodeShouldTypePaintDefault(n) {
+		if (!n) {
+			return false;
+		}
+		var pref = normalizePreferredRender(n.preferredRender || '')
+			.toLowerCase();
+		if (pref === 'quantity' || pref === 'unit') {
+			return true;
+		}
+		if (
+			n.quantitySchema &&
+			Array.isArray(n.quantitySchema.members) &&
+			n.quantitySchema.members.length
+		) {
+			return true;
+		}
+		if (n.isBasiseinheitUnit) {
+			return true;
+		}
+		if (Array.isArray(n.attributes) && n.attributes.length >= 2) {
+			return true;
+		}
+		return supportsFixedLiteral(n.type);
+	}
+
+	/**
+	 * Field probe for node Settings Default type paint.
+	 *
+	 * @param {object} n
+	 * @return {object}
+	 */
+	function nodeToDefaultField(n) {
+		var pref = normalizePreferredRender(n.preferredRender || '');
+		var attrs = Array.isArray(n.attributes) ? n.attributes : [];
+		var ObjectRender = window.WTTObjectRender;
+		var typeProperties = attrs;
+		if (ObjectRender && typeof ObjectRender.normalizeAttributes === 'function') {
+			typeProperties = ObjectRender.normalizeAttributes(attrs);
+		}
+		return {
+			id: n.id,
+			name: n.name || '',
+			displayName: n.name || '',
+			typeKey: typeKeyFromMember(n),
+			typeName: typeKeyFromMember(n),
+			preferredRender: pref,
+			typePreferredRender: pref,
+			quantitySchema: n.quantitySchema || null,
+			typeProperties: typeProperties,
+			attributes: typeProperties,
+			fixedOptions: Array.isArray(n.fixedOptions) ? n.fixedOptions : [],
+			fixedValues: n.fixedLiteral ? [String(n.fixedLiteral)] : [],
+			isBasiseinheitUnit: !!n.isBasiseinheitUnit,
+			fixedMode: n.fixedMode || '',
+		};
+	}
+
+	/**
 	 * Default value editor (legacy fixed meta). When forceMuted, show gray stub only.
 	 */
 	function renderFixedValueField(n, controlsLocked, forceMuted) {
@@ -6474,6 +6657,43 @@
 		}
 
 		var key = typeKeyFromMember(n);
+
+		/* Type paint (Preferred + settings) — same chrome as attribute Default. */
+		if (
+			key !== 'node_embed' &&
+			key !== 'node_ref' &&
+			window.WTTObjectRender &&
+			typeof window.WTTObjectRender.paintFieldContent === 'function' &&
+			nodeShouldTypePaintDefault(n)
+		) {
+			var nodeField = nodeToDefaultField(n);
+			var paintHost = el('div', {
+				className: 'wtt-fixed-type-paint',
+				id: 'wtt-node-fixed-literal-host',
+			});
+			var nodePainted = window.WTTObjectRender.paintFieldContent(
+				nodeField,
+				n.fixedLiteral || '',
+				{
+					readonly: !!controlsLocked,
+					contextName: 'form',
+					onInput: controlsLocked
+						? null
+						: function (next) {
+								setDraftFixedLiteral(
+									next == null ? '' : String(next),
+									{ silent: true }
+								);
+						  },
+				}
+			);
+			if (nodePainted) {
+				paintHost.appendChild(nodePainted);
+				wrap.appendChild(paintHost);
+				return wrap;
+			}
+		}
+
 		if (supportsFixedLiteral(n.type)) {
 			if (key === 'bool') {
 				var boolSelect = el('select', {
@@ -8424,7 +8644,26 @@
 		}
 		block.appendChild(titleWrap);
 
-		/* Column order: dataâ€¦ â†’ Inherited? â†’ Actions (Actions always last). */
+		var shadowCount = attrs.filter(function (a) {
+			return a && a.shadowsInherited && !a.inherited;
+		}).length;
+		if (shadowCount > 0) {
+			block.appendChild(
+				el('p', {
+					className: 'wtt-attributes__shadow-banner notice notice-warning inline',
+					text:
+						i18n.attributesShadowsBanner ||
+						'Some local attributes shadow inherited ones (same name). Remove the local copy to inherit from the parent — keep local only when the field is specialization-specific.',
+				})
+			);
+		}
+
+		var attrVal = resolveAttributeValidation(n);
+		if (attrVal && !attrVal.ok) {
+			block.appendChild(renderAttributeValidationBanner(attrVal, n));
+		}
+
+		/* Column order: data… → Inherited? → Actions (Actions always last). */
 		var columns = [
 			{ label: i18n.attributesName || 'Name', className: 'wtt-col-name' },
 			{ label: i18n.attributesType || 'Type', className: 'wtt-col-type' },
@@ -9081,6 +9320,16 @@
 				})
 				.join(', ');
 		}
+		if (vals.length) {
+			var painted = vals
+				.map(function (v) {
+					return formatFixedWireDisplayLabel(attr, v);
+				})
+				.filter(Boolean);
+			if (painted.length) {
+				return painted.join(', ');
+			}
+		}
 		if (attr.fixedLabel) {
 			return String(attr.fixedLabel);
 		}
@@ -9096,6 +9345,8 @@
 		var attrId = parseInt(attr.id, 10) || 0;
 		var inherited = !!attr.inherited;
 		var hidden = !!attr.hidden;
+		var shadows = !inherited && !!attr.shadowsInherited;
+		var roNeedsDefault = attributeRowReadonlyNeedsDefault(attr);
 		var ownEditable = editable && !inherited;
 		var detailSections = attributeDetailSections(attr);
 		var detailExpanded = !!state.attrDetailExpanded[attrId];
@@ -9105,6 +9356,8 @@
 				'wtt-attributes__row' +
 				(inherited ? ' wtt-attributes__row--inherited' : '') +
 				(hidden ? ' wtt-attributes__row--hidden' : '') +
+				(shadows ? ' wtt-attributes__row--shadows' : '') +
+				(roNeedsDefault ? ' wtt-attributes__row--rule-error' : '') +
 				(attr.computed ? ' wtt-attributes__row--computed' : '') +
 				(detailSections.hasAny && detailExpanded
 					? ' is-options-open'
@@ -9122,6 +9375,25 @@
 			ownEditable && peerIndex >= 0 && peerIndex < ownPeers.length - 1;
 
 		/* Name */
+		var shadowHint = '';
+		if (shadows) {
+			var fromName = String(attr.shadowsDefinedOnName || '').trim();
+			var tpl =
+				i18n.attributesShadowsHint ||
+				'Local copy hides the inherited “%s” definition. Remove this attribute to use inheritance from the parent.';
+			shadowHint = fromName
+				? tpl.replace('%s', fromName)
+				: i18n.attributesShadowsTitle || 'Shadows inherited';
+		}
+		var shadowBadge = shadows
+			? el('span', {
+					className: 'wtt-attributes__shadow-badge',
+					title: shadowHint,
+					'aria-label': shadowHint,
+					text: '!',
+			  })
+			: null;
+
 		if (ownEditable) {
 			var nameInput = el('input', {
 				type: 'text',
@@ -9150,19 +9422,23 @@
 						});
 				},
 			});
+			var nameWrapKids = [nameInput];
+			if (shadowBadge) {
+				nameWrapKids.push(shadowBadge);
+			}
 			tr.appendChild(
 				el('td', { className: 'wtt-col-name' }, [
-					el('div', { className: 'wtt-attributes__name-wrap' }, [
-						nameInput,
-					]),
+					el('div', { className: 'wtt-attributes__name-wrap' }, nameWrapKids),
 				])
 			);
 		} else {
+			var nameReadKids = [el('span', { text: attr.name || '' })];
+			if (shadowBadge) {
+				nameReadKids.push(shadowBadge);
+			}
 			tr.appendChild(
 				el('td', { className: 'wtt-col-name wtt-attributes__name' }, [
-					el('div', { className: 'wtt-attributes__name-wrap' }, [
-						el('span', { text: attr.name || '' }),
-					]),
+					el('div', { className: 'wtt-attributes__name-wrap' }, nameReadKids),
 				])
 			);
 		}
@@ -11107,6 +11383,30 @@
 	 * Roots for attribute Festwert catalog picker (subtree under type).
 	 */
 	function attributeFixedCatalogRoots(n, attr) {
+		/* Prefer server fixedOptions — tree may still point at empty legacy folders
+		 * (Konstanten/Präfixe) or unloaded hasChildren stubs. */
+		var opts = Array.isArray(attr.fixedOptions) ? attr.fixedOptions : [];
+		if (opts.length) {
+			if (typeof buildChoiceTreeFromFixedOptions === 'function') {
+				var fromOpts = buildChoiceTreeFromFixedOptions(opts);
+				if (fromOpts && fromOpts.length) {
+					return fromOpts;
+				}
+			}
+			return opts
+				.filter(function (o) {
+					return o && o.id != null;
+				})
+				.map(function (o) {
+					return {
+						id: o.id,
+						name: o.name || String(o.id),
+						children: [],
+						shortDescription: o.shortDescription || '',
+					};
+				});
+		}
+
 		var typeId = parseInt(attr.typeId || attr.fixedRootId, 10) || 0;
 		if (typeId) {
 			var hit = findNodeInTree(state.tree, typeId);
@@ -11114,40 +11414,160 @@
 				if (hit.children && hit.children.length) {
 					return hit.children;
 				}
-				/* Type leaf with no children â€” still allow picking the type itself. */
+				/* Type leaf with no children — still allow picking the type itself. */
 				return [hit];
 			}
 		}
-		var opts = Array.isArray(attr.fixedOptions) ? attr.fixedOptions : [];
-		return opts
-			.filter(function (o) {
-				return o && o.id != null;
-			})
-			.map(function (o) {
-				return {
-					id: o.id,
-					name: o.name || String(o.id),
-					children: [],
-					shortDescription: o.shortDescription || '',
-				};
-			});
+		return [];
 	}
 
 	function attributeUsesCatalogFixed(attr) {
-		if (String(attr.fixedMode || '') === 'catalog') {
-			return true;
-		}
-		if (String(attr.fixedMode || '') === 'literal') {
+		if (String(attr.fixedMode || '') !== 'catalog') {
 			return false;
 		}
-		return (
-			Array.isArray(attr.fixedOptions) && attr.fixedOptions.length > 0
-		);
+		/*
+		 * Unit↔prefix marriage (options carry allowedPrefixes) or Preferred
+		 * Quantity/Unit → type paint, not a bare leaf CatalogChoice.
+		 */
+		if (attributeLooksLikeUnitMarriage(attr)) {
+			return false;
+		}
+		var pref = String(
+			attr.preferredRender || attr.typePreferredRender || ''
+		)
+			.trim()
+			.toLowerCase();
+		if (
+			pref.indexOf('quantity') !== -1 ||
+			pref === 'unit' ||
+			pref.indexOf('unitrenderer') !== -1
+		) {
+			return false;
+		}
+		if (
+			attr.quantitySchema &&
+			Array.isArray(attr.quantitySchema.members) &&
+			attr.quantitySchema.members.length
+		) {
+			return false;
+		}
+		return true;
+	}
+
+	function attributeLooksLikeUnitMarriage(attr) {
+		var opts = Array.isArray(attr.fixedOptions) ? attr.fixedOptions : [];
+		var i;
+		for (i = 0; i < opts.length; i++) {
+			var o = opts[i];
+			if (
+				o &&
+				Array.isArray(o.allowedPrefixes) &&
+				o.allowedPrefixes.length
+			) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
-	 * Festwert picker â€” catalog types use the same node tree picker as list pickers;
-	 * scalars use an editable value list (1 or many by multiplicity).
+	 * Field DTO for Default dialog — same shape as preview (type Preferred + settings).
+	 *
+	 * @param {object} attr
+	 * @return {object|null}
+	 */
+	function attributeDefaultFieldFromAttr(attr) {
+		if (!attr || typeof attr !== 'object') {
+			return null;
+		}
+		var ObjectRender = window.WTTObjectRender;
+		if (
+			ObjectRender &&
+			typeof ObjectRender.normalizeAttributes === 'function'
+		) {
+			var list = ObjectRender.normalizeAttributes([attr]);
+			return list && list[0] ? list[0] : null;
+		}
+		return {
+			id: attr.id,
+			name: attr.name || '',
+			typeKey: attr.typeKey || attr.typeName || 'text',
+			typeName: attr.typeName || attr.typeKey || 'text',
+			preferredRender: String(
+				attr.preferredRender || attr.typePreferredRender || ''
+			),
+			typePreferredRender: String(attr.typePreferredRender || ''),
+			typeProperties: Array.isArray(attr.typeProperties)
+				? attr.typeProperties
+				: [],
+			quantitySchema: attr.quantitySchema || null,
+			fixedMode: attr.fixedMode || '',
+			fixedOptions: Array.isArray(attr.fixedOptions)
+				? attr.fixedOptions
+				: [],
+			fixedValues: Array.isArray(attr.fixedValues)
+				? attr.fixedValues
+				: [],
+		};
+	}
+
+	/**
+	 * Human label for a stored default wire (Quantity/Unit JSON or scalar).
+	 *
+	 * @param {object} attr
+	 * @param {string} raw
+	 * @return {string}
+	 */
+	function formatFixedWireDisplayLabel(attr, raw) {
+		var s = raw == null ? '' : String(raw).trim();
+		if (!s) {
+			return '';
+		}
+		var ObjectRender = window.WTTObjectRender;
+		var field = attributeDefaultFieldFromAttr(attr);
+		if (
+			field &&
+			ObjectRender &&
+			typeof ObjectRender.paintFieldContent === 'function'
+		) {
+			try {
+				var painted = ObjectRender.paintFieldContent(field, s, {
+					readonly: true,
+					contextName: 'form',
+				});
+				if (painted && painted.textContent) {
+					var t = String(painted.textContent)
+						.replace(/\s+/g, ' ')
+						.trim();
+					if (t && t !== '—') {
+						return t;
+					}
+				}
+			} catch (e) {
+				/* fall through */
+			}
+		}
+		if (s.charAt(0) === '{') {
+			try {
+				var obj = JSON.parse(s);
+				if (obj && typeof obj === 'object') {
+					var mag = obj.mag != null ? String(obj.mag) : '';
+					var prefix = obj.prefix != null ? String(obj.prefix) : '';
+					var unit = obj.unit != null ? String(obj.unit) : '';
+					if (mag || prefix || unit) {
+						return [mag, prefix, unit].filter(Boolean).join(' ');
+					}
+				}
+			} catch (e2) {
+				/* keep raw */
+			}
+		}
+		return s;
+	}
+
+	/**
+	 * Festwert picker — CatalogChoice for catalog types; otherwise mount the
+	 * attribute's type chrome (Preferred + settings) via paintFieldContent.
 	 *
 	 * @param {Object} n Host node.
 	 * @param {Object} attr Attribute row (id may be 0 for add-row draft).
@@ -11441,78 +11861,85 @@
 			return;
 		}
 
-		/* Scalar / unit: editable value list. */
-		var selected = {};
-		current.forEach(function (v) {
-			selected[String(v)] = true;
-		});
+		/* Type paint: mount the attribute's type (Preferred + settings). */
+		var ObjectRender = window.WTTObjectRender;
+		var field = attributeDefaultFieldFromAttr(attr);
+		if (
+			!field ||
+			!ObjectRender ||
+			typeof ObjectRender.paintFieldContent !== 'function'
+		) {
+			window.alert(
+				i18n.previewUnavailable ||
+					'Default editor unavailable for this type.'
+			);
+			return;
+		}
+		/* Unit folder / With-prefix choices → UnitRenderer (Prefix? + Symbol). */
+		if (attributeLooksLikeUnitMarriage(attr)) {
+			field.preferredRender = 'unit';
+			field.typePreferredRender = 'unit';
+		}
 
-		function close() {
-			if (backdrop.parentNode) {
-				backdrop.parentNode.removeChild(backdrop);
+		var allowsEmptyType =
+			attr.allowsEmpty != null
+				? !!attr.allowsEmpty
+				: String(attr.multiplicity || '1') === '0..*' ||
+				  String(attr.multiplicity || '1') === '0..1';
+		var wires = current.map(function (v) {
+			return v == null ? '' : String(v);
+		});
+		if (!wires.length) {
+			wires = [''];
+		}
+		if (!allowsMany && wires.length > 1) {
+			wires = wires.slice(0, 1);
+		}
+
+		function closeType() {
+			if (typeBackdrop.parentNode) {
+				typeBackdrop.parentNode.removeChild(typeBackdrop);
 			}
 		}
 
-		function collectValues() {
-			var inputs = body.querySelectorAll('.wtt-attr-fixed__value');
-			var vals = [];
-			Array.prototype.forEach.call(inputs, function (inp) {
-				var v = String(inp.value || '').trim();
-				if (v) {
-					vals.push(v);
-				}
-			});
-			if (!allowsMany && vals.length > 1) {
-				vals = vals.slice(0, 1);
-			}
-			return vals;
-		}
-
-		var body = el('div', {
-			className: 'wtt-attr-fixed wtt-node-picker-dialog__host',
+		var typeBody = el('div', {
+			className: 'wtt-attr-fixed wtt-attr-fixed--type-paint',
 		});
-		body.appendChild(
+		typeBody.appendChild(
 			el('p', {
 				className: 'description',
 				text:
 					(attr.name || '') +
-					' Â· ' +
+					' · ' +
 					(attr.typeName || typeKey || '') +
-					' Â· ' +
+					' · ' +
 					(attr.multiplicity || '1'),
 			})
 		);
-
 		var valuesHost = el('div', { className: 'wtt-attr-fixed__values' });
-		function addValueRow(val) {
-			var row = el('div', { className: 'wtt-attr-fixed__value-row' });
-			var inp;
-			if (typeKey === 'bool') {
-				inp = el('select', { className: 'wtt-attr-fixed__value' });
-				[
-					{ v: '0', t: i18n.boolFalse || 'false' },
-					{ v: '1', t: i18n.boolTrue || 'true' },
-				].forEach(function (opt) {
-					inp.appendChild(
-						el('option', {
-							value: opt.v,
-							text: opt.t,
-							selected: String(val || '0') === opt.v,
-						})
-					);
-				});
-			} else {
-				inp = el('input', {
-					type:
-						typeKey === 'int' || typeKey === 'double'
-							? 'number'
-							: 'text',
-					className: 'regular-text wtt-attr-fixed__value',
-					value: val || '',
-					step: typeKey === 'int' ? '1' : 'any',
-				});
+
+		function paintRow(index) {
+			var row = el('div', {
+				className: 'wtt-attr-fixed__value-row wtt-attr-fixed__type-row',
+			});
+			var control = el('div', {
+				className: 'wtt-attr-fixed__type-control',
+			});
+			var painted = ObjectRender.paintFieldContent(
+				field,
+				wires[index] || '',
+				{
+					readonly: false,
+					contextName: 'form',
+					onInput: function (next) {
+						wires[index] = next == null ? '' : String(next);
+					},
+				}
+			);
+			if (painted) {
+				control.appendChild(painted);
 			}
-			row.appendChild(inp);
+			row.appendChild(control);
 			if (allowsMany) {
 				row.appendChild(
 					el('button', {
@@ -11523,56 +11950,45 @@
 						html:
 							'<span class="dashicons dashicons-trash" aria-hidden="true"></span>',
 						onClick: function () {
-							var allowsEmptyScalar =
-								attr.allowsEmpty != null
-									? !!attr.allowsEmpty
-									: String(attr.multiplicity || '1') ===
-											'0..*' ||
-									  String(attr.multiplicity || '1') ===
-											'0..1';
-							var rows = valuesHost.querySelectorAll(
-								'.wtt-attr-fixed__value-row'
-							);
-							if (!allowsEmptyScalar && rows.length <= 1) {
+							if (!allowsEmptyType && wires.length <= 1) {
 								return;
 							}
-							if (row.parentNode) {
-								row.parentNode.removeChild(row);
-							}
+							wires.splice(index, 1);
+							rebuildRows();
 						},
 					})
 				);
 			}
-			valuesHost.appendChild(row);
+			return row;
 		}
-		if (current.length) {
-			current.forEach(function (v) {
-				addValueRow(v);
+
+		function rebuildRows() {
+			valuesHost.textContent = '';
+			if (!wires.length) {
+				wires = [''];
+			}
+			wires.forEach(function (_w, idx) {
+				valuesHost.appendChild(paintRow(idx));
 			});
-		} else {
-			addValueRow('');
 		}
-		body.appendChild(valuesHost);
+
+		rebuildRows();
+		typeBody.appendChild(valuesHost);
 		if (allowsMany) {
-			body.appendChild(
+			typeBody.appendChild(
 				el('button', {
 					type: 'button',
 					className: 'button',
 					text: i18n.attributesFixedAddValue || 'Add value',
 					onClick: function () {
-						addValueRow('');
+						wires.push('');
+						rebuildRows();
 					},
 				})
 			);
 		}
 
-		var allowsEmptyScalarDlg =
-			attr.allowsEmpty != null
-				? !!attr.allowsEmpty
-				: String(attr.multiplicity || '1') === '0..*' ||
-				  String(attr.multiplicity || '1') === '0..1';
-
-		var backdrop = el('div', { className: 'wtt-dialog-backdrop' }, [
+		var typeBackdrop = el('div', { className: 'wtt-dialog-backdrop' }, [
 			el('div', { className: 'wtt-dialog wtt-dialog--node-picker', role: 'dialog' }, [
 				el('h2', {
 					text:
@@ -11580,7 +11996,7 @@
 						': ' +
 						(attr.name || ''),
 				}),
-				body,
+				typeBody,
 				el(
 					'div',
 					{ className: 'wtt-dialog__actions' },
@@ -11589,15 +12005,15 @@
 							type: 'button',
 							className: 'button',
 							text: i18n.cancel || 'Cancel',
-							onClick: close,
+							onClick: closeType,
 						}),
-						allowsEmptyScalarDlg
+						allowsEmptyType
 							? el('button', {
 									type: 'button',
 									className: 'button',
 									text: i18n.attributesFixedClear || 'Clear',
 									onClick: function () {
-										save([]).then(close);
+										save([]).then(closeType);
 									},
 							  })
 							: null,
@@ -11606,135 +12022,273 @@
 							className: 'button button-primary',
 							text: i18n.attributesFixedApply || 'Apply',
 							onClick: function () {
-								var vals = collectValues();
-								if (!allowsEmptyScalarDlg && !vals.length) {
+								var vals = wires
+									.map(function (v) {
+										return String(v || '').trim();
+									})
+									.filter(Boolean);
+								if (!allowsMany && vals.length > 1) {
+									vals = vals.slice(0, 1);
+								}
+								if (!allowsEmptyType && !vals.length) {
 									window.alert(
 										i18n.attributesFixedRequired ||
 											'At least one value is required for this multiplicity.'
 									);
 									return;
 								}
-								save(vals).then(close);
+								save(vals).then(closeType);
 							},
 						}),
 					].filter(Boolean)
 				),
 			]),
 		]);
-		backdrop.addEventListener('click', function (e) {
-			if (e.target === backdrop) {
-				close();
+		typeBackdrop.addEventListener('click', function (e) {
+			if (e.target === typeBackdrop) {
+				closeType();
 			}
 		});
-		document.body.appendChild(backdrop);
+		document.body.appendChild(typeBackdrop);
 	}
 
 	function renderNodeRelations(n, pane) {
-		var rel = collectSyntheticRelations(n);
-		var relationTypes = assignableRelationTypes(n);
-		var rows = buildDirectedRelationRows(n, rel);
-		if (state.hideChildOfRelations !== false) {
-			rows = rows.filter(function (row) {
-				return String((row && row.type) || '').toLowerCase() !== 'child_of';
-			});
-		}
+		var stored = (n && n.relationsStored) || {};
+		var storedCount =
+			(Array.isArray(stored.von) ? stored.von.length : 0) +
+			(Array.isArray(stored.an) ? stored.an.length : 0);
 
 		var block = el('div', { className: 'wtt-panel wtt-relations' });
-		var titleRow = el('div', { className: 'wtt-relations__head' });
-		titleRow.appendChild(
-			renderRelationsSectionTitle(
-				i18n.relationsTitle || 'Relations',
-				i18n.relationsHelp ||
-					'Always From node â†’ Relation type â†’ To node. The current node is shown by name (not a link); hover for the hint.'
-			)
-		);
-		var headActions = el('div', { className: 'wtt-relations__head-actions' });
-		var hideLabel = el('label', {
-			className: 'wtt-relations__hide-child-of',
+		var fold = el('details', {
+			className: 'wtt-relations-fold',
 		});
-		hideLabel.appendChild(
-			el('input', {
-				type: 'checkbox',
-				checked: state.hideChildOfRelations !== false,
-				onChange: function (e) {
-					state.hideChildOfRelations = !!e.target.checked;
-					persistTreeUi();
-					render();
-				},
-			})
-		);
-		hideLabel.appendChild(
-			document.createTextNode(
-				' ' +
-					(i18n.relationsHideChildOf || 'Hide child_of')
-			)
-		);
-		headActions.appendChild(hideLabel);
-		headActions.appendChild(
-			el('button', {
-				type: 'button',
-				className: 'button button-small',
-				text: i18n.relationsAdd || 'Add relation',
-				onClick: function () {
-					openAddRelationFlow(n);
-				},
-			})
-		);
-		titleRow.appendChild(headActions);
-		block.appendChild(titleRow);
-		block.appendChild(
-			el('p', {
-				className: 'wtt-field-hint',
-				text:
-					i18n.relationsHint ||
-					'Format: node â†’ relation type â†’ node. The current node is plain text (tooltip: current node). Mult. = definition multiplicity. Protected rows are derived (child_of / ref_scope).',
-			})
-		);
-		block.appendChild(
-			renderRelationsTable(rows, {
-				node: n,
-				editable: true,
-				allowReorder: true,
-				relationTypes: relationTypes,
-				onTypeChange: function (row, typeId) {
-					updateStoredRelationType(
-						n,
-						row,
-						typeId,
-						row.direction || 'von'
-					);
-				},
-				onMultiplicityChange: function (row, mult) {
-					updateStoredRelationMultiplicity(
-						n,
-						row,
-						mult,
-						row.direction || 'von'
-					);
-				},
-				onTargetChange: function (row) {
-					openChangeRelationTarget(n, row);
-				},
-				onDuplicateAsType: function (row) {
-					duplicateRelationWithOtherType(
-						n,
-						row,
-						row.direction || 'von'
-					);
-				},
-				onRemove: function (row) {
-					removeStoredRelation(n, row, row.direction || 'von');
-				},
-				onMove: function (row, delta) {
-					if (row.direction !== 'von') {
-						return;
-					}
-					moveStoredRelation(n, row, delta);
-				},
-			})
-		);
+		if (state.relationsPanelOpen) {
+			fold.open = true;
+		}
 
+		var summary = el('summary', {
+			className: 'wtt-relations-fold__summary',
+		});
+		summary.appendChild(
+			document.createTextNode(i18n.relationsTitle || 'Relations')
+		);
+		if (storedCount > 0) {
+			summary.appendChild(
+				el('span', {
+					className: 'wtt-badge wtt-relations-fold__count',
+					text: String(storedCount),
+					title:
+						i18n.relationsStoredCountHint ||
+						'Stored relation edges (plus synthetic rows when expanded)',
+				})
+			);
+		}
+		fold.appendChild(summary);
+
+		var body = el('div', {
+			className: 'wtt-relations-fold__body',
+		});
+		var status = el('p', {
+			className: 'wtt-relations-fold__status description',
+			text: state.relationsPanelOpen
+				? i18n.relationsFoldLoading || 'Loading…'
+				: i18n.relationsFoldCollapsedHint ||
+				  'Expand to load Relation types and edit edges. Power-user surface — left collapsed by default.',
+		});
+		body.appendChild(status);
+		fold.appendChild(body);
+		block.appendChild(fold);
 		pane.appendChild(block);
+
+		var built = false;
+
+		function applyCatalogToNode(node) {
+			var cat = state.relationCatalog;
+			if (!cat || !node) {
+				return;
+			}
+			node.relationTypeTree = cat.relationTypeTree || [];
+			node.relationTypeOptions = cat.relationTypeOptions || [];
+			if (
+				Array.isArray(cat.relationMultiplicityOptions) &&
+				cat.relationMultiplicityOptions.length
+			) {
+				node.relationMultiplicityOptions = cat.relationMultiplicityOptions;
+			}
+		}
+
+		function ensureRelationCatalog() {
+			if (state.relationCatalog) {
+				return Promise.resolve(state.relationCatalog);
+			}
+			if (state.relationCatalogLoading) {
+				return state.relationCatalogLoading;
+			}
+			state.relationCatalogLoading = post('wtt_get_relation_types', {})
+				.then(function (json) {
+					state.relationCatalogLoading = null;
+					if (!json || !json.success || !json.data) {
+						throw new Error(
+							(json && json.data && json.data.message) ||
+								(i18n.relationsFoldError || 'Could not load relation types.')
+						);
+					}
+					state.relationCatalog = {
+						relationTypeTree: json.data.relationTypeTree || [],
+						relationTypeOptions: json.data.relationTypeOptions || [],
+						relationMultiplicityOptions:
+							json.data.relationMultiplicityOptions || [],
+					};
+					return state.relationCatalog;
+				})
+				.catch(function (err) {
+					state.relationCatalogLoading = null;
+					throw err;
+				});
+			return state.relationCatalogLoading;
+		}
+
+		function buildRelationsBody() {
+			if (built) {
+				return;
+			}
+			built = true;
+			applyCatalogToNode(n);
+			if (state.selectedNode && state.selectedNode.id === n.id) {
+				applyCatalogToNode(state.selectedNode);
+			}
+
+			while (body.firstChild) {
+				body.removeChild(body.firstChild);
+			}
+
+			var rel = collectSyntheticRelations(n);
+			var relationTypes = assignableRelationTypes(n);
+			var rows = buildDirectedRelationRows(n, rel);
+			if (state.hideChildOfRelations !== false) {
+				rows = rows.filter(function (row) {
+					return String((row && row.type) || '').toLowerCase() !== 'child_of';
+				});
+			}
+
+			var titleRow = el('div', { className: 'wtt-relations__head' });
+			titleRow.appendChild(
+				renderRelationsSectionTitle(
+					i18n.relationsTitle || 'Relations',
+					i18n.relationsHelp ||
+						'Always From node → Relation type → To node. The current node is shown by name (not a link); hover for the hint.',
+					'wtt-relations__title-wrap'
+				)
+			);
+			var headActions = el('div', { className: 'wtt-relations__head-actions' });
+			var hideLabel = el('label', {
+				className: 'wtt-relations__hide-child-of',
+			});
+			hideLabel.appendChild(
+				el('input', {
+					type: 'checkbox',
+					checked: state.hideChildOfRelations !== false,
+					onChange: function (e) {
+						state.hideChildOfRelations = !!e.target.checked;
+						persistTreeUi();
+						render();
+					},
+				})
+			);
+			hideLabel.appendChild(
+				document.createTextNode(
+					' ' + (i18n.relationsHideChildOf || 'Hide child_of')
+				)
+			);
+			headActions.appendChild(hideLabel);
+			headActions.appendChild(
+				el('button', {
+					type: 'button',
+					className: 'button button-small',
+					text: i18n.relationsAdd || 'Add relation',
+					onClick: function () {
+						openAddRelationFlow(n);
+					},
+				})
+			);
+			titleRow.appendChild(headActions);
+			body.appendChild(titleRow);
+			body.appendChild(
+				el('p', {
+					className: 'wtt-field-hint',
+					text:
+						i18n.relationsHint ||
+						'Format: node → relation type → node. The current node is plain text (tooltip: current node). Mult. = definition multiplicity. Protected rows are derived (child_of / ref_scope).',
+				})
+			);
+			body.appendChild(
+				renderRelationsTable(rows, {
+					node: n,
+					editable: true,
+					allowReorder: true,
+					relationTypes: relationTypes,
+					onTypeChange: function (row, typeId) {
+						updateStoredRelationType(
+							n,
+							row,
+							typeId,
+							row.direction || 'von'
+						);
+					},
+					onMultiplicityChange: function (row, mult) {
+						updateStoredRelationMultiplicity(
+							n,
+							row,
+							mult,
+							row.direction || 'von'
+						);
+					},
+					onTargetChange: function (row) {
+						openChangeRelationTarget(n, row);
+					},
+					onDuplicateAsType: function (row) {
+						duplicateRelationWithOtherType(
+							n,
+							row,
+							row.direction || 'von'
+						);
+					},
+					onRemove: function (row) {
+						removeStoredRelation(n, row, row.direction || 'von');
+					},
+					onMove: function (row, delta) {
+						if (row.direction !== 'von') {
+							return;
+						}
+						moveStoredRelation(n, row, delta);
+					},
+				})
+			);
+		}
+
+		function loadAndBuild() {
+			status.textContent = i18n.relationsFoldLoading || 'Loading…';
+			ensureRelationCatalog()
+				.then(function () {
+					buildRelationsBody();
+				})
+				.catch(function () {
+					built = false;
+					status.textContent =
+						i18n.relationsFoldError || 'Could not load relation types.';
+				});
+		}
+
+		fold.addEventListener('toggle', function () {
+			state.relationsPanelOpen = !!fold.open;
+			if (fold.open && !built) {
+				loadAndBuild();
+			}
+		});
+
+		if (fold.open) {
+			loadAndBuild();
+		}
 	}
 
 	function renderSetMembers(n, pane) {
@@ -12207,8 +12761,11 @@
 
 	/**
 	 * Shared quantity view: Typ + optional Praefix + Kuerzel symbol.
+	 * Value+Unit hosts (no Praefix attr): inject prefix options from the
+	 * selected unit’s allowlist (`allowedPrefixes` on fixedOptions).
 	 */
 	function renderQuantityView(members, mode, scope) {
+		members = quantityMembersWithUnitPrefixes(members, scope);
 		var typ = findSetMemberByKey(members, 'typ') || findSetMemberByKey(members, 'wert');
 		var praefix = findSetMemberByKey(members, 'praefix');
 		var sample = typ
@@ -12231,6 +12788,21 @@
 					shortDescription:
 						(kuerzelMem && kuerzelMem.shortDescription) || '',
 				});
+				/* Prefer short from selected catalog option when Unit is a choice. */
+				var unitOpts = enabledBranchOptions(kuerzelMem);
+				if (unitOpts.length) {
+					var unitPick = livePreviewText(scope, kuerzelMem);
+					for (var ui = 0; ui < unitOpts.length; ui++) {
+						var uo = unitOpts[ui];
+						if (
+							uo &&
+							(uo.name === unitPick || String(uo.id) === unitPick)
+						) {
+							symbol = formatSelectSymbolLabel(uo) || symbol;
+							break;
+						}
+					}
+				}
 			}
 			return el('span', {
 				className: 'wtt-preview-display-value wtt-preview-quantity',
@@ -12258,7 +12830,7 @@
 			bindPreviewControl(num, scope, fallbackTyp);
 			group.appendChild(num);
 		}
-		if (praefix) {
+		if (praefix && enabledBranchOptions(praefix).length) {
 			/*
 			 * Fallback path (Registry unavailable): Q109 rescale Typ when Praefix changes.
 			 */
@@ -12270,6 +12842,10 @@
 					sample: praefixSample,
 					editable: true,
 					scope: scope,
+					labeledSymbols: true,
+					emptyLabel: '—',
+					emptyValue: '',
+					allowEmpty: true,
 					beforeChange: function (oldKey, newKey) {
 						var qtyApi =
 							window.WTTConverter && window.WTTConverter.Quantity
@@ -12327,7 +12903,8 @@
 					sample: livePreviewText(scope, kuerzel),
 					editable: true,
 					scope: scope,
-					symbolLabels: true,
+					labeledSymbols: true,
+					symbolLabels: false,
 				})
 			);
 		} else if (kuerzel) {
@@ -12342,6 +12919,78 @@
 			}
 		}
 		return group;
+	}
+
+	/**
+	 * When quantity members are Value + Unit (catalog) without Praefix,
+	 * attach a virtual Praefix from the selected unit’s allowlist.
+	 */
+	function quantityMembersWithUnitPrefixes(members, scope) {
+		members = Array.isArray(members) ? members.slice() : [];
+		var typ =
+			findSetMemberByKey(members, 'typ') || findSetMemberByKey(members, 'wert');
+		var praefix = findSetMemberByKey(members, 'praefix');
+		var unit = findSetMemberByKey(members, 'kuerzel');
+		if (praefix || !unit || !typ) {
+			return members;
+		}
+		var unitOpts = enabledBranchOptions(unit);
+		if (!unitOpts.length) {
+			return members;
+		}
+		var selected =
+			livePreviewText(scope, unit) ||
+			(unitOpts[0] && (unitOpts[0].name || String(unitOpts[0].id))) ||
+			'';
+		var pick = null;
+		for (var i = 0; i < unitOpts.length; i++) {
+			var o = unitOpts[i];
+			if (!o) {
+				continue;
+			}
+			if (o.name === selected || String(o.id) === String(selected)) {
+				pick = o;
+				break;
+			}
+		}
+		if (!pick) {
+			pick = unitOpts[0];
+		}
+		var prefixes = Array.isArray(pick.allowedPrefixes)
+			? pick.allowedPrefixes.filter(function (p) {
+					return p && p.enabled !== false && (p.name || p.id);
+			  })
+			: [];
+		if (!prefixes.length) {
+			return members;
+		}
+		var virtual = {
+			id: 'wtt-qty-prefix-' + String(pick.id || pick.name || 'unit'),
+			name: 'Praefix',
+			fixedOptions: prefixes.map(function (p) {
+				return {
+					id: p.id,
+					name: p.name,
+					shortDescription: p.shortDescription || '',
+					multiplikator: p.multiplikator,
+					enabled: true,
+				};
+			}),
+		};
+		var out = [];
+		members.forEach(function (m) {
+			if (!m) {
+				return;
+			}
+			out.push(m);
+			if (m === typ || (typ && m.id != null && m.id === typ.id)) {
+				out.push(virtual);
+			}
+		});
+		if (out.indexOf(virtual) < 0) {
+			out.splice(1, 0, virtual);
+		}
+		return out;
 	}
 
 	/**
@@ -14670,7 +15319,7 @@
 			tbody.appendChild(tr);
 		}
 
-		addRow(i18n.unitConvNone || '(none)', kuerzel, 1);
+		addRow(i18n.unitConvNone || '—', kuerzel, 1);
 
 		if (branch && Array.isArray(branch.children)) {
 			branch.children.forEach(function (child) {
@@ -15448,6 +16097,7 @@
 			key === 'email' ||
 			key === 'date' ||
 			key === 'quantity' ||
+			key === 'unit' ||
 			key === 'table'
 		);
 	}
@@ -15895,6 +16545,203 @@
 		return String(node.tableErrorHint || '');
 	}
 
+	function resolveAttributeValidation(n) {
+		if (n && n.attributeValidation) {
+			return n.attributeValidation;
+		}
+		var attrs = n && Array.isArray(n.attributes) ? n.attributes : [];
+		var errors = [];
+		var fixes = [];
+		attrs.forEach(function (attr) {
+			if (!attributeRowReadonlyNeedsDefault(attr)) {
+				return;
+			}
+			var attrId = parseInt(attr.id, 10) || 0;
+			var attrName = String(attr.name || '') || '#' + String(attrId);
+			errors.push(
+				(
+					i18n.attributesReadonlyNeedsDefaultError ||
+					'“%s” is read-only but has no default value.'
+				).replace('%s', attrName)
+			);
+			fixes.push({
+				rule: 'readonly_needs_default',
+				action: 'clear_readonly',
+				attrId: attrId,
+				attrName: attrName,
+			});
+			fixes.push({
+				rule: 'readonly_needs_default',
+				action: 'set_default',
+				attrId: attrId,
+				attrName: attrName,
+				needsUi: true,
+			});
+		});
+		return {
+			ok: errors.length === 0,
+			blocking: errors.length > 0,
+			errors: errors,
+			warnings: [],
+			fixes: fixes,
+		};
+	}
+
+	function attributeRowHasDefaultValue(attr) {
+		var vals = attr && Array.isArray(attr.fixedValues) ? attr.fixedValues : [];
+		if (!vals.length) {
+			return false;
+		}
+		for (var i = 0; i < vals.length; i++) {
+			var v = vals[i];
+			if (v && typeof v === 'object') {
+				if (Object.keys(v).length) {
+					return true;
+				}
+				continue;
+			}
+			if (typeof v === 'number' || typeof v === 'boolean') {
+				return true;
+			}
+			if (String(v == null ? '' : v).trim() !== '') {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function attributeRowReadonlyNeedsDefault(attr) {
+		if (!attr || !attr.readonly) {
+			return false;
+		}
+		if (attr.computed || (attr.compute && attr.compute.op)) {
+			return false;
+		}
+		return !attributeRowHasDefaultValue(attr);
+	}
+
+	function attributeFixButtonLabel(fix) {
+		var action = String((fix && fix.action) || '');
+		var name = String((fix && fix.attrName) || '');
+		if (action === 'clear_readonly') {
+			return (
+				(i18n.attributesFixClearReadonly || 'Clear read-only') +
+				(name ? ' — ' + name : '')
+			);
+		}
+		return (
+			(i18n.attributesFixSetDefault || 'Set default value') +
+			(name ? ' — ' + name : '')
+		);
+	}
+
+	function fixAttributeRule(n, fix) {
+		fix = fix || {};
+		var hostId = n && n.id != null ? parseInt(n.id, 10) || 0 : 0;
+		var attrId = parseInt(fix.attrId, 10) || 0;
+		var action = String(fix.action || '');
+		if (hostId <= 0 || attrId <= 0) {
+			return;
+		}
+
+		if (action === 'set_default' || fix.needsUi) {
+			var attrs = Array.isArray(n.attributes) ? n.attributes : [];
+			var attr = null;
+			attrs.forEach(function (row) {
+				if (row && parseInt(row.id, 10) === attrId) {
+					attr = row;
+				}
+			});
+			if (!attr) {
+				setError(i18n.error);
+				return;
+			}
+			openAttributeFixedValueDialog(n, attr, function () {});
+			return;
+		}
+
+		post('wtt_fix_attribute_rule', {
+			term_id: hostId,
+			attr_id: attrId,
+			fix_action: action,
+		})
+			.then(function (json) {
+				if (!json || !json.success) {
+					setError((json && json.data && json.data.message) || i18n.error);
+					return;
+				}
+				state.tree = json.data.tree || state.tree;
+				if (json.data.node) {
+					applyLoadedNode(json.data.node);
+					mergeNodeTypeIntoTree(state.tree, json.data.node);
+				}
+				render();
+			})
+			.catch(function () {
+				setError(i18n.error);
+			});
+	}
+
+	function renderAttributeValidationBanner(validation, n) {
+		var wrap = el('div', {
+			className: 'wtt-rule-banner wtt-rule-banner--attributes',
+			role: 'alert',
+		});
+		var head = el('div', { className: 'wtt-rule-banner__head' });
+		head.appendChild(
+			el('span', {
+				className: 'wtt-rule-banner__mark',
+				text: '!',
+				'aria-hidden': 'true',
+			})
+		);
+		head.appendChild(
+			el('strong', {
+				className: 'wtt-rule-banner__title',
+				text:
+					i18n.attributesReadonlyNeedsDefaultBanner ||
+					'Read-only attributes need a default value.',
+			})
+		);
+		wrap.appendChild(head);
+
+		var msgs = (validation && validation.errors) || [];
+		if (msgs.length === 1) {
+			wrap.appendChild(
+				el('p', {
+					className: 'wtt-rule-banner__msg',
+					text: String(msgs[0] || ''),
+				})
+			);
+		} else if (msgs.length > 1) {
+			var list = el('ul', { className: 'wtt-rule-banner__list' });
+			msgs.forEach(function (msg) {
+				list.appendChild(el('li', { text: String(msg || '') }));
+			});
+			wrap.appendChild(list);
+		}
+
+		var fixes =
+			validation && Array.isArray(validation.fixes) ? validation.fixes : [];
+		if (fixes.length) {
+			var actions = el('div', { className: 'wtt-rule-banner__actions' });
+			fixes.forEach(function (fix) {
+				actions.appendChild(
+					el('button', {
+						type: 'button',
+						className: 'button button-secondary wtt-rule-banner__fix',
+						text: attributeFixButtonLabel(fix),
+						onClick: function () {
+							fixAttributeRule(n, fix);
+						},
+					})
+				);
+			});
+			wrap.appendChild(actions);
+		}
+		return wrap;
+	}
+
 	function collectTableValidationFixes(validation, n) {
 		if (validation && Array.isArray(validation.fixes) && validation.fixes.length) {
 			return validation.fixes;
@@ -16210,6 +17057,9 @@
 						? parseInt(attr.choiceDepth, 10) || 0
 						: 0,
 				typePreferredRender: String(attr.typePreferredRender || ''),
+				preferredRender: String(
+					attr.preferredRender || attr.typePreferredRender || ''
+				),
 				typeProperties: Array.isArray(attr.typeProperties)
 					? attr.typeProperties.slice()
 					: [],
@@ -16377,38 +17227,76 @@
 				i18n.previewCompactVertical || 'Compact (vertical)',
 			EmbeddedRenderer: i18n.previewEmbed || 'Embedded renderer',
 			quantity: i18n.previewQuantity || 'Quantity',
+			unit: i18n.previewUnit || 'Unit',
 		};
 
-		if (preferred === 'quantity') {
-			var qtyMembers = Array.isArray(formInstance.attributes)
-				? formInstance.attributes
-				: members;
+		if (preferred === 'quantity' || preferred === 'unit') {
+			var apiQty = nodeRenderApi();
 			var qtyScope = 'obj-qty';
-			qtyMembers.forEach(function (field) {
-				var key = previewValueKey(qtyScope, field);
+			var qtyMember = {
+				id: n && n.id != null ? n.id : 'qty',
+				name: preferred === 'unit' ? 'Unit' : 'Quantity',
+			};
+			var qtyKey = previewValueKey(qtyScope, qtyMember);
+			if (
+				!Object.prototype.hasOwnProperty.call(state.previewValues, qtyKey)
+			) {
+				state.previewValues[qtyKey] =
+					preferred === 'unit' ? '' : '10.5';
+			}
+			var qtyProbe = {
+				id: n && n.id,
+				name: (n && n.name) || '',
+				typeKey: preferred === 'unit' ? 'unit' : 'quantity',
+				isBasiseinheitUnit: !!(n && n.isBasiseinheitUnit),
+				quantitySchema: (n && n.quantitySchema) || null,
+				attributes: Array.isArray(formInstance.attributes)
+					? formInstance.attributes
+					: Array.isArray(n.attributes)
+						? n.attributes
+						: members,
+			};
+			function paintPreferredField(mode) {
 				if (
-					!Object.prototype.hasOwnProperty.call(state.previewValues, key) &&
-					formInstance.values
+					!apiQty ||
+					!apiQty.Registry ||
+					typeof apiQty.Registry.renderContent !== 'function'
 				) {
-					var idKey =
-						field && field.id != null
-							? String(field.id)
-							: String((field && field.name) || '');
-					if (
-						Object.prototype.hasOwnProperty.call(
-							formInstance.values,
-							idKey
-						)
-					) {
-						state.previewValues[key] = formInstance.values[idKey];
-					}
+					return el('span', {
+						text: i18n.previewUnavailable || 'Preview unavailable',
+					});
 				}
-			});
+				var ctx = {
+					name: 'form',
+					mode: mode === 'display' ? 'display' : 'edit',
+					value: String(state.previewValues[qtyKey] || ''),
+					valueKey: qtyKey,
+					onInput:
+						mode === 'display'
+							? null
+							: function (next) {
+									state.previewValues[qtyKey] = next;
+									state.previewFocus = {
+										key: qtyKey,
+										start: null,
+										end: null,
+									};
+									render();
+									restorePreviewFocus();
+							  },
+				};
+				var painted = apiQty.Registry.renderContent(
+					qtyProbe,
+					ctx,
+					mode === 'display'
+				);
+				return painted || el('span', { text: '—' });
+			}
 			block.appendChild(
 				renderPreviewSurface(
-					titleMap.quantity,
-					renderQuantityView(qtyMembers, 'edit', qtyScope),
-					renderQuantityView(qtyMembers, 'display', qtyScope)
+					titleMap[preferred] || titleMap.quantity,
+					paintPreferredField('edit'),
+					paintPreferredField('display')
 				)
 			);
 		} else if (preferred === 'TableRenderer') {
@@ -17172,7 +18060,7 @@
 			return block;
 		}
 
-		/* Unit catalog node: definition table + same quantity field view as any unit-typed slot. */
+		/* Unit catalog node: definition + Registry Unit/Quantity usage (Q91). */
 		if (isUnitDefinitionNode(n)) {
 			block.appendChild(renderUnitSchemaDefinition(members));
 			var unitLabel = composeUnitDisplay(members);
@@ -17196,18 +18084,61 @@
 						'Usage sample when a field uses this unit (value + prefix + symbol).',
 				})
 			);
+			var unitApi = nodeRenderApi();
+			var unitScope = 'unit-usage';
+			var unitMem = { id: n.id, name: n.name || 'Unit' };
+			var unitKey = previewValueKey(unitScope, unitMem);
+			if (!Object.prototype.hasOwnProperty.call(state.previewValues, unitKey)) {
+				state.previewValues[unitKey] = '10.5';
+			}
+			var unitProbe = {
+				id: n.id,
+				name: n.name || '',
+				typeKey: 'quantity',
+				isBasiseinheitUnit: true,
+				quantitySchema: n.quantitySchema || {
+					unitId: n.id,
+					unitName: n.name || '',
+					members: members,
+				},
+			};
+			function paintUnitUsage(mode) {
+				if (
+					!unitApi ||
+					!unitApi.Registry ||
+					typeof unitApi.Registry.renderContent !== 'function'
+				) {
+					return renderUnitUsageForm(members, n.name || '', mode);
+				}
+				var ctx = {
+					name: 'form',
+					mode: mode === 'display' ? 'display' : 'edit',
+					value: String(state.previewValues[unitKey] || ''),
+					valueKey: unitKey,
+					onInput:
+						mode === 'display'
+							? null
+							: function (next) {
+									state.previewValues[unitKey] = next;
+									state.previewFocus = {
+										key: unitKey,
+										start: null,
+										end: null,
+									};
+									render();
+									restorePreviewFocus();
+							  },
+				};
+				return (
+					unitApi.Registry.renderContent(unitProbe, ctx, mode === 'display') ||
+					el('span', { text: '—' })
+				);
+			}
 			block.appendChild(
 				renderPreviewSurface(
 					i18n.previewAsForm || 'Form',
-					renderUnitUsageForm(members, n.name || '', 'edit'),
-					renderUnitUsageForm(members, n.name || '', 'display')
-				)
-			);
-			block.appendChild(
-				renderPreviewSurface(
-					i18n.previewAsTable || 'Table',
-					renderUnitUsageTable(members, n.name || '', 'edit'),
-					renderUnitUsageTable(members, n.name || '', 'display')
+					paintUnitUsage('edit'),
+					paintUnitUsage('display')
 				)
 			);
 			return block;
@@ -17974,6 +18905,9 @@
 			form.className = (form.className || '') + ' wtt-panel wtt-detail-form';
 			pane.appendChild(form);
 
+			/* Unit↔prefix marriage wizard (visible in Fallstudie; Child extras skipped there). */
+			renderAllowedPrefixesWizard(n, pane);
+
 			if (n.isTable || n.isTableTypeCatalog) {
 				var bandUi = renderTableBandBindings(n, controlsLocked);
 				if (bandUi) {
@@ -18039,6 +18973,9 @@
 		state.selectedIds = {};
 		state.selectionAnchorId = null;
 		state.selectedNode = null;
+		state.relationsPanelOpen = false;
+		state.relationCatalog = null;
+		state.relationCatalogLoading = null;
 		state.draft = null;
 		state.savedDraft = null;
 		state.settingsSaving = false;
@@ -18287,7 +19224,11 @@
 		}
 		restoreTreeUi();
 		document.addEventListener('keydown', onTreeCopyKeydown);
-		if (state.selectedId) {
+		var bootTerm =
+			cfg.initialTermId != null ? parseInt(cfg.initialTermId, 10) || 0 : 0;
+		if (bootTerm > 0) {
+			selectNode(bootTerm);
+		} else if (state.selectedId) {
 			selectNode(state.selectedId);
 		} else {
 			render();

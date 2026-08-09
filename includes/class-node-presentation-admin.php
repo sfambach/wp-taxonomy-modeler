@@ -46,14 +46,23 @@ final class Node_Presentation_Admin {
 
 	/**
 	 * Admin URL, optionally focused on a term.
+	 *
+	 * @param array<string, string|int> $extra Extra query args (e.g. return=tree).
 	 */
-	public static function page_url( int $term_id = 0, string $taxonomy = '' ): string {
+	public static function page_url( int $term_id = 0, string $taxonomy = '', array $extra = array() ): string {
 		$args = array( 'page' => self::PAGE_SLUG );
 		if ( $term_id > 0 ) {
 			$args['term_id'] = $term_id;
 		}
 		if ( '' !== $taxonomy ) {
 			$args['taxonomy'] = $taxonomy;
+		}
+		foreach ( $extra as $key => $value ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key ) {
+				continue;
+			}
+			$args[ $key ] = is_int( $value ) ? $value : sanitize_text_field( (string) $value );
 		}
 		return add_query_arg( $args, admin_url( 'admin.php' ) );
 	}
@@ -116,11 +125,19 @@ final class Node_Presentation_Admin {
 
 		wp_safe_redirect(
 			add_query_arg(
-				array(
-					'page'     => self::PAGE_SLUG,
-					'taxonomy' => $taxonomy,
-					'term_id'  => $term_id,
-					'updated'  => '1',
+				array_filter(
+					array(
+						'page'     => self::PAGE_SLUG,
+						'taxonomy' => $taxonomy,
+						'term_id'  => $term_id,
+						'updated'  => '1',
+						'return'   => isset( $_POST['wtt_return'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+							? sanitize_key( wp_unslash( $_POST['wtt_return'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+							: '',
+					),
+					static function ( $v ) {
+						return '' !== $v && null !== $v;
+					}
 				),
 				admin_url( 'admin.php' )
 			)
@@ -321,6 +338,12 @@ final class Node_Presentation_Admin {
 		$icons  = Tree_Icons::enabled_keys();
 		$catalog = Tree_Icons::catalog();
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$return = isset( $_GET['return'] ) ? sanitize_key( wp_unslash( $_GET['return'] ) ) : '';
+		if ( '' === $return && isset( $_POST['wtt_return'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$return = sanitize_key( wp_unslash( $_POST['wtt_return'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		echo '<div class="wrap wtt-presentation-admin">';
 		echo '<h1>' . esc_html(
 			sprintf(
@@ -329,7 +352,14 @@ final class Node_Presentation_Admin {
 				$term->name
 			)
 		) . '</h1>';
-		echo '<p><a href="' . esc_url( self::page_url( 0, $taxonomy ) ) . '">&larr; ' . esc_html__( 'Back to list', 'wp-taxonomy-tree' ) . '</a></p>';
+		echo '<p class="wtt-presentation-admin__nav">';
+		echo '<a href="' . esc_url( self::page_url( 0, $taxonomy ) ) . '">&larr; ' . esc_html__( 'Back to list', 'wp-taxonomy-tree' ) . '</a>';
+		if ( 'tree' === $return ) {
+			$tree_url = Tree_Admin::page_url( $term_id, $taxonomy );
+			echo ' <span class="wtt-presentation-admin__nav-sep" aria-hidden="true">·</span> ';
+			echo '<a href="' . esc_url( $tree_url ) . '">&larr; ' . esc_html__( 'Back to node', 'wp-taxonomy-tree' ) . '</a>';
+		}
+		echo '</p>';
 
 		echo '<form method="post">';
 		wp_nonce_field( self::NONCE_ACTION );
@@ -337,6 +367,9 @@ final class Node_Presentation_Admin {
 		echo '<input type="hidden" name="term_id" value="' . esc_attr( (string) $term_id ) . '" />';
 		echo '<input type="hidden" name="taxonomy" value="' . esc_attr( $taxonomy ) . '" />';
 		echo '<input type="hidden" name="locale" value="' . esc_attr( $locale ) . '" />';
+		if ( 'tree' === $return ) {
+			echo '<input type="hidden" name="wtt_return" value="tree" />';
+		}
 
 		echo '<table class="form-table" role="presentation"><tbody>';
 

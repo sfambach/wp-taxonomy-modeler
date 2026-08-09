@@ -835,10 +835,19 @@ final class Tree_Model {
 				? Attribute::choice_options_under_type( $taxonomy, (int) $term->term_id )
 				: array(),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),
-			'relationTypeTree'   => Relation::get_relation_type_tree( $taxonomy ),
-			'relationTypeOptions'=> Relation::get_assignable_type_options( $taxonomy ),
+			/*
+			 * RelationType catalog is taxonomy-wide and heavy — not loaded on every
+			 * get_node. Tree admin fetches via wtt_get_relation_types when the
+			 * Relations panel is expanded (collapsed by default).
+			 */
+			'relationTypeTree'   => array(),
+			'relationTypeOptions'=> array(),
 			'relationMultiplicityOptions' => Relation::multiplicity_options(),
 			'attributes'  => Attribute::list( $taxonomy, (int) $term->term_id ),
+			'attributeValidation' => Attribute_Validator::validate(
+				$taxonomy,
+				(int) $term->term_id
+			),
 			'attributeMoveChildren' => Attribute::list_eligible_move_children(
 				$taxonomy,
 				(int) $term->term_id

@@ -51,6 +51,7 @@ final class Relation {
 
 	/**
 	 * Alternate RelationType names accepted when resolving a type key.
+	 * Product has only `besteht_aus` — `composition` is read/migrate legacy only (0.7.94).
 	 *
 	 * @var array<string, list<string>>
 	 */
