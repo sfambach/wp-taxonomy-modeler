@@ -613,11 +613,11 @@ final class Case_Data {
 		$created  = 0;
 		$existing = 0;
 
-		/* Install / refresh subtree from blueprint under Data Types (Prefix, Unit, Bauformen). */
-		$dt_blueprint = self::data_types_unit_catalog_blueprint();
-		if ( $dt_blueprint ) {
-			self::install_nodes( $taxonomy, $dt_blueprint, $data_types_id, $created, $existing );
-		}
+		/*
+		 * 1) Folder shells only — then migrate legacy Konstanten children in,
+		 * 2) then install_nodes (finds by name → no second pico/nano).
+		 */
+		self::ensure_unit_catalog_folder_shells( $taxonomy, $data_types_id, $created, $existing );
 
 		$prefixes_id = self::find_term_by_path(
 			$taxonomy,
@@ -640,7 +640,7 @@ final class Case_Data {
 			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Bauformen' )
 		);
 
-		/* Migrate out of legacy Konstanten. */
+		/* Migrate out of legacy Konstanten BEFORE seeding leaves. */
 		$konstanten_id = self::find_term_by_path(
 			$taxonomy,
 			array( self::ROOT_NAME, 'Definition', 'Konstanten' )
@@ -688,7 +688,6 @@ final class Case_Data {
 			}
 
 			self::maybe_trash_empty_folder( $taxonomy, $konstanten_id );
-			/* If Konstanten still has leftovers, trash the whole legacy folder. */
 			$konstanten_still = self::find_term_by_path(
 				$taxonomy,
 				array( self::ROOT_NAME, 'Definition', 'Konstanten' )
@@ -698,10 +697,15 @@ final class Case_Data {
 			}
 		}
 
+		/* Refresh / create missing leaves (idempotent by name under parent). */
+		$dt_blueprint = self::data_types_unit_catalog_blueprint();
+		if ( $dt_blueprint ) {
+			self::install_nodes( $taxonomy, $dt_blueprint, $data_types_id, $created, $existing );
+		}
+
 		if ( $prefixes_id > 0 ) {
 			Trash::restore_subtree( $taxonomy, $prefixes_id );
 			Node_Type::set_deletable( $prefixes_id, false );
-			self::strip_obsolete_prefix_aliases( $taxonomy, $prefixes_id );
 		}
 		if ( $unit_id > 0 ) {
 			Trash::restore_subtree( $taxonomy, $unit_id );
@@ -712,16 +716,221 @@ final class Case_Data {
 		}
 		if ( $without_id > 0 ) {
 			Node_Type::set_deletable( $without_id, false );
-			self::configure_konstanten_waehrung( $taxonomy, $without_id );
 		}
 		if ( $bauformen_id > 0 ) {
 			Trash::restore_subtree( $taxonomy, $bauformen_id );
 			Node_Type::set_deletable( $bauformen_id, false );
+		}
+
+		/*
+		 * Heal double-seed AFTER restore — restore_subtree must not revive
+		 * the duplicates we are about to trash.
+		 */
+		if ( $prefixes_id > 0 ) {
+			self::dedupe_same_name_children( $taxonomy, $prefixes_id );
+			self::strip_obsolete_prefix_aliases( $taxonomy, $prefixes_id );
+		}
+		if ( $with_id > 0 ) {
+			self::dedupe_same_name_children( $taxonomy, $with_id );
+		}
+		if ( $without_id > 0 ) {
+			self::dedupe_same_name_children( $taxonomy, $without_id );
+			self::configure_konstanten_waehrung( $taxonomy, $without_id );
+		}
+		if ( $bauformen_id > 0 ) {
+			self::dedupe_same_name_children( $taxonomy, $bauformen_id );
 			self::configure_konstanten_bauformen( $taxonomy, $data_types_id );
 		}
 
 		Demo_Data::ensure_prefix_multiplikators( $taxonomy );
 		self::ensure_quantity_preis_example( $taxonomy );
+	}
+
+	/**
+	 * Create Präfixe / Unit / With|Without prefix / Bauformen folders (no leaves).
+	 */
+	private static function ensure_unit_catalog_folder_shells(
+		string $taxonomy,
+		int $data_types_id,
+		int &$created,
+		int &$existing
+	): void {
+		$prefixes = self::ensure_term(
+			$taxonomy,
+			'Präfixe',
+			$data_types_id,
+			'Global prefix catalog. multiplikator = scale vs the unit’s prefix root (Q51).',
+			$created,
+			$existing
+		);
+		if ( $prefixes > 0 ) {
+			Node_Type::set_deletable( $prefixes, false );
+		}
+
+		$unit = self::ensure_term(
+			$taxonomy,
+			'Unit',
+			$data_types_id,
+			'Unit datatype (Q120). Concrete units under With prefix / Without prefix.',
+			$created,
+			$existing
+		);
+		if ( $unit > 0 ) {
+			Node_Type::set_deletable( $unit, false );
+			$with = self::ensure_term(
+				$taxonomy,
+				'With prefix',
+				$unit,
+				'Units that may marry SI prefixes (allowlist on each unit).',
+				$created,
+				$existing
+			);
+			if ( $with > 0 ) {
+				Node_Type::set_deletable( $with, false );
+			}
+			$without = self::ensure_term(
+				$taxonomy,
+				'Without prefix',
+				$unit,
+				'Units with prefix allowlist empty (Stück, temperature, currency host).',
+				$created,
+				$existing
+			);
+			if ( $without > 0 ) {
+				Node_Type::set_deletable( $without, false );
+			}
+		}
+
+		$bau = self::ensure_term(
+			$taxonomy,
+			'Bauformen',
+			$data_types_id,
+			'Package / footprint catalog (axial, radial, SMD sizes).',
+			$created,
+			$existing
+		);
+		if ( $bau > 0 ) {
+			Node_Type::set_deletable( $bau, false );
+		}
+	}
+
+	/**
+	 * Keep one child per display name (lowest term_id). Trash extras; remap prefix allowlists.
+	 *
+	 * @return int Number of duplicate terms trashed.
+	 */
+	public static function dedupe_same_name_children( string $taxonomy, int $parent_id ): int {
+		if ( $parent_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+		$kids = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'parent'     => $parent_id,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $kids ) || empty( $kids ) ) {
+			return 0;
+		}
+
+		$by_name = array();
+		foreach ( $kids as $kid ) {
+			if ( ! $kid instanceof \WP_Term ) {
+				continue;
+			}
+			$key = $kid->name;
+			if ( ! isset( $by_name[ $key ] ) ) {
+				$by_name[ $key ] = array();
+			}
+			$by_name[ $key ][] = (int) $kid->term_id;
+		}
+
+		$id_map  = array(); /* discarded → kept */
+		$trashed = 0;
+		foreach ( $by_name as $ids ) {
+			if ( count( $ids ) < 2 ) {
+				continue;
+			}
+			sort( $ids, SORT_NUMERIC );
+			$keep = (int) $ids[0];
+			for ( $i = 1, $n = count( $ids ); $i < $n; $i++ ) {
+				$drop = (int) $ids[ $i ];
+				$id_map[ $drop ] = $keep;
+				/* Prefer multiplikator from either side. */
+				$keep_m = Node_Type::get_multiplikator( $keep );
+				$drop_m = Node_Type::get_multiplikator( $drop );
+				if ( ( null === $keep_m || $keep_m <= 0.0 ) && null !== $drop_m && $drop_m > 0.0 ) {
+					Node_Type::set_multiplikator( $keep, $drop_m );
+				}
+				Node_Type::set_deletable( $drop, true );
+				/* Permanent remove — soft-trash stays under the same parent and can reappear via restore_subtree. */
+				$result = wp_delete_term( $drop, $taxonomy );
+				if ( ! is_wp_error( $result ) && false !== $result ) {
+					++$trashed;
+				} else {
+					Trash::move_to_trash( $taxonomy, $drop, true );
+					++$trashed;
+				}
+			}
+		}
+
+		if ( array() !== $id_map ) {
+			self::remap_allowed_prefix_ids( $taxonomy, $id_map );
+		}
+
+		return $trashed;
+	}
+
+	/**
+	 * Replace discarded prefix ids inside unit allowlists.
+	 *
+	 * @param array<int, int> $id_map discarded_id → kept_id
+	 */
+	private static function remap_allowed_prefix_ids( string $taxonomy, array $id_map ): void {
+		if ( array() === $id_map ) {
+			return;
+		}
+		$meta_key = Node_Type::META_KEY_ALLOWED_PREFIX_IDS;
+		$terms    = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( ! is_array( $terms ) ) {
+			return;
+		}
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof \WP_Term ) {
+				continue;
+			}
+			$raw = get_term_meta( (int) $term->term_id, $meta_key, true );
+			if ( ! is_array( $raw ) || array() === $raw ) {
+				continue;
+			}
+			$changed = false;
+			$next    = array();
+			$seen    = array();
+			foreach ( $raw as $id ) {
+				$id = (int) $id;
+				if ( isset( $id_map[ $id ] ) ) {
+					$id      = (int) $id_map[ $id ];
+					$changed = true;
+				}
+				if ( $id <= 0 || isset( $seen[ $id ] ) ) {
+					$changed = true;
+					continue;
+				}
+				$seen[ $id ] = true;
+				$next[]      = $id;
+			}
+			if ( $changed ) {
+				update_term_meta( (int) $term->term_id, $meta_key, array_values( $next ) );
+			}
+		}
 	}
 
 	/**
