@@ -8,6 +8,11 @@
  * Simple type defaults (empty meta → ensure_validators):
  *   int → integer_shape, double → number_shape, email → email_shape,
  *   char → char_shape, date → date_shape, media → media_shape.
+ *   Optional bounds (addable): int_min / int_max / double_min / double_max
+ *   Optional length (addable on text/textarea): text_min_length / text_max_length
+ *   Optional charset (addable on char/text/textarea): charset_range / charset_allowlist / charset_regex
+ *     (params.value string — ranges `a-z,A-Z,0-9`, allowlist `a,b,c`, regex `[0-9a-z]`)
+ *   Numeric bounds/length store one threshold in params.value (seed min=0 max=100).
  *   text / textarea / bool → none (optional builtins remain addable).
  *
  * @package WP_Taxonomy_Tree
@@ -28,15 +33,32 @@ final class Validator {
 	 */
 	private const BUILTIN = array(
 		'integer_shape' => array( 'int' ),
+		'int_min'       => array( 'int' ),
+		'int_max'       => array( 'int' ),
 		'number_shape'  => array( 'double' ),
+		'double_min'    => array( 'double' ),
+		'double_max'    => array( 'double' ),
 		'bool_shape'    => array( 'bool' ), /* optional — no type default */
 		'email_shape'   => array( 'email' ),
-		'text_shape'    => array( 'text', 'textarea' ), /* optional — no type default */
-		'char_shape'    => array( 'char' ),
+		'text_shape'       => array( 'text', 'textarea' ), /* optional — no type default */
+		'text_min_length'  => array( 'text', 'textarea' ),
+		'text_max_length'  => array( 'text', 'textarea' ),
+		'char_shape'       => array( 'char' ),
+		'charset_range'     => array( 'char', 'text', 'textarea' ),
+		'charset_allowlist' => array( 'char', 'text', 'textarea' ),
+		'charset_regex'     => array( 'char', 'text', 'textarea' ),
 		'date_shape'    => array( 'date' ),
 		'media_shape'   => array( 'media' ),
 		'expression'    => array(), /* any type — instance needs expression */
 	);
+
+	/** Bound / length validators store one numeric threshold in params.value. */
+	private const BOUND_IDS = array( 'int_min', 'int_max', 'double_min', 'double_max' );
+
+	private const LENGTH_IDS = array( 'text_min_length', 'text_max_length' );
+
+	/** Charset validators store a string spec in params.value. */
+	private const CHARSET_IDS = array( 'charset_range', 'charset_allowlist', 'charset_regex' );
 
 	/**
 	 * Default builtin id per type key (absent = no default).
@@ -81,7 +103,7 @@ final class Validator {
 
 	/**
 	 * @param array<string, mixed> $row Raw entry.
-	 * @return array{id:string,errorText:string,expression?:string,isDefault?:bool,fixes?:list<array<string,mixed>>}|null
+	 * @return array{id:string,errorText:string,expression?:string,params?:array{value:int|float},isDefault?:bool,fixes?:list<array<string,mixed>>}|null
 	 */
 	public static function normalize_entry( array $row ): ?array {
 		$id = strtolower( trim( (string) ( $row['id'] ?? '' ) ) );
@@ -106,11 +128,123 @@ final class Validator {
 			}
 			$entry['expression'] = $expr;
 		}
+		if ( self::is_param_threshold_id( $id ) ) {
+			$bound = self::bound_value_from_row( $id, $row );
+			if ( null !== $bound ) {
+				$entry['params'] = array( 'value' => $bound );
+			}
+		}
+		if ( self::is_charset_id( $id ) ) {
+			$spec = self::string_param_from_row( $row );
+			if ( null !== $spec && '' !== $spec ) {
+				$entry['params'] = array( 'value' => $spec );
+			}
+		}
 		$fixes = $row['fixes'] ?? null;
 		if ( is_array( $fixes ) && $fixes ) {
 			$entry['fixes'] = self::normalize_fixes( $fixes );
 		}
 		return $entry;
+	}
+
+	public static function is_bound_id( string $id ): bool {
+		return in_array( strtolower( trim( $id ) ), self::BOUND_IDS, true );
+	}
+
+	public static function is_length_id( string $id ): bool {
+		return in_array( strtolower( trim( $id ) ), self::LENGTH_IDS, true );
+	}
+
+	public static function is_charset_id( string $id ): bool {
+		return in_array( strtolower( trim( $id ) ), self::CHARSET_IDS, true );
+	}
+
+	/** Bound or length — one numeric params.value threshold. */
+	public static function is_param_threshold_id( string $id ): bool {
+		return self::is_bound_id( $id ) || self::is_length_id( $id );
+	}
+
+	/** Any validator that stores a Bound-column params.value (numeric or string). */
+	public static function is_param_value_id( string $id ): bool {
+		return self::is_param_threshold_id( $id ) || self::is_charset_id( $id );
+	}
+
+	/**
+	 * Default Bound-column seed when adding a param validator.
+	 *
+	 * @return int|float|string
+	 */
+	public static function default_param_value( string $id ) {
+		$id = strtolower( trim( $id ) );
+		if ( 'charset_range' === $id ) {
+			return 'a-z';
+		}
+		if ( 'charset_allowlist' === $id ) {
+			return 'a,b,c';
+		}
+		if ( 'charset_regex' === $id ) {
+			return '[a-zA-Z0-9]';
+		}
+		return ( false !== strpos( $id, '_max' ) ) ? 100 : 0;
+	}
+
+	/**
+	 * String params.value for charset validators.
+	 *
+	 * @param array<string, mixed> $row Raw entry.
+	 */
+	public static function string_param_from_row( array $row ): ?string {
+		$params = ( isset( $row['params'] ) && is_array( $row['params'] ) ) ? $row['params'] : array();
+		$raw    = null;
+		if ( array_key_exists( 'value', $params ) ) {
+			$raw = $params['value'];
+		} elseif ( array_key_exists( 'value', $row ) ) {
+			$raw = $row['value'];
+		} elseif ( array_key_exists( 'pattern', $params ) ) {
+			$raw = $params['pattern'];
+		} elseif ( array_key_exists( 'pattern', $row ) ) {
+			$raw = $row['pattern'];
+		}
+		if ( null === $raw ) {
+			return null;
+		}
+		$s = trim( (string) $raw );
+		return '' === $s ? null : $s;
+	}
+
+	/**
+	 * Resolve bound threshold from entry / params (int_* → int, double_* → float).
+	 *
+	 * @param array<string, mixed> $row Raw entry.
+	 * @return int|float|null
+	 */
+	public static function bound_value_from_row( string $id, array $row ) {
+		$id     = strtolower( trim( $id ) );
+		$params = ( isset( $row['params'] ) && is_array( $row['params'] ) ) ? $row['params'] : array();
+		$raw    = null;
+		if ( array_key_exists( 'value', $params ) ) {
+			$raw = $params['value'];
+		} elseif ( array_key_exists( 'value', $row ) ) {
+			$raw = $row['value'];
+		} elseif ( ( str_ends_with( $id, '_min' ) || str_ends_with( $id, '_min_length' ) ) && array_key_exists( 'min', $row ) ) {
+			$raw = $row['min'];
+		} elseif ( ( str_ends_with( $id, '_max' ) || str_ends_with( $id, '_max_length' ) ) && array_key_exists( 'max', $row ) ) {
+			$raw = $row['max'];
+		} elseif ( ( str_ends_with( $id, '_min' ) || str_ends_with( $id, '_min_length' ) ) && array_key_exists( 'min', $params ) ) {
+			$raw = $params['min'];
+		} elseif ( ( str_ends_with( $id, '_max' ) || str_ends_with( $id, '_max_length' ) ) && array_key_exists( 'max', $params ) ) {
+			$raw = $params['max'];
+		} elseif ( self::is_length_id( $id ) && array_key_exists( 'length', $params ) ) {
+			$raw = $params['length'];
+		}
+		if ( null === $raw || '' === $raw || ( is_string( $raw ) && ! is_numeric( trim( $raw ) ) ) ) {
+			return null;
+		}
+		/* Length + int bounds are whole numbers; double keeps float. */
+		if ( str_starts_with( $id, 'double_' ) ) {
+			return (float) $raw;
+		}
+		return (int) $raw;
 	}
 
 	/**
@@ -186,11 +320,20 @@ final class Validator {
 		$id  = strtolower( trim( $validator_id ) );
 		$map = array(
 			'integer_shape' => __( 'Enter a whole number.', 'wp-taxonomy-tree' ),
-			'number_shape'  => __( 'Enter a number.', 'wp-taxonomy-tree' ),
-			'bool_shape'    => __( 'Enter a boolean value.', 'wp-taxonomy-tree' ),
-			'email_shape'   => __( 'Enter a valid email address.', 'wp-taxonomy-tree' ),
-			'text_shape'    => __( 'Enter text.', 'wp-taxonomy-tree' ),
-			'char_shape'    => __( 'Enter exactly one character.', 'wp-taxonomy-tree' ),
+			'int_min'          => __( 'Value is below the minimum.', 'wp-taxonomy-tree' ),
+			'int_max'          => __( 'Value is above the maximum.', 'wp-taxonomy-tree' ),
+			'number_shape'     => __( 'Enter a number.', 'wp-taxonomy-tree' ),
+			'double_min'       => __( 'Value is below the minimum.', 'wp-taxonomy-tree' ),
+			'double_max'       => __( 'Value is above the maximum.', 'wp-taxonomy-tree' ),
+			'bool_shape'       => __( 'Enter a boolean value.', 'wp-taxonomy-tree' ),
+			'email_shape'      => __( 'Enter a valid email address.', 'wp-taxonomy-tree' ),
+			'text_shape'       => __( 'Enter text.', 'wp-taxonomy-tree' ),
+			'text_min_length'  => __( 'Text is shorter than the minimum length.', 'wp-taxonomy-tree' ),
+			'text_max_length'  => __( 'Text is longer than the maximum length.', 'wp-taxonomy-tree' ),
+			'char_shape'       => __( 'Enter exactly one character.', 'wp-taxonomy-tree' ),
+			'charset_range'     => __( 'Value contains characters outside the allowed range(s).', 'wp-taxonomy-tree' ),
+			'charset_allowlist' => __( 'Value contains characters that are not in the allowlist.', 'wp-taxonomy-tree' ),
+			'charset_regex'     => __( 'Value does not match the allowed pattern.', 'wp-taxonomy-tree' ),
 			'date_shape'    => __( 'Enter a valid date.', 'wp-taxonomy-tree' ),
 			'media_shape'   => __( 'Enter a media attachment, URL, or media reference.', 'wp-taxonomy-tree' ),
 			'expression'    => __( 'Value does not satisfy the expression.', 'wp-taxonomy-tree' ),
@@ -202,11 +345,20 @@ final class Validator {
 		$id  = strtolower( trim( $validator_id ) );
 		$map = array(
 			'integer_shape' => __( 'Integer shape', 'wp-taxonomy-tree' ),
-			'number_shape'  => __( 'Number shape', 'wp-taxonomy-tree' ),
-			'bool_shape'    => __( 'Boolean shape', 'wp-taxonomy-tree' ),
-			'email_shape'   => __( 'Email shape', 'wp-taxonomy-tree' ),
-			'text_shape'    => __( 'Text shape', 'wp-taxonomy-tree' ),
-			'char_shape'    => __( 'Single character', 'wp-taxonomy-tree' ),
+			'int_min'          => __( 'Int min', 'wp-taxonomy-tree' ),
+			'int_max'          => __( 'Int max', 'wp-taxonomy-tree' ),
+			'number_shape'     => __( 'Number shape', 'wp-taxonomy-tree' ),
+			'double_min'       => __( 'Double min', 'wp-taxonomy-tree' ),
+			'double_max'       => __( 'Double max', 'wp-taxonomy-tree' ),
+			'bool_shape'       => __( 'Boolean shape', 'wp-taxonomy-tree' ),
+			'email_shape'      => __( 'Email shape', 'wp-taxonomy-tree' ),
+			'text_shape'       => __( 'Text shape', 'wp-taxonomy-tree' ),
+			'text_min_length'  => __( 'Text min length', 'wp-taxonomy-tree' ),
+			'text_max_length'  => __( 'Text max length', 'wp-taxonomy-tree' ),
+			'char_shape'       => __( 'Single character', 'wp-taxonomy-tree' ),
+			'charset_range'     => __( 'Charset range', 'wp-taxonomy-tree' ),
+			'charset_allowlist' => __( 'Charset allowlist', 'wp-taxonomy-tree' ),
+			'charset_regex'     => __( 'Charset regex', 'wp-taxonomy-tree' ),
 			'date_shape'    => __( 'Date shape', 'wp-taxonomy-tree' ),
 			'media_shape'   => __( 'Media shape', 'wp-taxonomy-tree' ),
 			'expression'    => __( 'Expression', 'wp-taxonomy-tree' ),
@@ -303,8 +455,36 @@ final class Validator {
 			case 'integer_shape':
 				$ok = (bool) preg_match( '/^-?\d+$/', $s );
 				break;
+			case 'int_min':
+			case 'int_max':
+				$bound = self::bound_value_from_row( $id, $opts );
+				if ( null === $bound ) {
+					$ok = true; /* bound not configured yet */
+					break;
+				}
+				if ( ! preg_match( '/^-?\d+$/', $s ) ) {
+					$ok = false;
+					break;
+				}
+				$n  = (int) $s;
+				$ok = ( 'int_min' === $id ) ? ( $n >= (int) $bound ) : ( $n <= (int) $bound );
+				break;
 			case 'number_shape':
 				$ok = (bool) preg_match( '/^-?\d+(\.\d+)?$/', $s ) && is_finite( (float) $s );
+				break;
+			case 'double_min':
+			case 'double_max':
+				$bound = self::bound_value_from_row( $id, $opts );
+				if ( null === $bound ) {
+					$ok = true;
+					break;
+				}
+				if ( ! preg_match( '/^-?\d+(\.\d+)?$/', $s ) || ! is_finite( (float) $s ) ) {
+					$ok = false;
+					break;
+				}
+				$n  = (float) $s;
+				$ok = ( 'double_min' === $id ) ? ( $n >= (float) $bound ) : ( $n <= (float) $bound );
 				break;
 			case 'bool_shape':
 				$ok = in_array( strtolower( $s ), array( '0', '1', 'true', 'false', 'yes', 'no' ), true );
@@ -315,8 +495,36 @@ final class Validator {
 			case 'text_shape':
 				$ok = true;
 				break;
+			case 'text_min_length':
+			case 'text_max_length':
+				$bound = self::bound_value_from_row( $id, $opts );
+				if ( null === $bound ) {
+					$ok = true;
+					break;
+				}
+				$len = self::string_length( $s );
+				$ok  = ( 'text_min_length' === $id )
+					? ( $len >= (int) $bound )
+					: ( $len <= (int) $bound );
+				break;
 			case 'char_shape':
 				$ok = self::is_single_character( $s );
+				break;
+			case 'charset_range':
+			case 'charset_allowlist':
+			case 'charset_regex':
+				$spec = self::string_param_from_row( $opts );
+				if ( null === $spec || '' === $spec ) {
+					$ok = true;
+					break;
+				}
+				if ( 'charset_range' === $id ) {
+					$ok = self::value_matches_charset_range( $s, $spec );
+				} elseif ( 'charset_allowlist' === $id ) {
+					$ok = self::value_matches_charset_allowlist( $s, $spec );
+				} else {
+					$ok = self::value_matches_charset_regex( $s, $spec );
+				}
 				break;
 			case 'date_shape':
 				$ok = self::is_flexible_date_value( $s );
@@ -349,6 +557,20 @@ final class Validator {
 	}
 
 	/**
+	 * Unicode-aware string length (grapheme when available).
+	 */
+	public static function string_length( string $value ): int {
+		if ( function_exists( 'grapheme_strlen' ) ) {
+			$len = grapheme_strlen( $value );
+			return false === $len ? 0 : (int) $len;
+		}
+		if ( function_exists( 'mb_strlen' ) ) {
+			return (int) mb_strlen( $value, 'UTF-8' );
+		}
+		return strlen( $value );
+	}
+
+	/**
 	 * Exactly one Unicode character (grapheme when intl available).
 	 */
 	public static function is_single_character( string $value ): bool {
@@ -356,13 +578,247 @@ final class Validator {
 		if ( '' === $value ) {
 			return false;
 		}
-		if ( function_exists( 'grapheme_strlen' ) ) {
-			return 1 === grapheme_strlen( $value );
+		return 1 === self::string_length( $value );
+	}
+
+	/**
+	 * Split into Unicode grapheme clusters (fallback: UTF-8 codepoints).
+	 *
+	 * @return list<string>
+	 */
+	public static function split_graphemes( string $value ): array {
+		$value = (string) $value;
+		if ( '' === $value ) {
+			return array();
 		}
-		if ( function_exists( 'mb_strlen' ) ) {
-			return 1 === mb_strlen( $value, 'UTF-8' );
+		if ( function_exists( 'grapheme_strlen' ) && function_exists( 'grapheme_extract' ) ) {
+			$out = array();
+			$len = grapheme_strlen( $value );
+			if ( false === $len ) {
+				$len = 0;
+			}
+			$offset = 0;
+			for ( $i = 0; $i < $len; $i++ ) {
+				$g = grapheme_extract( $value, 1, GRAPHEME_EXTR_COUNT, $offset, $offset );
+				if ( false === $g || '' === $g ) {
+					break;
+				}
+				$out[] = $g;
+			}
+			return $out;
 		}
-		return 1 === strlen( $value );
+		if ( function_exists( 'mb_str_split' ) ) {
+			$parts = mb_str_split( $value, 1, 'UTF-8' );
+			return is_array( $parts ) ? $parts : array();
+		}
+		$parts = preg_split( '//u', $value, -1, PREG_SPLIT_NO_EMPTY );
+		return is_array( $parts ) ? $parts : array();
+	}
+
+	/**
+	 * First Unicode code point of a grapheme/string, or null.
+	 */
+	public static function first_codepoint( string $value ): ?int {
+		$value = (string) $value;
+		if ( '' === $value ) {
+			return null;
+		}
+		if ( function_exists( 'mb_ord' ) ) {
+			$cp = mb_ord( $value, 'UTF-8' );
+			return false === $cp ? null : (int) $cp;
+		}
+		$u = unpack( 'N', mb_convert_encoding( mb_substr( $value, 0, 1, 'UTF-8' ), 'UCS-4BE', 'UTF-8' ) );
+		if ( ! is_array( $u ) || ! isset( $u[1] ) ) {
+			return null;
+		}
+		return (int) $u[1];
+	}
+
+	/**
+	 * Parse one range token: `a-z`, `0-9`, `U+0041-U+005A`, or a single grapheme.
+	 *
+	 * @return array{0:int,1:int}|null
+	 */
+	public static function parse_range_token( string $token ): ?array {
+		$token = trim( $token );
+		if ( '' === $token ) {
+			return null;
+		}
+		if ( preg_match( '/^U\+([0-9A-Fa-f]{1,6})\s*-\s*U\+([0-9A-Fa-f]{1,6})$/', $token, $m ) ) {
+			$lo = hexdec( $m[1] );
+			$hi = hexdec( $m[2] );
+			if ( $lo > $hi ) {
+				$tmp = $lo;
+				$lo  = $hi;
+				$hi  = $tmp;
+			}
+			return array( $lo, $hi );
+		}
+		/* Single codepoint U+xxxx */
+		if ( preg_match( '/^U\+([0-9A-Fa-f]{1,6})$/', $token, $m ) ) {
+			$cp = hexdec( $m[1] );
+			return array( $cp, $cp );
+		}
+		$dash = function_exists( 'mb_strpos' )
+			? mb_strpos( $token, '-', 0, 'UTF-8' )
+			: strpos( $token, '-' );
+		if ( false !== $dash && $dash > 0 ) {
+			$left  = function_exists( 'mb_substr' )
+				? mb_substr( $token, 0, (int) $dash, 'UTF-8' )
+				: substr( $token, 0, (int) $dash );
+			$right = function_exists( 'mb_substr' )
+				? mb_substr( $token, (int) $dash + 1, null, 'UTF-8' )
+				: substr( $token, (int) $dash + 1 );
+			$lo = self::first_codepoint( (string) $left );
+			$hi = self::first_codepoint( (string) $right );
+			if ( null === $lo || null === $hi ) {
+				return null;
+			}
+			if ( $lo > $hi ) {
+				$tmp = $lo;
+				$lo  = $hi;
+				$hi  = $tmp;
+			}
+			return array( $lo, $hi );
+		}
+		$cp = self::first_codepoint( $token );
+		return null === $cp ? null : array( $cp, $cp );
+	}
+
+	/**
+	 * @return list<array{0:int,1:int}>
+	 */
+	public static function parse_charset_ranges( string $spec ): array {
+		$parts = preg_split( '/\s*,\s*/', trim( $spec ) );
+		if ( ! is_array( $parts ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $parts as $part ) {
+			$range = self::parse_range_token( (string) $part );
+			if ( null !== $range ) {
+				$out[] = $range;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Every grapheme’s codepoint must fall in at least one range (`a-z,A-Z,0-9`).
+	 */
+	public static function value_matches_charset_range( string $value, string $spec ): bool {
+		$ranges = self::parse_charset_ranges( $spec );
+		if ( array() === $ranges ) {
+			return false;
+		}
+		$chars = self::split_graphemes( $value );
+		if ( array() === $chars ) {
+			return false;
+		}
+		foreach ( $chars as $ch ) {
+			$cp = self::first_codepoint( $ch );
+			if ( null === $cp ) {
+				return false;
+			}
+			$ok = false;
+			foreach ( $ranges as $range ) {
+				if ( $cp >= $range[0] && $cp <= $range[1] ) {
+					$ok = true;
+					break;
+				}
+			}
+			if ( ! $ok ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Comma-separated allowlist of graphemes (`a,b,c,ä`). Use `\,` for a literal comma.
+	 */
+	public static function value_matches_charset_allowlist( string $value, string $spec ): bool {
+		$allowed = self::parse_charset_allowlist( $spec );
+		if ( array() === $allowed ) {
+			return false;
+		}
+		$map = array();
+		foreach ( $allowed as $ch ) {
+			$map[ $ch ] = true;
+		}
+		$chars = self::split_graphemes( $value );
+		if ( array() === $chars ) {
+			return false;
+		}
+		foreach ( $chars as $ch ) {
+			if ( empty( $map[ $ch ] ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public static function parse_charset_allowlist( string $spec ): array {
+		$spec = (string) $spec;
+		if ( '' === trim( $spec ) ) {
+			return array();
+		}
+		/* Split on commas not preceded by backslash. */
+		$parts = preg_split( '/(?<!\\\\),/', $spec );
+		if ( ! is_array( $parts ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $parts as $part ) {
+			$part = str_replace( '\\,', ',', trim( (string) $part ) );
+			if ( '' === $part ) {
+				continue;
+			}
+			$gs = self::split_graphemes( $part );
+			if ( 1 === count( $gs ) ) {
+				$out[] = $gs[0];
+			} elseif ( count( $gs ) > 1 ) {
+				/* Multi-char token: allow each grapheme. */
+				foreach ( $gs as $g ) {
+					$out[] = $g;
+				}
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Full-string regex match. Pattern may omit delimiters; wraps with ^(?:…)$ when unanchored.
+	 */
+	public static function value_matches_charset_regex( string $value, string $pattern ): bool {
+		$pattern = trim( $pattern );
+		if ( '' === $pattern ) {
+			return false;
+		}
+		/* Strip /…/ or #…# wrappers when present. */
+		if ( preg_match( '/^(.)(.*)\1([imsxuADSUXJ]*)$/s', $pattern, $m ) && false === strpos( $m[1], '\\' ) ) {
+			$body  = $m[2];
+			$flags = $m[3];
+		} else {
+			$body  = $pattern;
+			$flags = 'u';
+		}
+		if ( '' === $flags || false === strpos( $flags, 'u' ) ) {
+			$flags .= 'u';
+		}
+		if ( ! str_starts_with( $body, '^' ) || ! str_ends_with( $body, '$' ) ) {
+			$body = '^(?:' . $body . ')$';
+		}
+		$delim = "\x01";
+		$re    = $delim . $body . $delim . $flags;
+		$set   = preg_match( $re, $value );
+		if ( false === $set ) {
+			return false;
+		}
+		return 1 === $set;
 	}
 
 	/**

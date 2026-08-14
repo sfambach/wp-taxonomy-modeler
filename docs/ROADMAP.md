@@ -2,9 +2,9 @@
 
 > Living delivery roadmap. Keep this aligned with [`docs/plans/project-plan.md`](plans/project-plan.md).
 
-Last synced from plan version **0.7.97-plan** (2026-08-09).
+Last synced from plan version **0.7.124-plan** (2026-08-12).
 
-**Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI. **Q123 locked** (Relation-only attributes, `Settings.data`/`view`, recursive walk) — see [`DEVELOPER-ATTRIBUTE-MODEL.md`](DEVELOPER-ATTRIBUTE-MODEL.md). Plugin ≈ **`0.0.414`** (scaffold still has slots — migrate debt). Release-1 target = BOM end-to-end (**`1.0.0`**). Status stays scaffolding — not Phase-1 green light.
+**Current mode: scaffolding** — early runnable admin tree on **`wtt_fs` (Fallstudie) only**; **`wtt_tree` / BOM retired** from product UI. **Q123 locked** — see [`DEVELOPER-ATTRIBUTE-MODEL.md`](DEVELOPER-ATTRIBUTE-MODEL.md). **Settings UI parity** ([`settings-ui-parity.md`](plans/settings-ui-parity.md)): one Walk surface; nested table + deferred Choices ≈ **0.0.531**; presentationContext/compute into walk next; Preferred on type node. Plugin ≈ **`0.0.531`**. Q123 modeling UAT still open. Release-1 target = BOM end-to-end (**`1.0.0`**). Status stays scaffolding — not Phase-1 green light.
 
 See plan **[Catch-up desk](plans/project-plan.md#catch-up-desk--2026-08-09-1400)** for the short locked vs open board.
 
@@ -31,7 +31,7 @@ See plan **[Catch-up desk](plans/project-plan.md#catch-up-desk--2026-08-09-1400)
 | **Q54 / Q35 / Q74:** hierarchy = `child_of`; RelationTypes-Ast; Relation picker CRUD | Done (planning); scaffold ≈ `0.0.140` |
 | **Q76 / Q77:** catalog type inherit interim; `_wtt_is_datatype` debt; local `is_abstract`; chooser = nodes (Q92) | Done (planning); **Q76 superseded for hierarchy by Q88**; chooser gate revised **0.7.34**; catalog lock → **`is_template`** (**0.7.35**) |
 | **Q88:** hierarchy datatype = parent (root **Knoten** seed-only); `has_type` except root = father; attrs keep own types | Done (planning); scaffold ≈ `0.0.358` |
-| **Q90:** Complex `enum` / `list` / `table` parked | Done (docs); CatalogChoice depth UI noted; scaffold leftovers until removal |
+| **Q90:** Complex `enum` / `list` / `table` parked | Done; **≈ 0.0.463** Fallstudie soft-trash of `enum`/`list`/`node_*`; legacy `table` for BOM only |
 | **Q91:** Registry + many type renderers (node ≠ one renderer) | Done (docs) |
 | **Q92:** Catalog bindings (`chooser_root` + `chooser_focus`); resolve by **id** only; **#6** special leaves/branches in settings | Done (≈ `0.0.264`); name fallback = debt; plan **0.7.37** |
 | **Recursive boxed paint** (Mult → list/collection frame; Preferred = unit; recurse) | Done (docs; plan **0.7.51**; Object View Mult>1 related ≈ `0.0.372`) |
@@ -64,6 +64,7 @@ See plan **[Catch-up desk](plans/project-plan.md#catch-up-desk--2026-08-09-1400)
 | **Q116** Required list-select sole option → auto + gray | **Decided** — optional (0-lower Mult) stays open ≈ `0.0.392` |
 | **Q117** Presentation texts + icon off node | **Decided** — `wtt_node_presentation` store; admin list ≈ `0.0.393` |
 | **Q118** Detail: Node properties vs Display | **Decided** — foldable Presentation next |
+| **Q126** Config page = vertical box stack | **Decided** — `WTTConfigRender.renderPage` ≈ `0.0.481` |
 | **Q120** Quantity anatomy + unit rules | **Decided** — Value+Prefix?+Unit; rules on unit |
 | **Q121** Money/physical canonical vs entry store | **Decided lean** — money EUR + FX snapshot |
 | **Q122** Type properties / composed component settings | **Decided** — inherit override everywhere; composed = dynamic component surfaces |

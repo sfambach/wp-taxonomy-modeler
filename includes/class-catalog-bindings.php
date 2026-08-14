@@ -90,8 +90,11 @@ final class Catalog_Bindings {
 			'bool',
 			'email',
 			'date',
+			'time',
+			'datetime',
+			'color',
 			'media',
-			'display_node_name',
+			'node_presentation',
 			'quantity',
 			'node_ref',
 		);
@@ -489,7 +492,10 @@ final class Catalog_Bindings {
 		}
 
 		$simple = self::resolve( $taxonomy, self::KEY_SIMPLE );
-		if ( $simple <= 0 ) {
+		$canonical_simple = self::canonical_simple_term_id( $taxonomy );
+		if ( $canonical_simple > 0 ) {
+			$simple = $canonical_simple;
+		} elseif ( $simple <= 0 || self::is_legacy_simple_catalog( $taxonomy, $simple ) ) {
 			$simple = self::find_term_by_paths(
 				$taxonomy,
 				array(
@@ -621,8 +627,68 @@ final class Catalog_Bindings {
 	}
 
 	/**
+	 * Canonical Fallstudie Simple catalog (Data Types / Datentypen), never legacy
+	 * “Simple Datatypes” sibling under Definition.
+	 */
+	public static function canonical_simple_term_id( string $taxonomy ): int {
+		if ( Taxonomy::FS === $taxonomy ) {
+			$id = self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'Fallstudie', 'Definition', 'Data Types', 'Simple' ),
+					array( 'Fallstudie', 'Definition', 'Datentypen', 'Simple' ),
+				)
+			);
+			if ( $id > 0 ) {
+				return $id;
+			}
+		}
+		if ( Taxonomy::TREE === $taxonomy ) {
+			$id = self::find_term_by_paths(
+				$taxonomy,
+				array(
+					array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Simple' ),
+				)
+			);
+			if ( $id > 0 ) {
+				return $id;
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Whether a Simple-folder term is the legacy Definition/Simple Datatypes catalog.
+	 */
+	public static function is_legacy_simple_catalog( string $taxonomy, int $term_id ): bool {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 ) {
+			return false;
+		}
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return false;
+		}
+		$name = strtolower( trim( (string) $term->name ) );
+		if ( 'simple datatypes' === $name || 'simple datatype' === $name ) {
+			return true;
+		}
+		/* Definition/Simple (not under Data Types). */
+		if ( 'simple' === $name ) {
+			$parent = get_term( (int) $term->parent, $taxonomy );
+			if ( $parent instanceof \WP_Term && 'Definition' === (string) $parent->name ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Seed / repair `builtin.<registryId>` → Simple/Complex leaf term ids (Q96).
 	 * Idempotent. Seed may match leaf names once; runtime resolve uses ids.
+	 *
+	 * Always prefers Data Types/Simple over a stale KEY_SIMPLE binding to the
+	 * legacy “Simple Datatypes” folder (that catalog never received node_presentation).
 	 *
 	 * @return array<string, int> Full taxonomy binding map after ensure.
 	 */
@@ -631,8 +697,15 @@ final class Catalog_Bindings {
 			return array();
 		}
 
-		$simple = self::resolve( $taxonomy, self::KEY_SIMPLE );
-		if ( $simple <= 0 ) {
+		$map = self::for_taxonomy( $taxonomy );
+
+		$canonical_simple = self::canonical_simple_term_id( $taxonomy );
+		$simple           = self::resolve( $taxonomy, self::KEY_SIMPLE );
+		if ( $canonical_simple > 0 ) {
+			if ( $simple <= 0 || self::is_legacy_simple_catalog( $taxonomy, $simple ) || $simple !== $canonical_simple ) {
+				$simple = $canonical_simple;
+			}
+		} elseif ( $simple <= 0 ) {
 			$simple = self::find_term_by_paths(
 				$taxonomy,
 				array(
@@ -641,6 +714,9 @@ final class Catalog_Bindings {
 					array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Simple' ),
 				)
 			);
+		}
+		if ( $simple > 0 ) {
+			$map[ self::KEY_SIMPLE ] = $simple;
 		}
 
 		$complex = self::resolve( $taxonomy, self::KEY_COMPLEX );
@@ -654,18 +730,33 @@ final class Catalog_Bindings {
 				)
 			);
 		}
+		if ( $complex > 0 ) {
+			$map[ self::KEY_COMPLEX ] = $complex;
+		}
 
-		$map = self::for_taxonomy( $taxonomy );
 		foreach ( self::builtin_registry_ids() as $registry_id ) {
-			$key = self::builtin_key( $registry_id );
-			if ( self::resolve( $taxonomy, $key ) > 0 ) {
-				$map[ $key ] = self::resolve( $taxonomy, $key );
+			$key     = self::builtin_key( $registry_id );
+			$bound   = isset( $map[ $key ] ) ? absint( $map[ $key ] ) : 0;
+			$need    = self::find_builtin_leaf_term( $taxonomy, $registry_id, $simple, $complex );
+			$rebind  = false;
+			if ( $need <= 0 ) {
 				continue;
 			}
-
-			$term_id = self::find_builtin_leaf_term( $taxonomy, $registry_id, $simple, $complex );
-			if ( $term_id > 0 ) {
-				$map[ $key ] = $term_id;
+			if ( $bound <= 0 ) {
+				$rebind = true;
+			} elseif ( $bound !== $need ) {
+				/*
+				 * Stale binding: leaf under legacy Simple Datatypes while canonical
+				 * Data Types/Simple has the SoT leaf (e.g. node_presentation).
+				 */
+				$bound_term = get_term( $bound, $taxonomy );
+				$parent_id  = $bound_term instanceof \WP_Term ? (int) $bound_term->parent : 0;
+				if ( $simple > 0 && $parent_id !== $simple ) {
+					$rebind = true;
+				}
+			}
+			if ( $rebind ) {
+				$map[ $key ] = $need;
 			}
 		}
 
@@ -691,8 +782,11 @@ final class Catalog_Bindings {
 			'bool',
 			'email',
 			'date',
+			'time',
+			'datetime',
+			'color',
 			'media',
-			'display_node_name',
+			'node_presentation',
 		);
 
 		if ( in_array( $registry_id, $simple_ids, true ) ) {
@@ -705,9 +799,10 @@ final class Catalog_Bindings {
 			}
 			/* Seed aliases (debt — write binding once, then resolve by id). */
 			$aliases = array(
-				'int'  => array( 'integer' ),
-				'bool' => array( 'boolean' ),
-				'double' => array( 'float', 'number' ),
+				'int'               => array( 'integer' ),
+				'bool'              => array( 'boolean' ),
+				'double'            => array( 'float', 'number' ),
+				'node_presentation' => array( 'display_node_name' ),
 			);
 			if ( isset( $aliases[ $registry_id ] ) ) {
 				foreach ( $aliases[ $registry_id ] as $alias ) {

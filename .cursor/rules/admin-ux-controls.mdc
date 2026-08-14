@@ -38,17 +38,26 @@ Column order example (Attributes):
 - Match WordPress admin chrome (neutral track, `#2271b1` when on).
 - Radios/checkboxes only when the choice is **not** a binary on/off.
 
+## Flags strip (node / set / media / attribute chrome)
+
+- **One** flags renderer: `WTTSettingsRender.renderFlagsStrip` / `renderFlagsRow` (tree-admin: `renderFlagsStrip` / `renderNodeFlagsRow`).
+- Layout: **5 flags per row**, then wrap (`--wtt-flags-cols`, class `.wtt-settings-flags`).
+- Each flag = slide switch + label text — **never** checkboxes in a flags strip.
+- Prefer plain `{ label, checked, disabled, title, onChange }` descriptors; do not invent a second flags UI per panel.
+- Foundation for further node-config unification: `WTTSettingsRender.renderFormRow`.
+
 ## Default value (Festwert meta) / node pickers
 
-- UI label **Default value**; host attribute meta remains `_wtt_attribute_fixed_values` (Q106). Node Settings use the same label for `_wtt_fixed_*` seeds (**Q115**) — **grayed on builtin Simple** catalog leaves; editable on specializations / typed fields.
+- UI label **Default value**; own-attr SoT = Relation edge field `default` (OQ-W4 / Q106; own read edge-only ≈ 0.0.431); host `_wtt_attribute_fixed_values` = **inherited** name overrides only. Node Settings use the same label for `_wtt_fixed_*` seeds (**Q115**) — **grayed on builtin Simple** catalog leaves; editable on specializations / typed fields.
 - **Read-only** (not Fixed): slide switch in Attributes + Settings; **grayed** in Settings when the node is not an attribute slot (**Q115** / OQ-A3).
 - Scalar defaults use value entry; catalog defaults pick under the attribute’s type tree.
 - **CatalogChoice** (typed specialization under a type host — Q90; e.g. Währung → Euro/Dollar): max depth of the type’s choice subtree — **depth ≤ 1** → flat `<select>` / simple leaf list; **depth ≥ 2** → shared **node tree picker**. Default/Festwert seeds the selected value when present. Not catalog `enum`. Not automatic for every picker (deep taxonomy / model-binding may still prefer tree).
-- Multiplicity: `0..*` / `1..*` → multi-select; required `1` / `1..*` → **swap only** (no clear / no delete last).
-- **Sole required list-select (Q116):** If the control **must** have a value (no zero-lower Mult) and there is **exactly one** real option → auto-select and **gray/disable**. Several options → leave selectable. Optional Mult stays open even with one choice. Applies to Preferred, CatalogChoice, and other ListChooser/`<select>` surfaces.
+- Multiplicity: `0..*` / `1..*` → multi-select for Default; required many (`1..*`) → **swap only** (no clear all / no delete last). **Mult `1`:** no empty/`—` in Default ListChooser (must pick a real value; swap only). **Mult `0..1` / `0..*`:** empty/`—` **required** so Default can stay unset (Q116).
+- **Sole required list-select (Q116):** If the control **must** have a value (no zero-lower Mult) and there is **exactly one** real option → auto-select and **gray/disable**. Several options → leave selectable. Optional Mult stays open even with one choice and **must include a clear/empty option** (`—` / tooltip “No prefix” where relevant). Same law for Praefix / Unit prefix selects (Mult drives empty — not “Praefix always empty”). No sample fill for optional empty-capable Praefix. Applies to Preferred, CatalogChoice, Default, Binding, and other ListChooser/`<select>` surfaces.
 
 ## Do / don’t
 
+- **Default value** (node Settings): **Label → slide switch → field**. Field always visible; switch off → field grayed/disabled (not hidden). No radio pair for on/off.
 - **Do** keep Inherited / status columns read-only; Hide uses a slide switch (**default off**).
 - **Do** confirm destructive trash actions when deleting persisted data.
 - **Don’t** invent a second toggle style per panel; reuse `.wtt-switch`.

@@ -41,6 +41,10 @@ final class Tree_Model {
 			update_term_meta( $term_id, self::META_KEY_MODIFIED_BY, $uid );
 		}
 		update_term_meta( $term_id, self::META_KEY_MODIFIED_AT, time() );
+		/* Request memos must not survive host mutations in the same request. */
+		if ( class_exists( Attribute::class ) ) {
+			Attribute::bust_request_caches();
+		}
 	}
 
 	/**
@@ -128,6 +132,8 @@ final class Tree_Model {
 			return array();
 		}
 
+		Node_Type::repair_legacy_preferred_form_seeds( $taxonomy );
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => $taxonomy,
@@ -159,7 +165,16 @@ final class Tree_Model {
 
 		Trash::ensure_trash_node( $taxonomy );
 		Hidden_Nodes::ensure_bin( $taxonomy );
-		Attribute::migrate_detach_hierarchy( $taxonomy );
+		/*
+		 * One-shot: detach legacy attribute slots from host hierarchy.
+		 * Must not re-run on every tree fetch (AJAX save/reload) — that fights
+		 * live edits and can look like settings/attrs “reverting”.
+		 */
+		$detach_flag = 'wtt_migrated_detach_attr_hierarchy_' . sanitize_key( $taxonomy );
+		if ( '1' !== (string) get_option( $detach_flag, '' ) ) {
+			Attribute::migrate_detach_hierarchy( $taxonomy );
+			update_option( $detach_flag, '1', false );
+		}
 
 		$tree = self::nest( $taxonomy, $by_parent, 0 );
 		self::attach_model_data_counts( $taxonomy, $tree );
@@ -814,6 +829,7 @@ final class Tree_Model {
 			'setParent'   => Node_Type::get_set_parent( $taxonomy, (int) $term->term_id ),
 			'helpChildren'=> Node_Type::get_help_children( $taxonomy, (int) $term->term_id ),
 			'isBasiseinheitUnit' => Node_Type::is_basiseinheit_unit_node( $taxonomy, (int) $term->term_id ),
+			'isKonstantenHost'   => Node_Type::is_konstanten_child_list_host( $taxonomy, (int) $term->term_id ),
 			'prefixAllowlist'    => Node_Type::get_prefix_allowlist( $taxonomy, (int) $term->term_id ),
 			'prefixRootToSi'     => Node_Type::is_basiseinheit_unit_node( $taxonomy, (int) $term->term_id )
 				? Node_Type::get_prefix_root_to_si( (int) $term->term_id )
@@ -827,12 +843,20 @@ final class Tree_Model {
 			),
 			'mediaConfig'        => Node_Type::get_media_config_for_node( $taxonomy, (int) $term->term_id ),
 			'dateConfig'         => Node_Type::get_date_config_for_node( $taxonomy, (int) $term->term_id ),
+			'textareaConfig'     => Node_Type::get_textarea_config_for_node( $taxonomy, (int) $term->term_id ),
+			'presentationConfig' => Node_Type::get_presentation_config_for_node( $taxonomy, (int) $term->term_id ),
+			'presentation'       => class_exists( Node_Presentation::class )
+				? Node_Presentation::map_for_term_resolved( $taxonomy, (int) $term->term_id )
+				: array(),
 			'intConfig'          => Node_Type::get_int_config_for_node( $taxonomy, (int) $term->term_id ),
 			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, (int) $term->term_id ),
 			'validators'         => Node_Type::get_validators_for_node( $taxonomy, (int) $term->term_id ),
 			'preferredRender'    => Node_Type::get_preferred_render( (int) $term->term_id ),
-			'embedChoiceOptions' => ( Renderer::Embedded->value === Node_Type::get_preferred_render( (int) $term->term_id ) )
-				? Attribute::choice_options_under_type( $taxonomy, (int) $term->term_id )
+			'preferredRenderOwn' => Node_Type::get_own_preferred_render( (int) $term->term_id ),
+			'preferredRenderInherited' => ! Node_Type::has_own_preferred_render( (int) $term->term_id )
+				&& '' !== Node_Type::preferred_render_from_ancestors( (int) $term->term_id ),
+			'embedChoiceOptions' => class_exists( Attribute::class )
+				? Attribute::embed_choice_options_for_type( $taxonomy, (int) $term->term_id )
 				: array(),
 			'relationsStored'    => self::get_stored_relations_payload( $taxonomy, (int) $term->term_id ),
 			/*
@@ -843,18 +867,14 @@ final class Tree_Model {
 			'relationTypeTree'   => array(),
 			'relationTypeOptions'=> array(),
 			'relationMultiplicityOptions' => Relation::multiplicity_options(),
-			'attributes'  => Attribute::list( $taxonomy, (int) $term->term_id ),
-			'attributeValidation' => Attribute_Validator::validate(
-				$taxonomy,
-				(int) $term->term_id
-			),
+			'attributes'  => array(), /* filled below — single Attribute::list */
+			'attributeValidation' => null,
 			'attributeMoveChildren' => Attribute::list_eligible_move_children(
 				$taxonomy,
 				(int) $term->term_id
 			),
 			/* UR-S1: gate structural-change confirm when host has live instances. */
-			'hasModelInstances' => class_exists( Model_Data::class )
-				&& count( Model_Data::list( $taxonomy, (int) $term->term_id, false ) ) > 0,
+			'hasModelInstances' => false,
 			'modelVersion'      => class_exists( Model_Version::class )
 				? Model_Version::get( $taxonomy, (int) $term->term_id )
 				: 1,
@@ -870,23 +890,39 @@ final class Tree_Model {
 				: null,
 		);
 
+		$t0 = microtime( true );
+		/* One Attribute::list — validator + model-host checks reuse the rows (no N+1 re-decorate). */
+		$attrs = Attribute::list( $taxonomy, (int) $term->term_id );
+		$node['attributes']           = $attrs;
+		$node['attributeValidation']  = Attribute_Validator::validate_rows( $attrs );
+
 		/* Model_Data host label counts (attribute schema → Fill Model Data). */
-		$model_data_count  = null;
+		$model_data_count   = null;
 		$is_model_data_host = false;
+		$model_instances    = array();
 		if ( class_exists( Model_Data::class ) ) {
 			$visible_attrs = 0;
-			foreach ( $node['attributes'] as $attr_row ) {
+			foreach ( $attrs as $attr_row ) {
 				if ( is_array( $attr_row ) && empty( $attr_row['hidden'] ) ) {
 					++$visible_attrs;
 				}
 			}
 			if ( $visible_attrs > 0 ) {
 				$is_model_data_host = true;
-				$model_data_count   = count( Model_Data::list( $taxonomy, (int) $term->term_id, false ) );
+				$model_instances    = Model_Data::list( $taxonomy, (int) $term->term_id, false );
+				$model_data_count   = count( $model_instances );
 			}
 		}
-		$node['modelDataCount']  = $model_data_count;
-		$node['isModelDataHost'] = $is_model_data_host;
+		$node['hasModelInstances'] = $model_data_count > 0;
+		$node['modelDataCount']    = $model_data_count;
+		$node['isModelDataHost']   = $is_model_data_host;
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$node['_timing'] = array(
+				'getNodeAttrsMs' => (int) round( ( microtime( true ) - $t0 ) * 1000 ),
+				'attrCount'      => count( $attrs ),
+			);
+		}
 
 		if ( Trash::is_trash_node( (int) $term->term_id ) ) {
 			$node = array_merge( $node, Trash::trash_node_payload( $taxonomy, (int) $term->term_id ) );
@@ -909,9 +945,11 @@ final class Tree_Model {
 		$von_count = count( $von_rows );
 		foreach ( $von_rows as $edge ) {
 			$index = (int) ( $edge['index'] ?? 0 );
-			$von[] = array(
+			$row   = array(
 				'id'           => (string) ( $edge['id'] ?? '' ),
-				'type'         => $edge['typeName'],
+				'type'         => ! empty( $edge['typeLabel'] )
+					? (string) $edge['typeLabel']
+					: (string) ( $edge['typeName'] ?? '' ),
 				'typeKey'      => (string) ( $edge['typeKey'] ?? '' ),
 				'typeId'       => $edge['typeId'],
 				'otherId'      => $edge['toId'],
@@ -924,12 +962,35 @@ final class Tree_Model {
 				'canMoveUp'    => $index > 0,
 				'canMoveDown'  => $index < ( $von_count - 1 ),
 			);
+			if ( ! empty( $edge['typeLabel'] ) ) {
+				$row['typeLabel'] = (string) $edge['typeLabel'];
+			}
+			if ( ! empty( $edge['calcOp'] ) ) {
+				$row['calcOp'] = (string) $edge['calcOp'];
+			}
+			if ( ! empty( $edge['settings'] ) && is_array( $edge['settings'] ) ) {
+				$row['settings'] = $edge['settings'];
+			}
+			$name = Relation::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+			if ( Attribute::is_parked_table_band_edge( $taxonomy, $edge ) ) {
+				$row['parkedTableBand'] = true;
+				$row['protected']       = true;
+				$row['typeLocked']      = true;
+				$row['notes']           = __( 'Q90 parked table band (legacy) — not a product attribute', 'wp-taxonomy-tree' );
+				if ( '' === $name && ! empty( $edge['toName'] ) ) {
+					$name = Relation::normalize_edge_name( (string) $edge['toName'] );
+				}
+			}
+			if ( '' !== $name ) {
+				$row['name'] = $name;
+			}
+			$von[] = $row;
 		}
 		$an = array();
 		foreach ( Relation::list_incoming( $taxonomy, $term_id ) as $edge ) {
-			$an[] = array(
+			$row = array(
 				'id'           => (string) ( $edge['id'] ?? '' ),
-				'type'         => $edge['typeName'],
+				'type'         => Relation::type_key_label( (string) ( $edge['typeKey'] ?? $edge['typeName'] ?? '' ) ),
 				'typeKey'      => (string) ( $edge['typeKey'] ?? '' ),
 				'typeId'       => $edge['typeId'],
 				'otherId'      => $edge['fromId'],
@@ -939,6 +1000,29 @@ final class Tree_Model {
 				'protected'    => false,
 				'stored'       => true,
 			);
+			if ( Relation::is_calc_type_key( (string) ( $edge['typeKey'] ?? '' ) ) ) {
+				$row['calcOp']    = Relation::calc_op_from_edge( $edge );
+				$row['typeLabel'] = Relation::type_key_label( (string) ( $edge['typeKey'] ?? '' ) );
+			}
+			$name = Relation::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+			if ( '' !== $name ) {
+				$row['name'] = $name;
+			}
+			/*
+			 * Incoming to a band slot: mark when this node is the parked band
+			 * (viewing Zeile/Kopf/Fuss itself). Outgoing flag uses toId.
+			 */
+			$from_edge = array(
+				'toId'    => $term_id,
+				'typeKey' => (string) ( $edge['typeKey'] ?? '' ),
+			);
+			if ( Attribute::is_parked_table_band_edge( $taxonomy, $from_edge ) ) {
+				$row['parkedTableBand'] = true;
+				$row['protected']       = true;
+				$row['typeLocked']      = true;
+				$row['notes']           = __( 'Q90 parked table band (legacy) — not a product attribute', 'wp-taxonomy-tree' );
+			}
+			$an[] = $row;
 		}
 		return array(
 			'von' => $von,

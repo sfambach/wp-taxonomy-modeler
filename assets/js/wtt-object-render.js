@@ -174,7 +174,16 @@
 						? attr.quantitySchema
 						: null,
 				dateConfig: attr.dateConfig || null,
+				textareaConfig: attr.textareaConfig || null,
 				intConfig: attr.intConfig || null,
+				validators: Array.isArray(attr.validators)
+					? attr.validators.slice()
+					: Array.isArray(attr.typeValidators)
+						? attr.typeValidators.slice()
+						: [],
+				typeValidators: Array.isArray(attr.typeValidators)
+					? attr.typeValidators.slice()
+					: [],
 				typeExtras:
 					attr.typeExtras && typeof attr.typeExtras === 'object'
 						? attr.typeExtras
@@ -211,10 +220,105 @@
 					attr.preferredRender || attr.typePreferredRender || ''
 				),
 			};
-			/* Festwert wins over generic type sample (e.g. Einheit → Ohm). */
-			if (fest) {
+			/*
+			 * node_presentation: always attach Q117 meta — even when Festwert is set.
+			 * Default `%` on Unit used to take the fest branch and skip presentationConfig,
+			 * so Preview fell back to the host form name (Tolerance).
+			 */
+			if (
+				typeKey === 'node_presentation' ||
+				typeKey === 'display_node_name' ||
+				typeKey.indexOf('node_presentation') !== -1 ||
+				typeKey.indexOf('display_node_name') !== -1
+			) {
+				var pCtx = 'form';
+				if (attr.presentationConfig && attr.presentationConfig.context) {
+					pCtx = String(attr.presentationConfig.context)
+						.trim()
+						.toLowerCase();
+				} else if (
+					attr.typeExtras &&
+					attr.typeExtras.presentationContext
+				) {
+					pCtx = String(attr.typeExtras.presentationContext)
+						.trim()
+						.toLowerCase();
+				}
+				if (pCtx === 'name') {
+					pCtx = 'form';
+				}
+				field.presentationConfig = attr.presentationConfig
+					? Object.assign({}, attr.presentationConfig, { context: pCtx })
+					: { context: pCtx };
+				field.hostPresentation =
+					attr.hostPresentation || attr.presentation || null;
+				field.hostShortDescription = String(
+					attr.hostShortDescription || ''
+				).trim();
+				field.hostName = String(
+					attr.hostName ||
+						attr.hostDisplayName ||
+						attr.nodeName ||
+						''
+				).trim();
+				var map = field.hostPresentation;
+				var fromPres =
+					map && map[pCtx] != null && String(map[pCtx]).trim() !== ''
+						? String(map[pCtx]).trim()
+						: '';
+				if (!fromPres && (pCtx === 'symbol' || pCtx === 'table')) {
+					fromPres = field.hostShortDescription;
+				}
+				if (
+					!fromPres &&
+					pCtx !== 'symbol' &&
+					pCtx !== 'table' &&
+					pCtx !== 'icon'
+				) {
+					fromPres = field.hostName;
+				}
+				if (!fromPres && pCtx === 'icon') {
+					fromPres = '—';
+				}
+				if (fromPres) {
+					field.sample = fromPres;
+				} else if (
+					fest &&
+					pCtx !== 'symbol' &&
+					pCtx !== 'table' &&
+					pCtx !== 'icon'
+				) {
+					field.sample = fest;
+				} else if (
+					!field.sample &&
+					Sample &&
+					typeof Sample.forAttribute === 'function' &&
+					pCtx !== 'symbol' &&
+					pCtx !== 'table' &&
+					pCtx !== 'icon'
+				) {
+					field.sample = String(
+						Sample.forAttribute(
+							Object.assign({}, field, {
+								hostName: field.hostName || '',
+								hostPresentation: field.hostPresentation,
+								presentationConfig: field.presentationConfig,
+								hostShortDescription: field.hostShortDescription,
+							})
+						) || 'Node name'
+					);
+				} else if (
+					!field.sample &&
+					(pCtx === 'symbol' || pCtx === 'table')
+				) {
+					field.sample = '—';
+				} else if (!field.sample && pCtx !== 'icon') {
+					field.sample = 'Node name';
+				}
+			} else if (fest) {
+				/* Festwert wins over generic type sample (e.g. Einheit → Ohm). */
 				field.sample = fest;
-			} else if (!field.sample && Sample) {
+			} else if (!field.sample && Sample && !shouldSkipSampleFill(field)) {
 				if (typeof Sample.forAttribute === 'function') {
 					field.sample = String(Sample.forAttribute(field) || '');
 				} else if (typeof Sample.forType === 'function') {
@@ -296,7 +400,8 @@
 			emailrenderer: 'email',
 			daterenderer: 'date',
 			mediarenderer: 'media',
-			displaynodenamerenderer: 'display_node_name',
+			displaynodenamerenderer: 'node_presentation',
+			nodepresentationrenderer: 'node_presentation',
 			noderefrenderer: 'node_ref',
 			formrenderer: 'form',
 			tablerenderer: 'table',
@@ -314,26 +419,17 @@
 	}
 
 	/**
-	 * Field paint Preferred: object layouts (Form/Table/…) belong to hosts.
-	 * On an attribute cell, fall back to the type's Preferred (e.g. size → Quantity).
-	 * Same Registry call as when the type node itself is previewed.
+	 * Field paint Preferred (nested attribute cell).
+	 * Slot / walk override wins — including Form/Table/Compact for structure embeds.
+	 * Host Preview surface stays host Preferred only (tree-admin); this is field paint.
 	 */
 	function resolveFieldPreferredPaint(field) {
 		var typePref = normalizePaintId(field && field.typePreferredRender);
 		var slotPref = normalizePaintId(field && field.preferredRender);
-		var objectLayouts = {
-			form: true,
-			table: true,
-			compact: true,
-			compactvertical: true,
-			embed: true,
-			'pick-fill': true,
-			pick_fill: true,
-		};
-		if (!slotPref || objectLayouts[slotPref]) {
-			return typePref || slotPref || '';
+		if (slotPref) {
+			return slotPref;
 		}
-		return slotPref;
+		return typePref || '';
 	}
 
 	function normalizeFieldPreferredPaintId(field) {
@@ -457,31 +553,58 @@
 		return [];
 	}
 
+	function prefersChildListPaint(field) {
+		var p = normalizePaintId(
+			(field && (field.preferredRender || field.typePreferredRender)) || ''
+		);
+		return p === 'childlist' || p === 'child_list';
+	}
+
 	function isCatalogChoiceField(field) {
 		if (!field) {
 			return false;
 		}
+		/*
+		 * ChildList Preferred (Konstanten / With prefix) = pick hierarchy children
+		 * (attribute-choice-inheritance: Base unit leaves). Never Structure / Unit marriage.
+		 */
+		if (prefersChildListPaint(field)) {
+			return true;
+		}
+		/* PHP fixedMode wins — Bauformen may ship typeProperties for heirs but paint as choice. */
+		if (String(field.fixedMode || '') === 'catalog') {
+			return true;
+		}
 		/* Structure types embed Form/Table of typeProperties — never CatalogChoice. */
 		if (isStructureField(field)) {
 			return false;
-		}
-		if (String(field.fixedMode || '') === 'catalog') {
-			return true;
 		}
 		return catalogOptionsForField(field).length > 0;
 	}
 
 	/**
 	 * Whether the field embeds its type's attribute schema (Form/Table).
+	 * CatalogChoice hosts (fixedMode=catalog) keep typeProperties for inheritance /
+	 * Options walk but must not force Structure embed over the chooser (Bauformen).
+	 *
 	 * @param {object|null} field
 	 * @return {boolean}
 	 */
 	function isStructureField(field) {
-		return !!(
-			field &&
-			Array.isArray(field.typeProperties) &&
-			field.typeProperties.length > 0
-		);
+		if (
+			!field ||
+			!Array.isArray(field.typeProperties) ||
+			field.typeProperties.length === 0
+		) {
+			return false;
+		}
+		if (prefersChildListPaint(field)) {
+			return false;
+		}
+		if (String(field.fixedMode || '') === 'catalog') {
+			return false;
+		}
+		return true;
 	}
 
 	function isNodeRefField(field) {
@@ -692,13 +815,58 @@
 				return name;
 			}
 		}
-		return opt.path || opt.name || String(opt.id != null ? opt.id : '');
+		/* Flat ListChooser: leaf name (not ancestor path). Path stays in title/tree. */
+		return (
+			opt.name ||
+			opt.path ||
+			String(opt.id != null ? opt.id : '')
+		);
+	}
+
+	function catalogEmptyOptionLabel(field) {
+		var i18n = global.wttTree && global.wttTree.i18n ? global.wttTree.i18n : {};
+		if (isPrefixChoiceField(field)) {
+			/* Visible: — (unitConvNone); tooltip: “No prefix” (unitConvNoneTitle). */
+			return i18n.unitConvNone || '—';
+		}
+		/* Visible empty: em dash (Q116); never the word “None”. */
+		return i18n.catalogChoiceNone || i18n.unitConvNone || '—';
+	}
+
+	/**
+	 * Prefix (and other zero-lower) choices: never invent a sample — Meter without Milli,
+	 * Ohm without Kilo is valid.
+	 */
+	function shouldSkipSampleFill(field) {
+		if (!field) {
+			return false;
+		}
+		if (isPrefixChoiceField(field)) {
+			return true;
+		}
+		return fieldListSelectAllowsEmpty(field);
+	}
+
+	/**
+	 * Empty option always for prefixes; also for optional Mult / empty catalog.
+	 */
+	function catalogChoiceNeedsEmptyOption(field, optionCount) {
+		/* Q116: Mult drives empty — Praefix is not special-cased. */
+		if (fieldListSelectAllowsEmpty(field)) {
+			return true;
+		}
+		return !(parseInt(optionCount, 10) > 0);
 	}
 
 	/**
 	 * Nested tree list for CatalogChoice depth ≥ 2 (vanilla mirror of ModelTreeChooser).
+	 * @param {Array} options
+	 * @param {number} selectedId
+	 * @param {function} onPick
+	 * @param {{ allowEmpty?: boolean, emptyLabel?: string }} [chooserOpts]
 	 */
-	function renderCatalogTreeChooser(options, selectedId, onPick) {
+	function renderCatalogTreeChooser(options, selectedId, onPick, chooserOpts) {
+		chooserOpts = chooserOpts || {};
 		var roots = [];
 		var byKey = {};
 
@@ -847,6 +1015,20 @@
 		}
 		rebuild();
 		tree.appendChild(list);
+		if (chooserOpts.allowEmpty) {
+			host.appendChild(
+				createEl('button', {
+					type: 'button',
+					className: 'button-link wtt-object-render__catalog-clear',
+					text: chooserOpts.emptyLabel || 'None',
+					onClick: function () {
+						if (typeof onPick === 'function') {
+							onPick(0);
+						}
+					},
+				})
+			);
+		}
 		host.appendChild(tree);
 		return host;
 	}
@@ -856,6 +1038,7 @@
 		var options = catalogOptionsForField(field);
 		var readonly = !!opts.readonly || !!(field && field.readonly);
 		var selected = value != null ? String(value) : '';
+		var allowEmpty = catalogChoiceNeedsEmptyOption(field, options.length);
 		var mode = resolveCatalogChooserMode(
 			options,
 			field && field.choiceDepth
@@ -884,35 +1067,79 @@
 					(preferSymbol ? ' wtt-preview-input--prefix' : ''),
 			});
 			var realCount = 0;
-			if (!options.length) {
-				select.appendChild(
-					createEl('option', { value: '', text: '—' })
-				);
-			} else {
+			var emptyLabel = catalogEmptyOptionLabel(field);
+			/* Drop sample/store values that are not real option ids (e.g. letter "m"). */
+			if (selected) {
+				var matched = false;
 				options.forEach(function (opt) {
-					var id = opt && opt.id != null ? String(opt.id) : '';
-					if (!id) {
+					if (!opt || opt.id == null) {
 						return;
 					}
-					realCount += 1;
-					var option = createEl('option', {
-						value: id,
-						text: catalogOptionLabel(opt, preferSymbol),
-					});
-					if (preferSymbol && (opt.name || opt.path)) {
-						option.title = String(opt.path || opt.name);
-					} else if (opt.shortDescription) {
-						option.title = String(opt.shortDescription);
-					}
-					if (id === selected || (!selected && !select.value)) {
-						option.selected = true;
+					var id = String(opt.id);
+					var name = opt.name != null ? String(opt.name) : '';
+					var letter = catalogOptionLabel(opt, true);
+					if (
+						id === selected ||
+						(name && name === selected) ||
+						(letter && letter === selected)
+					) {
+						matched = true;
 						selected = id;
 					}
-					select.appendChild(option);
 				});
-				if (!selected && select.options.length) {
-					select.options[0].selected = true;
-					selected = select.options[0].value;
+				if (!matched && allowEmpty) {
+					selected = '';
+				}
+			}
+			if (allowEmpty) {
+				var emptyOpt = createEl('option', {
+					value: '',
+					text: emptyLabel,
+				});
+				emptyOpt.title = preferSymbol
+					? (global.wttTree &&
+							global.wttTree.i18n &&
+							global.wttTree.i18n.unitConvNoneTitle) ||
+					  'No prefix'
+					: emptyLabel;
+				if (!selected) {
+					emptyOpt.selected = true;
+				}
+				select.appendChild(emptyOpt);
+			}
+			options.forEach(function (opt) {
+				var id = opt && opt.id != null ? String(opt.id) : '';
+				if (!id) {
+					return;
+				}
+				realCount += 1;
+				var option = createEl('option', {
+					value: id,
+					text: catalogOptionLabel(opt, preferSymbol),
+				});
+				if (preferSymbol && (opt.name || opt.path)) {
+					option.title = String(opt.path || opt.name);
+				} else if (opt.shortDescription) {
+					option.title = String(opt.shortDescription);
+				}
+				if (id === selected) {
+					option.selected = true;
+				}
+				select.appendChild(option);
+			});
+			/* Required (non-prefix): no match → first real option. */
+			if (!allowEmpty && !selected && select.options.length) {
+				var firstReal = null;
+				var oi;
+				for (oi = 0; oi < select.options.length; oi++) {
+					if (String(select.options[oi].value || '') !== '') {
+						firstReal = select.options[oi];
+						break;
+					}
+				}
+				if (firstReal) {
+					firstReal.selected = true;
+					selected = firstReal.value;
 				}
 			}
 			if (typeof opts.onInput === 'function') {
@@ -921,7 +1148,7 @@
 				});
 			}
 			applySoleRequiredListLock(select, realCount, {
-				allowEmpty: fieldListSelectAllowsEmpty(field),
+				allowEmpty: allowEmpty,
 				disabled: false,
 			});
 			return select;
@@ -934,12 +1161,13 @@
 				if (typeof opts.onInput === 'function') {
 					opts.onInput(String(id));
 				}
-			}
+			},
+			{ allowEmpty: allowEmpty, emptyLabel: catalogEmptyOptionLabel(field) }
 		);
 	}
 
 	/**
-	 * Embed the attribute type's schema via Form (Mult≤1 cell) — same surfaces, no special chrome.
+	 * Embed the attribute type's schema via Preferred layout (Form/Compact/Table).
 	 *
 	 * @param {object} field
 	 * @param {string} value
@@ -954,7 +1182,12 @@
 			attributes: attrs,
 			values: rowValuesFromStore(attrs, value != null ? String(value) : ''),
 		};
-		return renderForm(instance, {
+		var layout = normalizeLayout(
+			resolveFieldPreferredPaint(field) ||
+				(field && (field.preferredRender || field.typePreferredRender)) ||
+				'FormRenderer'
+		);
+		var paintOpts = {
 			readonly: readonly,
 			referenceMode: opts.referenceMode,
 			className: 'wtt-object-render__structure-embed',
@@ -970,7 +1203,19 @@
 							);
 						}
 				  },
-		});
+		};
+		if (layout === 'TableRenderer') {
+			return renderTable([instance], paintOpts);
+		}
+		if (
+			layout === 'CompactRenderer' ||
+			layout === 'CompactVerticalRenderer'
+		) {
+			paintOpts.orientation =
+				layout === 'CompactVerticalRenderer' ? 'vertical' : 'horizontal';
+			return renderCompact(instance, paintOpts);
+		}
+		return renderForm(instance, paintOpts);
 	}
 
 	/**
@@ -1046,7 +1291,7 @@
 
 	function isEmbedPreferredField(field) {
 		var key = String(
-			(field && (field.typePreferredRender || field.preferredRender)) || ''
+			(field && (field.preferredRender || field.typePreferredRender)) || ''
 		)
 			.trim()
 			.toLowerCase();
@@ -1800,6 +2045,117 @@
 		var readonly =
 			!!opts.readonly || !!(field && field.readonly);
 
+		var typeKeyPaint = String((field && field.typeKey) || '')
+			.trim()
+			.toLowerCase();
+		if (
+			typeKeyPaint === 'node_presentation' ||
+			typeKeyPaint === 'display_node_name' ||
+			typeKeyPaint.indexOf('node_presentation') !== -1 ||
+			typeKeyPaint.indexOf('display_node_name') !== -1
+		) {
+			var pCtxPaint = 'form';
+			if (field && field.presentationConfig && field.presentationConfig.context) {
+				pCtxPaint = String(field.presentationConfig.context)
+					.trim()
+					.toLowerCase();
+			} else if (
+				field &&
+				field.typeExtras &&
+				field.typeExtras.presentationContext
+			) {
+				pCtxPaint = String(field.typeExtras.presentationContext)
+					.trim()
+					.toLowerCase();
+			}
+			if (pCtxPaint === 'name') {
+				pCtxPaint = 'form';
+			}
+			var mapPaint =
+				(field && field.hostPresentation) ||
+				(field && field.presentation) ||
+				null;
+			var shownName = '';
+			if (mapPaint && mapPaint[pCtxPaint] != null) {
+				shownName = String(mapPaint[pCtxPaint]).trim();
+			}
+			if (
+				!shownName &&
+				(pCtxPaint === 'symbol' || pCtxPaint === 'table') &&
+				field &&
+				field.hostShortDescription
+			) {
+				shownName = String(field.hostShortDescription).trim();
+			}
+			if (!shownName && pCtxPaint === 'icon') {
+				shownName = '—';
+			}
+			if (
+				!shownName &&
+				pCtxPaint !== 'symbol' &&
+				pCtxPaint !== 'table' &&
+				pCtxPaint !== 'icon'
+			) {
+				shownName = String(
+					(field &&
+						(field.hostName ||
+							field.hostDisplayName ||
+							field.nodeName)) ||
+						''
+				).trim();
+			}
+			/*
+			 * Prefer resolved presentation over instance value. Values often carry
+			 * the host form name from older sample fill.
+			 */
+			if (!shownName && value != null && String(value).trim() !== '') {
+				var rawVal = String(value).trim();
+				var hostNm = String(
+					(field &&
+						(field.hostName ||
+							field.hostDisplayName ||
+							field.nodeName)) ||
+						''
+				).trim();
+				if (
+					!(
+						(pCtxPaint === 'symbol' || pCtxPaint === 'table') &&
+						hostNm &&
+						rawVal === hostNm
+					)
+				) {
+					shownName = rawVal;
+				}
+			}
+			if (!shownName && field && field.sample) {
+				shownName = String(field.sample).trim();
+			}
+			if (!shownName) {
+				shownName =
+					pCtxPaint === 'symbol' || pCtxPaint === 'table' || pCtxPaint === 'icon'
+						? '—'
+						: '—';
+			}
+			var compactName =
+				opts.contextName === 'table' || opts.contextName === 'compact';
+			if (compactName) {
+				return createEl('span', {
+					className:
+						'wtt-object-render__display wtt-preview-display-name',
+					text: shownName,
+				});
+			}
+			return createEl('input', {
+				type: 'text',
+				className:
+					'wtt-preview-input wtt-preview-input--display-name wtt-object-render__input',
+				value: shownName,
+				readonly: 'readonly',
+				disabled: 'disabled',
+				title: shownName,
+			});
+		}
+
 		if (isMediaTypeKey(field && field.typeKey)) {
 			if (!readonly) {
 				return paintMediaEdit(field, value, opts);
@@ -1830,24 +2186,110 @@
 			});
 		}
 
-		/* Quantity trinity (schema on unit-typed attrs) before CatalogChoice. */
+		/*
+		 * CatalogChoice / ChildList BEFORE Quantity/Unit Registry paint.
+		 * Base unit (With prefix Konstanten) = pick Meter/Ohm leaves — not OQ-W11
+		 * Praefix+Kuerzel composition chrome (attribute-choice-inheritance.md).
+		 */
+		if (isCatalogChoiceField(field)) {
+			if (readonly) {
+				return paintReferenceDisplay(field, value, opts);
+			}
+			return paintCatalogChoice(field, value, opts);
+		}
+
 		var hasQty =
 			field &&
 			field.quantitySchema &&
 			Array.isArray(field.quantitySchema.members) &&
 			field.quantitySchema.members.length;
 		var prefPaint = resolveFieldPreferredPaint(field);
+		var objectLayoutPaint = {
+			form: true,
+			table: true,
+			compact: true,
+			compactvertical: true,
+			embed: true,
+			'pick-fill': true,
+			pick_fill: true,
+			childlist: true,
+		};
+
 		/*
-		 * Type Preferred Quantity/Unit (or unit schema): same Registry path as
-		 * previewing the type node itself — never a nested Form of typeProperties.
+		 * Preferred object layout (Compact/Form/Table/…) wins over Value+Unit
+		 * shape heuristics — e.g. Toleranz Compact = Sign/Value/Unit strip, not
+		 * bare Quantity magnitude.
 		 */
-		if (hasQty || prefPaint === 'quantity' || prefPaint === 'unit') {
+		if (isStructureField(field) && objectLayoutPaint[prefPaint]) {
+			return paintStructureEmbed(field, value, opts);
+		}
+
+		var hostProps =
+			(field &&
+				Array.isArray(field.typeProperties) &&
+				field.typeProperties.length &&
+				field.typeProperties) ||
+			(field && Array.isArray(field.attributes) && field.attributes) ||
+			[];
+		/*
+		 * Fallback only when Preferred is empty / quantity family: Value+Unit
+		 * structure hosts (size, Unit type) → QuantityRenderer.
+		 */
+		var looksValueUnitHost = (function (attrs) {
+			var hasVal = false;
+			var hasUnit = false;
+			(attrs || []).forEach(function (a) {
+				if (!a) {
+					return;
+				}
+				var n = String(a.name || '')
+					.toLowerCase()
+					.replace(/\u00fc/g, 'ue');
+				var key = String(a.typeKey || a.typeName || '')
+					.trim()
+					.toLowerCase();
+				if (
+					n === 'wert' ||
+					n === 'value' ||
+					n === 'betrag' ||
+					n === 'typ' ||
+					n === 'menge' ||
+					key === 'double' ||
+					key === 'int'
+				) {
+					hasVal = true;
+				}
+				if (
+					n === 'einheit' ||
+					n === 'unit' ||
+					n === 'base unit' ||
+					n === 'basiseinheit' ||
+					n === 'kuerzel' ||
+					n === 'waehrung' ||
+					(a.quantitySchema && a.quantitySchema.members) ||
+					(Array.isArray(a.fixedOptions) && a.fixedOptions.length) ||
+					(Array.isArray(a.typeProperties) && a.typeProperties.length)
+				) {
+					hasUnit = true;
+				}
+			});
+			return hasVal && hasUnit;
+		})(hostProps);
+
+		if (
+			hasQty ||
+			prefPaint === 'quantity' ||
+			prefPaint === 'unit' ||
+			(looksValueUnitHost &&
+				(!prefPaint || prefPaint === 'quantity' || prefPaint === 'unit'))
+		) {
 			var RegQty = registry();
 			var ctxQty = {
 				name: opts.contextName || 'form',
 				mode: readonly ? 'display' : 'edit',
 				bare: true,
 				hideLabel: true,
+				noSampleFill: !!opts.noSampleFill,
 				value: value != null ? String(value) : '',
 				onInput:
 					readonly || typeof opts.onInput !== 'function'
@@ -1855,9 +2297,11 @@
 						: opts.onInput,
 			};
 			var nodeQty = fieldNode(field, value);
-			nodeQty.preferredRender = prefPaint;
-			nodeQty.typePreferredRender = prefPaint;
-			/* Host attrs for Quantity compositor (size = Value + Unit). */
+			if (opts.noSampleFill) {
+				nodeQty.sample = value != null ? String(value) : '';
+			}
+			nodeQty.preferredRender = prefPaint || 'quantity';
+			nodeQty.typePreferredRender = prefPaint || 'quantity';
 			if (
 				(!Array.isArray(nodeQty.attributes) || !nodeQty.attributes.length) &&
 				Array.isArray(field.typeProperties)
@@ -1877,8 +2321,7 @@
 			return paintEmbedField(field, value, opts);
 		}
 
-		/* Structured type (has attributes) → embed Form of type schema, not CatalogChoice.
-		 * Quantity-preferred hosts already painted above — do not fall back to nested Form. */
+		/* Structured type → embed Preferred layout of type schema. */
 		if (
 			isStructureField(field) &&
 			prefPaint !== 'quantity' &&
@@ -1887,13 +2330,9 @@
 			return paintStructureEmbed(field, value, opts);
 		}
 
-		/* Display-only referenceMode; edit path keeps pickers / controls. */
+		/* Display-only referenceMode for node_ref / leftover refs. */
 		if (readonly && isReferenceField(field)) {
 			return paintReferenceDisplay(field, value, opts);
-		}
-
-		if (isCatalogChoiceField(field)) {
-			return paintCatalogChoice(field, value, opts);
 		}
 
 		var Reg = registry();
@@ -1902,11 +2341,16 @@
 			mode: readonly ? 'display' : 'edit',
 			bare: true,
 			hideLabel: true,
+			noSampleFill: !!opts.noSampleFill,
 			value: value != null ? String(value) : '',
 			onInput:
 				readonly || typeof opts.onInput !== 'function' ? null : opts.onInput,
 		};
 		var node = fieldNode(field, value);
+		if (opts.noSampleFill) {
+			/* Festwert edit: do not inherit preview Sample into the wire. */
+			node.sample = value != null ? String(value) : '';
+		}
 		if (Reg && typeof Reg.renderContent === 'function') {
 			var painted = Reg.renderContent(node, context, readonly);
 			if (painted) {
@@ -2168,6 +2612,25 @@
 		return String((schemaNode && schemaNode.name) || '').trim();
 	}
 
+	function schemaPresentationMap(schemaNode) {
+		var p = schemaNode && schemaNode.presentation;
+		if (!p || typeof p !== 'object') {
+			return null;
+		}
+		if (p.values && typeof p.values === 'object') {
+			return p.values;
+		}
+		if (
+			Object.prototype.hasOwnProperty.call(p, 'form') ||
+			Object.prototype.hasOwnProperty.call(p, 'symbol') ||
+			Object.prototype.hasOwnProperty.call(p, 'table') ||
+			Object.prototype.hasOwnProperty.call(p, 'select')
+		) {
+			return p;
+		}
+		return null;
+	}
+
 	/**
 	 * Host-agnostic one-instance fill via WTTSampleData (name → type).
 	 * @param {object} schemaNode
@@ -2183,26 +2646,101 @@
 			[];
 		var fields = normalizeAttributes(attrs);
 		var Sample = sampleApi();
+		var hostName = schemaName(schemaNode) || '';
+		var schemaPres = schemaPresentationMap(schemaNode);
 		var values = {};
 		fields.forEach(function (field) {
 			var key = valueKey(field);
+			var typeKey = String((field && field.typeKey) || '')
+				.trim()
+				.toLowerCase();
 			var fest =
 				(field.fixedLabel && String(field.fixedLabel).trim()) || '';
+			/* node_presentation: never early-return on Festwert — resolve Q117 first. */
+			if (
+				typeKey === 'node_presentation' ||
+				typeKey === 'display_node_name' ||
+				typeKey.indexOf('node_presentation') !== -1 ||
+				typeKey.indexOf('display_node_name') !== -1
+			) {
+				var pCtxEx = 'form';
+				if (field.presentationConfig && field.presentationConfig.context) {
+					pCtxEx = String(field.presentationConfig.context)
+						.trim()
+						.toLowerCase();
+				} else if (
+					field.typeExtras &&
+					field.typeExtras.presentationContext
+				) {
+					pCtxEx = String(field.typeExtras.presentationContext)
+						.trim()
+						.toLowerCase();
+				}
+				if (pCtxEx === 'name') {
+					pCtxEx = 'form';
+				}
+				var hostMap =
+					schemaPres || field.hostPresentation || null;
+				field.hostPresentation = hostMap;
+				field.hostName = field.hostName || hostName;
+				field.hostShortDescription = String(
+					field.hostShortDescription ||
+						(schemaNode && schemaNode.shortDescription) ||
+						''
+				).trim();
+				var fromMap =
+					hostMap && hostMap[pCtxEx] != null
+						? String(hostMap[pCtxEx]).trim()
+						: '';
+				var shortHost = field.hostShortDescription;
+				values[key] =
+					fromMap ||
+					((pCtxEx === 'symbol' || pCtxEx === 'table') && shortHost
+						? shortHost
+						: '') ||
+					(pCtxEx === 'symbol' || pCtxEx === 'table' || pCtxEx === 'icon'
+						? '—'
+						: '') ||
+					(pCtxEx !== 'icon' ? hostName : '') ||
+					(Sample && typeof Sample.forAttribute === 'function'
+						? String(
+								Sample.forAttribute(
+									Object.assign({}, field, {
+										variantIndex: variantIndex,
+										hostName: hostName,
+										hostPresentation: hostMap,
+										hostShortDescription: shortHost,
+										presentationConfig: { context: pCtxEx },
+									})
+								) || ''
+						  )
+						: '') ||
+					field.sample ||
+					'Node name';
+				return;
+			}
 			if (fest) {
 				values[key] = fest;
 				return;
 			}
 			if (Sample && typeof Sample.forAttribute === 'function') {
+				if (shouldSkipSampleFill(field)) {
+					values[key] = '';
+					return;
+				}
 				values[key] = String(
 					Sample.forAttribute(
-						Object.assign({}, field, { variantIndex: variantIndex })
+						Object.assign({}, field, {
+							variantIndex: variantIndex,
+							hostName: hostName,
+						})
 					) ||
 						field.sample ||
 						''
 				);
 				return;
 			}
-			values[key] = field.sample || '';
+			values[key] = shouldSkipSampleFill(field) ? '' : field.sample || '';
 		});
 		return {
 			schemaName: schemaName(schemaNode),
@@ -2355,13 +2893,21 @@
 	}
 
 	function fieldListSelectAllowsEmpty(field) {
+		if (field && field.allowsEmpty === true) {
+			return true;
+		}
+		if (field && field.allowsEmpty === false) {
+			return false;
+		}
 		if (field && field.required === false) {
 			return true;
 		}
 		if (field && field.required === true) {
 			return false;
 		}
-		return multiplicityAllowsEmpty(field && field.multiplicity);
+		return multiplicityAllowsEmpty(
+			(field && (field.multiplicity || field.fieldMultiplicity)) || '1'
+		);
 	}
 
 	/**
@@ -2400,6 +2946,10 @@
 				allowsMany:
 					!!prop.allowsMany ||
 					multiplicityAllowsMany(prop.multiplicity),
+				allowsEmpty:
+					prop.allowsEmpty != null
+						? !!prop.allowsEmpty
+						: multiplicityAllowsEmpty(prop.multiplicity),
 				readonly: !!prop.readonly,
 				inherited: !!prop.inherited,
 				fixedMode: prop.fixedMode || '',
@@ -2486,7 +3036,12 @@
 			) {
 				val = String(prop.valueLabel);
 			}
-			if (!val && Sample && typeof Sample.forAttribute === 'function') {
+			if (
+				!val &&
+				Sample &&
+				typeof Sample.forAttribute === 'function' &&
+				!shouldSkipSampleFill(field)
+			) {
 				val = String(Sample.forAttribute(field) || '');
 			}
 			field.sample = val;
@@ -2549,8 +3104,18 @@
 			'pick-fill': 'EmbeddedRenderer',
 			pick_fill: 'EmbeddedRenderer',
 			'compact-embed': 'EmbeddedRenderer',
+			child_list: 'ChildListRenderer',
+			childlist: 'ChildListRenderer',
+			childlistrenderer: 'ChildListRenderer',
 		};
-		return map[key] || 'FormRenderer';
+		if (map[key]) {
+			return map[key];
+		}
+		/* Pass through known wire ids (e.g. ChildListRenderer). */
+		if (/^[A-Za-z][A-Za-z0-9]*Renderer$/.test(String(layout || '').trim())) {
+			return String(layout).trim();
+		}
+		return 'FormRenderer';
 	}
 
 	function resolveLayout(layout, view) {
@@ -2673,6 +3238,12 @@
 			multiplicity: prop.multiplicity || '0..*',
 			fieldMultiplicity:
 				prop.fieldMultiplicity || prop.multiplicity || '0..*',
+			allowsEmpty:
+				prop.allowsEmpty != null
+					? !!prop.allowsEmpty
+					: multiplicityAllowsEmpty(
+							prop.multiplicity || prop.fieldMultiplicity || '0..*'
+					  ),
 			readonly: !!prop.readonly,
 			fixedMode: prop.fixedMode || '',
 			fixedOptions: Array.isArray(prop.fixedOptions)
@@ -3072,6 +3643,7 @@
 	 *   referenceMode?: string,
 	 *   readonly?: boolean,
 	 *   mode?: 'edit'|'display',
+	 *   chrome?: boolean,
 	 *   onFieldInput?: function,
 	 *   onRelatedFieldInput?: function,
 	 *   onAddRelatedLine?: function
@@ -3102,6 +3674,8 @@
 			options.readonly != null
 				? !!options.readonly
 				: String(options.mode || 'display') !== 'edit';
+		/* Admin schema Preview: surfaces only (no Object View title/meta strip). */
+		var showChrome = options.chrome !== false;
 		var onFieldInput =
 			typeof options.onFieldInput === 'function'
 				? options.onFieldInput
@@ -3138,28 +3712,33 @@
 				depth +
 				' wtt-object-view--ref-' +
 				refMode +
-				(readonly ? ' is-display' : ' is-edit'),
+				(readonly ? ' is-display' : ' is-edit') +
+				(showChrome ? '' : ' wtt-object-view--no-chrome'),
 		});
 		root.setAttribute('data-wtt-render-depth', String(depth));
 		root.setAttribute('data-wtt-reference-mode', refMode);
 
-		var header = createEl('header', { className: 'wtt-object-view__header' });
-		header.appendChild(
-			createEl('h3', {
-				className: 'wtt-object-view__title',
-				text: view.name || '—',
-			})
-		);
-		if (view.path) {
+		if (showChrome) {
+			var header = createEl('header', {
+				className: 'wtt-object-view__header',
+			});
 			header.appendChild(
-				createEl('p', {
-					className: 'wtt-object-view__path',
-					text: String(view.path),
+				createEl('h3', {
+					className: 'wtt-object-view__title',
+					text: view.name || '—',
 				})
 			);
+			if (view.path) {
+				header.appendChild(
+					createEl('p', {
+						className: 'wtt-object-view__path',
+						text: String(view.path),
+					})
+				);
+			}
+			root.appendChild(header);
+			appendMetaStrip(root, view);
 		}
-		root.appendChild(header);
-		appendMetaStrip(root, view);
 
 		/* Depth 0 = meta-only (header + pills). */
 		if (depth < 1) {

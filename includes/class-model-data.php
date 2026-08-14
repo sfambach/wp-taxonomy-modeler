@@ -197,7 +197,9 @@ final class Model_Data {
 	/**
 	 * Create or update an instance.
 	 *
-	 * @param array<string, mixed> $payload id?, values (attr id → string). Name is ignored.
+	 * @param array<string, mixed> $payload id?, values (attr id → string), optional
+	 *                                      defaultProviders (create-only Q124 context; not stored).
+	 *                                      Name is ignored.
 	 * @return array<string, mixed>|\WP_Error
 	 */
 	public static function save( string $taxonomy, int $structure_id, array $payload ) {
@@ -221,7 +223,7 @@ final class Model_Data {
 		$raw_values    = isset( $payload['values'] ) && is_array( $payload['values'] ) ? $payload['values'] : array();
 		/* Related Mult many datasets live in links[] — never store inline blobs on the parent. */
 		foreach ( array_keys( self::related_dataset_attr_ids( $taxonomy, $structure_id ) ) as $skip_id ) {
-			unset( $allowed_attrs[ (int) $skip_id ] );
+			unset( $allowed_attrs[ Attribute::normalize_attr_id( $skip_id ) ] );
 		}
 		$values = self::sanitize_values( $raw_values, $allowed_attrs );
 
@@ -252,9 +254,14 @@ final class Model_Data {
 		if ( null === $existing ) {
 			/* Q106: seed scalar default templates into empty slots on create. */
 			$values = self::merge_scalar_defaults( $taxonomy, $structure_id, $values );
-			$id     = '' !== $id ? $id : self::new_id();
-			$seq    = self::next_seq( $rows );
-			$row    = self::enrich_labels(
+			/* Q124: still-empty slots ← provider instance/default via defaultvalue_from. */
+			$providers = isset( $payload['defaultProviders'] ) && is_array( $payload['defaultProviders'] )
+				? $payload['defaultProviders']
+				: array();
+			$values    = self::merge_defaultvalue_from( $taxonomy, $structure_id, $values, $providers );
+			$id        = '' !== $id ? $id : self::new_id();
+			$seq       = self::next_seq( $rows );
+			$row       = self::enrich_labels(
 				array(
 					'id'             => $id,
 					'seq'            => $seq,
@@ -313,6 +320,83 @@ final class Model_Data {
 		self::persist_all( $all );
 
 		return $row;
+	}
+
+	/**
+	 * Soft-trash every live instance on a structure host (Q89 / Q111 / Q123).
+	 * Each row cascades composition-linked children; aggregation links stay.
+	 *
+	 * @return int Number of host-bag rows soft-trashed (not counting linked children).
+	 */
+	public static function soft_trash_all_for_structure( string $taxonomy, int $structure_id ): int {
+		if ( $structure_id <= 0 ) {
+			return 0;
+		}
+		$count = 0;
+		foreach ( self::list( $taxonomy, $structure_id, true ) as $row ) {
+			if ( ! empty( $row['trashed'] ) ) {
+				continue;
+			}
+			$instance_id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
+			if ( '' === $instance_id ) {
+				continue;
+			}
+			$result = self::delete( $taxonomy, $structure_id, $instance_id, false );
+			if ( ! is_wp_error( $result ) ) {
+				++$count;
+			}
+		}
+		return $count;
+	}
+
+	/**
+	 * Restore soft-trashed instances on a structure host (and composition children).
+	 *
+	 * @return int Number of host-bag rows restored.
+	 */
+	public static function restore_all_for_structure( string $taxonomy, int $structure_id ): int {
+		if ( $structure_id <= 0 ) {
+			return 0;
+		}
+		$count = 0;
+		foreach ( self::list( $taxonomy, $structure_id, true ) as $row ) {
+			if ( empty( $row['trashed'] ) ) {
+				continue;
+			}
+			$instance_id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
+			if ( '' === $instance_id ) {
+				continue;
+			}
+			$result = self::restore( $taxonomy, $structure_id, $instance_id );
+			if ( ! is_wp_error( $result ) ) {
+				++$count;
+			}
+		}
+		return $count;
+	}
+
+	/**
+	 * Permanently remove every instance row for a structure host (Empty Trash).
+	 * Composition-linked children are purged with each parent row.
+	 *
+	 * @return int Number of host-bag rows purged.
+	 */
+	public static function purge_all_for_structure( string $taxonomy, int $structure_id ): int {
+		if ( $structure_id <= 0 ) {
+			return 0;
+		}
+		$count = 0;
+		foreach ( self::list( $taxonomy, $structure_id, true ) as $row ) {
+			$instance_id = isset( $row['id'] ) ? sanitize_key( (string) $row['id'] ) : '';
+			if ( '' === $instance_id ) {
+				continue;
+			}
+			$result = self::delete( $taxonomy, $structure_id, $instance_id, true );
+			if ( ! is_wp_error( $result ) ) {
+				++$count;
+			}
+		}
+		return $count;
 	}
 
 	/**
@@ -546,7 +630,14 @@ final class Model_Data {
 			$taxonomy,
 			$child_structure_id,
 			array(
-				'values' => $values,
+				'values'           => $values,
+				/* Q124: parent list instance supplies defaultvalue_from providers. */
+				'defaultProviders' => array(
+					array(
+						'structureId' => $parent_structure_id,
+						'instanceId'  => $parent_instance_id,
+					),
+				),
 			)
 		);
 		if ( is_wp_error( $child ) ) {
@@ -761,8 +852,8 @@ final class Model_Data {
 			if ( self::is_related_dataset_attr( $taxonomy, $row ) ) {
 				continue;
 			}
-			$attr_id = (string) (int) ( $row['id'] ?? 0 );
-			if ( '' === $attr_id || '0' === $attr_id ) {
+			$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $attr_id ) {
 				continue;
 			}
 			$current = isset( $out[ $attr_id ] ) ? trim( (string) $out[ $attr_id ] ) : '';
@@ -828,8 +919,8 @@ final class Model_Data {
 			if ( ! empty( $row['hidden'] ) || self::is_related_dataset_attr( $taxonomy, $row ) ) {
 				continue;
 			}
-			$attr_id = (string) (int) ( $row['id'] ?? 0 );
-			if ( '' === $attr_id || '0' === $attr_id ) {
+			$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $attr_id ) {
 				continue;
 			}
 			$current = isset( $out[ $attr_id ] ) ? trim( (string) $out[ $attr_id ] ) : '';
@@ -841,6 +932,160 @@ final class Model_Data {
 				$out[ $attr_id ] = $seed;
 			}
 		}
+		return $out;
+	}
+
+	/**
+	 * Fill still-empty slots from defaultvalue_from providers (Q124).
+	 *
+	 * Direction: outgoing edge on consumer host → provider host (To).
+	 * Relation.name = attribute name on both sides (scaffold).
+	 * Create / empty only — does not overwrite non-empty values; no live cascade.
+	 *
+	 * @param array<string, string>                                                        $values    Current values.
+	 * @param list<array{structureId?:int,instanceId?:string,values?:array<string,string>}> $providers Provider context.
+	 * @return array<string, string>
+	 */
+	public static function merge_defaultvalue_from(
+		string $taxonomy,
+		int $structure_id,
+		array $values,
+		array $providers
+	): array {
+		$out = array();
+		foreach ( $values as $attr_id => $val ) {
+			$out[ (string) $attr_id ] = is_scalar( $val ) || null === $val ? (string) $val : '';
+		}
+		if ( $structure_id <= 0 || array() === $providers ) {
+			return $out;
+		}
+
+		$edges = Relation::list_outgoing_by_type_key(
+			$taxonomy,
+			$structure_id,
+			Relation::TYPE_CALC
+		);
+		if ( array() === $edges ) {
+			return $out;
+		}
+
+		/** @var array<int, array{structureId:int,instanceId:string,values?:array<string,string>}> $by_structure */
+		$by_structure = array();
+		foreach ( $providers as $provider ) {
+			if ( ! is_array( $provider ) ) {
+				continue;
+			}
+			$sid = (int) ( $provider['structureId'] ?? 0 );
+			if ( $sid <= 0 ) {
+				continue;
+			}
+			$by_structure[ $sid ] = array(
+				'structureId' => $sid,
+				'instanceId'  => sanitize_key( (string) ( $provider['instanceId'] ?? '' ) ),
+				'values'      => isset( $provider['values'] ) && is_array( $provider['values'] )
+					? $provider['values']
+					: array(),
+			);
+		}
+		if ( array() === $by_structure ) {
+			return $out;
+		}
+
+		/** @var array<string, array<string, mixed>> $consumer_by_name */
+		$consumer_by_name = array();
+		foreach ( Attribute::list( $taxonomy, $structure_id ) as $row ) {
+			if ( ! empty( $row['hidden'] ) || self::is_related_dataset_attr( $taxonomy, $row ) ) {
+				continue;
+			}
+			$name_key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+			if ( '' === $name_key ) {
+				continue;
+			}
+			$consumer_by_name[ $name_key ] = $row;
+		}
+
+		/** @var array<int, array<string, array<string, mixed>>> $provider_attrs_cache */
+		$provider_attrs_cache = array();
+		/** @var array<string, array<string, string>> $provider_values_cache */
+		$provider_values_cache = array();
+
+		foreach ( $edges as $edge ) {
+			if ( ! Relation::is_default_from_calc_edge( $edge ) ) {
+				continue;
+			}
+			$attr_name = strtolower( trim( (string) ( $edge['name'] ?? '' ) ) );
+			if ( '' === $attr_name || ! isset( $consumer_by_name[ $attr_name ] ) ) {
+				continue;
+			}
+			$consumer = $consumer_by_name[ $attr_name ];
+			$attr_id  = Attribute::normalize_attr_id( $consumer['id'] ?? '' );
+			if ( '' === $attr_id ) {
+				continue;
+			}
+			$current = isset( $out[ $attr_id ] ) ? trim( (string) $out[ $attr_id ] ) : '';
+			if ( '' !== $current ) {
+				continue;
+			}
+
+			$to_id = (int) ( $edge['toId'] ?? 0 );
+			if ( $to_id <= 0 || ! isset( $by_structure[ $to_id ] ) ) {
+				continue;
+			}
+			$provider = $by_structure[ $to_id ];
+
+			if ( ! isset( $provider_attrs_cache[ $to_id ] ) ) {
+				$by_name = array();
+				foreach ( Attribute::list( $taxonomy, $to_id ) as $prow ) {
+					$pkey = strtolower( trim( (string) ( $prow['name'] ?? '' ) ) );
+					if ( '' !== $pkey ) {
+						$by_name[ $pkey ] = $prow;
+					}
+				}
+				$provider_attrs_cache[ $to_id ] = $by_name;
+			}
+			$provider_row = $provider_attrs_cache[ $to_id ][ $attr_name ] ?? null;
+			if ( ! is_array( $provider_row ) ) {
+				continue;
+			}
+			$provider_attr_id = Attribute::normalize_attr_id( $provider_row['id'] ?? '' );
+			if ( '' === $provider_attr_id ) {
+				continue;
+			}
+
+			$cache_key = $to_id . ':' . (string) ( $provider['instanceId'] ?? '' );
+			if ( ! isset( $provider_values_cache[ $cache_key ] ) ) {
+				$pvals = array();
+				if ( ! empty( $provider['values'] ) ) {
+					foreach ( $provider['values'] as $k => $v ) {
+						$pvals[ Attribute::normalize_attr_id( $k ) ] = is_scalar( $v ) || null === $v
+							? (string) $v
+							: '';
+					}
+				} elseif ( '' !== (string) ( $provider['instanceId'] ?? '' ) ) {
+					$inst = self::get( $taxonomy, $to_id, (string) $provider['instanceId'], true );
+					if ( null !== $inst && isset( $inst['values'] ) && is_array( $inst['values'] ) ) {
+						foreach ( $inst['values'] as $k => $v ) {
+							$pvals[ Attribute::normalize_attr_id( $k ) ] = is_scalar( $v ) || null === $v
+								? (string) $v
+								: '';
+						}
+					}
+				}
+				$provider_values_cache[ $cache_key ] = $pvals;
+			}
+
+			$seed = '';
+			if ( isset( $provider_values_cache[ $cache_key ][ $provider_attr_id ] ) ) {
+				$seed = trim( (string) $provider_values_cache[ $cache_key ][ $provider_attr_id ] );
+			}
+			if ( '' === $seed ) {
+				$seed = self::scalar_default_store_value( $provider_row );
+			}
+			if ( '' !== $seed ) {
+				$out[ $attr_id ] = $seed;
+			}
+		}
+
 		return $out;
 	}
 
@@ -878,11 +1123,11 @@ final class Model_Data {
 					if ( is_array( $v ) ) {
 						continue;
 					}
-					$aid = absint( $k );
-					if ( $aid <= 0 ) {
+					$aid = Attribute::normalize_attr_id( $k );
+					if ( '' === $aid ) {
 						continue;
 					}
-					$child_values[ (string) $aid ] = (string) $v;
+					$child_values[ $aid ] = (string) $v;
 				}
 				$linked = self::create_linked(
 					$taxonomy,
@@ -918,8 +1163,8 @@ final class Model_Data {
 			if ( ! empty( $row['hidden'] ) ) {
 				continue;
 			}
-			$attr_id = (int) ( $row['id'] ?? 0 );
-			if ( $attr_id <= 0 ) {
+			$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $attr_id ) {
 				continue;
 			}
 			$fixed = array();
@@ -944,8 +1189,8 @@ final class Model_Data {
 					if ( ! is_array( $child_row ) || ! empty( $child_row['hidden'] ) ) {
 						continue;
 					}
-					$cid = (int) ( $child_row['id'] ?? 0 );
-					if ( $cid <= 0 ) {
+					$cid = Attribute::normalize_attr_id( $child_row['id'] ?? '' );
+					if ( '' === $cid ) {
 						continue;
 					}
 					$child_type_id = (int) ( $child_row['typeId'] ?? 0 );
@@ -1306,7 +1551,12 @@ final class Model_Data {
 		$values = array();
 		if ( isset( $row['values'] ) && is_array( $row['values'] ) ) {
 			foreach ( $row['values'] as $k => $v ) {
-				$values[ (string) absint( $k ) ] = is_scalar( $v ) ? (string) $v : '';
+				/* Q123: keys are Relation edge ids (string); legacy numeric slot ids still ok. */
+				$aid = Attribute::normalize_attr_id( $k );
+				if ( '' === $aid ) {
+					continue;
+				}
+				$values[ $aid ] = is_scalar( $v ) ? (string) $v : '';
 			}
 		}
 
@@ -1437,8 +1687,8 @@ final class Model_Data {
 			if ( ! empty( $row['hidden'] ) ) {
 				continue;
 			}
-			$aid = (int) ( $row['id'] ?? 0 );
-			if ( $aid > 0 ) {
+			$aid = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' !== $aid ) {
 				$allowed[ $aid ] = true;
 			}
 		}
@@ -1448,7 +1698,7 @@ final class Model_Data {
 	/**
 	 * Attribute ids that must not store instance values on the host (related links instead).
 	 *
-	 * @return array<int, true>
+	 * @return array<string, true>
 	 */
 	private static function related_dataset_attr_ids( string $taxonomy, int $structure_id ): array {
 		$out = array();
@@ -1456,8 +1706,8 @@ final class Model_Data {
 			if ( ! self::is_related_dataset_attr( $taxonomy, $row ) ) {
 				continue;
 			}
-			$aid = (int) ( $row['id'] ?? 0 );
-			if ( $aid > 0 ) {
+			$aid = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' !== $aid ) {
 				$out[ $aid ] = true;
 			}
 		}
@@ -1465,23 +1715,23 @@ final class Model_Data {
 	}
 
 	/**
-	 * @param array<mixed, mixed> $raw Raw values map.
-	 * @param array<int, true>    $allowed Allowed attribute ids.
+	 * @param array<mixed, mixed>  $raw Raw values map.
+	 * @param array<string, true>  $allowed Allowed attribute ids (Relation edge ids).
 	 * @return array<string, string>
 	 */
 	private static function sanitize_values( array $raw, array $allowed ): array {
 		$out = array();
 		foreach ( $raw as $key => $value ) {
-			$attr_id = absint( $key );
-			if ( $attr_id <= 0 || ! isset( $allowed[ $attr_id ] ) ) {
+			$attr_id = Attribute::normalize_attr_id( $key );
+			if ( '' === $attr_id || ! isset( $allowed[ $attr_id ] ) ) {
 				continue;
 			}
 			if ( is_array( $value ) ) {
-				$encoded = wp_json_encode( $value );
-				$out[ (string) $attr_id ] = false === $encoded ? '' : $encoded;
+				$encoded = Json_Meta::encode_raw( $value );
+				$out[ $attr_id ] = false === $encoded ? '' : $encoded;
 				continue;
 			}
-			$out[ (string) $attr_id ] = sanitize_textarea_field( (string) $value );
+			$out[ $attr_id ] = sanitize_textarea_field( (string) $value );
 		}
 		return $out;
 	}
@@ -1499,20 +1749,19 @@ final class Model_Data {
 	 */
 	private static function merge_orphan_values( array $sanitized, array $previous, array $allowed ): array {
 		foreach ( $previous as $key => $value ) {
-			$attr_id = absint( $key );
-			if ( $attr_id <= 0 || isset( $allowed[ $attr_id ] ) ) {
+			$attr_id = Attribute::normalize_attr_id( $key );
+			if ( '' === $attr_id || isset( $allowed[ $attr_id ] ) ) {
 				continue;
 			}
-			$store_key = (string) $attr_id;
-			if ( array_key_exists( $store_key, $sanitized ) ) {
+			if ( array_key_exists( $attr_id, $sanitized ) ) {
 				continue;
 			}
 			if ( is_array( $value ) ) {
-				$encoded = wp_json_encode( $value );
-				$sanitized[ $store_key ] = false === $encoded ? '' : $encoded;
+				$encoded = Json_Meta::encode_raw( $value );
+				$sanitized[ $attr_id ] = false === $encoded ? '' : $encoded;
 				continue;
 			}
-			$sanitized[ $store_key ] = sanitize_textarea_field( (string) $value );
+			$sanitized[ $attr_id ] = sanitize_textarea_field( (string) $value );
 		}
 		return $sanitized;
 	}

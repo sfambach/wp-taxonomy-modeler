@@ -85,6 +85,12 @@ Attribute-host preview uses **`WTTObjectRender`** Form(1)/Table(n); field cells 
 - Do **not** invent a distinct “preview renderer” or parallel “preview path.”
 - Contexts still differ visually (tree ≠ list ≠ form).
 
+## Object layouts (Preferred)
+
+Preferred object chrome ids (`FormRenderer`, `TableRenderer`, `CompactRenderer`, `CompactVerticalRenderer`, `EmbeddedRenderer`, **`ChildListRenderer`**) are layouts — not scalar Registry paint keys.
+
+- **`ChildListRenderer`**: list field of hierarchy children (CatalogChoice-style list/tree). Default Preferred for **Konstanten** hosts with children (Präfixe, Bauformen, With prefix, …). Unit leaves stay `UnitRenderer`. **Do not** paint ChildList/With-prefix Base unit as OQ-W11 Praefix+Kuerzel Structure — that composition defines unit *leaves*; instance pick is CatalogChoice of those leaves ([`attribute-choice-inheritance.md`](../../docs/plans/attribute-choice-inheritance.md)).
+
 ## Do / don’t
 
 - **Do** register a new renderer when a new type needs custom chrome (`canRender` + `getExampleNode` + `render*` + **`renderTreeNode`**).

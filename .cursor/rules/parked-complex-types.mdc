@@ -15,15 +15,29 @@ Catalog / Collection kinds **`enum`**, **`list`**, and **`table`** (aliases List
 | **list** | YAGNI for now |
 | **table** | YAGNI for product core; scaffold BOM/`taxo/collection-table` may remain as **legacy** until removal |
 
-Scaffold may still seed Complex leaves and Enum UI — **do not extend** them as the model.
+Also **deprecated (OQ-W15):** **`node_pick` / `node_embed` / `node_ref` / `ref_scope`** — do not use until a concrete use case.
+
+## Fallstudie tree (≈ 0.0.463)
+
+Soft-trashed from **Data Types / Complex** (no longer seeded / restored):
+
+- `list`, `enum`, `node_pick` (+ `node_embed` / `node_ref`)
+
+Still under Complex (needed):
+
+- **`quantity`** (+ `size` / `Preis` children)
+- **`set`**
+- **`table`** — **legacy only** (BOM::Tabelle); description marked DEPRECATED; do not extend
+
+**Bauart** CatalogChoice host lives directly under **Complex** (reparented off parked `enum`).
 
 ## Agent duty — warn on reuse
 
-If the user asks to **use, restore, seed, feature, or build on** `enum` / `list` / `table` (or Liste / Tabelle as catalog types):
+If the user asks to **use, restore, seed, feature, or build on** `enum` / `list` / `table` (or Liste / Tabelle as catalog types) or `node_ref` / `node_embed` / `node_pick`:
 
-1. **Stop** and remind them of **Q90** and this rule.
+1. **Stop** and remind them of **Q90** / **OQ-W15** and this rule.
 2. Ask whether they really want to **revive** these types (override the park).
-3. Prefer: hierarchy + attributes / Festwerte / composition-first (Q85–Q88).
+3. Prefer: hierarchy + attributes / Festwerte / composition-first (Q85–Q88); Model bind / Preferred **`embed`** instead of catalog `node_*`.
 
 Do **not** silently reintroduce Collection-kind product features.
 

@@ -1,7 +1,7 @@
 {
   "name": "wp-taxonomy-tree",
-	"version": "0.0.414",
-  "description": "WP Taxonomy Tree â€” admin tree scaffold + Gutenberg blocks",
+	"version": "0.0.531",
+  "description": "WP Taxonomy Tree — admin tree scaffold + Gutenberg blocks",
   "private": true,
   "scripts": {
     "build": "wp-scripts build && node scripts/copy-block-json.js",

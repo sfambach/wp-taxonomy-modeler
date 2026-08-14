@@ -2,7 +2,7 @@
 
 Living project documentation for **WP Taxonomy Tree**.
 
-**Current mode: scaffolding** — early runnable admin tree ≈ **`0.0.414`** on **`wtt_fs` (Fallstudie) only** (`wtt_tree` retired). Plan **0.7.97** (Q123 Attribute/Relation model locked — not Phase-1 sign-off).
+**Current mode: scaffolding** — early runnable admin tree ≈ **`0.0.456`** on **`wtt_fs` (Fallstudie) only** (`wtt_tree` retired). Plan **0.7.118** (Q123 Attribute/Relation model locked — not Phase-1 sign-off). User constellation recipes: backlog [`plans/user-constellation-recipes.md`](plans/user-constellation-recipes.md).
 
 ## Start here
 
@@ -21,6 +21,7 @@ Living project documentation for **WP Taxonomy Tree**.
 13. [`PRODUCT.md`](PRODUCT.md) — what the product is
 14. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how it should be built
 15. [`ROADMAP.md`](ROADMAP.md) — what ships in which phase
+16. [`plans/user-constellation-recipes.md`](plans/user-constellation-recipes.md) — **backlog:** end-user how-to recipes for common constellations (write later)
 
 ## Keeping docs current
 

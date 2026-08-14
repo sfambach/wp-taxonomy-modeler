@@ -19,6 +19,7 @@ The project plan is the source of truth for intent. Living documentation must st
   - `docs/OPEN-QUESTIONS.md`
   - `README.md` (short summary + links only)
 - Versioning policy for the plugin itself: `.cursor/rules/versioning.mdc` (start at `0.0.1`; major digit only on official releases)
+- Settings UI / Altlasten answers: `.cursor/rules/settings-ui-parity.mdc` (model lock ≠ GUI done; Knoten-/Attribut-Walk)
 - While plan status is `planning`, also follow `.cursor/rules/planning-only.mdc` (docs/plans/rules only — no plugin implementation)
 
 ## Class diagram after structure changes

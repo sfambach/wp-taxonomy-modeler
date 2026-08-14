@@ -285,7 +285,7 @@
 .wtt-object-render--compact-horizontal {
 	flex-direction: row;
 	flex-wrap: wrap;
-	align-items: flex-end;
+	align-items: flex-start;
 }
 
 .wtt-object-view__compact--vertical,
@@ -320,6 +320,14 @@
 .wtt-object-render .wtt-catalog-choice-select {
 	max-width: 100%;
 	width: min(100%, 24rem);
+}
+
+.wtt-object-view select.is-sole-locked,
+.wtt-object-render select.is-sole-locked,
+.wtt-object-view .wtt-catalog-choice-select.is-sole-locked,
+.wtt-object-render .wtt-catalog-choice-select.is-sole-locked {
+	opacity: 0.65;
+	cursor: default;
 }
 
 .wtt-object-view .wtt-object-render__catalog-tree,
@@ -468,4 +476,50 @@
 	.wtt-set-preview__row {
 		grid-template-columns: 1fr;
 	}
+}
+
+/* Scalar chrome Preferred (shared with admin preview). */
+.wtt-preview-bool-radio {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65em 1em;
+	align-items: center;
+}
+
+.wtt-preview-bool-radio__opt {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	margin: 0;
+	font-size: 13px;
+}
+
+.wtt-preview-range {
+	display: flex;
+	align-items: center;
+	gap: 0.65em;
+	min-width: 8em;
+}
+
+.wtt-preview-range__input {
+	flex: 1 1 auto;
+	min-width: 6em;
+	max-width: 16em;
+}
+
+.wtt-preview-range__value {
+	font-variant-numeric: tabular-nums;
+	min-width: 2.5em;
+}
+
+.wtt-preview-bool-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+.wtt-node-render--color {
+	min-width: 2.5em;
+	min-height: 2em;
+	padding: 0;
 }

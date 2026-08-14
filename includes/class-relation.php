@@ -7,7 +7,8 @@
  * ref_scope is synthetic (meta); To target is editable in Relations (not via Add edge).
  * child_of To is never editable here — reparent only.
  * Stored edges support add / remove / reorder / change To via stable edge ids.
- * Identical From → RelationType → To edges are not allowed.
+ * Identical From → RelationType → To edges are not allowed when unnamed.
+ * Named attribute edges (besteht_aus / aggregation) may share the same To when names differ (Q123).
  *
  * @package WP_Taxonomy_Tree
  */
@@ -30,6 +31,18 @@ final class Relation {
 	public const ROOT_NAME = 'Relationstypen';
 
 	/**
+	 * Request-scoped hydrated outgoing edges (from_id → rows).
+	 *
+	 * @var array<int, list<array<string, mixed>>>
+	 */
+	private static array $outgoing_cache = array();
+
+	/** Drop request memos after mutations. */
+	public static function bust_request_caches(): void {
+		self::$outgoing_cache = array();
+	}
+
+	/**
 	 * Additive RelationType: domain composition / „besteht aus“ (Q75/Q85).
 	 * Legacy term name `composition` still resolved via aliases.
 	 */
@@ -50,18 +63,51 @@ final class Relation {
 	public const TYPE_CHILD_OF = 'child_of';
 
 	/**
+	 * Calculation Relation (Q125): op + optional props on settings.data.
+	 * First op default_from (= Q124 seed). Later: scale_factor / scale_ref / contains.
+	 */
+	public const TYPE_CALC = 'calc';
+
+	/**
+	 * Legacy Q124 type name — migrate alias for TYPE_CALC + op=default_from.
+	 */
+	public const TYPE_DEFAULTVALUE_FROM = 'defaultvalue_from';
+
+	/** calc settings.data.op — seed empty slots from provider (Q124 behaviour). */
+	public const CALC_OP_DEFAULT_FROM = 'default_from';
+
+	/** calc settings.data.op — static scale (peer units; later). */
+	public const CALC_OP_SCALE_FACTOR = 'scale_factor';
+
+	/** calc settings.data.op — factor from external ref (FX; later). */
+	public const CALC_OP_SCALE_REF = 'scale_ref';
+
+	/** calc settings.data.op — integer containment (packaging; later). */
+	public const CALC_OP_CONTAINS = 'contains';
+
+	/**
 	 * Alternate RelationType names accepted when resolving a type key.
 	 * Product has only `besteht_aus` — `composition` is read/migrate legacy only (0.7.94).
+	 * `defaultvalue_from` ↔ `calc` (Q125).
 	 *
 	 * @var array<string, list<string>>
 	 */
 	private const TYPE_NAME_ALIASES = array(
-		'besteht_aus' => array( 'composition' ),
-		'composition' => array( 'besteht_aus' ),
+		'besteht_aus'         => array( 'composition' ),
+		'composition'         => array( 'besteht_aus' ),
+		'calc'                => array( 'defaultvalue_from' ),
+		'defaultvalue_from'   => array( 'calc' ),
 	);
 
 	/** RelationType names that must not be created via Add relation (system / synthetic). */
 	public const PROTECTED_TYPE_NAMES = array( 'child_of', 'ref_scope' );
+
+	/**
+	 * Legacy type still readable; not offered in Add relation when `calc` exists.
+	 *
+	 * @var list<string>
+	 */
+	public const DEPRECATED_ASSIGNABLE_TYPE_NAMES = array( 'defaultvalue_from' );
 
 	/**
 	 * Definition cardinality on a Relation edge (Q78).
@@ -72,9 +118,130 @@ final class Relation {
 	public const MULTIPLICITIES = array( '0..1', '1', '0..*', '1..*' );
 
 	/**
-	 * @return list<array{id:string,typeId:int,typeName:string,typeKey:string,toId:int,toName:string,multiplicity:string,index:int}>
+	 * Whether a RelationType key is an attribute Bindung (Q123: name required).
+	 */
+	public static function is_attribute_binding_type_key( string $type_key ): bool {
+		$key = strtolower( trim( $type_key ) );
+		if ( '' === $key ) {
+			return false;
+		}
+		return self::type_keys_match( $key, self::TYPE_COMPOSITION )
+			|| self::type_keys_match( $key, self::TYPE_AGGREGATION )
+			|| self::type_keys_match( $key, self::TYPE_COMPOSITION_LEGACY );
+	}
+
+	/**
+	 * Whether a RelationType key is calc or legacy defaultvalue_from (Q125 / Q124).
+	 */
+	public static function is_calc_type_key( string $type_key ): bool {
+		$key = strtolower( trim( $type_key ) );
+		if ( '' === $key ) {
+			return false;
+		}
+		return self::type_keys_match( $key, self::TYPE_CALC )
+			|| self::type_keys_match( $key, self::TYPE_DEFAULTVALUE_FROM );
+	}
+
+	/**
+	 * Whether a RelationType key is defaultvalue_from / calc default_from family (Q124).
+	 */
+	public static function is_defaultvalue_from_type_key( string $type_key ): bool {
+		return self::is_calc_type_key( $type_key );
+	}
+
+	/**
+	 * Resolve calc op from edge/row settings.data.op.
+	 * Legacy defaultvalue_from edges (no op) → default_from.
+	 *
+	 * @param array<string, mixed> $edge_or_row Stored edge or hydrated row.
+	 */
+	public static function calc_op_from_edge( array $edge_or_row ): string {
+		$settings = isset( $edge_or_row['settings'] ) && is_array( $edge_or_row['settings'] )
+			? $edge_or_row['settings']
+			: array();
+		$data = isset( $settings['data'] ) && is_array( $settings['data'] )
+			? $settings['data']
+			: array();
+		$op   = isset( $data['op'] ) ? strtolower( trim( (string) $data['op'] ) ) : '';
+		if ( '' !== $op ) {
+			return $op;
+		}
+		$type_key = strtolower( trim( (string) ( $edge_or_row['typeKey'] ?? '' ) ) );
+		if ( '' === $type_key && isset( $edge_or_row['typeName'] ) ) {
+			$type_key = strtolower( trim( (string) $edge_or_row['typeName'] ) );
+		}
+		/* Legacy type or bare calc seed → default_from. */
+		if ( self::is_calc_type_key( $type_key ) ) {
+			return self::CALC_OP_DEFAULT_FROM;
+		}
+		return '';
+	}
+
+	/**
+	 * Edge participates in Q124 create/empty seed (calc op=default_from or legacy type).
+	 *
+	 * @param array<string, mixed> $edge_or_row
+	 */
+	public static function is_default_from_calc_edge( array $edge_or_row ): bool {
+		$type_key = strtolower( trim( (string) ( $edge_or_row['typeKey'] ?? '' ) ) );
+		if ( '' === $type_key && isset( $edge_or_row['typeName'] ) ) {
+			$type_key = strtolower( trim( (string) $edge_or_row['typeName'] ) );
+		}
+		if ( ! self::is_calc_type_key( $type_key ) ) {
+			return false;
+		}
+		return self::CALC_OP_DEFAULT_FROM === self::calc_op_from_edge( $edge_or_row );
+	}
+
+	/**
+	 * UI label for RelationType key (i18n). Falls back to key.
+	 */
+	public static function type_key_label( string $type_key ): string {
+		$key = strtolower( trim( $type_key ) );
+		if ( self::TYPE_CALC === $key || self::TYPE_DEFAULTVALUE_FROM === $key ) {
+			return __( 'Calculation', 'wp-taxonomy-tree' );
+		}
+		if ( self::type_keys_match( $key, self::TYPE_COMPOSITION ) ) {
+			return __( 'besteht_aus', 'wp-taxonomy-tree' );
+		}
+		if ( self::TYPE_AGGREGATION === $key ) {
+			return __( 'aggregation', 'wp-taxonomy-tree' );
+		}
+		return $type_key;
+	}
+
+	/**
+	 * Default settings bag for a new calc edge.
+	 *
+	 * @return array{data:array{op:string}}
+	 */
+	public static function calc_settings_for_op( string $op ): array {
+		$op = strtolower( trim( $op ) );
+		if ( '' === $op ) {
+			$op = self::CALC_OP_DEFAULT_FROM;
+		}
+		return array(
+			'data' => array(
+				'op' => $op,
+			),
+		);
+	}
+
+	/**
+	 * Relation.name required: attribute Bindungen and calc/defaultvalue_from (consumer attr).
+	 */
+	public static function type_key_requires_name( string $type_key ): bool {
+		return self::is_attribute_binding_type_key( $type_key )
+			|| self::is_calc_type_key( $type_key );
+	}
+
+	/**
+	 * @return list<array{id:string,typeId:int,typeName:string,typeKey:string,toId:int,toName:string,name?:string,multiplicity:string,index:int}>
 	 */
 	public static function list_outgoing( string $taxonomy, int $from_id ): array {
+		if ( $from_id > 0 && isset( self::$outgoing_cache[ $from_id ] ) ) {
+			return self::$outgoing_cache[ $from_id ];
+		}
 		$edges = self::read_edges( $from_id );
 		$out   = array();
 		foreach ( $edges as $index => $edge ) {
@@ -82,6 +249,9 @@ final class Relation {
 			if ( null !== $row ) {
 				$out[] = $row;
 			}
+		}
+		if ( $from_id > 0 ) {
+			self::$outgoing_cache[ $from_id ] = $out;
 		}
 		return $out;
 	}
@@ -111,7 +281,7 @@ final class Relation {
 	/**
 	 * Incoming stored edges (scan terms that reference $to_id).
 	 *
-	 * @return list<array{id:string,typeId:int,typeName:string,typeKey:string,fromId:int,fromName:string}>
+	 * @return list<array{id:string,typeId:int,typeName:string,typeKey:string,fromId:int,fromName:string,name?:string,multiplicity:string}>
 	 */
 	public static function list_incoming( string $taxonomy, int $to_id ): array {
 		if ( $to_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
@@ -142,25 +312,29 @@ final class Relation {
 				if ( (int) ( $edge['toId'] ?? 0 ) !== $to_id ) {
 					continue;
 				}
-				$type_id = (int) ( $edge['typeId'] ?? 0 );
-				$type    = $type_id > 0 ? get_term( $type_id, $taxonomy ) : null;
+				$type_id   = (int) ( $edge['typeId'] ?? 0 );
+				$type      = $type_id > 0 ? get_term( $type_id, $taxonomy ) : null;
 				$type_name = $type instanceof \WP_Term ? $type->name : '';
-				$out[]   = array(
+				$type_key  = ! empty( $edge['typeKey'] )
+					? (string) $edge['typeKey']
+					: strtolower( $type_name );
+				$row       = array(
 					'id'           => (string) ( $edge['id'] ?? '' ),
 					'typeId'       => $type_id,
 					'typeName'     => $type_name,
-					'typeKey'      => ! empty( $edge['typeKey'] )
-						? (string) $edge['typeKey']
-						: strtolower( $type_name ),
+					'typeKey'      => $type_key,
 					'fromId'       => $from_id,
 					'fromName'     => $term->name,
 					'multiplicity' => self::resolve_edge_multiplicity(
-						! empty( $edge['typeKey'] )
-							? (string) $edge['typeKey']
-							: strtolower( $type_name ),
+						$type_key,
 						$edge['multiplicity'] ?? null
 					),
 				);
+				$name = self::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+				if ( '' !== $name ) {
+					$row['name'] = $name;
+				}
+				$out[] = $row;
 			}
 		}
 		return $out;
@@ -262,15 +436,26 @@ final class Relation {
 	}
 
 	/**
-	 * Whether an identical From → Type → To edge already exists.
+	 * Whether an identical From → Type → To (+ name when set) edge already exists.
+	 *
+	 * Unnamed edges: same typeId+toId = duplicate.
+	 * Named edges (Q123 attributes): same typeId+toId+name = duplicate; different names OK.
 	 *
 	 * @param string $exclude_edge_id Edge id to ignore (e.g. when changing type on that edge).
+	 * @param string $name            Optional Relation name (attribute label).
 	 */
-	public static function has_identical( int $from_id, int $type_id, int $to_id, string $exclude_edge_id = '' ): bool {
+	public static function has_identical(
+		int $from_id,
+		int $type_id,
+		int $to_id,
+		string $exclude_edge_id = '',
+		string $name = ''
+	): bool {
 		if ( $from_id <= 0 || $type_id <= 0 || $to_id <= 0 ) {
 			return false;
 		}
 		$exclude_edge_id = sanitize_key( $exclude_edge_id );
+		$name_key        = self::normalize_edge_name( $name );
 		foreach ( self::read_edges( $from_id ) as $edge ) {
 			if (
 				'' !== $exclude_edge_id
@@ -278,7 +463,14 @@ final class Relation {
 			) {
 				continue;
 			}
-			if ( (int) ( $edge['typeId'] ?? 0 ) === $type_id && (int) ( $edge['toId'] ?? 0 ) === $to_id ) {
+			if ( (int) ( $edge['typeId'] ?? 0 ) !== $type_id || (int) ( $edge['toId'] ?? 0 ) !== $to_id ) {
+				continue;
+			}
+			$edge_name = self::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+			if ( '' === $name_key && '' === $edge_name ) {
+				return true;
+			}
+			if ( '' !== $name_key && $edge_name === $name_key ) {
 				return true;
 			}
 		}
@@ -286,10 +478,31 @@ final class Relation {
 	}
 
 	/**
-	 * @param string $multiplicity Definition cardinality (Q78); default 0..*.
-	 * @return true|\WP_Error
+	 * Normalize Relation.name for storage / compare (Q123 attribute label).
 	 */
-	public static function add( string $taxonomy, int $from_id, int $type_id, int $to_id, string $multiplicity = self::MULTIPLICITY_DEFAULT ) {
+	public static function normalize_edge_name( string $name ): string {
+		/* Repair stripslashes damage on JSON `\uXXXX` escapes (ä → u00e4). */
+		$name = Json_Meta::repair_stripped_unicode_escapes( $name );
+		return trim( sanitize_text_field( $name ) );
+	}
+
+	/**
+	 * @param string                    $multiplicity Definition cardinality (Q78); default 0..*.
+	 * @param string                    $name         Optional Relation name (required for attribute Bindungen).
+	 * @param array<string, mixed>|null $settings     Settings.data / Settings.view deltas.
+	 * @param array<string, mixed>      $edge_fields  Optional OQ-W4 fields: readOnly, hidden, default.
+	 * @return string|\WP_Error New edge id.
+	 */
+	public static function add(
+		string $taxonomy,
+		int $from_id,
+		int $type_id,
+		int $to_id,
+		string $multiplicity = self::MULTIPLICITY_DEFAULT,
+		string $name = '',
+		?array $settings = null,
+		array $edge_fields = array()
+	) {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
 		}
@@ -315,23 +528,259 @@ final class Relation {
 			);
 		}
 
-		if ( self::has_identical( $from_id, $type_id, $to_id ) ) {
+		$name     = self::normalize_edge_name( $name );
+		$type_key = strtolower( $type->name );
+		if ( self::type_key_requires_name( $type_key ) && '' === $name ) {
 			return new \WP_Error(
-				'wtt_duplicate_relation',
-				__( 'This relation already exists (same From, Relation type, and To).', 'wp-taxonomy-tree' )
+				'wtt_bad_relation',
+				self::is_calc_type_key( $type_key )
+					? __( 'Calculation (calc) requires a name (consumer attribute for default_from).', 'wp-taxonomy-tree' )
+					: __( 'Attribute relations (besteht_aus / aggregation) require a name.', 'wp-taxonomy-tree' )
 			);
 		}
-
-		$type_key = strtolower( $type->name );
+		if ( self::has_identical( $from_id, $type_id, $to_id, '', $name ) ) {
+			return new \WP_Error(
+				'wtt_duplicate_relation',
+				'' !== $name
+					? __( 'This relation already exists (same From, Relation type, To, and name).', 'wp-taxonomy-tree' )
+					: __( 'This relation already exists (same From, Relation type, and To).', 'wp-taxonomy-tree' )
+			);
+		}
+		$edge_id  = self::new_edge_id();
 		$edges    = self::read_edges( $from_id );
-		$edges[]  = array(
-			'id'           => self::new_edge_id(),
+		$row      = array(
+			'id'           => $edge_id,
 			'typeId'       => $type_id,
 			'toId'         => $to_id,
 			'typeKey'      => $type_key,
 			'multiplicity' => self::resolve_edge_multiplicity( $type_key, $multiplicity ),
 		);
+		if ( '' !== $name ) {
+			$row['name'] = $name;
+		}
+		$normalized_settings = self::normalize_settings_deltas( $settings );
+		if ( null !== $normalized_settings ) {
+			$row['settings'] = $normalized_settings;
+		}
+		/* OQ-W4 edge fields (move / restore paths). */
+		$row = self::with_edge_bool_fields( $edge_fields, $row );
+		$row = self::with_edge_default_field( $edge_fields, $row );
+		$edges[] = $row;
+		$written = self::write_edges( $from_id, $edges );
+		if ( is_wp_error( $written ) ) {
+			return $written;
+		}
+		return $edge_id;
+	}
+
+	/**
+	 * Update Relation.name on a stored edge (Q123 attribute label).
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function update_name( string $taxonomy, int $from_id, string $edge_id, string $name ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$from = get_term( $from_id, $taxonomy );
+		if ( ! $from instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edge_id = sanitize_key( $edge_id );
+		$name    = self::normalize_edge_name( $name );
+		if ( '' === $edge_id ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edges = self::read_edges( $from_id );
+		$found = false;
+		foreach ( $edges as $i => $edge ) {
+			if ( sanitize_key( (string) ( $edge['id'] ?? '' ) ) !== $edge_id ) {
+				continue;
+			}
+			$type_id = (int) ( $edge['typeId'] ?? 0 );
+			$to_id   = (int) ( $edge['toId'] ?? 0 );
+			if ( self::has_identical( $from_id, $type_id, $to_id, $edge_id, $name ) ) {
+				return new \WP_Error(
+					'wtt_duplicate_relation',
+					__( 'This relation already exists (same From, Relation type, To, and name).', 'wp-taxonomy-tree' )
+				);
+			}
+			if ( '' === $name ) {
+				unset( $edges[ $i ]['name'] );
+			} else {
+				$edges[ $i ]['name'] = $name;
+			}
+			$found = true;
+			break;
+		}
+		if ( ! $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
 		return self::write_edges( $from_id, $edges );
+	}
+
+	/**
+	 * Replace Settings override deltas on an edge (`data` / `view` maps). Empty clears.
+	 *
+	 * @param array<string, mixed>|null $settings
+	 * @return true|\WP_Error
+	 */
+	public static function update_settings( string $taxonomy, int $from_id, string $edge_id, ?array $settings ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$from = get_term( $from_id, $taxonomy );
+		if ( ! $from instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edge_id = class_exists( __NAMESPACE__ . '\\Attribute' )
+			? Attribute::normalize_attr_id( $edge_id )
+			: sanitize_key( $edge_id );
+		if ( '' === $edge_id ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edges = self::read_edges( $from_id );
+		$found = false;
+		foreach ( $edges as $i => $edge ) {
+			$candidate = class_exists( __NAMESPACE__ . '\\Attribute' )
+				? Attribute::normalize_attr_id( $edge['id'] ?? '' )
+				: sanitize_key( (string) ( $edge['id'] ?? '' ) );
+			if ( $candidate !== $edge_id ) {
+				continue;
+			}
+			$normalized = self::normalize_settings_deltas( $settings );
+			if ( null === $normalized ) {
+				unset( $edges[ $i ]['settings'] );
+			} else {
+				$edges[ $i ]['settings'] = $normalized;
+			}
+			$found = true;
+			break;
+		}
+		if ( ! $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
+		return self::write_edges( $from_id, $edges );
+	}
+
+	/**
+	 * Normalize Relation Settings deltas.
+	 *
+	 * Top-level `data` / `view` = depth-0 (direct attribute target).
+	 * Optional `nested` = flat map of path → `{data?,view?}` for Walk-Wizard
+	 * overrides along composition (Q123 / OQ-W6). Path keys are `/`-joined
+	 * Relation edge UUIDs from the attribute target (see Settings_Walk).
+	 *
+	 * @param array<string, mixed>|null $settings
+	 * @return array{data?:array<string,mixed>,view?:array<string,mixed>,nested?:array<string,array{data?:array<string,mixed>,view?:array<string,mixed>}>}|null
+	 */
+	public static function normalize_settings_deltas( ?array $settings ): ?array {
+		if ( null === $settings || ! is_array( $settings ) ) {
+			return null;
+		}
+		$out = array();
+		foreach ( array( 'data', 'view' ) as $ns ) {
+			if ( empty( $settings[ $ns ] ) || ! is_array( $settings[ $ns ] ) ) {
+				continue;
+			}
+			$bag = array();
+			foreach ( $settings[ $ns ] as $key => $value ) {
+				$k = is_string( $key ) ? self::sanitize_settings_key( $key ) : '';
+				if ( '' === $k ) {
+					continue;
+				}
+				$bag[ $k ] = $value;
+			}
+			if ( ! empty( $bag ) ) {
+				$out[ $ns ] = $bag;
+			}
+		}
+
+		/* Nested path deltas — flat map; values are data/view bags only (no nested-in-nested). */
+		if ( isset( $settings['nested'] ) && is_array( $settings['nested'] ) ) {
+			$nested_out = array();
+			foreach ( $settings['nested'] as $path => $bag ) {
+				if ( ! is_string( $path ) || ! is_array( $bag ) ) {
+					continue;
+				}
+				$path_key = self::normalize_nested_settings_path( $path );
+				if ( '' === $path_key ) {
+					continue;
+				}
+				$norm_bag = self::normalize_settings_bag( $bag );
+				if ( null !== $norm_bag ) {
+					$nested_out[ $path_key ] = $norm_bag;
+				}
+			}
+			if ( ! empty( $nested_out ) ) {
+				$out['nested'] = $nested_out;
+			}
+		}
+
+		return empty( $out ) ? null : $out;
+	}
+
+	/**
+	 * Normalize a single Settings.data / Settings.view bag (no nested map).
+	 *
+	 * @param array<string, mixed> $bag
+	 * @return array{data?:array<string,mixed>,view?:array<string,mixed>}|null
+	 */
+	public static function normalize_settings_bag( array $bag ): ?array {
+		$out = array();
+		foreach ( array( 'data', 'view' ) as $ns ) {
+			if ( empty( $bag[ $ns ] ) || ! is_array( $bag[ $ns ] ) ) {
+				continue;
+			}
+			$ns_bag = array();
+			foreach ( $bag[ $ns ] as $key => $value ) {
+				$k = is_string( $key ) ? self::sanitize_settings_key( $key ) : '';
+				if ( '' === $k ) {
+					continue;
+				}
+				$ns_bag[ $k ] = $value;
+			}
+			if ( ! empty( $ns_bag ) ) {
+				$out[ $ns ] = $ns_bag;
+			}
+		}
+		return empty( $out ) ? null : $out;
+	}
+
+	/**
+	 * Walk path = `/`-joined Relation edge UUIDs (sanitize_key segments).
+	 * Empty string = depth 0 (top-level data/view).
+	 */
+	public static function normalize_nested_settings_path( string $path ): string {
+		$path = trim( $path );
+		$path = trim( $path, '/' );
+		if ( '' === $path ) {
+			return '';
+		}
+		$parts = array();
+		foreach ( explode( '/', $path ) as $seg ) {
+			$seg = class_exists( __NAMESPACE__ . '\\Attribute' )
+				? Attribute::normalize_attr_id( $seg )
+				: sanitize_key( (string) $seg );
+			if ( '' === $seg ) {
+				return '';
+			}
+			$parts[] = $seg;
+		}
+		return implode( '/', $parts );
+	}
+
+	/**
+	 * Settings.data / Settings.view wire keys (camelCase). Do not use sanitize_key —
+	 * it lowercases and would turn preferredRenderer into preferredrenderer.
+	 */
+	public static function sanitize_settings_key( string $key ): string {
+		$key = trim( $key );
+		if ( '' === $key ) {
+			return '';
+		}
+		$clean = preg_replace( '/[^A-Za-z0-9_]/', '', $key );
+		return is_string( $clean ) ? $clean : '';
 	}
 
 	/**
@@ -346,6 +795,10 @@ final class Relation {
 			return '1';
 		}
 		if ( self::TYPE_REF_SCOPE === $key ) {
+			return '0..1';
+		}
+		/* One provider link per edge; multiple named consumer attrs = multiple edges. */
+		if ( self::is_calc_type_key( $key ) ) {
 			return '0..1';
 		}
 		return null;
@@ -473,6 +926,175 @@ final class Relation {
 	}
 
 	/**
+	 * Set / clear OQ-W4 edge readOnly (omit key when false).
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function update_read_only( string $taxonomy, int $from_id, string $edge_id, bool $read_only ) {
+		return self::update_edge_bool_flag( $taxonomy, $from_id, $edge_id, 'readOnly', $read_only );
+	}
+
+	/**
+	 * Set / clear OQ-W4 / Q105 edge hidden (background-only). Omit key when false.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function update_hidden( string $taxonomy, int $from_id, string $edge_id, bool $hidden ) {
+		return self::update_edge_bool_flag( $taxonomy, $from_id, $edge_id, 'hidden', $hidden );
+	}
+
+	/**
+	 * Set / clear OQ-W4 edge default seed (Q106 templates). Empty / null omits the key.
+	 *
+	 * Storage key is `default` (not Settings). Always persisted as a list when present.
+	 *
+	 * @param list<string|array<string,string>>|string|null $values
+	 * @return true|\WP_Error
+	 */
+	public static function update_default( string $taxonomy, int $from_id, string $edge_id, $values ) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$from = get_term( $from_id, $taxonomy );
+		if ( ! $from instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edge_id = class_exists( __NAMESPACE__ . '\\Attribute' )
+			? Attribute::normalize_attr_id( $edge_id )
+			: sanitize_key( $edge_id );
+		if ( '' === $edge_id ) {
+			return new \WP_Error( 'wtt_bad_relation', __( 'Missing relation id.', 'wp-taxonomy-tree' ) );
+		}
+
+		$normalized = class_exists( __NAMESPACE__ . '\\Attribute' )
+			? Attribute::normalize_default_seed( $values )
+			: array();
+
+		$edges = self::read_edges( $from_id );
+		$found = false;
+		foreach ( $edges as $i => $edge ) {
+			$candidate = class_exists( __NAMESPACE__ . '\\Attribute' )
+				? Attribute::normalize_attr_id( $edge['id'] ?? '' )
+				: sanitize_key( (string) ( $edge['id'] ?? '' ) );
+			if ( $candidate !== $edge_id ) {
+				continue;
+			}
+			unset( $edges[ $i ]['defaultSeed'] );
+			if ( empty( $normalized ) ) {
+				unset( $edges[ $i ]['default'] );
+			} else {
+				$edges[ $i ]['default'] = $normalized;
+			}
+			$found = true;
+			break;
+		}
+		if ( ! $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
+		return self::write_edges( $from_id, $edges );
+	}
+
+	/**
+	 * @param 'readOnly'|'hidden' $flag
+	 * @return true|\WP_Error
+	 */
+	private static function update_edge_bool_flag(
+		string $taxonomy,
+		int $from_id,
+		string $edge_id,
+		string $flag,
+		bool $on
+	) {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return new \WP_Error( 'wtt_bad_taxonomy', __( 'Invalid taxonomy.', 'wp-taxonomy-tree' ) );
+		}
+		$from = get_term( $from_id, $taxonomy );
+		if ( ! $from instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$edge_id = class_exists( __NAMESPACE__ . '\\Attribute' )
+			? Attribute::normalize_attr_id( $edge_id )
+			: sanitize_key( $edge_id );
+		if ( '' === $edge_id || ( 'readOnly' !== $flag && 'hidden' !== $flag ) ) {
+			return new \WP_Error( 'wtt_bad_relation', __( 'Missing relation id.', 'wp-taxonomy-tree' ) );
+		}
+
+		$edges = self::read_edges( $from_id );
+		$found = false;
+		foreach ( $edges as $i => $edge ) {
+			$candidate = class_exists( __NAMESPACE__ . '\\Attribute' )
+				? Attribute::normalize_attr_id( $edge['id'] ?? '' )
+				: sanitize_key( (string) ( $edge['id'] ?? '' ) );
+			if ( $candidate !== $edge_id ) {
+				continue;
+			}
+			if ( $on ) {
+				$edges[ $i ][ $flag ] = true;
+				if ( 'readOnly' === $flag ) {
+					unset( $edges[ $i ]['readonly'] );
+				}
+			} else {
+				unset( $edges[ $i ][ $flag ] );
+				if ( 'readOnly' === $flag ) {
+					unset( $edges[ $i ]['readonly'] );
+				}
+			}
+			$found = true;
+			break;
+		}
+		if ( ! $found ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Relation not found.', 'wp-taxonomy-tree' ) );
+		}
+		return self::write_edges( $from_id, $edges );
+	}
+
+	/**
+	 * Copy OQ-W4 edge bool fields onto a normalized row (true keys only).
+	 *
+	 * @param array<string, mixed> $source Raw edge.
+	 * @param array<string, mixed> $row    Normalized row.
+	 * @return array<string, mixed>
+	 */
+	private static function with_edge_bool_fields( array $source, array $row ): array {
+		if ( ! empty( $source['readOnly'] ) || ! empty( $source['readonly'] ) ) {
+			$row['readOnly'] = true;
+		}
+		if ( ! empty( $source['hidden'] ) ) {
+			$row['hidden'] = true;
+		}
+		return $row;
+	}
+
+	/**
+	 * Copy OQ-W4 edge default seed onto a normalized row (omit when empty).
+	 *
+	 * Canonical key: `default`. Legacy alias `defaultSeed` accepted on read.
+	 *
+	 * @param array<string, mixed> $source Raw edge.
+	 * @param array<string, mixed> $row    Normalized row.
+	 * @return array<string, mixed>
+	 */
+	private static function with_edge_default_field( array $source, array $row ): array {
+		$raw = null;
+		if ( array_key_exists( 'default', $source ) ) {
+			$raw = $source['default'];
+		} elseif ( array_key_exists( 'defaultSeed', $source ) ) {
+			$raw = $source['defaultSeed'];
+		}
+		if ( null === $raw ) {
+			return $row;
+		}
+		$normalized = class_exists( __NAMESPACE__ . '\\Attribute' )
+			? Attribute::normalize_default_seed( $raw )
+			: array();
+		if ( empty( $normalized ) ) {
+			return $row;
+		}
+		$row['default'] = $normalized;
+		return $row;
+	}
+
+	/**
 	 * Update definition multiplicity on a stored edge (Q78).
 	 *
 	 * @return true|\WP_Error
@@ -576,7 +1198,8 @@ final class Relation {
 					continue;
 				}
 				$edge_type_id = (int) ( $edge['typeId'] ?? 0 );
-				if ( self::has_identical( $from_id, $edge_type_id, $new_to_id, $edge_id ) ) {
+				$edge_name    = (string) ( $edge['name'] ?? '' );
+				if ( self::has_identical( $from_id, $edge_type_id, $new_to_id, $edge_id, $edge_name ) ) {
 					return new \WP_Error(
 						'wtt_duplicate_relation',
 						__( 'This relation already exists (same From, Relation type, and To).', 'wp-taxonomy-tree' )
@@ -988,7 +1611,26 @@ final class Relation {
 		}
 		$out = array();
 		self::collect_type_options( $taxonomy, $root_id, $out, array( self::ROOT_NAME ) );
-		return $out;
+		$has_calc = false;
+		foreach ( $out as $opt ) {
+			if ( self::TYPE_CALC === strtolower( (string) ( $opt['name'] ?? '' ) ) ) {
+				$has_calc = true;
+				break;
+			}
+		}
+		if ( ! $has_calc ) {
+			return $out;
+		}
+		/* Hide legacy defaultvalue_from from Add picker when calc is seeded. */
+		$filtered = array();
+		foreach ( $out as $opt ) {
+			$name = strtolower( (string) ( $opt['name'] ?? '' ) );
+			if ( in_array( $name, self::DEPRECATED_ASSIGNABLE_TYPE_NAMES, true ) ) {
+				continue;
+			}
+			$filtered[] = $opt;
+		}
+		return $filtered;
 	}
 
 	public static function is_protected_type_name( string $name ): bool {
@@ -1027,7 +1669,7 @@ final class Relation {
 	}
 
 	/**
-	 * @return list<array{id:string,typeId:int,toId:int,typeKey?:string}>
+	 * @return list<array<string, mixed>>
 	 */
 	private static function read_edges( int $from_id ): array {
 		$raw = get_term_meta( $from_id, self::META_KEY, true );
@@ -1038,8 +1680,8 @@ final class Relation {
 		if ( ! is_array( $raw ) ) {
 			return array();
 		}
-		$out      = array();
-		$dirty    = false;
+		$out   = array();
+		$dirty = false;
 		foreach ( $raw as $edge ) {
 			if ( ! is_array( $edge ) ) {
 				continue;
@@ -1075,6 +1717,22 @@ final class Relation {
 			} elseif ( '' !== $type_key ) {
 				$row['typeKey'] = sanitize_key( $type_key );
 			}
+			$raw_name = (string) ( $edge['name'] ?? '' );
+			$name     = self::normalize_edge_name( $raw_name );
+			if ( '' !== $name ) {
+				$row['name'] = $name;
+			}
+			if ( '' !== $raw_name && Json_Meta::has_stripped_unicode_escapes( $raw_name ) && $name !== $raw_name ) {
+				$dirty = true;
+			}
+			$settings = self::normalize_settings_deltas(
+				isset( $edge['settings'] ) && is_array( $edge['settings'] ) ? $edge['settings'] : null
+			);
+			if ( null !== $settings ) {
+				$row['settings'] = $settings;
+			}
+			$row   = self::with_edge_bool_fields( $edge, $row );
+			$row   = self::with_edge_default_field( $edge, $row );
 			$out[] = $row;
 		}
 		if ( $dirty && $from_id > 0 ) {
@@ -1098,7 +1756,7 @@ final class Relation {
 	}
 
 	/**
-	 * @param list<array{id?:string,typeId:int,toId:int,typeKey?:string,multiplicity?:string}> $edges
+	 * @param list<array<string, mixed>> $edges
 	 * @return true|\WP_Error
 	 */
 	private static function write_edges( int $from_id, array $edges ) {
@@ -1117,7 +1775,14 @@ final class Relation {
 			if ( $type_id <= 0 || $to_id <= 0 ) {
 				continue;
 			}
-			$key = $type_id . ':' . $to_id;
+			$name = self::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+			/*
+			 * Q123: named attribute edges may share the same To (e.g. two text fields).
+			 * Unnamed edges still unique on typeId:toId.
+			 */
+			$key = '' !== $name
+				? $type_id . ':' . $to_id . ':' . strtolower( $name )
+				: $type_id . ':' . $to_id;
 			if ( isset( $seen[ $key ] ) ) {
 				continue;
 			}
@@ -1138,6 +1803,17 @@ final class Relation {
 			if ( '' !== $type_key ) {
 				$row['typeKey'] = $type_key;
 			}
+			if ( '' !== $name ) {
+				$row['name'] = $name;
+			}
+			$settings = self::normalize_settings_deltas(
+				isset( $edge['settings'] ) && is_array( $edge['settings'] ) ? $edge['settings'] : null
+			);
+			if ( null !== $settings ) {
+				$row['settings'] = $settings;
+			}
+			$row          = self::with_edge_bool_fields( $edge, $row );
+			$row          = self::with_edge_default_field( $edge, $row );
 			$normalized[] = $row;
 		}
 		if ( empty( $normalized ) ) {
@@ -1145,14 +1821,17 @@ final class Relation {
 			Tree_Model::touch_modified( $from_id );
 			return true;
 		}
-		update_term_meta( $from_id, self::META_KEY, wp_json_encode( array_values( $normalized ) ) );
+		$ok = Json_Meta::update_term_meta( $from_id, self::META_KEY, array_values( $normalized ) );
+		if ( false === $ok ) {
+			return new \WP_Error( 'wtt_relation_encode', __( 'Could not save relations.', 'wp-taxonomy-tree' ) );
+		}
 		Tree_Model::touch_modified( $from_id );
 		return true;
 	}
 
 	/**
-	 * @param array{id?:string,typeId:int,toId:int,typeKey?:string,multiplicity?:string} $edge
-	 * @return array{id:string,typeId:int,typeName:string,typeKey:string,toId:int,toName:string,multiplicity:string,index:int}|null
+	 * @param array<string, mixed> $edge
+	 * @return array<string, mixed>|null
 	 */
 	private static function hydrate_edge( string $taxonomy, array $edge, int $index ): ?array {
 		$type_id = (int) ( $edge['typeId'] ?? 0 );
@@ -1165,7 +1844,7 @@ final class Relation {
 		$type_key = ! empty( $edge['typeKey'] )
 			? (string) $edge['typeKey']
 			: strtolower( $type->name );
-		return array(
+		$row      = array(
 			'id'           => (string) ( $edge['id'] ?? '' ),
 			'typeId'       => $type_id,
 			'typeName'     => $type->name,
@@ -1175,6 +1854,22 @@ final class Relation {
 			'multiplicity' => self::resolve_edge_multiplicity( $type_key, $edge['multiplicity'] ?? null ),
 			'index'        => $index,
 		);
+		$name = self::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
+		if ( '' !== $name ) {
+			$row['name'] = $name;
+		}
+		$settings = self::normalize_settings_deltas(
+			isset( $edge['settings'] ) && is_array( $edge['settings'] ) ? $edge['settings'] : null
+		);
+		if ( null !== $settings ) {
+			$row['settings'] = $settings;
+		}
+		if ( self::is_calc_type_key( $type_key ) ) {
+			$row['calcOp'] = self::calc_op_from_edge( array_merge( $edge, array( 'typeKey' => $type_key ) ) );
+			$row['typeLabel'] = self::type_key_label( $type_key );
+		}
+		$row = self::with_edge_bool_fields( $edge, $row );
+		return self::with_edge_default_field( $edge, $row );
 	}
 
 	/**
@@ -1236,6 +1931,7 @@ final class Relation {
 			$out[]     = array(
 				'id'        => (int) $kid->term_id,
 				'name'      => $kid->name,
+				'label'     => self::type_key_label( $kid->name ),
 				'path'      => implode( ' / ', $next_path ),
 				'protected' => $protected,
 			);

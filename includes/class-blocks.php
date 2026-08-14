@@ -1158,9 +1158,12 @@ final class Blocks {
 				$values = isset( $inst['values'] ) && is_array( $inst['values'] ) ? $inst['values'] : array();
 				$cells  = array();
 				foreach ( $columns as $col ) {
-					$col_id           = (string) (int) ( $col['id'] ?? 0 );
+					$col_id = Attribute::normalize_attr_id( $col['id'] ?? '' );
+					if ( '' === $col_id ) {
+						continue;
+					}
 					$cells[ $col_id ] = isset( $values[ $col_id ] ) ? (string) $values[ $col_id ] : '';
-					if ( '' === $cells[ $col_id ] && isset( $values[ (int) $col_id ] ) ) {
+					if ( '' === $cells[ $col_id ] && ctype_digit( $col_id ) && isset( $values[ (int) $col_id ] ) ) {
 						$cells[ $col_id ] = (string) $values[ (int) $col_id ];
 					}
 				}
@@ -1222,8 +1225,10 @@ final class Blocks {
 			foreach ( $rows as $row ) {
 				echo '<tr>';
 				foreach ( $columns as $col ) {
-					$col_id   = (string) (int) $col['id'];
-					$val      = isset( $row['cells'][ $col_id ] ) ? (string) $row['cells'][ $col_id ] : '';
+					$col_id = Attribute::normalize_attr_id( $col['id'] ?? '' );
+					$val    = '' !== $col_id && isset( $row['cells'][ $col_id ] )
+						? (string) $row['cells'][ $col_id ]
+						: '';
 					$type_key = strtolower( (string) ( $col['typeKey'] ?? $col['typeName'] ?? '' ) );
 					if ( 'node_ref' === $type_key ) {
 						echo '<td class="wtt-collection-table__cell--node-ref">';
@@ -1334,7 +1339,7 @@ final class Blocks {
 			return;
 		}
 
-		update_post_meta( $post_id, Composition::META_KEY_ROWS, wp_json_encode( $instances ) );
+		Json_Meta::update_post_meta( $post_id, Composition::META_KEY_ROWS, $instances );
 	}
 
 	/**

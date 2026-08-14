@@ -67,7 +67,11 @@ final class Sample_Data {
 			'bool'              => 'true',
 			/* Unix timestamp (UTC 2024-06-15 14:30:00). Mode on type chooses date vs datetime chrome. */
 			'date'              => '1718461800',
-			/* Read-only host name — preview uses the live node name; placeholder for DTOs. */
+			'time'              => '14:30',
+			'datetime'          => '2024-06-15T14:30',
+			'color'             => '#2271b1',
+			/* Read-only host presentation — preview resolves context (form/symbol/…); DTO placeholder. */
+			'node_presentation' => 'Node name',
 			'display_node_name' => 'Node name',
 			/* MediaRef JSON (attachment-like) for SSR / fixtures; admin prefers WTTMediaRender. */
 			'media'             => '{"source":"url","url":"https://example.com/sample.png","mime":"image/png","filename":"beispiel.png"}',
@@ -85,8 +89,13 @@ final class Sample_Data {
 		$p = self::persona();
 
 		return array(
-			'praefix'         => 'm',
-			'prefix'          => 'm',
+			/* Prefix optional by domain — never sample-force. */
+			'praefix'         => '',
+			'prefix'          => '',
+			/*
+			 * Kuerzel / symbol: no hardcoded glyph — use node_presentation (context=symbol)
+			 * from host presentation / short_description.
+			 */
 			'einheit'         => 'Ohm',
 			'unit'            => 'Ohm',
 			'name'            => $p['first_name'],
@@ -214,6 +223,34 @@ final class Sample_Data {
 		/* Type email → always persona fake address. */
 		if ( 'email' === $type_key ) {
 			return self::persona()['email'];
+		}
+
+		/*
+		 * node_presentation / display_node_name = live host term name — never
+		 * "Name" → Herbert heuristics. Callers pass hostName from the schema host.
+		 */
+		if ( 'node_presentation' === $type_key || 'display_node_name' === $type_key ) {
+			$host_name = '';
+			if ( is_array( $attr ) ) {
+				$host_name = trim(
+					(string) (
+						$attr['hostName']
+						?? $attr['hostDisplayName']
+						?? $attr['nodeName']
+						?? $attr['schemaName']
+						?? ''
+					)
+				);
+			}
+			if ( '' === $host_name ) {
+				$map       = self::map();
+				$host_name = (string) (
+					$map['node_presentation']
+					?? $map['display_node_name']
+					?? 'Node name'
+				);
+			}
+			return $host_name;
 		}
 
 		/* Platine.Name is a board title, not the Herbert persona. */

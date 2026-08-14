@@ -74,8 +74,9 @@ final class Demo_Data {
 												'date_mode'   => 'date',
 											),
 											array(
-												'name'        => 'display_node_name',
-												'description' => 'Read-only: shows the host Node.name (no user input).',
+												'name'        => 'node_presentation',
+												'description' => 'Read-only: shows one host Node presentation field (form/table/select/symbol/help/icon). Alias: display_node_name.',
+												'aliases'     => array( 'display_node_name' ),
 											),
 											array(
 												'name'               => 'media',
@@ -188,12 +189,12 @@ final class Demo_Data {
 								'children'    => array(
 									array(
 										'name'        => 'Durchloch Axial',
-										'type_name'   => 'display_node_name',
+										'type_name'   => 'node_presentation',
 										'description' => 'Zum Beispiel Widerstaende, Anschluesse rechts und links vom Koerper. Auch alte Kondensatoren haben oft dieses Format.',
 									),
 									array(
 										'name'        => 'Durchloch Radial',
-										'type_name'   => 'display_node_name',
+										'type_name'   => 'node_presentation',
 										'description' => 'Zum Beispiel bei Kondensatoren beide Anschlussbeine auf einer Seite.',
 									),
 									self::smd_package_node( 'SMD 0201', 'Imperial 0201 (metric 0603).', 0.6, 0.3, 0.23 ),
@@ -422,7 +423,7 @@ final class Demo_Data {
 	private static function smd_package_node( string $name, string $description, float $l, float $b, float $h ): array {
 		return array(
 			'name'        => $name,
-			'type_name'   => 'display_node_name',
+			'type_name'   => 'node_presentation',
 			'description' => $description,
 			'children'    => array(
 				array(
@@ -867,30 +868,20 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Primary quantity triad (Wert + Praefix + fixed Einheit) — same pattern as unit sets.
+	 * Primary quantity slot: Wert → size (OQ-W10/W11).
+	 * Unit marriage (Praefix + Kuerzel) lives on With prefix / size → Unit — not on the host.
 	 *
+	 * @param string $unit_name Unused (kept for call-site BC; unit pick is on size.Unit).
 	 * @return array<int, array<string, mixed>>
 	 */
 	private static function quantity_member_slots( string $unit_name, string $wert_description = '' ): array {
+		unset( $unit_name );
 		return array(
 			array(
 				'name'        => 'Wert',
-				'type_name'   => 'double',
+				'type_name'   => 'size',
 				'required'    => true,
-				'description' => '' !== $wert_description ? $wert_description : 'Numeric magnitude.',
-			),
-			array(
-				'name'        => 'Praefix',
-				'type_name'   => 'Praefixe',
-				'required'    => false,
-				'description' => 'SI prefix (optional).',
-			),
-			array(
-				'name'            => 'Einheit',
-				'type_name'       => 'Basiseinheit',
-				'fixed_node_name' => $unit_name,
-				'required'        => true,
-				'description'     => 'Fixed base unit: ' . $unit_name . '.',
+				'description' => '' !== $wert_description ? $wert_description : 'Numeric magnitude with unit (size).',
 			),
 		);
 	}
@@ -1290,8 +1281,8 @@ final class Demo_Data {
 
 		/* Q111: Model/Bauteil kinds → aggregation (repair create-only leftovers). */
 		foreach ( Attribute::list_own( $taxonomy, $kind_id ) as $row ) {
-			$attr_id = (int) ( $row['id'] ?? 0 );
-			if ( $attr_id <= 0 ) {
+			$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $attr_id ) {
 				continue;
 			}
 			Attribute::set_binding( $taxonomy, $kind_id, $attr_id, Attribute::DEFAULT_BINDING );
@@ -1767,8 +1758,8 @@ final class Demo_Data {
 
 		foreach ( Attribute::list_own( $taxonomy, $kind_id ) as $row ) {
 			$key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
-			$aid = (int) ( $row['id'] ?? 0 );
-			if ( $aid > 0 && isset( $drop[ $key ] ) ) {
+			$aid = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' !== $aid && isset( $drop[ $key ] ) ) {
 				Attribute::remove( $taxonomy, $kind_id, $aid );
 			}
 		}
@@ -2185,12 +2176,14 @@ final class Demo_Data {
 		$re_created  = 0;
 		$re_existing = 0;
 		self::install_nodes( $taxonomy, $blueprint, 0, $re_created, $re_existing );
+		self::strip_demo_obsolete_simple_aliases( $taxonomy );
 		self::migrate_basiseinheit_wert_to_typ( $taxonomy );
 		self::migrate_abmessung_t_to_h( $taxonomy );
 		self::ensure_prefix_multiplikators( $taxonomy );
 		self::ensure_short_descriptions( $taxonomy );
 		self::ensure_bom_bauteil_ref_scope( $taxonomy );
 		self::migrate_subtree_type_to_node_embed( $taxonomy );
+		/* Q90 / OQ-W15: ensure_node_pick_type_group is a no-op (parked types purged). */
 		self::ensure_node_pick_type_group( $taxonomy );
 		self::ensure_datatype_flags( $taxonomy );
 		Catalog_Bindings::ensure( $taxonomy );
@@ -2253,8 +2246,8 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Ensure Bauart concrete enum exists under the catalog `enum` node (idempotent).
-	 * Untrashes when soft-deleted. Does not remove sibling concrete enums (e.g. Dioden Typen).
+	 * Ensure Bauart CatalogChoice host under Data Types/Complex (idempotent).
+	 * Formerly nested under parked Complex/enum (Q90) — reparents when still there.
 	 *
 	 * @return int Bauart term id, or 0 on failure.
 	 */
@@ -2263,30 +2256,64 @@ final class Demo_Data {
 			return 0;
 		}
 
-		$enum_id = self::find_enum_catalog_id( $taxonomy );
-		if ( $enum_id <= 0 ) {
+		$complex_id = 0;
+		foreach (
+			array(
+				array( 'Fallstudie', 'Definition', 'Data Types', 'Complex' ),
+				array( 'Fallstudie', 'Definition', 'Datentypen', 'Complex' ),
+				array( 'Fallstudie', 'Definition', 'Complex' ),
+			) as $path
+		) {
+			$id = self::find_term_by_path( $taxonomy, $path );
+			if ( $id > 0 ) {
+				$complex_id = $id;
+				break;
+			}
+		}
+		if ( $complex_id <= 0 ) {
 			return 0;
 		}
 
-		Trash::restore_subtree( $taxonomy, $enum_id );
+		/* Prefer Bauart already under Complex; else under legacy enum. */
+		$bauart_id = self::find_direct_child_named( $taxonomy, $complex_id, 'Bauart' );
+		if ( $bauart_id <= 0 ) {
+			$enum_id = self::find_enum_catalog_id( $taxonomy );
+			if ( $enum_id > 0 ) {
+				$bauart_id = self::find_direct_child_named( $taxonomy, $enum_id, 'Bauart' );
+				if ( $bauart_id > 0 ) {
+					wp_update_term( $bauart_id, $taxonomy, array( 'parent' => $complex_id ) );
+				}
+			}
+		}
 
-		$created  = 0;
-		$existing = 0;
-		self::install_node_tree(
-			$taxonomy,
-			array( self::bauart_enum_node() ),
-			$enum_id,
-			$created,
-			$existing
-		);
+		if ( $bauart_id <= 0 ) {
+			$created  = 0;
+			$existing = 0;
+			self::install_node_tree(
+				$taxonomy,
+				array( self::bauart_enum_node() ),
+				$complex_id,
+				$created,
+				$existing
+			);
+			$bauart_id = self::find_direct_child_named( $taxonomy, $complex_id, 'Bauart' );
+		}
 
-		$bauart_id = self::find_direct_child_named( $taxonomy, $enum_id, 'Bauart' );
 		if ( $bauart_id <= 0 ) {
 			return 0;
 		}
 
 		Trash::restore_subtree( $taxonomy, $bauart_id );
 		Node_Type::set_deletable( $bauart_id, false );
+
+		/* Q90: drop stale type meta pointing at parked catalog `enum` (effective type = parent Complex). */
+		$bauart_type = Node_Type::get_type_id( $bauart_id );
+		if ( $bauart_type > 0 ) {
+			$type_term = get_term( $bauart_type, $taxonomy );
+			if ( $type_term instanceof \WP_Term && 0 === strcasecmp( $type_term->name, 'enum' ) ) {
+				delete_term_meta( $bauart_id, Node_Type::META_KEY );
+			}
+		}
 
 		$option_id = 0;
 		foreach ( Node_Type::enum_option_column_names() as $column_name ) {
@@ -2676,134 +2703,11 @@ final class Demo_Data {
 	}
 
 	/**
-	 * Q73: Ensure Complex/node_pick/{node_embed,node_ref}.
+	 * Q73 / OQ-W15 / Q90: formerly ensured Complex/node_pick/{node_embed,node_ref}.
+	 * Parked — no-op. Fallstudie purge: Case_Data::ensure_complex_datatypes.
 	 */
 	public static function ensure_node_pick_type_group( string $taxonomy ): void {
-		if ( ! taxonomy_exists( $taxonomy ) ) {
-			return;
-		}
-		$complex = self::find_term_by_path(
-			$taxonomy,
-			array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Complex' )
-		);
-		if ( $complex <= 0 ) {
-			return;
-		}
-
-		$pick = 0;
-		$kids = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'parent'     => $complex,
-				'hide_empty' => false,
-				'number'     => 0,
-			)
-		);
-		if ( is_array( $kids ) ) {
-			foreach ( $kids as $kid ) {
-				if ( $kid instanceof \WP_Term && 'node_pick' === $kid->name ) {
-					$pick = (int) $kid->term_id;
-					break;
-				}
-			}
-		}
-		if ( $pick <= 0 ) {
-			$created = wp_insert_term(
-				'node_pick',
-				$taxonomy,
-				array(
-					'parent'      => $complex,
-					'description' => 'Shared parent (Q73): ref_scope + allowed catalog children.',
-					'slug'        => 'node-pick',
-				)
-			);
-			if ( is_wp_error( $created ) || empty( $created['term_id'] ) ) {
-				return;
-			}
-			$pick = (int) $created['term_id'];
-		}
-
-		$move_names = array( 'node_embed', 'node_ref', 'subtree' );
-		$sources    = array( $complex );
-		$simple     = self::find_term_by_path(
-			$taxonomy,
-			array( 'BOM Testprojekt', 'Typen', 'Datentypen', 'Simple' )
-		);
-		if ( $simple > 0 ) {
-			$sources[] = $simple;
-		}
-
-		foreach ( $sources as $parent_id ) {
-			$siblings = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'parent'     => $parent_id,
-					'hide_empty' => false,
-					'number'     => 0,
-				)
-			);
-			if ( ! is_array( $siblings ) ) {
-				continue;
-			}
-			foreach ( $siblings as $sib ) {
-				if ( ! $sib instanceof \WP_Term ) {
-					continue;
-				}
-				if ( ! in_array( $sib->name, $move_names, true ) ) {
-					continue;
-				}
-				if ( (int) $sib->parent === $pick ) {
-					continue;
-				}
-				$name = 'subtree' === $sib->name ? 'node_embed' : $sib->name;
-				$existing = get_terms(
-					array(
-						'taxonomy'   => $taxonomy,
-						'name'       => $name,
-						'parent'     => $pick,
-						'hide_empty' => false,
-						'number'     => 1,
-					)
-				);
-				if ( is_array( $existing ) && ! empty( $existing ) && $existing[0] instanceof \WP_Term ) {
-					self::repoint_type_id( $taxonomy, (int) $sib->term_id, (int) $existing[0]->term_id );
-					wp_delete_term( (int) $sib->term_id, $taxonomy );
-					continue;
-				}
-				wp_update_term(
-					(int) $sib->term_id,
-					$taxonomy,
-					array(
-						'parent' => $pick,
-						'name'   => $name,
-						'slug'   => sanitize_title( $name ),
-					)
-				);
-			}
-		}
-
-		foreach ( array( 'node_embed', 'node_ref' ) as $leaf ) {
-			$found = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'name'       => $leaf,
-					'parent'     => $pick,
-					'hide_empty' => false,
-					'number'     => 1,
-				)
-			);
-			if ( is_array( $found ) && ! empty( $found ) ) {
-				continue;
-			}
-			wp_insert_term(
-				$leaf,
-				$taxonomy,
-				array(
-					'parent' => $pick,
-					'slug'   => sanitize_title( $leaf ),
-				)
-			);
-		}
+		unset( $taxonomy );
 	}
 
 	/**
@@ -3565,6 +3469,54 @@ final class Demo_Data {
 		}
 
 		return $parent;
+	}
+
+	/**
+	 * Trash leftover Simple alias siblings (e.g. display_node_name after node_presentation).
+	 */
+	private static function strip_demo_obsolete_simple_aliases( string $taxonomy ): void {
+		$paths = array(
+			array( self::ROOT_NAME, 'Typen', 'Datentypen', 'Simple' ),
+			array( self::ROOT_NAME, 'Definition', 'Data Types', 'Simple' ),
+			array( self::ROOT_NAME, 'Data Types', 'Simple' ),
+		);
+		$pres_id = 0;
+		foreach ( $paths as $path ) {
+			$simple_id = self::find_term_by_path( $taxonomy, $path );
+			if ( $simple_id > 0 ) {
+				Case_Data::strip_obsolete_simple_datatype_aliases( $taxonomy, $simple_id );
+				if ( $pres_id <= 0 ) {
+					$found = get_terms(
+						array(
+							'taxonomy'   => $taxonomy,
+							'parent'     => $simple_id,
+							'name'       => 'node_presentation',
+							'hide_empty' => false,
+							'number'     => 1,
+						)
+					);
+					if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
+						$pres_id = (int) $found[0]->term_id;
+					}
+				}
+			}
+		}
+		if ( $pres_id <= 0 ) {
+			$found = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'name'       => 'node_presentation',
+					'hide_empty' => false,
+					'number'     => 1,
+				)
+			);
+			if ( is_array( $found ) && isset( $found[0] ) && $found[0] instanceof \WP_Term ) {
+				$pres_id = (int) $found[0]->term_id;
+			}
+		}
+		if ( $pres_id > 0 ) {
+			Case_Data::purge_legacy_display_node_name_terms( $taxonomy, $pres_id );
+		}
 	}
 
 	/**

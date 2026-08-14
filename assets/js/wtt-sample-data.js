@@ -47,7 +47,11 @@
 		bool: 'true',
 		/* Unix timestamp (UTC 2024-06-15 14:30:00). Mode on type chooses date vs datetime chrome. */
 		date: '1718461800',
-		/* Read-only host name — live preview prefers member.displayName/name. */
+		time: '14:30',
+		datetime: '2024-06-15T14:30',
+		color: '#2271b1',
+		/* Read-only host presentation — live preview resolves Q117 context. */
+		node_presentation: 'Node name',
 		display_node_name: 'Node name',
 		/*
 		 * Media: descriptor object. forType() may upgrade via WTTMediaRender
@@ -67,8 +71,13 @@
 	 * Normalized attribute-name hints → sample strings (DE + EN).
 	 */
 	var NAME_MAP = {
-		praefix: 'm',
-		prefix: 'm',
+		/* Prefix is optional by domain (Meter without Milli) — never sample-force. */
+		praefix: '',
+		prefix: '',
+		/*
+		 * Kuerzel / symbol: no hardcoded glyph — node_presentation (context=symbol)
+		 * reads host presentation / shortDescription.
+		 */
 		einheit: 'Ohm',
 		unit: 'Ohm',
 		name: PERSONA.firstName,
@@ -486,10 +495,94 @@
 			typeKey = resolveTypeKey(typeFallback);
 		}
 
+		/*
+		 * Optional Mult (0..) and Praefix: leave empty — Meter without Milli / Ohm
+		 * without Kilo is valid; do not invent a catalog pick.
+		 */
+		if (attr && typeof attr === 'object') {
+			var mult = String(
+				attr.multiplicity || attr.fieldMultiplicity || ''
+			).trim();
+			var allowsEmpty =
+				attr.allowsEmpty === true ||
+				mult === '0' ||
+				mult === '0..1' ||
+				mult === '0..*';
+			var nameKey = normalizeKey(attr.name || attr.displayName || '');
+			if (
+				allowsEmpty ||
+				nameKey === 'praefix' ||
+				nameKey === 'prefix' ||
+				nameKey === 'prafix'
+			) {
+				return '';
+			}
+		}
+
 		var base = '';
 		/* Type email → always persona fake address. */
 		if (typeKey === 'email') {
 			base = PERSONA.email;
+		} else if (
+			typeKey === 'node_presentation' ||
+			typeKey === 'display_node_name' ||
+			typeKey.indexOf('node_presentation') !== -1 ||
+			typeKey.indexOf('display_node_name') !== -1
+		) {
+			/*
+			 * Host presentation field (Q117 context). Callers pass hostPresentation
+			 * map and/or hostName / shortDescription.
+			 */
+			var ctx = 'form';
+			if (attr && typeof attr === 'object') {
+				if (attr.presentationConfig && attr.presentationConfig.context) {
+					ctx = String(attr.presentationConfig.context)
+						.trim()
+						.toLowerCase();
+				} else if (attr.typeExtras && attr.typeExtras.presentationContext) {
+					ctx = String(attr.typeExtras.presentationContext)
+						.trim()
+						.toLowerCase();
+				} else if (attr.presentationContext) {
+					ctx = String(attr.presentationContext).trim().toLowerCase();
+				}
+			}
+			if (ctx === 'name') {
+				ctx = 'form';
+			}
+			var map =
+				attr && attr.hostPresentation && typeof attr.hostPresentation === 'object'
+					? attr.hostPresentation
+					: attr && attr.presentation && typeof attr.presentation === 'object'
+						? attr.presentation
+						: null;
+			if (map && map[ctx] != null && String(map[ctx]).trim() !== '') {
+				base = String(map[ctx]).trim();
+			}
+			if (!base && (ctx === 'symbol' || ctx === 'table')) {
+				base = String(
+					(attr && (attr.hostShortDescription || attr.shortDescription)) || ''
+				).trim();
+			}
+			if (!base && ctx !== 'icon' && ctx !== 'symbol' && ctx !== 'table') {
+				base = String(
+					(attr &&
+						(attr.hostName ||
+							attr.hostDisplayName ||
+							attr.nodeName ||
+							attr.schemaName)) ||
+						''
+				).trim();
+			}
+			if (!base && (ctx === 'symbol' || ctx === 'table' || ctx === 'icon')) {
+				base = '—';
+			}
+			if (!base) {
+				base =
+					sampleFromTypeKey('node_presentation') ||
+					sampleFromTypeKey('display_node_name') ||
+					'Node name';
+			}
 		} else {
 			var host = '';
 			if (attr && typeof attr === 'object') {

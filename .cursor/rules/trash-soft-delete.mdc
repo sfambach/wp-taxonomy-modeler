@@ -29,10 +29,18 @@ alwaysApply: false
 - Under Trash: do **not** show WP children; show the **trashed forest** (roots = trashed nodes whose parent is not trashed).
 - Empty Trash: permanent `wp_delete_term` for all trashed; clear the list.
 
+## Attribute cascade (Q123 / Q111)
+
+- Soft-delete may include **leftover `_wtt_attribute_slot` terms** linked via `besteht_aus` / `aggregation` (`toId` + `is_slot` only).
+- **Never** cast Relation edge UUID / attr `id` to a term id for trash or `wp_delete_term`.
+- Catalog type targets are **not** soft-deleted with the host.
+- Composition **instance** data: soft-trash / restore / purge via `Model_Data::*_all_for_structure` (composition-linked children follow Q111; aggregation targets remain).
+
 ## Do / don’t
 
 - **Do** route UI delete → `Tree_Model::delete_term` → `Trash::move_to_trash` (not hard delete).
 - **Do** honor promote vs cascade — UI must send the matching `mode` (never force cascade for “node only”).
 - **Don’t** allow deleting the Trash node itself.
 - **Don’t** show soft-deleted nodes outside the Trash view.
+- **Don’t** treat attribute edge ids as slot terms.
 ---

@@ -75,6 +75,8 @@ final class Tree_Icons {
 			'calculator'       => __( 'Number / calc', 'wp-taxonomy-tree' ),
 			'text'             => __( 'Text', 'wp-taxonomy-tree' ),
 			'calendar'         => __( 'Date', 'wp-taxonomy-tree' ),
+			'clock'            => __( 'Time', 'wp-taxonomy-tree' ),
+			'art'              => __( 'Color / art', 'wp-taxonomy-tree' ),
 			'chart-bar'        => __( 'Chart', 'wp-taxonomy-tree' ),
 			'book'             => __( 'Book / definition', 'wp-taxonomy-tree' ),
 			'hammer'           => __( 'Build / implementation', 'wp-taxonomy-tree' ),
@@ -118,6 +120,8 @@ final class Tree_Icons {
 			'calculator',
 			'text',
 			'calendar',
+			'clock',
+			'art',
 			'book',
 			'hammer',
 			'trash',
@@ -324,9 +328,13 @@ final class Tree_Icons {
 			'textarea'          => 'admin-page',
 			'char'              => 'editor-code',
 			'date'              => 'calendar',
+			'time'              => 'clock',
+			'datetime'          => 'calendar',
+			'color'             => 'art',
 			'email'             => 'email',
 			'media'             => 'media-default',
 			'display_node_name' => 'tag',
+			'node_presentation' => 'tag',
 		);
 
 		if ( ! isset( $map[ $norm ] ) ) {

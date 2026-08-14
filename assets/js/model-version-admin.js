@@ -1,5 +1,5 @@
 /**
- * Model versions admin — focus host row from deep-link (?host_id=).
+ * Model versions admin — focus current version card on detail deep-link.
  *
  * @package WP_Taxonomy_Tree
  */
@@ -8,30 +8,48 @@
 
 	var cfg = window.wttModelVersions || {};
 	var hostId = parseInt(cfg.focusHostId, 10) || 0;
-	if (!hostId) {
-		return;
-	}
 
-	function focusRow() {
-		var row = document.getElementById('wtt-mv-host-' + String(hostId));
-		if (!row) {
+	function focusEl(el) {
+		if (!el) {
 			return;
 		}
-		row.classList.add('wtt-model-versions__row--focus');
-		if (typeof row.scrollIntoView === 'function') {
-			row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		el.classList.add('wtt-model-versions__card--focus');
+		if (typeof el.scrollIntoView === 'function') {
+			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}
 		try {
-			row.focus({ preventScroll: true });
+			el.focus({ preventScroll: true });
 		} catch (e) {
 			/* older browsers */
-			row.focus();
+			if (typeof el.focus === 'function') {
+				el.focus();
+			}
+		}
+	}
+
+	function onReady() {
+		var current = document.querySelector(
+			'.wtt-model-versions__card--current[data-current="1"]'
+		);
+		if (current) {
+			focusEl(current);
+			return;
+		}
+		if (!hostId) {
+			return;
+		}
+		var row = document.getElementById('wtt-mv-host-' + String(hostId));
+		if (row) {
+			row.classList.add('wtt-model-versions__row--focus');
+			if (typeof row.scrollIntoView === 'function') {
+				row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
 		}
 	}
 
 	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', focusRow);
+		document.addEventListener('DOMContentLoaded', onReady);
 	} else {
-		focusRow();
+		onReady();
 	}
 })();

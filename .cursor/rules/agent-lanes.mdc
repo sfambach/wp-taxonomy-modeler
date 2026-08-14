@@ -26,6 +26,7 @@ Several Cursor agents may work in this repo at once. **Play together** — do no
 
 - **Do** stay in your lane unless a fix is blocked (then touch the **minimum** shared surface and leave a short plan note).
 - **Do** reuse existing renderers / choosers (`reuse-renderers.mdc`, `choosers.mdc`) — blocks must not invent parallel Form/Table/tree UIs.
+- **Do** treat Attribute/Node **Settings** as one walk (`settings-ui-parity.mdc`) — model lock ≠ GUI done; no second Options chrome when the walk covers.
 - **Do** treat **admin ↔ block editor ↔ frontend** as one paint path for object chrome (parity). If admin view works and the block/frontend does not, fix the shared renderer or its wiring — not a third UI.
 - **Do** bump plugin patch only for your lane’s user-visible change; keep version strings in sync for files **you** touch.
 - **Don’t** reformat or “cleanup” large files outside your lane.

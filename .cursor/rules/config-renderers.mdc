@@ -1,0 +1,45 @@
+---
+description: Config page = vertical box stack (Q126); one ConfigPage everywhere
+globs:
+  - assets/js/wtt-settings-render.js
+  - assets/js/tree-admin.js
+  - assets/css/tree-admin.css
+alwaysApply: false
+---
+
+# Config page renderers (Q126)
+
+## Invariant — one ConfigPage everywhere
+
+- **Only** `WTTConfigRender.renderPage(node, ctx)` paints the node configuration page.
+- Changing a **box** renderer updates the page **everywhere**.
+- Alias: `WTTSettingsRender` === `WTTConfigRender`.
+
+## Vertical boxes (top → bottom)
+
+| Box id | Contents |
+|--------|----------|
+| `actions` | Toolbar, banners |
+| `meta` | Chips only (ID, Parent, Slug, …) |
+| `identitySettings` | Name, Default, non-bool type extras (Footer-Op, set separator, …) |
+| `bools` | Flags only, 5/row (RO, template, required) |
+| `childNodes` | Kindknoten activation (e.g. allowed prefixes); **omit** if unused |
+| `display` | Presentation + Preferred |
+| `attributes` | Attributes list/input (Relations are separate) |
+| `preview` | `WTTObjectRender` |
+| `relations` | **Last** |
+
+## Walk / Verdeckung (target policy)
+
+- Settings subset may walk subnode settings; **stop per attribute when covered** (own or intermediate node).
+- Always **peek +1** under cover; missing deeper level → mark **invalid**.
+- Prefer **walk on open**, not denormalized sync lists.
+
+## Do / don’t
+
+- **Do** put new chrome in the matching box.
+- **Don’t** mix Kindknoten into `bools` or Meta into identity.
+- **Don’t** paint config outside `renderPage`.
+
+Related: [node-renderers.mdc](node-renderers.mdc), [admin-ux-controls.mdc](admin-ux-controls.mdc).
+---

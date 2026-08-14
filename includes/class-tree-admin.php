@@ -105,9 +105,12 @@ final class Tree_Admin {
 		$case_study = Taxonomy::is_case_study( $requested );
 
 		// Scaffold: Fallstudie (wtt_fs) only — no BOM Demo_Data auto-seed.
+		// maybe_install seeds once when empty; do not re-ensure catalogs on every load.
 		if ( current_user_can( Capabilities::edit_terms( $requested ) ) ) {
 			Case_Data::maybe_install( $requested );
+			/* Bindings: fill missing keys only (Catalog_Bindings::ensure is additive). */
 			Catalog_Bindings::ensure( $requested );
+			/* Presentation legacy fill: one-shot per taxonomy. */
 			Node_Presentation::maybe_migrate_taxonomy( $requested );
 		}
 
@@ -173,16 +176,30 @@ final class Tree_Admin {
 				'iconHint'        => __( 'Stored on this node as term meta. Pick from the Settings allowlist.', 'wp-taxonomy-tree' ),
 				'iconNone'        => __( 'No icon', 'wp-taxonomy-tree' ),
 				'nodeDisplay'     => __( 'Display', 'wp-taxonomy-tree' ),
-				'nodeDisplayHint' => __( 'Presentation chrome for the tree. Texts live in the presentation store (Q117); icon key on the node (`_wtt_icon`). Allowed icons: Settings → Tree icons.', 'wp-taxonomy-tree' ),
+				'nodeDisplayHint' => __( 'Presentation (Q117), Preferred render/converter, and validators (Q118). Icon key on the node (`_wtt_icon`); allowed icons: Settings → Tree icons.', 'wp-taxonomy-tree' ),
 				'nodeIdentity'    => __( 'Identity', 'wp-taxonomy-tree' ),
 				'nodeIdentityHint'=> __( 'Core properties of this node (name, flags, defaults). Descriptions moved to Presentation (Q118).', 'wp-taxonomy-tree' ),
 				'presentationFoldTitle' => __( 'Presentation texts', 'wp-taxonomy-tree' ),
-				'presentationFoldHint'  => __( 'Locale texts (form / table / select / symbol / help) live in the presentation store — not as Identity fields.', 'wp-taxonomy-tree' ),
+				'presentationFoldHint'  => __( 'Empty fields follow the node name (and update on rename). Saved values stay until you change or clear them.', 'wp-taxonomy-tree' ),
 				'presentationFoldLoading' => __( 'Loading…', 'wp-taxonomy-tree' ),
 				'presentationFoldEmpty' => __( 'No presentation texts yet — use Edit presentation or Fill from legacy.', 'wp-taxonomy-tree' ),
 				'presentationFoldError' => __( 'Could not load presentation.', 'wp-taxonomy-tree' ),
-				'presentationEditLink'  => __( 'Edit presentation…', 'wp-taxonomy-tree' ),
+				'presentationEditLink'  => __( 'Open full presentation page…', 'wp-taxonomy-tree' ),
+				'presentationEditLinkShort' => __( 'Open presentation…', 'wp-taxonomy-tree' ),
 				'presentationBackToNode' => __( 'Back to node', 'wp-taxonomy-tree' ),
+				'presentationForm'      => __( 'Form', 'wp-taxonomy-tree' ),
+				'presentationTable'     => __( 'Table', 'wp-taxonomy-tree' ),
+				'presentationSelect'    => __( 'Select', 'wp-taxonomy-tree' ),
+				'presentationSymbol'    => __( 'Symbol', 'wp-taxonomy-tree' ),
+				'presentationHelp'      => __( 'Help', 'wp-taxonomy-tree' ),
+				'presentationIcon'      => __( 'Icon', 'wp-taxonomy-tree' ),
+				'presentationTypeSettings' => __( 'Node presentation settings', 'wp-taxonomy-tree' ),
+				'presentationTypeHint'  => __( 'Choose which presentation field of the host node to show (form, table, select, symbol, help, or icon).', 'wp-taxonomy-tree' ),
+				'attributesPresentationContext' => __( 'Presentation field', 'wp-taxonomy-tree' ),
+				'attributesPresentationContextDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
+				'presentationSave'      => __( 'Save presentation', 'wp-taxonomy-tree' ),
+				'presentationSaved'     => __( 'Presentation saved.', 'wp-taxonomy-tree' ),
+				'presentationFollowsName' => __( 'Follows node name', 'wp-taxonomy-tree' ),
 				'slug'            => __( 'Slug', 'wp-taxonomy-tree' ),
 				'slugHint'        => __( 'Derived from the name (updates when you rename). WordPress may append -2 if the slug already exists.', 'wp-taxonomy-tree' ),
 				'goToParent'      => __( 'Open parent in tree and settings', 'wp-taxonomy-tree' ),
@@ -332,7 +349,9 @@ final class Tree_Admin {
 				'relationsFoldError' => __( 'Could not load relation types.', 'wp-taxonomy-tree' ),
 				'relationsStoredCountHint' => __( 'Stored relation edges (plus synthetic rows when expanded)', 'wp-taxonomy-tree' ),
 				'attributesTitle' => __( 'Attributes', 'wp-taxonomy-tree' ),
-				'attributesHelp'  => __( 'Name + type + multiplicity + Bindung. Inherited along child_of; Hide inherited; Default value and Readonly on this node. Actions column is always last.', 'wp-taxonomy-tree' ),
+				'attributesFoldCollapsedHint' => __( 'Expand to edit attributes.', 'wp-taxonomy-tree' ),
+				'attributesFoldCountHint' => __( 'Attribute rows (own + inherited)', 'wp-taxonomy-tree' ),
+				'attributesHelp'  => __( 'Name + type + multiplicity + Bindung. Inherited along child_of. Own attrs: Default / RO / Hide live on the Relation edge. Inherited Hide / RO / Default are host-local overrides only (do not change the parent definition). Actions column is always last.', 'wp-taxonomy-tree' ),
 				'attributesEmpty' => __( 'No attributes yet.', 'wp-taxonomy-tree' ),
 				'attributesAdd'   => __( 'Add attribute', 'wp-taxonomy-tree' ),
 				'attributesName'  => __( 'Name', 'wp-taxonomy-tree' ),
@@ -341,7 +360,7 @@ final class Tree_Admin {
 				'attributesMultTitle' => __( 'Multiplicity', 'wp-taxonomy-tree' ),
 				'attributesFixed' => __( 'Default', 'wp-taxonomy-tree' ),
 				'attributesReadonly' => __( 'RO', 'wp-taxonomy-tree' ),
-				'attributesReadonlyHint' => __( 'When on, the attribute is not editable in forms (default value may still apply). Syncs read-only onto the attribute slot node.', 'wp-taxonomy-tree' ),
+				'attributesReadonlyHint' => __( 'When on, the attribute is not editable in forms (default value may still apply). Own attrs store RO on the Relation edge; inherited attrs use a host-local override.', 'wp-taxonomy-tree' ),
 				'attributesReadonlyTitle' => __( 'Read-only', 'wp-taxonomy-tree' ),
 				'attributesFixedTitle' => __( 'Default value', 'wp-taxonomy-tree' ),
 				'nodeReadonly' => __( 'Read-only', 'wp-taxonomy-tree' ),
@@ -362,9 +381,17 @@ final class Tree_Admin {
 				'attributesBindingComposition' => __( 'Composition (besteht_aus)', 'wp-taxonomy-tree' ),
 				'attributesBindingAggregation' => __( 'Aggregation', 'wp-taxonomy-tree' ),
 				'attributesInherited' => __( 'Inherited', 'wp-taxonomy-tree' ),
+				'attributesInheritedTitle' => __( 'Inherited attributes: Hide / RO / Default on this row are host-local overrides (not the parent Relation edge).', 'wp-taxonomy-tree' ),
 				'attributesActions' => __( 'Actions', 'wp-taxonomy-tree' ),
 				'attributesInheritedNo' => __( '—', 'wp-taxonomy-tree' ),
 				'attributesInheritedYes' => __( 'Yes', 'wp-taxonomy-tree' ),
+				'attributesInheritedOverrideBadge' => __( 'override', 'wp-taxonomy-tree' ),
+				/* translators: %s: comma-separated override kinds (Hide, RO, Default, Options) */
+				'attributesInheritedOverrideHint' => __( 'Host-local override on this node: %s.', 'wp-taxonomy-tree' ),
+				'attributesInheritedOverrideHide' => __( 'Hide', 'wp-taxonomy-tree' ),
+				'attributesInheritedOverrideRo' => __( 'RO', 'wp-taxonomy-tree' ),
+				'attributesInheritedOverrideDefault' => __( 'Default', 'wp-taxonomy-tree' ),
+				'attributesInheritedOverrideExtras' => __( 'Options', 'wp-taxonomy-tree' ),
 				'attributesHideLabel' => __( 'Hide', 'wp-taxonomy-tree' ),
 				'attributesPickType' => __( 'Choose attribute type', 'wp-taxonomy-tree' ),
 				'attributesNameRequired' => __( 'Attribute name is required.', 'wp-taxonomy-tree' ),
@@ -401,38 +428,67 @@ final class Tree_Admin {
 				/* translators: %s: ancestor host name (e.g. Passiv) */
 				'attributesShadowsHint' => __( 'Local copy hides the inherited “%s” definition. Remove this attribute to use inheritance from the parent.', 'wp-taxonomy-tree' ),
 				'attributesShadowsBanner' => __( 'Some local attributes shadow inherited ones (same name). Remove the local copy to inherit from the parent — keep local only when the field is specialization-specific.', 'wp-taxonomy-tree' ),
+				'attributesValidationBanner' => __( 'Attribute rules need attention.', 'wp-taxonomy-tree' ),
 				'attributesReadonlyNeedsDefaultBanner' => __( 'Read-only attributes need a default value.', 'wp-taxonomy-tree' ),
 				/* translators: %s: attribute name */
 				'attributesReadonlyNeedsDefaultError' => __( '“%s” is read-only but has no default value.', 'wp-taxonomy-tree' ),
+				'attributesBackgroundOnlyMultBanner' => __( 'Background-only (Hide) requires multiplicity 0..1 or 1.', 'wp-taxonomy-tree' ),
+				/* translators: %s: attribute name */
+				'attributesBackgroundOnlyMultError' => __( '“%s” is Background-only (Hide) but multiplicity is not 0..1 or 1.', 'wp-taxonomy-tree' ),
 				'attributesFixClearReadonly' => __( 'Clear read-only', 'wp-taxonomy-tree' ),
 				'attributesFixSetDefault' => __( 'Set default value', 'wp-taxonomy-tree' ),
+				'attributesFixSetMult01' => __( 'Set multiplicity to 0..1', 'wp-taxonomy-tree' ),
+				'attributesFixClearHide' => __( 'Clear Hide (Background-only)', 'wp-taxonomy-tree' ),
 				'attributesHide' => __( 'Hide', 'wp-taxonomy-tree' ),
 				'attributesShow' => __( 'Show', 'wp-taxonomy-tree' ),
 				'attributesHidden' => __( 'hidden', 'wp-taxonomy-tree' ),
 				'attributesHideHint' => __( 'Hide this inherited attribute on this node (does not delete the parent definition). Default: off (visible).', 'wp-taxonomy-tree' ),
-				'attributesHideOwnHint' => __( 'Hide applies only to inherited attributes. Default: off.', 'wp-taxonomy-tree' ),
+				'attributesHideBoHint' => __( 'Background-only: hide from user forms (requires Mult 0..1 or 1). Stored on the Relation edge.', 'wp-taxonomy-tree' ),
+				'attributesHideOwnHint' => __( 'Background-only (Hide) on own attributes requires multiplicity 0..1 or 1. Default: off.', 'wp-taxonomy-tree' ),
 				'attributesFixedNone' => __( 'No default value', 'wp-taxonomy-tree' ),
 				'attributesFixedEdit' => __( 'Choose default…', 'wp-taxonomy-tree' ),
 				'attributesFixedClear' => __( 'Clear', 'wp-taxonomy-tree' ),
 				'attributesFixedApply' => __( 'Apply', 'wp-taxonomy-tree' ),
 				'attributesFixedRequired' => __( 'At least one value is required for this multiplicity.', 'wp-taxonomy-tree' ),
 				'attributesFixedAddValue' => __( 'Add value', 'wp-taxonomy-tree' ),
-				'attributesFixedHint' => __( 'Default value(s) on this node (own or inherited attribute). Catalog types: pick from the type tree (list picker). Multiplicity controls how many values.', 'wp-taxonomy-tree' ),
+				'attributesFixedHint' => __( 'Default value(s). Own attrs: Relation edge seed. Inherited attrs: host-local name override (does not change the parent). Catalog types: pick from the type tree. Multiplicity controls how many values.', 'wp-taxonomy-tree' ),
 				'attributesFixedEmpty' => __( 'This type has no selectable values yet.', 'wp-taxonomy-tree' ),
+				'attributesDisplayNodeNameNoDefault' => __( 'This attribute always shows a host presentation field. A default value is not used.', 'wp-taxonomy-tree' ),
 				'attributesDuplicate' => __( 'Duplicate', 'wp-taxonomy-tree' ),
 				'attributesOptions' => __( 'Options', 'wp-taxonomy-tree' ),
 				'attributesOptionsConfigured' => __( 'Settings', 'wp-taxonomy-tree' ),
+				'attributesSettingsWalk' => __( 'Settings', 'wp-taxonomy-tree' ),
+				/* translators: %d: number of nodes visited by Settings walk. */
+				'attributesSettingsWalkNodes' => __( 'Settings walk: %d nodes', 'wp-taxonomy-tree' ),
+				'attributesSettingsWalkGo'    => __( 'Select this type node in the tree', 'wp-taxonomy-tree' ),
+				'attributesSettingsWalkEdit'  => __( 'Open type node', 'wp-taxonomy-tree' ),
+				'attributesSettingsWalkHint'  => __( 'Same Settings walk as the type node (Attribut-Walk): Preferred / converter / Default / validators / Choices / prefix allowlist per level to the leaf. Nested rows can override RO / Hide via Settings.data. Depth-0 Default → edge.default; nested → settings.nested[path].data.default. Reset deletes the override. Open type node (↗) is secondary.', 'wp-taxonomy-tree' ),
+				'attributesAllowedPrefixesOverrideHint' => __( 'Relation override: restricts prefixes for this attribute (intersected with each unit’s catalog marriage). Empty = value + unit only.', 'wp-taxonomy-tree' ),
+				'attributesAllowedPrefixesUnitDefault' => __( 'Type default: unit catalog prefix marriage. Change to override on this attribute Relation.', 'wp-taxonomy-tree' ),
+				'attributesAllowedPrefixesWithPrefixDefault' => __( 'Type default: each unit keeps its catalog prefix marriage. Override to restrict prefixes for this attribute.', 'wp-taxonomy-tree' ),
+				'attributesAllowedPrefixesShort' => __( 'Pref', 'wp-taxonomy-tree' ),
+				'attributesSettingsWalkCycle' => __( 'Cycle stopped — no further walk.', 'wp-taxonomy-tree' ),
+				'attributesPreferredSource'   => __( 'Preferred override: %s', 'wp-taxonomy-tree' ),
+				'attributesRelationOverrides' => __( 'Relation overrides', 'wp-taxonomy-tree' ),
+				'attributesRelationOverridesHint' => __( 'Hybrid Settings.view / Settings.data deltas on this attribute Relation (depth 0). Nested walk levels below use the same law with path-keyed deltas. Reset deletes the delta key. Host Preview still follows this node’s Preferred (Settings → Preferred), not these Relation Render overrides.', 'wp-taxonomy-tree' ),
+				'attributesRelationOverridesInheritedHint' => __( 'Overrides on this child host only (Settings deltas stored on the heir). The parent Relation edge is not mutated. Reset deletes the heir override. Host Preview still follows this node’s Preferred (Settings → Preferred).', 'wp-taxonomy-tree' ),
+				'attributesRelationOverrideBadge' => __( 'Relation override', 'wp-taxonomy-tree' ),
+				'attributesRelationOverrideReset' => __( 'Reset override', 'wp-taxonomy-tree' ),
+				'attributesRelationOverrideResetHint' => __( 'Delete this Relation Settings delta key and inherit the type default.', 'wp-taxonomy-tree' ),
 				'attributesDateMode' => __( 'Date mode', 'wp-taxonomy-tree' ),
+				'attributesDateModeShort' => __( 'Date', 'wp-taxonomy-tree' ),
 				'attributesDateModeDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'attributesChoiceFilter' => __( 'Choices', 'wp-taxonomy-tree' ),
 				'attributesChoiceInclude' => __( 'Include', 'wp-taxonomy-tree' ),
 				'attributesChoiceExclude' => __( 'Exclude', 'wp-taxonomy-tree' ),
 				'attributesChoiceFilterHint' => __( 'All choices start enabled. Uncheck a node to exclude it (and its subtree).', 'wp-taxonomy-tree' ),
+				'attributesChoiceFilterDeferHint' => __( 'Tick freely — choices save when you leave this list.', 'wp-taxonomy-tree' ),
 				'attributesChoiceEmpty' => __( 'No specialization children under this type.', 'wp-taxonomy-tree' ),
 				'attributesValidators' => __( 'Validators', 'wp-taxonomy-tree' ),
+				'attributesValidatorsShort' => __( 'Val', 'wp-taxonomy-tree' ),
 				'attributesValidatorsDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
-				'attributesValidatorsReset' => __( 'Reset to type default', 'wp-taxonomy-tree' ),
-				'attributesValidatorsHint' => __( 'Override type validators for this attribute. Empty override uses the type list.', 'wp-taxonomy-tree' ),
+				'attributesValidatorsReset' => __( 'Reset override', 'wp-taxonomy-tree' ),
+				'attributesValidatorsHint' => __( 'Relation override for validators (Settings.data). Reset deletes the delta key; empty uses the type list.', 'wp-taxonomy-tree' ),
 				'attributesCompute' => __( 'Compute', 'wp-taxonomy-tree' ),
 				'attributesComputeOff' => __( 'Off', 'wp-taxonomy-tree' ),
 				'attributesComputeHint' => __( 'Aggregate over a flat list of source values (sum/avg/min/max/count). Computed fields are read-only.', 'wp-taxonomy-tree' ),
@@ -445,8 +501,11 @@ final class Tree_Admin {
 				'preferredRender' => __( 'Preferred render', 'wp-taxonomy-tree' ),
 				'preferredRenderHint' => __( 'Default layout for admin preview and Object View (when the block uses Node preferred). Embedded renderer = pick a child/kind, then fill its attributes compactly (not a type). Chooser dialog is separate (inline vs popup).', 'wp-taxonomy-tree' ),
 				'preferredChrome' => __( 'Preferred', 'wp-taxonomy-tree' ),
-				'preferredChromeHint' => __( 'Render = how the node is painted; converter = how values are transformed for display. Only options that apply to this type.', 'wp-taxonomy-tree' ),
+				'preferredChromeHint' => __( 'Render = how the node is painted; converter = value transform; validators = value checks. Only options that apply to this type.', 'wp-taxonomy-tree' ),
 				'preferredRenderShort' => __( 'Render', 'wp-taxonomy-tree' ),
+				'preferredRenderInherit' => __( 'Inherit from parent', 'wp-taxonomy-tree' ),
+				'preferredRenderInheritedBadge' => __( 'Inherited', 'wp-taxonomy-tree' ),
+				'preferredRenderInheritHint' => __( 'When unset, Preferred render walks the child_of parent chain. Choose a concrete layout to override on this node.', 'wp-taxonomy-tree' ),
 				'preferredConverterShort' => __( 'Converter', 'wp-taxonomy-tree' ),
 				'preferredRenderForm' => __( 'Form', 'wp-taxonomy-tree' ),
 				'preferredRenderTable' => __( 'Table', 'wp-taxonomy-tree' ),
@@ -454,13 +513,23 @@ final class Tree_Admin {
 				'preferredRenderCompactVertical' => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
 				'preferredRenderEmbed' => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
 				'preferredRenderEmbedHint' => __( 'Choose a child/kind, then fill its attributes in a compact strip (Form/Table-style). For table cells the column already names the field. Not the same as chooser inline/popup.', 'wp-taxonomy-tree' ),
+				'preferredRenderChildList' => __( 'Child list', 'wp-taxonomy-tree' ),
+				'preferredRenderChildListHint' => __( 'List field of this node’s hierarchy children (default for Konstanten catalogs with children, e.g. Präfixe).', 'wp-taxonomy-tree' ),
+				'preferredRenderMedia' => __( 'MediaRenderer', 'wp-taxonomy-tree' ),
+				'previewChildListHint' => __( 'Child list: pick among children of this node (same list/tree chooser as CatalogChoice).', 'wp-taxonomy-tree' ),
 				'preferredConverter' => __( 'Preferred converter', 'wp-taxonomy-tree' ),
 				'preferredConverterHint' => __( 'Only converters that apply to this node’s type. Used when painting display values (e.g. int number formats).', 'wp-taxonomy-tree' ),
 				'preferredConverterNone' => __( 'None (no converters for this type)', 'wp-taxonomy-tree' ),
 				'preferredConverterNoneShort' => __( 'None', 'wp-taxonomy-tree' ),
 				'validators' => __( 'Validators', 'wp-taxonomy-tree' ),
 				'validatorsHint' => __( '0..n value checks for this type. A type default is always included; add more (including Expression). Each needs an error text; optional fixes when available.', 'wp-taxonomy-tree' ),
+				'validatorsEmptyHint' => __( 'No validators yet — use Add validator to add one.', 'wp-taxonomy-tree' ),
 				'validatorColId' => __( 'Validator', 'wp-taxonomy-tree' ),
+				'validatorColBound' => __( 'Bound', 'wp-taxonomy-tree' ),
+				'validatorBoundHint' => __( 'Threshold for min/max/length, or charset spec (range / allowlist / regex) in params.value.', 'wp-taxonomy-tree' ),
+				'validatorCharsetRangeHint' => __( 'Codepoint ranges: a-z, A-Z, 0-9, or U+0041-U+005A. Comma-separated for several ranges.', 'wp-taxonomy-tree' ),
+				'validatorCharsetAllowlistHint' => __( 'Comma-separated allowed characters. Use \\, for a literal comma.', 'wp-taxonomy-tree' ),
+				'validatorCharsetRegexHint' => __( 'Regex matched against the whole value (auto-anchored), e.g. [0-9a-z] or [0-9]|[a-z].', 'wp-taxonomy-tree' ),
 				'validatorColError' => __( 'Error text', 'wp-taxonomy-tree' ),
 				'validatorColExpression' => __( 'Expression', 'wp-taxonomy-tree' ),
 				'validatorColFix' => __( 'Fix', 'wp-taxonomy-tree' ),
@@ -471,7 +540,7 @@ final class Tree_Admin {
 				'validatorFixHint' => __( 'Optional fix label (shown when validation fails). Fixes are never auto-run.', 'wp-taxonomy-tree' ),
 				'validatorDefaultBadge' => __( 'Default', 'wp-taxonomy-tree' ),
 				'attributesPreferredConverterDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
-				'previewPreferredOnlyHint' => __( 'Preview shows only the preferred render for this node (Editable + Display only). Change Preferred render in node settings.', 'wp-taxonomy-tree' ),
+				'previewPreferredOnlyHint' => __( 'Preview surface = this node’s Preferred (Editable + Display). Nested attribute fields still use their walk / Relation Render (e.g. Kontakt → Table).', 'wp-taxonomy-tree' ),
 				'previewEmbed' => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
 				'embedPickHint' => __( 'Choose kind…', 'wp-taxonomy-tree' ),
 				'embedNoChoices' => __( 'No specialization children under this node.', 'wp-taxonomy-tree' ),
@@ -495,10 +564,17 @@ final class Tree_Admin {
 				'relationsFrom'   => __( 'From', 'wp-taxonomy-tree' ),
 				'relationsTo'     => __( 'To', 'wp-taxonomy-tree' ),
 				'relationsThisHint' => __( 'Current node (this endpoint of the relation)', 'wp-taxonomy-tree' ),
-				'relationsHint'   => __( 'Format: node → relation type → node. Click To to change the target (except child_of — use Reparent). Hierarchy type is the parent (Q88); field types use type_id. Mult. = definition multiplicity.', 'wp-taxonomy-tree' ),
+				'relationsHint'   => __( 'Format: node → relation type → node. Name = attribute label on besteht_aus / aggregation (same as Attributes → Name). Click To to change the target (except child_of — use Reparent). Mult. = definition multiplicity.', 'wp-taxonomy-tree' ),
 				'relationsEmpty'  => __( 'None', 'wp-taxonomy-tree' ),
 				'relationsType'   => __( 'Relation type', 'wp-taxonomy-tree' ),
 				'relationsTypeHint' => __( 'Relation type (e.g. composition) — not a Node. Not for child_of.', 'wp-taxonomy-tree' ),
+				'relationsName'   => __( 'Name', 'wp-taxonomy-tree' ),
+				'relationsNameHint' => __( 'Attribute label (Relation.name) for besteht_aus / aggregation. Same field as Attributes → Name.', 'wp-taxonomy-tree' ),
+				'relationsNameOptionalHint' => __( 'Name is optional for this relation type', 'wp-taxonomy-tree' ),
+				'relationsNameRequired' => __( 'Attribute relations (besteht_aus / aggregation) require a name.', 'wp-taxonomy-tree' ),
+				'relationsNamePrompt' => __( 'Attribute name (Relation.name)', 'wp-taxonomy-tree' ),
+				'relationsParkedBandBadge' => __( 'Q90 parked', 'wp-taxonomy-tree' ),
+				'relationsParkedBandHint' => __( 'Legacy table band (Zeile/Kopf/Fuss) — kept for scaffold table chrome; not a product attribute. Hidden from Attributes.', 'wp-taxonomy-tree' ),
 				'relationsTarget' => __( 'To', 'wp-taxonomy-tree' ),
 				'relationsSource' => __( 'From', 'wp-taxonomy-tree' ),
 				'relationsNotes'  => __( 'Notes', 'wp-taxonomy-tree' ),
@@ -518,6 +594,10 @@ final class Tree_Admin {
 				'relationsMoveUp' => __( 'Move up', 'wp-taxonomy-tree' ),
 				'relationsMoveDown' => __( 'Move down', 'wp-taxonomy-tree' ),
 				'relationsPickType' => __( 'Choose relation type', 'wp-taxonomy-tree' ),
+				'relationTypeCalc' => __( 'Calculation', 'wp-taxonomy-tree' ),
+				'relationsCalcNameRequired' => __( 'Calculation requires a name (consumer attribute for default_from).', 'wp-taxonomy-tree' ),
+				'relationsDefaultValueFromNameRequired' => __( 'Calculation requires a name (consumer attribute for default_from).', 'wp-taxonomy-tree' ),
+				'relationsCalcNameHint' => __( 'Consumer attribute name (calc default_from)', 'wp-taxonomy-tree' ),
 				'relationsPickTarget' => __( 'Choose target node', 'wp-taxonomy-tree' ),
 				'relationsChangeTarget' => __( 'Change target node', 'wp-taxonomy-tree' ),
 				'relationsNoTypes'=> __( 'No Relationstypen found. Reload the page or reset the demo tree.', 'wp-taxonomy-tree' ),
@@ -567,6 +647,9 @@ final class Tree_Admin {
 				'intFormatBinary' => __( 'Binary', 'wp-taxonomy-tree' ),
 				'intFormatOctal'  => __( 'Octal', 'wp-taxonomy-tree' ),
 				'intFormatHex'    => __( 'Hexadecimal', 'wp-taxonomy-tree' ),
+				'charFormatGlyph' => __( 'Character (glyph)', 'wp-taxonomy-tree' ),
+				'charFormatAscii' => __( 'ASCII', 'wp-taxonomy-tree' ),
+				'charFormatUnicode' => __( 'Unicode (U+)', 'wp-taxonomy-tree' ),
 				'attributesIntFormat' => __( 'Preferred converter', 'wp-taxonomy-tree' ),
 				'attributesIntFormatDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'attributesPreferredRenderDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
@@ -576,6 +659,11 @@ final class Tree_Admin {
 				'dateModeDate'    => __( 'Date only', 'wp-taxonomy-tree' ),
 				'dateModeDateTime'=> __( 'Date and time', 'wp-taxonomy-tree' ),
 				'dateModeHint'    => __( 'Choose date-only or date+time. Instance values are stored as Unix timestamps (site timezone for controls).', 'wp-taxonomy-tree' ),
+				'textareaSettings'=> __( 'Textarea settings', 'wp-taxonomy-tree' ),
+				'textareaLayoutHint' => __( 'Columns = characters per line; lines = visible rows in the editor.', 'wp-taxonomy-tree' ),
+				'textareaCols'    => __( 'Columns (chars/line)', 'wp-taxonomy-tree' ),
+				'textareaRows'    => __( 'Lines (rows)', 'wp-taxonomy-tree' ),
+				'attributesTextareaDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'displayNodeNameHint' => __( 'This type always shows the node name — no fixed value and no user input.', 'wp-taxonomy-tree' ),
 				'mediaSettings'   => __( 'Media settings', 'wp-taxonomy-tree' ),
 				'mediaAllowUpload'=> __( 'Allow Media Library', 'wp-taxonomy-tree' ),
@@ -611,13 +699,14 @@ final class Tree_Admin {
 				'unitConvFactor'  => __( '× factor', 'wp-taxonomy-tree' ),
 				'unitConvToSi'    => __( '1 → SI', 'wp-taxonomy-tree' ),
 				'unitConvSample'  => __( '10.5 → SI', 'wp-taxonomy-tree' ),
+				'catalogChoiceNone' => __( '—', 'wp-taxonomy-tree' ),
 				'unitConvNone'    => __( '—', 'wp-taxonomy-tree' ),
 				'unitConvNoneTitle' => __( 'No prefix', 'wp-taxonomy-tree' ),
 				'allowedPrefixesTitle' => __( 'Allowed prefixes', 'wp-taxonomy-tree' ),
 				'allowedPrefixesHint' => __( 'Which SI prefixes this unit may use (catalog marriage). Empty = value + unit only, no prefix. Factors live on each Präfix node.', 'wp-taxonomy-tree' ),
 				'allowedPrefixesMissing' => __( 'This unit has no editable prefix slot yet (typical for Without-prefix catalog units).', 'wp-taxonomy-tree' ),
 				'setPreview'      => __( 'Preview', 'wp-taxonomy-tree' ),
-				'unifiedPreviewHint' => __( 'Form and table — editable above, display mirror below (same fields).', 'wp-taxonomy-tree' ),
+				'unifiedPreviewHint' => __( 'Preferred render only — editable above, display mirror below (same fields).', 'wp-taxonomy-tree' ),
 				'previewSchema'   => __( 'Definition', 'wp-taxonomy-tree' ),
 				'unitSchemaHint'  => __( 'Unit schema only — not an instance. Kuerzel is the unit symbol (Meter → m). Praefix catalog “m” is Milli — same letter, different node.', 'wp-taxonomy-tree' ),
 				'unitUsageHint'   => __( 'Usage sample when a field uses this unit (value + prefix + symbol). Sample often picks milli → e.g. 10.5mm.', 'wp-taxonomy-tree' ),
@@ -627,7 +716,7 @@ final class Tree_Admin {
 				'previewCompactHorizontal' => __( 'Horizontal', 'wp-taxonomy-tree' ),
 				'previewCompactVertical' => __( 'Vertical', 'wp-taxonomy-tree' ),
 				'previewAsTree'   => __( 'Tree', 'wp-taxonomy-tree' ),
-				'nodeRenderPreviewHint' => __( 'Rendered via NodeRendererRegistry (tree / form / table). Same path for admin preview and future frontend.', 'wp-taxonomy-tree' ),
+				'nodeRenderPreviewHint' => __( 'Rendered via NodeRendererRegistry — host Preferred surface only (same path for admin preview and future frontend).', 'wp-taxonomy-tree' ),
 				'nrTreeSiblingBefore' => __( 'Sample A', 'wp-taxonomy-tree' ),
 				'nrTreeSiblingAfter' => __( 'Sample C', 'wp-taxonomy-tree' ),
 				'nrFormRowBefore' => __( 'Name', 'wp-taxonomy-tree' ),
@@ -718,6 +807,7 @@ final class Tree_Admin {
 		$sample_js      = WTT_PLUGIN_DIR . 'assets/js/wtt-sample-data.js';
 		$render_js      = WTT_PLUGIN_DIR . 'assets/js/wtt-node-render.js';
 		$object_js      = WTT_PLUGIN_DIR . 'assets/js/wtt-object-render.js';
+		$settings_js    = WTT_PLUGIN_DIR . 'assets/js/wtt-settings-render.js';
 		$validator_js   = WTT_PLUGIN_DIR . 'assets/js/wtt-table-validator.js';
 		$picker_js      = WTT_PLUGIN_DIR . 'assets/js/wtt-node-picker.js';
 		$js_abs         = WTT_PLUGIN_DIR . 'assets/js/tree-admin.js';
@@ -728,11 +818,12 @@ final class Tree_Admin {
 		$sample         = is_readable( $sample_js ) ? file_get_contents( $sample_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$render         = is_readable( $render_js ) ? file_get_contents( $render_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$object         = is_readable( $object_js ) ? file_get_contents( $object_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$settings       = is_readable( $settings_js ) ? file_get_contents( $settings_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$validator      = is_readable( $validator_js ) ? file_get_contents( $validator_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$picker         = is_readable( $picker_js ) ? file_get_contents( $picker_js ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$js             = is_readable( $js_abs ) ? file_get_contents( $js_abs ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
-		$json = wp_json_encode( self::$boot_config );
+		$json = Json_Meta::encode_raw( self::$boot_config );
 		if ( false === $json ) {
 			$json = '{}';
 		}
@@ -767,6 +858,10 @@ final class Tree_Admin {
 
 		if ( false !== $object && '' !== $object ) {
 			echo "<script id=\"wtt-object-render-js\">\n" . $object . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+
+		if ( false !== $settings && '' !== $settings ) {
+			echo "<script id=\"wtt-settings-render-js\">\n" . $settings . "\n</script>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		if ( false !== $validator && '' !== $validator ) {

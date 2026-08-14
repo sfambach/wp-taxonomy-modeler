@@ -38,8 +38,10 @@ $rows   = array(
 	),
 );
 if ( $schema && ! empty( $schema['columns'] ) ) {
-	$col0 = (string) (int) $schema['columns'][0]['id'];
-	$rows[0]['cells'][ $col0 ] = 'smoke';
+	$col0 = \WTT\Attribute::normalize_attr_id( $schema['columns'][0]['id'] ?? '' );
+	if ( '' !== $col0 ) {
+		$rows[0]['cells'][ $col0 ] = 'smoke';
+	}
 }
 
 $html = \WTT\Blocks::render_collection_table(

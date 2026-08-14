@@ -1,9 +1,9 @@
----
+﻿---
 name: Developer guide — Attribute / Relation / Settings model
 overview: Locked Q123 product model (OQ-W1…W16) with Widerstand diagrams for developers (and later user docs).
 status: agreed
 version: "1.0.0"
-last_updated: "2026-08-09"
+last_updated: "2026-08-14"
 related_docs:
   - docs/plans/relation-vs-object-concept.md
   - docs/plans/q123-doc-pass-questions.md
@@ -16,7 +16,7 @@ related_docs:
 
 **Audience:** developers (scaffold migrate + future product). Diagrams here are also suitable to adapt later into **user documentation**.
 
-**Status:** Agreed planning model (**2026-08-09**). Scaffold still uses attribute **slot terms** + `_wtt_type_id` / Preferred term meta — **debt** toward this model. Decisions: [`q123-doc-pass-questions.md`](plans/q123-doc-pass-questions.md) (OQ-W1…W16). Whiteboard history: [`relation-vs-object-concept.md`](plans/relation-vs-object-concept.md).
+**Status:** Agreed planning model (**2026-08-09**). **GUI parity:** [`plans/settings-ui-parity.md`](plans/settings-ui-parity.md) — one Settings walk; Attribute Options dedupe + nested table + deferred Choices ≈ **0.0.531**; presentationContext/compute → same walk next; Preferred default on **type node** (no display-name heuristics). Demo heir **C1** retired. Q123 modeling UAT still open.
 
 ---
 
@@ -30,6 +30,7 @@ related_docs:
 | Settings | **`Settings.data`** + **`Settings.view`** on node; Relation stores **override deltas only** |
 | Resolve | **Hybrid** — live from target tree; local delta wins if key present |
 | UI | Same **recursive walk** for node detail and attribute Settings (to leaf; break cycles) |
+| Preferred default | On the **type node** / simple type config; consumers inherit — **never by display name** |
 | Write | Override on **current** context only — do not push defaults into subnodes |
 | Inherit | Along host `child_of` (Q66); hide inherited; merge by name |
 | Instance keys | **Relation id** |
@@ -117,6 +118,29 @@ Surfaces            = same path admin preview ↔ block editor ↔ frontend (par
 ```
 
 **Not the same as Q117 Presentation** (locale texts / icon) — that store is labels/chrome identity, not Preferred renderer selection.
+
+---
+
+## CatalogChoice host + heir (abstract)
+
+Canonical pattern (units parked): host with two composition picks + type subtrees + heir overrides — see **[`docs/plans/attribute-choice-inheritance.md`](plans/attribute-choice-inheritance.md)**.
+
+```mermaid
+flowchart TB
+  C1[C1]
+  UT[Unit_type]
+  C1 -->|child_of| UT
+  UT -->|"Auswahl_A"| BU[Base_unit]
+  UT -->|"Auswahl_B"| PX[Praefix]
+  BU --> BUleaves["Base_unit.1..4"]
+  PX --> PXleaves["Praefix.1..4"]
+```
+
+**Heir example (not a CatalogChoice leaf):** A `child_of` Unit type specialization may set Default + **`choiceFilter`** on inherited attrs via **host maps** (father edge unchanged). The former demo seed name **C1** is **retired** (≈ 0.0.529–0.0.531) — do not re-seed; heirs are never Choices under structure hosts.
+
+**Application** (Bauart, Währung+ISO 4217, SI+BIPM/ISO 80000, Unit candidate, measure profiles): see the **Application** section in that plan file.
+
+**Q125 `calc` Relation:** calculation RelationType with required `op` + optional props; Q124 `defaultvalue_from` → `op=default_from`. UI DE: Berechnung. Scaffold ≈ **`0.0.456`**. See OPEN-QUESTIONS Q125. End-user how-tos: backlog [`user-constellation-recipes.md`](plans/user-constellation-recipes.md).
 
 ---
 

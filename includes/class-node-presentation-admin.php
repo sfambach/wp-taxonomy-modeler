@@ -191,12 +191,25 @@ final class Node_Presentation_Admin {
 		if ( '' !== $taxonomy ) {
 			Node_Presentation::maybe_migrate_taxonomy( $taxonomy );
 		}
+		$locale = Node_Presentation::site_locale();
+		$term   = get_term( $term_id );
+		$raw    = array();
+		foreach ( Node_Presentation::TEXT_CONTEXTS as $ctx ) {
+			$raw[ $ctx ] = Node_Presentation::get_raw( $term_id, $ctx, $locale );
+		}
+		$raw[ Node_Presentation::CONTEXT_ICON ] = Node_Presentation::get_raw(
+			$term_id,
+			Node_Presentation::CONTEXT_ICON,
+			Node_Presentation::LOCALE_INVARIANT
+		);
 		wp_send_json_success(
 			array(
-				'termId'  => $term_id,
-				'locale'  => Node_Presentation::site_locale(),
-				'values'  => Node_Presentation::map_for_term_ui( $term_id ),
-				'listUrl' => self::page_url( $term_id, $taxonomy ),
+				'termId'   => $term_id,
+				'locale'   => $locale,
+				'nodeName' => ( $term instanceof \WP_Term ) ? (string) $term->name : '',
+				'raw'      => $raw,
+				'values'   => Node_Presentation::map_for_term_ui( $term_id, $locale ),
+				'listUrl'  => self::page_url( $term_id, $taxonomy ),
 			)
 		);
 	}

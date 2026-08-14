@@ -5,6 +5,9 @@
  * Wire/meta/JS store the string value; PHP uses this backed enum.
  * Catalog bindings stay `builtin.int` (Q96) — separate from Renderer ids.
  *
+ * Chrome variants (int_spinner, bool_checkbox, …) are Preferred siblings for the
+ * same type — not a second Settings “control” field.
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -21,15 +24,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 enum Renderer: string {
 	case Int              = 'IntRenderer';
+	case IntSpinner       = 'IntSpinnerRenderer';
+	case IntRange         = 'IntRangeRenderer';
 	case Double           = 'DoubleRenderer';
+	case DoubleSpinner    = 'DoubleSpinnerRenderer';
+	case DoubleRange      = 'DoubleRangeRenderer';
 	case Text             = 'TextRenderer';
 	case Textarea         = 'TextareaRenderer';
 	case Char             = 'CharRenderer';
 	case Bool             = 'BoolRenderer';
+	case BoolCheckbox     = 'BoolCheckboxRenderer';
+	case BoolRadio        = 'BoolRadioRenderer';
 	case Email            = 'EmailRenderer';
 	case Date             = 'DateRenderer';
+	case Time             = 'TimeRenderer';
+	case DateTime         = 'DateTimeRenderer';
+	case Color            = 'ColorRenderer';
 	case Media            = 'MediaRenderer';
-	case DisplayNodeName  = 'DisplayNodeNameRenderer';
+	case NodePresentation = 'NodePresentationRenderer';
 	case Quantity         = 'QuantityRenderer';
 	case Unit             = 'UnitRenderer';
 	case NodeRef          = 'NodeRefRenderer';
@@ -38,6 +50,7 @@ enum Renderer: string {
 	case Compact          = 'CompactRenderer';
 	case CompactVertical  = 'CompactVerticalRenderer';
 	case Embedded         = 'EmbeddedRenderer';
+	case ChildList        = 'ChildListRenderer';
 
 	/**
 	 * Object-view / Preferred layout cases (not scalar field paint).
@@ -51,6 +64,7 @@ enum Renderer: string {
 			self::Compact,
 			self::CompactVertical,
 			self::Embedded,
+			self::ChildList,
 		);
 	}
 
@@ -76,36 +90,60 @@ enum Renderer: string {
 		}
 
 		$map = array(
-			'int'               => self::Int,
-			'integer'           => self::Int,
-			'double'            => self::Double,
-			'float'             => self::Double,
-			'text'              => self::Text,
-			'textarea'          => self::Textarea,
-			'char'              => self::Char,
-			'bool'              => self::Bool,
-			'boolean'           => self::Bool,
-			'email'             => self::Email,
-			'date'              => self::Date,
-			'datetime'          => self::Date,
-			'media'             => self::Media,
-			'display_node_name' => self::DisplayNodeName,
-			'quantity'          => self::Quantity,
-			'unit'              => self::Unit,
-			'basiseinheit'      => self::Unit,
-			'node_ref'          => self::NodeRef,
-			'form'              => self::Form,
-			'table'             => self::Table,
-			'list'              => self::Table,
-			'compact'           => self::Compact,
-			'compact-horizontal'=> self::Compact,
-			'compact-h'         => self::Compact,
-			'compact-vertical'  => self::CompactVertical,
-			'compact-v'         => self::CompactVertical,
-			'embed'             => self::Embedded,
-			'pick-fill'         => self::Embedded,
-			'pick_fill'         => self::Embedded,
-			'compact-embed'     => self::Embedded,
+			'int'                    => self::Int,
+			'integer'                => self::Int,
+			'int_spinner'            => self::IntSpinner,
+			'intspinner'             => self::IntSpinner,
+			'int_range'              => self::IntRange,
+			'intrange'               => self::IntRange,
+			'double'                 => self::Double,
+			'float'                  => self::Double,
+			'double_spinner'         => self::DoubleSpinner,
+			'doublespinner'          => self::DoubleSpinner,
+			'double_range'           => self::DoubleRange,
+			'doublerange'            => self::DoubleRange,
+			'text'                   => self::Text,
+			'textarea'               => self::Textarea,
+			'char'                   => self::Char,
+			'bool'                   => self::Bool,
+			'boolean'                => self::Bool,
+			'bool_switch'            => self::Bool,
+			'boolswitch'             => self::Bool,
+			'bool_checkbox'          => self::BoolCheckbox,
+			'boolcheckbox'           => self::BoolCheckbox,
+			'bool_radio'             => self::BoolRadio,
+			'boolradio'              => self::BoolRadio,
+			'email'                  => self::Email,
+			'date'                   => self::Date,
+			'time'                   => self::Time,
+			'datetime'               => self::DateTime,
+			'date_time'              => self::DateTime,
+			'color'                  => self::Color,
+			'media'                  => self::Media,
+			'display_node_name'      => self::NodePresentation,
+			'displaynodenamerenderer'=> self::NodePresentation,
+			'node_presentation'      => self::NodePresentation,
+			'nodepresentation'       => self::NodePresentation,
+			'nodepresentationrenderer' => self::NodePresentation,
+			'quantity'               => self::Quantity,
+			'unit'                   => self::Unit,
+			'basiseinheit'           => self::Unit,
+			'node_ref'               => self::NodeRef,
+			'form'                   => self::Form,
+			'table'                  => self::Table,
+			'list'                   => self::Table,
+			'compact'                => self::Compact,
+			'compact-horizontal'     => self::Compact,
+			'compact-h'              => self::Compact,
+			'compact-vertical'       => self::CompactVertical,
+			'compact-v'              => self::CompactVertical,
+			'embed'                  => self::Embedded,
+			'pick-fill'              => self::Embedded,
+			'pick_fill'              => self::Embedded,
+			'compact-embed'          => self::Embedded,
+			'child_list'             => self::ChildList,
+			'childlist'              => self::ChildList,
+			'childlistrenderer'      => self::ChildList,
 		);
 
 		return $map[ $key ] ?? null;

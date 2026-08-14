@@ -30,7 +30,7 @@
 		intInvalid: 'Enter a whole number.',
 	};
 
-	/** Scalar catalog types with dedicated NodeRenderers (not set/list/media/…). */
+	/** Scalar catalog types with dedicated NodeRenderers (not set/list/…). */
 	var SIMPLE_SCALAR_KEYS = {
 		int: true,
 		char: true,
@@ -40,6 +40,10 @@
 		bool: true,
 		email: true,
 		date: true,
+		time: true,
+		datetime: true,
+		color: true,
+		media: true,
 	};
 
 	/** Collection / structured types with dedicated renderers. */
@@ -330,6 +334,47 @@
 		);
 	}
 
+	/**
+	 * Unit attr chrome: catalog leaves (fixedOptions) or With-prefix composition
+	 * (Praefix + Kuerzel typeProperties) — not name-only.
+	 */
+	function unitAttrHasChrome(attr) {
+		if (!attr) {
+			return false;
+		}
+		if (attr.quantitySchema && attr.quantitySchema.members) {
+			return true;
+		}
+		if (Array.isArray(attr.fixedOptions) && attr.fixedOptions.length) {
+			return true;
+		}
+		var props = Array.isArray(attr.typeProperties)
+			? attr.typeProperties
+			: [];
+		if (!props.length) {
+			return false;
+		}
+		var hasPrefix = false;
+		var hasSymbol = false;
+		props.forEach(function (p) {
+			if (!p) {
+				return;
+			}
+			var n = String(p.name || '')
+				.toLowerCase()
+				.replace(/\u00fc/g, 'ue')
+				.replace(/ä/g, 'ae')
+				.replace(/ö/g, 'oe');
+			if (n === 'praefix' || n === 'prefix') {
+				hasPrefix = true;
+			}
+			if (n === 'kuerzel' || n === 'symbol' || n === 'einheit' || n === 'unit') {
+				hasSymbol = true;
+			}
+		});
+		return hasPrefix || hasSymbol;
+	}
+
 	function qtyMemberNameKey(member) {
 		return String((member && member.name) || '')
 			.toLowerCase()
@@ -453,6 +498,46 @@
 			return ownShort;
 		}
 		return '';
+	}
+
+	/**
+	 * Q117 presentation map on a node (flat or draft.values).
+	 *
+	 * @param {Object|null} node
+	 * @return {Object|null}
+	 */
+	function presentationMapFromNode(node) {
+		if (!node || typeof node !== 'object') {
+			return null;
+		}
+		var p = node.presentation;
+		if (!p || typeof p !== 'object') {
+			return null;
+		}
+		if (p.values && typeof p.values === 'object') {
+			return p.values;
+		}
+		return p;
+	}
+
+	/**
+	 * Unit leaf symbol from Display → Presentation (Q117).
+	 * Preferred over stale Kuerzel Festwert / shortDescription when set.
+	 *
+	 * @param {Object|null} node
+	 * @return {string}
+	 */
+	function presentationUnitSymbol(node) {
+		var p = presentationMapFromNode(node);
+		if (!p) {
+			return '';
+		}
+		var sym = p.symbol != null ? String(p.symbol).trim() : '';
+		if (sym) {
+			return sym;
+		}
+		var table = p.table != null ? String(p.table).trim() : '';
+		return table;
 	}
 
 	/**
@@ -596,6 +681,12 @@
 				id: o.id != null ? String(o.id) : name,
 				name: name,
 				letter: letter || name,
+				shortDescription:
+					o.shortDescription != null ? String(o.shortDescription) : '',
+				/* Keep allowlist for unit-switch → Praefix rebuild (size / SI). */
+				allowedPrefixes: Array.isArray(o.allowedPrefixes)
+					? o.allowedPrefixes
+					: [],
 			});
 		});
 		return opts;
@@ -626,17 +717,59 @@
 		var praefixMem = findQtyMember(members, 'praefix');
 		var prefixOpts = qtyPrefixOptions(praefixMem);
 		var prefixName = parsed.prefix ? String(parsed.prefix) : '';
+		/* Live Default on Praefix attr → quantitySchema.sample (PHP overlay). */
+		if (
+			!prefixName &&
+			praefixMem &&
+			(praefixMem.sample != null || praefixMem.fixedLiteral)
+		) {
+			prefixName = String(
+				praefixMem.sample != null && String(praefixMem.sample) !== ''
+					? praefixMem.sample
+					: praefixMem.fixedLiteral || ''
+			);
+		}
 		var unitMem = findQtyMember(members, 'kuerzel');
 		var unitOpts = qtyUnitOptions(unitMem);
-		var symbol = String(qtySymbolFromMembers(members) || '');
+		/* CatalogChoice units: multi = chooser; sole = Q116 auto + gray. */
+		var multiUnitChoice = unitOpts.length > 1;
+		var soleUnitChoice = unitOpts.length === 1;
+		var symbol = multiUnitChoice || soleUnitChoice
+			? ''
+			: String(qtySymbolFromMembers(members) || '');
+		/*
+		 * Basiseinheit / fixed-Kuerzel unit leaf: Q117 Presentation.symbol|table
+		 * wins over leftover Kuerzel Festwert (e.g. renamed Gramm still had "kg").
+		 * Catalog multi-unit pick keeps the selected option label.
+		 */
+		var presentationSym = presentationUnitSymbol(node);
+		if (presentationSym && !multiUnitChoice) {
+			symbol = presentationSym;
+		}
 		var unitName = '';
-		if (!symbol && unitMem) {
+		if (unitMem) {
 			unitName =
 				(parsed.unit != null && String(parsed.unit)) ||
 				(unitMem.sample != null && String(unitMem.sample)) ||
 				(unitOpts[0] && unitOpts[0].name) ||
 				'';
-			symbol = qtyUnitLabel(unitName, unitOpts);
+			if (unitOpts.length) {
+				var knownUnit = false;
+				unitOpts.forEach(function (o) {
+					if (
+						o &&
+						(o.name === unitName || String(o.id) === String(unitName))
+					) {
+						knownUnit = true;
+					}
+				});
+				if (!knownUnit) {
+					unitName = unitOpts[0].name;
+				}
+			}
+			if (!symbol) {
+				symbol = qtyUnitLabel(unitName, unitOpts);
+			}
 		}
 		var prefixLetter = qtyPrefixLetter(prefixName, prefixOpts);
 
@@ -651,55 +784,144 @@
 		var group = createEl('div', {
 			className: 'wtt-preview-quantity wtt-node-render--unit is-compact',
 		});
+		var noneLabel =
+			(global.wttTree &&
+				global.wttTree.i18n &&
+				global.wttTree.i18n.unitConvNone) ||
+			'—';
+		var noneTitle =
+			(global.wttTree &&
+				global.wttTree.i18n &&
+				global.wttTree.i18n.unitConvNoneTitle) ||
+			'No prefix';
+		var livePrefixOpts = prefixOpts.slice();
+		/*
+		 * Q116: Mult 1 / 1..* → no empty —; 0..1 / 0..* → empty required.
+		 * Praefix Mult on the unit (attribute) drives this — not “always empty”.
+		 */
+		var prefixAllowEmpty = true;
+		if (praefixMem) {
+			if (praefixMem.allowsEmpty != null) {
+				prefixAllowEmpty = !!praefixMem.allowsEmpty;
+			} else {
+				var pMult = String(praefixMem.multiplicity || '');
+				var pReq =
+					praefixMem.required === true ||
+					praefixMem.required === 1 ||
+					praefixMem.required === '1';
+				prefixAllowEmpty =
+					!pReq && pMult !== '1' && pMult !== '1..*';
+			}
+		}
+
+		function fillPrefixSelect(selectEl, optsList, selectedName, allowEmpty) {
+			allowEmpty = allowEmpty !== false;
+			while (selectEl.firstChild) {
+				selectEl.removeChild(selectEl.firstChild);
+			}
+			var noneOpt = null;
+			if (allowEmpty) {
+				noneOpt = createEl('option', {
+					value: '',
+					text: String(noneLabel),
+					title: String(noneTitle),
+				});
+				if (!selectedName) {
+					noneOpt.selected = true;
+				}
+				selectEl.appendChild(noneOpt);
+			}
+			(optsList || []).forEach(function (opt) {
+				var letter = opt.letter || '';
+				var label =
+					letter && opt.name && letter !== opt.name
+						? String(letter) + ' · ' + String(opt.name)
+						: opt.name || letter;
+				var o = createEl('option', {
+					value: opt.name,
+					text: label,
+					title: opt.name,
+				});
+				if (opt.name === selectedName || String(opt.id) === selectedName) {
+					o.selected = true;
+					if (noneOpt) {
+						noneOpt.selected = false;
+					}
+				}
+				selectEl.appendChild(o);
+			});
+			/* Required Mult: no empty → ensure a real option is selected. */
+			if (!allowEmpty && !selectEl.value && selectEl.options.length) {
+				selectEl.options[0].selected = true;
+			}
+			selectEl.title = selectEl.value
+				? selectEl.options[selectEl.selectedIndex].title ||
+				  selectEl.options[selectEl.selectedIndex].text
+				: String(noneTitle);
+		}
+
+		function prefixOptsFromUnitPick(pickName) {
+			var pick = null;
+			unitOpts.forEach(function (o) {
+				if (
+					!pick &&
+					o &&
+					(o.name === pickName || String(o.id) === String(pickName))
+				) {
+					pick = o;
+				}
+			});
+			if (!pick) {
+				return [];
+			}
+			return qtyPrefixOptions({
+				fixedOptions: Array.isArray(pick.allowedPrefixes)
+					? pick.allowedPrefixes
+					: [],
+				typeBranch: {
+					children: Array.isArray(pick.allowedPrefixes)
+						? pick.allowedPrefixes
+						: [],
+				},
+			});
+		}
+
 		var prefixSelect = null;
-		if (praefixMem && prefixOpts.length) {
+		if (praefixMem && (livePrefixOpts.length || multiUnitChoice)) {
 			prefixSelect = createEl('select', {
 				className:
 					'wtt-type-select wtt-preview-quantity__prefix wtt-preview-input--prefix',
 			});
-			var noneLabel =
-				(global.wttTree &&
-					global.wttTree.i18n &&
-					global.wttTree.i18n.unitConvNone) ||
-				'—';
-			var noneTitle =
-				(global.wttTree &&
-					global.wttTree.i18n &&
-					global.wttTree.i18n.unitConvNoneTitle) ||
-				'No prefix';
-			var noneOpt = createEl('option', {
-				value: '',
-				text: String(noneLabel),
-				title: String(noneTitle),
-			});
-			if (!prefixName) {
-				noneOpt.selected = true;
+			fillPrefixSelect(
+				prefixSelect,
+				livePrefixOpts,
+				prefixName,
+				prefixAllowEmpty
+			);
+			if (!livePrefixOpts.length) {
+				prefixSelect.style.display = 'none';
+			} else if (!prefixAllowEmpty && livePrefixOpts.length === 1) {
+				/* Q116: required Praefix with one allowed prefix → auto + gray. */
+				prefixSelect.disabled = true;
+				prefixSelect.classList.add('is-sole-locked');
+				prefixSelect.title =
+					(global.wttTree &&
+						global.wttTree.i18n &&
+						global.wttTree.i18n.soleSelectLockedHint) ||
+					'Only one choice — selected automatically.';
 			}
-			prefixSelect.appendChild(noneOpt);
-			prefixOpts.forEach(function (opt) {
-				var o = createEl('option', {
-					value: opt.name,
-					text: opt.letter || opt.name,
-					title: opt.name,
-				});
-				if (opt.name === prefixName || String(opt.id) === prefixName) {
-					o.selected = true;
-					noneOpt.selected = false;
-				}
-				prefixSelect.appendChild(o);
-			});
-			prefixSelect.title = prefixSelect.value
-				? prefixSelect.options[prefixSelect.selectedIndex].title ||
-				  prefixSelect.options[prefixSelect.selectedIndex].text
-				: String(noneTitle);
 			group.appendChild(prefixSelect);
 		}
 
 		var unitSelect = null;
-		if (!qtySymbolFromMembers(members) && unitOpts.length) {
+		if (
+			multiUnitChoice ||
+			soleUnitChoice ||
+			(!qtySymbolFromMembers(members) && unitOpts.length)
+		) {
 			unitSelect = createEl('select', {
 				className:
-					'wtt-type-select wtt-preview-quantity__unit wtt-preview-input--unit-labeled',
+					'wtt-type-select wtt-preview-quantity__unit wtt-preview-input--unit-labeled wtt-catalog-choice-select',
 			});
 			unitOpts.forEach(function (opt) {
 				var label =
@@ -716,6 +938,16 @@
 				}
 				unitSelect.appendChild(o);
 			});
+			/* Q116: sole required unit → auto-selected + gray. */
+			if (soleUnitChoice || (unitMem && unitMem.soleOptionLocked)) {
+				unitSelect.disabled = true;
+				unitSelect.classList.add('is-sole-locked');
+				unitSelect.title =
+					(global.wttTree &&
+						global.wttTree.i18n &&
+						global.wttTree.i18n.soleSelectLockedHint) ||
+					'Only one choice — selected automatically.';
+			}
 			group.appendChild(unitSelect);
 		} else if (symbol) {
 			group.appendChild(
@@ -733,11 +965,14 @@
 			);
 		}
 
+		var prevPrefix = prefixSelect ? prefixSelect.value : '';
 		if (context && typeof context.onUnitPartChange === 'function') {
 			var emitUnit = function () {
 				context.onUnitPartChange({
 					prefix:
-						prefixSelect && prefixSelect.value
+						prefixSelect &&
+						prefixSelect.style.display !== 'none' &&
+						prefixSelect.value
 							? String(prefixSelect.value)
 							: '',
 					unit:
@@ -747,11 +982,14 @@
 				});
 			};
 			if (prefixSelect) {
-				var prevPrefix = prefixSelect.value;
 				prefixSelect.addEventListener('change', function () {
 					var nextPrefix = prefixSelect.value;
 					if (typeof context.onPrefixRescale === 'function') {
-						context.onPrefixRescale(prevPrefix, nextPrefix, prefixOpts);
+						context.onPrefixRescale(
+							prevPrefix,
+							nextPrefix,
+							livePrefixOpts
+						);
 					}
 					prevPrefix = nextPrefix;
 					var selOpt = prefixSelect.options[prefixSelect.selectedIndex];
@@ -761,14 +999,31 @@
 				});
 			}
 			if (unitSelect) {
-				unitSelect.addEventListener('change', emitUnit);
+				unitSelect.addEventListener('change', function () {
+					if (prefixSelect && multiUnitChoice) {
+						livePrefixOpts = prefixOptsFromUnitPick(unitSelect.value);
+						fillPrefixSelect(
+							prefixSelect,
+							livePrefixOpts,
+							'',
+							prefixAllowEmpty
+						);
+						prefixSelect.style.display = livePrefixOpts.length
+							? ''
+							: 'none';
+						prevPrefix = '';
+					}
+					emitUnit();
+				});
 			}
 		} else if (context && typeof context.onInput === 'function') {
 			var emitSolo = function () {
 				context.onInput(
 					serializeQuantityStore(
 						'',
-						prefixSelect && prefixSelect.value
+						prefixSelect &&
+							prefixSelect.style.display !== 'none' &&
+							prefixSelect.value
 							? String(prefixSelect.value)
 							: '',
 						unitSelect && unitSelect.value
@@ -781,7 +1036,21 @@
 				prefixSelect.addEventListener('change', emitSolo);
 			}
 			if (unitSelect) {
-				unitSelect.addEventListener('change', emitSolo);
+				unitSelect.addEventListener('change', function () {
+					if (prefixSelect && multiUnitChoice) {
+						livePrefixOpts = prefixOptsFromUnitPick(unitSelect.value);
+						fillPrefixSelect(
+							prefixSelect,
+							livePrefixOpts,
+							'',
+							prefixAllowEmpty
+						);
+						prefixSelect.style.display = livePrefixOpts.length
+							? ''
+							: 'none';
+					}
+					emitSolo();
+				});
 			}
 		}
 		return group;
@@ -799,7 +1068,7 @@
 		if (!mag && node && node.sample != null && String(node.sample) !== '') {
 			mag = parseQuantityStore(node.sample).mag || String(node.sample);
 		}
-		if (!mag) {
+		if (!mag && !(context && context.noSampleFill)) {
 			mag = sampleForTypeKey('quantity', '10.5', node) || '10.5';
 		}
 
@@ -836,11 +1105,22 @@
 		}
 
 		var prefixOpts = qtyPrefixOptions(findQtyMember(members, 'praefix'));
+		var kuerzelMem = findQtyMember(members, 'kuerzel');
+		var seedUnit =
+			(parsed.unit != null && String(parsed.unit)) ||
+			(kuerzelMem && kuerzelMem.sample != null
+				? String(kuerzelMem.sample)
+				: '') ||
+			'';
 		var unitProbe = {
 			name: (node && (node.name || node.displayName)) || 'Unit',
 			typeKey: 'unit',
 			quantitySchema: node.quantitySchema,
-			sample: serializeQuantityStore('', parsed.prefix, parsed.unit),
+			sample: serializeQuantityStore(
+				'',
+				parsed.prefix,
+				seedUnit
+			),
 		};
 
 		if (!isEdit(context)) {
@@ -937,6 +1217,19 @@
 		label: 'Unit',
 		canRender: function (node) {
 			if (!node) {
+				return false;
+			}
+			/*
+			 * CatalogChoice / ChildList (Base unit → Meter/Ohm) is not UnitRenderer.
+			 * Prefix?+Symbol chrome is for concrete unit leaves / quantity Unit slots.
+			 */
+			var pref = normalizePreferredPaintId(
+				node.preferredRender || node.typePreferredRender || ''
+			);
+			if (pref === 'childlist' || pref === 'child_list') {
+				return false;
+			}
+			if (String(node.fixedMode || '') === 'catalog') {
 				return false;
 			}
 			if (node.isBasiseinheitUnit) {
@@ -1150,13 +1443,266 @@
 				n === 'unit' ||
 				n === 'kuerzel' ||
 				n === 'waehrung' ||
-				(a.quantitySchema && a.quantitySchema.members) ||
-				(Array.isArray(a.fixedOptions) && a.fixedOptions.length)
+				key.indexOf('prefix') !== -1 ||
+				key === 'with prefix' ||
+				key === 'mit praefix' ||
+				key === 'mit präfix' ||
+				unitAttrHasChrome(a)
 			) {
 				hasUnit = true;
 			}
 		});
 		return hasVal && hasUnit;
+	}
+
+	/**
+	 * When Unit/Währung has multi CatalogChoice fixedOptions, put them on the
+	 * Kuerzel member so Quantity/Unit paint shows a ListChooser — not a static
+	 * symbol from Festwert / first option (Preis "choices but no choice").
+	 *
+	 * @param {object|null} schema
+	 * @param {object} unitAttr
+	 * @param {object|null} context
+	 * @return {object|null}
+	 */
+	function enrichQuantitySchemaUnitChoices(schema, unitAttr, context) {
+		if (
+			!schema ||
+			!Array.isArray(schema.members) ||
+			!unitAttr ||
+			!Array.isArray(unitAttr.fixedOptions) ||
+			unitAttr.fixedOptions.length < 1
+		) {
+			return schema;
+		}
+		var members = schema.members.slice();
+		var kuerzel = findQtyMember(members, 'kuerzel');
+		if (!kuerzel) {
+			return schema;
+		}
+		var multi = unitAttr.fixedOptions.length > 1;
+		var picked =
+			(context && context.unitPick) ||
+			(unitAttr.fixedValues && unitAttr.fixedValues[0]) ||
+			(kuerzel.sample != null && String(kuerzel.sample)) ||
+			unitAttr.fixedOptions[0].name ||
+			unitAttr.fixedOptions[0].id;
+		var opt = null;
+		unitAttr.fixedOptions.forEach(function (o) {
+			if (
+				!opt &&
+				o &&
+				(o.name === picked || String(o.id) === String(picked))
+			) {
+				opt = o;
+			}
+		});
+		if (!opt) {
+			opt = unitAttr.fixedOptions[0];
+		}
+		/* Drop stale pick outside filtered Choices (e.g. Ampere after Ohm-only). */
+		if (
+			opt &&
+			picked &&
+			opt.name !== picked &&
+			String(opt.id) !== String(picked)
+		) {
+			picked = opt.name || String(opt.id);
+		}
+		var idx = members.indexOf(kuerzel);
+		var nextK = Object.assign({}, kuerzel, {
+			fixedOptions: unitAttr.fixedOptions.slice(),
+			typeBranch: { children: unitAttr.fixedOptions.slice() },
+			sample: (opt && (opt.name || String(opt.id))) || '',
+			shortDescription: (opt && opt.shortDescription) || '',
+			/* Always ListChooser so Q116 can gray a sole required option. */
+			fixedEnabled: false,
+			fixedLiteral: '',
+			fixed: null,
+			soleOptionLocked: !multi,
+		});
+		if (idx >= 0) {
+			members[idx] = nextK;
+		}
+		var prefixes = Array.isArray(opt.allowedPrefixes)
+			? opt.allowedPrefixes.filter(function (p) {
+					return p && p.enabled !== false;
+			  })
+			: [];
+		var praefix = findQtyMember(members, 'praefix');
+		if (praefix) {
+			var pIdx = members.indexOf(praefix);
+			members[pIdx] = Object.assign({}, praefix, {
+				fixedOptions: prefixes,
+				typeBranch: { children: prefixes },
+			});
+		} else if (prefixes.length) {
+			members.unshift({
+				name: 'Praefix',
+				fixedOptions: prefixes,
+				typeBranch: { children: prefixes },
+			});
+		}
+		return Object.assign({}, schema, {
+			unitId: (opt && opt.id) || schema.unitId || 0,
+			unitName: (opt && opt.name) || schema.unitName || '',
+			members: members,
+		});
+	}
+
+	/**
+	 * Build quantitySchema from Unit attr: catalog fixedOptions (preferred) or
+	 * With-prefix typeProperties (Praefix + Kuerzel) as fallback.
+	 */
+	function quantitySchemaFromUnitAttr(unitAttr, context) {
+		if (!unitAttr) {
+			return null;
+		}
+		if (
+			unitAttr.quantitySchema &&
+			Array.isArray(unitAttr.quantitySchema.members) &&
+			unitAttr.quantitySchema.members.length
+		) {
+			return enrichQuantitySchemaUnitChoices(
+				unitAttr.quantitySchema,
+				unitAttr,
+				context
+			);
+		}
+		if (Array.isArray(unitAttr.fixedOptions) && unitAttr.fixedOptions.length) {
+			var multi = unitAttr.fixedOptions.length > 1;
+			var picked =
+				(context && context.unitPick) ||
+				(unitAttr.fixedValues && unitAttr.fixedValues[0]) ||
+				unitAttr.fixedOptions[0].name ||
+				unitAttr.fixedOptions[0].id;
+			var opt = null;
+			unitAttr.fixedOptions.forEach(function (o) {
+				if (
+					!opt &&
+					o &&
+					(o.name === picked || String(o.id) === String(picked))
+				) {
+					opt = o;
+				}
+			});
+			if (!opt) {
+				opt = unitAttr.fixedOptions[0];
+			}
+			/*
+			 * Catalog unit choice: prefer attached allowedPrefixes → synthetic
+			 * quantitySchema members (Praefix + Kuerzel).
+			 * Always expose unit ListChooser (Q116 grays sole option).
+			 */
+			var prefixes = Array.isArray(opt.allowedPrefixes)
+				? opt.allowedPrefixes.filter(function (p) {
+						return p && p.enabled !== false;
+				  })
+				: [];
+			var kuerzelMem = {
+				name: 'Kuerzel',
+				fixedOptions: unitAttr.fixedOptions.slice(),
+				typeBranch: { children: unitAttr.fixedOptions.slice() },
+				sample: opt.name || String(opt.id || ''),
+				shortDescription: opt.shortDescription || '',
+				fixedEnabled: false,
+				fixedLiteral: '',
+				soleOptionLocked: !multi,
+			};
+			return {
+				unitId: opt.id || 0,
+				unitName: opt.name || '',
+				members: [
+					{
+						name: 'Praefix',
+						fixedOptions: prefixes,
+						typeBranch: { children: prefixes },
+					},
+					kuerzelMem,
+				],
+			};
+		}
+		/* OQ-W11: Unit typed as With prefix → compose from nested Praefix/Kuerzel. */
+		var props = Array.isArray(unitAttr.typeProperties)
+			? unitAttr.typeProperties
+			: [];
+		if (!props.length) {
+			return null;
+		}
+		var praefixProp = null;
+		var kuerzelProp = null;
+		props.forEach(function (p) {
+			if (!p) {
+				return;
+			}
+			var n = String(p.name || '')
+				.toLowerCase()
+				.replace(/\u00fc/g, 'ue')
+				.replace(/ä/g, 'ae')
+				.replace(/ö/g, 'oe');
+			if (!praefixProp && (n === 'praefix' || n === 'prefix')) {
+				praefixProp = p;
+			}
+			if (
+				!kuerzelProp &&
+				(n === 'kuerzel' ||
+					n === 'symbol' ||
+					n === 'einheit' ||
+					n === 'unit' ||
+					n === 'waehrung' ||
+					n === 'currency')
+			) {
+				kuerzelProp = p;
+			}
+		});
+		if (!praefixProp && !kuerzelProp) {
+			return null;
+		}
+		var members = [];
+		if (praefixProp) {
+			var prefixOpts = Array.isArray(praefixProp.fixedOptions)
+				? praefixProp.fixedOptions
+				: [];
+			members.push({
+				name: 'Praefix',
+				fixedOptions: prefixOpts,
+				typeBranch:
+					praefixProp.typeBranch ||
+					(prefixOpts.length ? { children: prefixOpts } : null),
+			});
+		}
+		if (kuerzelProp) {
+			var kOpts = Array.isArray(kuerzelProp.fixedOptions)
+				? kuerzelProp.fixedOptions
+				: [];
+			var kMulti = kOpts.length > 1;
+			members.push({
+				name: 'Kuerzel',
+				fixedEnabled: kMulti ? false : !!kuerzelProp.fixedEnabled,
+				fixedLiteral: kMulti
+					? ''
+					: kuerzelProp.fixedLiteral ||
+					  (kuerzelProp.fixedValues && kuerzelProp.fixedValues[0]) ||
+					  '',
+				fixedOptions: kOpts,
+				typeBranch: kMulti ? { children: kOpts } : kuerzelProp.typeBranch,
+				sample: kMulti
+					? (kuerzelProp.fixedValues && kuerzelProp.fixedValues[0]) ||
+					  (kOpts[0] && (kOpts[0].name || String(kOpts[0].id))) ||
+					  ''
+					: '',
+				shortDescription: kuerzelProp.shortDescription || '',
+			});
+		}
+		return enrichQuantitySchemaUnitChoices(
+			{
+				unitId: unitAttr.typeId || 0,
+				unitName: unitAttr.typeName || unitAttr.name || '',
+				members: members,
+			},
+			unitAttr,
+			context
+		);
 	}
 
 	function quantityNodeFromHostAttrs(node, context) {
@@ -1189,12 +1735,7 @@
 		}
 		if (!unitAttr) {
 			attrs.forEach(function (a) {
-				if (
-					!unitAttr &&
-					a &&
-					((a.quantitySchema && a.quantitySchema.members) ||
-						(Array.isArray(a.fixedOptions) && a.fixedOptions.length))
-				) {
+				if (!unitAttr && unitAttrHasChrome(a)) {
 					unitAttr = a;
 				}
 			});
@@ -1203,62 +1744,12 @@
 			return null;
 		}
 
-		var schema = unitAttr.quantitySchema || null;
-		if (
-			(!schema || !Array.isArray(schema.members) || !schema.members.length) &&
-			Array.isArray(unitAttr.fixedOptions) &&
-			unitAttr.fixedOptions.length
-		) {
-			var picked =
-				(context && context.unitPick) ||
-				(unitAttr.fixedValues && unitAttr.fixedValues[0]) ||
-				unitAttr.fixedOptions[0].name ||
-				unitAttr.fixedOptions[0].id;
-			var opt = null;
-			unitAttr.fixedOptions.forEach(function (o) {
-				if (
-					!opt &&
-					o &&
-					(o.name === picked ||
-						String(o.id) === String(picked) ||
-						String(o.id) === String(picked))
-				) {
-					opt = o;
-				}
-			});
-			if (!opt) {
-				opt = unitAttr.fixedOptions[0];
-			}
-			/*
-			 * Catalog unit choice: prefer attached allowedPrefixes → synthetic
-			 * quantitySchema members (Praefix + fixed Kuerzel).
-			 */
-			var prefixes = Array.isArray(opt.allowedPrefixes)
-				? opt.allowedPrefixes.filter(function (p) {
-						return p && p.enabled !== false;
-				  })
-				: [];
-			var praefixMem = {
-				name: 'Praefix',
-				fixedOptions: prefixes,
-				typeBranch: { children: prefixes },
-			};
-			var kuerzelMem = {
-				name: 'Kuerzel',
-				fixedEnabled: true,
-				fixedLiteral: opt.shortDescription || opt.name || '',
-				shortDescription: opt.shortDescription || '',
-			};
-			schema = {
-				unitId: opt.id || 0,
-				unitName: opt.name || '',
-				members: [praefixMem, kuerzelMem],
-			};
-		}
+		var schema = quantitySchemaFromUnitAttr(unitAttr, context);
 
 		return {
 			name: node.name || 'Quantity',
 			typeKey: 'quantity',
+			preferredRender: 'quantity',
 			quantitySchema: schema,
 			sample: '10.5',
 			attributes: attrs,
@@ -1386,6 +1877,312 @@
 		return s === '1' || s === 'true' || s === 'yes' || s === trueLabel;
 	}
 
+	function renderBoolSwitchControl(opts, context, value, compact) {
+		var trueLabel = i18nLabels.boolTrue || 'true';
+		var falseLabel = i18nLabels.boolFalse || 'false';
+		var on = isTruthyBool(value == null ? '' : String(value));
+		if (!isEdit(context)) {
+			return createEl('span', {
+				className:
+					'wtt-preview-display-value' +
+					(compact ? ' wtt-preview-display-value--compact' : ''),
+				text: on ? trueLabel : falseLabel,
+			});
+		}
+		var wrap = createEl('label', {
+			className:
+				'wtt-switch wtt-preview-bool-switch' +
+				(compact ? ' wtt-preview-bool-switch--compact' : '') +
+				(opts.inputClass ? ' ' + opts.inputClass : ''),
+		});
+		var input = createEl('input', {
+			type: 'checkbox',
+			className: 'wtt-switch__input',
+		});
+		input.checked = on;
+		if (context && typeof context.onInput === 'function') {
+			input.addEventListener('change', function () {
+				context.onInput(input.checked ? 'true' : 'false');
+			});
+		}
+		if (context.valueKey) {
+			input.setAttribute('data-wtt-pv', String(context.valueKey));
+		}
+		wrap.appendChild(input);
+		var track = createEl('span', { className: 'wtt-switch__track' });
+		track.appendChild(createEl('span', { className: 'wtt-switch__thumb' }));
+		wrap.appendChild(track);
+		wrap.appendChild(
+			createEl('span', {
+				className: 'wtt-preview-bool__label',
+				text: on ? trueLabel : falseLabel,
+			})
+		);
+		input.addEventListener('change', function () {
+			var label = wrap.querySelector('.wtt-preview-bool__label');
+			if (label) {
+				label.textContent = input.checked ? trueLabel : falseLabel;
+			}
+		});
+		return wrap;
+	}
+
+	function renderBoolRadioControl(opts, context, value, compact) {
+		var trueLabel = i18nLabels.boolTrue || 'true';
+		var falseLabel = i18nLabels.boolFalse || 'false';
+		var on = isTruthyBool(value == null ? '' : String(value));
+		if (!isEdit(context)) {
+			return createEl('span', {
+				className:
+					'wtt-preview-display-value' +
+					(compact ? ' wtt-preview-display-value--compact' : ''),
+				text: on ? trueLabel : falseLabel,
+			});
+		}
+		var name =
+			'wtt-bool-radio-' +
+			String((context && context.valueKey) || Math.random()).replace(
+				/\W+/g,
+				'_'
+			);
+		var wrap = createEl('div', {
+			className:
+				'wtt-preview-bool-radio' +
+				(compact ? ' wtt-preview-bool-radio--compact' : '') +
+				(opts.inputClass ? ' ' + opts.inputClass : ''),
+		});
+		function addOpt(isTrue) {
+			var lab = createEl('label', {
+				className: 'wtt-preview-bool-radio__opt',
+			});
+			var input = createEl('input', {
+				type: 'radio',
+				name: name,
+				value: isTrue ? 'true' : 'false',
+			});
+			input.checked = isTrue ? on : !on;
+			if (context && typeof context.onInput === 'function') {
+				input.addEventListener('change', function () {
+					if (input.checked) {
+						context.onInput(isTrue ? 'true' : 'false');
+					}
+				});
+			}
+			lab.appendChild(input);
+			lab.appendChild(
+				createEl('span', { text: isTrue ? trueLabel : falseLabel })
+			);
+			wrap.appendChild(lab);
+		}
+		addOpt(true);
+		addOpt(false);
+		return wrap;
+	}
+
+	function resolveValidatorsList(node) {
+		if (!node || typeof node !== 'object') {
+			return [];
+		}
+		if (Array.isArray(node.validators) && node.validators.length) {
+			return node.validators;
+		}
+		if (Array.isArray(node.typeValidators) && node.typeValidators.length) {
+			return node.typeValidators;
+		}
+		if (
+			node.typeExtras &&
+			Array.isArray(node.typeExtras.validators) &&
+			node.typeExtras.validators.length
+		) {
+			return node.typeExtras.validators;
+		}
+		if (
+			node.settingsResolved &&
+			node.settingsResolved.data &&
+			Array.isArray(node.settingsResolved.data.validators)
+		) {
+			return node.settingsResolved.data.validators;
+		}
+		return [];
+	}
+
+	/**
+	 * Numeric min/max from int_min|int_max|double_min|double_max (params.value).
+	 * hasMin/hasMax = explicit validator present (range always needs a window;
+	 * spinner/field only set HTML min/max when has*).
+	 */
+	function numericBoundsFromNode(opts) {
+		opts = opts || {};
+		var min = opts.min != null ? Number(opts.min) : NaN;
+		var max = opts.max != null ? Number(opts.max) : NaN;
+		var hasMin = isFinite(min);
+		var hasMax = isFinite(max);
+		var node = opts.context && opts.context.node;
+		var vals = opts.validators || resolveValidatorsList(node);
+		if (Array.isArray(vals)) {
+			vals.forEach(function (v) {
+				if (!v || typeof v !== 'object') {
+					return;
+				}
+				var id = String(v.id || '')
+					.trim()
+					.toLowerCase();
+				var params =
+					v.params && typeof v.params === 'object' ? v.params : {};
+				var bound =
+					params.value != null
+						? Number(params.value)
+						: v.value != null
+							? Number(v.value)
+							: NaN;
+				if (
+					(id === 'int_min' || id === 'double_min') &&
+					isFinite(bound)
+				) {
+					min = bound;
+					hasMin = true;
+				}
+				if (
+					(id === 'int_max' || id === 'double_max') &&
+					isFinite(bound)
+				) {
+					max = bound;
+					hasMax = true;
+				}
+				if (v.min != null && !hasMin) {
+					min = Number(v.min);
+					if (isFinite(min)) {
+						hasMin = true;
+					}
+				}
+				if (v.max != null && !hasMax) {
+					max = Number(v.max);
+					if (isFinite(max)) {
+						hasMax = true;
+					}
+				}
+				if (params.min != null && !hasMin) {
+					min = Number(params.min);
+					if (isFinite(min)) {
+						hasMin = true;
+					}
+				}
+				if (params.max != null && !hasMax) {
+					max = Number(params.max);
+					if (isFinite(max)) {
+						hasMax = true;
+					}
+				}
+			});
+		}
+		if (!isFinite(min)) {
+			min = 0;
+		}
+		if (!isFinite(max) || max < min) {
+			max = min + 100;
+		}
+		return {
+			min: min,
+			max: max,
+			hasMin: hasMin,
+			hasMax: hasMax,
+			hasAny: hasMin || hasMax,
+		};
+	}
+
+	/**
+	 * Text length from text_min_length / text_max_length.
+	 */
+	function textLengthBoundsFromNode(node) {
+		var min = NaN;
+		var max = NaN;
+		var hasMin = false;
+		var hasMax = false;
+		var vals = resolveValidatorsList(node);
+		vals.forEach(function (v) {
+			if (!v || typeof v !== 'object') {
+				return;
+			}
+			var id = String(v.id || '')
+				.trim()
+				.toLowerCase();
+			var params =
+				v.params && typeof v.params === 'object' ? v.params : {};
+			var bound =
+				params.value != null
+					? Number(params.value)
+					: v.value != null
+						? Number(v.value)
+						: NaN;
+			if (id === 'text_min_length' && isFinite(bound)) {
+				min = Math.trunc(bound);
+				hasMin = true;
+			}
+			if (id === 'text_max_length' && isFinite(bound)) {
+				max = Math.trunc(bound);
+				hasMax = true;
+			}
+		});
+		return {
+			min: hasMin ? min : 0,
+			max: hasMax ? max : NaN,
+			hasMin: hasMin,
+			hasMax: hasMax,
+		};
+	}
+
+	function renderRangeControl(opts, context, value, compact) {
+		var bounds = numericBoundsFromNode(opts);
+		var num = Number(value);
+		if (!isFinite(num)) {
+			num = bounds.min;
+		}
+		if (num < bounds.min) {
+			num = bounds.min;
+		}
+		if (num > bounds.max) {
+			num = bounds.max;
+		}
+		if (!isEdit(context)) {
+			return createEl('span', {
+				className:
+					'wtt-preview-display-value' +
+					(compact ? ' wtt-preview-display-value--compact' : ''),
+				text: String(num),
+			});
+		}
+		var wrap = createEl('div', {
+			className:
+				'wtt-preview-range' +
+				(compact ? ' wtt-preview-range--compact' : '') +
+				(opts.inputClass ? ' ' + opts.inputClass : ''),
+		});
+		var input = createEl('input', {
+			type: 'range',
+			className: 'wtt-preview-range__input',
+			min: String(bounds.min),
+			max: String(bounds.max),
+			step: opts.step != null ? String(opts.step) : '1',
+			value: String(num),
+		});
+		var readout = createEl('span', {
+			className: 'wtt-preview-range__value',
+			text: String(num),
+		});
+		if (context && typeof context.onInput === 'function') {
+			input.addEventListener('input', function () {
+				readout.textContent = input.value;
+				context.onInput(input.value);
+			});
+		}
+		if (context.valueKey) {
+			input.setAttribute('data-wtt-pv', String(context.valueKey));
+		}
+		wrap.appendChild(input);
+		wrap.appendChild(readout);
+		return wrap;
+	}
+
 	function renderBoolControl(opts, context, value, compact) {
 		var trueLabel = i18nLabels.boolTrue || 'true';
 		var falseLabel = i18nLabels.boolFalse || 'false';
@@ -1460,15 +2257,91 @@
 				text: value === '' ? '—' : value,
 			});
 		}
-		var area = createEl('textarea', {
+		var layout = resolveTextareaLayout(
+			(context && context.node) || null,
+			opts,
+			compact
+		);
+		var areaAttrs = {
 			className:
 				'wtt-preview-textarea' +
 				(compact ? ' wtt-preview-textarea--compact' : '') +
 				(opts.inputClass ? ' ' + opts.inputClass : ''),
-			rows: compact ? 2 : opts.rows || 2,
-		});
-		area.value = value;
-		return bindValue(area, context);
+			rows: String(layout.rows),
+			cols: String(layout.cols),
+		};
+		var lenBounds = textLengthBoundsFromNode(
+			(context && context.node) || null
+		);
+		if (lenBounds.hasMin && lenBounds.min > 0) {
+			areaAttrs.minlength = String(lenBounds.min);
+		}
+		if (lenBounds.hasMax && isFinite(lenBounds.max)) {
+			areaAttrs.maxlength = String(lenBounds.max);
+		}
+		var area = createEl('textarea', areaAttrs);
+		area.value =
+			lenBounds.hasMax && isFinite(lenBounds.max)
+				? clampToMaxLength(value, lenBounds.max)
+				: value;
+		return bindValue(
+			area,
+			Object.assign({}, context, {
+				maxLength:
+					lenBounds.hasMax && isFinite(lenBounds.max)
+						? lenBounds.max
+						: undefined,
+			})
+		);
+	}
+
+	function resolveTextareaLayout(node, opts, compact) {
+		opts = opts || {};
+		var cfg =
+			(node && node.textareaConfig && typeof node.textareaConfig === 'object'
+				? node.textareaConfig
+				: null) ||
+			{};
+		var extras =
+			(node && node.typeExtras && typeof node.typeExtras === 'object'
+				? node.typeExtras
+				: null) || {};
+		function num(raw, fallback) {
+			var n = parseInt(raw, 10);
+			return isFinite(n) && n > 0 ? n : fallback;
+		}
+		var cols = num(
+			cfg.cols != null
+				? cfg.cols
+				: extras.textareaCols != null
+					? extras.textareaCols
+					: opts.cols,
+			40
+		);
+		var rows = num(
+			cfg.rows != null
+				? cfg.rows
+				: extras.textareaRows != null
+					? extras.textareaRows
+					: opts.rows,
+			4
+		);
+		if (compact) {
+			rows = Math.min(rows, 2);
+		}
+		if (cols < 1) {
+			cols = 1;
+		}
+		if (cols > 200) {
+			cols = 200;
+		}
+		if (rows < 1) {
+			rows = 1;
+		}
+		if (rows > 100) {
+			rows = 100;
+		}
+		return { cols: cols, rows: rows };
 	}
 
 	function isValidEmail(value) {
@@ -1537,6 +2410,15 @@
 			(compact ? ' wtt-preview-input--compact' : '') +
 			(opts.inputClass ? ' ' + opts.inputClass : '');
 
+		if (opts.control === 'switch') {
+			return renderBoolSwitchControl(opts, context, value, compact);
+		}
+		if (opts.control === 'radio') {
+			return renderBoolRadioControl(opts, context, value, compact);
+		}
+		if (opts.control === 'range') {
+			return renderRangeControl(opts, context, value, compact);
+		}
 		if (opts.control === 'checkbox' || opts.inputType === 'checkbox') {
 			return renderBoolControl(opts, context, value, compact);
 		}
@@ -1591,6 +2473,41 @@
 		}
 		if (opts.autocomplete) {
 			attrs.autocomplete = String(opts.autocomplete);
+		}
+		/*
+		 * Spinner / native number: HTML min/max only when validators set bounds.
+		 * Range uses numericBoundsFromNode separately (always needs a window).
+		 */
+		var inputType = String(opts.inputType || 'text').toLowerCase();
+		if (inputType === 'number') {
+			var numBounds = numericBoundsFromNode(opts);
+			if (numBounds.hasMin) {
+				attrs.min = String(numBounds.min);
+			}
+			if (numBounds.hasMax) {
+				attrs.max = String(numBounds.max);
+			}
+		}
+		/*
+		 * text length validators → HTML minlength / maxlength
+		 * (char keeps fixed maxLength: 1 from control opts).
+		 */
+		var lenNode = (context && context.node) || null;
+		var typeKey =
+			(lenNode && resolveTypeKey(lenNode)) ||
+			(opts.typeKey != null ? String(opts.typeKey) : '');
+		if (
+			(typeKey === 'text' || typeKey === 'textarea') &&
+			!opts.maxLength
+		) {
+			var lenBounds = textLengthBoundsFromNode(lenNode);
+			if (lenBounds.hasMin && lenBounds.min > 0) {
+				attrs.minlength = String(lenBounds.min);
+			}
+			if (lenBounds.hasMax && isFinite(lenBounds.max)) {
+				attrs.maxlength = String(lenBounds.max);
+				opts = Object.assign({}, opts, { maxLength: lenBounds.max });
+			}
 		}
 		var input = createEl('input', attrs);
 		input.value = clampToMaxLength(value, opts.maxLength);
@@ -1667,12 +2584,32 @@
 			charrenderer: 'char',
 			boolrenderer: 'bool',
 			boolean: 'bool',
+			boolswitchrenderer: 'bool',
+			bool_checkbox: 'bool_checkbox',
+			boolcheckboxrenderer: 'bool_checkbox',
+			bool_radio: 'bool_radio',
+			boolradiorenderer: 'bool_radio',
 			emailrenderer: 'email',
 			daterenderer: 'date',
-			datetime: 'date',
+			timerenderer: 'time',
+			datetimerenderer: 'datetime',
+			datetime: 'datetime',
+			colorrenderer: 'color',
+			int_spinner: 'int_spinner',
+			intspinnerrenderer: 'int_spinner',
+			int_range: 'int_range',
+			intrangerenderer: 'int_range',
+			double_spinner: 'double_spinner',
+			doublespinnerrenderer: 'double_spinner',
+			double_range: 'double_range',
+			doublerangerenderer: 'double_range',
+			intfieldrenderer: 'int',
+			doublefieldrenderer: 'double',
 			mediarenderer: 'media',
-			displaynodenamerenderer: 'display_node_name',
-			display_node_name: 'display_node_name',
+			displaynodenamerenderer: 'node_presentation',
+			display_node_name: 'node_presentation',
+			nodepresentationrenderer: 'node_presentation',
+			node_presentation: 'node_presentation',
 			quantityrenderer: 'quantity',
 			unitrenderer: 'unit',
 			basiseinheit: 'unit',
@@ -2168,7 +3105,9 @@
 				if (!this.canRender(node, context)) {
 					return false;
 				}
-				var ctx = contentContext(context, !!readonly);
+				var ctx = Object.assign({}, contentContext(context, !!readonly), {
+					node: node,
+				});
 				var mappedSample = sampleForTypeKey(
 					typeKey,
 					controlOpts.sample != null ? controlOpts.sample : '',
@@ -2179,13 +3118,18 @@
 					sample: mappedSample,
 				});
 				var rawVal = ctx.value != null ? String(ctx.value) : '';
-				var needsFill = rawVal === '';
+				/*
+				 * Preview seeds empty cells with type/name samples. Festwert /
+				 * Default dialogs pass noSampleFill so empty stays empty (not "Sample").
+				 */
+				var needsFill = rawVal === '' && !ctx.noSampleFill;
 				/*
 				 * Generic text fallback ("Sample") must not stick on email fields —
 				 * prefer the type/name sample map (e.g. herbert@home.de).
 				 */
 				if (
 					!needsFill &&
+					!ctx.noSampleFill &&
 					typeKey === 'email' &&
 					mappedSample &&
 					rawVal === 'Sample' &&
@@ -2288,10 +3232,7 @@
 		if (VReg && typeof VReg.validateAll === 'function') {
 			var probe = Object.assign({}, node || {}, {
 				typeKey: 'int',
-				validators:
-					(node && node.validators) ||
-					(input && input._wttValidators) ||
-					[],
+				validators: resolveValidatorsList(node),
 			});
 			result = VReg.validateAll(probe, value, { allowEmpty: true });
 			if (result && result.message) {
@@ -2379,13 +3320,12 @@
 			'wtt-preview-input wtt-node-render--int' +
 			(compact ? ' wtt-preview-input--compact' : '');
 		/*
-		 * Int renderer owns ±1 steppers (native number arrows, step=1).
-		 * Double / quantity magnitudes stay type=text — no arrows there.
+		 * Int (field): type=text + numeric keyboard — no native spinner arrows.
+		 * Preferred Int (spinner) uses inputType=number separately.
 		 */
 		var input = createEl('input', {
-			type: 'number',
+			type: 'text',
 			className: className,
-			step: '1',
 			inputmode: 'numeric',
 			autocomplete: 'off',
 			value: value,
@@ -2450,7 +3390,7 @@
 
 	var IntRenderer = {
 		id: 'int',
-		label: 'Int',
+		label: 'Int (field)',
 		canRender: function (node) {
 			return resolveTypeKey(node) === 'int';
 		},
@@ -2481,7 +3421,7 @@
 			var formatId = resolveIntDisplayFormat(node);
 			var mappedSample = sampleForTypeKey('int', '42', node);
 			var rawVal = ctx.value != null ? String(ctx.value) : '';
-			var needsFill = rawVal === '';
+			var needsFill = rawVal === '' && !ctx.noSampleFill;
 			var opts = {
 				context: ctx,
 				sample: mappedSample,
@@ -2520,12 +3460,68 @@
 		},
 	};
 
+	var IntSpinnerRenderer = makeScalarRenderer('int', {
+		inputType: 'number',
+		inputMode: 'numeric',
+		inputClass: 'wtt-node-render--int wtt-node-render--int-spinner',
+	});
+	IntSpinnerRenderer.id = 'int_spinner';
+	IntSpinnerRenderer.label = 'Int (spinner)';
+
+	var IntRangeRenderer = makeScalarRenderer('int', {
+		control: 'range',
+		inputClass: 'wtt-node-render--int wtt-node-render--int-range',
+	});
+	IntRangeRenderer.id = 'int_range';
+	IntRangeRenderer.label = 'Int (range)';
+
 	var CharRenderer = makeScalarRenderer('char', {
 		inputType: 'text',
 		maxLength: 1,
 		size: 1,
 		inputClass: 'wtt-node-render--char',
 	});
+	CharRenderer.label = 'Char (field)';
+	(function () {
+		var baseContent = CharRenderer.renderContent;
+		CharRenderer.renderContent = function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = Object.assign({}, contentContext(context, !!readonly), {
+				node: node,
+			});
+			if (!isEdit(ctx)) {
+				var raw = readValue(ctx, '');
+				if (raw === '' && !ctx.noSampleFill) {
+					raw =
+						(node && node.sample != null && String(node.sample) !== ''
+							? String(node.sample)
+							: '') ||
+						sampleForTypeKey('char', 'A', node) ||
+						'A';
+				}
+				var display = raw === '' ? '—' : raw;
+				var reg = converterRegistry();
+				if (raw !== '' && reg && typeof reg.formatPreferred === 'function') {
+					var formatted = reg.formatPreferred(raw, node);
+					if (formatted != null && String(formatted) !== '') {
+						display = String(formatted);
+					}
+				}
+				return createEl('span', {
+					className:
+						'wtt-preview-display-value' +
+						(contextName(ctx) === 'table' || contextName(ctx) === 'tree'
+							? ' wtt-preview-display-value--compact'
+							: '') +
+						' wtt-node-render--char',
+					text: display,
+				});
+			}
+			return baseContent.call(this, node, context, readonly);
+		};
+	})();
 
 	var DoubleRenderer = makeScalarRenderer('double', {
 		/* text + decimal keyboard — no native spinner arrows (those are int-only UX). */
@@ -2533,6 +3529,24 @@
 		inputMode: 'decimal',
 		inputClass: 'wtt-node-render--double',
 	});
+	DoubleRenderer.label = 'Double (field)';
+
+	var DoubleSpinnerRenderer = makeScalarRenderer('double', {
+		inputType: 'number',
+		inputMode: 'decimal',
+		step: 'any',
+		inputClass: 'wtt-node-render--double wtt-node-render--double-spinner',
+	});
+	DoubleSpinnerRenderer.id = 'double_spinner';
+	DoubleSpinnerRenderer.label = 'Double (spinner)';
+
+	var DoubleRangeRenderer = makeScalarRenderer('double', {
+		control: 'range',
+		step: 'any',
+		inputClass: 'wtt-node-render--double wtt-node-render--double-range',
+	});
+	DoubleRangeRenderer.id = 'double_range';
+	DoubleRangeRenderer.label = 'Double (range)';
 
 	var TextRenderer = makeScalarRenderer('text', {
 		inputType: 'text',
@@ -2554,14 +3568,205 @@
 
 	var TextareaRenderer = makeScalarRenderer('textarea', {
 		control: 'textarea',
-		rows: 2,
+		rows: 4,
+		cols: 40,
 		inputClass: 'wtt-node-render--textarea',
 	});
 
 	var BoolRenderer = makeScalarRenderer('bool', {
-		control: 'checkbox',
+		control: 'switch',
 		inputClass: 'wtt-node-render--bool',
 	});
+	BoolRenderer.label = 'Bool (switch)';
+
+	var BoolCheckboxRenderer = makeScalarRenderer('bool', {
+		control: 'checkbox',
+		inputClass: 'wtt-node-render--bool wtt-node-render--bool-checkbox',
+	});
+	BoolCheckboxRenderer.id = 'bool_checkbox';
+	BoolCheckboxRenderer.label = 'Bool (checkbox)';
+
+	var BoolRadioRenderer = makeScalarRenderer('bool', {
+		control: 'radio',
+		inputClass: 'wtt-node-render--bool wtt-node-render--bool-radio',
+	});
+	BoolRadioRenderer.id = 'bool_radio';
+	BoolRadioRenderer.label = 'Bool (radio)';
+
+	var TimeRenderer = makeScalarRenderer('time', {
+		inputType: 'time',
+		inputClass: 'wtt-node-render--time',
+		sample: '14:30',
+	});
+	TimeRenderer.label = 'Time';
+
+	var DateTimeRenderer = makeScalarRenderer('datetime', {
+		inputType: 'datetime-local',
+		inputClass: 'wtt-node-render--datetime',
+		sample: '2024-06-15T14:30',
+	});
+	DateTimeRenderer.label = 'Date+time';
+
+	var ColorRenderer = makeScalarRenderer('color', {
+		inputType: 'color',
+		inputClass: 'wtt-node-render--color',
+		sample: '#2271b1',
+	});
+	ColorRenderer.label = 'Color';
+
+	/**
+	 * Host Node presentation field (Q117 context: form/table/select/symbol/help/icon).
+	 * Alias type key: display_node_name (legacy).
+	 */
+	var NodePresentationRenderer = {
+		id: 'node_presentation',
+		label: 'Node presentation',
+		canRender: function (node) {
+			var key = resolveTypeKey(node);
+			return (
+				key === 'node_presentation' ||
+				key === 'display_node_name' ||
+				key.indexOf('node_presentation') !== -1 ||
+				key.indexOf('display_node_name') !== -1
+			);
+		},
+		getExampleNode: function () {
+			return makeExampleScalarNode('node_presentation', 'Node name');
+		},
+		renderLabel: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var text = fieldCaption(node);
+			if (!text) {
+				return false;
+			}
+			return createEl('span', {
+				className: 'wtt-node-render__label',
+				text: text,
+			});
+		},
+		renderContent: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var ctx = contentContext(context, true);
+			var presented = resolveNodePresentationValue(node, ctx);
+			var compact =
+				contextName(ctx) === 'table' || contextName(ctx) === 'compact';
+			if (compact) {
+				return createEl('span', {
+					className:
+						'wtt-preview-display-name wtt-node-render--display-name wtt-node-render--node-presentation',
+					text: presented,
+				});
+			}
+			return createEl('input', {
+				type: 'text',
+				className:
+					'wtt-preview-input wtt-preview-input--display-name wtt-node-render--display-name wtt-node-render--node-presentation',
+				value: presented,
+				readonly: 'readonly',
+				disabled: 'disabled',
+				title: presented,
+			});
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var wrap = createEl('div', {
+				className:
+					'wtt-node-render wtt-node-render--display-name wtt-node-render--node-presentation is-display',
+			});
+			var label = this.renderLabel(node, context);
+			if (label) {
+				wrap.appendChild(label);
+			}
+			var content = this.renderContent(node, context);
+			if (content) {
+				wrap.appendChild(content);
+			}
+			return wrap;
+		},
+	};
+
+	/** Legacy export alias. */
+	var DisplayNodeNameRenderer = NodePresentationRenderer;
+
+	/**
+	 * Resolve Q117 presentation context on a field/type node.
+	 */
+	function presentationContextFromNode(node) {
+		var cfg = node && node.presentationConfig;
+		var raw = '';
+		if (cfg && cfg.context != null) {
+			raw = String(cfg.context);
+		} else if (node && node.typeExtras && node.typeExtras.presentationContext != null) {
+			raw = String(node.typeExtras.presentationContext);
+		} else if (node && node.presentationContext != null) {
+			raw = String(node.presentationContext);
+		}
+		raw = raw.trim().toLowerCase();
+		if (raw === 'name') {
+			return 'form';
+		}
+		var allowed = {
+			form: 1,
+			table: 1,
+			select: 1,
+			symbol: 1,
+			help: 1,
+			icon: 1,
+		};
+		return allowed[raw] ? raw : 'form';
+	}
+
+	/**
+	 * Value from host presentation map / legacy shortDescription / name.
+	 * Always resolves by Q117 context — ignore paint value/sample (often the
+	 * host form name from preview fill, which would bypass Symbol/Help/Icon).
+	 */
+	function resolveNodePresentationValue(node, paintCtx) {
+		var fieldCtx = presentationContextFromNode(node);
+		var map =
+			(node && node.hostPresentation) ||
+			(node && node.presentation) ||
+			null;
+		if (map && typeof map === 'object' && map[fieldCtx] != null) {
+			var fromMap = String(map[fieldCtx]).trim();
+			if (fromMap) {
+				return fromMap;
+			}
+		}
+		if (fieldCtx === 'symbol' || fieldCtx === 'table') {
+			var short = String(
+				(node &&
+					(node.hostShortDescription ||
+						node.shortDescription ||
+						(node.host && node.host.shortDescription))) ||
+					''
+			).trim();
+			if (short) {
+				return short;
+			}
+			/* Never fall back to form name for symbol/table. */
+			return '—';
+		}
+		if (fieldCtx === 'icon') {
+			return '—';
+		}
+		return (
+			String(
+				(node &&
+					(node.hostName ||
+						node.hostDisplayName ||
+						node.nodeName ||
+						(node.host && node.host.name))) ||
+					''
+			).trim() || '—'
+		);
+	}
 
 	/**
 	 * Date / date-time simple type.
@@ -2716,7 +3921,10 @@
 			}
 			var ctx = contentContext(context, !!readonly);
 			var rawVal = ctx.value != null ? String(ctx.value) : '';
-			if (rawVal === '' || rawVal === 'Sample') {
+			if (
+				!ctx.noSampleFill &&
+				(rawVal === '' || rawVal === 'Sample')
+			) {
 				var mapped = sampleForTypeKey('date', '1718461800', node);
 				if (mapped) {
 					ctx = Object.assign({}, ctx, { value: String(mapped) });
@@ -2735,14 +3943,129 @@
 		},
 	};
 
+	/**
+	 * Media (Q65): Preferred MediaRenderer → Editable (Select/URL) + Display surface.
+	 * Delegates to WTTMediaRender so admin preview matches field paint.
+	 */
+	function mediaSampleStore(node) {
+		var Media = global.WTTMediaRender;
+		if (!Media || typeof Media.toStore !== 'function') {
+			return '';
+		}
+		var cfg = (node && node.mediaConfig) || null;
+		var allowed =
+			cfg && Array.isArray(cfg.allowedKinds) ? cfg.allowedKinds : [];
+		var entries =
+			typeof Media.sampleEntries === 'function' ? Media.sampleEntries() : [];
+		var i;
+		if (allowed.length && entries.length) {
+			for (i = 0; i < entries.length; i++) {
+				var e = entries[i];
+				if (e && e.kind && allowed.indexOf(e.kind) !== -1 && e.ref) {
+					return Media.toStore(e.ref);
+				}
+			}
+		}
+		if (entries[0] && entries[0].ref) {
+			return Media.toStore(entries[0].ref);
+		}
+		if (Media.SAMPLE_IMAGE) {
+			return Media.toStore(Media.SAMPLE_IMAGE);
+		}
+		return '';
+	}
+
+	var MediaRenderer = {
+		id: 'media',
+		label: 'MediaRenderer',
+		canRender: function (node) {
+			return resolveTypeKey(node) === 'media';
+		},
+		getExampleNode: function () {
+			return makeExampleScalarNode('media', mediaSampleStore(null));
+		},
+		renderLabel: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var text = fieldCaption(node);
+			if (!text) {
+				return false;
+			}
+			return createEl('span', {
+				className: 'wtt-node-render__label',
+				text: text,
+			});
+		},
+		renderContent: function (node, context, readonly) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			var Media = global.WTTMediaRender;
+			if (!Media || typeof Media.renderField !== 'function') {
+				return createEl('span', {
+					className: 'wtt-field-hint',
+					text: '—',
+				});
+			}
+			var ctx = contentContext(context, !!readonly);
+			var raw = ctx.value != null ? String(ctx.value) : '';
+			if (!ctx.noSampleFill && (raw === '' || raw === 'Sample')) {
+				var fill =
+					node && node.sample != null && String(node.sample) !== ''
+						? String(node.sample)
+						: mediaSampleStore(node);
+				if (fill) {
+					raw = fill;
+					ctx = Object.assign({}, ctx, { value: fill });
+				}
+			}
+			var compact =
+				contextName(ctx) === 'table' ||
+				contextName(ctx) === 'compact' ||
+				!!(ctx && ctx.compact);
+			return Media.renderField(raw, {
+				mode: ctx.mode === 'display' ? 'display' : 'edit',
+				compact: compact,
+				mediaConfig: (node && node.mediaConfig) || null,
+				onChange:
+					typeof ctx.onInput === 'function' ? ctx.onInput : null,
+				el: createEl,
+			});
+		},
+		render: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return composeLabeledField(this, node, context);
+		},
+		renderTreeNode: function (node, context) {
+			if (!this.canRender(node, context)) {
+				return false;
+			}
+			return defaultRenderTreeNode(node, context);
+		},
+	};
+
 	Registry.register(IntRenderer);
+	Registry.register(IntSpinnerRenderer);
+	Registry.register(IntRangeRenderer);
 	Registry.register(CharRenderer);
 	Registry.register(DoubleRenderer);
+	Registry.register(DoubleSpinnerRenderer);
+	Registry.register(DoubleRangeRenderer);
 	Registry.register(TextRenderer);
 	Registry.register(EmailRenderer);
 	Registry.register(TextareaRenderer);
 	Registry.register(BoolRenderer);
+	Registry.register(BoolCheckboxRenderer);
+	Registry.register(BoolRadioRenderer);
+	Registry.register(NodePresentationRenderer);
 	Registry.register(DateRenderer);
+	Registry.register(TimeRenderer);
+	Registry.register(DateTimeRenderer);
+	Registry.register(ColorRenderer);
+	Registry.register(MediaRenderer);
 	Registry.register(UnitRenderer);
 	Registry.register(QuantityRenderer);
 
@@ -4582,7 +5905,10 @@
 		EmailRenderer: EmailRenderer,
 		TextareaRenderer: TextareaRenderer,
 		BoolRenderer: BoolRenderer,
+		DisplayNodeNameRenderer: DisplayNodeNameRenderer,
+		NodePresentationRenderer: NodePresentationRenderer,
 		DateRenderer: DateRenderer,
+		MediaRenderer: MediaRenderer,
 		QuantityRenderer: QuantityRenderer,
 		UnitRenderer: UnitRenderer,
 		TableRenderer: TableRenderer,

@@ -1,0 +1,58 @@
+---
+description: Settings UI parity — Knoten-Walk / Attribut-Walk; model lock ≠ GUI done
+alwaysApply: true
+---
+
+# Settings UI parity (Knoten-Walk / Attribut-Walk)
+
+Canonical plan: [`docs/plans/settings-ui-parity.md`](../../docs/plans/settings-ui-parity.md).  
+Model lock: [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](../../docs/DEVELOPER-ATTRIBUTE-MODEL.md) (OQ-W6 / Q123).
+
+## Agent rule — Altlasten / debt questions
+
+When asked whether legacy / Altlasten remain:
+
+1. Answer **SoT / concept** and **GUI-Ist** **separately**.
+2. `OPEN-QUESTIONS` / OQ-W **decided** ≠ admin UI finished.
+3. Prefer the settings-ui-parity matrix + [`q123-migrate-handoff.md`](../../docs/plans/q123-migrate-handoff.md) over “model locked → no debt.”
+
+## Docs
+
+Always update living docs / plans / rules when behavior or design changes (`plan-docs-sync.mdc`). **Do not ask** whether to sync — sync in the same change.
+
+## Locked names
+
+| Term | Meaning |
+|------|---------|
+| **Knoten-Walk** | Open node → Settings of node + attribute targets to the leaf |
+| **Attribut-Walk** | Attribute Options → **same** walk from **target type** |
+| **Settings** | Capsule `Settings.data` / `Settings.view` — type defaults on node; override deltas on Relation |
+| **Not Settings** | Node Identity/Presentation; attribute edge fields (name, Mult, Bindung, RO, Hide, Default seed) |
+
+From the type node downward, Knoten-Walk and Attribut-Walk are the **same search**.  
+Override vs type default = **same keys**, different **storage** (Relation delta vs type node) and **blast radius**.
+
+## GUI Soll
+
+- **One** Settings surface = the walk (even single-node depth 0).
+- Do **not** also paint legacy Attribute Options **Choices** + depth-0 **Relation overrides** Preferred/date when the walk covers the attribute (`attributeSettingsWalkCovers` in `tree-admin.js`).
+- Label the walk **Settings** (not a second “Composition settings” product concept).
+- Node ConfigPage vs attribute walk = **plan later** (node mostly aggregates child Settings already visible on attributes) — do not implement until designed.
+- **Preferred default** lives on the **type node** / simple-type config; consumers inherit. **Never** by display name.
+
+## Do / don’t
+
+- **Do** treat double Choices / missing Settings / node≠attribute Settings chrome as **GUI debt**, not a new model.
+- **Do** keep edge fields in the Attributes **table row**; keep Identity/Presentation on the node — outside Settings.
+- **Do** set default Preferred / renderer on the type (or simple config), not on attribute display names.
+- **Don’t** invent a second Settings model for attributes.
+- **Don’t** answer “no Altlasten” based only on OQ decided flags when the admin UI still doubles or omits the walk.
+- **Don’t** hard-code product logic by display name (`quantity` / `size` / `Kontakt` / …) — walk and Preferred stay type-driven.
+
+## Related
+
+- [config-renderers.mdc](config-renderers.mdc) (Q126 ConfigPage)
+- [admin-ux-controls.mdc](admin-ux-controls.mdc)
+- [reuse-renderers.mdc](reuse-renderers.mdc)
+- [choosers.mdc](choosers.mdc)
+---

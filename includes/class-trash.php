@@ -172,6 +172,9 @@ final class Trash {
 			Tree_Model::touch_modified( $id );
 		}
 
+		/* Q111 / Q123: restore host Model_Data + composition-linked children. */
+		self::restore_model_data_for_hosts( $taxonomy, $ids );
+
 		$trash_id = self::find_trash_node_id( $taxonomy );
 		if ( $trash_id > 0 ) {
 			/* get_trash_item_ids drops roots that are no longer soft-deleted. */
@@ -236,7 +239,10 @@ final class Trash {
 		if ( $include_descendants ) {
 			$ids = array_merge( self::collect_descendant_ids( $taxonomy, $term_id ), $ids );
 		}
-		/* Attribute slots are not WP children — cascade them with the host (Q87 / Q97). */
+		/*
+		 * Q123: Relation-only attrs use edge ids (not term ids). Cascade only leftover
+		 * legacy slot terms. Composition instance data cascades via Model_Data (Q111).
+		 */
 		$ids = array_merge( $ids, self::collect_owned_attribute_slot_ids( $taxonomy, $ids ) );
 		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
 
@@ -271,6 +277,9 @@ final class Trash {
 			update_term_meta( $id, self::META_KEY_TRASHED, '1' );
 		}
 
+		/* Q111 / Q123: soft-trash host instances + composition-linked children. */
+		self::soft_trash_model_data_for_hosts( $taxonomy, $ids );
+
 		self::add_trash_item( $trash_id, $term_id );
 		Tree_Model::touch_modified( $term_id );
 		Tree_Model::touch_modified( $trash_id );
@@ -297,6 +306,9 @@ final class Trash {
 				return self::term_depth( $taxonomy, $b ) <=> self::term_depth( $taxonomy, $a );
 			}
 		);
+
+		/* Purge Model_Data bags before terms disappear (Q111 / Q123). */
+		self::purge_model_data_for_hosts( $taxonomy, $ids );
 
 		$deleted = 0;
 		foreach ( $ids as $id ) {
@@ -481,14 +493,18 @@ final class Trash {
 	}
 
 	/**
-	 * Attribute slot term ids owned by any of $host_ids via besteht_aus / aggregation (Q87).
-	 * Not WP children of the host — must be collected explicitly for Trash cascade (Q97).
+	 * Leftover attribute **slot term** ids owned by any of $host_ids (Q87 migrate debt / Q123).
+	 *
+	 * Relation-only attributes use edge UUID ids — never cast those to term ids.
+	 * Walk outgoing besteht_aus / aggregation edges and collect `toId` only when
+	 * the target is still marked `_wtt_attribute_slot` (including untyped parked
+	 * table-band leftovers hidden from Attribute UI). Catalog type targets are skipped.
 	 *
 	 * @param list<int> $host_ids Host term ids already in the trash set.
 	 * @return list<int>
 	 */
 	private static function collect_owned_attribute_slot_ids( string $taxonomy, array $host_ids ): array {
-		if ( ! class_exists( Attribute::class ) ) {
+		if ( ! class_exists( Attribute::class ) || ! class_exists( Relation::class ) ) {
 			return array();
 		}
 		$out  = array();
@@ -498,16 +514,73 @@ final class Trash {
 			if ( $host_id <= 0 ) {
 				continue;
 			}
-			foreach ( Attribute::list_own( $taxonomy, $host_id ) as $row ) {
-				$slot_id = (int) ( $row['id'] ?? 0 );
-				if ( $slot_id <= 0 || isset( $seen[ $slot_id ] ) ) {
-					continue;
+			foreach ( Attribute::BINDINGS as $binding_key ) {
+				foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $host_id, $binding_key ) as $edge ) {
+					$slot_id = (int) ( $edge['toId'] ?? 0 );
+					if ( $slot_id <= 0 || isset( $seen[ $slot_id ] ) ) {
+						continue;
+					}
+					/* Never soft-delete catalog type targets — only leftover slots. */
+					if ( ! Attribute::is_slot( $slot_id ) ) {
+						continue;
+					}
+					$seen[ $slot_id ] = true;
+					$out[]            = $slot_id;
 				}
-				$seen[ $slot_id ] = true;
-				$out[]            = $slot_id;
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Soft-trash Model_Data for structure hosts in $host_ids (Q111 composition cascade).
+	 *
+	 * @param list<int> $host_ids
+	 */
+	private static function soft_trash_model_data_for_hosts( string $taxonomy, array $host_ids ): void {
+		if ( ! class_exists( Model_Data::class ) ) {
+			return;
+		}
+		foreach ( array_unique( array_map( 'intval', $host_ids ) ) as $host_id ) {
+			if ( $host_id <= 0 || self::is_trash_node( $host_id ) ) {
+				continue;
+			}
+			Model_Data::soft_trash_all_for_structure( $taxonomy, $host_id );
+		}
+	}
+
+	/**
+	 * Restore Model_Data for structure hosts in $host_ids.
+	 *
+	 * @param list<int> $host_ids
+	 */
+	private static function restore_model_data_for_hosts( string $taxonomy, array $host_ids ): void {
+		if ( ! class_exists( Model_Data::class ) ) {
+			return;
+		}
+		foreach ( array_unique( array_map( 'intval', $host_ids ) ) as $host_id ) {
+			if ( $host_id <= 0 || self::is_trash_node( $host_id ) ) {
+				continue;
+			}
+			Model_Data::restore_all_for_structure( $taxonomy, $host_id );
+		}
+	}
+
+	/**
+	 * Hard-purge Model_Data bags for hosts about to be permanently deleted.
+	 *
+	 * @param list<int> $host_ids
+	 */
+	private static function purge_model_data_for_hosts( string $taxonomy, array $host_ids ): void {
+		if ( ! class_exists( Model_Data::class ) ) {
+			return;
+		}
+		foreach ( array_unique( array_map( 'intval', $host_ids ) ) as $host_id ) {
+			if ( $host_id <= 0 || self::is_trash_node( $host_id ) ) {
+				continue;
+			}
+			Model_Data::purge_all_for_structure( $taxonomy, $host_id );
+		}
 	}
 
 	/**
@@ -584,7 +657,7 @@ final class Trash {
 			return;
 		}
 		$clean = self::normalize_trash_item_ids( $ids );
-		update_term_meta( $trash_id, self::META_KEY_TRASH_ITEMS, wp_json_encode( $clean ) );
+		Json_Meta::update_term_meta( $trash_id, self::META_KEY_TRASH_ITEMS, $clean );
 	}
 
 	private static function term_depth( string $taxonomy, int $term_id ): int {

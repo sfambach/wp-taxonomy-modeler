@@ -2,20 +2,23 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.97-plan"
-last_updated: "2026-08-09"
+version: "0.7.125-plan"
+last_updated: "2026-08-14"
 related_docs:
   - README.md
   - docs/PRODUCT.md
   - docs/ARCHITECTURE.md
   - docs/ROADMAP.md
   - docs/OPEN-QUESTIONS.md
+  - docs/DEVELOPER-ATTRIBUTE-MODEL.md
   - .cursor/rules/versioning.mdc
   - .cursor/rules/planning-only.mdc
   - .cursor/rules/clean-model-guidelines.mdc
   - .cursor/rules/block-naming.mdc
   - .cursor/rules/agent-lanes.mdc
   - .cursor/rules/node-renderers.mdc
+  - .cursor/rules/config-renderers.mdc
+  - .cursor/rules/settings-ui-parity.mdc
   - .cursor/rules/composition-first.mdc
   - .cursor/rules/parked-complex-types.mdc
   - .cursor/rules/child-of-inheritance-only.mdc
@@ -25,11 +28,15 @@ related_plans:
   - docs/plans/data-structure.md
   - docs/plans/use-cases.md
   - docs/plans/example-projects.md
+  - docs/plans/user-constellation-recipes.md
   - docs/plans/part-identity-layers.md
   - docs/plans/case-study.md
   - docs/plans/blocks-lane.md
   - docs/plans/relation-vs-object-concept.md
   - docs/plans/q123-doc-pass-questions.md
+  - docs/plans/q123-migrate-handoff.md
+  - docs/plans/attribute-choice-inheritance.md
+  - docs/plans/settings-ui-parity.md
   - docs/DEVELOPER-ATTRIBUTE-MODEL.md
 todos:
   - id: planning-phase
@@ -44,6 +51,9 @@ todos:
   - id: example-projects
     content: "Validate model with concrete example projects (BOM, Hardware, Rezepte)"
     status: in_progress
+  - id: user-constellation-recipes
+    content: "Backlog: end-user how-to recipes for SI / calc / CatalogChoice / Money / own attrs (docs/plans/user-constellation-recipes.md)"
+    status: pending
   - id: part-identity-layers
     content: "Keep part identity layers note aligned when catalog modeling evolves"
     status: in_progress
@@ -124,13 +134,13 @@ Short board after a long chat. **Locked design** vs **open UX / next detail**. R
 | **Q121** | Money: canonical **EUR** + foreign-entry **snapshot** `{amount, currency, rate, date}`. Physical canonical later. |
 | **Q122** | Type properties + inheritance override **everywhere**. Composed types expose **component attribute** settings (same surfaces as on those type nodes) — **dynamic** from the model graph, never hard-coded. |
 | **Q123** | Attributes = **Relation only**; **`Settings.data` + `Settings.view`**; recursive walk; hybrid overrides. Diagrams: [`DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md). OQ-W1…W16 closed. |
-| **Tree ≈ 0.0.402+** | No **Konstanten**. Under **Data Types**: Präfixe + **Unit**/{With prefix, Without prefix→Währung…} + Bauformen. |
+| **Tree ≈ 0.0.463+** | **Konstanten**: Präfixe + Basiseinheiten + Bauformen + Währung. **Data Types**: Simple / Complex (`quantity`, `set`, legacy `table`) / Unit type. Parked Complex `enum`/`list`/`node_*` soft-trashed. |
 | **Q74 lazy ≈ 0.0.405** | Relations panel **collapsed by default**; RelationType catalog loaded on expand (`wtt_get_relation_types`), not on every `get_node`. |
 
 ### Open design / construction sites (*discuss when needed*)
 
 1. ~~**Unit↔prefix UX for non-power users**~~ — **Lean A done ≈ `0.0.406`:** panel **Allowed prefixes** on unit settings (Fallstudie-visible). Quantity prefix empty option = **—** (not `(none)`); tighter quantity gaps. Folder ID bindings (rename-safe) still optional later.
-2. **Attributes panel** — earlier lean: **collapsed + lazy** by default (same family as Relations). Not done yet.
+2. ~~**Attributes panel** — earlier lean: **collapsed + lazy** by default (same family as Relations).~~ **Done ≈ `0.0.429`:** collapsed by default (`attributesPanelOpen`); rows already on `get_node` (no second fetch — unlike Relations catalog lazy-load).
 3. **Money converters / entry-scale** — Q119 lean locked; scaffold wiring (Preferred + entry scale on attribute) still to build when we pick that slice.
 4. **Q121 snapshot persistence** — lean locked; Model_Data shape / paint not implemented.
 5. **Physical canonical store** (m↔inch) — same story as money, lower urgency.
@@ -565,6 +575,49 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-09 | **OQ-W16 refined:** two categories under same walk/override law — **Data Settings** (validators, allowlists, …) vs **View Settings** (Preferred R/C, output chrome); Presentation (Q117) stays labels/icon. Preferred ∈ view, not mixed unlabeled with data. |
 | 2026-08-09 | **OQ-W16 locked:** `Settings.data` + `Settings.view`; same walk/override; Preferred ∈ view; Q117 Presentation separate. |
 | 2026-08-09 | **Q123 docs sync:** living docs + [`DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md) (diagrams for developers / later user docs). Plan **0.7.97**. |
+| 2026-08-09 | **Q123 scaffold slice ≈ `0.0.416`:** Relation-only attributes (named `besteht_aus`/`aggregation` → type); `Attribute.id` = edge id; `Attribute_Q123_Migrate` remaps slots + Model_Data keys; Preferred override in Relation `settings.view` (camelCase key fix); Object_Render/Blocks UUID value keys. Full Settings walk UI still debt. |
+| 2026-08-09 | **Q123 ≈ `0.0.417`:** `Settings_Walk` recursive gather (live + hybrid deltas, cycle break); Preferred (+ view converter / data validators / dateMode when on edge) via `decorate_row`; `settingsResolved` + `settingsWalkMeta` on attribute rows. Full Options walk UI still debt. |
+| 2026-08-09 | **Q123 ≈ `0.0.418`:** typeExtras bridge — read prefers Relation `settings.data`/`view`, host map fallback; `set_type_extras` dual-writes edge deltas for own edges; one-shot fold `wtt_q123_type_extras_folded`. Options walk UI still debt. |
+| 2026-08-09 | **Q123 ≈ `0.0.419`:** Attributes Options paint prefers edge Settings deltas (+ typeExtras fallback); optional `settingsWalkMeta.nodeCount` hint; saves still dual-write AJAX. Full walk UI still debt. |
+| 2026-08-09 | **Q123 ≈ `0.0.420`:** Trash cascade safety — leftover slots via edge `toId`+`is_slot` only (never edge UUID→term); Model_Data soft-trash/restore/purge on host structures (Q111 composition children); catalog filters still hide slots. Host typeExtras dual-write kept. |
+| 2026-08-09 | **Q123 ≈ `0.0.421`:** `Composition::get_attribute_columns` / `normalize_rows` keep Relation edge ids (`Attribute::normalize_attr_id`); no `(int)` UUID prefix wipe for model table columns. |
+| 2026-08-09 | **Q123 ≈ `0.0.422`:** Stop typeExtras dual-write — own attrs write Relation `settings.data`/`view` only (clear host key); host map read-fallback + inherited overrides kept; one-shot prune `wtt_q123_type_extras_pruned_v1`. Hide/readonly host maps untouched. |
+| 2026-08-09 | **Q123 ≈ `0.0.423`:** Preferred override via `Attribute::set_preferred_render` → Relation `settings.view.preferredRenderer` only (no slot meta / no `is_slot` gate on edge ids); clear deletes delta key + leftover slot meta; `settingsWalkMeta.preferredSource` / `hasPreferredOverride`. |
+| 2026-08-09 | **Q123 ≈ `0.0.424`:** Own-attr RO/Hide → Relation edge fields `readOnly`/`hidden` (OQ-W4); host maps kept for inherited hide/RO overrides; read edge-first + host fallback; Q105 BO⇒Mult `0..1`; one-shot fold `wtt_q123_edge_flags_folded_v1`. |
+| 2026-08-09 | **Q123 ≈ `0.0.425`:** Own-attr Default seed → Relation edge field `default` (OQ-W4 / Q106; not Settings); inherited overrides stay host `_wtt_attribute_fixed_values` by name; read edge-first + host fallback; one-shot fold `wtt_q123_defaults_folded_v1`. |
+| 2026-08-09 | **Q105 ≈ `0.0.426`:** Attribute_Validator rule `background_only_needs_mult` — own Hide/BO with Mult ≠ `0..1`; fixes `set_mult_01` / `clear_hide` via `wtt_fix_attribute_rule`; admin banner; write gate already ≈ 0.0.424. |
+| 2026-08-09 | **Q123 ≈ `0.0.427`:** Bounded Settings walk summary on `decorate_row` (`settingsWalk`: names + preferred; max 24; nested only) + compact read-only list in Attributes Options fold. No full walk wizard / no second Form UI. |
+| 2026-08-09 | **Q123 ≈ `0.0.428`:** Safe one-shot host-map prune `wtt_q123_host_maps_pruned_v1` — own RO/Hide/default/typeExtras host keys dropped only when already on edge; empty typeExtras maps deleted; inherited overrides kept. |
+| 2026-08-09 | **Q123 ≈ `0.0.429`:** Orphan slot purge `wtt_q123_orphan_slots_purged_v1` (true orphans only; keep Q90 Zeile/Kopf/Fuss; any edge `toId` / catalog protected) + Attributes panel collapsed by default (catch-up desk). Live `wtt_fs` had 0 true orphans / 3 parked bands. |
+| 2026-08-09 | **Q123 ≈ `0.0.430`:** Combined invariants smoke `scripts/_smoke-q123-invariants.php` (edge-id shape; no-slot add; Preferred/Default/RO on edge; Wert `settingsWalkMeta.nodeCount`). Core Relation-only migrate marked **ready for user UAT**; remaining = polish (walk wizard, host read fallback, Q90 bands, commit). |
+| 2026-08-09 | **Q123 ≈ `0.0.431`:** Own-attr reads edge-only for RO/Hide/default/typeExtras/preferred (no host-map fallback); inherited keep host-map overrides. One-shot `wtt_q123_own_edge_read_sot_v1` folds remaining own host Hide (incl. Q105 Mult≠0..1 debt) + leftover own RO/default/typeExtras onto edge. Plan **0.7.98**. |
+| 2026-08-09 | **Q123 ≈ `0.0.432`:** Settings walk Options levels include `nodeId`; click navigates via `selectNode` (read-only summary; no delta edit / no wizard). Plan **0.7.99**. |
+| 2026-08-09 | **Q123 ≈ `0.0.433`:** Relations admin shows/edits `Relation.name` for `besteht_aus`/`aggregation` (same SoT as Attributes → Name); `hydrate`/`list_outgoing`/`list_incoming`/`relationsStored` expose name; AJAX `wtt_update_relation_name` + add `name`; `child_of` stays nameless. `mark_as_slot` documented legacy-only. Plan **0.7.100**. |
+| 2026-08-09 | **Q123 ≈ `0.0.434`:** UUID attr-id audit — `effective_list` `shadowedAttrId` uses `normalize_attr_id` (was `(int)` → `0` for edge UUIDs). Remaining `(int)`/`parseInt` on term/catalog/band ids left intentional. Plan **0.7.101**. |
+| 2026-08-09 | **Q123 ≈ `0.0.435`:** Settings walk Options UX — per-level Preferred (read-only) + explicit **Edit type settings** (`selectNode`); hint that nested Preferred is edited on the type node; attribute Relation Preferred override stays above (edge `preferredRenderer`). Full Walk wizard / in-list delta edit **deferred post-UAT**. Plan **0.7.102**. |
+| 2026-08-10 | **Q123 ≈ `0.0.436`:** Inherited host-map naming clarity — API aliases (`get_inherited_*`), decorate `inheritedHostOverride` flags, Attributes Inherited column override badge + help text; invariants assert own attrs stay off host maps. Walk wizard still deferred. Plan **0.7.103**. |
+| 2026-08-10 | **Q123 ≈ `0.0.437`:** First Walk delta-edit slice — Attributes Options labels Preferred/converter/dateMode/validators as **Relation overrides** (hybrid); Reset deletes edge Settings delta key; nested walk levels stay navigate / Edit type settings only. Invariants `smoke=ok`. Plan **0.7.104**. |
+| 2026-08-10 | **Q123 ≈ `0.0.438`:** Q90 parked table bands (Zeile/Kopf/Fuss) — still hidden from Attributes; Relations mark as **Q90 parked** (locked, badge); ensure edge names; one-shot `wtt_q123_parked_band_names_v1`. Do not revive Collection `table`. Invariants + parked-bands `smoke=ok`. Plan **0.7.105**. |
+| 2026-08-10 | **Q123 ≈ `0.0.439`:** Attribute duplicate / reorder / move audited for edge UUID ids — `move_to_node` preserves OQ-W4 edge fields + order meta; `duplicate` copies extras/default/RO/Hide; no slot create. Laragon `_smoke-q123-dup-move.php` + invariants `smoke=ok`. Plan **0.7.106**. |
+| 2026-08-10 | **Q123 ≈ `0.0.441`:** Walk-Wizard — per-level Settings.view + Settings.data overrides as path-keyed deltas on the attribute Relation (`settings.nested[<edgeUuid[/…]>]`; depth 0 top-level). Preferred / converter / validators / dateMode + Reset; no nested type writes. Attributes panel default open ≈ **0.0.440**. Laragon `_smoke-q123-walk-nested-overrides.php` `smoke=ok`. Plan **0.7.107**. |
+| 2026-08-10 | **Q124 ≈ `0.0.442`:** RelationType **`defaultvalue_from`** — From consumer host → To provider host; name = attr; create/empty seed from provider instance/default (after local `edge.default`). BOM seed Bauteilliste.Bauart → Position.Bauart; `create_linked` passes providers. Live cascade open. Plan **0.7.108**. |
+| 2026-08-10 | **Q123 ≈ `0.0.443` / reconcile `0.0.444`:** Parallel agents both claimed 0.0.443 — (1) Walk `Settings.data.allowedPrefixIds` on Unit/With-prefix (+ paint intersect); (2) admin Preview = host Preferred only. Working tree **`0.0.444`** keeps both; no feature expansion. Plan **0.7.109**. |
+| 2026-08-10 | **OQ-W11 unit structure ≈ `0.0.445`:** Idempotent Case_Data — `With prefix` Praefix→Präfixe + Kuerzel→text; `size` child_of `quantity` (Value→double, Unit→With prefix); Passiv Wert→size; unit leaves stay leaf (no fake slots). Display synthesize Typ/Praefix/Kuerzel deferred. Plan **0.7.110**. |
+| 2026-08-10 | **Q123 ≈ `0.0.448`:** Walk Default override per level (depth 0 → `edge.default`; nested → `settings.nested[path].data.default`) + compact one-row Composition walk UI; tree layout deferred; parallel Model versions stack ≈ 0.0.447. Plan **0.7.111**. |
+| 2026-08-11 | **Q66 heir Choices:** Abstract CatalogChoice+inheritance diagram + **Application** (Bauart, Währung, Unit candidate) in [`attribute-choice-inheritance.md`](attribute-choice-inheritance.md); inherited **`choiceFilter`** host override UI ≈ **0.0.455**. Unit remap parked. Plan **0.7.112**. |
+| 2026-08-11 | **ISO 4217 money vocab:** Währung leaves use `currencyCode` / `currencyNumber` / `currencyExponent`; keep Q119 store-major, entry scale, converters, Q110/Q121 FX snapshot. Measure profiles (SI / length / temp / money / packaging) in same doc. Not an ISO conversion engine. Plan **0.7.113**. |
+| 2026-08-11 | **BIPM SI + ISO/IEC 80000 vocab:** Praefix/unit names, symbols, SI prefix factors align SI Brochure + ISO 80000; Ki/Mi = IEC 80000-13 only. Keep allowlists, Q109, inch/affine/packaging. Same “vocab not engine” pattern as 4217. Plan **0.7.114**. |
+| 2026-08-11 | **Q125 `fn` Relation:** Generic function-bearing RelationType (`op` + optional props); Q124 `defaultvalue_from` → first op `default_from`; later scale_factor / scale_ref / contains. SI Präfix not via `fn`. Plan **0.7.115**. |
+| 2026-08-11 | **Q125 rename:** RelationType key **`calc`** (UI Berechnung); was draft `fn`. Plan **0.7.116**. |
+| 2026-08-11 | **Q125 + SI Feinschliff scaffold ≈ `0.0.456`:** Seed `calc`, alias `defaultvalue_from`, `settings.data.op=default_from`, UI label Calculation; BOM Bauart seed via calc; SI engine docs (Q109 leaf, not calc). Plan **0.7.117**. |
+| 2026-08-11 | **Doc backlog:** end-user **constellation recipes** (how to set up SI / `calc` / CatalogChoice / Money / own attrs) — stub [`user-constellation-recipes.md`](user-constellation-recipes.md); write full steps later. Plan **0.7.118**. |
+| 2026-08-11 | **Unit type seed ≈ `0.0.457`:** Data Types / **Unit type** + heir **C1**; attrs Menge / Base unit (→ With prefix leaves) / Praefix (→ Präfixe). Full Base-unit folder remap still parked. Plan **0.7.119**. |
+| 2026-08-11 | **Konstanten restored ≈ `0.0.458`:** Definition/**Konstanten** again holds Präfixe, Basiseinheiten (With/Without prefix), Bauformen, Währung; Data Types keeps Simple/Complex/Unit type. Migrate empties interim DT catalog shells. Plan **0.7.120**. |
+| 2026-08-11 | **Heir Settings overrides ≈ `0.0.462`:** Child hosts can override Preferred / Walk Settings for inherited attrs via `_wtt_attribute_settings_overrides` (father edge untouched; Q66 / OQ-W5). Plan **0.7.121**. |
+| 2026-08-11 | **Q90 Complex purge ≈ `0.0.463`:** Soft-trash parked `enum`/`list`/`node_pick`(+embed/ref) from Fallstudie tree; stop seeding/restoring them. Keep `quantity`/`set` + legacy `table` (BOM). Bauart → direct child of Complex. Plan **0.7.122**. |
+| 2026-08-12 | **Q126 ConfigPage ≈ `0.0.481`:** Vertical box stack `WTTConfigRender.renderPage` (Actions → MetaSettings → Bools → Display → Attributes → Preview); one page everywhere; RO in Bools strip. Rule `config-renderers.mdc`. Plan **0.7.123**. |
+| 2026-08-12 | **Settings UI parity:** Soll vs Ist matrix [`settings-ui-parity.md`](settings-ui-parity.md) — concept (Knoten-/Attribut-Walk) locked; GUI debt = legacy Options chrome beside Walk. First slice: dedupe Attribute Options when walk covers Settings. Agent rule: model lock ≠ GUI done. Plan **0.7.124**. |
+| 2026-08-14 | **Settings walk UX ≈ `0.0.531`:** Nested walk table; deferred Choices; C1 demo retired (heirs ≠ CatalogChoice); EmbeddedRenderer for aggregation hosts without kind children; Preferred = type-node default (no display-name). Docs: parity plan + ARCHITECTURE sync. Plan **0.7.125**. |
 | 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
 | 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 

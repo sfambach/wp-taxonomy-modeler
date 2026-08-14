@@ -2,10 +2,9 @@
 
 WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
 
-> **Scaffolding ≈ `0.0.414`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). Taxonomy = **structures**; **Fill Model Data** = instances (**Q97**). **Q123 locked:** attributes = composition/aggregation Relations (`Settings.data`/`view`); diagrams in [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md) (scaffold slots = debt). Gutenberg **`taxo/object-view`** + **Taxo Table view**.
-> Full Project / Node domain still planning. **Fallstudie = gold scaffold**. Plan **0.7.97**. Status stays **scaffolding**. Release-1 → **`1.0.0`**.
+> **Scaffolding ≈ `0.0.497`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). **Q123** Relation-only attributes + Settings walk; **Settings UI parity** ([`docs/plans/settings-ui-parity.md`](docs/plans/settings-ui-parity.md)) — one Walk surface for attribute Settings (legacy Options chrome removed when walk covers). Diagrams in [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md). Gutenberg **`taxo/object-view`** + **Taxo Table view**.
+> Full Project / Node domain still planning. **Fallstudie = gold scaffold**. Plan **0.7.124**. Status stays **scaffolding**. Release-1 → **`1.0.0`**. Ready for commit when user asks.
 > Major version digit changes only for official releases (first release → `1.0.0`).
-
 ## Try the scaffold (local)
 
 1. Activate **WP Taxonomy Tree** under Plugins.

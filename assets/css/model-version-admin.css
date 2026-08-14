@@ -1,5 +1,5 @@
 /**
- * Model versions admin shell (UR-S1) + shared conflict badge.
+ * Model versions admin — host chooser + stacked version detail (UR-S1).
  */
 
 .wtt-model-versions__table {
@@ -31,18 +31,132 @@
 	vertical-align: middle;
 }
 
-.wtt-model-versions__focus-hint {
-	margin: 0.5em 0 0;
+.wtt-model-versions__back {
+	margin: 0.75em 0 1em;
+}
+
+.wtt-model-versions__detail-head {
+	max-width: 720px;
+	margin-bottom: 1.5em;
+}
+
+.wtt-model-versions__detail-head h2 {
+	margin: 0 0 0.25em;
+}
+
+.wtt-model-versions__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em 1.25em;
+	list-style: none;
+	margin: 0.75em 0 1em;
+	padding: 0;
+}
+
+.wtt-model-versions__meta li {
+	margin: 0;
 }
 
 .wtt-model-versions__bump-form {
-	display: inline;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em 0.75em;
 	margin: 0;
+}
+
+.wtt-model-versions__stack {
+	max-width: 720px;
+	margin-top: 0.5em;
+}
+
+.wtt-model-versions__stack-list {
+	list-style: none;
+	margin: 12px 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.wtt-model-versions__card {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	border-radius: 2px;
+	padding: 12px 14px;
+	margin: 0;
+}
+
+.wtt-model-versions__card--current {
+	border-color: #2271b1;
+	box-shadow: inset 3px 0 0 #2271b1;
+}
+
+.wtt-model-versions__card--conflict {
+	background: #fcf0f1;
+	border-color: #d63638;
+}
+
+.wtt-model-versions__card--current.wtt-model-versions__card--conflict {
+	box-shadow: inset 3px 0 0 #2271b1;
+}
+
+.wtt-model-versions__card-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4em 0.6em;
+	margin-bottom: 0.4em;
+}
+
+.wtt-model-versions__card-version {
+	font-size: 1.05em;
+}
+
+.wtt-model-versions__pill {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	padding: 0.1em 0.55em;
+	border-radius: 2px;
+	background: #f0f0f1;
+	color: #2c3338;
+}
+
+.wtt-model-versions__pill--current {
+	background: #dfeaf4;
+	color: #0a4b78;
+}
+
+.wtt-model-versions__pill--conflict {
+	background: #f8d7da;
+	color: #8a1f1f;
+}
+
+.wtt-model-versions__card-meta {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	color: #50575e;
+}
+
+.wtt-model-versions__card-meta li {
+	margin: 0.15em 0;
+}
+
+.wtt-model-versions__card-note {
+	margin: 0.6em 0 0;
+}
+
+.wtt-model-versions__card--focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
 }
 
 .wtt-model-versions__mapping {
 	margin-top: 2em;
-	max-width: 1100px;
+	max-width: 720px;
 }
 
 .wtt-model-versions__mapping-stub {

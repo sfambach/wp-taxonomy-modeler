@@ -87,37 +87,224 @@
 		return {
 			id: id,
 			label: label,
-			appliesTo: ['int'],
+			/* Int formats also apply to char via Unicode codepoint. */
+			appliesTo: ['int', 'char'],
 			canConvert: function (node) {
-				return typeKeyOf(node) === 'int';
+				var key = typeKeyOf(node);
+				return key === 'int' || key === 'char';
 			},
-			format: function (canonical) {
+			format: function (canonical, node) {
 				var api = intValueApi();
+				var key = typeKeyOf(node);
+				var value = canonical;
+				if (key === 'char' || isCharCanonical(canonical, node)) {
+					var cp = charToCodepoint(canonical);
+					if (cp == null) {
+						return canonical == null ? '' : String(canonical);
+					}
+					value = String(cp);
+				}
 				if (api && typeof api.format === 'function') {
-					return api.format(canonical, id);
+					return api.format(value, id);
 				}
-				return canonical == null ? '' : String(canonical);
+				return value == null ? '' : String(value);
 			},
-			parse: function (text) {
+			parse: function (text, node) {
 				var api = intValueApi();
-				if (api && typeof api.parse === 'function') {
-					return api.parse(text, id);
+				var key = typeKeyOf(node);
+				var parsed =
+					api && typeof api.parse === 'function'
+						? api.parse(text, id)
+						: null;
+				if (key === 'char' || wantsCharParse(node)) {
+					if (parsed == null || parsed === '') {
+						return null;
+					}
+					var cp = parseInt(parsed, 10);
+					return codepointToChar(cp);
 				}
-				return null;
+				return parsed;
 			},
-			normalize: function (raw) {
+			normalize: function (raw, node) {
 				var api = intValueApi();
 				if (api && typeof api.normalize === 'function') {
 					return api.normalize(raw, id);
 				}
 				return raw == null ? '' : String(raw);
 			},
-			filterLive: function (raw) {
+			filterLive: function (raw, node) {
 				var api = intValueApi();
 				if (api && typeof api.filterLive === 'function') {
 					return api.filterLive(raw, id);
 				}
 				return raw == null ? '' : String(raw);
+			},
+		};
+	}
+
+	function firstGrapheme(value) {
+		var s = value == null ? '' : String(value);
+		if (!s) {
+			return '';
+		}
+		if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+			try {
+				var seg = new Intl.Segmenter(undefined, {
+					granularity: 'grapheme',
+				});
+				for (var part of seg.segment(s)) {
+					return part.segment;
+				}
+			} catch (e) {
+				/* fall through */
+			}
+		}
+		return Array.from(s)[0] || '';
+	}
+
+	function isCharCanonical(canonical, node) {
+		if (node && typeKeyOf(node) === 'char') {
+			return true;
+		}
+		/* Heuristic: single grapheme that is not a pure integer string. */
+		var s = canonical == null ? '' : String(canonical);
+		if (!s || /^-?\d+$/.test(s)) {
+			return false;
+		}
+		return firstGrapheme(s) === s;
+	}
+
+	function wantsCharParse(node) {
+		return !!(node && typeKeyOf(node) === 'char');
+	}
+
+	function charToCodepoint(value) {
+		var g = firstGrapheme(value);
+		if (!g) {
+			return null;
+		}
+		var cp = g.codePointAt(0);
+		return cp == null ? null : cp;
+	}
+
+	function codepointToChar(cp) {
+		cp = Number(cp);
+		if (!isFinite(cp) || cp < 0 || cp > 0x10ffff) {
+			return null;
+		}
+		try {
+			return String.fromCodePoint(Math.trunc(cp));
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function makeGlyphConverter() {
+		return {
+			id: 'glyph',
+			label: 'Character (glyph)',
+			appliesTo: ['char'],
+			canConvert: function (node) {
+				return typeKeyOf(node) === 'char';
+			},
+			format: function (canonical) {
+				return canonical == null ? '' : String(canonical);
+			},
+			parse: function (text) {
+				var g = firstGrapheme(text);
+				return g || null;
+			},
+		};
+	}
+
+	/**
+	 * ASCII: printable 0x20–0x7E as glyph; else \xHH. Parse glyph / \xHH / decimal 0–127.
+	 */
+	function makeAsciiConverter() {
+		return {
+			id: 'ascii',
+			label: 'ASCII',
+			appliesTo: ['char'],
+			canConvert: function (node) {
+				return typeKeyOf(node) === 'char';
+			},
+			format: function (canonical) {
+				var cp = charToCodepoint(canonical);
+				if (cp == null) {
+					return '';
+				}
+				if (cp > 127) {
+					/* Outside ASCII — show Unicode form so display stays informative. */
+					return 'U+' + cp.toString(16).toUpperCase().padStart(4, '0');
+				}
+				if (cp >= 32 && cp <= 126) {
+					return String.fromCodePoint(cp);
+				}
+				return (
+					'\\x' +
+					('00' + cp.toString(16).toUpperCase()).slice(-2)
+				);
+			},
+			parse: function (text) {
+				var s = text == null ? '' : String(text).trim();
+				if (!s) {
+					return null;
+				}
+				var esc = s.match(/^\\x([0-9A-Fa-f]{2})$/);
+				if (esc) {
+					return codepointToChar(parseInt(esc[1], 16));
+				}
+				if (/^\d{1,3}$/.test(s)) {
+					var n = parseInt(s, 10);
+					if (n >= 0 && n <= 127) {
+						return codepointToChar(n);
+					}
+					return null;
+				}
+				var g = firstGrapheme(s);
+				var cp = charToCodepoint(g);
+				if (cp == null || cp > 127) {
+					return null;
+				}
+				return g;
+			},
+		};
+	}
+
+	/**
+	 * Unicode codepoint form U+XXXX (parse U+… / U…).
+	 */
+	function makeUnicodeConverter() {
+		return {
+			id: 'unicode',
+			label: 'Unicode (U+)',
+			appliesTo: ['char'],
+			canConvert: function (node) {
+				return typeKeyOf(node) === 'char';
+			},
+			format: function (canonical) {
+				var cp = charToCodepoint(canonical);
+				if (cp == null) {
+					return '';
+				}
+				var hex = cp.toString(16).toUpperCase();
+				if (hex.length < 4) {
+					hex = ('0000' + hex).slice(-4);
+				}
+				return 'U+' + hex;
+			},
+			parse: function (text) {
+				var s = text == null ? '' : String(text).trim();
+				if (!s) {
+					return null;
+				}
+				var m = s.match(/^U\+?([0-9A-Fa-f]{1,6})$/i);
+				if (m) {
+					return codepointToChar(parseInt(m[1], 16));
+				}
+				/* Allow raw glyph → still a character. */
+				var g = firstGrapheme(s);
+				return g || null;
 			},
 		};
 	}
@@ -235,6 +422,20 @@
 					}
 				}
 			}
+			/*
+			 * Type defaults: int → arabic; char → glyph.
+			 * Do not fall through to an arbitrary first match for other types.
+			 */
+			var typeKey = typeKeyOf(node);
+			var typeDefault =
+				typeKey === 'int' ? 'arabic' : typeKey === 'char' ? 'glyph' : '';
+			if (typeDefault) {
+				for (i = 0; i < compatible.length; i++) {
+					if (compatible[i].id === typeDefault) {
+						return typeDefault;
+					}
+				}
+			}
 			return compatible[0].id;
 		},
 
@@ -255,12 +456,15 @@
 		},
 	};
 
-	/* Int converters — previously hard-coded as Number format / Int settings. */
+	/* Char default + int-format reuse + ASCII / Unicode. */
+	Registry.register(makeGlyphConverter());
 	Registry.register(makeIntConverter('arabic', 'Arabic (decimal)'));
 	Registry.register(makeIntConverter('roman', 'Roman'));
 	Registry.register(makeIntConverter('binary', 'Binary'));
 	Registry.register(makeIntConverter('octal', 'Octal'));
 	Registry.register(makeIntConverter('hex', 'Hexadecimal'));
+	Registry.register(makeAsciiConverter());
+	Registry.register(makeUnicodeConverter());
 
 	/**
 	 * Q109 / Q51 — quantity Präfix switch keeps physical value constant.

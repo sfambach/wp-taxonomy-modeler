@@ -50,11 +50,33 @@ final class Node_Type {
 	/** JSON list of allowed MIME display kinds (Q65). Default empty = none enabled. */
 	public const META_KEY_MEDIA_ALLOWED_KINDS = '_wtt_media_allowed_kinds';
 
+	/** Presentation context for node_presentation type (Q117 field pick). */
+	public const META_KEY_PRESENTATION_CONTEXT = '_wtt_presentation_context';
+
 	/**
 	 * Date type mode: `date` (calendar day) or `datetime` (date + time).
 	 * Store SoT for instance values is always a Unix timestamp (int as decimal string).
 	 */
 	public const META_KEY_DATE_MODE = '_wtt_date_mode';
+
+	/**
+	 * Textarea chrome: characters per line (cols) and visible lines (rows).
+	 */
+	public const META_KEY_TEXTAREA_COLS = '_wtt_textarea_cols';
+
+	public const META_KEY_TEXTAREA_ROWS = '_wtt_textarea_rows';
+
+	public const TEXTAREA_COLS_DEFAULT = 40;
+
+	public const TEXTAREA_ROWS_DEFAULT = 4;
+
+	public const TEXTAREA_COLS_MIN = 1;
+
+	public const TEXTAREA_COLS_MAX = 200;
+
+	public const TEXTAREA_ROWS_MIN = 1;
+
+	public const TEXTAREA_ROWS_MAX = 100;
 
 	/**
 	 * Legacy int number display format (arabic|roman|binary|octal|hex).
@@ -80,6 +102,7 @@ final class Node_Type {
 		'CompactRenderer',
 		'CompactVerticalRenderer',
 		'EmbeddedRenderer',
+		'ChildListRenderer',
 	);
 
 	/** Fixed constant value: points at a Typen-branch Node (e.g. Einheit → Ohm). */
@@ -379,7 +402,7 @@ final class Node_Type {
 			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
 		}
 		$clean = self::normalize_type_props( $props );
-		update_term_meta( $term_id, self::META_KEY_TYPE_PROPS, wp_json_encode( $clean ) );
+		Json_Meta::update_term_meta( $term_id, self::META_KEY_TYPE_PROPS, $clean );
 		return true;
 	}
 
@@ -531,7 +554,7 @@ final class Node_Type {
 		if ( empty( $clean ) ) {
 			delete_term_meta( $term_id, self::META_KEY_PROP_BINDINGS );
 		} else {
-			update_term_meta( $term_id, self::META_KEY_PROP_BINDINGS, wp_json_encode( $clean ) );
+			Json_Meta::update_term_meta( $term_id, self::META_KEY_PROP_BINDINGS, $clean );
 		}
 		return true;
 	}
@@ -578,10 +601,18 @@ final class Node_Type {
 
 		$out = array();
 		foreach ( $sorted as $child ) {
-			$out[] = array(
-				'id'   => (int) $child->term_id,
-				'name' => $child->name,
+			$cid = (int) $child->term_id;
+			$row = array(
+				'id'               => $cid,
+				'name'             => $child->name,
+				'shortDescription' => class_exists( Tree_Model::class )
+					? Tree_Model::get_short_description( $cid )
+					: '',
 			);
+			if ( class_exists( Node_Presentation::class ) ) {
+				$row['presentation'] = Node_Presentation::map_for_term_resolved( $taxonomy, $cid );
+			}
+			$out[] = $row;
 		}
 		return $out;
 	}
@@ -1557,7 +1588,7 @@ final class Node_Type {
 		if ( empty( $clean ) ) {
 			delete_term_meta( $term_id, self::META_KEY_DISABLED_BRANCH );
 		} else {
-			update_term_meta( $term_id, self::META_KEY_DISABLED_BRANCH, wp_json_encode( $clean ) );
+			Json_Meta::update_term_meta( $term_id, self::META_KEY_DISABLED_BRANCH, $clean );
 		}
 
 		return true;
@@ -1666,21 +1697,61 @@ final class Node_Type {
 
 		if ( empty( $clean ) ) {
 			// Persist empty JSON so L1 is explicit (missing meta also means empty).
-			update_term_meta( $unit_term_id, self::META_KEY_ALLOWED_PREFIX_IDS, '[]' );
+			Json_Meta::update_term_meta( $unit_term_id, self::META_KEY_ALLOWED_PREFIX_IDS, array() );
 		} else {
-			update_term_meta( $unit_term_id, self::META_KEY_ALLOWED_PREFIX_IDS, wp_json_encode( $clean ) );
+			Json_Meta::update_term_meta( $unit_term_id, self::META_KEY_ALLOWED_PREFIX_IDS, $clean );
 		}
 
 		return true;
 	}
 
 	public static function get_multiplikator( int $term_id ): ?float {
-		$raw = get_term_meta( $term_id, self::META_KEY_MULTIPLIKATOR, true );
-		if ( ! is_numeric( $raw ) ) {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 ) {
 			return null;
 		}
 
-		return (float) $raw;
+		/* Meta remains conversion hot-path SoT (kept in sync by ensure). */
+		$raw = get_term_meta( $term_id, self::META_KEY_MULTIPLIKATOR, true );
+		if ( is_numeric( $raw ) ) {
+			$f = (float) $raw;
+			return $f > 0.0 ? $f : null;
+		}
+
+		/* Fallback: attribute Default (Präfixe leaf override). */
+		if ( ! class_exists( Attribute::class ) ) {
+			return null;
+		}
+		$term = get_term( $term_id );
+		if ( ! ( $term instanceof \WP_Term ) || ! is_string( $term->taxonomy ) || ! taxonomy_exists( $term->taxonomy ) ) {
+			return null;
+		}
+		foreach ( Attribute::list( $term->taxonomy, $term_id ) as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( 'multiplikator' !== strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ) {
+				continue;
+			}
+			$vals = isset( $row['fixedValues'] ) && is_array( $row['fixedValues'] )
+				? $row['fixedValues']
+				: array();
+			if ( empty( $vals ) ) {
+				return null;
+			}
+			$first = $vals[0];
+			if ( is_numeric( $first ) ) {
+				$f = (float) $first;
+				return $f > 0.0 ? $f : null;
+			}
+			if ( is_string( $first ) && is_numeric( trim( $first ) ) ) {
+				$f = (float) trim( $first );
+				return $f > 0.0 ? $f : null;
+			}
+			return null;
+		}
+
+		return null;
 	}
 
 	public static function set_multiplikator( int $term_id, float $factor ): void {
@@ -1740,7 +1811,50 @@ final class Node_Type {
 	}
 
 	/**
-	 * Whether term is Unit/With prefix or Unit/Without prefix.
+	 * Whether the term is under Definition/Konstanten (incl. the Konstanten folder itself).
+	 */
+	public static function is_under_konstanten( string $taxonomy, int $term_id ): bool {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return false;
+		}
+		$id = $term_id;
+		for ( $i = 0; $i < 32; $i++ ) {
+			$term = get_term( $id, $taxonomy );
+			if ( ! ( $term instanceof \WP_Term ) ) {
+				return false;
+			}
+			if ( 'konstanten' === self::normalize_type_name( (string) $term->name ) ) {
+				return true;
+			}
+			$parent = (int) $term->parent;
+			if ( $parent <= 0 ) {
+				return false;
+			}
+			$id = $parent;
+		}
+		return false;
+	}
+
+	/**
+	 * Konstanten hosts with hierarchy children → default ChildListRenderer (Präfixe, Bauformen, …).
+	 */
+	public static function is_konstanten_child_list_host( string $taxonomy, int $term_id ): bool {
+		if ( ! self::is_under_konstanten( $taxonomy, $term_id ) ) {
+			return false;
+		}
+		/* Unit leaves stay UnitRenderer, not a child list of nothing useful. */
+		if ( self::is_basiseinheit_unit_node( $taxonomy, $term_id ) ) {
+			return false;
+		}
+		return Tree_Model::term_has_children( $taxonomy, $term_id );
+	}
+
+	/**
+	 * Whether term is a With/Without-prefix unit bucket (CatalogChoice of unit leaves).
+	 *
+	 * Parents (≈ 0.0.458+): Konstanten/`Basiseinheiten`. Legacy: Data Types/`Unit`.
+	 * Bucket may also own Praefix+Kuerzel composition (OQ-W11) — paint still picks leaves.
 	 */
 	public static function is_unit_prefix_bucket( string $taxonomy, int $term_id ): bool {
 		$term = get_term( $term_id, $taxonomy );
@@ -1751,7 +1865,96 @@ final class Node_Type {
 			return false;
 		}
 		$parent = get_term( (int) $term->parent, $taxonomy );
-		return $parent instanceof \WP_Term && in_array( $parent->name, array( 'Unit', 'Units' ), true );
+		if ( ! ( $parent instanceof \WP_Term ) ) {
+			return false;
+		}
+		return in_array(
+			$parent->name,
+			array( 'Basiseinheiten', 'Basiseinheit', 'Unit', 'Units' ),
+			true
+		);
+	}
+
+	/**
+	 * SI Präfixe catalog options for a context node (unit / With-prefix / any Fallstudie term).
+	 * Does not apply unit allowlist enablement — callers mark enabled themselves.
+	 *
+	 * @return list<array{id:int,name:string,shortDescription:string,multiplikator:?float}>
+	 */
+	public static function list_prefix_catalog( string $taxonomy, int $context_term_id ): array {
+		$prefixes_root = self::find_prefixes_root( $taxonomy, $context_term_id );
+		if ( $prefixes_root <= 0 ) {
+			return array();
+		}
+		$out = array();
+		foreach ( self::get_direct_child_terms( $taxonomy, $prefixes_root ) as $child ) {
+			$child_id = (int) $child->term_id;
+			$out[]    = array(
+				'id'               => $child_id,
+				'name'             => $child->name,
+				'shortDescription' => Tree_Model::get_short_description( $child_id ),
+				'multiplikator'    => self::get_multiplikator( $child_id ),
+			);
+		}
+		return $out;
+	}
+
+	/**
+	 * Restrict quantitySchema Praefix member options to an allowlist (attribute Walk override).
+	 *
+	 * @param array<string, mixed>|null $schema
+	 * @param array<int, int>           $allowed_ids
+	 * @return array<string, mixed>|null
+	 */
+	public static function apply_allowed_prefix_ids_to_quantity_schema( ?array $schema, array $allowed_ids ): ?array {
+		if ( ! is_array( $schema ) || empty( $schema['members'] ) || ! is_array( $schema['members'] ) ) {
+			return $schema;
+		}
+		$allowed_map = array_fill_keys( array_map( 'intval', $allowed_ids ), true );
+		$members     = array();
+		foreach ( $schema['members'] as $member ) {
+			if ( ! is_array( $member ) ) {
+				continue;
+			}
+			$name_key = strtolower( (string) ( $member['name'] ?? '' ) );
+			$name_key = str_replace( array( 'ä', 'ö', 'ü' ), array( 'ae', 'oe', 'ue' ), $name_key );
+			if ( 'praefix' !== $name_key && 'prefix' !== $name_key ) {
+				$members[] = $member;
+				continue;
+			}
+			if ( isset( $member['typeBranch'] ) && is_array( $member['typeBranch'] )
+				&& isset( $member['typeBranch']['children'] ) && is_array( $member['typeBranch']['children'] )
+			) {
+				$children = array();
+				foreach ( $member['typeBranch']['children'] as $child ) {
+					if ( ! is_array( $child ) ) {
+						continue;
+					}
+					$id               = (int) ( $child['id'] ?? 0 );
+					$child['enabled'] = $id > 0 && isset( $allowed_map[ $id ] );
+					$children[]       = $child;
+				}
+				$member['typeBranch']['children'] = $children;
+			}
+			if ( isset( $member['fixedOptions'] ) && is_array( $member['fixedOptions'] ) ) {
+				$opts = array();
+				foreach ( $member['fixedOptions'] as $opt ) {
+					if ( ! is_array( $opt ) ) {
+						continue;
+					}
+					$id = (int) ( $opt['id'] ?? 0 );
+					if ( $id > 0 && isset( $allowed_map[ $id ] ) ) {
+						$opt['enabled'] = true;
+						$opts[]         = $opt;
+					}
+				}
+				$member['fixedOptions'] = $opts;
+			}
+			$members[] = $member;
+		}
+		$schema['members']          = $members;
+		$schema['allowedPrefixIds'] = array_values( array_map( 'intval', $allowed_ids ) );
+		return $schema;
 	}
 
 	/**
@@ -2157,6 +2360,41 @@ final class Node_Type {
 				if ( is_wp_error( $result ) ) {
 					return $result;
 				}
+			}
+		}
+
+		if ( array_key_exists( 'textarea_cols', $settings ) || array_key_exists( 'textarea_rows', $settings ) ) {
+			$ta_term = self::resolve_textarea_config_term_id( $taxonomy, $term_id );
+			if ( $ta_term > 0 ) {
+				$cols = array_key_exists( 'textarea_cols', $settings )
+					? $settings['textarea_cols']
+					: self::get_textarea_cols( $ta_term );
+				$rows = array_key_exists( 'textarea_rows', $settings )
+					? $settings['textarea_rows']
+					: self::get_textarea_rows( $ta_term );
+				$result = self::set_textarea_layout( $taxonomy, $ta_term, $cols, $rows );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+			}
+		}
+
+		if ( array_key_exists( 'presentation_context', $settings ) ) {
+			$pres_term = $term_id;
+			$t         = get_term( $term_id, $taxonomy );
+			if ( $t instanceof \WP_Term && ! self::is_display_only_type_name( (string) $t->name ) ) {
+				$type_id = self::get_type_id( $term_id );
+				if ( $type_id > 0 ) {
+					$pres_term = $type_id;
+				}
+			}
+			$result = self::set_presentation_context(
+				$taxonomy,
+				$pres_term,
+				(string) $settings['presentation_context']
+			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
 		}
 
@@ -2710,7 +2948,7 @@ final class Node_Type {
 			return new \WP_Error( 'wtt_not_media', __( 'Media MIME kinds apply only to media-typed nodes.', 'wp-taxonomy-tree' ) );
 		}
 		$normalized = self::normalize_media_allowed_kinds( $kinds );
-		update_term_meta( $term_id, self::META_KEY_MEDIA_ALLOWED_KINDS, wp_json_encode( $normalized ) );
+		Json_Meta::update_term_meta( $term_id, self::META_KEY_MEDIA_ALLOWED_KINDS, $normalized );
 		return true;
 	}
 
@@ -2825,6 +3063,72 @@ final class Node_Type {
 	}
 
 	/**
+	 * Q117 presentation field pick for node_presentation type.
+	 *
+	 * @return list<string>
+	 */
+	public static function presentation_context_keys(): array {
+		return Node_Presentation::all_contexts();
+	}
+
+	public static function normalize_presentation_context( string $context ): string {
+		$context = strtolower( trim( $context ) );
+		if ( 'name' === $context ) {
+			/* Alias: term name ≈ form label seed. */
+			return 'form';
+		}
+		if ( ! in_array( $context, self::presentation_context_keys(), true ) ) {
+			return 'form';
+		}
+		return $context;
+	}
+
+	public static function get_presentation_context( int $term_id ): string {
+		if ( $term_id <= 0 ) {
+			return 'form';
+		}
+		return self::normalize_presentation_context(
+			(string) get_term_meta( $term_id, self::META_KEY_PRESENTATION_CONTEXT, true )
+		);
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_presentation_context( string $taxonomy, int $type_term_id, string $context ) {
+		$term = get_term( $type_term_id, $taxonomy );
+		if ( ! ( $term instanceof \WP_Term ) ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$context = self::normalize_presentation_context( $context );
+		update_term_meta( $type_term_id, self::META_KEY_PRESENTATION_CONTEXT, $context );
+		return true;
+	}
+
+	/**
+	 * @return array{context:string}|null
+	 */
+	public static function get_presentation_config_for_node( string $taxonomy, int $term_id ): ?array {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return null;
+		}
+		$term = get_term( $term_id, $taxonomy );
+		if ( $term instanceof \WP_Term && self::is_display_only_type_name( (string) $term->name ) ) {
+			return array( 'context' => self::get_presentation_context( $term_id ) );
+		}
+		$type_id = self::get_type_id( $term_id );
+		if ( $type_id <= 0 ) {
+			return null;
+		}
+		$type = get_term( $type_id, $taxonomy );
+		if ( ! ( $type instanceof \WP_Term ) || ! self::is_display_only_type_name( (string) $type->name ) ) {
+			return null;
+		}
+		return array( 'context' => self::get_presentation_context( $type_id ) );
+	}
+
+	/**
 	 * Normalize preferred render key: object layouts or field renderer ids (Q113).
 	 */
 	public static function normalize_preferred_render( string $layout ): string {
@@ -2858,9 +3162,13 @@ final class Node_Type {
 			'bool',
 			'email',
 			'date',
+			'time',
+			'datetime',
+			'color',
 			'quantity',
 			'media',
 			'display_node_name',
+			'node_presentation',
 			'node_ref',
 			'node_embed',
 			'enum',
@@ -2897,6 +3205,51 @@ final class Node_Type {
 	}
 
 	/**
+	 * Seed / repair Preferred = ChildListRenderer on Konstanten hosts with children.
+	 * Skips unit leaves; replaces empty or legacy Form-only seeds.
+	 *
+	 * @return int Number of terms updated.
+	 */
+	public static function ensure_konstanten_child_list_preferred( string $taxonomy, int $konstanten_id ): int {
+		$konstanten_id = absint( $konstanten_id );
+		if ( $konstanten_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+		$updated = 0;
+		$queue   = array( $konstanten_id );
+		$seen    = array();
+		while ( ! empty( $queue ) ) {
+			$id = (int) array_shift( $queue );
+			if ( $id <= 0 || isset( $seen[ $id ] ) ) {
+				continue;
+			}
+			$seen[ $id ] = true;
+			if ( self::is_konstanten_child_list_host( $taxonomy, $id ) ) {
+				$own = self::get_own_preferred_render( $id );
+				if ( '' === $own || Renderer::Form->value === $own ) {
+					self::set_preferred_render( $taxonomy, $id, Renderer::ChildList->value );
+					++$updated;
+				}
+			}
+			$kids = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $id,
+					'hide_empty' => false,
+					'fields'     => 'ids',
+					'number'     => 0,
+				)
+			);
+			if ( is_array( $kids ) ) {
+				foreach ( $kids as $kid ) {
+					$queue[] = (int) $kid;
+				}
+			}
+		}
+		return $updated;
+	}
+
+	/**
 	 * Default preferred render for a new node or attribute slot.
 	 * Typed scalars → field Renderer id; otherwise FormRenderer.
 	 */
@@ -2904,6 +3257,32 @@ final class Node_Type {
 		/* Q120: concrete unit leaf → UnitRenderer (Prefix? + Symbol), not Form. */
 		if ( self::is_basiseinheit_unit_node( $taxonomy, $term_id ) ) {
 			return Renderer::Unit->value;
+		}
+		/* Konstanten folders with children (Präfixe, Bauformen, …) → child list. */
+		if ( self::is_konstanten_child_list_host( $taxonomy, $term_id ) ) {
+			return Renderer::ChildList->value;
+		}
+		/*
+		 * Quantity family (catalog leaf or specialization with Value+Unit, e.g. size):
+		 * same QuantityRenderer chrome as quantity — inherit Preferred from quantity type.
+		 */
+		if ( self::is_quantity_family_type( $taxonomy, $term_id ) ) {
+			$qty_id = 0;
+			if ( self::is_quantity_type_catalog_node( $taxonomy, $term_id ) ) {
+				/* Catalog leaf itself — do not re-enter get_preferred_render( $term_id ). */
+				return Renderer::Quantity->value;
+			}
+			$type_as_qty = self::get_type_id( $term_id );
+			if ( $type_as_qty > 0 && self::is_quantity_type_catalog_node( $taxonomy, $type_as_qty ) ) {
+				$qty_id = $type_as_qty;
+			}
+			if ( $qty_id > 0 && $qty_id !== $term_id ) {
+				$from_qty = self::get_preferred_render( $qty_id );
+				if ( Renderer::Form->value !== $from_qty ) {
+					return $from_qty;
+				}
+			}
+			return Renderer::Quantity->value;
 		}
 		$canon = self::registry_id_for_type_term( $taxonomy, $term_id );
 		if ( '' !== $canon ) {
@@ -2913,7 +3292,7 @@ final class Node_Type {
 			}
 		}
 		$type_id = self::get_type_id( $term_id );
-		if ( $type_id > 0 ) {
+		if ( $type_id > 0 && $type_id !== $term_id ) {
 			$from_type_term = self::registry_id_for_type_term( $taxonomy, $type_id );
 			if ( '' !== $from_type_term ) {
 				$mapped = Renderer::try_from_legacy( $from_type_term );
@@ -2930,14 +3309,20 @@ final class Node_Type {
 	}
 
 	/**
-	 * Ensure term has a preferred render meta (default on create / repair).
+	 * Ensure term has a preferred render when nothing is inherited (create / repair).
+	 * Hierarchy heirs with an ancestor Preferred stay unset (inherit — Q66-style).
 	 */
 	public static function ensure_preferred_render( string $taxonomy, int $term_id ): string {
 		if ( $term_id <= 0 ) {
 			return Renderer::Form->value;
 		}
-		if ( metadata_exists( 'term', $term_id, self::META_KEY_PREFERRED_RENDER ) ) {
-			return self::get_preferred_render( $term_id );
+		if ( self::has_own_preferred_render( $term_id ) ) {
+			return self::get_own_preferred_render( $term_id );
+		}
+		$from_ancestors = self::preferred_render_from_ancestors( $term_id );
+		if ( '' !== $from_ancestors ) {
+			/* Leave meta empty — effective Preferred walks the father chain. */
+			return $from_ancestors;
 		}
 		$default = self::default_preferred_render_for_term( $taxonomy, $term_id );
 		self::set_preferred_render( $taxonomy, $term_id, $default );
@@ -2945,11 +3330,25 @@ final class Node_Type {
 	}
 
 	/**
-	 * Preferred Object View / admin preview surface for this node.
+	 * Whether this term stores its own Preferred render (not inheriting).
 	 */
-	public static function get_preferred_render( int $term_id ): string {
+	public static function has_own_preferred_render( int $term_id ): bool {
 		if ( $term_id <= 0 ) {
-			return Renderer::Form->value;
+			return false;
+		}
+		if ( ! metadata_exists( 'term', $term_id, self::META_KEY_PREFERRED_RENDER ) ) {
+			return false;
+		}
+		$raw = trim( (string) get_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, true ) );
+		return '' !== $raw;
+	}
+
+	/**
+	 * Own Preferred meta only (empty = inherit / unset).
+	 */
+	public static function get_own_preferred_render( int $term_id ): string {
+		if ( ! self::has_own_preferred_render( $term_id ) ) {
+			return '';
 		}
 		return self::normalize_preferred_render(
 			(string) get_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, true )
@@ -2957,6 +3356,111 @@ final class Node_Type {
 	}
 
 	/**
+	 * First ancestor (WP parent chain) with own Preferred, or empty.
+	 */
+	public static function preferred_render_from_ancestors( int $term_id ): string {
+		$term = get_term( $term_id );
+		if ( ! ( $term instanceof \WP_Term ) ) {
+			return '';
+		}
+		$seen = array( $term_id => true );
+		$parent_id = (int) $term->parent;
+		while ( $parent_id > 0 && empty( $seen[ $parent_id ] ) ) {
+			$seen[ $parent_id ] = true;
+			if ( self::has_own_preferred_render( $parent_id ) ) {
+				return self::get_own_preferred_render( $parent_id );
+			}
+			$parent = get_term( $parent_id );
+			if ( ! ( $parent instanceof \WP_Term ) ) {
+				break;
+			}
+			$parent_id = (int) $parent->parent;
+		}
+		return '';
+	}
+
+	/**
+	 * Effective Preferred Object View / admin preview surface (own, else father chain, else type default).
+	 */
+	public static function get_preferred_render( int $term_id ): string {
+		if ( $term_id <= 0 ) {
+			return Renderer::Form->value;
+		}
+		static $resolving = array();
+		if ( isset( $resolving[ $term_id ] ) ) {
+			/* Cycle / self-reentry guard (quantity catalog, typed self, …). */
+			return Renderer::Form->value;
+		}
+		$resolving[ $term_id ] = true;
+		try {
+			$own = self::get_own_preferred_render( $term_id );
+			if ( '' !== $own ) {
+				return $own;
+			}
+			$from_ancestors = self::preferred_render_from_ancestors( $term_id );
+			if ( '' !== $from_ancestors ) {
+				return $from_ancestors;
+			}
+			$term = get_term( $term_id );
+			if ( $term instanceof \WP_Term && taxonomy_exists( (string) $term->taxonomy ) ) {
+				return self::default_preferred_render_for_term( (string) $term->taxonomy, $term_id );
+			}
+			return Renderer::Form->value;
+		} finally {
+			unset( $resolving[ $term_id ] );
+		}
+	}
+
+	/**
+	 * One-shot: clear legacy FormRenderer seeds on heirs when a father already has Preferred.
+	 * Before inherit, ensure wrote Form on every node; that blocked father Compact/Table.
+	 * Intentional Form override after repair: user re-selects Form (stores own again).
+	 *
+	 * @return int Number of terms cleared.
+	 */
+	public static function repair_legacy_preferred_form_seeds( string $taxonomy ): int {
+		$flag = 'wtt_repaired_preferred_inherit_v1';
+		if ( '1' === (string) get_option( $flag, '' ) ) {
+			return 0;
+		}
+		$cleared = 0;
+		$terms   = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 0,
+			)
+		);
+		if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
+			return 0;
+		}
+		foreach ( $terms as $term ) {
+			if ( ! ( $term instanceof \WP_Term ) ) {
+				continue;
+			}
+			$term_id = (int) $term->term_id;
+			if ( ! self::has_own_preferred_render( $term_id ) ) {
+				continue;
+			}
+			$own = self::get_own_preferred_render( $term_id );
+			if ( Renderer::Form->value !== $own ) {
+				continue;
+			}
+			$anc = self::preferred_render_from_ancestors( $term_id );
+			if ( '' === $anc || Renderer::Form->value === $anc ) {
+				continue;
+			}
+			self::set_preferred_render( $taxonomy, $term_id, 'inherit' );
+			++$cleared;
+		}
+		update_option( $flag, '1', false );
+		return $cleared;
+	}
+
+	/**
+	 * Set own Preferred. Empty / `inherit` clears meta so the heir follows the father.
+	 * FormRenderer is stored explicitly (so a child can override a Compact father to Form).
+	 *
 	 * @return true|\WP_Error
 	 */
 	public static function set_preferred_render( string $taxonomy, int $term_id, string $layout ) {
@@ -2964,12 +3468,14 @@ final class Node_Type {
 		if ( ! $term instanceof \WP_Term ) {
 			return new \WP_Error( 'wtt_not_found', __( 'Node not found.', 'wp-taxonomy-tree' ) );
 		}
-		$layout = self::normalize_preferred_render( $layout );
-		if ( Renderer::Form->value === $layout ) {
+		$raw = trim( $layout );
+		if ( '' === $raw || 0 === strcasecmp( $raw, 'inherit' ) || 0 === strcasecmp( $raw, 'clear' ) ) {
 			delete_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER );
-		} else {
-			update_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, $layout );
+			Tree_Model::touch_modified( $term_id );
+			return true;
 		}
+		$layout = self::normalize_preferred_render( $raw );
+		update_term_meta( $term_id, self::META_KEY_PREFERRED_RENDER, $layout );
 		Tree_Model::touch_modified( $term_id );
 		return true;
 	}
@@ -3041,6 +3547,105 @@ final class Node_Type {
 		}
 
 		return array( 'mode' => self::get_date_mode( $config_id ) );
+	}
+
+	public static function is_textarea_type_name( string $type_name ): bool {
+		return 'textarea' === self::normalize_type_name( $type_name );
+	}
+
+	public static function normalize_textarea_cols( $raw ): int {
+		$n = is_numeric( $raw ) ? (int) $raw : self::TEXTAREA_COLS_DEFAULT;
+		if ( $n < self::TEXTAREA_COLS_MIN ) {
+			$n = self::TEXTAREA_COLS_MIN;
+		}
+		if ( $n > self::TEXTAREA_COLS_MAX ) {
+			$n = self::TEXTAREA_COLS_MAX;
+		}
+		return $n;
+	}
+
+	public static function normalize_textarea_rows( $raw ): int {
+		$n = is_numeric( $raw ) ? (int) $raw : self::TEXTAREA_ROWS_DEFAULT;
+		if ( $n < self::TEXTAREA_ROWS_MIN ) {
+			$n = self::TEXTAREA_ROWS_MIN;
+		}
+		if ( $n > self::TEXTAREA_ROWS_MAX ) {
+			$n = self::TEXTAREA_ROWS_MAX;
+		}
+		return $n;
+	}
+
+	public static function resolve_textarea_config_term_id( string $taxonomy, int $term_id ): int {
+		$term = get_term( $term_id, $taxonomy );
+		if ( $term instanceof \WP_Term && self::is_textarea_type_name( (string) $term->name ) ) {
+			return $term_id;
+		}
+		if ( 'textarea' === self::registry_id_for_type_term( $taxonomy, $term_id ) ) {
+			return $term_id;
+		}
+		$type_id = self::get_effective_type_id( $taxonomy, $term_id );
+		if ( $type_id <= 0 ) {
+			return 0;
+		}
+		if ( 'textarea' === self::registry_id_for_type_term( $taxonomy, $type_id ) ) {
+			return $type_id;
+		}
+		$type = get_term( $type_id, $taxonomy );
+		if ( $type instanceof \WP_Term && self::is_textarea_type_name( (string) $type->name ) ) {
+			return $type_id;
+		}
+		return 0;
+	}
+
+	public static function get_textarea_cols( int $term_id ): int {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_TEXTAREA_COLS ) ) {
+			return self::TEXTAREA_COLS_DEFAULT;
+		}
+		return self::normalize_textarea_cols( get_term_meta( $term_id, self::META_KEY_TEXTAREA_COLS, true ) );
+	}
+
+	public static function get_textarea_rows( int $term_id ): int {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_TEXTAREA_ROWS ) ) {
+			return self::TEXTAREA_ROWS_DEFAULT;
+		}
+		return self::normalize_textarea_rows( get_term_meta( $term_id, self::META_KEY_TEXTAREA_ROWS, true ) );
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_textarea_layout( string $taxonomy, int $type_term_id, $cols, $rows ) {
+		$term = get_term( $type_term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Node not found.', 'wp-taxonomy-tree' ) );
+		}
+		update_term_meta( $type_term_id, self::META_KEY_TEXTAREA_COLS, self::normalize_textarea_cols( $cols ) );
+		update_term_meta( $type_term_id, self::META_KEY_TEXTAREA_ROWS, self::normalize_textarea_rows( $rows ) );
+		Tree_Model::touch_modified( $type_term_id );
+		return true;
+	}
+
+	/**
+	 * @return array{cols:int,rows:int}|null
+	 */
+	public static function get_textarea_config_for_node( string $taxonomy, int $term_id ): ?array {
+		$config_id = self::resolve_textarea_config_term_id( $taxonomy, $term_id );
+		if ( $config_id <= 0 ) {
+			return null;
+		}
+		if (
+			metadata_exists( 'term', $term_id, self::META_KEY_TEXTAREA_COLS )
+			|| metadata_exists( 'term', $term_id, self::META_KEY_TEXTAREA_ROWS )
+		) {
+			return array(
+				'cols' => self::get_textarea_cols( $term_id ),
+				'rows' => self::get_textarea_rows( $term_id ),
+			);
+		}
+		return array(
+			'cols' => self::get_textarea_cols( $config_id ),
+			'rows' => self::get_textarea_rows( $config_id ),
+		);
 	}
 
 	public static function is_int_type_name( string $type_name ): bool {
@@ -3311,7 +3916,7 @@ final class Node_Type {
 			return true;
 		}
 
-		$json = wp_json_encode( $filtered );
+		$json = Json_Meta::encode( $filtered );
 		if ( false === $json ) {
 			return new \WP_Error( 'wtt_validators_encode', __( 'Could not save validators.', 'wp-taxonomy-tree' ) );
 		}
@@ -3928,7 +4533,7 @@ final class Node_Type {
 		if ( self::is_display_only_type_name( $type_name ) ) {
 			return new \WP_Error(
 				'wtt_bad_fixed',
-				__( 'display_node_name always shows the node name — fixed value is not used.', 'wp-taxonomy-tree' )
+				__( 'node_presentation always shows a host presentation field — fixed value is not used.', 'wp-taxonomy-tree' )
 			);
 		}
 
@@ -3993,7 +4598,7 @@ final class Node_Type {
 
 		return in_array(
 			$name,
-			array( 'int', 'double', 'text', 'textarea', 'char', 'bool', 'email', 'date', 'quantity', 'display_node_name', 'media' ),
+			array( 'int', 'double', 'text', 'textarea', 'char', 'bool', 'email', 'date', 'time', 'datetime', 'color', 'quantity', 'display_node_name', 'node_presentation', 'media' ),
 			true
 		);
 	}
@@ -4017,12 +4622,14 @@ final class Node_Type {
 	}
 
 	public static function is_display_only_type_name( string $type_name ): bool {
-		return 'display_node_name' === self::normalize_type_name( $type_name );
+		$key = self::normalize_type_name( $type_name );
+		return 'node_presentation' === $key || 'display_node_name' === $key;
 	}
 
 	/**
 	 * Canonical type key for pickers / schema (aliases → SoT leaf name).
-	 * e.g. datetime→date, measure→quantity, integer→int.
+	 * e.g. measure→quantity, integer→int. `datetime` stays its own Simple leaf
+	 * (not collapsed onto `date`); informal spellings map to `datetime`.
 	 */
 	public static function normalize_type_key( string $type_name ): string {
 		return self::normalize_type_name( $type_name );
@@ -4045,11 +4652,15 @@ final class Node_Type {
 		if ( in_array( $name, array( 'string', 'varchar' ), true ) ) {
 			return 'text';
 		}
-		if ( in_array( $name, array( 'datetime', 'date_time', 'date-time', 'timestamp' ), true ) ) {
-			return 'date';
+		/* Separate Simple leaves: date | time | datetime (do not collapse datetime→date). */
+		if ( in_array( $name, array( 'date_time', 'date-time', 'timestamp' ), true ) ) {
+			return 'datetime';
 		}
-		if ( in_array( $name, array( 'display node name', 'displayname', 'node_name' ), true ) ) {
-			return 'display_node_name';
+		if ( in_array( $name, array( 'display node name', 'displayname', 'node_name', 'display_node_name' ), true ) ) {
+			return 'node_presentation';
+		}
+		if ( in_array( $name, array( 'node presentation', 'nodepresentation', 'presentation' ), true ) ) {
+			return 'node_presentation';
 		}
 		/* Informal / DE aliases → quantity (Größe). Not Messung; not BOM Menge. */
 		if ( in_array( $name, array( 'measure', 'groesse', 'größe', 'grose' ), true ) ) {
@@ -4479,9 +5090,19 @@ final class Node_Type {
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
+	/**
+	 * Request-scoped datatype tree (taxonomy-wide; reused across get_node calls).
+	 *
+	 * @var array<string, list<array<string, mixed>>>
+	 */
+	private static array $datatype_tree_cache = array();
+
 	public static function get_datatype_tree( string $taxonomy ): array {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			return array();
+		}
+		if ( isset( self::$datatype_tree_cache[ $taxonomy ] ) ) {
+			return self::$datatype_tree_cache[ $taxonomy ];
 		}
 		$root_id = self::resolve_type_catalog_root( $taxonomy );
 		if ( $root_id > 0 ) {
@@ -4489,6 +5110,7 @@ final class Node_Type {
 			if ( $root instanceof \WP_Term ) {
 				$out = array();
 				self::collect_datatype_forest( $taxonomy, $root, $out, true );
+				self::$datatype_tree_cache[ $taxonomy ] = $out;
 				return $out;
 			}
 		}
@@ -4520,6 +5142,7 @@ final class Node_Type {
 			}
 			self::collect_datatype_forest( $taxonomy, $root, $out, true );
 		}
+		self::$datatype_tree_cache[ $taxonomy ] = $out;
 		return $out;
 	}
 
@@ -4763,6 +5386,12 @@ final class Node_Type {
 			return null;
 		}
 
+		$members = self::overlay_unit_attribute_defaults_on_quantity_members(
+			$taxonomy,
+			$type_id,
+			$members
+		);
+
 		$result = array(
 			'unitId'         => $type_id,
 			'unitName'       => $unit->name,
@@ -4775,6 +5404,127 @@ final class Node_Type {
 	}
 
 	/**
+	 * Merge live unit-leaf attribute Defaults / Presentation into synthetic
+	 * Typ+Praefix+Kuerzel members so Unit/Quantity Preferred preview is dynamic.
+	 *
+	 * @param array<int, array<string, mixed>> $members Quantity schema members.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function overlay_unit_attribute_defaults_on_quantity_members(
+		string $taxonomy,
+		int $unit_term_id,
+		array $members
+	): array {
+		if ( $unit_term_id <= 0 || array() === $members ) {
+			return $members;
+		}
+
+		$attrs_by_key = array();
+		if ( class_exists( Attribute::class ) ) {
+			foreach ( Attribute::list( $taxonomy, $unit_term_id ) as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$key = strtolower(
+					str_replace(
+						array( 'ä', 'ö', 'ü' ),
+						array( 'ae', 'oe', 'ue' ),
+						(string) ( $row['name'] ?? '' )
+					)
+				);
+				if ( '' === $key ) {
+					continue;
+				}
+				$attrs_by_key[ $key ] = $row;
+			}
+		}
+
+		$presentation_symbol = '';
+		if ( class_exists( Node_Presentation::class ) ) {
+			$map = Node_Presentation::map_for_term_resolved( $taxonomy, $unit_term_id );
+			if ( is_array( $map ) ) {
+				$presentation_symbol = trim( (string) ( $map['symbol'] ?? '' ) );
+				if ( '' === $presentation_symbol ) {
+					$presentation_symbol = trim( (string) ( $map['table'] ?? '' ) );
+				}
+			}
+		}
+
+		foreach ( $members as $i => $member ) {
+			if ( ! is_array( $member ) ) {
+				continue;
+			}
+			$mkey = strtolower(
+				str_replace(
+					array( 'ä', 'ö', 'ü' ),
+					array( 'ae', 'oe', 'ue' ),
+					(string) ( $member['name'] ?? '' )
+				)
+			);
+
+			if ( 'praefix' === $mkey || 'prefix' === $mkey ) {
+				$attr = $attrs_by_key['praefix'] ?? $attrs_by_key['prefix'] ?? null;
+				if ( ! is_array( $attr ) ) {
+					continue;
+				}
+				$mult = (string) ( $attr['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY );
+				$members[ $i ]['multiplicity'] = $mult;
+				$members[ $i ]['allowsEmpty']  = Attribute::multiplicity_allows_empty( $mult );
+				$members[ $i ]['required']     = ! Attribute::multiplicity_allows_empty( $mult );
+				$seed = array();
+				if ( isset( $attr['fixedValues'] ) && is_array( $attr['fixedValues'] ) ) {
+					$seed = $attr['fixedValues'];
+				}
+				$raw = isset( $seed[0] ) ? $seed[0] : null;
+				if ( null === $raw || '' === $raw ) {
+					continue;
+				}
+				$label = isset( $attr['fixedLabel'] ) ? trim( (string) $attr['fixedLabel'] ) : '';
+				$node_id = 0;
+				$name    = $label;
+				if ( is_numeric( $raw ) ) {
+					$node_id = (int) $raw;
+					$term    = get_term( $node_id, $taxonomy );
+					if ( $term instanceof \WP_Term ) {
+						$name = $term->name;
+					}
+				} elseif ( is_string( $raw ) && '' === $name ) {
+					$name = $raw;
+				}
+				if ( '' === $name ) {
+					continue;
+				}
+				$members[ $i ]['sample']       = $name;
+				$members[ $i ]['fixedNodeId']  = $node_id;
+				$members[ $i ]['fixedLiteral'] = $name;
+				/* Keep chooser editable — Default is seed, not lock. */
+				$members[ $i ]['fixedEnabled'] = false;
+				continue;
+			}
+
+			if (
+				'kuerzel' === $mkey ||
+				'symbol' === $mkey ||
+				'einheit' === $mkey ||
+				'unit' === $mkey
+			) {
+				$sym = $presentation_symbol;
+				if ( '' === $sym ) {
+					$sym = Tree_Model::get_short_description( $unit_term_id );
+					$sym = is_string( $sym ) ? trim( $sym ) : '';
+				}
+				if ( '' === $sym ) {
+					continue;
+				}
+				$members[ $i ]['fixedEnabled'] = true;
+				$members[ $i ]['fixedLiteral'] = $sym;
+			}
+		}
+
+		return $members;
+	}
+
+	/**
 	 * True when the term is the Complex catalog leaf `quantity` (Größe).
 	 */
 	public static function is_quantity_type_catalog_node( string $taxonomy, int $term_id ): bool {
@@ -4782,6 +5532,43 @@ final class Node_Type {
 			return false;
 		}
 		return 'quantity' === self::registry_id_for_type_term( $taxonomy, $term_id );
+	}
+
+	/**
+	 * True when term is quantity or a specialization under it (child_of / typed as quantity).
+	 * Used for Preferred defaults — not name hardcoding (size, Preis, …).
+	 */
+	public static function is_quantity_family_type( string $taxonomy, int $term_id ): bool {
+		$term_id = absint( $term_id );
+		if ( $term_id <= 0 ) {
+			return false;
+		}
+		if ( self::is_quantity_type_catalog_node( $taxonomy, $term_id ) ) {
+			return true;
+		}
+		$type_id = self::get_type_id( $term_id );
+		if ( $type_id > 0 && self::is_quantity_type_catalog_node( $taxonomy, $type_id ) ) {
+			return true;
+		}
+		/* Walk hierarchy parents (Q54 inheritance) for quantity catalog ancestor. */
+		$guard = 0;
+		$cur   = $term_id;
+		while ( $cur > 0 && $guard < 32 ) {
+			++$guard;
+			$term = get_term( $cur, $taxonomy );
+			if ( ! $term instanceof \WP_Term ) {
+				break;
+			}
+			$parent = (int) $term->parent;
+			if ( $parent <= 0 ) {
+				break;
+			}
+			if ( self::is_quantity_type_catalog_node( $taxonomy, $parent ) ) {
+				return true;
+			}
+			$cur = $parent;
+		}
+		return false;
 	}
 
 	/**
@@ -4988,7 +5775,10 @@ final class Node_Type {
 		if ( array() === $members ) {
 			/*
 			 * Fallstudie gold: Basiseinheit units are leaves (symbol in shortDescription).
-			 * Synthesize Typ + Praefix + Kuerzel so Unit/Quantity Registry paint can use quantitySchema.
+			 * Do not invent attribute slots on Meter/Ohm — OQ-W11 composition lives on
+			 * Unit/With prefix (Praefix + Kuerzel Relations). Display still synthesizes
+			 * Typ/Praefix/Kuerzel for quantitySchema paint until UnitRenderer composes
+			 * from those father-knot attrs + leaf shortDescription (next display slice).
 			 */
 			return self::synthesize_unit_quantity_members( $taxonomy, $unit_term_id );
 		}
@@ -4998,6 +5788,11 @@ final class Node_Type {
 
 	/**
 	 * Synthetic Typ / Praefix / Kuerzel for leaf Basiseinheit units (no set children).
+	 *
+	 * Display debt (post OQ-W11 structure): With prefix already has real Praefix→Präfixe
+	 * and Kuerzel→text Relations. UnitRenderer should eventually compose Prefix?+Symbol
+	 * from Attribute::list_own(With prefix) + unit leaf shortDescription instead of this
+	 * synthetic member list on each leaf.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
@@ -5547,7 +6342,20 @@ final class Node_Type {
 			return 0;
 		}
 
-		/* Q120: Definition/Data Types/Präfixe. */
+		/* Prefer Definition/Konstanten/Präfixe (≈ 0.0.458+). */
+		$konstanten = self::find_named_child( $taxonomy, $typen_id, 'Konstanten' );
+		if ( $konstanten > 0 ) {
+			$under_k = self::find_named_child_any(
+				$taxonomy,
+				$konstanten,
+				array( 'Präfixe', 'Praefixe' )
+			);
+			if ( $under_k > 0 ) {
+				return $under_k;
+			}
+		}
+
+		/* Interim Q120: Definition/Data Types/Präfixe. */
 		$data_types = self::find_named_child_any(
 			$taxonomy,
 			$typen_id,
@@ -5564,25 +6372,10 @@ final class Node_Type {
 			}
 		}
 
-		/* Demo: Typen/Praefixe — legacy Konstanten/Präfixe. */
-		$direct = self::find_named_child_any(
+		return self::find_named_child_any(
 			$taxonomy,
 			$typen_id,
 			array( 'Praefixe', 'Präfixe' )
-		);
-		if ( $direct > 0 ) {
-			return $direct;
-		}
-
-		$konstanten = self::find_named_child( $taxonomy, $typen_id, 'Konstanten' );
-		if ( $konstanten <= 0 ) {
-			return 0;
-		}
-
-		return self::find_named_child_any(
-			$taxonomy,
-			$konstanten,
-			array( 'Präfixe', 'Praefixe' )
 		);
 	}
 
@@ -5592,14 +6385,35 @@ final class Node_Type {
 			return 0;
 		}
 
-		/* Q120: Unit/With prefix as primary folder for single-root callers. */
+		/* Prefer Konstanten/Basiseinheiten/With prefix (≈ 0.0.458+). */
+		$konstanten = self::find_named_child( $taxonomy, $typen_id, 'Konstanten' );
+		if ( $konstanten > 0 ) {
+			$base = self::find_named_child_any(
+				$taxonomy,
+				$konstanten,
+				array( 'Basiseinheiten', 'Basiseinheit', 'Unit', 'Units' )
+			);
+			if ( $base > 0 ) {
+				$with = self::find_named_child_any(
+					$taxonomy,
+					$base,
+					array( 'With prefix', 'Mit Präfix' )
+				);
+				if ( $with > 0 ) {
+					return $with;
+				}
+				return $base;
+			}
+		}
+
+		/* Interim Q120: Data Types/Unit/With prefix. */
 		$data_types = self::find_named_child_any(
 			$taxonomy,
 			$typen_id,
 			array( 'Data Types', 'Datentypen' )
 		);
 		if ( $data_types > 0 ) {
-			$unit = self::find_named_child_any( $taxonomy, $data_types, array( 'Unit', 'Units' ) );
+			$unit = self::find_named_child_any( $taxonomy, $data_types, array( 'Unit', 'Units', 'Basiseinheiten' ) );
 			if ( $unit > 0 ) {
 				$with = self::find_named_child_any(
 					$taxonomy,
@@ -5612,25 +6426,10 @@ final class Node_Type {
 			}
 		}
 
-		/* Demo / legacy Basiseinheit(en). */
-		$direct = self::find_named_child_any(
+		return self::find_named_child_any(
 			$taxonomy,
 			$typen_id,
 			array( 'Basiseinheit', 'Basiseinheiten' )
-		);
-		if ( $direct > 0 ) {
-			return $direct;
-		}
-
-		$konstanten = self::find_named_child( $taxonomy, $typen_id, 'Konstanten' );
-		if ( $konstanten <= 0 ) {
-			return 0;
-		}
-
-		return self::find_named_child_any(
-			$taxonomy,
-			$konstanten,
-			array( 'Basiseinheiten', 'Basiseinheit' )
 		);
 	}
 

@@ -7,6 +7,17 @@ alwaysApply: true
 
 User may reverse recent preview experiments. Prefer undoing the latest checkpoint first.
 
+## Law (≈ 0.0.444 / harden 0.0.508 / field paint 0.0.510) — Preferred only, no exceptions
+
+Admin **Preview surface** = **host node + Settings Preferred** (Editable + Display for that one surface).
+
+- Host surface: Attribute Options / walk Render overrides do **not** switch the host Form↔Table chrome.
+- Nested attribute cells: walk / Relation **Render does** paint (e.g. Kontakt → Table embed inside host Form). `resolveFieldPreferredPaint` — slot override wins.
+- Do **not** paint Form+Table (+Tree) together “for completeness”.
+- Do **not** stack CatalogChoice on attribute hosts; do **not** hard-code Preview by display name (`Kontakt` / `Preis` / …).
+- Empty optional ListChooser / CatalogChoice label is **`—`**, not the word “None”.
+- Dispatch: `effectiveHostPreferredRender` → `renderUnifiedPreviewContent` / `renderAttributeHostPreview`.
+
 ## Checkpoint P4 — Attribute-host Form/Table (≈ v0.0.260–0.0.270)
 
 **Why:** Taxonomy holds **structures**; preview of attribute hosts (Kontakt, Preis, …) needs Form(1 instance) + Table(n instances), each editable + readonly — not the parked Collection `table` type.
@@ -17,17 +28,17 @@ User may reverse recent preview experiments. Prefer undoing the latest checkpoin
 
 **Revert P4:** Drop object-render host path; empty rebuild hint for attribute hosts again (keep Sample_Data if other UIs need it).
 
-## Checkpoint P3 — Media MIME display samples (v0.0.79–0.0.83)
+## Checkpoint P3 — Media MIME + Preferred preview (v0.0.79–0.0.83; Preferred paint ≈ 0.0.523)
 
-**Why:** Q65: one `media` type, different display by MIME. Preview must show variants. Same chrome must work later on frontend page view. User enables which kinds are allowed (default none).
+**Why:** Q65: one `media` type, different display by MIME. Preview must show what the user selects and how output looks — same law as other Simple leaves: **Preferred (MediaRenderer) → Editable + Display**.
 
 **Kinds:** `image`, `video`, `audio`, `pdf`, `archive` (zip/rar/7z/…), `office`, `text`, `file`, `link`.
 
-**Behavior:** On `media` type node: Form + Table of **enabled** MIME kinds only; hint if none selected. Settings checkboxes for `allowedKinds`. Shared `WTTMediaRender` / `Media_Render`.
+**Behavior:** `media` is a Registry type (`MediaRenderer` → `WTTMediaRender.renderField`). Admin Preview uses Preferred Form chrome (Editable = Select/Change/URL; Display = MIME surface). Settings still gate real fields via `allowedKinds` (default none). Sample seed from allowed kinds / sampleEntries.
 
-**Touch files:** media render module, `class-node-type.php` meta `_wtt_media_allowed_kinds`, `tree-admin.js` settings + preview, version **0.0.83**.
+**Touch files:** `wtt-media-render.js`, `wtt-node-render.js` (`MediaRenderer`), `tree-admin.js` (registry preview + mediaConfig), `class-node-type.php` meta `_wtt_media_allowed_kinds`, version **0.0.523**.
 
-**Revert P3:** Remove shared module + gallery/Form-Table kinds + allowedKinds meta; restore simple image-or-link surface in admin only.
+**Revert P3:** Remove MediaRenderer + shared module + allowedKinds meta; restore simple image-or-link surface in admin only.
 
 ## Checkpoint P1 — Unit definition vs usage (v0.0.40)
 
@@ -85,7 +96,9 @@ Every node may have **`shortDescription`** (term meta): compact expansion of `na
 - Shared builder: `renderOptionsSelect` + `formatSelectLabel` (visible: name/path only).
 - `shortDescription` → `<option title>` + closed-select `title` via `syncSelectTitle` (native hover tooltip).
 - Branch/Praefix children: `renderBranchSelect` → that builder (node with children).
-- No blank `—` placeholder option; first real option is selected when nothing matches.
+- No blank `—` placeholder on **required** selects; first real option is selected when nothing matches.
+- **Optional** Mult (`0..1` / `0..*` / zero-lower): ListChooser / CatalogChoice **must** offer a clear choice (`None` / `No prefix`) so the field can stay empty (Q116). **No sample fill** for those fields.
+- **Required** Mult (`1` / `1..*`): **no** empty/`—` option — pick/swap only. Praefix / Unit prefix selects follow the same Mult law (not “Praefix always empty”).
 - Hierarchy indent uses spaces, not dashes (`m` not `— m`).
 - Neutral choices use plain labels (`No type`, `Choose node`, `Root (no parent)`).
 

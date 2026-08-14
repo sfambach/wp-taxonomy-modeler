@@ -5,6 +5,9 @@
  * JS SoT for canConvert / format lives in assets/js/wtt-converter.js (WTTConverter.Registry).
  * This class validates stored preferred-converter keys and lists known converters.
  *
+ * Int formats (arabic/roman/binary/octal/hex) also apply to **char** via Unicode codepoint.
+ * Char-only: glyph (default), ascii, unicode (U+).
+ *
  * @package WP_Taxonomy_Tree
  */
 
@@ -20,14 +23,18 @@ final class Converter {
 	 * @var array<string, list<string>>
 	 */
 	private const BUILTIN = array(
-		'arabic' => array( 'int' ),
-		'roman'  => array( 'int' ),
-		'binary' => array( 'int' ),
-		'octal'  => array( 'int' ),
-		'hex'    => array( 'int' ),
+		'glyph'   => array( 'char' ),
+		'arabic'  => array( 'int', 'char' ),
+		'roman'   => array( 'int', 'char' ),
+		'binary'  => array( 'int', 'char' ),
+		'octal'   => array( 'int', 'char' ),
+		'hex'     => array( 'int', 'char' ),
+		'ascii'   => array( 'char' ),
+		'unicode' => array( 'char' ),
 	);
 
-	public const DEFAULT_INT = 'arabic';
+	public const DEFAULT_INT  = 'arabic';
+	public const DEFAULT_CHAR = 'glyph';
 
 	/**
 	 * Normalize a preferred converter id (empty when invalid).
@@ -84,6 +91,9 @@ final class Converter {
 		if ( 'int' === $key ) {
 			return self::DEFAULT_INT;
 		}
+		if ( 'char' === $key ) {
+			return self::DEFAULT_CHAR;
+		}
 		return '';
 	}
 
@@ -109,13 +119,16 @@ final class Converter {
 	}
 
 	public static function label_for( string $id ): string {
-		$id = self::normalize_id( $id );
+		$id  = self::normalize_id( $id );
 		$map = array(
-			'arabic' => __( 'Arabic (decimal)', 'wp-taxonomy-tree' ),
-			'roman'  => __( 'Roman', 'wp-taxonomy-tree' ),
-			'binary' => __( 'Binary', 'wp-taxonomy-tree' ),
-			'octal'  => __( 'Octal', 'wp-taxonomy-tree' ),
-			'hex'    => __( 'Hexadecimal', 'wp-taxonomy-tree' ),
+			'glyph'   => __( 'Character (glyph)', 'wp-taxonomy-tree' ),
+			'arabic'  => __( 'Arabic (decimal)', 'wp-taxonomy-tree' ),
+			'roman'   => __( 'Roman', 'wp-taxonomy-tree' ),
+			'binary'  => __( 'Binary', 'wp-taxonomy-tree' ),
+			'octal'   => __( 'Octal', 'wp-taxonomy-tree' ),
+			'hex'     => __( 'Hexadecimal', 'wp-taxonomy-tree' ),
+			'ascii'   => __( 'ASCII', 'wp-taxonomy-tree' ),
+			'unicode' => __( 'Unicode (U+)', 'wp-taxonomy-tree' ),
 		);
 		return $map[ $id ] ?? $id;
 	}

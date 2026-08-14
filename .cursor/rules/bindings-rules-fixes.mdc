@@ -63,12 +63,14 @@ Validation payload should allow:
 | Zeile has 0 fields | `create_zeile_field` — create one text column |
 | Kopf/Fuss count ≠ Zeile | `create_fields` — pad missing fields |
 
-## Attribute rules (scaffold ≈ 0.0.409)
+## Attribute rules (scaffold ≈ 0.0.409 / Q105 ≈ 0.0.426 / Mult gate ≈ 0.0.491)
 
 | Rule | Fix |
 |------|-----|
 | Read-only without default (non-computed) | `clear_readonly` — turn RO off |
 | same | `set_default` — open Default value dialog (UI) |
+| Own Background-only (Hide) and Mult is many (`0..*` / `1..*`) (Q105; single `0..1` or `1` OK) | `set_mult_01` — set Mult to `0..1` |
+| same | `clear_hide` — clear Hide / BO |
 
 **Deferred (UAT):** unique band bindings (Zeile ≠ Kopf ≠ Fuss — same child not reusable). Do not implement until UAT shows pain; then add rule + optional fix (filter picker / unbind).
 

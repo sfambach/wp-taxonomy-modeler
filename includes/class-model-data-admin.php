@@ -722,7 +722,12 @@ final class Model_Data_Admin {
 		}
 		$out = array();
 		foreach ( $decoded as $k => $v ) {
-			$out[ (string) absint( $k ) ] = is_scalar( $v ) ? (string) $v : '';
+			/* Q123: instance value keys = Relation edge ids (string). */
+			$aid = Attribute::normalize_attr_id( $k );
+			if ( '' === $aid ) {
+				continue;
+			}
+			$out[ $aid ] = is_scalar( $v ) ? (string) $v : '';
 		}
 		return $out;
 	}

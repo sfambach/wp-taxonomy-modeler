@@ -6,9 +6,15 @@
  * validateAll runs configured list; first failure wins (+ optional fixes).
  *
  * Simple type defaults:
- *   int → integer_shape, double → number_shape, email → email_shape,
- *   char → char_shape, date → date_shape, media → media_shape.
- *   text / textarea / bool → none (optional builtins remain addable).
+ *   int → integer_shape (+ optional int_min / int_max),
+ *   double → number_shape (+ optional double_min / double_max),
+ *   text/textarea → optional text_min_length / text_max_length (params.value; seed 0 / 100),
+ *   char/text/textarea → optional charset_range / charset_allowlist / charset_regex
+ *     (params.value string: `a-z,A-Z,0-9` | `a,b,c` | `[0-9a-z]`),
+ *   email → email_shape, char → char_shape, date → date_shape, media → media_shape.
+ *   text / textarea / bool → no shape default (optional builtins remain addable).
+ * Bound/length validators store one numeric threshold in params.value.
+ * Charset validators store a string spec in params.value.
  *
  * @package WP_Taxonomy_Tree
  */
@@ -94,11 +100,22 @@
 	function defaultError(id) {
 		var map = {
 			integer_shape: 'Enter a whole number.',
+			int_min: 'Value is below the minimum.',
+			int_max: 'Value is above the maximum.',
 			number_shape: 'Enter a number.',
+			double_min: 'Value is below the minimum.',
+			double_max: 'Value is above the maximum.',
 			bool_shape: 'Enter a boolean value.',
 			email_shape: 'Enter a valid email address.',
 			text_shape: 'Enter text.',
+			text_min_length: 'Text is shorter than the minimum length.',
+			text_max_length: 'Text is longer than the maximum length.',
 			char_shape: 'Enter exactly one character.',
+			charset_range:
+				'Value contains characters outside the allowed range(s).',
+			charset_allowlist:
+				'Value contains characters that are not in the allowlist.',
+			charset_regex: 'Value does not match the allowed pattern.',
 			date_shape: 'Enter a valid date.',
 			media_shape: 'Enter a media attachment, URL, or media reference.',
 			expression: 'Value does not satisfy the expression.',
@@ -121,16 +138,474 @@
 	function labelFor(id) {
 		var map = {
 			integer_shape: 'Integer shape',
+			int_min: 'Int min',
+			int_max: 'Int max',
 			number_shape: 'Number shape',
+			double_min: 'Double min',
+			double_max: 'Double max',
 			bool_shape: 'Boolean shape',
 			email_shape: 'Email shape',
 			text_shape: 'Text shape',
+			text_min_length: 'Text min length',
+			text_max_length: 'Text max length',
 			char_shape: 'Single character',
+			charset_range: 'Charset range',
+			charset_allowlist: 'Charset allowlist',
+			charset_regex: 'Charset regex',
 			date_shape: 'Date shape',
 			media_shape: 'Media shape',
 			expression: 'Expression',
 		};
 		return map[id] || id;
+	}
+
+	function isBoundValidatorId(id) {
+		id = String(id || '')
+			.trim()
+			.toLowerCase();
+		return (
+			id === 'int_min' ||
+			id === 'int_max' ||
+			id === 'double_min' ||
+			id === 'double_max'
+		);
+	}
+
+	function isLengthValidatorId(id) {
+		id = String(id || '')
+			.trim()
+			.toLowerCase();
+		return id === 'text_min_length' || id === 'text_max_length';
+	}
+
+	function isCharsetValidatorId(id) {
+		id = String(id || '')
+			.trim()
+			.toLowerCase();
+		return (
+			id === 'charset_range' ||
+			id === 'charset_allowlist' ||
+			id === 'charset_regex'
+		);
+	}
+
+	/** Bound or length — UI shows numeric params.value threshold. */
+	function isParamThresholdValidatorId(id) {
+		return isBoundValidatorId(id) || isLengthValidatorId(id);
+	}
+
+	/** Any Bound-column params.value (numeric or charset string). */
+	function isParamValueValidatorId(id) {
+		return isParamThresholdValidatorId(id) || isCharsetValidatorId(id);
+	}
+
+	function defaultBoundValue(id) {
+		id = String(id || '')
+			.trim()
+			.toLowerCase();
+		if (id === 'charset_range') {
+			return 'a-z';
+		}
+		if (id === 'charset_allowlist') {
+			return 'a,b,c';
+		}
+		if (id === 'charset_regex') {
+			return '[a-zA-Z0-9]';
+		}
+		return id.indexOf('_max') !== -1 ? 100 : 0;
+	}
+
+	/**
+	 * Bound threshold from entry.params.value (int_* → int, double_* → float).
+	 * @return {number|null}
+	 */
+	function boundValueFromEntry(entry) {
+		if (!entry || typeof entry !== 'object') {
+			return null;
+		}
+		var id = String(entry.id || '')
+			.trim()
+			.toLowerCase();
+		if (isCharsetValidatorId(id)) {
+			return null;
+		}
+		var params =
+			entry.params && typeof entry.params === 'object' ? entry.params : {};
+		var raw = null;
+		if (params.value != null && params.value !== '') {
+			raw = params.value;
+		} else if (entry.value != null && entry.value !== '') {
+			raw = entry.value;
+		} else if (id.indexOf('_min') !== -1 && entry.min != null) {
+			raw = entry.min;
+		} else if (id.indexOf('_max') !== -1 && entry.max != null) {
+			raw = entry.max;
+		} else if (id.indexOf('_min') !== -1 && params.min != null) {
+			raw = params.min;
+		} else if (id.indexOf('_max') !== -1 && params.max != null) {
+			raw = params.max;
+		}
+		if (raw == null || raw === '') {
+			return null;
+		}
+		var n = Number(raw);
+		if (!isFinite(n)) {
+			return null;
+		}
+		if (id.indexOf('int_') === 0 || isLengthValidatorId(id)) {
+			return Math.trunc(n);
+		}
+		return n;
+	}
+
+	/**
+	 * String params.value for charset validators.
+	 * @return {string|null}
+	 */
+	function stringParamFromEntry(entry) {
+		if (!entry || typeof entry !== 'object') {
+			return null;
+		}
+		var params =
+			entry.params && typeof entry.params === 'object' ? entry.params : {};
+		var raw = null;
+		if (params.value != null && params.value !== '') {
+			raw = params.value;
+		} else if (entry.value != null && entry.value !== '') {
+			raw = entry.value;
+		} else if (params.pattern != null && params.pattern !== '') {
+			raw = params.pattern;
+		} else if (entry.pattern != null && entry.pattern !== '') {
+			raw = entry.pattern;
+		}
+		if (raw == null) {
+			return null;
+		}
+		var s = String(raw).trim();
+		return s === '' ? null : s;
+	}
+
+	function stringLength(s) {
+		s = String(s == null ? '' : s);
+		if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+			try {
+				var seg = new Intl.Segmenter(undefined, {
+					granularity: 'grapheme',
+				});
+				var n = 0;
+				for (var _ of seg.segment(s)) {
+					n++;
+				}
+				return n;
+			} catch (e) {
+				/* fall through */
+			}
+		}
+		return Array.from(s).length;
+	}
+
+	function makeLengthValidate(id) {
+		return function (value, opts, entry) {
+			opts = opts || {};
+			var s = value == null ? '' : String(value);
+			var msg = (entry && entry.errorText) || defaultError(id);
+			if (s === '') {
+				if (opts.allowEmpty !== false) {
+					return { ok: true };
+				}
+				return { ok: false, message: msg, failedId: id };
+			}
+			var bound = boundValueFromEntry(
+				Object.assign({}, entry || {}, { id: id })
+			);
+			if (bound == null) {
+				return { ok: true };
+			}
+			var len = stringLength(s);
+			if (id === 'text_min_length' && len < bound) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			if (id === 'text_max_length' && len > bound) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			return { ok: true };
+		};
+	}
+
+	function splitGraphemes(value) {
+		var s = value == null ? '' : String(value);
+		if (!s) {
+			return [];
+		}
+		if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+			try {
+				var seg = new Intl.Segmenter(undefined, {
+					granularity: 'grapheme',
+				});
+				var out = [];
+				for (var part of seg.segment(s)) {
+					out.push(part.segment);
+				}
+				return out;
+			} catch (e) {
+				/* fall through */
+			}
+		}
+		return Array.from(s);
+	}
+
+	function firstCodepoint(ch) {
+		if (ch == null || ch === '') {
+			return null;
+		}
+		var cp = String(ch).codePointAt(0);
+		return cp == null ? null : cp;
+	}
+
+	function parseRangeToken(token) {
+		token = String(token || '').trim();
+		if (!token) {
+			return null;
+		}
+		var um = token.match(
+			/^U\+([0-9A-Fa-f]{1,6})\s*-\s*U\+([0-9A-Fa-f]{1,6})$/
+		);
+		if (um) {
+			var ulo = parseInt(um[1], 16);
+			var uhi = parseInt(um[2], 16);
+			if (ulo > uhi) {
+				var ut = ulo;
+				ulo = uhi;
+				uhi = ut;
+			}
+			return [ulo, uhi];
+		}
+		var us = token.match(/^U\+([0-9A-Fa-f]{1,6})$/);
+		if (us) {
+			var ucp = parseInt(us[1], 16);
+			return [ucp, ucp];
+		}
+		var dash = token.indexOf('-');
+		if (dash > 0) {
+			var left = token.slice(0, dash);
+			var right = token.slice(dash + 1);
+			var lo = firstCodepoint(left);
+			var hi = firstCodepoint(right);
+			if (lo == null || hi == null) {
+				return null;
+			}
+			if (lo > hi) {
+				var t = lo;
+				lo = hi;
+				hi = t;
+			}
+			return [lo, hi];
+		}
+		var cp = firstCodepoint(token);
+		return cp == null ? null : [cp, cp];
+	}
+
+	function parseCharsetRanges(spec) {
+		var parts = String(spec || '').split(/\s*,\s*/);
+		var out = [];
+		parts.forEach(function (part) {
+			var range = parseRangeToken(part);
+			if (range) {
+				out.push(range);
+			}
+		});
+		return out;
+	}
+
+	function parseCharsetAllowlist(spec) {
+		var raw = String(spec == null ? '' : spec);
+		if (!raw.trim()) {
+			return [];
+		}
+		var out = [];
+		var buf = '';
+		var i;
+		for (i = 0; i < raw.length; i++) {
+			var ch = raw.charAt(i);
+			if (ch === '\\' && i + 1 < raw.length && raw.charAt(i + 1) === ',') {
+				buf += ',';
+				i++;
+				continue;
+			}
+			if (ch === ',') {
+				var token = buf.trim();
+				buf = '';
+				if (token) {
+					splitGraphemes(token).forEach(function (g) {
+						out.push(g);
+					});
+				}
+				continue;
+			}
+			buf += ch;
+		}
+		var last = buf.trim();
+		if (last) {
+			splitGraphemes(last).forEach(function (g) {
+				out.push(g);
+			});
+		}
+		return out;
+	}
+
+	function valueMatchesCharsetRange(value, spec) {
+		var ranges = parseCharsetRanges(spec);
+		if (!ranges.length) {
+			return false;
+		}
+		var chars = splitGraphemes(value);
+		if (!chars.length) {
+			return false;
+		}
+		var i;
+		for (i = 0; i < chars.length; i++) {
+			var cp = firstCodepoint(chars[i]);
+			if (cp == null) {
+				return false;
+			}
+			var ok = false;
+			var r;
+			for (r = 0; r < ranges.length; r++) {
+				if (cp >= ranges[r][0] && cp <= ranges[r][1]) {
+					ok = true;
+					break;
+				}
+			}
+			if (!ok) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function valueMatchesCharsetAllowlist(value, spec) {
+		var allowed = parseCharsetAllowlist(spec);
+		if (!allowed.length) {
+			return false;
+		}
+		var map = {};
+		allowed.forEach(function (ch) {
+			map[ch] = true;
+		});
+		var chars = splitGraphemes(value);
+		if (!chars.length) {
+			return false;
+		}
+		var i;
+		for (i = 0; i < chars.length; i++) {
+			if (!map[chars[i]]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function valueMatchesCharsetRegex(value, pattern) {
+		pattern = String(pattern || '').trim();
+		if (!pattern) {
+			return false;
+		}
+		var body = pattern;
+		var flags = 'u';
+		var wrap = pattern.match(/^(.)([\s\S]*)\1([imsuxADSUXJ]*)$/);
+		if (wrap && wrap[1] !== '\\') {
+			body = wrap[2];
+			flags = wrap[3] || '';
+			if (flags.indexOf('u') === -1) {
+				flags += 'u';
+			}
+		}
+		if (body.charAt(0) !== '^' || body.charAt(body.length - 1) !== '$') {
+			body = '^(?:' + body + ')$';
+		}
+		try {
+			var re = new RegExp(body, flags);
+			return re.test(String(value == null ? '' : value));
+		} catch (e) {
+			return false;
+		}
+	}
+
+	function makeCharsetValidate(id) {
+		return function (value, opts, entry) {
+			opts = opts || {};
+			var s = value == null ? '' : String(value);
+			var msg = (entry && entry.errorText) || defaultError(id);
+			if (s === '') {
+				if (opts.allowEmpty !== false) {
+					return { ok: true };
+				}
+				return { ok: false, message: msg, failedId: id };
+			}
+			var spec = stringParamFromEntry(
+				Object.assign({}, entry || {}, { id: id })
+			);
+			if (spec == null || spec === '') {
+				return { ok: true };
+			}
+			var ok = false;
+			if (id === 'charset_range') {
+				ok = valueMatchesCharsetRange(s, spec);
+			} else if (id === 'charset_allowlist') {
+				ok = valueMatchesCharsetAllowlist(s, spec);
+			} else {
+				ok = valueMatchesCharsetRegex(s, spec);
+			}
+			if (!ok) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			return { ok: true };
+		};
+	}
+
+	function makeBoundValidate(id) {
+		return function (value, opts, entry) {
+			opts = opts || {};
+			var s = value == null ? '' : String(value).trim();
+			var msg = (entry && entry.errorText) || defaultError(id);
+			if (s === '') {
+				if (opts.allowEmpty !== false) {
+					return { ok: true };
+				}
+				return { ok: false, message: msg, failedId: id };
+			}
+			var bound = boundValueFromEntry(
+				Object.assign({}, entry || {}, { id: id })
+			);
+			if (bound == null) {
+				return { ok: true };
+			}
+			var isInt = id.indexOf('int_') === 0;
+			if (isInt) {
+				if (!/^-?\d+$/.test(s)) {
+					return { ok: false, message: msg, failedId: id };
+				}
+				var ni = parseInt(s, 10);
+				if (id === 'int_min' && ni < bound) {
+					return { ok: false, message: msg, failedId: id };
+				}
+				if (id === 'int_max' && ni > bound) {
+					return { ok: false, message: msg, failedId: id };
+				}
+				return { ok: true };
+			}
+			if (!/^-?\d+(\.\d+)?$/.test(s) || !isFinite(Number(s))) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			var nd = Number(s);
+			if (id === 'double_min' && nd < bound) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			if (id === 'double_max' && nd > bound) {
+				return { ok: false, message: msg, failedId: id };
+			}
+			return { ok: true };
+		};
 	}
 
 	function isSingleCharacter(s) {
@@ -360,6 +835,18 @@
 	});
 
 	registerBuiltin({
+		id: 'int_min',
+		appliesTo: ['int'],
+		validate: makeBoundValidate('int_min'),
+	});
+
+	registerBuiltin({
+		id: 'int_max',
+		appliesTo: ['int'],
+		validate: makeBoundValidate('int_max'),
+	});
+
+	registerBuiltin({
 		id: 'number_shape',
 		appliesTo: ['double'],
 		validate: function (value, opts, entry) {
@@ -377,6 +864,18 @@
 			}
 			return { ok: true };
 		},
+	});
+
+	registerBuiltin({
+		id: 'double_min',
+		appliesTo: ['double'],
+		validate: makeBoundValidate('double_min'),
+	});
+
+	registerBuiltin({
+		id: 'double_max',
+		appliesTo: ['double'],
+		validate: makeBoundValidate('double_max'),
 	});
 
 	registerBuiltin({
@@ -441,6 +940,18 @@
 	});
 
 	registerBuiltin({
+		id: 'text_min_length',
+		appliesTo: ['text', 'textarea'],
+		validate: makeLengthValidate('text_min_length'),
+	});
+
+	registerBuiltin({
+		id: 'text_max_length',
+		appliesTo: ['text', 'textarea'],
+		validate: makeLengthValidate('text_max_length'),
+	});
+
+	registerBuiltin({
 		id: 'char_shape',
 		appliesTo: ['char'],
 		validate: function (value, opts, entry) {
@@ -458,6 +969,24 @@
 			}
 			return { ok: true };
 		},
+	});
+
+	registerBuiltin({
+		id: 'charset_range',
+		appliesTo: ['char', 'text', 'textarea'],
+		validate: makeCharsetValidate('charset_range'),
+	});
+
+	registerBuiltin({
+		id: 'charset_allowlist',
+		appliesTo: ['char', 'text', 'textarea'],
+		validate: makeCharsetValidate('charset_allowlist'),
+	});
+
+	registerBuiltin({
+		id: 'charset_regex',
+		appliesTo: ['char', 'text', 'textarea'],
+		validate: makeCharsetValidate('charset_regex'),
 	});
 
 	registerBuiltin({
@@ -566,6 +1095,22 @@
 				return null;
 			}
 			entry.expression = expr;
+		}
+		if (isParamThresholdValidatorId(id)) {
+			var bound = boundValueFromEntry(
+				Object.assign({}, row, { id: id })
+			);
+			if (bound != null) {
+				entry.params = { value: bound };
+			}
+		}
+		if (isCharsetValidatorId(id)) {
+			var spec = stringParamFromEntry(
+				Object.assign({}, row, { id: id })
+			);
+			if (spec != null && spec !== '') {
+				entry.params = { value: spec };
+			}
 		}
 		return entry;
 	}
@@ -692,5 +1237,13 @@
 		Registry: Registry,
 		evalExpression: evalExpression,
 		typeKeyOf: typeKeyOf,
+		isBoundValidatorId: isBoundValidatorId,
+		isLengthValidatorId: isLengthValidatorId,
+		isCharsetValidatorId: isCharsetValidatorId,
+		isParamThresholdValidatorId: isParamThresholdValidatorId,
+		isParamValueValidatorId: isParamValueValidatorId,
+		defaultBoundValue: defaultBoundValue,
+		boundValueFromEntry: boundValueFromEntry,
+		stringParamFromEntry: stringParamFromEntry,
 	};
 })(typeof window !== 'undefined' ? window : this);

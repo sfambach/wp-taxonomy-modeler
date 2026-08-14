@@ -43,6 +43,7 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_reparent_term', array( self::class, 'reparent_term' ) );
 		add_action( 'wp_ajax_wtt_reparent_terms', array( self::class, 'reparent_terms' ) );
 		add_action( 'wp_ajax_wtt_add_relation', array( self::class, 'add_relation' ) );
+		add_action( 'wp_ajax_wtt_update_relation_name', array( self::class, 'update_relation_name' ) );
 		add_action( 'wp_ajax_wtt_remove_relation', array( self::class, 'remove_relation' ) );
 		add_action( 'wp_ajax_wtt_duplicate_relation', array( self::class, 'duplicate_relation' ) );
 		add_action( 'wp_ajax_wtt_move_relation', array( self::class, 'move_relation' ) );
@@ -66,6 +67,8 @@ final class Tree_Ajax {
 		add_action( 'wp_ajax_wtt_set_attribute_fixed', array( self::class, 'set_attribute_fixed' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_type_extras', array( self::class, 'set_attribute_type_extras' ) );
 		add_action( 'wp_ajax_wtt_set_attribute_preferred_render', array( self::class, 'set_attribute_preferred_render' ) );
+		add_action( 'wp_ajax_wtt_set_attribute_walk_settings', array( self::class, 'set_attribute_walk_settings' ) );
+		add_action( 'wp_ajax_wtt_get_attribute_settings_walk', array( self::class, 'get_attribute_settings_walk' ) );
 		add_action( 'wp_ajax_wtt_duplicate_attribute', array( self::class, 'duplicate_attribute' ) );
 		add_action( 'wp_ajax_wtt_set_enum_values', array( self::class, 'set_enum_values' ) );
 		add_action( 'wp_ajax_wtt_set_hide_root_node', array( self::class, 'set_hide_root_node' ) );
@@ -733,6 +736,20 @@ final class Tree_Ajax {
 			$date_mode = sanitize_key( (string) wp_unslash( $_POST['date_mode'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
+		$textarea_cols = null;
+		if ( isset( $_POST['textarea_cols'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$textarea_cols = absint( wp_unslash( $_POST['textarea_cols'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+		$textarea_rows = null;
+		if ( isset( $_POST['textarea_rows'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$textarea_rows = absint( wp_unslash( $_POST['textarea_rows'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		$presentation_context = null;
+		if ( isset( $_POST['presentation_context'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$presentation_context = sanitize_key( (string) wp_unslash( $_POST['presentation_context'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
 		$int_display_format = null;
 		if ( isset( $_POST['int_display_format'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$int_display_format = sanitize_key( (string) wp_unslash( $_POST['int_display_format'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -825,6 +842,15 @@ final class Tree_Ajax {
 		}
 		if ( null !== $date_mode ) {
 			$save_args['date_mode'] = $date_mode;
+		}
+		if ( null !== $textarea_cols ) {
+			$save_args['textarea_cols'] = $textarea_cols;
+		}
+		if ( null !== $textarea_rows ) {
+			$save_args['textarea_rows'] = $textarea_rows;
+		}
+		if ( null !== $presentation_context ) {
+			$save_args['presentation_context'] = $presentation_context;
 		}
 		if ( null !== $preferred_converter ) {
 			$save_args['preferred_converter'] = $preferred_converter;
@@ -994,16 +1020,89 @@ final class Tree_Ajax {
 		$type_id = isset( $_POST['type_id'] ) ? absint( wp_unslash( $_POST['type_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$to_id   = isset( $_POST['to_id'] ) ? absint( wp_unslash( $_POST['to_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$mult    = isset( $_POST['multiplicity'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['multiplicity'] ) ) : Relation::MULTIPLICITY_DEFAULT; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$name    = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['name'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-		$result = Relation::add( $taxonomy, $term_id, $type_id, $to_id, $mult );
+		$type = $type_id > 0 ? get_term( $type_id, $taxonomy ) : null;
+		$type_key = $type instanceof \WP_Term ? strtolower( $type->name ) : '';
+		if ( Relation::type_key_requires_name( $type_key ) ) {
+			$name = Relation::normalize_edge_name( $name );
+			if ( '' === $name ) {
+				self::send_error(
+					new \WP_Error(
+						'wtt_bad_relation',
+						Relation::is_calc_type_key( $type_key )
+							? __( 'Calculation requires a name (consumer attribute for default_from).', 'wp-taxonomy-tree' )
+							: __( 'Attribute relations (besteht_aus / aggregation) require a name.', 'wp-taxonomy-tree' )
+					)
+				);
+			}
+		}
+
+		$settings = null;
+		if ( Relation::is_calc_type_key( $type_key ) ) {
+			/* First live: Add calc always seeds op=default_from (later UI for other ops). */
+			$settings = Relation::calc_settings_for_op( Relation::CALC_OP_DEFAULT_FROM );
+		}
+
+		$result = Relation::add( $taxonomy, $term_id, $type_id, $to_id, $mult, $name, $settings );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}
 
 		$gate = self::table_validation_gate_for_node_or_table( $taxonomy, $term_id );
 		if ( is_wp_error( $gate ) ) {
-			Relation::remove( $taxonomy, $term_id, $type_id, $to_id );
+			$edge_id = is_string( $result ) ? $result : '';
+			Relation::remove( $taxonomy, $term_id, $type_id, $to_id, $edge_id );
 			self::send_error( $gate );
+		}
+
+		self::send_relation_node_response( $taxonomy, $term_id );
+	}
+
+	/**
+	 * Update Relation.name (Q123 attribute label on besteht_aus / aggregation).
+	 * Attribute bindings go through Attribute::update so Attributes panel stays in sync.
+	 */
+	public static function update_relation_name(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$edge_id = isset( $_POST['edge_id'] ) ? sanitize_key( wp_unslash( (string) $_POST['edge_id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$name    = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['name'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
+		}
+
+		$type_key = '';
+		foreach ( Relation::list_outgoing( $taxonomy, $term_id ) as $edge ) {
+			if ( sanitize_key( (string) ( $edge['id'] ?? '' ) ) !== $edge_id ) {
+				continue;
+			}
+			$type_key = (string) ( $edge['typeKey'] ?? $edge['typeName'] ?? '' );
+			break;
+		}
+
+		if ( Relation::is_attribute_binding_type_key( $type_key ) && class_exists( Attribute::class ) ) {
+			$result = Attribute::update(
+				$taxonomy,
+				$term_id,
+				$edge_id,
+				array( 'name' => $name )
+			);
+		} else {
+			$result = Relation::update_name( $taxonomy, $term_id, $edge_id, $name );
+		}
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
 		}
 
 		self::send_relation_node_response( $taxonomy, $term_id );
@@ -1033,9 +1132,15 @@ final class Tree_Ajax {
 			if ( $match_id || $match_to ) {
 				$type_id       = (int) ( $edge['typeId'] ?? $type_id );
 				$to_id         = (int) ( $edge['toId'] ?? $to_id );
+				$edge_id       = sanitize_key( (string) ( $edge['id'] ?? $edge_id ) );
 				$snapshot_mult = (string) ( $edge['multiplicity'] ?? Relation::MULTIPLICITY_DEFAULT );
 				break;
 			}
+		}
+
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
 		}
 
 		$result = Relation::remove( $taxonomy, $term_id, $type_id, $to_id, $edge_id );
@@ -1065,6 +1170,11 @@ final class Tree_Ajax {
 		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$edge_id = isset( $_POST['edge_id'] ) ? sanitize_key( wp_unslash( (string) $_POST['edge_id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
+		}
+
 		$result = Relation::duplicate( $taxonomy, $term_id, $edge_id );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
@@ -1092,6 +1202,11 @@ final class Tree_Ajax {
 			$delta = -1;
 		}
 
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
+		}
+
 		$result = Relation::move( $taxonomy, $term_id, $edge_id, $delta );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
@@ -1114,6 +1229,11 @@ final class Tree_Ajax {
 		$edge_id = isset( $_POST['edge_id'] ) ? sanitize_key( wp_unslash( (string) $_POST['edge_id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$type_id = isset( $_POST['type_id'] ) ? absint( wp_unslash( $_POST['type_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
+		}
+
 		$result = Relation::update_type( $taxonomy, $term_id, $edge_id, $type_id );
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
@@ -1135,6 +1255,11 @@ final class Tree_Ajax {
 		$term_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$edge_id = isset( $_POST['edge_id'] ) ? sanitize_key( wp_unslash( (string) $_POST['edge_id'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$mult    = isset( $_POST['multiplicity'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['multiplicity'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$parked = self::reject_parked_table_band_edge( $taxonomy, $term_id, $edge_id );
+		if ( is_wp_error( $parked ) ) {
+			self::send_error( $parked );
+		}
 
 		$result = Relation::update_multiplicity( $taxonomy, $term_id, $edge_id, $mult );
 		if ( is_wp_error( $result ) ) {
@@ -1222,11 +1347,12 @@ final class Tree_Ajax {
 					if ( is_array( $v ) ) {
 						continue;
 					}
-					$aid = absint( $k );
-					if ( $aid <= 0 ) {
+					/* Q123: nested Default maps key by Relation edge id. */
+					$aid = Attribute::normalize_attr_id( $k );
+					if ( '' === $aid ) {
 						continue;
 					}
-					$map[ (string) $aid ] = sanitize_text_field( (string) $v );
+					$map[ $aid ] = sanitize_text_field( (string) $v );
 				}
 				if ( array() !== $map ) {
 					$out[] = $map;
@@ -1318,7 +1444,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$changes = array();
 		if ( isset( $_POST['name'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -1355,7 +1481,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$type_id = isset( $_POST['type_id'] ) ? absint( wp_unslash( $_POST['type_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::set_type( $taxonomy, $host_id, $attr_id, $type_id );
@@ -1378,7 +1504,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$mult    = isset( $_POST['multiplicity'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['multiplicity'] ) )
 			: Attribute::DEFAULT_MULTIPLICITY; // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -1403,7 +1529,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$binding = isset( $_POST['binding'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['binding'] ) )
 			: Attribute::DEFAULT_BINDING; // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -1427,7 +1553,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$values = null;
 		if ( isset( $_POST['clear'] ) && '1' === (string) wp_unslash( $_POST['clear'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -1541,7 +1667,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$result = Attribute::remove( $taxonomy, $host_id, $attr_id );
 		if ( is_wp_error( $result ) ) {
@@ -1563,7 +1689,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$delta   = isset( $_POST['delta'] ) ? (int) wp_unslash( $_POST['delta'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::reorder( $taxonomy, $host_id, $attr_id, $delta );
@@ -1585,7 +1711,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$result = Attribute::move_to_parent( $taxonomy, $host_id, $attr_id );
 		if ( is_wp_error( $result ) ) {
@@ -1606,7 +1732,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id  = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id  = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$child_id = isset( $_POST['child_id'] ) ? absint( wp_unslash( $_POST['child_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::move_to_child( $taxonomy, $host_id, $attr_id, $child_id );
@@ -1628,7 +1754,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$hidden  = isset( $_POST['hidden'] ) && '1' === (string) wp_unslash( $_POST['hidden'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::set_hidden( $taxonomy, $host_id, $attr_id, $hidden );
@@ -1650,7 +1776,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$extras = array();
 		if ( isset( $_POST['extras'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -1672,7 +1798,8 @@ final class Tree_Ajax {
 	}
 
 	/**
-	 * Preferred render on the attribute slot term (same meta as nodes).
+	 * Preferred render override on the attribute Relation (Settings.view — Q123).
+	 * Writes via Attribute::set_preferred_render (edge UUID; no slot / is_slot gate).
 	 */
 	public static function set_attribute_preferred_render(): void {
 		self::verify_request();
@@ -1685,28 +1812,114 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$raw     = isset( $_POST['preferred_render'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			? sanitize_key( (string) wp_unslash( $_POST['preferred_render'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? trim( (string) wp_unslash( $_POST['preferred_render'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			: '';
 
-		if ( $host_id <= 0 || $attr_id <= 0 ) {
+		if ( $host_id <= 0 || '' === $attr_id ) {
 			self::send_error( new \WP_Error( 'wtt_bad_request', __( 'Invalid attribute.', 'wp-taxonomy-tree' ) ) );
 		}
-		if ( ! Attribute::is_slot( $attr_id ) ) {
-			self::send_error( new \WP_Error( 'wtt_not_found', __( 'Attribute not found on this node.', 'wp-taxonomy-tree' ) ) );
+
+		$result = Attribute::set_preferred_render( $taxonomy, $host_id, $attr_id, $raw );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
 		}
 
-		/* Empty = inherit type preferred (clear slot override). */
-		if ( '' === $raw || 'inherit' === $raw || 'default' === $raw ) {
-			delete_term_meta( $attr_id, Node_Type::META_KEY_PREFERRED_RENDER );
-			Tree_Model::touch_modified( $attr_id );
-			Tree_Model::touch_modified( $host_id );
-			self::send_relation_node_response( $taxonomy, $host_id );
-			return;
+		self::send_relation_node_response( $taxonomy, $host_id );
+	}
+
+	/**
+	 * Lazy Options: return (and ensure) persisted Settings-walk summary for one attr.
+	 * Prefer compute-on-write cache; rebuild when stale / forced.
+	 */
+	public static function get_attribute_settings_walk(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! Capabilities::user_can_manage( $taxonomy ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
 		}
 
-		$result = Node_Type::set_preferred_render( $taxonomy, $attr_id, $raw );
+		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
+		$force   = isset( $_POST['force'] ) && '1' === (string) wp_unslash( $_POST['force'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		if ( $host_id <= 0 || '' === $attr_id ) {
+			self::send_error( new \WP_Error( 'wtt_bad_request', __( 'Invalid attribute walk request.', 'wp-taxonomy-tree' ) ) );
+		}
+
+		$result = Attribute::ensure_settings_walk_cache( $taxonomy, $host_id, $attr_id, $force );
+		if ( is_wp_error( $result ) ) {
+			self::send_error( $result );
+		}
+
+		wp_send_json_success(
+			array(
+				'termId'           => $host_id,
+				'attrId'           => $attr_id,
+				'settingsWalk'     => $result['settingsWalk'] ?? array(),
+				'settingsWalkMeta' => $result['settingsWalkMeta'] ?? array(),
+				'cached'           => ! empty( $result['cached'] ),
+			)
+		);
+	}
+
+	/**
+	 * Walk-Wizard: set/clear one Settings.view|data key on the attribute Relation
+	 * (path-keyed nested deltas). Never writes nested type nodes.
+	 */
+	public static function set_attribute_walk_settings(): void {
+		self::verify_request();
+		$taxonomy = self::request_taxonomy();
+		if ( is_wp_error( $taxonomy ) ) {
+			self::send_error( $taxonomy );
+		}
+		if ( ! current_user_can( Capabilities::edit_terms( $taxonomy ) ) ) {
+			self::send_error( new \WP_Error( 'wtt_forbidden', __( 'Forbidden.', 'wp-taxonomy-tree' ), array( 'status' => 403 ) ) );
+		}
+
+		$host_id   = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id   = self::request_attr_id();
+		$path      = isset( $_POST['path'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? (string) wp_unslash( $_POST['path'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '';
+		$namespace = isset( $_POST['namespace'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? (string) wp_unslash( $_POST['namespace'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '';
+		$key       = isset( $_POST['key'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? (string) wp_unslash( $_POST['key'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: '';
+
+		if ( $host_id <= 0 || '' === $attr_id || '' === $key ) {
+			self::send_error( new \WP_Error( 'wtt_bad_request', __( 'Invalid attribute walk settings.', 'wp-taxonomy-tree' ) ) );
+		}
+
+		$clear = isset( $_POST['clear'] ) && '1' === (string) wp_unslash( $_POST['clear'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$value = null;
+		if ( ! $clear && isset( $_POST['value'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$raw = wp_unslash( $_POST['value'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			if ( is_string( $raw ) ) {
+				$decoded = json_decode( $raw, true );
+				$value   = ( JSON_ERROR_NONE === json_last_error() ) ? $decoded : $raw;
+			} elseif ( is_array( $raw ) ) {
+				$value = $raw;
+			} else {
+				$value = $raw;
+			}
+		}
+
+		$result = Attribute::set_walk_settings_key(
+			$taxonomy,
+			$host_id,
+			$attr_id,
+			$path,
+			$namespace,
+			$key,
+			$clear ? null : $value
+		);
 		if ( is_wp_error( $result ) ) {
 			self::send_error( $result );
 		}
@@ -1725,7 +1938,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 
 		$result = Attribute::duplicate( $taxonomy, $host_id, $attr_id );
 		if ( is_wp_error( $result ) ) {
@@ -1746,7 +1959,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id  = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id  = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$readonly = isset( $_POST['readonly'] ) && '1' === (string) wp_unslash( $_POST['readonly'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute::set_readonly( $taxonomy, $host_id, $attr_id, $readonly );
@@ -1758,7 +1971,8 @@ final class Tree_Ajax {
 	}
 
 	/**
-	 * Apply an attribute rule fix (clear_readonly). set_default is UI-only.
+	 * Apply an attribute rule fix (clear_readonly / clear_hide / set_mult_01).
+	 * set_default is UI-only.
 	 */
 	public static function fix_attribute_rule(): void {
 		self::verify_request();
@@ -1771,7 +1985,7 @@ final class Tree_Ajax {
 		}
 
 		$host_id = isset( $_POST['term_id'] ) ? absint( wp_unslash( $_POST['term_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$attr_id = isset( $_POST['attr_id'] ) ? absint( wp_unslash( $_POST['attr_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$attr_id = self::request_attr_id();
 		$action  = isset( $_POST['fix_action'] ) ? sanitize_key( wp_unslash( $_POST['fix_action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
 		$result = Attribute_Validator::apply_fix( $taxonomy, $host_id, $attr_id, $action );
@@ -1832,6 +2046,33 @@ final class Tree_Ajax {
 				'validation' => $result['validation'] ?? null,
 			)
 		);
+	}
+
+	/**
+	 * Q90 parked table bands (Zeile/Kopf/Fuss) — reject Relation mutations.
+	 * Edges stay for legacy table chrome until Q90 cleanup; not editable product attrs.
+	 *
+	 * @return true|\WP_Error
+	 */
+	private static function reject_parked_table_band_edge( string $taxonomy, int $from_id, string $edge_id ) {
+		$edge_id = sanitize_key( $edge_id );
+		if ( $from_id <= 0 || '' === $edge_id || ! class_exists( Attribute::class ) ) {
+			return true;
+		}
+		foreach ( Relation::list_outgoing( $taxonomy, $from_id ) as $edge ) {
+			if ( sanitize_key( (string) ( $edge['id'] ?? '' ) ) !== $edge_id ) {
+				continue;
+			}
+			if ( Attribute::is_parked_table_band_edge( $taxonomy, $edge ) ) {
+				return new \WP_Error(
+					'wtt_parked_table_band',
+					__( 'Q90 parked table band (Zeile/Kopf/Fuss) — legacy leftover; not editable as a product attribute.', 'wp-taxonomy-tree' ),
+					array( 'status' => 400 )
+				);
+			}
+			return true;
+		}
+		return true;
 	}
 
 	/**
@@ -1908,8 +2149,16 @@ final class Tree_Ajax {
 	}
 
 	/**
-	 * @return string|\WP_Error
+	 * Attribute id from request: Relation edge id (Q123) or legacy numeric slot id.
 	 */
+	private static function request_attr_id(): string {
+		if ( ! isset( $_POST['attr_id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			return '';
+		}
+		$raw = wp_unslash( $_POST['attr_id'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		return Attribute::normalize_attr_id( $raw );
+	}
+
 	private static function request_taxonomy() {
 		$taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_key( wp_unslash( $_POST['taxonomy'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! Taxonomy::is_scaffold( $taxonomy ) || ! Tree_Model::is_hierarchical_taxonomy( $taxonomy ) ) {

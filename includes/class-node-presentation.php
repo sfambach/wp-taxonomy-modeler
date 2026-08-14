@@ -226,7 +226,57 @@ final class Node_Presentation {
 			update_term_meta( $term_id, Tree_Icons::META_KEY, $value );
 		}
 
+		/*
+		 * Basiseinheit unit leaves: Identity shortDescription mirrors symbol
+		 * so Compact / Sample fallbacks never paint a stale SI compound (kg).
+		 */
+		if ( 'symbol' === $context && '' !== $value ) {
+			self::sync_short_description_from_symbol( $term_id, $value );
+		}
+
 		return true;
+	}
+
+	/**
+	 * Align `_wtt_short_description` with Presentation.symbol for unit leaves.
+	 *
+	 * Glyph SoT is Presentation.symbol (seed may still use shortDescription).
+	 * Never invent "kg" here — mass units stay "g"; prefix Kilo composes "kg" in Unit paint.
+	 *
+	 * @param string $symbol Optional explicit symbol; empty → read stored Presentation.symbol.
+	 */
+	public static function sync_short_description_from_symbol( int $term_id, string $symbol = '' ): void {
+		if ( $term_id <= 0 || ! class_exists( Tree_Model::class ) ) {
+			return;
+		}
+		$term = get_term( $term_id );
+		if ( ! $term instanceof \WP_Term ) {
+			return;
+		}
+		$taxonomy = (string) $term->taxonomy;
+		if ( ! class_exists( Taxonomy::class ) || ! Taxonomy::is_scaffold( $taxonomy ) ) {
+			return;
+		}
+		if (
+			class_exists( Node_Type::class )
+			&& ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $term_id )
+		) {
+			return;
+		}
+
+		$symbol = trim( $symbol );
+		if ( '' === $symbol ) {
+			$symbol = trim( self::get( $term_id, 'symbol', self::site_locale() ) );
+		}
+		if ( '' === $symbol ) {
+			return;
+		}
+
+		$current = Tree_Model::get_short_description( $term_id );
+		if ( $current === $symbol ) {
+			return;
+		}
+		Tree_Model::set_short_description( $taxonomy, $term_id, $symbol );
 	}
 
 	/**
@@ -274,6 +324,54 @@ final class Node_Presentation {
 			$map[ $ctx ] = self::get( $term_id, $ctx, $locale );
 		}
 		$map[ self::CONTEXT_ICON ] = self::get( $term_id, self::CONTEXT_ICON, self::LOCALE_INVARIANT );
+		return $map;
+	}
+
+	/**
+	 * Presentation map for render/preview: fill empty slots from effective type
+	 * (and shortDescription for symbol/table). Does not write the store.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function map_for_term_resolved( string $taxonomy, int $term_id, string $locale = '' ): array {
+		$map = self::map_for_term_ui( $term_id, $locale );
+		if ( $term_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return $map;
+		}
+
+		$type_id = 0;
+		if ( class_exists( Node_Type::class ) ) {
+			$type_id = (int) Node_Type::get_effective_type_id( $taxonomy, $term_id );
+		}
+		if ( $type_id > 0 && $type_id !== $term_id ) {
+			$type_map = self::map_for_term_ui( $type_id, $locale );
+			foreach ( $map as $ctx => $val ) {
+				if ( '' !== (string) $val ) {
+					continue;
+				}
+				$from_type = isset( $type_map[ $ctx ] ) ? trim( (string) $type_map[ $ctx ] ) : '';
+				if ( '' !== $from_type ) {
+					$map[ $ctx ] = $from_type;
+				}
+			}
+		}
+
+		foreach ( array( 'symbol', 'table' ) as $ctx ) {
+			if ( '' !== trim( (string) ( $map[ $ctx ] ?? '' ) ) ) {
+				continue;
+			}
+			$short = '';
+			if ( class_exists( Tree_Model::class ) ) {
+				$short = trim( Tree_Model::get_short_description( $term_id ) );
+				if ( '' === $short && $type_id > 0 ) {
+					$short = trim( Tree_Model::get_short_description( $type_id ) );
+				}
+			}
+			if ( '' !== $short ) {
+				$map[ $ctx ] = $short;
+			}
+		}
+
 		return $map;
 	}
 
@@ -419,9 +517,15 @@ final class Node_Presentation {
 	}
 
 	/**
-	 * Fill empty slots from legacy whenever called (safe / idempotent).
+	 * Fill empty presentation slots from legacy once per taxonomy (safe).
+	 * Never re-scans on every admin load — that re-seeded cleared slots from
+	 * old term name/description after the user emptied presentation fields.
 	 */
 	public static function maybe_migrate_taxonomy( string $taxonomy ): void {
+		$flag = self::OPTION_MIGRATED . '_' . sanitize_key( $taxonomy );
+		if ( '1' === (string) get_option( $flag, '' ) ) {
+			return;
+		}
 		self::fill_taxonomy_from_legacy( $taxonomy );
 	}
 

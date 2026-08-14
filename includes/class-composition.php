@@ -504,7 +504,9 @@ final class Composition {
 	/**
 	 * Columns from effective attributes on a model / schema host node.
 	 *
-	 * @return list<array{id:int,name:string,slug:string,description:string,shortDescription:string,required:bool,typeId:int,typeName:string,typeKey:string,typePath:string}>
+	 * Column `id` is the Relation edge id (Q123 string key), not a term id.
+	 *
+	 * @return list<array{id:string,name:string,slug:string,description:string,shortDescription:string,required:bool,typeId:int,typeName:string,typeKey:string,typePath:string}>
 	 */
 	public static function get_attribute_columns( string $taxonomy, int $host_id ): array {
 		if ( $host_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
@@ -516,8 +518,8 @@ final class Composition {
 			if ( ! empty( $row['hidden'] ) ) {
 				continue;
 			}
-			$id = (int) ( $row['id'] ?? 0 );
-			if ( $id <= 0 ) {
+			$id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $id ) {
 				continue;
 			}
 			$type_name = (string) ( $row['typeName'] ?? '' );
@@ -732,7 +734,7 @@ final class Composition {
 			delete_term_meta( $term_id, self::META_KEY_RECORD_VALUES );
 			return;
 		}
-		update_term_meta( $term_id, self::META_KEY_RECORD_VALUES, wp_json_encode( $clean ) );
+		Json_Meta::update_term_meta( $term_id, self::META_KEY_RECORD_VALUES, $clean );
 	}
 
 	/**
@@ -1048,8 +1050,11 @@ final class Composition {
 	/**
 	 * Normalize instance rows: keep orphan cell keys (removed columns) for Q69 later.
 	 *
-	 * @param mixed               $raw     Decoded rows.
-	 * @param list<array{id:int}> $columns Active columns.
+	 * Active column keys may be Relation edge ids (model hosts) or numeric term ids
+	 * (legacy table / catalog). Never int-cast UUIDs.
+	 *
+	 * @param mixed                        $raw     Decoded rows.
+	 * @param list<array{id:int|string}> $columns Active columns.
 	 * @return list<array{id:string,cells:array<string,string>}>
 	 */
 	public static function normalize_rows( $raw, array $columns ): array {
@@ -1058,7 +1063,10 @@ final class Composition {
 		}
 		$active = array();
 		foreach ( $columns as $col ) {
-			$active[ (string) (int) $col['id'] ] = true;
+			$col_key = Attribute::normalize_attr_id( $col['id'] ?? '' );
+			if ( '' !== $col_key ) {
+				$active[ $col_key ] = true;
+			}
 		}
 
 		$out = array();

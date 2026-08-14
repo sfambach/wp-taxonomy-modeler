@@ -361,9 +361,7 @@ final class Object_Render {
 			'preferredRender'  => Node_Type::get_preferred_render( $term_id ),
 			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, $term_id ),
 			'validators'         => Node_Type::get_validators_for_node( $taxonomy, $term_id ),
-			'embedChoiceOptions' => ( Renderer::Embedded->value === Node_Type::get_preferred_render( $term_id ) )
-				? Attribute::choice_options_under_type( $taxonomy, $term_id )
-				: array(),
+			'embedChoiceOptions' => Attribute::embed_choice_options_for_type( $taxonomy, $term_id ),
 			'properties'       => $properties,
 			'instanceId'       => '',
 			'instanceValues'   => new \stdClass(),
@@ -401,7 +399,7 @@ final class Object_Render {
 			if ( ! is_array( $prop ) ) {
 				continue;
 			}
-			$aid = (string) (int) ( $prop['id'] ?? 0 );
+			$aid = Attribute::normalize_attr_id( $prop['id'] ?? '' );
 			/*
 			 * Q97: Mult many structured attrs (BOM Position, …) read related Model_Data
 			 * via links[] — not an inline blob on the parent attribute slot.
@@ -445,7 +443,7 @@ final class Object_Render {
 				$out_props[] = $prop;
 				continue;
 			}
-			if ( '' !== $aid && '0' !== $aid && isset( $values[ $aid ] ) && '' !== trim( (string) $values[ $aid ] ) ) {
+			if ( '' !== $aid && isset( $values[ $aid ] ) && '' !== trim( (string) $values[ $aid ] ) ) {
 				$raw                = (string) $values[ $aid ];
 				$prop['values']     = self::decode_store_values( $raw );
 				$first              = isset( $prop['values'][0] ) ? (string) $prop['values'][0] : $raw;
@@ -458,8 +456,8 @@ final class Object_Render {
 		/* Derive computed attributes on read (flat-list Aggregate ops). */
 		$value_map = $values;
 		foreach ( $out_props as $prop ) {
-			$aid = (string) (int) ( $prop['id'] ?? 0 );
-			if ( '' === $aid || '0' === $aid ) {
+			$aid = Attribute::normalize_attr_id( $prop['id'] ?? '' );
+			if ( '' === $aid ) {
 				continue;
 			}
 			if ( isset( $prop['values'][0] ) ) {
@@ -478,8 +476,8 @@ final class Object_Render {
 			$out_props[ $i ]['valueLabel']       = $computed;
 			$out_props[ $i ]['hasInstanceValue'] = true;
 			$out_props[ $i ]['readonly']         = true;
-			$aid                                 = (string) (int) ( $prop['id'] ?? 0 );
-			if ( '' !== $aid && '0' !== $aid ) {
+			$aid                                 = Attribute::normalize_attr_id( $prop['id'] ?? '' );
+			if ( '' !== $aid ) {
 				$values[ $aid ] = $computed;
 			}
 		}
@@ -600,7 +598,7 @@ final class Object_Render {
 		if ( 1 === count( $cleaned ) ) {
 			return $cleaned[0];
 		}
-		$json = wp_json_encode( array_values( $cleaned ) );
+		$json = Json_Meta::encode_raw( array_values( $cleaned ) );
 		return false === $json ? $cleaned[0] : $json;
 	}
 
@@ -623,12 +621,15 @@ final class Object_Render {
 			}
 		}
 
-		$slot_id  = (int) ( $row['id'] ?? 0 );
-		$type_key = (string) ( $row['typeKey'] ?? '' );
-		$dto      = array(
-			'id'            => $slot_id,
+		/* Q123: dto id = Relation edge id; legacySlotId only for pre-migrate term lookups. */
+		$attr_id     = Attribute::normalize_attr_id( $row['id'] ?? '' );
+		$legacy_slot = (int) ( $row['legacySlotId'] ?? 0 );
+		$type_id     = (int) ( $row['typeId'] ?? 0 );
+		$type_key    = (string) ( $row['typeKey'] ?? '' );
+		$dto         = array(
+			'id'            => $attr_id,
 			'name'          => (string) ( $row['name'] ?? '' ),
-			'typeId'        => (int) ( $row['typeId'] ?? 0 ),
+			'typeId'        => $type_id,
 			'typeName'      => (string) ( $row['typeName'] ?? '' ),
 			'typeKey'       => $type_key,
 			'multiplicity'  => (string) ( $row['multiplicity'] ?? Attribute::DEFAULT_MULTIPLICITY ),
@@ -647,7 +648,7 @@ final class Object_Render {
 			'fixedMode'     => (string) ( $row['fixedMode'] ?? '' ),
 			'fixedRootId'   => (int) ( $row['fixedRootId'] ?? 0 ) > 0
 				? (int) $row['fixedRootId']
-				: (int) ( $row['typeId'] ?? 0 ),
+				: $type_id,
 			'fixedOptions'  => isset( $row['fixedOptions'] ) && is_array( $row['fixedOptions'] )
 				? array_values( $row['fixedOptions'] )
 				: array(),
@@ -660,8 +661,8 @@ final class Object_Render {
 			'typePreferredRender' => isset( $row['typePreferredRender'] )
 				? Node_Type::normalize_preferred_render( (string) $row['typePreferredRender'] )
 				: (
-					(int) ( $row['typeId'] ?? 0 ) > 0
-						? Node_Type::get_preferred_render( (int) $row['typeId'] )
+					$type_id > 0
+						? Node_Type::get_preferred_render( $type_id )
 						: Renderer::Form->value
 				),
 			'preferredRender' => isset( $row['preferredRender'] )
@@ -670,19 +671,23 @@ final class Object_Render {
 					isset( $row['typePreferredRender'] )
 						? Node_Type::normalize_preferred_render( (string) $row['typePreferredRender'] )
 						: (
-							$slot_id > 0
-								? Node_Type::get_preferred_render( $slot_id )
-								: Renderer::Form->value
+							$legacy_slot > 0
+								? Node_Type::get_preferred_render( $legacy_slot )
+								: (
+									$type_id > 0
+										? Node_Type::get_preferred_render( $type_id )
+										: Renderer::Form->value
+								)
 						)
 				),
 		);
 
 		/* node_ref edit/display needs catalog options (same extras as Model table columns). */
-		if ( 'node_ref' === strtolower( $type_key ) && $slot_id > 0 && '' !== $taxonomy ) {
-			$scope_id                     = Node_Type::get_ref_scope_id( $slot_id );
+		if ( 'node_ref' === strtolower( $type_key ) && $legacy_slot > 0 && '' !== $taxonomy ) {
+			$scope_id                     = Node_Type::get_ref_scope_id( $legacy_slot );
 			$dto['refScopeId']            = $scope_id;
-			$dto['fieldMultiplicity']     = Node_Type::get_field_multiplicity( $slot_id );
-			$dto['nodeRefOptions']        = Node_Type::get_node_ref_options_for_slot( $taxonomy, $slot_id );
+			$dto['fieldMultiplicity']     = Node_Type::get_field_multiplicity( $legacy_slot );
+			$dto['nodeRefOptions']        = Node_Type::get_node_ref_options_for_slot( $taxonomy, $legacy_slot );
 			$dto['nodeRefCreateFields']   = Composition::get_node_ref_create_fields( $taxonomy, $scope_id );
 		}
 
@@ -690,8 +695,8 @@ final class Object_Render {
 			if ( isset( $row['dateConfig'] ) && is_array( $row['dateConfig'] ) ) {
 				$dto['dateConfig'] = $row['dateConfig'];
 			} elseif ( '' !== $taxonomy ) {
-				$cfg_id            = $slot_id > 0 ? $slot_id : (int) ( $row['typeId'] ?? 0 );
-				$cfg               = Node_Type::get_date_config_for_node( $taxonomy, $cfg_id );
+				$cfg_id            = $legacy_slot > 0 ? $legacy_slot : $type_id;
+				$cfg               = $cfg_id > 0 ? Node_Type::get_date_config_for_node( $taxonomy, $cfg_id ) : null;
 				$dto['dateConfig'] = $cfg ? $cfg : array( 'mode' => 'date' );
 			}
 		}
@@ -709,12 +714,9 @@ final class Object_Render {
 				$dto['displayFormat'] = Int_Value::normalize_format_id( (string) $row['displayFormat'] );
 				$dto['intConfig']     = array( 'displayFormat' => $dto['displayFormat'] );
 			} elseif ( '' !== $taxonomy ) {
-				$cfg_term = (int) ( $row['typeId'] ?? 0 );
-				if ( $cfg_term <= 0 ) {
-					$cfg_term = $slot_id;
-				}
-				$cfg = Node_Type::get_int_config_for_node( $taxonomy, $cfg_term );
-				$fmt = is_array( $cfg ) && isset( $cfg['displayFormat'] )
+				$cfg_term = $type_id > 0 ? $type_id : $legacy_slot;
+				$cfg      = $cfg_term > 0 ? Node_Type::get_int_config_for_node( $taxonomy, $cfg_term ) : null;
+				$fmt      = is_array( $cfg ) && isset( $cfg['displayFormat'] )
 					? Int_Value::normalize_format_id( (string) $cfg['displayFormat'] )
 					: Int_Value::DEFAULT_FORMAT;
 				$dto['intConfig']     = array( 'displayFormat' => $fmt );
@@ -726,13 +728,12 @@ final class Object_Render {
 		}
 
 		if ( 'media' === strtolower( $type_key ) && '' !== $taxonomy ) {
-			$type_id = (int) ( $row['typeId'] ?? 0 );
-			$cfg     = null;
+			$cfg = null;
 			if ( $type_id > 0 ) {
 				$cfg = Node_Type::get_media_config_for_node( $taxonomy, $type_id );
 			}
-			if ( null === $cfg && $slot_id > 0 ) {
-				$cfg = Node_Type::get_media_config_for_node( $taxonomy, $slot_id );
+			if ( null === $cfg && $legacy_slot > 0 ) {
+				$cfg = Node_Type::get_media_config_for_node( $taxonomy, $legacy_slot );
 			}
 			$dto['mediaConfig'] = is_array( $cfg )
 				? $cfg
@@ -1058,10 +1059,14 @@ final class Object_Render {
 
 	/**
 	 * Type carries its own attributes → structure (Form/Table embed), not CatalogChoice.
+	 * Honor fixedMode=catalog (Bauformen etc. may still expose typeProperties for heirs).
 	 *
 	 * @param array<string, mixed> $prop Property DTO.
 	 */
 	private static function is_structure_prop( array $prop ): bool {
+		if ( 'catalog' === strtolower( (string) ( $prop['fixedMode'] ?? '' ) ) ) {
+			return false;
+		}
 		$tp = isset( $prop['typeProperties'] ) && is_array( $prop['typeProperties'] )
 			? $prop['typeProperties']
 			: array();
