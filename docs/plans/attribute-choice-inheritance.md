@@ -2,7 +2,7 @@
 name: Attribute choice + inheritance (abstract diagram)
 overview: Unit type / CatalogChoice; ISO 4217 + BIPM/ISO 80000; measure profiles; Q125 calc Relation (op+props); storage fit.
 status: agreed
-last_updated: "2026-08-11"
+last_updated: "2026-08-14"
 related_docs:
   - docs/DEVELOPER-ATTRIBUTE-MODEL.md
   - docs/ARCHITECTURE.md
@@ -12,7 +12,7 @@ related_docs:
 
 # Attribute choice + inheritance (Unit-type sketch)
 
-**Agreed sketch (2026-08-11).** Reusable CatalogChoice + Q66 heir pattern, named for the Unit application. Scaffold ≈ **0.0.458**: catalogs under **Definition/Konstanten** (Präfixe, Basiseinheiten, Bauformen, Währung); **Unit type** + **C1** under Data Types; `calc` ≈ 0.0.456.
+**Agreed sketch (2026-08-11).** Reusable CatalogChoice + Q66 heir pattern, named for the Unit application. Scaffold ≈ **0.0.458** (+ **Präfixe lock ≈ 0.0.540**): catalogs under **Definition/Konstanten** (Präfixe, Basiseinheiten, Bauformen, Währung); **Unit type** under Data Types; `calc` ≈ 0.0.456.
 
 ## Structure
 
@@ -150,7 +150,7 @@ Do **not** map SI Präfix / Meter / °C to ISO 4217. Physical and count profiles
 |-------------|---------------------------|---------------------------|
 | **Unit type** | Composed unit datatype host | Partially `With prefix` / `size` (Value + Unit) |
 | **Base unit** | Catalog of Meter, Ohm, … | Children of With/Without prefix under **Konstanten/Basiseinheiten** (≈ 0.0.464: `is_unit_prefix_bucket` recognizes that parent; CatalogChoice + Walk Choices) |
-| **Praefix** | Catalog pico…Mega | Data Types / Präfixe; often via **allowedPrefixes** on unit leaf |
+| **Praefix** | Catalog pico…Tera | **Konstanten/Präfixe** (≈ 0.0.540 locked); married to units via allowlist / Choices |
 | **C1** | `size` / Passiv.Wert specialization | Inherit + host Default |
 
 **Law to keep when remapping:** composition attrs + type `child_of` options + heir **`choiceFilter` / Default on host maps**. Prefer `choiceFilter` for “which base units are allowed”; keep **`allowedPrefixes`** only for SI-prefix **factors** on a chosen base unit (Q51).
@@ -170,6 +170,39 @@ Parallel to ISO 4217 for money: align **SI unit / Präfix vocabulary** with stan
 | SI prefix name + symbol | Praefix leaf name / `shortDescription` / Presentation `symbol` | e.g. Milli, `m` |
 | Prefix factor (10^n) | Praefix attr `multiplikator` Default+RO+**Hide** (Mult `1`; Q105) — scaffold meta `_wtt_multiplikator` kept in sync | Same global factor as SI |
 | Unit name + symbol | Base unit leaf + Kuerzel typed **`node_presentation`** (context **`symbol`**) | e.g. Meter → presentation.symbol / shortDescription `m` (no hardcoded sample map) |
+
+### Konstanten/Präfixe catalog (locked)
+
+User-validated Fallstudie snapshot ≈ **0.0.540**. Do not regress without an explicit ask ([`.cursor/rules/praefixe-catalog-lock.mdc`](../../.cursor/rules/praefixe-catalog-lock.mdc)).
+
+**Path:** `Fallstudie / Definition / Konstanten / Präfixe`
+
+**Host (Präfixe knot)**
+
+| Setting | Value |
+|---------|--------|
+| Preferred | **`ChildListRenderer`** |
+| Choices (`choiceFilter`) | **Exclude Centi** by default (Centi leaf still exists; units can override Choices) |
+| Attribute **Presentation** | Type `node_presentation`, Mult **`1`**, Bindung **`besteht_aus`**, **RO**, Hide off, context **`symbol`** |
+| Attribute **multiplikator** | Type `double`, Mult **`1`**, Bindung **`besteht_aus`**, **RO+Hide** |
+
+**Leaves** (hierarchy children; Preferred **`CompactRenderer`**)
+
+| Name | Symbol | Factor (`multiplikator`) |
+|------|--------|--------------------------|
+| pico | p | 10⁻¹² |
+| nano | n | 10⁻⁹ |
+| Micro | u | 10⁻⁶ |
+| Milli | m | 10⁻³ |
+| Centi | c | 10⁻² |
+| Kilo | k | 10³ |
+| Mega | Mega | 10⁶ |
+| Giga | G | 10⁹ |
+| Tera | T | 10¹² |
+
+Each leaf: Q117 Presentation texts (form / table / select / symbol / help); inherited **multiplikator** Default override = SI factor; meta `_wtt_multiplikator` kept in sync.
+
+**Code SoT:** `Case_Data::prefix_catalog_leaves()`, `Case_Data::ensure_praefixe_catalog()` (from Konstanten ensure); factors also in `Demo_Data::ensure_prefix_multiplikators()`.
 
 **We keep beyond SI/ISO 80000 (nothing dropped):**
 

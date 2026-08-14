@@ -7,17 +7,35 @@ alwaysApply: true
 
 User may reverse recent preview experiments. Prefer undoing the latest checkpoint first.
 
-## Law (≈ 0.0.444 / harden 0.0.508 / field paint 0.0.510) — Preferred only, no exceptions
+## Law (≈ 0.0.444 / harden 0.0.508 / field paint 0.0.510 / cascade 0.0.558) — Preferred + settings cascade
 
 Admin **Preview surface** = **host node + Settings Preferred** (Editable + Display for that one surface).
 
-- Host surface: Attribute Options / walk Render overrides do **not** switch the host Form↔Table chrome.
-- Nested attribute cells: walk / Relation **Render does** paint (e.g. Kontakt → Table embed inside host Form). `resolveFieldPreferredPaint` — slot override wins.
+### Settings cascade (detail → model)
+
+Defaults inherit along the type/composition chain (illustration, not a hard-coded path):
+
+`Präfix → Basiseinheit (BU) → Unit type → Model`
+
+Model / admin Preview / nested cells **must** paint from those presets: Preferred, Q117 Presentation, Hide, Mult, Bindung, walk/Relation overrides. **Good presets ⇒ good final view — only if paint follows settings.**
+
+| Layer | Paint source |
+|-------|----------------|
+| **Host Preview** | Host Preferred only — Attribute Options / walk Render do **not** switch host Form↔Table chrome |
+| **Nested attribute cell** | Attribute type Preferred (`resolveFieldPreferredPaint` / `paintStructureEmbed`) — Compact when Compact is set; **never invent Form** for that layer |
+| **Q117 in nested structure** | Type node Presentation (`typePresentation`) — not the outer host |
+| **Hide / Mult / Bindung** | Honour walk/edge settings when painting nested schema fields |
+
+### No hardcoding
+
+- **Do not** hard-code by display name, path, or special-case nodes.
+- Hardcode **only inside a renderer** for that renderer’s **own** chrome (Form/Table/Compact/Multistep layout mechanics), and **only for the current layer**. Nested content still resolves from the nested type’s Preferred + settings.
 - Do **not** paint Form+Table (+Tree) together “for completeness”.
-- Do **not** stack CatalogChoice on attribute hosts; do **not** hard-code Preview by display name (`Kontakt` / `Preis` / …).
+- Do **not** stack CatalogChoice on attribute hosts.
 - Empty optional ListChooser / CatalogChoice label is **`—`**, not the word “None”.
 - Dispatch: `effectiveHostPreferredRender` → `renderUnifiedPreviewContent` / `renderAttributeHostPreview`.
 
+Plan: [`docs/plans/project-plan.md`](../../docs/plans/project-plan.md) (Presentation surfaces — Settings cascade).
 ## Checkpoint P4 — Attribute-host Form/Table (≈ v0.0.260–0.0.270)
 
 **Why:** Taxonomy holds **structures**; preview of attribute hosts (Kontakt, Preis, …) needs Form(1 instance) + Table(n instances), each editable + readonly — not the parked Collection `table` type.

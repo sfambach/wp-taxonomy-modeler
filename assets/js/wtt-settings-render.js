@@ -460,8 +460,42 @@
 	}
 
 	/**
-	 * Preferred Render | Converter | Validators — one row (Q114).
-	 * Optional detail (validators table/list) below.
+	 * Preferred Render → Converter → Validators — stacked (node Display + walk).
+	 * Same order/semantics as ConfigPage Preferred; may be narrower; labels above
+	 * controls OK. Prefer this over side-by-side `renderPreferredChrome` triples.
+	 *
+	 * @param {{
+	 *   className?: string,
+	 *   render?: HTMLElement|null,
+	 *   converter?: HTMLElement|null,
+	 *   validators?: HTMLElement|null
+	 * }} opts
+	 * @return {HTMLElement}
+	 */
+	function renderPreferredStack(opts) {
+		opts = opts || {};
+		var root = el('div', {
+			className:
+				'wtt-settings-preferred-chrome wtt-settings-preferred--stack' +
+				(opts.className ? ' ' + opts.className : ''),
+		});
+		[opts.render, opts.converter, opts.validators].forEach(function (node) {
+			if (!node) {
+				return;
+			}
+			root.appendChild(
+				el('div', { className: 'wtt-settings-preferred-stack__row' }, [
+					node,
+				])
+			);
+		});
+		return root;
+	}
+
+	/**
+	 * Preferred Render | Converter | Validators — legacy side-by-side chrome.
+	 * Prefer `renderPreferredStack` (node Display + walk parity ≈ 0.0.559).
+	 * Kept for any remaining attribute Options surfaces not yet migrated.
 	 *
 	 * @param {{
 	 *   className?: string,
@@ -622,6 +656,7 @@
 		renderFormRow: renderFormRow,
 		renderFlagsRow: renderFlagsRow,
 		renderSection: renderSection,
+		renderPreferredStack: renderPreferredStack,
 		renderPreferredChrome: renderPreferredChrome,
 	};
 

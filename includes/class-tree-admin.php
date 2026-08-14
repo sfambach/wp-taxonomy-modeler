@@ -143,6 +143,9 @@ final class Tree_Admin {
 			'modelDataUrl'              => class_exists( Model_Data_Admin::class )
 				? Model_Data_Admin::page_url()
 				: admin_url( 'admin.php?page=wp-taxonomy-tree-model-data' ),
+			'modelDataNonce'            => class_exists( Model_Data_Admin::class )
+				? wp_create_nonce( Model_Data_Admin::NONCE_ACTION )
+				: '',
 			'treeIcons'         => Tree_Icons::picker_options(),
 			'catalogBindings'   => Catalog_Bindings::for_client( $requested ),
 			/* Trial: flags + static meta as form rows (label left, chips right). Set false to revert strip layout. */
@@ -499,7 +502,7 @@ final class Tree_Admin {
 				'attributesComputedRoHint' => __( 'Computed attributes are always read-only.', 'wp-taxonomy-tree' ),
 				'soleSelectLockedHint' => __( 'Only one choice — selected automatically.', 'wp-taxonomy-tree' ),
 				'preferredRender' => __( 'Preferred render', 'wp-taxonomy-tree' ),
-				'preferredRenderHint' => __( 'Default layout for admin preview and Object View (when the block uses Node preferred). Embedded renderer = pick a child/kind, then fill its attributes compactly (not a type). Chooser dialog is separate (inline vs popup).', 'wp-taxonomy-tree' ),
+				'preferredRenderHint' => __( 'Default layout for admin preview and Object View (when the block uses Node preferred). Multistep = pick a child/kind, then fill/filter its attributes (not a type). Mode dialog|inline is renderer-local — not Settings treePickerMode.', 'wp-taxonomy-tree' ),
 				'preferredChrome' => __( 'Preferred', 'wp-taxonomy-tree' ),
 				'preferredChromeHint' => __( 'Render = how the node is painted; converter = value transform; validators = value checks. Only options that apply to this type.', 'wp-taxonomy-tree' ),
 				'preferredRenderShort' => __( 'Render', 'wp-taxonomy-tree' ),
@@ -511,8 +514,16 @@ final class Tree_Admin {
 				'preferredRenderTable' => __( 'Table', 'wp-taxonomy-tree' ),
 				'preferredRenderCompact' => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 				'preferredRenderCompactVertical' => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
-				'preferredRenderEmbed' => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
-				'preferredRenderEmbedHint' => __( 'Choose a child/kind, then fill its attributes in a compact strip (Form/Table-style). For table cells the column already names the field. Not the same as chooser inline/popup.', 'wp-taxonomy-tree' ),
+				'preferredRenderEmbed' => __( 'Multistep', 'wp-taxonomy-tree' ),
+				'preferredRenderMultistep' => __( 'Multistep', 'wp-taxonomy-tree' ),
+				'preferredRenderEmbedHint' => __( 'Choose a child/kind, then filter existing Model data or create and bind (id only). Dialog = popup Phase A/B; Inline = step 1 and step 2 side by side. Not the same as Settings treePickerMode.', 'wp-taxonomy-tree' ),
+				'multistepMode' => __( 'Multistep mode', 'wp-taxonomy-tree' ),
+				'multistepModeHint' => __( 'Dialog opens Phase A (kind) then Phase B (filter/create) in a popup. Inline shows step 1 and step 2 in a horizontal strip. Renderer-local — not global tree picker mode.', 'wp-taxonomy-tree' ),
+				'compactShowLabels' => __( 'Show field labels', 'wp-taxonomy-tree' ),
+				'compactShowLabelsHint' => __( 'When off, Compact paints values only (no Praefix / Kuerzel captions).', 'wp-taxonomy-tree' ),
+				'compactOptionsHint' => __( 'Choose Compact (horizontal) or Compact (vertical) as Preferred. Use Show field labels for captions vs dense value-only chrome.', 'wp-taxonomy-tree' ),
+				'multistepModeDialog' => __( 'Dialog', 'wp-taxonomy-tree' ),
+				'multistepModeInline' => __( 'Inline', 'wp-taxonomy-tree' ),
 				'preferredRenderChildList' => __( 'Child list', 'wp-taxonomy-tree' ),
 				'preferredRenderChildListHint' => __( 'List field of this node’s hierarchy children (default for Konstanten catalogs with children, e.g. Präfixe).', 'wp-taxonomy-tree' ),
 				'preferredRenderMedia' => __( 'MediaRenderer', 'wp-taxonomy-tree' ),
@@ -541,7 +552,8 @@ final class Tree_Admin {
 				'validatorDefaultBadge' => __( 'Default', 'wp-taxonomy-tree' ),
 				'attributesPreferredConverterDefault' => __( 'Type default', 'wp-taxonomy-tree' ),
 				'previewPreferredOnlyHint' => __( 'Preview surface = this node’s Preferred (Editable + Display). Nested attribute fields still use their walk / Relation Render (e.g. Kontakt → Table).', 'wp-taxonomy-tree' ),
-				'previewEmbed' => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
+				'previewEmbed' => __( 'Multistep', 'wp-taxonomy-tree' ),
+				'previewMultistep' => __( 'Multistep', 'wp-taxonomy-tree' ),
 				'embedPickHint' => __( 'Choose kind…', 'wp-taxonomy-tree' ),
 				'embedNoChoices' => __( 'No specialization children under this node.', 'wp-taxonomy-tree' ),
 				'embedLoading' => __( 'Loading…', 'wp-taxonomy-tree' ),
@@ -776,6 +788,14 @@ final class Tree_Admin {
 			$css = file_get_contents( $shared_css ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 			if ( false !== $css && '' !== $css ) {
 				echo "<style id=\"wtt-media-render-css\">\n" . $css . "\n</style>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			}
+		}
+
+		$object_css = WTT_PLUGIN_DIR . 'assets/css/wtt-object-render.css';
+		if ( is_readable( $object_css ) ) {
+			$css = file_get_contents( $object_css ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			if ( false !== $css && '' !== $css ) {
+				echo "<style id=\"wtt-object-render-css\">\n" . $css . "\n</style>\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			}
 		}
 

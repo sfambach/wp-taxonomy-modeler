@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.127-plan"
+version: "0.7.143-plan"
 last_updated: "2026-08-14"
 related_docs:
   - README.md
@@ -19,6 +19,7 @@ related_docs:
   - .cursor/rules/node-renderers.mdc
   - .cursor/rules/config-renderers.mdc
   - .cursor/rules/settings-ui-parity.mdc
+  - .cursor/rules/praefixe-catalog-lock.mdc
   - .cursor/rules/composition-first.mdc
   - .cursor/rules/parked-complex-types.mdc
   - .cursor/rules/child-of-inheritance-only.mdc
@@ -134,7 +135,7 @@ Short board after a long chat. **Locked design** vs **open UX / next detail**. R
 | **Q121** | Money: canonical **EUR** + foreign-entry **snapshot** `{amount, currency, rate, date}`. Physical canonical later. |
 | **Q122** | Type properties + inheritance override **everywhere**. Composed types expose **component attribute** settings (same surfaces as on those type nodes) — **dynamic** from the model graph, never hard-coded. |
 | **Q123** | Attributes = **Relation only**; **`Settings.data` + `Settings.view`**; recursive walk; hybrid overrides. Diagrams: [`DEVELOPER-ATTRIBUTE-MODEL.md`](../DEVELOPER-ATTRIBUTE-MODEL.md). OQ-W1…W16 closed. |
-| **Tree ≈ 0.0.463+** | **Konstanten**: Präfixe + Basiseinheiten + Bauformen + Währung. **Data Types**: Simple / Complex (`quantity`, `set`, legacy `table`) / Unit type. Parked Complex `enum`/`list`/`node_*` soft-trashed. |
+| **Tree ≈ 0.0.540** | **Konstanten**: **Präfixe** (ChildList; Presentation+multiplikator; pico…Tera Compact; Centi Choices-exclude) + Basiseinheiten + Bauformen + Währung. **Data Types**: Simple / Complex / Unit type. Parked Complex soft-trashed. |
 | **Q74 lazy ≈ 0.0.405** | Relations panel **collapsed by default**; RelationType catalog loaded on expand (`wtt_get_relation_types`), not on every `get_node`. |
 
 ### Open design / construction sites (*discuss when needed*)
@@ -220,6 +221,22 @@ This is **product architecture**, not a lane tip. It unifies already-decided thr
 - **Q90** — do not grow Collection `enum`/`list`/`table` product features via blocks.
 
 Implementation backlog for the Gutenberg zone: [`docs/plans/blocks-lane.md`](blocks-lane.md). Shared renderer rules: [`.cursor/rules/node-renderers.mdc`](../../.cursor/rules/node-renderers.mdc), [`.cursor/rules/reuse-renderers.mdc`](../../.cursor/rules/reuse-renderers.mdc).
+
+### Settings cascade → paint (locked ≈ 0.0.558 / plan 0.7.140)
+
+**Defaults cascade detail → model** (illustration of inheritance depth, not a hard-coded path):
+
+`Präfix → Basiseinheit (BU) → Unit type → Model`
+
+| Rule | Meaning |
+|------|---------|
+| **Presets drive paint** | Preferred, Q117 Presentation, Hide, Mult, Bindung, and walk/Relation overrides must reach Model / admin Preview / nested cells. Good presets ⇒ good final view — **only if paint follows settings**. |
+| **Host surface** | Admin Preview chrome = **host Preferred only** (Editable + Display for that one surface). |
+| **Nested attribute cell** | Uses the **attribute type’s Preferred** (walk / Relation) + that type’s Presentation / Hide / Mult — e.g. Compact when Compact is set; **never invent Form** for the nested layer. |
+| **Q117 host for nested structure** | `node_presentation` inside a structure embed resolves against the **type node** (`typePresentation` / type name), not the outer host. |
+| **No hardcoding** | Never by display name, path, or special-case nodes. Hardcode **only inside a renderer** for that renderer’s own chrome (Form/Table/Compact/Multistep layout mechanics), and **only for the current layer**. Nested content still resolves from the nested type’s settings. |
+
+Agent rules: [`.cursor/rules/preview-checkpoints.mdc`](../../.cursor/rules/preview-checkpoints.mdc), [`.cursor/rules/reuse-renderers.mdc`](../../.cursor/rules/reuse-renderers.mdc), [`.cursor/rules/settings-ui-parity.mdc`](../../.cursor/rules/settings-ui-parity.mdc), [`.cursor/rules/node-renderers.mdc`](../../.cursor/rules/node-renderers.mdc).
 
 ## Problem
 
@@ -620,6 +637,25 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-14 | **Settings walk UX ≈ `0.0.531`:** Nested walk table; deferred Choices; C1 demo retired (heirs ≠ CatalogChoice); EmbeddedRenderer for aggregation hosts without kind children; Preferred = type-node default (no display-name). Docs: parity plan + ARCHITECTURE sync. Plan **0.7.125**. |
 | 2026-08-14 | **ChildList ConfigPage ≈ `0.0.532`:** Drop Q126 `childNodes` box; Choices UI only when Preferred = `ChildListRenderer` (Währung/Praefix/Konstanten same); default Preferred for hosts with children → ChildList. Tag **Walk01** = pre-change checkpoint. Plan **0.7.126**. |
 | 2026-08-14 | **Retire Implementation ≈ `0.0.533`:** Remove Fallstudie/Implementation from Case_Data blueprint; `ensure_bom_implementation` / `ensure_bauteile_catalog` permanent no-ops; one-shot soft-trash `maybe_retire_implementation_branch`. Artifact source was seed + install/reset. Plan **0.7.127**. |
+| 2026-08-14 | **Display Preferred form stack ≈ `0.0.536`:** Drop outer Preferred row; Render / Converter / Validators as normal form rows (label left, select right); ChildList options under Render; converter options hook; validators table only when set. Plan **0.7.128**. |
+| 2026-08-14 | **Preferred options in control column ≈ `0.0.537`:** Renderer/converter/validator settings mount in the same form control column as the select (right of label), not full-width under the row. |
+| 2026-08-14 | **Präfixe template snapshot ≈ `0.0.540`:** Capture live Konstanten/Präfixe into Case_Data (`prefix_catalog_leaves` + `ensure_praefixe_catalog`): ChildList + Centi Choices exclude; Presentation + multiplikator attrs; Compact leaves; Giga/Tera SI factors. |
+| 2026-08-14 | **Präfixe docs lock:** ARCHITECTURE / PRODUCT / case-study / attribute-choice-inheritance / OPEN-QUESTIONS Q51 / ROADMAP describe the locked catalog; rule `praefixe-catalog-lock.mdc`. Plan **0.7.130**. |
+| 2026-08-14 | **ChildList Choices/Default Q90 depth ≈ `0.0.541`:** ConfigPage Choices paint full choice subtree; Default = ListChooser (depth ≤ 1) or TreeChooser (depth ≥ 2) — same as CatalogChoice (Basiseinheiten tree, Präfixe flat). Plan **0.7.131**. |
+| 2026-08-14 | **Properties scroll lock ≈ `0.0.542`:** Generation-guarded pane/window scroll hold (~180ms) + form rows `align-items: start` + `overflow-anchor: none` on detail/tree/form — stop recurring jumps on Preferred/Choices re-render. Plan **0.7.132**. |
+| 2026-08-14 | **Basiseinheit leaves Compact ≈ `0.0.543`:** With + Without prefix unit leaves Preferred = `CompactRenderer` (definition = inherited Praefix?/Kuerzel); Without prefix gets Kuerzel composition; UnitRenderer reserved for quantity usage fields. Plan **0.7.133**. |
+| 2026-08-14 | **EmbeddedRenderer tree-admin ≈ `0.0.544`:** Wire Model_Data list/create via `wtt_model_data_*` + `modelDataNonce`; fix preview onChange (`renderKeepingPreviewChrome`); pass rootId/label; load object-render CSS. Plan **0.7.134**. |
+| 2026-08-14 | **MultistepRenderer ≈ `0.0.546`:** Rename Preferred wire Embedded→**Multistep** (aliases keep embed/EmbeddedRenderer); meta `_wtt_multistep_mode` dialog\|inline (renderer-local ≠ Q74); ConfigPage mode under Render; object-render inline strip. Plan **0.7.135**. |
+| 2026-08-14 | **Multistep × Bindung (Q111/Q112 ≈ `0.0.552`):** Composition Multistep = kind → fill attrs (attribute order; values in context) — no Matches / Create-and-bind / instructional chrome. Aggregation Multistep = kind → filter/search Model_Data + create + bind id (UR-B6 chooser). Plan **0.7.136**. |
+| 2026-08-14 | **Multistep Phase B = kind Preferred ≈ `0.0.554`:** Composition (and Aggregation filter) paint with the **selected kind node’s Preferred** (Meter/Gramm → Compact horizontal Praefix\|Kuerzel) — not hard-coded Form. Plan **0.7.137**. |
+| 2026-08-14 | **Compact Display + Multistep composition Display ≈ `0.0.555`:** Admin Preferred Compact paints via `renderCompact` first (draft `compactShowLabels` → `showLabels`); ConfigPage **Show field labels**; Multistep Composition Display paints kind Preferred with filled values (unwrap `presentation.values`); soft Display refresh without Editable remount-loop; mount `onFieldInput` for Form. Plan **0.7.138**. |
+| 2026-08-14 | **Nested structure Preferred + Q117 ≈ `0.0.558`:** Nested attribute cells paint **type Preferred** with **typePresentation** as Q117 host — never outer host / typeKey slug; Hide omits nested attrs. Plan **0.7.139**. |
+| 2026-08-14 | **Settings cascade → paint (locked):** Defaults cascade detail→model (Präfix→BU→Unit type→Model). Preview/nested cells **must** follow Preferred / Q117 / Hide / Mult / Bindung / walk overrides — **no** display-name or special-case hardcoding; renderer-local chrome only for the current layer. Plan **0.7.140**. |
+| 2026-08-14 | **Compact Hide edge-match + walk Preferred stack ≈ `0.0.559`:** Walk Hide/RO/Default apply to `typeProperties` by **edge id** only (never shared Simple `typeId` — Name was dropped when another text field was hidden). Walk Preferred R/C/V = stacked like node Display (`renderPreferredStack`). Plan **0.7.141**. |
+| 2026-08-14 | **Hide remount shell pin ≈ `0.0.560`:** Walk Hide AJAX remount must match cold-load layout. Cause: document scroll restored/held while `body` overflow hidden → ~⅓ UI + gray void until reload. Fix: never restore window scroll; blur before wipe; `syncAppShellLayout` measures live `#wtt-app` top→viewport; pin document scroll. |
+| 2026-08-14 | **Aggregation Preferred paint ≈ `0.0.561`:** Structure cells with Bindung=aggregation paint **bound Model_Data** via type Preferred (`paintAggregationBound`) — not Composition `paintStructureEmbed` host JSON. Hide edge-id match + walk R/C/V stack remain. |
+| 2026-08-14 | **Hide remount shell flex ≈ `0.0.562`:** 0.0.560/561 still collapsed — `syncAppShellLayout` wrote too-small inline `#wtt-app` height from rects → `#wpwrap`/admin menu shrank + white void. Fix: CSS flex fill `#wpwrap`→`#wtt-app`; JS only clears inline sizes + pins admin scrollers; never measure/write pixel heights. Plan **0.7.142**. |
+| 2026-08-14 | **Aggregation chooser paint ≈ `0.0.563`:** Bindung=aggregation structure cells must **not** composition-embed type schema (Name/E-Mail inputs). Unbound Editable → Multistep Aggregation pick/search/create/bind (concrete type skips Phase A); bound → type Preferred Compact/Form readonly + Change. Drift from ≈0.0.561 sample Compact fixed. Plan **0.7.143**. |
 | 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
 | 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 

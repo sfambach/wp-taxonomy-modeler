@@ -49,7 +49,8 @@ enum Renderer: string {
 	case Table            = 'TableRenderer';
 	case Compact          = 'CompactRenderer';
 	case CompactVertical  = 'CompactVerticalRenderer';
-	case Embedded         = 'EmbeddedRenderer';
+	/** Pick kind → filter/create (UR-B6). Legacy wire: EmbeddedRenderer / embed. */
+	case Multistep        = 'MultistepRenderer';
 	case ChildList        = 'ChildListRenderer';
 
 	/**
@@ -63,7 +64,7 @@ enum Renderer: string {
 			self::Table,
 			self::Compact,
 			self::CompactVertical,
-			self::Embedded,
+			self::Multistep,
 			self::ChildList,
 		);
 	}
@@ -137,10 +138,13 @@ enum Renderer: string {
 			'compact-h'              => self::Compact,
 			'compact-vertical'       => self::CompactVertical,
 			'compact-v'              => self::CompactVertical,
-			'embed'                  => self::Embedded,
-			'pick-fill'              => self::Embedded,
-			'pick_fill'              => self::Embedded,
-			'compact-embed'          => self::Embedded,
+			'embed'                  => self::Multistep,
+			'embeddedrenderer'       => self::Multistep,
+			'pick-fill'              => self::Multistep,
+			'pick_fill'              => self::Multistep,
+			'compact-embed'          => self::Multistep,
+			'multistep'              => self::Multistep,
+			'multisteprenderer'      => self::Multistep,
 			'child_list'             => self::ChildList,
 			'childlist'              => self::ChildList,
 			'childlistrenderer'      => self::ChildList,

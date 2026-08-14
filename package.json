@@ -1,6 +1,6 @@
 {
   "name": "wp-taxonomy-tree",
-	"version": "0.0.533",
+	"version": "0.0.563",
   "description": "WP Taxonomy Tree — admin tree scaffold + Gutenberg blocks",
   "private": true,
   "scripts": {

@@ -122,6 +122,11 @@ final class Settings_Walk {
 			$data['allowedPrefixIds'] = Node_Type::get_allowed_prefix_ids( $node_id );
 		}
 
+		$choice_filter = Node_Type::get_choice_filter( $node_id );
+		if ( is_array( $choice_filter ) ) {
+			$data['choiceFilter'] = $choice_filter;
+		}
+
 		/*
 		 * Type Default seed (Q106 / node Festwert) — live for Walk hybrid.
 		 * Attribute Relation overrides: depth 0 → edge.default; nested → settings.nested[path].data.default.
@@ -1391,13 +1396,21 @@ final class Settings_Walk {
 			);
 
 		if ( $include_walk_summary && $may_be_nested ) {
-			$deep                          = self::walk( $taxonomy, $type_id, $deltas, self::SAFETY_DEPTH );
-			$walk_meta                     = self::meta_from_walk( $deep );
-			$walk_meta['preferredSource']  = $source;
+			$deep                             = self::walk( $taxonomy, $type_id, $deltas, self::SAFETY_DEPTH );
+			$walk_meta                        = self::meta_from_walk( $deep );
+			$walk_meta['preferredSource']     = $source;
 			$walk_meta['hasPreferredOverride'] = $has_override;
-			$walk_summary                  = self::walk_is_nested( $walk_meta )
-				? self::summary_from_walk( $deep )
-				: array();
+			/*
+			 * Always emit at least the depth-0 type row. Gating on walk_is_nested
+			 * left Options with nodeCount=1 + empty levels → perpetual “Loading…”.
+			 */
+			$walk_summary = self::summary_from_walk( $deep );
+		} elseif ( $include_walk_summary ) {
+			/*
+			 * Depth-0 only (no nested attributes): still one Settings surface
+			 * (parity — Knoten-/Attribut-Walk even when the type has no children).
+			 */
+			$walk_summary = self::summary_from_walk( $walk );
 		} elseif ( ! $include_walk_summary && $may_be_nested ) {
 			/* Options fold loads summary via wtt_get_attribute_settings_walk. */
 			$walk_meta['lazy'] = true;
@@ -1489,9 +1502,12 @@ final class Settings_Walk {
 			&& Node_Type::is_unit_prefix_bucket( $taxonomy, $node_id );
 
 		if ( ! $skip_structure_walk ) {
-		foreach ( Attribute::BINDINGS as $binding_key ) {
-			foreach ( Relation::list_outgoing_by_type_key( $taxonomy, $node_id, $binding_key ) as $edge ) {
-				$to_id = (int) ( $edge['toId'] ?? 0 );
+		/*
+		 * Effective attributes along child_of (Organisation inherits Kontakt).
+		 * Own-only outgoing edges left specializations empty in the Options walk.
+		 */
+		foreach ( Attribute::effective_edges_for_settings_walk( $taxonomy, $node_id ) as $edge ) {
+				$to_id = (int) ( $edge['typeId'] ?? $edge['toId'] ?? 0 );
 				if ( $to_id <= 0 ) {
 					continue;
 				}
@@ -1509,7 +1525,7 @@ final class Settings_Walk {
 					$child_node_id = $slot_type;
 				}
 
-				$child_edge_id   = Attribute::normalize_attr_id( $edge['id'] ?? '' );
+				$child_edge_id   = Attribute::normalize_attr_id( $edge['id'] ?? $edge['edgeId'] ?? '' );
 				if ( '' === $child_edge_id ) {
 					continue;
 				}
@@ -1546,7 +1562,6 @@ final class Settings_Walk {
 				$child_node['edgeReadOnly'] = ! empty( $edge['readOnly'] ) || ! empty( $edge['readonly'] );
 				$child_node['edgeHidden']   = ! empty( $edge['hidden'] );
 				$children[]                 = $child_node;
-			}
 		}
 		} // end !skip_structure_walk
 

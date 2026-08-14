@@ -775,6 +775,8 @@ final class Tree_Model {
 			'setSeparator'=> Node_Type::get_set_separator( (int) $term->term_id ),
 			'setJoinUnits'=> Node_Type::get_set_join_units( (int) $term->term_id ),
 			'setLabelChildren' => Node_Type::get_set_label_children( (int) $term->term_id ),
+			'multistepMode' => Node_Type::get_multistep_mode( (int) $term->term_id ),
+			'compactShowLabels' => Node_Type::get_compact_show_labels( (int) $term->term_id ),
 			'isTable'     => Node_Type::has_type_named( $taxonomy, (int) $term->term_id, 'table' ),
 			'isTableTypeCatalog' => Node_Type::is_table_type_catalog( $taxonomy, (int) $term->term_id ),
 			'tableValidation' => (
@@ -803,6 +805,7 @@ final class Tree_Model {
 			'fixedNodeId' => Node_Type::get_fixed_node_id( (int) $term->term_id ),
 			'fixed'       => Node_Type::get_fixed_assignment( $taxonomy, (int) $term->term_id ),
 			'fixedOptions'=> Node_Type::get_fixed_picker_options( $taxonomy, (int) $term->term_id ),
+			'choiceFilter'=> Node_Type::get_choice_filter( (int) $term->term_id ),
 			'refScopeId'  => Node_Type::get_ref_scope_id( (int) $term->term_id ),
 			'refScope'    => Node_Type::get_ref_scope_assignment( $taxonomy, (int) $term->term_id ),
 			'fieldMultiplicity' => Node_Type::get_field_multiplicity( (int) $term->term_id ),

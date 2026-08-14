@@ -67,6 +67,7 @@
 		attrDetailExpanded: {},
 		/* In-flight Settings-walk hydrations (attr id → Promise). */
 		attrWalkLoading: {},
+		attrWalkForceTried: {},
 		/* Session cache: taxonomy-wide datatype tree (omit rebuild noise across selects). */
 		datatypeTreeCache: null,
 		/* Hide project root in tree column (from settings; default on). */
@@ -272,9 +273,9 @@
 			fallback: 'Compact (vertical)',
 		},
 		{
-			value: 'EmbeddedRenderer',
-			labelKey: 'preferredRenderEmbed',
-			fallback: 'Embedded renderer',
+			value: 'MultistepRenderer',
+			labelKey: 'preferredRenderMultistep',
+			fallback: 'Multistep',
 		},
 		{
 			value: 'ChildListRenderer',
@@ -303,11 +304,13 @@
 			'compact-vertical': 'CompactVerticalRenderer',
 			compactverticalrenderer: 'CompactVerticalRenderer',
 			'compact-v': 'CompactVerticalRenderer',
-			embed: 'EmbeddedRenderer',
-			embeddedrenderer: 'EmbeddedRenderer',
-			'pick-fill': 'EmbeddedRenderer',
-			pick_fill: 'EmbeddedRenderer',
-			'compact-embed': 'EmbeddedRenderer',
+			embed: 'MultistepRenderer',
+			embeddedrenderer: 'MultistepRenderer',
+			'pick-fill': 'MultistepRenderer',
+			pick_fill: 'MultistepRenderer',
+			'compact-embed': 'MultistepRenderer',
+			multistep: 'MultistepRenderer',
+			multisteprenderer: 'MultistepRenderer',
 			child_list: 'ChildListRenderer',
 			childlist: 'ChildListRenderer',
 			childlistrenderer: 'ChildListRenderer',
@@ -367,6 +370,13 @@
 		return 'FormRenderer';
 	}
 
+	function normalizeMultistepMode(raw) {
+		var key = String(raw == null ? '' : raw)
+			.trim()
+			.toLowerCase();
+		return key === 'inline' ? 'inline' : 'dialog';
+	}
+
 	function isNodePresentationTypeKey(raw) {
 		var key = String(raw == null ? '' : raw)
 			.trim()
@@ -388,7 +398,7 @@
 		var ctx = String(raw == null ? '' : raw)
 			.trim()
 			.toLowerCase();
-		if (ctx === 'name') {
+		if (ctx === 'name' || ctx === 'knotenname') {
 			return 'form';
 		}
 		var allowed = {
@@ -461,10 +471,16 @@
 	 * Flat context→text map from a host / draft node.
 	 * get_node sends `{ form, table, symbol, … }`; draft Presentation UI nests
 	 * the same keys under `.values` after setDraftPresentationFromServer.
+	 *
+	 * Unloaded draft bags (`loaded: false`) must not shadow the server map —
+	 * otherwise Preview always falls back to term name and ignores Q117 texts.
 	 */
 	function presentationMapFromHost(host) {
 		var p = host && host.presentation;
 		if (!p || typeof p !== 'object') {
+			return null;
+		}
+		if (Object.prototype.hasOwnProperty.call(p, 'loaded') && !p.loaded) {
 			return null;
 		}
 		if (p.values && typeof p.values === 'object') {
@@ -474,31 +490,43 @@
 			Object.prototype.hasOwnProperty.call(p, 'form') ||
 			Object.prototype.hasOwnProperty.call(p, 'symbol') ||
 			Object.prototype.hasOwnProperty.call(p, 'table') ||
-			Object.prototype.hasOwnProperty.call(p, 'select')
+			Object.prototype.hasOwnProperty.call(p, 'select') ||
+			Object.prototype.hasOwnProperty.call(p, 'help') ||
+			Object.prototype.hasOwnProperty.call(p, 'icon')
 		) {
 			return p;
 		}
 		return null;
 	}
 
+	/**
+	 * Q117 resolve order for node_presentation Preview:
+	 * 1) presentationContext → which slot
+	 * 2) host presentation map[slot] when non-empty
+	 * 3) fallbacks only when empty (form/select/help → name; symbol → short/—;
+	 *    table → short then name; icon → empty)
+	 */
 	function resolveHostPresentationValue(host, context) {
 		var ctx = normalizePresentationContext(context);
 		var map = presentationMapFromHost(host);
 		if (map && map[ctx] != null && String(map[ctx]).trim() !== '') {
 			return String(map[ctx]).trim();
 		}
-		if (ctx === 'symbol' || ctx === 'table') {
-			var short = String((host && host.shortDescription) || '').trim();
-			if (short) {
-				return short;
-			}
-			/* Symbol/table must not fall back to the form name (e.g. Tolerance). */
-			return '';
+		var hostName = String((host && host.name) || '').trim();
+		var short = String((host && host.shortDescription) || '').trim();
+		if (ctx === 'symbol') {
+			/* Symbol must not fall back to the form name (e.g. Tolerance / Micro). */
+			return short;
+		}
+		if (ctx === 'table') {
+			/* PHP Node_Presentation::legacy_fallback: short then term name. */
+			return short || hostName;
 		}
 		if (ctx === 'icon') {
 			return '';
 		}
-		return String((host && host.name) || '').trim();
+		/* form / select / help — only when map slot empty */
+		return hostName;
 	}
 
 	/**
@@ -572,7 +600,7 @@
 			curPref !== 'TableRenderer' &&
 			curPref !== 'CompactRenderer' &&
 			curPref !== 'CompactVerticalRenderer' &&
-			curPref !== 'EmbeddedRenderer' &&
+			curPref !== 'MultistepRenderer' &&
 			curPref !== 'ChildListRenderer'
 		) {
 			add(curPref, preferredRenderOptionLabel(curPref));
@@ -588,7 +616,7 @@
 		}
 		if (hasAttrs || !(fieldOpts && fieldOpts.length)) {
 			PREFERRED_LAYOUTS.forEach(function (o) {
-				if (o.value === 'EmbeddedRenderer') {
+				if (o.value === 'MultistepRenderer') {
 					/*
 					 * Aggregation pick+create: allow for Model hosts with attributes
 					 * even without specialization children (Kontakt = type itself).
@@ -826,6 +854,10 @@
 			fixedEnabled: !!n.fixedEnabled,
 			fixedLiteral: n.fixedLiteral != null ? String(n.fixedLiteral) : '',
 			fixedNodeId: n.fixedNodeId || 0,
+			choiceFilter:
+				n.choiceFilter && typeof n.choiceFilter === 'object'
+					? deepClone(n.choiceFilter)
+					: null,
 			refScopeId: n.refScopeId || 0,
 			fieldMultiplicity:
 				n.fieldMultiplicity != null ? String(n.fieldMultiplicity) : '0..1',
@@ -915,6 +947,8 @@
 			preferredRenderOwn: n.preferredRenderOwn
 				? String(n.preferredRenderOwn)
 				: '',
+			multistepMode: normalizeMultistepMode(n.multistepMode),
+			compactShowLabels: n.compactShowLabels !== false,
 			embedChoiceOptions: Array.isArray(n.embedChoiceOptions)
 				? n.embedChoiceOptions.slice()
 				: [],
@@ -1110,6 +1144,31 @@
 		) {
 			return Promise.resolve(attr);
 		}
+		/*
+		 * Hydrated walk with real levels — done.
+		 * Empty + cached + nodeCount>0 is a stale pre-v4 snapshot: fall through
+		 * and rebuild (do not spin forever on Loading…).
+		 */
+		if (
+			!attr.settingsWalkLazy &&
+			attr.settingsWalkCached &&
+			Array.isArray(attr.settingsWalk) &&
+			attr.settingsWalk.length === 0
+		) {
+			var emptyMeta = attr.settingsWalkMeta || {};
+			var emptyNodes = parseInt(emptyMeta.nodeCount, 10) || 0;
+			if (emptyNodes <= 0 && !settingsWalkMissingCatalogChoices(attr.settingsWalk)) {
+				return Promise.resolve(attr);
+			}
+			/* Stale empty summary — force rebuild below. */
+		} else if (
+			!attr.settingsWalkLazy &&
+			attr.settingsWalkCached &&
+			Array.isArray(attr.settingsWalk) &&
+			!settingsWalkMissingCatalogChoices(attr.settingsWalk)
+		) {
+			return Promise.resolve(attr);
+		}
 		if (!attr.settingsWalkLazy && !attr.settingsWalkCached) {
 			var meta = attr.settingsWalkMeta || {};
 			var nestedHint =
@@ -1124,9 +1183,27 @@
 			return state.attrWalkLoading[attrId];
 		}
 		var seq = selectSeq;
+		var forceRebuild =
+			attr.settingsWalkCached &&
+			Array.isArray(attr.settingsWalk) &&
+			attr.settingsWalk.length === 0 &&
+			(parseInt((attr.settingsWalkMeta || {}).nodeCount, 10) || 0) > 0
+				? '1'
+				: '0';
+		/* One forced rebuild per attr per page session — avoid Loading spin loops. */
+		if (forceRebuild === '1') {
+			if (state.attrWalkForceTried && state.attrWalkForceTried[attrId]) {
+				return Promise.resolve(attr);
+			}
+			if (!state.attrWalkForceTried) {
+				state.attrWalkForceTried = {};
+			}
+			state.attrWalkForceTried[attrId] = true;
+		}
 		state.attrWalkLoading[attrId] = post('wtt_get_attribute_settings_walk', {
 			term_id: hostId,
 			attr_id: attrId,
+			force: forceRebuild,
 		})
 			.then(function (json) {
 				state.attrWalkLoading[attrId] = null;
@@ -1273,6 +1350,13 @@
 			setSeparator: d.setSeparator != null ? String(d.setSeparator) : '/',
 			setJoinUnits: d.setJoinUnits !== false,
 			setLabelChildren: d.setLabelChildren !== false,
+			multistepMode: normalizeMultistepMode(
+				d.multistepMode != null ? d.multistepMode : n.multistepMode
+			),
+			compactShowLabels:
+				d.compactShowLabels != null
+					? !!d.compactShowLabels
+					: n.compactShowLabels !== false,
 			type: d.type,
 			fixed: draftFixedDisplay(d),
 			isTable: d.isTable,
@@ -1323,12 +1407,26 @@
 						),
 				  }
 				: n.presentationConfig || null,
-			presentation:
-				d.presentation && typeof d.presentation === 'object'
-					? d.presentation
-					: n.presentation && typeof n.presentation === 'object'
-						? n.presentation
-						: null,
+			/*
+			 * Prefer loaded Presentation draft (user edits / AJAX). An unloaded
+			 * empty draft must not replace get_node’s Q117 map.
+			 */
+			presentation: (function () {
+				var draftPres = d.presentation;
+				if (
+					draftPres &&
+					typeof draftPres === 'object' &&
+					draftPres.loaded
+				) {
+					return draftPres;
+				}
+				if (n.presentation && typeof n.presentation === 'object') {
+					return n.presentation;
+				}
+				return draftPres && typeof draftPres === 'object'
+					? draftPres
+					: null;
+			})(),
 			intConfig: d.intConfig
 				? {
 						displayFormat: normalizeIntDisplayFormat(
@@ -1351,6 +1449,13 @@
 			preferredRender: normalizePreferredRender(
 				d.preferredRender != null ? d.preferredRender : n.preferredRender
 			),
+			multistepMode: normalizeMultistepMode(
+				d.multistepMode != null ? d.multistepMode : n.multistepMode
+			),
+			compactShowLabels:
+				d.compactShowLabels != null
+					? !!d.compactShowLabels
+					: n.compactShowLabels !== false,
 			typeBranch: d.typeBranch,
 			isBasiseinheitUnit: d.isBasiseinheitUnit,
 			prefixAllowlist: d.prefixAllowlist,
@@ -2514,6 +2619,120 @@
 		});
 	}
 
+	/**
+	 * Shell layout + scroll lock for Properties / tree panes.
+	 *
+	 * Pane scroll lives on .wtt-tree-pane / .wtt-detail-pane. CSS flex fills
+	 * #wpwrap → #wtt-app (tree-admin.css). Never write pixel heights from
+	 * getBoundingClientRect after remount — that stuck a too-small inline
+	 * height, shrank #wpwrap, clipped the admin menu, and left a white void
+	 * until hard reload (≈ 0.0.560 measure “fix” still reproduced).
+	 */
+	var paneScrollRestoreToken = 0;
+	var paneScrollHoldUntil = 0;
+	var paneScrollHoldSnapshot = null;
+	var paneScrollHoldHooksBound = false;
+	var documentScrollPinned = false;
+	var appShellResizeBound = false;
+
+	function forceDocumentScrollOrigin() {
+		if (window.scrollTo) {
+			window.scrollTo(0, 0);
+		}
+		if (document.documentElement) {
+			document.documentElement.scrollTop = 0;
+		}
+		if (document.body) {
+			document.body.scrollTop = 0;
+		}
+	}
+
+	/**
+	 * Reset every WP admin scroller that focus/scrollIntoView may have moved.
+	 * window/html/body alone is not enough when #wpbody-content is scrolled.
+	 */
+	function forceAdminScrollOrigin() {
+		forceDocumentScrollOrigin();
+		[
+			'#wpwrap',
+			'#wpcontent',
+			'#wpbody',
+			'#wpbody-content',
+			'.wrap.wtt-wrap',
+		].forEach(function (sel) {
+			var node = document.querySelector(sel);
+			if (node) {
+				node.scrollTop = 0;
+				node.scrollLeft = 0;
+			}
+		});
+	}
+
+	/**
+	 * Drop leftover inline sizes from older builds; flex CSS owns the shell.
+	 */
+	function clearAppShellInlineSize(root) {
+		if (!root || !root.style) {
+			return;
+		}
+		root.style.removeProperty('--wtt-app-height');
+		root.style.removeProperty('height');
+		root.style.removeProperty('max-height');
+		root.style.removeProperty('min-height');
+	}
+
+	/**
+	 * Match cold-load shell after remount: clear harmful inline sizes + pin
+	 * admin scrollers to origin. Do not measure/write --wtt-app-height.
+	 */
+	function syncAppShellLayout() {
+		forceAdminScrollOrigin();
+		var root = document.getElementById('wtt-app');
+		if (!root) {
+			return;
+		}
+		clearAppShellInlineSize(root);
+	}
+
+	function ensureAppShellResizeHook() {
+		if (appShellResizeBound) {
+			return;
+		}
+		appShellResizeBound = true;
+		window.addEventListener(
+			'resize',
+			function () {
+				syncAppShellLayout();
+			},
+			{ passive: true }
+		);
+	}
+
+	function ensureDocumentScrollPinned() {
+		if (documentScrollPinned) {
+			return;
+		}
+		documentScrollPinned = true;
+		function pinIfDragged() {
+			var y =
+				typeof window.scrollY === 'number'
+					? window.scrollY
+					: window.pageYOffset || 0;
+			var dy = document.documentElement
+				? document.documentElement.scrollTop || 0
+				: 0;
+			var by = document.body ? document.body.scrollTop || 0 : 0;
+			var bodyContent = document.getElementById('wpbody-content');
+			var cy = bodyContent ? bodyContent.scrollTop || 0 : 0;
+			if (y > 0 || dy > 0 || by > 0 || cy > 0) {
+				/* Pin only — never re-measure app height from a scrolled frame. */
+				forceAdminScrollOrigin();
+			}
+		}
+		window.addEventListener('scroll', pinIfDragged, true);
+		document.addEventListener('scroll', pinIfDragged, true);
+	}
+
 	function capturePaneScroll() {
 		var tree = document.querySelector('.wtt-tree-pane');
 		var detail = document.querySelector('.wtt-detail-pane');
@@ -2523,28 +2742,103 @@
 		};
 	}
 
-	function restorePaneScroll(scroll) {
+	function applyPaneScrollSnapshot(scroll) {
 		if (!scroll) {
 			return;
 		}
-		function apply() {
-			var tree = document.querySelector('.wtt-tree-pane');
-			var detail = document.querySelector('.wtt-detail-pane');
-			if (tree) {
-				tree.scrollTop = scroll.tree || 0;
+		/* Document / admin chrome scroll is never restored — panes only. */
+		forceAdminScrollOrigin();
+		var tree = document.querySelector('.wtt-tree-pane');
+		var detail = document.querySelector('.wtt-detail-pane');
+		if (tree && typeof scroll.tree === 'number') {
+			var treeMax = Math.max(0, tree.scrollHeight - tree.clientHeight);
+			tree.scrollTop = Math.min(Math.max(0, scroll.tree), treeMax);
+		}
+		if (detail && typeof scroll.detail === 'number') {
+			var detailMax = Math.max(0, detail.scrollHeight - detail.clientHeight);
+			detail.scrollTop = Math.min(Math.max(0, scroll.detail), detailMax);
+		}
+	}
+
+	function ensurePaneScrollHoldHooks() {
+		if (paneScrollHoldHooksBound) {
+			return;
+		}
+		paneScrollHoldHooksBound = true;
+		function snapIfHolding() {
+			if (
+				!paneScrollHoldSnapshot ||
+				Date.now() > paneScrollHoldUntil ||
+				!paneScrollRestoreToken
+			) {
+				return;
 			}
-			if (detail) {
-				detail.scrollTop = scroll.detail || 0;
+			applyPaneScrollSnapshot(paneScrollHoldSnapshot);
+		}
+		/* Focus / layout often scrolls the detail pane after our restore. */
+		document.addEventListener('focusin', snapIfHolding, true);
+		document.addEventListener(
+			'scroll',
+			function (e) {
+				if (!paneScrollHoldSnapshot || Date.now() > paneScrollHoldUntil) {
+					return;
+				}
+				var t = e && e.target;
+				if (
+					t &&
+					t.classList &&
+					(t.classList.contains('wtt-detail-pane') ||
+						t.classList.contains('wtt-tree-pane'))
+				) {
+					snapIfHolding();
+				}
+			},
+			true
+		);
+	}
+
+	function restorePaneScroll(scroll) {
+		if (!scroll) {
+			syncAppShellLayout();
+			return;
+		}
+		ensurePaneScrollHoldHooks();
+		ensureDocumentScrollPinned();
+		ensureAppShellResizeHook();
+		var token = ++paneScrollRestoreToken;
+		paneScrollHoldSnapshot = {
+			tree: scroll.tree || 0,
+			detail: scroll.detail || 0,
+		};
+		paneScrollHoldUntil = Date.now() + 400;
+
+		function apply() {
+			if (token !== paneScrollRestoreToken) {
+				return;
+			}
+			syncAppShellLayout();
+			applyPaneScrollSnapshot(paneScrollHoldSnapshot);
+		}
+
+		function holdFrames() {
+			if (token !== paneScrollRestoreToken) {
+				return;
+			}
+			apply();
+			if (Date.now() < paneScrollHoldUntil) {
+				window.requestAnimationFrame(holdFrames);
 			}
 		}
-		/* Two frames + short delay: after DOM replace and tall Options/walk layout. */
+
+		apply();
 		window.requestAnimationFrame(function () {
 			apply();
-			window.requestAnimationFrame(function () {
-				apply();
-				window.setTimeout(apply, 50);
-			});
+			window.requestAnimationFrame(holdFrames);
 		});
+		window.setTimeout(apply, 50);
+		window.setTimeout(apply, 120);
+		window.setTimeout(apply, 250);
+		window.setTimeout(apply, 400);
 	}
 
 	/**
@@ -2555,6 +2849,10 @@
 		if (!el || typeof el.closest !== 'function') {
 			return false;
 		}
+		/*
+		 * Defer remount for open selects / walk chrome. Slide switches are excluded
+		 * so Hide/RO AJAX can re-paint immediately (toggle already committed).
+		 */
 		return !!el.closest(
 			[
 				'.wtt-attributes__detail',
@@ -2563,14 +2861,32 @@
 				'.wtt-attributes__walk-summary',
 				'.wtt-attributes__choice-tree',
 				'.wtt-attributes__table select',
-				'.wtt-attributes__table input',
 				'.wtt-attributes__table textarea',
+				'.wtt-attributes__table input:not(.wtt-switch__input)',
 			].join(',')
 		);
 	}
 
 	function renderPreservingDetailScroll() {
 		var scroll = capturePaneScroll();
+		/*
+		 * Blur before #wtt-app wipe — focused Hide/RO switch would otherwise
+		 * trigger document scroll-into-view while admin chrome is overflow-locked.
+		 */
+		var ae = document.activeElement;
+		if (
+			ae &&
+			ae !== document.body &&
+			ae !== document.documentElement &&
+			typeof ae.blur === 'function'
+		) {
+			try {
+				ae.blur();
+			} catch (err) {
+				/* ignore */
+			}
+		}
+		forceAdminScrollOrigin();
 		render();
 		restorePaneScroll(scroll);
 	}
@@ -2697,6 +3013,7 @@
 		state.previewValues = {};
 		state.previewFocus = null;
 		state.attrWalkLoading = {};
+		state.attrWalkForceTried = {};
 		expandAncestorsOf(termId);
 		state.selectedId = termId;
 		state.selectedNode = null;
@@ -4969,6 +5286,45 @@
 		afterDraftMutation();
 	}
 
+	function setDraftMultistepMode(mode) {
+		if (!state.draft) {
+			return;
+		}
+		state.draft.multistepMode = normalizeMultistepMode(mode);
+		afterDraftMutation();
+	}
+
+	function setDraftCompactShowLabels(on) {
+		if (!state.draft) {
+			return;
+		}
+		state.draft.compactShowLabels = !!on;
+		afterDraftMutation();
+	}
+
+	/**
+	 * Compact "Show field labels" — draft wins over node (default on).
+	 *
+	 * @param {Object} [n]
+	 * @return {boolean}
+	 */
+	function resolveCompactShowLabels(n) {
+		if (
+			state.draft &&
+			Object.prototype.hasOwnProperty.call(state.draft, 'compactShowLabels')
+		) {
+			return !!state.draft.compactShowLabels;
+		}
+		if (n && Object.prototype.hasOwnProperty.call(n, 'compactShowLabels')) {
+			var raw = n.compactShowLabels;
+			if (raw === 0 || raw === '0' || raw === false || raw === 'false') {
+				return false;
+			}
+			return raw !== false;
+		}
+		return true;
+	}
+
 	function setDraftPreferredConverter(converterId) {
 		if (!state.draft) {
 			return;
@@ -6565,6 +6921,22 @@
 				payloadDraft.preferredRender
 			);
 		}
+		if (
+			normalizePreferredRender(payloadDraft.preferredRender) ===
+			'MultistepRenderer'
+		) {
+			savePayload.multistep_mode = normalizeMultistepMode(
+				payloadDraft.multistepMode
+			);
+		}
+		var prefSave = normalizePreferredRender(payloadDraft.preferredRender);
+		if (
+			prefSave === 'CompactRenderer' ||
+			prefSave === 'CompactVerticalRenderer'
+		) {
+			savePayload.compact_show_labels =
+				payloadDraft.compactShowLabels !== false ? '1' : '0';
+		}
 		var prefixBranch =
 			payloadDraft.prefixBranch && payloadDraft.prefixBranch.unitAllowlistEdit
 				? payloadDraft.prefixBranch
@@ -6803,12 +7175,130 @@
 
 	/**
 	 * Child-list options — only when Preferred = ChildListRenderer.
-	 * Same surface for every type with pickable children (Währung, Praefix, Konstanten, …).
+	 * Default among hierarchy children (same for Präfixe / Währung / …).
 	 *
 	 * @param {object} n
 	 * @param {HTMLElement} pane
 	 * @param {boolean} [locked]
 	 */
+	/**
+	 * MultistepRenderer ConfigPage options: dialog | inline (renderer-local).
+	 * Mounts in the same control column under Preferred Render select.
+	 */
+	function renderMultistepPreferredOptions(n, pane, locked) {
+		if (!n || !pane) {
+			return;
+		}
+		if (
+			normalizePreferredRender(effectiveHostPreferredRender(n)) !==
+			'MultistepRenderer'
+		) {
+			return;
+		}
+		var draft = state.draft || n;
+		var cur = normalizeMultistepMode(
+			draft.multistepMode != null ? draft.multistepMode : n.multistepMode
+		);
+		if (state.draft && state.draft.multistepMode == null) {
+			state.draft.multistepMode = cur;
+		}
+		var block = el('div', {
+			className: 'wtt-panel wtt-multistep-options',
+		});
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.multistepModeHint ||
+					'Dialog = popup Phase A/B. Inline = step 1 | step 2 side by side. Not Settings treePickerMode.',
+			})
+		);
+		var modeSelect = el('select', {
+			className: 'wtt-multistep-mode-select',
+			disabled: !!locked,
+			onChange: function (e) {
+				setDraftMultistepMode(e.target.value);
+			},
+		});
+		[
+			{
+				value: 'dialog',
+				label: i18n.multistepModeDialog || 'Dialog',
+			},
+			{
+				value: 'inline',
+				label: i18n.multistepModeInline || 'Inline',
+			},
+		].forEach(function (opt) {
+			modeSelect.appendChild(
+				el('option', {
+					value: opt.value,
+					text: opt.label,
+					selected: cur === opt.value,
+				})
+			);
+		});
+		block.appendChild(
+			el('label', {
+				className: 'wtt-multistep-options__label',
+				text: i18n.multistepMode || 'Multistep mode',
+			})
+		);
+		block.appendChild(modeSelect);
+		pane.appendChild(block);
+	}
+
+	/**
+	 * CompactRenderer / CompactVerticalRenderer options: show field labels.
+	 * Orientation = Preferred choice (horizontal vs vertical).
+	 */
+	function renderCompactPreferredOptions(n, pane, locked) {
+		if (!n || !pane) {
+			return;
+		}
+		var pref = normalizePreferredRender(effectiveHostPreferredRender(n));
+		if (
+			pref !== 'CompactRenderer' &&
+			pref !== 'CompactVerticalRenderer'
+		) {
+			return;
+		}
+		var show = resolveCompactShowLabels(n);
+		if (
+			state.draft &&
+			!Object.prototype.hasOwnProperty.call(state.draft, 'compactShowLabels')
+		) {
+			state.draft.compactShowLabels = show;
+		}
+		var block = el('div', {
+			className: 'wtt-panel wtt-compact-options',
+		});
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.compactOptionsHint ||
+					'Compact horizontal vs vertical is the Preferred choice. Labels can be hidden for dense display (e.g. k + m → km look).',
+			})
+		);
+		block.appendChild(
+			renderFlagsStrip([
+				{
+					label: i18n.compactShowLabels || 'Show field labels',
+					checked: show,
+					disabled: !!locked,
+					title:
+						i18n.compactShowLabelsHint ||
+						'When off, Compact paints values only (no Praefix/Kuerzel captions).',
+					onChange: function (on) {
+						setDraftCompactShowLabels(on);
+					},
+				},
+			])
+		);
+		pane.appendChild(block);
+	}
+
 	function renderChildListPreferredOptions(n, pane, locked) {
 		if (!n || !pane) {
 			return;
@@ -6831,17 +7321,46 @@
 			return;
 		}
 
-		var kids = [];
-		if (Array.isArray(n.children) && n.children.length) {
-			kids = n.children;
+		var roots = choiceCatalogPickRoots(n);
+		if (!roots.length && Array.isArray(n.directChildren) && n.directChildren.length) {
+			roots = n.directChildren;
 		}
-		var pickRoots = choiceCatalogPickRoots(n);
-		if (!kids.length && pickRoots.length) {
-			kids = pickRoots;
+		if (!roots.length && Array.isArray(n.children) && n.children.length) {
+			roots = n.children;
 		}
-		if (!kids.length) {
+		if (!roots.length) {
 			return;
 		}
+
+		var draft = state.draft || n;
+		var hostId = parseInt(n.id, 10) || 0;
+		var filter =
+			draft.choiceFilter && typeof draft.choiceFilter === 'object'
+				? draft.choiceFilter
+				: n.choiceFilter && typeof n.choiceFilter === 'object'
+					? n.choiceFilter
+					: null;
+		/* Full subtree ids — exclude may target folders or leaves (Q90 depth ≥ 2). */
+		var allIds = collectChoiceFilterNodeIds(roots);
+		if (!allIds.length) {
+			return;
+		}
+		var choiceDraftKey = choiceFilterDraftKey('node', hostId, '', '');
+		var choiceDraft = getChoiceFilterDraft(choiceDraftKey);
+		var excluded =
+			choiceDraft && choiceDraft.dirty
+				? Object.assign({}, choiceDraft.excluded || {})
+				: choiceFilterToExcluded(filter, allIds);
+
+		var labelCtx = hostChoiceLabelContext(n);
+		var chooserMode = resolveCatalogChooserMode(roots, [], 'auto');
+		var leafOptions = flattenChoiceLeaves(roots).filter(function (o) {
+			return o && o.id > 0 && !excluded[o.id];
+		});
+
+		var enabled = !!draft.fixedEnabled;
+		var selectedId = parseInt(draft.fixedNodeId, 10) || 0;
+		var fieldLocked = !!locked || !enabled;
 
 		var block = el('div', {
 			className: 'wtt-panel wtt-child-list-options',
@@ -6850,36 +7369,222 @@
 			el('h3', {
 				className: 'wtt-panel__title',
 				text:
-					i18n.attributesChoiceFilter ||
-					i18n.preferredRenderChildList ||
-					'Choices',
+					i18n.attributesFixedTitle ||
+					i18n.nodeDefault ||
+					'Default value',
 			})
 		);
 		block.appendChild(
 			el('p', {
 				className: 'wtt-field-hint',
 				text:
-					i18n.childListOptionsHint ||
-					'Child list paints hierarchy children of this type. Restrict picks via attribute Choices (choiceFilter) when this type is used — same law for every type.',
+					i18n.childListDefaultHint ||
+					'Default among allowed children. Untick Choices below to hide options (e.g. Centi) until an attribute overrides.',
 			})
 		);
-		var list = el('ul', { className: 'wtt-child-list-options__list' });
-		kids.forEach(function (c) {
-			if (!c) {
-				return;
-			}
-			var label =
-				(c.name != null && String(c.name)) ||
-				(c.label != null && String(c.label)) ||
-				(c.id != null ? '#' + c.id : '');
-			if (!label) {
-				return;
-			}
-			list.appendChild(el('li', { text: label }));
+
+		var row = el('div', {
+			className:
+				'wtt-fixed-control wtt-child-list-options__default' +
+				(enabled ? '' : ' wtt-fixed-control--off'),
 		});
-		if (list.childNodes.length) {
-			block.appendChild(list);
+		row.appendChild(
+			renderSlideSwitch({
+				checked: enabled,
+				disabled: !!locked,
+				title:
+					i18n.nodeDefaultOn ||
+					i18n.fixedValueOn ||
+					'Use default value',
+				onChange: function (on) {
+					setDraftFixedEnabled(on);
+				},
+			})
+		);
+
+		var valueHost = el('div', {
+			className:
+				'wtt-fixed-control__value' +
+				(fieldLocked ? ' is-disabled' : ''),
+		});
+		/*
+		 * Q90: depth ≤ 1 → ListChooser; depth ≥ 2 → TreeChooser
+		 * (same law as CatalogChoice / ChildList preview).
+		 */
+		if (chooserMode === 'tree') {
+			valueHost.appendChild(
+				renderNodeTreePicker({
+					roots: roots,
+					selectedId: selectedId,
+					selectedLabel: resolveChoiceCatalogLabel(
+						roots,
+						selectedId,
+						labelCtx
+					),
+					compact: true,
+					defaultOpen: !!selectedId,
+					expandKey: 'child-list-default:' + String(hostId),
+					allowRoot: false,
+					allowClear: !fieldLocked,
+					disabled: fieldLocked,
+					expandFocusBranch: true,
+					focusId: selectedId || (roots[0] && roots[0].id) || 0,
+					pickedPrefix: i18n.nodePickerSelected || 'Selected:',
+					placeholder:
+						i18n.nodeDefaultChoose ||
+						i18n.fixedValueChoose ||
+						'Choose node…',
+					dialogTitle:
+						i18n.attributesFixedTitle ||
+						i18n.nodeDefault ||
+						'Default value',
+					emptyText:
+						i18n.previewChoiceCatalogEmpty ||
+						'No child options under this node yet.',
+					selectable: function (node) {
+						var id = parseInt(node && node.id, 10) || 0;
+						return id > 0 && !excluded[id];
+					},
+					formatNodeLabel: function (node) {
+						return formatChoiceOptionLabel(node, labelCtx);
+					},
+					onSelect: function (id) {
+						id = parseInt(id, 10) || 0;
+						if (id > 0 && !state.draft.fixedEnabled) {
+							setDraftFixedEnabled(true);
+						}
+						setDraftFixed(id);
+					},
+				})
+			);
+		} else {
+			var emptyLabel =
+				i18n.selectNoneEmDash ||
+				i18n.nodeDefaultChoose ||
+				i18n.fixedValueChoose ||
+				'—';
+			valueHost.appendChild(
+				renderOptionsSelect(leafOptions, {
+					className: 'wtt-type-select',
+					selectedValue: selectedId > 0 ? String(selectedId) : '',
+					disabled: fieldLocked,
+					allowEmpty: true,
+					emptyLabel: emptyLabel,
+					emptyValue: '',
+					getValue: function (opt) {
+						return opt.id != null ? String(opt.id) : '';
+					},
+					getLabel: function (opt) {
+						return formatChoiceOptionLabel(opt, labelCtx);
+					},
+					getTitle: function (opt) {
+						return formatSelectLabel(opt) || String(opt.name || '');
+					},
+					onChange: function (e) {
+						var next = parseInt(e.target.value, 10) || 0;
+						if (next > 0 && !state.draft.fixedEnabled) {
+							setDraftFixedEnabled(true);
+						}
+						setDraftFixed(next);
+					},
+				})
+			);
 		}
+		row.appendChild(valueHost);
+		block.appendChild(row);
+
+		/* Choices: full subtree (Q90) — uncheck = exclude from Child list / CatalogChoice. */
+		var choiceBlock = el('div', {
+			className:
+				'wtt-attributes__detail-block wtt-attributes__detail-block--choice wtt-child-list-options__choices' +
+				(choiceDraft && choiceDraft.dirty ? ' is-choice-dirty' : ''),
+		});
+		choiceBlock.appendChild(
+			el('span', {
+				className: 'wtt-attributes__detail-label',
+				text: i18n.attributesChoiceFilter || 'Choices',
+			})
+		);
+		choiceBlock.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.childListChoicesHint ||
+					'All checked = available. Uncheck (e.g. Centi) to hide by default; attributes can still override via their Choices.',
+			})
+		);
+		var treeWrap = el('div', {
+			className: 'wtt-attributes__choice-tree',
+			tabIndex: locked ? -1 : 0,
+		});
+		function paintNode(node, depth) {
+			if (!node || node.id == null) {
+				return;
+			}
+			var id = parseInt(node.id, 10) || 0;
+			if (!id) {
+				return;
+			}
+			var label = el('label', {
+				className: 'wtt-attributes__choice-item',
+				style: 'padding-left:' + String(depth * 12) + 'px',
+			});
+			var check = el('input', {
+				type: 'checkbox',
+				disabled: !!locked,
+				checked: !excluded[id],
+			});
+			check.addEventListener('change', function () {
+				if (check.checked) {
+					delete excluded[id];
+				} else {
+					excluded[id] = true;
+				}
+				if (typeof choiceBlock._wttMarkChoiceDirty === 'function') {
+					choiceBlock._wttMarkChoiceDirty();
+				}
+			});
+			label.appendChild(check);
+			label.appendChild(
+				document.createTextNode(
+					' ' +
+						(formatChoiceOptionLabel(node, labelCtx) ||
+							node.name ||
+							node.label ||
+							'#' + id)
+				)
+			);
+			treeWrap.appendChild(label);
+			(Array.isArray(node.children) ? node.children : []).forEach(
+				function (ch) {
+					paintNode(ch, depth + 1);
+				}
+			);
+		}
+		roots.forEach(function (r) {
+			paintNode(r, 0);
+		});
+		choiceBlock.appendChild(treeWrap);
+		choiceBlock.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.attributesChoiceFilterDeferHint ||
+					'Tick freely — choices save when you leave this list.',
+			})
+		);
+		if (!locked) {
+			bindDeferredChoiceFilter(choiceBlock, choiceDraftKey, function () {
+				return {
+					kind: 'node',
+					hostId: hostId,
+					attrId: '',
+					path: '',
+					excluded: Object.assign({}, excluded),
+				};
+			});
+		}
+		block.appendChild(choiceBlock);
 		pane.appendChild(block);
 	}
 
@@ -8941,7 +9646,12 @@
 				});
 			}
 		}
-		render();
+		/*
+		 * Relation / walk saves remount #wtt-app. Preserve *pane* scroll only;
+		 * syncAppShellLayout clears leftover inline sizes + pins admin scrollers
+		 * so Hide toggles match cold-load flex shell (no shrunk #wpwrap / void).
+		 */
+		renderPreservingDetailScroll();
 	}
 
 	function assignableRelationTypes(n) {
@@ -11847,7 +12557,10 @@
 	}
 
 	/**
-	 * True when attribute Options differ from pure type defaults.
+	 * True when attribute Options differ from pure type / father defaults.
+	 * Inherited rows: only host-local overrides (same SoT as Inherited “override”
+	 * badge) — defining-edge presentationContext / Preferred must not light up
+	 * “Settings” on every child (e.g. Präfixe → pico Presentation).
 	 *
 	 * @param {Object} attr
 	 * @return {boolean}
@@ -11855,6 +12568,10 @@
 	function attributeDetailHasOverrides(attr) {
 		if (!attr) {
 			return false;
+		}
+		if (attr.inherited) {
+			var hostOv = attr.inheritedHostOverride;
+			return !!(hostOv && hostOv.any);
 		}
 		var extras = attributeOptionsExtras(attr);
 		if (attr.preferredRenderOverride) {
@@ -13699,7 +14416,8 @@
 	}
 
 	/**
-	 * Walk Relation-overrides: Preferred R/C/V via shared Settings renderer (Q114).
+	 * Walk Relation-overrides: Preferred R/C/V stacked like node Display Preferred.
+	 * Narrower column OK; same order Render → Converter → Validators (≈ 0.0.559).
 	 */
 	function renderWalkSettingsPreferredChrome(
 		level,
@@ -13735,69 +14453,28 @@
 			attrId
 		);
 		var SR = settingsRender();
+		if (SR && typeof SR.renderPreferredStack === 'function') {
+			return SR.renderPreferredStack({
+				className: 'wtt-settings-preferred--walk',
+				render: preferred,
+				converter: converter,
+				validators: validators,
+			});
+		}
+		/* Fallback when settings-render is missing — still stack, never triple-grid. */
 		var wrap = el('div', {
 			className:
-				'wtt-settings-preferred-chrome wtt-settings-preferred--walk',
+				'wtt-settings-preferred-chrome wtt-settings-preferred--stack wtt-settings-preferred--walk',
 		});
-		if (SR && typeof SR.renderPreferredChrome === 'function') {
-			/*
-			 * Walk field helpers still own select + override heads; compose them
-			 * into the shared Preferred chrome shell for visual parity.
-			 */
-			var pair = el('div', {
-				className:
-					'wtt-preferred-pair wtt-settings-preferred' +
-					(converter || validators
-						? ' wtt-preferred-pair--triple'
-						: ''),
-			});
-			if (preferred) {
-				pair.appendChild(
-					el('div', { className: 'wtt-preferred-pair__item' }, [
-						preferred,
+		[preferred, converter, validators].forEach(function (node) {
+			if (node) {
+				wrap.appendChild(
+					el('div', { className: 'wtt-settings-preferred-stack__row' }, [
+						node,
 					])
 				);
 			}
-			if (converter) {
-				pair.appendChild(
-					el('div', { className: 'wtt-preferred-pair__item' }, [
-						converter,
-					])
-				);
-			}
-			if (validators) {
-				pair.appendChild(
-					el('div', { className: 'wtt-preferred-pair__item' }, [
-						validators,
-					])
-				);
-			} else if (converter) {
-				pair.appendChild(
-					el('div', { className: 'wtt-preferred-pair__item' }, [
-						el('span', {
-							className: 'wtt-preferred-pair__label',
-							text: i18n.validators || 'Validators',
-						}),
-						el('span', {
-							className: 'description',
-							text:
-								i18n.preferredConverterNoneShort || 'None',
-						}),
-					])
-				);
-			}
-			wrap.appendChild(pair);
-			return wrap;
-		}
-		if (preferred) {
-			wrap.appendChild(preferred);
-		}
-		if (converter) {
-			wrap.appendChild(converter);
-		}
-		if (validators) {
-			wrap.appendChild(validators);
-		}
+		});
 		return wrap;
 	}
 
@@ -14581,20 +15258,32 @@
 			clearConverterOverride,
 			editable
 		);
-		if (SR && typeof SR.renderPreferredChrome === 'function') {
-			return SR.renderPreferredChrome({
+		if (SR && typeof SR.renderPreferredStack === 'function') {
+			var renderBlock = el(
+				'div',
+				{
+					className:
+						'wtt-attributes__walk-field' +
+						(hasOverride ? ' has-relation-override' : ''),
+				},
+				[renderHead, renderSelect]
+			);
+			var converterBlock = el(
+				'div',
+				{
+					className:
+						'wtt-attributes__walk-field' +
+						(hasConvOverride ? ' has-relation-override' : ''),
+				},
+				[convHead, converterSelect]
+			);
+			return SR.renderPreferredStack({
 				className:
 					(hasOverride || hasConvOverride
-						? 'has-relation-override'
-						: '') + ' wtt-settings-preferred--attribute',
-				render: {
-					labelNode: renderHead,
-					select: renderSelect,
-				},
-				converter: {
-					labelNode: convHead,
-					select: converterSelect,
-				},
+						? 'has-relation-override '
+						: '') + 'wtt-settings-preferred--attribute',
+				render: renderBlock,
+				converter: converterBlock,
 			});
 		}
 		return el(
@@ -15202,6 +15891,22 @@
 					false
 				);
 			}
+		} else if (draft.kind === 'node') {
+			req = post('wtt_set_node_choice_filter', {
+				term_id: draft.hostId,
+				choice_filter: !ids.length
+					? 'null'
+					: JSON.stringify({ mode: 'exclude', ids: ids }),
+			}).then(function (json) {
+				if (!json || !json.success) {
+					throw new Error(
+						(json && json.data && json.data.message) || i18n.error
+					);
+				}
+				if (json.data && json.data.node) {
+					applyLoadedNode(json.data.node);
+				}
+			});
 		} else {
 			var extras = Object.assign({}, draft.extras || {});
 			if (!ids.length) {
@@ -18724,8 +19429,10 @@
 	}
 
 	/**
-	 * Preferred render + converter + validators add control in one row.
-	 * Validator detail table (if any rows) spans below the triple.
+	 * Display Preferred: stacked form rows (label left, control right).
+	 * Render / Converter / Validators each own a row; options chrome mounts
+	 * directly under the matching select (renderer settings, future converter
+	 * options, validators table only when entries exist).
 	 */
 	function appendPreferredRenderConverterValidatorsRow(n, form, controlsLocked) {
 		var preferredSelect = el('select', {
@@ -18860,18 +19567,19 @@
 			});
 		}
 
-		var renderLabelKids = [
-			el('span', {
-				className: 'wtt-preferred-pair__label',
-				text:
-					i18n.preferredRenderShort ||
-					i18n.preferredRender ||
-					'Render',
-			}),
-		];
-		if (inheritMode) {
-			renderLabelKids.push(
-				el('span', {
+		var renderHelp =
+			i18n.preferredRenderHint ||
+			i18n.preferredChromeHint ||
+			'How this node paints in Form / Table / preview.';
+		if (parentId > 0) {
+			renderHelp +=
+				' ' +
+				(i18n.preferredRenderInheritHint ||
+					'When unset, Preferred render walks the child_of parent chain.');
+		}
+
+		var renderLabelExtra = inheritMode
+			? el('span', {
 					className: 'wtt-inherited-badge',
 					text:
 						i18n.preferredRenderInheritedBadge ||
@@ -18880,104 +19588,99 @@
 					title:
 						i18n.preferredRenderInheritHint ||
 						'When unset, Preferred render walks the child_of parent chain.',
+			  })
+			: null;
+
+		/*
+		 * Options chrome lives in the same control column as the select
+		 * (right of the row label) — not as a full-width sibling under the row.
+		 */
+		var renderControls = [preferredSelect];
+		var renderOptions = el('div', {
+			className: 'wtt-preferred-options wtt-preferred-options--render',
+		});
+		renderChildListPreferredOptions(n, renderOptions, controlsLocked);
+		renderMultistepPreferredOptions(n, renderOptions, controlsLocked);
+		renderCompactPreferredOptions(n, renderOptions, controlsLocked);
+		if (renderOptions.childNodes.length) {
+			renderControls.push(renderOptions);
+		}
+		form.appendChild(
+			formRow(
+				i18n.preferredRenderShort || i18n.preferredRender || 'Render',
+				renderControls,
+				{
+					className: 'wtt-form__row--preferred-render',
+					labelExtra: renderLabelExtra,
+					help: renderHelp,
+				}
+			)
+		);
+
+		var converterControls = [converterSelect];
+		var converterOptions = el('div', {
+			className: 'wtt-preferred-options wtt-preferred-options--converter',
+		});
+		if (
+			typeof renderPreferredConverterOptions === 'function' &&
+			renderPreferredConverterOptions(n, converterOptions, controlsLocked) &&
+			converterOptions.childNodes.length
+		) {
+			converterControls.push(converterOptions);
+		}
+		form.appendChild(
+			formRow(
+				i18n.preferredConverterShort ||
+					i18n.preferredConverter ||
+					'Converter',
+				converterControls,
+				{
+					className: 'wtt-form__row--preferred-converter',
+					help:
+						i18n.preferredConverterHint ||
+						'Value transform for display / edit (only converters that apply to this type).',
+				}
+			)
+		);
+
+		var validatorsUi = buildNodeValidatorsEditor(n, controlsLocked);
+		if (validatorsUi) {
+			var validatorControls = [validatorsUi.addSelect];
+			if (validatorsUi.tableWrap) {
+				validatorControls.push(
+					el(
+						'div',
+						{
+							className:
+								'wtt-preferred-options wtt-preferred-options--validators',
+						},
+						[validatorsUi.tableWrap]
+					)
+				);
+			}
+			form.appendChild(
+				formRow(i18n.validators || 'Validators', validatorControls, {
+					className: 'wtt-form__row--preferred-validators',
+					help:
+						i18n.validatorsHint ||
+						'Value checks for this type. Add from the list; detail appears when set.',
 				})
 			);
 		}
+	}
 
-		var validatorsUi = buildNodeValidatorsEditor(n, controlsLocked);
-		var SR = settingsRender();
-		var renderLabelNode = el(
-			'span',
-			{ className: 'wtt-preferred-pair__label-row' },
-			renderLabelKids
-		);
-		var chrome;
-		if (SR && typeof SR.renderPreferredChrome === 'function') {
-			chrome = SR.renderPreferredChrome({
-				render: {
-					labelNode: renderLabelNode,
-					select: preferredSelect,
-				},
-				converter: {
-					label:
-						i18n.preferredConverterShort ||
-						i18n.preferredConverter ||
-						'Converter',
-					select: converterSelect,
-				},
-				validators: validatorsUi
-					? {
-							label: i18n.validators || 'Validators',
-							select: validatorsUi.addSelect,
-					  }
-					: null,
-				detail:
-					validatorsUi && validatorsUi.tableWrap
-						? validatorsUi.tableWrap
-						: null,
-				triple: !!validatorsUi,
-			});
-		} else {
-			chrome = el('div', { className: 'wtt-settings-preferred-chrome' }, [
-				el(
-					'div',
-					{
-						className:
-							'wtt-preferred-pair' +
-							(validatorsUi ? ' wtt-preferred-pair--triple' : ''),
-					},
-					[
-						el('div', { className: 'wtt-preferred-pair__item' }, [
-							renderLabelNode,
-							preferredSelect,
-						]),
-						el('div', { className: 'wtt-preferred-pair__item' }, [
-							el('span', {
-								className: 'wtt-preferred-pair__label',
-								text:
-									i18n.preferredConverterShort ||
-									i18n.preferredConverter ||
-									'Converter',
-							}),
-							converterSelect,
-						]),
-						validatorsUi
-							? el('div', { className: 'wtt-preferred-pair__item' }, [
-									el('span', {
-										className: 'wtt-preferred-pair__label',
-										text: i18n.validators || 'Validators',
-									}),
-									validatorsUi.addSelect,
-							  ])
-							: null,
-					]
-				),
-				validatorsUi && validatorsUi.tableWrap
-					? validatorsUi.tableWrap
-					: null,
-			]);
-		}
-
-		var help =
-			i18n.preferredChromeHint ||
-			'Render = paint; converter = value transform; validators = value checks. Only options that apply to this type.';
-		if (parentId > 0) {
-			help +=
-				' ' +
-				(i18n.preferredRenderInheritHint ||
-					'When unset, Preferred render walks the child_of parent chain.');
-		}
-
-		form.appendChild(
-			formRow(i18n.preferredChrome || 'Preferred', [chrome], {
-				className:
-					'wtt-form__row--preferred-pair' +
-					(validatorsUi && validatorsUi.tableWrap
-						? ' wtt-form__row--preferred-pair-validators'
-						: ''),
-				help: help,
-			})
-		);
+	/**
+	 * Hook for converter-specific settings under the Converter select.
+	 * Return true if options were painted into `pane`.
+	 *
+	 * @param {object} n
+	 * @param {HTMLElement} pane
+	 * @param {boolean} [locked]
+	 * @return {boolean}
+	 */
+	function renderPreferredConverterOptions(n, pane, locked) {
+		/* No converter options UI yet — keep the mount point for future registries. */
+		return false;
 	}
 
 	function validatorRegistry() {
@@ -19148,7 +19851,9 @@
 	 * @param {boolean} [opts.locked]
 	 * @param {function(Array):void} opts.onChange Persist next list
 	 * @param {string} [opts.wrapClass]
-	 * @return {{ addSelect: HTMLElement, tableWrap: HTMLElement }|null}
+	 * @param {boolean} [opts.omitEmptyHint] Skip “No validators yet” empty row
+	 * @param {boolean} [opts.omitEmptyTable] When list empty, return tableWrap null
+	 * @return {{ addSelect: HTMLElement, tableWrap: HTMLElement|null }|null}
 	 */
 	function buildValidatorsEditor(opts) {
 		opts = opts || {};
@@ -19159,6 +19864,8 @@
 		var probe = opts.probe || {};
 		var list = normalizeValidatorsList(opts.list || [], probe);
 		var locked = !!opts.locked;
+		var omitEmptyHint = !!opts.omitEmptyHint;
+		var omitEmptyTable = !!opts.omitEmptyTable;
 		var onChange =
 			typeof opts.onChange === 'function' ? opts.onChange : function () {};
 		var compatible =
@@ -19218,7 +19925,7 @@
 			onChange(normalizeValidatorsList(next, probe));
 		}
 
-		if (!list.length) {
+		if (!list.length && !omitEmptyHint && !omitEmptyTable) {
 			tbody.appendChild(
 				el('tr', { className: 'wtt-validators-table__empty' }, [
 					el('td', {
@@ -19505,19 +20212,22 @@
 			rewrite(list.concat([entry]));
 		});
 
-		var tableWrap = el(
-			'div',
-			{
-				className:
-					'wtt-validators-editor' +
-					(opts.wrapClass ? ' ' + opts.wrapClass : ''),
-			},
-			[
-				el('div', { className: 'wtt-validators-editor__scroll' }, [
-					table,
-				]),
-			]
-		);
+		var tableWrap = null;
+		if (list.length || !omitEmptyTable) {
+			tableWrap = el(
+				'div',
+				{
+					className:
+						'wtt-validators-editor' +
+						(opts.wrapClass ? ' ' + opts.wrapClass : ''),
+				},
+				[
+					el('div', { className: 'wtt-validators-editor__scroll' }, [
+						table,
+					]),
+				]
+			);
+		}
 
 		return {
 			addSelect: addSelect,
@@ -19526,7 +20236,8 @@
 	}
 
 	/**
-	 * Type / node Settings — Preferred triple row validators.
+	 * Type / node Display — Validators row under Preferred stack.
+	 * Table only when at least one validator is set (no empty stub).
 	 *
 	 * @return {{ addSelect: HTMLElement, tableWrap: HTMLElement|null }|null}
 	 */
@@ -19550,6 +20261,8 @@
 			list: list,
 			locked: !!controlsLocked,
 			wrapClass: 'wtt-validators-editor--under-preferred',
+			omitEmptyHint: true,
+			omitEmptyTable: true,
 			onChange: function (next) {
 				setDraftValidators(next);
 			},
@@ -20961,6 +21674,34 @@
 		block.appendChild(displayWrap);
 		section.appendChild(block);
 		return section;
+	}
+
+	/**
+	 * Replace Multistep Display only (composition JSON) — keep Editable Phase B mounted.
+	 */
+	function refreshMultistepCompositionDisplay(paintFn, baseOpts, value) {
+		if (typeof paintFn !== 'function') {
+			return;
+		}
+		var displayWrap = document.querySelector(
+			'.wtt-set-preview__section .wtt-preview__block-display'
+		);
+		if (!displayWrap) {
+			return;
+		}
+		var old = displayWrap.querySelector('.wtt-object-render--multistep');
+		var fresh = paintFn(
+			Object.assign({}, baseOpts || {}, {
+				value: value != null ? String(value) : '',
+				readonly: true,
+			})
+		);
+		if (old && old.parentNode) {
+			old.parentNode.replaceChild(fresh, old);
+		} else {
+			displayWrap.textContent = '';
+			displayWrap.appendChild(fresh);
+		}
 	}
 
 	function nodeRenderApi() {
@@ -22410,6 +23151,9 @@
 			if (typeKey === 'e-mail' || typeKey === 'e_mail' || typeKey === 'mail') {
 				typeKey = 'email';
 			}
+			var typeDisplayName = String(
+				attr.typeLabel || attr.typeName || ''
+			).trim();
 			var member = {
 				id: attr.id,
 				name: attr.name || '',
@@ -22419,7 +23163,8 @@
 					attr.shortDescription != null ? String(attr.shortDescription) : '',
 				type: { name: typeKey },
 				typeKey: typeKey,
-				typeName: typeKey,
+				typeName: typeDisplayName || typeKey,
+				typeLabel: typeDisplayName || '',
 				typeId: parseInt(attr.typeId, 10) || 0,
 				multiplicity: String(attr.multiplicity || '1'),
 				fieldMultiplicity: String(attr.multiplicity || '1'),
@@ -22448,7 +23193,33 @@
 					attr.preferredRender || attr.typePreferredRender || ''
 				),
 				typeProperties: Array.isArray(attr.typeProperties)
-					? attr.typeProperties.slice()
+					? attr.typeProperties.filter(function (tp) {
+							return tp && !tp.hidden;
+					  })
+					: [],
+				typePresentation:
+					attr.typePresentation &&
+					typeof attr.typePresentation === 'object'
+						? attr.typePresentation
+						: null,
+				typeShortDescription: String(
+					attr.typeShortDescription != null
+						? attr.typeShortDescription
+						: ''
+				).trim(),
+				compactShowLabels:
+					attr.compactShowLabels !== false &&
+					attr.compactShowLabels !== 0 &&
+					attr.compactShowLabels !== '0',
+				binding: String(attr.binding || 'aggregation'),
+				fixedRootId:
+					parseInt(attr.fixedRootId, 10) ||
+					parseInt(attr.typeId, 10) ||
+					0,
+				isRelatedDataset: !!attr.isRelatedDataset,
+				usesRelatedInstances: !!attr.usesRelatedInstances,
+				relatedInstances: Array.isArray(attr.relatedInstances)
+					? attr.relatedInstances.slice()
 					: [],
 				typeExtras:
 					attr.typeExtras && typeof attr.typeExtras === 'object'
@@ -22517,6 +23288,7 @@
 	 */
 	function buildAttributeHostPreviewView(n, members, preferred) {
 		var Sample = window.WTTSampleData;
+		var ObjectRender = window.WTTObjectRender;
 		var memberById = {};
 		(members || []).forEach(function (m) {
 			if (m && m.id != null) {
@@ -22532,11 +23304,15 @@
 			}
 			var mid = String(attr.id != null ? attr.id : attr.name || '');
 			var mem = memberById[mid] || {};
-			var typeProps = Array.isArray(attr.typeProperties)
-				? attr.typeProperties
-				: Array.isArray(mem.typeProperties)
-					? mem.typeProperties
-					: [];
+			var typeProps = (
+				Array.isArray(attr.typeProperties)
+					? attr.typeProperties
+					: Array.isArray(mem.typeProperties)
+						? mem.typeProperties
+						: []
+			).filter(function (tp) {
+				return tp && !tp.hidden;
+			});
 			var mult = String(attr.multiplicity || mem.multiplicity || '1');
 			var allowsMany =
 				!!attr.allowsMany ||
@@ -22547,7 +23323,19 @@
 				id: attr.id,
 				name: attr.name || mem.name || '',
 				typeKey: attr.typeKey || mem.typeKey || '',
-				typeName: attr.typeName || attr.typeLabel || mem.typeName || '',
+				typeName:
+					attr.typeLabel ||
+					attr.typeName ||
+					mem.typeLabel ||
+					mem.typeName ||
+					'',
+				typeLabel: String(
+					attr.typeLabel ||
+						attr.typeName ||
+						mem.typeLabel ||
+						mem.typeName ||
+						''
+				).trim(),
 				typeId: parseInt(attr.typeId, 10) || 0,
 				multiplicity: mult,
 				fieldMultiplicity: mult,
@@ -22561,7 +23349,48 @@
 				),
 				fixedMode: String(attr.fixedMode || mem.fixedMode || ''),
 				typeProperties: typeProps,
-				binding: attr.binding || '',
+				typePresentation:
+					(attr.typePresentation &&
+					typeof attr.typePresentation === 'object'
+						? attr.typePresentation
+						: null) ||
+					(mem.typePresentation &&
+					typeof mem.typePresentation === 'object'
+						? mem.typePresentation
+						: null),
+				typeShortDescription: String(
+					attr.typeShortDescription != null
+						? attr.typeShortDescription
+						: mem.typeShortDescription != null
+							? mem.typeShortDescription
+							: ''
+				).trim(),
+				compactShowLabels:
+					(attr.compactShowLabels != null
+						? attr.compactShowLabels
+						: mem.compactShowLabels) !== false &&
+					(attr.compactShowLabels != null
+						? attr.compactShowLabels
+						: mem.compactShowLabels) !== 0 &&
+					(attr.compactShowLabels != null
+						? attr.compactShowLabels
+						: mem.compactShowLabels) !== '0',
+				binding: attr.binding || mem.binding || '',
+				fixedRootId:
+					parseInt(attr.fixedRootId, 10) ||
+					parseInt(mem.fixedRootId, 10) ||
+					parseInt(attr.typeId, 10) ||
+					parseInt(mem.typeId, 10) ||
+					0,
+				isRelatedDataset: !!(attr.isRelatedDataset || mem.isRelatedDataset),
+				usesRelatedInstances: !!(
+					attr.usesRelatedInstances || mem.usesRelatedInstances
+				),
+				relatedInstances: Array.isArray(attr.relatedInstances)
+					? attr.relatedInstances
+					: Array.isArray(mem.relatedInstances)
+						? mem.relatedInstances
+						: [],
 				quantitySchema:
 					attr.quantitySchema || mem.quantitySchema || null,
 				fixedOptions: Array.isArray(attr.fixedOptions)
@@ -22581,10 +23410,82 @@
 				preferredConverter: normalizePreferredConverter(
 					attr.preferredConverter || mem.preferredConverter || ''
 				),
+				multistepMode: String(
+					attr.multistepMode || mem.multistepMode || ''
+				),
+				fixedRootId:
+					parseInt(attr.fixedRootId, 10) ||
+					parseInt(mem.fixedRootId, 10) ||
+					parseInt(attr.typeId, 10) ||
+					0,
+				embedChoiceOptions: Array.isArray(attr.embedChoiceOptions)
+					? attr.embedChoiceOptions
+					: Array.isArray(mem.embedChoiceOptions)
+						? mem.embedChoiceOptions
+						: [],
 				values: [],
 			};
 			var hostNameSample = (n && n.name) || '';
-			if (allowsMany && typeProps.length) {
+			var bindingKey = String(attr.binding || mem.binding || 'aggregation')
+				.trim()
+				.toLowerCase()
+				.replace(/\s+/g, '_');
+			var isAggBinding =
+				bindingKey !== 'besteht_aus' &&
+				bindingKey !== 'composition' &&
+				bindingKey.indexOf('besteht') === -1 &&
+				bindingKey.indexOf('compos') === -1;
+			var typeHostName = String(
+				attr.typeLabel ||
+					attr.typeName ||
+					mem.typeLabel ||
+					mem.typeName ||
+					''
+			).trim();
+			if (
+				typeProps.length &&
+				String(attr.fixedMode || mem.fixedMode || '') !== 'catalog' &&
+				isAggBinding &&
+				ObjectRender &&
+				typeof ObjectRender.buildExampleInstance === 'function'
+			) {
+				/*
+				 * Aggregation (Q111): sample bound Model_Data via relatedInstances —
+				 * never a composition JSON bag on the host slot.
+				 */
+				var sampleRows = [];
+				var nRows = allowsMany ? 3 : 1;
+				var ri;
+				for (ri = 0; ri < nRows; ri++) {
+					var nestedAgg = ObjectRender.buildExampleInstance(
+						{
+							name: typeHostName,
+							shortDescription: String(
+								attr.typeShortDescription ||
+									mem.typeShortDescription ||
+									''
+							).trim(),
+							presentation:
+								attr.typePresentation ||
+								mem.typePresentation ||
+								null,
+						},
+						typeProps,
+						ri
+					);
+					sampleRows.push({
+						id: 'sample-' + String(ri + 1),
+						attributes: typeProps,
+						values: (nestedAgg && nestedAgg.values) || {},
+						structureId: parseInt(attr.typeId, 10) || 0,
+						relation: 'aggregation',
+					});
+				}
+				prop.relatedInstances = sampleRows;
+				prop.usesRelatedInstances = true;
+				prop.isRelatedDataset = !!allowsMany;
+				prop.values = [];
+			} else if (allowsMany && typeProps.length) {
 				var rows = [];
 				var r;
 				for (r = 0; r < 3; r++) {
@@ -22636,6 +23537,38 @@
 					) {
 						sampleVal = '—';
 					}
+				} else if (
+					typeProps.length &&
+					String(attr.fixedMode || mem.fixedMode || '') !== 'catalog' &&
+					ObjectRender &&
+					typeof ObjectRender.buildExampleInstance === 'function'
+				) {
+					/*
+					 * Composition structure: seed inline JSON from type schema +
+					 * typePresentation (settings cascade).
+					 */
+					var nestedInst = ObjectRender.buildExampleInstance(
+						{
+							name: typeHostName,
+							shortDescription: String(
+								attr.typeShortDescription ||
+									mem.typeShortDescription ||
+									''
+							).trim(),
+							presentation:
+								attr.typePresentation ||
+								mem.typePresentation ||
+								null,
+						},
+						typeProps
+					);
+					try {
+						sampleVal = JSON.stringify(
+							(nestedInst && nestedInst.values) || {}
+						);
+					} catch (eNest) {
+						sampleVal = '';
+					}
 				} else if (mem.sample != null && String(mem.sample) !== '') {
 					sampleVal = String(mem.sample);
 				} else if (Sample && typeof Sample.forAttribute === 'function') {
@@ -22669,6 +23602,28 @@
 					(n && n.shortDescription) ||
 					'';
 				prop.hostName = hostNameSample || (n && n.name) || '';
+				/* Effective Q117 context (Relation override wins). */
+				prop.presentationConfig = Object.assign(
+					{},
+					attr.presentationConfig &&
+						typeof attr.presentationConfig === 'object'
+						? attr.presentationConfig
+						: mem.presentationConfig &&
+							  typeof mem.presentationConfig === 'object'
+							? mem.presentationConfig
+							: {},
+					{
+						context: presentationContextFromAttr(
+							Object.assign({}, mem, attr)
+						),
+					}
+				);
+				prop.typeExtras =
+					attr.typeExtras && typeof attr.typeExtras === 'object'
+						? attr.typeExtras
+						: mem.typeExtras && typeof mem.typeExtras === 'object'
+							? mem.typeExtras
+							: prop.typeExtras || null;
 			}
 			properties.push(prop);
 		});
@@ -22686,8 +23641,21 @@
 
 	/**
 	 * Mount Object View chrome-free into a Preview edit/display cell.
+	 *
+	 * @param {object} ObjectRender
+	 * @param {object} view
+	 * @param {string} preferred
+	 * @param {boolean} readonly
+	 * @param {{ onFieldInput?: function, showLabels?: boolean }} [mountOpts]
 	 */
-	function mountAttributeHostPreviewSurface(ObjectRender, view, preferred, readonly) {
+	function mountAttributeHostPreviewSurface(
+		ObjectRender,
+		view,
+		preferred,
+		readonly,
+		mountOpts
+	) {
+		mountOpts = mountOpts || {};
 		var host = el('div', {
 			className:
 				'wtt-preview__object-mount' +
@@ -22696,13 +23664,20 @@
 		if (!ObjectRender || typeof ObjectRender.mount !== 'function') {
 			return host;
 		}
-		ObjectRender.mount(host, view, {
+		var mountArgs = {
 			layout: preferred,
 			chrome: false,
 			renderDepth: 1,
 			readonly: !!readonly,
 			mode: readonly ? 'display' : 'edit',
-		});
+			showLabels: Object.prototype.hasOwnProperty.call(mountOpts, 'showLabels')
+				? !!mountOpts.showLabels
+				: true,
+		};
+		if (!readonly && typeof mountOpts.onFieldInput === 'function') {
+			mountArgs.onFieldInput = mountOpts.onFieldInput;
+		}
+		ObjectRender.mount(host, view, mountArgs);
 		return host;
 	}
 
@@ -22885,20 +23860,18 @@
 					if (
 						!presented &&
 						pCtxFill !== 'symbol' &&
-						pCtxFill !== 'table' &&
 						pCtxFill !== 'icon'
 					) {
 						presented = hostLiveName || 'Node name';
 					}
 					if (
 						!presented &&
-						(pCtxFill === 'symbol' ||
-							pCtxFill === 'table' ||
-							pCtxFill === 'icon')
+						(pCtxFill === 'symbol' || pCtxFill === 'icon')
 					) {
 						presented = '—';
 					}
 					values[idKey] = presented;
+					field.sample = presented;
 					return;
 				}
 				var key = previewValueKey(scope, field);
@@ -22937,7 +23910,14 @@
 				i18n.previewCompactHorizontal || 'Compact (horizontal)',
 			CompactVerticalRenderer:
 				i18n.previewCompactVertical || 'Compact (vertical)',
-			EmbeddedRenderer: i18n.previewEmbed || 'Embedded renderer',
+			MultistepRenderer:
+				i18n.previewMultistep ||
+				i18n.previewEmbed ||
+				'Multistep',
+			EmbeddedRenderer:
+				i18n.previewMultistep ||
+				i18n.previewEmbed ||
+				'Multistep',
 			quantity: i18n.previewQuantity || 'Quantity',
 			unit: i18n.previewUnit || 'Unit',
 		};
@@ -23056,8 +24036,9 @@
 				)
 			);
 		} else if (
-			preferred === 'EmbeddedRenderer' &&
-			typeof ObjectRender.renderEmbed === 'function'
+			preferred === 'MultistepRenderer' &&
+			(typeof ObjectRender.renderMultistep === 'function' ||
+				typeof ObjectRender.renderEmbed === 'function')
 		) {
 			var embedKey = 'obj-embed-' + String((n && n.id) || 0);
 			var embedVal = Object.prototype.hasOwnProperty.call(
@@ -23069,29 +24050,176 @@
 			var embedChoices = Array.isArray(n.embedChoiceOptions)
 				? n.embedChoiceOptions
 				: [];
-			block.appendChild(
-				renderPreviewSurface(
-					titleMap.EmbeddedRenderer,
-					ObjectRender.renderEmbed({
-						choiceOptions: embedChoices,
-						value: embedVal,
-						readonly: false,
-						onChange: function (next) {
-							state.previewValues[embedKey] =
-								next == null ? '' : String(next);
-							renderDetail();
-						},
-					}),
-					ObjectRender.renderEmbed({
-						choiceOptions: embedChoices,
-						value: embedVal,
-						readonly: true,
+			if (!embedChoices.length) {
+				block.appendChild(
+					el('p', {
+						className: 'wtt-field-hint',
+						text:
+							i18n.embedNoChoices ||
+							'No specialization children under this node.',
 					})
-				)
-			);
+				);
+			} else {
+				var embedRootId = parseInt(n && n.id, 10) || 0;
+				var embedRootLabel =
+					(n && (n.name || n.displayName)) ||
+					i18n.embedKindRoot ||
+					'Kind';
+				var multistepMode = normalizeMultistepMode(
+					(state.draft && state.draft.multistepMode) ||
+						(n && n.multistepMode)
+				);
+				var paintMultistep =
+					typeof ObjectRender.renderMultistep === 'function'
+						? ObjectRender.renderMultistep
+						: ObjectRender.renderEmbed;
+				function onEmbedChange(next) {
+					var s = next == null ? '' : String(next);
+					state.previewValues[embedKey] = s;
+					/*
+					 * Composition Multistep stores { kindId, values } JSON.
+					 * Do not remount Editable (Phase B mid-edit). Refresh Display only.
+					 */
+					if (s.charAt(0) === '{') {
+						refreshMultistepCompositionDisplay(
+							paintMultistep,
+							{
+								choiceOptions: embedChoices,
+								rootId: embedRootId,
+								rootLabel: embedRootLabel,
+								choiceDepth:
+									n && n.choiceDepth != null
+										? parseInt(n.choiceDepth, 10) || 0
+										: 0,
+								binding: (function () {
+									var nm = String((n && n.name) || '')
+										.trim()
+										.toLowerCase();
+									if (nm === 'bauteil') {
+										return 'aggregation';
+									}
+									if (
+										n &&
+										n.multistepStorage != null &&
+										String(n.multistepStorage).trim() !== ''
+									) {
+										return String(n.multistepStorage);
+									}
+									return 'composition';
+								})(),
+								mode: multistepMode,
+								multistepMode: multistepMode,
+							},
+							s
+						);
+						return;
+					}
+					renderKeepingPreviewChrome();
+				}
+				block.appendChild(
+					renderPreviewSurface(
+						titleMap.MultistepRenderer,
+						paintMultistep({
+							choiceOptions: embedChoices,
+							rootId: embedRootId,
+							rootLabel: embedRootLabel,
+							choiceDepth:
+								n && n.choiceDepth != null
+									? parseInt(n.choiceDepth, 10) || 0
+									: 0,
+							/*
+							 * Host Multistep: Bauteil (Model_Data) = aggregation chooser;
+							 * unit/definition hosts (With prefix) = composition step-fill (Q112).
+							 */
+							binding: (function () {
+								var nm = String((n && n.name) || '')
+									.trim()
+									.toLowerCase();
+								if (nm === 'bauteil') {
+									return 'aggregation';
+								}
+								if (
+									n &&
+									n.multistepStorage != null &&
+									String(n.multistepStorage).trim() !== ''
+								) {
+									return String(n.multistepStorage);
+								}
+								return 'composition';
+							})(),
+							value: embedVal,
+							readonly: false,
+							mode: multistepMode,
+							multistepMode: multistepMode,
+							onChange: onEmbedChange,
+						}),
+						paintMultistep({
+							choiceOptions: embedChoices,
+							rootId: embedRootId,
+							rootLabel: embedRootLabel,
+							choiceDepth:
+								n && n.choiceDepth != null
+									? parseInt(n.choiceDepth, 10) || 0
+									: 0,
+							binding: (function () {
+								var nm = String((n && n.name) || '')
+									.trim()
+									.toLowerCase();
+								if (nm === 'bauteil') {
+									return 'aggregation';
+								}
+								if (
+									n &&
+									n.multistepStorage != null &&
+									String(n.multistepStorage).trim() !== ''
+								) {
+									return String(n.multistepStorage);
+								}
+								return 'composition';
+							})(),
+							value: embedVal,
+							readonly: true,
+							mode: multistepMode,
+							multistepMode: multistepMode,
+						})
+					)
+				);
+			}
+		} else if (
+			preferred === 'CompactRenderer' ||
+			preferred === 'CompactVerticalRenderer'
+		) {
+			/*
+			 * Compact Preferred: paint via renderCompact directly so draft
+			 * compactShowLabels / showLabels reaches Editable + Display.
+			 * (Object View mount also supports showLabels; keep this path first.)
+			 */
+			if (typeof ObjectRender.renderCompact === 'function') {
+				var orient =
+					preferred === 'CompactVerticalRenderer'
+						? 'vertical'
+						: 'horizontal';
+				var showCompactLabels = resolveCompactShowLabels(n);
+				block.appendChild(
+					renderPreviewSurface(
+						titleMap[preferred],
+						ObjectRender.renderCompact(formInstance, {
+							readonly: false,
+							orientation: orient,
+							showLabels: showCompactLabels,
+							onFieldInput: onFormFieldInput,
+						}),
+						ObjectRender.renderCompact(formInstance, {
+							readonly: true,
+							orientation: orient,
+							showLabels: showCompactLabels,
+						})
+					)
+				);
+			}
 		} else if (typeof ObjectRender.mount === 'function') {
 			/*
-			 * Form / Compact: same Object View mount path (Mult many → collection
+			 * Form (+ other Object View layouts): mount path (Mult many → collection
 			 * Table). Attribute Relation Render overrides do not switch this surface.
 			 */
 			var previewView = buildAttributeHostPreviewView(
@@ -23099,6 +24227,7 @@
 				members,
 				preferred
 			);
+			previewView.compactShowLabels = resolveCompactShowLabels(n);
 			if (
 				formInstance &&
 				formInstance.values &&
@@ -23141,11 +24270,26 @@
 					(n && n.shortDescription) ||
 					'';
 				prop.hostName = (n && n.name) || '';
+				prop.presentationConfig = Object.assign(
+					{},
+					prop.presentationConfig &&
+						typeof prop.presentationConfig === 'object'
+						? prop.presentationConfig
+						: {},
+					{ context: pCtxLive }
+				);
 				var pid = prop.id != null ? String(prop.id) : String(prop.name || '');
 				if (pid) {
 					previewView.instanceValues[pid] = live;
 				}
 			});
+			var mountOptsEdit = {
+				onFieldInput: onFormFieldInput,
+				showLabels: resolveCompactShowLabels(n),
+			};
+			var mountOptsDisplay = {
+				showLabels: resolveCompactShowLabels(n),
+			};
 			block.appendChild(
 				renderPreviewSurface(
 					titleMap[preferred] || titleMap.FormRenderer,
@@ -23153,40 +24297,18 @@
 						ObjectRender,
 						previewView,
 						preferred,
-						false
+						false,
+						mountOptsEdit
 					),
 					mountAttributeHostPreviewSurface(
 						ObjectRender,
 						previewView,
 						preferred,
-						true
+						true,
+						mountOptsDisplay
 					)
 				)
 			);
-		} else if (
-			preferred === 'CompactRenderer' ||
-			preferred === 'CompactVerticalRenderer'
-		) {
-			if (typeof ObjectRender.renderCompact === 'function') {
-				var orient =
-					preferred === 'CompactVerticalRenderer'
-						? 'vertical'
-						: 'horizontal';
-				block.appendChild(
-					renderPreviewSurface(
-						titleMap[preferred],
-						ObjectRender.renderCompact(formInstance, {
-							readonly: false,
-							orientation: orient,
-							onFieldInput: onFormFieldInput,
-						}),
-						ObjectRender.renderCompact(formInstance, {
-							readonly: true,
-							orientation: orient,
-						})
-					)
-				);
-			}
 		} else {
 			block.appendChild(
 				renderPreviewSurface(
@@ -23335,6 +24457,7 @@
 		);
 
 		function orientBlock(orientation, title) {
+			var showLab = resolveCompactShowLabels(viewNode());
 			var sub = el('div', {
 				className: 'wtt-preview__compact-orient',
 			});
@@ -23352,6 +24475,7 @@
 				ObjectRender.renderCompact(formInstance, {
 					readonly: false,
 					orientation: orientation,
+					showLabels: showLab,
 					onFieldInput: onFieldInput,
 				})
 			);
@@ -23362,6 +24486,7 @@
 				ObjectRender.renderCompact(formInstance, {
 					readonly: true,
 					orientation: orientation,
+					showLabels: showLab,
 				})
 			);
 			pair.appendChild(editWrap);
@@ -24914,8 +26039,8 @@
 				}
 			});
 		}
+		/* ChildList / renderer options mount under the Render row (not a sibling panel). */
 		renderPreferredConverterRow(node, displaySection, locked);
-		renderChildListPreferredOptions(node, displaySection, locked);
 		var wrap = el('div', {
 			className: 'wtt-form wtt-detail wtt-config-display',
 		});
@@ -25256,6 +26381,9 @@
 			}
 		}
 		restorePaneScroll(paneScroll);
+		syncAppShellLayout();
+		ensureDocumentScrollPinned();
+		ensureAppShellResizeHook();
 	}
 
 	function isEditableTarget(el) {
@@ -25308,6 +26436,17 @@
 							: null;
 					return {
 						attributes: (node && node.attributes) || [],
+						name: (node && node.name) || '',
+						shortDescription: (node && node.shortDescription) || '',
+						presentation:
+							node &&
+							node.presentation &&
+							typeof node.presentation === 'object'
+								? node.presentation
+								: null,
+						preferredRender: (node && node.preferredRender) || '',
+						compactShowLabels:
+							!node || node.compactShowLabels !== false,
 					};
 				});
 			});
@@ -25350,19 +26489,102 @@
 					embedChangePart: i18n.embedChangePart || 'Change…',
 					embedPhaseATitle: i18n.embedPhaseATitle || 'Choose part kind',
 					embedPhaseBTitle: i18n.embedPhaseBTitle || 'Pick or create part',
+					embedPhaseBHint:
+						i18n.embedPhaseBHint ||
+						'Filter existing Model data for this kind, pick a match, or create from the form.',
 					embedCreateBind: i18n.embedCreateBind || 'Create and bind',
 					embedRequiredEmpty:
 						i18n.embedRequiredEmpty ||
 						'Required — pick or create a part.',
+					embedInstanceApiMissing:
+						i18n.embedInstanceApiMissing ||
+						'Model data API unavailable — cannot list or create instances.',
+					embedNoMatches: i18n.embedNoMatches || 'No matching instances.',
+					embedBackKind: i18n.embedBackKind || '← Kind',
+					embedFilterLabel: i18n.embedFilterLabel || 'Filter (AND)',
+					embedMatches: i18n.embedMatches || 'Matches',
+					cancel: i18n.cancel || 'Cancel',
+					error: i18n.error || 'Something went wrong.',
 				},
-				/*
-				 * TODO(UR-B6): wire tree-admin preview Model_Data list/create via REST
-				 * (Fill Model Data AJAX nonce differs). Full Phase B works on Fill Model Data.
-				 */
+				/* Same AJAX as Fill Model Data — tree nonce differs from model-data nonce. */
+				modelDataApi: {
+					taxonomy: state.taxonomy || (cfg && cfg.taxonomy) || '',
+					listInstances: function (structureId, taxonomy) {
+						var body = new FormData();
+						body.append('action', 'wtt_model_data_get');
+						body.append('nonce', cfg.modelDataNonce || '');
+						body.append(
+							'taxonomy',
+							taxonomy || state.taxonomy || cfg.taxonomy || ''
+						);
+						body.append(
+							'structure_id',
+							String(parseInt(structureId, 10) || 0)
+						);
+						return fetch(cfg.ajaxUrl || window.ajaxurl || '', {
+							method: 'POST',
+							credentials: 'same-origin',
+							body: body,
+						})
+							.then(function (res) {
+								return res.json();
+							})
+							.then(function (json) {
+								if (!json || !json.success) {
+									return [];
+								}
+								return Array.isArray(json.data.instances)
+									? json.data.instances
+									: [];
+							});
+					},
+					createInstance: function (structureId, values, taxonomy) {
+						var body = new FormData();
+						body.append('action', 'wtt_model_data_save');
+						body.append('nonce', cfg.modelDataNonce || '');
+						body.append(
+							'taxonomy',
+							taxonomy || state.taxonomy || cfg.taxonomy || ''
+						);
+						body.append(
+							'structure_id',
+							String(parseInt(structureId, 10) || 0)
+						);
+						body.append('id', '');
+						body.append(
+							'values',
+							JSON.stringify(
+								values && typeof values === 'object' ? values : {}
+							)
+						);
+						return fetch(cfg.ajaxUrl || window.ajaxurl || '', {
+							method: 'POST',
+							credentials: 'same-origin',
+							body: body,
+						})
+							.then(function (res) {
+								return res.json();
+							})
+							.then(function (json) {
+								if (!json || !json.success) {
+									throw new Error(
+										(json &&
+											json.data &&
+											json.data.message) ||
+											i18n.error ||
+											'Error'
+									);
+								}
+								return json.data.instance || null;
+							});
+					},
+				},
 			});
 		}
 		restoreTreeUi();
 		document.addEventListener('keydown', onTreeCopyKeydown);
+		ensureDocumentScrollPinned();
+		ensureAppShellResizeHook();
 		var bootTerm =
 			cfg.initialTermId != null ? parseInt(cfg.initialTermId, 10) || 0 : 0;
 		if (bootTerm > 0) {
@@ -25372,6 +26594,9 @@
 		} else {
 			render();
 		}
+		window.requestAnimationFrame(function () {
+			syncAppShellLayout();
+		});
 	}
 
 	if (document.readyState === 'loading') {

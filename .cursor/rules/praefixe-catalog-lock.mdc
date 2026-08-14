@@ -1,0 +1,34 @@
+---
+description: Lock Konstanten/Präfixe catalog — do not regress host Preferred, attrs, or leaf SI setup
+globs: includes/class-case-data.php,includes/class-demo-data.php,assets/js/tree-admin.js,assets/js/wtt-settings-render.js
+alwaysApply: true
+---
+
+# Präfixe catalog lock (≈ 0.0.540)
+
+User-validated Fallstudie setup — **do not “simplify”, strip, or re-seed differently** without an explicit ask.
+
+## Locked shape (`Case_Data::prefix_catalog_leaves` + `ensure_praefixe_catalog`)
+
+| Piece | Must stay |
+|-------|-----------|
+| Host Preferred | `ChildListRenderer` |
+| Host Choices | `choiceFilter` exclude **Centi** (default hide; leaf still exists) |
+| Host attrs | **Presentation** (`node_presentation`, Mult `1`, RO, context **`symbol`**) + **multiplikator** (`double`, Mult `1`, RO+Hide) |
+| Leaves | pico…Tera (incl. Giga/Tera); Preferred **`CompactRenderer`**; SI `multiplikator` + Presentation texts; leaf Default override on multiplikator |
+| SI factors | pico 1e-12 … Mega 1e6, **Giga 1e9**, **Tera 1e12** — never leave Mega’s factor on Giga/Tera |
+
+## Do / don’t
+
+- **Do** extend via `ensure_praefixe_catalog` / `prefix_catalog_leaves` when the user asks to change the catalog.
+- **Do** keep Display Preferred options in the **same control column** as the select (Render/Converter/Validators).
+- **Don’t** remove Presentation or multiplikator from the Präfixe host.
+- **Don’t** reset Preferred to Form/Table on Präfixe or Compact off prefix leaves “for consistency”.
+- **Don’t** clear Centi from the tree just because Choices excludes it.
+- **Don’t** treat defining-edge `presentationContext` on inherited rows as child “Settings configured” (inherited → only `inheritedHostOverride`).
+
+## Entry points
+
+- Template: `Case_Data::prefix_catalog_leaves()`, blueprint Konstanten/Präfixe
+- Ensure: `Case_Data::ensure_praefixe_catalog()` (called from Konstanten ensure)
+- Factors map: `Demo_Data::ensure_prefix_multiplikators()`

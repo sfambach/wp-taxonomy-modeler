@@ -6,7 +6,22 @@
   "category": "taxo",
   "icon": "editor-table",
   "description": "Bind a schema node (e.g. Position for BOM lines, Kontakt). Shows all datasets as a table — columns from attributes, one row per instance. Frontend is the same table (read-only).",
-  "keywords": ["taxo", "taxo-collection-table", "taxonomie", "liste", "tabelle", "model", "bom", "position", "bauteilliste", "knoten", "node", "attributes", "datasets", "instances"],
+  "keywords": [
+    "taxo",
+    "taxo-collection-table",
+    "taxonomie",
+    "liste",
+    "tabelle",
+    "model",
+    "bom",
+    "position",
+    "bauteilliste",
+    "knoten",
+    "node",
+    "attributes",
+    "datasets",
+    "instances"
+  ],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "collectionTermId": {
@@ -28,7 +43,10 @@
   },
   "supports": {
     "html": false,
-    "align": ["wide", "full"]
+    "align": [
+      "wide",
+      "full"
+    ]
   },
   "editorScript": "taxo-collection-table-editor-script",
   "editorStyle": "taxo-collection-table-editor-style",

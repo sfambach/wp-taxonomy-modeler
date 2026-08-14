@@ -1,8 +1,8 @@
 ---
 name: Settings UI parity — Knoten-Walk / Attribut-Walk
-overview: "Soll vs Ist for Settings surfaces. One Settings walk. ChildList Preferred = Choices UI (no childNodes box) ≈ 0.0.532. presentationContext/compute → walk next. Node ConfigPage design locked in plan."
+overview: "Soll vs Ist for Settings surfaces. One Settings walk. Display Preferred form stack ≈ 0.0.537. Präfixe catalog locked ≈ 0.0.540. ChildList Choices/Default Q90 depth ≈ 0.0.541. presentationContext/compute → walk next."
 status: in_progress
-version: "0.1.2"
+version: "0.1.6"
 last_updated: "2026-08-14"
 related_docs:
   - docs/DEVELOPER-ATTRIBUTE-MODEL.md
@@ -40,11 +40,14 @@ todos:
 
 # Settings UI parity (Knoten-Walk / Attribut-Walk)
 
-## Progress (2026-08-14 ≈ 0.0.532)
+## Progress (2026-08-14 ≈ 0.0.541)
 
-- **Done:** Attribute Options Walk; nested table; deferred Choices; **ConfigPage: removed `childNodes` box** — Child-list Choices only when Preferred = `ChildListRenderer` (Währung / Praefix / Konstanten same law); default Preferred for hosts with children → ChildList (not Konstanten-only).
+- **Done:** Attribute Options Walk; nested table; deferred Choices; **ConfigPage: removed `childNodes` box** — Child-list Choices only when Preferred = `ChildListRenderer`; **Display Preferred chrome** = stacked form rows with options in the **same control column** (≈ 0.0.537); validators table **only when set**.
+- **Done:** **Walk Preferred R/C/V** = same stacked order as node Display (Render → Converter → Validators; narrower OK) via `renderPreferredStack` ≈ **0.0.559** (no side-by-side triple overlap).
+- **Done:** **Konstanten/Präfixe** user-validated lock ≈ **0.0.540** — ChildList host, Centi Choices exclude, Presentation + multiplikator attrs, Compact leaves pico…Tera (docs + `praefixe-catalog-lock.mdc`).
+- **Done:** **ChildList Choices + Default** follow **Q90** (≈ **0.0.541**): choice-subtree depth ≤ 1 → flat list (Präfixe); depth ≥ 2 → indented Choices tree + TreeChooser Default (Basiseinheiten).
 - **Locked:** Preferred default on type node; ChildList + `choiceFilter` = one pick mechanism; factors on prefix leaves.
-- **Debt / discuss:** `_wtt_allowed_prefix_ids` parallel SoT vs `choiceFilter`; `fixedMode=catalog` auto-detect without Preferred; name heuristics (`waehrung`); `isKonstantenHost`. **Implementation branch retired** from blueprint + one-shot soft-trash (≈ 0.0.533).
+- **Debt / discuss:** `_wtt_allowed_prefix_ids` parallel SoT vs `choiceFilter`; `fixedMode=catalog` auto-detect without Preferred; name heuristics (`waehrung`); `isKonstantenHost`. **Implementation branch retired** (≈ 0.0.533).
 - **Next:** presentationContext/compute into walk; finish allowlist→choiceFilter migrate; UAT.
 - **Later:** Node ConfigPage vs attribute walk chrome (design in plan).
 
@@ -76,7 +79,7 @@ From the type node downward, Knoten- and Attribut-Walk are the **same search**.
 |---------|------|---------------------------|-------|
 | Attribut Options — Settings | **One** walk UI (depth 0…leaf) | Walk-only when `attributeSettingsWalkCovers`; legacy = fallback only | Mostly closed |
 | Nested scalar children | Attributes-like **one row** table | Table chrome depth≥1 | OK |
-| Choices | CatalogChoice only; save on leave | Deferred drafts; no heir-as-choice on structure hosts | OK |
+| Choices | CatalogChoice / ChildList; Q90 depth (≤1 list, ≥2 tree); save on leave | Deferred drafts; ChildList Choices+Default depth ≈ 0.0.541 | OK |
 | presentationContext / compute | **Inside** same walk | Still side panels in Options | **Next** |
 | Preferred default | On **type node** / simple type config | Type Preferred exists; display-name heuristics = debt | Debt |
 | Knoten ConfigPage | Clarify then align | Q126 page; walk widget not shared yet | **Plan later** |

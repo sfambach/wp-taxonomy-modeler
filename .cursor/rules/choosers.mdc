@@ -14,6 +14,7 @@ Canonical design for node / option pickers. Product detail: Q90 (CatalogChoice d
 | Taxonomy browse / node pick | **TreeChooser** | Admin: `WTTNodePicker.render` (`assets/js/wtt-node-picker.js`); `tree-admin.js` wraps it. Gutenberg: `ModelTreeChooser` — **same contract** until merged. Do **not** invent a third tree. |
 | Flat specialization / option pick | **ListChooser** | `renderOptionsSelect` (or equivalent shared list) |
 | CatalogChoice (Q90) | Depth ≤ 1 → **ListChooser**; depth ≥ 2 → **TreeChooser** | Never a third tree. `renderCatalogTreeChooser` = **debt — do not extend** |
+| ChildList ConfigPage Default | Same Q90 depth law as CatalogChoice | Choices = indented checkbox tree of full subtree (≈ 0.0.541) |
 
 Separate domains stay separate (not Tree/List choosers):
 

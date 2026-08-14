@@ -564,7 +564,7 @@
 					(attr && (attr.hostShortDescription || attr.shortDescription)) || ''
 				).trim();
 			}
-			if (!base && ctx !== 'icon' && ctx !== 'symbol' && ctx !== 'table') {
+			if (!base && ctx === 'table') {
 				base = String(
 					(attr &&
 						(attr.hostName ||
@@ -574,7 +574,17 @@
 						''
 				).trim();
 			}
-			if (!base && (ctx === 'symbol' || ctx === 'table' || ctx === 'icon')) {
+			if (!base && ctx !== 'icon' && ctx !== 'symbol') {
+				base = String(
+					(attr &&
+						(attr.hostName ||
+							attr.hostDisplayName ||
+							attr.nodeName ||
+							attr.schemaName)) ||
+						''
+				).trim();
+			}
+			if (!base && (ctx === 'symbol' || ctx === 'icon')) {
 				base = '—';
 			}
 			if (!base) {

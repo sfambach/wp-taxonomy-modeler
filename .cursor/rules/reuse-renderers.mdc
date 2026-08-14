@@ -14,6 +14,16 @@ Before adding any new field, form, or table UI for taxonomy/model data:
 2. **Reuse** that API (same chrome for admin preview, Object View, Table view).
 3. If nothing fits and you would invent a **new renderer** or **hard-coded** `<input>`/`<table>` for the same job → **stop and ask the user** before implementing.
 
+## Settings cascade → paint (locked)
+
+Defaults cascade detail→model (Präfix → BU → Unit type → Model). Paint **must** follow Preferred, Q117 Presentation, Hide, Mult, Bindung, walk/Relation overrides.
+
+- **Host Preview** = host Preferred only.
+- **Nested attribute cell** = attribute type Preferred (`paintStructureEmbed` / `resolveFieldPreferredPaint`) — not invent Form when Compact is set.
+- **No hardcoding** by display name, path, or special-case node. Hardcode **only** inside a renderer for that renderer’s own chrome, **current layer only**.
+
+See [preview-checkpoints.mdc](preview-checkpoints.mdc) and [project-plan Presentation surfaces](../../docs/plans/project-plan.md#presentation-surfaces-architecture).
+
 ## Taxo blocks
 
 | Block | Must use |
@@ -27,7 +37,9 @@ Do not hand-build attribute cells in block `edit.js` when `renderTable` / `paint
 
 - **Do** extend the shared renderer when a type or layout is missing.
 - **Do** ask when unsure whether an existing surface applies.
+- **Do** honour nested type Preferred / Presentation / Hide when embedding structure fields.
 - **Don’t** add a parallel table/form “just for the block”.
 - **Don’t** show raw type labels in headers as a substitute for proper field views (`Name (text)` + bare `<input>`).
+- **Don’t** special-case paint by node display name or invent host chrome that ignores walk settings.
 
 Related: [choosers.mdc](choosers.mdc) (one chooser per purpose), [preview-checkpoints.mdc](preview-checkpoints.mdc) (unified preview).

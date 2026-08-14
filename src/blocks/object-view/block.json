@@ -30,12 +30,14 @@
         "TableRenderer",
         "CompactRenderer",
         "CompactVerticalRenderer",
+        "MultistepRenderer",
         "EmbeddedRenderer",
         "form",
         "table",
         "compact",
         "compact-vertical",
-        "embed"
+        "embed",
+        "multistep"
       ]
     },
     "renderDepth": {

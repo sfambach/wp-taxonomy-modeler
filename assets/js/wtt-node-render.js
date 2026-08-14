@@ -514,6 +514,9 @@
 		if (!p || typeof p !== 'object') {
 			return null;
 		}
+		if (Object.prototype.hasOwnProperty.call(p, 'loaded') && !p.loaded) {
+			return null;
+		}
 		if (p.values && typeof p.values === 'object') {
 			return p.values;
 		}
@@ -3726,46 +3729,60 @@
 	 * Value from host presentation map / legacy shortDescription / name.
 	 * Always resolves by Q117 context — ignore paint value/sample (often the
 	 * host form name from preview fill, which would bypass Symbol/Help/Icon).
+	 * Order: map[context] → empty-slot fallbacks (never skip settings).
 	 */
 	function resolveNodePresentationValue(node, paintCtx) {
 		var fieldCtx = presentationContextFromNode(node);
-		var map =
+		var mapRaw =
 			(node && node.hostPresentation) ||
 			(node && node.presentation) ||
 			null;
+		var map = null;
+		if (mapRaw && typeof mapRaw === 'object') {
+			if (
+				Object.prototype.hasOwnProperty.call(mapRaw, 'loaded') &&
+				!mapRaw.loaded
+			) {
+				map = null;
+			} else if (mapRaw.values && typeof mapRaw.values === 'object') {
+				map = mapRaw.values;
+			} else {
+				map = mapRaw;
+			}
+		}
 		if (map && typeof map === 'object' && map[fieldCtx] != null) {
 			var fromMap = String(map[fieldCtx]).trim();
 			if (fromMap) {
 				return fromMap;
 			}
 		}
-		if (fieldCtx === 'symbol' || fieldCtx === 'table') {
-			var short = String(
-				(node &&
-					(node.hostShortDescription ||
-						node.shortDescription ||
-						(node.host && node.host.shortDescription))) ||
-					''
-			).trim();
-			if (short) {
-				return short;
-			}
-			/* Never fall back to form name for symbol/table. */
-			return '—';
+		var hostName = String(
+			(node &&
+				(node.hostName ||
+					node.hostDisplayName ||
+					node.nodeName ||
+					(node.host && node.host.name))) ||
+				''
+		).trim();
+		var short = String(
+			(node &&
+				(node.hostShortDescription ||
+					node.shortDescription ||
+					(node.host && node.host.shortDescription))) ||
+				''
+		).trim();
+		if (fieldCtx === 'symbol') {
+			/* Never fall back to form name for symbol (Micro uses glyph). */
+			return short || '—';
+		}
+		if (fieldCtx === 'table') {
+			return short || hostName || '—';
 		}
 		if (fieldCtx === 'icon') {
 			return '—';
 		}
-		return (
-			String(
-				(node &&
-					(node.hostName ||
-						node.hostDisplayName ||
-						node.nodeName ||
-						(node.host && node.host.name))) ||
-					''
-			).trim() || '—'
-		);
+		/* form / select / help — fallback only when map slot empty */
+		return hostName || 'Node name';
 	}
 
 	/**

@@ -76,9 +76,13 @@ final class Object_Render {
 			'layoutTable'             => __( 'Table (singles)', 'wp-taxonomy-tree' ),
 			'layoutCompact'           => __( 'Compact (horizontal)', 'wp-taxonomy-tree' ),
 			'layoutCompactVertical'   => __( 'Compact (vertical)', 'wp-taxonomy-tree' ),
-			'layoutEmbed'             => __( 'Embedded renderer', 'wp-taxonomy-tree' ),
+			'layoutEmbed'             => __( 'Multistep', 'wp-taxonomy-tree' ),
+			'layoutMultistep'         => __( 'Multistep', 'wp-taxonomy-tree' ),
 			'layoutAuto'              => __( 'Node preferred', 'wp-taxonomy-tree' ),
 			'layoutAutoHelp'          => __( 'Use the preferred render stored on the bound node.', 'wp-taxonomy-tree' ),
+			'multistepMode'           => __( 'Multistep mode', 'wp-taxonomy-tree' ),
+			'multistepModeDialog'     => __( 'Dialog', 'wp-taxonomy-tree' ),
+			'multistepModeInline'     => __( 'Inline', 'wp-taxonomy-tree' ),
 			'embedPickHint'           => __( 'Choose kind…', 'wp-taxonomy-tree' ),
 			'embedNoChoices'          => __( 'No specialization children under this node.', 'wp-taxonomy-tree' ),
 			'embedLoading'            => __( 'Loading…', 'wp-taxonomy-tree' ),
@@ -359,6 +363,7 @@ final class Object_Render {
 			'typeName'         => $type_name,
 			'typeKey'          => $type_key,
 			'preferredRender'  => Node_Type::get_preferred_render( $term_id ),
+			'multistepMode'      => Node_Type::get_multistep_mode( $term_id ),
 			'preferredConverter' => Node_Type::get_preferred_converter_for_node( $taxonomy, $term_id ),
 			'validators'         => Node_Type::get_validators_for_node( $taxonomy, $term_id ),
 			'embedChoiceOptions' => Attribute::embed_choice_options_for_type( $taxonomy, $term_id ),
@@ -682,6 +687,19 @@ final class Object_Render {
 				),
 		);
 
+		if ( isset( $row['multistepMode'] ) ) {
+			$dto['multistepMode'] = in_array( (string) $row['multistepMode'], array( 'inline', 'dialog' ), true )
+				? (string) $row['multistepMode']
+				: 'dialog';
+		} elseif (
+			$type_id > 0
+			&& Renderer::Multistep->value === Node_Type::normalize_preferred_render(
+				(string) ( $dto['typePreferredRender'] ?? '' )
+			)
+		) {
+			$dto['multistepMode'] = Node_Type::get_multistep_mode( $type_id );
+		}
+
 		/* node_ref edit/display needs catalog options (same extras as Model table columns). */
 		if ( 'node_ref' === strtolower( $type_key ) && $legacy_slot > 0 && '' !== $taxonomy ) {
 			$scope_id                     = Node_Type::get_ref_scope_id( $legacy_slot );
@@ -761,16 +779,26 @@ final class Object_Render {
 
 		/*
 		 * Mult > 1 → list of the attribute's type. When the type itself has attributes
-		 * (structure), those become Table(n) columns. No recursive nesting of typeProperties.
+		 * (structure), those become Table(n) columns. Prefer decorated typeProperties
+		 * (walk Hide / Default / Choices already applied) over a fresh type list.
 		 */
 		if ( $with_type_schema && '' !== $taxonomy ) {
-			$type_id = (int) ( $row['typeId'] ?? 0 );
-			if ( $type_id > 0 && Attribute::type_has_attributes( $taxonomy, $type_id ) ) {
-				foreach ( Attribute::list( $taxonomy, $type_id ) as $child_row ) {
+			if ( ! empty( $row['typeProperties'] ) && is_array( $row['typeProperties'] ) ) {
+				foreach ( $row['typeProperties'] as $child_row ) {
 					if ( ! is_array( $child_row ) || ! empty( $child_row['hidden'] ) ) {
 						continue;
 					}
 					$dto['typeProperties'][] = self::property_dto( $child_row, $taxonomy, false );
+				}
+			} else {
+				$type_id = (int) ( $row['typeId'] ?? 0 );
+				if ( $type_id > 0 && Attribute::type_has_attributes( $taxonomy, $type_id ) ) {
+					foreach ( Attribute::list( $taxonomy, $type_id ) as $child_row ) {
+						if ( ! is_array( $child_row ) || ! empty( $child_row['hidden'] ) ) {
+							continue;
+						}
+						$dto['typeProperties'][] = self::property_dto( $child_row, $taxonomy, false );
+					}
 				}
 			}
 		}
@@ -864,7 +892,7 @@ final class Object_Render {
 					self::echo_properties_table( $single, $i18n, $render_ctx );
 				} elseif ( Renderer::Compact->value === $layout || Renderer::CompactVertical->value === $layout ) {
 					self::echo_properties_compact( $single, $i18n, $layout, $render_ctx );
-				} elseif ( Renderer::Embedded->value === $layout ) {
+				} elseif ( Renderer::Multistep->value === $layout ) {
 					/* Interactive pick+fill is JS; SSR falls back to compact of host attrs. */
 					self::echo_properties_compact( $single, $i18n, Renderer::Compact->value, $render_ctx );
 				} else {
@@ -1545,7 +1573,9 @@ final class Object_Render {
 	private static function echo_properties_compact( array $properties, array $i18n, string $layout, array $ctx = array() ): void {
 		$layout = self::normalize_layout( $layout );
 		$orient = Renderer::CompactVertical->value === $layout ? 'vertical' : 'horizontal';
-		echo '<div class="wtt-object-view__compact wtt-object-view__compact--' . esc_attr( $orient ) . '">';
+		$show_labels = ! array_key_exists( 'showLabels', $ctx ) || ! empty( $ctx['showLabels'] );
+		$no_labels_class = $show_labels ? '' : ' is-no-labels';
+		echo '<div class="wtt-object-view__compact wtt-object-view__compact--' . esc_attr( $orient ) . esc_attr( $no_labels_class ) . '">';
 		foreach ( $properties as $prop ) {
 			if ( ! is_array( $prop ) ) {
 				continue;
@@ -1553,7 +1583,9 @@ final class Object_Render {
 			$name  = (string) ( $prop['name'] ?? '' );
 			$value = self::property_raw_value( $prop );
 			echo '<div class="wtt-object-view__compact-field">';
-			echo '<span class="wtt-object-view__compact-label">' . esc_html( '' !== $name ? $name : '—' ) . '</span>';
+			if ( $show_labels ) {
+				echo '<span class="wtt-object-view__compact-label">' . esc_html( '' !== $name ? $name : '—' ) . '</span>';
+			}
 			echo '<span class="wtt-object-view__compact-value">';
 			self::echo_typed_value( $prop, $value, $i18n, true, $ctx );
 			echo '</span></div>';

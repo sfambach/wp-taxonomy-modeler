@@ -172,6 +172,61 @@ final class Case_Data {
 		);
 	}
 
+	/**
+	 * Konstanten/Präfixe leaves — live Fallstudie snapshot (≈ 0.0.540).
+	 * Host: ChildList Preferred; Choices exclude Centi by default; attrs Presentation + multiplikator.
+	 * Leaves: Compact Preferred; Presentation texts; SI multiplikator + leaf Default override.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	public static function prefix_catalog_leaves(): array {
+		$compact = Renderer::Compact->value;
+
+		$leaf = static function (
+			string $name,
+			array $aliases,
+			string $symbol,
+			string $description,
+			float $factor,
+			string $select = ''
+		) use ( $compact ): array {
+			$select = '' !== $select ? $select : $name;
+			return array(
+				'name'              => $name,
+				'aliases'           => $aliases,
+				'short_description' => $symbol,
+				'description'       => $description,
+				'multiplikator'     => $factor,
+				'preferred_render'  => $compact,
+				'presentation'      => array(
+					'form'   => $name,
+					'table'  => $symbol,
+					'select' => $select,
+					'symbol' => $symbol,
+					'help'   => $description,
+				),
+			);
+		};
+
+		return array(
+			$leaf( 'pico', array( 'p' ), 'p', 'SI prefix pico (10⁻¹²).', 1.0e-12, 'p - pico' ),
+			$leaf( 'nano', array( 'n' ), 'n', 'SI prefix nano (10⁻⁹).', 1.0e-9 ),
+			$leaf( 'Micro', array( 'u', 'µ', 'micro' ), 'u', 'SI prefix micro (10⁻⁶).', 1.0e-6 ),
+			$leaf( 'Milli', array( 'm', 'milli' ), 'm', 'SI prefix milli (10⁻³); with Meter → mm.', 1.0e-3 ),
+			$leaf( 'Centi', array( 'c', 'centi' ), 'c', 'SI prefix centi (10⁻²).', 1.0e-2 ),
+			$leaf( 'Kilo', array( 'k', 'kilo' ), 'k', 'SI prefix kilo (10³).', 1.0e3 ),
+			$leaf(
+				'Mega',
+				array( 'M' ),
+				'Mega',
+				'SI prefix mega (10⁶); name Mega avoids slug clash with milli m.',
+				1.0e6
+			),
+			$leaf( 'Giga', array( 'G' ), 'G', 'SI prefix giga (10⁹).', 1.0e9 ),
+			$leaf( 'Tera', array( 'T' ), 'T', 'SI prefix tera (10¹²).', 1.0e12 ),
+		);
+	}
+
 	public static function blueprint(): array {
 		$simple_leaves  = self::simple_datatype_leaves();
 		$complex_leaves = self::complex_datatype_leaves();
@@ -180,60 +235,10 @@ final class Case_Data {
 
 		/*
 		 * Display names mirror the live Fallstudie tree (full SI names).
-		 * short_description keeps the letter symbol (p/n/u/…). aliases = obsolete
-		 * short seed names so ensure_term renames instead of duplicating.
+		 * short_description / presentation.symbol keep the glyph (p/n/u/…).
+		 * aliases = obsolete short seed names so ensure_term renames instead of duplicating.
 		 */
-		$prefix_leaves = array(
-			array(
-				'name'              => 'pico',
-				'aliases'           => array( 'p' ),
-				'short_description' => 'p',
-				'description'       => 'SI prefix pico (10⁻¹²).',
-				'multiplikator'     => 1.0e-12,
-			),
-			array(
-				'name'              => 'nano',
-				'aliases'           => array( 'n' ),
-				'short_description' => 'n',
-				'description'       => 'SI prefix nano (10⁻⁹).',
-				'multiplikator'     => 1.0e-9,
-			),
-			array(
-				'name'              => 'Micro',
-				'aliases'           => array( 'u', 'µ', 'micro' ),
-				'short_description' => 'u',
-				'description'       => 'SI prefix micro (10⁻⁶).',
-				'multiplikator'     => 1.0e-6,
-			),
-			array(
-				'name'              => 'Milli',
-				'aliases'           => array( 'm', 'milli' ),
-				'short_description' => 'm',
-				'description'       => 'SI prefix milli (10⁻³); with Meter → mm.',
-				'multiplikator'     => 1.0e-3,
-			),
-			array(
-				'name'              => 'Centi',
-				'aliases'           => array( 'c', 'centi' ),
-				'short_description' => 'c',
-				'description'       => 'SI prefix centi (10⁻²).',
-				'multiplikator'     => 1.0e-2,
-			),
-			array(
-				'name'              => 'Kilo',
-				'aliases'           => array( 'k', 'kilo' ),
-				'short_description' => 'k',
-				'description'       => 'SI prefix kilo (10³).',
-				'multiplikator'     => 1.0e3,
-			),
-			array(
-				'name'              => 'Mega',
-				'aliases'           => array( 'M' ),
-				'short_description' => 'Mega',
-				'description'       => 'SI prefix mega (10⁶); name Mega avoids slug clash with milli m.',
-				'multiplikator'     => 1.0e6,
-			),
-		);
+		$prefix_leaves = self::prefix_catalog_leaves();
 
 		$units_with_prefix = array(
 			array(
@@ -346,10 +351,11 @@ final class Case_Data {
 								'deletable'   => false,
 								'children'    => array(
 									array(
-										'name'        => 'Präfixe',
-										'description' => 'Global prefix catalog. multiplikator = scale vs the unit’s prefix root (Q51). Married to units via allowlist.',
-										'deletable'   => false,
-										'children'    => $prefix_leaves,
+										'name'             => 'Präfixe',
+										'description'      => 'Global prefix catalog. multiplikator = scale vs the unit’s prefix root (Q51). Married to units via allowlist.',
+										'preferred_render' => 'ChildListRenderer',
+										'deletable'        => false,
+										'children'         => $prefix_leaves,
 									),
 									array(
 										'name'        => 'Basiseinheiten',
@@ -719,10 +725,14 @@ final class Case_Data {
 		}
 
 		Demo_Data::ensure_prefix_multiplikators( $taxonomy );
-		self::ensure_prefix_multiplikator_attribute( $taxonomy );
+		self::ensure_praefixe_catalog( $taxonomy );
 		self::ensure_with_prefix_default_allowlists( $taxonomy );
 		/* OQ-W11: With prefix = father knot composed of Praefix + Kuerzel Relations. */
 		self::ensure_with_prefix_composition( $taxonomy );
+		/* Without prefix: Kuerzel only (no Praefix attr). */
+		self::ensure_without_prefix_composition( $taxonomy );
+		/* BU leaves: Compact Preferred (definition chrome), not UnitRenderer. */
+		self::ensure_basiseinheit_unit_compact_preferred( $taxonomy );
 		/* Unit-type sketch: Menge + Base unit + Praefix host under Data Types. */
 		self::ensure_unit_type( $taxonomy );
 		self::ensure_quantity_preis_example( $taxonomy );
@@ -1121,6 +1131,105 @@ final class Case_Data {
 	}
 
 	/**
+	 * Konstanten/Präfixe catalog: leaves + host Preferred/Choices + Presentation/multiplikator attrs.
+	 * Idempotent; heals SI factors / presentation texts from {@see prefix_catalog_leaves()}.
+	 */
+	public static function ensure_praefixe_catalog( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		$prefixes_id = self::find_catalog_folder( $taxonomy, 'prefixes' );
+		if ( $prefixes_id <= 0 ) {
+			return;
+		}
+
+		$created  = 0;
+		$existing = 0;
+		self::install_nodes(
+			$taxonomy,
+			self::prefix_catalog_leaves(),
+			$prefixes_id,
+			$created,
+			$existing
+		);
+		self::dedupe_same_name_children( $taxonomy, $prefixes_id );
+
+		Node_Type::set_preferred_render(
+			$taxonomy,
+			$prefixes_id,
+			Renderer::ChildList->value
+		);
+
+		$exclude_ids = array();
+		$centi_id    = self::find_child_named( $taxonomy, $prefixes_id, 'Centi' );
+		if ( $centi_id > 0 ) {
+			$exclude_ids[] = $centi_id;
+		}
+		Node_Type::set_choice_filter(
+			$taxonomy,
+			$prefixes_id,
+			empty( $exclude_ids )
+				? null
+				: array(
+					'mode' => 'exclude',
+					'ids'  => $exclude_ids,
+				)
+		);
+
+		self::ensure_prefix_multiplikator_attribute( $taxonomy );
+		self::ensure_prefix_presentation_attribute( $taxonomy );
+	}
+
+	/**
+	 * Präfixe host attribute Presentation → node_presentation (symbol), Mult=1, RO.
+	 */
+	public static function ensure_prefix_presentation_attribute( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		$prefixes_id = self::find_catalog_folder( $taxonomy, 'prefixes' );
+		$pres_id     = self::find_case_datatype_id( $taxonomy, 'node_presentation' );
+		if ( $pres_id <= 0 ) {
+			$pres_id = self::find_case_datatype_id( $taxonomy, 'display_node_name' );
+		}
+		if ( $prefixes_id <= 0 || $pres_id <= 0 ) {
+			return;
+		}
+
+		self::sync_model_host_attributes(
+			$taxonomy,
+			$prefixes_id,
+			array( 'Presentation' => $pres_id ),
+			array( 'Presentation' => '1' ),
+			false,
+			array( 'Presentation' => 'besteht_aus' )
+		);
+
+		foreach ( Attribute::list_own( $taxonomy, $prefixes_id ) as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( 'presentation' !== strtolower( trim( (string) ( $row['name'] ?? '' ) ) ) ) {
+				continue;
+			}
+			$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+			if ( '' === $attr_id ) {
+				break;
+			}
+			Attribute::set_readonly( $taxonomy, $prefixes_id, $attr_id, true );
+			Attribute::set_hidden( $taxonomy, $prefixes_id, $attr_id, false );
+			$extras = isset( $row['typeExtras'] ) && is_array( $row['typeExtras'] )
+				? $row['typeExtras']
+				: array();
+			$extras['presentationContext'] = 'symbol';
+			Attribute::set_type_extras( $taxonomy, $prefixes_id, $attr_id, $extras );
+			break;
+		}
+	}
+
+	/**
 	 * Q51 / attribute-choice-inheritance: Präfixe host has `multiplikator`
 	 * (double, Mult=1, Default+RO+Hide). Each leaf overrides Default from SI factor.
 	 * Meta `_wtt_multiplikator` stays in sync as conversion fallback.
@@ -1342,6 +1451,104 @@ final class Case_Data {
 	}
 
 	/**
+	 * OQ-W11: Without prefix = Kuerzel only (no Praefix). Unit leaves inherit.
+	 */
+	public static function ensure_without_prefix_composition( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		$without_id = self::find_catalog_folder( $taxonomy, 'without_prefix' );
+		if ( $without_id <= 0 ) {
+			return;
+		}
+
+		$pres_id = self::find_case_datatype_id( $taxonomy, 'node_presentation' );
+		if ( $pres_id <= 0 ) {
+			$pres_id = self::find_case_datatype_id( $taxonomy, 'display_node_name' );
+		}
+		$text_id      = self::find_case_datatype_id( $taxonomy, 'text' );
+		$kuerzel_type = $pres_id > 0 ? $pres_id : $text_id;
+		if ( $kuerzel_type <= 0 ) {
+			return;
+		}
+
+		if ( $pres_id > 0 ) {
+			Node_Type::set_presentation_context( $taxonomy, $pres_id, 'form' );
+		}
+
+		Node_Type::set_deletable( $without_id, false );
+
+		self::sync_model_host_attributes(
+			$taxonomy,
+			$without_id,
+			array( 'Kuerzel' => $kuerzel_type ),
+			array(),
+			false,
+			array( 'Kuerzel' => 'besteht_aus' )
+		);
+
+		if ( $pres_id > 0 ) {
+			foreach ( Attribute::list_own( $taxonomy, $without_id ) as $row ) {
+				if ( ! is_array( $row ) || (string) ( $row['name'] ?? '' ) !== 'Kuerzel' ) {
+					continue;
+				}
+				$attr_id = Attribute::normalize_attr_id( $row['id'] ?? '' );
+				if ( '' === $attr_id ) {
+					break;
+				}
+				$extras = isset( $row['typeExtras'] ) && is_array( $row['typeExtras'] )
+					? $row['typeExtras']
+					: array();
+				$extras['presentationContext'] = 'symbol';
+				Attribute::set_type_extras( $taxonomy, $without_id, $attr_id, $extras );
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Basiseinheit unit leaves (With + Without prefix): Preferred = CompactRenderer.
+	 * Definition chrome = inherited Praefix?/Kuerzel attrs — not UnitRenderer usage sample.
+	 */
+	public static function ensure_basiseinheit_unit_compact_preferred( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		foreach ( array( 'with_prefix', 'without_prefix' ) as $bucket_key ) {
+			$bucket_id = self::find_catalog_folder( $taxonomy, $bucket_key );
+			if ( $bucket_id <= 0 ) {
+				continue;
+			}
+			$units = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'parent'     => $bucket_id,
+					'hide_empty' => false,
+					'number'     => 0,
+				)
+			);
+			if ( ! is_array( $units ) ) {
+				continue;
+			}
+			foreach ( $units as $unit ) {
+				if ( ! $unit instanceof \WP_Term ) {
+					continue;
+				}
+				$uid = (int) $unit->term_id;
+				if ( ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $uid ) ) {
+					continue;
+				}
+				$pref = Node_Type::get_preferred_render( $uid );
+				if ( Renderer::Compact->value !== $pref ) {
+					Node_Type::set_preferred_render( $taxonomy, $uid, Renderer::Compact->value );
+				}
+			}
+		}
+	}
+
+	/**
 	 * OQ-W10/W11: ensure `size` as child_of `quantity` with Value→double, Unit→With prefix.
 	 *
 	 * @return int size term id (0 if unavailable).
@@ -1473,6 +1680,8 @@ final class Case_Data {
 	 */
 	public static function ensure_unit_quantity_structure( string $taxonomy = Taxonomy::FS ): void {
 		self::ensure_with_prefix_composition( $taxonomy );
+		self::ensure_without_prefix_composition( $taxonomy );
+		self::ensure_basiseinheit_unit_compact_preferred( $taxonomy );
 		self::ensure_size_datatype( $taxonomy );
 		self::ensure_passiv_wert_size( $taxonomy );
 	}
@@ -1555,13 +1764,10 @@ final class Case_Data {
 			if ( array() === $have && array() !== $template ) {
 				Node_Type::set_allowed_prefix_ids( $taxonomy, $uid, $template );
 			}
-			/* Q91/Q120: unit leaf Preferred = UnitRenderer (Prefix? + Symbol). */
+			/* Q91/Q120: unit leaf Preferred = Compact (attrs Praefix?/Kuerzel), not UnitRenderer. */
 			$pref = Node_Type::get_preferred_render( $uid );
-			if (
-				Renderer::Form->value === $pref
-				|| Renderer::Quantity->value === $pref
-			) {
-				Node_Type::set_preferred_render( $taxonomy, $uid, Renderer::Unit->value );
+			if ( Renderer::Compact->value !== $pref ) {
+				Node_Type::set_preferred_render( $taxonomy, $uid, Renderer::Compact->value );
 			}
 		}
 
@@ -3968,7 +4174,7 @@ final class Case_Data {
 	 * Platine → Bauteilliste uses Bindung **aggregation**.
 	 * Bauteilliste → Position uses Bindung **besteht_aus** (composition).
 	 * Line host is a sibling under Model (not child_of Bauteilliste).
-	 * Wert Mult = `1`; Model/Bauteil preferred render = `embed` (UR-B6 / Q93 id-only).
+	 * Wert Mult = `1`; Model/Bauteil preferred render = Multistep (UR-B6 / Q93 id-only).
 	 * Position.Bauart --defaultvalue_from--> Bauteilliste.Bauart (Q124; create/empty seed).
 	 *
 	 * @return array{bauteillisteId:int,positionId:int}
@@ -4475,8 +4681,8 @@ final class Case_Data {
 
 		Node_Type::set_deletable( $target_id, false );
 		Node_Type::apply_parent_as_type( $taxonomy, $target_id );
-		/* UR-B6 / Q72: pick+fill chrome = preferred render embed (not catalog node_embed). */
-		Node_Type::set_preferred_render( $taxonomy, $target_id, Renderer::Embedded->value );
+		/* UR-B6 / Q72: pick+fill chrome = MultistepRenderer (legacy EmbeddedRenderer / embed). */
+		Node_Type::set_preferred_render( $taxonomy, $target_id, Renderer::Multistep->value );
 
 		$result               = $empty;
 		$result['targetId']   = $target_id;
@@ -5650,6 +5856,33 @@ final class Case_Data {
 			}
 			if ( array_key_exists( 'date_mode', $node ) ) {
 				Node_Type::set_date_mode( $taxonomy, $term_id, (string) $node['date_mode'] );
+			}
+			if ( ! empty( $node['preferred_render'] ) && is_string( $node['preferred_render'] ) ) {
+				Node_Type::set_preferred_render(
+					$taxonomy,
+					$term_id,
+					(string) $node['preferred_render']
+				);
+			}
+			if ( isset( $node['presentation'] ) && is_array( $node['presentation'] ) && class_exists( Node_Presentation::class ) ) {
+				$locale = Node_Presentation::site_locale();
+				foreach ( Node_Presentation::TEXT_CONTEXTS as $ctx ) {
+					if ( ! array_key_exists( $ctx, $node['presentation'] ) ) {
+						continue;
+					}
+					Node_Presentation::set(
+						$term_id,
+						$ctx,
+						$locale,
+						(string) $node['presentation'][ $ctx ]
+					);
+				}
+				if ( ! empty( $node['presentation']['symbol'] ) ) {
+					Node_Presentation::sync_short_description_from_symbol(
+						$term_id,
+						(string) $node['presentation']['symbol']
+					);
+				}
 			}
 
 			$type_name = isset( $node['type_name'] ) ? (string) $node['type_name'] : '';

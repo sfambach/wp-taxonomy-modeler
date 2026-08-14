@@ -1,0 +1,158 @@
+{
+    "hostPreferred": "ChildListRenderer",
+    "choiceFilter": {
+        "mode": "exclude",
+        "ids": [
+            4902
+        ]
+    },
+    "attrs": [
+        {
+            "name": "Presentation",
+            "typeKey": "node_presentation",
+            "mult": "1",
+            "binding": "besteht_aus",
+            "ro": true,
+            "hide": false,
+            "ctx": "symbol",
+            "extras": {
+                "presentationContext": "symbol"
+            },
+            "settings": {
+                "data": {
+                    "presentationContext": "symbol"
+                }
+            }
+        },
+        {
+            "name": "multiplikator",
+            "typeKey": "double",
+            "mult": "1",
+            "binding": "besteht_aus",
+            "ro": true,
+            "hide": true,
+            "ctx": "",
+            "extras": [],
+            "settings": []
+        }
+    ],
+    "children": [
+        {
+            "name": "pico",
+            "id": 4898,
+            "multiplikator": 1.0e-12,
+            "short": "p",
+            "symbol": "p",
+            "table": "p",
+            "form": "pico",
+            "select": "p - pico",
+            "help": "SI prefix pico (10⁻¹²).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix pico (10⁻¹²)."
+        },
+        {
+            "name": "nano",
+            "id": 4899,
+            "multiplikator": 1.0e-9,
+            "short": "n",
+            "symbol": "n",
+            "table": "n",
+            "form": "nano",
+            "select": "nano",
+            "help": "SI prefix nano (10⁻⁹).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix nano (10⁻⁹)."
+        },
+        {
+            "name": "Micro",
+            "id": 4900,
+            "multiplikator": 1.0e-6,
+            "short": "u",
+            "symbol": "u",
+            "table": "u",
+            "form": "Micro",
+            "select": "Micro",
+            "help": "SI prefix micro (10⁻⁶).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix micro (10⁻⁶)."
+        },
+        {
+            "name": "Milli",
+            "id": 4901,
+            "multiplikator": 0.001,
+            "short": "m",
+            "symbol": "m",
+            "table": "m",
+            "form": "Milli",
+            "select": "Milli",
+            "help": "SI prefix milli (10⁻³); with Meter → mm.",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix milli (10⁻³); with Meter → mm."
+        },
+        {
+            "name": "Centi",
+            "id": 4902,
+            "multiplikator": 0.01,
+            "short": "c",
+            "symbol": "c",
+            "table": "c",
+            "form": "Centi",
+            "select": "Centi",
+            "help": "SI prefix centi (10⁻²).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix centi (10⁻²)."
+        },
+        {
+            "name": "Kilo",
+            "id": 4903,
+            "multiplikator": 1000,
+            "short": "k",
+            "symbol": "k",
+            "table": "k",
+            "form": "Kilo",
+            "select": "Kilo",
+            "help": "SI prefix kilo (10³).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix kilo (10³)."
+        },
+        {
+            "name": "Mega",
+            "id": 4904,
+            "multiplikator": 1000000,
+            "short": "Mega",
+            "symbol": "Mega",
+            "table": "Mega",
+            "form": "Mega",
+            "select": "Mega",
+            "help": "SI prefix mega (10⁶); name Mega avoids slug clash with milli m.",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix mega (10⁶); name Mega avoids slug clash with milli m."
+        },
+        {
+            "name": "Giga",
+            "id": 5198,
+            "multiplikator": 1000000000,
+            "short": "G",
+            "symbol": "G",
+            "table": "G",
+            "form": "Giga",
+            "select": "Giga",
+            "help": "SI prefix giga (10⁹).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix giga (10⁹)."
+        },
+        {
+            "name": "Tera",
+            "id": 5199,
+            "multiplikator": 1000000000000,
+            "short": "T",
+            "symbol": "T",
+            "table": "T",
+            "form": "Tera",
+            "select": "Tera",
+            "help": "SI prefix tera (10¹²).",
+            "pref": "CompactRenderer",
+            "desc": "SI prefix tera (10¹²)."
+        }
+    ]
+}

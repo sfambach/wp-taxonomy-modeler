@@ -57,7 +57,8 @@ final class Attribute {
 	public const META_KEY_WALK_CACHE = '_wtt_attribute_walk_cache';
 
 	/** Walk cache payload version. */
-	public const WALK_CACHE_VERSION = 3;
+	/** Bumped when summary shape changes (v5: walk includes child_of-inherited attrs). */
+	public const WALK_CACHE_VERSION = 5;
 
 	/**
 	 * Host term meta: map attribute **name** → string|list of default values.
@@ -1823,6 +1824,36 @@ final class Attribute {
 	}
 
 	/**
+	 * Effective composition/aggregation edges for Settings_Walk (Q88 inheritance).
+	 * Merges own + ancestor child_of attributes (closer name wins) — no decorate_row,
+	 * so safe from walk recursion (unlike Attribute::list).
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	public static function effective_edges_for_settings_walk( string $taxonomy, int $type_id ): array {
+		if ( $type_id <= 0 || ! taxonomy_exists( $taxonomy ) ) {
+			return array();
+		}
+		$chain = self::ancestor_chain_root_to_self( $taxonomy, $type_id );
+		if ( empty( $chain ) ) {
+			return array();
+		}
+		/** @var array<string, array<string, mixed>> $by_name */
+		$by_name = array();
+		foreach ( $chain as $node_id ) {
+			foreach ( self::list_own_raw( $taxonomy, $node_id ) as $row ) {
+				$name_key = strtolower( trim( (string) ( $row['name'] ?? '' ) ) );
+				if ( '' === $name_key ) {
+					continue;
+				}
+				/* Root → self: later (closer) overwrites — child wins. */
+				$by_name[ $name_key ] = $row;
+			}
+		}
+		return array_values( $by_name );
+	}
+
+	/**
 	 * Whether a type with both attributes and specialization children should paint
 	 * as Structure (Unit type / size / quantity) rather than CatalogChoice (Bauformen).
 	 */
@@ -2615,6 +2646,16 @@ final class Attribute {
 					$prop['hasChoiceFilterOverride'] = true;
 					$prop['choiceFilter']            = self::normalize_choice_filter( $data['choiceFilter'] );
 				}
+				if ( array_key_exists( 'hidden', $data ) ) {
+					$prop['hidden']             = ! empty( $data['hidden'] );
+					$prop['hasHiddenOverride']  = true;
+					$prop['walkHiddenOverride'] = true;
+				}
+				if ( array_key_exists( 'readOnly', $data ) ) {
+					$prop['readonly']             = ! empty( $data['readOnly'] );
+					$prop['hasReadOnlyOverride']  = true;
+					$prop['walkReadOnlyOverride'] = true;
+				}
 			}
 			unset( $prop );
 		}
@@ -2744,7 +2785,7 @@ final class Attribute {
 			self::apply_persisted_walk_cache_to_row( $row, $taxonomy, $host_id );
 		}
 		if (
-			Renderer::Embedded->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
+			Renderer::Multistep->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
 			&& $type_id > 0
 			&& empty( $row['fixedOptions'] )
 			&& ! Node_Type::is_basiseinheit_unit_node( $taxonomy, $type_id )
@@ -2752,6 +2793,12 @@ final class Attribute {
 		) {
 			$row['fixedRootId']  = $type_id;
 			$row['fixedOptions'] = self::fixed_options_under_type( $taxonomy, $type_id );
+		}
+		if (
+			Renderer::Multistep->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
+			&& $type_id > 0
+		) {
+			$row['multistepMode'] = Node_Type::get_multistep_mode( $type_id );
 		}
 
 		$attr_id = self::normalize_attr_id( $row['id'] ?? '' );
@@ -2788,7 +2835,7 @@ final class Attribute {
 		if (
 			(
 				'catalog' === (string) ( $row['fixedMode'] ?? '' )
-				|| Renderer::Embedded->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
+				|| Renderer::Multistep->value === Node_Type::normalize_preferred_render( (string) ( $row['typePreferredRender'] ?? '' ) )
 			)
 			&& isset( $extras['choiceFilter'] )
 			&& is_array( $extras['choiceFilter'] )
@@ -3032,6 +3079,9 @@ final class Attribute {
 		/* Walk choiceFilter → typeProperties.fixedOptions (Base unit / Praefix Choices). */
 		self::apply_walk_choice_filters_to_row( $taxonomy, $row );
 
+		/* Walk RO / Hide → typeProperties so Preferred Preview omits Background-only fields. */
+		self::apply_walk_visibility_to_row( $row );
+
 		/*
 		 * When slim get_node omitted walk levels, still honour settings.nested for paint
 		 * (depth-1 typeProperties) without a deep live walk.
@@ -3047,6 +3097,24 @@ final class Attribute {
 		} else {
 			$row['compute']  = null;
 			$row['computed'] = false;
+		}
+
+		/*
+		 * Nested structure embed: Q117 host for typeProperties is the *type*
+		 * node — never the outer host. Preview Compact/Form must resolve
+		 * Presentation from this map (settings cascade).
+		 */
+		if ( $type_id > 0 ) {
+			if ( class_exists( Node_Presentation::class ) ) {
+				$row['typePresentation'] = Node_Presentation::map_for_term_resolved( $taxonomy, $type_id );
+			}
+			if ( class_exists( Tree_Model::class ) ) {
+				$row['typeShortDescription'] = Tree_Model::get_short_description( $type_id );
+			}
+			$row['compactShowLabels'] = Node_Type::get_compact_show_labels( $type_id );
+			if ( empty( $row['typeLabel'] ) ) {
+				$row['typeLabel'] = (string) ( $row['typeName'] ?? '' );
+			}
 		}
 
 		return $row;
@@ -3115,6 +3183,53 @@ final class Attribute {
 	}
 
 	/**
+	 * Match a shallow typeProperty to a walk level by attribute edge id only.
+	 *
+	 * Walk `nodeId` is the *type* target — many siblings share Simple types (text).
+	 * Matching by typeId would apply one field's Hide/Default onto every peer of
+	 * that type (e.g. Strasse Hide → Name dropped from Compact). Never do that.
+	 *
+	 * @param array<string, mixed> $prop    typeProperty row.
+	 * @param string               $edge_id Walk level edgeId.
+	 * @param string               $path    Walk path (depth-1 = edge id).
+	 * @param int                  $node_id Walk type node id (unique-sibling fallback only).
+	 * @param list<array<string, mixed>> $siblings All typeProperties for uniqueness check.
+	 */
+	private static function type_prop_matches_walk_level(
+		array $prop,
+		string $edge_id,
+		string $path,
+		int $node_id,
+		array $siblings
+	): bool {
+		$prop_id = self::normalize_attr_id( $prop['id'] ?? '' );
+		if ( '' !== $edge_id && $prop_id === $edge_id ) {
+			return true;
+		}
+		if ( '' !== $path && $prop_id === self::normalize_attr_id( $path ) ) {
+			return true;
+		}
+		/*
+		 * Legacy fallback: typeId only when no edge/path and exactly one sibling
+		 * has that type (unique Quantity/Unit slots). Shared Simple types never match.
+		 */
+		if ( '' !== $edge_id || '' !== $path || $node_id <= 0 ) {
+			return false;
+		}
+		$prop_type_id = (int) ( $prop['typeId'] ?? 0 );
+		if ( $prop_type_id !== $node_id ) {
+			return false;
+		}
+		$same = 0;
+		foreach ( $siblings as $sib ) {
+			if ( is_array( $sib ) && (int) ( $sib['typeId'] ?? 0 ) === $node_id ) {
+				++$same;
+			}
+		}
+		return 1 === $same;
+	}
+
+	/**
 	 * Apply nested Walk Default overrides onto shallow typeProperties (paint/seed).
 	 *
 	 * @param array<string, mixed> $row Attribute row (by ref).
@@ -3127,6 +3242,7 @@ final class Attribute {
 			return;
 		}
 
+		$siblings = $row['typeProperties'];
 		foreach ( $levels as $level ) {
 			if ( ! is_array( $level ) || empty( $level['hasDefaultOverride'] ) ) {
 				continue;
@@ -3138,21 +3254,75 @@ final class Attribute {
 			$seed    = self::normalize_default_seed( $level['default'] ?? array() );
 			$edge_id = self::normalize_attr_id( $level['edgeId'] ?? '' );
 			$node_id = (int) ( $level['nodeId'] ?? 0 );
+			$path    = Settings_Walk::normalize_walk_path( (string) ( $level['path'] ?? '' ) );
+			if ( '' !== $path && false !== strpos( $path, '/' ) ) {
+				continue;
+			}
 
 			foreach ( $row['typeProperties'] as &$prop ) {
 				if ( ! is_array( $prop ) ) {
 					continue;
 				}
-				$prop_id      = self::normalize_attr_id( $prop['id'] ?? '' );
-				$prop_type_id = (int) ( $prop['typeId'] ?? 0 );
-				$match        = ( '' !== $edge_id && $prop_id === $edge_id )
-					|| ( $node_id > 0 && $prop_type_id === $node_id );
-				if ( ! $match ) {
+				if ( ! self::type_prop_matches_walk_level( $prop, $edge_id, $path, $node_id, $siblings ) ) {
 					continue;
 				}
 				$prop['fixedValues']         = $seed;
 				$prop['hasDefaultOverride']  = true;
 				$prop['walkDefaultOverride'] = true;
+			}
+			unset( $prop );
+		}
+	}
+
+	/**
+	 * Apply Walk-Wizard nested RO / Hide onto shallow typeProperties (Preview paint).
+	 * Settings walk UI still lists hidden rows for configuration; paint skips them.
+	 *
+	 * @param array<string, mixed> $row Attribute row (by ref).
+	 */
+	private static function apply_walk_visibility_to_row( array &$row ): void {
+		$levels = isset( $row['settingsWalk'] ) && is_array( $row['settingsWalk'] )
+			? $row['settingsWalk']
+			: array();
+		if ( array() === $levels || empty( $row['typeProperties'] ) || ! is_array( $row['typeProperties'] ) ) {
+			return;
+		}
+
+		$siblings = $row['typeProperties'];
+		foreach ( $levels as $level ) {
+			if ( ! is_array( $level ) ) {
+				continue;
+			}
+			$depth = (int) ( $level['depth'] ?? 0 );
+			if ( $depth <= 0 ) {
+				continue;
+			}
+			$edge_id = self::normalize_attr_id( $level['edgeId'] ?? '' );
+			$node_id = (int) ( $level['nodeId'] ?? 0 );
+			$path    = Settings_Walk::normalize_walk_path( (string) ( $level['path'] ?? '' ) );
+			/* Depth-1 only matches shallow typeProperties (no nested embeds). */
+			if ( '' !== $path && false !== strpos( $path, '/' ) ) {
+				continue;
+			}
+
+			foreach ( $row['typeProperties'] as &$prop ) {
+				if ( ! is_array( $prop ) ) {
+					continue;
+				}
+				if ( ! self::type_prop_matches_walk_level( $prop, $edge_id, $path, $node_id, $siblings ) ) {
+					continue;
+				}
+				/* Resolved walk Hide / RO (type default + path override). */
+				$prop['hidden']   = ! empty( $level['hidden'] );
+				$prop['readonly'] = ! empty( $level['readOnly'] );
+				if ( ! empty( $level['hasHiddenOverride'] ) ) {
+					$prop['hasHiddenOverride']  = true;
+					$prop['walkHiddenOverride'] = true;
+				}
+				if ( ! empty( $level['hasReadOnlyOverride'] ) ) {
+					$prop['hasReadOnlyOverride']  = true;
+					$prop['walkReadOnlyOverride'] = true;
+				}
 			}
 			unset( $prop );
 		}
@@ -3176,6 +3346,7 @@ final class Attribute {
 			return;
 		}
 
+		$siblings = $row['typeProperties'];
 		foreach ( $levels as $level ) {
 			if ( ! is_array( $level ) ) {
 				continue;
@@ -3196,8 +3367,12 @@ final class Attribute {
 
 			$edge_id = self::normalize_attr_id( $level['edgeId'] ?? '' );
 			$node_id = (int) ( $level['nodeId'] ?? 0 );
+			$path    = Settings_Walk::normalize_walk_path( (string) ( $level['path'] ?? '' ) );
 			$depth   = (int) ( $level['depth'] ?? 0 );
 			if ( $depth <= 0 ) {
+				continue;
+			}
+			if ( '' !== $path && false !== strpos( $path, '/' ) ) {
 				continue;
 			}
 
@@ -3205,16 +3380,13 @@ final class Attribute {
 				if ( ! is_array( $prop ) ) {
 					continue;
 				}
-				$prop_id      = self::normalize_attr_id( $prop['id'] ?? '' );
-				$prop_type_id = (int) ( $prop['typeId'] ?? 0 );
-				$match        = ( '' !== $edge_id && $prop_id === $edge_id )
-					|| ( $node_id > 0 && $prop_type_id === $node_id );
-				if ( ! $match ) {
+				if ( ! self::type_prop_matches_walk_level( $prop, $edge_id, $path, $node_id, $siblings ) ) {
 					continue;
 				}
 				if ( empty( $prop['fixedOptions'] ) || ! is_array( $prop['fixedOptions'] ) ) {
 					continue;
 				}
+				$prop_type_id         = (int) ( $prop['typeId'] ?? 0 );
 				$scope                = $prop_type_id > 0 ? $prop_type_id : $node_id;
 				$prop['fixedOptions'] = self::apply_choice_filter(
 					$taxonomy,
@@ -3281,15 +3453,16 @@ final class Attribute {
 			if ( empty( $row['typeProperties'] ) || ! is_array( $row['typeProperties'] ) ) {
 				continue;
 			}
+			$path     = Settings_Walk::normalize_walk_path( (string) ( $level['path'] ?? '' ) );
+			$siblings = $row['typeProperties'];
+			if ( '' !== $path && false !== strpos( $path, '/' ) ) {
+				continue;
+			}
 			foreach ( $row['typeProperties'] as &$prop ) {
 				if ( ! is_array( $prop ) ) {
 					continue;
 				}
-				$prop_id      = self::normalize_attr_id( $prop['id'] ?? '' );
-				$prop_type_id = (int) ( $prop['typeId'] ?? 0 );
-				$match        = ( '' !== $edge_id && $prop_id === $edge_id )
-					|| ( $node_id > 0 && $prop_type_id === $node_id );
-				if ( ! $match ) {
+				if ( ! self::type_prop_matches_walk_level( $prop, $edge_id, $path, $node_id, $siblings ) ) {
 					continue;
 				}
 				if ( ! empty( $prop['fixedOptions'] ) && is_array( $prop['fixedOptions'] ) ) {
@@ -3428,7 +3601,7 @@ final class Attribute {
 	}
 
 	/**
-	 * Kind options for EmbeddedRenderer (pick+create).
+	 * Kind options for MultistepRenderer (pick+create; legacy EmbeddedRenderer).
 	 * Specialization children when present; otherwise the type itself (e.g. Kontakt).
 	 *
 	 * @return list<array{id:int,name:string,path:string}>
@@ -3497,9 +3670,15 @@ final class Attribute {
 			return array();
 		}
 		if ( Node_Type::is_unit_prefix_bucket( $taxonomy, $type_id ) ) {
-			return self::unit_leaf_options_under_type( $taxonomy, $type_id );
+			$options = self::unit_leaf_options_under_type( $taxonomy, $type_id );
+		} else {
+			$options = self::fixed_options_under_type( $taxonomy, $type_id );
 		}
-		return self::fixed_options_under_type( $taxonomy, $type_id );
+		$filter = Node_Type::get_choice_filter( $type_id );
+		if ( is_array( $filter ) && ! empty( $filter['ids'] ) ) {
+			$options = self::apply_choice_filter( $taxonomy, $type_id, $options, $filter );
+		}
+		return $options;
 	}
 
 	private static function fixed_options_under_type( string $taxonomy, int $type_id ): array {

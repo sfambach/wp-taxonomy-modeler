@@ -154,6 +154,8 @@ final class Demo_Data {
 									array( 'name' => 'Centi', 'aliases' => array( 'c', 'centi' ), 'short_description' => 'c', 'description' => 'SI prefix centi (10^-2).', 'multiplikator' => 1.0e-2 ),
 									array( 'name' => 'Kilo', 'aliases' => array( 'k', 'kilo' ), 'short_description' => 'k', 'description' => 'SI prefix kilo (10^3).', 'multiplikator' => 1.0e3 ),
 									array( 'name' => 'Mega', 'short_description' => 'Mega', 'description' => 'SI prefix mega (10^6); name Mega avoids slug clash with milli.', 'multiplikator' => 1.0e6 ),
+									array( 'name' => 'Giga', 'aliases' => array( 'G' ), 'short_description' => 'G', 'description' => 'SI prefix giga (10^9).', 'multiplikator' => 1.0e9 ),
+									array( 'name' => 'Tera', 'aliases' => array( 'T' ), 'short_description' => 'T', 'description' => 'SI prefix tera (10^12).', 'multiplikator' => 1.0e12 ),
 								),
 							),
 							array(
@@ -3083,6 +3085,11 @@ final class Demo_Data {
 			'Kilo'  => 1.0e3,
 			'kilo'  => 1.0e3,
 			'Mega'  => 1.0e6,
+			'M'     => 1.0e6,
+			'Giga'  => 1.0e9,
+			'G'     => 1.0e9,
+			'Tera'  => 1.0e12,
+			'T'     => 1.0e12,
 		);
 
 		$roots = array();
@@ -3131,10 +3138,11 @@ final class Demo_Data {
 					continue;
 				}
 				$current = Node_Type::get_multiplikator( (int) $child->term_id );
-				if ( null !== $current && $current > 0.0 ) {
+				$want    = (float) $factors[ $child->name ];
+				if ( null !== $current && abs( $current - $want ) < 1.0e-18 ) {
 					continue;
 				}
-				Node_Type::set_multiplikator( (int) $child->term_id, $factors[ $child->name ] );
+				Node_Type::set_multiplikator( (int) $child->term_id, $want );
 			}
 		}
 	}

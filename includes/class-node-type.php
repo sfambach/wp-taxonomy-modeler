@@ -95,13 +95,24 @@ final class Node_Type {
 	/** Preferred Object View / admin preview layout for this node. */
 	public const META_KEY_PREFERRED_RENDER = '_wtt_preferred_render';
 
+	/**
+	 * MultistepRenderer chrome: dialog (popup Phase A/B) | inline (step1|step2 strip).
+	 * Renderer-local — not global Settings treePickerMode (Q74).
+	 */
+	public const META_KEY_MULTISTEP_MODE = '_wtt_multistep_mode';
+
+	/**
+	 * CompactRenderer / CompactVerticalRenderer: show field labels (default on).
+	 */
+	public const META_KEY_COMPACT_SHOW_LABELS = '_wtt_compact_show_labels';
+
 	/** Allowed preferred render keys (match Object View layout / Q113 Renderer enum). */
 	public const PREFERRED_RENDER_KEYS = array(
 		'FormRenderer',
 		'TableRenderer',
 		'CompactRenderer',
 		'CompactVerticalRenderer',
-		'EmbeddedRenderer',
+		'MultistepRenderer',
 		'ChildListRenderer',
 	);
 
@@ -132,6 +143,12 @@ final class Node_Type {
 
 	/** Literal fixed value for simple types (int/double/text/…). */
 	public const META_KEY_FIXED_LITERAL = '_wtt_fixed_literal';
+
+	/**
+	 * Type-host ChildList / CatalogChoice allowlist (Settings.data.choiceFilter).
+	 * Shape: { mode: 'exclude'|'include', ids: int[] }. Empty / missing = all children.
+	 */
+	public const META_KEY_CHOICE_FILTER = '_wtt_choice_filter';
 
 	/**
 	 * Node-level read-only lock (attribute slots + typed fields).
@@ -2426,6 +2443,24 @@ final class Node_Type {
 			}
 		}
 
+		if ( array_key_exists( 'multistep_mode', $settings ) ) {
+			$result = self::set_multistep_mode( $taxonomy, $term_id, (string) $settings['multistep_mode'] );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		}
+
+		if ( array_key_exists( 'compact_show_labels', $settings ) ) {
+			$result = self::set_compact_show_labels(
+				$taxonomy,
+				$term_id,
+				(bool) $settings['compact_show_labels']
+			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		}
+
 		if ( array_key_exists( 'validators', $settings ) ) {
 			$result = self::set_validators( $taxonomy, $term_id, $settings['validators'] );
 			if ( is_wp_error( $result ) ) {
@@ -2810,6 +2845,60 @@ final class Node_Type {
 			'footerOp'        => $normalized['key'],
 			'footerOpOptions' => Footer_Ops::picker_options( $taxonomy, $zeile_type ),
 		);
+	}
+
+	/**
+	 * Multistep chrome mode (default dialog).
+	 *
+	 * @return 'dialog'|'inline'
+	 */
+	public static function get_multistep_mode( int $term_id ): string {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_MULTISTEP_MODE ) ) {
+			return 'dialog';
+		}
+		$raw = strtolower( trim( (string) get_term_meta( $term_id, self::META_KEY_MULTISTEP_MODE, true ) ) );
+		return 'inline' === $raw ? 'inline' : 'dialog';
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_multistep_mode( string $taxonomy, int $term_id, string $mode ) {
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		$raw = strtolower( trim( $mode ) );
+		if ( 'inline' !== $raw ) {
+			$raw = 'dialog';
+		}
+		update_term_meta( $term_id, self::META_KEY_MULTISTEP_MODE, $raw );
+		Tree_Model::touch_modified( $term_id );
+		return true;
+	}
+
+	/**
+	 * Compact chrome: show field labels (default true).
+	 */
+	public static function get_compact_show_labels( int $term_id ): bool {
+		if ( $term_id <= 0 || ! metadata_exists( 'term', $term_id, self::META_KEY_COMPACT_SHOW_LABELS ) ) {
+			return true;
+		}
+		$raw = strtolower( trim( (string) get_term_meta( $term_id, self::META_KEY_COMPACT_SHOW_LABELS, true ) ) );
+		return ! in_array( $raw, array( '0', 'false', 'off', 'no' ), true );
+	}
+
+	/**
+	 * @return true|\WP_Error
+	 */
+	public static function set_compact_show_labels( string $taxonomy, int $term_id, bool $show ) {
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		update_term_meta( $term_id, self::META_KEY_COMPACT_SHOW_LABELS, $show ? '1' : '0' );
+		Tree_Model::touch_modified( $term_id );
+		return true;
 	}
 
 	/**
@@ -3254,9 +3343,9 @@ final class Node_Type {
 	 * Typed scalars → field Renderer id; otherwise FormRenderer.
 	 */
 	public static function default_preferred_render_for_term( string $taxonomy, int $term_id ): string {
-		/* Q120: concrete unit leaf → UnitRenderer (Prefix? + Symbol), not Form. */
+		/* Q120: concrete unit leaf → Compact (Praefix?/Kuerzel attrs), not UnitRenderer. */
 		if ( self::is_basiseinheit_unit_node( $taxonomy, $term_id ) ) {
-			return Renderer::Unit->value;
+			return Renderer::Compact->value;
 		}
 		/* Konstanten folders with children (Präfixe, Bauformen, …) → child list. */
 		if ( self::is_konstanten_child_list_host( $taxonomy, $term_id ) ) {
@@ -4508,6 +4597,60 @@ final class Node_Type {
 		delete_term_meta( $term_id, self::META_KEY_FIXED_ENABLED );
 		delete_term_meta( $term_id, self::META_KEY_FIXED_LITERAL );
 		delete_term_meta( $term_id, self::META_KEY_FIXED_NODE );
+	}
+
+	/**
+	 * Type-host Choice filter (ChildList / CatalogChoice pickable children).
+	 *
+	 * @return array{mode:string,ids:list<int>}|null Null = all children allowed.
+	 */
+	public static function get_choice_filter( int $term_id ): ?array {
+		if ( $term_id <= 0 ) {
+			return null;
+		}
+		$raw = get_term_meta( $term_id, self::META_KEY_CHOICE_FILTER, true );
+		if ( ! is_array( $raw ) || array() === $raw ) {
+			return null;
+		}
+		if ( ! class_exists( Attribute::class ) ) {
+			return null;
+		}
+		$norm = Attribute::normalize_choice_filter( $raw );
+		if ( empty( $norm['ids'] ) ) {
+			return null;
+		}
+		return $norm;
+	}
+
+	/**
+	 * @param array{mode?:string,ids?:list<int>}|null $filter Null / empty ids clears meta.
+	 * @return true|\WP_Error
+	 */
+	public static function set_choice_filter( string $taxonomy, int $term_id, $filter ) {
+		$term = get_term( $term_id, $taxonomy );
+		if ( ! $term instanceof \WP_Term ) {
+			return new \WP_Error( 'wtt_not_found', __( 'Term not found.', 'wp-taxonomy-tree' ) );
+		}
+		if ( null === $filter || ! is_array( $filter ) ) {
+			delete_term_meta( $term_id, self::META_KEY_CHOICE_FILTER );
+			if ( class_exists( Settings_Walk::class ) ) {
+				Settings_Walk::bust_request_caches();
+			}
+			return true;
+		}
+		if ( ! class_exists( Attribute::class ) ) {
+			return new \WP_Error( 'wtt_missing', __( 'Attribute API missing.', 'wp-taxonomy-tree' ) );
+		}
+		$norm = Attribute::normalize_choice_filter( $filter );
+		if ( empty( $norm['ids'] ) ) {
+			delete_term_meta( $term_id, self::META_KEY_CHOICE_FILTER );
+		} else {
+			update_term_meta( $term_id, self::META_KEY_CHOICE_FILTER, $norm );
+		}
+		if ( class_exists( Settings_Walk::class ) ) {
+			Settings_Walk::bust_request_caches();
+		}
+		return true;
 	}
 
 	/**

@@ -1,0 +1,551 @@
+﻿{
+    "host": {
+        "id": 4897,
+        "name": "Pr├ñfixe",
+        "description": "Global prefix catalog. multiplikator = scale vs the unitÔÇÖs prefix root (Q51). Married to units via allowlist.",
+        "parent": "Konstanten",
+        "preferredRender": "ChildListRenderer",
+        "ownPreferred": true,
+        "choiceFilter": {
+            "mode": "exclude",
+            "ids": [
+                4902
+            ]
+        },
+        "fixedAssignment": null,
+        "shortDescription": "",
+        "presentation": {
+            "form": "Pr├ñfixe",
+            "table": "Pr├ñfixe",
+            "select": "Pr├ñfixe",
+            "symbol": "",
+            "help": "Global prefix catalog. multiplikator = scale vs the unitÔÇÖs prefix root (Q51). Married to units via allowlist.",
+            "icon": ""
+        }
+    },
+    "attributes": [
+        {
+            "name": "Presentation",
+            "id": "33ac0b33fb2343158da2924eaea628f6",
+            "typeKey": "node_presentation",
+            "typeName": "node_presentation",
+            "typeId": 5192,
+            "multiplicity": "1",
+            "binding": "besteht_aus",
+            "readonly": true,
+            "hidden": false,
+            "fixedValues": [],
+            "fixedMode": "literal",
+            "typeExtras": {
+                "presentationContext": "symbol"
+            },
+            "settings": {
+                "data": {
+                    "presentationContext": "symbol"
+                }
+            },
+            "preferredRender": "NodePresentationRenderer",
+            "presentationConfig": {
+                "context": "symbol",
+                "typeContext": "form",
+                "hasOverride": true
+            }
+        },
+        {
+            "name": "multiplikator",
+            "id": "aa2c989aebf148fdb312854f696bb3e9",
+            "typeKey": "double",
+            "typeName": "double",
+            "typeId": 5185,
+            "multiplicity": "1",
+            "binding": "besteht_aus",
+            "readonly": true,
+            "hidden": true,
+            "fixedValues": [],
+            "fixedMode": "literal",
+            "typeExtras": [],
+            "settings": [],
+            "preferredRender": "DoubleRenderer",
+            "presentationConfig": null
+        }
+    ],
+    "children": [
+        {
+            "id": 4902,
+            "name": "Centi",
+            "slug": "centi",
+            "description": "SI prefix centi (10Ôü╗┬▓).",
+            "shortDescription": "c",
+            "multiplikator": 0.01,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Centi",
+                "table": "c",
+                "select": "Centi",
+                "symbol": "c",
+                "help": "SI prefix centi (10Ôü╗┬▓).",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "0.01"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 5198,
+            "name": "Giga",
+            "slug": "giga",
+            "description": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+            "shortDescription": "Mega",
+            "multiplikator": 1000000,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Giga",
+                "table": "Mega",
+                "select": "Giga",
+                "symbol": "Mega",
+                "help": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1000000"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4903,
+            "name": "Kilo",
+            "slug": "kilo",
+            "description": "SI prefix kilo (10┬│).",
+            "shortDescription": "k",
+            "multiplikator": 1000,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Kilo",
+                "table": "k",
+                "select": "Kilo",
+                "symbol": "k",
+                "help": "SI prefix kilo (10┬│).",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1000"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4904,
+            "name": "Mega",
+            "slug": "mega",
+            "description": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+            "shortDescription": "Mega",
+            "multiplikator": 1000000,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Mega",
+                "table": "Mega",
+                "select": "Mega",
+                "symbol": "Mega",
+                "help": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1000000"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4900,
+            "name": "Micro",
+            "slug": "micro",
+            "description": "SI prefix micro (10Ôü╗ÔüÂ).",
+            "shortDescription": "u",
+            "multiplikator": 1.0e-6,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Micro",
+                "table": "u",
+                "select": "Micro",
+                "symbol": "u",
+                "help": "SI prefix micro (10Ôü╗ÔüÂ).",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1.0E-6"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4901,
+            "name": "Milli",
+            "slug": "milli",
+            "description": "SI prefix milli (10Ôü╗┬│); with Meter ÔåÆ mm.",
+            "shortDescription": "m",
+            "multiplikator": 0.001,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Milli",
+                "table": "m",
+                "select": "Milli",
+                "symbol": "m",
+                "help": "SI prefix milli (10Ôü╗┬│); with Meter ÔåÆ mm.",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "0.001"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4899,
+            "name": "nano",
+            "slug": "nano",
+            "description": "SI prefix nano (10Ôü╗Ôü╣).",
+            "shortDescription": "n",
+            "multiplikator": 1.0e-9,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "nano",
+                "table": "n",
+                "select": "nano",
+                "symbol": "n",
+                "help": "SI prefix nano (10Ôü╗Ôü╣).",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1.0E-9"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4898,
+            "name": "pico",
+            "slug": "pico",
+            "description": "SI prefix pico (10Ôü╗┬╣┬▓).",
+            "shortDescription": "p",
+            "multiplikator": 1.0e-12,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "pico",
+                "table": "p",
+                "select": "p - pico",
+                "symbol": "p",
+                "help": "SI prefix pico (10Ôü╗┬╣┬▓).",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1.0E-12"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        },
+        {
+            "id": 5199,
+            "name": "Tera",
+            "slug": "tera",
+            "description": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+            "shortDescription": "Mega",
+            "multiplikator": 1000000,
+            "preferredRender": "CompactRenderer",
+            "ownPreferred": true,
+            "fixedAssignment": null,
+            "presentation": {
+                "form": "Tera",
+                "table": "Mega",
+                "select": "Tera",
+                "symbol": "Mega",
+                "help": "SI prefix mega (10ÔüÂ); name Mega avoids slug clash with milli m.",
+                "icon": ""
+            },
+            "attributes": [
+                {
+                    "name": "Presentation",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": false,
+                    "fixedValues": [],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": false,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": false
+                    }
+                },
+                {
+                    "name": "multiplikator",
+                    "inherited": true,
+                    "readonly": true,
+                    "hidden": true,
+                    "fixedValues": [
+                        "1000000"
+                    ],
+                    "inheritedHostOverride": {
+                        "hidden": false,
+                        "readonly": false,
+                        "default": true,
+                        "typeExtras": false,
+                        "settingsOverrides": false,
+                        "any": true
+                    }
+                }
+            ]
+        }
+    ]
+}

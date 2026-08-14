@@ -61,11 +61,13 @@ function normalizeObjectLayoutAttr( raw ) {
 		'compact-vertical': 'CompactVerticalRenderer',
 		compactverticalrenderer: 'CompactVerticalRenderer',
 		'compact-v': 'CompactVerticalRenderer',
-		embed: 'EmbeddedRenderer',
-		embeddedrenderer: 'EmbeddedRenderer',
-		'pick-fill': 'EmbeddedRenderer',
-		pick_fill: 'EmbeddedRenderer',
-		'compact-embed': 'EmbeddedRenderer',
+		embed: 'MultistepRenderer',
+		embeddedrenderer: 'MultistepRenderer',
+		'pick-fill': 'MultistepRenderer',
+		pick_fill: 'MultistepRenderer',
+		'compact-embed': 'MultistepRenderer',
+		multistep: 'MultistepRenderer',
+		multisteprenderer: 'MultistepRenderer',
 	};
 	return map[ key ] || 'FormRenderer';
 }
@@ -666,8 +668,8 @@ export default function ObjectViewEdit( { attributes, setAttributes } ) {
 								value: 'CompactVerticalRenderer',
 							},
 							{
-								label: i18n.layoutEmbed || 'Embedded renderer',
-								value: 'EmbeddedRenderer',
+								label: i18n.layoutEmbed || i18n.layoutMultistep || 'Multistep',
+								value: 'MultistepRenderer',
 							},
 						] }
 						onChange={ ( next ) => {

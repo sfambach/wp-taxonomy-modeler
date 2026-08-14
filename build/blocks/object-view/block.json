@@ -6,7 +6,18 @@
   "category": "taxo",
   "icon": "id-alt",
   "description": "Bind a taxonomy tree node and display its name, descriptions, and all attributes.",
-  "keywords": ["taxo", "taxo-object-view", "object", "node", "properties", "attributes", "form", "table", "liste", "compact"],
+  "keywords": [
+    "taxo",
+    "taxo-object-view",
+    "object",
+    "node",
+    "properties",
+    "attributes",
+    "form",
+    "table",
+    "liste",
+    "compact"
+  ],
   "textdomain": "wp-taxonomy-tree",
   "attributes": {
     "termId": {
@@ -30,12 +41,14 @@
         "TableRenderer",
         "CompactRenderer",
         "CompactVerticalRenderer",
+        "MultistepRenderer",
         "EmbeddedRenderer",
         "form",
         "table",
         "compact",
         "compact-vertical",
-        "embed"
+        "embed",
+        "multistep"
       ]
     },
     "renderDepth": {
@@ -45,12 +58,20 @@
     "referenceMode": {
       "type": "string",
       "default": "link",
-      "enum": ["none", "link", "summary", "embed"]
+      "enum": [
+        "none",
+        "link",
+        "summary",
+        "embed"
+      ]
     }
   },
   "supports": {
     "html": false,
-    "align": ["wide", "full"]
+    "align": [
+      "wide",
+      "full"
+    ]
   },
   "editorScript": "taxo-object-view-editor-script",
   "editorStyle": "taxo-object-view-editor-style",

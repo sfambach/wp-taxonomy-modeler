@@ -87,9 +87,16 @@ Attribute-host preview uses **`WTTObjectRender`** Form(1)/Table(n); field cells 
 
 ## Object layouts (Preferred)
 
-Preferred object chrome ids (`FormRenderer`, `TableRenderer`, `CompactRenderer`, `CompactVerticalRenderer`, `EmbeddedRenderer`, **`ChildListRenderer`**) are layouts — not scalar Registry paint keys.
+Preferred object chrome ids (`FormRenderer`, `TableRenderer`, `CompactRenderer`, `CompactVerticalRenderer`, `MultistepRenderer`, **`ChildListRenderer`**) are layouts — not scalar Registry paint keys. Legacy `EmbeddedRenderer` / `embed` normalize to Multistep. **Multistep × Bindung (Q112):** Composition = step fill in context with the **kind node’s Preferred**; Aggregation = Model_Data chooser (search/create/bind).
 
-- **`ChildListRenderer`**: list field of hierarchy children (CatalogChoice-style list/tree). Default Preferred for **Konstanten** hosts with children (Präfixe, Bauformen, With prefix, …). Unit leaves stay `UnitRenderer`. **Do not** paint ChildList/With-prefix Base unit as OQ-W11 Praefix+Kuerzel Structure — that composition defines unit *leaves*; instance pick is CatalogChoice of those leaves ([`attribute-choice-inheritance.md`](../../docs/plans/attribute-choice-inheritance.md)).
+- **`ChildListRenderer`**: list field of hierarchy children (CatalogChoice-style list/tree). Default Preferred for **Konstanten** hosts with children (Präfixe, Bauformen, With prefix, …). **Basiseinheit unit leaves** Prefer **`CompactRenderer`** (inherited Praefix?/Kuerzel attrs — ≈ 0.0.543); UnitRenderer stays for quantity **usage** fields, not catalog definition. **Do not** paint ChildList/With-prefix Base unit as OQ-W11 Praefix+Kuerzel Structure — that composition defines unit *leaves*; instance pick is CatalogChoice of those leaves ([`attribute-choice-inheritance.md`](../../docs/plans/attribute-choice-inheritance.md)).
+
+### Settings cascade (locked ≈ 0.0.558)
+
+Defaults cascade detail→model (Präfix → BU → Unit type → Model). Paint follows type/walk settings — **not** display-name special cases.
+
+- Host Preview = host Preferred; nested structure cells = **type Preferred** + `typePresentation` (Q117).
+- Hardcode layout mechanics only **inside** Form/Table/Compact/Multistep for the **current** layer; nested content re-resolves Preferred from the nested type.
 
 ## Do / don’t
 
@@ -99,8 +106,9 @@ Preferred object chrome ids (`FormRenderer`, `TableRenderer`, `CompactRenderer`,
 - **Do** register one renderer per simple scalar type (`int`, `char`, `double`, `text`, `textarea`, `bool`, `email`).
 - **Do** treat **one Registry ≠ one renderer** (Q91) — many type handlers share one dispatch pipeline.
 - **Do** use Sample_Data for fill values; `getExampleNode` for structure DTOs.
+- **Do** honour nested type Preferred / Presentation / Hide when embedding structure fields.
 - **Don’t** hard-code node HTML/JSX only for “the preview pane.”
-- **Don’t** special-case Meter/Abmessung by name — resolve kind, then render (see preview-checkpoints UX rules).
+- **Don’t** special-case paint by node display name or path — resolve Preferred + type settings, then render (see preview-checkpoints).
 - **Don’t** treat `set` / `media` / `node_ref` as simple scalars — they need composition or dedicated renderers (`NodeRefRenderer` for `node_ref`). Catalog `list` / `enum` / `table` are **parked (Q90)** — do not extend; warn before revival (`.cursor/rules/parked-complex-types.mdc`; historical enum notes in `.cursor/rules/enum-nodes.mdc`).
 - **Don’t** call this a Factory — nothing constructs domain objects; it **registers** and **dispatches**.
 

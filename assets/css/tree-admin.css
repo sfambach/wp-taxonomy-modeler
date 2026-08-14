@@ -5,6 +5,94 @@
 	box-sizing: border-box;
 }
 
+/*
+ * One vertical scrollbar only: tree + detail panes scroll inside .wtt-app.
+ *
+ * Shell fill is CSS flex from #wpwrap → #wtt-app (≈ 0.0.562). Do NOT size
+ * #wtt-app from JS getBoundingClientRect after remount — a mid-scroll /
+ * mid-focus measure wrote a too-small inline height, #wpwrap shrank to
+ * content, admin menu (height:100% of wrap) cut off, white void below.
+ */
+html:has(body.toplevel_page_wp-taxonomy-tree) {
+	overflow: hidden;
+}
+
+body.toplevel_page_wp-taxonomy-tree {
+	overflow: hidden;
+}
+
+/* Viewport lock under the admin bar (32px desktop / 46px narrow). */
+body.toplevel_page_wp-taxonomy-tree #wpwrap {
+	height: calc(100vh - 32px);
+	max-height: calc(100vh - 32px);
+	min-height: 0;
+	overflow: hidden;
+}
+
+html:not(.wp-toolbar) body.toplevel_page_wp-taxonomy-tree #wpwrap {
+	height: 100vh;
+	max-height: 100vh;
+}
+
+body.toplevel_page_wp-taxonomy-tree #wpcontent {
+	padding-bottom: 0;
+	height: 100%;
+	max-height: 100%;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+}
+
+body.toplevel_page_wp-taxonomy-tree #wpbody {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	padding-bottom: 0;
+}
+
+body.toplevel_page_wp-taxonomy-tree #wpbody-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	padding-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	float: none;
+	width: 100%;
+}
+
+/* Tool page: reclaim footer so panes get the full column. */
+body.toplevel_page_wp-taxonomy-tree #wpfooter {
+	display: none;
+}
+
+body.toplevel_page_wp-taxonomy-tree #wpbody-content > .wrap.wtt-wrap {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin-bottom: 0;
+	padding-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+body.toplevel_page_wp-taxonomy-tree .wtt-wrap > h1,
+body.toplevel_page_wp-taxonomy-tree .wtt-wrap > .description,
+body.toplevel_page_wp-taxonomy-tree .wtt-wrap > .notice {
+	flex: 0 0 auto;
+}
+
+@media screen and (max-width: 782px) {
+	body.toplevel_page_wp-taxonomy-tree #wpwrap {
+		height: calc(100vh - 46px);
+		max-height: calc(100vh - 46px);
+	}
+}
+
 /* Shared detail chrome — form / bands / relations / settings / preview */
 .wtt-panel {
 	margin-top: var(--wtt-panel-gap, 0.75em);
@@ -393,8 +481,7 @@
 }
 
 .wtt-app {
-	/* Fill viewport under WP admin chrome; each pane scrolls independently. */
-	--wtt-app-height: calc(100vh - 96px);
+	/* Flex child of .wtt-wrap — fills leftover column; panes scroll inside. */
 	--wtt-panel-border: #dcdcde;
 	--wtt-panel-bg: #fff;
 	--wtt-panel-radius: 4px;
@@ -404,13 +491,14 @@
 	--wtt-muted: #646970;
 	--wtt-ink: #1d2327;
 	margin-top: 1em;
+	flex: 1 1 auto;
+	min-height: 0;
+	height: auto;
+	max-height: none;
 	display: grid;
 	grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
 	grid-template-rows: minmax(0, 1fr);
 	gap: 0;
-	height: var(--wtt-app-height);
-	min-height: 320px;
-	max-height: var(--wtt-app-height);
 	border: 1px solid #c3c4c7;
 	background: #fff;
 	overflow: hidden;
@@ -425,6 +513,7 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 	overscroll-behavior: contain;
+	overflow-anchor: none;
 }
 
 .wtt-detail-pane {
@@ -436,6 +525,8 @@
 	overscroll-behavior: contain;
 	/* Avoid horizontal jump when the vertical scrollbar appears/disappears. */
 	scrollbar-gutter: stable;
+	/* Growing Preferred/Choices must not yank the scrollport via scroll anchoring. */
+	overflow-anchor: none;
 	background: #fcfcfc;
 }
 
@@ -1390,7 +1481,8 @@ a.wtt-conflict-badge:focus {
 	margin-top: 0.15em;
 }
 
-.wtt-object-render--embed {
+.wtt-object-render--embed,
+.wtt-object-render--multistep {
 	display: flex;
 	flex-flow: row wrap;
 	align-items: flex-start;
@@ -1404,8 +1496,21 @@ a.wtt-conflict-badge:focus {
 	max-width: 100%;
 }
 
+.wtt-object-render--multistep.is-inline {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+}
+
 .wtt-object-render--embed-compact {
 	align-items: center;
+}
+
+.wtt-set-preview__cell .wtt-object-render--embed,
+.wtt-set-preview__cell .wtt-object-render--multistep,
+.wtt-object-render__table .wtt-object-render--embed,
+.wtt-object-render__table .wtt-object-render--multistep {
+	/* Table column already names the field — keep strip dense. */
+	width: 100%;
 }
 
 .wtt-object-render__embed-pick {
@@ -1433,12 +1538,6 @@ a.wtt-conflict-badge:focus {
 
 .wtt-object-render__embed-pick-label {
 	font-weight: 600;
-}
-
-.wtt-set-preview__cell .wtt-object-render--embed,
-.wtt-object-render__table .wtt-object-render--embed {
-	/* Table column already names the field — keep strip dense. */
-	width: 100%;
 }
 
 .wtt-object-render--compact-horizontal {
@@ -1488,6 +1587,12 @@ a.wtt-conflict-badge:focus {
 	color: #50575e;
 	line-height: 1.2;
 	white-space: nowrap;
+}
+
+.wtt-object-render--compact.is-no-labels .wtt-object-render__compact-label,
+.wtt-object-view__compact.is-no-labels .wtt-object-view__compact-label,
+.wtt-set-preview__compact.is-no-labels .wtt-object-render__compact-label {
+	display: none !important;
 }
 
 .wtt-object-render__compact-control {
@@ -2160,6 +2265,7 @@ a.wtt-conflict-badge:focus {
 	border-radius: 4px;
 	background: #fff;
 	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+	overflow-anchor: none;
 }
 
 .wtt-form__meta-strip {
@@ -2358,7 +2464,11 @@ a.wtt-conflict-badge:focus {
 	display: grid;
 	grid-template-columns: minmax(7.5rem, 9rem) minmax(0, 1fr) 1.5rem;
 	gap: 0.45em 0.75em;
-	align-items: center;
+	/*
+	 * Top-align by default — center + tall Preferred/Choices/validators made
+	 * the select “jump” vertically inside the row on every re-render.
+	 */
+	align-items: start;
 	padding: 0.4em 0;
 	border-bottom: 1px solid #f0f0f1;
 }
@@ -2369,6 +2479,26 @@ a.wtt-conflict-badge:focus {
 
 .wtt-form > .wtt-form__row:first-of-type {
 	padding-top: 0.15em;
+}
+
+.wtt-form__row > .wtt-form__label,
+.wtt-form__row > .wtt-form__help {
+	/* Optical align with single-line controls when row is start-aligned. */
+	padding-top: 0.45em;
+}
+
+.wtt-form__row--meta,
+.wtt-form__row--check {
+	align-items: center;
+}
+
+.wtt-form__row--meta > .wtt-form__label,
+.wtt-form__row--meta > .wtt-form__help,
+.wtt-form__row--check > .wtt-form__label,
+.wtt-form__row--check > .wtt-form__help,
+.wtt-form__row--flags > .wtt-form__label,
+.wtt-form__row--flags > .wtt-form__help {
+	padding-top: 0;
 }
 
 .wtt-form__label {
@@ -4098,7 +4228,6 @@ a.wtt-conflict-badge:focus {
 
 @media (max-width: 782px) {
 	.wtt-app {
-		--wtt-app-height: calc(100vh - 200px);
 		grid-template-columns: 1fr;
 		grid-template-rows: minmax(0, 40%) minmax(0, 60%);
 	}
@@ -4576,6 +4705,7 @@ a.wtt-conflict-badge:focus {
 .wtt-attributes__detail {
 	display: block;
 	margin-top: 0.45em;
+	overflow-anchor: none;
 }
 
 .wtt-attributes__detail-layout {
@@ -5151,6 +5281,72 @@ button.wtt-attributes__walk-item-edit:focus {
 	gap: 0.2em;
 }
 
+/* Display Preferred: options in the same control column as the select. */
+.wtt-form__row--preferred-render,
+.wtt-form__row--preferred-converter,
+.wtt-form__row--preferred-validators {
+	/* Tall options under the select — keep label/? top-aligned with the select. */
+	align-items: start;
+}
+
+.wtt-form__row--preferred-render .wtt-form__label,
+.wtt-form__row--preferred-converter .wtt-form__label,
+.wtt-form__row--preferred-validators .wtt-form__label,
+.wtt-form__row--preferred-render .wtt-form__help,
+.wtt-form__row--preferred-converter .wtt-form__help,
+.wtt-form__row--preferred-validators .wtt-form__help {
+	padding-top: 0.45em;
+}
+
+.wtt-form__row--preferred-render .wtt-form__control,
+.wtt-form__row--preferred-converter .wtt-form__control,
+.wtt-form__row--preferred-validators .wtt-form__control {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.55em;
+	min-width: 0;
+}
+
+.wtt-preferred-options {
+	margin: 0;
+	padding: 0.55em 0.65em 0.65em;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #f6f7f7;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	overflow-anchor: none;
+}
+
+.wtt-preferred-options--render .wtt-child-list-options,
+.wtt-preferred-options--render .wtt-panel {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.wtt-preferred-options--render .wtt-panel__title {
+	font-size: 12px;
+	font-weight: 600;
+	margin: 0 0 0.35em;
+}
+
+.wtt-form__row--preferred-render .wtt-preferred-render-select,
+.wtt-form__row--preferred-converter .wtt-preferred-converter-select,
+.wtt-form__row--preferred-validators .wtt-validators-editor__add-select,
+.wtt-form__row--preferred-validators select {
+	width: 100%;
+	max-width: 28em;
+}
+
+.wtt-form__row--preferred-render .wtt-inherited-badge {
+	margin-left: 0.35em;
+}
+
 .wtt-attributes__detail-block--preferred-stack,
 .wtt-attributes__detail-block--preferred-pair {
 	margin-bottom: 0;
@@ -5319,6 +5515,38 @@ select.is-sole-locked {
 	gap: 0.55rem;
 	width: 100%;
 	min-width: 0;
+}
+
+/* Walk / narrow Options: stacked R→C→V (parity with node Display Preferred). */
+.wtt-settings-preferred--stack {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.55rem;
+	width: 100%;
+	min-width: 0;
+}
+
+.wtt-settings-preferred-stack__row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	width: 100%;
+	min-width: 0;
+}
+
+.wtt-settings-preferred--stack .wtt-attributes__walk-field,
+.wtt-settings-preferred--stack .wtt-attributes__detail-block,
+.wtt-settings-preferred--stack .wtt-attributes__walk-validators {
+	width: 100%;
+	min-width: 0;
+}
+
+.wtt-settings-preferred--stack .wtt-attributes__detail-select,
+.wtt-settings-preferred--stack select {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
 .wtt-settings-preferred--attribute .wtt-preferred-pair,

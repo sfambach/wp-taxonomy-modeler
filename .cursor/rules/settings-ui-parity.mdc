@@ -39,13 +39,18 @@ Override vs type default = **same keys**, different **storage** (Relation delta 
 - Label the walk **Settings** (not a second “Composition settings” product concept).
 - Node ConfigPage vs attribute walk = **plan later** (node mostly aggregates child Settings already visible on attributes) — do not implement until designed.
 - **Preferred default** lives on the **type node** / simple-type config; consumers inherit. **Never** by display name.
+- **Settings cascade → paint (locked ≈ 0.0.558):** Walk / type presets (Preferred, Q117, Hide, Mult, Bindung) must reach Preview and nested cells. Nested attribute cell = **type Preferred** — not invent Form when Compact is set. No hardcoding by name/path; renderer-local chrome only for the current layer. See [preview-checkpoints.mdc](preview-checkpoints.mdc).
+- **Display Preferred (≈ 0.0.537):** stacked form rows — **Render** / **Converter** / **Validators** (label left, select right); options chrome in the **same control column** under each select; validators table only when set (no empty stub).
 - **ChildListRenderer:** Choices / child pick UI only when this Preferred is active — same for every type (Währung, Praefix, Konstanten). No `childNodes` ConfigPage box.
+- **MultistepRenderer (≈ 0.0.546):** mode **dialog** | **inline** under Render (meta `_wtt_multistep_mode`; default dialog). Renderer-local — not Settings `treePickerMode` (Q74). Legacy Embedded/embed aliases.
 
 ## Do / don’t
 
 - **Do** treat double Choices / missing Settings / node≠attribute Settings chrome as **GUI debt**, not a new model.
+- **Do** keep ChildList Choices/Default on **Q90 depth** (≤1 list, ≥2 tree) — same as CatalogChoice; Präfixe stays flat, Basiseinheiten tree.
 - **Do** keep edge fields in the Attributes **table row**; keep Identity/Presentation on the node — outside Settings.
 - **Do** set default Preferred / renderer on the type (or simple config), not on attribute display names.
+- **Do** keep Konstanten/**Präfixe** as locked in [`.cursor/rules/praefixe-catalog-lock.mdc`](praefixe-catalog-lock.mdc) (ChildList + Presentation/multiplikator + Compact leaves — do not regress without ask).
 - **Don’t** invent a second Settings model for attributes.
 - **Don’t** answer “no Altlasten” based only on OQ decided flags when the admin UI still doubles or omits the walk.
 - **Don’t** hard-code product logic by display name (`quantity` / `size` / `Kontakt` / …) — walk and Preferred stay type-driven.
