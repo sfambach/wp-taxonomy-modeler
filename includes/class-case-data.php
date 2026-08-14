@@ -1,8 +1,9 @@
 <?php
 /**
- * Case-study taxonomy tree seeder (Definition / Implementation).
+ * Case-study taxonomy tree seeder (Definition / Model).
  *
- * Slim parallel to Demo_Data — Definition / Implementation + Relationstypen for composition.
+ * Slim parallel to Demo_Data — Definition + Relationstypen. Implementation/BOM
+ * branch is retired (Q83 / OQ-B2); Model is the product SoT for part kinds.
  *
  * @package WP_Taxonomy_Tree
  */
@@ -313,7 +314,7 @@ final class Case_Data {
 		return array(
 			array(
 				'name'        => self::ROOT_NAME,
-				'description' => 'Case-study Project: Definition (type catalog) and Implementation samples. Standard scaffold tree — not a model sign-off.',
+				'description' => 'Case-study Project: Definition (type catalog) and Model samples. Standard scaffold tree — not a model sign-off.',
 				'children'    => array(
 					array(
 						'name'        => 'Definition',
@@ -393,18 +394,7 @@ final class Case_Data {
 							),
 						),
 					),
-					array(
-						'name'        => 'Implementation',
-						'description' => 'Instance / project content (BOM definition sample).',
-						'children'    => array(
-							array(
-								'name'        => 'BOM',
-								'description' => 'Zusammenstellungs-Definition: Name + Tabelle seeded by ensure_bom_implementation (Q61/Q87 slots).',
-							),
-							Demo_Data::bauteile_implementation_node(),
-							Demo_Data::lieferanten_catalog_node(),
-						),
-					),
+					/* Implementation/BOM/Bauteile/Lieferanten retired — Model is SoT (Q83/OQ-B2). */
 				),
 			),
 		);
@@ -453,9 +443,8 @@ final class Case_Data {
 		self::ensure_bauart_enum( $taxonomy );
 		self::ensure_table_datatype_bands( $taxonomy );
 		self::ensure_aggregate_catalog( $taxonomy );
-		self::ensure_bom_implementation( $taxonomy );
+		/* Implementation branch retired — do not call ensure_bom_implementation / ensure_bauteile_catalog. */
 		self::ensure_model_branch( $taxonomy );
-		self::ensure_bauteile_catalog( $taxonomy );
 		Demo_Data::ensure_set_composition_members( $taxonomy );
 		Demo_Data::purge_root_band_orphans( $taxonomy );
 		self::ensure_deletable_flags( $taxonomy );
@@ -470,7 +459,6 @@ final class Case_Data {
 		 */
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 		self::ensure_table_datatype_bands( $taxonomy );
-		self::ensure_bom_implementation( $taxonomy );
 
 		return array(
 			'created'  => $created,
@@ -506,6 +494,7 @@ final class Case_Data {
 		/* One-shot cleanups that must not wait for empty-taxonomy install. */
 		self::maybe_retire_unit_type_c1_demo( $taxonomy );
 		self::maybe_refresh_walk_caches_after_c1_retire( $taxonomy );
+		self::maybe_retire_implementation_branch( $taxonomy );
 	}
 
 	/**
@@ -1098,6 +1087,33 @@ final class Case_Data {
 			/* Stale Walk caches still listed C1 under Unit type Choices. */
 			if ( class_exists( Attribute::class ) ) {
 				Attribute::refresh_settings_walk_caches_for_type_node( $taxonomy, $ut_id, true );
+			}
+		}
+
+		update_option( $opt, 1, false );
+	}
+
+	/**
+	 * Soft-trash Fallstudie/Implementation (BOM / Bauteile / Lieferanten) once.
+	 * Seed kept resurrecting it via blueprint + ensure_bom_implementation.
+	 */
+	public static function maybe_retire_implementation_branch( string $taxonomy = Taxonomy::FS ): void {
+		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+		$opt = 'wtt_retired_implementation_branch_' . $taxonomy;
+		if ( get_option( $opt ) ) {
+			return;
+		}
+
+		$impl_id = self::find_term_by_path(
+			$taxonomy,
+			array( self::ROOT_NAME, 'Implementation' )
+		);
+		if ( $impl_id > 0 ) {
+			Node_Type::set_deletable( $impl_id, true );
+			if ( ! Trash::is_trashed( $impl_id ) ) {
+				Trash::move_to_trash( $taxonomy, $impl_id, true );
 			}
 		}
 
@@ -2612,7 +2628,7 @@ final class Case_Data {
 		Node_Type::ensure_hierarchy_datatype_inheritance( $taxonomy );
 		Attribute::migrate_detach_hierarchy( $taxonomy );
 		self::ensure_table_datatype_bands( $taxonomy );
-		self::ensure_bom_implementation( $taxonomy );
+		self::maybe_retire_implementation_branch( $taxonomy );
 
 		return array(
 			'deleted'  => $deleted,
@@ -5215,222 +5231,20 @@ final class Case_Data {
 	}
 
 	/**
-	 * Implementation/Bauteile (MPN records) + Lieferanten; kinds under Model/Bauteil (Q83).
-	 * No-op when Fallstudie/Implementation is absent (intentionally removed).
+	 * Retired (Q83 / OQ-B2): Implementation/Bauteile is not product SoT — Model only.
+	 * Kept as no-op so old callers/scripts do not resurrect the branch.
 	 */
 	public static function ensure_bauteile_catalog( string $taxonomy = Taxonomy::FS ): void {
-		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
-			return;
-		}
-
-		$impl_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Implementation' ) );
-		if ( $impl_id <= 0 ) {
-			return;
-		}
-
-		/* Q90 / OQ-W15: do not seed node_pick / node_embed / node_ref (purge via ensure_complex_datatypes). */
-
-		Demo_Data::ensure_bauteile_split(
-			$taxonomy,
-			array(),
-			array( self::ROOT_NAME, 'Implementation' )
-		);
-		Demo_Data::ensure_lieferanten_catalog(
-			$taxonomy,
-			array( self::ROOT_NAME, 'Implementation' )
-		);
+		unset( $taxonomy );
 	}
 
 	/**
-	 * Implementation → BOM = Name + Tabelle; Tabelle → Zeile → fields (idempotent).
-	 *
-	 * Composition (`besteht_aus`) members may live at parent=0 after Q87 detach.
-	 * Always resolve by existing composition edge / Attribute list before creating
-	 * new WP children — otherwise each ensure recreates Name/Tabelle/Zeile fields.
+	 * Retired: do not seed Implementation/BOM. Callers must use Model hosts.
+	 * Kept as no-op — find_term_by_path still matches soft-trashed terms and
+	 * would otherwise rebuild Name/Tabelle/Zeile under a trashed Implementation.
 	 */
 	public static function ensure_bom_implementation( string $taxonomy = Taxonomy::FS ): void {
-		if ( Taxonomy::FS !== $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
-			return;
-		}
-
-		$impl_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Implementation' ) );
-		if ( $impl_id <= 0 ) {
-			return;
-		}
-
-		$comp_type = Relation::find_type_id_by_name( $taxonomy, Relation::TYPE_COMPOSITION );
-		if ( $comp_type <= 0 ) {
-			return;
-		}
-
-		$created  = 0;
-		$existing = 0;
-
-		/* Prefer canonical BOM; also adopt user-created "Bom" under Implementation. */
-		$bom_id = self::find_term_by_path( $taxonomy, array( self::ROOT_NAME, 'Implementation', 'BOM' ) );
-		if ( $bom_id <= 0 ) {
-			$bom_id = self::find_child_named( $taxonomy, $impl_id, 'Bom' );
-		}
-		if ( $bom_id <= 0 ) {
-			$bom_id = self::ensure_term(
-				$taxonomy,
-				'BOM',
-				$impl_id,
-				'Zusammenstellungs-Definition: composition of Name + Tabelle (Q61).',
-				$created,
-				$existing
-			);
-		}
-		if ( $bom_id <= 0 ) {
-			return;
-		}
-
-		$name_id = self::find_or_create_composition_member(
-			$taxonomy,
-			$bom_id,
-			$comp_type,
-			'Name',
-			'Instance title field (filled on WP page).',
-			'text',
-			$created,
-			$existing
-		);
-		$tabelle_id = self::find_or_create_composition_member(
-			$taxonomy,
-			$bom_id,
-			$comp_type,
-			'Tabelle',
-			'Typed table: bind Zeile (and optional Kopf/Fuss) via type properties.',
-			'table',
-			$created,
-			$existing
-		);
-		if ( $tabelle_id <= 0 ) {
-			return;
-		}
-		self::strip_composition_to_table_catalog( $taxonomy, $tabelle_id );
-		self::dedupe_composition_members_by_name( $taxonomy, $bom_id );
-
-		$bindings = Node_Type::get_prop_bindings( $tabelle_id );
-		$zeile_id = isset( $bindings['zeile'] ) ? (int) $bindings['zeile'] : 0;
-		if ( $zeile_id <= 0 || ! get_term( $zeile_id, $taxonomy ) instanceof \WP_Term ) {
-			$zeile_id = self::find_composition_member_named( $taxonomy, $tabelle_id, 'Zeile' );
-		}
-		if ( $zeile_id <= 0 ) {
-			$zeile_id = self::find_child_named( $taxonomy, $tabelle_id, 'Zeile' );
-		}
-		if ( $zeile_id <= 0 ) {
-			$kids = get_terms(
-				array(
-					'taxonomy'   => $taxonomy,
-					'parent'     => $tabelle_id,
-					'hide_empty' => false,
-					'number'     => 0,
-					'fields'     => 'ids',
-				)
-			);
-			if ( is_array( $kids ) && 1 === count( $kids ) ) {
-				$zeile_id = (int) $kids[0];
-			}
-		}
-		if ( $zeile_id <= 0 ) {
-			$zeile_id = self::ensure_term(
-				$taxonomy,
-				'Zeile',
-				$tabelle_id,
-				'Required body band; 1..n fields. Identity = Zeile prop binding, not this name.',
-				$created,
-				$existing
-			);
-		}
-		if ( $zeile_id <= 0 ) {
-			return;
-		}
-		self::ensure_composition_edge( $taxonomy, $tabelle_id, $comp_type, $zeile_id, '1' );
-
-		$bindings['zeile'] = $zeile_id;
-		Node_Type::set_prop_bindings( $taxonomy, $tabelle_id, $bindings );
-
-		$field_types = array(
-			'Reference' => 'text',
-			'Bauteil'   => 'text',
-			'Menge'     => 'int',
-			'Kommentar' => 'textarea',
-			'Preis'     => 'double',
-			'Bestellt'  => 'bool',
-			'Vorhanden' => 'bool',
-			'Wert'      => 'text',
-			'Name'      => 'text',
-			'E-Mail'    => 'email',
-			'Email'     => 'email',
-		);
-
-		$seed_fields = array(
-			'Reference' => array( 'text', 'Board references (e.g. R1,R2).' ),
-			'Wert'      => array( 'text', 'Value / rating display.' ),
-			'Menge'     => array( 'int', 'Quantity (Stück).' ),
-		);
-
-		/* Existing band fields = composition members (may be parent=0 slots). */
-		$have = array();
-		foreach ( self::composition_member_terms( $taxonomy, $zeile_id ) as $member ) {
-			$have[ strtolower( $member->name ) ] = (int) $member->term_id;
-			if ( isset( $field_types[ $member->name ] ) && Node_Type::get_type_id( (int) $member->term_id ) <= 0 ) {
-				self::ensure_type_named( $taxonomy, (int) $member->term_id, $field_types[ $member->name ] );
-			}
-		}
-		/* Legacy: still-attached hierarchy children (pre-detach). */
-		$kids = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'parent'     => $zeile_id,
-				'hide_empty' => false,
-				'number'     => 0,
-			)
-		);
-		foreach ( (array) $kids as $kid ) {
-			if ( ! $kid instanceof \WP_Term ) {
-				continue;
-			}
-			$key = strtolower( $kid->name );
-			if ( ! isset( $have[ $key ] ) ) {
-				$have[ $key ] = (int) $kid->term_id;
-				self::ensure_composition_edge( $taxonomy, $zeile_id, $comp_type, (int) $kid->term_id, '1' );
-			}
-			if ( isset( $field_types[ $kid->name ] ) && Node_Type::get_type_id( (int) $kid->term_id ) <= 0 ) {
-				self::ensure_type_named( $taxonomy, (int) $kid->term_id, $field_types[ $kid->name ] );
-			}
-		}
-
-		if ( empty( $have ) ) {
-			foreach ( $seed_fields as $fname => $meta ) {
-				$type_id = self::find_case_datatype_id( $taxonomy, (string) $meta[0] );
-				if ( $type_id <= 0 ) {
-					continue;
-				}
-				$added = Attribute::add( $taxonomy, $zeile_id, $fname, $type_id );
-				if ( ! is_wp_error( $added ) && is_array( $added ) ) {
-					$fid = (int) ( $added['id'] ?? 0 );
-					if ( $fid > 0 && '' !== (string) $meta[1] ) {
-						wp_update_term( $fid, $taxonomy, array( 'description' => (string) $meta[1] ) );
-					}
-				}
-			}
-		} else {
-			foreach ( $seed_fields as $fname => $meta ) {
-				$key = strtolower( $fname );
-				if ( isset( $have[ $key ] ) ) {
-					continue;
-				}
-				$type_id = self::find_case_datatype_id( $taxonomy, (string) $meta[0] );
-				if ( $type_id <= 0 ) {
-					continue;
-				}
-				Attribute::add( $taxonomy, $zeile_id, $fname, $type_id );
-			}
-		}
-
-		self::dedupe_composition_members_by_name( $taxonomy, $zeile_id );
+		unset( $taxonomy );
 	}
 
 	/**

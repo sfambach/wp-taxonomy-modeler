@@ -44,7 +44,7 @@ todos:
 
 - **Done:** Attribute Options Walk; nested table; deferred Choices; **ConfigPage: removed `childNodes` box** — Child-list Choices only when Preferred = `ChildListRenderer` (Währung / Praefix / Konstanten same law); default Preferred for hosts with children → ChildList (not Konstanten-only).
 - **Locked:** Preferred default on type node; ChildList + `choiceFilter` = one pick mechanism; factors on prefix leaves.
-- **Debt / discuss:** `_wtt_allowed_prefix_ids` parallel SoT vs `choiceFilter`; `fixedMode=catalog` auto-detect without Preferred; name heuristics (`waehrung`); `isKonstantenHost`; Implementation seed still in blueprint.
+- **Debt / discuss:** `_wtt_allowed_prefix_ids` parallel SoT vs `choiceFilter`; `fixedMode=catalog` auto-detect without Preferred; name heuristics (`waehrung`); `isKonstantenHost`. **Implementation branch retired** from blueprint + one-shot soft-trash (≈ 0.0.533).
 - **Next:** presentationContext/compute into walk; finish allowlist→choiceFilter migrate; UAT.
 - **Later:** Node ConfigPage vs attribute walk chrome (design in plan).
 
