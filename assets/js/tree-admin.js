@@ -578,11 +578,12 @@
 			add(curPref, preferredRenderOptionLabel(curPref));
 		}
 		function nodeHasChildListOptions() {
+			/* Same law for every host — hierarchy children or catalog pick roots. */
 			return (
-				!!(n && n.isKonstantenHost) ||
 				!!(n && n.hasChildren) ||
 				(n && Array.isArray(n.children) && n.children.length > 0) ||
-				choiceCatalogPickRoots(n).length > 0
+				choiceCatalogPickRoots(n).length > 0 ||
+				!!(n && n.prefixBranch && n.prefixBranch.unitAllowlistEdit)
 			);
 		}
 		if (hasAttrs || !(fieldOpts && fieldOpts.length)) {
@@ -628,8 +629,13 @@
 				return cur;
 			}
 		}
-		/* Konstanten hosts with children → Child list when Preferred unset/legacy. */
-		if (n && n.isKonstantenHost) {
+		/* Hosts with pickable children → Child list (same for Währung / Praefix / Konstanten). */
+		if (
+			n &&
+			(!!n.hasChildren ||
+				(Array.isArray(n.children) && n.children.length > 0) ||
+				choiceCatalogPickRoots(n).length > 0)
+		) {
 			return 'ChildListRenderer';
 		}
 		if (!opts.length) {
@@ -6796,14 +6802,96 @@
 	}
 
 	/**
-	 * Unit settings wizard: Allowed prefixes (catalog marriage). Visible in Fallstudie too —
-	 * Child extras / Type branch are skipped in caseStudyMode.
+	 * Child-list options — only when Preferred = ChildListRenderer.
+	 * Same surface for every type with pickable children (Währung, Praefix, Konstanten, …).
+	 *
+	 * @param {object} n
+	 * @param {HTMLElement} pane
+	 * @param {boolean} [locked]
+	 */
+	function renderChildListPreferredOptions(n, pane, locked) {
+		if (!n || !pane) {
+			return;
+		}
+		if (
+			normalizePreferredRender(effectiveHostPreferredRender(n)) !==
+			'ChildListRenderer'
+		) {
+			return;
+		}
+
+		var hasPrefixEdit =
+			(n.prefixBranch && n.prefixBranch.unitAllowlistEdit) ||
+			(state.draft &&
+				state.draft.prefixBranch &&
+				state.draft.prefixBranch.unitAllowlistEdit);
+		if (hasPrefixEdit || n.isBasiseinheitUnit) {
+			/* Bridge until unit allowlist SoT = choiceFilter on Praefix ChildList. */
+			renderAllowedPrefixesWizard(n, pane);
+			return;
+		}
+
+		var kids = [];
+		if (Array.isArray(n.children) && n.children.length) {
+			kids = n.children;
+		}
+		var pickRoots = choiceCatalogPickRoots(n);
+		if (!kids.length && pickRoots.length) {
+			kids = pickRoots;
+		}
+		if (!kids.length) {
+			return;
+		}
+
+		var block = el('div', {
+			className: 'wtt-panel wtt-child-list-options',
+		});
+		block.appendChild(
+			el('h3', {
+				className: 'wtt-panel__title',
+				text:
+					i18n.attributesChoiceFilter ||
+					i18n.preferredRenderChildList ||
+					'Choices',
+			})
+		);
+		block.appendChild(
+			el('p', {
+				className: 'wtt-field-hint',
+				text:
+					i18n.childListOptionsHint ||
+					'Child list paints hierarchy children of this type. Restrict picks via attribute Choices (choiceFilter) when this type is used — same law for every type.',
+			})
+		);
+		var list = el('ul', { className: 'wtt-child-list-options__list' });
+		kids.forEach(function (c) {
+			if (!c) {
+				return;
+			}
+			var label =
+				(c.name != null && String(c.name)) ||
+				(c.label != null && String(c.label)) ||
+				(c.id != null ? '#' + c.id : '');
+			if (!label) {
+				return;
+			}
+			list.appendChild(el('li', { text: label }));
+		});
+		if (list.childNodes.length) {
+			block.appendChild(list);
+		}
+		pane.appendChild(block);
+	}
+
+	/**
+	 * Unit↔prefix Choices editor. Caller must gate on ChildList Preferred
+	 * (via renderChildListPreferredOptions) — no standalone ConfigPage box.
 	 *
 	 * @param {object} n
 	 * @param {HTMLElement} pane
 	 */
 	function renderAllowedPrefixesWizard(n, pane) {
-		if (!n || !n.isBasiseinheitUnit) {
+		if (!n) {
 			return;
 		}
 		var branch = null;
@@ -6836,15 +6924,18 @@
 		block.appendChild(
 			el('h3', {
 				className: 'wtt-panel__title',
-				text: i18n.allowedPrefixesTitle || 'Allowed prefixes',
+				text:
+					i18n.attributesChoiceFilter ||
+					i18n.allowedPrefixesTitle ||
+					'Choices',
 			})
 		);
 		block.appendChild(
 			el('p', {
 				className: 'wtt-field-hint',
 				text:
-					i18n.allowedPrefixesHint ||
-					'Which SI prefixes this unit may use (catalog marriage). Empty = value + unit only, no prefix.',
+					i18n.childListPrefixChoicesHint ||
+					'Which prefix children this unit may pick (Child list). Empty = no prefix. Factors stay on prefix leaves.',
 			})
 		);
 		if (!branch || !Array.isArray(branch.children)) {
@@ -6859,7 +6950,6 @@
 			pane.appendChild(block);
 			return;
 		}
-		/* Keep draft in sync so checkbox edits persist through save. */
 		if (state.draft && !state.draft.prefixBranch) {
 			state.draft.prefixBranch = deepClone(branch);
 			branch = state.draft.prefixBranch;
@@ -24717,16 +24807,12 @@
 	}
 
 	function canRenderConfigChildNodes(node) {
-		return !!(node && node.isBasiseinheitUnit);
+		/* Deprecated Q126 box — Child list options live under Display when Preferred = ChildListRenderer. */
+		return false;
 	}
 
 	function renderConfigChildNodesBox(node, ctx) {
-		if (!canRenderConfigChildNodes(node)) {
-			return null;
-		}
-		var wrap = el('div', { className: 'wtt-config-child-nodes' });
-		renderAllowedPrefixesWizard(node, wrap);
-		return wrap.childNodes.length ? wrap : null;
+		return null;
 	}
 
 	function renderConfigBoolsBox(node, ctx) {
@@ -24829,6 +24915,7 @@
 			});
 		}
 		renderPreferredConverterRow(node, displaySection, locked);
+		renderChildListPreferredOptions(node, displaySection, locked);
 		var wrap = el('div', {
 			className: 'wtt-form wtt-detail wtt-config-display',
 		});
@@ -24914,14 +25001,6 @@
 				return renderConfigBoolsBox(node, ctx);
 			},
 		});
-		CR.registerBox('childNodes', {
-			canRender: function (node, ctx) {
-				return canRenderConfigChildNodes(node, ctx);
-			},
-			render: function (node, ctx) {
-				return renderConfigChildNodesBox(node, ctx);
-			},
-		});
 		CR.registerBox('display', {
 			render: function (node, ctx) {
 				return renderConfigDisplayBox(node, ctx);
@@ -24995,10 +25074,6 @@
 				var bools = renderConfigBoolsBox(n, fbCtx);
 				if (bools) {
 					pane.appendChild(bools);
-				}
-				var kids = renderConfigChildNodesBox(n, fbCtx);
-				if (kids) {
-					pane.appendChild(kids);
 				}
 				pane.appendChild(renderConfigDisplayBox(n, fbCtx));
 				var attrs = renderConfigAttributesBox(n, fbCtx);

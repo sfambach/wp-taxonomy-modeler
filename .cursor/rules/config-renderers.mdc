@@ -23,8 +23,7 @@ alwaysApply: false
 | `meta` | Chips only (ID, Parent, Slug, …) |
 | `identitySettings` | Name, Default, non-bool type extras (Footer-Op, set separator, …) |
 | `bools` | Flags only, 5/row (RO, template, required) |
-| `childNodes` | Kindknoten activation (e.g. allowed prefixes); **omit** if unused |
-| `display` | Presentation + Preferred |
+| `display` | Presentation + Preferred; **Child-list Choices only when Preferred = ChildListRenderer** (same for every type — no `childNodes` box) |
 | `attributes` | Attributes list/input (Relations are separate) |
 | `preview` | `WTTObjectRender` |
 | `relations` | **Last** |
@@ -40,6 +39,7 @@ alwaysApply: false
 - **Do** put new chrome in the matching box.
 - **Don’t** mix Kindknoten into `bools` or Meta into identity.
 - **Don’t** paint config outside `renderPage`.
+- **Don’t** add a `childNodes` ConfigPage box — Child list options belong under Display when Preferred = `ChildListRenderer`.
 
 Related: [node-renderers.mdc](node-renderers.mdc), [admin-ux-controls.mdc](admin-ux-controls.mdc).
 ---

@@ -1,8 +1,8 @@
 ---
 name: Settings UI parity — Knoten-Walk / Attribut-Walk
-overview: "Soll vs Ist for Settings surfaces. One Settings walk (node and attribute). Attribute Options dedupe ≈ done; nested walk table + deferred Choices ≈ 0.0.531. presentationContext/compute → same walk (next). Node ConfigPage walk chrome = later planning."
+overview: "Soll vs Ist for Settings surfaces. One Settings walk. ChildList Preferred = Choices UI (no childNodes box) ≈ 0.0.532. presentationContext/compute → walk next. Node ConfigPage design locked in plan."
 status: in_progress
-version: "0.1.1"
+version: "0.1.2"
 last_updated: "2026-08-14"
 related_docs:
   - docs/DEVELOPER-ATTRIBUTE-MODEL.md
@@ -40,12 +40,13 @@ todos:
 
 # Settings UI parity (Knoten-Walk / Attribut-Walk)
 
-## Progress (2026-08-14 ≈ 0.0.531)
+## Progress (2026-08-14 ≈ 0.0.532)
 
-- **Done:** Attribute Options suppress legacy Choices + depth-0 Preferred/date when `attributeSettingsWalkCovers`; walk title **Settings**; nested depth≥1 **table chrome** (Default / RO / Hide / Render / …); Choices **deferred save** on leave; structure hosts (Unit type, …) do **not** treat heirs as CatalogChoice (ghost C1 fixed); soft-trashed terms excluded from choice lists; walk-cache refresh after C1 retire.
-- **Locked:** Same type → same attribute Settings chrome everywhere; Preferred default lives on the **type node** / simple type config (not display-name heuristics); presentationContext/compute belong in the **same** walk.
-- **Next:** Move presentationContext/compute into the walk; strip display-name heuristics; UAT Praefix / Wert.
-- **Later (plan first):** Node ConfigPage vs attribute walk — node mostly aggregates child Settings already visible on attributes; design before coding.
+- **Done:** Attribute Options Walk; nested table; deferred Choices; **ConfigPage: removed `childNodes` box** — Child-list Choices only when Preferred = `ChildListRenderer` (Währung / Praefix / Konstanten same law); default Preferred for hosts with children → ChildList (not Konstanten-only).
+- **Locked:** Preferred default on type node; ChildList + `choiceFilter` = one pick mechanism; factors on prefix leaves.
+- **Debt / discuss:** `_wtt_allowed_prefix_ids` parallel SoT vs `choiceFilter`; `fixedMode=catalog` auto-detect without Preferred; name heuristics (`waehrung`); `isKonstantenHost`; Implementation seed still in blueprint.
+- **Next:** presentationContext/compute into walk; finish allowlist→choiceFilter migrate; UAT.
+- **Later:** Node ConfigPage vs attribute walk chrome (design in plan).
 
 ## Agent rule (process)
 

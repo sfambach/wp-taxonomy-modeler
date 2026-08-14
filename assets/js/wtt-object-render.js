@@ -565,8 +565,8 @@
 			return false;
 		}
 		/*
-		 * ChildList Preferred (Konstanten / With prefix) = pick hierarchy children
-		 * (attribute-choice-inheritance: Base unit leaves). Never Structure / Unit marriage.
+		 * ChildList Preferred = pick hierarchy children (Währung, Praefix, Konstanten, …).
+		 * Same paint path — no per-name CatalogChoice product axis.
 		 */
 		if (prefersChildListPaint(field)) {
 			return true;

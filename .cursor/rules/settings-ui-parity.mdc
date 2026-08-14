@@ -39,6 +39,7 @@ Override vs type default = **same keys**, different **storage** (Relation delta 
 - Label the walk **Settings** (not a second “Composition settings” product concept).
 - Node ConfigPage vs attribute walk = **plan later** (node mostly aggregates child Settings already visible on attributes) — do not implement until designed.
 - **Preferred default** lives on the **type node** / simple-type config; consumers inherit. **Never** by display name.
+- **ChildListRenderer:** Choices / child pick UI only when this Preferred is active — same for every type (Währung, Praefix, Konstanten). No `childNodes` ConfigPage box.
 
 ## Do / don’t
 

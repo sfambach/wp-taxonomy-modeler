@@ -521,7 +521,6 @@
 		'meta',
 		'identitySettings',
 		'bools',
-		'childNodes',
 		'display',
 		'attributes',
 		'preview',

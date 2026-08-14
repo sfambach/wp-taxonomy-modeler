@@ -2,7 +2,7 @@
 name: WP Taxonomy Tree — Project Plan
 overview: Build a reusable WordPress plugin that provides a hierarchical taxonomy tree environment (admin UI, APIs, and extension points) usable by other plugins such as wp-electronic-parts.
 status: scaffolding
-version: "0.7.125-plan"
+version: "0.7.126-plan"
 last_updated: "2026-08-14"
 related_docs:
   - README.md
@@ -618,6 +618,7 @@ Details: living [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) “Implemented scaf
 | 2026-08-12 | **Q126 ConfigPage ≈ `0.0.481`:** Vertical box stack `WTTConfigRender.renderPage` (Actions → MetaSettings → Bools → Display → Attributes → Preview); one page everywhere; RO in Bools strip. Rule `config-renderers.mdc`. Plan **0.7.123**. |
 | 2026-08-12 | **Settings UI parity:** Soll vs Ist matrix [`settings-ui-parity.md`](settings-ui-parity.md) — concept (Knoten-/Attribut-Walk) locked; GUI debt = legacy Options chrome beside Walk. First slice: dedupe Attribute Options when walk covers Settings. Agent rule: model lock ≠ GUI done. Plan **0.7.124**. |
 | 2026-08-14 | **Settings walk UX ≈ `0.0.531`:** Nested walk table; deferred Choices; C1 demo retired (heirs ≠ CatalogChoice); EmbeddedRenderer for aggregation hosts without kind children; Preferred = type-node default (no display-name). Docs: parity plan + ARCHITECTURE sync. Plan **0.7.125**. |
+| 2026-08-14 | **ChildList ConfigPage ≈ `0.0.532`:** Drop Q126 `childNodes` box; Choices UI only when Preferred = `ChildListRenderer` (Währung/Praefix/Konstanten same); default Preferred for hosts with children → ChildList. Tag **Walk01** = pre-change checkpoint. Plan **0.7.126**. |
 | 2026-08-08 | **UR-B6 scaffold ≈ `0.0.384`:** Seed Wert Mult=`1` + Model/Bauteil preferred `embed`; object-render popup Phase A (TreeChooser branch) + Phase B (Form AND-filter + instance list/create → id bind); Q107 server envelope TODO. Plan **0.7.63**. |
 | 2026-08-08 | **Q106 scaffold seed (≈ `0.0.383`):** Mult-many scalars seed **all** defaults on create / open-new / fill-samples (JSON array store when >1); Mult-1 stays single. Nested maps normalize + `create_linked` on parent create; related default-row admin UI TODO. Plan **0.7.58**. |
 
