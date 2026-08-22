@@ -1,0 +1,22 @@
+---
+description: The binding rules for this repo live in /CLAUDE.md — read it before acting
+alwaysApply: true
+---
+
+# Rules live in `/CLAUDE.md`
+
+This repo keeps **one** rule set, at [`/CLAUDE.md`](../../CLAUDE.md). Read it before acting.
+
+There is deliberately no second copy here. The previous round drifted apart across 24 rule
+files totalling 82 KB, most of them always-on, and that is what made the project re-decide the
+same questions over and over.
+
+Short version:
+
+- Source of truth: [`docs/NewConcept/`](../../docs/NewConcept/README.md). `docs/legacy/` is frozen.
+- **No production code** until `docs/NewConcept/10-domain-core.md` has status `locked`.
+- Nothing is decided until it is in `docs/NewConcept/90-decision-log.md`.
+- Unclear goes to `docs/NewConcept/91-open-questions.md`. Never invent an answer.
+- An architecture rule requires a decision id. No `D-<nnn>`, no rule.
+
+Do not add rule files here. Add rules to `/CLAUDE.md`, under its hygiene section.
