@@ -1863,6 +1863,10 @@ Worth deciding when the update flow is actually built, not now.
 
 ## OQ-066 — What happens to data when a node is moved?
 
+> **Closed 2026-08-22 → [D-155](90-decision-log.md).** One rule, two subjects — node and attribute —
+> and it never loses data, because the edge id is stable and records reference the id. Up is
+> additive, down is removing, and a mandatory attribute makes even up a break.
+
 *Blocks:* [10 Domain core](10-domain-core.md), [70 Migration](70-migration.md) · *Status:* open · *raised by* [D-124](90-decision-log.md)
 
 Moving a node between branches changes its **inheritance**, so it may gain attributes it did not
@@ -1880,6 +1884,10 @@ move is exactly such a change.
 ---
 
 ## OQ-067 — Does a parked record still hold its unique values?
+
+> **Closed 2026-08-22 → [D-154](90-decision-log.md): blocked while parked, released on purge.** The
+> owner chose the opposite of the proposal below, and better: holding the value means a **restore can
+> never collide**, so the conflict this question worried about never arises.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-123](90-decision-log.md)
 

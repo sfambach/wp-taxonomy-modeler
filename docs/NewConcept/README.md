@@ -16,8 +16,8 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 50 | [Persistence](50-wordpress-persistence.md) | `draft` | owner statements P1–P14; the model is the schema; search; typed columns |
 | 60 | [Calculation](60-calculation.md) | `draft` | owner statements K1–K12; calculation vs converter, model vs display, structured expressions |
 | 70 | [Model change and migration](70-migration.md) | `draft` | owner statements M1–M17; rename vs replace, export, the conflict resolver |
-| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-153 |
-| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-069 (55 answered or closed, 14 open) |
+| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-155 |
+| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-069 (57 answered or closed, 12 open) |
 | 95 | [Roadmap](95-roadmap.md) | `empty` | — |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |
 
