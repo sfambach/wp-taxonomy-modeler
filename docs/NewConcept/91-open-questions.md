@@ -17,10 +17,9 @@ here — it is not deleted.
 
 ## OQ-001 — What is in the shared base of node and relation?
 
-> **Closed 2026-08-22 → [D-080](90-decision-log.md).** Worked out in the proposal round; see the
-> one mechanism and a reserved namespace, not a scope split. The owner rejected the split as being
-> on the wrong axis — renderer, converter and validators are set on the node as initial values and
-> overridden at a use site, exactly like `min`.
+> **Closed 2026-08-22 → [D-080](90-decision-log.md).** `id` and `version`, and nothing else.
+> `type` is not in the base — a node's type *is* its inheritance branch, and a relation carries its
+> own `kind`. `creation_date` came off and is derived from the changelog.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [OQ-017](#oq-017--which-attributes-does-every-node-have) · *Status:* open · *re-framed 2026-08-22 at the request of the owner*
 
@@ -271,10 +270,9 @@ one-or-more validators. [`TreeMeremaid.md`](TreeMeremaid.md) puts exactly these 
 
 ## OQ-008 — Must every object have a changelog entry?
 
-> **Closed 2026-08-22 → [D-081](90-decision-log.md).** Worked out in the proposal round; see the
-> one mechanism and a reserved namespace, not a scope split. The owner rejected the split as being
-> on the wrong axis — renderer, converter and validators are set on the node as initial values and
-> overridden at a use site, exactly like `min`.
+> **Closed 2026-08-22 → [D-081](90-decision-log.md).** Yes, at least one: if the changelog is the
+> migration script and `creation_date` is read from it, then creation must always be logged. Whether
+> that enables undo became [OQ-057](#oq-057--is-undo-in-scope).
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
 
@@ -459,10 +457,9 @@ nothing in the statements so far demands it.
 
 ## OQ-015 — Where does the content live?
 
-> **Closed 2026-08-22 → [D-083](90-decision-log.md).** Worked out in the proposal round; see the
-> one mechanism and a reserved namespace, not a scope split. The owner rejected the split as being
-> on the wrong axis — renderer, converter and validators are set on the node as initial values and
-> overridden at a use site, exactly like `min`.
+> **Closed 2026-08-22 → [D-083](90-decision-log.md), refined by [D-133](90-decision-log.md).** In
+> tables owned by the plugin, beside the model and not inside it: `records` and `record_values`.
+> Where a single value physically sits then follows from relation kind and multiplicity.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open, deliberately deferred
 
@@ -513,10 +510,9 @@ consumed by the tool, yet only one of them describes the domain. Candidate answe
 
 ## OQ-017 — Which attributes does every node have?
 
-> **Closed 2026-08-22 → [D-082](90-decision-log.md).** Worked out in the proposal round; see the
-> one mechanism and a reserved namespace, not a scope split. The owner rejected the split as being
-> on the wrong axis — renderer, converter and validators are set on the node as initial values and
-> overridden at a use site, exactly like `min`.
+> **Closed 2026-08-22 → [D-082](90-decision-log.md).** Four: `id`, `version`, `name`, `path`.
+> Everything else that looked like a candidate belongs elsewhere — `type` to the branch, `order` to
+> the edge, and the rest to settings.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [C4](10-domain-core.md)
 
@@ -810,6 +806,11 @@ affected overrides can be found and shown at all.
 
 ## OQ-037 — What exactly happens when an override is promoted?
 
+> **Closed 2026-08-22 → [D-156](90-decision-log.md).** Two of the three sub-questions dissolved once
+> deletion became two-stage: the parked edge still carries the type and the name. The third —
+> *what does promotion do* — depends on how many use the target: **one** means restore on the target,
+> **several** means specialise.
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-033](90-decision-log.md)
 
 Promotion turns `[#88].max = 99` on edge `#42` into a real attribute at that level. Mechanically
@@ -851,10 +852,10 @@ different options — which would be [D-018](90-decision-log.md) working exactly
 
 ## OQ-039 — Where do installation-wide settings live?
 
-> **Closed 2026-08-22 → [D-079](90-decision-log.md).** Worked out in the proposal round; see the
-> one mechanism and a reserved namespace, not a scope split. The owner rejected the split as being
-> on the wrong axis — renderer, converter and validators are set on the node as initial values and
-> overridden at a use site, exactly like `min`.
+> **Closed 2026-08-22 → [D-079](90-decision-log.md).** On a reserved **installation identity**,
+> which becomes the first link of the resolution chain. No new mechanism — the installation-wide
+> default and the choice in the moment turn out to be the two ends of the walk [D-015](90-decision-log.md)
+> already describes.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-032](90-decision-log.md), [R24](30-renderer.md)
 
@@ -993,6 +994,10 @@ bite in Finnish.
 ---
 
 ## OQ-030 — May a model author write their own validator message?
+
+> **Closed 2026-08-22 → [D-158](90-decision-log.md).** Yes — as a **label**, so it joins the existing
+> mechanism rather than adding a second one, and **per validator**, which needed a `path` column on
+> `labels`. The offered correction stays code.
 
 *Blocks:* [40 I18n](40-i18n.md), [30 Renderer](30-renderer.md) · *Status:* open
 
@@ -1147,6 +1152,10 @@ The first is the smallest and should be tried first.
 ---
 
 ## OQ-036 — Do instances share the identity space?
+
+> **Closed 2026-08-22 → [D-164](90-decision-log.md).** No. Model and data get separate number spaces;
+> nodes and relations keep sharing one, because there the ambiguity is real. The argument for one
+> shared space turned out to rest on a mis-reading of [D-131](90-decision-log.md).
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-026](90-decision-log.md)
 
@@ -1481,6 +1490,10 @@ orphaned override is promoted ([D-033](90-decision-log.md)) — the same shape o
 
 ## OQ-053 — What happens to a model that cannot be satisfied?
 
+> **Closed 2026-08-22 → [D-157](90-decision-log.md).** Caught where the narrowing happens, reported as
+> a model conflict rather than blocked — but data entry against the model stays barred until it is
+> resolved.
+
 *Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [R29–R31](30-renderer.md)
 
 An attribute with multiplicity `1` or `1..*` whose permitted set is **empty** demands an answer
@@ -1564,6 +1577,21 @@ entity-attribute-value design pays it. What is open is only how far it has to st
 3. **Full-text** across a model is a separate mechanism again, not a harder version of this one.
 
 Worth answering with real queries rather than in the abstract, once a model exists to query.
+
+### Proposal on the table, not decided
+
+Put to the owner on 2026-08-22, **not yet answered** — the session ended on it:
+
+1. **The generic query accepts any number of conditions and always answers correctly.** No hard
+   limit in the code: a limit has to be explained in an error message, and it always sits in the
+   wrong place.
+2. **Speed is promised only up to about three.** Beyond that it is allowed but not guaranteed —
+   an honest statement about an attribute-value store, not a weakness to optimise away.
+3. **The reporting case gets a stage, not a cleverer query:** a **flat projection per model**, one
+   column per attribute, filled from the records and rebuildable from them at any time. Ten joins
+   become an ordinary `WHERE`, and the normal case pays nothing for it. It is a **cache, never a
+   place where anything is stored** — the same standing as a materialised computed value
+   ([D-072](90-decision-log.md)).
 
 ---
 
@@ -1714,6 +1742,10 @@ the normal case and blocking it would make the product unusable.
 ---
 
 ## OQ-061 — Does the descent walk the model, the record, or both?
+
+> **Closed 2026-08-22 → [D-159](90-decision-log.md), [D-160](90-decision-log.md).** Both inputs, loaded up
+> front, one mode. The preview is fed from a test data pack rather than from defaults. The cost of
+> resolving renderers in a long list became [OQ-070](#oq-070--how-does-renderer-resolution-stay-cheap-in-a-long-list).
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-091](90-decision-log.md)
 
@@ -1908,6 +1940,9 @@ taken* with no way to see by what.
 
 ## OQ-068 — Is there a symmetric declaration for aggregation-only?
 
+> **Closed 2026-08-22 → [D-161](90-decision-log.md).** No switch — and no question either. The kind is
+> derived from the branch the target sits in, so the wrong kind is never on offer.
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised while binding the `Kompositionen` node*
 
 `Kompositionen` declares **only composition edges may point at me** ([D-135](90-decision-log.md)).
@@ -1958,3 +1993,34 @@ the moment.
 Two further cases would also argue for it: the same computation wanted in several shapes (a list, a
 chart), and a computation needing its **own refresh policy** — nightly rather than on every read,
 which is exactly [D-140](90-decision-log.md)'s escape hatch and would hang naturally on a view.
+
+---
+
+## OQ-070 — How does renderer resolution stay cheap in a long list?
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-159](90-decision-log.md)
+
+The owner raised it while accepting [D-159](90-decision-log.md):
+
+> *It is not unreasonable to have both right now, model and data — but later, with larger lists, it
+> could take quite a while if I have to look up all the renderers again and again. And basically
+> every column is at least similar.*
+
+A table of a thousand rows and twelve columns asks the registry twelve **thousand** times, and
+almost every answer is the same one. The obvious fix is to resolve **once per column** and reuse it
+down the rows.
+
+**But the owner then doubted his own fix** — *well, maybe not, I think* — and the doubt is the
+substantial part. [D-159](90-decision-log.md) has just established that a renderer may **adapt its
+output to the value**. A colour-code renderer draws bands; a resistance with no value at all draws
+an empty state; a frozen computed value ([D-143](90-decision-log.md)) is not drawn like a live one.
+So the renderer down a column is *usually* constant, and *not reliably* constant.
+
+Which leaves the real question: **is the choice of renderer per column, and only its output per
+row?** If yes, one lookup per column is correct and the variation lives inside the renderer, where
+it costs nothing. If no, there is a class of renderer that must be re-chosen per row, and the
+concept should name what puts a renderer in that class rather than leaving every caller to guess.
+
+Not urgent — it is a question about a table that does not exist yet. It becomes urgent the first
+time a list is slow, and the answer will be much cheaper to apply if it was written down before
+twelve call sites made their own assumption.

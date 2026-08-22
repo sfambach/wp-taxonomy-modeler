@@ -16,8 +16,8 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 50 | [Persistence](50-wordpress-persistence.md) | `draft` | owner statements P1–P14; the model is the schema; search; typed columns |
 | 60 | [Calculation](60-calculation.md) | `draft` | owner statements K1–K12; calculation vs converter, model vs display, structured expressions |
 | 70 | [Model change and migration](70-migration.md) | `draft` | owner statements M1–M17; rename vs replace, export, the conflict resolver |
-| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-155 |
-| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-069 (57 answered or closed, 12 open) |
+| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-164 |
+| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-070 (63 answered or closed, 7 open) |
 | 95 | [Roadmap](95-roadmap.md) | `empty` | — |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |
 
@@ -76,3 +76,19 @@ Vision & scope → Glossary → **Domain core** → Renderer → I18n → Persis
 
 Renderer, i18n and persistence all hang off the domain core. If the core moves, they get
 built twice.
+
+## Next session — set by the owner, 2026-08-22
+
+Two sittings planned, the concept round drawing to a close:
+
+1. **Finish the remaining questions.** Seven are open, three of them deliberately parked.
+   [OQ-056](91-open-questions.md) has a proposal on the table that was never answered — start
+   there.
+2. **Layout concept and what the interface must let people do.** Not yet written anywhere:
+   - **What may a user do in the tree?**
+   - **What may they do in the detail view?**
+   - **How are blocks put together?**
+   - **What is special about Gutenberg, and about the front end.**
+
+That second half needs a document of its own; [30 Renderer](30-renderer.md) answers *how a thing
+is drawn*, not *what a person is allowed to do with it*.
