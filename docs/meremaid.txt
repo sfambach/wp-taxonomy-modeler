@@ -1,0 +1,26 @@
+classDiagram
+	Identity "1" --o "1..*" ChangeLogItem
+	ChangeLog "1" o-- "0..*" ChangeLogItem
+	ChangeLogRenderer --|>IPageRenderer
+	
+	class Identity {
+      +long id 
+      +long version
+      +timestamp creation_date  
+	}
+
+	class ChangeLogItem{
+	  +Identity identity
+	  +Timestamp change_date
+	  +String change_owner
+	  +String change_description
+	  undo()
+	}
+	class ChangeLog{
+	  -List<ChangeLogItem> log_items
+	}
+	class ChangeLogRenderer{
+	}
+	class IPageRenderer {
+	  <<interface>>
+	}
