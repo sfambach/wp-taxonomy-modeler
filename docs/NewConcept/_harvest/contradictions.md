@@ -20,15 +20,16 @@ the owner has to make, not a gap an agent may fill.
 | [From the 30-renderer pass](#from-the-30-renderer-pass-2026-08-23) | [30 Renderer](../30-renderer.md) | 6 | **resolved** — rounds two and three |
 | [From the persistence and calculation pass](#from-the-persistence-and-calculation-pass-2026-08-23) | [50 Persistence](../50-wordpress-persistence.md), [60 Calculation](../60-calculation.md) | 5 | **resolved** — round three |
 | [From the renderer inventory](#from-the-renderer-inventory-2026-08-23) | [30 Renderer](../30-renderer.md), `legacy/` | 5 | **resolved** — round three |
-| [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **open** |
+| [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **resolved** — round four |
 | [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**Three open**, all raised on 2026-08-23 by the last two catch-up passes: the unit `symbol`
-living both as a modelled attribute and as a label role; whether converters follow renderers
-into a list ([D-236](../90-decision-log.md)); and a preview *level* switch against
-[D-231](../90-decision-log.md)'s rule that the preview shows the front end.
+**Two open**, both raised on 2026-08-23 by the last two catch-up passes: whether converters follow
+renderers into a list ([D-236](../90-decision-log.md)); and a preview *level* switch against
+[D-231](../90-decision-log.md)'s rule that the preview shows the front end. The third — `symbol`
+in two homes — was settled the same day by [D-259](../90-decision-log.md) and
+[D-260](../90-decision-log.md).
 
-Twenty-two were raised and nineteen are settled — each in one of the three *Resolved* sections
+Twenty-two were raised and twenty are settled — each in one of the four *Resolved* sections
 below, which name the deciding entry.
 
 | Document | Line or section | What the text says | Which decision disagrees | What is unclear |
@@ -140,3 +141,11 @@ Same standing as everything above: **nothing here is resolved.**
 |---|---|---|---|---|
 | [30 Renderer](../30-renderer.md) | [R33b](../30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect), and [R35c](../30-renderer.md#r35c--the-composed-type-is-the-unit-of-rendering)'s closing rule | [D-219](../90-decision-log.md): *several converters may be **eligible** for a type, but **exactly one is in effect** per rendering* — and it justifies that by analogy: **the same shape [D-217](../90-decision-log.md) gives renderers**. The rule is then relied on twice: [D-220](../90-decision-log.md) narrows the converter list from the chosen renderer's result shape, and [D-223](../90-decision-log.md) turns *which converter* into a control that may disappear. | [D-236](../90-decision-log.md): a node carries an **ordered list of renderers** — one mandatory, further ones appended — which **supersedes the single-renderer half of [D-217](../90-decision-log.md)**. The shape D-219 pointed at no longer exists. D-236 lists what survives from D-217 (purpose stays out of the registry key) and says **nothing about converters**. | Whether *exactly one converter in effect* still holds. Read literally, D-219 now says converters follow a **list**, which contradicts its own sentence in the same line; read by intent, the rule stands and its stated reason has simply expired. It is not cosmetic: if a node may draw with a value renderer **and** a colour-code renderer ([D-236](../90-decision-log.md)), the two appended renderers may want **different** converters at the same moment — which is exactly the *value plus colour rings* case [D-226](../90-decision-log.md) made *one setting in one place*. Either a converter is chosen **per renderer in the list** rather than per rendering, or the appended-renderer case cannot carry its own mapping. No decision says which. |
 | [30 Renderer](../30-renderer.md) | [One consequence: the preview previews a *level*](../30-renderer.md#one-consequence-the-preview-previews-a-level) | *The preview should let the author choose **which level** is being previewed — admin, block or frontend.* The reason given: *it arguably needs that anyway, since the same model may legitimately look different in each.* Written as a consequence of [D-100](../90-decision-log.md)/[D-103](../90-decision-log.md); it carries **no `D-nnn` of its own**. | [D-231](../90-decision-log.md): *the preview always shows how it will look **in the front end***, and its **only permitted deviation is bounding the size**, because that crops the view rather than altering it. [D-254](../90-decision-log.md) then requires the block editor to ask the server for the same rendering. | Whether a level switch on the preview is still wanted, and if so how it escapes D-231's *only permitted deviation*. Previewing the **admin** level is by definition not showing what the front end will show — yet the level is what carries the depth limit ([D-103](../90-decision-log.md)), which is the whole reason the switch was proposed: a preview at a stricter depth warns about something the front end handles fine. So either the switch goes and the depth limit is always the front end's, or D-231's rule is about **appearance** while depth is a second axis it does not govern. The passage was never a decision, so nothing was superseded and nothing was upheld. |
+
+---
+
+## Resolved — fourth round, 2026-08-23
+
+| # | How it was settled |
+|---|---|
+| `symbol` as attribute vs label role | **[D-260](../90-decision-log.md)** — always a label; the difference is only how many locale rows exist. The character-class test was tried and does not hold (`kg`, `m`, `Hz` are letters and universal). [C44](../10-domain-core.md)'s modelled attribute goes. **[D-259](../90-decision-log.md)** supplied the missing piece: a renderer is told **which role** to display, which is what the owner actually needed. |
