@@ -8,6 +8,22 @@
 > - Version numbers, `Q<n>` question ids, status flags and decision-log entries in here
 >   describe the **old** model. They carry no authority over the new one.
 
+> ## ✅ SWEPT AND CLOSED — 2026-08-23
+>
+> This whole folder, **and the old plugin code**, were read through on 2026-08-23 and every
+> finding was placed in one of two sheets:
+>
+> - [`../NewConcept/_harvest/03-legacy-inspiration.md`](../NewConcept/_harvest/03-legacy-inspiration.md) — 76 rows from this documentation
+> - [`../NewConcept/_harvest/04-legacy-code-inspiration.md`](../NewConcept/_harvest/04-legacy-code-inspiration.md) — 60 rows from `includes/`, `src/`, `assets/` and the fixtures
+>
+> Each row carries a verdict: **decided**, **covered**, **contradicts**, **workaround**, or
+> **deliberately not taken**. Nothing is left unclassified.
+>
+> **So: look in the sheets first.** If you are here because something feels missing from the new
+> concept, the sheets already say whether it was considered and what became of it. Coming back to
+> this folder is worthwhile only to read a passage in full — never to find out *whether* something
+> was handled.
+
 # Documentation
 
 Living project documentation for **WP Taxonomy Tree**.
