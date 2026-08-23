@@ -195,15 +195,20 @@ using record*.
 outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md) — the rule counts
 **possibilities**, not entries; at `0..1` with one entry, *nothing* is a second possibility).
 
-**A use site is an attribute, and it may do everything the node may** — it may narrow **and** widen,
-and there is no monotonicity rule ([D-088](90-decision-log.md), [D-310](90-decision-log.md)).
+**A use site is an attribute** — the same relation seen from the owning node. **Bounding settings may only
+be tightened downwards; choosing settings are free** ([D-312](90-decision-log.md)):
+
+| Kind | Examples | Direction |
+|---|---|---|
+| **bounding** | permitted set · range · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
+| **choosing** | default value · renderer · converter · labels · icon · order | **free** |
+
+So a child may **hide** what the parent shows and never reveal what it hid; may **fix** what the
+parent left editable and never unfix what it computed. A **default** is not a bound but a choice
+inside the permitted set, and stays free. Where more is genuinely needed it is added **at the type**,
+where it is visible in one place.
 
 ⚠️ **One axis is strict: what an ancestor declares **mandatory** stays mandatory for every descendant** ([D-311](90-decision-log.md)). It may be tightened downwards, never loosened — otherwise *every bird has a name* would never hold, and a classification that guarantees nothing about a group is worth nothing. An attribute that does not apply to a descendant is **moved down** ([D-155](90-decision-log.md)), not refused.
-
-⚠️ **So a restriction on a type is a default, not a guarantee.** Whoever needs something inviolable
-gets it from framework protection ([D-194](90-decision-log.md)) or from a validator that cannot be
-overridden — not from a permitted set. Everything on the chain is a default. A widening at a use
-site should be **visible**.
 
 ⚠️ **An attribute whose permitted set is empty is a model conflict** — reported where the narrowing
 happens, not at data-entry time; the model may be temporarily inconsistent, but **data entry
