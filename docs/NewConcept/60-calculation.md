@@ -163,7 +163,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    BL[Bauteilliste] -->|gesamtpreis · computed| SUM["sum over positions"]
+    BL[Parts list] -->|gesamtpreis · computed| SUM["sum over positions"]
     BL -->|positionen 1..*| POS[Position]
     POS -->|preis · computed| MUL["menge × einzelpreis"]
     POS -->|menge| M[Integer]
@@ -226,7 +226,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    BL[Bauteilliste] -->|#42 positionen · 1..*| POS[Position]
+    BL[Parts list] -->|#42 positionen · 1..*| POS[Position]
     BL -->|#94 gesamtpreis| G[Preis]
     POS -->|#88 menge| M[Integer]
     POS -->|#93 einzelpreis| E[Preis]
@@ -238,7 +238,7 @@ The owner's own example, addressed:
 | computed attribute | operation | operands |
 |---|---|---|
 | `#95` Position.preis | `multiply` | `[#88]` , `[#93]` |
-| `#94` Bauteilliste.gesamtpreis | `sum` | `[#42, #95]` |
+| `#94` Parts list.gesamtpreis | `sum` | `[#42, #95]` |
 
 Two things fall out of this and both are useful:
 
@@ -458,7 +458,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    B[Bauteil] -.->|who points at me<br/>through artikel| O["Bestellpositionen"]
+    B[Part] -.->|who points at me<br/>through artikel| O["Bestellpositionen"]
     O --> A["avg of their preis"]
 ```
 
@@ -578,7 +578,7 @@ starting point — it is what the data supports.
 **And they are different numbers for different purposes, not competitors:**
 
 ```
-Bauteil
+Part
   einstandspreis           what it cost me        FIFO or average
   wiederbeschaffungspreis  what it would cost     last order, supplier price
   listenpreis              the catalogue figure

@@ -694,7 +694,7 @@ the next section. The three branches are `Model`, `Compositions` and `Primitives
 
 **`Primitives` splits one level further, and that split decides too** ([D-193](90-decision-log.md)).
 An `int` is a **composition**: the value lives in the record, and at multiplicity 1 literally inside
-it. A `Basiseinheit` is a primitive as well and is an **aggregation**: it points at a **node**, at
+it. A `Base unit` is a primitive as well and is an **aggregation**: it points at a **node**, at
 `Gramm`, which is modelling-time content ([D-131](90-decision-log.md)). So the place still says it —
 one level deeper. [D-193](90-decision-log.md) records that this is **to be re-verified against real
 cases during testing**, at the owner's request.

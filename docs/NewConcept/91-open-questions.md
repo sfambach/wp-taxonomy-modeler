@@ -771,7 +771,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    B[Bauteilliste] -->|#42 positionen| P[Position]
+    B[parts list] -->|#42 positionen| P[Position]
     P -->|#88 menge| I[Integer]
     I -.- S["min · max · step"]
 ```
@@ -1195,7 +1195,7 @@ model tables small. Confirm before it is assumed, and settle it together with
 
 **Evidence from the standard tree** ([harvest 01](_harvest/01-standard-tree.md), A2/B6): the old
 project built `Unit type` as *Menge + Base unit + Praefix* and `Preis` as *Wert + Waehrung* —
-**the same shape twice**. It then placed `Waehrung` beside `Basiseinheiten` rather than beneath a
+**the same shape twice**. It then placed `Waehrung` beside `Base units` rather than beneath a
 common root.
 
 So the structure is shared and only the behaviour differs, in one specific way worth naming: a
@@ -1632,13 +1632,13 @@ migration it caused, and what happens when the thing being undone has since been
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *found while writing* [D-086](90-decision-log.md)
 
-`Bauteil` has the attribute `lieferant` as edge `#10`, multiplicity `0..1`. `Passiv` inherits from
-`Bauteil` and should be able to **narrow** it to `1` — every passive component must name a
+`Part` has the attribute `lieferant` as edge `#10`, multiplicity `0..1`. `Passiv` inherits from
+`Part` and should be able to **narrow** it to `1` — every passive component must name a
 supplier.
 
 But the mechanism for narrowing that has been decided is an **override at the use site**
-([D-015](90-decision-log.md)), and here there is no use site: `Passiv` is not *using* `Bauteil`, it
-**is** a `Bauteil`. The override would have to sit on the inheritance edge — and
+([D-015](90-decision-log.md)), and here there is no use site: `Passiv` is not *using* `Part`, it
+**is** a `Part`. The override would have to sit on the inheritance edge — and
 [C9](10-domain-core.md) exempts inheritance edges from carrying settings.
 
 So a case exists that neither rule covers. Three ways out:
@@ -1969,7 +1969,7 @@ taken* with no way to see by what.
 `Kompositionen` declares **only composition edges may point at me** ([D-135](90-decision-log.md)).
 The symmetric declaration — **only aggregation edges may point at me** — is not obviously useless.
 
-A catalogue node has a case for it: a `Bauteil` composed into a parts list would **die with that
+A catalogue node has a case for it: a `Part` composed into a parts list would **die with that
 list** ([C12](10-domain-core.md)), which is exactly wrong for a shared catalogue item. Declaring
 *aggregation only* would make that mistake impossible instead of merely unlikely.
 
@@ -1998,7 +1998,7 @@ The owner asked whether a **view** — a named, reusable computation referenced 
 would be the right home for something like an average price.
 
 **For that case it is not needed.** An average purchase price is a statement *about a part*, so it
-has a natural home: a computed attribute on `Bauteil` with a backward operand
+has a natural home: a computed attribute on `Part` with a backward operand
 ([D-140](90-decision-log.md)), inherited by every kind of part and referable everywhere. The reuse a
 view would provide is already there.
 
@@ -2205,8 +2205,8 @@ setting it aside both times. The model version of [D-060](90-decision-log.md) is
 which shape a record was written against; it is not something a person edits and it says nothing
 about succession.
 
-So `Platine v1.0` and `v1.1` are two unrelated records today. Missing: that they are **the same
-board**, which came first, what changed, and which one is meant when something says just `Platine`.
+So `board v1.0` and `v1.1` are two unrelated records today. Missing: that they are **the same
+board**, which came first, what changed, and which one is meant when something says just `Board`.
 
 ⚠️ **The trap is to answer it with an aggregation called `Vorgänger`.** That records the order and
 nothing else — not that they share an identity, and not which one a reference should resolve to.
@@ -2249,7 +2249,7 @@ A relationship carrying its own values — supplier **plus** customer number **p
 is modelled as a **composition that aggregates**. Everything needed exists.
 
 ⚠️ **What is missing is that anyone would find it.** The move people reach for instead is a
-`Lieferant` attribute, then a second, then `Lieferant2` — which is how a model rots. The concept can
+`Supplier` attribute, then a second, then `Supplier2` — which is how a model rots. The concept can
 express more than it teaches, and this is the clearest case.
 
 Not a gap in the model. A gap in what the model **says about itself**.

@@ -148,7 +148,7 @@ over them.
 | *OML* | **UML** |
 | *Beschichtung* | **Schachtelung** — nesting |
 | *vermisst* | **vermischst** — mixing, not missing |
-| *schonenswert*, *wieder schonenswert* | **Widerstandswert** — resistance value |
+| *schonenswert*, *wieder schonenswert* | **Resistance** — resistance value |
 | *Waldkatz* | **wildcard** |
 | *Fahrrad*, *Nanofahrrad* | **Farad**, nanofarad |
 | *Lebensraum* | **Namensraum** — namespace |

@@ -24,14 +24,14 @@ trick nobody wrote down · ❌ a genuine gap.
 
 ```mermaid
 flowchart LR
-  P["Model › Platine"] -->|composition 1..*| POS["Compositions › Position"]
-  POS -->|aggregation| B["Model › Bauteil"]
+  P["Model › Board"] -->|composition 1..*| POS["Compositions › Position"]
+  POS -->|aggregation| B["Model › Part"]
   B --> W["Widerstand"]
 ```
 
-`Platine` holds positions; each position points at a catalogue part and carries its own quantity
+`Board` holds positions; each position points at a catalogue part and carries its own quantity
 and placement. Positions die with their board ([D-232](90-decision-log.md): `Compositions` → own
-records); the part survives, because `Bauteil` lives under `Model` and is therefore reached by
+records); the part survives, because `Part` lives under `Model` and is therefore reached by
 aggregation ([D-161](90-decision-log.md)). Choosing a part value-first — type `10 kΩ`, get the
 resistors — is [D-239](90-decision-log.md).
 
@@ -42,9 +42,9 @@ set it aside: *there are boards in different versions, which then have different
 model version of [D-060](90-decision-log.md) is a stamp on a **record**, not something a person
 edits; it says which shape a record was written against, not that *v1.1 supersedes v1.0*.
 
-So today `Platine v1.0` and `v1.1` are **two unrelated records**. Everything a person expects is
+So today `Board v1.0` and `v1.1` are **two unrelated records**. Everything a person expects is
 missing: that they are the same board, which came first, what changed, and which one *is meant*
-when something merely says `Platine`. → [OQ-075](91-open-questions.md).
+when something merely says `Board`. → [OQ-075](91-open-questions.md).
 
 ---
 
@@ -52,14 +52,14 @@ when something merely says `Platine`. → [OQ-075](91-open-questions.md).
 
 ```mermaid
 flowchart LR
-  R["Model › Rezept"] -->|composition 1..*| Z["Compositions › Zutat"]
-  Z -->|aggregation| E["Model › Essbares"]
+  R["Model › Recipe"] -->|composition 1..*| Z["Compositions › Ingredient"]
+  Z -->|aggregation| E["Model › Edible"]
   E --> L["Lebensmittel"]
-  E --> R2["Rezept"]
+  E --> R2["Recipe"]
 ```
 
 ✅ **Sub-recipes need nothing new.** An ingredient's target type is a **branch**
-([D-041](90-decision-log.md)), so pointing `Zutat.Was` at `Essbares` lets it hold a foodstuff *or*
+([D-041](90-decision-log.md)), so pointing `Ingredient.Was` at `Edible` lets it hold a foodstuff *or*
 another recipe. The nesting the owner described falls straight out.
 
 ✅ **And a recipe containing itself does not hang.** One cycle guard covers the render walk and the
@@ -104,7 +104,7 @@ other.
 
 ```mermaid
 flowchart LR
-  B["Model › Bauteil"] -->|composition 1..*| LB["Compositions › Lieferbeziehung"]
+  B["Model › Part"] -->|composition 1..*| LB["Compositions › Supply relationship"]
   LB -->|aggregation| O["Model › Organisation"]
   LB --> K["Kundennummer · Seit · Preis"]
 ```
@@ -116,8 +116,8 @@ belongs.
 
 Everything needed exists. What is missing is that anybody would find it: the modeller must know to
 turn a relationship into a node. **This is the single most valuable pattern to write down**, because
-the alternative people reach for — a `Lieferant` attribute on the part, then a second one, then a
-`Lieferant2` — is exactly how a model rots. → [OQ-078](91-open-questions.md).
+the alternative people reach for — a `Supplier` attribute on the part, then a second one, then a
+`Supplier2` — is exactly how a model rots. → [OQ-078](91-open-questions.md).
 
 ---
 
@@ -176,7 +176,7 @@ argument for existing:
 
 > `286 Prozessor Information` · `286 Testkonfiguration` · `386 Testkonfig` ·
 > `80486 Testkonfiguration 1` · `386er Software` · `486er Software` · `3D Druckparameter` ·
-> `Bauteil Quellen` · `Amiga Tools`
+> `Part Quellen` · `Amiga Tools`
 
 Opened, `286 Testkonfiguration` is a two-column table: *CPU / CoPro → Aufgesteckt 80287-10*,
 *Graphic-Karte → 16 Bit ISA ET4000 1MB*, *Speicher → 4 MB Falls möglich*, *HDD → Compact Flash*.

@@ -293,7 +293,7 @@ price over a thousand wherever it sits, and adding `path` narrows it to one attr
 [D-074](90-decision-log.md)).
 
 ⚠️ **A value reference resolves either to a node or to a record, and the target type's placement
-decides which** ([D-131](90-decision-log.md)) — modelling-time content (`Basiseinheit` → `Gramm`)
+decides which** ([D-131](90-decision-log.md)) — modelling-time content (`Base unit` → `Gramm`)
 yields a **node** reference; input-time content yields a **record** reference.
 
 ---
@@ -549,8 +549,8 @@ manual**, and either replaces it or adds a **version with a description**
 
 ⚠️ **What cannot have been meant is removed by the converter; what might have been meant is
 questioned by the validator** ([D-166](90-decision-log.md)). Leading and trailing whitespace is
-stripped silently — and **before** duplicate detection and the uniqueness check, or `Bauteil` and
-`Bauteil ` become two records nobody can tell apart. Interior spacing is a validator that **offers**
+stripped silently — and **before** duplicate detection and the uniqueness check, or `Part` and
+`Part ` become two records nobody can tell apart. Interior spacing is a validator that **offers**
 the corrected form.
 
 **An error blocks; a warning stays visible and does not** ([D-288](90-decision-log.md)). A validator
@@ -578,7 +578,7 @@ a consequence of that axis ([D-226](90-decision-log.md)).
 **never a second field**, because two stored values drift apart.
 
 **Where several fields belong together in one notation, they are one composed type**
-([D-220](90-decision-log.md)) — `Widerstandswert` is value plus tolerance
+([D-220](90-decision-log.md)) — `Resistance` is value plus tolerance
 ([D-150](90-decision-log.md)), a quantity is number plus prefix plus unit. The **composed type is
 the unit of rendering**, and its members stay individually searchable because they live inside the
 record by path.
@@ -598,7 +598,7 @@ model**, not a convention.
 following the edge — presentation, not storage.
 
 **A multi-valued composition creates its node automatically**
-([D-136](90-decision-log.md)), named from owner and attribute (`Bauteilliste-Position`) and
+([D-136](90-decision-log.md)), named from owner and attribute (`Parts list-Position`) and
 renameable. Duplicate names are no problem, because base names are explicitly not unique.
 
 > *In the author's head: one model with a repeating group. In the tree: a node under
@@ -817,7 +817,7 @@ and removable ([D-175](90-decision-log.md)).
 
 | Move | Instead of |
 |---|---|
-| a relationship with its own values becomes a **node** | `Lieferant`, then `Lieferant2` |
+| a relationship with its own values becomes a **node** | `Supplier`, then `Supplier2` |
 | a repeating group becomes a **composition** | ten numbered attributes |
 | the same thing in two roles is **one node, two relationships** | two copies |
 | a **version** is a record under the thing | a versioning mechanism |
@@ -1313,12 +1313,12 @@ classDiagram
         +wert
         +einheit
     }
-    class Basiseinheit {
+    class Base unit {
         +symbol
     }
     Einheitswert --> Zahl : wert
-    Einheitswert --> Basiseinheit : einheit
-    Basiseinheit --> Praefix : praefix
+    Einheitswert --> Base unit : einheit
+    Base unit --> Praefix : praefix
 ```
 
 The first version of the thought put the double on the base unit. That would make *gram* a
@@ -1329,7 +1329,7 @@ which is an ordinary composed node with two attributes. `Gewicht` is then a spec
 Nothing new is needed for this: it is [D-031](90-decision-log.md) — attributes are relations —
 applied twice.
 
-⚠️ **`Basiseinheit +symbol` in the diagram above is contested.**
+⚠️ **`Base unit +symbol` in the diagram above is contested.**
 [D-252](90-decision-log.md) makes `symbol` a **label role** — a translated text in the labels table —
 and [40 I18n](40-i18n.md) already carries `Ω` and `St` that way. The diagram models it as an
 attribute of the unit node, which would put the same fact in two homes. Raised in
@@ -1413,7 +1413,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    A["attribute · to = Basiseinheit"] --> C[choose a node from that branch]
+    A["attribute · to = Base unit"] --> C[choose a node from that branch]
     C --> Q{does it have attributes}
     Q -->|no| D[done]
     Q -->|yes| E[fill them]
@@ -1454,14 +1454,14 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    BE[Basiseinheit] -->|praefix · to = Praefixe| PR[Praefixe]
+    BE[Base unit] -->|praefix · to = Praefixe| PR[Praefixe]
     BE --> M[Meter]
     BE --> K[Kelvin]
     M -.- MN["erlaubt: milli · centi · kilo"]
     K -.- KN["erlaubt: keine"]
 ```
 
-There is one `Basiseinheit` with one `praefix` attribute pointing at the prefix branch. What each
+There is one `Base unit` with one `praefix` attribute pointing at the prefix branch. What each
 unit permits is an **allow-list setting on that attribute**, inherited and overridable like every
 other setting ([D-015](90-decision-log.md)).
 
@@ -1504,8 +1504,8 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    N[Node] --> T["used as a type<br/>Integer · Basiseinheit · Einheitswert"]
-    N --> M["used as a model<br/>Bauteilliste · Kontakt"]
+    N[Node] --> T["used as a type<br/>Integer · Base unit · Einheitswert"]
+    N --> M["used as a model<br/>Parts list · Contact"]
     N --> I["holding data<br/>an actual parts list"]
 ```
 
@@ -1520,8 +1520,8 @@ are one thing. Both hold at once:
 
 | | Layer | Role |
 |---|---|---|
-| `Integer`, `Basiseinheit` | model | used as a type |
-| `Bauteilliste` | model | used as a model |
+| `Integer`, `Base unit` | model | used as a type |
+| `Parts list` | model | used as a model |
 | a specific parts list | data | — |
 
 **C56 states why the renderer concept had to exist at all**, and it is worth recording as the
@@ -1559,7 +1559,7 @@ config:
 ---
 flowchart LR
     Q["when is the content determined"] --> N["never · Integer · Text"]
-    Q --> M["at modelling time · Praefixe · Bauformen · Basiseinheiten"]
+    Q --> M["at modelling time · Praefixe · Bauformen · Base units"]
     Q --> I["at input time · a parts list"]
 ```
 
@@ -1568,8 +1568,8 @@ because it has no crisp test. **When the content is determined** has one, and it
 positions instead of two — with the middle one being exactly the branches the standard tree
 calls `Konstanten`.
 
-The middle case is worth naming because it is easy to lose: `Präfixe`, `Bauformen`,
-`Basiseinheiten` are **data authored in the modeller**. They are not types in the sense that
+The middle case is worth naming because it is easy to lose: `Prefixes`, `Bauformen`,
+`Base units` are **data authored in the modeller**. They are not types in the sense that
 `Integer` is, and they are not user input either. [D-041](90-decision-log.md) already covers how
 they are used — an attribute names their branch and an instance picks from it.
 
@@ -2095,7 +2095,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    B["Bauteil · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].hide = true"]
+    B["Part · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].hide = true"]
     B --> U["a use site · edge #77<br/>[#10].step = 5"]
 ```
 
@@ -2172,12 +2172,12 @@ are deliberately different in strength.
 ### Uniqueness comes out of inheritance for free
 
 An attribute is an edge ([D-031](90-decision-log.md)), and a subtype **inherits** that edge rather
-than getting its own. So `Passiv` and `Halbleiter` both use `Bauteil`'s `artikelnummer` — edge
+than getting its own. So `Passiv` and `Halbleiter` both use `Part`'s `artikelnummer` — edge
 `#10` — and a uniqueness check on `(edge_id, value)` covers **every record of every subtype at
 once**.
 
 That is exactly the semantics one would want and nobody had to design it: *unique among all
-Bauteile, including the specialised ones.*
+Parts, including the specialised ones.*
 
 ### Enforced in two layers, like everything else
 
@@ -2587,7 +2587,7 @@ A dialog whose safest answer is one click away will be clicked. So the confirmat
 
    > Deleting **«mein int»** also removes
    > · attribute **«menge»** from **Position** — 1 243 records hold a value
-   > · attribute **«anzahl»** from **Kontakt** — 12 records
+   > · attribute **«anzahl»** from **Contact** — 12 records
 
 2. **require an act that cannot be reflexive** — typing the node's name, rather than a button
    positioned where *cancel* usually is.
@@ -2632,7 +2632,7 @@ which is why it stays one toggle away and why the records surface separately.
 ### C106 catches an error in [D-017](90-decision-log.md)
 
 I had written that a composed-only node *lives beneath its whole*. **The tree is inheritance and
-nothing else** ([V3](00-vision-and-scope.md)), so hanging `Position` under `Bauteilliste` means
+nothing else** ([V3](00-vision-and-scope.md)), so hanging `Position` under `Parts list` means
 `Position` **inherits** the parts list — it would acquire `bezeichnung` and `bauart`. I had mixed
 *organisational placement* with *inheritance parent*, and in this model those are the same thing.
 
@@ -2676,7 +2676,7 @@ and simply travel with the node. The only move that rewrites storage is one that
 | model level | only **one** edge points at it |
 | data level | each target **record** is referenced by **at most one** owner record |
 
-The second is sharper and can fail while the first holds: `Position.artikel → Bauteil` is one edge,
+The second is sharper and can fail while the first holds: `Position.artikel → Part` is one edge,
 but one *Widerstand 10k* record hangs on five hundred positions. Converting that is not a conversion
 but a **duplication** — offerable, never silent.
 
@@ -2698,7 +2698,7 @@ off the tree rather than derived.
 
 | | Lies under | Own records? |
 |---|---|---|
-| `Bauteil` | model | yes, standalone |
+| `Part` | model | yes, standalone |
 | `Position` | `Compositions` | yes, owned |
 | `Preis` | data types | **no** — inline in whoever uses it |
 | `Gramm` | constants | **no** — referenced as a value |
@@ -2710,7 +2710,7 @@ second derivation is gone: the branch decides, and the multiplicity does not ent
 
 ### Where they used to disagree, and why the case has dissolved
 
-Set a multiplicity above 1 on a **data type** — `Bauteil.preisverlauf → Preis`, `1..*` — and
+Set a multiplicity above 1 on a **data type** — `Part.preisverlauf → Preis`, `1..*` — and
 [D-133](90-decision-log.md) said *own records* while placement said *no own data*. The old
 resolution was [D-136](90-decision-log.md)'s automatic creation: a node under `Compositions`
 inheriting from `Preis`, so that there was something to hold the records.
@@ -3024,7 +3024,7 @@ config:
 ---
 flowchart LR
     I["typed: 2k7"] --> C["converter"]
-    C --> V["one value · Widerstandswert"]
+    C --> V["one value · Resistance"]
     V --> M["members · number · prefix"]
 ```
 
@@ -3034,7 +3034,7 @@ flowchart LR
 
 ⚠️ **No new kind of renderer is needed**, because those are not two fields: they are **members of one
 value** that is incomplete without them. [D-150](90-decision-log.md) had already made
-`Widerstandswert` a composed type so that the colour code could stay an ordinary attribute renderer;
+`Resistance` a composed type so that the colour code could stay an ordinary attribute renderer;
 the prefix is the same move one level down.
 
 **Members stay individually reachable**, because a target under `Primitives` lives inside the record
@@ -3092,7 +3092,7 @@ which wins.
 
 **Restrictions narrow downwards and never widen.** A use site further down may restrict further; it
 may not reopen, or *only Ohm* guaranteed nothing in the first place. Whoever genuinely needs another
-unit does not need a `Widerstandswert`.
+unit does not need a `Resistance`.
 
 ### C118 — a medium is an ordinary type, and it knows its MIME type
 

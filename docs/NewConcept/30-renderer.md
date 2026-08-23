@@ -1131,7 +1131,7 @@ beside degrees-minutes-seconds.
 
 **And a renderer that spans several attributes is a node renderer, not an attribute renderer**
 ([D-091](90-decision-log.md)) — which is why [D-150](90-decision-log.md) keeps the resistor
-colour code as **one notation of one thing**: `Widerstandswert` is a composed type, value plus
+colour code as **one notation of one thing**: `Resistance` is a composed type, value plus
 tolerance, so the code stays an attribute renderer instead of having to reach across attributes.
 
 **Staging follows where the benefit lies** ([D-150](90-decision-log.md)): the resistor gets a
@@ -1192,7 +1192,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    T["composed type<br/>Widerstandswert"] --> M1["member · number"]
+    T["composed type<br/>Resistance"] --> M1["member · number"]
     T --> M2["member · prefix"]
     T --> M3["member · tolerance"]
     T -.->|one generic composite renderer| D[one control per member]
@@ -1201,7 +1201,7 @@ flowchart TD
 [D-220](90-decision-log.md). The owner: *I type `2k7` and it lands in two different fields, the
 `2.7` and the `k` — I think we need some kind of combinatorial renderer here.* ⚠️ **No new kind of
 renderer is needed**, because those are not two fields: they are **members of one value** that is
-incomplete without them. [D-150](90-decision-log.md) had already made `Widerstandswert` a composed
+incomplete without them. [D-150](90-decision-log.md) had already made `Resistance` a composed
 type so the colour code could stay an ordinary attribute renderer; the prefix is the same move one
 level down.
 
@@ -1261,7 +1261,7 @@ setting like `min`, overridable along the resolution chain ([D-015](90-decision-
 **Two consequences that must not be forgotten**, both stated in the decision:
 
 - Trimming runs **before** duplicate detection and before the uniqueness check
-  ([D-154](90-decision-log.md)), or `Bauteil` and `Bauteil ` become two records nobody can tell
+  ([D-154](90-decision-log.md)), or `Part` and `Part ` become two records nobody can tell
   apart.
 - The hyphen rule is **not** about findability. The search column normalises spacing and
   punctuation away anyway ([D-167](90-decision-log.md)), so `BC 547 B` and `BC-547-B` already
@@ -1600,7 +1600,7 @@ nothing new is invented for collections.
 
 | # | Statement (owner, 2026-08-22) |
 |---|---|
-| **R50** | A container renderer is **not** only chosen on the attribute. A model — say `Bauteilliste` — is first of all a **node**, and one can say **on the node** that it should always be drawn as a table by default. |
+| **R50** | A container renderer is **not** only chosen on the attribute. A model — say `Parts list` — is first of all a **node**, and one can say **on the node** that it should always be drawn as a table by default. |
 
 **A correction to what stood here.** I had written *the container is chosen at the edge, because
 that is where multiplicity lives.* That quietly invented a special case. Multiplicity does live at
@@ -1608,7 +1608,7 @@ the edge ([D-086](90-decision-log.md)) — but **the renderer choice follows the
 every other setting**: default on the node, override at the use site ([D-015](90-decision-log.md),
 [R41](#owner-statement--2026-08-22-eighth-pass-the-descent-step-by-step)).
 
-So `Bauteilliste` states *draw me as a table*, and any particular use of it may say otherwise.
+So `Parts list` states *draw me as a table*, and any particular use of it may say otherwise.
 Nothing about containers is exceptional. Recorded as [D-098](90-decision-log.md), which corrects
 [D-097](90-decision-log.md).
 
@@ -1745,9 +1745,9 @@ No node name appears in code, which the standard forbids
 ([`CD-9`](../../CLAUDE.md) and the no-special-casing rule), and a second installation may arrange
 its tree differently.
 
-**The split pays off immediately, and on a case the old rule got wrong.** `Basiseinheiten` and
-`Präfixe` sit under **Constants**, where a child list genuinely makes sense — and the legacy project
-had a `ChildListRenderer` on `Präfixe`, which under the undivided rule would have been excluded.
+**The split pays off immediately, and on a case the old rule got wrong.** `Base units` and
+`Prefixes` sit under **Constants**, where a child list genuinely makes sense — and the legacy project
+had a `ChildListRenderer` on `Prefixes`, which under the undivided rule would have been excluded.
 Constants are therefore **outside** the exclusion; only Data Types are inside it.
 
 ### And a cell never inherits the container's renderer
@@ -1894,10 +1894,10 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    B[Bauteil] -->|alternative · aggregation| B
+    B[Part] -->|alternative · aggregation| B
 ```
 
-A `Bauteil` with an attribute `alternative` of type `Bauteil` makes the **structure preview**
+A `Part` with an attribute `alternative` of type `Part` makes the **structure preview**
 infinite on day one, with an empty database and no record anywhere. And a self-referential type is
 not a contrived requirement — the same shape carries *replacement part*, *successor type*,
 *similar part*, *parent category*, *see also*, and *line manager* on a contact.
@@ -1910,7 +1910,7 @@ not a contrived requirement — the same shape carries *replacement part*, *succ
 
 ### The owner's counter-proposal: model it as a group
 
-Instead of `Bauteil.alternative → Bauteil`, introduce an **interchange group**: parts point at the
+Instead of `Part.alternative → Part`, introduce an **interchange group**: parts point at the
 group, the group holds its members.
 
 **That is the better model** — and it does **not** remove the cycle:
@@ -1928,7 +1928,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    B[Bauteil] -->|gruppe| G[Austauschgruppe]
+    B[Part] -->|gruppe| G[Austauschgruppe]
     G -->|mitglieder 1..*| B
 ```
 
@@ -2147,8 +2147,8 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    A[Bauteil] -->|composition| B[expand]
-    A -->|aggregation · reference renderer| C["Lieferant → link"]
+    A[Part] -->|composition| B[expand]
+    A -->|aggregation · reference renderer| C["Supplier → link"]
     C -.-> D["nothing beyond this is loaded"]
 ```
 
@@ -3253,17 +3253,17 @@ genuinely new in its place: renderers a node **appends** to its mandatory one.
 | **Summary renderer** | a few chosen attributes of the target — the parts-list row | display | aggregation edges that want more than a link; its chosen columns double as the search fields ([D-112](90-decision-log.md)) | [D-106](90-decision-log.md) | decided |
 | **Expand renderer** | the whole target, unfolded inline | display | the default for **composition** | [D-105](90-decision-log.md), [D-106](90-decision-log.md) | decided |
 | **Plain field · spinner · slider** | one scalar value, three ways | display · edit | integer and double nodes, which carry `min`, `max`, `step` ([R17](#owner-statement--2026-08-22-third-pass-the-registry)) | [D-018](90-decision-log.md), [R15](#r15--variant-and-circumstance-are-different-axes) | decided — **three** renderers, not one with three modes |
-| **Table renderer** | the frame of a multi-valued edge; every cell goes back to the registry | display · edit | anything with structure; a model may declare it on **itself** (`Bauteilliste`); it is also what the legacy `table` **type** dissolves into ([D-246](90-decision-log.md)) | [D-098](90-decision-log.md), [D-117](90-decision-log.md), [D-245](90-decision-log.md), [R46](#r46r47--a-container-renderer-is-the-same-recursion) | decided |
+| **Table renderer** | the frame of a multi-valued edge; every cell goes back to the registry | display · edit | anything with structure; a model may declare it on **itself** (`Parts list`); it is also what the legacy `table` **type** dissolves into ([D-246](90-decision-log.md)) | [D-098](90-decision-log.md), [D-117](90-decision-log.md), [D-245](90-decision-log.md), [R46](#r46r47--a-container-renderer-is-the-same-recursion) | decided |
 | **Form renderer** | a node's attributes stacked as a form | display · edit | same | [D-098](90-decision-log.md), [D-091](90-decision-log.md) | decided — `renderForm` stopped being a method and came back as a renderer |
 | **Node renderer** *(= page renderer)* | a whole node: one-valued members as fields, multi-valued ones as tables beneath, small fields compactly on one line; **whole parts** may be left out | display · edit | any node — and a **page**, which is a rendered node | [D-256](90-decision-log.md), [D-255](90-decision-log.md), [D-233](90-decision-log.md), [R20c](#r20c--the-node-renderer-and-the-page-renderer-are-one-renderer) | decided — [D-256](90-decision-log.md) corrects [D-255](90-decision-log.md)'s placement of the rule and rules out a third term |
-| **Composite renderer** | **one composed value** — one control per member, each drawn by the member's own renderer | display · edit | every composed type, generically: `Widerstandswert`, dimensions, addresses | [D-220](90-decision-log.md), [R35c](#r35c--the-composed-type-is-the-unit-of-rendering) | decided — the *generic* stage needs no code per type |
+| **Composite renderer** | **one composed value** — one control per member, each drawn by the member's own renderer | display · edit | every composed type, generically: `Resistance`, dimensions, addresses | [D-220](90-decision-log.md), [R35c](#r35c--the-composed-type-is-the-unit-of-rendering) | decided — the *generic* stage needs no code per type |
 | **Compact horizontal renderer** | one dense line; *with label / without label* is a **setting**, not a second renderer | display · edit | same; it is what the legacy `set` **type** dissolves into ([D-246](90-decision-log.md)) | [D-098](90-decision-log.md), [D-018](90-decision-log.md), [D-245](90-decision-log.md) | decided — named *compact row* in the first pass; [D-245](90-decision-log.md) fixes the wording |
 | **Compact vertical renderer** | the same, as one dense column | display · edit | same | [D-098](90-decision-log.md), [D-245](90-decision-log.md) | decided |
 | **Dialog chooser** | a button plus a dialog; the markup carries metadata and one generic JavaScript component supplies the behaviour | edit | every place a node or a record is picked — one chooser in the product ([D-197](90-decision-log.md)); and creating a new record ([D-113](90-decision-log.md)) | [D-108](90-decision-log.md), [D-244](90-decision-log.md) | decided — **the default** since [D-244](90-decision-log.md) |
 | **Inline chooser** | the branch as a list (one level) or a tree (several), inline in the form | edit | places where the choice really is simple | [D-107](90-decision-log.md), [D-108](90-decision-log.md), [D-244](90-decision-log.md), [R62a](#r62a--and-the-default-is-the-dialog-not-inline) | decided — ⚠️ **no longer the default.** [D-244](90-decision-log.md) flips [D-108](90-decision-log.md); the construction (two renderers, not a mode switch) is untouched |
 | **Search renderer** | an operator plus an operand — a **condition**, not a value | search | ~~one per type~~ — under [D-217](90-decision-log.md) it is the node's **own** renderer, asked under the search purpose, which it declares in `supports()` | [D-168](90-decision-log.md), [R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them) | ⚠️ **named and then withdrawn as a separate renderer.** [D-217](90-decision-log.md) supersedes the registry-key half of [D-168](90-decision-log.md): one node, one renderer. The **search purpose survives in full**; the second renderer does not |
 | **Last-resort renderer** | whatever is drawn when a node has no renderer at all | display · edit · search | — | [D-091](90-decision-log.md), [D-217](90-decision-log.md) | decided — and [D-217](90-decision-log.md) is explicit that it is a **fault indicator, not a floor**: a node without a renderer is an error and must look like one |
-| **Colour-code renderer** | a resistance value as coloured bands | display | `Widerstandswert` — a composed type of value + tolerance, which is what keeps this an *attribute* renderer | [D-150](90-decision-log.md), [D-149](90-decision-log.md) | decided — staged **first**, because the value is in the display |
+| **Colour-code renderer** | a resistance value as coloured bands | display | `Resistance` — a composed type of value + tolerance, which is what keeps this an *attribute* renderer | [D-150](90-decision-log.md), [D-149](90-decision-log.md) | decided — staged **first**, because the value is in the display |
 | **View export renderer** | CSV, PDF, an interactive parts list | display | any subtree being exported for reading | [D-058](90-decision-log.md), [R76a](#r76a--a-view-export-is-a-renderer-a-backup-export-is-not) | decided |
 | **Report** | prepared output that leaves the building; it **computes at output time** and it **joins** | display | a selected set of records, grouped | [D-202](90-decision-log.md), [D-201](90-decision-log.md), [D-243](90-decision-log.md), [R76c](#r76c--a-report-is-selection--grouping--expression) | ✔ **the mechanism is now named** — **selection + grouping + expression** ([D-243](90-decision-log.md)); the expression language does **not** grow. Still Release 2 ([D-203](90-decision-log.md)) |
 | **Printout** (`Ausdruck`) | a **frozen** rendering of a report, kept as a document — an invoice | display | any report, at the moment it is produced | [D-242](90-decision-log.md) | decided that it is a distinct thing from a report; ⚠️ a report is **live** and recomputes, a printout does not, which is why later price corrections must not reach an invoice |
@@ -3280,13 +3280,13 @@ genuinely new in its place: renderers a node **appends** to its mandatory one.
 | **Front-end node block** | one node on a page; a reference joins it to the next block | display | any node | [D-206](90-decision-log.md), [D-234](90-decision-log.md), [D-254](90-decision-log.md), [R58a](#r58a--on-the-front-end-this-is-what-joins-the-pages-together) | decided as a **block**, i.e. a **configuration and not a renderer** ([D-234](90-decision-log.md)); what it draws inside is the ordinary node renderer, and it renders **server-side on every request** ([D-254](90-decision-log.md)) |
 | **Comparison block** | subjects side by side under their nearest common ancestor; what is not shared moves **below** and may sit behind a disclosure | display | several records of one inheritance line | [D-207](90-decision-log.md), [D-234](90-decision-log.md), [R58b](#r58b--a-comparison-block-resolves-to-the-nearest-common-ancestor) | ✔ **settled.** The ancestor walk and the ordering are **selection**, which is the block's job — [D-234](90-decision-log.md), so [D-092](90-decision-log.md)'s *one node per node renderer* stands untouched |
 | **List block** | the records of one node, restricted to chosen attributes | display | any node that has records | [D-208](90-decision-log.md), [D-234](90-decision-log.md) | decided as a **block**; the restriction is selection, and each cell is the ordinary renderer under the display purpose |
-| `FormRenderer` | a node's attributes as a form — the legacy default | display · edit | the inherited default on almost the whole exported tree: `Fallstudie`, `Definition`, `Aggregate` + leaves, `Konstanten`, `Präfixe` + all prefix leaves, `Basiseinheiten`, `Without prefix` (`Kelvin`, `Celsius`, `Stück`), `Währung` + `Euro`/`US Dollar`/`Pound`, `Simple Datatypes`, `Complex Datatypes`, `Bauteilliste`, `Kontakt`, `Platine`, `Bauteillisten Position`, all of `Implementation` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `FormRenderer` | a node's attributes as a form — the legacy default | display · edit | the inherited default on almost the whole exported tree: `Fallstudie`, `Definition`, `Aggregate` + leaves, `Konstanten`, `Prefixes` + all prefix leaves, `Base units`, `Without prefix` (`Kelvin`, `Celsius`, `Stück`), `Währung` + `Euro`/`US Dollar`/`Pound`, `Simple Datatypes`, `Complex Datatypes`, `Parts list`, `Contact`, `Board`, `parts lists Position`, all of `Implementation` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
 | `TableRenderer` | n instances as rows | display · edit | an object layout chosen per node; no node in the export selects it | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
-| `CompactRenderer` | one instance as a dense horizontal strip | display · edit | `Eigene Datentypen` (+ `Percent`, `Toleranz`, `Bauart`, `Option`, the size leaves), `Bauformen` + all seven leaves, `Passiv` → `Widerstand` · `Kondensator` · `Spule`; and the `Präfixe` **leaves** per `ARCHITECTURE` ≈ `0.0.540` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `CompactRenderer` | one instance as a dense horizontal strip | display · edit | `Eigene Datentypen` (+ `Percent`, `Tolerance`, `Bauart`, `Option`, the size leaves), `Bauformen` + all seven leaves, `Passiv` → `Widerstand` · `Kondensator` · `Spule`; and the `Prefixes` **leaves** per `ARCHITECTURE` ≈ `0.0.540` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
 | `CompactVerticalRenderer` | the same, vertically | display · edit | an object layout chosen per node | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
 | `MultistepRenderer` | pick a kind, then fill it (composition) or search-and-bind it (aggregation) | edit | the pick-and-create case; `EmbeddedRenderer` / `embed` / `pick-fill` all normalise to it | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.546` | legacy — not yet confirmed. ⚠️ It carries a `dialog` / `inline` **mode option**, which is exactly what [D-108](90-decision-log.md) refused |
-| `ChildListRenderer` | the hierarchy children of a host as a list, with *Default* and *Choices* options | display · edit | the default for `Konstanten` hosts that have children; explicitly the `Präfixe` host | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.483`/`0.0.541`, [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md) | legacy — not yet confirmed; the concept has **no counterpart** |
-| `EmbeddedRenderer` | pick + fill, embedded | edit | `Bauteil` and every kind under `Halbleiter`, `Elektromechanik` and `Sonstige` — 17 nodes in the export | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; **superseded inside legacy** by `MultistepRenderer` |
+| `ChildListRenderer` | the hierarchy children of a host as a list, with *Default* and *Choices* options | display · edit | the default for `Konstanten` hosts that have children; explicitly the `Prefixes` host | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.483`/`0.0.541`, [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md) | legacy — not yet confirmed; the concept has **no counterpart** |
+| `EmbeddedRenderer` | pick + fill, embedded | edit | `Part` and every kind under `Halbleiter`, `Elektromechanik` and `Sonstige` — 17 nodes in the export | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; **superseded inside legacy** by `MultistepRenderer` |
 | `IntRenderer` | an integer; `Spinner` and `Range` are separate *Preferred* values over the same type, taking their bounds from the validators | display · edit | `int` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.517` | legacy — not yet confirmed. ✔ Independent confirmation of [D-018](90-decision-log.md) — field, spinner and slider were three choices there too |
 | `DoubleRenderer` | a decimal number | display · edit | `double` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
 | `TextRenderer` | a text field | display · edit | `text` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
@@ -3298,7 +3298,7 @@ genuinely new in its place: renderers a node **appends** to its mandatory one.
 | `MediaRenderer` | a medium, painted by MIME kind | display · edit | `media` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; the ancestor of the unnamed **media renderer** row above |
 | `DisplayNodeNameRenderer` | the name of a referenced node, in a chosen role | display | `display_node_name` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — already reworked: [D-044](90-decision-log.md) made it a renderer rather than a type, and [D-105](90-decision-log.md) arrived at the same thing as the **reference renderer** |
 | `QuantityRenderer` | a one-row box that calls the value renderer and the unit renderer | display · edit | `quantity`, `Preis`, `Unit type` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; the ancestor of the unnamed **money** and **unit-value** rows above |
-| `UnitRenderer` | prefix + symbol — the unit↔prefix marriage | display · edit | every `Basiseinheiten › With prefix` leaf: Meter, Liter, Kilogramm, Sekunde, Ampere, Ohm, Farad, Watt, Volt, Henry, Hertz | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
+| `UnitRenderer` | prefix + symbol — the unit↔prefix marriage | display · edit | every `Base units › With prefix` leaf: Meter, Liter, Kilogramm, Sekunde, Ampere, Ohm, Farad, Watt, Volt, Henry, Hertz | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
 | `TreeChooser` / `ListChooser` | the chooser chrome, picked by the depth of the branch — depth ≤ 1 flat, ≥ 2 a tree | edit | every type / catalog choice | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md) | legacy — the **depth rule survives** as [D-109](90-decision-log.md), but derived from the branch rather than chosen as a renderer |
 | `DefaultRenderer` | the fallback when nothing else can render | | | [`RendererMeremaid.md`](RendererMeremaid.md) | seed sketch — superseded by the fallback of [D-091](90-decision-log.md) / [D-168](90-decision-log.md) |
 | `ChangeLogRenderer` / `IPageRenderer` | the change log, as a page | display | `ChangeLog` | [`../legacy/meremaid.txt`](../legacy/meremaid.txt) | seed sketch — [D-091](90-decision-log.md) retires `IPageRendere` |
