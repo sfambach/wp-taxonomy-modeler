@@ -2,13 +2,19 @@
 title: Calculation
 status: draft
 round: R1 (in progress)
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 ---
 
 # Calculation
 
 > **Status: `draft`.** Owner statements of 2026-08-22 plus a design answering the question the
-> owner put: *is a calculation a relation, or an entirely different concept?* Not decided.
+> owner put: *is a calculation a relation, or an entirely different concept?*
+>
+> **Caught up on 2026-08-23.** The recommendations below were taken as decisions on the day they
+> were written — [D-043](90-decision-log.md), [D-045](90-decision-log.md),
+> [D-130](90-decision-log.md) — and the sections marked with an id carry the decision that settled
+> them. Where the text and a decision disagree, nothing was resolved here; the row went to
+> [`_harvest/contradictions.md`](_harvest/contradictions.md), per `PR-4`.
 
 ## Purpose
 
@@ -45,7 +51,8 @@ flowchart LR
     Q -->|no, only appearance changes| K[converter]
 ```
 
-**Recommendation: K1 is a converter, and K5 is refused.**
+**K1 is a converter, and K5 is refused** — taken as written, [D-043](90-decision-log.md): *unit
+conversion and text transformation are converters, not calculations.*
 
 - A **calculation** produces a value that **did not exist** — a sum, an average, a product.
 - A **converter** changes the **form** of a value that already exists — two decimal places,
@@ -92,12 +99,56 @@ The owner's distinction is exact and worth keeping as a hard line:
 | Configured in | the settings of the attribute | the settings of the renderer |
 
 **The same expression language serves both.** Only the owner and the lifetime differ. A footer
-sum is not a lesser calculation; it is one whose result nobody needs to keep.
+sum is not a lesser calculation; it is one whose result nobody needs to keep. Taken as written,
+[D-043](90-decision-log.md): *two owners, one expression language.*
+
+## K6a — A view and a report are two things, and only one of them is deferred
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    V["view · a named calculation belonging to no node"] --> DF["deferred by decision"]
+    RP["report · prepared output that leaves the building"] --> RS["renderer side · rules are stored"]
+```
+
+The owner asked for the English word **`View`**, and then, describing what he might want, described
+something else: *one could produce reports. Exporting a parts list, say, or creating an invoice.*
+[D-201](90-decision-log.md) separates the two and says they must not share a deferral, a mechanism
+or a word:
+
+- **A view is a named computation belonging to no node.** It stays deferred on its existing
+  criterion ([D-200](90-decision-log.md)), and the interim stands: aggregated figures hang on nodes
+  as computed fields ([D-140](90-decision-log.md)).
+- **A report is prepared output** — something in a form that leaves the building. That puts it on
+  the renderer side, not here.
+
+⚠️ **[D-202](90-decision-log.md) corrects [D-201](90-decision-log.md)** on what a report *does*. The
+owner: *a report can contain calculations, like the front end does, but ones that arise at the time
+of the export — at the time the output is produced. And a report can contain raw data, or accumulate
+it, or combine it with other data. Linked, joined, however you want to put it.* So a report **does
+compute, at output time**, and it **joins**. What falls with the correction is the guess that a
+report needs no new mechanism: **a join across unrelated records is not a descent**. What stands is
+the separation itself, and that **the rules for a report are stored** — *this is how the report
+looks* — which makes a report a configured thing rather than a written one.
+
+**Open:** whether a report's output-time calculation is the same expression language as the two
+owners above — a relative edge-id path cannot express a join across unrelated records — is not
+decided. See [`_harvest/contradictions.md`](_harvest/contradictions.md).
 
 ## K2, K3, K4 — what a calculation *is*
 
-**Recommendation: a calculation is not a relation kind. It is a property of an attribute** — one
-whose value comes from an expression instead of from input.
+**A calculation is not a relation kind. It is a property of an attribute** — one whose value comes
+from an expression instead of from input ([D-043](90-decision-log.md)).
 
 ```mermaid
 ---
@@ -158,9 +209,9 @@ saved, thrown away and rebuilt at will. Same rule as the resolved-settings cache
 The owner named this as the part with no answer yet: *where does the calculation learn which
 fields it is fed from?*
 
-**Recommendation: the same way an override knows what it overrides — a relative path of edge
-ids.** [OQ-025](91-open-questions.md) already settled that addressing for overrides, and reusing
-it means calculations introduce no new way of pointing at anything.
+**The same way an override knows what it overrides — a relative path of edge ids**
+([D-045](90-decision-log.md)). [OQ-025](91-open-questions.md) already settled that addressing for
+overrides, and reusing it means calculations introduce no new way of pointing at anything.
 
 ```mermaid
 ---
@@ -272,6 +323,79 @@ The expression tree is **serialised into the setting**. Nothing ever queries *in
 expression, and the dependency index is extracted when it is written
 ([D-045](90-decision-log.md)) — so a queryable structure would buy nothing and cost a table.
 
+## K3a — The walk has a cycle guard and no depth limit
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    W["a walk stops"] --> C{why}
+    C -->|cycle · already seen| R["render: a reference · calculation: guarded, terminates"]
+    C -->|depth limit| D["rendering only · never a calculation"]
+```
+
+[D-100](90-decision-log.md) closes [OQ-019](91-open-questions.md), and **one guard serves both the
+render descent and the calculation walk**. Cycles are **detected, not forbidden** — mutual
+references are ordinary modelling — and visited identities are remembered. The depth limit is a
+setting with a default, not a constant.
+
+[D-104](90-decision-log.md) then draws the line between the two walks: **a depth limit is a
+rendering concern only, and calculations must never be truncated.** A truncated rendering shows
+*less than the truth* and says so; a truncated sum **states an untruth**, in the same typeface as a
+correct number, with nothing about it looking unfinished. So the calculation walk needs the **cycle**
+guard — without it it never terminates — and carries **no depth cap**.
+
+**If a calculation cannot complete, its result is not a number.** It is marked *not computable*, and
+every renderer shows that rather than a value.
+
+## K3b — A missing input has three modes, and *zero* is not one of them
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    M["an input is missing"] --> S["strict · the whole is not computable"]
+    M --> P["partial (default) · compute what is there, mark the result"]
+    M --> U["substitute · use the attribute's default"]
+```
+
+[D-147](90-decision-log.md), closing [OQ-062](91-open-questions.md). The mode is set **per
+attribute**. `substitute` uses the attribute's **default**, which already inherits
+([D-030](90-decision-log.md), [D-015](90-decision-log.md)), so a class estimate falls out of the
+hierarchy with no new mechanism.
+
+⚠️ **Treating a missing input as zero is explicitly not an option** — [D-104](90-decision-log.md)
+forbids it, and it is recorded as rejected so nobody adds it later for convenience.
+
+**Marking happens in two places and they say different things:** at the **value** it says *here is
+the cause*, for whoever will fix it; at the **aggregate** it says *this number is incomplete*, for
+whoever **uses** it — and that person may never see the position. Without the second, an incomplete
+figure travels onward as if it were complete. Three distinguishable states at a value:
+
+| State | Shown as |
+|---|---|
+| **computed** | the value |
+| **not computable** | `—`, with a reason |
+| **estimated** | the figure, marked as an estimate |
+
 ## Backward aggregates — reaching into another model
 
 | # | Statement (owner, 2026-08-22) |
@@ -362,6 +486,8 @@ flowchart TD
     B --- Z["frozen<br/>once, on request · searchable · no cascade"]
 ```
 
+The three states of [D-143](90-decision-log.md):
+
 | | Computed | Searchable | Cascade |
 |---|---|---|---|
 | **live forward** | on write, materialised | yes | forward |
@@ -380,18 +506,33 @@ approximation live through an archive costs much and gains nothing.**
 | **tracking list** | recalculates, **reports afterwards** | not needed |
 | **frozen list** | **untouched** | shows the difference, then applies |
 
-Both behaviours come out of one setting ([D-065](90-decision-log.md)): a costing list *describes*
-and tracks; a quotation *was agreed* and freezes. A quotation that changed because someone opened
-and saved it would make *frozen* meaningless.
+Both behaviours come out of one setting ([D-065](90-decision-log.md),
+[D-146](90-decision-log.md)): a costing list *describes* and tracks; a quotation *was agreed* and
+freezes. A quotation that changed because someone opened and saved it would make *frozen*
+meaningless.
 
 Even the tracking case reports — *12 prices updated* — non-blocking but visible. Correcting a typo
 should not move a hundred numbers unnoticed.
+
+### Recalculation is an event, and staleness is information
+
+[D-144](90-decision-log.md) adds three things to that:
+
+- **An explicit *recalculate* shows what will change before applying it** — *12 of 100 positions
+  change · Widerstand 10k 0,043 → 0,051 €*. A silent refresh of a hundred line prices is alarming;
+  this is the same shape as the conflict resolver.
+- **A frozen value carries a timestamp**, so nobody has to guess how old it is.
+- **The current figure is cheap to compute on read** ([D-140](90-decision-log.md)), so a list can
+  carry a **hint**: *3 positions differ by more than 10% from current prices* — which turns *I think
+  this is out of date* into information.
 
 ### K11 — the method is pluggable, and there is more than one right answer
 
 The average is one of a family: moving average, FIFO, the value of stock on hand, replacement cost.
 Each is a **registered calculation strategy**, chosen by setting — the escape hatch of
-[D-130](90-decision-log.md), and the same mechanism as renderers and validators.
+[D-130](90-decision-log.md), and the same mechanism as renderers and validators. Settled as
+[D-145](90-decision-log.md), which adds that the several valuations **coexist as separate named
+attributes** rather than competing for one field called `preis`.
 
 **Each is only as good as its data.** Average needs order lines; FIFO needs receipts with quantity
 and date; stock value needs inventory. None of that exists yet, which is why the average is the
@@ -411,12 +552,19 @@ A quotation wants the second; a retrospective costing wants the first. Naming ea
 
 ## Open
 
-| | |
+All four questions this document opened have since been answered. Kept, with what answered them,
+so the trail is readable:
+
+| | Answered by |
 |---|---|
-| [OQ-045](91-open-questions.md) | What can an expression reach — siblings, descendants, across aggregations, upwards? |
-| [OQ-046](91-open-questions.md) | When does a model calculation run: on write, on read, or cached? |
-| [OQ-047](91-open-questions.md) | What is the expression language, and who writes it? |
-| [OQ-019](91-open-questions.md) | Cycles — the render descent already needs a guard, and calculations need the same one over a different graph. |
+| [OQ-045](91-open-questions.md) — what can an expression reach? | [D-045](90-decision-log.md), a relative path of edge ids; the *reach* half by [D-140](90-decision-log.md), which adds the backward path. |
+| [OQ-046](91-open-questions.md) — when does a model calculation run? | [D-072](90-decision-log.md), materialised on input change — with the backward exception of [D-140](90-decision-log.md) and the third state of [D-143](90-decision-log.md). |
+| [OQ-047](91-open-questions.md) — what is the expression language? | [D-130](90-decision-log.md), a structured tree built with a picker. |
+| [OQ-019](91-open-questions.md) — cycles and depth | [D-100](90-decision-log.md) and [D-104](90-decision-log.md): one cycle guard for both walks, no depth cap on a calculation. |
+
+What is genuinely open now sits in [`_harvest/contradictions.md`](_harvest/contradictions.md) and,
+for views, in [OQ-069](91-open-questions.md) — deferred by decision with a named trigger
+([D-200](90-decision-log.md)).
 
 ## Harvest candidates
 

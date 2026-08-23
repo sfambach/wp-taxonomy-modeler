@@ -2,19 +2,41 @@
 title: Renderer
 status: draft
 round: R1 (in progress)
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 ---
 
 # Renderer
 
 > **Status: `draft`.** Contains owner statements of 2026-08-22, written down but **not yet
 > confirmed**. Legacy material has not been harvested into this document yet.
+>
+> **Caught up 2026-08-23** with the decisions taken after the first draft. The ones that changed
+> the shape of this document: **purpose** as part of the context and of the registry key
+> ([D-168](90-decision-log.md)), the descent taking a **model and a record**
+> ([D-159](90-decision-log.md)), the preview rendering a **test data pack**
+> ([D-160](90-decision-log.md)), the **search** surface ([D-167](90-decision-log.md)), the
+> **detail view** being no special screen ([D-190](90-decision-log.md)), **front-end blocks**
+> of one node each ([D-206](90-decision-log.md)) and the **comparison block**
+> ([D-207](90-decision-log.md)). Also folded in: [D-091](90-decision-log.md)–[D-118](90-decision-log.md),
+> [D-126](90-decision-log.md), [D-128](90-decision-log.md), [D-136](90-decision-log.md),
+> [D-144](90-decision-log.md), [D-147](90-decision-log.md)–[D-150](90-decision-log.md),
+> [D-157](90-decision-log.md), [D-158](90-decision-log.md), [D-166](90-decision-log.md),
+> [D-181](90-decision-log.md), [D-201](90-decision-log.md), [D-202](90-decision-log.md).
+>
+> Where this text and a decision disagree, the disagreement is **not** resolved here — it is
+> listed in [`_harvest/contradictions.md`](_harvest/contradictions.md) for the owner
+> ([PR-4](../../CLAUDE.md)).
 
 ## Purpose
 
 Define how a node becomes visible output: the renderer contract, how a renderer is chosen for
-a node, and how single nodes and sets of nodes differ. Also covers the **converter** and
-**validator** contracts, which sit on the same pipeline.
+a node, what a render is **for**, and how single nodes and sets of nodes differ. Also covers the
+**converter** and **validator** contracts, which sit on the same pipeline.
+
+**Why this document exists at all.** A composed type is a small model and a model is a large
+type — nothing in the engine tells them apart ([D-042](90-decision-log.md)). If that is so, then
+entering and showing one deeply composed thing *is* the hard problem, and
+[R1](#consequences-of-r1) is the answer to it.
 
 ## Owner statement — 2026-08-22
 
@@ -70,8 +92,12 @@ its attribute targets back to the registry — every part is drawn by the render
 declares, not by the renderer of the whole. That is what makes R4 hold: a node type is
 implemented once and every context reuses it.
 
-**Open:** the descent has no stated limit — see [OQ-019](91-open-questions.md) (cycles and
-depth) and [OQ-020](91-open-questions.md) (loading the subgraph without an N+1).
+**Both openings here have since been answered.** The descent's limit — cycles and depth —
+is settled by [D-100](90-decision-log.md) and worked out under
+[R52/R53](#owner-statement--2026-08-22-tenth-pass-stopping-the-descent); loading the subgraph
+without an N+1 is settled by [D-014](90-decision-log.md): the subgraph and every settings row it
+touches are loaded in a small fixed number of batched queries **before** rendering begins, and
+the renderer never touches the database.
 
 ### R8 — one renderer, three levels
 
@@ -98,9 +124,65 @@ not a reason for a second implementation. Two circumstances are named so far: th
 itself, and **editable / not editable** (R10). `hide` (R11) is a third input, but it comes
 from the node's settings rather than from the caller.
 
-**Open:** [OQ-014](91-open-questions.md) — whether these renderers are PHP, JavaScript, or
-both. R8 is the reason the question matters: the frontend and the admin module can be served
-by PHP, but the Gutenberg *editor* is React by construction.
+**Answered:** [D-021](90-decision-log.md) settles what was [OQ-014](91-open-questions.md).
+**Renderers are PHP**, and they serve all three levels, all three of which WordPress renders in
+PHP by convention. JavaScript is used only where interaction requires it and **never
+re-implements a renderer**. Because the Gutenberg editor is React by construction, its editing
+controls are **metadata-driven**: the editor receives a node's attributes with their types and
+settings and draws them with one generic control set, so a new node type costs no JavaScript.
+That is why `RenderResult` has to carry the attribute metadata a renderer used, not only
+finished markup. Frontend interactivity uses the WordPress Interactivity API on server-rendered
+markup.
+
+### R9a — purpose is the fourth thing the context carries, and searching is one of them
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    P[purpose] --> D["display · a value"]
+    P --> E["edit · an input"]
+    P --> S["search · a condition"]
+```
+
+[D-168](90-decision-log.md) adds **purpose** to the render context and makes it **part of the
+registry key**: a renderer is looked up by type **and** purpose. Two of the three were already
+distinguished in all but name — **display** and **edit**, which the renderer options carry as
+*editable / not* ([R10](#owner-statement--2026-08-22-second-pass)). **Search** is the third, and
+it is the one that was missing.
+
+**Why the search surface is a purpose rather than a widget of its own.** Which operators make
+sense depends on the **type** — text has *contains* and *begins with*, a number has *greater*
+and *between*, a date has *before* and *after* — and that knowledge already sits with the type's
+renderer and converter. A separate search surface would be a second place that knows what a
+number is, and the two would drift.
+
+Three consequences, all from [D-168](90-decision-log.md):
+
+| | |
+|---|---|
+| **A search renderer returns a condition, not a value** | operator plus operand, which feeds the generic query builder ([D-165](90-decision-log.md)) directly. The filter's operator field is therefore not a component of its own — it is *what a text renderer looks like when its purpose is search*. |
+| **The offered operators are declared at the type** | once, beside the converter. Never a switch on a type name, which [`CD-9`](../../CLAUDE.md) and the *no special-casing* rule forbid outright. |
+| **Not searchable needs no special case** | a backward-read computed value ([D-140](90-decision-log.md)) is calculated at read time and stands in no index, so it simply **has no search renderer** and never appears in the filter. No greyed-out option, no error message. |
+
+**The price, stated in the decision:** the lookup now takes type **and** purpose, and it needs a
+**fallback** — with no search renderer registered, the **edit** renderer plus the type's default
+operators — or every type would need three renderers written before anything worked at all.
+
+⚠️ **What purpose does to the display/edit split is not settled here.** [R15](#r15--variant-and-circumstance-are-different-axes)
+classifies *editable / read-only* as a **circumstance**, i.e. an option inside one renderer, and
+[D-096](90-decision-log.md) has the preview call the same renderer twice. If display and edit are
+now separate registry keys, those two statements need re-reading. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
 
 ## Owner statement — 2026-08-22, third pass: the registry
 
@@ -147,7 +229,39 @@ The registry serves two different questions, and R14 is what makes the second on
    lookup by node type, answered from what each renderer declared when registering.
 
 Without the second, the settings UI would have no list to offer and the choice in R16 could
-not exist. This settles the *lookup* half of [OQ-005](91-open-questions.md).
+not exist. This settles the *lookup* half of [OQ-005](91-open-questions.md), which
+[D-091](90-decision-log.md) then closed.
+
+### R14a — the key is type **and** purpose
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    T[type] --> K[registry key]
+    P[purpose] --> K
+    K --> R[renderer]
+    K -.->|none registered| F["fallback · the edit renderer"]
+```
+
+[D-168](90-decision-log.md) widens the lookup of [R13](#owner-statement--2026-08-22-third-pass-the-registry):
+what a node names is still a renderer, but what the registry answers with depends on the purpose
+the caller asked for. The **fallback** is part of the mechanism, not a convenience — without it
+a type would be unusable until all three renderers existed.
+
+The second question, *which renderers could I choose here*, gains the same dimension: the choice
+list is per type **and** purpose, and it is narrowed further by two eligibility rules —
+multiplicity ([D-098](90-decision-log.md)) and the grouping rule
+([D-099](90-decision-log.md)) — both worked out below.
 
 ### R15 — variant and circumstance are different axes
 
@@ -201,9 +315,54 @@ R18 and R20 extend [R1](#consequences-of-r1) further than it first looked: not o
 go through renderers, but the surfaces that show them. A tree row is a rendered node; the
 settings page is a rendered page. Nothing is drawn by hand anywhere.
 
-This makes [OQ-014](91-open-questions.md) — PHP or JavaScript — larger, not smaller. The
-split-screen admin with a live preview is the most interaction-heavy surface in the product,
-and it is now also a renderer.
+This made [OQ-014](91-open-questions.md) — PHP or JavaScript — larger rather than smaller, since
+the split-screen admin with a live preview is the most interaction-heavy surface in the product
+and is now also a renderer. [D-021](90-decision-log.md) answered it anyway: **PHP**, with generic
+metadata-driven JavaScript wherever interaction is required.
+
+### R20a — the detail view is not a special screen
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    F[frame] --> A["attributes, rendered under the edit purpose"]
+    A -.->|never| H[a second way to draw a field]
+```
+
+[D-190](90-decision-log.md) settles what [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview)
+left as *it follows special steps*: **the settings side is a series of attributes rendered under
+the edit purpose ([D-168](90-decision-log.md)) inside a frame.** Nothing about it is
+special-cased. The reason is the one this whole document keeps returning to: otherwise there are
+two ways to draw a field — the official one, and the one the admin screen was built with — and
+they drift.
+
+**The order of the frame is decided and is not taste.** Top to bottom: **what acts** (buttons) ·
+**what cannot be changed** (a band of chips) · the **name**, *because that is what you change
+first* · **display** · the **attributes** · the **preview** · and last the **relations**,
+collapsed. The owner walked that order out loud as the sequence in which a person actually works
+on a node, and it is written down so a rebuild does not reshuffle it for looks.
+
+### R20b — what the modelling surface shows about a deletion
+
+Two decisions land on this surface rather than on the model:
+
+| | |
+|---|---|
+| **A parked attribute is hidden by default** ([D-128](90-decision-log.md)) | a model full of ghost attributes is unreadable. It is one *show deleted* toggle away, drawn greyed, labelled *deleted with «X»*, with a restore action. The modelling view answers *what does this node look like now* — and a deleted attribute is not part of that answer, but it must not become invisible either. |
+| **A confirmation names the consequences** ([D-126](90-decision-log.md)) | not *are you sure* but *what exactly falls*: which attributes leave which nodes, and how many records hold a value for each — then an act that cannot be reflexive, such as typing the node's name, rather than a button sitting where *cancel* usually is. |
+
+Both are [V9](00-vision-and-scope.md) applied to the admin surface: the system knows what will
+happen, so it says so instead of asking a person to imagine it.
 
 ### R21–R23 — the preview is the feedback loop
 
@@ -230,14 +389,54 @@ The preview is what makes the settings comprehensible: the author changes `step`
 from spinner to slider, or marks an attribute hidden, and sees the result immediately in both
 views. It is the reason the settings are worth configuring at all.
 
-Two things follow that are not yet decided:
+Two things followed that were open when this was written, and both are now decided:
 
-- **Where the test data lives** → [OQ-033](91-open-questions.md). It is neither model nor
-  content — it is sample material per node type, and it is the first thing in this concept that
-  is neither.
-- **Whether the preview is a renderer or a caller** → [OQ-034](91-open-questions.md). R21 says
-  it is *assembled from* the chosen renderer, which reads as a caller. But R20 makes the page
-  around it a renderer, so the boundary needs stating.
+- **Where the test data lives** — [OQ-033](91-open-questions.md), closed by
+  [D-028](90-decision-log.md) and [D-052](90-decision-log.md). **Test data is ordinary data,
+  flagged**: rows carry an `is_test` mark and the preview renders the node over those rows. No
+  separate test-data store and no third kind of thing. See [R22a](#r22a--the-preview-renders-a-test-data-pack).
+- **Whether the preview is a renderer or a caller** — [OQ-034](91-open-questions.md), closed by
+  [D-096](90-decision-log.md): a **caller**, which invokes render twice. Worked out at
+  [R49](#r42r43--and-r49-removes-the-exception-again).
+
+### R22a — the preview renders a test data pack
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    T["test data pack"] --> P[preview]
+    D["attribute defaults"] -.->|where no pack covers the model| P
+```
+
+[D-160](90-decision-log.md) settles what [R22](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview)
+only sketched: **the preview loads the test data and renders that**, not an empty shell. The
+owner's reason is the whole of it — *so I have data available too*. A form of empty fields shows
+that the structure exists; a filled one shows whether it **reads**.
+
+It is still the same single mode, fed with realistic values instead of defaults. **Defaults
+remain the fallback** where no pack covers the model. And the test data earns a second job beyond
+testing, which is what keeps it maintained — those packs are ordinary **data packs**
+([D-175](90-decision-log.md), [D-215](90-decision-log.md)), installable and removable like any
+other.
+
+⚠️ **One thing the decision does not restate:** [D-052](90-decision-log.md) gave test data a
+third source — *generated from the settings* where neither a flagged record nor a default exists.
+Whether that source survives is listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md).
+
+**The model editor is not covered by this and does not need to be.** It walks the same edges; it
+merely pulls a different renderer set out of the registry. **One descent, two renderer sets — not
+two descents** ([D-160](90-decision-log.md)).
 
 ## Owner statement — 2026-08-22, fifth pass: unified input, and the chooser
 
@@ -335,12 +534,22 @@ answer:
 **The fourth row is where the rule must not be over-applied.** One available entry with an
 optional multiplicity still leaves a genuine decision — take it or leave it — so greying it out
 would remove a choice the user actually has. Only the third row is truly decided.
+This is [D-056](90-decision-log.md) verbatim. ⚠️ **[D-198](90-decision-log.md) says the opposite
+about the same case** — *a select holding one entry is greyed out* — and asks for the rule to be
+held consistently everywhere. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
 
-**The second row is not a control state at all.** Requiring at least one entry where none exists
-is a model that cannot be filled in. That belongs to the modeller, as an error surfaced when the
-restriction is set — the natural way to reach it is an allow-list ([D-046](90-decision-log.md))
-narrowed to nothing on an attribute whose multiplicity demands one.
-→ [OQ-053](91-open-questions.md).
+### R31a — the second row is not a control state, it is a broken model
+
+**Requiring at least one entry where none exists is a model that cannot be filled in.**
+[D-157](90-decision-log.md) closes what stood here as [OQ-053](91-open-questions.md), and it
+places the event three steps earlier than the form:
+
+| | |
+|---|---|
+| **Caught where it is created** | at the moment of narrowing — setting an allow-list ([D-046](90-decision-log.md)) to nothing, or deleting the last member of a branch. Catching it at data-entry time would be far too late: a different person, weeks later, in front of a form they cannot fill in. |
+| **Reported, not blocked** | an author may legitimately be mid-rebuild and about to refill the branch. It is a **model conflict** ([D-054](90-decision-log.md)) and it is shown in the **preview** ([D-101](90-decision-log.md)). |
+| **But data entry stays barred** | for that model, until it is resolved. There the conflict is not a message but a dead end. |
 
 ## Owner statement — 2026-08-22, seventh pass: converters, and how many
 
@@ -356,7 +565,7 @@ narrowed to nothing on an attribute whose multiplicity demands one.
 [D-043](90-decision-log.md) settled the test: **a calculation produces a value that did not exist;
 a converter changes the form of one that did.** `XII` and `12` are the same number written
 differently — nothing gained, nothing lost. So a numeral-system converter is a converter, exactly
-as gram-to-kilogram is.
+as gram-to-kilogram is — recorded as [D-075](90-decision-log.md).
 
 ### R36 — and this splits converters into two kinds
 
@@ -390,6 +599,8 @@ search on one that cannot:
 | **Invertible** | gram ↔ kilogram · decimal ↔ Roman · decimal ↔ hex | display, **input**, and **search** |
 | **Lossy** | rounding to two places, truncation, uppercase | **display only** |
 
+Recorded as [D-076](90-decision-log.md).
+
 **The consequence that matters:** rounding for display ([D-057](90-decision-log.md)) is lossy, so
 **a search must never run against the rounded form**. `> 8.50 €` has to be evaluated on the stored
 value, not on what the screen shows — otherwise a row displayed as `8.50` but holding `8.4999`
@@ -403,7 +614,133 @@ If a node offers binary, hexadecimal and Roman, something has to choose. That is
 
 So a converter behaves like a renderer variant, not like a fixed property: registered, chosen by
 setting, resolvable per use site. This also answers part of [OQ-007](91-open-questions.md), which
-asked whether *one converter* was a hard limit. **It is not.**
+asked whether *one converter* was a hard limit. **It is not** — [D-077](90-decision-log.md).
+
+### R33a — there are a few *kinds* of converter, parameterised by data
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    C[converter] --> L["lookup · a table"]
+    C --> T["threshold · bounds to output"]
+    C --> S["scale · factor and unit"]
+    C --> F["format · a pattern"]
+```
+
+[D-148](90-decision-log.md): the engine branches on the **form** of the mapping, never on its
+content — the same criterion [D-085](90-decision-log.md) uses for settings. Four forms cover
+every case raised so far: **lookup** (AWG ↔ mm², digit ↔ colour) · **threshold** (a traffic
+light, tolerance classes, size charts) · **scale** (prefixes, the capacitor code) · **format**
+(dates, part numbers).
+
+**The consequence that pays for the classification:** a traffic light becomes **data an author
+enters**, not work for a developer. And a threshold mapping is **readable backwards**, so *show
+me all the red ones* becomes a range query on the real value — indexed, exact, and nothing can go
+stale, which is why no derived field is needed for it. Genuine algorithms remain available as a
+**registered strategy** ([D-130](90-decision-log.md)), as the exception rather than the rule.
+
+### R35a — notation is not structure
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    V["one stored value"] --> R[one renderer]
+    R --> C1["control · canonical form"]
+    R --> C2["control · the other notation"]
+```
+
+[D-149](90-decision-log.md) answers the doubt [R35](#owner-statement--2026-08-22-seventh-pass-converters-and-how-many)
+recorded. If a second form carries nothing the first lacks, it is a **writing of the same
+value** — a converter plus a renderer, **never a second field**, because two stored values can
+drift apart. So: **one attribute, one stored value, one renderer with two coupled controls.** The
+renderer uses the converter twice — once to display the code, once to parse input from the code
+side — and wherever the user types, the canonical value is what is stored. The pattern is
+general: a hex field beside a colour picker, a text field beside a calendar, decimal degrees
+beside degrees-minutes-seconds.
+
+**And a renderer that spans several attributes is a node renderer, not an attribute renderer**
+([D-091](90-decision-log.md)) — which is why [D-150](90-decision-log.md) keeps the resistor
+colour code as **one notation of one thing**: `Widerstandswert` is a composed type, value plus
+tolerance, so the code stays an attribute renderer instead of having to reach across attributes.
+
+**Staging follows where the benefit lies** ([D-150](90-decision-log.md)): the resistor gets a
+**renderer** first, because the value is in the *display* and the bands are awkward to type; the
+capacitor gets a **converter** first, because the value is in the *input* — `104` is printed on
+the part and someone wants to type it into a search and find it, which
+[D-076](90-decision-log.md) makes possible by running the converter on the way in.
+
+### R36a — the converter removes what cannot have been meant; the validator asks about the rest
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    I[input] --> Q{could it have been meant}
+    Q -->|no| C["converter · strips it silently"]
+    Q -->|maybe| V["validator · offers a correction"]
+```
+
+[D-166](90-decision-log.md) draws the line at whether intent is ambiguous. **Leading and trailing
+whitespace is stripped silently by the converter** — nobody has ever meant a trailing space, so
+there is nothing to ask and a dialogue about one would be an imposition. **Interior spacing is a
+validator**, because `BC 547 B` is a perfectly ordinary way to write it: an attribute-level
+setting like `min`, overridable along the resolution chain ([D-015](90-decision-log.md)), which
+**offers** the corrected form rather than enforcing it.
+
+**Two consequences that must not be forgotten**, both stated in the decision:
+
+- Trimming runs **before** duplicate detection and before the uniqueness check
+  ([D-154](90-decision-log.md)), or `Bauteil` and `Bauteil ` become two records nobody can tell
+  apart.
+- The hyphen rule is **not** about findability. The search column normalises spacing and
+  punctuation away anyway ([D-167](90-decision-log.md)), so `BC 547 B` and `BC-547-B` already
+  find each other. It is about tidiness and duplicates — which is what makes *offer* rather than
+  *enforce* defensible.
+
+### R36b — a validator message is a label, and there is one per validator
+
+An attribute may carry several validators — range, format, uniqueness — so there are three
+messages rather than one ([D-158](90-decision-log.md)). A shipped message is a **software
+string**; an author-written one becomes **content** and needs a locale like any other text, so it
+is a **label**: same table, same resolution walk, same fallback chain, with the shipped text
+underneath so the chain never ends empty. `labels` therefore carries a `path` column addressing
+the individual validator, the same mechanism `record_values` and override addressing already use.
+
+Two rules travel with it:
+
+| | |
+|---|---|
+| **Placeholders survive, and the named format stays mandatory** | an author message may contain `{min}` and `{max}`. A sentence assembled from fragments cannot be translated into a language that orders them differently. |
+| **The author says what went wrong, not what to do about it** | ⚠️ the **offered correction** of [V9](00-vision-and-scope.md) is behaviour, and behaviour is code ([D-036](90-decision-log.md)). It is not the author's to change. |
 
 ## Owner statement — 2026-08-22, eighth pass: the descent, step by step
 
@@ -464,7 +801,8 @@ node or many. That is heavier than needed. The owner's shape is simpler and land
 where it already lives:
 
 **Multiplicity belongs to the edge** ([D-086](90-decision-log.md)) — so the **edge** renderer is
-where one-or-many is handled. A node renderer always renders exactly one node.
+where one-or-many is handled. A node renderer always renders exactly one node. Recorded as
+[D-092](90-decision-log.md), which supersedes the list-of-entries idea outright.
 
 ### R41 — the resolution order
 
@@ -483,7 +821,8 @@ does for every other setting. Nothing separate to build.
 // CONTRACT
 interface Renderer
 {
-    /** which node types or edge kinds this serves — R14, feeds the choice list */
+    /** which node types or edge kinds this serves, and for which purpose —
+        R14 and D-168; feeds the choice list, and declares one-or-many per D-098 */
     public function supports(): array;
 
     /** $subject is a node or an edge; both are identities */
@@ -491,22 +830,67 @@ interface Renderer
 }
 ```
 
-`RenderContext` carries the loaded subgraph ([D-014](90-decision-log.md)), the level, editable or
-not, the resolved settings and the locale. `RenderResult` carries the markup and the attribute
-metadata that was used ([D-021](90-decision-log.md)).
+Agreed as [D-091](90-decision-log.md). `RenderContext` carries the loaded subgraph
+([D-014](90-decision-log.md)) **and the record** ([D-159](90-decision-log.md)), the level,
+editable or not, the **purpose** ([D-168](90-decision-log.md)), the resolved settings and the
+locale. `RenderResult` carries the markup **and** the attribute metadata that was used
+([D-021](90-decision-log.md)) — under the search purpose it carries a **condition** rather than a
+value ([R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them)).
 
 `renderTable` and `renderForm` disappear — those are **variants**
 ([D-018](90-decision-log.md)), so separate renderers. `IPageRendere` needs no interface of its own:
 a page is a rendered node ([R20](#r18r20--the-surfaces-are-renderers-all-the-way-up)).
 
-### One thing the descent does not yet say — [OQ-061](91-open-questions.md)
+### R41a — the descent has two inputs, and there is only one mode
 
-R38–R41 describe walking the **model**. But rendering real data walks the same structure while the
-**values** come from a record ([D-083](90-decision-log.md)). So the descent has two inputs, not
-one: the model says *what to draw*, the record says *what is in it*.
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    M["model subgraph<br/>what to draw"] --> D[the descent]
+    R["record tree<br/>what is in it"] --> D
+```
 
-That is also what makes the preview ordinary rather than special — there the record is simply the
-test data or the defaults ([D-052](90-decision-log.md)).
+R38–R41 describe walking the **model**. But rendering real data walks the same structure while
+the **values** come from a record ([D-083](90-decision-log.md)). [D-159](90-decision-log.md)
+closes what stood here as [OQ-061](91-open-questions.md), and it settles more than the shape.
+
+**The record is an input the renderer reasons about, not decoration passed along.** The owner:
+*is it necessary for the renderer to work properly? Yes — because depending on the data, the
+renderer may have to adapt its output.* So it must be there **in full** when the renderer is
+called, which means model subgraph and record tree are **both loaded up front** — a descent that
+fetches per edge is N+1 by construction (**CD-7**).
+
+**Where the two disagree, the model decides what is drawn and the renderer changes nothing:**
+
+| | |
+|---|---|
+| a value for an edge the model has since lost | **not drawn, and not touched.** It stays in `record_values` the way a parked record stays ([D-123](90-decision-log.md)) — removing it is a migration ([D-061](90-decision-log.md)), and migrating is not the job of drawing. |
+| an edge with no value | not an error. It is the **empty control state**. |
+| the divergence itself | **reported as a record conflict** ([D-054](90-decision-log.md)) in the list — not thrown at the reader mid-page. |
+
+**The renderer never writes, not even to tidy up.**
+
+That is also what makes the preview ordinary rather than special: there the record is the test
+data pack ([D-160](90-decision-log.md)), falling back to the defaults
+([D-052](90-decision-log.md)).
+
+⚠️ **What this costs in a long list is deferred, with a named trigger.**
+[D-200](90-decision-log.md) and [D-203](90-decision-log.md) place the question — whether the
+renderer is resolved per column and only its output per row — in Release 2, reopening *the first
+time a table is slow*, because since [D-159](90-decision-log.md) a renderer may adapt to the
+value and is therefore *usually* constant down a column and **not reliably** constant. One
+requirement survives the deferral because it is hard to retrofit: **a precomputed row template
+meeting a value that needs a different renderer must fail loudly, never draw quietly wrong.**
 
 ## Owner statement — 2026-08-22, ninth pass: two worked examples
 
@@ -561,7 +945,14 @@ Not *the ones this renderer cares about* — **all of them.** A renderer that ig
 a visible field that the model says is invisible, and the bug shows up somewhere else entirely.
 
 This pairs with [D-056](90-decision-log.md): *a control offers only real choices.* One rule says
-never present a decision already made; this one says never ignore what the model stated.
+never present a decision already made; this one says never ignore what the model stated. Agreed
+as [D-094](90-decision-log.md).
+
+**And it is not the same as *the engine branches on it*.** [D-085](90-decision-log.md) draws the
+finer line: a renderer must honour `min` and `max` too — a spinner cannot be drawn without
+them — and what differs is **who owns the meaning**. The engine defines `hide`, `read_only`,
+`renderer`, `converter`, `validators` identically for every node; a **type** defines `min`,
+`max`, `step`, and a spinner reads them because it is registered *for that type*.
 
 ### R42/R43 — and R49 removes the exception again
 
@@ -622,7 +1013,16 @@ every other setting**: default on the node, override at the use site ([D-015](90
 [R41](#owner-statement--2026-08-22-eighth-pass-the-descent-step-by-step)).
 
 So `Bauteilliste` states *draw me as a table*, and any particular use of it may say otherwise.
-Nothing about containers is exceptional.
+Nothing about containers is exceptional. Recorded as [D-098](90-decision-log.md), which corrects
+[D-097](90-decision-log.md).
+
+**A related case where the node is created for you.** Setting a multiplicity above 1 on a
+structure makes the tool create a node under `Compositions`, named from owner and attribute and
+renameable ([D-136](90-decision-log.md)). That is a model move, not a rendering one — but it
+matters here because of where the result is **shown**: in the author's head it is one model with
+a repeating group, in the tree it is a node under `Compositions`, and on screen it appears **at
+the parts list, where it belongs**. Locality is presentation, reached by following the edge, not
+structure.
 
 ### What multiplicity actually constrains
 
@@ -654,11 +1054,28 @@ standard forbids.
 **Proposal: the data-type root is *declared*, not hard-coded** — an installation-level setting
 naming the branch or branches under which data types live ([D-079](90-decision-log.md) already
 provides the place for such a setting). Configuration rather than a magic name, and a second
-installation can arrange its tree differently.
+installation can arrange its tree differently. Agreed as [D-099](90-decision-log.md), the
+declared-root half as a proposal.
 
-**This is [OQ-048](91-open-questions.md) again**, from another direction: that question asked how
-the tool knows *where data may be entered*, and it needs the same classification. Answering one
-answers both — worth doing in one sitting rather than twice.
+### R51a — what became of the declared root
+
+Three later decisions turned that proposal into machinery that already exists:
+
+| | |
+|---|---|
+| **The declared root *is* a binding** | [D-120](90-decision-log.md) — a named slot in the installation configuration pointing at a node. Nothing names a node id or a node name, so the tree may be rearranged and ids may shift between installations. |
+| **The branch has a name** | `Primitives` ([D-185](90-decision-log.md), [D-188](90-decision-log.md)) — *what models are built out of*, and the branch that holds no data ([D-183](90-decision-log.md)). |
+| **And it splits one level further** | [D-193](90-decision-log.md) — **Data Types**, whose value lives in the record, and **Constants**, whose value is a reference to a node. That split decides the relation kind. |
+
+**[OQ-048](91-open-questions.md) was closed separately** by [D-131](90-decision-log.md) and
+[D-132](90-decision-log.md), which answered *where data may be entered* through placement rather
+than through the data-type declaration.
+
+⚠️ **What the eligibility rule now keys on is not stated.** R51 says grouping renderers are for
+nodes that **do not inherit from a data type**; after [D-193](90-decision-log.md) `Primitives`
+holds data types *and* constants, and no decision says whether a constant is inside or outside
+the exclusion. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md).
 
 ### And a cell never inherits the container's renderer
 
@@ -666,6 +1083,12 @@ The table decides how the frame looks; each cell resolves its own, per
 [D-093](90-decision-log.md)'s key-by-key rule. Table, compact row, compact column and form remain
 **variants** ([D-018](90-decision-log.md)) — which is why `renderTable` and `renderForm` were right
 to disappear as methods and return as renderers.
+
+**And this is what sorted the old `Complex Datatypes` branch** ([D-117](90-decision-log.md)):
+*what a structure looks like is a renderer; what it is, is a node with attributes.* `set` and
+`table` were **container renderers** all along, and the dropped `enum` is **an attribute whose
+branch is one level deep**, drawn as a list ([D-109](90-decision-log.md)). Only `Unit type` and
+`quantity › Preis` were genuine composed types. None of the three needed to be a type of its own.
 
 ## Owner statement — 2026-08-22, tenth pass: stopping the descent
 
@@ -721,7 +1144,8 @@ person rather than the nearest screen.
 
 1. **Cycles are detected, not forbidden** — mutual references are ordinary modelling. Forbidden
    only for **inheritance** (meaningless) and **composition** (a whole cannot be its own part).
-   ⚠️ *That prohibition is my call; correct it if aggregation is not meant to be the permissive one.*
+   ⚠️ *That prohibition was my call* — [D-100](90-decision-log.md) carries it, and the owner
+   confirmed the decision on 2026-08-23.
 2. **Visited identities are remembered**; meeting one again does not descend.
 3. **A stop draws a reference** to where the node was already rendered — a placeholder only where
    the level cannot carry links, such as a PDF export.
@@ -800,7 +1224,13 @@ members — and then it cannot show alternatives, which was the whole point.
 > directions and drift out of sync; membership is stated once and is symmetric by construction.
 
 So the owner's instinct improves the model and leaves the guard exactly as necessary — which is
-what they concluded.
+what they concluded. Recorded as [D-102](90-decision-log.md), which keeps both halves: the
+group is the better model, **and** the loop guard of [D-100](90-decision-log.md) stands
+regardless.
+
+**One guard serves both walks.** The visited-identity check is the same for the render descent
+and for the [calculation walk](60-calculation.md) ([D-100](90-decision-log.md)); what the two do
+*not* share is the depth cap — see [R56](#r56--and-other-functions-get-the-opposite-answer).
 
 ## Owner statement — 2026-08-22, eleventh pass: the preview is the pre-flight check
 
@@ -902,7 +1332,7 @@ A node has no depth; a *rendering* of it does. Two blocks may show the same part
 deep and five levels deep on the same page, and both are right.
 
 A node-level cap — *never draw me deeper than two* — would be possible as a model setting, but
-nobody has asked for it and it is not invented here.
+nobody has asked for it and it is not invented here. Agreed as [D-103](90-decision-log.md).
 
 **And the old model had this already**, which is a harvest confirmation rather than an inheritance
 ([PR-1](../../CLAUDE.md)).
@@ -924,7 +1354,56 @@ the **cycle** guard — without it, it never terminates — but must not carry a
 calculation cannot complete for any reason, its result is **not a number**: it is marked
 *not computable*, and every renderer shows that rather than a value.
 
-→ [OQ-062](91-open-questions.md), for what *not computable* looks like where a number was expected.
+Agreed as [D-104](90-decision-log.md).
+
+### R56a — what a renderer shows where a number could not be computed
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    C["computed<br/>a figure"] --- N["not computable<br/>— with a reason"] --- E["estimated<br/>a figure, marked"]
+```
+
+[D-147](90-decision-log.md) closes what stood here as [OQ-062](91-open-questions.md). A value has
+**three distinguishable states**, and a renderer has to be able to draw all three: *computed* ·
+*not computable* (`—`, with a reason) · *estimated* (a figure shown, marked as an estimate). The
+third arises from the **substitute** mode, where a missing input is filled from the attribute's
+default; treating a missing input as **zero** is explicitly not an option and is recorded as
+rejected so nobody adds it later for convenience.
+
+**Marking happens in two places and they say different things:**
+
+| Where | What it says | To whom |
+|---|---|---|
+| at the **value** | *here is the cause* | whoever will fix it |
+| at the **aggregate** | *this number is incomplete* — e.g. *1 240 € · 3 positions not computable* | whoever **uses** it, and who may never see the position |
+
+Without the second, an incomplete figure travels onward looking complete.
+
+### R56b — recalculation is an event, and staleness is information
+
+[D-144](90-decision-log.md) puts three things on the renderer side:
+
+- An explicit *recalculate* **shows what will change before applying it** — *12 of 100 positions
+  change · Widerstand 10k 0,043 → 0,051 €*. A silent refresh of a hundred line prices is
+  alarming; this is the same shape as the conflict resolver.
+- A **frozen value carries a timestamp**, so nobody has to guess how old it is.
+- The current figure is cheap to compute on read ([D-140](90-decision-log.md)), so a list can
+  carry a **hint**: *3 positions differ by more than 10% from current prices* — which turns *I
+  think this is out of date* into information.
+
+Even the tracking case **reports afterwards** — *12 prices updated* — non-blocking but visible
+([D-146](90-decision-log.md)).
 
 ## Owner statement — 2026-08-22, thirteenth pass: the reference renderer
 
@@ -932,7 +1411,8 @@ calculation cannot complete for any reason, its result is **not a number**: it i
 |---|---|
 | **R58** | One possibility is a **manual stop at an aggregation**, by having a **reference renderer**: it does not render further, it only shows a reference. |
 
-**This is the right shape, and it is stronger than a stopping device.**
+**This is the right shape, and it is stronger than a stopping device.** Agreed as
+[D-105](90-decision-log.md), with the three consequences below.
 
 ### 1 · It bounds the *load*, not only the display
 
@@ -1047,6 +1527,80 @@ A reference renderer draws the target's **label** plus a link. That is
 setting* — arrived at here from a completely different direction, for a completely different
 reason.
 
+**And the label half of that is worth stating precisely** ([D-049](90-decision-log.md)): *that a
+value is in Stück* is **data** — a reference from the `einheit` attribute to a node, and it
+belongs to the record. What is **not** stored is the string. Whether that node reads `St`,
+`Stück` or `pcs` is a **label in a role and a locale**, resolved at render time, and **which role
+is a setting on the renderer**. `display_node_name` bundled *make the reference visible* with
+*choose which text*; only the second half is presentation.
+
+### R58a — on the front end this is what joins the pages together
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    B1["block · the board"] -->|reference| B2["block · the parts list"]
+```
+
+[D-206](90-decision-log.md): **the front end is composed of small blocks, one node each, and the
+reference does the joining.** The owner: *I would rather not build one huge block that queries
+all the data for several connected nodes.* A board block has the parts list as an attribute with
+only an id set there; the list itself is displayed further down the page, at a suitable place.
+
+**This is [D-105](90-decision-log.md) arriving on the front end and it needs nothing new.** A
+reference is label plus link and **does not descend**, so a board block *cannot* pull its parts
+list in even if someone wanted it to. Where the list appears — further down the same page, or on
+another page entirely — is the page builder's free choice, and in both cases it is **a second
+block**, never a larger first one. The link needs no dynamism: it is a label and an address.
+
+A **project fact sheet** was considered and found to need no block of its own: it is a table
+block of one record, which [D-206](90-decision-log.md) and [D-168](90-decision-log.md) already
+produce between them ([D-212](90-decision-log.md)).
+
+### R58b — a comparison block resolves to the nearest common ancestor
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    A["nearest common ancestor<br/>the shared attributes"] --> S1["subject 1"]
+    A --> S2["subject 2"]
+    A --> S3["subject 3"]
+```
+
+[D-207](90-decision-log.md). The owner compares mainboards — P4 against P4, but also 286 against
+386 against 486 — and the block never has to **guess** what is comparable, because a node's type
+**is** its inheritance line ([D-041](90-decision-log.md)). So the nearest ancestor covering every
+subject **is** the set of shared attributes.
+
+**The walk:** go up until all subjects lie beneath one node · compare the attributes found there
+side by side · show what each subject additionally carries beneath its own column.
+
+**And the ordering is the point of the block.** What is not comparable is **moved below** the
+comparison rather than mixed into it, and *perhaps hidden too, and only shown when the user wants
+to see it*. The shared attributes are what a comparison is **for**; letting the specialities
+interleave would bury exactly the rows someone came to read. A disclosure keeps them available
+without letting them compete.
+
 ## Owner statement — 2026-08-22, fourteenth pass: the chooser
 
 | # | Statement |
@@ -1059,6 +1613,7 @@ reason.
 Nothing about a chooser sits outside the contract. It renders an identity, it takes a context, it
 returns markup — and it already has its two parameters from [D-035](90-decision-log.md): a **branch
 node** and a **default node**. Those arrive the way every other input does, through the context.
+Agreed as [D-107](90-decision-log.md).
 
 ### R61 — why the popup felt wrong, and why it is not
 
@@ -1142,7 +1697,14 @@ a control offers only what is really there.
 
 This is also why `Konstanten › Bauformen` never needed to be a special *choice list* type — it is
 an attribute whose branch happens to be one level deep ([D-041](90-decision-log.md)), and the
-chooser simply draws it as a list.
+chooser simply draws it as a list. Agreed as [D-109](90-decision-log.md). (That branch is now
+`Primitives › Constants` — [D-188](90-decision-log.md), [D-193](90-decision-log.md); the legacy
+name is kept here because the sentence quotes the old tree.)
+
+**And a small list gets a cheaper editor, never a second store** ([D-184](90-decision-log.md)).
+Five enum values **are** five nodes, and should be — referenceable, translatable, renameable,
+extensible by a sixth without touching code. It only feels heavy when creating them costs five
+dialogues, which is an interface problem wearing a model problem's clothes.
 
 ### R64 — the branch root: a rule with a setting
 
@@ -1159,6 +1721,45 @@ because it is a default, not a question anyone is asked.
 ⚠️ **Why not derive it:** the tempting rule is *a node with children is a category, a leaf is a
 choice*. That works for units and breaks immediately for organisational units, where a department
 with sub-departments is still a valid answer. Deriving it would be elegant and wrong.
+
+Agreed as [D-110](90-decision-log.md) — a **rule with an escape**, not an absolute.
+
+### R64a — what may be picked is a property of the use site
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    U["use site"] -->|leaves only| C[chooser]
+    N["node"] -.->|never a flag here| C
+```
+
+[D-181](90-decision-log.md) retires the legacy *hide* control — the eye icon that hid a node so
+it could not be **selected** — and says why it went unused: **it sat on the wrong object.** The
+same node is a legitimate choice in one place and a mistake in another. When **modelling**,
+picking the branch is exactly right — *I want something from this branch* is how a type is named
+([D-041](90-decision-log.md)). When **entering data**, a leaf is wanted. A flag on the node would
+have to be both at once.
+
+So it is a setting **at the use site**, inherited along the chain
+([D-015](90-decision-log.md)) — set once high up rather than on every attribute — and it reaches
+the chooser as **a value in the render context** ([D-168](90-decision-log.md)). The owner reached
+the same place himself: *maybe that is really an option of the renderer*.
+
+**Default is leaves only.** ⚠️ That default and [D-110](90-decision-log.md) above do not sit
+easily together: D-110 excludes only the **root** and rejects deriving *leaf = choice* precisely
+because a department with sub-departments is a valid answer, while D-181 makes *leaves only* the
+default because no case for an intermediate node came to mind. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
 
 ### Inline or popup — the earlier reasoning, now superseded
 
@@ -1227,7 +1828,7 @@ explicitly as a second action — never as the only visible path.
 
 The check then happens because it cannot be skipped, not because someone remembered. Same spirit
 as [D-050](90-decision-log.md): the system does what it can do itself rather than asking a person
-to be careful.
+to be careful. Agreed as [D-111](90-decision-log.md).
 
 ### R68–R72 — and most of the gap closes itself
 
@@ -1268,7 +1869,39 @@ searched differently in two places. Usually right — context-appropriate — bu
 *prevention* wants consistency. So: **the visible fields are the default search fields, and a type
 may declare its own identifying set** that applies wherever it is used. The default covers the
 common case; the declaration exists for types where it genuinely matters, such as an article
-number.
+number. Agreed as [D-112](90-decision-log.md), which also fixes **hard identity as the `id`**
+([D-055](90-decision-log.md)) and leaves this as **soft** identity that only ever warns.
+
+⚠️ **One thing D-112 and [D-167](90-decision-log.md) do not settle between them:** the search
+column is written **on save**, from *the fields that are shown* — but shown fields are per **use
+site**, and at save time there is no use site. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md).
+
+### R67a — and where a field is `unique`, the warning becomes a refusal
+
+Two mechanisms of different strength, and only the second one blocks:
+
+| | Strength | Mechanism |
+|---|---|---|
+| **identifying fields** | **warn** | the duplicate search of [D-112](90-decision-log.md) |
+| **`unique`** | **refuse** | an enforced setting on the attribute ([D-114](90-decision-log.md)) |
+
+`unique` may name a **group**, so attributes sharing a group name are unique **together** —
+manufacturer plus type designation — and there may be several such constraints side by side, an
+article number and an EAN ([D-115](90-decision-log.md)). It is not called a *primary key*: the
+primary key is the **`id`**.
+
+**What matters here is what the renderer does with a violation.** [D-114](90-decision-log.md) is
+explicit that an error message is the wrong response: *this number belongs to «Widerstand 10k
+0805», did you mean that one?* — with the action to select it. **A uniqueness violation is the
+duplicate detection succeeding**, and [V9](00-vision-and-scope.md)'s offered correction is the
+whole point. Empty does not participate, and the enforcement sits in two layers — the validator
+is what a person meets, the index is the last line against concurrency, so a user never sees a
+database error.
+
+A **parked** record still holds its `unique` values ([D-154](90-decision-log.md)), so the block a
+user meets carries its reason and the actions that resolve it: *article number 4711 is held by
+«Widerstand 10k», deleted on 3 March — restore · purge · use another number*.
 
 ### R69 — contains-matching, and what it costs
 
@@ -1281,7 +1914,56 @@ table scan on every keystroke.
 
 So the search fields need their own structure — a full-text index, or a normalised search column
 holding the values stripped of spacing and punctuation, which is also what makes `BC 547 B` match
-`BC547B` at all. → [OQ-064](91-open-questions.md).
+`BC547B` at all. That was [OQ-064](91-open-questions.md), and
+[D-167](90-decision-log.md) closed it.
+
+### R69a — the search column, the quick search and the filter
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    S["quick search · contains, no syntax"] --> C["normalised column per record"]
+    F["filter · visible operator field"] --> C
+```
+
+[D-167](90-decision-log.md) settles three things, and they are separate.
+
+**The structure is a normalised column per record**, written on save from the fields that are
+shown ([D-112](90-decision-log.md)) — lowercased, spacing and punctuation stripped, so `bc547b`
+finds `BC 547 B`. ⚠️ **One normalisation function, shared with duplicate detection.** Two rules
+that *almost* agree are the kind of fault nobody finds until a user swears the part is not there
+and it is.
+
+**The quick search is contains, without syntax.** The owner: *the user mostly wants to type some
+fragment, and that is usually contains.* Making them type a `*` to get what they meant would be a
+fee charged in syntax to save milliseconds, and honestly counted they are milliseconds: one
+`LIKE '%x%'` over a single narrow indexed column at tens of thousands of rows. Kept from the
+earlier proposal: a short delay after the last keystroke, and **prefix hits ranked first** —
+which also answers *why is the thing I typed exactly not at the top*.
+
+**The filter is the other surface and gets a visible operator field** — is · contains · begins
+with · greater · between — because there the user is deliberately building a condition, and
+*greater than* has no wildcard equivalent at all. That field is not a component of its own: it is
+what a renderer looks like under the **search purpose**
+([R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them)).
+
+**And there is no `*`.** A third syntax beside those two that can do nothing they cannot, needed
+only for anchoring, which nobody wants to express — and typed by accident it searches literally
+for a star and reports nothing found, with no hint why.
+
+**The growth stage — n-gram full text, or a token table — stays deferred by the owner** until
+real data exists to look at. Like every index here it is derived and rebuildable
+([D-016](90-decision-log.md)).
 
 ### R72 — inline for searching, popup for creating
 
@@ -1293,11 +1975,12 @@ Both, and split along what each actually needs:
 | **create** | popup | a new part with fifteen attributes cannot live in a row |
 
 And it is [D-032](90-decision-log.md) again, so it need not be absolute: a configured default with
-the freedom to insist on the popup where a place calls for it.
+the freedom to insist on the popup where a place calls for it. Agreed as
+[D-113](90-decision-log.md).
 
-### And what remains of the gap — [OQ-063](91-open-questions.md)
+### The gap that was [OQ-063](91-open-questions.md), now closed
 
-**Matching against what?** Nothing in the concept says which attributes identify a record.
+**Matching against what?** Nothing in the concept said which attributes identify a record.
 
 [D-022](90-decision-log.md) settles that the *base name* is not unique and nothing resolves on it —
 that stands, and it is about **hard** identity, which is the `id`. What R67 needs is **soft**
@@ -1306,6 +1989,11 @@ an article number, or manufacturer plus type designation together.
 
 The two must not be confused. A duplicate search that **warns** is right; a uniqueness constraint
 on the base name would contradict D-022.
+
+**Answered in two steps:** [D-112](90-decision-log.md) supplies the soft set — the shown fields,
+plus a type-level declaration where consistency matters — and [D-114](90-decision-log.md) closes
+the question by adding the enforced `unique` beside it. See
+[R67a](#r67a--and-where-a-field-is-unique-the-warning-becomes-a-refusal).
 
 ## Owner statement — 2026-08-22, seventeenth pass: the order in which a node lays itself out
 
@@ -1357,6 +2045,9 @@ And because it is [D-032](90-decision-log.md), the grouping is a **configured de
 or a use site may switch to strict author order, for the case where a boolean genuinely belongs
 between two text fields and moving it to the end would break the sense.
 
+All of R73–R76 is agreed as [D-118](90-decision-log.md), reasons included, so that the rule is not
+improved away later.
+
 ### R75's level dependency
 
 *Not shown at every level, but at least in the admin* is a **circumstance**
@@ -1370,29 +2061,86 @@ table, form, export or REST response that shows model data has to go through the
 contract. Worth writing as an explicit invariant once the contract exists, because it is the
 kind of rule that erodes quietly.
 
-### R3 is the open one
+### R3 — answered
 
-Whether the unit of rendering is one node or a set decides the shape of the interface. The
-seed sketch in [`RendererMeremaid.md`](RendererMeremaid.md) hedges — it declares
+Whether the unit of rendering is one node or a set decided the shape of the interface, and the
+seed sketch in [`RendererMeremaid.md`](RendererMeremaid.md) hedged — it declares
 `canRender(IRenderable render_list[])` and `render(IRenderable render_list[], bool displayOnly)`
 on arrays, but the PHP sketch writes `renderSingle(IRenderable object)` and
-`renderCollection(...)` as separate methods. Both readings are present; one has to win.
-→ [OQ-006](91-open-questions.md).
+`renderCollection(...)` as separate methods. That was [OQ-006](91-open-questions.md).
+
+**[D-092](90-decision-log.md) picked the winner: a node renderer renders exactly one node; an
+edge renderer handles one value or many.** Multiplicity belongs to the edge
+([D-086](90-decision-log.md)), so one-or-many is handled where it already lives, and the
+list-of-entries context is superseded. [D-091](90-decision-log.md) closed the surrounding
+question — one contract, `render(Identity, RenderContext)` plus `supports()` — for both.
+
+## Exports and reports
+
+### R76a — a view export is a renderer; a backup export is not
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    V["view export<br/>CSV · PDF · parts list"] --> R[renderer]
+    B["backup export<br/>tree and data"] -.->|not a renderer| S[round-trip file]
+```
+
+[D-058](90-decision-log.md) keeps two exports apart because they pull in opposite directions. A
+**backup export** carries the tree *and* the data, must **round-trip**, and writes both the id
+and the plain text of every reference. A **view export** — CSV, PDF, an interactive parts list —
+is a **renderer** ([R1](#consequences-of-r1)) and need not round-trip. One artefact must not try
+to be both.
+
+### R76b — a *view* and a *report* are two different things
+
+| | |
+|---|---|
+| **View** | a named **calculation** belonging to no node. Deferred ([D-200](90-decision-log.md), [D-201](90-decision-log.md)); until then aggregated figures hang on nodes as computed fields ([D-140](90-decision-log.md)). Not this document's business. |
+| **Report** | **prepared output** — an exported parts list, an invoice. This document's business. |
+
+⚠️ **[D-202](90-decision-log.md) corrects the first characterisation of a report, in both
+halves.** It had been written that a report computes nothing that was not already there and might
+be no more than a descent over a subtree under a further purpose. The owner: *a report can
+contain calculations … ones that arise at the time the output is produced. And a report can
+contain raw data, or accumulate it, or combine it with other data. Linked, joined, however you
+want to put it.*
+
+So: **a report computes, at output time, and it joins** — and **a join across unrelated records
+is not a descent**, which is why a report needs a mechanism this document does not yet have.
+What survives from [D-201](90-decision-log.md) is only the separation itself, and that the two
+must never share a word. **Rules for a report are stored** — *this is how the report looks* —
+which makes a report a configured thing rather than a written one, consistent with everything
+else here. Reports are placed in **Release 2** ([D-203](90-decision-log.md)).
 
 ## What belongs here
 
 - The renderer interface and its contract.
-- The registry: how renderers are registered and looked up (by node type, by renderer type).
-- Fallback behaviour when no renderer matches.
+- The registry: how renderers are registered and looked up — by node type **and purpose**
+  ([D-168](90-decision-log.md)).
+- Fallback behaviour when no renderer matches, including the purpose fallback.
 - Single node vs. set of nodes; list/table vs. form.
-- Display-only vs. editable mode.
+- Display, edit and search as the three purposes.
 - **Converter**: what it may change on the way out, and whether it also runs on the way in.
 - **Validator**: the check contract, plus the *offer a correction* capability (V9).
+- **Reports** as prepared output, once the mechanism [D-202](90-decision-log.md) calls for exists.
 
 ## What does NOT belong here
 
 - Concrete Gutenberg block implementations — those are consumers of this contract.
 - Which settings a renderer reads. That is [10 Domain core](10-domain-core.md).
+- **Views** — a named calculation belonging to no node ([D-201](90-decision-log.md)). That is
+  [60 Calculation](60-calculation.md), and it is deferred.
 
 ## Harvest candidates
 
