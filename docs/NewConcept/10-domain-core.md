@@ -515,6 +515,12 @@ which is an ordinary composed node with two attributes. `Gewicht` is then a spec
 Nothing new is needed for this: it is [D-031](90-decision-log.md) — attributes are relations —
 applied twice.
 
+⚠️ **`Basiseinheit +symbol` in the diagram above is contested.**
+[D-252](90-decision-log.md) makes `symbol` a **label role** — a translated text in the labels table —
+and [40 I18n](40-i18n.md) already carries `Ω` and `St` that way. The diagram models it as an
+attribute of the unit node, which would put the same fact in two homes. Raised in
+[contradictions](_harvest/contradictions.md); **not settled here** ([PR-4](../../CLAUDE.md)).
+
 ### C39, C41, C42 — the type layer
 
 ```mermaid
@@ -1516,6 +1522,9 @@ attributes.**
 ⚠️ *The transcription of C91 named the second type indistinctly; read as `set` or `table`, both of
 which fit "a node with several attributes, practically a row". Correct if a third thing was meant.*
 
+**Since then both have been retired outright** — see
+[C119](#c119--set-and-table-are-retired-as-constructs) ([D-246](90-decision-log.md)).
+
 ## Owner statement — 2026-08-22, twentieth pass: the scaffold and its bindings
 
 | # | Statement |
@@ -1834,13 +1843,17 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    K[Compositions] -->|move · free if mult > 1| M[model branch]
+    K[Compositions] -->|move · records travel| M[model branch]
     M -->|move · only if singly used| K
 ```
 
-**Composition → aggregation** is a move. With multiplicity above 1 the data are already separate
-records ([D-133](90-decision-log.md)), so nothing migrates; with multiplicity 1 the embedded path
-rows must become records.
+**Composition → aggregation** is a move, and **nothing migrates**. ⚠️ *This paragraph used to make
+the answer depend on the multiplicity, following [D-133](90-decision-log.md); that is corrected by
+[D-232](90-decision-log.md)* — a target under `Compositions` has records of its own whatever its
+multiplicity, and a target under `Model` does too, so the records are the same records on both sides
+and simply travel with the node. The only move that rewrites storage is one that leaves
+`Primitives`, where a value becomes a row — see
+[C114](#c114--the-branch-also-decides-where-the-value-lives).
 
 **Aggregation → composition** needs **two** checks, and C109 names only the first:
 
@@ -1876,20 +1889,28 @@ off the tree rather than derived.
 | `Preis` | data types | **no** — inline in whoever uses it |
 | `Gramm` | constants | **no** — referenced as a value |
 
-**And it agrees with [D-133](90-decision-log.md).** Kind-plus-multiplicity and placement give the
-same answer for every case above — two derivations, one result.
+**And placement is now the only derivation** ([D-232](90-decision-log.md)). ⚠️ *This section used to
+read «and it agrees with [D-133](90-decision-log.md)» — kind-plus-multiplicity and placement giving
+the same answer twice — and then had to spend a subsection on the case where the two disagreed. The
+second derivation is gone: the branch decides, and the multiplicity does not enter into it.*
 
-### Where they disagree, and what follows
+### Where they used to disagree, and why the case has dissolved
 
 Set a multiplicity above 1 on a **data type** — `Bauteil.preisverlauf → Preis`, `1..*` — and
-[D-133](90-decision-log.md) says *own records* while placement says *no own data*.
+[D-133](90-decision-log.md) said *own records* while placement said *no own data*. The old
+resolution was [D-136](90-decision-log.md)'s automatic creation: a node under `Compositions`
+inheriting from `Preis`, so that there was something to hold the records.
 
-**The resolution is [D-136](90-decision-log.md)'s automatic creation:** the tool creates a node
-under `Compositions` **that inherits from `Preis`** — `Bauteil-Preisverlauf`. It has records;
-`Preis` is untouched; every other use of `Preis` notices nothing.
+**[D-232](90-decision-log.md) removes the case rather than resolving it.** The owner's example broke
+the old rule open — *if I have five integers I can simply store them there* — where the old rule
+produced five records plus an auto-created node for five numbers. `Preis` lies under `Primitives`,
+so its values live **inside** the using record by path, indexed where there are several:
+`preisverlauf[0]`, `preisverlauf[1]`.
 
-That is inheritance used for what it exists for — a **use-site-specific variety of a shared type**,
-the same movement as the specialisation in [D-105](90-decision-log.md).
+⚠️ **What survives of [D-136](90-decision-log.md)** is the auto-creation for targets that are
+genuinely rows; it is no longer invoked to give a primitive somewhere to live. And
+[D-134](90-decision-log.md)'s storage migration for *1 → `1..*`* disappears for primitives — only an
+index joins the path. It remains where it is genuinely unavoidable: when a value becomes a row.
 
 ### A consequence the owner accepted, and why it is safe
 
@@ -1936,6 +1957,55 @@ The names are English throughout ([D-187](90-decision-log.md), [D-188](90-decisi
 `Primitives` was chosen over `Building Blocks`, which would have collided with Gutenberg blocks in
 every conversation ([D-185](90-decision-log.md)).
 
+### C114 — the branch also decides where the value lives
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    T["branch of the target"] --> P["Primitives → inside the record, by path"]
+    T --> C["Compositions → records of its own"]
+    T --> M["Model → an external reference"]
+```
+
+**The branch decides storage, not the multiplicity** ([D-232](90-decision-log.md), superseding
+[D-133](90-decision-log.md)). The multiplicity does not enter the rule at all: several primitives
+are the same path with an index — `groessen[0]`, `groessen[1]` — and several compositions are
+several records, exactly as one composition is one.
+
+| Target lies under | The value is |
+|---|---|
+| **`Primitives`** | **inside** the using record, addressed by path, indexed where there are several |
+| **`Compositions`** | **records of its own**, owned and cascade-deleted with the whole ([C12](#c12c13--composition-and-aggregation-do-differ)) |
+| **`Model`** | an **external reference** |
+
+**The reason underneath is the owner's own question: does the member need an identity?** A row does
+— you point at it, order it, delete a single one. A number in a list does not. He drew the same line
+himself: *simple types and composed types can just be stored there; where it gets harder is whole
+row types, whole tables — there I would insist it is external.*
+
+It holds on every example the earlier rule was built from. *A price is not a record* — `Preis` lies
+under `Primitives`, so inside ✔. *A position is a thing in a list* — `Position` lies under
+`Compositions`, so a record ✔.
+
+⚠️ **And it removes a cost that had been accepted as honest.** [D-134](90-decision-log.md) recorded
+that changing a multiplicity from `1` to `1..*` is a **storage migration**; for primitives that is
+now only an index joining the path. The migration remains exactly where it is unavoidable — when a
+value becomes a row. [D-137](90-decision-log.md)'s conversion asymmetry should be re-read against
+this.
+
+**Same construction as [D-161](90-decision-log.md) and [D-183](90-decision-log.md): the place says
+it.** One switch fewer, one rule fewer.
+
 ### The relation kind is never chosen
 
 ```mermaid
@@ -1978,10 +2048,14 @@ and the branch would stop being the truth.
 | `Compositions` → `Model` | the part stops being owned and becomes independent | always works |
 | `Model` → `Compositions` | the record becomes owned | **only if each record has a single user** |
 
-The kinds differ in **ownership**, not in layout, so the records are the same records either way
-and simply travel with the node. One exception: multiplicity 1 is stored **inside** the owning
-record by path ([D-133](90-decision-log.md)), so those values must be lifted into records of their
-own — mechanical and lossless, but announced in numbers before it happens, never performed quietly
+The kinds differ in **ownership**, not in layout, so between these two branches the records are the
+same records either way and simply travel with the node.
+
+⚠️ *An earlier version named an exception here — multiplicity 1 being stored inside the owning
+record ([D-133](90-decision-log.md)) — and [D-232](90-decision-log.md) has moved it.* The lifting of
+values into records of their own is not a question of multiplicity but of **leaving `Primitives`**
+([C114](#c114--the-branch-also-decides-where-the-value-lives)): a value becomes a row. That is
+mechanical and lossless, but announced in numbers before it happens, never performed quietly
 ([D-163](90-decision-log.md)).
 
 ## Data packs
@@ -2062,6 +2136,266 @@ already handles.
 **Afterwards it is an ordinary node.** Distinguishable while pending, indistinguishable once
 approved — a permanent second class would have to be known to every code path, and how it came
 about is the changelog's job.
+
+## Representation, restriction, media
+
+Four things the model has to carry that are neither a node's shape nor its storage. They arrived on
+2026-08-23 while walking a resistor through the configuration, and each of them turned out to need
+**no new construct**.
+
+### C115 — a representation is a converter plus a renderer
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    V["value"] --> C["converter · the mapping"]
+    C --> R["renderer · the form"]
+    R --> O["rings · 2k7 · green · stars"]
+```
+
+⚠️ *A split had been proposed between a **notation** — the same information written differently, like
+a resistor's colour rings — and an **encoding**, a user-defined mapping like a traffic light. The
+owner destroyed it in one sentence: **a traffic light with ten colours is a resistor colour code.**
+The line was a count of members, not a property of the thing.*
+
+**One construct instead, out of two that already exist** ([V8](00-vision-and-scope.md),
+[D-219](90-decision-log.md)): the **converter** is the mapping — value → rings, value → `2k7`,
+value → `104`, value → green — and the **renderer** is the form — text, one colour, a sequence of
+colours, stars.
+
+⚠️ **Several converters may be *eligible* for a type; exactly one is *in effect* per rendering** —
+the same shape [D-217](90-decision-log.md) gives renderers. That is how [V8](00-vision-and-scope.md)'s
+*one converter* and [D-077](90-decision-log.md)'s *may carry several* fit together: the first is the
+effect side, the second the stock side. Which one applies is a setting with a default and a
+per-use-site override.
+
+**The surviving distinction is one the concept already had:** an **invertible** converter can be
+**written into** ([D-076](90-decision-log.md)) — colour rings, `2k7`, `104`, a coil code — and a
+non-invertible one is output only — traffic light, stars, maturity levels. Invertibility answers
+**that one question and nothing else** ([D-226](90-decision-log.md)); whether a form replaces the
+value or stands beside it is a free, explicit choice at the use site.
+
+**Code is needed only where the mapping cannot be written as a table or a rule.** That is the
+boundary the owner was looking for, and it does not run between traffic light and colour code but
+between *writable down* and *must be computed*. Standards ship as data packs
+([D-175](90-decision-log.md)); users build their own the same way.
+
+**A converter attaches at the level whose value it encodes.** `2k7` encodes number and prefix, so it
+hangs on `quantity` and works at once for capacitances, lengths and baking recipes; the colour rings
+also encode tolerance, so they hang one level up.
+
+### C116 — the composed type is the unit of rendering
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    I["typed: 2k7"] --> C["converter"]
+    C --> V["one value · Widerstandswert"]
+    V --> M["members · number · prefix"]
+```
+
+**Whether something is one field or several is decided by the model, not by the display**
+([D-220](90-decision-log.md)). The owner: *I type `2k7` and it lands in two different fields, the
+`2.7` and the `k` — I think we need some kind of combinatorial renderer here.*
+
+⚠️ **No new kind of renderer is needed**, because those are not two fields: they are **members of one
+value** that is incomplete without them. [D-150](90-decision-log.md) had already made
+`Widerstandswert` a composed type so that the colour code could stay an ordinary attribute renderer;
+the prefix is the same move one level down.
+
+**Members stay individually reachable**, because a target under `Primitives` lives inside the record
+addressed by path ([C114](#c114--the-branch-also-decides-where-the-value-lives)) — so *tolerance
+≤ 5 %* is searchable without tolerance being an attribute of its own.
+
+| Stage | What it is |
+|---|---|
+| **generic composite renderer** | draws **any** composed type — one control per member, each drawn by the member's own renderer. A new composed type works immediately: dimensions, addresses, baking recipes |
+| **shorthand control** | accepts `2k7`. It is a **converter** ([C115](#c115--a-representation-is-a-converter-plus-a-renderer)) and exists only where a shorthand exists |
+
+⚠️ **This does not mean two converters at once.** One renderer with one converter serves **both
+directions** — drawing the form and parsing what is typed into it
+([D-149](90-decision-log.md)). Showing a value in two forms **at the same time** is two renderings of
+one attribute, not one rendering with two converters; both controls stand side by side and write
+into the same value.
+
+**Choosing is two settings that narrow each other:** the renderer decides the **form** and declares
+which result shape it can draw; the eligible converters are those producing that shape. Pick the
+renderer and the converter list narrows itself. ⚠️ *Where one converter remains, the control
+disappears — but only that control:* [D-223](90-decision-log.md) corrected an earlier reading here.
+*Which* converter may have one answer; *whether* this use site wants that form at all always has two
+([U18](20-interaction.md)).
+
+### C117 — there is no fixed value, only a restriction
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    A["permitted set"] --> B["narrowed at a use site"]
+    B --> C["one member left"]
+    C --> D["that is the fixed value"]
+```
+
+Walking a resistor through the configuration turned up that the unit has to be pinned to `Ohm`, or
+every author picks it again on every part — and the legacy settings screen carried a **fixed value**
+on composite members for exactly that. Two designs were available: state the fixed value directly,
+or **forbid everything else** and let it follow ([D-221](90-decision-log.md)).
+
+⚠️ **The restriction wins, because it is not a second construct.** Say *only `Ohm` is permitted* and
+that **is** the fixed value; the interface follows for free, since a control with one possibility
+disappears ([U0b](20-interaction.md)). A separate *fixed* setting beside the permitted set would be
+the classic duplicated fact — *fixed = Ohm* against *permitted = {Ohm, Volt}*, with nothing to say
+which wins.
+
+**Restrictions narrow downwards and never widen.** A use site further down may restrict further; it
+may not reopen, or *only Ohm* guaranteed nothing in the first place. Whoever genuinely needs another
+unit does not need a `Widerstandswert`.
+
+### C118 — a medium is an ordinary type, and it knows its MIME type
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    U["whoever uses it"] -->|aggregation| M["Medium · a type under Model"]
+    M --> A["attachment id · url · source · licence"]
+    M --> T["mime type · detected, stored"]
+```
+
+A medium is **an ordinary type under `Model`**, not a special construct
+([D-229](90-decision-log.md)) — an ordinary record in the record tables, aggregated by whoever uses
+it ([D-161](90-decision-log.md)). **It needs no new table.**
+
+⚠️ *The alternative had been a composed type with the attachment id as an inline text member. What
+killed it: [D-211](90-decision-log.md)'s source attribution is a fact about the **file**, not about
+the part.* One photo used by fifty parts would write the photographer's name into fifty records, and
+correcting it would mean correcting fifty — the duplicated fact the rules forbid outright. Three
+more followed: *which records use this file* became a scan, the same file could not be shared, and
+width, height, checksum and licence had no home.
+
+As an ordinary type all of that is already solved: *what uses this image* is the ordinary **Used by**
+([D-199](90-decision-log.md)); deletion is the ordinary trash ([D-123](90-decision-log.md));
+[D-211](90-decision-log.md)'s *is the file still there* check lives on the medium record, in one
+place. The attachment id survives as a **text** attribute — an opaque key of a foreign system, so
+the core sees text and knows nothing of WordPress ([D-171](90-decision-log.md)).
+
+**The medium detects its own MIME type** — image, source code, document. Detected at the boundary,
+since WordPress already knows it, and **stored**, or every display would have to touch the file. The
+renderer then dispatches on the MIME family to a registered presentation, so supporting a new kind
+of file means **registering one more**, never extending a switch.
+
+**The only cost is comfort:** attaching an image now creates a record, and the user must not notice.
+
+### C119 — `set` and `table` are retired as constructs
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    S["old: set · table"] --> T["the thing → a composed type · C116"]
+    S --> D["the drawing → compact horizontal · compact vertical · table renderer"]
+```
+
+*Let us throw set and table out* ([D-246](90-decision-log.md)). ⚠️ *Read as retiring the
+**constructs**, not the renderers.*
+
+Nothing is lost, because [D-245](90-decision-log.md) had already moved their work to two places that
+exist: the **thing** is a composed type
+([C116](#c116--the-composed-type-is-the-unit-of-rendering)) and the **drawing** is one of **compact
+horizontal**, **compact vertical** or the **table renderer**. A node that was both at once was the
+legacy conflation, and the exported tree had already parked them.
+
+**Consequences to carry through:** the old `Complex Datatypes` branch loses two of its three
+inhabitants ([C91](#c91--and-this-sorts-out-the-old-complex-datatypes-branch)); the legacy setting
+*Show set child properties* dies with them; and the standard tree, when harvested, brings neither
+across.
+
+**Nothing has to be built to replace them** — that is the test a retirement has to pass, and this
+one passes it.
+
+### C120 — `icon` is a setting, `symbol` is a label role
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    N["a node"] --> I["icon → settings table"]
+    N --> S["symbol → labels table"]
+    I --> IL["one value for every locale"]
+    S --> SL["one value per locale"]
+```
+
+*The icon is a little picture you can pick; the symbol is something like `Ω`, or `Pos.` — a very
+short form* ([D-252](90-decision-log.md)). Two different things that merely sit next to each other.
+
+| | Is | Lives in | Per locale |
+|---|---|---|---|
+| **`icon`** | a glyph chosen from the installation's allow-list | the **settings** table ([D-019](90-decision-log.md)) | **no** — the same in every locale |
+| **`symbol`** | a very short text | the **labels** table, as a **role** ([D-196](90-decision-log.md)) | **yes** — translated like any other label |
+
+⚠️ *Recorded because the legacy detail screen puts them side by side in one presentation panel, which
+is why they had already been confused once — and because a language-neutral value in the labels
+table, or a translated one in the settings table, would each be wrong in a way that only shows up in
+the second locale.*
+
+The icon is drawn in the tree as well, where a glyph is read faster than a word
+([D-251](90-decision-log.md), [U21](20-interaction.md)).
 
 ## Where the model stands
 
@@ -2218,7 +2552,7 @@ That closed the three questions this section was written to avoid answering:
 |---|---|
 | Is an attribute the same construct as an edge? | yes — [D-031](90-decision-log.md) |
 | What is an attribute's *type*? | its `to`, which names a **branch** and is polymorphic — [D-041](90-decision-log.md) |
-| Where does the value live? | decided by kind and multiplicity — [D-133](90-decision-log.md) |
+| Where does the value live? | decided by the **branch of the target** — [D-232](90-decision-log.md), superseding [D-133](90-decision-log.md) |
 
 Also settled since: `Relation.kind` is an **enum** ([D-036](90-decision-log.md)) and is never
 chosen but read off the target's branch ([D-161](90-decision-log.md)); `Identity` carries `id` and
@@ -2277,7 +2611,7 @@ reads that way; until it is rewritten, this table is the shortcut.
 | [OQ-010](91-open-questions.md) | Is an *attribute* the same thing as an *edge*? | [D-031](90-decision-log.md) |
 | [OQ-011](91-open-questions.md) | What is an attribute's *type*? | [D-025](90-decision-log.md) |
 | [OQ-013](91-open-questions.md) | What exactly is a *setting*, versus an attribute? | [D-011](90-decision-log.md) |
-| [OQ-015](91-open-questions.md) | Where does the content live? | [D-083](90-decision-log.md), [D-133](90-decision-log.md) |
+| [OQ-015](91-open-questions.md) | Where does the content live? | [D-083](90-decision-log.md), then [D-232](90-decision-log.md) (superseding [D-133](90-decision-log.md)) |
 | [OQ-016](91-open-questions.md) | Is "setting" one thing, or two? | [D-084](90-decision-log.md), [D-078](90-decision-log.md) |
 | [OQ-017](91-open-questions.md) | Which attributes does every node have? | [D-082](90-decision-log.md) |
 | [OQ-018](91-open-questions.md) | Where does the value of an extended attribute live? | [D-026](90-decision-log.md) |

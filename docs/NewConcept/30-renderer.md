@@ -23,9 +23,42 @@ last_updated: 2026-08-23
 > [D-157](90-decision-log.md), [D-158](90-decision-log.md), [D-166](90-decision-log.md),
 > [D-181](90-decision-log.md), [D-201](90-decision-log.md), [D-202](90-decision-log.md).
 >
-> Where this text and a decision disagree, the disagreement is **not** resolved here — it is
-> listed in [`_harvest/contradictions.md`](_harvest/contradictions.md) for the owner
-> ([PR-4](../../CLAUDE.md)).
+> **Caught up a second time 2026-08-23** with [D-217](90-decision-log.md)–[D-258](90-decision-log.md).
+> **Six of those reverse a position this document had stated**, so they are corrected *in place*
+> rather than appended underneath — an appended correction leaves the old sentence readable as if
+> it still held, which is how a document comes to carry two answers at once
+> ([D-222](90-decision-log.md)):
+>
+> | Corrected in place | This document said | It now says |
+> |---|---|---|
+> | [D-236](90-decision-log.md) | one node, **one** renderer, with a decorator beside it ([D-224](90-decision-log.md)) | a node carries an **ordered list** of renderers — one mandatory, further ones appended. The decorator is no longer a configuration concept |
+> | [D-217](90-decision-log.md) | purpose is part of the **registry key** ([D-168](90-decision-log.md)) | purpose travels in the **context**; a renderer declares which purposes it serves through `supports()` |
+> | [D-226](90-decision-log.md) | invertible **replaces**, non-invertible **decorates** ([D-225](90-decision-log.md)) | invertibility decides only whether a form can be **written into**. Replace or decorate is a free choice at the use site |
+> | [D-232](90-decision-log.md) | **multiplicity** decides where a value is stored ([D-133](90-decision-log.md)) | the **branch** decides: primitives inside the record by path, compositions own records, `Model` an external reference |
+> | [D-244](90-decision-log.md) | the chooser defaults to **inline** ([D-108](90-decision-log.md)) | it defaults to the **dialog**; inline stays available for the simple case |
+> | [D-256](90-decision-log.md) | *one value a field, several a table* is a rule of the **composite** renderer ([D-255](90-decision-log.md)) | it belongs to the **node** renderer — and node renderer and page renderer are the same renderer |
+>
+> Also folded in: [D-218](90-decision-log.md) (read-only renders under **display**),
+> [D-219](90-decision-log.md)/[D-220](90-decision-log.md) (a representation is converter plus
+> renderer; the composed type is the unit of rendering), [D-223](90-decision-log.md) (automatic is
+> a default, never a fact), [D-227](90-decision-log.md) (the rule counts **possibilities**),
+> [D-229](90-decision-log.md)/[D-230](90-decision-log.md) (the medium),
+> [D-231](90-decision-log.md) (the preview shows the front end),
+> [D-233](90-decision-log.md)–[D-235](90-decision-log.md) (page, block, eligibility),
+> [D-237](90-decision-log.md) (identifying fields belong to the type),
+> [D-238](90-decision-log.md) (the leaves-only default reversed),
+> [D-240](90-decision-log.md) (three layers feed a preview),
+> [D-243](90-decision-log.md) (a report is selection + grouping + expression),
+> [D-245](90-decision-log.md)/[D-246](90-decision-log.md) (`set` and `table` retired),
+> [D-251](90-decision-log.md) (the tree shows the icon),
+> [D-253](90-decision-log.md)/[D-254](90-decision-log.md) (three surfaces; blocks render on the
+> server on every request) and [D-257](90-decision-log.md) (a page-local block override).
+>
+> ✔ **The fifteen contradictions raised while catching this document up are all resolved**, and
+> every ⚠️ below that pointed at
+> [`_harvest/contradictions.md`](_harvest/contradictions.md) now names the decision that settled
+> it. Where this text and a decision still disagree, the disagreement is **not** resolved here —
+> it goes back into that sheet for the owner ([PR-4](../../CLAUDE.md)).
 
 ## Purpose
 
@@ -134,6 +167,11 @@ That is why `RenderResult` has to carry the attribute metadata a renderer used, 
 finished markup. Frontend interactivity uses the WordPress Interactivity API on server-rendered
 markup.
 
+**What each of the three levels is *for* was settled later** — [D-253](90-decision-log.md), worked
+out at [R76d](#r76d--three-surfaces-three-jobs). The short form: the admin says what a thing **is**,
+the block says what a page **shows**, and the front end draws what the block names and owns nothing
+of its own.
+
 ### R9a — purpose is the fourth thing the context carries, and searching is one of them
 
 ```mermaid
@@ -154,11 +192,18 @@ flowchart LR
     P --> S["search · a condition"]
 ```
 
-[D-168](90-decision-log.md) adds **purpose** to the render context and makes it **part of the
-registry key**: a renderer is looked up by type **and** purpose. Two of the three were already
+[D-168](90-decision-log.md) adds **purpose** to the render context. Two of the three were already
 distinguished in all but name — **display** and **edit**, which the renderer options carry as
 *editable / not* ([R10](#owner-statement--2026-08-22-second-pass)). **Search** is the third, and
 it is the one that was missing.
+
+⚠️ **Corrected in place.** This unit used to add a second sentence: *and it makes purpose part of
+the **registry key**, so a renderer is looked up by type **and** purpose.*
+[D-217](90-decision-log.md) supersedes that half of [D-168](90-decision-log.md). A key of type ×
+purpose implies a node holding three renderers at once, one per purpose, and the owner ruled it
+out: **a node cannot have several renderers at the same time.** Purpose stays where the valuable
+half of D-168 put it — **in the context** — and a renderer declares which purposes it can serve
+through `supports()`. See [R14a](#r14a--the-key-is-the-type-purpose-travels-in-the-context).
 
 **Why the search surface is a purpose rather than a widget of its own.** Which operators make
 sense depends on the **type** — text has *contains* and *begins with*, a number has *greater*
@@ -172,17 +217,57 @@ Three consequences, all from [D-168](90-decision-log.md):
 |---|---|
 | **A search renderer returns a condition, not a value** | operator plus operand, which feeds the generic query builder ([D-165](90-decision-log.md)) directly. The filter's operator field is therefore not a component of its own — it is *what a text renderer looks like when its purpose is search*. |
 | **The offered operators are declared at the type** | once, beside the converter. Never a switch on a type name, which [`CD-9`](../../CLAUDE.md) and the *no special-casing* rule forbid outright. |
-| **Not searchable needs no special case** | a backward-read computed value ([D-140](90-decision-log.md)) is calculated at read time and stands in no index, so it simply **has no search renderer** and never appears in the filter. No greyed-out option, no error message. |
+| **Not searchable needs no special case** | a backward-read computed value ([D-140](90-decision-log.md)) is calculated at read time and stands in no index, so its renderer simply **does not declare `search`** and the attribute never appears in the filter ([D-217](90-decision-log.md)). A missing **capability**, not a missing registration. No greyed-out option, no error message. |
 
-**The price, stated in the decision:** the lookup now takes type **and** purpose, and it needs a
-**fallback** — with no search renderer registered, the **edit** renderer plus the type's default
-operators — or every type would need three renderers written before anything worked at all.
+**The price D-168 named has been paid off rather than paid.** It said the lookup now takes type
+**and** purpose and therefore needs a **fallback** — the edit renderer plus the type's default
+operators where no search renderer is registered — or every type would need three renderers before
+anything worked. With the key back down to the type ([D-217](90-decision-log.md)) there is nothing
+to fall back *from*: one renderer is asked, and it either serves the purpose or the purpose is not
+offered. What remains is the last-resort renderer, and that is a **fault indicator**, not a floor —
+see [R14b](#r14b--the-last-resort-renderer-is-a-fault-indicator-not-a-floor).
 
-⚠️ **What purpose does to the display/edit split is not settled here.** [R15](#r15--variant-and-circumstance-are-different-axes)
-classifies *editable / read-only* as a **circumstance**, i.e. an option inside one renderer, and
-[D-096](90-decision-log.md) has the preview call the same renderer twice. If display and edit are
-now separate registry keys, those two statements need re-reading. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
+✔ **What purpose does to the display/edit split is now settled.**
+[R15](#r15--variant-and-circumstance-are-different-axes) classifies *editable / read-only* as a
+**circumstance** — an option inside one renderer — and [D-096](90-decision-log.md) has the preview
+call the same renderer twice. Both stand untouched, because purpose never became a key
+([D-217](90-decision-log.md)). The knock-on question — what a read-only attribute gets inside an
+edit form — is answered by [D-218](90-decision-log.md) at
+[R9b](#r9b--read-only-renders-under-the-display-purpose).
+
+### R9b — read-only renders under the display purpose
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    A["read-only attribute<br/>inside an edit form"] --> B["asked under the display purpose"]
+    B --> C["the field is there"]
+    B --> D["no input at all"]
+```
+
+[D-218](90-decision-log.md). Asked whether a read-only attribute in an edit form gets the *edit*
+purpose with its input suppressed, the owner was unambiguous: **no input at all** — *I fixed that
+as the tree builder, and then there is no input there.* So the purpose asked for is **display**,
+and [D-095](90-decision-log.md) stands unchanged: `read_only` removes the **input**, not the
+**field**. A form is therefore not uniformly one purpose — it is a series of attributes, each
+asked for the purpose its own configuration earns.
+
+**And the same decision adds a check nobody asked for.** A read-only attribute with **no
+calculation** and **no default** can never hold anything: it is a dead field that looks like part
+of the form. It is reported as a **model conflict** ([D-054](90-decision-log.md)) at the moment it
+is configured ([D-050](90-decision-log.md)), naming the two repairs — **set a default**, or
+**remove the read-only**. That is [V9](00-vision-and-scope.md)'s offered correction turned on the
+model itself rather than on data.
 
 ## Owner statement — 2026-08-22, third pass: the registry
 
@@ -232,7 +317,54 @@ Without the second, the settings UI would have no list to offer and the choice i
 not exist. This settles the *lookup* half of [OQ-005](91-open-questions.md), which
 [D-091](90-decision-log.md) then closed.
 
-### R14a — the key is type **and** purpose
+### R13a — a node carries an ordered list of renderers, one of them mandatory
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    N[node] --> R1["1 · mandatory<br/>draws the value"]
+    N --> R2["2 · appended"]
+    N --> R3["3 · appended"]
+```
+
+[D-236](90-decision-log.md) widens [R13](#owner-statement--2026-08-22-third-pass-the-registry):
+what a node names is not one renderer but an **ordered list** of them. The owner: *of course I can
+also assign a traffic light to an int value. Perhaps instead of decorating we should simply allow
+several renderers — by default one, the others can be selected in addition, but there must always
+be one.*
+
+**Two conditions travel with it**, and neither is decoration:
+
+| | |
+|---|---|
+| **the list is ordered** | and that order is what is seen — number first, then the red dot beside it |
+| **exactly one is mandatory** | the owner's own rule, or a node draws nothing at all |
+
+⚠️ **This reverses the owner's own statement of the same morning** — *a node cannot have several
+renderers at the same time* ([D-217](90-decision-log.md)) — and it **replaces
+[D-224](90-decision-log.md)'s decorator** as a configuration concept. What is gained is one list
+instead of two notions: no *base here, decoration there*, just *this draws the value, and this as
+well*, which is a button in the interface rather than a concept needing explanation. What is given
+up is that a decorator could **alter** the inner renderer's output — colouring the number itself —
+where a list can only **append**. The trade holds because *beside* covers every case named
+(traffic light, stars, colour rings, captions), and *alter* is rare enough to deserve its own
+renderer. A decorator survives as an **implementation** pattern — a renderer wrapping another is
+still just a renderer — but it is no longer something a user configures.
+
+**The cost is not queries.** Nothing extra is fetched: the data are fully loaded before the descent
+begins ([D-159](90-decision-log.md)), so a second renderer builds a second string and that is all.
+
+### R14a — the key is the type; purpose travels in the context
 
 ```mermaid
 ---
@@ -248,20 +380,42 @@ config:
 ---
 flowchart LR
     T[type] --> K[registry key]
-    P[purpose] --> K
     K --> R[renderer]
-    K -.->|none registered| F["fallback · the edit renderer"]
+    P[purpose] -.->|in the context| R
+    R -.->|supports| S["display · edit · search"]
 ```
 
-[D-168](90-decision-log.md) widens the lookup of [R13](#owner-statement--2026-08-22-third-pass-the-registry):
-what a node names is still a renderer, but what the registry answers with depends on the purpose
-the caller asked for. The **fallback** is part of the mechanism, not a convenience — without it
-a type would be unusable until all three renderers existed.
+⚠️ **This unit used to read *the key is type **and** purpose*, and that is now wrong.**
+[D-217](90-decision-log.md) supersedes the registry-key half of [D-168](90-decision-log.md). The
+lookup is by **type**; the purpose rides in the render context and the renderer answers for it —
+or does not, which `supports()` is where it says so.
 
-The second question, *which renderers could I choose here*, gains the same dimension: the choice
-list is per type **and** purpose, and it is narrowed further by two eligibility rules —
-multiplicity ([D-098](90-decision-log.md)) and the grouping rule
-([D-099](90-decision-log.md)) — both worked out below.
+**The registry still serves two questions**, and the owner named the second himself as *a
+connection to the possible users*:
+
+1. **At render time** — *this node names these renderers, give me them.* A lookup by name.
+2. **At configuration time** — *which renderers are eligible for this node at all?* Answered from
+   what each renderer declared when registering.
+
+**Choosing among the eligible ones is the chain that already exists** ([D-015](90-decision-log.md),
+[D-084](90-decision-log.md)): the list stands on the node, and the **using attribute may override
+it** — the owner: *I give the whole thing a new look by using it.* Where several are eligible and
+nobody has chosen, one is marked **default per type** and applies until someone does. The eligible
+set is narrowed further by two rules — multiplicity ([D-098](90-decision-log.md)) and the grouping
+rule ([D-099](90-decision-log.md), keyed by [D-235](90-decision-log.md)) — both worked out below.
+
+### R14b — the last-resort renderer is a fault indicator, not a floor
+
+A node with no renderer at all is an **error**, and [D-217](90-decision-log.md) is explicit that it
+must **look** like one. A last-resort renderer is allowed, and it exists to make the fault visible
+rather than to make the page presentable: covering a missing renderer with a quiet grey default is
+how such a fault survives three weeks unnoticed.
+
+That is a different thing from the purpose fallback [D-168](90-decision-log.md) needed, which
+disappeared with the registry key
+([R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them)). Under
+[D-236](90-decision-log.md) the same rule reads one step tighter still: the list must hold at least
+one renderer, so *empty list* and *no renderer* are the same fault.
 
 ### R15 — variant and circumstance are different axes
 
@@ -277,6 +431,43 @@ A slider is a different renderer from a spinner. A read-only slider is the same 
 editable slider, given a different option. Keeping the split this way is what stops the renderer
 count from multiplying: three variants × three levels × two edit modes would otherwise be
 eighteen classes instead of three.
+
+✔ **Both rows survive the second catch-up unchanged.** *Purpose* did not become a third column of
+this table, because [D-217](90-decision-log.md) kept it out of the registry key; and *editable /
+read-only* did not become a variant, because [D-218](90-decision-log.md) resolves the read-only
+case by asking for the **display purpose** rather than by registering a second renderer.
+
+### R15a — the renderer list is a third axis, and it multiplies nothing
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    V["variant<br/>which renderer"] --> O[the output]
+    C["circumstance<br/>options inside it"] --> O
+    L["list<br/>how many, in what order"] --> O
+```
+
+[D-236](90-decision-log.md) adds a third axis beside the two above, and it is the one that costs
+nothing: **how many renderers are asked, and in which order.** A traffic light beside an integer is
+not a new integer renderer and not an option of the spinner — it is a second entry in the node's
+list. So the eighteen-classes argument of [R15](#r15--variant-and-circumstance-are-different-axes)
+holds a second time: combinations live in the **configuration**, never in the class count.
+
+| Axis | Decided by | Realised as |
+|---|---|---|
+| **Variant** | the model author | a separate renderer |
+| **Circumstance** | the caller and the node settings | options inside one renderer |
+| **List** | the model author, per node or use site | **several renderers, drawn in order** |
 
 ## Owner statement — 2026-08-22, fourth pass: surfaces and preview
 
@@ -319,6 +510,36 @@ This made [OQ-014](91-open-questions.md) — PHP or JavaScript — larger rather
 the split-screen admin with a live preview is the most interaction-heavy surface in the product
 and is now also a renderer. [D-021](90-decision-log.md) answered it anyway: **PHP**, with generic
 metadata-driven JavaScript wherever interaction is required.
+
+### R18a — the tree row draws the node's icon
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    S["icon · a setting on the node"] --> T[tree row]
+    L["label · in a role and a locale"] --> T
+```
+
+[D-251](90-decision-log.md). The owner: *the node renderer in the tree takes the icon into account
+when one is present.* Small, and it is the reason the icon exists at all — the tree is where a
+person scans a hundred rows, and a glyph is read faster than a word. It costs nothing, because the
+icon is a **setting** resolved along the ordinary chain with everything else
+([D-252](90-decision-log.md)).
+
+⚠️ **Not the `symbol` role.** An icon is a chosen glyph from the installation's allow-list,
+language-neutral; a `symbol` is a very short **text** — `Ω`, `Pos.` — and is a label, translated
+like any other ([D-252](90-decision-log.md)). They sit next to each other on the screen and are
+different mechanisms.
 
 ### R20a — the detail view is not a special screen
 
@@ -364,6 +585,54 @@ Two decisions land on this surface rather than on the model:
 Both are [V9](00-vision-and-scope.md) applied to the admin surface: the system knows what will
 happen, so it says so instead of asking a person to imagine it.
 
+### R20c — the node renderer and the page renderer are one renderer
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    N["node renderer"] --> A["member with one value → a field"]
+    N --> B["member with several → a table"]
+    N --> C["small fields → one compact line"]
+```
+
+[D-233](90-decision-log.md) reads [D-091](90-decision-log.md) correctly at last: what was rejected
+was an **interface** — `IPageRendere` — not the idea. The owner: *I have nothing against a page
+renderer. I hand over a node here too and can render it, and then I have a config page renderer.*
+So a configuration page renderer is an ordinary renderer whose subject happens to be a node
+standing for the page. No exception and no second entry point, and
+[R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview)'s *page renderer* is
+rehabilitated rather than retired.
+
+**And [D-256](90-decision-log.md) says the two are the same renderer**, so no third word is needed.
+It also corrects where the layout rule lives:
+
+| | Draws | Rule |
+|---|---|---|
+| **composite renderer** | **one composed value** — `2,7 kΩ ±5 %`, number and prefix and tolerance side by side | one control per member ([D-220](90-decision-log.md)) |
+| **node renderer** *(= page renderer)* | **a whole node with its attributes** — a form above, a positions table below | one value → a field · several → a table · small fields compactly on one line |
+
+⚠️ **[D-255](90-decision-log.md) had put the second rule in the composite renderer, and that was
+wrong.** Two different jobs at two different scales. The rule itself is the owner's and is
+unchanged: *if I have fixed data I show only a form; if I have fixed data and a multiplicity, I
+show one multiplicity after another below, as a table. Simple rules.* The compact line is the same
+compact renderer the settings screen uses ([D-245](90-decision-log.md)).
+
+**Hiding works one level coarser than had been assumed** ([D-255](90-decision-log.md)): not only
+single fields but **whole parts** — leave the form out and show only the positions, or show one of
+two multiplicities and not the other. For a composition that is right in substance too, since it
+exists only in connection with its whole. Other arrangements of the same data — the owner named a
+timeline — stay possible and are **not** built now.
+
 ### R21–R23 — the preview is the feedback loop
 
 ```mermaid
@@ -399,6 +668,39 @@ Two things followed that were open when this was written, and both are now decid
   [D-096](90-decision-log.md): a **caller**, which invokes render twice. Worked out at
   [R49](#r42r43--and-r49-removes-the-exception-again).
 
+### R21a — the preview shows the front end, and may only bound the size
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    P[preview] -->|must match| F[front end]
+    P -.->|the one permitted deviation| S["bounded size · crops, does not alter"]
+```
+
+[D-231](90-decision-log.md). The owner noticed the two had never been separated and concluded they
+should not be: *the preview always shows how it will look in the front end. If I change something
+my preview may become enormous — maybe limit the size there — but it should look the way it really
+will.*
+
+**A preview that differs from the result is worse than none:** someone configures, it looks right,
+and publishing produces something else. Bounding the height is the one allowed deviation precisely
+because it **claims nothing about appearance** — it crops the view rather than altering it.
+
+This sharpens [D-160](90-decision-log.md), which said what the preview renders without saying whose
+appearance it must match. It also tightens
+[the level-choice note](#one-consequence-the-preview-previews-a-level) below: previewing *a level*
+remains right, and the front end is the one that must be reproduced faithfully.
+
 ### R22a — the preview renders a test data pack
 
 ```mermaid
@@ -429,14 +731,61 @@ testing, which is what keeps it maintained — those packs are ordinary **data p
 ([D-175](90-decision-log.md), [D-215](90-decision-log.md)), installable and removable like any
 other.
 
-⚠️ **One thing the decision does not restate:** [D-052](90-decision-log.md) gave test data a
-third source — *generated from the settings* where neither a flagged record nor a default exists.
-Whether that source survives is listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md).
+✔ **The third source is settled, and it moved.** [D-052](90-decision-log.md) had given test data a
+third source — *generated from the settings* where neither a flagged record nor a default exists —
+which [D-160](90-decision-log.md) did not restate. [D-240](90-decision-log.md) closes it, and not
+by reinstating generation: see [R22b](#r22b--three-layers-feed-a-preview) below.
 
 **The model editor is not covered by this and does not need to be.** It walks the same edges; it
 merely pulls a different renderer set out of the registry. **One descent, two renderer sets — not
 two descents** ([D-160](90-decision-log.md)).
+
+### R22b — three layers feed a preview
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    A["1 · real data"] --> P[preview]
+    B["2 · records marked as test data"] --> P
+    C["3 · the type's own sample value"] --> P
+```
+
+[D-240](90-decision-log.md) closes the [D-052](90-decision-log.md)/[D-160](90-decision-log.md) gap
+with a layer the concept did not have, supplied by the owner out of the legacy project: **every
+data type brings its own sample** — *`int` already has the value forty-two when no other data are
+there, text has a sample text, a name a sample name.* Because data packs are removable
+([D-175](90-decision-log.md)), without this layer removing a pack could take a model's preview with
+it — which is the empty state [D-160](90-decision-log.md) exists to avoid.
+
+**The sample belongs to the type, not to the renderer** ⚠️ *(the owner left the placement to me)*,
+for three reasons:
+
+| | |
+|---|---|
+| a node now carries **several** renderers ([D-236](90-decision-log.md)) | it would be unclear whose sample wins |
+| a sample is a **value** | values belong to types; a renderer draws whatever it is given |
+| placed on the type | it serves display, edit and search alike |
+
+As a **setting** on the type node it follows the resolution chain, so an author may set a better
+sample for their own type. ⚠️ **One condition: the sample must be valid** — it has to pass its
+type's validators, or the preview shows something the model forbids and the fault gets hunted in
+the wrong place.
+
+**And the test-data mark does exactly one thing** ([D-241](90-decision-log.md)): such a record is
+**not visible in the front end**. In every other respect it is ordinary — it counts for uniqueness
+([D-154](90-decision-log.md)), appears in the administration, and travels through model changes
+like any other. One flag, one effect; a second class of record would have to be known to every
+code path.
 
 ## Owner statement — 2026-08-22, fifth pass: unified input, and the chooser
 
@@ -534,10 +883,10 @@ answer:
 **The fourth row is where the rule must not be over-applied.** One available entry with an
 optional multiplicity still leaves a genuine decision — take it or leave it — so greying it out
 would remove a choice the user actually has. Only the third row is truly decided.
-This is [D-056](90-decision-log.md) verbatim. ⚠️ **[D-198](90-decision-log.md) says the opposite
-about the same case** — *a select holding one entry is greyed out* — and asks for the rule to be
-held consistently everywhere. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
+This is [D-056](90-decision-log.md) verbatim. ✔ **[D-198](90-decision-log.md) had appeared to say
+the opposite about the same case** — *a select holding one entry is greyed out* —
+and [D-227](90-decision-log.md) settles it in favour of the table as it stands: see
+[R31b](#r31b--the-rule-counts-possibilities-not-entries).
 
 ### R31a — the second row is not a control state, it is a broken model
 
@@ -550,6 +899,38 @@ places the event three steps earlier than the form:
 | **Caught where it is created** | at the moment of narrowing — setting an allow-list ([D-046](90-decision-log.md)) to nothing, or deleting the last member of a branch. Catching it at data-entry time would be far too late: a different person, weeks later, in front of a form they cannot fill in. |
 | **Reported, not blocked** | an author may legitimately be mid-rebuild and about to refill the branch. It is a **model conflict** ([D-054](90-decision-log.md)) and it is shown in the **preview** ([D-101](90-decision-log.md)). |
 | **But data entry stays barred** | for that model, until it is resolved. There the conflict is not a message but a dead end. |
+
+### R31b — the rule counts possibilities, not entries
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    E["one entry"] --> Q{how many outcomes}
+    Q -->|"0..1 · entry or nothing"| A[a live control]
+    Q -->|"1 · only that entry"| B[it disappears]
+```
+
+[D-227](90-decision-log.md) refines [D-198](90-decision-log.md) rather than choosing between it and
+[D-056](90-decision-log.md): **both stand, and D-198 was simply too short.** At `0..1` there are
+**two** possibilities — the one entry, or nothing — so the control is alive; at `1` there is
+genuinely one and it disappears.
+
+> **The test is never *how many rows are in the list* but *how many outcomes can this control
+> produce*.**
+
+⚠️ Same shape as the correction in [D-223](90-decision-log.md): *which* converter supplies a form
+may have one answer, while *whether* to use that form at all always has two. Counting rows conflates
+the two questions; counting outcomes keeps them apart.
 
 ## Owner statement — 2026-08-22, seventh pass: converters, and how many
 
@@ -649,6 +1030,76 @@ me all the red ones* becomes a range query on the real value — indexed, exact,
 stale, which is why no derived field is needed for it. Genuine algorithms remain available as a
 **registered strategy** ([D-130](90-decision-log.md)), as the exception rather than the rule.
 
+### R33b — several are eligible, exactly one is in effect
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    S["eligible for the type<br/>the stock side"] --> C["chosen · default + override"]
+    C --> E["in effect for this rendering<br/>exactly one"]
+```
+
+[D-219](90-decision-log.md) settles how [V8](00-vision-and-scope.md)'s *one converter* and
+[D-077](90-decision-log.md)'s *a node may carry several* fit together — they were never about the
+same side. **Several may be *eligible*; exactly one is *in effect* per rendering.** The owner put
+the effect side plainly: *we currently allow only one converter, not several.* Which one applies is
+a setting with a default and a per-use-site override — the same shape
+[R14a](#r14a--the-key-is-the-type-purpose-travels-in-the-context) gives renderers.
+
+⚠️ **This is the one place where the converter and the renderer list do *not* run parallel.**
+[D-236](90-decision-log.md) lets a node draw with several renderers at once; nothing extends that to
+converters, and nothing should be assumed from the symmetry.
+
+**A consequence found while walking a resistor through** ([D-219](90-decision-log.md)): a converter
+attaches **at the level whose value it encodes**. `2k7` encodes number and prefix, so it hangs on
+`quantity` and works at once for capacitances, lengths and baking recipes; the colour rings also
+encode tolerance, so they hang one level up.
+
+### R33c — automatic is a default, never a fact
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    Q1["which converter supplies this form"] -->|may have one answer| H[the control disappears]
+    Q2["whether this use site wants the form at all"] -->|always has two| K[the control stays]
+```
+
+[D-223](90-decision-log.md) corrects a misreading of [D-198](90-decision-log.md) I had written into
+the converter case: *where only one converter qualifies it is taken without being asked.* The owner
+caught it — he may want to say **no colour code here, it bothers me**, and under that wording he had
+nowhere to say it.
+
+> **Anything the system chooses on the user's behalf must be revocable at the use site.**
+
+That is [D-032](90-decision-log.md)'s two-fold principle applied to automatic choices, and it has a
+second half: **an automatic choice must be visible.** A field showing red-blue-green with nothing
+anywhere saying *presentation: colour code*, and no place to change it, is magic nobody can switch
+off later because nobody can find where it came from.
+
+Concretely: the shorthand control accepting `2k7` appears **automatically wherever an invertible
+text converter exists, and can be switched off**. Refusing a colour form needs nothing special —
+choosing the ordinary composite renderer at that use site **is** the refusal.
+
 ### R35a — notation is not structure
 
 ```mermaid
@@ -688,6 +1139,97 @@ tolerance, so the code stays an attribute renderer instead of having to reach ac
 capacitor gets a **converter** first, because the value is in the *input* — `104` is printed on
 the part and someone wants to type it into a search and find it, which
 [D-076](90-decision-log.md) makes possible by running the converter on the way in.
+
+### R35b — a representation is a converter plus a renderer, and the mapping is data
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    V[value] --> C["converter · the mapping"]
+    C --> R["renderer · the form"]
+    R --> O["rings · 2k7 · green · stars"]
+```
+
+[D-219](90-decision-log.md) generalises [D-149](90-decision-log.md) and
+[D-150](90-decision-log.md), and it does so by destroying a distinction I had proposed. ⚠️ *I had
+split **notation** — the same information written differently, like a resistor's colour rings — from
+**encoding**, a user-defined mapping like a traffic light. The owner took it apart in one sentence:
+**a traffic light with ten colours is a resistor colour code.*** The line was a count of members,
+not a property of the thing, and no concept can stand on that.
+
+**One construct instead:** the **converter** is the mapping (value → rings, value → `2k7`,
+value → `104`, value → green) and the **renderer** is the form (text, one colour, a sequence of
+colours, stars). Both already exist ([V8](00-vision-and-scope.md)). Resistor, coil, capacitor,
+shorthand notations, traffic lights and star ratings become instances of **one** mechanism;
+standards ship as data packs ([D-175](90-decision-log.md)); users build their own the same way.
+
+> **Code is needed only where the mapping cannot be written as a table or a rule.** That boundary
+> does not run between traffic light and colour code — it runs between *writable down* and *must be
+> computed*.
+
+### R35c — the composed type is the unit of rendering
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    T["composed type<br/>Widerstandswert"] --> M1["member · number"]
+    T --> M2["member · prefix"]
+    T --> M3["member · tolerance"]
+    T -.->|one generic composite renderer| D[one control per member]
+```
+
+[D-220](90-decision-log.md). The owner: *I type `2k7` and it lands in two different fields, the
+`2.7` and the `k` — I think we need some kind of combinatorial renderer here.* ⚠️ **No new kind of
+renderer is needed**, because those are not two fields: they are **members of one value** that is
+incomplete without them. [D-150](90-decision-log.md) had already made `Widerstandswert` a composed
+type so the colour code could stay an ordinary attribute renderer; the prefix is the same move one
+level down.
+
+**Two stages, and the first needs no code.** A **generic composite renderer** draws any composed
+type — one control per member, each drawn by the member's own renderer — so a new composed type
+works immediately, for dimensions, addresses or baking recipes alike. On top of it, a **shorthand**
+control accepting `2k7` is a converter ([D-219](90-decision-log.md)) and exists only where a
+shorthand exists.
+
+**Members stay individually reachable**, because a composition into a primitive lives **inside** the
+record, addressed by path ([D-232](90-decision-log.md)) — so *tolerance ≤ 5 %* is searchable without
+tolerance being an attribute of its own.
+
+⚠️ **This is not two converters at once.** One renderer with one converter serves **both
+directions** — drawing the form and parsing what is typed into it ([D-149](90-decision-log.md)).
+Showing a value in two forms **at the same time** is two renderings of one attribute, not one
+rendering with two converters.
+
+**Choosing is two settings that narrow each other:** the renderer decides the **form** and declares
+which result shape it can draw; the eligible converters are those producing that shape. Pick the
+renderer and the converter list narrows itself — and if one remains it is used without being asked,
+by [D-198](90-decision-log.md), **subject to [R33c](#r33c--automatic-is-a-default-never-a-fact)**:
+*which* converter may be decided, *whether* to use the form at all never is.
+
+⚠️ **Note the scale.** This composite renderer draws **one composed value**. What draws *a whole
+node with its attributes* — a form above, a positions table below — is the **node renderer**, and
+confusing the two is exactly the mistake [D-256](90-decision-log.md) corrects at
+[R20c](#r20c--the-node-renderer-and-the-page-renderer-are-one-renderer).
 
 ### R36a — the converter removes what cannot have been meant; the validator asks about the rest
 
@@ -741,6 +1283,50 @@ Two rules travel with it:
 |---|---|
 | **Placeholders survive, and the named format stays mandatory** | an author message may contain `{min}` and `{max}`. A sentence assembled from fragments cannot be translated into a language that orders them differently. |
 | **The author says what went wrong, not what to do about it** | ⚠️ the **offered correction** of [V9](00-vision-and-scope.md) is behaviour, and behaviour is code ([D-036](90-decision-log.md)). It is not the author's to change. |
+
+### R36c — invertibility decides only whether a form can be written into
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    I["invertible?"] -->|the only question it answers| W["may a person type in this form"]
+    L["replace or decorate"] -->|an independent choice| U["stated at the use site"]
+```
+
+[D-226](90-decision-log.md) supersedes [D-225](90-decision-log.md), which had hung two questions on
+one axis — *invertible converters **replace** the value's presentation, non-invertible ones
+**decorate** beside it.* ⚠️ The owner took the axis apart: **whether it is invertible or not is not
+what matters to me right now. The difference is only that I can enter a colour code and get a
+resistance and a tolerance out of it, and from red-amber-green I cannot get back to the value.**
+
+So invertibility answers **exactly one** question — may a person type in this form
+([D-076](90-decision-log.md)) — and nothing else. **Layout is an independent, explicit choice at the
+use site:** a form may stand in place of the value or beside it, for invertible and non-invertible
+forms alike.
+
+**What remains of [D-225](90-decision-log.md) is a default and only a default:** a form that would
+hide the value if shown alone starts out **decorating**, because you would otherwise see green and
+no longer know the figure.
+
+**The consequence is a simplification.** *Number **and** colour rings together* no longer requires
+the attribute to appear twice in a block — it is **one setting in one place**, and it works in the
+detail view too, where there is no column list at all. ⚠️ *This is the first live use of
+[D-222](90-decision-log.md): a decision revised the same day, visibly, because the earlier rule
+answered **when it is sensible** while the owner was asking **when it should be possible**.*
+
+⚠️ **And the extra chain link D-226 proposed did not survive.** It had extended the resolution chain
+by *occurrence in a block*; [D-253](90-decision-log.md) withdraws that — see
+[R76e](#r76e--the-block-selects-and-hides-the-renderer-draws). The chain still ends at the use site.
 
 ## Owner statement — 2026-08-22, eighth pass: the descent, step by step
 
@@ -821,8 +1407,9 @@ does for every other setting. Nothing separate to build.
 // CONTRACT
 interface Renderer
 {
-    /** which node types or edge kinds this serves, and for which purpose —
-        R14 and D-168; feeds the choice list, and declares one-or-many per D-098 */
+    /** which node types or edge kinds this serves, and which purposes it can
+        answer for — R14, D-168, D-217. Purpose is declared here, never keyed on
+        in the registry. Feeds the choice list, and declares one-or-many per D-098 */
     public function supports(): array;
 
     /** $subject is a node or an edge; both are identities */
@@ -839,7 +1426,16 @@ value ([R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching
 
 `renderTable` and `renderForm` disappear — those are **variants**
 ([D-018](90-decision-log.md)), so separate renderers. `IPageRendere` needs no interface of its own:
-a page is a rendered node ([R20](#r18r20--the-surfaces-are-renderers-all-the-way-up)).
+a page is a rendered node ([R20](#r18r20--the-surfaces-are-renderers-all-the-way-up)) — which
+[D-233](90-decision-log.md) is careful to read as *no special **contract***, not *no page renderer*
+([R20c](#r20c--the-node-renderer-and-the-page-renderer-are-one-renderer)).
+
+**Two corrections the contract has absorbed since:**
+
+| | |
+|---|---|
+| **`supports()` declares purposes; the registry does not key on them** | [D-217](90-decision-log.md). One node, one lookup by type; display, edit and search are answered — or declined — by the same renderer. Declining is the whole mechanism behind *not searchable* ([R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them)). |
+| **The subject resolves to a *list* of renderers, not to one** | [D-236](90-decision-log.md). `render()` is unchanged — each entry is called with the same `Identity` and `RenderContext`, and their outputs are concatenated in the list's order. Nothing in the interface moves ([R13a](#r13a--a-node-carries-an-ordered-list-of-renderers-one-of-them-mandatory)). |
 
 ### R41a — the descent has two inputs, and there is only one mode
 
@@ -1024,6 +1620,49 @@ a repeating group, in the tree it is a node under `Compositions`, and on screen 
 the parts list, where it belongs**. Locality is presentation, reached by following the edge, not
 structure.
 
+### R50a — the branch decides where a value lives, not the multiplicity
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    P["target in Primitives"] --> A["inside the record, by path<br/>indexed where there are several"]
+    C["target in Compositions"] --> B["its own records"]
+    M["target in Model"] --> D["an external reference"]
+```
+
+⚠️ **[D-232](90-decision-log.md) supersedes [D-133](90-decision-log.md), and it changes what the
+paragraph above is about.** Under D-133 a multiplicity above 1 meant **own records**, so the
+auto-created node of [D-136](90-decision-log.md) would have fired for *five integers* — five records
+plus a node under `Compositions`, for five numbers. The owner's example broke it open: *if I have
+five integers I can simply store them there.*
+
+The new rule needs no multiplicity at all — **the branch says it**, the same construction as
+[D-161](90-decision-log.md) and [D-183](90-decision-log.md). The question underneath is the owner's
+own: **does the member need an identity?** A row does — you point at it, order it, delete a single
+one. A number in a list does not. He drew the same line himself: *simple types and composed types
+can just be stored there; where it gets harder is whole row types, whole tables — there I would
+insist it is external.*
+
+**What this means on the renderer side**, which is all this document is entitled to say:
+
+| | |
+|---|---|
+| the auto-created `Compositions` node of [D-136](90-decision-log.md) | still happens where the target genuinely **is** a composition, and is still shown at the parts list where it belongs — but it no longer fires for a repeated primitive |
+| several primitives | reach the renderer as indexed paths — `groessen[0]`, `groessen[1]` — and are drawn by the **edge** renderer, which is where one-or-many already lives ([D-092](90-decision-log.md)) |
+| a `Model` target | is an **external reference**, which is why the reference renderer is the natural default there ([D-105](90-decision-log.md)) |
+
+Storage itself is [50 Persistence](50-wordpress-persistence.md)'s business, not this document's.
+
 ### What multiplicity actually constrains
 
 Not **where** the renderer is chosen — **which ones are eligible**. An edge with multiplicity
@@ -1071,11 +1710,45 @@ Three later decisions turned that proposal into machinery that already exists:
 [D-132](90-decision-log.md), which answered *where data may be entered* through placement rather
 than through the data-type declaration.
 
-⚠️ **What the eligibility rule now keys on is not stated.** R51 says grouping renderers are for
-nodes that **do not inherit from a data type**; after [D-193](90-decision-log.md) `Primitives`
-holds data types *and* constants, and no decision says whether a constant is inside or outside
-the exclusion. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md).
+✔ **What the eligibility rule keys on is now stated** — [D-235](90-decision-log.md), worked out at
+[R51b](#r51b--eligibility-keys-on-the-data_types-binding) below.
+
+### R51b — eligibility keys on the `data_types` binding
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    B["data_types binding"] --> Q{does the node descend from it}
+    Q -->|yes| N["grouping renderers not offered"]
+    Q -->|no| Y["grouping renderers offered"]
+```
+
+[D-235](90-decision-log.md) completes what [D-099](90-decision-log.md) could only propose. Both
+halves had arrived since, unnoticed: [D-193](90-decision-log.md) split `Primitives` into **Data
+Types** and **Constants**, and [D-120](90-decision-log.md) supplies **declared slots** — the legacy
+settings screen already carries a `data_types` binding.
+
+> **Grouping renderers are offered for everything that does **not** descend from the `data_types`
+> binding.**
+
+No node name appears in code, which the standard forbids
+([`CD-9`](../../CLAUDE.md) and the no-special-casing rule), and a second installation may arrange
+its tree differently.
+
+**The split pays off immediately, and on a case the old rule got wrong.** `Basiseinheiten` and
+`Präfixe` sit under **Constants**, where a child list genuinely makes sense — and the legacy project
+had a `ChildListRenderer` on `Präfixe`, which under the undivided rule would have been excluded.
+Constants are therefore **outside** the exclusion; only Data Types are inside it.
 
 ### And a cell never inherits the container's renderer
 
@@ -1089,6 +1762,51 @@ to disappear as methods and return as renderers.
 `table` were **container renderers** all along, and the dropped `enum` is **an attribute whose
 branch is one level deep**, drawn as a list ([D-109](90-decision-log.md)). Only `Unit type` and
 `quantity › Preis` were genuine composed types. None of the three needed to be a type of its own.
+
+### R51c — `set` and `table` are retired as constructs, and three renderers remain
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    S["legacy set / table<br/>thing and drawing in one node"] --> T["the thing<br/>a composed type"]
+    S --> D["the drawing<br/>compact horizontal · compact vertical · table"]
+```
+
+[D-245](90-decision-log.md) and [D-246](90-decision-log.md) close the last item the inventory
+raised: [D-117](90-decision-log.md) called `set` and `table` *container renderers all along*, while
+the exported tree holds them as **parked nodes with no renderer** — which looked like a
+contradiction and **was the clean-up itself**.
+
+The owner: *those are legacy baggage. We have the **compact horizontal** and **compact vertical**
+renderers — that corresponds roughly to `set`: a node with several attributes that I want shown as
+compactly as possible together. And `table` is a renderer too: it presents in table form, one row
+under another, every row the same columns.* Then, on being shown the split: *let us throw set and
+table out.* ⚠️ *Read as retiring the **constructs**, not the renderers.*
+
+| Was one node | Is now two things that already exist |
+|---|---|
+| `set` | a **composed type** ([D-220](90-decision-log.md)), **drawn** compact horizontal or compact vertical |
+| `table` | **several records of one type**, **drawn** by the table renderer |
+
+⚠️ **A naming note, so a `grep` finds both.** Earlier passages of this document — and
+[R46](#owner-statement--2026-08-22-ninth-pass-two-worked-examples) itself — say *compact row* and
+*compact column*. [D-245](90-decision-log.md) writes them as **compact horizontal** and **compact
+vertical**. Same two renderers; the owner statement is left as he said it.
+
+**Consequences to carry through** ([D-246](90-decision-log.md)): the old `Complex Datatypes` branch
+loses two of its three inhabitants; the legacy setting *Show set child properties* dies with them;
+and the standard tree, when harvested, brings neither across. **Nothing has to be built to replace
+them** — which is the test a retirement has to pass, and this one passes it.
 
 ## Owner statement — 2026-08-22, tenth pass: stopping the descent
 
@@ -1601,6 +2319,57 @@ to see it*. The shared attributes are what a comparison is **for**; letting the 
 interleave would bury exactly the rows someone came to read. A disclosure keeps them available
 without letting them compete.
 
+✔ **And whether that walk is a renderer is answered:** it is **not** — it is *selection*, which is
+the block's job ([D-234](90-decision-log.md)). See
+[R76e](#r76e--the-block-selects-and-hides-the-renderer-draws).
+
+### R58c — a medium is drawn along two axes: kind detected, degree configured
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    K["kind · detected MIME family"] --> R[one media renderer]
+    D["degree · a setting at the use site"] --> R
+    R --> O["symbol · link · thumbnail · full · embedded"]
+```
+
+[D-229](90-decision-log.md) makes a medium an **ordinary type under `Model`** — attributes
+attachment id, URL, source, licence — rather than a special construct, and gives it one more
+property that matters here: **it knows its own MIME type**, detected at the boundary because
+WordPress already knows it, and **stored**, or every display would have to touch the file. The
+renderer therefore **dispatches on the MIME family to a registered presentation**, so supporting a
+new kind of file means **registering one more**, never extending a switch.
+
+[D-230](90-decision-log.md) adds the second axis, from the owner: *sometimes in a table you do not
+want the image rendered at all — a preview only, or just a link, or a schematic file-type symbol
+with a link. And elsewhere I really do want the whole image, or the PDF embedded.*
+
+| Axis | Comes from | Values |
+|---|---|---|
+| **kind** | the detected MIME type ([D-229](90-decision-log.md)) | image · source code · document · … |
+| **degree of presence** | a **setting at the use site** | symbol · link · thumbnail · full · embedded |
+
+⚠️ **They must not both be renderers.** Five degrees across six kinds would be thirty renderers for
+one thing, and each new file kind would multiply again. So the media renderer takes **two inputs**:
+the kind it dispatches on, the degree it is told. The owner's front-end case — *list all the
+datasheets belonging to a parts list, as a link list or straight as PDFs* — is then a block
+collecting the media of the parts at degree *link* or *embedded*. Free, and nothing new is built.
+
+⚠️ *This is also the first concrete instance of what [OQ-070](91-open-questions.md) feared: in a
+list of media the renderer genuinely differs from row to row* — which is exactly the case
+[D-200](90-decision-log.md)/[D-203](90-decision-log.md) deferred with the *fail loudly* requirement
+attached ([R41a](#r41a--the-descent-has-two-inputs-and-there-is-only-one-mode)).
+
 ## Owner statement — 2026-08-22, fourteenth pass: the chooser
 
 | # | Statement |
@@ -1668,8 +2437,30 @@ renderers. Re-checking, **the rule decides it fine and my two objections do not 
 
 So this is an ordinary application of D-018 — completely different presentation, separate
 renderers — and the *decided on use rather than on the rule* note is withdrawn. The rule was
-sound; I had talked myself out of it. **Inline remains the default**, now as the default
-*renderer* rather than the default *option*.
+sound; I had talked myself out of it.
+
+### R62a — and the default is the dialog, not inline
+
+⚠️ **This unit used to end *inline remains the default*. [D-244](90-decision-log.md) flips it.**
+Three sources had disagreed: [D-108](90-decision-log.md) said inline, the legacy settings screen
+said *Default: popup*, and the owner remembered dialog. He resolved it himself:
+
+> *In the previous project I simply left it to the user. With search, tree selection and so on we
+> kept saying the dialog is probably the better alternative, also for searching entries. So default
+> to the dialog, but give the user the chance to do it inline where it really is simple.*
+
+**Only the default moves.** The construction of [D-108](90-decision-log.md) is untouched — still
+**two separate renderers**, not one with a mode switch ([D-018](90-decision-log.md)) — and the
+choice remains a setting on the resolution chain, overridable per place.
+
+⚠️ **A clarification worth keeping, because it had got tangled in the discussion:** these two
+renderers concern **the chooser only** — whether it sits in the form or opens as a dialog. What is
+drawn **after** a node is chosen is the chosen node's own renderer, which is a separate matter
+entirely.
+
+**This also leaves [R72](#r72--inline-for-searching-popup-for-creating) intact**: *inline for
+searching, popup for creating* was always a per-place statement rather than the installation
+default, and it now agrees with the default in the half that matters most.
 
 ### R63 — list or tree is derived, not chosen
 
@@ -1755,11 +2546,24 @@ So it is a setting **at the use site**, inherited along the chain
 the chooser as **a value in the render context** ([D-168](90-decision-log.md)). The owner reached
 the same place himself: *maybe that is really an option of the renderer*.
 
-**Default is leaves only.** ⚠️ That default and [D-110](90-decision-log.md) above do not sit
-easily together: D-110 excludes only the **root** and rejects deriving *leaf = choice* precisely
-because a department with sub-departments is a valid answer, while D-181 makes *leaves only* the
-default because no case for an intermediate node came to mind. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md), not decided here.
+⚠️ **The default was written here as *leaves only*, and [D-238](90-decision-log.md) reverses it.**
+It sat badly with [D-110](90-decision-log.md) above, which excludes only the **root** and explicitly
+rejects deriving *leaf = choice*, because a department with sub-departments is a valid answer.
+[D-181](90-decision-log.md) had made *leaves only* the default anyway, on the ground that no case
+for an intermediate node came to mind — ⚠️ *the old rule reused without re-reading why it said what
+it said, which is exactly the failure
+[98 Documentation style](98-documentation-style.md#simplifying-is-the-dangerous-step) warns about.*
+
+| | |
+|---|---|
+| **What stands from [D-181](90-decision-log.md)** | selectability belongs to the **use site**, not to the node — the real finding, and the reason the legacy `hide` control went unused |
+| **What is withdrawn** | the default. It is now **everything but the branch root**, and whoever needs leaves enforces it where they need it |
+
+**The owner's own example settles it:** entering `10 kΩ` may leave both a resistor and a resistor
+bridge in play — the data do not support the decision, so an intermediate node is the honest answer,
+not a gate to be forced past. That case exists because the chooser also works **value-first**
+([D-239](90-decision-log.md)): entering a value narrows the candidate **types**, the same chooser and
+the same search running across types instead of inside one already chosen.
 
 ### Inline or popup — the earlier reasoning, now superseded
 
@@ -1783,6 +2587,13 @@ D-034 settles it on a practical criterion instead:
 
 The rule was not able to decide it; the use was. Recorded rather than smoothed over, because the
 next borderline case will be decided the same way and someone should know that.
+
+⚠️ **Both halves of this section are now historical.** [D-108](90-decision-log.md) replaced the
+setting with two renderers, and [D-244](90-decision-log.md) then replaced *inline* with *the dialog*
+as the default — see [R62a](#r62a--and-the-default-is-the-dialog-not-inline). The section is kept
+because the reasoning it records is the reasoning that was later overturned, and
+[D-222](90-decision-log.md) is explicit that a superseded position keeps its argument rather than
+disappearing.
 
 ## Owner statement — 2026-08-22, sixteenth pass: the multi-step input
 
@@ -1872,10 +2683,46 @@ common case; the declaration exists for types where it genuinely matters, such a
 number. Agreed as [D-112](90-decision-log.md), which also fixes **hard identity as the `id`**
 ([D-055](90-decision-log.md)) and leaves this as **soft** identity that only ever warns.
 
-⚠️ **One thing D-112 and [D-167](90-decision-log.md) do not settle between them:** the search
-column is written **on save**, from *the fields that are shown* — but shown fields are per **use
-site**, and at save time there is no use site. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md).
+✔ **What D-112 and [D-167](90-decision-log.md) did not settle between them is now settled** by
+[D-237](90-decision-log.md) — see [R71a](#r71a--identifying-fields-belong-to-the-type) below.
+
+### R71a — identifying fields belong to the type
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    T["type · identifying fields"] --> S["the search column, written on save"]
+    U["use site · which columns this table shows"] -.->|no effect on search| S
+```
+
+[D-167](90-decision-log.md) writes the search column **on save**, and at save time there is no use
+site — a record does not know which lists it will later appear in. ⚠️ **Two meanings of *shown* had
+been conflated**, and the owner's own example separated them: *I look for a part, type `1 kΩ` and
+`10 %`, and get the part — or I do not find it and have to enter it. I confirm that; there is no
+saving involved. Saving happens later, with the row.*
+
+| Meaning | Belongs to | Effect on search |
+|---|---|---|
+| **which fields let a person recognise this thing** | the **type** | this is what the search column is built from |
+| **which columns this one table displays** | the **use site** | none at all |
+
+So [D-112](90-decision-log.md) was about the **chooser**, and a statement about the type does not
+change because some table shows two columns fewer — which is precisely what makes it available at
+save time.
+
+⚠️ **Worth keeping:** the find-before-create step of [R67](#r67-is-the-new-part--and-the-rule-should-not-rely-on-discipline)
+is a **confirmation**, not a save. It is part of putting a value into a reference field, and no
+record is written by it.
 
 ### R67a — and where a field is `unique`, the warning becomes a refusal
 
@@ -1938,9 +2785,11 @@ flowchart TD
 
 [D-167](90-decision-log.md) settles three things, and they are separate.
 
-**The structure is a normalised column per record**, written on save from the fields that are
-shown ([D-112](90-decision-log.md)) — lowercased, spacing and punctuation stripped, so `bc547b`
-finds `BC 547 B`. ⚠️ **One normalisation function, shared with duplicate detection.** Two rules
+**The structure is a normalised column per record**, written on save from the **type's identifying
+fields** ([D-112](90-decision-log.md), placed by [D-237](90-decision-log.md)) — lowercased, spacing
+and punctuation stripped, so `bc547b` finds `BC 547 B`. ⚠️ *Not from the columns a particular table
+happens to show: those belong to the use site and do not exist at save time
+([R71a](#r71a--identifying-fields-belong-to-the-type)).* ⚠️ **One normalisation function, shared with duplicate detection.** Two rules
 that *almost* agree are the kind of fault nobody finds until a user swears the part is not there
 and it is.
 
@@ -2123,17 +2972,217 @@ must never share a word. **Rules for a report are stored** — *this is how the 
 which makes a report a configured thing rather than a written one, consistent with everything
 else here. Reports are placed in **Release 2** ([D-203](90-decision-log.md)).
 
+### R76c — a report is selection + grouping + expression
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    S["selection · which records"] --> G["grouping · by what"]
+    G --> E["expression · the arithmetic per group"]
+```
+
+[D-243](90-decision-log.md) supplies the mechanism [D-202](90-decision-log.md) said was missing, and
+the point of it is what it **refuses** to add. Expressions address their operands by **relative edge
+paths** ([D-045](90-decision-log.md)) — *walk this edge, then that one* — which reaches everything
+hanging off a node but cannot express *turnover per supplier per month*, where the things joined
+have no edge between them.
+
+⚠️ **The answer is not a second, more powerful language.** A report **picks a set, groups it, and
+the arithmetic per group is an ordinary expression, unchanged.** The owner: *I would see the report
+as a wider bracket that uses the same tools we already have.*
+
+> **Same separation as [D-234](90-decision-log.md), one level up:** the block selects and the
+> renderer draws; the report selects and groups, and the expression computes.
+
+**The honest price:** reports will not do everything SQL does. In exchange nobody has to learn a
+second language — and since reports are Release 2 ([D-203](90-decision-log.md)), what is decided
+here is only **where they may not grow**.
+
+**And a frozen report is not a report.** [D-242](90-decision-log.md): a report is **live** and
+recomputes on every call; a **printout** (`Ausdruck`) keeps what stood in it then. An invoice is a
+printout of a report, which is why later price corrections must not reach it. It is a document, not
+a window.
+
+## The three surfaces
+
+### R76d — three surfaces, three jobs
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    A["admin · what a thing is"] --> M["our tables"]
+    B["block · what this page shows"] --> P["the post"]
+    F["front end · draws what the block names"] -.->|nothing of its own| M
+```
+
+[D-253](90-decision-log.md) draws the line [R8](#r8--one-renderer-three-levels) named but never
+placed. The owner was unsure where it ran — *I am not so confident about the boundary between front
+end, Gutenberg and the settings page* — and his own description drew it:
+
+| Surface | Job | Stored in |
+|---|---|---|
+| **admin** | what a thing **is** — attributes, types, which renderers, defaults | **our tables** |
+| **block** | what this page **shows** — which node, which record, which fields are visible | **the post**, WordPress-standard |
+| **front end** | nothing of its own; it draws what the block names, with renderers resolved from the model | — |
+
+⚠️ **And this withdrew the last link [D-226](90-decision-log.md) had added to the resolution chain.**
+I had extended it by *occurrence in a block* so that a value and its colour rings could stand side by
+side; the owner did not recognise the need — *the data already have a renderer, you would just fetch
+it from the registry in the front end too* — and he is right, because
+[D-226](90-decision-log.md) itself already made *value, plus colour rings* **one setting at the use
+site** ([R36c](#r36c--invertibility-decides-only-whether-a-form-can-be-written-into)). So the chain
+ends at the use site, and listing one attribute twice in a block is dropped with it: two occurrences
+would now render identically.
+
+⚠️ *That also makes the storage question harmless.* Visibility is a statement about **this page**,
+so losing it when a page is copied is annoying and breaks nothing — where a renderer choice living
+in post content could have gone missing from the model.
+
+### R76e — the block selects and hides; the renderer draws
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    B["block · which node, which attributes, what order, how many"] --> R["renderer · how it is drawn"]
+```
+
+[D-234](90-decision-log.md) answers the inventory's worry that blocks were carrying drawing logic.
+The owner did not recognise the objection — *they are consumers and they display data; whether
+everything is shown or not I decide in the block* — and his framing **is** the resolution: choosing
+the node, the attributes, the order and how many occurrences is **selection**, not drawing.
+
+So [D-092](90-decision-log.md) stands untouched — *a node renderer renders exactly one node* —
+because **a block is not a renderer at all, but a configuration.** ✔ The **comparison block**
+([D-207](90-decision-log.md), [R58b](#r58b--a-comparison-block-resolves-to-the-nearest-common-ancestor))
+fits the same way: walking up to the nearest common ancestor answers *which attributes are
+comparable*, which is selection again. The **list block** ([D-208](90-decision-log.md)) restricting
+attributes is selection too.
+
+**Hiding is the block's own verb, and it works one level coarser than assumed**
+([D-255](90-decision-log.md)): not only single fields but **whole parts** — leave the form out and
+show only the positions, or show one of two multiplicities and not the other.
+
+### R76f — blocks render on the server, on every request, including in the editor
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    E[editor] -->|asks| S["the server renders"]
+    F[front end] -->|asks| S
+    X["HTML frozen at save time"] -.->|not possible here| S
+```
+
+[D-254](90-decision-log.md). Gutenberg lets a block either write finished HTML into the post at save
+time or render dynamically on every request. **Only the second is possible here**, or a page would
+show last year's price because it was frozen when the page was saved.
+
+**And the editor must ask the server too**, rather than drawing in JavaScript: [D-021](90-decision-log.md)
+puts renderers in PHP, and [D-231](90-decision-log.md) requires the preview to show what the front
+end will show ([R21a](#r21a--the-preview-shows-the-front-end-and-may-only-bound-the-size)).
+
+⚠️ **The alternative — writing every renderer twice, once in PHP and once in JavaScript — is exactly
+how two renderings come to disagree**, and no amount of discipline keeps them together.
+
+### R76g — a block may override presentation settings, page-locally
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    M["model · the presentation, seen in the preview"] --> B["block · adjusts for this one page"]
+    B -.->|lives in the post's HTML| Q["nothing can query it"]
+```
+
+[D-257](90-decision-log.md) reopens part of [D-253](90-decision-log.md), deliberately. The owner:
+*the block has the possibility of overriding other properties, which is more of a special case — and
+what is permissible we can define. Hiding matters to me in any case, but I do not see why we should
+forbid something that gives us more flexibility later.*
+
+**His argument is the stronger one:** the presentation is fixed in the back end and seen in the
+preview ([D-231](90-decision-log.md)); the block is where one adjusts **for this one page**, and
+forbidding it means changing the **model** instead — which hits every other page.
+
+⚠️ **The cost is stated rather than hidden.** The override lives in the post's HTML, where **nothing
+can query it**. *Where is this attribute shown as a colour code?* becomes unanswerable, and the
+conflict resolver ([D-054](90-decision-log.md)) will not find it when the model changes. So it is
+allowed **and labelled page-local** — a deliberate choice rather than a trap.
+
+**Open:** which settings may be overridden. **Visibility is certain**; the rest is a list to be
+drawn up when the block is built, on the owner's own instruction ([D-257](90-decision-log.md)).
+
+**And who supplies the data is decided for now** ([D-258](90-decision-log.md)): **the editor does.**
+Entry by visitors is foreseen and has no use case, and it needs no new concept — *editable* is a
+circumstance of a renderer ([D-018](90-decision-log.md)), so the mechanism exists and stays unused.
+⚠️ *Who may, what is checked, how abuse is prevented are deliberately **not** decided with it; those
+belong to the first real use case.*
+
 ## What belongs here
 
 - The renderer interface and its contract.
-- The registry: how renderers are registered and looked up — by node type **and purpose**
-  ([D-168](90-decision-log.md)).
-- Fallback behaviour when no renderer matches, including the purpose fallback.
+- The registry: how renderers are registered and looked up — **by node type**, with purpose
+  travelling in the context and declared through `supports()` ([D-217](90-decision-log.md)).
+- The node's **ordered list** of renderers: one mandatory, further ones appended
+  ([D-236](90-decision-log.md)).
+- What happens when a node has no renderer at all — a **fault indicator**, not a floor
+  ([D-217](90-decision-log.md)).
 - Single node vs. set of nodes; list/table vs. form.
 - Display, edit and search as the three purposes.
-- **Converter**: what it may change on the way out, and whether it also runs on the way in.
+- **Converter**: what it may change on the way out, and whether it also runs on the way in;
+  several eligible, exactly one in effect ([D-219](90-decision-log.md)).
 - **Validator**: the check contract, plus the *offer a correction* capability (V9).
-- **Reports** as prepared output, once the mechanism [D-202](90-decision-log.md) calls for exists.
+- **Reports** as prepared output: selection + grouping + expression ([D-243](90-decision-log.md)),
+  in Release 2.
+- The **three surfaces** and what each owns ([D-253](90-decision-log.md)), including that blocks
+  render server-side on every request ([D-254](90-decision-log.md)).
 
 ## What does NOT belong here
 
@@ -2154,7 +3203,9 @@ else here. Reports are placed in **Release 2** ([D-203](90-decision-log.md)).
 ## Inventory — the renderers named so far
 
 Collected 2026-08-23 by reading every document under `NewConcept/`, all entries of
-[the decision log](90-decision-log.md) up to and including [D-218](90-decision-log.md), and — added at the owner's request, because that is where
+[the decision log](90-decision-log.md) up to and including [D-258](90-decision-log.md)
+*(first built to [D-218](90-decision-log.md), brought forward in the second catch-up pass)*,
+and — added at the owner's request, because that is where
 the per-type work actually was — the legacy material: [`ARCHITECTURE.md`](../legacy/ARCHITECTURE.md),
 [`MODEL-CATALOG.md`](../legacy/MODEL-CATALOG.md),
 [`DEVELOPER-ATTRIBUTE-MODEL.md`](../legacy/DEVELOPER-ATTRIBUTE-MODEL.md), the `plans/` sheets, and
@@ -2183,11 +3234,16 @@ config:
 ---
 flowchart TD
     A[the renderers] --> B["per data type<br/>int · text · media · unit"]
-    A --> C["containers<br/>table · form · compact"]
+    A --> C["containers<br/>table · form · compact h/v"]
     A --> D["how far to descend<br/>reference · summary · expand"]
-    A --> E["input<br/>chooser inline · chooser popup"]
-    A --> F["condition<br/>the search renderer"]
+    A --> E["input<br/>chooser dialog · chooser inline"]
+    A --> F["appended<br/>traffic light · stars · rings"]
 ```
+
+⚠️ **The fifth branch changed in the second pass.** It used to read *condition · the search
+renderer*; [D-217](90-decision-log.md) withdrew the search renderer as a separate thing — search is
+a **purpose** the node's own renderer answers for — and [D-236](90-decision-log.md) put something
+genuinely new in its place: renderers a node **appends** to its mandatory one.
 
 ### The table
 
@@ -2197,29 +3253,33 @@ flowchart TD
 | **Summary renderer** | a few chosen attributes of the target — the parts-list row | display | aggregation edges that want more than a link; its chosen columns double as the search fields ([D-112](90-decision-log.md)) | [D-106](90-decision-log.md) | decided |
 | **Expand renderer** | the whole target, unfolded inline | display | the default for **composition** | [D-105](90-decision-log.md), [D-106](90-decision-log.md) | decided |
 | **Plain field · spinner · slider** | one scalar value, three ways | display · edit | integer and double nodes, which carry `min`, `max`, `step` ([R17](#owner-statement--2026-08-22-third-pass-the-registry)) | [D-018](90-decision-log.md), [R15](#r15--variant-and-circumstance-are-different-axes) | decided — **three** renderers, not one with three modes |
-| **Table renderer** | the frame of a multi-valued edge; every cell goes back to the registry | display · edit | anything with structure; a model may declare it on **itself** (`Bauteilliste`) | [D-098](90-decision-log.md), [D-117](90-decision-log.md), [R46](#r46r47--a-container-renderer-is-the-same-recursion) | decided |
+| **Table renderer** | the frame of a multi-valued edge; every cell goes back to the registry | display · edit | anything with structure; a model may declare it on **itself** (`Bauteilliste`); it is also what the legacy `table` **type** dissolves into ([D-246](90-decision-log.md)) | [D-098](90-decision-log.md), [D-117](90-decision-log.md), [D-245](90-decision-log.md), [R46](#r46r47--a-container-renderer-is-the-same-recursion) | decided |
 | **Form renderer** | a node's attributes stacked as a form | display · edit | same | [D-098](90-decision-log.md), [D-091](90-decision-log.md) | decided — `renderForm` stopped being a method and came back as a renderer |
-| **Compact row renderer** | one dense line; *with label / without label* is a **setting**, not a second renderer | display · edit | same | [D-098](90-decision-log.md), [D-018](90-decision-log.md) | decided |
-| **Compact column renderer** | one dense column | display · edit | same | [D-098](90-decision-log.md) | decided |
-| **Inline chooser** | the branch as a list (one level) or a tree (several), inline in the form | edit | every place a node or a record is picked — one chooser in the product ([D-197](90-decision-log.md)) | [D-107](90-decision-log.md), [D-108](90-decision-log.md), [R62](#owner-statement--2026-08-22-fifteenth-pass-two-chooser-renderers) | decided — **the default** |
-| **Popup chooser** | a button plus a popup; the markup carries metadata and one generic JavaScript component supplies the behaviour | edit | places that insist on a dialogue, and creating a new record ([D-113](90-decision-log.md)) | [D-108](90-decision-log.md) | decided |
+| **Node renderer** *(= page renderer)* | a whole node: one-valued members as fields, multi-valued ones as tables beneath, small fields compactly on one line; **whole parts** may be left out | display · edit | any node — and a **page**, which is a rendered node | [D-256](90-decision-log.md), [D-255](90-decision-log.md), [D-233](90-decision-log.md), [R20c](#r20c--the-node-renderer-and-the-page-renderer-are-one-renderer) | decided — [D-256](90-decision-log.md) corrects [D-255](90-decision-log.md)'s placement of the rule and rules out a third term |
+| **Composite renderer** | **one composed value** — one control per member, each drawn by the member's own renderer | display · edit | every composed type, generically: `Widerstandswert`, dimensions, addresses | [D-220](90-decision-log.md), [R35c](#r35c--the-composed-type-is-the-unit-of-rendering) | decided — the *generic* stage needs no code per type |
+| **Compact horizontal renderer** | one dense line; *with label / without label* is a **setting**, not a second renderer | display · edit | same; it is what the legacy `set` **type** dissolves into ([D-246](90-decision-log.md)) | [D-098](90-decision-log.md), [D-018](90-decision-log.md), [D-245](90-decision-log.md) | decided — named *compact row* in the first pass; [D-245](90-decision-log.md) fixes the wording |
+| **Compact vertical renderer** | the same, as one dense column | display · edit | same | [D-098](90-decision-log.md), [D-245](90-decision-log.md) | decided |
+| **Dialog chooser** | a button plus a dialog; the markup carries metadata and one generic JavaScript component supplies the behaviour | edit | every place a node or a record is picked — one chooser in the product ([D-197](90-decision-log.md)); and creating a new record ([D-113](90-decision-log.md)) | [D-108](90-decision-log.md), [D-244](90-decision-log.md) | decided — **the default** since [D-244](90-decision-log.md) |
+| **Inline chooser** | the branch as a list (one level) or a tree (several), inline in the form | edit | places where the choice really is simple | [D-107](90-decision-log.md), [D-108](90-decision-log.md), [D-244](90-decision-log.md), [R62a](#r62a--and-the-default-is-the-dialog-not-inline) | decided — ⚠️ **no longer the default.** [D-244](90-decision-log.md) flips [D-108](90-decision-log.md); the construction (two renderers, not a mode switch) is untouched |
 | **Search renderer** | an operator plus an operand — a **condition**, not a value | search | ~~one per type~~ — under [D-217](90-decision-log.md) it is the node's **own** renderer, asked under the search purpose, which it declares in `supports()` | [D-168](90-decision-log.md), [R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them) | ⚠️ **named and then withdrawn as a separate renderer.** [D-217](90-decision-log.md) supersedes the registry-key half of [D-168](90-decision-log.md): one node, one renderer. The **search purpose survives in full**; the second renderer does not |
 | **Last-resort renderer** | whatever is drawn when a node has no renderer at all | display · edit · search | — | [D-091](90-decision-log.md), [D-217](90-decision-log.md) | decided — and [D-217](90-decision-log.md) is explicit that it is a **fault indicator, not a floor**: a node without a renderer is an error and must look like one |
 | **Colour-code renderer** | a resistance value as coloured bands | display | `Widerstandswert` — a composed type of value + tolerance, which is what keeps this an *attribute* renderer | [D-150](90-decision-log.md), [D-149](90-decision-log.md) | decided — staged **first**, because the value is in the display |
 | **View export renderer** | CSV, PDF, an interactive parts list | display | any subtree being exported for reading | [D-058](90-decision-log.md), [R76a](#r76a--a-view-export-is-a-renderer-a-backup-export-is-not) | decided |
-| **Report** | prepared output that leaves the building; it **computes at output time** and it **joins** | | | [D-202](90-decision-log.md), [D-201](90-decision-log.md) | decided that it is renderer-side; ⚠️ the **mechanism is undecided** and it sits in Release 2 ([D-203](90-decision-log.md)) |
-| **Tree renderer** | one row of the modelling tree | display · edit | every node, in the admin tree | [R18](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview) | owner statement, **no decision id** |
-| **Detail-view frame** | the frame that holds the attributes of the selected node | edit | the modelling screen | [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview), [D-190](90-decision-log.md) | ⚠️ [D-190](90-decision-log.md) decides the **contents** (attributes under the edit purpose) and [D-091](90-decision-log.md) retires `IPageRendere`; **whether the frame itself is a renderer is not stated** |
-| **Multi-step renderer** | pick a type, then the row of that type appears, with *search existing* beside *enter new* | edit | targets that may not exist yet — aggregation as much as composition ([D-197](90-decision-log.md)) | [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input), [D-111](90-decision-log.md) | named by the owner; ⚠️ [D-111](90-decision-log.md) **dissolves it** into chooser + ordinary editor |
-| **Two-notation renderer** | one stored value with two coupled controls — a hex field beside a colour picker, a text field beside a calendar | display · edit | any value with a second notation carrying nothing the first lacks | [D-149](90-decision-log.md) | unnamed in the concept |
-| **Media renderer** | a medium: its location, the local copy, and the source attribution shown **with** it; a missing file degrades to its link | display · edit | the media type | [D-211](90-decision-log.md) | unnamed in the concept |
+| **Report** | prepared output that leaves the building; it **computes at output time** and it **joins** | display | a selected set of records, grouped | [D-202](90-decision-log.md), [D-201](90-decision-log.md), [D-243](90-decision-log.md), [R76c](#r76c--a-report-is-selection--grouping--expression) | ✔ **the mechanism is now named** — **selection + grouping + expression** ([D-243](90-decision-log.md)); the expression language does **not** grow. Still Release 2 ([D-203](90-decision-log.md)) |
+| **Printout** (`Ausdruck`) | a **frozen** rendering of a report, kept as a document — an invoice | display | any report, at the moment it is produced | [D-242](90-decision-log.md) | decided that it is a distinct thing from a report; ⚠️ a report is **live** and recomputes, a printout does not, which is why later price corrections must not reach an invoice |
+| **Tree renderer** | one row of the modelling tree — **including the node's icon where one is set** | display · edit | every node, in the admin tree | [R18](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview), [D-251](90-decision-log.md), [R18a](#r18a--the-tree-row-draws-the-nodes-icon) | ⚠️ still no decision that the tree row **is** a renderer — but [D-251](90-decision-log.md) speaks of *the node renderer in the tree* and decides what it draws |
+| **Detail-view frame** | the frame that holds the attributes of the selected node | edit | the modelling screen | [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview), [D-190](90-decision-log.md), [D-233](90-decision-log.md) | ✔ **settled.** [D-233](90-decision-log.md): [D-091](90-decision-log.md) rejected an **interface**, not the idea — a page renderer is an ordinary renderer whose subject is a node standing for the page, and it is the **same renderer** as the node renderer ([D-256](90-decision-log.md)) |
+| **Multi-step renderer** | pick a type, then the row of that type appears, with *search existing* beside *enter new* | edit | targets that may not exist yet — aggregation as much as composition ([D-197](90-decision-log.md)) | [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input), [D-111](90-decision-log.md), [D-244](90-decision-log.md) | ✔ **not a renderer.** [D-111](90-decision-log.md) dissolves it into chooser + ordinary editor, and [D-244](90-decision-log.md) confirms that reading — only the chooser's default moved, and the legacy `dialog`/`inline` mode option stays refused |
+| **Two-notation renderer** | one stored value with two coupled controls — a hex field beside a colour picker, a text field beside a calendar | display · edit | any value with a second notation carrying nothing the first lacks | [D-149](90-decision-log.md), [D-219](90-decision-log.md), [D-226](90-decision-log.md) | unnamed in the concept — and [D-219](90-decision-log.md) generalises it: mapping is the **converter**, form is the **renderer**. ⚠️ Whether the second form **replaces** the value or stands **beside** it is a free choice at the use site ([D-226](90-decision-log.md)), not a consequence of invertibility |
+| **Media renderer** | a medium along **two axes**: the **kind** it dispatches on (detected MIME family) and the **degree of presence** it is told — symbol · link · thumbnail · full · embedded; source attribution shown **with** it; a missing file degrades to its link | display · edit | `Medium`, an ordinary type under `Model` | [D-229](90-decision-log.md), [D-230](90-decision-log.md), [D-211](90-decision-log.md), [R58c](#r58c--a-medium-is-drawn-along-two-axes-kind-detected-degree-configured) | **decided** — no longer unnamed. ⚠️ Kind and degree must **not** both be renderers, or five degrees × six kinds is thirty classes for one thing |
+| **Appended renderers** | a second (third, fourth) form drawn **beside** the value — a traffic light, stars, colour rings, a caption | display · edit | any node whose list holds more than the mandatory renderer | [D-236](90-decision-log.md), [R13a](#r13a--a-node-carries-an-ordered-list-of-renderers-one-of-them-mandatory) | decided as a **mechanism** — an ordered list, not a class. ⚠️ Replaces [D-224](90-decision-log.md)'s decorator as the configuration concept |
 | **Unit-value renderer** | value + prefix + unit symbol, the symbol resolved as a **label in a role** rather than stored | display · edit | unit values | [D-039](90-decision-log.md), [D-049](90-decision-log.md), [D-051](90-decision-log.md) | unnamed in the concept |
 | **Money renderer** | an amount rounded to its currency's minor unit, with the currency, and a frozen rate where one exists | display · edit | currency values | [D-073](90-decision-log.md), [D-057](90-decision-log.md), [D-064](90-decision-log.md) | unnamed in the concept |
 | **Boolean switch** | a boolean as a switch, **collected** with the others into a wrapping, column-aligned row | display · edit | boolean nodes | [R75](#owner-statement--2026-08-22-seventeenth-pass-the-order-in-which-a-node-lays-itself-out), [D-118](90-decision-log.md) | unnamed in the concept — [D-118](90-decision-log.md) settles the **layout**, not a renderer |
 | **Computed-value marking** | *computed* · *not computable* (`—`, with a reason) · *estimated* (a figure, marked); at an aggregate additionally *how many positions are missing* | display | every value a calculation produces | [D-147](90-decision-log.md), [D-104](90-decision-log.md) | **not a renderer of its own** — a behaviour every renderer that draws a number owes |
-| **Front-end node block** | one node on a page; a reference joins it to the next block | display | any node | [D-206](90-decision-log.md), [R58a](#r58a--on-the-front-end-this-is-what-joins-the-pages-together) | decided as a **block**; what it draws inside is the ordinary renderer |
-| **Comparison block** | subjects side by side under their nearest common ancestor; what is not shared moves **below** and may sit behind a disclosure | display | several records of one inheritance line | [D-207](90-decision-log.md), [R58b](#r58b--a-comparison-block-resolves-to-the-nearest-common-ancestor) | decided as a **block**; ⚠️ whether the ancestor walk and the ordering are a renderer is not stated |
-| **List block** | the records of one node, restricted to chosen attributes | display | any node that has records | [D-208](90-decision-log.md) | decided as a **block**; each cell is the ordinary renderer under the display purpose |
+| **Front-end node block** | one node on a page; a reference joins it to the next block | display | any node | [D-206](90-decision-log.md), [D-234](90-decision-log.md), [D-254](90-decision-log.md), [R58a](#r58a--on-the-front-end-this-is-what-joins-the-pages-together) | decided as a **block**, i.e. a **configuration and not a renderer** ([D-234](90-decision-log.md)); what it draws inside is the ordinary node renderer, and it renders **server-side on every request** ([D-254](90-decision-log.md)) |
+| **Comparison block** | subjects side by side under their nearest common ancestor; what is not shared moves **below** and may sit behind a disclosure | display | several records of one inheritance line | [D-207](90-decision-log.md), [D-234](90-decision-log.md), [R58b](#r58b--a-comparison-block-resolves-to-the-nearest-common-ancestor) | ✔ **settled.** The ancestor walk and the ordering are **selection**, which is the block's job — [D-234](90-decision-log.md), so [D-092](90-decision-log.md)'s *one node per node renderer* stands untouched |
+| **List block** | the records of one node, restricted to chosen attributes | display | any node that has records | [D-208](90-decision-log.md), [D-234](90-decision-log.md) | decided as a **block**; the restriction is selection, and each cell is the ordinary renderer under the display purpose |
 | `FormRenderer` | a node's attributes as a form — the legacy default | display · edit | the inherited default on almost the whole exported tree: `Fallstudie`, `Definition`, `Aggregate` + leaves, `Konstanten`, `Präfixe` + all prefix leaves, `Basiseinheiten`, `Without prefix` (`Kelvin`, `Celsius`, `Stück`), `Währung` + `Euro`/`US Dollar`/`Pound`, `Simple Datatypes`, `Complex Datatypes`, `Bauteilliste`, `Kontakt`, `Platine`, `Bauteillisten Position`, all of `Implementation` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
 | `TableRenderer` | n instances as rows | display · edit | an object layout chosen per node; no node in the export selects it | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
 | `CompactRenderer` | one instance as a dense horizontal strip | display · edit | `Eigene Datentypen` (+ `Percent`, `Toleranz`, `Bauart`, `Option`, the size leaves), `Bauformen` + all seven leaves, `Passiv` → `Widerstand` · `Kondensator` · `Spule`; and the `Präfixe` **leaves** per `ARCHITECTURE` ≈ `0.0.540` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
@@ -2265,41 +3325,61 @@ is the value actually **set on that node**, as opposed to the one inherited from
 | `quantity` | `QuantityRenderer` | — | — |
 | `quantity › Preis` | `QuantityRenderer` | — | — |
 | `Complex › Unit type` | `QuantityRenderer` | — | — |
-| `Complex › set` | **none** — falls back to the inherited `FormRenderer` | — | — |
-| `Complex › table` | **none** — falls back to the inherited `FormRenderer` | — | — |
+| `Complex › set` | **none** — falls back to the inherited `FormRenderer`; **retired as a construct**, [D-246](90-decision-log.md) | — | — |
+| `Complex › table` | **none** — falls back to the inherited `FormRenderer`; **retired as a construct**, [D-246](90-decision-log.md) | — | — |
 | `time` · `datetime` · `color` | **no node in the exported tree**, so no assignment, although `ARCHITECTURE` lists them among the simples and [harvest 02](_harvest/02-settings-page.md) shows `builtin.time` / `.datetime` / `.color` bound | — | — |
 | `node_ref` | **no node, and the binding is unbound** ([harvest 02](_harvest/02-settings-page.md)) | — | — |
 
 **Ten of the ten simple types present carry a renderer of their own.** The gaps are the types that
 were bound but never built (`time`, `datetime`, `color`, `node_ref`) and the two parked complex
-kinds (`set`, `table`), which is consistent with [D-117](90-decision-log.md) treating those two as
-container renderers rather than types — although in the exported tree they are nodes with no
-renderer at all, which is not quite the same claim. Listed for the owner in
-[`_harvest/contradictions.md`](_harvest/contradictions.md).
+kinds (`set`, `table`).
+
+✔ **The `set` / `table` question is settled, and the answer was that there was no contradiction.**
+[D-117](90-decision-log.md) had called those two *container renderers all along*, while the exported
+tree holds them as **parked nodes with no renderer** — which read as a disagreement and was in fact
+the clean-up happening. [D-245](90-decision-log.md) confirms D-117 and
+[D-246](90-decision-log.md) retires the **constructs**: the *thing* is a composed type
+([D-220](90-decision-log.md)), the *drawing* is compact horizontal, compact vertical or the table
+renderer ([R51c](#r51c--set-and-table-are-retired-as-constructs-and-three-renderers-remain)).
+
+⚠️ **One expectation the harvest must drop with them:** the old project had **not** implemented a
+set or a table renderer — it had two parked type leaves — so nothing here supports the assumption
+that a table renderer is a small job *because it already existed*.
 
 ### What the inventory shows
 
 **The decided set clusters by *what is being drawn*, not by data type — and the legacy set is its
-mirror image.** Of the renderers a decision actually names, four are containers, three are degrees
-of descent (reference · summary · expand), two are choosers, one returns a condition, and exactly
-**one** belongs to a concrete data type: the resistor colour code ([D-150](90-decision-log.md)).
-Every per-type renderer the product will obviously need — integer, text, boolean, date, media, a
-unit value, an amount of money — is either an *unnamed description* in the concept or exists only
-in `legacy/`. The old project is the other way round: fourteen of its renderers are per-type and it
-has **no** reference renderer, **no** summary renderer and **no** search renderer at all. Read
-together the two halves nearly complete each other, which is the strongest argument the harvest has
-produced for reading the old assignment sheet rather than re-deriving it.
+mirror image.** Of the renderers a decision actually names, the great majority are containers,
+degrees of descent (reference · summary · expand) and choosers; the ones tied to a concrete data
+type remain the exception — the resistor colour code ([D-150](90-decision-log.md)) and, since the
+second catch-up pass, the **media renderer** ([D-229](90-decision-log.md),
+[D-230](90-decision-log.md)). Most per-type renderers the product will obviously need — integer,
+text, boolean, date, a unit value, an amount of money — are still either an *unnamed description* in
+the concept or exist only in `legacy/`. The old project is the other way round: fourteen of its
+renderers are per-type and it has **no** reference renderer, **no** summary renderer and **no**
+search renderer at all. Read together the two halves nearly complete each other, which is the
+strongest argument the harvest has produced for reading the old assignment sheet rather than
+re-deriving it.
 
-**And four of the concept's own named renderers are ones it then took back**, which is worth seeing
-in one place: the *page renderer* of [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview)
-(retired by [D-091](90-decision-log.md), its contents settled by [D-190](90-decision-log.md)), the
-*multi-step renderer* of [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input)
-(dissolved into chooser + editor by [D-111](90-decision-log.md)), *inline versus popup as a setting*
-([D-107](90-decision-log.md), reversed into two renderers by [D-108](90-decision-log.md)), and now
-the *per-type search renderer* ([D-168](90-decision-log.md), withdrawn as a second renderer by
-[D-217](90-decision-log.md) — **one node, one renderer**, the purpose passed to it rather than keyed
-on). Three of those four were withdrawn because they would have meant **two renderers where the
-model has one thing**, which is the same mistake in three costumes.
+**The second pass changed the shape of this list in three ways**, and each is a decision reversing
+an earlier one rather than an addition:
+
+| | |
+|---|---|
+| **the search renderer is gone as a class** | [D-217](90-decision-log.md) withdrew it: search is a **purpose** the node's own renderer answers for, declared in `supports()` |
+| **a node may now name several renderers** | [D-236](90-decision-log.md) — so *appended* forms (traffic light, stars, rings) are a **list entry**, not a decorator class ([D-224](90-decision-log.md)) |
+| **the page renderer came back** | [D-233](90-decision-log.md) reads [D-091](90-decision-log.md) as rejecting an **interface**, not the idea — and [D-256](90-decision-log.md) makes it the **same** renderer as the node renderer |
+
+**So three of the concept's four self-withdrawals stand, and one is reversed.** Standing: the
+*multi-step renderer* of [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input),
+dissolved into chooser + editor by [D-111](90-decision-log.md) and confirmed by
+[D-244](90-decision-log.md); *inline versus popup as a setting* ([D-107](90-decision-log.md)),
+reversed into two renderers by [D-108](90-decision-log.md) — with the **default** then flipped to
+the dialog by [D-244](90-decision-log.md); and the *per-type search renderer*. Reversed: the *page
+renderer*, which [D-233](90-decision-log.md) restores. The three that stand were all withdrawn for
+the same reason — they would have meant **two renderers where the model has one thing** — and the
+one that came back never had that fault: it had only ever needed a second **interface**, which is a
+different mistake and a smaller one.
 
 What is conspicuously missing is on the other axis. **Search is a full purpose and not one renderer
 anywhere declares it.** After [D-217](90-decision-log.md) a type is searchable exactly when its
@@ -2307,6 +3387,13 @@ renderer says `search` in `supports()`, and no renderer in this inventory — de
 legacy — says anything of the kind: the old project had no search surface at all, and the new one
 has the mechanism with no instance. The same is true one step down: [D-168](90-decision-log.md)
 requires the **offered operators to be declared at the type**, and no type declares any yet.
+
+**And the second pass added one column this inventory does not yet have.**
+[D-240](90-decision-log.md) puts a **sample value** on every data type, so a preview is never empty.
+Unlike the search gap, this one is **not** empty on the legacy side — the sample values are exactly
+what the owner remembered out of the old project, *`int` already has the value forty-two* — but the
+per-type table below records renderer, converter and validator only, so the samples were never read
+off it. ⚠️ *A harvest row worth adding when that sheet is next opened; nothing here has read them.*
 
 ### What is NOT a renderer
 
@@ -2317,7 +3404,12 @@ quietly returns as a renderer later.
 |---|---|---|
 | The **preview** | a **caller**, which invokes render twice — once editable, once not | [D-096](90-decision-log.md), closing [OQ-034](91-open-questions.md) |
 | **List or tree** in a chooser | **derived** from the depth of the branch — not a third renderer and not a setting | [D-109](90-decision-log.md) |
-| The filter's **operator field** | what a text renderer looks like when its purpose is **search** | [D-168](90-decision-log.md), [D-167](90-decision-log.md) |
+| The filter's **operator field** | what a text renderer looks like when its purpose is **search** — the node's **own** renderer, asked under that purpose, not a second registration | [D-168](90-decision-log.md), [D-167](90-decision-log.md), [D-217](90-decision-log.md) |
+| A **Gutenberg block** | a **configuration**: which node, which record, which attributes, what order, how many — **selection, not drawing**. It renders server-side on every request, including in the editor | [D-234](90-decision-log.md), [D-254](90-decision-log.md) |
+| A **decorator** | still a renderer, but no longer a **configuration concept** — what a user configures is the node's ordered **list** | [D-236](90-decision-log.md), superseding [D-224](90-decision-log.md) |
+| **`set` and `table`** as constructs | retired: the *thing* is a composed type, the *drawing* is compact horizontal, compact vertical or the table renderer | [D-245](90-decision-log.md), [D-246](90-decision-log.md) |
+| A **type's sample value** | a **setting on the type**, not a property of any renderer — a node carries several renderers and none of them owns the value | [D-240](90-decision-log.md) |
+| The **medium's degree of presence** | an **input** to the media renderer — symbol · link · thumbnail · full · embedded — never a renderer per degree | [D-230](90-decision-log.md) |
 | **`enum`** | an attribute whose branch happens to be one level deep | [D-109](90-decision-log.md), [D-117](90-decision-log.md) |
 | The **capacitor code**, the traffic light, the AWG table | **converters** — a few kinds parameterised by data. The capacitor is staged as a converter precisely because its value is in the *input* | [D-148](90-decision-log.md), [D-150](90-decision-log.md) |
 | A **backup export** | not a renderer: it must round-trip and writes both the id and the plain text | [D-058](90-decision-log.md) |

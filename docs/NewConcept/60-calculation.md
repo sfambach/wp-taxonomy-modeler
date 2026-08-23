@@ -396,6 +396,43 @@ figure travels onward as if it were complete. Three distinguishable states at a 
 | **not computable** | `—`, with a reason |
 | **estimated** | the figure, marked as an estimate |
 
+## K6b — a report is a wider bracket, not a second language
+
+```mermaid
+flowchart LR
+  R["Report"] --> A["waehlt eine Menge"]
+  A --> G["gruppiert"]
+  G --> F["Formel je Gruppe"]
+```
+
+Expressions address their operands by **relative edge paths** ([D-045](90-decision-log.md)) — *walk
+this edge, then that one* — which reaches everything hanging off a node. *Turnover per supplier per
+month* is not reachable that way: the things being joined have **no edge between them**.
+
+**The answer is not a more powerful expression language** ([D-243](90-decision-log.md)). A report is
+**selection + grouping + expression**, and the arithmetic per group is an ordinary expression,
+unchanged. Same separation as [D-234](90-decision-log.md) one level up: the block selects and the
+renderer draws; the report selects and groups, and the expression computes.
+
+**The honest price:** reports will not do everything SQL does. In exchange nobody has to learn a
+second language, and since reports are Release 2 ([D-203](90-decision-log.md)) what is settled here
+is only **where they may not grow**.
+
+## K6c — an `Ausdruck` is a frozen report
+
+⚠️ **A German word collision worth keeping**, because it produced a real misunderstanding
+([D-242](90-decision-log.md)): *Ausdruck* means **printout**, not *expression*. In German the word
+for an expression is **Formel**.
+
+| | | |
+|---|---|---|
+| **Report** | live — recomputes on every call | a window |
+| **Printout** · *Ausdruck* | **frozen** — what stood in it then stays | a document |
+
+An **invoice is not a report but a printout of one**, which is why later price corrections must not
+reach it. Same distinction as [D-143](90-decision-log.md)'s frozen computed value, arriving from a
+different direction.
+
 ## Backward aggregates — reaching into another model
 
 | # | Statement (owner, 2026-08-22) |

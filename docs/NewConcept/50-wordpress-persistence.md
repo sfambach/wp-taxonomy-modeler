@@ -618,10 +618,10 @@ since a node has no multiplicity but a use of it does. That is about *where a ke
 about a second mechanism. Multiplicity still inherits and is still overridable: a subtype may
 narrow `0..1` to `1`.
 
-**Open:** [D-133](90-decision-log.md) later made multiplicity decide **where a value is stored**, and
-[D-134](90-decision-log.md) made a change across the `1` / `1..*` boundary a storage migration.
-Whether the **base** multiplicity or the **resolved** one decides the storage is not settled — see
-[`_harvest/contradictions.md`](_harvest/contradictions.md).
+**Settled since:** the question of whether the **base** multiplicity or the **resolved** one
+decides storage **dissolved** — [D-232](90-decision-log.md) takes multiplicity out of the storage
+rule entirely and lets the **branch** decide (see [P13d](#p13d--the-branch-decides-storage-not-the-multiplicity)).
+Multiplicity still inherits and is still overridable; it simply no longer moves anything.
 
 ### OQ-039 answered — the installation is the root of the walk
 
@@ -708,10 +708,13 @@ would disagree — a multiplicity above 1 set on a **data type** — the resolut
 [D-136](90-decision-log.md)'s automatic creation of a node under `Compositions` **inheriting from**
 the data type, so the shared type is untouched and other uses notice nothing.
 
-### Where a value is stored — the kind and the multiplicity decide
+### Where a value is stored — superseded by the branch rule
 
-> Superseded a first draft which made **every** composed value a record of its own. The owner
-> rejected it: *a price is not a record.* See [D-133](90-decision-log.md).
+> ⚠️ **Two supersessions, in order.** A first draft made **every** composed value a record of its
+> own; the owner rejected it — *a price is not a record* — and [D-133](90-decision-log.md) replaced it
+> with a rule on kind and multiplicity. That rule is itself superseded by
+> [D-232](90-decision-log.md): **the branch decides**, and multiplicity plays no part. What follows
+> below is kept because the reasoning is still instructive, not because it is current.
 
 **The rule uses only what already exists** — the relation kind ([C12/C13](10-domain-core.md)) and
 the multiplicity:
@@ -764,11 +767,11 @@ wherever it sits, while adding `path = [#94]` narrows it to one particular attri
 
 ### The honest cost
 
-**Changing a multiplicity from 1 to `1..*` becomes a storage migration** — flattened values must
-become records. That is real, and it is now *honest* rather than arbitrary: the change alters what
-the thing **is**, from a property to a list of things, and [D-054](90-decision-log.md)'s conflict
-resolver exists for exactly such changes.
-
+**Changing a multiplicity from 1 to `1..*` used to be a storage migration** — flattened values
+becoming records. ⚠️ **For primitives that is gone** ([D-232](90-decision-log.md)): only an index
+joins the path. The migration remains where it is genuinely unavoidable — when a value becomes a
+**row**, which is a move between branches and alters what the thing **is**. [D-054](90-decision-log.md)'s
+conflict resolver exists for exactly such changes.
 In exchange the record tree gets much shallower, which helps loading, rendering and calculation
 alike.
 
@@ -846,6 +849,103 @@ an error.
 **Open:** which value column carries a WordPress attachment identifier — it belongs to neither of
 the two id spaces of [P4a](#p4a--two-identity-spaces-one-for-the-model-one-for-the-records) — is not
 decided. See [`_harvest/contradictions.md`](_harvest/contradictions.md).
+
+## P13d — the branch decides storage, not the multiplicity
+
+Supersedes what [D-133](90-decision-log.md) laid down and this document repeated
+([D-232](90-decision-log.md)).
+
+```mermaid
+flowchart LR
+  Z["Ziel des Attributs"] --> P["Primitives"]
+  Z --> K["Compositions"]
+  Z --> M["Model"]
+  P --> PI["innen, per Pfad"]
+  K --> KR["eigene Datensaetze"]
+  M --> MR["externer Verweis"]
+```
+
+| Target lies in | Stored |
+|---|---|
+| **`Primitives`** | **inside** the record, addressed by path — indexed where there are several: `groessen[0]`, `groessen[1]` |
+| **`Compositions`** | **its own records** |
+| **`Model`** | an **external reference** |
+
+⚠️ **Multiplicity plays no part in it.** The old rule made a multiplicity above 1 mean *own records*,
+so five integers would have become five records plus an auto-created node
+([D-136](90-decision-log.md)) — absurd for five numbers, and the owner said so at once.
+
+**The question underneath is identity:** a row needs one — you point at it, order it, delete a
+single one. A number in a list does not.
+
+**And it removes a cost that had been accepted as honest.**
+[D-134](90-decision-log.md) recorded that changing a multiplicity from `1` to `1..*` is a **storage
+migration**. For primitives that disappears: only an index joins the path. The migration stays
+exactly where it is genuinely unavoidable — when a value becomes a row.
+
+Same construction as [D-161](90-decision-log.md) and [D-183](90-decision-log.md): **the place says
+it.** One switch fewer, one rule fewer.
+
+## P11d — a projection is not a table per model in the sense P5 forbids
+
+[P5](#) and [D-066](90-decision-log.md) say **no table per model** — the sentence that makes
+run-time modelling possible at all. The flat projection of [D-165](90-decision-log.md) is exactly
+that shape, and calling it a cache answers the duplicated-fact objection but not the real one:
+`CREATE TABLE` and `ALTER TABLE` at run time, triggered by a user adding an attribute.
+
+**The rule is kept by narrowing what it governs** ([D-228](90-decision-log.md)): **[P5](#) binds
+everything that *holds* data, and a projection holds none.** What makes run-time DDL dangerous is
+data loss and migrations that depend on user data; a cache table has neither.
+
+Three conditions make that honest:
+
+| | |
+|---|---|
+| The system runs with **no** projection at all | a missing one makes a query slower and still correct |
+| Where the host forbids DDL there simply are none | no error, no half state |
+| `dbDelta` never knows about them | they count toward no schema version |
+
+⚠️ **And the constraint that matters more than the DDL argument is the owner's:** *we are so
+fine-grained that we could very quickly have a great many tables.* So projections are **opt-in and
+few** — switched on for the one model whose reporting is slow, never created automatically. A cache
+built for everything **is** a schema; one built for three models is an index.
+
+## P4d — a medium is an ordinary record, and its foreign key is text
+
+A WordPress attachment id fits neither identity space ([D-164](90-decision-log.md)) nor any typed
+value column. The answer is not a new column but a **type**
+([D-229](90-decision-log.md)): `Medium` lives under `Model` with attributes attachment id, URL,
+source and licence, so it is an ordinary row in `records` and `record_values`, aggregated by
+whoever uses it.
+
+**What that buys**, and what the inline shape would have cost:
+
+| | inline member | own type |
+|---|---|---|
+| one photo on fifty parts | the attribution written **fifty times** | once |
+| *which records use this file?* | a scan | the ordinary **Used by** ([D-199](90-decision-log.md)) |
+| width, height, checksum, licence | no home | attributes |
+
+The attachment id is a **text** attribute — an opaque key of a foreign system — so the core sees
+text and knows nothing of WordPress ([D-171](90-decision-log.md)). The MIME type is **detected** at
+the boundary and **stored**, or every display would have to touch the file
+([D-229](90-decision-log.md)).
+
+## P11e — the identifying fields belong to the type
+
+The search column is written **on save** ([D-167](90-decision-log.md)) from *the fields that are
+shown* ([D-112](90-decision-log.md)) — but at save time there is no use site, and a record does not
+know which lists it will later appear in.
+
+Two meanings of *shown* had been conflated ([D-237](90-decision-log.md)):
+
+| | Belongs to | Feeds the search column |
+|---|---|---|
+| the fields by which a person **recognises** the record | the **type** | **yes** |
+| the columns **this one table** displays | the use site | no |
+
+The first is a statement about *how do I recognise a part*, which does not change because some table
+shows two columns fewer — so it is available at save time, which is what the search column needs.
 
 ## What belongs here
 

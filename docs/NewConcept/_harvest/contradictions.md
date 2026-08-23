@@ -16,12 +16,20 @@ the owner has to make, not a gap an agent may fill.
 
 | Section | Raised while catching up | Count | State |
 |---|---|---|---|
-| [Blocking](#blocking) · [Minor](#minor--wording-overtaken-rather-than-a-real-disagreement) | [40 I18n](../40-i18n.md), [70 Migration](../70-migration.md) | 6 | **all resolved** — see below |
-| [From the 30-renderer pass](#from-the-30-renderer-pass-2026-08-23) | [30 Renderer](../30-renderer.md) | 6 raised · **1 resolved** ([D-217](../90-decision-log.md), [D-218](../90-decision-log.md)) · 5 open | open |
-| [From the persistence and calculation pass](#from-the-persistence-and-calculation-pass-2026-08-23) | [50 Persistence](../50-wordpress-persistence.md), [60 Calculation](../60-calculation.md) | 5 | open |
-| [From the renderer inventory](#from-the-renderer-inventory-2026-08-23) | [30 Renderer](../30-renderer.md), `legacy/` | 5 | open |
+| [Blocking](#blocking) · [Minor](#minor--wording-overtaken-rather-than-a-real-disagreement) | [40 I18n](../40-i18n.md), [70 Migration](../70-migration.md) | 6 | **resolved** — round one |
+| [From the 30-renderer pass](#from-the-30-renderer-pass-2026-08-23) | [30 Renderer](../30-renderer.md) | 6 | **resolved** — rounds two and three |
+| [From the persistence and calculation pass](#from-the-persistence-and-calculation-pass-2026-08-23) | [50 Persistence](../50-wordpress-persistence.md), [60 Calculation](../60-calculation.md) | 5 | **resolved** — round three |
+| [From the renderer inventory](#from-the-renderer-inventory-2026-08-23) | [30 Renderer](../30-renderer.md), `legacy/` | 5 | **resolved** — round three |
+| [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **open** |
+| [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**15 open.** Each affected document points here from the section it concerns.
+**Three open**, all raised on 2026-08-23 by the last two catch-up passes: the unit `symbol`
+living both as a modelled attribute and as a label role; whether converters follow renderers
+into a list ([D-236](../90-decision-log.md)); and a preview *level* switch against
+[D-231](../90-decision-log.md)'s rule that the preview shows the front end.
+
+Twenty-two were raised and nineteen are settled — each in one of the three *Resolved* sections
+below, which name the deciding entry.
 
 | Document | Line or section | What the text says | Which decision disagrees | What is unclear |
 |---|---|---|---|---|
@@ -103,3 +111,32 @@ All fifteen are now settled. Rounds one and two are recorded above; this round c
 | one expression language vs the report | **[D-243](../90-decision-log.md)** — a report is selection plus grouping plus expression; the language does not grow. |
 | multi-step renderer | **[D-244](../90-decision-log.md)** — already dissolved by [D-111](../90-decision-log.md) into chooser plus editor; only the chooser's default moved, to the dialog. |
 | `set` and `table` | **[D-245](../90-decision-log.md)** — [D-117](../90-decision-log.md) was right; the parked nodes were the conflation being cleaned up. |
+
+---
+
+## From the interaction and domain-core catch-up, 2026-08-23
+
+Raised while bringing [20 Interaction](../20-interaction.md) and
+[10 Domain core](../10-domain-core.md) up to [D-258](../90-decision-log.md). One item, and it is a
+**document against a decision**, not two decisions against each other.
+
+Same standing as everything above: **nothing here is resolved.**
+
+| Document | Line or section | What the text says | Which decision disagrees | What is unclear |
+|---|---|---|---|---|
+| [10 Domain core](../10-domain-core.md) | [C44](../10-domain-core.md#c44--the-correction-is-the-load-bearing-part), the class diagram — `Basiseinheit` with a `+symbol` member | The unit node carries **`symbol` as a modelled attribute**, alongside `praefix`. The neighbouring diagram in [C39/C41/C42](../10-domain-core.md#c39-c41-c42--the-type-layer) reads the same way, labelling the leaves `Stueck · St` and `Euro · EUR`. | [D-252](../90-decision-log.md): **`symbol` is a label role** — a very short text, translated, stored in the labels table like any other label ([D-196](../90-decision-log.md)). [40 I18n](../40-i18n.md) already holds `Ω` and `St` exactly that way, as `role = symbol` rows per locale. | Whether a unit's short form is a **label** or an **attribute** — and if it is a label, whether `Basiseinheit` is left with only `praefix`, since the diagram was drawn to show that a base unit is a definition rather than a number. Under both readings at once the same fact has two homes, which is the duplication the code standard forbids outright, and the failure would only surface in the second locale. And the two are not obviously interchangeable, so the question underneath is *does anything ever read a unit's symbol as **data*** — restrict it, compute with it, key on it — or is it only ever displayed? |
+
+---
+
+## From the second renderer catch-up, 2026-08-23
+
+Raised while bringing [30 Renderer](../30-renderer.md) up to [D-258](../90-decision-log.md) — the
+pass that had to correct six superseded positions in place. Two items, and both are **a decision
+against a decision** rather than a document against one.
+
+Same standing as everything above: **nothing here is resolved.**
+
+| Document | Line or section | What the text says | Which decision disagrees | What is unclear |
+|---|---|---|---|---|
+| [30 Renderer](../30-renderer.md) | [R33b](../30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect), and [R35c](../30-renderer.md#r35c--the-composed-type-is-the-unit-of-rendering)'s closing rule | [D-219](../90-decision-log.md): *several converters may be **eligible** for a type, but **exactly one is in effect** per rendering* — and it justifies that by analogy: **the same shape [D-217](../90-decision-log.md) gives renderers**. The rule is then relied on twice: [D-220](../90-decision-log.md) narrows the converter list from the chosen renderer's result shape, and [D-223](../90-decision-log.md) turns *which converter* into a control that may disappear. | [D-236](../90-decision-log.md): a node carries an **ordered list of renderers** — one mandatory, further ones appended — which **supersedes the single-renderer half of [D-217](../90-decision-log.md)**. The shape D-219 pointed at no longer exists. D-236 lists what survives from D-217 (purpose stays out of the registry key) and says **nothing about converters**. | Whether *exactly one converter in effect* still holds. Read literally, D-219 now says converters follow a **list**, which contradicts its own sentence in the same line; read by intent, the rule stands and its stated reason has simply expired. It is not cosmetic: if a node may draw with a value renderer **and** a colour-code renderer ([D-236](../90-decision-log.md)), the two appended renderers may want **different** converters at the same moment — which is exactly the *value plus colour rings* case [D-226](../90-decision-log.md) made *one setting in one place*. Either a converter is chosen **per renderer in the list** rather than per rendering, or the appended-renderer case cannot carry its own mapping. No decision says which. |
+| [30 Renderer](../30-renderer.md) | [One consequence: the preview previews a *level*](../30-renderer.md#one-consequence-the-preview-previews-a-level) | *The preview should let the author choose **which level** is being previewed — admin, block or frontend.* The reason given: *it arguably needs that anyway, since the same model may legitimately look different in each.* Written as a consequence of [D-100](../90-decision-log.md)/[D-103](../90-decision-log.md); it carries **no `D-nnn` of its own**. | [D-231](../90-decision-log.md): *the preview always shows how it will look **in the front end***, and its **only permitted deviation is bounding the size**, because that crops the view rather than altering it. [D-254](../90-decision-log.md) then requires the block editor to ask the server for the same rendering. | Whether a level switch on the preview is still wanted, and if so how it escapes D-231's *only permitted deviation*. Previewing the **admin** level is by definition not showing what the front end will show — yet the level is what carries the depth limit ([D-103](../90-decision-log.md)), which is the whole reason the switch was proposed: a preview at a stricter depth warns about something the front end handles fine. So either the switch goes and the depth limit is always the front end's, or D-231's rule is about **appearance** while depth is a second axis it does not govern. The passage was never a decision, so nothing was superseded and nothing was upheld. |
