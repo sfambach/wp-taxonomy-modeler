@@ -2,7 +2,7 @@
 title: Domain core — the model
 status: draft
 round: R1 (in progress)
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 ---
 
 # Domain core — the model
@@ -12,6 +12,12 @@ last_updated: 2026-08-22
 >
 > **This is the document that must reach `locked` first** ([D-004](90-decision-log.md)).
 > Renderer, i18n and persistence all hang off it.
+>
+> ⚠️ **Every `OQ-nnn` referenced below is now answered.** This document cites 39 of them and was
+> written while they were open, so the surrounding sentences still read as if they were. The
+> closure marker under each question in [91 Open questions](91-open-questions.md) names the
+> decision that settled it. Rewriting those passages is the remaining work on this file before it
+> can be `locked`.
 
 ## Purpose
 
@@ -1790,11 +1796,11 @@ The reasoning behind hiding by default: the modelling view answers *what does th
 now*. A deleted attribute is not part of that answer — but it must not become invisible either,
 which is why it stays one toggle away and why the records surface separately.
 
-## Owner statement — 2026-08-22, twenty-fourth pass: the `Kompositionen` branch
+## Owner statement — 2026-08-22, twenty-fourth pass: the `Compositions` branch
 
 | # | Statement |
 |---|---|
-| **C106** | Pairing compositions with all the other models feels wrong. Better: **a `Kompositionen` branch**, and all compositions live under it. |
+| **C106** | Pairing compositions with all the other models feels wrong. Better: **a `Compositions` branch**, and all compositions live under it. |
 | **C107** | When a composition with a higher multiplicity is created, the tool should **make an entry there automatically**. |
 | **C108** | If a composition later becomes an **aggregation**, the node can simply be **moved** from the compositions branch into the normal model branch. |
 | **C109** | The reverse — aggregation to composition — is **only possible if the aggregation is used by one model**. |
@@ -1806,7 +1812,7 @@ nothing else** ([V3](00-vision-and-scope.md)), so hanging `Position` under `Baut
 `Position` **inherits** the parts list — it would acquire `bezeichnung` and `bauart`. I had mixed
 *organisational placement* with *inheritance parent*, and in this model those are the same thing.
 
-A `Kompositionen` branch is an **organisational container** carrying no attributes, like
+A `Compositions` branch is an **organisational container** carrying no attributes, like
 `Konstanten` or `Definition`, so nothing meaningful is inherited.
 
 **And locality is not lost — it was never a tree question.** The model view shows the composed
@@ -1827,7 +1833,7 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart LR
-    K[Kompositionen] -->|move · free if mult > 1| M[model branch]
+    K[Compositions] -->|move · free if mult > 1| M[model branch]
     M -->|move · only if singly used| K
 ```
 
@@ -1848,7 +1854,7 @@ but a **duplication** — offerable, never silent.
 
 ### What C106 quietly bought
 
-**Placement follows the kind, so the tree is self-checking.** A node under `Kompositionen` that an
+**Placement follows the kind, so the tree is self-checking.** A node under `Compositions` that an
 aggregation points at is a **detectable inconsistency** — the branch is not merely tidiness, it is a
 checkable assurance.
 
@@ -1856,7 +1862,7 @@ checkable assurance.
 
 | # | Statement |
 |---|---|
-| **C110** | A composition edge may point at a node under **`Kompositionen`** — and at **simple data types that have no data**. |
+| **C110** | A composition edge may point at a node under **`Compositions`** — and at **simple data types that have no data**. |
 | **C111** | **A node that lies neither in the model branch nor in the composition branch has no data of its own.** Its values live in the model that uses it. |
 
 C111 settles the question that kept coming back, and it settles it **visibly**: the answer is read
@@ -1865,7 +1871,7 @@ off the tree rather than derived.
 | | Lies under | Own records? |
 |---|---|---|
 | `Bauteil` | model | yes, standalone |
-| `Position` | `Kompositionen` | yes, owned |
+| `Position` | `Compositions` | yes, owned |
 | `Preis` | data types | **no** — inline in whoever uses it |
 | `Gramm` | constants | **no** — referenced as a value |
 
@@ -1878,7 +1884,7 @@ Set a multiplicity above 1 on a **data type** — `Bauteil.preisverlauf → Prei
 [D-133](90-decision-log.md) says *own records* while placement says *no own data*.
 
 **The resolution is [D-136](90-decision-log.md)'s automatic creation:** the tool creates a node
-under `Kompositionen` **that inherits from `Preis`** — `Bauteil-Preisverlauf`. It has records;
+under `Compositions` **that inherits from `Preis`** — `Bauteil-Preisverlauf`. It has records;
 `Preis` is untouched; every other use of `Preis` notices nothing.
 
 That is inheritance used for what it exists for — a **use-site-specific variety of a shared type**,
@@ -1902,6 +1908,159 @@ Two things make it harmless:
 *describes* and therefore tracks; a price in an order line *was agreed* and therefore freezes,
 along with its exchange rate ([D-064](90-decision-log.md)). Both are prices on the same part, and
 they behave oppositely because they are different statements.
+
+## The branches, and what they decide
+
+C110 and C111 were the first sight of something that turned out to carry more weight than a
+placement convention. The branch a node sits in decides **two** things, and neither is a switch
+anyone sets.
+
+```mermaid
+flowchart TB
+  R["Root"] --> M["Model"]
+  R --> C["Compositions"]
+  R --> P["Primitives"]
+  P --> DT["Data Types"]
+  P --> K["Constants"]
+```
+
+| Branch | Has data | Reached by |
+|---|---|---|
+| **`Model`** | yes, standalone | aggregation |
+| **`Compositions`** | yes, owned | composition |
+| **`Primitives` › Data Types** | no | composition — the value lives **in** the record |
+| **`Primitives` › Constants** | no | aggregation — the value is a **reference to a node** |
+
+The names are English throughout ([D-187](90-decision-log.md), [D-188](90-decision-log.md));
+`Primitives` was chosen over `Building Blocks`, which would have collided with Gutenberg blocks in
+every conversation ([D-185](90-decision-log.md)).
+
+### The relation kind is never chosen
+
+```mermaid
+flowchart LR
+  A["Autor waehlt ein Ziel"] --> B["Ast des Ziels"]
+  B --> C["Kantenart"]
+```
+
+The author picks a **target**; the kind follows ([D-161](90-decision-log.md)). This removes the
+error [D-133](90-decision-log.md) exists to prevent — a supplier accidentally composed into an
+order, so every order breeds its own supplier and the catalogue dissolves into copies — not by
+validating it afterwards but by never offering it.
+
+⚠️ **The rule had a hole for two days.** It named `Model` and `Compositions` and said nothing about
+`Primitives`, which is where the data types live. The owner found it by asking whether the rule was
+really safe. The split above closes it ([D-193](90-decision-log.md)) — and the split is not new:
+C110 and C111 already distinguished `Preis` from `Gramm`. It was lost when the branch was given one
+name, which is why [98 Documentation style](98-documentation-style.md) now warns that simplifying
+is the dangerous step.
+
+### One composing edge per node
+
+A part that **can** belong to two different wholes is not a part. So at most one composition edge
+may point at a node ([D-137](90-decision-log.md), upheld by [D-214](90-decision-log.md)); wanting a
+second means the thing is an aggregation, or two specialised nodes
+([D-156](90-decision-log.md)).
+
+That is a **model-level** rule and it sits beside a **data-level** one: each record may have at
+most one owner. They are different checks at different levels, and the resolution when the data
+check fails is *a copy per using record*.
+
+### Moving between branches
+
+Because the branch decides the kind, moving a node **rewrites every edge that points at it**
+([D-162](90-decision-log.md)). There is no per-use-site exception — that would make the node both,
+and the branch would stop being the truth.
+
+| Direction | What happens | Condition |
+|---|---|---|
+| `Compositions` → `Model` | the part stops being owned and becomes independent | always works |
+| `Model` → `Compositions` | the record becomes owned | **only if each record has a single user** |
+
+The kinds differ in **ownership**, not in layout, so the records are the same records either way
+and simply travel with the node. One exception: multiplicity 1 is stored **inside** the owning
+record by path ([D-133](90-decision-log.md)), so those values must be lifted into records of their
+own — mechanical and lossless, but announced in numbers before it happens, never performed quietly
+([D-163](90-decision-log.md)).
+
+## Data packs
+
+```mermaid
+flowchart LR
+  P["Data Pack"] --> M["Modellknoten"]
+  P --> D["Beispieldaten"]
+  P -.Herkunft je Knoten.-> N["Knoten"]
+```
+
+A **data pack** is a named, installable set of model content and optionally some data
+([D-175](90-decision-log.md), [D-215](90-decision-log.md)). The seed that ships with the product is
+simply the pack that comes in the box — which unified four things the concept had been carrying
+separately: seeded nodes, the test data the preview renders ([D-160](90-decision-log.md)), the
+standard tree harvested from the legacy project, and the owner's recipes and hardware sets.
+
+⚠️ **A pack is data and never code.** Nodes, relations, settings, labels and example records yes;
+its own renderers, validators or converters no — a pack that needs behaviour **declares a
+dependency** on it. Otherwise *install a pack* eventually means *run someone else's code*, which is
+a wholly different question from *let me look at the recipes*. The name carries the rule, which is
+why it is `Data Pack` and not `Pack`.
+
+### Provenance is per node, and that is what makes packs composable
+
+Every node carries **which pack it came from** and **whether it has been changed since**
+([D-174](90-decision-log.md)). Two marks, because one is not enough: *came from the seed* says an
+update **may** feel responsible, not whether it still **should**.
+
+| State | On update |
+|---|---|
+| untouched | corrected silently ([D-213](90-decision-log.md)) |
+| changed since | left alone, reported as a model conflict |
+
+Because the mark sits on the **individual node** rather than on the pack as a lump, a pack can
+deliver **into** an existing branch without it becoming unclear who owns what
+([D-177](90-decision-log.md)). So what a pack *requires* is factored out and declared as a
+dependency, and what it *contributes* carries its own mark. **Add yes, alter never** — without that
+rule two packs come to disagree about one node and no update can decide who is right.
+
+Removal is answerable for the same reason: a pack lifts out cleanly exactly when nothing outside
+points into it and nothing inside was changed. The try-it-and-remove-it case is clean by
+construction, since whoever only looked built nothing on top.
+
+⚠️ **Provenance is information, not protection.** *Came from the shipped pack* is far too wide to
+protect by — a sample recipe ships from us too and must be deletable. The **framework** mark is
+separate and covers only the few nodes the machinery itself stands on, those the bindings point at
+([D-194](90-decision-log.md)). The legacy `Is template` toggle is retired: provenance says what it
+said, and neither is a switch a user sets.
+
+## Extending the model while entering data
+
+The owner's case: sitting in Gutenberg, needing one more value in a list, and having no wish to go
+back into the design view for it.
+
+```mermaid
+flowchart LR
+  A["Ast erklaert sich erweiterbar"] --> B["Wert wird beim Erfassen ergaenzt"]
+  B --> C["sofort benutzbar"]
+  C --> D["spaeter beurteilt"]
+```
+
+**The boundary holds because the model opens it in advance.** Data entry does not create model on
+its own; a branch **declares** that it may be extended, and the same declaration says **by whom**
+([D-204](90-decision-log.md)) — one more field, inherited along the resolution chain
+([D-015](90-decision-log.md)), not a new concept.
+
+**Used at once, judged afterwards.** If the value were unusable until approved, the block this
+feature exists to remove would simply move somewhere else: waiting for a person is worse than
+going yourself.
+
+Nothing new is built for the review. The addition carries a provenance mark — *made during data
+entry, not yet reviewed* — the pending list has the shape of the conflict resolver
+([D-054](90-decision-log.md)), and a **no** is an ordinary deletion, two-stage
+([D-123](90-decision-log.md)), with whatever used the value becoming a conflict the resolver
+already handles.
+
+**Afterwards it is an ordinary node.** Distinguishable while pending, indistinguishable once
+approved — a permanent second class would have to be known to every code path, and how it came
+about is the changelog's job.
 
 ## Where the model stands
 
@@ -1994,13 +2153,20 @@ is what the diagram is saying, and it was worth drawing explicitly.
 ([C11](#owner-statement--2026-08-22-third-pass)). Without that it would take two — *which kind*
 plus *which id* — and no database could check the foreign key.
 
+> **Records are not in that space** ([D-164](90-decision-log.md)). The shared space covers
+> **nodes and edges** — the model — because there the ambiguity is real: a setting hangs on a node
+> or on an edge and nothing says in advance which. Records get their own space, so `AUTO_INCREMENT`
+> can allocate them; a shared space would need a hand-built allocator sitting on the hottest write
+> path in the system. It also keeps the two layers honestly apart, model tables in the hundreds and
+> data tables in the millions.
+
 All three hang off **`Identity`** rather than off `Node`, which is what lets a *relation* carry
 settings ([C8](#c7c10--settings-hang-on-edges-too)) — the mechanism behind per-use-site
 configuration. Settings and labels are stored apart because their shapes differ, but resolve
 through one shared walk ([D-019](90-decision-log.md)).
 
-The `ChangeLogItem` cardinality shown as `0..*` is **not** settled — the seed drew `1..*`, which
-would mean no object can exist without one ([OQ-008](91-open-questions.md)).
+The `ChangeLogItem` cardinality is `1..*` — every object has at least one item, because creation
+must be logged if `creation_date` is read from the changelog ([D-081](90-decision-log.md), [D-080](90-decision-log.md)).
 
 ### The three kinds of edge
 
@@ -2030,21 +2196,37 @@ Inheritance is the one exempt from edge settings ([C9](#c7c10--settings-hang-on-
 the one that forms the tree; the other two form a graph, which is why the render descent needs a
 cycle guard ([OQ-019](91-open-questions.md)).
 
-### What is deliberately missing from these diagrams
+**And the kind is never chosen.** It is read off the branch the target sits in
+([D-161](90-decision-log.md), [D-193](90-decision-log.md)) — see [The branches, and what they
+decide](#the-branches-and-what-they-decide). The enum stays in the data so that reading an edge
+does not require walking to its target, but it is a **derived** value, never an input
+([D-036](90-decision-log.md)).
 
-**`Attribute` is not drawn.** It is the most-used word in this concept and the least decided
-thing in it. Drawing it as a box would silently answer three open questions:
+### What the diagrams still leave out — and what has since been drawn
 
-| | |
+**`Attribute` is now decidable, and it is not a box.** It was the least settled word in this
+concept when these diagrams were made. It is settled: **an attribute *is* a relation, seen from the
+node that owns it** ([D-031](90-decision-log.md)). Its `kind` is the connection, its `to` is the
+type, and its name, multiplicity and defaults hang off it as a name, labels and settings. The
+*wrapper* the owner described is real, but it lives in the interface — one dialogue writing one
+relation row and a few settings rows — not in the model.
+
+That closed the three questions this section was written to avoid answering:
+
+| | Where it went |
 |---|---|
-| [OQ-010](91-open-questions.md) | Is an attribute the same construct as an edge, or its own thing that uses one? |
-| [OQ-011](91-open-questions.md) | What is an attribute's *type* — a data type, the target's type, or the kind of connection? |
-| [OQ-018](91-open-questions.md) | Where does the value live — as an edge to a node, or inline in a settings row? |
+| Is an attribute the same construct as an edge? | yes — [D-031](90-decision-log.md) |
+| What is an attribute's *type*? | its `to`, which names a **branch** and is polymorphic — [D-041](90-decision-log.md) |
+| Where does the value live? | decided by kind and multiplicity — [D-133](90-decision-log.md) |
 
-Also absent on purpose: whether `Relation.kind` is a node or an enum ([OQ-003](91-open-questions.md)),
-whether nodes have subtypes at all ([OQ-004](91-open-questions.md)), and the full field list of
-`Identity` ([OQ-001](91-open-questions.md), [OQ-017](91-open-questions.md)).
+Also settled since: `Relation.kind` is an **enum** ([D-036](90-decision-log.md)) and is never
+chosen but read off the target's branch ([D-161](90-decision-log.md)); `Identity` carries `id` and
+`version` and nothing else ([D-080](90-decision-log.md)); a node has exactly four fixed attributes,
+`id`, `version`, `name`, `path` ([D-082](90-decision-log.md)).
 
+**What is still deliberately not drawn:** the record side. Records live in their own tables and
+their own id space ([D-164](90-decision-log.md)), and mixing them into a model diagram is what
+makes people build the two layers into one.
 ## What belongs here
 
 **Objects and their shape**

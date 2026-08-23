@@ -10,7 +10,7 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 |---|---|---|---|
 | 00 | [Vision and scope](00-vision-and-scope.md) | `agreed` | owner statements V1–V9 |
 | 01 | [Glossary](01-glossary.md) | `draft` | fixed vocabulary, rejected words, dictation notes |
-| 10 | [Domain core — the model](10-domain-core.md) | `draft` | owner statements C1–C113; three overview diagrams of the settled model |
+| 10 | [Domain core — the model](10-domain-core.md) | `draft` | owner statements C1–C113; branches, data packs, runtime extension; 39 stale OQ references still to rewrite |
 | 20 | [Interaction](20-interaction.md) | `open` | U0 … U17 |
 | 30 | [Renderer](30-renderer.md) | `draft` | owner statements R1–R76; registry, surfaces, preview |
 | 40 | [I18n and labels](40-i18n.md) | `draft` (caught up 2026-08-23) | owner statements I1–I10; labels table, base name, fallback chain |
