@@ -101,6 +101,7 @@ only looked built nothing on top of it.
 | Packs that carry code | a pack is data and *declares* the behaviour it needs | [D-175](90-decision-log.md) |
 | Data entry that creates model | the model declares in advance where it may be extended | [OQ-074](91-open-questions.md) |
 | A public API for other plugins | the registries are internal and may change freely; the boundary exists for portability, not for third parties | [D-276](90-decision-log.md) |
+| A store for mass time-series data | this is a **modeller**: thousands of records are unremarkable, hundreds of thousands are not what it is for | [D-308](90-decision-log.md) |
 
 ## Still to write in this document
 

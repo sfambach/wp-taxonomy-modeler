@@ -18,7 +18,7 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 60 | [Calculation](60-calculation.md) | `draft` (caught up 2026-08-23) | owner statements K1–K12; calculation vs converter, model vs display, structured expressions |
 | 70 | [Model change and migration](70-migration.md) | `draft` (caught up 2026-08-23) | owner statements M1–M17; rename vs replace, export, the conflict resolver |
 | 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-297 |
-| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-080 (74 answered or closed, 6 open from the scenario check) |
+| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-080 (80 answered or closed, none open) |
 | 96 | [Scenario check](96-scenario-check.md) | `draft` | six worlds modelled against the concept; five carried |
 | 95 | [Roadmap](95-roadmap.md) | `draft` | Release 2 contents; what waits on an event; the parking lot |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |

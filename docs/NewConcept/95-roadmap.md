@@ -32,6 +32,7 @@ what phase one actually contained.
 | **Reports** — prepared output: an exported parts list, an invoice | Computes at output time and **joins** across unrelated records, so it is not a descent and needs machinery of its own. | [D-201](90-decision-log.md), [D-202](90-decision-log.md), [D-203](90-decision-log.md) |
 | **Renderer resolution per row template** | Thirty rows by ten columns is three hundred in-memory lookups. Not measurable. The optimisation earns its place at thousands of rows. | [D-203](90-decision-log.md) |
 | **Converting between peer units** — showing a value given in inches as millimetres, °C as °F | The **shape** is decided and in Release 1 ([D-274](90-decision-log.md)): a unit carries its factor, and where needed its offset, to the reference unit of its parent. What waits is the **doing** — a converter and a renderer that show a value in a unit other than the one it was entered in. | [D-274](90-decision-log.md), [D-275](90-decision-log.md) |
+| **A page per record** — a template plus a route, `/bauteil/bc547b` rendering a record through a page designed once | The owner's pattern is data embedded in **his own posts**, which [D-206](90-decision-log.md) already provides. A template matters the day a catalogue of five hundred parts wants addresses. | [D-309](90-decision-log.md) |
 
 ### One requirement that does not wait for Release 2
 
@@ -70,6 +71,7 @@ not wanted three times is probably not wanted.
 | What | What would make us want it | Raised |
 |---|---|---|
 | **Number circle** — a type that hands out numbers by a rule: prefix, start, step, width, for article numbers, EANs, order numbers ([D-268](90-decision-log.md)) | the first model that needs an identifier the system assigns rather than the author types. An invoice number would force it; an article number can wait, because the author can type one | 2026-08-23, from the legacy code sweep |
+| **Reader-supplied parameters** — *four portions instead of two*; an attribute declared **scalable**, and a block offering a control ([D-309](90-decision-log.md)) | the first time a recipe is read by someone cooking for a different number of people | 2026-08-23, from the scenario check |
 
 ## Still to write
 

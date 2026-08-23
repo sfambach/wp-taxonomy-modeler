@@ -2196,6 +2196,8 @@ Six worlds were modelled against the concept before locking the domain core
 
 ## OQ-075 — How does a record have versions?
 
+> **Closed 2026-08-23 → [D-305](90-decision-log.md).**
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §1
 
 *There are boards in different versions, which then have different parts lists* — the owner, twice,
@@ -2211,6 +2213,8 @@ nothing else — not that they share an identity, and not which one a reference 
 
 ## OQ-076 — Can a reader hand a parameter to a rendering?
 
+> **Closed 2026-08-23 → [D-309](90-decision-log.md).**
+
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
 
 *Four portions instead of two* multiplies every quantity in a recipe. It is not a stored value and
@@ -2224,6 +2228,8 @@ computed*.
 
 ## OQ-077 — A conversion that depends on the other value
 
+> **Closed 2026-08-23 → [D-306](90-decision-log.md).**
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
 
 [D-274](90-decision-log.md) puts the factor on the **unit** — right for inch and metre. A tablespoon
@@ -2234,6 +2240,8 @@ Note it is not exotic: cups, spoons, *a box contains 12*, sheets per ream, and e
 work this way.
 
 ## OQ-078 — Where is the *relationship as a node* pattern taught?
+
+> **Closed 2026-08-23 → [D-307](90-decision-log.md).**
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §4
 
@@ -2248,6 +2256,8 @@ Not a gap in the model. A gap in what the model **says about itself**.
 
 ## OQ-079 — Where does the shape stop being suitable?
 
+> **Closed 2026-08-23 → [D-308](90-decision-log.md).**
+
 *Blocks:* [00 Vision and scope](00-vision-and-scope.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §5
 
 A hundred thousand sensor readings become several hundred thousand rows carrying two useful numbers
@@ -2258,6 +2268,8 @@ or size.
 store — but the concept should **say so**, so that nobody discovers it with a full table.
 
 ## OQ-080 — Is there a page per record?
+
+> **Closed 2026-08-23 → [D-309](90-decision-log.md).**
 
 *Blocks:* [20 Interaction](20-interaction.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §6
 
