@@ -61,6 +61,11 @@ anyone explaining why, and nothing here is owed to anybody.
 want it*. Not a trigger that fires by itself — that is a deferral with a criterion and belongs in
 the section above — but the situation in which it becomes attractive.
 
+**When it is read: at every release planning.** The lot is walked, and for each entry the second
+column is put to the test — *is that true now?* That is where scope for the next release comes
+from, and it is also the natural moment to **strike** an entry: something looked at three times and
+not wanted three times is probably not wanted.
+
 | What | What would make us want it | Raised |
 |---|---|---|
 | **Number circle** — a type that hands out numbers by a rule: prefix, start, step, width, for article numbers, EANs, order numbers ([D-268](90-decision-log.md)) | the first model that needs an identifier the system assigns rather than the author types. An invoice number would force it; an article number can wait, because the author can type one | 2026-08-23, from the legacy code sweep |
