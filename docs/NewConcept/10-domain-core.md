@@ -15,9 +15,10 @@ last_updated: 2026-08-23
 >
 > ⚠️ **Every `OQ-nnn` referenced below is now answered.** This document cites 39 of them and was
 > written while they were open, so the surrounding sentences still read as if they were. The
-> closure marker under each question in [91 Open questions](91-open-questions.md) names the
-> decision that settled it. Rewriting those passages is the remaining work on this file before it
-> can be `locked`.
+> table at the end of this document — **[The questions this document cites, and what settled
+> them](#the-questions-this-document-cites-and-what-settled-them)** — names the deciding decision
+> for each. Rewriting the passages themselves is the remaining work on this file before it can be
+> `locked`.
 
 ## Purpose
 
@@ -2260,6 +2261,54 @@ neighbour of it:
 - Storage, tables, column types. That is [50 Persistence](50-wordpress-persistence.md).
 - Rendering, forms, tables, the renderer contract. That is [30 Renderer](30-renderer.md).
 - Translation mechanics. That is [40 I18n](40-i18n.md).
+
+
+## The questions this document cites, and what settled them
+
+Every one of them is answered. The prose above was written while they were open and still
+reads that way; until it is rewritten, this table is the shortcut.
+
+| Question | | Settled by |
+|---|---|---|
+| [OQ-001](91-open-questions.md) | What is in the shared base of node and relation? | [D-080](90-decision-log.md) |
+| [OQ-002](91-open-questions.md) | If the tree is inheritance only, what are the other edges? | [D-012](90-decision-log.md), [D-161](90-decision-log.md) |
+| [OQ-004](91-open-questions.md) | Do node subtypes exist at all? | [D-036](90-decision-log.md) |
+| [OQ-008](91-open-questions.md) | Must every object have a changelog entry? | [D-081](90-decision-log.md) |
+| [OQ-010](91-open-questions.md) | Is an *attribute* the same thing as an *edge*? | [D-031](90-decision-log.md) |
+| [OQ-011](91-open-questions.md) | What is an attribute's *type*? | [D-025](90-decision-log.md) |
+| [OQ-013](91-open-questions.md) | What exactly is a *setting*, versus an attribute? | [D-011](90-decision-log.md) |
+| [OQ-015](91-open-questions.md) | Where does the content live? | [D-083](90-decision-log.md), [D-133](90-decision-log.md) |
+| [OQ-016](91-open-questions.md) | Is "setting" one thing, or two? | [D-084](90-decision-log.md), [D-078](90-decision-log.md) |
+| [OQ-017](91-open-questions.md) | Which attributes does every node have? | [D-082](90-decision-log.md) |
+| [OQ-018](91-open-questions.md) | Where does the value of an extended attribute live? | [D-026](90-decision-log.md) |
+| [OQ-019](91-open-questions.md) | Cycles and depth in the render descent | [D-100](90-decision-log.md) |
+| [OQ-021](91-open-questions.md) | Composition and aggregation: what is the difference here? | C12/C13 — lifecycle |
+| [OQ-022](91-open-questions.md) | One settings table, or one per owner kind? | C11 — one id space |
+| [OQ-023](91-open-questions.md) | Is inheritance one edge kind, or a separate construct? | [D-012](90-decision-log.md) |
+| [OQ-024](91-open-questions.md) | How are resolved settings computed without melting down? | [D-014](90-decision-log.md) |
+| [OQ-025](91-open-questions.md) | How is a deep override addressed and stored? | [D-015](90-decision-log.md) |
+| [OQ-026](91-open-questions.md) | A part used in only one place: a node, or something smaller? | [D-017](90-decision-log.md) |
+| [OQ-031](91-open-questions.md) | How does existing data survive a model change? | [D-054](90-decision-log.md) |
+| [OQ-032](91-open-questions.md) | Is the base name required, and unique anywhere? | [D-022](90-decision-log.md) |
+| [OQ-033](91-open-questions.md) | Where does preview test data live? | [D-028](90-decision-log.md) |
+| [OQ-035](91-open-questions.md) | Can a relation reach something that is not a model node? | [D-030](90-decision-log.md) |
+| [OQ-036](91-open-questions.md) | Do instances share the identity space? | [D-164](90-decision-log.md) |
+| [OQ-037](91-open-questions.md) | What exactly happens when an override is promoted? | [D-156](90-decision-log.md) |
+| [OQ-039](91-open-questions.md) | Where do installation-wide settings live? | [D-079](90-decision-log.md) |
+| [OQ-040](91-open-questions.md) | Is a currency a branch of units, or a separate concept? | [D-039](90-decision-log.md) |
+| [OQ-041](91-open-questions.md) | Is a prefix a node or an enum? | [D-116](90-decision-log.md) |
+| [OQ-042](91-open-questions.md) | Does an attribute's type name one node, or a branch? | [D-041](90-decision-log.md) |
+| [OQ-043](91-open-questions.md) | Is the unit tree shipped, or authored? | [D-119](90-decision-log.md) |
+| [OQ-048](91-open-questions.md) | How does the tool know where data may be entered? | [D-131](90-decision-log.md), [D-132](90-decision-log.md) |
+| [OQ-054](91-open-questions.md) | Is a currency amount stored as entered, or normalised? | [D-064](90-decision-log.md) |
+| [OQ-057](91-open-questions.md) | Is undo in scope? | [D-172](90-decision-log.md) |
+| [OQ-058](91-open-questions.md) | How does a subtype narrow an inherited attribute? | [D-087](90-decision-log.md) |
+| [OQ-060](91-open-questions.md) | Optimistic or pessimistic locking? | [D-089](90-decision-log.md) |
+| [OQ-063](91-open-questions.md) | What identifies a record, for finding duplicates? | [D-112](90-decision-log.md), [D-114](90-decision-log.md) |
+| [OQ-064](91-open-questions.md) | How is a contains-search made fast? | [D-167](90-decision-log.md) |
+| [OQ-065](91-open-questions.md) | Does a seed item need a provenance marker? | [D-174](90-decision-log.md) |
+| [OQ-066](91-open-questions.md) | What happens to data when a node is moved? | [D-155](90-decision-log.md) |
+| [OQ-067](91-open-questions.md) | Does a parked record still hold its unique values? | [D-154](90-decision-log.md) |
 
 ## Harvest candidates
 

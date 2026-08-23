@@ -636,7 +636,7 @@ which is the kind of duplication that cost the previous round dearly.
 
 ## OQ-022 — One settings table, or one per owner kind?
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [C8](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **answered — see the marker below** · *Raised by* [C8](10-domain-core.md)
 
 C8 hangs settings on edges as well as nodes. [P4](50-wordpress-persistence.md) named one
 settings table. Options:
