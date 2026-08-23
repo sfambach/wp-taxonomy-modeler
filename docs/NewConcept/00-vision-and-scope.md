@@ -100,11 +100,11 @@ only looked built nothing on top of it.
 | Views — named computations belonging to no node | a computed attribute, until a figure appears that belongs nowhere | [OQ-069](91-open-questions.md) |
 | Packs that carry code | a pack is data and *declares* the behaviour it needs | [D-175](90-decision-log.md) |
 | Data entry that creates model | the model declares in advance where it may be extended | [OQ-074](91-open-questions.md) |
+| A public API for other plugins | the registries are internal and may change freely; the boundary exists for portability, not for third parties | [D-276](90-decision-log.md) |
 
 ## Still to write in this document
 
 - Who the users are, and what they are trying to achieve.
-- The boundary against host plugins such as `wp-electronic-parts`.
 - Success criteria per phase.
 
 ## Harvest candidates
@@ -113,6 +113,6 @@ only looked built nothing on top of it.
 |---|---|
 | [`NewConcept.md`](NewConcept.md) | Restart rationale; *model the world, not relational tables*. Largely superseded by the statement above. |
 | [`../legacy/PRODUCT.md`](../legacy/PRODUCT.md) | Old product statement. |
-| [`../legacy/plans/project-plan.md`](../legacy/plans/project-plan.md) | Sections *Problem*, *Goal*, *Non-goals*, *Success criteria*, *Relationship to wp-electronic-parts*. |
+| [`../legacy/plans/project-plan.md`](../legacy/plans/project-plan.md) | Sections *Problem*, *Goal*, *Non-goals*, *Success criteria*. ⚠️ Its *Relationship to `wp-electronic-parts`* section describes a **predecessor of this project under an older name**, not another plugin ([D-276](90-decision-log.md)). |
 | [`../legacy/plans/mvp-requirements.md`](../legacy/plans/mvp-requirements.md) | Personas, FR1–FR7, explicit non-requirements. |
 | [`../legacy/plans/use-cases.md`](../legacy/plans/use-cases.md) | Use-case cards — a reality check on scope. |
