@@ -14,7 +14,7 @@
 > finding was placed in one of two sheets:
 >
 > - [`../NewConcept/_harvest/03-legacy-inspiration.md`](../NewConcept/_harvest/03-legacy-inspiration.md) — 76 rows from this documentation
-> - [`../NewConcept/_harvest/04-legacy-code-inspiration.md`](../NewConcept/_harvest/04-legacy-code-inspiration.md) — 60 rows from `includes/`, `src/`, `assets/` and the fixtures
+> - [`../NewConcept/_harvest/04-legacy-code-inspiration.md`](../NewConcept/_harvest/04-legacy-code-inspiration.md) — 60 rows from `includes/`, `src/`, `assets/` and the fixtures — all now under [`../../legacy-code/`](../../legacy-code/README.md)
 >
 > Each row carries a verdict: **decided**, **covered**, **contradicts**, **workaround**, or
 > **deliberately not taken**. Nothing is left unclassified.
