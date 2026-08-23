@@ -104,10 +104,8 @@ twenty of them.
 
 ## Questions this raises
 
-1. **What is a *set node*?** *Set-typed nodes (e.g. Meter, Abmessung)* with child members carrying
-   type, fixed value and required flag. The new concept has no such construct. Is this a composition
-   with multiplicity 1 ([D-133](../90-decision-log.md)), or something the concept is missing?
-2. **What does *Cleanup* do?**
+1. ~~**What is a *set node*?**~~ **Answered 2026-08-23 → [D-245](../90-decision-log.md), [D-246](../90-decision-log.md):** it was the legacy conflation of a composed type with its compact drawing. Both `set` and `table` are retired as constructs, and the setting **Show set child properties** dies with them.
+2. **What does *Cleanup* do?** The admin menu has an entry the new concept has no counterpart for.
 3. **Is *Fill Model Data* a screen of its own**, or is it what the record side of the tree becomes?
 4. **Immediate save versus explicit save** — the legacy default is immediate. Nothing in the concept
    decides this, and it interacts with undo ([D-172](../90-decision-log.md)).
