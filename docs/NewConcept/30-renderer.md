@@ -2150,3 +2150,180 @@ else here. Reports are placed in **Release 2** ([D-203](90-decision-log.md)).
 | `../../.cursor/rules/bindings-rules-fixes.mdc` | Old *bindings → rules → optional fixes* pattern — the direct ancestor of V9's validator-with-correction. |
 | [`../legacy/ARCHITECTURE.md`](../legacy/ARCHITECTURE.md) | Presentation surfaces; how views were meant to line up. |
 | [`../legacy/plans/blocks-lane.md`](../legacy/plans/blocks-lane.md) | Blocks as views over the same model. |
+
+## Inventory — the renderers named so far
+
+Collected 2026-08-23 by reading every document under `NewConcept/`, all entries of
+[the decision log](90-decision-log.md) up to and including [D-218](90-decision-log.md), and — added at the owner's request, because that is where
+the per-type work actually was — the legacy material: [`ARCHITECTURE.md`](../legacy/ARCHITECTURE.md),
+[`MODEL-CATALOG.md`](../legacy/MODEL-CATALOG.md),
+[`DEVELOPER-ATTRIBUTE-MODEL.md`](../legacy/DEVELOPER-ATTRIBUTE-MODEL.md), the `plans/` sheets, and
+the exported standard tree [`test-template-wtt_fs.json`](../../scripts/fixtures/test-template-wtt_fs.json)
+(288 nodes, plugin `0.0.479`).
+
+**Two rules govern the last column.** A renderer counts as `decided` only where a `D-<nnn>` names
+it ([PR-3](../../CLAUDE.md)). Everything read out of `legacy/` is a **candidate** and is marked
+`legacy — not yet confirmed`; it is never merged into a decided row, and where it disagrees with a
+decision that is a row in [`_harvest/contradictions.md`](_harvest/contradictions.md), not a
+judgement made here ([PR-1](../../CLAUDE.md)).
+
+### What the set is made of
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    A[the renderers] --> B["per data type<br/>int · text · media · unit"]
+    A --> C["containers<br/>table · form · compact"]
+    A --> D["how far to descend<br/>reference · summary · expand"]
+    A --> E["input<br/>chooser inline · chooser popup"]
+    A --> F["condition<br/>the search renderer"]
+```
+
+### The table
+
+| Renderer | Draws | Purpose(s) | Assigned to | Named in | Status |
+|---|---|---|---|---|---|
+| **Reference renderer** | the target's label plus a link, and nothing behind it | display | the default for every **aggregation** edge; also the chip that stands for a reference in the detail view ([D-197](90-decision-log.md)) | [D-105](90-decision-log.md), [R58](#owner-statement--2026-08-22-thirteenth-pass-the-reference-renderer) | decided |
+| **Summary renderer** | a few chosen attributes of the target — the parts-list row | display | aggregation edges that want more than a link; its chosen columns double as the search fields ([D-112](90-decision-log.md)) | [D-106](90-decision-log.md) | decided |
+| **Expand renderer** | the whole target, unfolded inline | display | the default for **composition** | [D-105](90-decision-log.md), [D-106](90-decision-log.md) | decided |
+| **Plain field · spinner · slider** | one scalar value, three ways | display · edit | integer and double nodes, which carry `min`, `max`, `step` ([R17](#owner-statement--2026-08-22-third-pass-the-registry)) | [D-018](90-decision-log.md), [R15](#r15--variant-and-circumstance-are-different-axes) | decided — **three** renderers, not one with three modes |
+| **Table renderer** | the frame of a multi-valued edge; every cell goes back to the registry | display · edit | anything with structure; a model may declare it on **itself** (`Bauteilliste`) | [D-098](90-decision-log.md), [D-117](90-decision-log.md), [R46](#r46r47--a-container-renderer-is-the-same-recursion) | decided |
+| **Form renderer** | a node's attributes stacked as a form | display · edit | same | [D-098](90-decision-log.md), [D-091](90-decision-log.md) | decided — `renderForm` stopped being a method and came back as a renderer |
+| **Compact row renderer** | one dense line; *with label / without label* is a **setting**, not a second renderer | display · edit | same | [D-098](90-decision-log.md), [D-018](90-decision-log.md) | decided |
+| **Compact column renderer** | one dense column | display · edit | same | [D-098](90-decision-log.md) | decided |
+| **Inline chooser** | the branch as a list (one level) or a tree (several), inline in the form | edit | every place a node or a record is picked — one chooser in the product ([D-197](90-decision-log.md)) | [D-107](90-decision-log.md), [D-108](90-decision-log.md), [R62](#owner-statement--2026-08-22-fifteenth-pass-two-chooser-renderers) | decided — **the default** |
+| **Popup chooser** | a button plus a popup; the markup carries metadata and one generic JavaScript component supplies the behaviour | edit | places that insist on a dialogue, and creating a new record ([D-113](90-decision-log.md)) | [D-108](90-decision-log.md) | decided |
+| **Search renderer** | an operator plus an operand — a **condition**, not a value | search | ~~one per type~~ — under [D-217](90-decision-log.md) it is the node's **own** renderer, asked under the search purpose, which it declares in `supports()` | [D-168](90-decision-log.md), [R9a](#r9a--purpose-is-the-fourth-thing-the-context-carries-and-searching-is-one-of-them) | ⚠️ **named and then withdrawn as a separate renderer.** [D-217](90-decision-log.md) supersedes the registry-key half of [D-168](90-decision-log.md): one node, one renderer. The **search purpose survives in full**; the second renderer does not |
+| **Last-resort renderer** | whatever is drawn when a node has no renderer at all | display · edit · search | — | [D-091](90-decision-log.md), [D-217](90-decision-log.md) | decided — and [D-217](90-decision-log.md) is explicit that it is a **fault indicator, not a floor**: a node without a renderer is an error and must look like one |
+| **Colour-code renderer** | a resistance value as coloured bands | display | `Widerstandswert` — a composed type of value + tolerance, which is what keeps this an *attribute* renderer | [D-150](90-decision-log.md), [D-149](90-decision-log.md) | decided — staged **first**, because the value is in the display |
+| **View export renderer** | CSV, PDF, an interactive parts list | display | any subtree being exported for reading | [D-058](90-decision-log.md), [R76a](#r76a--a-view-export-is-a-renderer-a-backup-export-is-not) | decided |
+| **Report** | prepared output that leaves the building; it **computes at output time** and it **joins** | | | [D-202](90-decision-log.md), [D-201](90-decision-log.md) | decided that it is renderer-side; ⚠️ the **mechanism is undecided** and it sits in Release 2 ([D-203](90-decision-log.md)) |
+| **Tree renderer** | one row of the modelling tree | display · edit | every node, in the admin tree | [R18](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview) | owner statement, **no decision id** |
+| **Detail-view frame** | the frame that holds the attributes of the selected node | edit | the modelling screen | [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview), [D-190](90-decision-log.md) | ⚠️ [D-190](90-decision-log.md) decides the **contents** (attributes under the edit purpose) and [D-091](90-decision-log.md) retires `IPageRendere`; **whether the frame itself is a renderer is not stated** |
+| **Multi-step renderer** | pick a type, then the row of that type appears, with *search existing* beside *enter new* | edit | targets that may not exist yet — aggregation as much as composition ([D-197](90-decision-log.md)) | [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input), [D-111](90-decision-log.md) | named by the owner; ⚠️ [D-111](90-decision-log.md) **dissolves it** into chooser + ordinary editor |
+| **Two-notation renderer** | one stored value with two coupled controls — a hex field beside a colour picker, a text field beside a calendar | display · edit | any value with a second notation carrying nothing the first lacks | [D-149](90-decision-log.md) | unnamed in the concept |
+| **Media renderer** | a medium: its location, the local copy, and the source attribution shown **with** it; a missing file degrades to its link | display · edit | the media type | [D-211](90-decision-log.md) | unnamed in the concept |
+| **Unit-value renderer** | value + prefix + unit symbol, the symbol resolved as a **label in a role** rather than stored | display · edit | unit values | [D-039](90-decision-log.md), [D-049](90-decision-log.md), [D-051](90-decision-log.md) | unnamed in the concept |
+| **Money renderer** | an amount rounded to its currency's minor unit, with the currency, and a frozen rate where one exists | display · edit | currency values | [D-073](90-decision-log.md), [D-057](90-decision-log.md), [D-064](90-decision-log.md) | unnamed in the concept |
+| **Boolean switch** | a boolean as a switch, **collected** with the others into a wrapping, column-aligned row | display · edit | boolean nodes | [R75](#owner-statement--2026-08-22-seventeenth-pass-the-order-in-which-a-node-lays-itself-out), [D-118](90-decision-log.md) | unnamed in the concept — [D-118](90-decision-log.md) settles the **layout**, not a renderer |
+| **Computed-value marking** | *computed* · *not computable* (`—`, with a reason) · *estimated* (a figure, marked); at an aggregate additionally *how many positions are missing* | display | every value a calculation produces | [D-147](90-decision-log.md), [D-104](90-decision-log.md) | **not a renderer of its own** — a behaviour every renderer that draws a number owes |
+| **Front-end node block** | one node on a page; a reference joins it to the next block | display | any node | [D-206](90-decision-log.md), [R58a](#r58a--on-the-front-end-this-is-what-joins-the-pages-together) | decided as a **block**; what it draws inside is the ordinary renderer |
+| **Comparison block** | subjects side by side under their nearest common ancestor; what is not shared moves **below** and may sit behind a disclosure | display | several records of one inheritance line | [D-207](90-decision-log.md), [R58b](#r58b--a-comparison-block-resolves-to-the-nearest-common-ancestor) | decided as a **block**; ⚠️ whether the ancestor walk and the ordering are a renderer is not stated |
+| **List block** | the records of one node, restricted to chosen attributes | display | any node that has records | [D-208](90-decision-log.md) | decided as a **block**; each cell is the ordinary renderer under the display purpose |
+| `FormRenderer` | a node's attributes as a form — the legacy default | display · edit | the inherited default on almost the whole exported tree: `Fallstudie`, `Definition`, `Aggregate` + leaves, `Konstanten`, `Präfixe` + all prefix leaves, `Basiseinheiten`, `Without prefix` (`Kelvin`, `Celsius`, `Stück`), `Währung` + `Euro`/`US Dollar`/`Pound`, `Simple Datatypes`, `Complex Datatypes`, `Bauteilliste`, `Kontakt`, `Platine`, `Bauteillisten Position`, all of `Implementation` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `TableRenderer` | n instances as rows | display · edit | an object layout chosen per node; no node in the export selects it | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
+| `CompactRenderer` | one instance as a dense horizontal strip | display · edit | `Eigene Datentypen` (+ `Percent`, `Toleranz`, `Bauart`, `Option`, the size leaves), `Bauformen` + all seven leaves, `Passiv` → `Widerstand` · `Kondensator` · `Spule`; and the `Präfixe` **leaves** per `ARCHITECTURE` ≈ `0.0.540` | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md), [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `CompactVerticalRenderer` | the same, vertically | display · edit | an object layout chosen per node | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
+| `MultistepRenderer` | pick a kind, then fill it (composition) or search-and-bind it (aggregation) | edit | the pick-and-create case; `EmbeddedRenderer` / `embed` / `pick-fill` all normalise to it | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.546` | legacy — not yet confirmed. ⚠️ It carries a `dialog` / `inline` **mode option**, which is exactly what [D-108](90-decision-log.md) refused |
+| `ChildListRenderer` | the hierarchy children of a host as a list, with *Default* and *Choices* options | display · edit | the default for `Konstanten` hosts that have children; explicitly the `Präfixe` host | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.483`/`0.0.541`, [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md), [`case-study`](../legacy/plans/case-study.md) | legacy — not yet confirmed; the concept has **no counterpart** |
+| `EmbeddedRenderer` | pick + fill, embedded | edit | `Bauteil` and every kind under `Halbleiter`, `Elektromechanik` and `Sonstige` — 17 nodes in the export | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; **superseded inside legacy** by `MultistepRenderer` |
+| `IntRenderer` | an integer; `Spinner` and `Range` are separate *Preferred* values over the same type, taking their bounds from the validators | display · edit | `int` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.517` | legacy — not yet confirmed. ✔ Independent confirmation of [D-018](90-decision-log.md) — field, spinner and slider were three choices there too |
+| `DoubleRenderer` | a decimal number | display · edit | `double` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `TextRenderer` | a text field | display · edit | `text` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `TextareaRenderer` | a text area, `cols` × `rows` (default 40 × 4) | display · edit | `textarea` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.516` | legacy — not yet confirmed |
+| `CharRenderer` | one character; the converter shows it as glyph, ascii, unicode or a numeral system | display · edit | `char` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) ≈ `0.0.520` | legacy — not yet confirmed |
+| `BoolRenderer` | a switch | display · edit | `bool` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
+| `EmailRenderer` | an e-mail address | display · edit | `email` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `DateRenderer` | a date | display · edit | `date` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — not yet confirmed |
+| `MediaRenderer` | a medium, painted by MIME kind | display · edit | `media` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; the ancestor of the unnamed **media renderer** row above |
+| `DisplayNodeNameRenderer` | the name of a referenced node, in a chosen role | display | `display_node_name` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json) | legacy — already reworked: [D-044](90-decision-log.md) made it a renderer rather than a type, and [D-105](90-decision-log.md) arrived at the same thing as the **reference renderer** |
+| `QuantityRenderer` | a one-row box that calls the value renderer and the unit renderer | display · edit | `quantity`, `Preis`, `Unit type` | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed; the ancestor of the unnamed **money** and **unit-value** rows above |
+| `UnitRenderer` | prefix + symbol — the unit↔prefix marriage | display · edit | every `Basiseinheiten › With prefix` leaf: Meter, Liter, Kilogramm, Sekunde, Ampere, Ohm, Farad, Watt, Volt, Henry, Hertz | [fixture](../../scripts/fixtures/test-template-wtt_fs.json), [`ARCHITECTURE`](../legacy/ARCHITECTURE.md) | legacy — not yet confirmed |
+| `TreeChooser` / `ListChooser` | the chooser chrome, picked by the depth of the branch — depth ≤ 1 flat, ≥ 2 a tree | edit | every type / catalog choice | [`ARCHITECTURE`](../legacy/ARCHITECTURE.md), [`attribute-choice-inheritance`](../legacy/plans/attribute-choice-inheritance.md) | legacy — the **depth rule survives** as [D-109](90-decision-log.md), but derived from the branch rather than chosen as a renderer |
+| `DefaultRenderer` | the fallback when nothing else can render | | | [`RendererMeremaid.md`](RendererMeremaid.md) | seed sketch — superseded by the fallback of [D-091](90-decision-log.md) / [D-168](90-decision-log.md) |
+| `ChangeLogRenderer` / `IPageRenderer` | the change log, as a page | display | `ChangeLog` | [`../legacy/meremaid.txt`](../legacy/meremaid.txt) | seed sketch — [D-091](90-decision-log.md) retires `IPageRendere` |
+
+### The legacy per-type assignment, as exported
+
+The part of the legacy work the owner pointed at: the previous project had walked the simple data
+types one by one and given each a renderer. Read straight out of
+[`test-template-wtt_fs.json`](../../scripts/fixtures/test-template-wtt_fs.json) — `preferredRenderOwn`
+is the value actually **set on that node**, as opposed to the one inherited from its parent.
+
+| Type node | Renderer set on the node | Converter | Default validator |
+|---|---|---|---|
+| `int` | `IntRenderer` | `roman` (from `arabic`, `binary`, `octal`, `hex`) | `integer_shape` |
+| `double` | `DoubleRenderer` | — | `number_shape` |
+| `text` | `TextRenderer` | — | none by design |
+| `textarea` | `TextareaRenderer` | — | none by design |
+| `char` | `CharRenderer` | glyph · ascii · unicode · the numeral systems | `char_shape` |
+| `bool` | `BoolRenderer` | — | none by design |
+| `email` | `EmailRenderer` | — | `email_shape` |
+| `date` | `DateRenderer` | — | `date_shape` |
+| `media` | `MediaRenderer` | — | `media_shape` |
+| `display_node_name` | `DisplayNodeNameRenderer` | — | — |
+| `quantity` | `QuantityRenderer` | — | — |
+| `quantity › Preis` | `QuantityRenderer` | — | — |
+| `Complex › Unit type` | `QuantityRenderer` | — | — |
+| `Complex › set` | **none** — falls back to the inherited `FormRenderer` | — | — |
+| `Complex › table` | **none** — falls back to the inherited `FormRenderer` | — | — |
+| `time` · `datetime` · `color` | **no node in the exported tree**, so no assignment, although `ARCHITECTURE` lists them among the simples and [harvest 02](_harvest/02-settings-page.md) shows `builtin.time` / `.datetime` / `.color` bound | — | — |
+| `node_ref` | **no node, and the binding is unbound** ([harvest 02](_harvest/02-settings-page.md)) | — | — |
+
+**Ten of the ten simple types present carry a renderer of their own.** The gaps are the types that
+were bound but never built (`time`, `datetime`, `color`, `node_ref`) and the two parked complex
+kinds (`set`, `table`), which is consistent with [D-117](90-decision-log.md) treating those two as
+container renderers rather than types — although in the exported tree they are nodes with no
+renderer at all, which is not quite the same claim. Listed for the owner in
+[`_harvest/contradictions.md`](_harvest/contradictions.md).
+
+### What the inventory shows
+
+**The decided set clusters by *what is being drawn*, not by data type — and the legacy set is its
+mirror image.** Of the renderers a decision actually names, four are containers, three are degrees
+of descent (reference · summary · expand), two are choosers, one returns a condition, and exactly
+**one** belongs to a concrete data type: the resistor colour code ([D-150](90-decision-log.md)).
+Every per-type renderer the product will obviously need — integer, text, boolean, date, media, a
+unit value, an amount of money — is either an *unnamed description* in the concept or exists only
+in `legacy/`. The old project is the other way round: fourteen of its renderers are per-type and it
+has **no** reference renderer, **no** summary renderer and **no** search renderer at all. Read
+together the two halves nearly complete each other, which is the strongest argument the harvest has
+produced for reading the old assignment sheet rather than re-deriving it.
+
+**And four of the concept's own named renderers are ones it then took back**, which is worth seeing
+in one place: the *page renderer* of [R20](#owner-statement--2026-08-22-fourth-pass-surfaces-and-preview)
+(retired by [D-091](90-decision-log.md), its contents settled by [D-190](90-decision-log.md)), the
+*multi-step renderer* of [R65](#owner-statement--2026-08-22-sixteenth-pass-the-multi-step-input)
+(dissolved into chooser + editor by [D-111](90-decision-log.md)), *inline versus popup as a setting*
+([D-107](90-decision-log.md), reversed into two renderers by [D-108](90-decision-log.md)), and now
+the *per-type search renderer* ([D-168](90-decision-log.md), withdrawn as a second renderer by
+[D-217](90-decision-log.md) — **one node, one renderer**, the purpose passed to it rather than keyed
+on). Three of those four were withdrawn because they would have meant **two renderers where the
+model has one thing**, which is the same mistake in three costumes.
+
+What is conspicuously missing is on the other axis. **Search is a full purpose and not one renderer
+anywhere declares it.** After [D-217](90-decision-log.md) a type is searchable exactly when its
+renderer says `search` in `supports()`, and no renderer in this inventory — decided, unnamed or
+legacy — says anything of the kind: the old project had no search surface at all, and the new one
+has the mechanism with no instance. The same is true one step down: [D-168](90-decision-log.md)
+requires the **offered operators to be declared at the type**, and no type declares any yet.
+
+### What is NOT a renderer
+
+Things that look like one and are decided to be something else. Kept together so none of them
+quietly returns as a renderer later.
+
+| | Is instead | Decision |
+|---|---|---|
+| The **preview** | a **caller**, which invokes render twice — once editable, once not | [D-096](90-decision-log.md), closing [OQ-034](91-open-questions.md) |
+| **List or tree** in a chooser | **derived** from the depth of the branch — not a third renderer and not a setting | [D-109](90-decision-log.md) |
+| The filter's **operator field** | what a text renderer looks like when its purpose is **search** | [D-168](90-decision-log.md), [D-167](90-decision-log.md) |
+| **`enum`** | an attribute whose branch happens to be one level deep | [D-109](90-decision-log.md), [D-117](90-decision-log.md) |
+| The **capacitor code**, the traffic light, the AWG table | **converters** — a few kinds parameterised by data. The capacitor is staged as a converter precisely because its value is in the *input* | [D-148](90-decision-log.md), [D-150](90-decision-log.md) |
+| A **backup export** | not a renderer: it must round-trip and writes both the id and the plain text | [D-058](90-decision-log.md) |
+| The **project fact sheet** | a table block of one record, which existing decisions already produce | [D-212](90-decision-log.md) |
+| The **computed / not computable / estimated** marking | a behaviour **every** renderer that draws a number owes | [D-147](90-decision-log.md), [D-104](90-decision-log.md) |
+| The **registry** | an entry point that represents and renders nothing itself | [D-091](90-decision-log.md), [R37](#owner-statement--2026-08-22-eighth-pass-the-descent-step-by-step) |
+| A **binding** | a named slot carrying a pointer and nothing else — explicitly **no renderer** | [D-120](90-decision-log.md) |
+| A **data pack** | data, never behaviour; a pack needing a renderer **declares a dependency** on it | [D-175](90-decision-log.md), [D-215](90-decision-log.md) |
+| A **view** | a named calculation belonging to no node — the calculation side, deferred | [D-201](90-decision-log.md), [D-203](90-decision-log.md) |

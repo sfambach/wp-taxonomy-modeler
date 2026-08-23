@@ -73,8 +73,8 @@ The branch a node sits in is load-bearing: it decides the relation kind that rea
 | Term | Deutsch | Means |
 |---|---|---|
 | **Renderer** | Renderer | The only thing that produces display ([R1](30-renderer.md)). PHP ([D-021](90-decision-log.md)). Returns strings, never echoes (**CD-8**). |
-| **Purpose** | Zweck | What a render is *for*: display, edit, or **search**. Part of the render context, and part of the registry key ([D-168](90-decision-log.md)). |
-| **Registry** | Registrierung | The one place all renderers register. Looked up by type **and** purpose ([R12–R14](30-renderer.md), [D-168](90-decision-log.md)). |
+| **Purpose** | Zweck | What a render is *for*: display, edit, or **search**. Passed to the renderer in the context; a renderer declares which purposes it serves via `supports()`. **Not** part of the registry key ([D-217](90-decision-log.md)). |
+| **Registry** | Registrierung | The one place all renderers register. Two jobs: *give me this renderer* at render time, and *which renderers are eligible for this node* at configuration time ([R12–R14](30-renderer.md), [D-217](90-decision-log.md)). |
 | **Variant** | Variante | A fundamentally different presentation — field, spinner, slider. **Own renderer each** ([D-018](90-decision-log.md)). |
 | **Circumstance** | Umstand | Level (admin / block / frontend), editable or not, hidden. **Option inside** one renderer ([D-018](90-decision-log.md)). |
 | **Converter** | Converter | Turns input into a value and a value into output. Runs on input too where it is invertible ([D-077](90-decision-log.md)) — and it is the converter that silently strips leading and trailing whitespace, because nobody ever meant it ([D-166](90-decision-log.md)). |
