@@ -186,6 +186,29 @@ was available — and the values are **free text where references belong**, whic
 owner cannot ask *which of my machines have an ET4000*, cannot compare, and has to carry every
 change by hand across posts.
 
+
+### The data sources, as of 2026-08-23 evening
+
+| Source | In the local copy | What it is |
+|---|---|---|
+| 283 published posts, 429 drafts, 3965 attachments | ✔ | the site itself — prose, and the pictures that go with it |
+| **74 reusable Gutenberg blocks** | ✔ | **records held as prose**; the first import target |
+| `wtt_fs` tree, 219 terms · `wtt_case`, 21 | ✔ | scaffold, not subject matter |
+| `wp_wtt_node_presentation`, 2104 rows | ✔ | the old plugin's own table |
+| **TablePress tables** | ✘ | **live site only** — the owner: *a lot of data are in there* |
+
+⚠️ **TablePress is absent from the local copy entirely** — no post type, no options, not one shortcode
+in 717 posts, and it is not among the four active plugins. The copy is otherwise current; the newest
+post is from the same morning. So it is not a stale dump, it is that **this one plugin was never
+brought across**.
+
+**And it may be the larger source.** A TablePress table is by its nature what this concept models:
+rows with the same columns, which is to say records of one type. Its own JSON or CSV export is also
+the ideal import format — structured, without HTML around it.
+
+*The owner is installing it locally. Two real test cases for the importer
+([OQ-072](91-open-questions.md)) rather than one.*
+
 ### Two corrections this forces
 
 ❗ **[OQ-080](91-open-questions.md) is real but not the blocker I made it.** I wrote that a page per
