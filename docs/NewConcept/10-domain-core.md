@@ -49,7 +49,7 @@ belongs to the conversation that produced it.
 
 ```mermaid
 flowchart LR
-  M["Modell — beschreibt"] --> D["Daten — was eingegeben wurde"]
+  M["Model — describes"] --> D["Data — what was entered"]
 ```
 
 | | Deutsch | Is |
@@ -279,10 +279,10 @@ language-neutral. `symbol` is a very short **text** and is translated ([D-252](9
 
 ```mermaid
 flowchart LR
-  A["Attribut"] --> B["Ast des Ziels"]
-  B --> P["Primitives → im Datensatz, per Pfad"]
-  B --> K["Compositions → eigene Datensätze"]
-  B --> M["Model → externer Verweis"]
+  A["Attribute"] --> B["branch of its target"]
+  B --> P["Primitives → inside the record, by path"]
+  B --> K["Compositions → own records"]
+  B --> M["Model → external reference"]
 ```
 
 `record_values` keys on a **path**, with the last edge kept in `edge_id`
@@ -393,7 +393,7 @@ narrowing or renaming `Gramm` touches both.
 
 ```mermaid
 flowchart LR
-  E["Engine"] --> S["Bindung: data_types"] --> N["Knoten"]
+  E["Engine"] --> S["binding: data_types"] --> N["Node"]
 ```
 
 **The engine never names an id and never names a node name.** It asks for a **named slot** in the
@@ -437,7 +437,7 @@ path ([D-111](90-decision-log.md)).
 
 ```mermaid
 flowchart LR
-  V["konfigurierte Vorgabe"] --> W["Wahl im Moment"]
+  V["configured default"] --> W["choice in the moment"]
 ```
 
 **A configured default plus a choice in the moment** is one pattern, not two rules
@@ -464,9 +464,9 @@ extensible without touching code.
 
 ```mermaid
 flowchart LR
-  Q["Menge"] --> W["Zahl"]
-  Q --> P["Präfix"]
-  Q --> E["Einheit"]
+  Q["Quantity"] --> W["number"]
+  Q --> P["prefix"]
+  Q --> E["unit"]
 ```
 
 **A unit value is one notion**: value + optional prefix + unit ([D-039](90-decision-log.md)). Which
@@ -646,7 +646,7 @@ Three layers feed a preview ([D-240](90-decision-log.md)):
 
 ```mermaid
 flowchart LR
-  A["echte Daten"] --> B["als Testdaten markierte"] --> C["Musterwert des Typs"]
+  A["real data"] --> B["records marked as test data"] --> C["the type's sample value"]
 ```
 
 **The sample value belongs to the type**, not to the renderer — a node carries several renderers,
@@ -2876,9 +2876,9 @@ mechanical and lossless, but announced in numbers before it happens, never perfo
 
 ```mermaid
 flowchart LR
-  P["Data Pack"] --> M["Modellknoten"]
-  P --> D["Beispieldaten"]
-  P -.Herkunft je Knoten.-> N["Knoten"]
+  P["Data Pack"] --> M["model nodes"]
+  P --> D["example data"]
+  P -.provenance per node.-> N["Node"]
 ```
 
 A **data pack** is a named, installable set of model content and optionally some data
@@ -2927,9 +2927,9 @@ back into the design view for it.
 
 ```mermaid
 flowchart LR
-  A["Ast erklaert sich erweiterbar"] --> B["Wert wird beim Erfassen ergaenzt"]
-  B --> C["sofort benutzbar"]
-  C --> D["spaeter beurteilt"]
+  A["branch declares itself extensible"] --> B["value added during data entry"]
+  B --> C["usable at once"]
+  C --> D["judged afterwards"]
 ```
 
 **The boundary holds because the model opens it in advance.** Data entry does not create model on

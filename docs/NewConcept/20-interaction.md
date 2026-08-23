@@ -16,11 +16,11 @@ case by case.
 
 ```mermaid
 flowchart LR
-  A["Bauteil wählen"] --> W["derselbe Wähler"]
-  B["Vorgabewert setzen"] --> W
+  A["choose a part"] --> W["the same chooser"]
+  B["set a default"] --> W
   C["Ziel eines Attributs"] --> W
-  W --> P["auswählen"]
-  W --> N["neu anlegen"]
+  W --> P["pick"]
+  W --> N["create"]
 ```
 
 **There is one chooser in this product.** It may take options for different scenarios, but it
@@ -195,9 +195,9 @@ what was right, what was crowded, and what is missing.
 
 ```mermaid
 flowchart LR
-  H["Kopfzeile<br/>alles auf · alles zu"] --- T["Baum"]
-  T --- Z["Zeile<br/>Name + häufige Aktionen"]
-  Z --- M["Kontextmenü<br/>alles"]
+  H["header<br/>expand all · collapse all"] --- T["tree"]
+  T --- Z["row<br/>name + frequent actions"]
+  Z --- M["context menu<br/>everything"]
 ```
 
 ### U1 · The row shows the frequent, the menu holds everything
@@ -232,9 +232,9 @@ Whatever replaces them, the two meanings must not share a symbol.
 
 ```mermaid
 flowchart TB
-  D["Knoten löschen"] --> A["ganzen Ast"]
-  D --> B["nur diesen Knoten"]
-  B --> C["Kinder rücken an den Vater"]
+  D["delete node"] --> A["the whole branch"]
+  D --> B["this node only"]
+  B --> C["children move up to the parent"]
 ```
 
 The owner: *when the node is deleted, the children get hung on the father*. Both operations are
@@ -318,12 +318,12 @@ panel, which is how they came to be confused once already.
 
 ```mermaid
 flowchart TB
-  A["Aktionen"] --> B["Feststehendes"]
-  B --> C["Name"]
-  C --> D["Darstellung"]
-  D --> E["Attribute · zugeklappt"]
-  E --> F["Vorschau"]
-  F --> G["Verbindungen · zugeklappt"]
+  A["actions"] --> B["what cannot change"]
+  B --> C["name"]
+  C --> D["display"]
+  D --> E["attributes · collapsed"]
+  E --> F["preview"]
+  F --> G["relations · collapsed"]
 ```
 
 ### U9 · The order is the order of dealing with a node
@@ -564,8 +564,8 @@ to them, manufacturers, recipes.
 
 ```mermaid
 flowchart LR
-  B1["Block: Platine eingeben"] -->|Verweis per Id| R["Bauteilliste"]
-  B2["Block: Bauteilliste zeigen"] --> R
+  B1["block: enter the board"] -->|reference by id| R["parts list"]
+  B2["block: show the parts list"] --> R
   B1 -.Link.-> B2
 ```
 

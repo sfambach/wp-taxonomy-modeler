@@ -64,9 +64,9 @@ it. Portability is served by **knowing what was borrowed**, not by borrowing les
 
 ```mermaid
 flowchart LR
-  H["Hooks · REST · Blöcke"] -->|rufen hinein| C["Kern"]
-  C -->|erklärt, was er braucht| I["Schnittstellen"]
-  W["Anschlussschicht erfüllt sie"] --> I
+  H["hooks · REST · blocks"] -->|call inward| C["core"]
+  C -->|declares what it needs| I["interfaces"]
+  W["the boundary fulfils them"] --> I
 ```
 
 WordPress is **not underneath the core but around it**, and every arrow points inward

@@ -24,8 +24,8 @@ trick nobody wrote down · ❌ a genuine gap.
 
 ```mermaid
 flowchart LR
-  P["Model › Platine"] -->|Komposition 1..*| POS["Compositions › Position"]
-  POS -->|Aggregation| B["Model › Bauteil"]
+  P["Model › Platine"] -->|composition 1..*| POS["Compositions › Position"]
+  POS -->|aggregation| B["Model › Bauteil"]
   B --> W["Widerstand"]
 ```
 
@@ -52,8 +52,8 @@ when something merely says `Platine`. → [OQ-075](91-open-questions.md).
 
 ```mermaid
 flowchart LR
-  R["Model › Rezept"] -->|Komposition 1..*| Z["Compositions › Zutat"]
-  Z -->|Aggregation| E["Model › Essbares"]
+  R["Model › Rezept"] -->|composition 1..*| Z["Compositions › Zutat"]
+  Z -->|aggregation| E["Model › Essbares"]
   E --> L["Lebensmittel"]
   E --> R2["Rezept"]
 ```
@@ -104,8 +104,8 @@ other.
 
 ```mermaid
 flowchart LR
-  B["Model › Bauteil"] -->|Komposition 1..*| LB["Compositions › Lieferbeziehung"]
-  LB -->|Aggregation| O["Model › Organisation"]
+  B["Model › Bauteil"] -->|composition 1..*| LB["Compositions › Lieferbeziehung"]
+  LB -->|aggregation| O["Model › Organisation"]
   LB --> K["Kundennummer · Seit · Preis"]
 ```
 
