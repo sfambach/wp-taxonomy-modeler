@@ -23,13 +23,13 @@ the owner has to make, not a gap an agent may fill.
 | [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **resolved** — round four |
 | [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**Two open**, both raised on 2026-08-23 by the last two catch-up passes: whether converters follow
-renderers into a list ([D-236](../90-decision-log.md)); and a preview *level* switch against
-[D-231](../90-decision-log.md)'s rule that the preview shows the front end. The third — `symbol`
-in two homes — was settled the same day by [D-259](../90-decision-log.md) and
-[D-260](../90-decision-log.md).
+**One open**, raised on 2026-08-23 by the second renderer catch-up: a preview *level* switch
+(admin / block / front end) against [D-231](../90-decision-log.md)'s rule that the preview shows
+the front end and may deviate only in size. The passage never carried a `D-nnn`, so nothing was
+superseded — but the level is what carried the depth limit ([D-103](../90-decision-log.md)),
+which was the switch's whole purpose.
 
-Twenty-two were raised and twenty are settled — each in one of the four *Resolved* sections
+Twenty-two were raised and twenty-one are settled — each in one of the five *Resolved* sections
 below, which name the deciding entry.
 
 | Document | Line or section | What the text says | Which decision disagrees | What is unclear |
@@ -149,3 +149,11 @@ Same standing as everything above: **nothing here is resolved.**
 | # | How it was settled |
 |---|---|
 | `symbol` as attribute vs label role | **[D-260](../90-decision-log.md)** — always a label; the difference is only how many locale rows exist. The character-class test was tried and does not hold (`kg`, `m`, `Hz` are letters and universal). [C44](../10-domain-core.md)'s modelled attribute goes. **[D-259](../90-decision-log.md)** supplied the missing piece: a renderer is told **which role** to display, which is what the owner actually needed. |
+
+---
+
+## Resolved — fifth round, 2026-08-23
+
+| # | How it was settled |
+|---|---|
+| second renderer catch-up · 1 · do converters follow renderers into a list | **[D-277](../90-decision-log.md)** — renderer and converter form a **pair**, and the converter belongs to the list entry rather than to the node. [D-219](../90-decision-log.md)'s *one converter in effect* becomes *one per rendering*, which was always the true statement. The converter half may be empty. |
