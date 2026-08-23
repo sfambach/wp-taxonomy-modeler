@@ -14,8 +14,13 @@ last_updated: 2026-08-23
 > **This is the document that must reach `locked` first** ([D-004](90-decision-log.md)).
 > Renderer, i18n and persistence all hang off it.
 >
-> **Read [The model as it stands](#the-model-as-it-stands) and nothing else, if you are here to
-> build.** It states the model once, completely, without how it came about.
+> **Three ways in, by what you need.**
+>
+> | You want to | Read |
+> |---|---|
+> | **judge whether code fits the model** | [The core, on one page](#the-core-on-one-page) — fourteen sentences |
+> | **build** | [The model as it stands](#the-model-as-it-stands) — complete, no history |
+> | **know why something is so** | everything after that — the reasoning |
 >
 > Everything after it is the **reasoning** — twenty-five passes of owner statements and the
 > discussion each produced. Kept deliberately: more than one rule was rescued by reading why it
@@ -32,6 +37,74 @@ splitting but its **structure**: a chain of small units, each one diagram plus e
 ([98 Documentation style](98-documentation-style.md)). A contradiction between two small
 diagrams is visible; a contradiction inside 1589 lines of prose is not — that is how the
 previous round lost track.
+
+## The core, on one page
+
+**Hold these fourteen sentences and you can judge any line of code without reading the rest.** That
+is what they are for: everything below this section follows from them, and nothing below
+contradicts them.
+
+⚠️ **This page exists because of a finding by the owner**, and it is worth repeating: the
+specification is complete but *too large for one head*. If the only reader who can hold the model is
+the thing that also writes the code, nobody can check the code. So the test for `locked` is not
+*can a person build from this* — it is **can a person check what was built**.
+
+---
+
+1. **Model and data are two halves.** The model describes; the data are what someone entered. They
+   do **not** share an id space.
+
+2. **Everything the model persists carries an `id` and a `version`, and nothing else.** The `id` is
+   meaningless, stable and never resolved on.
+
+3. **There are nodes and relations. Nothing else.** A node has exactly four fixed attributes: `id`,
+   `version`, `name`, `path`.
+
+4. **The tree is inheritance, and only inheritance.** A node's **type** *is* its branch.
+
+5. **A relation has three kinds — inheritance, composition, aggregation — and the kind is never
+   chosen.** It is read off the branch the target sits in.
+
+6. **An attribute *is* a relation**, seen from the node that owns it. There is no separate attribute
+   object.
+
+7. **There are three branches: `Model`, `Compositions`, `Primitives`** — and `Primitives` splits
+   once more into **Data Types** and **Constants**.
+
+8. **The branch decides three things:** which relation kind reaches the node, whether it holds data,
+   and **where a value is stored** — inside the record by path, as its own records, or as an
+   external reference. **Multiplicity plays no part in that.**
+
+9. **Settings resolve along one chain:** installation → model root → ancestors → node → use site,
+   walked key by key, stored sparsely.
+
+10. **Bounding settings may only be tightened downwards; choosing settings are free.** Permitted
+    set, range, multiplicity, mandatory, `hide`, `read_only` narrow only. Default, renderer,
+    converter, labels, icon, order are free.
+
+11. **A label is text in one role and one locale.** Roles are nodes, seeded and extensible.
+
+12. **Seven tables, and no table per model — the model *is* the schema.** A per-model projection may
+    exist only as a rebuildable cache.
+
+13. **Deletion has two stages: park, then purge.** Undo reaches exactly as far as the trash, and a
+    renderer never writes.
+
+14. **Everything a person sees comes from a renderer.** A node carries an ordered list of them, one
+    mandatory; the purpose — display, edit, search — is passed in, not keyed on.
+
+---
+
+**Two sentences that are not rules but decide how to work in this model:**
+
+> **What a group of things has in common belongs at the highest level where it is true** — not
+> where you first needed it, and not one level too high either. The tree is a taxonomy: what stands
+> at a level holds for everything beneath it.
+
+> **When something does not fit, cut the tree differently before adding an exception.** An exception
+> is cheaper than a rethink, which is exactly why it is the more expensive choice a year later.
+
+---
 
 ## The model as it stands
 

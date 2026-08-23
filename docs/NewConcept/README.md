@@ -21,6 +21,7 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-080 (80 answered or closed, none open) |
 | 96 | [Scenario check](96-scenario-check.md) | `draft` | six worlds modelled against the concept; five carried |
 | 95 | [Roadmap](95-roadmap.md) | `draft` | Release 2 contents; what waits on an event; the parking lot |
+| 97 | [Implementation plan](97-implementation-plan.md) | `draft` | packages, not sprints; three rules; the first cut of six |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |
 
 **Status vocabulary:** `empty` → `draft` (written, not reviewed) → `agreed` (confirmed by the
