@@ -17,3 +17,6 @@ scripts/_tmp-*/
 !/build/blocks/
 !/build/blocks/**
 *.log
+
+# Local editor / harness config
+.claude/
