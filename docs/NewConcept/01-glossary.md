@@ -50,8 +50,10 @@ The branch a node sits in is load-bearing: it decides the relation kind that rea
 | Branch | Holds data | Means |
 |---|---|---|
 | **`Model`** | yes | The things the installation is actually about — parts, orders, recipes. |
-| **`Kompositionen`** | yes | Things that exist only as part of a whole. A contact without its part does not exist ([D-135](90-decision-log.md)). |
-| **`Bausteine`** | **no** | What models are built *out of*: data types, constants, aggregates. Means to an end, never a place anything is kept ([D-185](90-decision-log.md)). |
+| **`Compositions`** | yes | Things that exist only as part of a whole. A contact without its part does not exist ([D-135](90-decision-log.md)). |
+| **`Primitives`** | **no** | What models are built *out of*. Means to an end, never a place anything is kept ([D-185](90-decision-log.md)). Splits one level further, and that split decides the relation kind ([D-193](90-decision-log.md)). |
+| ↳ **Data Types** | no | `int`, `textarea`. The value lives **in the record** — reached by **composition**. |
+| ↳ **Constants** | no | Units, currencies. The value is a **reference to a node** ([D-131](90-decision-log.md)) — reached by **aggregation**. |
 
 ## Configuration and text
 
@@ -61,7 +63,7 @@ The branch a node sits in is load-bearing: it decides the relation kind that rea
 | **Override** | Überschreibung | A setting or label on a use site that replaces the base value. Stored **sparsely** — only what differs — so a change to the base reaches every use site that did not override it ([D-015](90-decision-log.md)). |
 | **Resolution chain** | Auflösungskette | Installation → model root → ancestors → node → use site. Walked **key by key**, so a consumer may take a mix ([D-079](90-decision-log.md), [D-093](90-decision-log.md)). |
 | **Label** | Bezeichnung | The human-readable text of an identity, in one **role** and one **locale** ([D-019](90-decision-log.md)). Also carries author-written validator messages, addressed by `path` ([D-158](90-decision-log.md)). |
-| **Role** (of a label) | Rolle | Which label this is — `long`, `form`, `table`, `symbol`. Roles are **nodes**: seeded and extensible ([D-151](90-decision-log.md)). Written **without** a prefix ([D-023](90-decision-log.md)). |
+| **Role** (of a label) | Rolle | Which label this is — the seeded set is `form`, `table`, `select`, `symbol`, `help` ([D-196](90-decision-log.md)). Roles are **nodes**: seeded and extensible ([D-151](90-decision-log.md)). Written **without** a prefix ([D-023](90-decision-log.md)). |
 | **Base name** | Basisname | `Node.name`. Required, locale-neutral, entered at creation. Display of last resort, **never** a lookup key. Not unique ([D-022](90-decision-log.md)). |
 | **Owner** | Eigentümer | The single identity a setting, label or changelog item belongs to. One column, because model ids come from one space. |
 | **Pack** | Paket | A named, installable set of model content and optionally some data ([D-175](90-decision-log.md)). The shipped seed is simply the pack that comes with the product. May **add** to another pack's branch, never **alter** its nodes ([D-177](90-decision-log.md)). |
@@ -121,7 +123,7 @@ Kept so a discarded term cannot quietly return under another name.
 | *Type node* / *domain node* / *value node* | Presume node subtypes, which [V5](00-vision-and-scope.md) argues against. |
 | *Primary key* for an attribute | The primary key is the **`id`** ([D-055](90-decision-log.md)). Use **`unique`** ([D-115](90-decision-log.md)). |
 | *Bestand* | Proposed as a collective for the data half and rejected by the owner as unnecessary ([D-176](90-decision-log.md)). **Daten** already reads perfectly well. |
-| *Definition* as a branch name | A model node is a definition too, so the word separates nothing. The branch is **`Bausteine`** ([D-185](90-decision-log.md)). |
+| *Definition* as a branch name | A model node is a definition too, so the word separates nothing. The branch is **`Primitives`** ([D-185](90-decision-log.md)). |
 | *hide* as a flag on a node | The legacy control that went unused because it sat on the wrong object. What may be picked belongs to the **use site** ([D-181](90-decision-log.md)). |
 | *View* | Deferred, not adopted — a second place where calculations would live ([OQ-069](91-open-questions.md)). It earns its place only when a figure appears that belongs to no node. |
 

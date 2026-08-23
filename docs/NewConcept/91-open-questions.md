@@ -79,6 +79,11 @@ still blocks the core.
 
 ## OQ-002 — If the tree is inheritance only, what are the other edges?
 
+> **Closed 2026-08-23 → [D-012](90-decision-log.md), [D-161](90-decision-log.md), [C9](10-domain-core.md).**
+> All three sub-questions have been answered for two days and the entry simply never caught up: the
+> same class distinguished by kind; edges cross branches by design; the inheritance edge is
+> protected.
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
 
 [V1](00-vision-and-scope.md) says *nodes and edges*; [V3](00-vision-and-scope.md) says the
@@ -1984,6 +1989,9 @@ may have meant the compositions node — worth confirming before building either
 
 ## OQ-069 — Views: deferred, with an entry criterion
 
+> **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
+> inventing; the entry names the event that reopens it.
+
 *Blocks:* nothing · *Status:* **deferred by decision** · *raised by the owner, 2026-08-22*
 
 The owner asked whether a **view** — a named, reusable computation referenced from several places —
@@ -2013,6 +2021,9 @@ which is exactly [D-140](90-decision-log.md)'s escape hatch and would hang natur
 ---
 
 ## OQ-070 — How does renderer resolution stay cheap in a long list?
+
+> **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
+> inventing; the entry names the event that reopens it.
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-159](90-decision-log.md)
 
@@ -2075,6 +2086,9 @@ and the only artefact that makes an honest estimate of a port possible.
 
 ## OQ-072 — How is the importer told what maps to what?
 
+> **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
+> inventing; the entry names the event that reopens it.
+
 *Blocks:* [70 Migration](70-migration.md) · *Status:* open, deferred until the core is locked · *raised by* [D-173](90-decision-log.md)
 
 [D-173](90-decision-log.md) puts an importer for existing WordPress tables in scope as a boundary
@@ -2103,6 +2117,9 @@ saying the same thing twice.
 
 ## OQ-073 — What is the branch without data called?
 
+> **Closed 2026-08-23 → [D-185](90-decision-log.md), name corrected by [D-188](90-decision-log.md).**
+> `Primitives` — English per [D-187](90-decision-log.md), with `Bausteine` as the German label.
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-183](90-decision-log.md)
 
 [D-183](90-decision-log.md) settles that `Model` and `Kompositionen` hold data and the rest does
@@ -2128,6 +2145,9 @@ of explanation, why nothing they enter will ever be stored there.
 
 ## OQ-074 — Is there an enum filled at runtime?
 
+> **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
+> inventing; the entry names the event that reopens it.
+
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open, deferred by the owner · *raised 2026-08-23*
 
 The owner: *what is the difference between an enum I define at modelling time and one I want to
@@ -2143,7 +2163,6 @@ enum a visitor can extend at runtime is something else entirely: it would let da
 **model**, which every rule here so far has kept apart. If it turns out to be needed, that
 separation is the thing to be careful with, not the storage.
 
-> **Closed 2026-08-23 → [D-185](90-decision-log.md).** `Bausteine`.
 
 ### A first plausible answer to OQ-074, from the owner, 2026-08-23
 

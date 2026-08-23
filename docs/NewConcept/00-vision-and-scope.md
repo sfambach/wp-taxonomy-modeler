@@ -1,15 +1,14 @@
 ---
 title: Vision and scope
-status: draft
+status: agreed
 round: R1 (in progress)
 last_updated: 2026-08-23
 ---
 
 # Vision and scope
 
-> **Status: `draft`.** Contains the owner's spoken statement of 2026-08-22, written down but
-> **not yet confirmed**. Nothing here is `agreed` until the owner has checked the wording —
-> in particular the points marked ⚠️. Do not implement from this file.
+> **Status: `agreed`.** The owner confirmed V1–V9 and every transcription reading on 2026-08-23
+> ([D-186](90-decision-log.md)). This is the foundation the decision log rests on.
 
 ## Product statement
 
@@ -28,7 +27,7 @@ Numbered so later documents and decisions can cite them.
 | **V2** | The nodes sit in a **tree**. |
 | **V3** | The tree represents the **inheritance hierarchy only** — nothing else. |
 | **V4** | The **root node has no parent**. Every other node inherits from its ancestors. |
-| **V5** | **Fundamentally all nodes are the same.** There is one kind of node, not a class hierarchy of node kinds. |
+| **V5** | **Fundamentally all nodes are the same.** Confirmed 2026-08-23 with a nuance from the owner: *there are specialisations, but that statement was about the **data model** and **how nodes are stored**.* So: one kind of node, stored one way, no class hierarchy of node kinds — and specialisation arrives through configuration (V7) rather than through a second shape in the database. |
 | **V6** | There are a few **special nodes**, for **data types** and for **calculations**. |
 | **V7** | Those special nodes are **created in the configuration**. |
 | **V8** | Essentially every node has: **one renderer** (responsible for display), **one converter** (may manipulate the output), and **one or more validators** (check whether user input is correct). |
@@ -46,16 +45,16 @@ Stated here because both cut against the seed sketches, and that is the point:
   between nodes come from configuration (V7, V8), not from subclassing. → drives
   [OQ-003](91-open-questions.md).
 
-## ⚠️ Transcription notes
+## Transcription notes — resolved 2026-08-23
 
-The statement above was dictated. These readings need an explicit yes/no:
+The statement was dictated. Every reading was put to the owner and confirmed:
 
-| Heard | Read as | Confidence |
+| Heard | Means | |
 |---|---|---|
-| "Taximodeller" | *taxonomy modeller* | high |
-| "über die Gastronomie auf" | dictation noise, dropped | medium — say if something was meant here |
-| "Hutknoten" | *root node* (Wurzelknoten) | high |
-| "Grundmenüs sind alle Knoten gleich" | *fundamentally, all nodes are the same* | medium |
+| "Taximodeller" | **Taxonomy Modeller** | confirmed |
+| "über die Gastronomie auf" | **taxonomy** — not noise after all, the word was simply mangled twice | corrected |
+| "Hutknoten" | **root node** | confirmed |
+| "Grundmenüs sind alle Knoten gleich" | **fundamentally all nodes are the same** — about the data model and the storage of nodes, and not a denial that specialisations exist | sharpened, see V5 |
 
 ## Delivery target
 

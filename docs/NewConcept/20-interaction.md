@@ -6,6 +6,48 @@ answers *what someone is allowed to do with it*.
 
 ---
 
+## Principles
+
+These hold everywhere in the interface. They are listed first because every later section
+assumes them, and because the previous project lost most of its consistency by deciding them
+case by case.
+
+### U0 · One chooser
+
+```mermaid
+flowchart LR
+  A["Bauteil wählen"] --> W["derselbe Wähler"]
+  B["Vorgabewert setzen"] --> W
+  C["Ziel eines Attributs"] --> W
+  W --> P["auswählen"]
+  W --> N["neu anlegen"]
+```
+
+**There is one chooser in this product.** It may take options for different scenarios, but it
+**always looks the same**. The owner had to explain this at length to the previous assistant and
+states it as a design rule for the whole interface, not as a preference for one screen.
+
+Two things follow that are easy to get wrong separately:
+
+- **It picks and it creates.** A target that does not exist yet has to be enterable, and that is
+  true of **aggregation as much as composition** — with composition creating is simply the usual
+  path and with aggregation picking is. ⚠️ *An earlier draft of this document split the two into
+  different widgets — a list of references for aggregation, a blueprint for composition. The owner
+  corrected it: the split is too sharp, and we lose nothing by making composition just as
+  enterable.*
+- **Inline selection is the exception.** In many places it makes no sense; where the choice is
+  genuinely hard, a proper dialogue that helps is the better answer.
+
+### U0b · A control's state follows from what is actually choosable
+
+The owner's example: a select with **one** entry is **greyed out** — there is nothing to choose.
+With more than one, a choice genuinely exists and the control is live.
+
+This is [D-050](90-decision-log.md) — *do not ask what cannot matter* — applied to controls rather
+than to dialogues, and it is worth checking **everywhere** rather than deciding per screen. A
+control that asks a question with one possible answer is not being helpful; it is making a person
+prove they have read it.
+
 ## The tree
 
 The tree is where the model is built. The legacy project had one and, in the owner's words, it
@@ -83,7 +125,7 @@ from**, named with a trailing index. The reason is the working rhythm the owner 
 duplicate several times in a row, then rename each — and that only works if every copy lands where
 the eye already is.
 
-### U8 · What may be picked belongs to the place doing the picking
+### U7 · What may be picked belongs to the place doing the picking
 
 The legacy `eye` hid a node and went unused. Its aim was to stop some nodes being **selectable** —
 when choosing a type, the person should land on a **leaf** rather than an intermediate node. It sat
@@ -92,7 +134,7 @@ branch* is how a type is named) and a mistake when **entering data**. So it is a
 site, arriving in the render context, inheriting along the chain — **leaves only by default**
 ([D-181](90-decision-log.md)).
 
-### U7 · What cannot apply is not shown
+### U8 · What cannot apply is not shown
 
 Visible in the legacy screenshot: the last child has no *down* arrow, some rows have no hierarchy
 control. Not greyed out — **absent**. This is [D-050](90-decision-log.md) applied to a toolbar, and
@@ -100,9 +142,106 @@ it is what keeps a seven-control row readable at all.
 
 ---
 
+
+---
+
+## The detail view
+
+```mermaid
+flowchart TB
+  A["Aktionen"] --> B["Feststehendes"]
+  B --> C["Name"]
+  C --> D["Darstellung"]
+  D --> E["Attribute · zugeklappt"]
+  E --> F["Vorschau"]
+  F --> G["Verbindungen · zugeklappt"]
+```
+
+### U9 · The order is the order of dealing with a node
+
+Not taste — the sequence in which a person works. **What acts** sits at the top; **what cannot be
+changed** underneath it, as a band of chips; the **name** next, because it is what you change first;
+then **display**, which is changed occasionally; then the **attributes**, which are the real work;
+then the **preview**, which shows what came of it; and last the **relations**, which are consulted
+rather than edited.
+
+### U10 · Attributes show their core and hide their detail
+
+A row shows name, type, multiplicity, kind, default, read-only, hidden, inherited. Everything else
+is behind an expander, per attribute.
+
+This is **two arguments pointing the same way**, which is rare enough to record: it keeps the
+screen legible, **and** it means the detail of an attribute is only loaded when it is opened — not
+the whole node's worth of settings on every page view. Density and loading agree here, so a later
+rebuild must not discard it as mere styling.
+
+The same reasoning puts **relations** at the bottom, collapsed, and not even queried until opened.
+
+### U11 · Density is a requirement, not polish
+
+The owner on the legacy screen: *it is all still relatively large; it would be good if it could be
+made smaller in area so that more fits on one screen, while still staying clear*. Two rules that
+follow, and they cost nothing to keep:
+
+- **Fields are sized to their content, not to the container.** A name of ten characters does not
+  need a field spanning the window.
+- **Fixed facts are chips, not rows.** The legacy meta band already does this and it is the densest
+  part of the screen. It is the pattern to extend, not the exception.
+
+### U12 · Three sections the legacy screen has no place for
+
+They arrived with decisions taken after that screen was built:
+
+| Section | Why | Where |
+|---|---|---|
+| **Conflicts** | [D-054](90-decision-log.md) reports rather than blocks — but a report nobody sees is a block with extra steps. If this node has an unresolved conflict it belongs at the **top**, because it is actionable. | above the name |
+| **Provenance** | Which pack a node came from and whether it has been changed since ([D-174](90-decision-log.md), [D-175](90-decision-log.md)) — it decides whether an update will touch it. | in the fixed band, as chips |
+| **History** | Every change with before and after ([D-061](90-decision-log.md)); this is where taking something back lives ([D-172](90-decision-log.md)). *Last modified by* is already there and is one line of it. | bottom, collapsed, beside relations |
+
+A parked node ([D-123](90-decision-log.md)) must say so too — but that is a state of the whole
+screen, not a section of it.
+
+### U13 · `Used by` — the one direction nothing else shows
+
+The legacy screen ended with `Relations`, collapsed: *all connections to and from the node*. Half of
+that is already on the page and nobody had noticed:
+
+| Direction | Where it already is |
+|---|---|
+| outgoing, non-inheritance | **the attributes table** — an attribute *is* a relation seen from its owner ([D-031](90-decision-log.md)) |
+| the parent edge | the fixed band, as a chip |
+| the children | the tree |
+| **incoming** | **nowhere else** |
+
+So the section holds exactly one direction, and it is renamed for it: **`Used by`** — *Verwendet
+von*. Not `Incoming`, which describes the arrow rather than the meaning, and not `Referenced by`,
+because *reference* is already carrying three jobs here.
+
+**It is not a listing, it is an impact estimate.** It answers the question a person has before every
+larger change:
+
+| Intending to | It says |
+|---|---|
+| delete | who breaks ([D-122](90-decision-log.md)) |
+| move | where the relation kind flips ([D-162](90-decision-log.md)) |
+| remove a pack | what points in from outside ([D-177](90-decision-log.md)) |
+| rename | who inherits the label ([D-015](90-decision-log.md)) |
+
+The same list the conflict resolver would pull anyway — but beforehand and voluntarily, rather than
+afterwards and as a complaint.
+
+⚠️ **The condition, in the owner's words: *as long as that stays so*.** The section is allowed to
+hold one direction only because every outgoing edge is currently visible elsewhere. If an outgoing
+edge ever appears that is neither an attribute nor inheritance, this section has to grow back —
+otherwise it silently stops being complete.
+
+**And model must not blur into data here.** On a **node**, `Used by` lists the **attributes of other
+nodes that have this node as their type**. *Which records point at a record* is a different
+question and belongs on the record's own screen.
+
 ## Still to be dictated
 
-- What **Counts** counts.
-- The detail view.
+
+
 - How blocks are assembled.
 - What is special in Gutenberg and in the front end.
