@@ -93,6 +93,8 @@ The branch a node sits in is load-bearing: it decides the relation kind that rea
 | **Conflict resolver** | Konfliktlöser | Where a model that no longer fits its data is reported and settled ([D-054](90-decision-log.md)). Reports rather than blocks — except for data entry against a broken model, which stays barred ([D-157](90-decision-log.md)). |
 | **Parking** | Papierkorb | Deletion in two stages: park, then purge ([D-123](90-decision-log.md)). A parked record keeps its `unique` values blocked ([D-154](90-decision-log.md)). Undo reaches exactly as far as the trash ([D-172](90-decision-log.md)). |
 | **Backward aggregate** | Rückwärtsaggregat | A computed value read from the things that point *at* this one. Calculated at read time, in no index, therefore **not searchable** ([D-140](90-decision-log.md)). |
+| **Expression** | Formel | A computation over values ([D-130](90-decision-log.md)). ⚠️ In German **Formel**, never *Ausdruck* — that word is taken by the next row. |
+| **Printout** | Ausdruck | A **frozen** rendering of a report, kept as a document ([D-242](90-decision-log.md)). A report is live and recomputes; an invoice is a printout, not a report. |
 
 ## Code shape
 
