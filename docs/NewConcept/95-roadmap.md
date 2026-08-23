@@ -51,6 +51,20 @@ release. They reopen when the event happens, whichever release is current.
 | **What the importer is told** ([OQ-072](91-open-questions.md)) | the domain core is locked |
 | **An enum filled at runtime** ([OQ-074](91-open-questions.md)) | working with the project shows it missing |
 
+
+## Parking lot — nice to have
+
+Things that are wanted but not needed. **Parking is not a promise:** an entry may be struck without
+anyone explaining why, and nothing here is owed to anybody.
+
+**What an entry must carry**, or it turns into a graveyard: *what* it is, and *what would make us
+want it*. Not a trigger that fires by itself — that is a deferral with a criterion and belongs in
+the section above — but the situation in which it becomes attractive.
+
+| What | What would make us want it | Raised |
+|---|---|---|
+| **Number circle** — a type that hands out numbers by a rule: prefix, start, step, width, for article numbers, EANs, order numbers ([D-268](90-decision-log.md)) | the first model that needs an identifier the system assigns rather than the author types. An invoice number would force it; an article number can wait, because the author can type one | 2026-08-23, from the legacy code sweep |
+
 ## Still to write
 
 - Phases within Release 1, each with an entry and an exit condition.
