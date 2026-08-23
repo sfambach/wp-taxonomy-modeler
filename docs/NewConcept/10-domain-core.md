@@ -7,18 +7,20 @@ last_updated: 2026-08-23
 
 # Domain core — the model
 
-> **Status: `draft`.** Contains owner statements of 2026-08-22, written down but **not yet
-> confirmed**. Legacy material has not been harvested into this document yet.
+> **Status: `draft`, and ready to be judged for `locked`.** The legacy has been harvested — see
+> [`_harvest/03`](_harvest/03-legacy-inspiration.md) and [`04`](_harvest/04-legacy-code-inspiration.md),
+> both closed. No question is open and no contradiction stands.
 >
 > **This is the document that must reach `locked` first** ([D-004](90-decision-log.md)).
 > Renderer, i18n and persistence all hang off it.
 >
-> ⚠️ **Every `OQ-nnn` referenced below is now answered.** This document cites 39 of them and was
-> written while they were open, so the surrounding sentences still read as if they were. The
-> table at the end of this document — **[The questions this document cites, and what settled
-> them](#the-questions-this-document-cites-and-what-settled-them)** — names the deciding decision
-> for each. Rewriting the passages themselves is the remaining work on this file before it can be
-> `locked`.
+> **Read [The model as it stands](#the-model-as-it-stands) and nothing else, if you are here to
+> build.** It states the model once, completely, without how it came about.
+>
+> Everything after it is the **reasoning** — twenty-five passes of owner statements and the
+> discussion each produced. Kept deliberately: more than one rule was rescued by reading why it
+> said what it said. ⚠️ Those passages were written while questions were still open and still read
+> that way; every `OQ-nnn` they cite is answered, and the table at the end names by what.
 
 ## Purpose
 
@@ -30,6 +32,359 @@ splitting but its **structure**: a chain of small units, each one diagram plus e
 ([98 Documentation style](98-documentation-style.md)). A contradiction between two small
 diagrams is visible; a contradiction inside 1589 lines of prose is not — that is how the
 previous round lost track.
+
+## The model as it stands
+
+**This is the part to build from.** It states the model once, completely, without how it came
+about. Everything behind it — the twenty-five owner-statement passes — is the **reasoning**, and it
+is kept because more than once a rule was saved by reading why it said what it said. But nobody
+should have to read it in order to write the code.
+
+⚠️ **If a sentence here and a sentence further down disagree, this one is current** and the other
+belongs to the conversation that produced it.
+
+---
+
+### The two halves
+
+```mermaid
+flowchart LR
+  M["Modell — beschreibt"] --> D["Daten — was eingegeben wurde"]
+```
+
+| | Deutsch | Is |
+|---|---|---|
+| **Model** | Modell | everything that **describes**: nodes, relations, settings, labels |
+| **Data** | Daten | everything entered **afterwards**, as a whole |
+| **Record** | Datensatz | one single piece of it |
+
+They do **not** share an identity space. Model ids and record ids are allocated independently, each
+by its own `AUTO_INCREMENT` ([D-164](90-decision-log.md)).
+
+---
+
+### Identity, node, relation
+
+Everything the model persists carries an identity: an `id` and a `version`, and **nothing else**
+([D-080](90-decision-log.md)). `Node` and `Relation` are its two shapes, and they draw ids from
+**one shared space** — which is what lets a settings row name one `owner_id` as a real foreign key
+([C11](#owner-statement--2026-08-22-third-pass), [D-090](90-decision-log.md)).
+
+```php
+CONTRACT
+
+final class Identity {
+    public function __construct(
+        public readonly int $id,
+        public readonly int $version,   // row change counter: optimistic locking, cache invalidation
+    ) {}
+}
+```
+
+**A node has exactly four fixed attributes** ([D-082](90-decision-log.md)):
+
+| Field | |
+|---|---|
+| `id` | the primary key. Meaningless, stable, **never resolved on** ([D-055](90-decision-log.md)) |
+| `version` | row change counter |
+| `name` | the **base name**: required, locale-neutral, entered at creation. Display of last resort, never a lookup key, **not unique** ([D-022](90-decision-log.md)) |
+| `path` | the materialised ancestor path — derived and rebuildable |
+
+⚠️ **`type` is not among them.** A node's type **is** its inheritance branch
+([D-041](90-decision-log.md)).
+
+**A relation is one construct with three kinds** ([D-012](90-decision-log.md)):
+
+```php
+CONTRACT
+
+final class Relation {
+    public function __construct(
+        public readonly Identity $identity,
+        public readonly int $fromId,
+        public readonly int $toId,
+        public readonly Kind $kind,        // derived, see below — stored so reading needs no walk
+        public readonly ?string $name,     // the attribute name, where it has one
+        public readonly int $position,     // ordering belongs to the edge, not to the node
+    ) {}
+}
+
+enum Kind { case Inheritance; case Composition; case Aggregation; }
+```
+
+| Kind | |
+|---|---|
+| **Inheritance** | forms the tree. At most one parent, acyclic, protected, the only kind exempt from edge settings |
+| **Composition** | the target belongs to the whole and **dies with it**. Requires sole ownership |
+| **Aggregation** | the target is **independent** and survives its whole |
+
+⚠️ **At most one composition edge may point at a node** ([D-137](90-decision-log.md),
+[D-214](90-decision-log.md)). A part that *can* belong to two wholes is not a part; make it an
+aggregation, or two specialised nodes.
+
+**Every foreign key column ends in `_id`** ([D-090](90-decision-log.md)).
+
+---
+
+### An attribute is a relation
+
+**There is no separate attribute object** ([D-031](90-decision-log.md)). An attribute *is* a
+relation, seen from the node that owns it:
+
+| What the author calls it | What it is |
+|---|---|
+| the attribute's **name** | `Relation.name` |
+| its **type** | `Relation.toId` — and that names a **branch**, so it is polymorphic ([D-041](90-decision-log.md)) |
+| its **connection** | `Relation.kind` |
+| multiplicity, default, `min`, `max`, renderer choice … | **settings** on the relation |
+| its **caption**, its **help text** | **labels** on the relation |
+
+The wrapper the author edits is a **screen**, not a table: one dialogue writes one relation row and
+a few settings rows.
+
+⚠️ **A duplicate edge is refused** — same `from`, `kind`, `to` **and name**
+([D-281](90-decision-log.md)). `Breite` and `Höhe` both reach `int` and are two different things;
+the name is part of what makes an edge itself.
+
+---
+
+### The three branches
+
+```mermaid
+flowchart TB
+  R["Root"] --> M["Model"]
+  R --> C["Compositions"]
+  R --> P["Primitives"]
+  P --> DT["Data Types"]
+  P --> K["Constants"]
+```
+
+**The branch a node sits in decides three things**, and none of them is a switch anyone sets:
+
+| Branch | Has data | Reached by | Value stored |
+|---|---|---|---|
+| **`Model`** | yes, standalone | **aggregation** | external reference |
+| **`Compositions`** | yes, owned | **composition** | its own records |
+| **`Primitives › Data Types`** | no | **composition** | **inside** the record, by path |
+| **`Primitives › Constants`** | no | **aggregation** | a reference to a **node** |
+
+Decided by [D-161](90-decision-log.md) (kind), [D-183](90-decision-log.md) (data),
+[D-232](90-decision-log.md) (storage), split one level deeper by [D-193](90-decision-log.md).
+
+⚠️ **The relation kind is never asked.** The author picks a **target**; the kind follows. This
+removes the error the whole storage rule exists to prevent — a supplier accidentally composed into
+an order, so every order breeds its own supplier — not by validating it afterwards but by never
+offering it.
+
+⚠️ **Multiplicity plays no part in storage.** Five integers are five **paths** in one record, not
+five records ([D-232](90-decision-log.md)).
+
+**Moving a node between branches rewrites every edge that points at it**
+([D-162](90-decision-log.md)). `Compositions` → `Model` always works; `Model` → `Compositions` only
+where each affected record has a single user, otherwise the conflict resolver offers *a copy per
+using record*.
+
+---
+
+### Multiplicity, restriction, and what may be picked
+
+**Multiplicity** sits on the edge and is inherited and narrowable ([D-086](90-decision-log.md)).
+
+**There is no *fixed value*** ([D-221](90-decision-log.md)). A restriction that collapses to one
+**is** the fixed value, and the control disappears by itself, because a control with one possible
+outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md) — the rule counts
+**possibilities**, not entries; at `0..1` with one entry, *nothing* is a second possibility).
+
+**Restrictions narrow downwards and never widen.** A use site may restrict further; it may not
+reopen, or the guarantee was worth nothing.
+
+⚠️ **An attribute whose permitted set is empty is a model conflict** — reported where the narrowing
+happens, not at data-entry time; the model may be temporarily inconsistent, but **data entry
+against it stays barred** ([D-157](90-decision-log.md)).
+
+**What may be picked belongs to the use site, not to the node** ([D-181](90-decision-log.md)).
+Default: **everything except the branch root** ([D-238](90-decision-log.md)) — *leaves only* is
+available and is not the default, because an intermediate node is often the honest answer.
+
+---
+
+### Settings and the resolution chain
+
+A setting is `owner_id` + `key` + a **typed** value. Conceptually an attribute
+([D-011](90-decision-log.md)); **one construct, one mechanism**, with a reserved namespace for
+engine-owned keys ([D-084](90-decision-log.md)).
+
+```mermaid
+flowchart LR
+  I["Installation"] --> R["Model root"] --> A["Ancestors"] --> N["Node"] --> U["Use site"]
+```
+
+Walked **key by key**, so a consumer may take a mix ([D-079](90-decision-log.md),
+[D-093](90-decision-log.md)). Overrides are stored **sparsely** — only what differs — so a change at
+the base reaches every use site that did not override it ([D-015](90-decision-log.md)).
+
+⚠️ **An override can be reset to *inherited*, and that is not storing an empty value**
+([D-266](90-decision-log.md)):
+
+| Action | Stored | Effect |
+|---|---|---|
+| **reset** | the key **disappears** | inherits again; later changes at the base arrive |
+| **set empty** | the key stays, holding nothing | deliberately nothing here; base changes do **not** arrive |
+
+*Inherited* and *empty here* must look **different**, and returning to inherited is an explicit
+action, not the side effect of clearing a field.
+
+**Anything chosen automatically is a default, never a fact** ([D-223](90-decision-log.md)): it is
+revocable at the use site and must be **visible**.
+
+**The unit of saving is the group that belongs together** ([D-300](90-decision-log.md)) — an
+allow-list is **one** value that happens to be a set; a switch is a group of one and waits for
+nobody.
+
+---
+
+### Labels
+
+The human-readable text of an identity: `owner_id` + `role` + `locale` + `number` + `text`, in its
+own table ([D-019](90-decision-log.md)).
+
+| | |
+|---|---|
+| **Roles** are **nodes** — seeded and extensible ([D-151](90-decision-log.md)). Seeded set: `form`, `table`, `symbol`, `help` ([D-196](90-decision-log.md), [D-264](90-decision-log.md)) |
+| **`number`** holds a **plural category** — `one`, `other`, and where a language needs them `zero`, `two`, `few`, `many` ([D-216](90-decision-log.md)) |
+| **`path`** addresses a validator, so a message can belong to one validator among several ([D-158](90-decision-log.md)) |
+| **A translatable mark** decides whether translation fields are offered at all; `symbol` defaults to **not** ([D-261](90-decision-log.md), [D-262](90-decision-log.md)) |
+
+**Fallback chain:** `<role>` → `help` → `node.name` ([D-020](90-decision-log.md),
+[D-209](90-decision-log.md)).
+
+⚠️ **`icon` is not a label.** It is a glyph chosen from the installation's allow-list, a **setting**,
+language-neutral. `symbol` is a very short **text** and is translated ([D-252](90-decision-log.md)).
+
+---
+
+### Where a value is stored
+
+```mermaid
+flowchart LR
+  A["Attribut"] --> B["Ast des Ziels"]
+  B --> P["Primitives → im Datensatz, per Pfad"]
+  B --> K["Compositions → eigene Datensätze"]
+  B --> M["Model → externer Verweis"]
+```
+
+`record_values` keys on a **path**, with the last edge kept in `edge_id`
+([D-134](90-decision-log.md)). That makes `WHERE edge_id = … AND value_decimal > 1000` find every
+price over a thousand wherever it sits, and adding `path` narrows it to one attribute.
+
+**Typed value columns, never one stringly value** ([D-071](90-decision-log.md),
+[D-074](90-decision-log.md)).
+
+⚠️ **A value reference resolves either to a node or to a record, and the target type's placement
+decides which** ([D-131](90-decision-log.md)) — modelling-time content (`Basiseinheit` → `Gramm`)
+yields a **node** reference; input-time content yields a **record** reference.
+
+---
+
+### The tables
+
+```php
+CONTRACT — model side
+
+nodes        id · version · name · path
+relations    id · version · from_id · to_id · kind · name · position
+settings     id · owner_id · key · value_* (typed)
+labels       id · owner_id · role_id · locale · number · path · text · translatable
+changelog    id · owner_id · owner_kind · at · by_user_id · before · after
+```
+
+```php
+CONTRACT — data side, its own id space
+
+records        id · model_id · model_version · created_at
+record_values  id · record_id · edge_id · path · value_* (typed) · value_ref
+```
+
+Seven tables ([D-083](90-decision-log.md)). **No table per model** — the model **is** the schema
+([D-066](90-decision-log.md)); a per-model **projection** may exist as a rebuildable **cache**, opt
+in and few, never a place where anything is kept ([D-228](90-decision-log.md)).
+
+**A search column per record**, written on save from the identifying fields — normalised, lowercased,
+spacing and punctuation stripped, sharing **one** normalisation function with duplicate detection
+([D-167](90-decision-log.md), [D-237](90-decision-log.md)).
+
+---
+
+### Change, versions, deletion
+
+**Every object has at least one changelog item** — creation must be logged, because `creation_date`
+is read from it ([D-081](90-decision-log.md), [D-080](90-decision-log.md)).
+
+**A record carries the model version it was written against** ([D-060](90-decision-log.md)), and it
+**keeps** it: only what actually conflicted is touched, so records at several versions are a normal
+steady state ([D-210](90-decision-log.md)). **Numbers order events; shape decides compatibility**
+([D-172](90-decision-log.md)).
+
+**An unchanged save does not raise the version** ([D-282](90-decision-log.md)).
+
+**A machine change is recorded as the machine**, never as whichever administrator was logged in
+([D-296](90-decision-log.md)).
+
+**Deletion is two-stage: park, then purge** ([D-123](90-decision-log.md)). A parked record keeps its
+`unique` values blocked ([D-154](90-decision-log.md)). **Undo reaches exactly as far as the trash**
+([D-172](90-decision-log.md)) — and a renderer never writes, not even to tidy up
+([D-159](90-decision-log.md)).
+
+---
+
+### Data packs and provenance
+
+A **data pack** is a named, installable set of model content and optionally some data
+([D-175](90-decision-log.md), [D-215](90-decision-log.md)). The shipped seed is simply the pack that
+comes in the box.
+
+⚠️ **A pack is data, never code.** One that needs behaviour **declares a dependency** on it.
+
+**Provenance sits on the individual node** — which pack it came from, and whether it has been
+changed since ([D-174](90-decision-log.md)). Untouched is updated silently
+([D-213](90-decision-log.md)); changed is left alone and reported. That per-node mark is what lets a
+pack **deliver into** another pack's branch: **add yes, alter never**
+([D-177](90-decision-log.md)).
+
+**Provenance is information; `framework` is protection**, and it covers only the few nodes the
+machinery stands on ([D-194](90-decision-log.md)).
+
+---
+
+### Extending the model while entering data
+
+A branch **declares** that it may be extended, and the same declaration says **by whom**
+([D-204](90-decision-log.md), [D-292](90-decision-log.md)). The value is **usable at once and judged
+afterwards** — the pending state is a provenance mark, the list has the shape of the conflict
+resolver, and a refusal is an ordinary two-stage deletion. Once approved it is an ordinary node.
+
+---
+
+### What is deliberately not in the model
+
+| Not modelled | Because |
+|---|---|
+| `slug` | a boundary concern ([D-195](90-decision-log.md)) |
+| a *fixed value* | a restriction collapsing to one ([D-221](90-decision-log.md)) |
+| `set`, `table` as constructs | a composed type plus a renderer ([D-246](90-decision-log.md)) |
+| a per-node *hide* flag | selectability belongs to the use site ([D-181](90-decision-log.md)) |
+| record versioning as a mechanism | versions are records under the thing ([D-305](90-decision-log.md)) |
+| conversion as a property of a unit | a conversion is a record ([D-306](90-decision-log.md)) |
+| a running number per record | the `id` identifies; a number circle is parked ([D-267](90-decision-log.md), [D-268](90-decision-log.md)) |
+
+---
+
+## How the model was arrived at
+
+*Everything from here on is the **reasoning**: twenty-five passes of owner statements with the
+discussion each produced. It is kept because a rule is only safe while the reason for it can
+still be read — more than one rule was saved this way. It is **not** what to build from; that
+is the section above.*
 
 ## Owner statements — 2026-08-22
 
@@ -2397,7 +2752,11 @@ the second locale.*
 The icon is drawn in the tree as well, where a glyph is read faster than a word
 ([D-251](90-decision-log.md), [U21](20-interaction.md)).
 
-## Where the model stands
+## Where the model stood — the first summary, kept for its diagrams
+
+> ⚠️ **Superseded as a specification by [The model as it stands](#the-model-as-it-stands)**, which
+> is complete and current. This section was the first attempt at a summary and is kept for its
+> three overview diagrams and for what it says about **what is deliberately not drawn**.
 
 Three small views of what is settled. What is deliberately **not** in them is listed after.
 
