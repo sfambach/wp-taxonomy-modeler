@@ -198,6 +198,8 @@ outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md
 **A use site is an attribute, and it may do everything the node may** — it may narrow **and** widen,
 and there is no monotonicity rule ([D-088](90-decision-log.md), [D-310](90-decision-log.md)).
 
+⚠️ **One axis is strict: what an ancestor declares **mandatory** stays mandatory for every descendant** ([D-311](90-decision-log.md)). It may be tightened downwards, never loosened — otherwise *every bird has a name* would never hold, and a classification that guarantees nothing about a group is worth nothing. An attribute that does not apply to a descendant is **moved down** ([D-155](90-decision-log.md)), not refused.
+
 ⚠️ **So a restriction on a type is a default, not a guarantee.** Whoever needs something inviolable
 gets it from framework protection ([D-194](90-decision-log.md)) or from a validator that cannot be
 overridden — not from a permitted set. Everything on the chain is a default. A widening at a use
@@ -815,6 +817,7 @@ and removable ([D-175](90-decision-log.md)).
 | the same thing in two roles is **one node, two relationships** | two copies |
 | a **version** is a record under the thing | a versioning mechanism |
 | a **conversion** is a record | a factor hard-coded somewhere |
+| a characteristic that does not hold for all is **cut differently** — moved down, or made a property with values | *birds fly, except these* |
 
 ### What is deliberately not in the model
 
