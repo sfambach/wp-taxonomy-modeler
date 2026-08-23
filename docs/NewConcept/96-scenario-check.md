@@ -223,6 +223,44 @@ those 74 blocks. They are structured, they are few enough to check by hand, and 
 removes a maintenance burden he carries today. The `wtt_fs` tree is scaffold; **these are the real
 data.**
 
+
+### And the tables are the real body of data — 1558 of them
+
+⚠️ **Two of my own queries were wrong before this was found.** `LIKE '%…%'` came back empty every
+time because the per-cent signs were being eaten on the way to the database; I read *no rows* as
+*no data* and reported *no posts contain tables*. The owner said otherwise — *the BOMs are all in
+simple WP tables* — and he was right.
+
+| Where | Posts | |
+|---|---:|---|
+| drafts | 314 | |
+| published | 156 | |
+| reusable blocks | 24 | |
+| pages | 3 | |
+| **table blocks in total** | **1558** | across posts, pages and blocks |
+
+Real titles carrying them: `Arduino 4 Relais Zusatzplatine` · `TTL IC 7400` · `7402` · `7404` ·
+`TTL IC 74xxx Template` · `Der C64` · `Gotek Floppy Emulator`. ⚠️ **`TTL IC 74xxx Template` is a
+type definition kept as a post**, and `7400 / 7402 / 7404` are its records — the catalogue exists
+already, written by hand.
+
+### The finding that matters for the importer
+
+Opening `TTL IC 7400` turns up not a parts list but a **truth table** — `#`, `A`, `B`, `Y`,
+`Erläuterung`, four rows. Put beside `286 Testkonfiguration`, the shape of the whole corpus
+appears:
+
+| Shape | Example | In the model |
+|---|---|---|
+| **key → value**, two columns | `286 Testkonfiguration`: *CPU → 80287-10* | **one record** and its attributes |
+| **rows under a header**, n columns | truth table, parts list | **many records of one type**, one per row |
+
+⚠️ **This answers [OQ-072](91-open-questions.md) from the data rather than from a desk.** The
+question was whether the importer **creates** a model or **fills** one. It need do neither blindly:
+the **header row is the attribute list**, and the two-column form is an attribute list stood on its
+side. The importer's real job is to **recognise which of the two shapes it is looking at** — and
+then to ask about the values, since `16 Bit ISA ET4000 1MB` is a reference written as prose.
+
 ### The yardstick this gives the concept
 
 > **Can it replace those 74 blocks — and make them answer questions they cannot answer today?**
