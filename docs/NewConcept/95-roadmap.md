@@ -31,6 +31,7 @@ what phase one actually contained.
 | **Views** — a named, reusable calculation belonging to no node | Every figure so far has a natural home as a computed attribute on a node. A view before that is a second place where calculations live. | [D-200](90-decision-log.md), [D-203](90-decision-log.md) |
 | **Reports** — prepared output: an exported parts list, an invoice | Computes at output time and **joins** across unrelated records, so it is not a descent and needs machinery of its own. | [D-201](90-decision-log.md), [D-202](90-decision-log.md), [D-203](90-decision-log.md) |
 | **Renderer resolution per row template** | Thirty rows by ten columns is three hundred in-memory lookups. Not measurable. The optimisation earns its place at thousands of rows. | [D-203](90-decision-log.md) |
+| **Converting between peer units** — showing a value given in inches as millimetres, °C as °F | The **shape** is decided and in Release 1 ([D-274](90-decision-log.md)): a unit carries its factor, and where needed its offset, to the reference unit of its parent. What waits is the **doing** — a converter and a renderer that show a value in a unit other than the one it was entered in. | [D-274](90-decision-log.md), [D-275](90-decision-log.md) |
 
 ### One requirement that does not wait for Release 2
 
@@ -69,7 +70,6 @@ not wanted three times is probably not wanted.
 | What | What would make us want it | Raised |
 |---|---|---|
 | **Number circle** — a type that hands out numbers by a rule: prefix, start, step, width, for article numbers, EANs, order numbers ([D-268](90-decision-log.md)) | the first model that needs an identifier the system assigns rather than the author types. An invoice number would force it; an article number can wait, because the author can type one | 2026-08-23, from the legacy code sweep |
-| **Converting between peer units** — showing a value given in inches as millimetres, °C as °F ([D-274](90-decision-log.md) decided the shape: factor plus offset to the parent's reference unit) | the first model where values arrive in one unit and are read in another. The owner: *now and then there are units given in inches* — wanted, not blocking | 2026-08-23, from the legacy planning sweep |
 
 ## Still to write
 
