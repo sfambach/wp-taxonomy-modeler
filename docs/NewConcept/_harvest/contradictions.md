@@ -23,7 +23,7 @@ the owner has to make, not a gap an agent may fill.
 | [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **resolved** — round four |
 | [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**One open**, found on 2026-08-23 while writing the specification: [D-088](../90-decision-log.md)'s
+**None open.** The last — found on 2026-08-23 while writing the specification — [D-088](../90-decision-log.md)'s
 *an override may narrow **and** widen* against [D-221](../90-decision-log.md)'s *restrictions never
 widen* — see the last section. The previous one — a preview *level* switch against
 [D-231](../90-decision-log.md) — was settled by [D-278](../90-decision-log.md), which removed
@@ -174,3 +174,11 @@ Same standing as everything above: **nothing here is resolved.**
 | Document | Line or section | What the text says | Which decision disagrees | What is unclear |
 |---|---|---|---|---|
 | [10 Domain core](../10-domain-core.md), *Multiplicity, restriction* — and [D-221](../90-decision-log.md) | **Restrictions narrow downwards and never widen.** A use site may restrict further; it may not reopen, *or the guarantee was worth nothing*. Written while specifying, from [D-221](../90-decision-log.md)'s *only `Ohm` is permitted* case. | [D-088](../90-decision-log.md): **an override may narrow *and* widen. No monotonicity rule.** A use site may allow something the node did not. | Both are settings resolved along one chain, so they cannot both hold. Three readings: (a) [D-221](../90-decision-log.md) is later and supersedes, and widening is gone — but [D-088](../90-decision-log.md) was decided deliberately and its case (*this one use may also take Volt*) is not obviously wrong; (b) they govern different things — a **permitted set** may not widen while other settings may — which needs saying, because a permitted set **is** a setting; (c) widening is allowed but must be **visible**, since the objection to it is that a guarantee made high up quietly stops holding. ⚠️ **Found while writing the specification, not in review** — it is exactly the kind of thing that only surfaces when the model is stated once in a single voice. |
+
+---
+
+## Resolved — seventh round, 2026-08-23. All twenty-three settled.
+
+| # | How it was settled |
+|---|---|
+| specification · 1 · narrow-only vs narrow-and-widen | **[D-310](../90-decision-log.md)** — [D-088](../90-decision-log.md) stands. *A use site is an attribute, and it may do everything the node may* (the owner). My *never widen* sentence was an over-generalisation of [D-221](../90-decision-log.md)'s unit case, written without checking whether a rule already existed. What survives is a **reporting** requirement, not a prohibition: a widening should be visible. And the consequence is now stated where it matters — a restriction on a type is a **default, not a guarantee**. |

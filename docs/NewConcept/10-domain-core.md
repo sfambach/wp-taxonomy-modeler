@@ -195,8 +195,13 @@ using record*.
 outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md) — the rule counts
 **possibilities**, not entries; at `0..1` with one entry, *nothing* is a second possibility).
 
-**Restrictions narrow downwards and never widen.** A use site may restrict further; it may not
-reopen, or the guarantee was worth nothing.
+**A use site is an attribute, and it may do everything the node may** — it may narrow **and** widen,
+and there is no monotonicity rule ([D-088](90-decision-log.md), [D-310](90-decision-log.md)).
+
+⚠️ **So a restriction on a type is a default, not a guarantee.** Whoever needs something inviolable
+gets it from framework protection ([D-194](90-decision-log.md)) or from a validator that cannot be
+overridden — not from a permitted set. Everything on the chain is a default. A widening at a use
+site should be **visible**.
 
 ⚠️ **An attribute whose permitted set is empty is a model conflict** — reported where the narrowing
 happens, not at data-entry time; the model may be temporarily inconsistent, but **data entry
@@ -710,10 +715,8 @@ one construct with a different `owner_id`.
 ⚠️ **An override may narrow *and* widen — there is no monotonicity rule**
 ([D-088](90-decision-log.md)). A use site may allow something the node did not.
 
-> ⚠️ **Open contradiction.** [D-221](90-decision-log.md) says restrictions *narrow downwards and
-> never widen*. Both are about settings on one chain. See
-> [`_harvest/contradictions.md`](_harvest/contradictions.md); do not build on either sentence until
-> it is settled.
+> ✅ **Settled the same evening by [D-310](90-decision-log.md):** [D-088](90-decision-log.md) stands.
+> The *never widen* sentence was my over-generalisation of [D-221](90-decision-log.md)'s unit case.
 
 **Orphaned overrides are never cascade-deleted** ([D-033](90-decision-log.md)); they are promoted
 ([D-156](90-decision-log.md)) or shown, never quietly removed.
