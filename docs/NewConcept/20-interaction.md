@@ -257,6 +257,69 @@ red is deletion and conflict, and a pending review is neither wrong nor destruct
 unfinished. And distinct from the `Counts` badge ([D-189](90-decision-log.md)), which answers a
 different question in the same corner of the row.
 
+---
+
+## Blocks
+
+Dictated by the owner on 2026-08-23 from what he already runs on his own site: printed circuit
+boards from open-source projects, their parts lists, retro PC components and the tests that belong
+to them, manufacturers, recipes.
+
+### U15 · Small blocks, one node each — the reference does the joining
+
+```mermaid
+flowchart LR
+  B1["Block: Platine eingeben"] -->|Verweis per Id| R["Bauteilliste"]
+  B2["Block: Bauteilliste zeigen"] --> R
+  B1 -.Link.-> B2
+```
+
+The owner: *I would rather not build one huge block that queries all the data for several connected
+nodes. I would enter the board, which has the parts list as an attribute — but only an id is set
+there. Further down the page, at a suitable place, I would then display the parts list.*
+
+**This is [D-105](90-decision-log.md) arriving in the front end.** A reference is drawn as label plus
+link and **does not descend**, so the board block cannot pull the parts list in even if someone
+wanted it to. Whether the list appears further down the same page or on another one is then the page
+builder's free choice — and in both cases it is **a second block**, never a larger first one.
+
+The link needs no dynamism: it is a label and an address, so *many things can be done after saving*,
+as the owner put it.
+
+### U16 · Comparison resolves to the nearest common ancestor
+
+The owner compares mainboards: P4 against P4, but also 286 against 386 against 486. *It is a
+comparison of similar data types — similar, because there may be differences in detail. Then I would
+have to fall back on the parent node and compare only what they have in common, and show the rest
+separately.*
+
+**That is not a workaround, it is the tree doing its job.** A node's type **is** its inheritance line
+([D-041](90-decision-log.md)), so the nearest ancestor covering every subject **is** the set of
+shared attributes. The block does not have to guess what is comparable:
+
+1. Walk up until all subjects lie beneath one node.
+2. Compare the attributes found there, side by side.
+3. Show what each subject additionally carries beneath its own column.
+
+**Confirmed 2026-08-23**, with a refinement: what is not comparable is moved **below** the comparison, and may additionally be **hidden behind a disclosure** and shown only on request ([D-207](90-decision-log.md)). The shared attributes are what the block is for; letting specialities interleave would bury the rows someone came to read.
+
+### U17 · A list is a node plus a restriction
+
+*A list of manufacturers — in a larger sense persons, or organisations rather — I would like to show
+as a list. So I choose a node, and restrict the data I want to display.*
+
+Two inputs, both already modelled: **which node** supplies the records, and **which of their
+attributes** are shown. No new concept — the restriction is a choice of attributes, and the drawing
+of each is the ordinary renderer under the display purpose ([D-168](90-decision-log.md)).
+
+### Candidates not yet dictated
+
+- **A test belonging to a component.** The owner: *a card always has a test as well — not sound
+  cards, but graphics cards or mainboards.* Whether that is its own block or a section of the
+  comparison is open.
+- **Nesting.** A recipe resembles a parts list but may contain **sub-recipes**; the nesting is the
+  same shape as board → parts list. Whether that needs anything beyond U15 is open.
+
 ## Still to be dictated
 
 

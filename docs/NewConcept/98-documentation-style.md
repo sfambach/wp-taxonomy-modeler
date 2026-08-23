@@ -88,3 +88,25 @@ The seed sketches ([`TreeMeremaid.md`](TreeMeremaid.md),
 use this style, and it works — the problems found in them were found *because* the diagrams
 made the contradictions visible. The legacy round went the other way: 1589 lines of prose in
 [one file](../legacy/plans/data-structure.md), where a contradiction can hide for months.
+
+## Simplifying is the dangerous step
+
+Added 2026-08-23, after a background pass found six contradictions in the concept documents and
+**three of them had the same author and the same cause**: a term was renamed or a distinction was
+flattened, and nothing checked what had been hanging from it.
+
+| What was simplified | What silently broke |
+|---|---|
+| `long` retired in favour of `help` ([D-196](90-decision-log.md)) | it was the anchor of the label fallback chain ([D-151](90-decision-log.md)) |
+| `Definition` gathered into one branch ([D-185](90-decision-log.md)) | it had separated data types from constants, which decides the relation kind ([D-193](90-decision-log.md)) |
+| *use site* used loosely in a sentence ([D-162](90-decision-log.md)) | the glossary had given it a fixed meaning: a **relation** ([D-214](90-decision-log.md)) |
+
+**The rule that follows:**
+
+> **Before renaming a term or flattening a distinction, search for who cites the old one — and
+> read what they were relying on it for.**
+
+Adding is comparatively safe: a new term sits beside the others and nothing yet depends on it.
+Removing and merging are the operations that reach backwards into text already written, and they
+are the ones this project keeps paying for. `grep` costs seconds; a contradiction discovered three
+weeks later costs an argument about what was meant.
