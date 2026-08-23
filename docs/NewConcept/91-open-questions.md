@@ -2022,6 +2022,10 @@ which is exactly [D-140](90-decision-log.md)'s escape hatch and would hang natur
 
 ## OQ-070 — How does renderer resolution stay cheap in a long list?
 
+> **Closed 2026-08-23 → [D-203](90-decision-log.md).** Parked to **Release 2**: at thirty rows the
+> lookups are not measurable. One requirement stands now — a row template meeting a value that needs
+> a different renderer must fail loudly rather than draw quietly wrong.
+
 > **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
 > inventing; the entry names the event that reopens it.
 
@@ -2144,6 +2148,10 @@ of explanation, why nothing they enter will ever be stored there.
 ---
 
 ## OQ-074 — Is there an enum filled at runtime?
+
+> **Closed 2026-08-23 → [D-204](90-decision-log.md), [D-205](90-decision-log.md).** Declared per branch
+> including by whom; usable at once and reviewed afterwards; visible in the tree and propagated up
+> through collapsed ancestors.
 
 > **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
 > inventing; the entry names the event that reopens it.

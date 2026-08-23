@@ -239,6 +239,24 @@ otherwise it silently stops being complete.
 nodes that have this node as their type**. *Which records point at a record* is a different
 question and belongs on the record's own screen.
 
+### U14 · A pending review is visible from the outside of a collapsed branch
+
+A value added during data entry is usable at once and reviewed afterwards
+([D-204](90-decision-log.md)). The tree has to show that something is waiting.
+
+The marker on the node itself is the easy half and the useless half — the node is normally inside a
+collapsed branch, and nobody expands a whole tree on the off-chance. So **it propagates upwards**:
+
+| Marker | Means |
+|---|---|
+| filled | this node is waiting |
+| outline | something beneath it is |
+
+Following the outline downwards is how the node is found without searching for it. **Not red** —
+red is deletion and conflict, and a pending review is neither wrong nor destructive, only
+unfinished. And distinct from the `Counts` badge ([D-189](90-decision-log.md)), which answers a
+different question in the same corner of the row.
+
 ## Still to be dictated
 
 
