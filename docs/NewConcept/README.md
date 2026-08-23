@@ -11,13 +11,14 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 00 | [Vision and scope](00-vision-and-scope.md) | `draft` | owner statements V1–V9 |
 | 01 | [Glossary](01-glossary.md) | `draft` | fixed vocabulary, rejected words, dictation notes |
 | 10 | [Domain core — the model](10-domain-core.md) | `draft` | owner statements C1–C113; three overview diagrams of the settled model |
+| 20 | [Interaction](20-interaction.md) | `open` | U1 … U8 |
 | 30 | [Renderer](30-renderer.md) | `draft` | owner statements R1–R76; registry, surfaces, preview |
 | 40 | [I18n and labels](40-i18n.md) | `draft` | owner statements I1–I10; labels table, base name, fallback chain |
 | 50 | [Persistence](50-wordpress-persistence.md) | `draft` | owner statements P1–P14; the model is the schema; search; typed columns |
 | 60 | [Calculation](60-calculation.md) | `draft` | owner statements K1–K12; calculation vs converter, model vs display, structured expressions |
 | 70 | [Model change and migration](70-migration.md) | `draft` | owner statements M1–M17; rename vs replace, export, the conflict resolver |
-| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-164 |
-| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-070 (63 answered or closed, 7 open) |
+| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-185 |
+| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-074 (70 answered or closed, 4 open) |
 | 95 | [Roadmap](95-roadmap.md) | `empty` | — |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |
 

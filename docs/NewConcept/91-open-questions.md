@@ -285,6 +285,9 @@ open: `ChangeLogItem.undo()` — is undo in scope at all, and what is undoable?
 
 ## OQ-009 — Is the delivery target still a WordPress plugin?
 
+> **Closed 2026-08-23 → [D-169](90-decision-log.md).** Yes — and WordPress is used fully rather than
+> kept at a distance. What is borrowed is written down instead; how, is [OQ-071](#oq-071--how-is-borrowed-wordpress-marked).
+
 *Blocks:* [00 Vision and scope](00-vision-and-scope.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
 
 The legacy round targeted a WP plugin serving host plugins such as `wp-electronic-parts`, and
@@ -1561,6 +1564,9 @@ whoever supplies the number, the record keeps it.
 
 ## OQ-056 — How many conditions can one query carry?
 
+> **Closed 2026-08-23 → [D-165](90-decision-log.md).** Any number correctly, about three quickly, and a
+> flat per-model projection for the reporting case — a cache, never a second place where values live.
+
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-070](90-decision-log.md)
 
 A single condition is an indexed range scan on `(edge_id, value)` and is fast. Combining
@@ -1596,6 +1602,9 @@ Put to the owner on 2026-08-22, **not yet answered** — the session ended on it
 ---
 
 ## OQ-057 — Is undo in scope?
+
+> **Closed 2026-08-23 → [D-172](90-decision-log.md).** Yes, and it is a step forward rather than a
+> rewind. Its reach is the trash: takeable back until the trash is emptied.
 
 *Blocks:* nothing yet · *Status:* deferred by [D-081](90-decision-log.md)
 
@@ -1847,6 +1856,10 @@ duplicates nobody would have created anyway.
 
 ## OQ-064 — How is a contains-search made fast?
 
+> **Closed 2026-08-23 → [D-167](90-decision-log.md).** A normalised search column, contains by default in
+> the quick search with prefix hits ranked first, an explicit operator field in the filter, no
+> wildcard character. The growth stage stays deferred until there is real data to look at.
+
 *Blocks:* [50 Persistence](50-wordpress-persistence.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-112](90-decision-log.md)
 
 A wildcard on both sides — `LIKE '%x%'` — **cannot use an ordinary index**. On a few hundred parts
@@ -1873,6 +1886,9 @@ never a second source of truth.
 ---
 
 ## OQ-065 — Does a seed item need a provenance marker?
+
+> **Closed 2026-08-23 → [D-174](90-decision-log.md).** Yes, and in two parts: *from the seed* and
+> *changed since*. Untouched is updated silently; changed is left alone and reported.
 
 *Blocks:* [70 Migration](70-migration.md) · *Status:* open, low urgency · *raised by* [C97](10-domain-core.md), [D-121](90-decision-log.md)
 
@@ -2024,3 +2040,122 @@ concept should name what puts a renderer in that class rather than leaving every
 Not urgent — it is a question about a table that does not exist yet. It becomes urgent the first
 time a list is slow, and the answer will be much cheaper to apply if it was written down before
 twelve call sites made their own assumption.
+
+---
+
+## OQ-071 — How is borrowed WordPress marked?
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-169](90-decision-log.md)
+
+[D-169](90-decision-log.md) settles *that* the borrowing is recorded. **How** is open. The owner
+suggested a **`wp` prefix or suffix** on the code concerned.
+
+**The objection to a name marker:** [CD-1](../../CLAUDE.md) already splits boundary from core, and
+a split that means anything is a namespace split. Then the namespace *is* the marker — every class
+under it is WordPress-facing by definition — and a `wp` in the class name repeats what the path
+already says. [CD-9](../../CLAUDE.md) asks names to say what a thing **is**, not where it lives.
+Prefixes stay where WordPress itself demands them: table names, hooks, options.
+
+**But the objection misses what the owner is actually after.** A namespace catches WordPress
+**calls**. It does not catch WordPress **assumptions** — the capability model, the block editor's
+data shapes, `dbDelta`'s idea of a schema, the i18n mechanism, the shape of an admin screen. Those
+are borrowed just as heavily, they are what a port would actually founder on, and no folder
+contains them.
+
+**The alternative on the table:** a **short ledger** kept as the code grows — one line per borrowed
+capability, what it does for us, and what would have to replace it. Cheap while it is being written,
+and the only artefact that makes an honest estimate of a port possible.
+
+**They are not exclusive.** Choose the ledger, the prefix, or both.
+
+> **Closed 2026-08-23 → [D-170](90-decision-log.md).** The namespace marks it, a ledger catches the
+> borrowed assumptions the namespace cannot see, and no `wp` prefix on class names.
+
+---
+
+## OQ-072 — How is the importer told what maps to what?
+
+*Blocks:* [70 Migration](70-migration.md) · *Status:* open, deferred until the core is locked · *raised by* [D-173](90-decision-log.md)
+
+[D-173](90-decision-log.md) puts an importer for existing WordPress tables in scope as a boundary
+tool. What it is *told*, and by whom, is open.
+
+**The question underneath the question:** does the importer **create the model** from the table, or
+only **fill a model that already exists**? Guessing a model from a table is where importers usually
+fail — a column becomes an attribute, a foreign key is missed, and the result is the relational
+shape the product exists to get away from ([V1](00-vision-and-scope.md)).
+
+Three shapes, in rising order of ambition:
+
+1. **A fixed importer per known source** — `posts`, `postmeta`, `terms`. Quick, useful on day one,
+   generalises to nothing.
+2. **A declarative mapping the user writes** — this table becomes that node, this column that
+   attribute — stored as data, reusable, inspectable.
+3. **The mapping is itself a model.** The source table is described with the same modelling tools
+   as everything else, and the import becomes a conversion between two models rather than a special
+   mechanism. Attractive, and exactly the sort of elegance that costs a year if it is wrong.
+
+Worth noting that the owner asked for the tool for **his own** tables first and for other people's
+second. Shape 1 for his, shape 2 as the honest general answer, and 3 only if 2 turns out to be
+saying the same thing twice.
+
+---
+
+## OQ-073 — What is the branch without data called?
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-183](90-decision-log.md)
+
+[D-183](90-decision-log.md) settles that `Model` and `Kompositionen` hold data and the rest does
+not. The rest is called `Definition` in the legacy tree and the owner wants a better word: *for that
+we probably need another term — those have no data, they are only a means to an end.*
+
+What actually lives there, from the legacy tree: data types, own data types, constants, aggregates,
+complex data types. They are **what models are built out of**, not places anything is kept.
+
+Candidates, with what each gets wrong:
+
+| | For | Against |
+|---|---|---|
+| `Definition` | familiar, in use | says *what* they are, not *how they differ* — a model node is a definition too |
+| `Bausteine` | true to the job: things you build with | slightly informal |
+| `Vokabular` | precise — the words a model is written in | abstract at first sight |
+| `Werkzeug` | carries *means to an end* | suggests behaviour, and these are not behaviour |
+
+The word matters more than it looks: it is the one that has to tell a new user, without a sentence
+of explanation, why nothing they enter will ever be stored there.
+
+---
+
+## OQ-074 — Is there an enum filled at runtime?
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open, deferred by the owner · *raised 2026-08-23*
+
+The owner: *what is the difference between an enum I define at modelling time and one I want to
+fill at runtime, in the front end or Gutenberg? I am not currently sure there is even a use case
+for it.*
+
+**Deferred with his own criterion:** note it as a later stage, *and we will notice as soon as we
+work with the project* whether it is missing.
+
+Worth recording why it is not free. A modelling-time enum is a branch of nodes, and adding to it is
+modelling — an act with a changelog entry, a migration consequence and a permission behind it. An
+enum a visitor can extend at runtime is something else entirely: it would let data entry create
+**model**, which every rule here so far has kept apart. If it turns out to be needed, that
+separation is the thing to be careful with, not the storage.
+
+> **Closed 2026-08-23 → [D-185](90-decision-log.md).** `Bausteine`.
+
+### A first plausible answer to OQ-074, from the owner, 2026-08-23
+
+> *For constants or enum-like values one could say: extends. The model could actively state it. I am
+> sitting in Gutenberg and I need something at this point, and I have no wish to go back into the
+> design view and change my model just to make that one entry.*
+
+**This keeps the boundary and opens it only where it was named.** Data entry still cannot create
+model on its own; the **model declares in advance** which branches may be extended in place. The
+permission is modelled, not assumed — so it can be seen, inherited along the chain
+([D-015](90-decision-log.md)), and refused.
+
+Left open deliberately: who may use such an opening, whether the addition carries a provenance mark
+like a pack's ([D-174](90-decision-log.md)), and whether an entry made this way is any different
+afterwards from one made in the design view.

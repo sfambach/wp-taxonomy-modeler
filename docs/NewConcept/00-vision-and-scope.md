@@ -2,7 +2,7 @@
 title: Vision and scope
 status: draft
 round: R1 (in progress)
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 ---
 
 # Vision and scope
@@ -57,10 +57,54 @@ The statement above was dictated. These readings need an explicit yes/no:
 | "Hutknoten" | *root node* (Wurzelknoten) | high |
 | "Grundmenüs sind alle Knoten gleich" | *fundamentally, all nodes are the same* | medium |
 
+## Delivery target
+
+**A WordPress plugin, and WordPress is used to the full** ([D-169](90-decision-log.md)). Nothing is
+reimplemented to stay neutral and no capability is passed over because another framework might lack
+it. Portability is served by **knowing what was borrowed**, not by borrowing less.
+
+```mermaid
+flowchart LR
+  H["Hooks · REST · Blöcke"] -->|rufen hinein| C["Kern"]
+  C -->|erklärt, was er braucht| I["Schnittstellen"]
+  W["Anschlussschicht erfüllt sie"] --> I
+```
+
+WordPress is **not underneath the core but around it**, and every arrow points inward
+([D-171](90-decision-log.md)). The core declares the interfaces it needs — storage, translation,
+clock, id allocation — and the boundary fulfils them; the boundary **translates and does not
+decide** ([D-170](90-decision-log.md)). That is what allows a second boundary to be placed beside
+the first later without the core noticing.
+
+Two things keep this honest rather than aspirational:
+
+- **The core's tests run without a WordPress bootstrap**, the boundary's with one. Two runs, so a
+  WordPress call drifting into the core fails immediately instead of years later.
+- **A ledger of what was borrowed** — one line per capability and what would have to replace it —
+  because a namespace catches WordPress *calls* but not WordPress *assumptions*
+  ([D-170](90-decision-log.md)).
+
+## Content packs
+
+A model can be shipped, installed and removed again as a **pack**: a named set of model content and
+optionally some data ([D-175](90-decision-log.md)). Recipes, PC hardware, ESP projects — and the
+seed that ships with the product is simply the pack that comes in the box.
+
+The point is that a person can **look and then remove**, which is clean by construction: whoever
+only looked built nothing on top of it.
+
+## Non-goals, so far
+
+| Not this | Instead | Where |
+|---|---|---|
+| Importing existing tables as part of the product | a separate boundary tool | [D-173](90-decision-log.md) |
+| Views — named computations belonging to no node | a computed attribute, until a figure appears that belongs nowhere | [OQ-069](91-open-questions.md) |
+| Packs that carry code | a pack is data and *declares* the behaviour it needs | [D-175](90-decision-log.md) |
+| Data entry that creates model | the model declares in advance where it may be extended | [OQ-074](91-open-questions.md) |
+
 ## Still to write in this document
 
 - Who the users are, and what they are trying to achieve.
-- **Non-goals** — what this explicitly will not do.
 - The boundary against host plugins such as `wp-electronic-parts`.
 - Success criteria per phase.
 
