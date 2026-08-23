@@ -2186,3 +2186,86 @@ permission is modelled, not assumed — so it can be seen, inherited along the c
 Left open deliberately: who may use such an opening, whether the addition carries a provenance mark
 like a pack's ([D-174](90-decision-log.md)), and whether an entry made this way is any different
 afterwards from one made in the design view.
+
+---
+
+# From the scenario check, 2026-08-23
+
+Six worlds were modelled against the concept before locking the domain core
+([96 Scenario check](96-scenario-check.md)). Five carried. These are what did not.
+
+## OQ-075 — How does a record have versions?
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §1
+
+*There are boards in different versions, which then have different parts lists* — the owner, twice,
+setting it aside both times. The model version of [D-060](90-decision-log.md) is a **stamp** saying
+which shape a record was written against; it is not something a person edits and it says nothing
+about succession.
+
+So `Platine v1.0` and `v1.1` are two unrelated records today. Missing: that they are **the same
+board**, which came first, what changed, and which one is meant when something says just `Platine`.
+
+⚠️ **The trap is to answer it with an aggregation called `Vorgänger`.** That records the order and
+nothing else — not that they share an identity, and not which one a reference should resolve to.
+
+## OQ-076 — Can a reader hand a parameter to a rendering?
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
+
+*Four portions instead of two* multiplies every quantity in a recipe. It is not a stored value and
+not a computed attribute, because the input comes from **the person reading**, at that moment.
+
+The render context carries model, record, purpose and settings ([D-159](90-decision-log.md),
+[D-217](90-decision-log.md)) — everything the author decided, nothing the reader supplies.
+
+Related but not the same: a filter narrows *which* records are shown; this changes *how one is
+computed*.
+
+## OQ-077 — A conversion that depends on the other value
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
+
+[D-274](90-decision-log.md) puts the factor on the **unit** — right for inch and metre. A tablespoon
+of flour is 10 g, of sugar 12 g, of honey 21 g: **the factor belongs to the pairing** of unit and
+substance, and today that conversion cannot be expressed at all.
+
+Note it is not exotic: cups, spoons, *a box contains 12*, sheets per ream, and every packaging unit
+work this way.
+
+## OQ-078 — Where is the *relationship as a node* pattern taught?
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §4
+
+A relationship carrying its own values — supplier **plus** customer number **plus** since-when —
+is modelled as a **composition that aggregates**. Everything needed exists.
+
+⚠️ **What is missing is that anyone would find it.** The move people reach for instead is a
+`Lieferant` attribute, then a second, then `Lieferant2` — which is how a model rots. The concept can
+express more than it teaches, and this is the clearest case.
+
+Not a gap in the model. A gap in what the model **says about itself**.
+
+## OQ-079 — Where does the shape stop being suitable?
+
+*Blocks:* [00 Vision and scope](00-vision-and-scope.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §5
+
+A hundred thousand sensor readings become several hundred thousand rows carrying two useful numbers
+each. The projection ([D-228](90-decision-log.md)) speeds reading and changes nothing about writing
+or size.
+
+**The answer is probably scope rather than optimisation** — this is a modeller, not a time-series
+store — but the concept should **say so**, so that nobody discovers it with a full table.
+
+## OQ-080 — Is there a page per record?
+
+*Blocks:* [20 Interaction](20-interaction.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §6
+
+**The most consequential of the six.** Five hundred parts cannot each get a hand-built Gutenberg
+page. A catalogue needs **one template and a route**: `/bauteil/bc547b` finds the record and renders
+it through a page designed **once**.
+
+Nothing provides it. [D-206](90-decision-log.md) puts a block on a page **somebody built**;
+[D-195](90-decision-log.md) pushed `slug` out as a boundary concern and never answered the boundary
+side. ⚠️ **And the link that [D-105](90-decision-log.md)'s reference renderer draws has nowhere to
+point**, which means the gap is already load-bearing elsewhere.
