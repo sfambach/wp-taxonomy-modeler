@@ -23,7 +23,9 @@ the owner has to make, not a gap an agent may fill.
 | [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **resolved** — round four |
 | [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**None open.** The last of them — a preview *level* switch against
+**One open**, found on 2026-08-23 while writing the specification: [D-088](../90-decision-log.md)'s
+*an override may narrow **and** widen* against [D-221](../90-decision-log.md)'s *restrictions never
+widen* — see the last section. The previous one — a preview *level* switch against
 [D-231](../90-decision-log.md) — was settled by [D-278](../90-decision-log.md), which removed
 one side rather than reconciling the two: the *level* is retired, because what it did is
 purpose, depth and visibility, and all three already exist.
@@ -164,3 +166,11 @@ Same standing as everything above: **nothing here is resolved.**
 | # | How it was settled |
 |---|---|
 | second renderer catch-up · 2 · preview *level* switch vs [D-231](../90-decision-log.md) | **[D-278](../90-decision-log.md)** — resolved by **removing** one side: the *level* is retired, since what it did is purpose, depth and visibility, all of which exist already. [D-231](../90-decision-log.md) stands unchanged. **[D-279](../90-decision-log.md)** adds the rule that decides what the preview covers: preview what you cannot see while configuring — the search view yes, the tree row no. |
+
+---
+
+## From writing the specification, 2026-08-23
+
+| Document | Line or section | What the text says | Which decision disagrees | What is unclear |
+|---|---|---|---|---|
+| [10 Domain core](../10-domain-core.md), *Multiplicity, restriction* — and [D-221](../90-decision-log.md) | **Restrictions narrow downwards and never widen.** A use site may restrict further; it may not reopen, *or the guarantee was worth nothing*. Written while specifying, from [D-221](../90-decision-log.md)'s *only `Ohm` is permitted* case. | [D-088](../90-decision-log.md): **an override may narrow *and* widen. No monotonicity rule.** A use site may allow something the node did not. | Both are settings resolved along one chain, so they cannot both hold. Three readings: (a) [D-221](../90-decision-log.md) is later and supersedes, and widening is gone — but [D-088](../90-decision-log.md) was decided deliberately and its case (*this one use may also take Volt*) is not obviously wrong; (b) they govern different things — a **permitted set** may not widen while other settings may — which needs saying, because a permitted set **is** a setting; (c) widening is allowed but must be **visible**, since the objection to it is that a guarantee made high up quietly stops holding. ⚠️ **Found while writing the specification, not in review** — it is exactly the kind of thing that only surfaces when the model is stated once in a single voice. |

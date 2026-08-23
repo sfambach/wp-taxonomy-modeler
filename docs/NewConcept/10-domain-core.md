@@ -365,6 +365,454 @@ resolver, and a refusal is an ordinary two-stage deletion. Once approved it is a
 
 ---
 
+### One tree, all subject areas
+
+Recipes, PC hardware and ESP projects live **side by side under `Model`**; there are no separate
+model roots and no *projects* ([D-273](90-decision-log.md)). The top level of `Model` **is** the
+list of subject areas.
+
+⚠️ **Sharing is the point:** recipes and hardware both use `Gramm`, `Anzahl`, `Medium`, and separate
+trees would hold each of them more than once. **The price:** what is shared acts everywhere —
+narrowing or renaming `Gramm` touches both.
+
+---
+
+### Bindings — how the engine finds anything
+
+```mermaid
+flowchart LR
+  E["Engine"] --> S["Bindung: data_types"] --> N["Knoten"]
+```
+
+**The engine never names an id and never names a node name.** It asks for a **named slot** in the
+installation configuration, and the slot points at a node ([D-120](90-decision-log.md)). Ids may
+therefore shift freely and nodes may be renamed.
+
+A binding carries **only the pointer** — no renderer, no defaults. Bindings name the model root,
+the `data_types` root ([D-235](90-decision-log.md)), the built-in types, and the few nodes the
+machinery stands on.
+
+⚠️ **`framework` protection keys on exactly those** ([D-194](90-decision-log.md)): what a binding
+points at may not be deleted, and the refusal says *this is a framework type* rather than *a binding
+points at this* ([D-122](90-decision-log.md)). A **developer flag** lifts it — protection by
+default, deliberately liftable, with friction on purpose ([D-122](90-decision-log.md),
+[D-248](90-decision-log.md)).
+
+---
+
+### Soft identity: `unique`
+
+The hard identity is the `id`. Beside it a node may declare one or more attributes **`unique`**, and
+there may be several such constraints — an article number, an EAN — optionally grouped for a
+composite one ([D-115](90-decision-log.md)).
+
+⚠️ **The term *primary key* is refused** ([D-055](90-decision-log.md)): an article number is
+human-meaningful, correctable, and a record survives its change.
+
+A violation is a **refusal with an offered correction**, and it names the reason and the two ways
+out ([D-114](90-decision-log.md)) — including when the holder is **parked**, since a parked record
+keeps its unique values blocked ([D-154](90-decision-log.md)).
+
+**Finding a duplicate before creating one** uses the identifying fields — the ones by which a person
+recognises the record, a property of the **type** ([D-112](90-decision-log.md),
+[D-237](90-decision-log.md)) — matched as *contains*. The check happens because it cannot be
+skipped: as the author types, matches appear beneath, and *create new* is never the only visible
+path ([D-111](90-decision-log.md)).
+
+---
+
+### Defaults, and the two-fold principle
+
+```mermaid
+flowchart LR
+  V["konfigurierte Vorgabe"] --> W["Wahl im Moment"]
+```
+
+**A configured default plus a choice in the moment** is one pattern, not two rules
+([D-032](90-decision-log.md)) — and it falls out of the resolution chain, whose two ends are the
+installation and the use site ([D-079](90-decision-log.md)).
+
+**A default may be a reference, not only a scalar** ([D-031](90-decision-log.md) family): it is
+chosen with the **same chooser** as data entry, never a special widget, and **nothing is edited
+inside the field** — a chip is the reference renderer, label plus link ([D-197](90-decision-log.md)).
+
+**A field may take its default — or its restriction — from the record that encloses it**
+([D-293](90-decision-log.md)). *Everything on this parts list is through-hole* preselects, or
+restricts, the parts that may be chosen. The addressing is the relative edge path
+([D-045](90-decision-log.md)); what is new is only that the value is read at **entry time** from the
+whole.
+
+**Small lists do not get a second storage mechanism, they get a cheaper editor**
+([D-184](90-decision-log.md)). Five enum values **are** five nodes — referenceable, translatable,
+extensible without touching code.
+
+---
+
+### Quantities, units, prefixes and money
+
+```mermaid
+flowchart LR
+  Q["Menge"] --> W["Zahl"]
+  Q --> P["Präfix"]
+  Q --> E["Einheit"]
+```
+
+**A unit value is one notion**: value + optional prefix + unit ([D-039](90-decision-log.md)). Which
+part varies follows from its sense — a length changes its **prefix**, a currency changes its
+**unit**. Base units and currencies are **two branches of one shape**, not two mechanisms.
+
+**Units of one dimension share a parent, and that parent is their type**
+([D-274](90-decision-log.md)). Each unit carries its **factor**, and where needed an **offset**, to
+the reference unit of that parent — so `Zoll → Millimeter` is a multiplication, and `°C → °F` is
+`×1.8 + 32`. ⚠️ **Anything that is neither factor nor offset is a converter**, not a calculation:
+wire gauge to cross-section is a table.
+
+⚠️ **And a conversion may depend on a third thing.** A tablespoon of flour is 10 g, of sugar 12 g:
+there the factor belongs to the **pairing**, so a **conversion is a record** — from unit, to unit,
+for substance, factor ([D-306](90-decision-log.md)). [D-274](90-decision-log.md)'s factor on the
+unit is the special case where the substance does not matter.
+
+**Stored canonical, displayed with the prefix** ([C66](#c66--proposal-store-canonical-display-with-the-prefix)):
+a common scale is what makes aggregates possible at all, and storing as entered makes every sum
+conversion-dependent and a missed conversion silently wrong.
+
+**Money is a type with behaviour, and currencies are model data**
+([D-078](90-decision-log.md) family). ⚠️ **A rate needs a direction**, and where a price was
+**agreed**, the rate is **frozen on the record** ([D-064](90-decision-log.md),
+[D-065](90-decision-log.md)) — *track what describes, freeze what was agreed*. Intraday rates are
+not needed.
+
+**Precision is a property of the type**, and rounding happens once, at the boundary of the
+calculation, never repeatedly along it.
+
+---
+
+### Date and time
+
+**One type with a precision setting**, not three ([D-291](90-decision-log.md)):
+
+| Precision | Example | Timezone-bearing |
+|---|---|---|
+| year | year of publication, 1981 | no |
+| month | shelf life `03/2027` | no |
+| **date** | birthday, invoice date | **no** |
+| time of day | opening at 18:00 | no |
+| **point in time** | created at, measured at | **yes** |
+
+Stored **UTC**, entered and displayed in the **site's** timezone — both directions.
+
+⚠️ **A plain date has no timezone.** A birthday is 14 March everywhere; stored as `00:00 UTC` it
+becomes the 13th for everyone west of that. The precision therefore governs **meaning**, not only
+appearance.
+
+⚠️ **A duration is not a point in time** but a **quantity**, and belongs to the units above.
+
+---
+
+### Media
+
+**A medium is an ordinary type under `Model`** with attachment id, URL, source and licence — an
+ordinary record, aggregated by whoever uses it ([D-229](90-decision-log.md)).
+
+⚠️ **Two locations on purpose** ([D-211](90-decision-log.md)): the **URL** is the living source, the
+**copy** is the snapshot. One tracks, the other freezes.
+
+The **file** lives in the WordPress media library; our model holds the identifier as **text** — an
+opaque key of a foreign system, so the core knows nothing of WordPress. Existence is checked **at
+display time**, and a missing file degrades to its link rather than to an error.
+
+The **MIME type is detected** at the boundary and **stored**; the renderer dispatches on it, and a
+new kind of file means registering one more, never extending a switch. **Refreshing the copy is
+manual**, and either replaces it or adds a **version with a description**
+([D-294](90-decision-log.md)).
+
+---
+
+### Validators, converters and what they may do
+
+| | Does | May not |
+|---|---|---|
+| **Converter** | turns input into a value and a value into output; runs on input where it is invertible ([D-077](90-decision-log.md)) | — |
+| **Validator** | checks, and may **offer a correction** ([V9](00-vision-and-scope.md)); several per attribute, each with its own message addressed by `path` ([D-158](90-decision-log.md)) | change behaviour: the author writes **what went wrong**, not what the system should do about it |
+
+⚠️ **What cannot have been meant is removed by the converter; what might have been meant is
+questioned by the validator** ([D-166](90-decision-log.md)). Leading and trailing whitespace is
+stripped silently — and **before** duplicate detection and the uniqueness check, or `Bauteil` and
+`Bauteil ` become two records nobody can tell apart. Interior spacing is a validator that **offers**
+the corrected form.
+
+**An error blocks; a warning stays visible and does not** ([D-288](90-decision-log.md)). A validator
+therefore yields **severity** as well as a message and possibly a correction. The way through an
+error is to relax the rule deliberately, not to click past it.
+
+⚠️ **A read-only attribute with neither a calculation nor a default is a model conflict**
+([D-218](90-decision-log.md)) — a dead field that looks like part of the form. Reported when it is
+configured, with the two repairs named.
+
+---
+
+### Representation: how one value can be written more than one way
+
+**A representation is a converter plus a renderer, and the mapping is model data**
+([D-219](90-decision-log.md)). Colour rings, `2k7`, `104`, a traffic light and stars are all
+instances of one mechanism; standards ship as data packs, and users build their own the same way.
+
+⚠️ **The only axis is invertible or not:** an invertible converter can be **written into**
+([D-076](90-decision-log.md)) — rings, shorthand notations; a non-invertible one is output only —
+traffic light, stars. **Whether a form replaces the value or sits beside it is a free choice**, not
+a consequence of that axis ([D-226](90-decision-log.md)).
+
+⚠️ **Notation is not structure** ([D-149](90-decision-log.md)): a second writing of the same value is
+**never a second field**, because two stored values drift apart.
+
+**Where several fields belong together in one notation, they are one composed type**
+([D-220](90-decision-log.md)) — `Widerstandswert` is value plus tolerance
+([D-150](90-decision-log.md)), a quantity is number plus prefix plus unit. The **composed type is
+the unit of rendering**, and its members stay individually searchable because they live inside the
+record by path.
+
+**Code is needed only where the mapping cannot be written as a table or a rule.**
+
+---
+
+### The `Compositions` branch declares, it does not contain
+
+⚠️ **It is not a container** ([D-135](90-decision-log.md)). It is an ordinary node that **declares**
+*only composition edges may point at me*, and inheritance passes that declaration to its children.
+An aggregation pointing at a descendant of `Compositions` is therefore a **contradiction in the
+model**, not a convention.
+
+**Locality is not lost:** the model view shows the composed structure inline at its owner by
+following the edge — presentation, not storage.
+
+**A multi-valued composition creates its node automatically**
+([D-136](90-decision-log.md)), named from owner and attribute (`Bauteilliste-Position`) and
+renameable. Duplicate names are no problem, because base names are explicitly not unique.
+
+> *In the author's head: one model with a repeating group. In the tree: a node under
+> `Compositions`. Shown: at the parts list, where it belongs.*
+
+---
+
+### Moving, and what happens to what pointed at it
+
+**Moving is one rule with two subjects — a node between branches, and an attribute up to the parent
+or down to a child — and it never loses data** ([D-155](90-decision-log.md)). Up is additive; down
+is removing; a **mandatory** attribute makes even the additive direction a break.
+
+**An orphaned override is promoted** ([D-156](90-decision-log.md)): with **one** user the attribute
+is restored on the target; with **several**, a specialised child is created under `Compositions` and
+this one use site is repointed.
+
+⚠️ **At multiplicity 1 under `Model` the branch chooses an own record where inline would have been
+natural, and the author is told** ([D-163](90-decision-log.md)) — the value becomes an independent
+thing that can be found, referenced and deleted on its own. Never a surprise found later in a
+search result.
+
+---
+
+### Deletion, in detail
+
+**Two stages: park, then purge** ([D-123](90-decision-log.md)).
+
+| | |
+|---|---|
+| **The trash holds deletion *events*, not objects** ([D-127](90-decision-log.md)) | so what was deleted together comes back together |
+| **Deleting a node asks: the branch, or this node alone** ([D-180](90-decision-log.md)) | *alone* reattaches the children to the grandparent — which is [D-155](90-decision-log.md)'s move, with everything that follows |
+| **A confirmation names consequences** ([D-126](90-decision-log.md)) | *this is used in 14 places* — not *are you sure* |
+| **A stopped descent is an event, not a nothing** ([D-100](90-decision-log.md)) | it is reported, not silently skipped |
+
+**`Cleanup` is the repair surface** for what deliberate non-tidying leaves behind
+([D-247](90-decision-log.md)): nodes without connections, settings broken by a deletion. Shown and
+removed deliberately, never automatically.
+
+---
+
+### Test data and sample values
+
+Three layers feed a preview ([D-240](90-decision-log.md)):
+
+```mermaid
+flowchart LR
+  A["echte Daten"] --> B["als Testdaten markierte"] --> C["Musterwert des Typs"]
+```
+
+**The sample value belongs to the type**, not to the renderer — a node carries several renderers,
+and a sample is a value. It must be **valid**, or the preview shows what the model forbids.
+
+**Samples that appear together are coherent** ([D-290](90-decision-log.md)) — one persona, so
+`Herbert Müller · herbert@home.de · Muster GmbH · Berlin` rather than three unrelated placeholders.
+⚠️ **Coherence can be shipped, never guessed:** for built-in types we lay it down; for anything the
+user creates it comes from his own marked test data.
+
+**The test-data mark governs front-end visibility and nothing else**
+([D-241](90-decision-log.md)). In every other respect such a record is ordinary — it counts for
+uniqueness, appears in the administration, and travels through migrations.
+
+---
+
+### The two layers, and why they never mix
+
+**Modelling view and data view are separate layers** ([D-026](90-decision-log.md)). The model says
+what a thing is; the data are what someone entered. A screen belongs to one of them, never to both.
+
+⚠️ **But the editor is the same** ([D-029](90-decision-log.md)): **the default editor *is* the data
+editor.** Setting a default means filling in the very form a data-enterer will see, which is why a
+default can be a reference and not only a scalar ([D-030](90-decision-log.md)) — and why nobody has
+to learn a second way of entering things.
+
+**Standalone-versus-composed applies only to nodes whose instances are records**
+([D-132](90-decision-log.md)). For a data type the question is meaningless: it has no instances of
+its own.
+
+**And the two resolutions must never be mixed** ([D-013](90-decision-log.md)): resolving a
+**setting** walks the chain; resolving a **value** walks the record. They look alike and answer
+different questions.
+
+---
+
+### Numbers and storage types
+
+⚠️ **Numbers are whole or decimal, never floating point** ([D-057](90-decision-log.md)). A price, a
+resistance and a tolerance are exact quantities; binary floating point cannot represent `0.1`, and
+the error surfaces first in a sum that is one cent off and nobody can explain.
+
+**Typed value columns** ([D-071](90-decision-log.md), [D-074](90-decision-log.md)) — an integer
+column, a decimal column, a text column, a date column, a reference column — never one stringly
+value that everything is cast in and out of.
+
+---
+
+### Prefixes and permitted sets
+
+**A prefix is a node, not an enum** ([D-116](90-decision-log.md)), and the general rule behind it is
+that a fixed list of things a user may extend is **always** nodes.
+
+**Permitted prefixes are an allow-list setting on the attribute**
+([D-040](90-decision-log.md)) — a resistance may allow `k` and `M` and not `µ`, without a second
+type existing for it.
+
+**Permitted sub-nodes are a setting holding a mode plus a list**
+([D-046](90-decision-log.md)): the mode says how the list is read, the list says which nodes.
+
+**A unit value is stored in its base unit, with the chosen prefix beside it**
+([D-047](90-decision-log.md), [D-051](90-decision-log.md)) — `Gramm` is the base and the prefix
+carries the *kilo*. That is what makes a sum over mixed prefixes possible at all.
+
+---
+
+### Overrides — the fine print
+
+**An override is the same thing wherever it sits; only its owner differs**
+([D-087](90-decision-log.md)). There is no separate *node override* and *use-site override*, only
+one construct with a different `owner_id`.
+
+⚠️ **An override may narrow *and* widen — there is no monotonicity rule**
+([D-088](90-decision-log.md)). A use site may allow something the node did not.
+
+> ⚠️ **Open contradiction.** [D-221](90-decision-log.md) says restrictions *narrow downwards and
+> never widen*. Both are about settings on one chain. See
+> [`_harvest/contradictions.md`](_harvest/contradictions.md); do not build on either sentence until
+> it is settled.
+
+**Orphaned overrides are never cascade-deleted** ([D-033](90-decision-log.md)); they are promoted
+([D-156](90-decision-log.md)) or shown, never quietly removed.
+
+---
+
+### Money, in detail
+
+**The model declares one reference currency**, and a frozen rate always points at it
+([D-067](90-decision-log.md)) — otherwise a rate is a fact without a direction.
+
+**The frozen rate belongs to the money type**, not to a hand-made hidden field beside it
+([D-068](90-decision-log.md)).
+
+**Rates are fetched at the boundary into a rate table; the core only reads it**
+([D-069](90-decision-log.md)) — so the core never reaches out to a network and stays testable
+without one.
+
+**A currency value is an ordinary composed node with registered behaviour**
+([D-073](90-decision-log.md)), not a special case in the engine.
+
+**A valuation method is a registered strategy, and there may be several**
+([D-145](90-decision-log.md)) — average, last price, replacement value — chosen per use site like
+any other setting.
+
+---
+
+### Concurrency
+
+**Answered per layer** ([D-089](90-decision-log.md)): the `version` on the identity is the guard for
+model rows — read it, write it back with the change, and a second writer whose version no longer
+matches is refused rather than silently overwriting. The data layer answers it its own way.
+
+---
+
+### Deletion — the remaining surfaces
+
+**Deleting a referenced node parks every edge that points at it**
+([D-125](90-decision-log.md)) — the edge keeps its type and its name, which is what makes promotion
+possible later ([D-156](90-decision-log.md)).
+
+**Three surfaces for a deletion, and they are different**
+([D-128](90-decision-log.md)): the tree, the detail view and the conflict resolver each show it in
+their own terms.
+
+**Moving a node is referentially free and semantically a model change**
+([D-124](90-decision-log.md)): nothing breaks — the ids are unchanged — but what the thing **means**
+has changed, so it is a change with a history like any other.
+
+---
+
+### Model change and migration
+
+**A model change is breaking or not depending on the existing data, not on the change**
+([D-037](90-decision-log.md)). Adding a mandatory attribute is harmless with no records and a break
+with a thousand. **The data decide**, so the answer is computed, never assumed.
+
+**Migration needs the changes, not the snapshots — the changelog *is* the migration script**
+([D-061](90-decision-log.md)).
+
+**Durability is a lifecycle question, not a storage-shape question**
+([D-141](90-decision-log.md)): where a document must survive it is **not deleted**; purging an order
+is simply forbidden.
+
+---
+
+### What ships
+
+**A base scaffold ships and is imported once; afterwards it is ordinary authored content**
+([D-119](90-decision-log.md)) — with [D-174](90-decision-log.md)'s provenance deciding what a later
+update may touch.
+
+**A demo pack ships beside it** ([D-129](90-decision-log.md)): an example tree with data, optional
+and removable ([D-175](90-decision-log.md)).
+
+**`Compositions` gets a binding like every other root the engine must find**
+([D-138](90-decision-log.md)), and what has data of its own is decided by **placement, visibly**
+([D-139](90-decision-log.md)) — the answer is read off the tree, not derived.
+
+---
+
+### One piece of modelling guidance that belongs here
+
+**A symmetric relationship is better modelled as membership of a group than as two mirrored edges**
+([D-102](90-decision-log.md)) — *these three parts are interchangeable* is one fact, not six.
+
+### How to think in this model
+
+⚠️ **The concept can express more than it teaches**, and that gap is where models rot. A short
+**pattern book** carries the moves ([D-307](90-decision-log.md)):
+
+| Move | Instead of |
+|---|---|
+| a relationship with its own values becomes a **node** | `Lieferant`, then `Lieferant2` |
+| a repeating group becomes a **composition** | ten numbered attributes |
+| the same thing in two roles is **one node, two relationships** | two copies |
+| a **version** is a record under the thing | a versioning mechanism |
+| a **conversion** is a record | a factor hard-coded somewhere |
+
 ### What is deliberately not in the model
 
 | Not modelled | Because |
