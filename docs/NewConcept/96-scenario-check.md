@@ -159,6 +159,54 @@ nowhere to point**. → [OQ-080](91-open-questions.md).
 
 ---
 
+
+---
+
+## Checked against the real site, the same evening
+
+The owner offered his own data. The installation at `C:/Devel/Wordpress` holds them, and they
+change one of the findings above.
+
+**The site is a blog, not a catalogue:** 283 published posts, 429 drafts, 3965 attachments, 11
+pages. The plugin's `wtt_fs` tree is still scaffold — its top level is `Fallstudie`, `Zeile`,
+`Kopf`, `Fuss`, not subject matter. **The plugin has never fed the site with content.**
+
+**What feeds it instead: 74 reusable Gutenberg blocks** — and their names are the product's
+argument for existing:
+
+> `286 Prozessor Information` · `286 Testkonfiguration` · `386 Testkonfig` ·
+> `80486 Testkonfiguration 1` · `386er Software` · `486er Software` · `3D Druckparameter` ·
+> `Bauteil Quellen` · `Amiga Tools`
+
+Opened, `286 Testkonfiguration` is a two-column table: *CPU / CoPro → Aufgesteckt 80287-10*,
+*Graphic-Karte → 16 Bit ISA ET4000 1MB*, *Speicher → 4 MB Falls möglich*, *HDD → Compact Flash*.
+
+⚠️ **That is a record.** A `Testkonfiguration` with attributes, held as prose because nothing else
+was available — and the values are **free text where references belong**, which is exactly why the
+owner cannot ask *which of my machines have an ET4000*, cannot compare, and has to carry every
+change by hand across posts.
+
+### Two corrections this forces
+
+❗ **[OQ-080](91-open-questions.md) is real but not the blocker I made it.** I wrote that a page per
+record is *the whole idea of a catalogue*. His actual pattern is the opposite: **data embedded in a
+hand-written post**, which [D-206](90-decision-log.md) already provides. A reusable block becomes a
+**data block pointing at a record**, and the post around it stays his. The per-record page still
+matters the day a catalogue of five hundred parts wants addresses — but it is not what stands
+between him and using this.
+
+✅ **And the importer ([OQ-072](91-open-questions.md)) has a better first target than the tree:**
+those 74 blocks. They are structured, they are few enough to check by hand, and each one converted
+removes a maintenance burden he carries today. The `wtt_fs` tree is scaffold; **these are the real
+data.**
+
+### The yardstick this gives the concept
+
+> **Can it replace those 74 blocks — and make them answer questions they cannot answer today?**
+
+That is a better test than any scenario invented at a desk, and it can be run the day the first
+records exist.
+
 ## What the run says
 
 **Five of six worlds model cleanly**, and three findings needed no new machinery at all — sub-recipes,
@@ -171,7 +219,11 @@ taken. That is the good news, and it is not a small one.
 | ⚠️ carried, but only if you know the trick | relationship-with-attributes · comparing measurements |
 | ❌ genuine gaps | record versions · reader-supplied parameters · pairwise unit conversion · mass data · **page per record** |
 
-**The one that matters most is the last.** The others are features that can arrive later; a
+⚠️ **The last row was softened the same evening by looking at the real site** — see the section
+above: the owner's pattern is data **embedded in his own posts**, which [D-206](90-decision-log.md)
+already provides.
+
+⚠️ *Written before the real data were seen; the section above corrects it.* **The one that matters most is the last.** The others are features that can arrive later; a
 catalogue with no address per entry is not a catalogue, and it is the thing the owner is actually
 trying to build.
 

@@ -2261,7 +2261,7 @@ store — but the concept should **say so**, so that nobody discovers it with a 
 
 *Blocks:* [20 Interaction](20-interaction.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §6
 
-**The most consequential of the six.** Five hundred parts cannot each get a hand-built Gutenberg
+⚠️ **Downgraded the same evening** after looking at the owner's site: his pattern is data embedded in hand-written posts, which [D-206](90-decision-log.md) covers. Still wanted for a real catalogue; no longer the blocker.  Five hundred parts cannot each get a hand-built Gutenberg
 page. A catalogue needs **one template and a route**: `/bauteil/bc547b` finds the record and renders
 it through a page designed **once**.
 
