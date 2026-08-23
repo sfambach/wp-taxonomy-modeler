@@ -23,14 +23,13 @@ the owner has to make, not a gap an agent may fill.
 | [From the interaction and domain-core catch-up](#from-the-interaction-and-domain-core-catch-up-2026-08-23) | [20 Interaction](../20-interaction.md), [10 Domain core](../10-domain-core.md) | 1 | **resolved** — round four |
 | [From the second renderer catch-up](#from-the-second-renderer-catch-up-2026-08-23) | [30 Renderer](../30-renderer.md) | 2 | **open** |
 
-**One open**, raised on 2026-08-23 by the second renderer catch-up: a preview *level* switch
-(admin / block / front end) against [D-231](../90-decision-log.md)'s rule that the preview shows
-the front end and may deviate only in size. The passage never carried a `D-nnn`, so nothing was
-superseded — but the level is what carried the depth limit ([D-103](../90-decision-log.md)),
-which was the switch's whole purpose.
+**None open.** The last of them — a preview *level* switch against
+[D-231](../90-decision-log.md) — was settled by [D-278](../90-decision-log.md), which removed
+one side rather than reconciling the two: the *level* is retired, because what it did is
+purpose, depth and visibility, and all three already exist.
 
-Twenty-two were raised and twenty-one are settled — each in one of the five *Resolved* sections
-below, which name the deciding entry.
+Twenty-two were raised and **all twenty-two are settled** — each in one of the six *Resolved*
+sections below, which name the deciding entry.
 
 | Document | Line or section | What the text says | Which decision disagrees | What is unclear |
 |---|---|---|---|---|
@@ -157,3 +156,11 @@ Same standing as everything above: **nothing here is resolved.**
 | # | How it was settled |
 |---|---|
 | second renderer catch-up · 1 · do converters follow renderers into a list | **[D-277](../90-decision-log.md)** — renderer and converter form a **pair**, and the converter belongs to the list entry rather than to the node. [D-219](../90-decision-log.md)'s *one converter in effect* becomes *one per rendering*, which was always the true statement. The converter half may be empty. |
+
+---
+
+## Resolved — sixth round, 2026-08-23. All twenty-two settled.
+
+| # | How it was settled |
+|---|---|
+| second renderer catch-up · 2 · preview *level* switch vs [D-231](../90-decision-log.md) | **[D-278](../90-decision-log.md)** — resolved by **removing** one side: the *level* is retired, since what it did is purpose, depth and visibility, all of which exist already. [D-231](../90-decision-log.md) stands unchanged. **[D-279](../90-decision-log.md)** adds the rule that decides what the preview covers: preview what you cannot see while configuring — the search view yes, the tree row no. |
