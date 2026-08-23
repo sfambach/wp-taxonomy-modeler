@@ -195,7 +195,7 @@ change by hand across posts.
 | **74 reusable Gutenberg blocks** | ✔ | **records held as prose**; the first import target |
 | `wtt_fs` tree, 219 terms · `wtt_case`, 21 | ✔ | scaffold, not subject matter |
 | `wp_wtt_node_presentation`, 2104 rows | ✔ | the old plugin's own table |
-| **TablePress tables** | ✘ | **live site only** — the owner: *a lot of data are in there* |
+| **TablePress tables** | ✔ *installed 2026-08-23 evening* | **23 tables, in 123 posts** — see below |
 
 ⚠️ **TablePress is absent from the local copy entirely** — no post type, no options, not one shortcode
 in 717 posts, and it is not among the four active plugins. The copy is otherwise current; the newest
@@ -260,6 +260,52 @@ question was whether the importer **creates** a model or **fills** one. It need 
 the **header row is the attribute list**, and the two-column form is an attribute list stood on its
 side. The importer's real job is to **recognise which of the two shapes it is looking at** — and
 then to ask about the values, since `16 Bit ISA ET4000 1MB` is a reference written as prose.
+
+
+### The third source, and a third shape — TablePress
+
+Installed locally the same evening. **23 tables, referenced from 123 posts** — an average of five
+posts per table, the heaviest reuse of anything on the site. The owner: *I had not even noticed
+they were missing.*
+
+| Table | Rows |
+|---|---:|
+| `Mainboard-Vergleich` | 43 |
+| `CPU-Benchmarks` | 78 |
+| `Mainboard-Benchmarks` · `-486` · `-386` · `-P4` | 39 · 44 · 40 · 40 |
+| `Graphikkarten-Vergleich` · `-Benchmarks` | 21 · 30 |
+| `Soundkarten-Vergleich` · `Laufwerksvergleich` · `Controller-Vergleich` | 23 · 20 · 20 |
+| `Retro-PCs` | 22 |
+| **`Kopie-von-Retro-Netzwerk-Adapter`** | 21 |
+
+⚠️ **Eight of the twenty-three are called *…-Vergleich*.** The owner maintains by hand precisely what
+[D-207](90-decision-log.md)'s comparison block would produce. And the benchmarks are **split by
+generation** — 386, 486, P4 — because the columns differ: [D-207](90-decision-log.md)'s *walk up to
+the nearest common ancestor*, solved by hand with separate tables. `Kopie-von-…` is the symptom in
+its purest form: no reuse, so copy.
+
+**The scale is reassuring:** 7 to 78 rows, some 600 records in all. The performance worries of
+[D-228](90-decision-log.md) and [OQ-070](91-open-questions.md) are irrelevant at this size, which is
+worth knowing before anyone optimises for it.
+
+### A third shape: the table is transposed
+
+`Mainboard-Vergleich` opens with the **names of the boards** — `YA810e`, `Fujitsu D3502-A13`,
+`Kentech KT-0286 v3`, `FIC 386-SC-HG`, `MSI MS-3134` — in the **first row**. The records are the
+**columns**; the attributes are the rows. That is how a comparison looks when there are many
+properties and few subjects, and it is exactly the output [D-207](90-decision-log.md) describes.
+
+So the corpus has **three** shapes, not two:
+
+| Shape | Example | In the model |
+|---|---|---|
+| key → value, two columns | `286 Testkonfiguration` | one record and its attributes |
+| rows under a header | truth table, parts list | many records of one type |
+| **transposed — records as columns** | `Mainboard-Vergleich` | **many records, read sideways** |
+
+⚠️ **An importer that misses the transposition creates 43 attributes named `YA810e` and
+`MSI MS-3134`.** Recognising which of the three shapes is in front of it is the importer's real
+work — see [OQ-072](91-open-questions.md).
 
 ### The yardstick this gives the concept
 
