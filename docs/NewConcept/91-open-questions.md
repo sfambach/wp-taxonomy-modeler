@@ -2319,3 +2319,19 @@ and a block name is expensive to change once a post contains one — a renamed b
 page that uses it into an invalid-block warning. Both are cheap **now** and only now.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md), [40 I18n](40-i18n.md), `CLAUDE.md` CD-12 · *Status:* **closed** · *raised 2026-08-24 by the rename, closed the same day*
+
+---
+
+## OQ-082 — How does the split behave?
+
+[D-343](90-decision-log.md) settled the shape — tree left, properties of the selected node right.
+Three things it deliberately did not settle, because the owner said one sentence and inventing the
+rest would be exactly what `PR-4` forbids:
+
+| | |
+|---|---|
+| **Is the split resizable, and is the width remembered?** | [U11](20-interaction.md) makes density a requirement, which argues for it; nothing says it |
+| **Does the selection survive a reload, and can it be reached by URL?** | ⚠️ A URL that names a node makes a link to *this node* possible — which is what [OQ-080](#oq-080--is-there-a-page-per-record)'s page-per-record wanted and could not have |
+| **What stands on the right when nothing is selected?** | empty, the root, or the last selection |
+
+*Blocks:* [20 Interaction](20-interaction.md) · *Status:* **open** · *raised 2026-08-24 by [D-343](90-decision-log.md)*

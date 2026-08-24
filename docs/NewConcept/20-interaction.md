@@ -316,6 +316,24 @@ panel, which is how they came to be confused once already.
 
 ## The detail view
 
+⚠️ **Where it sits: to the right of the tree** ([D-343](90-decision-log.md)). The screen is one
+surface in two parts — the tree on the left, the properties of the **selected** node on the
+right. There is no separate *open* step and no second screen to navigate to and back from.
+
+```mermaid
+flowchart LR
+  T["tree · left"] -->|selection| D["properties of that node · right"]
+```
+
+**That the tree has a selection at all follows from this**, and it is what makes
+[U10](#u10--attributes-show-their-core-and-hide-their-detail)'s loading argument work: the detail
+is fetched for **one** node, at the moment it is chosen — not for the whole tree on every view.
+
+*Open: whether the split is resizable, whether the selection survives a reload or can be reached
+by URL, and what the right-hand side shows when nothing is selected —
+[OQ-082](91-open-questions.md).*
+
+**What it contains, and in which order:**
 ```mermaid
 flowchart TB
   A["actions"] --> B["what cannot change"]
