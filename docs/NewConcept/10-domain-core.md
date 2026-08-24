@@ -766,6 +766,26 @@ the error surfaces first in a sum that is one cent off and nobody can explain.
 column, a decimal column, a text column, a date column, a reference column — never one stringly
 value that everything is cast in and out of.
 
+| Column | Holds |
+|---|---|
+| `value_int` | whole numbers — **and booleans**, `0` or `1` ([D-315](90-decision-log.md)) |
+| `value_decimal` | exact decimals |
+| `value_text` | `MEDIUMTEXT` — short strings and long ones alike, source code included ([D-316](90-decision-log.md)) |
+| `value_date` | dates and points in time |
+| `value_ref` | a reference to a node or a record, **indexed** |
+
+⚠️ **A missing row means *not answered*, never *no*.** At `0..1` there are three states, and
+collapsing the last two loses them for good.
+
+⚠️ **No binary data, ever.** `BLOB` is bytes, `TEXT` is characters; files live in the WordPress
+media library ([D-229](90-decision-log.md)) and we hold only the identifier. That keeps this a model
+database rather than a file store.
+
+⚠️ **`record_values` also carries a `locale`, empty most of the time.** Only an attribute declared
+**translatable** ([D-317](90-decision-log.md)) has more than one row per value; numbers, references
+and dates never do. The label fallback chain applies ([D-020](90-decision-log.md)), the search column
+exists per locale, and a translatable attribute may **not** be `unique`.
+
 ---
 
 ### Prefixes and permitted sets

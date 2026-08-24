@@ -52,7 +52,7 @@ The branch a node sits in is load-bearing: it decides the relation kind that rea
 | **`Model`** | yes | The things the installation is actually about — parts, orders, recipes. |
 | **`Compositions`** | yes | Things that exist only as part of a whole. A contact without its part does not exist ([D-135](90-decision-log.md)). |
 | **`Primitives`** | **no** | What models are built *out of*. Values live **inside** the record, by path ([D-232](90-decision-log.md)). Means to an end, never a place anything is kept ([D-185](90-decision-log.md)). Splits one level further, and that split decides the relation kind ([D-193](90-decision-log.md)). |
-| ↳ **Data Types** | no | `int`, `textarea`. The value lives **in the record** — reached by **composition**. |
+| ↳ **Data Types** | no | `int`, `text`. The value lives **in the record** — reached by **composition**. |
 | ↳ **Constants** | no | Units, currencies. The value is a **reference to a node** ([D-131](90-decision-log.md)) — reached by **aggregation**. |
 
 ## Configuration and text
