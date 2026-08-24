@@ -59,7 +59,7 @@ WordPress bootstrap. WordPress reaches *into* it, never the other way round.
 | **CD-9** | **Names say what the thing is.** Rename when the word lies. No abbreviations that need a lookup, and no `data` / `info` / `manager` / `helper` as a whole name. |
 | **CD-10** | Errors: **exceptions inside the core**, translated to `WP_Error` at the boundary. Never a bare `false` to signal failure. Never silence an exception without handling it. |
 | **CD-11** | Versioning: semantic `MAJOR.MINOR.PATCH`, starting at `0.0.1`. `MAJOR` moves **only** for an official release. Plugin header, PHP version constant, `package.json` and any `readme.txt` stable tag change **in the same commit**. |
-| **CD-12** | Gutenberg blocks live in the **`taxo/`** namespace — `taxo/<slug>`, title starting `Taxo `, keyword `taxo`. ⚠️ **Inherited from the old plugin, no decision behind it** — under question, see [OQ-081](docs/NewConcept/91-open-questions.md). |
+| **CD-12** | Gutenberg blocks live in the **`taxmod/`** namespace — `taxmod/<slug>`, keyword `taxmod` ([D-337](docs/NewConcept/90-decision-log.md)). The human-readable block **title** is not a token: it is a translatable string like any other user-visible text (`AR-2`). |
 
 ### Prohibited
 

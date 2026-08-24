@@ -2286,6 +2286,11 @@ point**, which means the gap is already load-bearing elsewhere.
 
 ## OQ-081 — Which token do the Gutenberg blocks and the text domain use?
 
+> **Closed 2026-08-24 → [D-337](90-decision-log.md).** One token everywhere: `taxmod`. The
+> blocks become `taxmod/<slug>`, the text domain becomes `taxmod`, and `taxo/` is struck.
+> The text domain deliberately does **not** follow the plugin slug — that convention serves
+> `wordpress.org` distribution, which is not planned.
+
 [D-336](90-decision-log.md) settled the product name, the repository name and the database
 prefix. It left **three tokens standing side by side**, and nobody has said whether that is
 intended:
@@ -2313,4 +2318,4 @@ been decided either: **whether this plugin is ever submitted to `wordpress.org`.
 and a block name is expensive to change once a post contains one — a renamed block turns every
 page that uses it into an invalid-block warning. Both are cheap **now** and only now.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md), [40 I18n](40-i18n.md), `CLAUDE.md` CD-12 · *Status:* **open** · *raised 2026-08-24 by the rename*
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), [40 I18n](40-i18n.md), `CLAUDE.md` CD-12 · *Status:* **closed** · *raised 2026-08-24 by the rename, closed the same day*

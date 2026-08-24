@@ -15,9 +15,8 @@ a **tree**.
 > **No production code until [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) is
 > `locked`** — rule `PR-2` in [`CLAUDE.md`](CLAUDE.md).
 >
-> Where it stands: **336 decisions** recorded, **81 open questions** — 80 answered, one raised
-> by the rename ([OQ-081](docs/NewConcept/91-open-questions.md)) —
-> **0 lines** of new code.
+> Where it stands: **337 decisions** recorded, **81 open questions** — all answered —
+> and **0 lines** of new code.
 
 ---
 
@@ -68,6 +67,8 @@ One name for people, one for machines:
 | Repository, plugin folder | `wp-taxonomy-modeler` |
 | PHP namespace | `Taxmod\Core\…` · `Taxmod\WordPress\…` |
 | Database tables | `{$wpdb->prefix}taxmod_…` |
+| Gutenberg blocks | `taxmod/<slug>` |
+| Text domain | `taxmod` |
 | Version | starts at `0.0.1` |
 
 ## Local layout (Windows + Laragon)
