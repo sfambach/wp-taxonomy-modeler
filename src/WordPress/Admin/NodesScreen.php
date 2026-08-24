@@ -4,9 +4,12 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SettingValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
+use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Plugin;
 
@@ -33,6 +36,7 @@ final class NodesScreen
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
+        private readonly Settings $settings,
         private readonly FrameworkNodes $framework,
     ) {
     }
@@ -244,7 +248,9 @@ final class NodesScreen
             $this->parentChooser($selected, $rows, $root)
         );
 
-        return $html . $this->attributes($selected, $rows);
+        $html .= $this->attributes($selected, $rows);
+
+        return $html . $this->settingsPanel($selected);
     }
 
     /**
@@ -356,7 +362,116 @@ final class NodesScreen
         );
     }
 
+
+    /**
+     * What the chain resolves to for this node, and where each value came from.
+     *
+     * ⚠️ **A diagnostic, not the settings editor.** It prints keys and raw values in a table —
+     * it does **not** render them, because a rendered setting is a rendered value and that is
+     * the line [R20a](../../../docs/NewConcept/30-renderer.md) draws. The real editor is the
+     * frame of attributes under the `edit` purpose, and it arrives with the renderers.
+     */
+    private function settingsPanel(Node $selected): string
+    {
+        $chain    = $this->settings->chainFor($selected);
+        $resolved = $this->settings->resolve($chain);
+
+        ksort($resolved);
+
+        $body = '';
+
+        foreach ($resolved as $key => $setting) {
+            $origin = $setting->setHere
+                ? esc_html__('here', 'taxmod')
+                : '<em>' . esc_html(sprintf(
+                    /* translators: %d is the id of the node or edge the value came from. */
+                    __('from #%d', 'taxmod'),
+                    $setting->fromOwnerId
+                )) . '</em>';
+
+            $body .= '<tr>'
+                . '<td><code>' . esc_html($key) . '</code></td>'
+                . '<td>' . esc_html($setting->value->describe()) . '</td>'
+                . '<td>' . $origin . '</td>'
+                . '<td>' . ($setting->setHere
+                    ? $this->form($selected->id, [['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')]], '<input type="hidden" name="setting_key" value="' . esc_attr($key) . '">')
+                    : '')
+                . '</td>'
+                . '</tr>';
+        }
+
+        $html  = '<h3>' . esc_html__('Settings', 'taxmod') . '</h3>';
+        $html .= '<p class="description">'
+            . esc_html__('Resolved along the chain: installation → model root → ancestors → node. Raw values — this is a diagnostic, not the editor.', 'taxmod')
+            . '</p>';
+
+        $html .= $body === ''
+            ? '<p><em>' . esc_html__('Nothing set anywhere along the chain.', 'taxmod') . '</em></p>'
+            : '<table class="wp-list-table widefat striped"><thead><tr>'
+                . '<th>' . esc_html__('Key', 'taxmod') . '</th>'
+                . '<th>' . esc_html__('Value', 'taxmod') . '</th>'
+                . '<th style="width:7em">' . esc_html__('From', 'taxmod') . '</th>'
+                . '<th style="width:6em"></th>'
+                . '</tr></thead><tbody>' . $body . '</tbody></table>';
+
+        return $html . $this->settingForm($selected);
+    }
+
+    private function settingForm(Node $selected): string
+    {
+        $options = '';
+
+        foreach (SettingKey::cases() as $key) {
+            $options .= '<option value="' . esc_attr($key->value) . '">'
+                . esc_html($key->value . ($key->isBounding() ? ' — ' . __('bounding', 'taxmod') : ''))
+                . '</option>';
+        }
+
+        return $this->form(
+            $selected->id,
+            [
+                ['put_setting', esc_html__('Set', 'taxmod'), __('Write it here; a bounding setting may only be narrowed', 'taxmod')],
+                ['empty_setting', esc_html__('Set to nothing', 'taxmod'), __('Deliberately nothing here — later changes above will not arrive', 'taxmod')],
+            ],
+            '<select name="setting_key">' . $options . '</select>'
+            . '<input type="text" name="setting_value" placeholder="' . esc_attr__('value', 'taxmod') . '" style="width:8em">'
+        );
+    }
+
     // ------------------------------------------------------------------ acting
+
+
+    /** The chain a setting written **at this node** belongs to. */
+    private function settingChain(int $nodeId): array
+    {
+        return $this->settings->chainFor($this->editor->find($nodeId) ?? $this->framework->root());
+    }
+
+    /**
+     * Turn what somebody typed into a typed value.
+     *
+     * ⚠️ **A scaffolding guess, and deliberately a crude one.** The real editor knows the type
+     * of the setting and offers the right control; here a number is a number, everything else
+     * is text. Nothing about this survives the renderers.
+     */
+    private function settingValue(string $raw): SettingValue
+    {
+        $raw = trim($raw);
+
+        if ($raw === '') {
+            return SettingValue::nothing();
+        }
+
+        if (preg_match('/^-?\d+$/', $raw) === 1) {
+            return SettingValue::ofInt((int) $raw);
+        }
+
+        if (preg_match('/^-?\d+\.\d+$/', $raw) === 1) {
+            return SettingValue::ofDecimal($raw);
+        }
+
+        return SettingValue::ofText($raw);
+    }
 
     private function selectedFromRequest(): ?Node
     {
@@ -402,7 +517,9 @@ final class NodesScreen
 
         $do     = isset($_POST['do']) ? sanitize_key(wp_unslash($_POST['do'])) : '';
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
-        $target = isset($_POST['target']) ? absint($_POST['target']) : 0;
+        $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
+        $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
+        $settingValue = isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '';
         $stay   = $id;
 
         try {
@@ -418,6 +535,9 @@ final class NodesScreen
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
+                'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
+                'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, SettingValue::nothing()),
+                'reset_setting'  => $this->settings->reset($id, $settingKey),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 

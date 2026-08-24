@@ -35,6 +35,9 @@ final class SeededFrameworkNodes implements FrameworkNodes
     public const ROOT_OPTION  = 'taxmod_root_id';
     public const TRASH_OPTION = 'taxmod_trash_id';
 
+    /** The reserved identity installation-wide settings hang on (OQ-039). Not a node. */
+    private const INSTALLATION_OPTION = 'taxmod_installation_id';
+
     /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
 
@@ -86,6 +89,22 @@ final class SeededFrameworkNodes implements FrameworkNodes
         }
 
         return null;
+    }
+
+
+    public function installationId(): int
+    {
+        $id = (int) get_option(self::INSTALLATION_OPTION, 0);
+
+        if ($id === 0) {
+            // ⚠️ An identity with no node behind it. The foreign keys point at `identities`,
+            // not at `nodes` (D-339), so a settings owner that is not a node is a first-class
+            // thing rather than a hole in the schema.
+            $id = $this->identities->next();
+            update_option(self::INSTALLATION_OPTION, $id, true);
+        }
+
+        return $id;
     }
 
     public function isProtected(Node $node): bool

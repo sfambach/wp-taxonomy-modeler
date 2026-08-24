@@ -68,7 +68,7 @@ Six packages to the point where importing his real data first makes sense.
 | **1** | Tables, and a node exists | create, rename, send to trash — survives a restart · **done 2026-08-24** |
 | **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself · **done 2026-08-24** |
-| **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited |
+| **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited · **done 2026-08-24** |
 | **5** | Labels, roles, locales | the same thing is called something else in English |
 | **6** | Records | enter something against a model and find it again |
 
@@ -313,3 +313,44 @@ today is a name, a target and a kind.
 **Removing an attribute.** ⚠️ It needs the deletion event to carry the edge under the same
 bracket as the node that caused it — the owner named it while the change group was being built,
 and it is written up above. Deleting a node does not yet park the attributes pointing at it.
+
+---
+
+## Package 4 — done 2026-08-24
+
+**What it delivers:** the resolution chain, and the rule that runs down it.
+
+```mermaid
+flowchart LR
+  I["installation"] --> R["model root"] --> A["ancestors"] --> N["node"] --> U["use site"]
+```
+
+**Walked key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)), loaded in **one
+query** for the whole chain ([D-014](90-decision-log.md)), stored **sparsely**
+([D-015](90-decision-log.md)). ⚠️ **Reset and *set to nothing* are two different acts**
+([D-266](90-decision-log.md)): after a reset a later change above arrives again; after *nothing*
+it deliberately does not. Both are checked at the boundary against a real database.
+
+**Bounding narrows, choosing is free** ([D-312](90-decision-log.md)) — enforced at **write** time,
+because a restriction that may be reopened anywhere says nothing when it is read. And what an
+ancestor declares mandatory stays mandatory ([D-311](90-decision-log.md)).
+
+**112 core checks** plus 28 · 48 · 23 · 27 at the boundary.
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **`model root → ancestors → node` is the node's path, in order.** | The chain names three things the path already holds; reading it any other way would make the walk a climb, which [D-014](90-decision-log.md) exists to avoid. | Low, and load-bearing — if it is wrong, the whole walk is. |
+| **2** | **The installation identity is an identity with no node behind it.** | [OQ-039](91-open-questions.md) says *reserved and does not appear in the modeller*. Since [D-339](90-decision-log.md) made `owner_id` point at `identities` rather than at `nodes`, an owner that is not a node is a first-class thing rather than a hole. | None — it falls out of a decision already taken. |
+| **3** | **Eleven engine-owned keys**: `multiplicity_min/max`, `mandatory`, `hide`, `read_only`, `range_min/max`, `default`, `renderer`, `converter`, `icon`, `order`. | [D-312](90-decision-log.md) names the two groups by example; these are those examples made concrete. **Permitted sets are not among them** — a set needs set semantics for *narrower*, and guessing them would be inventing a rule. | ⚠️ **Medium.** The list will grow, and each addition has to declare its direction. |
+| **4** | **Narrowing is numeric for ranges and one-way for switches.** A minimum may rise, a maximum may fall, and `mandatory`/`hide`/`read_only` may only ever close. | It is what *narrower* means for those shapes. | Low. |
+| **5** | **A free key is unbounded.** Only the engine's keys carry a direction. | Nothing says an author's own setting has an ordering, and inventing one would be worse than leaving it free. | Low. |
+| **6** | **The scaffolding shows settings as raw key/value, read-only.** | ⚠️ A **rendered** setting is a rendered value, which is the line [R20a](30-renderer.md) draws. This prints; it does not render. | None, and it is deleted with the rest of the scaffolding. |
+
+### What building it found
+
+⚠️ **[OQ-085](91-open-questions.md) — how much precision does a decimal have?** `2.50` is written
+and comes back as `2.5000000000`. The **value** is exact, and the notation is a rendering
+question — but the **scale** is fixed at ten places for every decimal in the system, and nothing
+in the concept decided that. A physical constant wanting twelve places would lose two, silently.

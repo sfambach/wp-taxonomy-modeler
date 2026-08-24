@@ -2408,3 +2408,34 @@ five-hundred-row write, which is exactly the loop `CD-7` forbids — and the rea
 is one statement today.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from watching the numbers*
+
+---
+
+## OQ-085 — How much precision does a decimal have?
+
+Found while building Package 4: `2.50` is written and comes back as `2.5000000000`.
+
+**The value is exact** — [D-057](90-decision-log.md) is satisfied, and the notation a person
+typed is a **rendering** question ([D-219](90-decision-log.md)), not a storage one. ⚠️ **What is
+not decided is the scale itself.** The column is `decimal(30,10)`, which was an implementation
+assumption, and it fixes ten decimal places for **every** decimal in the system:
+
+| | Wants | Gets |
+|---|---|---|
+| a price | 2 places | 10 |
+| a resistance tolerance | 1–2 places | 10 |
+| a physical constant | 12–15 places | ⚠️ **truncated at 10** |
+| a currency rate | 6–8 places | 10 |
+
+**Three readings, and none of them is written down:**
+
+| | |
+|---|---|
+| **One scale for everything** | simple; ⚠️ the day a value needs eleven places it silently loses one, and nobody sees it happen |
+| **Scale as a setting on the type** | fits the chain exactly — `range_min`/`range_max` already live there. ⚠️ But a column has **one** scale; per-type precision means either the widest scale for all, or a second column |
+| **The scale belongs to the composed type** | `money` knows it is money ([D-321](90-decision-log.md) family). ⚠️ Same storage problem underneath |
+
+⚠️ **The failure mode is the one this project keeps guarding against: it is silent.** A value
+truncated in the tenth place looks right in every screen that shows two.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-24 while building Package 4*

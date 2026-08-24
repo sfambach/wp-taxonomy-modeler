@@ -27,6 +27,18 @@ interface FrameworkNodes
     public function isProtected(Node $node): bool;
 
     /**
+     * The identity installation-wide settings hang on — the first link of the chain.
+     *
+     * ⚠️ **An identity, not a node** (OQ-039): it is reserved and **does not appear in the
+     * modeller**. That is what lets *a configured default plus a choice in the moment* fall out
+     * of the ordinary walk with no second mechanism — it is simply the top of it (D-032).
+     *
+     * ⚠️ Genuinely WordPress-shaped settings — which admin page, which capability — stay
+     * WordPress options at the boundary. They are not model settings and are not in this walk.
+     */
+    public function installationId(): int;
+
+    /**
      * The node a branch hangs from — `Model`, `Compositions`, `Data Types`, `Constants`.
      *
      * ⚠️ **Asked for by role, never by id.** An id is meaningless (sentence 2), so hard-coding

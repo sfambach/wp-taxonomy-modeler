@@ -16,6 +16,7 @@ final class FixedFramework implements FrameworkNodes
         private readonly Node $root,
         private readonly Node $trash,
         private readonly array $branchRoots = [],
+        private readonly int $installationId = 999000,
     ) {
     }
 
@@ -43,6 +44,12 @@ final class FixedFramework implements FrameworkNodes
         }
 
         return null;
+    }
+
+
+    public function installationId(): int
+    {
+        return $this->installationId;
     }
 
     public function isProtected(Node $node): bool

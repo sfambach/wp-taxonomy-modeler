@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Persistence\Schema;
@@ -11,6 +12,7 @@ use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 
 /**
  * The boundary. It wires WordPress to the core and decides nothing (D-170).
@@ -124,6 +126,7 @@ final class Plugin
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
             $this->frameworkNodes()
         );
     }
