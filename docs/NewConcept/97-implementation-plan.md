@@ -66,7 +66,7 @@ Six packages to the point where importing his real data first makes sense.
 | | Package | What the owner checks |
 |---|---|---|
 | **1** | Tables, and a node exists | create, rename, send to trash — survives a restart · **done 2026-08-24** |
-| **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
+| **2** | The tree | parent and child, move, expand and collapse · ⚠️ **partly done 2026-08-24** — expand and collapse is **not** built |
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited |
 | **5** | Labels, roles, locales | the same thing is called something else in English |
@@ -168,3 +168,23 @@ php vendor/phpunit/phpunit/phpunit
 ```bash
 php scripts/dev/package2-check.php C:/Devel/Wordpress
 ```
+
+### ⚠️ What Package 2 does not deliver, against its own definition
+
+**Expand and collapse is not built.** It stands in this package's line above and in
+[U3](20-interaction.md), and the screen draws the tree fully expanded, always. Reported here
+rather than quietly left out.
+
+**And these are in [20 Interaction](20-interaction.md) but belong to the tree's real surface,
+not to its behaviour** — none of them is built, and none was claimed:
+
+| | What the concept asks | Where |
+|---|---|---|
+| **U1** | the row shows the frequent, a `⋯` menu holds everything — ⚠️ **touch has no right-click** | [U1](20-interaction.md) |
+| **U4** | deleting asks **one** question: the branch, or only this node — ⚠️ **this one is behaviour, not decoration.** Today the trash always takes the branch, with no question asked | [U4](20-interaction.md) |
+| **U5** | dragging moves whole branches, and several at once | [U5](20-interaction.md) |
+| **U6** | duplicating puts the copy **directly beneath**, with an indexed name | [U6](20-interaction.md) |
+| **U21** | the tree row draws the node's icon | [U21](20-interaction.md) |
+
+⚠️ **U4 is the one that is not merely cosmetic.** *Delete only this node* means the children have
+to go somewhere — promoted to the grandparent — and nothing in the core does that yet.
