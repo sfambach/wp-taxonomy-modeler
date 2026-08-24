@@ -129,7 +129,7 @@ final class NodesScreen
 
         if ($mode === 'trash') {
             return $this->form($node->id, [
-                ['restore', __('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod')],
+                ['restore', esc_html__('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod')],
             ]);
         }
 
@@ -163,6 +163,10 @@ final class NodesScreen
         return $html . '</form>';
     }
 
+    /**
+     * @param array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool} $row
+     * @param list<int>                                                                                     $collapsed
+     */
     private function expander(array $row, array $collapsed): string
     {
         if (! $row['hasChildren']) {
