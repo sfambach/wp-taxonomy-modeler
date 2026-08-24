@@ -35,7 +35,7 @@ require $plugin . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\WordPress\Persistence\OptionIdentityAllocator;
+use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -65,7 +65,7 @@ foreach (Schema::tableNames() as $name) {
 
 echo "\n== 2. Framework nodes ==\n";
 $nodes = new WpdbNodeRepository();
-$ids = new OptionIdentityAllocator();
+$ids = new TableIdentityAllocator();
 $log = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $ids, $log);
 $framework->seed();
@@ -125,6 +125,19 @@ $rows = $wpdb->get_results($wpdb->prepare(
 $what = array_column($rows ?: [], 'what');
 check('created / renamed / parked, and no entry for the unchanged save',
     $what === ['created', 'renamed', 'parked'], implode(', ', $what));
+
+
+echo "\n== 8. The check cleans up after itself ==\n";
+// A check that leaves its scratch nodes behind is a check nobody dares run twice against
+// real data. It removes exactly what it made, by id, and nothing else.
+foreach ([$child->id, $made->id] as $scratch) {
+    $node = $nodes->find($scratch);
+    if ($node !== null) { $nodes->purgeSubtree($node); }
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('changelog') . ' WHERE owner_id = %d', $scratch));
+}
+check('scratch nodes are gone', $nodes->find($made->id) === null && $nodes->find($child->id) === null);
+check('their identities stay spent', (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('identities') . ' WHERE id IN (%d, %d)', $made->id, $child->id)) === 2);
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

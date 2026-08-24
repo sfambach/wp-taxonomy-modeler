@@ -4,7 +4,7 @@ namespace Taxmod\WordPress;
 
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Admin\NodesScreen;
-use Taxmod\WordPress\Persistence\OptionIdentityAllocator;
+use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -45,6 +45,11 @@ final class Plugin
 
         add_action('admin_menu', $plugin->registerMenu(...));
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
+
+        // An upgrade must not depend on somebody remembering to deactivate and activate
+        // again (`CD-6`). One option read per admin request, and the work happens only when
+        // the stored version is behind.
+        add_action('admin_init', Schema::ensureCurrent(...));
     }
 
     public function activate(): void
@@ -79,7 +84,7 @@ final class Plugin
 
         return new ModelEditor(
             $nodes,
-            new OptionIdentityAllocator(),
+            new TableIdentityAllocator(),
             $this->frameworkNodes(),
             new WpdbChangelog(new SystemClock())
         );
@@ -89,7 +94,7 @@ final class Plugin
     {
         return new SeededFrameworkNodes(
             new WpdbNodeRepository(),
-            new OptionIdentityAllocator(),
+            new TableIdentityAllocator(),
             new WpdbChangelog(new SystemClock())
         );
     }

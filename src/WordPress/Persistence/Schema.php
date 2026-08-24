@@ -3,7 +3,8 @@
 namespace Taxmod\WordPress\Persistence;
 
 /**
- * The seven tables (D-083), created on activation and guarded by a stored schema version.
+ * The seven tables (D-083) plus the identity base they draw their numbers from (D-339),
+ * created on activation and guarded by a stored schema version.
  *
  * ⚠️ **Seven, and no table per model** — the model *is* the schema (D-066). A per-model
  * projection may exist later, but only as a rebuildable cache (D-228), never as a place where
@@ -11,18 +12,17 @@ namespace Taxmod\WordPress\Persistence;
  *
  * ```mermaid
  * flowchart TD
- *   N[(nodes)] --> S[(settings)]
- *   R[(relations)] --> S
- *   N --> L[(labels)]
- *   R --> L
- *   N --> C[(changelog)]
- *   R --> C
+ *   I[(identities)] --> N[(nodes)]
+ *   I --> R[(relations)]
+ *   I --> S[(settings)]
+ *   I --> L[(labels)]
+ *   I --> C[(changelog)]
  *   RC[(records)] --> RV[(record_values)]
  * ```
  *
  * `settings`, `labels` and `changelog` all hang off **an identity**, not off a node — which is
  * what lets a *relation* carry settings too (C8). That is why `owner_id` is one column rather
- * than a kind plus an id.
+ * than a kind plus an id, and since D-339 it is a real foreign key rather than a promise.
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
@@ -32,15 +32,33 @@ final class Schema
      * Raise this whenever a table definition below changes. The stored value is compared on
      * every load, so an upgrade is deterministic rather than a matter of when somebody last
      * deactivated the plugin (`CD-6`).
+     *
+     * 1 — the seven tables, ids from a counter in `wp_options`.
+     * 2 — `identities` takes over id allocation and `owner_id` becomes a foreign key (D-339);
+     *     `settings.key` becomes `setting_key`, because `KEY` is reserved and dbDelta cannot
+     *     parse an index over a backticked column — the same reason `before` became
+     *     `before_state`.
      */
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
-    /** @return list<string> The seven table names, without the WordPress prefix. */
+    /** The counter version 1 allocated from. Read once during the upgrade, then removed. */
+    private const RETIRED_COUNTER_OPTION = 'taxmod_model_last_id';
+
+    /** Every column that holds a model identity, and the table it sits in. */
+    private const IDENTITY_REFERENCES = [
+        ['nodes', 'id'],
+        ['relations', 'id'],
+        ['settings', 'owner_id'],
+        ['labels', 'owner_id'],
+        ['changelog', 'owner_id'],
+    ];
+
+    /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['nodes', 'relations', 'settings', 'labels', 'changelog', 'records', 'record_values'];
+        return ['identities', 'nodes', 'relations', 'settings', 'labels', 'changelog', 'records', 'record_values'];
     }
 
     public static function table(string $name): string
@@ -68,6 +86,110 @@ final class Schema
         foreach (self::statements() as $sql) {
             dbDelta($sql);
         }
+
+        self::backfillIdentities();
+        self::dropRetiredColumns();
+        self::ensureForeignKeys();
+    }
+
+    /**
+     * Remove columns a later version replaced. `dbDelta` never drops anything, so without this
+     * an upgraded installation would carry both the old column and the new one, and nobody
+     * reading the table could tell which one is true.
+     *
+     * ⚠️ **Dropping a column destroys what is in it.** That is only defensible here because
+     * `settings.key` never shipped with data in it — version 1 created the table and nothing
+     * ever wrote a row. **A future retirement that holds data must copy first and drop after.**
+     */
+    private static function dropRetiredColumns(): void
+    {
+        global $wpdb;
+
+        $settings = self::table('settings');
+
+        $hasOld = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+            $settings,
+            'key'
+        ));
+
+        if ($hasOld === 1) {
+            $wpdb->query("ALTER TABLE {$settings} DROP COLUMN `key`");
+        }
+    }
+
+    /**
+     * Give every id that already exists a row in `identities`, then push the counter past every
+     * id that was ever handed out.
+     *
+     * ⚠️ **The second half is the one that matters.** Version 1 allocated from a counter in
+     * `wp_options`, and ids belonging to purged objects leave no trace in any table. Seeding
+     * `AUTO_INCREMENT` from the highest *surviving* id would reissue exactly those numbers —
+     * the reuse D-339 exists to prevent, introduced by the migration meant to prevent it.
+     */
+    private static function backfillIdentities(): void
+    {
+        global $wpdb;
+
+        $identities = self::table('identities');
+        $highest    = (int) get_option(self::RETIRED_COUNTER_OPTION, 0);
+
+        foreach (self::IDENTITY_REFERENCES as [$table, $column]) {
+            $source = self::table($table);
+
+            $wpdb->query(
+                "INSERT IGNORE INTO {$identities} (id)
+                 SELECT DISTINCT s.{$column} FROM {$source} s
+                 WHERE s.{$column} > 0"
+            );
+
+            $highest = max($highest, (int) $wpdb->get_var("SELECT MAX({$column}) FROM {$source}"));
+        }
+
+        if ($highest > 0) {
+            $wpdb->query(
+                $wpdb->prepare("ALTER TABLE {$identities} AUTO_INCREMENT = %d", $highest + 1)
+            );
+        }
+
+        // One source, not two. Leaving the old counter behind would invite somebody to trust it.
+        delete_option(self::RETIRED_COUNTER_OPTION);
+    }
+
+    /**
+     * Add the foreign keys `dbDelta` cannot express, once, and only if they are missing.
+     *
+     * ⚠️ **`RESTRICT` is deliberate and is not laziness.** An identity row is never deleted
+     * (D-339), so the database refusing to delete one is the rule being enforced rather than a
+     * case left unhandled.
+     */
+    private static function ensureForeignKeys(): void
+    {
+        global $wpdb;
+
+        $identities = self::table('identities');
+
+        foreach (self::IDENTITY_REFERENCES as [$table, $column]) {
+            $source     = self::table($table);
+            $constraint = 'fk_taxmod_' . $table . '_' . $column;
+
+            $exists = (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+                 WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = %s',
+                $constraint
+            ));
+
+            if ($exists > 0) {
+                continue;
+            }
+
+            $wpdb->query(
+                "ALTER TABLE {$source}
+                 ADD CONSTRAINT {$constraint} FOREIGN KEY ({$column})
+                 REFERENCES {$identities} (id) ON DELETE RESTRICT ON UPDATE RESTRICT"
+            );
+        }
     }
 
     /**
@@ -81,8 +203,14 @@ final class Schema
         $t       = static fn (string $n): string => self::table($n);
 
         return [
-            // The model identity space is shared by nodes and relations (C11), so neither
-            // table may own an AUTO_INCREMENT — see OptionIdentityAllocator.
+            // The model identity space, shared by nodes and relations (C11). One column, and
+            // that is the whole point: it exists so that a number is allocated in exactly one
+            // place and never a second time. Rows are added, never removed (D-339).
+            "CREATE TABLE {$t('identities')} (
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                PRIMARY KEY  (id)
+            ) {$charset};",
+
             "CREATE TABLE {$t('nodes')} (
                 id bigint(20) unsigned NOT NULL,
                 version int(10) unsigned NOT NULL DEFAULT 1,
@@ -111,14 +239,14 @@ final class Schema
             "CREATE TABLE {$t('settings')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 owner_id bigint(20) unsigned NOT NULL,
-                `key` varchar(191) NOT NULL,
+                setting_key varchar(191) NOT NULL,
                 value_int bigint(20) DEFAULT NULL,
                 value_decimal decimal(30,10) DEFAULT NULL,
                 value_text mediumtext DEFAULT NULL,
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY owner_key (owner_id,`key`),
+                UNIQUE KEY owner_key (owner_id,setting_key),
                 KEY value_ref (value_ref)
             ) {$charset};",
 

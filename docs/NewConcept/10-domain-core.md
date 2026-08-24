@@ -89,8 +89,9 @@ the thing that also writes the code, nobody can check the code. So the test for 
 
 11. **A label is text in one role and one locale.** Roles are nodes, seeded and extensible.
 
-12. **Seven tables, and no table per model — the model *is* the schema.** A per-model projection may
-    exist only as a rebuildable cache.
+12. **Seven tables plus an identity base, and no table per model — the model *is* the schema.** A
+    per-model projection may exist only as a rebuildable cache. Nodes and edges take their ids
+    from `identities`, which is never deleted from, so a number is never reissued.
 
 13. **Deletion has two stages: park, then purge.** Undo reaches exactly as far as the trash, and a
     renderer never writes.
@@ -381,6 +382,7 @@ yields a **node** reference; input-time content yields a **record** reference.
 ```php
 CONTRACT — model side
 
+identities   id                                    ← the shared model id space, append-only (D-339)
 nodes        id · version · name · path
 relations    id · version · from_id · to_id · kind · name · position
 settings     id · owner_id · key · value_* (typed)
@@ -395,7 +397,8 @@ records        id · model_id · model_version · created_at
 record_values  id · record_id · edge_id · path · value_* (typed) · value_ref
 ```
 
-Seven tables ([D-083](90-decision-log.md)). **No table per model** — the model **is** the schema
+Seven tables plus the identity base they draw their numbers from ([D-083](90-decision-log.md),
+[D-339](90-decision-log.md)). **No table per model** — the model **is** the schema
 ([D-066](90-decision-log.md)); a per-model **projection** may exist as a rebuildable **cache**, opt
 in and few, never a place where anything is kept ([D-228](90-decision-log.md)).
 
