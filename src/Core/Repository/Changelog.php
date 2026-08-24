@@ -28,4 +28,14 @@ interface Changelog
         ?string $before,
         ?string $after,
     ): void;
+
+    /**
+     * Where a node stood the last time it was parked, or null if it never was.
+     *
+     * ⚠️ **This makes the changelog load-bearing rather than decorative.** The old path is
+     * written there and nowhere else — deliberately, so that no `parked_from` column duplicates
+     * a fact (D-123, and the Package 1 assumptions). The price is that the frozen state's
+     * **format** is now a contract: see {@see Changelog::record()}.
+     */
+    public function pathBeforeLastParking(int $ownerId): ?string;
 }

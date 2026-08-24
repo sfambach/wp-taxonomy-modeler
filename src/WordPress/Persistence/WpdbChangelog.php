@@ -44,6 +44,30 @@ final class WpdbChangelog implements Changelog
         );
     }
 
+
+    public function pathBeforeLastParking(int $ownerId): ?string
+    {
+        global $wpdb;
+
+        $before = $wpdb->get_var($wpdb->prepare(
+            'SELECT before_state FROM ' . Schema::table('changelog') . '
+             WHERE owner_id = %d AND what = %s
+             ORDER BY id DESC LIMIT 1',
+            $ownerId,
+            'parked'
+        ));
+
+        if ($before === null) {
+            return null;
+        }
+
+        // ⚠️ Read from the **last** `path=`, not the first: a node may legitimately be called
+        // something containing ` path=`, and the path is written last.
+        $at = strrpos((string) $before, ' path=');
+
+        return $at === false ? null : substr((string) $before, $at + 6);
+    }
+
     private function human(): ?int
     {
         if (wp_doing_cron() || (defined('WP_CLI') && WP_CLI)) {

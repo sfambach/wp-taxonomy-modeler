@@ -15,6 +15,20 @@ final class RecordedChanges implements Changelog
         $this->entries[] = [$ownerId, $ownerKind, $what, $before, $after];
     }
 
+
+    public function pathBeforeLastParking(int $ownerId): ?string
+    {
+        foreach (array_reverse($this->entries) as [$id, , $what, $before]) {
+            if ($id === $ownerId && $what === 'parked' && $before !== null) {
+                $at = strrpos($before, ' path=');
+
+                return $at === false ? null : substr($before, $at + 6);
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<string> */
     public function verbsFor(int $ownerId): array
     {

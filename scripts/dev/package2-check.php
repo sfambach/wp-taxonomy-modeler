@@ -28,6 +28,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Exception\CannotRestore;
 use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Service\ModelEditor;
@@ -171,8 +172,37 @@ check('nothing else disappeared', count($open) - count($collapsed) === 3, (count
 $gRow = array_values(array_filter($collapsed, static fn (array $r): bool => $r['node']->id === $g->id))[0];
 check('the row says it has children and is collapsed', $gRow['hasChildren'] && $gRow['collapsed']);
 
-echo "\n== 10. The check cleans up after itself ==\n";
-foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id] as $scratch) {
+echo "\n== 10. Restoring ==\n";
+$r1 = $editor->createNode('__check R', $treeRoot->id);
+$r2 = $editor->createNode('__check R child', $r1->id);
+$wasR1 = $r1->path;
+$wasR2 = $nodes->byId($r2->id)->path;
+
+$editor->moveToTrash($r1->id);
+check('it is in the trash', str_starts_with($nodes->byId($r1->id)->path, $trash->path . '.'));
+
+$editor->restore($r1->id);
+check('restored to exactly where it was', $nodes->byId($r1->id)->path === $wasR1, $nodes->byId($r1->id)->path);
+check('its subtree came back too', $nodes->byId($r2->id)->path === $wasR2, $nodes->byId($r2->id)->path);
+check('the edge points at the old parent again', $edges->inheritanceEdgeTo($r1->id)->fromId === $treeRoot->id);
+
+try { $editor->restore($r2->id); check('a node that was never parked is refused', false); }
+catch (CannotRestore $e) { check('a node that was never parked is refused', true); }
+
+echo "\n== 11. Collapsing behaves the same inside the trash ==\n";
+// ⚠️ Found by the owner: the first version passed the collapsed set to the tree table and not
+// to the trash table — the same function, two call sites, one forgotten. It is the argument
+// for R18 in miniature, so it is guarded here rather than merely fixed.
+$editor->moveToTrash($r1->id);
+$openTrash      = $tree->rowsUnder($trash, [], []);
+$collapsedTrash = $tree->rowsUnder($trash, [], [$r1->id]);
+$idsInTrash = static fn (array $rows): array => array_map(static fn (array $r): int => $r['node']->id, $rows);
+check('the parked node is shown when collapsed', in_array($r1->id, $idsInTrash($collapsedTrash), true));
+check('its child is not', ! in_array($r2->id, $idsInTrash($collapsedTrash), true));
+check('and it was, when open', in_array($r2->id, $idsInTrash($openTrash), true));
+
+echo "\n== 12. The check cleans up after itself ==\n";
+foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id, $r1->id, $r2->id] as $scratch) {
     $node = $nodes->find($scratch);
     if ($node !== null) { $nodes->purgeSubtree($node); }
 }

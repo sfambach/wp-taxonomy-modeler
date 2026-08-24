@@ -40,19 +40,19 @@ final class NodesScreen
         // in Tree, and this screen only draws what comes back (`CD-7`).
         $collapsed = $this->collapsedFromRequest();
         $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed);
-        $parked    = $this->tree->rowsUnder($trash);
+        $parked    = $this->tree->rowsUnder($trash, [], $collapsed);
 
         $html  = '<div class="wrap">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
         $html .= $this->notice();
         $html .= $this->addForm($root, __('Add a node at the top level', 'taxmod'));
         $html .= '<h2>' . esc_html__('The tree', 'taxmod') . '</h2>';
-        $html .= $this->table($rows, $root, true, $collapsed);
+        $html .= $this->table($rows, $root, 'tree', $collapsed);
         $html .= '<h2>' . esc_html__('Trash', 'taxmod') . '</h2>';
         $html .= '<p class="description">'
             . esc_html__('Parked, not gone. A parked node is still a node, so nothing that pointed at it dangles.', 'taxmod')
             . '</p>';
-        $html .= $this->table($parked, $root, false);
+        $html .= $this->table($parked, $root, 'trash', $collapsed);
 
         return $html . '</div>';
     }
@@ -61,7 +61,7 @@ final class NodesScreen
      * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}> $rows
      * @param list<int>                                                               $collapsed
      */
-    private function table(array $rows, Node $root, bool $withActions, array $collapsed = []): string
+    private function table(array $rows, Node $root, string $mode, array $collapsed = []): string
     {
         if ($rows === []) {
             return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
@@ -78,7 +78,7 @@ final class NodesScreen
                 . '<strong>' . esc_html($node->name) . '</strong></td>';
             $body .= '<td><code>' . esc_html($node->path) . '</code></td>';
             $body .= '<td>' . (int) $node->version . '</td>';
-            $body .= '<td>' . ($withActions ? $this->rowActions($node, $rows, $root) : '') . '</td>';
+            $body .= '<td>' . $this->rowActions($node, $rows, $root, $mode) . '</td>';
             $body .= '</tr>';
         }
 
@@ -92,10 +92,25 @@ final class NodesScreen
     }
 
     /**
+     * ⚠️ **One method for both tables, and that is the point.** The first version of this screen
+     * had the trash drawn by a second path, and collapsing worked in one place and not the
+     * other within hours — the owner found it. That is exactly what
+     * [R18](../../../docs/NewConcept/30-renderer.md) prevents by making a tree row a **rendered
+     * node**: one behaviour, one implementation, wherever it appears.
+     *
      * @param list<array{node: Node, depth: int}> $rows
+     * @param string                              $mode `tree` or `trash`
      */
-    private function rowActions(Node $node, array $rows, Node $root): string
+    private function rowActions(Node $node, array $rows, Node $root, string $mode): string
     {
+        if ($mode === 'trash') {
+            return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em">'
+                . $this->hidden($node->id)
+                . '<button class="button" name="do" value="restore" title="' . esc_attr__('Put it back where it came from', 'taxmod') . '">'
+                . esc_html__('Restore', 'taxmod') . '</button>'
+                . '</form>';
+        }
+
         return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em;flex-wrap:wrap;align-items:center">'
             . $this->hidden($node->id)
             . '<input type="text" name="name" value="' . esc_attr($node->name) . '" required style="width:11em">'
@@ -225,6 +240,7 @@ final class NodesScreen
                 'move'      => $this->editor->move($id, $target),
                 'up'        => $this->editor->moveUp($id),
                 'down'      => $this->editor->moveDown($id),
+                'restore'    => $this->editor->restore($id),
                 'trash'      => $this->editor->moveToTrash($id),
                 'trash_node' => $this->editor->moveToTrashPromotingChildren($id),
                 default     => throw new \InvalidArgumentException('Unknown action.'),

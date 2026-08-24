@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Service;
 
+use Taxmod\Core\Exception\CannotRestore;
 use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Model\Node;
@@ -144,6 +145,47 @@ final class ModelEditor
 
         $this->relations->save($moved, $edge->version);
         $this->changelog->record($id, 'node', 'reordered', (string) $edge->position, (string) $moved->position);
+    }
+
+    /**
+     * Put a parked node back where it came from, with everything under it.
+     *
+     * ⚠️ **This is what makes the trash a trash rather than a graveyard.** *Undo reaches
+     * exactly as far as the trash* (D-172), and without a way back the first stage of the
+     * two-stage deletion buys nothing.
+     *
+     * **Where it came from is read out of the changelog and nowhere else** — no `parked_from`
+     * column, because one place owns each fact (D-123, D-065).
+     */
+    public function restore(int $id): Node
+    {
+        $node  = $this->nodes->byId($id);
+        $trash = $this->framework->trash();
+
+        if (! $node->isDescendantOf($trash)) {
+            throw CannotRestore::itWasNeverParked($node->name);
+        }
+
+        $was = $this->changelog->pathBeforeLastParking($id);
+
+        if ($was === null) {
+            throw CannotRestore::theOldPlaceIsGone($node->name);
+        }
+
+        $segments = explode('.', $was);
+        array_pop($segments);
+        $parent = $segments === [] ? null : $this->nodes->find((int) end($segments));
+
+        if ($parent === null) {
+            throw CannotRestore::theOldPlaceIsGone($node->name);
+        }
+
+        // Restoring into the trash would look like success and change nothing.
+        if ($parent->id === $trash->id || $parent->isDescendantOf($trash)) {
+            throw CannotRestore::theOldPlaceIsAlsoParked($node->name, $parent->name);
+        }
+
+        return $this->reparent($id, $parent, 'restored');
     }
 
     /** Swap a node with the sibling before it. Does nothing if it is already first. */

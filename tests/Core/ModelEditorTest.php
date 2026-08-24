@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
+use Taxmod\Core\Exception\CannotRestore;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NodeNotFound;
@@ -480,5 +481,99 @@ final class ModelEditorTest extends TestCase
         $parked = $this->editor->moveToTrash($middle->id);
 
         self::assertSame($parked->path . '.' . $child->id, $this->nodes->byId($child->id)->path);
+    }
+
+    #[Test]
+    public function a_parked_node_can_be_put_back_where_it_came_from(): void
+    {
+        // D-172: undo reaches exactly as far as the trash. Without this the first stage of the
+        // two-stage deletion buys nothing and the trash is a graveyard.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('Board', $parent->id);
+        $was    = $node->path;
+
+        $this->editor->moveToTrash($node->id);
+        $back = $this->editor->restore($node->id);
+
+        self::assertSame($was, $back->path);
+        self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+        self::assertSame(['created', 'parked', 'restored'], $this->changes->verbsFor($node->id));
+    }
+
+    #[Test]
+    public function restoring_brings_the_whole_subtree_back(): void
+    {
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('Board', $parent->id);
+        $child  = $this->editor->createNode('Resistor', $node->id);
+        $was    = $this->nodes->byId($child->id)->path;
+
+        $this->editor->moveToTrash($node->id);
+        $this->editor->restore($node->id);
+
+        self::assertSame($was, $this->nodes->byId($child->id)->path);
+    }
+
+    #[Test]
+    public function a_node_that_was_never_parked_cannot_be_restored(): void
+    {
+        $node = $this->editor->createNode('Board', $this->root->id);
+
+        $this->expectException(CannotRestore::class);
+
+        $this->editor->restore($node->id);
+    }
+
+    #[Test]
+    public function restoring_is_refused_when_the_old_place_is_itself_parked(): void
+    {
+        // Otherwise it would report success and move the node from one part of the trash to
+        // another.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('Board', $parent->id);
+
+        $this->editor->moveToTrash($node->id);
+        $this->editor->moveToTrash($parent->id);
+
+        $this->expectException(CannotRestore::class);
+
+        $this->editor->restore($node->id);
+    }
+
+    #[Test]
+    public function a_node_whose_old_place_is_gone_stays_in_the_trash_but_is_not_stuck(): void
+    {
+        // Restoring is a convenience, not the only way out: an ordinary move works on a parked
+        // node like on any other.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('Board', $parent->id);
+
+        $this->editor->moveToTrash($node->id);
+        $this->nodes->purgeSubtree($this->nodes->byId($parent->id));
+
+        try {
+            $this->editor->restore($node->id);
+            self::fail('restoring should have been refused');
+        } catch (CannotRestore) {
+            // expected
+        }
+
+        $moved = $this->editor->move($node->id, $this->root->id);
+
+        self::assertSame($this->root->path . '.' . $node->id, $moved->path);
+    }
+
+    #[Test]
+    public function a_name_containing_the_word_path_does_not_confuse_the_restore(): void
+    {
+        // ⚠️ The old place is parsed out of the changelog's frozen state, so the format is a
+        // contract. Reading from the last `path=` rather than the first is what makes it safe.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('weird path=1.2 name', $parent->id);
+        $was    = $node->path;
+
+        $this->editor->moveToTrash($node->id);
+
+        self::assertSame($was, $this->editor->restore($node->id)->path);
     }
 }
