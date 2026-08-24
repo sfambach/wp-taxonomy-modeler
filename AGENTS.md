@@ -1,15 +1,19 @@
-# wp-taxonomy-tree
+# wp-taxonomy-modeler
 
 ## Cursor Cloud specific instructions
 
 ### What this repo is
 
-`wp-taxonomy-tree` is a **WordPress plugin** (hierarchical taxonomy tree).
-Mode is still **scaffolding + planning**: runnable admin tree over WP terms
-(≈ plugin **`0.0.359`**), plus planning docs and prototypes. Full Project / Node /
-Parameter domain is not signed off yet. Has **`package.json`** + `@wordpress/scripts`
-for Gutenberg blocks (`npm run build` / `npm run start`). PHP plugin loaded via
-`wp-content/plugins/` (same pattern as sibling `wp-electronic-parts`).
+`wp-taxonomy-modeler` is a **WordPress plugin** — a taxonomy modeller.
+
+⚠️ **Nothing runs right now, and that is deliberate.** The project restarted its concept
+phase; the old plugin was mothballed on 2026-08-23 into [`legacy-code/`](legacy-code/README.md)
+and no longer loads. There is no `package.json` at the root and no build. **No production code
+until [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) is `locked`** — see `PR-2` in
+[`CLAUDE.md`](CLAUDE.md).
+
+The environment notes below describe the layout that **will** be used again once building
+starts. They are kept, not current.
 
 ### Local WordPress dev environment — Cloud VM (Linux)
 
@@ -18,7 +22,7 @@ server + SQLite (no MySQL server needed):
 
 - WordPress core lives in `~/wordpress` (installed via `wp-cli`).
 - This repo is symlinked in as a plugin:
-  `~/wordpress/wp-content/plugins/wp-taxonomy-tree -> /workspace`.
+  `~/wordpress/wp-content/plugins/wp-taxonomy-modeler -> /workspace`.
 - SQLite is provided by the `sqlite-database-integration` plugin used as the
   `wp-content/db.php` drop-in, so there is no database service to start.
 
@@ -32,7 +36,7 @@ cd ~/wordpress && wp server --host=0.0.0.0 --port=8080
 - Admin: `http://localhost:8080/wp-admin` — user `admin`, password `admin123`.
 - Handy CLI (run from `~/wordpress`): `wp plugin list`, `wp core version`,
   `wp option get siteurl`. Activate with
-  `wp plugin activate wp-taxonomy-tree`.
+  `wp plugin activate wp-taxonomy-modeler`.
 
 ### Local WordPress dev environment — Windows (Laragon)
 
@@ -43,14 +47,14 @@ that layout locally — you run them on your machine.
 | | Cloud VM (agent) | Your Windows PC |
 |---|---|---|
 | WordPress | `~/wordpress` + SQLite | `C:\devel\wordpress` + Laragon MySQL |
-| Plugin source | `/workspace` symlink | `C:\devel\wordpress\source\wp-taxonomy-tree` junction |
+| Plugin source | `/workspace` symlink | `C:\devel\wordpress\source\wp-taxonomy-modeler` junction |
 | URL | `http://localhost:8080` | `http://devel.test` |
 
 | Role | Path |
 |------|------|
 | WordPress docroot | `C:\devel\wordpress` |
 | GitHub source checkouts | `C:\devel\wordpress\source` |
-| This repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
+| This repo | `C:\devel\wordpress\source\wp-taxonomy-modeler` |
 | Laragon | `C:\laragon` |
 
 **Start setup:** double-click **`scripts/windows/setup-dev.bat`** (not `.ps1`).

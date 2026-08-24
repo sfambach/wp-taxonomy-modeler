@@ -1,108 +1,89 @@
-# wp-taxonomy-tree
+# Taxonomy Modeller
 
-WordPress plugin that provides a reusable **taxonomy tree environment** for hierarchical taxonomies: admin tree UI, secure APIs, and extension points for host plugins.
+A WordPress plugin for building **data models** — modelled the way the world is shaped, as
+objects and their relationships, not as relational tables. The user builds a model by building
+a **tree**.
 
-> **Scaffolding ≈ `0.0.497`** — runnable admin tree on **`wtt_fs` (Fallstudie)** only (`wtt_tree` / BOM **retired**). **Q123** Relation-only attributes + Settings walk; **Settings UI parity** ([`docs/plans/settings-ui-parity.md`](docs/plans/settings-ui-parity.md)) — one Walk surface for attribute Settings (legacy Options chrome removed when walk covers). Diagrams in [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md). Gutenberg **`taxo/object-view`** + **Taxo Table view**.
-> Full Project / Node domain still planning. **Fallstudie = gold scaffold**. Plan **0.7.124**. Status stays **scaffolding**. Release-1 → **`1.0.0`**. Ready for commit when user asks.
-> Major version digit changes only for official releases (first release → `1.0.0`).
-## Try the scaffold (local)
+---
 
-1. Activate **WP Taxonomy Tree** under Plugins.
-2. Open **Taxonomy Tree** in the wp-admin menu (seed/reset demo via settings / `scripts/windows/seed-test-tree.ps1` if needed).
-3. Expand/collapse, create/copy/move/delete; assign types; explore Basiseinheit units and preview panels.
-4. Optional: `npm install && npm run build` then insert blocks **Taxo Table view** or **Taxo Object view** (search `taxo`) on a page.
+> ## ⚠️ Concept phase — nothing here runs
+>
+> The project **restarted its planning** on 2026-08-22. The old plugin was mothballed on
+> 2026-08-23 into [`legacy-code/`](legacy-code/README.md) and no longer loads; there is no build
+> and no entry file at the root.
+>
+> **No production code until [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) is
+> `locked`** — rule `PR-2` in [`CLAUDE.md`](CLAUDE.md).
+>
+> Where it stands: **336 decisions** recorded, **81 open questions** — 80 answered, one raised
+> by the rename ([OQ-081](docs/NewConcept/91-open-questions.md)) —
+> **0 lines** of new code.
 
-Plugin entry: [`wp-taxonomy-tree.php`](wp-taxonomy-tree.php)  
-Plan: [`docs/plans/project-plan.md`](docs/plans/project-plan.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+---
 
-## Documentation
+## Start here
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/plans/project-plan.md`](docs/plans/project-plan.md) | Project plan (source of truth for intent) |
-| [`docs/plans/planning-phase.md`](docs/plans/planning-phase.md) | Active planning checklist |
-| [`docs/plans/mvp-requirements.md`](docs/plans/mvp-requirements.md) | MVP requirements & acceptance criteria |
-| [`docs/plans/data-structure.md`](docs/plans/data-structure.md) | Data structure + class diagram (Eigenschaften = typed children; Q66) |
-| [`docs/plans/use-cases.md`](docs/plans/use-cases.md) | Use-case cards (actor / goal / flow) |
-| [`docs/plans/example-projects.md`](docs/plans/example-projects.md) | Example host projects (BOM, …) — model fit checks |
-| [`docs/plans/part-identity-layers.md`](docs/plans/part-identity-layers.md) | Part identity layers (resistor/cap/diode/IC) |
-| [`docs/plans/case-study.md`](docs/plans/case-study.md) | Gold Fallstudie scaffold (`wtt_fs`) — Definition / Model (+ Implementation debt) |
-| [`docs/plans/blocks-lane.md`](docs/plans/blocks-lane.md) | Gutenberg blocks lane (multi-agent; `taxo/*`) |
-| [`docs/DEVELOPER-ATTRIBUTE-MODEL.md`](docs/DEVELOPER-ATTRIBUTE-MODEL.md) | **Developer** guide — Q123 Attribute/Relation/Settings + diagrams (also for later user docs) |
-| [`docs/plans/relation-vs-object-concept.md`](docs/plans/relation-vs-object-concept.md) | Agreed whiteboard summary (Q123) |
-| [`docs/plans/q123-doc-pass-questions.md`](docs/plans/q123-doc-pass-questions.md) | OQ-W1…W16 decision log (closed) |
-| [`prototypes/tree-split/`](prototypes/tree-split/) | Static tree UI prototype (not the WP plugin) |
-| [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md) | Decisions still to make |
-| [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product overview and scope |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Target architecture |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased delivery roadmap |
+Three doors, depending on why you came:
 
-When the plan changes, the living docs above must be updated in the same change.
+| If you want to … | Read |
+|---|---|
+| **understand the model in ten minutes** | [The core, on one page](docs/NewConcept/10-domain-core.md#the-core-on-one-page) — fourteen sentences everything else follows from |
+| **work in this repository** | [`CLAUDE.md`](CLAUDE.md) — the rules that bind every agent and human here |
+| **know why something is the way it is** | [The decision log](docs/NewConcept/90-decision-log.md) — every `D-<nnn>`, with the reasoning |
 
-## Local Windows layout
+⚠️ **The source of truth is [`docs/NewConcept/`](docs/NewConcept/README.md) and nothing else.**
+[`docs/legacy/`](docs/legacy/README.md) is frozen: quote it, never inherit from it.
+
+## The concept
+
+| Document | What is in it | Status |
+|---|---|---|
+| [00 Vision and scope](docs/NewConcept/00-vision-and-scope.md) | What the product is, what it is not | `agreed` |
+| [01 Glossary](docs/NewConcept/01-glossary.md) | The words, and what each one means here | `draft` |
+| [10 Domain core](docs/NewConcept/10-domain-core.md) | The model: nodes, relations, branches, settings, storage | `draft` |
+| [20 Interaction](docs/NewConcept/20-interaction.md) | What a person may do — tree, detail view, blocks | `open` |
+| [30 Renderer](docs/NewConcept/30-renderer.md) | How anything becomes visible | `draft` |
+| [40 I18n](docs/NewConcept/40-i18n.md) | Labels, roles, locales — and why they are not the text domain | `draft` |
+| [50 WordPress persistence](docs/NewConcept/50-wordpress-persistence.md) | The seven tables, and the boundary around them | `draft` |
+| [60 Calculation](docs/NewConcept/60-calculation.md) | Computed attributes | `draft` |
+| [70 Migration](docs/NewConcept/70-migration.md) | Getting existing content in | `draft` |
+| [90 Decision log](docs/NewConcept/90-decision-log.md) | **Nothing is decided until it is here** | running |
+| [91 Open questions](docs/NewConcept/91-open-questions.md) | Anything undecided, never invented away | running |
+| [95 Roadmap](docs/NewConcept/95-roadmap.md) | What ships in which order, plus the parking lot | `draft` |
+| [96 Scenario check](docs/NewConcept/96-scenario-check.md) | Six worlds modelled against the concept before locking | `draft` |
+| [97 Implementation plan](docs/NewConcept/97-implementation-plan.md) | Packages, not sprints | `draft` |
+| [98 Documentation style](docs/NewConcept/98-documentation-style.md) | How these documents are written | `agreed` |
+
+The [`_harvest/`](docs/NewConcept/_harvest/README.md) folder holds the sweeps of the old project
+— documentation and code — each finding marked *covered*, *contradicts*, *missing*, *workaround*
+or *deliberately dropped*. **The old material is evidence, not a source.**
+
+## Names
+
+One name for people, one for machines:
+
+| | |
+|---|---|
+| Product name | **Taxonomy Modeller** |
+| Repository, plugin folder | `wp-taxonomy-modeler` |
+| PHP namespace | `Taxmod\Core\…` · `Taxmod\WordPress\…` |
+| Database tables | `{$wpdb->prefix}taxmod_…` |
+| Version | starts at `0.0.1` |
+
+## Local layout (Windows + Laragon)
 
 | Role | Path |
 |------|------|
-| WordPress (docroot) | `C:\devel\wordpress` |
-| GitHub sources | `C:\devel\wordpress\source` |
-| This repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
-| Web server (Laragon, …) | e.g. `C:\laragon` |
+| WordPress docroot | `C:\devel\wordpress` — served as `http://devel.test` |
+| Source checkouts | `C:\devel\wordpress\source` |
+| This repository | `C:\devel\wordpress\source\wp-taxonomy-modeler` |
 
-```powershell
-mkdir C:\devel\wordpress\source -Force
-cd C:\devel\wordpress\source
-git clone https://github.com/sfambach/wp-taxonomy-tree.git
-cd wp-taxonomy-tree
-git checkout cursor/bom-konzept-konfiguration-de76
+```bash
+git clone https://github.com/sfambach/wp-taxonomy-modeler.git
 ```
 
-Open `C:\devel\wordpress\source\wp-taxonomy-tree` in Cursor Desktop.
-
-## Relationship to other projects
-
-Domain catalogs such as [`wp-electronic-parts`](https://github.com/sfambach/wp-electronic-parts) may consume this environment later. Part-specific properties stay in those host plugins.
-
-## Local development (Windows + Laragon)
-
-Source checkout: `C:\devel\wordpress\source\wp-taxonomy-tree`  
-WordPress docroot: `C:\devel\wordpress` → served as `http://devel.test` via Laragon.
-
-After Laragon is installed, run once (also safe before a reboot):
-
-**Doppelklick auf `setup-dev.bat`** (nicht auf `.ps1` — Windows öffnet die sonst im Editor).
-
-Pfad: `C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows\setup-dev.bat`
-
-Erstes Mal (Repo noch nicht da) in **cmd** oder PowerShell:
-
-```powershell
-mkdir C:\devel\wordpress\source -Force
-git clone -b cursor/laragon-setup-f17e https://github.com/sfambach/wp-taxonomy-tree.git C:\devel\wordpress\source\wp-taxonomy-tree
-cd C:\devel\wordpress\source\wp-taxonomy-tree\scripts\windows
-.\setup-dev.bat
-```
-
-**Nur WordPress:** `install-wordpress.bat` doppelklicken.
-
-Site: `http://devel.test/wp-admin` — user `admin`, password `admin123`.
-
-Details: [`scripts/windows/README.md`](scripts/windows/README.md)
-
-See [`AGENTS.md`](AGENTS.md) and [`scripts/windows/setup-dev.ps1`](scripts/windows/setup-dev.ps1) for details.
-
-## FAQ (settings)
-
-| Setting | Where | Notes |
-|---------|--------|--------|
-| **Tree picker** (`popup` / `inline`) | Settings → Taxonomy Tree | Shared **TreeChooser** (`WTTNodePicker`): taxonomy tree, `node_ref` preview, Collection table block, **and Fill Model Data Structure**. Default **popup**. Reparent stays inline. |
-| **Fill Model Data Structure** | Taxonomy Tree → Fill Model Data | **TreeChooser** under `chooser_root`, focus **`model`**. Only nodes with attributes are selectable. |
-| **`node_ref` create** | Preview / block cell → Choose → Add new… | Needs **Catalog root (`ref_scope`)** on the field. Mini-form = Name + scalar catalog slots (e.g. Lieferanten: Url, Suchstring, Bewertung). |
-| **Collection table block** | `npm run build` after JS changes | Editor uses `WTTNodeRender` for `node_ref` columns; frontend shows name chips (not raw ids). |
-| **Reset case tree** | Taxonomy Tree → Settings → Development mode | Requires **Development mode** ON (+ save). Hard-wipes all `wtt_fs` terms (incl. attribute slots), clears catalog bindings + Model Data for `wtt_fs`, reinstalls blueprint. Also: WP-CLI `eval-file scripts/reset-case-tree.php`. Opening Taxonomy Tree does **not** auto-reseed. |
-| **Clear except Datentypen** | WP-CLI `eval-file scripts/clear-except-datatypes.php` (+ optional `reset` / `fs`) | Keeps Datentypen (+ ancestors) and Relationstypen on **`wtt_fs`**. Prefer **Reset case tree** / `reset-case-tree.php` for a full Fallstudie rebuild. |
-| **Attributes (Q87 trial)** | Node detail → Attributes | Name + Type + Mult. → stored as `besteht_aus` member. Default Mult. `1`. |
-| **Catalog bindings** | Taxonomy Tree → Settings | Compact ID/Node view; **Change** to edit `chooser_root` / `model` / `chooser_focus` (+ helpers). Save to persist. Empty keys auto-fill again when the tree screen loads. |
+Details, including the cloud VM with SQLite: [`AGENTS.md`](AGENTS.md).
 
 ## License
 
-GPLv2 or later (intended; finalize with the first plugin bootstrap commit after planning).
+GPLv2 or later — to be finalised with the first plugin bootstrap commit.

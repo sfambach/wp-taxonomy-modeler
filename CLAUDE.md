@@ -1,4 +1,4 @@
-# wp-taxonomy-tree — rules for agents
+# wp-taxonomy-modeler — rules for agents
 
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
@@ -53,13 +53,13 @@ WordPress bootstrap. WordPress reaches *into* it, never the other way round.
 | **CD-3** | Class loading via **Composer PSR-4**. No `require_once` for classes. |
 | **CD-4** | **Type everything** that can be typed: properties, parameters, returns. `mixed` needs a reason in a comment. |
 | **CD-5** | At the boundary, in this order, every time: **capability check → nonce → validate → sanitize → act → escape on output**. No exceptions, not even for admin-only screens. |
-| **CD-6** | Custom tables: `$wpdb->prefix . 'wtt_<name>'`, created via `dbDelta()` on activation, guarded by a stored **schema version** option so upgrades are deterministic. Prepared statements only — `$wpdb->prepare()` for anything with a variable in it. |
+| **CD-6** | Custom tables: `$wpdb->prefix . 'taxmod_<name>'`, created via `dbDelta()` on activation, guarded by a stored **schema version** option so upgrades are deterministic. Prepared statements only — `$wpdb->prepare()` for anything with a variable in it. |
 | **CD-7** | **No N+1.** No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. |
 | **CD-8** | Presentation code **returns** strings. No `echo` inside renderers, loops, shortcodes or hooks. Use `ob_start()` / `ob_get_clean()` only when a third-party API forces output. |
 | **CD-9** | **Names say what the thing is.** Rename when the word lies. No abbreviations that need a lookup, and no `data` / `info` / `manager` / `helper` as a whole name. |
 | **CD-10** | Errors: **exceptions inside the core**, translated to `WP_Error` at the boundary. Never a bare `false` to signal failure. Never silence an exception without handling it. |
 | **CD-11** | Versioning: semantic `MAJOR.MINOR.PATCH`, starting at `0.0.1`. `MAJOR` moves **only** for an official release. Plugin header, PHP version constant, `package.json` and any `readme.txt` stable tag change **in the same commit**. |
-| **CD-12** | Gutenberg blocks live in the **`taxo/`** namespace — `taxo/<slug>`, title starting `Taxo `, keyword `taxo`. |
+| **CD-12** | Gutenberg blocks live in the **`taxo/`** namespace — `taxo/<slug>`, title starting `Taxo `, keyword `taxo`. ⚠️ **Inherited from the old plugin, no decision behind it** — under question, see [OQ-081](docs/NewConcept/91-open-questions.md). |
 
 ### Prohibited
 

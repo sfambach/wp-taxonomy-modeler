@@ -2281,3 +2281,36 @@ Nothing provides it. [D-206](90-decision-log.md) puts a block on a page **somebo
 [D-195](90-decision-log.md) pushed `slug` out as a boundary concern and never answered the boundary
 side. ⚠️ **And the link that [D-105](90-decision-log.md)'s reference renderer draws has nowhere to
 point**, which means the gap is already load-bearing elsewhere.
+
+---
+
+## OQ-081 — Which token do the Gutenberg blocks and the text domain use?
+
+[D-336](90-decision-log.md) settled the product name, the repository name and the database
+prefix. It left **three tokens standing side by side**, and nobody has said whether that is
+intended:
+
+| Where | Token | Set by |
+|---|---|---|
+| PHP namespace | `Taxmod` | [D-327](90-decision-log.md) |
+| Database tables | `taxmod_` | [D-336](90-decision-log.md) |
+| Gutenberg blocks | `taxo/` | `CLAUDE.md` **CD-12** — ⚠️ **no decision behind it** |
+| Text domain | *unstated* | — |
+
+⚠️ **`taxo/` is inherited, not chosen.** It comes from the old plugin, where the blocks were
+`taxo/object-view` and `taxo/table-view`. It survived into `CLAUDE.md` as **CD-12** without a
+`D-<nnn>`, which by the repository's own rule-hygiene section means it is a leftover rather than
+a rule — and it is the only remaining place where the old project still names something in the
+new one.
+
+**The text domain is the harder half.** WordPress tooling — and `wordpress.org` translation
+delivery in particular — expects the text domain to equal the **plugin slug**, which would make
+it `wp-taxonomy-modeler`. But every other token we chose is `taxmod`, and a fourth spelling is
+one more thing to remember. Whether that convention binds us depends on something that has not
+been decided either: **whether this plugin is ever submitted to `wordpress.org`.**
+
+⚠️ **Not to be settled in passing.** A text domain is expensive to change once strings exist,
+and a block name is expensive to change once a post contains one — a renamed block turns every
+page that uses it into an invalid-block warning. Both are cheap **now** and only now.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), [40 I18n](40-i18n.md), `CLAUDE.md` CD-12 · *Status:* **open** · *raised 2026-08-24 by the rename*
