@@ -173,4 +173,31 @@ final class ModelEditorTest extends TestCase
 
         self::assertCount(1, $this->editor->childrenOf($parent->id));
     }
+
+    #[Test]
+    public function two_siblings_may_carry_the_same_name(): void
+    {
+        // D-022: names are deliberately not unique. What tells two things apart is the id,
+        // and a name is something a person chose — the model has no business refusing it.
+        $parent = $this->editor->createNode('Board', $this->root->id);
+
+        $one = $this->editor->createNode('Resistor', $parent->id);
+        $two = $this->editor->createNode('Resistor', $parent->id);
+
+        self::assertNotSame($one->id, $two->id);
+        self::assertNotSame($one->path, $two->path);
+        self::assertCount(2, $this->editor->childrenOf($parent->id));
+    }
+
+    #[Test]
+    public function a_renamed_node_may_take_a_name_that_is_already_in_use(): void
+    {
+        $one = $this->editor->createNode('Resistor', $this->root->id);
+        $two = $this->editor->createNode('Capacitor', $this->root->id);
+
+        $renamed = $this->editor->rename($two->id, 'Resistor');
+
+        self::assertSame('Resistor', $renamed->name);
+        self::assertSame('Resistor', $this->nodes->byId($one->id)->name);
+    }
 }
