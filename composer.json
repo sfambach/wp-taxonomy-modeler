@@ -1,0 +1,19 @@
+{
+    "name": "sfambach/wp-taxonomy-modeler",
+    "description": "Taxonomy Modeller — build data models as a tree of nodes and relations.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Taxmod\\Core\\": "src/Core/",
+            "Taxmod\\WordPress\\": "src/WordPress/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
