@@ -2340,6 +2340,10 @@ rest would be exactly what `PR-4` forbids:
 
 ## OQ-083 — Does restoring a node put its promoted children back?
 
+> **Closed 2026-08-24 → [D-347](90-decision-log.md).** Yes. The owner settled it by asking whether
+> restoring **is** undo — and [D-172](90-decision-log.md) says undo's *reach is the trash*, which
+> makes restoring the undo rather than a neighbour of it. Untouched children return; children
+> moved, renamed or deleted since are **left where they are and named**.
 Found by the owner while trying it: delete **only** a node ([U4](20-interaction.md)), its children
 move up to the grandparent — then restore the node, and it comes back **empty**. The children stay
 where the promotion put them.
@@ -2364,4 +2368,4 @@ reading B can.
 rather than to the concept — *put it back as it was* versus *put back only this node* — which is
 the same shape as [U4](20-interaction.md)'s own question, asked from the other end.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [20 Interaction](20-interaction.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from trying it*
+*Blocks:* [10 Domain core](10-domain-core.md), [20 Interaction](20-interaction.md) · *Status:* **closed** · *raised and settled 2026-08-24 by the owner, from trying it*
