@@ -188,3 +188,20 @@ not to its behaviour** — none of them is built, and none was claimed:
 
 ⚠️ **U4 is the one that is not merely cosmetic.** *Delete only this node* means the children have
 to go somewhere — promoted to the grandparent — and nothing in the core does that yet.
+
+### ⚠️ A line the provisional screen must not cross
+
+[R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen) and
+[D-190](90-decision-log.md) settle that the detail view is **a frame holding attributes rendered
+under the `edit` purpose** — not a hand-built screen. The stated reason is exactly the risk this
+plan's temporary surface carries:
+
+> otherwise there are two ways to draw a field — the official one, and the one the admin screen
+> was built with — and they drift.
+
+**Package 2's screen is that second way.** It is defensible only because it draws **no fields at
+all**: names, buttons and a select, nothing that renders a value.
+
+> **The rule for every package after this one: the moment an attribute value has to appear on
+> screen, it goes through a renderer.** Not a quick `<input>` in the admin template that gets
+> tidied up later — that is how the two ways start, and the legacy is the evidence.
