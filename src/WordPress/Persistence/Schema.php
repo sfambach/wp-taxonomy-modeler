@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Model\RelationKind;
+
 /**
  * The seven tables (D-083) plus the identity base they draw their numbers from (D-339),
  * created on activation and guarded by a stored schema version.
@@ -38,8 +40,10 @@ final class Schema
      *     `settings.key` becomes `setting_key`, because `KEY` is reserved and dbDelta cannot
      *     parse an index over a backticked column — the same reason `before` became
      *     `before_state`.
+     * 3 — inheritance edges become the tree and `nodes.path` is derived from them (D-014);
+     *     `relations.from_id` and `to_id` join the foreign keys.
      */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -50,6 +54,8 @@ final class Schema
     private const IDENTITY_REFERENCES = [
         ['nodes', 'id'],
         ['relations', 'id'],
+        ['relations', 'from_id'],
+        ['relations', 'to_id'],
         ['settings', 'owner_id'],
         ['labels', 'owner_id'],
         ['changelog', 'owner_id'],
@@ -88,8 +94,68 @@ final class Schema
         }
 
         self::backfillIdentities();
+        self::backfillInheritanceEdges();
         self::dropRetiredColumns();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * Give every node that has a parent the inheritance edge it should always have had.
+     *
+     * ⚠️ **Version 1 and 2 stored the tree only as `nodes.path`** — but D-014 calls the path
+     * *derived, rebuildable, never a second truth*, and the truth it should derive from is the
+     * inheritance edge. Until this ran, the derived value **was** the only truth, which is the
+     * relation the concept forbids, the wrong way round.
+     *
+     * The parent is read back out of the path, which is exactly what the path is good for. It
+     * is a one-time pass over the existing nodes, so the row-by-row insert is not the N+1 that
+     * `CD-7` forbids — that rule is about the paths a person walks every day.
+     */
+    private static function backfillInheritanceEdges(): void
+    {
+        global $wpdb;
+
+        $nodes     = self::table('nodes');
+        $relations = self::table('relations');
+        $allocator = new TableIdentityAllocator();
+
+        $orphans = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT n.id, n.path FROM {$nodes} n
+                 LEFT JOIN {$relations} r ON r.to_id = n.id AND r.kind = %s
+                 WHERE n.path LIKE %s AND r.id IS NULL
+                 ORDER BY LENGTH(n.path) ASC, n.id ASC",
+                RelationKind::Inheritance->value,
+                '%.%'
+            ),
+            ARRAY_A
+        );
+
+        foreach ($orphans ?: [] as $row) {
+            $segments = explode('.', (string) $row['path']);
+            array_pop($segments);
+            $parentId = (int) end($segments);
+
+            $position = $wpdb->get_var($wpdb->prepare(
+                "SELECT MAX(position) FROM {$relations} WHERE from_id = %d AND kind = %s",
+                $parentId,
+                RelationKind::Inheritance->value
+            ));
+
+            $wpdb->insert(
+                $relations,
+                [
+                    'id'       => $allocator->next(),
+                    'version'  => 1,
+                    'from_id'  => $parentId,
+                    'to_id'    => (int) $row['id'],
+                    'kind'     => RelationKind::Inheritance->value,
+                    'name'     => '',
+                    'position' => $position === null ? 0 : (int) $position + 1,
+                ],
+                ['%d', '%d', '%d', '%d', '%s', '%s', '%d']
+            );
+        }
     }
 
     /**

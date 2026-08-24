@@ -46,6 +46,17 @@ interface NodeRepository
      */
     public function moveSubtree(string $oldPath, string $newPath): void;
 
+    /**
+     * Everything below a node, in one statement, at any depth.
+     *
+     * ⚠️ **This is what the materialised path is for.** Reading a tree level by level is the
+     * recursive query per level `CD-7` forbids outright; one `LIKE` on the path answers it
+     * whole, and the caller assembles the shape in memory.
+     *
+     * @return list<Node>
+     */
+    public function subtreeOf(Node $root): array;
+
     /** Remove a node and everything under it, for good. The irreversible half of D-123. */
     public function purgeSubtree(Node $node): void;
 }

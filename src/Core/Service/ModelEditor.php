@@ -2,24 +2,33 @@
 
 namespace Taxmod\Core\Service;
 
+use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\RelationRepository;
 
 /**
- * Everything a person can do to the shape of the model: make a node, rename it, throw it away.
+ * Everything a person can do to the shape of the model: make a node, rename it, move it,
+ * reorder it among its siblings, throw it away.
  *
- * ⚠️ **Deletion is two stages, and only the second is irreversible** (D-123). Parking moves a
- * node under the trash; it stays a real node, so nothing that pointed at it dangles and a
- * conflict can be sorted out afterwards in peace instead of in a dialog blocking the delete.
+ * ⚠️ **The tree is the inheritance edges; `path` is derived from them** (D-014). Every operation
+ * here changes the edge first and rewrites the path afterwards. Writing the path alone would
+ * make the derived value the only truth, which is exactly what D-014 forbids.
+ *
+ * ⚠️ **Deletion is two stages, and only the second is irreversible** (D-123). Parking is an
+ * ordinary move — under the trash. The node stays a real node, so nothing that pointed at it
+ * dangles and a conflict can be sorted out afterwards in peace instead of in a dialog blocking
+ * the delete.
  *
  * ```mermaid
  * flowchart LR
- *   A[in the model] -->|park| B[under the trash]
- *   B -->|restore| A
+ *   A[in the model] -->|park = move under the trash| B[under the trash]
+ *   B -->|restore = move back| A
  *   B -->|purge| C[gone]
  * ```
  *
@@ -29,6 +38,7 @@ final class ModelEditor
 {
     public function __construct(
         private readonly NodeRepository $nodes,
+        private readonly RelationRepository $relations,
         private readonly IdentityAllocator $identities,
         private readonly FrameworkNodes $framework,
         private readonly Changelog $changelog,
@@ -38,9 +48,19 @@ final class ModelEditor
     public function createNode(string $name, int $parentId): Node
     {
         $parent = $this->nodes->byId($parentId);
-        $node   = Node::create($this->identities->next(), $name, $parent->path);
+
+        // Two identities, because an edge is a first-class thing that can carry settings and
+        // labels of its own (C8) — and both come from the one model space (C11).
+        $node = Node::create($this->identities->next(), $name, $parent->path);
+        $edge = Relation::inheritance(
+            $this->identities->next(),
+            $parent->id,
+            $node->id,
+            $this->relations->nextPositionUnder($parent->id)
+        );
 
         $this->nodes->add($node);
+        $this->relations->add($edge);
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
 
         return $node;
@@ -63,6 +83,12 @@ final class ModelEditor
         return $renamed;
     }
 
+    /** Hang a node under a different parent, taking everything below it along. */
+    public function move(int $id, int $newParentId): Node
+    {
+        return $this->reparent($id, $this->nodes->byId($newParentId), 'moved');
+    }
+
     /**
      * Park a node and everything under it.
      *
@@ -72,26 +98,125 @@ final class ModelEditor
      */
     public function moveToTrash(int $id): Node
     {
-        $node = $this->nodes->byId($id);
+        return $this->reparent($id, $this->framework->trash(), 'parked');
+    }
 
-        if ($this->framework->isProtected($node)) {
-            throw NodeIsProtected::named($node->name);
+    /** Put a node at a different place among its siblings. Order lives on the edge, not the node. */
+    public function reorder(int $id, int $position): void
+    {
+        $edge = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
+        $moved = $edge->movedTo(max(0, $position));
+
+        if ($moved === $edge) {
+            return;
         }
 
-        $trash  = $this->framework->trash();
-        $parked = $node->movedUnder($trash->path);
+        $this->relations->save($moved, $edge->version);
+        $this->changelog->record($id, 'node', 'reordered', (string) $edge->position, (string) $moved->position);
+    }
 
-        $this->nodes->save($parked, $node->version);
-        $this->nodes->moveSubtree($node->path, $parked->path);
-        $this->changelog->record($id, 'node', 'parked', $this->state($node), $this->state($parked));
+    /** Swap a node with the sibling before it. Does nothing if it is already first. */
+    public function moveUp(int $id): void
+    {
+        $this->swapWithNeighbour($id, -1);
+    }
 
-        return $parked;
+    /** Swap a node with the sibling after it. Does nothing if it is already last. */
+    public function moveDown(int $id): void
+    {
+        $this->swapWithNeighbour($id, 1);
     }
 
     /** @return list<Node> */
     public function childrenOf(int $parentId): array
     {
         return $this->nodes->childrenOf($this->nodes->byId($parentId));
+    }
+
+    /**
+     * Exchange two neighbouring edges' positions.
+     *
+     * ⚠️ **A swap, not a renumbering.** Reordering by rewriting every sibling would be a write
+     * per row, which is the loop `CD-7` forbids; a swap is always exactly two, however many
+     * siblings there are.
+     */
+    private function swapWithNeighbour(int $id, int $direction): void
+    {
+        $edge     = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
+        $siblings = $this->relations->childEdgesOf($edge->fromId);
+
+        $here = null;
+
+        foreach ($siblings as $index => $sibling) {
+            if ($sibling->id === $edge->id) {
+                $here = $index;
+                break;
+            }
+        }
+
+        $there = $here + $direction;
+
+        if ($here === null || ! isset($siblings[$there])) {
+            return;
+        }
+
+        $other = $siblings[$there];
+
+        // Positions may be equal — nothing forbids it, and the list then falls back to id
+        // order. Swapping equal numbers would move nothing, so they are forced apart.
+        $mine  = $edge->position;
+        $yours = $other->position;
+
+        if ($mine === $yours) {
+            $mine  = $here;
+            $yours = $there;
+        }
+
+        $this->relations->save($edge->movedTo($yours), $edge->version);
+        $this->relations->save($other->movedTo($mine), $other->version);
+
+        $this->changelog->record($id, 'node', 'reordered', (string) $here, (string) $there);
+    }
+
+    /**
+     * Change which parent an edge points at, then bring the paths along.
+     *
+     * ⚠️ **The order is not arbitrary.** The edge is the truth, so it moves first; the paths of
+     * the node and everything under it are rewritten from it afterwards, in one statement
+     * rather than one per descendant (`CD-7`).
+     */
+    private function reparent(int $id, Node $newParent, string $verb): Node
+    {
+        $node = $this->nodes->byId($id);
+
+        if ($this->framework->isProtected($node)) {
+            throw NodeIsProtected::named($node->name);
+        }
+
+        $edge = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
+
+        // A node dropped onto its own descendant would cut its whole subtree out of the tree,
+        // silently. The path already answers this — that is what a materialised path is for.
+        if ($newParent->id === $node->id || $newParent->isDescendantOf($node)) {
+            throw ImpossibleMove::intoItsOwnDescendant($node->name);
+        }
+
+        $moved = $node->movedUnder($newParent->path);
+
+        if ($moved === $node) {
+            return $node;
+        }
+
+        $this->relations->save(
+            $edge->reparentedTo($newParent->id, $this->relations->nextPositionUnder($newParent->id)),
+            $edge->version
+        );
+
+        $this->nodes->save($moved, $node->version);
+        $this->nodes->moveSubtree($node->path, $moved->path);
+        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved));
+
+        return $moved;
     }
 
     /**

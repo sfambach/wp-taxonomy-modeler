@@ -66,7 +66,7 @@ Six packages to the point where importing his real data first makes sense.
 | | Package | What the owner checks |
 |---|---|---|
 | **1** | Tables, and a node exists | create, rename, send to trash — survives a restart · **done 2026-08-24** |
-| **2** | The tree | parent and child, move, expand and collapse |
+| **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited |
 | **5** | Labels, roles, locales | the same thing is called something else in English |
@@ -123,3 +123,48 @@ to trash — and it is still there after a reload.*
 - The `labels` contract disagreement above (assumption 5).
 - **[D-083](90-decision-log.md)'s "seven tables" and the shared identity space are in tension**
   (assumption 1).
+
+---
+
+## Package 2 — done 2026-08-24
+
+**What it delivers:** the inheritance edges as real rows, `nodes.path` derived from them, moving,
+reordering, and a screen that draws the tree as a tree. **94 checks pass** — 47 in the core run
+(no WordPress), 28 in Package 1's boundary run, 19 in Package 2's.
+
+### ⚠️ What building it found in Package 1
+
+**The truth and the derived value were the wrong way round.** Package 1 stored the tree *only* as
+`nodes.path` — but [D-014](90-decision-log.md) calls the path *derived, rebuildable, never a
+second truth*, and the thing it is meant to derive **from** is the inheritance edge, which did not
+exist. It worked, and it was inverted.
+
+Package 2 turns it back: the edge is written first, the path is rewritten from it, and a schema
+migration gave every existing node the edge it should always have had. **Both boundary runs now
+assert that every stored path can be rebuilt from the edges alone** — if the two ever drift, that
+check fails rather than every descendant query going quietly wrong.
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **Reordering is a swap with the neighbour**, not a renumbering of all siblings. | A renumbering is one write per row, which is the loop `CD-7` forbids. A swap is always exactly two. | Low. It also matches the only control there is — up and down. |
+| **2** | **Positions need not be unique**; ties fall back to id order. | Nothing decided it, and forcing uniqueness would mean rewriting siblings on every insert. | Low. The swap forces equal positions apart when it meets them. |
+| **3** | **`allInheritanceEdges()` reads every edge at once** to draw the tree. | Two queries for a tree of any depth. Asking per parent would be one query per level. ⚠️ Rests on [D-308](90-decision-log.md): this is a modeller, so the **model** stays in the hundreds even when records run to thousands. | **Medium.** If a model ever reaches tens of thousands of nodes, the screen must page instead. |
+| **4** | **The move chooser leaves out impossible targets** — the node itself and its own subtree. | Offering a choice that always fails is a trap laid for the person using it. | None. The core still refuses them; the screen is convenience, not the guarantee. |
+| **5** | **The migration reads each parent out of the path.** | ⚠️ The one moment the derived value *is* the source — unavoidable, because in versions 1 and 2 nothing else recorded it. | None, and it cannot recur: from version 3 the edge is written first. |
+| **6** | **The trash gets an ordinary inheritance edge.** | It is a child of the root like any other; a framework node without an edge would be a node the tree cannot see. | None. |
+| **7** | **Reordering is up and down only.** Drag and drop is not built. | The owner asked for it ([20 Interaction](20-interaction.md)); it is a screen concern, and the core operation it needs already exists. | None — deliberate scope. |
+
+### Where it can be seen
+
+**Taxonomy Modeller** in the admin menu. Add a node, add a child with **+**, rename it, move it
+with the chooser, order it with **↑ ↓**, throw it away. Reload — it is the way it was left.
+
+```bash
+php vendor/phpunit/phpunit/phpunit
+```
+
+```bash
+php scripts/dev/package2-check.php C:/Devel/Wordpress
+```

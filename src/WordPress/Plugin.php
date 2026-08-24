@@ -3,19 +3,21 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 
 /**
  * The boundary. It wires WordPress to the core and decides nothing (D-170).
  *
  * ```mermaid
  * flowchart LR
- *   H["hooks · admin screens"] -->|call inward| C["Taxmod\Core"]
+ *   H["hooks · admin screens"] -->|call inward| C["Taxmod\\Core"]
  *   C -->|declares what it needs| I["repository interfaces"]
  *   B["this package fulfils them"] --> I
  * ```
@@ -80,10 +82,9 @@ final class Plugin
 
     public function editor(): ModelEditor
     {
-        $nodes = new WpdbNodeRepository();
-
         return new ModelEditor(
-            $nodes,
+            new WpdbNodeRepository(),
+            new WpdbRelationRepository(),
             new TableIdentityAllocator(),
             $this->frameworkNodes(),
             new WpdbChangelog(new SystemClock())
@@ -94,6 +95,7 @@ final class Plugin
     {
         return new SeededFrameworkNodes(
             new WpdbNodeRepository(),
+            new WpdbRelationRepository(),
             new TableIdentityAllocator(),
             new WpdbChangelog(new SystemClock())
         );
@@ -101,6 +103,10 @@ final class Plugin
 
     private function screen(): NodesScreen
     {
-        return new NodesScreen($this->editor(), $this->frameworkNodes());
+        return new NodesScreen(
+            $this->editor(),
+            new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
+            $this->frameworkNodes()
+        );
     }
 }

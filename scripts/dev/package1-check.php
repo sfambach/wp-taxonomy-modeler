@@ -40,6 +40,7 @@ use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -67,7 +68,8 @@ echo "\n== 2. Framework nodes ==\n";
 $nodes = new WpdbNodeRepository();
 $ids = new TableIdentityAllocator();
 $log = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $ids, $log);
+$edges = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
 $framework->seed();
 
 $root = $framework->root();
@@ -83,7 +85,7 @@ check('two calls give two numbers', $a !== $b, "$a / $b");
 check('and they go up', $b > $a, "$a -> $b");
 
 echo "\n== 4. Create, rename, trash ==\n";
-$editor = new ModelEditor($nodes, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 
 $made = $editor->createNode('  Platine  ', $root->id);
 check('name is trimmed on the way in', $made->name === 'Platine', "«{$made->name}»");

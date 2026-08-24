@@ -12,6 +12,9 @@ use Taxmod\Tests\Core\Fake\CountingIdentities;
 use Taxmod\Tests\Core\Fake\FixedFramework;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
+use Taxmod\Core\Exception\ImpossibleMove;
+use Taxmod\Core\Model\Relation;
+use Taxmod\Tests\Core\Fake\InMemoryRelations;
 
 /**
  * Making, renaming and parking — with no database and no WordPress anywhere.
@@ -21,6 +24,7 @@ use Taxmod\Tests\Core\Fake\RecordedChanges;
 final class ModelEditorTest extends TestCase
 {
     private InMemoryNodes $nodes;
+    private InMemoryRelations $edges;
     private RecordedChanges $changes;
     private ModelEditor $editor;
     private Node $root;
@@ -28,7 +32,8 @@ final class ModelEditorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->nodes   = new InMemoryNodes();
+        $this->edges   = new InMemoryRelations();
+        $this->nodes   = new InMemoryNodes($this->edges);
         $this->changes = new RecordedChanges();
         $identities    = new CountingIdentities();
 
@@ -37,9 +42,11 @@ final class ModelEditorTest extends TestCase
 
         $this->nodes->add($this->root);
         $this->nodes->add($this->trash);
+        $this->edges->add(Relation::inheritance($identities->next(), $this->root->id, $this->trash->id, 0));
 
         $this->editor = new ModelEditor(
             $this->nodes,
+            $this->edges,
             $identities,
             new FixedFramework($this->root, $this->trash),
             $this->changes
@@ -153,15 +160,17 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function children_are_listed_without_walking_the_tree(): void
+    public function children_come_back_in_the_order_the_edges_give_them(): void
     {
+        // Not alphabetical. Order is a property of the edge, so it is the order somebody put
+        // them in — and it stays that way until somebody moves one.
         $parent = $this->editor->createNode('Board', $this->root->id);
         $this->editor->createNode('Resistor', $parent->id);
         $this->editor->createNode('Capacitor', $parent->id);
 
         $names = array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($parent->id));
 
-        self::assertSame(['Capacitor', 'Resistor'], $names);
+        self::assertSame(['Resistor', 'Capacitor'], $names);
     }
 
     #[Test]
@@ -199,5 +208,199 @@ final class ModelEditorTest extends TestCase
 
         self::assertSame('Resistor', $renamed->name);
         self::assertSame('Resistor', $this->nodes->byId($one->id)->name);
+    }
+
+    #[Test]
+    public function creating_a_node_creates_exactly_one_inheritance_edge(): void
+    {
+        $node = $this->editor->createNode('Board', $this->root->id);
+        $edge = $this->edges->inheritanceEdgeTo($node->id);
+
+        self::assertNotNull($edge);
+        self::assertSame($this->root->id, $edge->fromId);
+        self::assertSame($node->id, $edge->toId);
+        self::assertSame('', $edge->name, 'a tree edge has no name of its own');
+    }
+
+    #[Test]
+    public function the_edge_gets_its_own_identity_not_the_nodes(): void
+    {
+        // C11: nodes and edges share one space, which is what lets an edge carry settings and
+        // labels of its own. Sharing a space is not sharing a number.
+        $node = $this->editor->createNode('Board', $this->root->id);
+
+        self::assertNotSame($node->id, $this->edges->inheritanceEdgeTo($node->id)->id);
+    }
+
+    #[Test]
+    public function moving_repoints_the_edge_and_rewrites_the_path(): void
+    {
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $b = $this->editor->createNode('Primitives', $this->root->id);
+        $x = $this->editor->createNode('Board', $a->id);
+
+        $moved = $this->editor->move($x->id, $b->id);
+
+        self::assertSame($b->id, $this->edges->inheritanceEdgeTo($x->id)->fromId);
+        self::assertSame($b->path . '.' . $x->id, $moved->path);
+        self::assertSame(['created', 'moved'], $this->changes->verbsFor($x->id));
+    }
+
+    #[Test]
+    public function moving_takes_the_whole_subtree_along(): void
+    {
+        $a     = $this->editor->createNode('Model', $this->root->id);
+        $b     = $this->editor->createNode('Primitives', $this->root->id);
+        $x     = $this->editor->createNode('Board', $a->id);
+        $deep  = $this->editor->createNode('Resistor', $x->id);
+
+        $moved = $this->editor->move($x->id, $b->id);
+
+        self::assertSame($moved->path . '.' . $deep->id, $this->nodes->byId($deep->id)->path);
+    }
+
+    #[Test]
+    public function a_node_cannot_be_moved_into_its_own_subtree(): void
+    {
+        // The easiest mistake to make by dragging, and the hardest to notice: the subtree
+        // would simply vanish from the tree it was cut out of.
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $child  = $this->editor->createNode('Resistor', $parent->id);
+
+        $this->expectException(ImpossibleMove::class);
+
+        $this->editor->move($parent->id, $child->id);
+    }
+
+    #[Test]
+    public function a_node_cannot_be_moved_into_itself(): void
+    {
+        $node = $this->editor->createNode('Board', $this->root->id);
+
+        $this->expectException(ImpossibleMove::class);
+
+        $this->editor->move($node->id, $node->id);
+    }
+
+    #[Test]
+    public function the_root_cannot_be_moved(): void
+    {
+        $target = $this->editor->createNode('Board', $this->root->id);
+
+        $this->expectException(NodeIsProtected::class);
+
+        $this->editor->move($this->root->id, $target->id);
+    }
+
+    #[Test]
+    public function parking_is_a_move_and_the_edge_says_so(): void
+    {
+        $node = $this->editor->createNode('Board', $this->root->id);
+        $this->editor->moveToTrash($node->id);
+
+        self::assertSame($this->trash->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+    }
+
+    #[Test]
+    public function reordering_changes_which_sibling_comes_first(): void
+    {
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $first  = $this->editor->createNode('Resistor', $parent->id);
+        $second = $this->editor->createNode('Capacitor', $parent->id);
+
+        $this->editor->reorder($second->id, 0);
+        $this->editor->reorder($first->id, 1);
+
+        $names = array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($parent->id));
+
+        self::assertSame(['Capacitor', 'Resistor'], $names);
+    }
+
+    #[Test]
+    public function reordering_to_where_it_already_is_writes_nothing(): void
+    {
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $child  = $this->editor->createNode('Resistor', $parent->id);
+        $before = $this->edges->inheritanceEdgeTo($child->id)->version;
+
+        $this->editor->reorder($child->id, 0);
+
+        self::assertSame($before, $this->edges->inheritanceEdgeTo($child->id)->version);
+    }
+
+    #[Test]
+    public function every_path_can_be_rebuilt_from_the_edges_alone(): void
+    {
+        // ⚠️ This is the property D-014 actually asks for: path is derived, rebuildable, and
+        // never a second truth. If this ever fails, the tree and its shortcut have drifted.
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $b = $this->editor->createNode('Board', $a->id);
+        $c = $this->editor->createNode('Resistor', $b->id);
+        $this->editor->move($b->id, $this->root->id);
+
+        foreach ([$this->trash, $a, $this->nodes->byId($b->id), $this->nodes->byId($c->id)] as $node) {
+            self::assertSame($this->pathFromEdges($node->id), $node->path, "path of «{$node->name}»");
+        }
+    }
+
+    /** Walk the edges upwards and build the path the long way round. */
+    private function pathFromEdges(int $id): string
+    {
+        $ids = [$id];
+
+        while (($edge = $this->edges->inheritanceEdgeTo($id)) !== null) {
+            $id = $edge->fromId;
+            array_unshift($ids, $id);
+        }
+
+        return implode('.', $ids);
+    }
+
+    #[Test]
+    public function a_node_can_be_swapped_with_the_sibling_above_it(): void
+    {
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $this->editor->createNode('Resistor', $parent->id);
+        $second = $this->editor->createNode('Capacitor', $parent->id);
+        $this->editor->createNode('Diode', $parent->id);
+
+        $this->editor->moveUp($second->id);
+
+        self::assertSame(
+            ['Capacitor', 'Resistor', 'Diode'],
+            array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($parent->id))
+        );
+    }
+
+    #[Test]
+    public function a_node_can_be_swapped_with_the_sibling_below_it(): void
+    {
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $first  = $this->editor->createNode('Resistor', $parent->id);
+        $this->editor->createNode('Capacitor', $parent->id);
+
+        $this->editor->moveDown($first->id);
+
+        self::assertSame(
+            ['Capacitor', 'Resistor'],
+            array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($parent->id))
+        );
+    }
+
+    #[Test]
+    public function the_first_child_cannot_move_up_and_the_last_cannot_move_down(): void
+    {
+        $parent = $this->editor->createNode('Board', $this->root->id);
+        $first  = $this->editor->createNode('Resistor', $parent->id);
+        $last   = $this->editor->createNode('Capacitor', $parent->id);
+
+        $this->editor->moveUp($first->id);
+        $this->editor->moveDown($last->id);
+
+        self::assertSame(
+            ['Resistor', 'Capacitor'],
+            array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($parent->id))
+        );
+        self::assertSame([], $this->changes->verbsFor($first->id) === ['created'] ? [] : ['unexpected write']);
     }
 }

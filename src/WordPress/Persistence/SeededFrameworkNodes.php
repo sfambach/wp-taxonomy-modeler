@@ -3,10 +3,12 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\RelationRepository;
 
 /**
  * The root and the trash, created once and then found by their stored ids.
@@ -24,6 +26,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
     public function __construct(
         private readonly NodeRepository $nodes,
+        private readonly RelationRepository $relations,
         private readonly IdentityAllocator $identities,
         private readonly Changelog $changelog,
     ) {
@@ -72,7 +75,16 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         if ($trashId === 0 || $this->nodes->find($trashId) === null) {
             $trash = Node::create($this->identities->next(), 'Trash', $root->path);
+
             $this->nodes->add($trash);
+            // The trash is an ordinary child of the root, so it gets an ordinary inheritance
+            // edge. A framework node that skipped the edge would be a node the tree cannot see.
+            $this->relations->add(Relation::inheritance(
+                $this->identities->next(),
+                $root->id,
+                $trash->id,
+                $this->relations->nextPositionUnder($root->id)
+            ));
             $this->changelog->record($trash->id, 'node', 'created', null, 'the trash');
             update_option(self::TRASH_OPTION, $trash->id, true);
         }

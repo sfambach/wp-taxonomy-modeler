@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\NodeRepository;
 
 /**
@@ -84,17 +85,19 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        // Children are the rows whose path is the parent's plus exactly one more segment.
-        // One statement, any depth — the tree is never walked level by level (`CD-7`).
-        $pattern = $wpdb->esc_like($parent->path . '.') . '%';
-
+        // ⚠️ **Asked of the edges, not of the path.** The inheritance rows are the tree
+        // (D-014); the path is the shortcut derived from them. And order lives on the edge,
+        // because it is per parent — the same node under two parents may sit third under one
+        // and first under the other. One statement, one join, no walking (`CD-7`).
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . '
-                 WHERE path LIKE %s AND path NOT LIKE %s
-                 ORDER BY name ASC',
-                $pattern,
-                $pattern . '.%'
+                'SELECT n.id, n.version, n.name, n.path
+                 FROM ' . Schema::table('relations') . ' r
+                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
+                 WHERE r.from_id = %d AND r.kind = %s
+                 ORDER BY r.position ASC, r.id ASC',
+                $parent->id,
+                RelationKind::Inheritance->value
             ),
             ARRAY_A
         );
@@ -102,6 +105,24 @@ final class WpdbNodeRepository implements NodeRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+
+
+    public function subtreeOf(Node $root): array
+    {
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . '
+                 WHERE path LIKE %s
+                 ORDER BY path ASC',
+                $wpdb->esc_like($root->path . '.') . '%'
+            ),
+            ARRAY_A
+        );
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
     public function moveSubtree(string $oldPath, string $newPath): void
     {
         global $wpdb;
@@ -124,13 +145,25 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $wpdb->query(
-            $wpdb->prepare(
-                'DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d OR path LIKE %s',
-                $node->id,
-                $wpdb->esc_like($node->path . '.') . '%'
-            )
-        );
+        $nodes     = Schema::table('nodes');
+        $relations = Schema::table('relations');
+        $under     = $wpdb->esc_like($node->path . '.') . '%';
+
+        // The edges go first, because a relation row whose node is gone is the dangling
+        // reference the whole two-stage deletion exists to avoid. Both are one statement.
+        $wpdb->query($wpdb->prepare(
+            "DELETE r FROM {$relations} r
+             INNER JOIN {$nodes} n ON n.id = r.to_id OR n.id = r.from_id
+             WHERE n.id = %d OR n.path LIKE %s",
+            $node->id,
+            $under
+        ));
+
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$nodes} WHERE id = %d OR path LIKE %s",
+            $node->id,
+            $under
+        ));
     }
 
     /** @param array<string,mixed> $row */

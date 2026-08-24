@@ -19,6 +19,11 @@ final class InMemoryNodes implements NodeRepository
     /** @var array<int,Node> */
     private array $rows = [];
 
+    /** Children are ordered by the edge, so the fake needs to see the edges too. */
+    public function __construct(private readonly ?InMemoryRelations $relations = null)
+    {
+    }
+
     public function byId(int $id): Node
     {
         return $this->find($id) ?? throw NodeNotFound::withId($id);
@@ -47,6 +52,22 @@ final class InMemoryNodes implements NodeRepository
 
     public function childrenOf(Node $parent): array
     {
+        // Order lives on the edge (position), because it is per parent. Without edges — a
+        // repository used on its own in a test — name order keeps the result stable.
+        if ($this->relations !== null) {
+            $children = [];
+
+            foreach ($this->relations->childEdgesOf($parent->id) as $edge) {
+                $child = $this->find($edge->toId);
+
+                if ($child !== null) {
+                    $children[] = $child;
+                }
+            }
+
+            return $children;
+        }
+
         $prefix   = $parent->path . '.';
         $children = [];
 
@@ -59,6 +80,21 @@ final class InMemoryNodes implements NodeRepository
         usort($children, static fn (Node $a, Node $b): int => strcmp($a->name, $b->name));
 
         return $children;
+    }
+
+    public function subtreeOf(Node $root): array
+    {
+        $under = [];
+
+        foreach ($this->rows as $node) {
+            if (str_starts_with($node->path, $root->path . '.')) {
+                $under[] = $node;
+            }
+        }
+
+        usort($under, static fn (Node $a, Node $b): int => strcmp($a->path, $b->path));
+
+        return $under;
     }
 
     public function moveSubtree(string $oldPath, string $newPath): void
