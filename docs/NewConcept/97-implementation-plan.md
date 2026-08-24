@@ -205,3 +205,29 @@ all**: names, buttons and a select, nothing that renders a value.
 > **The rule for every package after this one: the moment an attribute value has to appear on
 > screen, it goes through a renderer.** Not a quick `<input>` in the admin template that gets
 > tidied up later — that is how the two ways start, and the legacy is the evidence.
+
+---
+
+## The order the surfaces impose — corrected 2026-08-24
+
+⚠️ **A tree row is a rendered node** ([R18](30-renderer.md#r18r20--the-surfaces-are-renderers-all-the-way-up)),
+the settings side is a rendered page ([R20](30-renderer.md)), and *nothing is drawn by hand
+anywhere*. That was an owner statement from the first week and it changes the running order.
+
+**The real surface cannot come next.** A node renderer needs settings, labels and attributes to
+render; until those exist there is nothing for it to draw.
+
+| | | |
+|---|---|---|
+| **3** | Attributes as relations, the three branches | the model starts to be able to say something |
+| **4** | Settings and the chain | a renderer has something to resolve |
+| **5** | Labels, roles, locales | a row has something to write |
+| **then** | **the tree renderer and the split screen** | ⚠️ and the scaffolding below is **deleted**, not refactored ([D-344](90-decision-log.md)) |
+
+**What the scaffolding is for, and its two limits:** it exists so behaviour is checkable before
+renderers exist. It draws **no value** and must never begin to. Everything asserted against it
+tests the **core** — which the real surface uses unchanged — so losing it costs nothing.
+
+**Finishing Package 2** — expand/collapse and [U4](20-interaction.md)'s *branch or only this node*
+— is still worth doing, because both are **behaviour**: collapsing is a selection question and
+U4 needs children promoted to the grandparent, which nothing in the core does yet.
