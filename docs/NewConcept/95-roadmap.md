@@ -72,6 +72,8 @@ not wanted three times is probably not wanted.
 |---|---|---|
 | **Number circle** — a type that hands out numbers by a rule: prefix, start, step, width, for article numbers, EANs, order numbers ([D-268](90-decision-log.md)) | the first model that needs an identifier the system assigns rather than the author types. An invoice number would force it; an article number can wait, because the author can type one | 2026-08-23, from the legacy code sweep |
 | **Reader-supplied parameters** — *four portions instead of two*; an attribute declared **scalable**, and a block offering a control ([D-309](90-decision-log.md)) | the first time a recipe is read by someone cooking for a different number of people | 2026-08-23, from the scenario check |
+| **Showing things on a map** — an address or a coordinate drawn on a map ([D-334](90-decision-log.md)) | the first model where a place must be **shown**, not merely written down. No new type is needed: `address` exists, and a renderer resolves it | 2026-08-24, from the type review |
+| **Reading `JSON`** ([D-334](90-decision-log.md)) | ⚠️ only ever as **reading a foreign format on import**, never as a place to keep things — arbitrary structure in a field is searchable, checkable and migratable by nothing | 2026-08-24, from the type review |
 
 ## Still to write
 
