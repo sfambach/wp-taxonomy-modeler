@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Exception\DomainError;
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
@@ -61,7 +62,15 @@ final class NodesScreen
         $selected  = $this->selectedFromRequest();
 
         $left  = '<h2>' . esc_html__('The tree', 'taxmod') . '</h2>';
-        $left .= $this->addForm($root, __('Add a node at the top level', 'taxmod'));
+
+        // ⚠️ **Under Model, not under the root.** A node hung directly on the root sits in no
+        // branch at all: it can hold no records and no attribute may point at it — a dead end
+        // the screen used to invite people into. D-273 also says what this level *is*: the top
+        // level of Model is the list of subject areas.
+        $left .= $this->addForm(
+            $this->framework->rootOf(Branch::Model),
+            __('Add a subject area under Model', 'taxmod')
+        );
         $left .= $this->table($rows, 'tree', $collapsed, $selected);
         $left .= '<h2>' . esc_html__('Trash', 'taxmod') . '</h2>';
         $left .= '<p class="description">'
