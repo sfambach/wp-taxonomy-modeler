@@ -2369,3 +2369,36 @@ rather than to the concept — *put it back as it was* versus *put back only thi
 the same shape as [U4](20-interaction.md)'s own question, asked from the other end.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [20 Interaction](20-interaction.md) · *Status:* **closed** · *raised and settled 2026-08-24 by the owner, from trying it*
+
+---
+
+## OQ-084 — Does a node's version move when only its path was rewritten?
+
+Found by the owner: *the version counts up on restore.* Measured, and the answer is worse than
+the question — **the same event moves it once and not the other time**:
+
+```
+created              mid v1 | child v1 (edge v1) | grand v1
+deleted node only    mid v2 | child v1 (edge v2) | grand v1
+restored             mid v3 | child v2 (edge v3) | grand v1
+```
+
+`child` gets a new parent twice. Its **edge** version moves both times, correctly. Its **node**
+version moves only on the way back — because promotion rewrites paths with one statement while
+restore goes through the ordinary reparenting. ⚠️ **That inconsistency is a defect whatever the
+rule turns out to be.** But fixing it means choosing the rule:
+
+| | Rule | Follows from | Consequence |
+|---|---|---|---|
+| **A** | **The version belongs to the object that changed.** A reparenting changes the **edge**, so the edge's version moves; `path` is derived ([D-014](90-decision-log.md)), so rewriting it is not a change to the node | [D-014](90-decision-log.md) — *derived, rebuildable, never a second truth* | park **and** restore leave every node version untouched; only edges move. `grand` behaving as it does today becomes correct rather than accidental |
+| **B** | **Moving a node is a change to the node.** [D-080](90-decision-log.md) gives `version` two jobs — optimistic locking **and cache invalidation** — and a cached row that shows a node's place is stale once it moved | [D-080](90-decision-log.md) | every descendant of a moved branch bumps, which is a write per row and collides with `CD-7` |
+
+⚠️ **[D-172](90-decision-log.md) answers only the literal question:** *the revert is recorded as a
+new change, never as a rewind* — so **something** must move forward. It does: the changelog is
+extended either way. That says nothing about which object's counter is the right one.
+
+⚠️ **B has a cost that is easy to miss:** it makes moving a branch of five hundred nodes a
+five-hundred-row write, which is exactly the loop `CD-7` forbids — and the reason `moveSubtree`
+is one statement today.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from watching the numbers*
