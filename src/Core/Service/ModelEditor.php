@@ -332,6 +332,36 @@ final class ModelEditor
 
 
     /** The node with this id, or null. Used by surfaces that may be handed a stale link. */
+    /**
+     * The nodes a list of attributes points at, in one query (`CD-7`).
+     *
+     * @param  list<Relation>   $edges
+     * @return array<int, Node> Keyed by node id.
+     */
+    public function targetsOf(array $edges): array
+    {
+        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->toId, $edges));
+    }
+
+    /**
+     * One of a node's **own** attributes, by edge id.
+     *
+     * ⚠️ **Ownership is checked here rather than trusted from the request.** An inherited edge
+     * belongs to an ancestor, and writing to it would change it for every sibling too.
+     *
+     * @throws \Taxmod\Core\Exception\NotAPossibleTarget
+     */
+    public function ownAttribute(int $ownerId, int $edgeId): Relation
+    {
+        foreach ($this->attributesOf($ownerId) as $edge) {
+            if ($edge->id === $edgeId && $edge->fromId === $ownerId) {
+                return $edge;
+            }
+        }
+
+        throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
+    }
+
     public function find(int $id): ?Node
     {
         return $this->nodes->find($id);

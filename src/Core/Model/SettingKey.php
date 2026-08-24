@@ -26,11 +26,13 @@ enum SettingKey: string
 {
     // Bounding — they limit what is possible.
 
-    /** Fewest occurrences that satisfy the attribute. Narrowing means **more** required. */
-    case MultiplicityMin = 'multiplicity_min';
-
-    /** Most occurrences allowed. Narrowing means **fewer**. */
-    case MultiplicityMax = 'multiplicity_max';
+    /**
+     * How often the attribute may occur — one of exactly four values (D-351).
+     *
+     * ⚠️ **Edge-only**, and the only key that is: a node describes a thing and a thing has no
+     * multiplicity. See {@see Multiplicity} for what *narrower* means among the four.
+     */
+    case Multiplicity = 'multiplicity';
 
     /** ⚠️ Once an ancestor declares it, it stays for every descendant (D-311). */
     case Mandatory = 'mandatory';
@@ -57,6 +59,22 @@ enum SettingKey: string
     case Icon = 'icon';
     case Order = 'order';
 
+
+    /**
+     * Whether a key says something only a **use** can have.
+     *
+     * ⚠️ **The asymmetry runs one way** ([50 Persistence](../../../docs/NewConcept/50-wordpress-persistence.md)):
+     * everything sayable about a node is also sayable about one use of it, and the reverse is
+     * not true. A node describes a *thing*, an edge describes a *use of a thing* — and a thing
+     * has no multiplicity, while a use of it does.
+     *
+     * ⚠️ **This is about where a key applies, not a second mechanism.** Multiplicity still
+     * inherits down the chain and is still narrowable: a subtype may tighten `0..1` to `1`.
+     */
+    public function isEdgeOnly(): bool
+    {
+        return $this === self::Multiplicity;
+    }
     public function isBounding(): bool
     {
         return $this->direction() !== Narrowing::Free;
@@ -65,10 +83,11 @@ enum SettingKey: string
     public function direction(): Narrowing
     {
         return match ($this) {
-            self::MultiplicityMin, self::RangeMin              => Narrowing::OnlyUp,
-            self::MultiplicityMax, self::RangeMax              => Narrowing::OnlyDown,
-            self::Mandatory, self::Hide, self::ReadOnly        => Narrowing::OnceOnAlwaysOn,
-            default                                            => Narrowing::Free,
+            self::Multiplicity                          => Narrowing::BySubset,
+            self::RangeMin                              => Narrowing::OnlyUp,
+            self::RangeMax                              => Narrowing::OnlyDown,
+            self::Mandatory, self::Hide, self::ReadOnly => Narrowing::OnceOnAlwaysOn,
+            default                                     => Narrowing::Free,
         };
     }
 

@@ -2439,3 +2439,39 @@ assumption, and it fixes ten decimal places for **every** decimal in the system:
 truncated in the tenth place looks right in every screen that shows two.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-24 while building Package 4*
+
+---
+
+## OQ-086 — Where does a subtype's override of an inherited attribute hang?
+
+Raised by [D-351](90-decision-log.md), and it is older than multiplicity — multiplicity is only
+where it became visible.
+
+**The chain for a use site runs through the target, not through the owner:**
+
+```mermaid
+flowchart LR
+  I["installation"] --> R["model root"] --> A["ancestors of the TARGET"] --> N["the target"] --> E["the edge"]
+```
+
+So when `Part` has an attribute `supplier` and **`PassivePart` inherits it**, and the owner wants
+*a passive part names exactly one supplier* — `PassivePart` is nowhere in that chain. It is a
+descendant of the **owner**, and the chain walks the **target**.
+
+**Three shapes are possible and the concept picks none of them:**
+
+| | What it would mean | What it costs |
+|---|---|---|
+| **The subtype gets its own edge** | `PassivePart` carries a real relation of its own, narrowed | Two edges for one attribute — and [D-155](90-decision-log.md)'s *moved down, not refused* already does something like this |
+| **The override hangs on the pair** (subtype, inherited edge) | one setting row whose owner is neither the node nor the edge | ⚠️ A third owner kind, and `owner_id` is deliberately **one** column over exactly two kinds ([D-090](90-decision-log.md)) |
+| **It is not possible at all** | a subtype may not narrow an inherited attribute; if it must, the attribute is **moved down** ([D-155](90-decision-log.md)) | The simplest, and possibly the right one — but it must be **said**, because the screen currently shows inherited attributes as if they were configurable |
+
+⚠️ **[D-087](90-decision-log.md) sounds like it answers this and does not.** *An override is the
+same thing wherever it sits; only its owner differs* — it names node and edge as the owners, and
+the case above needs an owner that is a **combination** of the two.
+
+⚠️ **Nothing is broken today**: multiplicity above one is not storable yet
+([D-232](90-decision-log.md)'s path index is designed, not built), so no data depends on the
+answer. That is exactly why it is worth answering now rather than after the first catalogue.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-25 while building the multiplicity control*

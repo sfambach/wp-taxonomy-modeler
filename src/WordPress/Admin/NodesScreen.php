@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Admin;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
@@ -303,19 +304,26 @@ final class NodesScreen
      */
     private function attributes(Node $selected, array $rows): string
     {
-        $body = '';
+        $body  = '';
+        $edges = $this->editor->attributesOf($selected->id);
 
-        foreach ($this->editor->attributesOf($selected->id) as $edge) {
-            $target = $this->editor->find($edge->toId);
+        // Two queries for every attribute's whole chain, however many there are (`CD-7`).
+        $resolved = $this->settings->resolveForUseSites($edges);
+        $targets  = $this->editor->targetsOf($edges);
+
+        foreach ($edges as $edge) {
+            $target = $targets[$edge->toId] ?? null;
+            $here   = $edge->fromId === $selected->id;
 
             $body .= '<tr>'
                 . '<td><strong>' . esc_html($edge->name) . '</strong></td>'
                 . '<td>' . esc_html($target?->name ?? '—') . '</td>'
                 . '<td><code>' . esc_html($edge->kind->value) . '</code></td>'
-                . '<td>' . ($edge->fromId === $selected->id
+                . '<td>' . ($here
                     ? esc_html__('own', 'taxmod')
                     : '<em>' . esc_html__('inherited', 'taxmod') . '</em>')
                 . '</td>'
+                . '<td>' . $this->multiplicityControl($edge, $resolved[$edge->id] ?? [], $here) . '</td>'
                 . '</tr>';
         }
 
@@ -331,9 +339,47 @@ final class NodesScreen
                 . '<th>' . esc_html__('Points at', 'taxmod') . '</th>'
                 . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
                 . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
+                . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
         return $html . $this->attributeForm($selected, $rows);
+    }
+
+    /**
+     * How often this attribute may occur — four constants, on the edge (D-351).
+     *
+     * ⚠️ **Only offered on an attribute the node owns.** An inherited attribute belongs to an
+     * ancestor, and where a *subtype's* narrowing of it would hang is not decided
+     * ([OQ-086](../../../docs/NewConcept/91-open-questions.md)). Offering a control that writes
+     * to the ancestor's edge would change it for every sibling too — quietly, which is the worst
+     * way to be wrong.
+     *
+     * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $resolved
+     */
+    private function multiplicityControl(\Taxmod\Core\Model\Relation $edge, array $resolved, bool $isOwn): string
+    {
+        $current = $resolved[SettingKey::Multiplicity->value] ?? null;
+        $now     = $current?->value->text;
+
+        if (! $isOwn) {
+            return '<em>' . esc_html($now ?? '—') . '</em>';
+        }
+
+        $options = '';
+
+        foreach (Multiplicity::cases() as $one) {
+            $options .= '<option value="' . esc_attr($one->value) . '"'
+                . selected($now, $one->value, false) . '>' . esc_html($one->notation()) . '</option>';
+        }
+
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em">'
+            . $this->hidden($edge->fromId)
+            . '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
+            . '<select name="setting_value">' . $options . '</select>'
+            . '<button class="button" name="do" value="put_multiplicity" title="'
+            . esc_attr__('It may only be narrowed to one it contains — 0..1 and 1..* contain neither', 'taxmod')
+            . '">' . esc_html__('Set', 'taxmod') . '</button>'
+            . '</form>';
     }
 
     /**
@@ -432,6 +478,13 @@ final class NodesScreen
         $options = '';
 
         foreach (SettingKey::cases() as $key) {
+            // ⚠️ A node describes a thing, and a thing has no multiplicity — that is only
+            // sayable about a *use* of it (D-351). The core refuses it here anyway; leaving it
+            // in the list would just offer a choice that always fails.
+            if ($key->isEdgeOnly()) {
+                continue;
+            }
+
             $options .= '<option value="' . esc_attr($key->value) . '">'
                 . esc_html($key->value . ($key->isBounding() ? ' — ' . __('bounding', 'taxmod') : ''))
                 . '</option>';
@@ -709,6 +762,7 @@ final class NodesScreen
         $do     = isset($_POST['do']) ? sanitize_key(wp_unslash($_POST['do'])) : '';
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
+        $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         $settingValue = isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '';
         $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
@@ -732,6 +786,11 @@ final class NodesScreen
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
+                'put_multiplicity' => $this->settings->put(
+                    $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),
+                    SettingKey::Multiplicity->value,
+                    TypedValue::ofText($settingValue)
+                ),
                 'put_label'      => $this->labels->put(new Label($id, '', $this->framework->roleId(SeededRole::from($labelRole)), Label::BASE_NUMBER, $labelLocale, $labelText)),
                 'add_record'     => $this->data->create($id),
                 'save_record'    => $this->saveRecord(),

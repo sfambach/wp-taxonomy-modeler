@@ -26,6 +26,21 @@ final class CannotWiden extends DomainError
         ));
     }
 
+    /**
+     * ⚠️ **Two of the four multiplicities are incomparable**, so this message deliberately does
+     * not say *wider*. Going from `0..1` to `1..*` trades *may be absent* for *may be several* —
+     * a different bound, not a looser one, and under D-312 a different bound is refused just the
+     * same.
+     */
+    public static function notNarrower(string $inherited, string $attempted): self
+    {
+        return new self(sprintf(
+            'The multiplicity here is %s, and %s does not fit inside it.',
+            $inherited,
+            $attempted
+        ));
+    }
+
     public static function mandatoryStays(SettingKey $key): self
     {
         return new self(sprintf(

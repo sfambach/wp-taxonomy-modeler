@@ -20,6 +20,14 @@ interface NodeRepository
 
     public function find(int $id): ?Node;
 
+    /**
+     * Several nodes at once, so a caller with a list does not query in a loop (`CD-7`).
+     *
+     * @param  list<int>        $ids
+     * @return array<int, Node> Keyed by id. Ids that no longer exist are simply absent.
+     */
+    public function byIds(array $ids): array;
+
     public function add(Node $node): void;
 
     /**

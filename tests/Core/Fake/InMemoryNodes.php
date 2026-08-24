@@ -34,6 +34,19 @@ final class InMemoryNodes implements NodeRepository
         return $this->rows[$id] ?? null;
     }
 
+    public function byIds(array $ids): array
+    {
+        $found = [];
+
+        foreach ($ids as $id) {
+            if (isset($this->rows[$id])) {
+                $found[$id] = $this->rows[$id];
+            }
+        }
+
+        return $found;
+    }
+
     public function add(Node $node): void
     {
         $this->rows[$node->id] = $node;

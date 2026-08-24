@@ -4,6 +4,8 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\ReservedKey;
+use Taxmod\Core\Exception\SettingDoesNotApply;
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -75,11 +77,61 @@ final class Settings
      */
     public function resolve(array $chain): array
     {
+        // One query for the whole chain (D-014), then the walk happens in memory.
+        return $this->walk($chain, $this->settings->forOwners($chain));
+    }
+
+    /**
+     * The same answer for many use sites, in **two** queries however many there are.
+     *
+     * ⚠️ **This exists because a caller with a list of attributes would otherwise resolve in a
+     * loop**, which is the N+1 the code standard forbids outright (`CD-7`). The batched load is
+     * D-014's own construction, applied to a set of chains instead of one.
+     *
+     * @param  list<Relation>                            $edges
+     * @return array<int, array<string, ResolvedSetting>> Keyed by edge id.
+     */
+    public function resolveForUseSites(array $edges): array
+    {
+        if ($edges === []) {
+            return [];
+        }
+
+        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
+        $chains  = [];
+
+        foreach ($edges as $edge) {
+            $target = $targets[$edge->toId] ?? null;
+
+            $chains[$edge->id] = $target === null
+                ? [$this->framework->installationId(), $edge->id]
+                : [$this->framework->installationId(), ...$target->ancestorIds(), $target->id, $edge->id];
+        }
+
+        $everyOwner = array_values(array_unique(array_merge(...array_values($chains))));
+        $settings   = $this->settings->forOwners($everyOwner);
+
+        $resolved = [];
+
+        foreach ($chains as $edgeId => $chain) {
+            $resolved[$edgeId] = $this->walk($chain, $settings);
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @param  list<int>                     $chain
+     * @param  list<Setting>                 $settings Everything stored for those owners, and
+     *                                                 possibly for others — extras are skipped.
+     * @return array<string, ResolvedSetting>
+     */
+    private function walk(array $chain, array $settings): array
+    {
         $position = array_flip($chain);
         $winner   = [];
 
-        // One query for the whole chain (D-014), then the walk happens in memory.
-        foreach ($this->settings->forOwners($chain) as $setting) {
+        foreach ($settings as $setting) {
             $at = $position[$setting->ownerId] ?? null;
 
             if ($at === null) {
@@ -120,6 +172,7 @@ final class Settings
             return;
         }
 
+        $this->refuseWhereItDoesNotApply($engine, $ownerId, $value);
         $this->refuseWidening($engine, $chain, $value);
 
         $this->settings->put(new Setting($ownerId, $key, $value));
@@ -157,6 +210,30 @@ final class Settings
      *
      * @param list<int> $chain
      */
+    /**
+     * Refuse a key at an owner that has nothing to say about it.
+     *
+     * ⚠️ **Nodes and edges share one id space** (C11), so *is this owner an edge* is answered by
+     * looking: an id the node table does not know is a relation. One lookup, and it is the same
+     * lookup the resolution walk already does.
+     */
+    private function refuseWhereItDoesNotApply(SettingKey $key, int $ownerId, TypedValue $value): void
+    {
+        if ($key->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
+            throw SettingDoesNotApply::toANode($key);
+        }
+
+        // The four constants are the type, so a value outside them is refused here rather than
+        // surfacing later as a multiplicity nobody can read (D-351).
+        if ($key === SettingKey::Multiplicity && ! $value->isNothing()) {
+            $written = $value->text ?? $value->describe();
+
+            if (Multiplicity::tryFrom($written) === null) {
+                throw SettingDoesNotApply::notOneOfTheFour($written);
+            }
+        }
+    }
+
     private function refuseWidening(SettingKey $key, array $chain, TypedValue $value): void
     {
         $above     = array_slice($chain, 0, -1);
@@ -188,6 +265,18 @@ final class Settings
             case Narrowing::OnlyDown:
                 if ($this->lessThan($was, $value)) {
                     throw CannotWiden::bound($key, $was->describe(), $value->describe());
+                }
+
+                break;
+
+            case Narrowing::BySubset:
+                // Containment, not arithmetic — and an incomparable pair falls out here too,
+                // because neither of the two contains the other (D-351).
+                $inheritedOne = Multiplicity::tryFrom($was->text ?? '');
+                $attempted    = Multiplicity::tryFrom($value->text ?? '');
+
+                if ($inheritedOne !== null && $attempted !== null && ! $attempted->narrows($inheritedOne)) {
+                    throw CannotWiden::notNarrower($inheritedOne->notation(), $attempted->notation());
                 }
 
                 break;

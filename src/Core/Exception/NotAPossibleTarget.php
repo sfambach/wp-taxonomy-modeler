@@ -28,6 +28,19 @@ final class NotAPossibleTarget extends DomainError
         return new self(sprintf('«%s» is the root of its branch and stands for the branch itself, not for a thing in it.', $name));
     }
 
+    /**
+     * ⚠️ An inherited attribute belongs to an ancestor. Writing to its edge would change it for
+     * every sibling too, and where a subtype's own narrowing would hang is not decided
+     * ([OQ-086](../../../docs/NewConcept/91-open-questions.md)).
+     */
+    public static function notAnOwnAttribute(int $edgeId): self
+    {
+        return new self(sprintf(
+            'Attribute %d is not one this node owns — an inherited attribute is changed where it is declared.',
+            $edgeId
+        ));
+    }
+
     public static function itIsInTheTrash(string $name): self
     {
         return new self(sprintf('«%s» is in the trash. Restore it before pointing at it.', $name));

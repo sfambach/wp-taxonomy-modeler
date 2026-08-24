@@ -36,6 +36,37 @@ final class WpdbNodeRepository implements NodeRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    public function byIds(array $ids): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ The ids are cast to int above, but the placeholders are still built rather than
+        // interpolated — `CD-6` has no exception for values that look safe.
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                ...array_map(intval(...), $ids)
+            ),
+            ARRAY_A
+        );
+
+        $found = [];
+
+        foreach ($rows ?: [] as $row) {
+            $found[(int) $row['id']] = $this->hydrate($row);
+        }
+
+        return $found;
+    }
+
     public function add(Node $node): void
     {
         global $wpdb;
