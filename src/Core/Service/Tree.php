@@ -44,7 +44,7 @@ final class Tree
      *                             the screen shows it separately.
      * @param list<int> $collapsed Ids that are shown but whose children are not.
      *
-     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}>
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}>
      */
     public function rowsUnder(Node $root, array $skip = [], array $collapsed = []): array
     {
@@ -73,7 +73,7 @@ final class Tree
      * @param array<int,list<int>>  $childIdsByParent
      * @param array<int,int>        $skip
      * @param array<int,int>        $collapsed
-     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}> $rows
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
      */
     private function collect(
         int $parentId,
@@ -84,30 +84,44 @@ final class Tree
         array $collapsed,
         array &$rows,
     ): void {
-        foreach ($childIdsByParent[$parentId] ?? [] as $childId) {
-            if (isset($skip[$childId]) || ! isset($byId[$childId])) {
-                continue;
-            }
+        $siblings = $this->visibleChildrenOf($parentId, $byId, $childIdsByParent, $skip);
+        $last     = count($siblings) - 1;
 
-            // A node whose only children are skipped counts as having none — otherwise the
-            // screen offers a control that opens an empty branch.
-            $visibleChildren = array_filter(
-                $childIdsByParent[$childId] ?? [],
-                static fn (int $id): bool => ! isset($skip[$id]) && isset($byId[$id])
-            );
-
+        foreach ($siblings as $index => $childId) {
             $isCollapsed = isset($collapsed[$childId]);
 
             $rows[] = [
-                'node'        => $byId[$childId],
-                'depth'       => $depth,
-                'hasChildren' => $visibleChildren !== [],
+                'node'  => $byId[$childId],
+                'depth' => $depth,
+                // A node whose only children are skipped counts as having none — otherwise
+                // the screen offers a control that opens an empty branch.
+                'hasChildren' => $this->visibleChildrenOf($childId, $byId, $childIdsByParent, $skip) !== [],
                 'collapsed'   => $isCollapsed,
+                // ⚠️ Whether a node can move up or down is a fact about the tree, not about a
+                // screen. Answered here so that no surface has to work it out again — and so
+                // that U8 can be kept: a control that cannot act is **absent**, not greyed.
+                'isFirst'     => $index === 0,
+                'isLast'      => $index === $last,
             ];
 
             if (! $isCollapsed) {
                 $this->collect($childId, $depth + 1, $byId, $childIdsByParent, $skip, $collapsed, $rows);
             }
         }
+    }
+
+    /**
+     * @param array<int,Node>      $byId
+     * @param array<int,list<int>> $childIdsByParent
+     * @param array<int,int>       $skip
+     *
+     * @return list<int>
+     */
+    private function visibleChildrenOf(int $parentId, array $byId, array $childIdsByParent, array $skip): array
+    {
+        return array_values(array_filter(
+            $childIdsByParent[$parentId] ?? [],
+            static fn (int $id): bool => ! isset($skip[$id]) && isset($byId[$id])
+        ));
     }
 }

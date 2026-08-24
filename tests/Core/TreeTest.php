@@ -221,4 +221,55 @@ final class TreeTest extends TestCase
             $this->tree->rowsUnder($this->root, $skip, $collapsed)
         );
     }
+
+    #[Test]
+    public function a_row_knows_whether_it_is_the_first_or_the_last_of_its_siblings(): void
+    {
+        // U8: a control that cannot act is absent, not greyed — so the tree has to say which
+        // rows those are, once, rather than every surface working it out again.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $this->editor->createNode('One', $parent->id);
+        $this->editor->createNode('Two', $parent->id);
+        $this->editor->createNode('Three', $parent->id);
+
+        $seen = [];
+
+        foreach ($this->tree->rowsUnder($this->root) as $row) {
+            $seen[$row['node']->name] = [$row['isFirst'], $row['isLast']];
+        }
+
+        self::assertSame([true, false], $seen['One']);
+        self::assertSame([false, false], $seen['Two']);
+        self::assertSame([false, true], $seen['Three']);
+    }
+
+    #[Test]
+    public function an_only_child_is_both_the_first_and_the_last(): void
+    {
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $this->editor->createNode('Alone', $parent->id);
+
+        $row = array_values(array_filter(
+            $this->tree->rowsUnder($this->root),
+            static fn (array $r): bool => $r['node']->name === 'Alone'
+        ))[0];
+
+        self::assertTrue($row['isFirst']);
+        self::assertTrue($row['isLast']);
+    }
+
+    #[Test]
+    public function a_skipped_sibling_does_not_count_when_deciding_first_and_last(): void
+    {
+        // ⚠️ The trash is a child of the root and is drawn separately. Without this, the first
+        // real top-level node would think it had something above it.
+        $first = $this->editor->createNode('Model', $this->root->id);
+
+        $row = array_values(array_filter(
+            $this->tree->rowsUnder($this->root, [$this->trash->id]),
+            static fn (array $r): bool => $r['node']->id === $first->id
+        ))[0];
+
+        self::assertTrue($row['isFirst'], 'the trash sits before it but is not drawn');
+    }
 }

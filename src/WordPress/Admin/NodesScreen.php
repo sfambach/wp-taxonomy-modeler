@@ -78,7 +78,7 @@ final class NodesScreen
                 . '<strong>' . esc_html($node->name) . '</strong></td>';
             $body .= '<td><code>' . esc_html($node->path) . '</code></td>';
             $body .= '<td>' . (int) $node->version . '</td>';
-            $body .= '<td>' . $this->rowActions($node, $rows, $root, $mode) . '</td>';
+            $body .= '<td>' . $this->rowActions($row, $rows, $root, $mode) . '</td>';
             $body .= '</tr>';
         }
 
@@ -101,8 +101,10 @@ final class NodesScreen
      * @param list<array{node: Node, depth: int}> $rows
      * @param string                              $mode `tree` or `trash`
      */
-    private function rowActions(Node $node, array $rows, Node $root, string $mode): string
+    private function rowActions(array $row, array $rows, Node $root, string $mode): string
     {
+        $node = $row['node'];
+
         if ($mode === 'trash') {
             return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em">'
                 . $this->hidden($node->id)
@@ -116,8 +118,10 @@ final class NodesScreen
             . '<input type="text" name="name" value="' . esc_attr($node->name) . '" required style="width:11em">'
             . '<button class="button" name="do" value="rename">' . esc_html__('Rename', 'taxmod') . '</button>'
             . '<button class="button" name="do" value="add_child" title="' . esc_attr__('Add a child under this node', 'taxmod') . '">+</button>'
-            . '<button class="button" name="do" value="up" title="' . esc_attr__('Move up among its siblings', 'taxmod') . '">&uarr;</button>'
-            . '<button class="button" name="do" value="down" title="' . esc_attr__('Move down among its siblings', 'taxmod') . '">&darr;</button>'
+            // ⚠️ U8: absent, not greyed. A first child has nothing to move up past, and the
+            // tree already said so — the screen only has to believe it.
+            . ($row['isFirst'] ? '' : '<button class="button" name="do" value="up" title="' . esc_attr__('Move up among its siblings', 'taxmod') . '">&uarr;</button>')
+            . ($row['isLast'] ? '' : '<button class="button" name="do" value="down" title="' . esc_attr__('Move down among its siblings', 'taxmod') . '">&darr;</button>')
             . $this->parentChooser($node, $rows, $root)
             . '<button class="button" name="do" value="move">' . esc_html__('Move', 'taxmod') . '</button>'
             . '<button class="button" name="do" value="trash" title="' . esc_attr__('Trash this node and everything under it', 'taxmod') . '">'
