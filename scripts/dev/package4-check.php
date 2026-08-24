@@ -31,7 +31,7 @@ use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\ReservedKey;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\SettingValue;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
@@ -90,11 +90,11 @@ check('it follows the path', $chainType === [$installation, ...$text->ancestorId
 check('the use site is the last link', end($chainSite) === $edge->id);
 
 echo "\n== 3. A default at the type, an override at the attribute ==\n";
-$settings->put($chainType, SettingKey::Renderer->value, SettingValue::ofText('__p4 plain'));
+$settings->put($chainType, SettingKey::Renderer->value, TypedValue::ofText('__p4 plain'));
 check('the type carries it', $settings->resolve($chainType)[SettingKey::Renderer->value]->value->text === '__p4 plain');
 check('and the use site inherits it', $settings->resolve($chainSite)[SettingKey::Renderer->value]->isInherited());
 
-$settings->put($chainSite, SettingKey::Renderer->value, SettingValue::ofText('__p4 markdown'));
+$settings->put($chainSite, SettingKey::Renderer->value, TypedValue::ofText('__p4 markdown'));
 check('the override wins at the use site', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->text === '__p4 markdown');
 check('and the type is untouched', $settings->resolve($chainType)[SettingKey::Renderer->value]->value->text === '__p4 plain');
 
@@ -106,13 +106,13 @@ check('the row is gone', (int) $wpdb->get_var($wpdb->prepare(
 check('and it inherits again', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->text === '__p4 plain');
 
 echo "\n== 5. Deliberately nothing is not the same thing ==\n";
-$settings->put($chainSite, SettingKey::Renderer->value, SettingValue::nothing());
+$settings->put($chainSite, SettingKey::Renderer->value, TypedValue::nothing());
 check('the row exists', (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id = %d AND setting_key = %s',
     $edge->id, SettingKey::Renderer->value)) === 1);
 check('and it holds nothing', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->isNothing());
 
-$settings->put($chainType, SettingKey::Renderer->value, SettingValue::ofText('__p4 changed later'));
+$settings->put($chainType, SettingKey::Renderer->value, TypedValue::ofText('__p4 changed later'));
 check('a later change above does not reach it', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->isNothing());
 $settings->reset($edge->id, SettingKey::Renderer->value);
 check('but after a reset it does', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->text === '__p4 changed later');
@@ -124,29 +124,29 @@ $rows = (int) $wpdb->get_var($wpdb->prepare(
 check('one written setting, one row', $rows === 1, "$rows rows");
 
 echo "\n== 7. Bounding narrows, choosing is free ==\n";
-$settings->put($chainType, SettingKey::MultiplicityMax->value, SettingValue::ofInt(5));
-$settings->put($chainSite, SettingKey::MultiplicityMax->value, SettingValue::ofInt(2));
+$settings->put($chainType, SettingKey::MultiplicityMax->value, TypedValue::ofInt(5));
+$settings->put($chainSite, SettingKey::MultiplicityMax->value, TypedValue::ofInt(2));
 check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::MultiplicityMax->value]->value->int === 2);
 
-try { $settings->put($chainSite, SettingKey::MultiplicityMax->value, SettingValue::ofInt(9)); check('and may not be raised', false); }
+try { $settings->put($chainSite, SettingKey::MultiplicityMax->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
 catch (CannotWiden $e) { check('and may not be raised', true); }
 
-$settings->put($chainType, SettingKey::Mandatory->value, SettingValue::ofBool(true));
-try { $settings->put($chainSite, SettingKey::Mandatory->value, SettingValue::ofBool(false)); check('mandatory stays mandatory', false); }
+$settings->put($chainType, SettingKey::Mandatory->value, TypedValue::ofBool(true));
+try { $settings->put($chainSite, SettingKey::Mandatory->value, TypedValue::ofBool(false)); check('mandatory stays mandatory', false); }
 catch (CannotWiden $e) { check('mandatory stays mandatory', true); }
 
-$settings->put($chainType, SettingKey::DefaultValue->value, SettingValue::ofText('a'));
-$settings->put($chainSite, SettingKey::DefaultValue->value, SettingValue::ofText('b'));
+$settings->put($chainType, SettingKey::DefaultValue->value, TypedValue::ofText('a'));
+$settings->put($chainSite, SettingKey::DefaultValue->value, TypedValue::ofText('b'));
 check('a default is free', $settings->resolve($chainSite)[SettingKey::DefaultValue->value]->value->text === 'b');
 
 echo "\n== 8. Reserved names ==\n";
-try { $settings->declareFree($chainType, 'hide', SettingValue::ofBool(true)); check('an engine name is refused', false); }
+try { $settings->declareFree($chainType, 'hide', TypedValue::ofBool(true)); check('an engine name is refused', false); }
 catch (ReservedKey $e) { check('an engine name is refused', true); }
-$settings->declareFree($chainType, '__p4 mine', SettingValue::ofText('yes'));
+$settings->declareFree($chainType, '__p4 mine', TypedValue::ofText('yes'));
 check('a name of its own is allowed', $settings->resolve($chainType)['__p4 mine']->value->text === 'yes');
 
 echo "\n== 9. Typed columns, no stringly value ==\n";
-$settings->put($chainType, SettingKey::RangeMax->value, SettingValue::ofDecimal('2.50'));
+$settings->put($chainType, SettingKey::RangeMax->value, TypedValue::ofDecimal('2.50'));
 $row = $wpdb->get_row($wpdb->prepare(
     'SELECT value_int, value_decimal, value_text FROM ' . Schema::table('settings') . '
      WHERE owner_id = %d AND setting_key = %s', $text->id, SettingKey::RangeMax->value), ARRAY_A);

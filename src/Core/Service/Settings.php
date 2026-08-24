@@ -10,7 +10,7 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\Setting;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\SettingValue;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\SettingRepository;
@@ -108,7 +108,7 @@ final class Settings
      *
      * @param list<int> $chain The chain the owner is the **last** link of.
      */
-    public function put(array $chain, string $key, SettingValue $value): void
+    public function put(array $chain, string $key, TypedValue $value): void
     {
         $ownerId = $chain[count($chain) - 1];
         $engine  = SettingKey::tryFrom($key);
@@ -131,7 +131,7 @@ final class Settings
      * ⚠️ Separate from {@see put()} because the check belongs where a **new name** is invented,
      * not where a known one is written.
      */
-    public function declareFree(array $chain, string $key, SettingValue $value): void
+    public function declareFree(array $chain, string $key, TypedValue $value): void
     {
         if (SettingKey::isReserved($key)) {
             throw ReservedKey::named($key);
@@ -157,7 +157,7 @@ final class Settings
      *
      * @param list<int> $chain
      */
-    private function refuseWidening(SettingKey $key, array $chain, SettingValue $value): void
+    private function refuseWidening(SettingKey $key, array $chain, TypedValue $value): void
     {
         $above     = array_slice($chain, 0, -1);
         $inherited = $this->resolve($above)[$key->value] ?? null;
@@ -204,7 +204,7 @@ final class Settings
      * merely because it starts with a nine. They are stored exactly (D-057), and a comparison
      * that spans the two columns is the one place they meet.
      */
-    private function lessThan(SettingValue $a, SettingValue $b): bool
+    private function lessThan(TypedValue $a, TypedValue $b): bool
     {
         $left  = $a->int ?? ($a->decimal !== null ? (float) $a->decimal : null);
         $right = $b->int ?? ($b->decimal !== null ? (float) $b->decimal : null);

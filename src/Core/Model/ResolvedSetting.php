@@ -15,7 +15,7 @@ final class ResolvedSetting
 {
     public function __construct(
         public readonly string $key,
-        public readonly SettingValue $value,
+        public readonly TypedValue $value,
         /** The link of the chain that won — an installation, a node or an edge. */
         public readonly int $fromOwnerId,
         /** Whether the winning link is the one that was asked about. */

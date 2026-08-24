@@ -16,7 +16,7 @@ final class Setting
     public function __construct(
         public readonly int $ownerId,
         public readonly string $key,
-        public readonly SettingValue $value,
+        public readonly TypedValue $value,
     ) {
     }
 

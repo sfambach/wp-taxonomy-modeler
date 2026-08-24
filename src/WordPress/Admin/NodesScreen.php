@@ -7,10 +7,11 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\SettingValue;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
+use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
@@ -41,6 +42,7 @@ final class NodesScreen
         private readonly Tree $tree,
         private readonly Settings $settings,
         private readonly Labels $labels,
+        private readonly DataEntry $data,
         private readonly FrameworkNodes $framework,
     ) {
     }
@@ -256,7 +258,9 @@ final class NodesScreen
 
         $html .= $this->settingsPanel($selected);
 
-        return $html . $this->labelsPanel($selected);
+        $html .= $this->labelsPanel($selected);
+
+        return $html . $this->recordsPanel($selected);
     }
 
     /**
@@ -514,11 +518,115 @@ final class NodesScreen
         );
     }
 
+    /**
+     * Write every field of one record.
+     *
+     * ⚠️ **The values arrive as plain text and are guessed into a type** — a number is a number,
+     * everything else is text. That is the whole of D-350's raw surface, and it is why it must
+     * be deleted rather than grown: the real editor knows the type and does not guess.
+     */
+    private function saveRecord(): void
+    {
+        $recordId = isset($_POST['record_id']) ? absint($_POST['record_id']) : 0;
+        $edgeIds  = isset($_POST['edge_id']) && is_array($_POST['edge_id']) ? $_POST['edge_id'] : [];
+        $values   = isset($_POST['value']) && is_array($_POST['value']) ? $_POST['value'] : [];
+
+        foreach (array_values($edgeIds) as $index => $rawEdge) {
+            $edgeId = absint($rawEdge);
+            $raw    = trim(sanitize_text_field(wp_unslash($values[$index] ?? '')));
+
+            if ($raw === '') {
+                // Empty means unanswered — the row goes, which is a third state beside a value
+                // and an explicit nothing.
+                $this->data->clear($recordId, $edgeId);
+
+                continue;
+            }
+
+            $this->data->put($recordId, $edgeId, $this->settingValue($raw));
+        }
+    }
+
     private function localeFromRequest(): string
     {
         return isset($_GET['taxmod_locale'])
             ? sanitize_text_field(wp_unslash($_GET['taxmod_locale']))
             : '';
+    }
+
+
+    /**
+     * Records entered against this node, and a way to enter one.
+     *
+     * ⚠️ **The one place the scaffolding accepts a value** ([D-350](../../../docs/NewConcept/90-decision-log.md)),
+     * and it does so as a bare `<input>` that knows nothing about the type — no picker, no
+     * format, no converter. That is what keeps it from being *the second way to draw a field*
+     * [R20a](../../../docs/NewConcept/30-renderer.md) warns about: it has no opinions, so it
+     * cannot drift from the renderers. **The moment it grows one, it must go.**
+     */
+    private function recordsPanel(Node $selected): string
+    {
+        $branch = $this->framework->branchOf($selected);
+
+        if ($branch === null || ! $branch->holdsData()) {
+            return '<h3>' . esc_html__('Records', 'taxmod') . '</h3>'
+                . '<p class="description">'
+                . esc_html__('Only things under Model and Compositions have records of their own.', 'taxmod')
+                . '</p>';
+        }
+
+        $attributes = $this->editor->attributesOf($selected->id);
+        $records    = $this->data->recordsOf($selected->id);
+
+        $html  = '<h3>' . esc_html__('Records', 'taxmod') . '</h3>';
+        $html .= '<p class="description">'
+            . esc_html__('Raw entry — one plain field per attribute, no renderers yet. Deleted when they arrive.', 'taxmod')
+            . '</p>';
+
+        $html .= $this->form(
+            $selected->id,
+            [['add_record', esc_html__('New record', 'taxmod'), __('Start a record against this node', 'taxmod')]]
+        );
+
+        if ($records === []) {
+            return $html . '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>';
+        }
+
+        foreach ($records as $record) {
+            $held = [];
+
+            foreach ($this->data->valuesOf($record->id) as $value) {
+                $held[$value->edgeId] = $value->value->describe();
+            }
+
+            $fields = '';
+
+            foreach ($attributes as $edge) {
+                $fields .= '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0">'
+                    . '<label style="width:11em">' . esc_html($edge->name) . '</label>'
+                    . '<input type="hidden" name="edge_id[]" value="' . (int) $edge->id . '">'
+                    . '<input type="text" name="value[]" value="' . esc_attr($held[$edge->id] ?? '') . '" style="flex:1">'
+                    . '<code style="opacity:.6">' . esc_html($edge->kind->value) . '</code>'
+                    . '</div>';
+            }
+
+            $html .= '<div style="border:1px solid #ddd;padding:.6em;margin:.6em 0">'
+                . '<strong>' . esc_html(sprintf(
+                    /* translators: 1: record id, 2: the model version it was written against. */
+                    __('Record #%1$d · written against version %2$d', 'taxmod'),
+                    $record->id,
+                    $record->modelVersion
+                )) . '</strong>'
+                . $this->form(
+                    $selected->id,
+                    [['save_record', esc_html__('Save', 'taxmod'), __('Write these values', 'taxmod')]],
+                    '<input type="hidden" name="record_id" value="' . (int) $record->id . '">'
+                    . '<div style="flex:1 0 100%">' . $fields . '</div>'
+                )
+                . '</div>';
+        }
+
+        return $html;
     }
 
     // ------------------------------------------------------------------ acting
@@ -537,23 +645,23 @@ final class NodesScreen
      * of the setting and offers the right control; here a number is a number, everything else
      * is text. Nothing about this survives the renderers.
      */
-    private function settingValue(string $raw): SettingValue
+    private function settingValue(string $raw): TypedValue
     {
         $raw = trim($raw);
 
         if ($raw === '') {
-            return SettingValue::nothing();
+            return TypedValue::nothing();
         }
 
         if (preg_match('/^-?\d+$/', $raw) === 1) {
-            return SettingValue::ofInt((int) $raw);
+            return TypedValue::ofInt((int) $raw);
         }
 
         if (preg_match('/^-?\d+\.\d+$/', $raw) === 1) {
-            return SettingValue::ofDecimal($raw);
+            return TypedValue::ofDecimal($raw);
         }
 
-        return SettingValue::ofText($raw);
+        return TypedValue::ofText($raw);
     }
 
     private function selectedFromRequest(): ?Node
@@ -622,9 +730,11 @@ final class NodesScreen
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
-                'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, SettingValue::nothing()),
+                'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
                 'put_label'      => $this->labels->put(new Label($id, '', $this->framework->roleId(SeededRole::from($labelRole)), Label::BASE_NUMBER, $labelLocale, $labelText)),
+                'add_record'     => $this->data->create($id),
+                'save_record'    => $this->saveRecord(),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 

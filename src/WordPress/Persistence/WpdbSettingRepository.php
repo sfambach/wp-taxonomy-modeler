@@ -3,7 +3,7 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Setting;
-use Taxmod\Core\Model\SettingValue;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\SettingRepository;
 
 /**
@@ -88,7 +88,7 @@ final class WpdbSettingRepository implements SettingRepository
         return new Setting(
             (int) $row['owner_id'],
             (string) $row['setting_key'],
-            SettingValue::fromStorage(
+            TypedValue::fromStorage(
                 $row['value_int'] === null ? null : (int) $row['value_int'],
                 $row['value_decimal'] === null ? null : (string) $row['value_decimal'],
                 $row['value_text'] === null ? null : (string) $row['value_text'],

@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
@@ -13,6 +14,7 @@ use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 
@@ -130,6 +132,7 @@ final class Plugin
             new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
             new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes()),
+            new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
             $this->frameworkNodes()
         );
     }

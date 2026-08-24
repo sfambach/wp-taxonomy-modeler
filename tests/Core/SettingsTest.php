@@ -10,7 +10,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\SettingValue;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Tests\Core\Fake\CountingIdentities;
@@ -116,7 +116,7 @@ final class SettingsTest extends TestCase
     {
         $type = $this->type('Text');
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
 
         $resolved = $this->settings->resolve($this->settings->chainFor($type));
 
@@ -130,8 +130,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($chain, SettingKey::Renderer->value, SettingValue::ofText('markdown'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($chain, SettingKey::Renderer->value, TypedValue::ofText('markdown'));
 
         $resolved = $this->settings->resolve($chain);
 
@@ -147,8 +147,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($chain, SettingKey::Icon->value, SettingValue::ofText('dashicons-editor-quote'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($chain, SettingKey::Icon->value, TypedValue::ofText('dashicons-editor-quote'));
 
         $resolved = $this->settings->resolve($chain);
 
@@ -163,8 +163,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $edge  = $this->editor->addAttribute($thing->id, $type->id, 'description');
 
-        $this->settings->put($this->settings->chainFor($type), SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($this->settings->chainForUseSite($edge), SettingKey::Renderer->value, SettingValue::ofText('markdown'));
+        $this->settings->put($this->settings->chainFor($type), SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($this->settings->chainForUseSite($edge), SettingKey::Renderer->value, TypedValue::ofText('markdown'));
 
         $atType = $this->settings->resolve($this->settings->chainFor($type));
         $atSite = $this->settings->resolve($this->settings->chainForUseSite($edge));
@@ -181,8 +181,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($chain, SettingKey::Renderer->value, SettingValue::ofText('markdown'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($chain, SettingKey::Renderer->value, TypedValue::ofText('markdown'));
         $this->settings->reset($type->id, SettingKey::Renderer->value);
 
         $resolved = $this->settings->resolve($chain);
@@ -199,8 +199,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($chain, SettingKey::Renderer->value, SettingValue::nothing());
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($chain, SettingKey::Renderer->value, TypedValue::nothing());
 
         $resolved = $this->settings->resolve($chain);
 
@@ -214,8 +214,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put($chain, SettingKey::Renderer->value, SettingValue::nothing());
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('changed later'));
+        $this->settings->put($chain, SettingKey::Renderer->value, TypedValue::nothing());
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('changed later'));
 
         self::assertTrue($this->settings->resolve($chain)[SettingKey::Renderer->value]->value->isNothing());
     }
@@ -226,9 +226,9 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put($chain, SettingKey::Renderer->value, SettingValue::ofText('mine'));
+        $this->settings->put($chain, SettingKey::Renderer->value, TypedValue::ofText('mine'));
         $this->settings->reset($type->id, SettingKey::Renderer->value);
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('changed later'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('changed later'));
 
         self::assertSame('changed later', $this->settings->resolve($chain)[SettingKey::Renderer->value]->value->text);
     }
@@ -240,8 +240,8 @@ final class SettingsTest extends TestCase
         // the chain.
         $type = $this->type('Text');
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, SettingValue::ofText('plain'));
-        $this->settings->put($this->settings->chainFor($type), SettingKey::Icon->value, SettingValue::ofText('x'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Renderer->value, TypedValue::ofText('plain'));
+        $this->settings->put($this->settings->chainFor($type), SettingKey::Icon->value, TypedValue::ofText('x'));
 
         self::assertSame(2, $this->stored->count());
     }
@@ -254,8 +254,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::DefaultValue->value, SettingValue::ofText('a'));
-        $this->settings->put($chain, SettingKey::DefaultValue->value, SettingValue::ofText('b'));
+        $this->settings->put([self::INSTALLATION], SettingKey::DefaultValue->value, TypedValue::ofText('a'));
+        $this->settings->put($chain, SettingKey::DefaultValue->value, TypedValue::ofText('b'));
 
         self::assertSame('b', $this->settings->resolve($chain)[SettingKey::DefaultValue->value]->value->text);
     }
@@ -266,8 +266,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMax->value, SettingValue::ofInt(5));
-        $this->settings->put($chain, SettingKey::MultiplicityMax->value, SettingValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMax->value, TypedValue::ofInt(5));
+        $this->settings->put($chain, SettingKey::MultiplicityMax->value, TypedValue::ofInt(2));
 
         self::assertSame(2, $this->settings->resolve($chain)[SettingKey::MultiplicityMax->value]->value->int);
     }
@@ -278,11 +278,11 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMax->value, SettingValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMax->value, TypedValue::ofInt(2));
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::MultiplicityMax->value, SettingValue::ofInt(5));
+        $this->settings->put($chain, SettingKey::MultiplicityMax->value, TypedValue::ofInt(5));
     }
 
     #[Test]
@@ -291,14 +291,14 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMin->value, SettingValue::ofInt(1));
-        $this->settings->put($chain, SettingKey::MultiplicityMin->value, SettingValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::MultiplicityMin->value, TypedValue::ofInt(1));
+        $this->settings->put($chain, SettingKey::MultiplicityMin->value, TypedValue::ofInt(2));
 
         self::assertSame(2, $this->settings->resolve($chain)[SettingKey::MultiplicityMin->value]->value->int);
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::MultiplicityMin->value, SettingValue::ofInt(0));
+        $this->settings->put($chain, SettingKey::MultiplicityMin->value, TypedValue::ofInt(0));
     }
 
     #[Test]
@@ -310,11 +310,11 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, SettingValue::ofBool(true));
+        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, TypedValue::ofBool(true));
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::Mandatory->value, SettingValue::ofBool(false));
+        $this->settings->put($chain, SettingKey::Mandatory->value, TypedValue::ofBool(false));
     }
 
     #[Test]
@@ -323,8 +323,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, SettingValue::ofBool(false));
-        $this->settings->put($chain, SettingKey::Mandatory->value, SettingValue::ofBool(true));
+        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, TypedValue::ofBool(false));
+        $this->settings->put($chain, SettingKey::Mandatory->value, TypedValue::ofBool(true));
 
         self::assertTrue($this->settings->resolve($chain)[SettingKey::Mandatory->value]->value->asBool());
     }
@@ -335,11 +335,11 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Hide->value, SettingValue::ofBool(true));
+        $this->settings->put([self::INSTALLATION], SettingKey::Hide->value, TypedValue::ofBool(true));
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::Hide->value, SettingValue::ofBool(false));
+        $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(false));
     }
 
     #[Test]
@@ -348,7 +348,7 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put($chain, SettingKey::MultiplicityMax->value, SettingValue::ofInt(99));
+        $this->settings->put($chain, SettingKey::MultiplicityMax->value, TypedValue::ofInt(99));
 
         self::assertSame(99, $this->settings->resolve($chain)[SettingKey::MultiplicityMax->value]->value->int);
     }
@@ -360,8 +360,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::RangeMax->value, SettingValue::ofDecimal('10'));
-        $this->settings->put($chain, SettingKey::RangeMax->value, SettingValue::ofDecimal('9'));
+        $this->settings->put([self::INSTALLATION], SettingKey::RangeMax->value, TypedValue::ofDecimal('10'));
+        $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofDecimal('9'));
 
         self::assertSame('9', $this->settings->resolve($chain)[SettingKey::RangeMax->value]->value->decimal);
     }
@@ -376,7 +376,7 @@ final class SettingsTest extends TestCase
 
         $this->expectException(ReservedKey::class);
 
-        $this->settings->declareFree($this->settings->chainFor($type), 'hide', SettingValue::ofBool(true));
+        $this->settings->declareFree($this->settings->chainFor($type), 'hide', TypedValue::ofBool(true));
     }
 
     #[Test]
@@ -385,7 +385,7 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->declareFree($chain, 'colour of the label', SettingValue::ofText('green'));
+        $this->settings->declareFree($chain, 'colour of the label', TypedValue::ofText('green'));
 
         self::assertSame('green', $this->settings->resolve($chain)['colour of the label']->value->text);
     }
@@ -398,8 +398,8 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->declareFree([self::INSTALLATION], 'my number', SettingValue::ofInt(1));
-        $this->settings->declareFree($chain, 'my number', SettingValue::ofInt(999));
+        $this->settings->declareFree([self::INSTALLATION], 'my number', TypedValue::ofInt(1));
+        $this->settings->declareFree($chain, 'my number', TypedValue::ofInt(999));
 
         self::assertSame(999, $this->settings->resolve($chain)['my number']->value->int);
     }

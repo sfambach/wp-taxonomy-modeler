@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Model;
 
 /**
- * What a setting holds — in a typed column, never one stringly value cast in and out (D-071).
+ * What a value holds — in a typed column, never one stringly value cast in and out (D-071).
  *
  * ⚠️ **Nothing is a value, and it is not the same as absence** (D-266). A row holding nothing
  * says *deliberately nothing here*, and it **stops** changes at the base from arriving. A row
@@ -13,7 +13,7 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class SettingValue
+final class TypedValue
 {
     private function __construct(
         public readonly ?int $int = null,

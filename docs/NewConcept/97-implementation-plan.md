@@ -70,7 +70,7 @@ Six packages to the point where importing his real data first makes sense.
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself · **done 2026-08-24** |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited · **done 2026-08-24** |
 | **5** | Labels, roles, locales | the same thing is called something else in English · **done 2026-08-24** |
-| **6** | Records | enter something against a model and find it again |
+| **6** | Records | enter something against a model and find it again · **done 2026-08-24** |
 
 **After six, his first TablePress import has something to import into** — 23 tables, some 600
 records, in three shapes ([96 Scenario check](96-scenario-check.md)).
@@ -392,3 +392,54 @@ passages had not been brought forward. Corrected; the chain now reads `<role>·<
 | **2** | **A locale falls back to the neutral row before the role gives way.** | ⚠️ The concept states the **role** chain and says nothing about a missing locale. A label written without a locale is one somebody wrote for everybody; using it beats answering a different question with the help text. | **Medium — it is a chain step nobody decided.** |
 | **3** | **An empty text does not count as an answer** and the chain continues. | A stored empty string is almost always an accident, and treating it as an answer shows a blank where a name should be. ⚠️ *It is the opposite call from settings, where nothing is a deliberate value* ([D-266](90-decision-log.md)) — because there it stops inheritance, and here there is nothing to stop. | Medium. Worth a look. |
 | **4** | **`number` defaults to `one`** and that is the base form every fallback lands on. | [D-216](90-decision-log.md) names the categories and calls the column sparsely filled; something has to be the base. | Low. |
+
+---
+
+## Package 6 — done 2026-08-24
+
+**What it delivers:** records. Enter something against a model node and find it again.
+
+⚠️ **Where a value goes is not a choice either** ([D-232](90-decision-log.md)) — the attribute's
+target sits in a branch, and the branch decides:
+
+| Target branch | The value is |
+|---|---|
+| `Data Types` | inside the record, addressed by path |
+| `Constants` | a reference to a **node** |
+| `Model` | a reference to a **record** |
+| `Compositions` | ⚠️ records of its own — **refused, not built** |
+
+**The last edge sits beside the path** ([D-134](90-decision-log.md)), which is what makes *which
+parts are 4k7* one indexed lookup instead of a walk through every record — and the boundary run
+asks exactly that question.
+
+**A record keeps the model version it was written against** ([D-060](90-decision-log.md),
+[D-210](90-decision-log.md)) — *written against*, not *checked against*. Renaming the model
+afterwards does not restamp it.
+
+**138 core checks** plus 28 · 48 · 23 · 27 · 24 · 21 at the boundary — **309 in all**.
+
+### ⚠️ A rule bent on purpose
+
+[D-350](90-decision-log.md). [D-344](90-decision-log.md) said the scaffolding **draws no value**;
+this package's own check is *enter something and find it again*, which cannot be checked by a
+person without a field. **The line moved, with three fences:** one bare `<input>` per attribute
+that knows nothing about the type, labelled *raw* on screen, and **deleted rather than evolved**
+when the renderers arrive. *A field with no opinions cannot drift from the renderers; the moment
+it grows one — a date picker, a number format, a chooser — it has become the second way to draw
+and must go.*
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **A direct attribute's path is the edge id.** | [D-134](90-decision-log.md) gives the shape `100.101` for nested values; at depth one the path is one step. | Low, and it generalises unchanged. |
+| **2** | **An empty field means unanswered**, and the row is removed. | ⚠️ *A missing row means **not answered**, never **no*** — three states at `0..1`. But nothing says what an **empty text box** means, and *deliberately nothing* would need its own control. | **Medium.** The two are different and the scaffolding cannot express both. |
+| **3** | **A composed target is refused rather than stored inline.** | Storing it inline would look right until somebody tried to share it. | None — it is unfinished work named as such. |
+| **4** | **Writing checks that the attribute belongs to the record's model** — its own or inherited. | An edge id from a form is input, and a value written against an attribute the model does not have is a value nothing will ever read. | None. |
+
+### Not built, and not claimed
+
+**Composed records** (a parts list holding its own lines) · **deleting a record** · **the search
+column** ([D-167](90-decision-log.md)) · **validators and converters** · **the renderers**, which
+are what turns all of this from raw text into a usable editor.
