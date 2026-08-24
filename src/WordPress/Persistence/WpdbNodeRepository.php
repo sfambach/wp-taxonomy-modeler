@@ -129,10 +129,15 @@ final class WpdbNodeRepository implements NodeRepository
 
         // One statement for the whole subtree. Done node by node this would be N+1, which the
         // code standard forbids outright (`CD-7`).
+        //
+        // ⚠️ **The counter rides along in the same UPDATE** (D-349). It has to move: `save()`
+        // writes name and path together, so without it a stale form could rename a node and
+        // write its old path back, silently undoing somebody else's move. Five hundred
+        // descendants cost no extra statement for it.
         $wpdb->query(
             $wpdb->prepare(
                 'UPDATE ' . Schema::table('nodes') . '
-                 SET path = CONCAT(%s, SUBSTRING(path, %d))
+                 SET path = CONCAT(%s, SUBSTRING(path, %d)), version = version + 1
                  WHERE path LIKE %s',
                 $newPath,
                 strlen($oldPath) + 1,

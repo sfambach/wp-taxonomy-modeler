@@ -2374,6 +2374,12 @@ the same shape as [U4](20-interaction.md)'s own question, asked from the other e
 
 ## OQ-084 — Does a node's version move when only its path was rewritten?
 
+> **Closed 2026-08-24 → [D-349](90-decision-log.md).** Yes — every write to the row moves it,
+> including a path rewritten because an ancestor moved, and it costs no extra statement.
+> ⚠️ **Rule A was refuted by testing it:** without the bump, a stale form could rename a node and
+> write its old path back, silently undoing somebody's move. And the counter is **not a version
+> anyone returns to** — what a person means by that is the change group ([D-348](90-decision-log.md)),
+> so the counter stops being labelled *version* on any surface.
 Found by the owner: *the version counts up on restore.* Measured, and the answer is worse than
 the question — **the same event moves it once and not the other time**:
 

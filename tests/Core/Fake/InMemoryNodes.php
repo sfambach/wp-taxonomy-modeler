@@ -101,9 +101,10 @@ final class InMemoryNodes implements NodeRepository
     {
         foreach ($this->rows as $id => $node) {
             if (str_starts_with($node->path, $oldPath . '.')) {
+                // The counter rides along, exactly as the one UPDATE does (D-349).
                 $this->rows[$id] = Node::fromStorage(
                     $node->id,
-                    $node->version,
+                    $node->version + 1,
                     $node->name,
                     $newPath . substr($node->path, strlen($oldPath))
                 );

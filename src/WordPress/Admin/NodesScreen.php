@@ -78,7 +78,6 @@ final class NodesScreen
             $body .= '<td>' . $indent . $this->expander($row, $collapsed)
                 . '<strong>' . esc_html($node->name) . '</strong></td>';
             $body .= '<td><code>' . esc_html($node->path) . '</code></td>';
-            $body .= '<td>' . (int) $node->version . '</td>';
             $body .= '<td>' . $this->rowActions($row, $rows, $root, $mode) . '</td>';
             $body .= '</tr>';
         }
@@ -87,7 +86,6 @@ final class NodesScreen
             . '<thead><tr>'
             . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
             . '<th style="width:10em">' . esc_html__('Path', 'taxmod') . '</th>'
-            . '<th style="width:5em">' . esc_html__('Version', 'taxmod') . '</th>'
             . '<th>' . esc_html__('Actions', 'taxmod') . '</th>'
             . '</tr></thead><tbody>' . $body . '</tbody></table>';
     }

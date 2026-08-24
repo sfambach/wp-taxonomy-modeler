@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
+use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\CannotRestore;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NodeIsProtected;
@@ -679,5 +680,61 @@ final class ModelEditorTest extends TestCase
         self::assertSame([], $result->broughtBack);
         self::assertSame([], $result->leftBehind);
         self::assertTrue($result->everythingCameBack());
+    }
+
+    #[Test]
+    public function moving_a_branch_moves_the_counter_of_everything_in_it(): void
+    {
+        // ⚠️ D-349, and it is a safety property rather than bookkeeping: `save()` writes name
+        // and path together, so a descendant whose path changed without its counter moving
+        // could be renamed from a stale copy and have its old path written back — silently
+        // undoing the move.
+        $a    = $this->editor->createNode('Model', $this->root->id);
+        $b    = $this->editor->createNode('Primitives', $this->root->id);
+        $mid  = $this->editor->createNode('Board', $a->id);
+        $deep = $this->editor->createNode('Resistor', $mid->id);
+
+        $before = $this->nodes->byId($deep->id)->version;
+
+        $this->editor->move($mid->id, $b->id);
+
+        self::assertSame($before + 1, $this->nodes->byId($deep->id)->version);
+    }
+
+    #[Test]
+    public function a_stale_copy_cannot_write_an_old_path_back(): void
+    {
+        $a   = $this->editor->createNode('Model', $this->root->id);
+        $b   = $this->editor->createNode('Primitives', $this->root->id);
+        $x   = $this->editor->createNode('Board', $a->id);
+
+        // Somebody opens the node, somebody else moves it.
+        $stale = $this->nodes->byId($x->id);
+        $this->editor->move($x->id, $b->id);
+
+        $this->expectException(ConcurrentChange::class);
+
+        $this->nodes->save($stale->renamedTo('Platine'), $stale->version);
+    }
+
+    #[Test]
+    public function a_promoted_child_and_a_restored_one_move_the_counter_the_same_way(): void
+    {
+        // The inconsistency that started this: the same event — the child gets a new parent —
+        // used to move the counter once and not the other time.
+        $g     = $this->editor->createNode('Model', $this->root->id);
+        $mid   = $this->editor->createNode('Board', $g->id);
+        $child = $this->editor->createNode('Resistor', $mid->id);
+
+        $atStart = $this->nodes->byId($child->id)->version;
+
+        $this->editor->moveToTrashPromotingChildren($mid->id);
+        $afterPromotion = $this->nodes->byId($child->id)->version;
+
+        $this->editor->restore($mid->id);
+        $afterRestore = $this->nodes->byId($child->id)->version;
+
+        self::assertGreaterThan($atStart, $afterPromotion, 'promotion moves it');
+        self::assertGreaterThan($afterPromotion, $afterRestore, 'and so does coming back');
     }
 }
