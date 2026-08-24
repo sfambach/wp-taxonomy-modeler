@@ -92,3 +92,29 @@ in the SQLite integration (`sqlite-database-integration` plugin → copy its
   `package.json` and make that install meaningful automatically.
 - If a `composer.json` is added later, install Composer and run
   `composer install`; it is not preinstalled.
+
+### ⚠️ Watch out: a cloud client on the source folder
+
+**2026-08-24 — a file vanished mid-session.** `src/WordPress/Admin/NodesScreen.php` was rewritten,
+and moments later it lay on disk as `NodesScreen [conflicted].php`. The class stopped loading, the
+admin screen died with a fatal error, and a `git add -A` recorded the **deletion** in a commit.
+
+**`[conflicted]` is pCloud's naming**, `pCloud.exe` was running, and pCloud's own database lists
+`C:\Devel`. The owner has since excluded the source folder. ⚠️ *He also notes he only backs up
+and never restores from the cloud — which makes the mechanism less obvious, because a one-way
+backup should not rename a local file. What is certain is that the rename happened and that no
+other candidate uses that naming.*
+
+**Two rules that follow, and they are cheap:**
+
+- **Never delete-and-recreate a file that already exists** — overwrite it. The rapid
+  delete/create pair is what looked like a conflict.
+- **Read `git status` before committing.** `git add -A` turns a file somebody else renamed into
+  a committed deletion, and nothing warns you.
+
+⚠️ **Whether this also hurt the previous round is unknown and probably unknowable.** The history
+was searched: no `[conflicted]` file was ever committed, and the deleted-then-re-added paths are
+the deliberate rules reorganisation. **But git only sees commits** — a file broken and repaired
+before the next one leaves no trace, and that is exactly what *the assistant is hallucinating and
+we keep going in circles* would feel like from the outside. Recorded as a possibility, not a
+finding.
