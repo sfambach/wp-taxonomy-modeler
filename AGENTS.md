@@ -57,6 +57,12 @@ that layout locally — you run them on your machine.
 | This repo | `C:\devel\wordpress\source\wp-taxonomy-modeler` |
 | Laragon | `C:\laragon` |
 
+⚠️ **The local folder is still called `wp-taxonomy-tree`.** The repository was renamed on
+2026-08-24 ([D-336](docs/NewConcept/90-decision-log.md)); the directory rename failed because a
+process on the machine holds the folder open. It is **cosmetic** — WordPress takes the plugin
+slug from the symlink name in `wp-content/plugins/`, not from the source folder — and is done
+at the next restart, together with the symlink, when the plugin first loads again.
+
 **Start setup:** double-click **`scripts/windows/setup-dev.bat`** (not `.ps1`).
 
 `setup-dev.bat` does **not** run `git pull` anymore (that broke `scripts\windows`
