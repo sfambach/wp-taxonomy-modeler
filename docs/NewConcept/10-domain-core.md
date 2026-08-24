@@ -594,17 +594,19 @@ appearance.
 
 ---
 
-### Resources
+### Links
 
-**A resource is an ordinary type under `Model`** with attachment id, URL, source and licence — an
+**A `Link` is an ordinary type under `Model`** with attachment id, URL, source and licence — an
 ordinary record, aggregated by whoever uses it ([D-229](90-decision-log.md)).
 
-⚠️ **The URL is always there; the copy is optional** ([D-322](90-decision-log.md)). A resource with no
-copy **is** a link — a web page is simply one that is rarely copied. Where both exist, the **URL** is
+⚠️ **A link carries one or more addresses** ([D-323](90-decision-log.md)) — a URL, an identifier in
+the media library, or both. **There is no case that is not a link:** a remote PDF points outward, a
+mirrored one inward, an uploaded image was never anywhere else. ⚠️ **A link with no address is not a
+link** — at least one must be there, and which is free. Where both exist, the **URL** is
 the living source and the **copy** the snapshot ([D-211](90-decision-log.md)): one tracks, the other
 freezes.
 
-⚠️ **A resource is something you *fetch*; an address is something you *contact*.** An email address
+⚠️ **A link is something you *fetch*; an address is something you *contact*.** An email address
 is a property of a person, like a telephone number — so `email` stays its own type, with a renderer
 that draws it clickable.
 
