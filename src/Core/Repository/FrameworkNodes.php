@@ -4,6 +4,7 @@ namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\SeededRole;
 /**
  * The few nodes the machinery stands on — the root, and the node parked things go under.
  *
@@ -37,6 +38,15 @@ interface FrameworkNodes
      * WordPress options at the boundary. They are not model settings and are not in this walk.
      */
     public function installationId(): int;
+
+    /**
+     * The node one of the seeded label roles lives in.
+     *
+     * ⚠️ **Roles are nodes** (D-151), so `labels.role_id` is a real reference: a picker instead
+     * of free text, no typo roles pointing nowhere, and a role that can carry properties of its
+     * own — the length hints of D-152 are settings **on the role node**.
+     */
+    public function roleId(SeededRole $role): int;
 
     /**
      * The node a branch hangs from — `Model`, `Compositions`, `Data Types`, `Constants`.

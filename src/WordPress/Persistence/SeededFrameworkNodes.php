@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
@@ -37,6 +38,10 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
     /** The reserved identity installation-wide settings hang on (OQ-039). Not a node. */
     private const INSTALLATION_OPTION = 'taxmod_installation_id';
+
+    /** Label roles are nodes (D-151) and live in their own container, not in a data branch. */
+    private const ROLES_OPTION        = 'taxmod_roles_id';
+    private const ROLE_OPTION_PREFIX  = 'taxmod_role_';
 
     /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
@@ -107,6 +112,12 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return $id;
     }
 
+
+    public function roleId(SeededRole $role): int
+    {
+        return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
+    }
+
     public function isProtected(Node $node): bool
     {
         return in_array($node->id, $this->protectedIds(), true);
@@ -130,6 +141,14 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         $this->ensure(self::BRANCH_OPTIONS['data-types'], 'Data Types', $primitives);
         $this->ensure(self::BRANCH_OPTIONS['constants'], 'Constants', $primitives);
+
+        // ⚠️ Roles are nodes and sit in **no data branch** — an attribute must not be able to
+        // point at one. They are the engine's own vocabulary (D-151).
+        $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $root);
+
+        foreach (SeededRole::cases() as $role) {
+            $this->ensure(self::ROLE_OPTION_PREFIX . $role->value, $role->value, $roles);
+        }
     }
 
     /** @return list<int> */

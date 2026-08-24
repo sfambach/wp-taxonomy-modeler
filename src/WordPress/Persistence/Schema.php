@@ -45,8 +45,10 @@ final class Schema
      * 4 — the changelog gains `change_group_id`, the bracket around one act (D-348).
      * 5 — the three branches are seeded as framework nodes; no table changed, but the version
      *     moves so that an already-installed copy gets them (D-161).
+     * 6 — the label roles are seeded as nodes under their own container (D-151); again no
+     *     table changed, and again the version is what carries them to an installed copy.
      */
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 

@@ -4,11 +4,14 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Plugin;
@@ -37,6 +40,7 @@ final class NodesScreen
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
         private readonly Settings $settings,
+        private readonly Labels $labels,
         private readonly FrameworkNodes $framework,
     ) {
     }
@@ -250,7 +254,9 @@ final class NodesScreen
 
         $html .= $this->attributes($selected, $rows);
 
-        return $html . $this->settingsPanel($selected);
+        $html .= $this->settingsPanel($selected);
+
+        return $html . $this->labelsPanel($selected);
     }
 
     /**
@@ -438,6 +444,83 @@ final class NodesScreen
         );
     }
 
+
+    /**
+     * What this node is called in each seeded role — resolved, with the chain doing its work.
+     *
+     * ⚠️ **A diagnostic like the settings panel**: it prints the resolved text and whether it
+     * came from a stored label or fell through to the node's own name. The real editor offers
+     * the roles beside the name, which is what keeps them filled at all (D-196) — and it
+     * arrives with the renderers.
+     */
+    private function labelsPanel(Node $selected): string
+    {
+        $locale = $this->localeFromRequest();
+        $stored = [];
+
+        foreach ($this->labels->storedFor($selected->id) as $label) {
+            $stored[$label->roleId . "\0" . $label->locale] = $label->text;
+        }
+
+        $body = '';
+
+        foreach (SeededRole::cases() as $role) {
+            $roleId  = $this->framework->roleId($role);
+            $written = $stored[$roleId . "\0" . $locale] ?? null;
+
+            $body .= '<tr>'
+                . '<td><code>' . esc_html($role->value) . '</code></td>'
+                . '<td>' . esc_html($this->labels->of($selected, $role, $locale)) . '</td>'
+                . '<td>' . ($written !== null
+                    ? esc_html__('stored', 'taxmod')
+                    : '<em>' . esc_html__('fell through', 'taxmod') . '</em>')
+                . '</td>'
+                . '<td>' . ($role->translatableByDefault()
+                    ? ''
+                    : '<span title="' . esc_attr__('A symbol is the same everywhere; translating it invites a wrong entry.', 'taxmod') . '">'
+                        . esc_html__('not translated by default', 'taxmod') . '</span>')
+                . '</td>'
+                . '</tr>';
+        }
+
+        $html  = '<h3>' . esc_html__('Labels', 'taxmod') . '</h3>';
+        $html .= '<p class="description">'
+            . esc_html(sprintf(
+                /* translators: %s is a locale code, or the word for none. */
+                __('Chain: role → help → the node\'s own name. Locale: %s', 'taxmod'),
+                $locale === '' ? __('neutral', 'taxmod') : $locale
+            ))
+            . '</p>';
+
+        $html .= '<table class="wp-list-table widefat striped"><thead><tr>'
+            . '<th style="width:6em">' . esc_html__('Role', 'taxmod') . '</th>'
+            . '<th>' . esc_html__('Shows as', 'taxmod') . '</th>'
+            . '<th style="width:7em">' . esc_html__('Source', 'taxmod') . '</th>'
+            . '<th></th>'
+            . '</tr></thead><tbody>' . $body . '</tbody></table>';
+
+        $options = '';
+
+        foreach (SeededRole::cases() as $role) {
+            $options .= '<option value="' . esc_attr($role->value) . '">' . esc_html($role->value) . '</option>';
+        }
+
+        return $html . $this->form(
+            $selected->id,
+            [['put_label', esc_html__('Set label', 'taxmod'), __('Write it for this role and locale', 'taxmod')]],
+            '<select name="label_role">' . $options . '</select>'
+            . '<input type="text" name="label_locale" value="' . esc_attr($locale) . '" placeholder="' . esc_attr__('locale', 'taxmod') . '" style="width:6em">'
+            . '<input type="text" name="label_text" placeholder="' . esc_attr__('text', 'taxmod') . '" style="flex:1">'
+        );
+    }
+
+    private function localeFromRequest(): string
+    {
+        return isset($_GET['taxmod_locale'])
+            ? sanitize_text_field(wp_unslash($_GET['taxmod_locale']))
+            : '';
+    }
+
     // ------------------------------------------------------------------ acting
 
 
@@ -520,6 +603,9 @@ final class NodesScreen
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         $settingValue = isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '';
+        $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
+        $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
+        $labelText    = isset($_POST['label_text']) ? sanitize_text_field(wp_unslash($_POST['label_text'])) : '';
         $stay   = $id;
 
         try {
@@ -538,6 +624,7 @@ final class NodesScreen
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, SettingValue::nothing()),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
+                'put_label'      => $this->labels->put(new Label($id, '', $this->framework->roleId(SeededRole::from($labelRole)), Label::BASE_NUMBER, $labelLocale, $labelText)),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 

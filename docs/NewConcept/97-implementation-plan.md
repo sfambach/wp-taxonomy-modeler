@@ -69,7 +69,7 @@ Six packages to the point where importing his real data first makes sense.
 | **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself · **done 2026-08-24** |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited · **done 2026-08-24** |
-| **5** | Labels, roles, locales | the same thing is called something else in English |
+| **5** | Labels, roles, locales | the same thing is called something else in English · **done 2026-08-24** |
 | **6** | Records | enter something against a model and find it again |
 
 **After six, his first TablePress import has something to import into** — 23 tables, some 600
@@ -354,3 +354,41 @@ ancestor declares mandatory stays mandatory ([D-311](90-decision-log.md)).
 and comes back as `2.5000000000`. The **value** is exact, and the notation is a rendering
 question — but the **scale** is fixed at ten places for every decimal in the system, and nothing
 in the concept decided that. A physical constant wanting twelve places would lose two, silently.
+
+---
+
+## Package 5 — done 2026-08-24
+
+**What it delivers:** labels, and the chain that decides what to show when nobody has said.
+
+```mermaid
+flowchart LR
+  A["role · number"] --> B["role · one"] --> C["help · one"] --> D["node.name"]
+```
+
+**Roles are nodes** ([D-151](90-decision-log.md)), seeded as `form`, `table`, `select`, `symbol`,
+`help` ([D-196](90-decision-log.md)) under a container of their own — ⚠️ **in no data branch**, so
+an attribute cannot point at one. **Number before role** ([D-153](90-decision-log.md)): a missing
+plural falls back to the base form of the **same** role before the role gives way.
+
+⚠️ **The chain never ends on nothing.** Its last step is the node's own name, which always exists
+([D-022](90-decision-log.md)) — an empty cell where a name should be is worse than the internal
+name.
+
+**123 core checks** plus 28 · 48 · 23 · 27 · 24 at the boundary.
+
+### What building it found
+
+⚠️ **[40 I18n](40-i18n.md) still said the `long` versus `help` question was open.** It was settled
+on 2026-08-23 by [D-209](90-decision-log.md) — *`long` is gone, it is defined as `help`* — and two
+passages had not been brought forward. Corrected; the chain now reads `<role>·<number>` →
+`<role>·one` → `help·one` → `node.name` in both places.
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **Roles live under a framework container of their own, outside every data branch.** | [D-151](90-decision-log.md) says *under their own branch*; the four branches are data branches with a relation kind each, and a role has none. | Low. If roles should be pointable-at, this is where it will be noticed. |
+| **2** | **A locale falls back to the neutral row before the role gives way.** | ⚠️ The concept states the **role** chain and says nothing about a missing locale. A label written without a locale is one somebody wrote for everybody; using it beats answering a different question with the help text. | **Medium — it is a chain step nobody decided.** |
+| **3** | **An empty text does not count as an answer** and the chain continues. | A stored empty string is almost always an accident, and treating it as an answer shows a blank where a name should be. ⚠️ *It is the opposite call from settings, where nothing is a deliberate value* ([D-266](90-decision-log.md)) — because there it stops inheritance, and here there is nothing to stop. | Medium. Worth a look. |
+| **4** | **`number` defaults to `one`** and that is the base form every fallback lands on. | [D-216](90-decision-log.md) names the categories and calls the column sparsely filled; something has to be the base. | Low. |

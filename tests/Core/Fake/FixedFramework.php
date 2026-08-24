@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\FrameworkNodes;
 
 /** A root, a trash and the four branch roots, made once and protected. */
@@ -17,6 +18,8 @@ final class FixedFramework implements FrameworkNodes
         private readonly Node $trash,
         private readonly array $branchRoots = [],
         private readonly int $installationId = 999000,
+        /** @var array<string,int> */
+        private readonly array $roleIds = [],
     ) {
     }
 
@@ -46,6 +49,12 @@ final class FixedFramework implements FrameworkNodes
         return null;
     }
 
+
+
+    public function roleId(SeededRole $role): int
+    {
+        return $this->roleIds[$role->value] ?? 0;
+    }
 
     public function installationId(): int
     {
