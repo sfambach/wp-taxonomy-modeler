@@ -594,13 +594,19 @@ appearance.
 
 ---
 
-### Media
+### Resources
 
-**A medium is an ordinary type under `Model`** with attachment id, URL, source and licence — an
+**A resource is an ordinary type under `Model`** with attachment id, URL, source and licence — an
 ordinary record, aggregated by whoever uses it ([D-229](90-decision-log.md)).
 
-⚠️ **Two locations on purpose** ([D-211](90-decision-log.md)): the **URL** is the living source, the
-**copy** is the snapshot. One tracks, the other freezes.
+⚠️ **The URL is always there; the copy is optional** ([D-322](90-decision-log.md)). A resource with no
+copy **is** a link — a web page is simply one that is rarely copied. Where both exist, the **URL** is
+the living source and the **copy** the snapshot ([D-211](90-decision-log.md)): one tracks, the other
+freezes.
+
+⚠️ **A resource is something you *fetch*; an address is something you *contact*.** An email address
+is a property of a person, like a telephone number — so `email` stays its own type, with a renderer
+that draws it clickable.
 
 The **file** lives in the WordPress media library; our model holds the identifier as **text** — an
 opaque key of a foreign system, so the core knows nothing of WordPress. Existence is checked **at
