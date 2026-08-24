@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnNotice="true"
+         failOnDeprecation="true"
+         beStrictAboutOutputDuringTests="true">
+    <testsuites>
+        <!--
+            The core suite loads no WordPress at all. That is the point: a WordPress call
+            drifting into Taxmod\Core fails here on the first run rather than years later
+            when somebody tries to reuse the core (CD-1, D-169, D-170).
+        -->
+        <testsuite name="core">
+            <directory>tests/Core</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src/Core</directory>
+        </include>
+    </source>
+</phpunit>

@@ -30,6 +30,7 @@ tables and a node that survives a restart.
 | **PR-6** | **Documentation style** per [`98-documentation-style.md`](docs/NewConcept/98-documentation-style.md): one small mermaid diagram per *Sachverhalt*, explanation beneath, code only where detail demands it. Code blocks are labelled `CONTRACT` or `SKETCH`. |
 | **PR-7** | **Report faithfully.** If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. |
 | **PR-8** | **Rule hygiene** applies to this file — see the last section. |
+| **PR-9** | **Both test runs are green before anything is committed** ([D-342](docs/NewConcept/90-decision-log.md)) — the **core** run under PHPUnit, which loads no WordPress, and the **boundary** run against a real database. **Every package adds its checks to the net**; a package nothing guards is one the next may quietly break. See [`tests/README.md`](tests/README.md). |
 
 Dev environment (Laragon on Windows, SQLite on the cloud VM): [`AGENTS.md`](AGENTS.md).
 
