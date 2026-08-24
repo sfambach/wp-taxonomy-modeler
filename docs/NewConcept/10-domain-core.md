@@ -825,11 +825,18 @@ carries the *kilo*. That is what makes a sum over mixed prefixes possible at all
 ([D-087](90-decision-log.md)). There is no separate *node override* and *use-site override*, only
 one construct with a different `owner_id`.
 
-⚠️ **An override may narrow *and* widen — there is no monotonicity rule**
-([D-088](90-decision-log.md)). A use site may allow something the node did not.
+⚠️ **Bounding settings may only be tightened downwards; choosing settings are free**
+([D-312](90-decision-log.md), superseding [D-310](90-decision-log.md) and the widening half of
+[D-088](90-decision-log.md)).
 
-> ✅ **Settled the same evening by [D-310](90-decision-log.md):** [D-088](90-decision-log.md) stands.
-> The *never widen* sentence was my over-generalisation of [D-221](90-decision-log.md)'s unit case.
+| Kind | Examples | Direction |
+|---|---|---|
+| **bounding** — it limits what is possible | permitted set · range `min`/`max` · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
+| **choosing** — it picks within the bounds | default value · renderer · converter · labels · icon · order | **free** |
+
+**Why the strict half:** a restriction that may be reopened anywhere **says nothing when read** —
+to know what is allowed you would have to inspect every use site. **And what an ancestor declares
+mandatory stays mandatory for every descendant** ([D-311](90-decision-log.md)).
 
 **Orphaned overrides are never cascade-deleted** ([D-033](90-decision-log.md)); they are promoted
 ([D-156](90-decision-log.md)) or shown, never quietly removed.
