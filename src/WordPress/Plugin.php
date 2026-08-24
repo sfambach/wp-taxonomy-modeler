@@ -8,6 +8,7 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
+use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
@@ -76,6 +77,10 @@ final class Plugin
         if ($before !== Schema::VERSION) {
             $this->frameworkNodes()->seed();
         }
+
+        // Its own version, because the scaffold is content and the schema is machinery — they
+        // move for different reasons and must not drag each other along.
+        $this->baseScaffold()->importOnce();
     }
 
     public function activate(): void
@@ -84,6 +89,7 @@ final class Plugin
         update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
         $this->frameworkNodes()->seed();
+        $this->baseScaffold()->importOnce();
     }
 
     public function registerMenu(): void
@@ -113,6 +119,11 @@ final class Plugin
             $this->frameworkNodes(),
             new WpdbChangelog(new SystemClock())
         );
+    }
+
+    private function baseScaffold(): BaseScaffold
+    {
+        return new BaseScaffold($this->editor(), $this->frameworkNodes());
     }
 
     private function frameworkNodes(): SeededFrameworkNodes

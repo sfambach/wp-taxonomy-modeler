@@ -21,6 +21,7 @@ php scripts/dev/package3-check.php /path/to/wordpress
 php scripts/dev/package4-check.php /path/to/wordpress
 php scripts/dev/package5-check.php /path/to/wordpress
 php scripts/dev/package6-check.php /path/to/wordpress
+php scripts/dev/scaffold-check.php /path/to/wordpress
 ```
 
 ⚠️ **A WordPress call that drifts into `Taxmod\Core` fails on the first run**, immediately,

@@ -29,6 +29,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\ReservedKey;
+use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
@@ -124,11 +125,11 @@ $rows = (int) $wpdb->get_var($wpdb->prepare(
 check('one written setting, one row', $rows === 1, "$rows rows");
 
 echo "\n== 7. Bounding narrows, choosing is free ==\n";
-$settings->put($chainType, SettingKey::MultiplicityMax->value, TypedValue::ofInt(5));
-$settings->put($chainSite, SettingKey::MultiplicityMax->value, TypedValue::ofInt(2));
-check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::MultiplicityMax->value]->value->int === 2);
+$settings->put($chainType, SettingKey::RangeMax->value, TypedValue::ofInt(5));
+$settings->put($chainSite, SettingKey::RangeMax->value, TypedValue::ofInt(2));
+check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::RangeMax->value]->value->int === 2);
 
-try { $settings->put($chainSite, SettingKey::MultiplicityMax->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
+try { $settings->put($chainSite, SettingKey::RangeMax->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
 catch (CannotWiden $e) { check('and may not be raised', true); }
 
 $settings->put($chainType, SettingKey::Mandatory->value, TypedValue::ofBool(true));
@@ -138,6 +139,42 @@ catch (CannotWiden $e) { check('mandatory stays mandatory', true); }
 $settings->put($chainType, SettingKey::DefaultValue->value, TypedValue::ofText('a'));
 $settings->put($chainSite, SettingKey::DefaultValue->value, TypedValue::ofText('b'));
 check('a default is free', $settings->resolve($chainSite)[SettingKey::DefaultValue->value]->value->text === 'b');
+
+echo "\n== 7b. Multiplicity — four constants, on the edge (D-351) ==\n";
+try {
+    $settings->put($chainType, SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
+    check('a node has no multiplicity', false);
+} catch (SettingDoesNotApply $e) { check('a node has no multiplicity', true); }
+
+try {
+    $settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('3..7'));
+    check('and 3..7 is not one of the four', false);
+} catch (SettingDoesNotApply $e) { check('and 3..7 is not one of the four', true); }
+
+$settings->put([$installation], SettingKey::Multiplicity->value, TypedValue::ofText('0..*'));
+$settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
+check('0..* narrows to 1..1', $settings->resolve($chainSite)[SettingKey::Multiplicity->value]->value->text === '1..1');
+
+// ⚠️ Correcting your own override back to what is still inherited is NOT widening — the bound
+// is what came from above, not what you last typed. Otherwise a mistake could only be undone
+// through a reset, and D-312 never asked for that.
+$settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('0..1'));
+check('an own override may be corrected within the inherited bound',
+    $settings->resolve($chainSite)[SettingKey::Multiplicity->value]->value->text === '0..1');
+
+$settings->reset($edge->id, SettingKey::Multiplicity->value);
+$settings->put([$installation], SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
+
+try { $settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('0..*')); check('what is inherited narrow does not widen', false); }
+catch (CannotWiden $e) { check('what is inherited narrow does not widen', true); }
+
+$settings->reset($edge->id, SettingKey::Multiplicity->value);
+$settings->put([$installation], SettingKey::Multiplicity->value, TypedValue::ofText('0..1'));
+
+try { $settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('1..*')); check('0..1 and 1..* are incomparable, so neither replaces the other', false); }
+catch (CannotWiden $e) { check('0..1 and 1..* are incomparable, so neither replaces the other', true); }
+
+$settings->reset($installation, SettingKey::Multiplicity->value);
 
 echo "\n== 8. Reserved names ==\n";
 try { $settings->declareFree($chainType, 'hide', TypedValue::ofBool(true)); check('an engine name is refused', false); }
