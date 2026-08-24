@@ -47,22 +47,23 @@ that layout locally — you run them on your machine.
 | | Cloud VM (agent) | Your Windows PC |
 |---|---|---|
 | WordPress | `~/wordpress` + SQLite | `C:\devel\wordpress` + Laragon MySQL |
-| Plugin source | `/workspace` symlink | `C:\devel\wordpress\source\wp-taxonomy-modeler` junction |
+| Plugin source | `/workspace` symlink | `C:\devel\wordpress\source\wp-taxonomy-tree` junction |
 | URL | `http://localhost:8080` | `http://devel.test` |
 
 | Role | Path |
 |------|------|
 | WordPress docroot | `C:\devel\wordpress` |
 | GitHub source checkouts | `C:\devel\wordpress\source` |
-| This repo | `C:\devel\wordpress\source\wp-taxonomy-modeler` |
+| This repo | `C:\devel\wordpress\source\wp-taxonomy-tree` |
 | Laragon | `C:\laragon` |
 
-⚠️ **The local folder is still called `wp-taxonomy-tree`.** The repository was renamed on
-2026-08-24 ([D-336](docs/NewConcept/90-decision-log.md)); the directory rename failed because a
-process on the machine holds the folder open. It is **cosmetic** — WordPress takes the plugin
-slug from the symlink name in `wp-content/plugins/`, not from the source folder — and is done
-at the next restart, together with the symlink, when the plugin first loads again.
 
+⚠️ **The local folder is `wp-taxonomy-tree`, the repository is `wp-taxonomy-modeler`.** The
+repository was renamed on 2026-08-24 ([D-336](docs/NewConcept/90-decision-log.md)); the folder
+deliberately was **not**. It is cosmetic — WordPress takes the plugin slug from the symlink name
+in `wp-content/plugins/`, not from the source folder — and renaming it meant closing the editor
+for nothing. ⚠️ **So a fresh `git clone` produces `wp-taxonomy-modeler` and this machine has
+`wp-taxonomy-tree`. Both are the same repository.**
 **Start setup:** double-click **`scripts/windows/setup-dev.bat`** (not `.ps1`).
 
 `setup-dev.bat` does **not** run `git pull` anymore (that broke `scripts\windows`

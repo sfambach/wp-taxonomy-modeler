@@ -64,7 +64,7 @@ One name for people, one for machines:
 | | |
 |---|---|
 | Product name | **Taxonomy Modeller** |
-| Repository, plugin folder | `wp-taxonomy-modeler` |
+| Repository | `wp-taxonomy-modeler` |
 | PHP namespace | `Taxmod\Core\…` · `Taxmod\WordPress\…` |
 | Database tables | `{$wpdb->prefix}taxmod_…` |
 | Gutenberg blocks | `taxmod/<slug>` |
@@ -77,11 +77,16 @@ One name for people, one for machines:
 |------|------|
 | WordPress docroot | `C:\devel\wordpress` — served as `http://devel.test` |
 | Source checkouts | `C:\devel\wordpress\source` |
-| This repository | `C:\devel\wordpress\source\wp-taxonomy-modeler` |
+| This repository | `C:\devel\wordpress\source\wp-taxonomy-tree` |
 
 ```bash
 git clone https://github.com/sfambach/wp-taxonomy-modeler.git
 ```
+
+⚠️ **A fresh clone produces `wp-taxonomy-modeler`; the owner's machine has `wp-taxonomy-tree`.**
+Same repository — the folder was deliberately not renamed with it. WordPress takes the plugin
+slug from the symlink in `wp-content/plugins/`, not from the source folder, so the name is
+cosmetic.
 
 Details, including the cloud VM with SQLite: [`AGENTS.md`](AGENTS.md).
 
