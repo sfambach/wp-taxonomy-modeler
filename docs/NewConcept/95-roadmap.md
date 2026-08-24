@@ -75,9 +75,11 @@ not wanted three times is probably not wanted.
 
 ## Still to write
 
-- Phases within Release 1, each with an entry and an exit condition.
-- What *locked* means for [10 Domain core](10-domain-core.md), since [PR-2](../../CLAUDE.md) makes
-  it the gate before any production code.
+- ✅ *What `locked` means was settled by [D-314](90-decision-log.md): a person must be able to
+  **check** what was built, which is what [the core on one page](10-domain-core.md#the-core-on-one-page)
+  is for.*
+- Phases beyond the first cut of six ([97 Implementation plan](97-implementation-plan.md)) — the
+  seventh package is decided when the sixth is done.
 
 ## Harvest candidates
 
