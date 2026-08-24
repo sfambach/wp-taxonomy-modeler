@@ -250,3 +250,25 @@ deleted node, which [D-127](90-decision-log.md) names explicitly.
 
 *Reported rather than left out. It is not needed to finish Package 2 and it is needed before
 deletion can be trusted with attributes.*
+
+### The bracket and the attributes — noted for Package 3
+
+The owner, while the change group was being built: *later, something will probably have to happen
+with the attributes in the same change group.*
+
+⚠️ **He is right, and [D-127](90-decision-log.md) says it in as many words** — *the node **and
+every edge that pointed at it***. An attribute **is** an edge ([D-031](90-decision-log.md)), so
+deleting a node parks every attribute that used it, and those rows belong under the same bracket
+as the deletion that caused them. Without it, [D-347](90-decision-log.md)'s restore brings back a
+node whose attributes stayed in the trash — the exact failure [D-127](90-decision-log.md) was
+written to prevent.
+
+**Nothing is missing in the concept; it is a piece of work.** It cannot be built before Package 3,
+because there are no attributes yet. Recorded here so that it is built **with** them rather than
+noticed afterwards:
+
+| When attributes exist | What must fall under the deleting act's bracket |
+|---|---|
+| a node is parked | every edge pointing **at** it, parked with it ([D-127](90-decision-log.md)) |
+| an attribute is removed at one use site | the edge, and the orphaned overrides promoted per [D-156](90-decision-log.md) |
+| a node moves between branches | the reparenting and every edge whose **kind** it rewrote ([D-162](90-decision-log.md)) |

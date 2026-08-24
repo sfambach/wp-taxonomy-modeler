@@ -201,8 +201,50 @@ check('the parked node is shown when collapsed', in_array($r1->id, $idsInTrash($
 check('its child is not', ! in_array($r2->id, $idsInTrash($collapsedTrash), true));
 check('and it was, when open', in_array($r2->id, $idsInTrash($openTrash), true));
 
-echo "\n== 12. The check cleans up after itself ==\n";
-foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id, $r1->id, $r2->id] as $scratch) {
+echo "\n== 12. One bracket around one act ==\n";
+$bg = $editor->createNode('__check BG', $treeRoot->id);
+$bm = $editor->createNode('__check BM', $bg->id);
+$bk = $editor->createNode('__check BK', $bm->id);
+$bk2 = $editor->createNode('__check BK2', $bm->id);
+
+$editor->moveToTrashPromotingChildren($bm->id);
+
+$groups = $wpdb->get_col($wpdb->prepare(
+    'SELECT DISTINCT change_group_id FROM ' . Schema::table('changelog') . ' WHERE owner_id IN (%d, %d, %d) AND what IN ("promoted", "parked")',
+    $bm->id, $bk->id, $bk2->id
+));
+check('promotion and parking share one group', count($groups) === 1, count($groups) . ' groups');
+$rows = $wpdb->get_results($wpdb->prepare(
+    'SELECT owner_id, what FROM ' . Schema::table('changelog') . ' WHERE change_group_id = %d ORDER BY id',
+    (int) $groups[0]
+), ARRAY_A);
+$whats = array_column($rows, 'what');
+check('both children are named individually', array_count_values($whats)['promoted'] === 2, implode(', ', $whats));
+check('and the parking is in there too', in_array('parked', $whats, true));
+
+echo "\n== 13. Restoring brings the promoted children back ==\n";
+$result = $editor->restore($bm->id);
+check('the node is back under its parent', $nodes->byId($bm->id)->path === $bg->path . '.' . $bm->id, $nodes->byId($bm->id)->path);
+check('the first child came with it', $nodes->byId($bk->id)->path === $nodes->byId($bm->id)->path . '.' . $bk->id, $nodes->byId($bk->id)->path);
+check('the second too', $nodes->byId($bk2->id)->path === $nodes->byId($bm->id)->path . '.' . $bk2->id);
+check('and nothing was reported left behind', $result->everythingCameBack(), implode(', ', $result->leftBehind));
+
+echo "\n== 14. A child moved since is left where it is ==\n";
+$mg = $editor->createNode('__check MG', $treeRoot->id);
+$mm = $editor->createNode('__check MM', $mg->id);
+$stays = $editor->createNode('__check stays', $mm->id);
+$moves = $editor->createNode('__check moves', $mm->id);
+
+$editor->moveToTrashPromotingChildren($mm->id);
+$editor->move($moves->id, $treeRoot->id);
+$result2 = $editor->restore($mm->id);
+
+check('the untouched child came back', $nodes->byId($stays->id)->path === $nodes->byId($mm->id)->path . '.' . $stays->id);
+check('the moved one stayed where a person put it', $nodes->byId($moves->id)->path === $treeRoot->path . '.' . $moves->id, $nodes->byId($moves->id)->path);
+check('and it was named rather than silently skipped', $result2->leftBehind === ['__check moves'], implode(', ', $result2->leftBehind));
+
+echo "\n== 15. The check cleans up after itself ==\n";
+foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id, $r1->id, $r2->id, $bg->id, $bm->id, $bk->id, $bk2->id, $mg->id, $mm->id, $stays->id, $moves->id] as $scratch) {
     $node = $nodes->find($scratch);
     if ($node !== null) { $nodes->purgeSubtree($node); }
 }

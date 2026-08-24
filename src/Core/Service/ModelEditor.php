@@ -121,16 +121,42 @@ final class ModelEditor
         $edge        = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
         $grandparent = $this->nodes->byId($edge->fromId);
 
+        // ⚠️ **One row per promoted child, not one row saying *the children moved*** (D-348).
+        // A restore has to know **which** child went **where** to put it back, and *these
+        // children moved* is not an answer. Read before the move, written in one statement.
+        $promoted = [];
+
+        foreach ($this->relations->childEdgesOf($id) as $childEdge) {
+            $child = $this->nodes->find($childEdge->toId);
+
+            if ($child === null) {
+                continue;
+            }
+
+            $promoted[] = [
+                'ownerId'   => $child->id,
+                'ownerKind' => 'node',
+                'what'      => 'promoted',
+                'before'    => $child->path,
+                'after'     => $grandparent->path . '.' . $child->id,
+            ];
+        }
+
         // Both halves in one statement each: the edges repoint together, and the paths of every
         // descendant are rewritten by dropping this node out of the middle of them. Done child
         // by child, either would be a write per row (`CD-7`).
         $this->relations->reparentChildEdges($id, $grandparent->id, $this->relations->nextPositionUnder($grandparent->id));
         $this->nodes->moveSubtree($node->path, $grandparent->path);
 
-        $this->changelog->record($id, 'node', 'children promoted', $node->path, $grandparent->path);
+        // The bracket opens here and the parking joins it, so both are one act (D-348).
+        $group = $this->changelog->recordMany($promoted);
+
+        if ($promoted === []) {
+            $group = null;
+        }
 
         // The node is childless now, so parking it is the ordinary move.
-        return $this->reparent($id, $this->framework->trash(), 'parked');
+        return $this->reparent($id, $this->framework->trash(), 'parked', $group);
     }
 
     /** Put a node at a different place among its siblings. Order lives on the edge, not the node. */
@@ -157,7 +183,7 @@ final class ModelEditor
      * **Where it came from is read out of the changelog and nowhere else** — no `parked_from`
      * column, because one place owns each fact (D-123, D-065).
      */
-    public function restore(int $id): Node
+    public function restore(int $id): RestoreResult
     {
         $node  = $this->nodes->byId($id);
         $trash = $this->framework->trash();
@@ -185,7 +211,36 @@ final class ModelEditor
             throw CannotRestore::theOldPlaceIsAlsoParked($node->name, $parent->name);
         }
 
-        return $this->reparent($id, $parent, 'restored');
+        // The whole act comes back, not the row (D-347). The bracket is what makes *the whole
+        // act* nameable at all (D-348) — without it there is only a list of unrelated lines.
+        $act      = $this->changelog->actAround($id, 'parked');
+        $restored = $this->reparent($id, $parent, 'restored');
+
+        $back = [];
+        $left = [];
+
+        foreach ($act as $row) {
+            if ($row['what'] !== 'promoted') {
+                continue;
+            }
+
+            $child = $this->nodes->find($row['ownerId']);
+
+            // ⚠️ Untouched means *still exactly where the promotion put it*. Anything else is a
+            // newer decision by a person, and it wins.
+            if ($child === null || $child->path !== $row['after']) {
+                if ($child !== null) {
+                    $left[] = $child->name;
+                }
+
+                continue;
+            }
+
+            $this->reparent($child->id, $restored, 'restored');
+            $back[] = $child->name;
+        }
+
+        return new RestoreResult($restored, $back, $left);
     }
 
     /** Swap a node with the sibling before it. Does nothing if it is already first. */
@@ -258,7 +313,7 @@ final class ModelEditor
      * the node and everything under it are rewritten from it afterwards, in one statement
      * rather than one per descendant (`CD-7`).
      */
-    private function reparent(int $id, Node $newParent, string $verb): Node
+    private function reparent(int $id, Node $newParent, string $verb, ?int $changeGroup = null): Node
     {
         $node = $this->nodes->byId($id);
 
@@ -287,7 +342,7 @@ final class ModelEditor
 
         $this->nodes->save($moved, $node->version);
         $this->nodes->moveSubtree($node->path, $moved->path);
-        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved));
+        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved), $changeGroup);
 
         return $moved;
     }

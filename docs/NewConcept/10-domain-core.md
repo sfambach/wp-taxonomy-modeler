@@ -387,7 +387,7 @@ nodes        id · version · name · path
 relations    id · version · from_id · to_id · kind · name · position
 settings     id · owner_id · key · value_* (typed)
 labels       id · owner_id · role_id · locale · number · path · text · translatable
-changelog    id · change_set_id · owner_id · owner_kind · at · by_user_id · what · before · after
+changelog    id · change_group_id · owner_id · owner_kind · at · by_user_id · what · before · after
              ↑ the bracket: rows written by one act share it (D-348)
 ```
 

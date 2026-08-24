@@ -493,7 +493,7 @@ final class ModelEditorTest extends TestCase
         $was    = $node->path;
 
         $this->editor->moveToTrash($node->id);
-        $back = $this->editor->restore($node->id);
+        $back = $this->editor->restore($node->id)->node;
 
         self::assertSame($was, $back->path);
         self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
@@ -574,6 +574,110 @@ final class ModelEditorTest extends TestCase
 
         $this->editor->moveToTrash($node->id);
 
-        self::assertSame($was, $this->editor->restore($node->id)->path);
+        self::assertSame($was, $this->editor->restore($node->id)->node->path);
+    }
+
+    #[Test]
+    public function deleting_only_a_node_writes_the_promotion_and_the_parking_under_one_bracket(): void
+    {
+        // D-348: a person meant this as one thing, so the history says so.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        $group = $this->changes->groupsFor($middle->id);
+        $under = $this->changes->group(end($group));
+
+        self::assertContains([$child->id, 'promoted'], $under);
+        self::assertContains([$middle->id, 'parked'], $under);
+    }
+
+    #[Test]
+    public function the_history_says_which_child_went_where(): void
+    {
+        // ⚠️ *These children moved* is not an answer a restore can act on.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+        $was         = $child->path;
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        $promotion = array_values(array_filter(
+            $this->changes->entries,
+            static fn (array $e): bool => $e[2] === 'promoted'
+        ))[0];
+
+        self::assertSame($child->id, $promotion[0]);
+        self::assertSame($was, $promotion[3]);
+        self::assertSame($this->nodes->byId($child->id)->path, $promotion[4]);
+    }
+
+    #[Test]
+    public function restoring_brings_a_promoted_child_back_under_the_node(): void
+    {
+        // D-347: restoring is undo, and undo's reach is the trash (D-172) — so the child
+        // that was promoted comes back with the node it was promoted out of.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+        $result = $this->editor->restore($middle->id);
+
+        self::assertSame(
+            $result->node->path . '.' . $child->id,
+            $this->nodes->byId($child->id)->path
+        );
+        self::assertSame(['Resistor'], $result->broughtBack);
+        self::assertTrue($result->everythingCameBack());
+    }
+
+    #[Test]
+    public function a_child_moved_since_is_left_where_it_is_and_named(): void
+    {
+        // ⚠️ Bringing it back would overwrite a newer, deliberate decision with an older one,
+        // and silently. The worse failure is the quiet one.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $elsewhere   = $this->editor->createNode('Primitives', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $stays       = $this->editor->createNode('Resistor', $middle->id);
+        $moves       = $this->editor->createNode('Capacitor', $middle->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+        $this->editor->move($moves->id, $elsewhere->id);
+
+        $result = $this->editor->restore($middle->id);
+
+        self::assertSame(['Resistor'], $result->broughtBack);
+        self::assertSame(['Capacitor'], $result->leftBehind);
+        self::assertFalse($result->everythingCameBack());
+        self::assertSame(
+            $elsewhere->path . '.' . $moves->id,
+            $this->nodes->byId($moves->id)->path,
+            'the newer decision stands'
+        );
+        self::assertSame(
+            $result->node->path . '.' . $stays->id,
+            $this->nodes->byId($stays->id)->path
+        );
+    }
+
+    #[Test]
+    public function restoring_a_branch_deletion_reports_nothing_left_behind(): void
+    {
+        // Nothing was promoted, so there is nothing to leave — the message must not appear.
+        $parent = $this->editor->createNode('Model', $this->root->id);
+        $node   = $this->editor->createNode('Board', $parent->id);
+        $this->editor->createNode('Resistor', $node->id);
+
+        $this->editor->moveToTrash($node->id);
+        $result = $this->editor->restore($node->id);
+
+        self::assertSame([], $result->broughtBack);
+        self::assertSame([], $result->leftBehind);
+        self::assertTrue($result->everythingCameBack());
     }
 }

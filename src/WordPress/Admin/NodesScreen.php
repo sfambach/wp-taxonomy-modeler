@@ -6,6 +6,7 @@ use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\RestoreResult;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Plugin;
 
@@ -237,7 +238,7 @@ final class NodesScreen
         $target = isset($_POST['target']) ? absint($_POST['target']) : 0;
 
         try {
-            match ($do) {
+            $outcome = match ($do) {
                 'create'    => $this->editor->createNode($name, $id),
                 'add_child' => $this->editor->createNode($name, $id),
                 'rename'    => $this->editor->rename($id, $name),
@@ -250,7 +251,15 @@ final class NodesScreen
                 default     => throw new \InvalidArgumentException('Unknown action.'),
             };
 
-            $message = 'ok';
+            // ⚠️ A restore that leaves children behind must say so — it is the one outcome
+            // where *done* would be a lie (D-347).
+            $message = $outcome instanceof RestoreResult && ! $outcome->everythingCameBack()
+                ? sprintf(
+                    /* translators: %s is a comma-separated list of node names. */
+                    __('Restored — but these were left where they are, because they were moved since: %s', 'taxmod'),
+                    implode(', ', $outcome->leftBehind)
+                )
+                : 'ok';
         } catch (DomainError $error) {
             // Exceptions inside the core, translated at the boundary (`CD-10`). The message is
             // the domain's own words, so it survives the redirect rather than being replaced by

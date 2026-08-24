@@ -43,7 +43,7 @@ final class Schema
      * 3 — inheritance edges become the tree and `nodes.path` is derived from them (D-014);
      *     `relations.from_id` and `to_id` join the foreign keys.
      */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -331,8 +331,12 @@ final class Schema
 
             // owner_kind is stored alongside because the changelog outlives what it refers
             // to — frozen history rather than a duplicated fact (D-065).
+            // change_group_id brackets the rows written by one act (D-348). It is a number and
+            // nothing more — no table, because a second place where history lives is a second
+            // place that can disagree with the changelog (D-061).
             "CREATE TABLE {$t('changelog')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                change_group_id bigint(20) unsigned DEFAULT NULL,
                 owner_id bigint(20) unsigned NOT NULL,
                 owner_kind varchar(20) NOT NULL,
                 at datetime NOT NULL,
@@ -341,6 +345,7 @@ final class Schema
                 before_state mediumtext DEFAULT NULL,
                 after_state mediumtext DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY change_group_id (change_group_id),
                 KEY owner_id (owner_id),
                 KEY at (at)
             ) {$charset};",
