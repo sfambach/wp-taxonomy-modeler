@@ -2335,3 +2335,33 @@ rest would be exactly what `PR-4` forbids:
 | **What stands on the right when nothing is selected?** | empty, the root, or the last selection |
 
 *Blocks:* [20 Interaction](20-interaction.md) · *Status:* **open** · *raised 2026-08-24 by [D-343](90-decision-log.md)*
+
+---
+
+## OQ-083 — Does restoring a node put its promoted children back?
+
+Found by the owner while trying it: delete **only** a node ([U4](20-interaction.md)), its children
+move up to the grandparent — then restore the node, and it comes back **empty**. The children stay
+where the promotion put them.
+
+⚠️ **The concept does not answer it, and both readings are defensible.**
+
+| | Reading | Follows from |
+|---|---|---|
+| **A** | **Restore re-attaches them.** [D-127](90-decision-log.md): *a trash entry is one deletion event, with everything that fell with it — restore puts back the whole event.* Deleting a node **and** promoting its children was one act by one person from one button, so undoing it should undo both | [D-127](90-decision-log.md), and the plain expectation of anyone who clicks *restore* |
+| **B** | **Restore leaves them.** [U4](20-interaction.md) calls the promotion *exactly the move of [D-155](90-decision-log.md)* — an ordinary reparenting. Two changes happened; undoing the deletion undoes the deletion | [U4](20-interaction.md), [D-155](90-decision-log.md), and [D-172](90-decision-log.md)'s *undo is a step forward, not a rewind* |
+
+⚠️ **The hard case is neither of those: a child that has moved, been renamed or been deleted
+since.** Re-attaching it then overwrites a newer, deliberate decision with an older one. Any
+answer has to say what happens to those, not only to the untouched case.
+
+⚠️ **And a related gap in what is built, not in the concept:** [D-127](90-decision-log.md)'s
+**deletion event** does not exist yet. Parking currently writes one changelog line per node, so
+there is nothing that says *these things fell together*. Reading A cannot be built without it;
+reading B can.
+
+*A third possibility, recorded so it is not lost:* the choice could belong to the **restore**
+rather than to the concept — *put it back as it was* versus *put back only this node* — which is
+the same shape as [U4](20-interaction.md)'s own question, asked from the other end.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [20 Interaction](20-interaction.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from trying it*

@@ -236,3 +236,17 @@ tests the **core** — which the real surface uses unchanged — so losing it co
 **Finishing Package 2** — expand/collapse and [U4](20-interaction.md)'s *branch or only this node*
 — is still worth doing, because both are **behaviour**: collapsing is a selection question and
 U4 needs children promoted to the grandparent, which nothing in the core does yet.
+
+### ⚠️ Not built: the deletion event ([D-127](90-decision-log.md))
+
+**Parking writes one changelog line per node.** Nothing records that several things fell in **one**
+act, which is what [D-127](90-decision-log.md) calls a trash entry — *one deletion, with everything
+that fell with it, and restore puts back the whole event.*
+
+Today it does not show, because parking a branch moves the subtree and restoring moves it back:
+the paths carry the grouping by accident. **It shows the moment something falls that is not a
+descendant** — a promoted child ([OQ-083](91-open-questions.md)), and later an edge pointing at a
+deleted node, which [D-127](90-decision-log.md) names explicitly.
+
+*Reported rather than left out. It is not needed to finish Package 2 and it is needed before
+deletion can be trusted with attributes.*
