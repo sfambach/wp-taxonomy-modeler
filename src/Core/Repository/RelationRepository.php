@@ -42,6 +42,18 @@ interface RelationRepository
     public function nextPositionUnder(int $parentId): int;
 
     /**
+     * Hang every child of one parent under another, in one statement.
+     *
+     * ⚠️ **Exists so that [U4](../../../docs/NewConcept/20-interaction.md) is not a loop.**
+     * Deleting only a node promotes its children to their grandparent; done one edge at a time
+     * that is a write per child, which `CD-7` forbids.
+     *
+     * @param int $startPosition Where the promoted children are placed among their new
+     *                           siblings — their relative order is kept.
+     */
+    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void;
+
+    /**
      * Every inheritance edge in the model.
      *
      * ⚠️ **Deliberately unbounded, because the model is small by design.** This is a modeller:

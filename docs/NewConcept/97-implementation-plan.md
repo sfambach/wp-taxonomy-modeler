@@ -66,7 +66,7 @@ Six packages to the point where importing his real data first makes sense.
 | | Package | What the owner checks |
 |---|---|---|
 | **1** | Tables, and a node exists | create, rename, send to trash — survives a restart · **done 2026-08-24** |
-| **2** | The tree | parent and child, move, expand and collapse · ⚠️ **partly done 2026-08-24** — expand and collapse is **not** built |
+| **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
 | **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited |
 | **5** | Labels, roles, locales | the same thing is called something else in English |
@@ -169,25 +169,30 @@ php vendor/phpunit/phpunit/phpunit
 php scripts/dev/package2-check.php C:/Devel/Wordpress
 ```
 
-### ⚠️ What Package 2 does not deliver, against its own definition
+### What Package 2 delivers, and what it deliberately leaves
 
-**Expand and collapse is not built.** It stands in this package's line above and in
-[U3](20-interaction.md), and the screen draws the tree fully expanded, always. Reported here
-rather than quietly left out.
+✅ **Closed the same day it was reported.** The package was first announced without
+**expand and collapse**, which its own line requires; that was reported rather than left out, and
+then built — together with **[U4](20-interaction.md)**, *delete the branch or only this node*.
 
-**And these are in [20 Interaction](20-interaction.md) but belong to the tree's real surface,
-not to its behaviour** — none of them is built, and none was claimed:
+⚠️ **Both were built as core behaviour, not as screen tricks**, which is what lets them survive
+the scaffolding ([D-344](90-decision-log.md)): collapsing is a question about the tree, answered
+in `Tree` and asked the same way by every surface; and *only this node* promotes the children to
+their grandparent in **one statement**, because a write per child is the loop `CD-7` forbids.
+
+**What is not built, and belongs to the real surface** — none of it was claimed:
 
 | | What the concept asks | Where |
 |---|---|---|
 | **U1** | the row shows the frequent, a `⋯` menu holds everything — ⚠️ **touch has no right-click** | [U1](20-interaction.md) |
-| **U4** | deleting asks **one** question: the branch, or only this node — ⚠️ **this one is behaviour, not decoration.** Today the trash always takes the branch, with no question asked | [U4](20-interaction.md) |
 | **U5** | dragging moves whole branches, and several at once | [U5](20-interaction.md) |
 | **U6** | duplicating puts the copy **directly beneath**, with an indexed name | [U6](20-interaction.md) |
 | **U21** | the tree row draws the node's icon | [U21](20-interaction.md) |
 
-⚠️ **U4 is the one that is not merely cosmetic.** *Delete only this node* means the children have
-to go somewhere — promoted to the grandparent — and nothing in the core does that yet.
+⚠️ **U4's second half is not as harmless as its button** ([D-041](90-decision-log.md)): the tree
+*is* inheritance, so children promoted to the grandparent **lose whatever they inherited from the
+node being removed**. That is [D-155](90-decision-log.md)'s move reached through a different
+button, which is exactly why deleting asks instead of guessing.
 
 ### ⚠️ A line the provisional screen must not cross
 

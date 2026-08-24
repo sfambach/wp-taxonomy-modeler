@@ -78,6 +78,16 @@ final class InMemoryRelations implements RelationRepository
         return $edges;
     }
 
+
+    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
+    {
+        foreach ($this->rows as $id => $edge) {
+            if ($edge->fromId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
+                $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->position + $startPosition);
+            }
+        }
+    }
+
     public function purgeEdgesTouching(int $nodeId): void
     {
         foreach ($this->rows as $id => $edge) {

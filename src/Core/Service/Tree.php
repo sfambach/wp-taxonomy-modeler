@@ -34,12 +34,19 @@ final class Tree
     /**
      * Everything below a node, depth-first, in the order the edges give.
      *
-     * @param list<int> $skip Ids whose subtrees are left out entirely — the trash, when the
-     *                        screen shows it separately.
+     * ⚠️ **Collapsing is answered here, not on the screen.** Which rows a person can see is a
+     * question about the tree, so it is settled once and every surface asks the same way — the
+     * provisional admin screen today, the tree renderer later ([R18](../../../docs/NewConcept/30-renderer.md)).
+     * Each row says whether it **has** children, because a row with none must not offer a
+     * control that would do nothing ([U8](../../../docs/NewConcept/20-interaction.md)).
      *
-     * @return list<array{node: Node, depth: int}>
+     * @param list<int> $skip      Ids whose subtrees are left out entirely — the trash, when
+     *                             the screen shows it separately.
+     * @param list<int> $collapsed Ids that are shown but whose children are not.
+     *
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}>
      */
-    public function rowsUnder(Node $root, array $skip = []): array
+    public function rowsUnder(Node $root, array $skip = [], array $collapsed = []): array
     {
         $byId = [];
 
@@ -56,7 +63,7 @@ final class Tree
         }
 
         $rows = [];
-        $this->collect($root->id, 0, $byId, $childIdsByParent, array_flip($skip), $rows);
+        $this->collect($root->id, 0, $byId, $childIdsByParent, array_flip($skip), array_flip($collapsed), $rows);
 
         return $rows;
     }
@@ -65,18 +72,42 @@ final class Tree
      * @param array<int,Node>       $byId
      * @param array<int,list<int>>  $childIdsByParent
      * @param array<int,int>        $skip
-     * @param list<array{node: Node, depth: int}> $rows
+     * @param array<int,int>        $collapsed
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}> $rows
      */
-    private function collect(int $parentId, int $depth, array $byId, array $childIdsByParent, array $skip, array &$rows): void
-    {
+    private function collect(
+        int $parentId,
+        int $depth,
+        array $byId,
+        array $childIdsByParent,
+        array $skip,
+        array $collapsed,
+        array &$rows,
+    ): void {
         foreach ($childIdsByParent[$parentId] ?? [] as $childId) {
             if (isset($skip[$childId]) || ! isset($byId[$childId])) {
                 continue;
             }
 
-            $rows[] = ['node' => $byId[$childId], 'depth' => $depth];
+            // A node whose only children are skipped counts as having none — otherwise the
+            // screen offers a control that opens an empty branch.
+            $visibleChildren = array_filter(
+                $childIdsByParent[$childId] ?? [],
+                static fn (int $id): bool => ! isset($skip[$id]) && isset($byId[$id])
+            );
 
-            $this->collect($childId, $depth + 1, $byId, $childIdsByParent, $skip, $rows);
+            $isCollapsed = isset($collapsed[$childId]);
+
+            $rows[] = [
+                'node'        => $byId[$childId],
+                'depth'       => $depth,
+                'hasChildren' => $visibleChildren !== [],
+                'collapsed'   => $isCollapsed,
+            ];
+
+            if (! $isCollapsed) {
+                $this->collect($childId, $depth + 1, $byId, $childIdsByParent, $skip, $collapsed, $rows);
+            }
         }
     }
 }

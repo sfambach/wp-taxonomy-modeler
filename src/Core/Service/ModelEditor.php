@@ -101,6 +101,37 @@ final class ModelEditor
         return $this->reparent($id, $this->framework->trash(), 'parked');
     }
 
+    /**
+     * Park **only** this node; its children are hung on its parent.
+     *
+     * ⚠️ **Not the harmless half of the choice** ([U4](../../../docs/NewConcept/20-interaction.md)).
+     * The tree is inheritance (D-041), so children reattached to the grandparent **lose whatever
+     * they inherited from the node being removed**. That is D-155's move reached through a
+     * different button, and it is why deleting asks rather than guesses.
+     */
+    public function moveToTrashPromotingChildren(int $id): Node
+    {
+        $node = $this->nodes->byId($id);
+
+        if ($this->framework->isProtected($node)) {
+            throw NodeIsProtected::named($node->name);
+        }
+
+        $edge        = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
+        $grandparent = $this->nodes->byId($edge->fromId);
+
+        // Both halves in one statement each: the edges repoint together, and the paths of every
+        // descendant are rewritten by dropping this node out of the middle of them. Done child
+        // by child, either would be a write per row (`CD-7`).
+        $this->relations->reparentChildEdges($id, $grandparent->id, $this->relations->nextPositionUnder($grandparent->id));
+        $this->nodes->moveSubtree($node->path, $grandparent->path);
+
+        $this->changelog->record($id, 'node', 'children promoted', $node->path, $grandparent->path);
+
+        // The node is childless now, so parking it is the ordinary move.
+        return $this->reparent($id, $this->framework->trash(), 'parked');
+    }
+
     /** Put a node at a different place among its siblings. Order lives on the edge, not the node. */
     public function reorder(int $id, int $position): void
     {

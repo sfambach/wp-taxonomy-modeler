@@ -139,4 +139,86 @@ final class TreeTest extends TestCase
     {
         self::assertSame([], $this->drawn([$this->trash->id]));
     }
+
+    #[Test]
+    public function a_collapsed_node_is_shown_but_its_children_are_not(): void
+    {
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $this->editor->createNode('Board', $a->id);
+        $b = $this->editor->createNode('Primitives', $this->root->id);
+        $this->editor->createNode('Integer', $b->id);
+
+        self::assertSame(
+            ['Trash', 'Model', '-Board', 'Primitives', '-Integer'],
+            $this->drawn()
+        );
+        self::assertSame(
+            ['Trash', 'Model', 'Primitives', '-Integer'],
+            $this->drawnWith([], [$a->id])
+        );
+    }
+
+    #[Test]
+    public function collapsing_hides_a_whole_branch_not_just_one_level(): void
+    {
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $b = $this->editor->createNode('Board', $a->id);
+        $this->editor->createNode('Resistor', $b->id);
+
+        self::assertSame(['Trash', 'Model'], $this->drawnWith([], [$a->id]));
+    }
+
+    #[Test]
+    public function a_row_says_whether_it_has_children_at_all(): void
+    {
+        // U8: a row with nothing under it must not offer a control that would do nothing.
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $this->editor->createNode('Board', $a->id);
+        $this->editor->createNode('Primitives', $this->root->id);
+
+        $has = [];
+
+        foreach ($this->tree->rowsUnder($this->root) as $row) {
+            $has[$row['node']->name] = $row['hasChildren'];
+        }
+
+        self::assertTrue($has['Model']);
+        self::assertFalse($has['Board']);
+        self::assertFalse($has['Primitives']);
+    }
+
+    #[Test]
+    public function a_node_whose_only_children_are_skipped_counts_as_having_none(): void
+    {
+        // Otherwise the screen offers an expander that opens an empty branch.
+        $this->editor->createNode('Board', $this->root->id);
+        $rows = $this->tree->rowsUnder($this->root, [$this->trash->id]);
+
+        $rootLevel = array_values(array_filter($rows, static fn (array $r): bool => $r['depth'] === 0));
+
+        self::assertCount(1, $rootLevel);
+        self::assertFalse($rootLevel[0]['hasChildren']);
+    }
+
+    #[Test]
+    public function a_collapsed_row_says_so(): void
+    {
+        $a = $this->editor->createNode('Model', $this->root->id);
+        $this->editor->createNode('Board', $a->id);
+
+        $rows = $this->tree->rowsUnder($this->root, [], [$a->id]);
+        $model = array_values(array_filter($rows, static fn (array $r): bool => $r['node']->id === $a->id))[0];
+
+        self::assertTrue($model['collapsed']);
+        self::assertTrue($model['hasChildren']);
+    }
+
+    /** @return list<string> */
+    private function drawnWith(array $skip, array $collapsed): array
+    {
+        return array_map(
+            static fn (array $row): string => str_repeat('-', $row['depth']) . $row['node']->name,
+            $this->tree->rowsUnder($this->root, $skip, $collapsed)
+        );
+    }
 }

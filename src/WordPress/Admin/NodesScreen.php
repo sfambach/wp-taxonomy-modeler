@@ -38,15 +38,16 @@ final class NodesScreen
 
         // Two queries for the whole tree, whatever its depth — the traversal is solved once,
         // in Tree, and this screen only draws what comes back (`CD-7`).
-        $rows   = $this->tree->rowsUnder($root, [$trash->id]);
-        $parked = $this->tree->rowsUnder($trash);
+        $collapsed = $this->collapsedFromRequest();
+        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed);
+        $parked    = $this->tree->rowsUnder($trash);
 
         $html  = '<div class="wrap">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
         $html .= $this->notice();
         $html .= $this->addForm($root, __('Add a node at the top level', 'taxmod'));
         $html .= '<h2>' . esc_html__('The tree', 'taxmod') . '</h2>';
-        $html .= $this->table($rows, $root, true);
+        $html .= $this->table($rows, $root, true, $collapsed);
         $html .= '<h2>' . esc_html__('Trash', 'taxmod') . '</h2>';
         $html .= '<p class="description">'
             . esc_html__('Parked, not gone. A parked node is still a node, so nothing that pointed at it dangles.', 'taxmod')
@@ -57,9 +58,10 @@ final class NodesScreen
     }
 
     /**
-     * @param list<array{node: Node, depth: int}> $rows
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}> $rows
+     * @param list<int>                                                               $collapsed
      */
-    private function table(array $rows, Node $root, bool $withActions): string
+    private function table(array $rows, Node $root, bool $withActions, array $collapsed = []): string
     {
         if ($rows === []) {
             return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
@@ -72,7 +74,8 @@ final class NodesScreen
             $indent = str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $row['depth']);
 
             $body .= '<tr>';
-            $body .= '<td>' . $indent . '<strong>' . esc_html($node->name) . '</strong></td>';
+            $body .= '<td>' . $indent . $this->expander($row, $collapsed)
+                . '<strong>' . esc_html($node->name) . '</strong></td>';
             $body .= '<td><code>' . esc_html($node->path) . '</code></td>';
             $body .= '<td>' . (int) $node->version . '</td>';
             $body .= '<td>' . ($withActions ? $this->rowActions($node, $rows, $root) : '') . '</td>';
@@ -102,7 +105,10 @@ final class NodesScreen
             . '<button class="button" name="do" value="down" title="' . esc_attr__('Move down among its siblings', 'taxmod') . '">&darr;</button>'
             . $this->parentChooser($node, $rows, $root)
             . '<button class="button" name="do" value="move">' . esc_html__('Move', 'taxmod') . '</button>'
-            . '<button class="button" name="do" value="trash">' . esc_html__('Trash', 'taxmod') . '</button>'
+            . '<button class="button" name="do" value="trash" title="' . esc_attr__('Trash this node and everything under it', 'taxmod') . '">'
+            . esc_html__('Trash branch', 'taxmod') . '</button>'
+            . '<button class="button" name="do" value="trash_node" title="' . esc_attr__('Trash only this node — its children move up to its parent, and lose what they inherited from it', 'taxmod') . '">'
+            . esc_html__('Trash node only', 'taxmod') . '</button>'
             . '</form>';
     }
 
@@ -132,6 +138,49 @@ final class NodesScreen
         }
 
         return '<select name="target" style="max-width:12em">' . $options . '</select>';
+    }
+
+    /**
+     * The expander, or blank space where a node has nothing under it.
+     *
+     * ⚠️ **Absent, not greyed** ([U8](../../../docs/NewConcept/20-interaction.md)) — a control
+     * that cannot do anything is what makes a crowded row unreadable.
+     *
+     * @param array{node: Node, depth: int, hasChildren: bool, collapsed: bool} $row
+     * @param list<int>                                                         $collapsed
+     */
+    private function expander(array $row, array $collapsed): string
+    {
+        if (! $row['hasChildren']) {
+            return '<span style="display:inline-block;width:1.6em"></span>';
+        }
+
+        $id   = $row['node']->id;
+        $next = $row['collapsed']
+            ? array_values(array_diff($collapsed, [$id]))
+            : array_values(array_unique([...$collapsed, $id]));
+
+        // ⚠️ The set lives in the address, not in a stored preference. Whether it should be
+        // remembered is OQ-082 and is not answered by a scaffolding screen.
+        $url = add_query_arg(
+            ['page' => 'taxmod', 'taxmod_collapsed' => implode(',', $next)],
+            admin_url('admin.php')
+        );
+
+        return '<a href="' . esc_url($url) . '" style="display:inline-block;width:1.6em;text-decoration:none">'
+            . ($row['collapsed'] ? '&#9656;' : '&#9662;') . '</a>';
+    }
+
+    /** @return list<int> */
+    private function collapsedFromRequest(): array
+    {
+        if (! isset($_GET['taxmod_collapsed'])) {
+            return [];
+        }
+
+        $raw = sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']));
+
+        return array_values(array_filter(array_map('absint', explode(',', $raw))));
     }
 
     private function addForm(Node $parent, string $label): string
@@ -176,7 +225,8 @@ final class NodesScreen
                 'move'      => $this->editor->move($id, $target),
                 'up'        => $this->editor->moveUp($id),
                 'down'      => $this->editor->moveDown($id),
-                'trash'     => $this->editor->moveToTrash($id),
+                'trash'      => $this->editor->moveToTrash($id),
+                'trash_node' => $this->editor->moveToTrashPromotingChildren($id),
                 default     => throw new \InvalidArgumentException('Unknown action.'),
             };
 

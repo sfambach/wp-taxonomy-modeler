@@ -139,6 +139,24 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+
+    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
+    {
+        global $wpdb;
+
+        // One statement, however many children there are. `position + start` keeps their
+        // order relative to each other while placing them after their new siblings.
+        $wpdb->query($wpdb->prepare(
+            'UPDATE ' . Schema::table('relations') . '
+             SET from_id = %d, position = position + %d, version = version + 1
+             WHERE from_id = %d AND kind = %s',
+            $toParentId,
+            $startPosition,
+            $fromParentId,
+            RelationKind::Inheritance->value
+        ));
+    }
+
     public function purgeEdgesTouching(int $nodeId): void
     {
         global $wpdb;

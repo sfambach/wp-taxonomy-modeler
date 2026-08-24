@@ -142,8 +142,37 @@ $editor->moveToTrash($x->id);
 check('the edge now points at the trash', $edges->inheritanceEdgeTo($x->id)->fromId === $trash->id);
 check('the subtree is parked with it', str_starts_with($nodes->byId($deep->id)->path, $trash->path . '.'));
 
-echo "\n== 8. The check cleans up after itself ==\n";
-foreach ([$x->id, $a->id, $b->id] as $scratch) {
+echo "\n== 8. Deleting only a node promotes its children ==\n";
+$g = $editor->createNode('__check G', $treeRoot->id);
+$m = $editor->createNode('__check M', $g->id);
+$k1 = $editor->createNode('__check K1', $m->id);
+$k2 = $editor->createNode('__check K2', $m->id);
+$deepK = $editor->createNode('__check K1a', $k1->id);
+
+$editor->moveToTrashPromotingChildren($m->id);
+
+check('the child hangs on the grandparent', $edges->inheritanceEdgeTo($k1->id)->fromId === $g->id);
+check('and its path says so', $nodes->byId($k1->id)->path === $g->path . '.' . $k1->id, $nodes->byId($k1->id)->path);
+check('the second child came too', $edges->inheritanceEdgeTo($k2->id)->fromId === $g->id);
+check('their own subtrees came along', $nodes->byId($deepK->id)->path === $nodes->byId($k1->id)->path . '.' . $deepK->id, $nodes->byId($deepK->id)->path);
+check('the node itself is parked, empty', str_starts_with($nodes->byId($m->id)->path, $trash->path . '.') && $editor->childrenOf($m->id) === []);
+check('their order among themselves survived',
+    array_map(static fn (Node $n): string => $n->name, $editor->childrenOf($g->id)) === ['__check K1', '__check K2'],
+    implode(', ', array_map(static fn (Node $n): string => $n->name, $editor->childrenOf($g->id))));
+
+echo "\n== 9. Collapsing ==\n";
+$open      = $tree->rowsUnder($treeRoot, [$trash->id]);
+$collapsed = $tree->rowsUnder($treeRoot, [$trash->id], [$g->id]);
+$idsIn = static fn (array $rows): array => array_map(static fn (array $r): int => $r['node']->id, $rows);
+check('the collapsed node is still shown', in_array($g->id, $idsIn($collapsed), true));
+check('its children are not', ! in_array($k1->id, $idsIn($collapsed), true));
+check('and they were, when open', in_array($k1->id, $idsIn($open), true));
+check('nothing else disappeared', count($open) - count($collapsed) === 3, (count($open) - count($collapsed)) . ' rows fewer');
+$gRow = array_values(array_filter($collapsed, static fn (array $r): bool => $r['node']->id === $g->id))[0];
+check('the row says it has children and is collapsed', $gRow['hasChildren'] && $gRow['collapsed']);
+
+echo "\n== 10. The check cleans up after itself ==\n";
+foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id] as $scratch) {
     $node = $nodes->find($scratch);
     if ($node !== null) { $nodes->purgeSubtree($node); }
 }

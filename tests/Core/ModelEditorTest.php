@@ -403,4 +403,82 @@ final class ModelEditorTest extends TestCase
         );
         self::assertSame([], $this->changes->verbsFor($first->id) === ['created'] ? [] : ['unexpected write']);
     }
+
+    #[Test]
+    public function deleting_only_a_node_hangs_its_children_on_the_grandparent(): void
+    {
+        // U4, the owner's own words: when the node is deleted, the children get hung on the
+        // father.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        self::assertSame($grandparent->id, $this->edges->inheritanceEdgeTo($child->id)->fromId);
+        self::assertSame(
+            $grandparent->path . '.' . $child->id,
+            $this->nodes->byId($child->id)->path
+        );
+    }
+
+    #[Test]
+    public function the_promoted_children_keep_their_own_subtrees(): void
+    {
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+        $deep        = $this->editor->createNode('Tolerance', $child->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        self::assertSame(
+            $this->nodes->byId($child->id)->path . '.' . $deep->id,
+            $this->nodes->byId($deep->id)->path
+        );
+    }
+
+    #[Test]
+    public function the_promoted_children_keep_their_order_among_themselves(): void
+    {
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $keep        = $this->editor->createNode('Existing', $grandparent->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $this->editor->createNode('First', $middle->id);
+        $this->editor->createNode('Second', $middle->id);
+
+        $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        self::assertSame(
+            ['Existing', 'First', 'Second'],
+            array_map(static fn (Node $n): string => $n->name, $this->editor->childrenOf($grandparent->id))
+        );
+        self::assertNotNull($this->nodes->find($keep->id));
+    }
+
+    #[Test]
+    public function the_node_itself_still_lands_in_the_trash(): void
+    {
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $this->editor->createNode('Resistor', $middle->id);
+
+        $parked = $this->editor->moveToTrashPromotingChildren($middle->id);
+
+        self::assertSame($this->trash->path . '.' . $middle->id, $parked->path);
+        self::assertSame([], $this->editor->childrenOf($middle->id), 'it takes nothing with it');
+    }
+
+    #[Test]
+    public function deleting_the_whole_branch_still_takes_the_children(): void
+    {
+        // The other half of U4, unchanged — both operations are wanted.
+        $grandparent = $this->editor->createNode('Model', $this->root->id);
+        $middle      = $this->editor->createNode('Board', $grandparent->id);
+        $child       = $this->editor->createNode('Resistor', $middle->id);
+
+        $parked = $this->editor->moveToTrash($middle->id);
+
+        self::assertSame($parked->path . '.' . $child->id, $this->nodes->byId($child->id)->path);
+    }
 }
