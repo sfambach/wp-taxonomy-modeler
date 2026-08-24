@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Exception\InvalidName;
+
 /**
  * An edge — and seen from the node that owns it, an **attribute** (D-031). Two names, one thing.
  *
@@ -38,6 +40,27 @@ final class Relation
     public static function inheritance(int $id, int $parentId, int $childId, int $position): self
     {
         return new self($id, 1, $parentId, $childId, RelationKind::Inheritance, '', $position);
+    }
+
+    /**
+     * An attribute edge: the owner points at a target, and the **kind comes from the caller
+     * having read it off the target's branch** — never from a person choosing it (D-161).
+     */
+    public static function attribute(
+        int $id,
+        int $ownerId,
+        int $targetId,
+        RelationKind $kind,
+        string $name,
+        int $position,
+    ): self {
+        $name = trim($name);
+
+        if ($name === '') {
+            throw InvalidName::empty();
+        }
+
+        return new self($id, 1, $ownerId, $targetId, $kind, $name, $position);
     }
 
     public static function fromStorage(

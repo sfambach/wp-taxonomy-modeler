@@ -67,7 +67,7 @@ Six packages to the point where importing his real data first makes sense.
 |---|---|---|
 | **1** | Tables, and a node exists | create, rename, send to trash — survives a restart · **done 2026-08-24** |
 | **2** | The tree | parent and child, move, expand and collapse · **done 2026-08-24** |
-| **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself |
+| **3** | Attributes as relations, the three branches | give a node an attribute; the relation kind appears by itself · **done 2026-08-24** |
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited |
 | **5** | Labels, roles, locales | the same thing is called something else in English |
 | **6** | Records | enter something against a model and find it again |
@@ -272,3 +272,44 @@ noticed afterwards:
 | a node is parked | every edge pointing **at** it, parked with it ([D-127](90-decision-log.md)) |
 | an attribute is removed at one use site | the edge, and the orphaned overrides promoted per [D-156](90-decision-log.md) |
 | a node moves between branches | the reparenting and every edge whose **kind** it rewrote ([D-162](90-decision-log.md)) |
+
+---
+
+## Package 3 — done 2026-08-24
+
+**What it delivers:** the three branches as framework nodes, and **attributes as relations whose
+kind nobody chooses**. Give a node an attribute by pointing it at a target, and composition or
+aggregation follows from where the target lives.
+
+| Branch | Reached by | Holds data | Value stored |
+|---|---|---|---|
+| `Model` | aggregation | yes, standalone | external reference |
+| `Compositions` | composition | yes, owned | its own records |
+| `Primitives › Data Types` | composition | no | inside the record, by path |
+| `Primitives › Constants` | aggregation | no | a reference to a node |
+
+⚠️ **The pair that shows the rule is not *primitive versus not***: `Data Types` and `Constants`
+both sit under `Primitives` and differ, because one has no instances at all and the other is a
+node a person may extend.
+
+**88 core checks pass** (no WordPress) plus 28 · 48 · 23 at the boundary — 187 in all.
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **A node hung directly under `Primitives` sits in no branch, and pointing at it is refused.** | ⚠️ The concept splits `Primitives` into `Data Types` and `Constants` and says **nothing** about the space between. There is no kind to read off such a node, and inventing one is how a supplier ends up composed into an order. | **Low, and deliberately loud.** If that space is meant to be usable, the refusal is where it will be noticed. |
+| **2** | **`Primitives` itself is protected, like the branch roots.** | It is machinery, not content ([D-194](90-decision-log.md)). | None. |
+| **3** | **An attribute needs a name; the name is trimmed like a node's.** | [D-022](90-decision-log.md) governs node names; nothing said it for edges, and *the use site is an attribute* argues they are the same kind of thing. | Low. |
+| **4** | **Attribute order is its own sequence**, counted separately from the tree's `position`. | Both live in `position` on `relations`, and mixing them would make an attribute's place depend on how many children the node has. | Low. |
+| **5** | **The upgrade seeds.** A schema version bump now also runs the framework seeding. | Version 5 changed **no table** — it added nodes. Without this, an already-installed copy would never get the branches. | None, and it is the honest reading of `CD-6`: the stored version is what makes an upgrade deterministic. |
+
+### What is **not** in it, and was not claimed
+
+**Multiplicity, mandatory, permitted sets, defaults** — all of those are **settings**
+([D-086](90-decision-log.md), [D-312](90-decision-log.md)) and belong to Package 4. An attribute
+today is a name, a target and a kind.
+
+**Removing an attribute.** ⚠️ It needs the deletion event to carry the edge under the same
+bracket as the node that caused it — the owner named it while the change group was being built,
+and it is written up above. Deleting a node does not yet park the attributes pointing at it.

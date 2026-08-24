@@ -2,15 +2,20 @@
 
 namespace Taxmod\Tests\Core\Fake;
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Repository\FrameworkNodes;
 
-/** A root and a trash, made once, protected. */
+/** A root, a trash and the four branch roots, made once and protected. */
 final class FixedFramework implements FrameworkNodes
 {
+    /**
+     * @param array<string,Node> $branchRoots keyed by {@see Branch::value}
+     */
     public function __construct(
         private readonly Node $root,
         private readonly Node $trash,
+        private readonly array $branchRoots = [],
     ) {
     }
 
@@ -24,8 +29,30 @@ final class FixedFramework implements FrameworkNodes
         return $this->trash;
     }
 
+    public function rootOf(Branch $branch): Node
+    {
+        return $this->branchRoots[$branch->value];
+    }
+
+    public function branchOf(Node $node): ?Branch
+    {
+        foreach ($this->branchRoots as $value => $root) {
+            if ($node->id === $root->id || $node->isDescendantOf($root)) {
+                return Branch::from($value);
+            }
+        }
+
+        return null;
+    }
+
     public function isProtected(Node $node): bool
     {
-        return in_array($node->id, [$this->root->id, $this->trash->id], true);
+        $ids = [$this->root->id, $this->trash->id];
+
+        foreach ($this->branchRoots as $root) {
+            $ids[] = $root->id;
+        }
+
+        return in_array($node->id, $ids, true);
     }
 }

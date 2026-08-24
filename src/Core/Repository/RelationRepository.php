@@ -41,6 +41,9 @@ interface RelationRepository
     /** One past the last position among a parent's children — where a new child goes. */
     public function nextPositionUnder(int $parentId): int;
 
+    /** One past the last position among a node's **attributes** — where a new one goes. */
+    public function nextAttributePositionUnder(int $ownerId): int;
+
     /**
      * Hang every child of one parent under another, in one statement.
      *
@@ -63,6 +66,20 @@ interface RelationRepository
      * @return list<Relation>
      */
     public function allInheritanceEdges(): array;
+
+    /**
+     * The attribute edges owned by any of these nodes — everything that is not inheritance.
+     *
+     * ⚠️ **Several owners in one call, because attributes are inherited.** A node's attributes
+     * are its own plus every ancestor's, and asking per ancestor would be one query per level —
+     * the walk `CD-7` forbids. The ancestors come out of the path, so the caller already has
+     * the list.
+     *
+     * @param list<int> $ownerIds
+     *
+     * @return list<Relation>
+     */
+    public function attributeEdgesOf(array $ownerIds): array;
 
     /** Remove the edges belonging to a purge. The only place edges are deleted outright. */
     public function purgeEdgesTouching(int $nodeId): void;

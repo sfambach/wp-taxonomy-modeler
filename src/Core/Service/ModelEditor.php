@@ -5,6 +5,7 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Exception\CannotRestore;
 use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
+use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
@@ -82,6 +83,80 @@ final class ModelEditor
         $this->changelog->record($id, 'node', 'renamed', $this->state($node), $this->state($renamed));
 
         return $renamed;
+    }
+
+    /**
+     * Give a node an attribute by pointing it at a target. **The kind is not a parameter.**
+     *
+     * ⚠️ **An attribute *is* a relation** (D-031) — two names for one thing, seen from the node
+     * that owns it. And its **kind is read off the branch the target sits in** (D-161), never
+     * chosen: the author picks *what* the attribute points at, and composition or aggregation
+     * follows.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   T["the target's branch"] -->|decides| K["the kind"]
+     *   T -->|decides| D["whether it holds data"]
+     *   T -->|decides| S["where a value is stored"]
+     * ```
+     *
+     * **That is what removes the error the storage rule exists to prevent** — a supplier
+     * accidentally composed into an order, so every order breeds its own supplier — not by
+     * catching it afterwards but by never offering it.
+     */
+    public function addAttribute(int $ownerId, int $targetId, string $name): Relation
+    {
+        $owner  = $this->nodes->byId($ownerId);
+        $target = $this->nodes->byId($targetId);
+
+        $branch = $this->framework->branchOf($target)
+            ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
+
+        // D-238: everything **but** the branch root is selectable. The root stands for the
+        // branch itself, not for a thing in it.
+        if ($target->id === $this->framework->rootOf($branch)->id) {
+            throw NotAPossibleTarget::itIsABranchRoot($target->name);
+        }
+
+        if ($target->isDescendantOf($this->framework->trash())) {
+            throw NotAPossibleTarget::itIsInTheTrash($target->name);
+        }
+
+        $edge = Relation::attribute(
+            $this->identities->next(),
+            $owner->id,
+            $target->id,
+            $branch->relationKind(),
+            $name,
+            $this->relations->nextAttributePositionUnder($owner->id)
+        );
+
+        $this->relations->add($edge);
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            'attribute added',
+            null,
+            sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value)
+        );
+
+        return $edge;
+    }
+
+    /**
+     * A node's attributes: its own, and every one it inherits.
+     *
+     * ⚠️ **Inheritance is why this takes the ancestors in one go.** The tree *is* inheritance
+     * (D-041), so a node carries what its ancestors declare; asking per level would be the walk
+     * `CD-7` forbids, and the path already holds the list.
+     *
+     * @return list<Relation>
+     */
+    public function attributesOf(int $nodeId): array
+    {
+        $node = $this->nodes->byId($nodeId);
+
+        return $this->relations->attributeEdgesOf([...$node->ancestorIds(), $node->id]);
     }
 
     /** Hang a node under a different parent, taking everything below it along. */
@@ -253,6 +328,13 @@ final class ModelEditor
     public function moveDown(int $id): void
     {
         $this->swapWithNeighbour($id, 1);
+    }
+
+
+    /** The node with this id, or null. Used by surfaces that may be handed a stale link. */
+    public function find(int $id): ?Node
+    {
+        return $this->nodes->find($id);
     }
 
     /** @return list<Node> */

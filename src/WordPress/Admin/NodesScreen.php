@@ -55,7 +55,111 @@ final class NodesScreen
             . '</p>';
         $html .= $this->table($parked, $root, 'trash', $collapsed);
 
+        $selected = $this->selectedFromRequest();
+
+        if ($selected !== null) {
+            $html .= $this->attributesPanel($selected, $rows);
+        }
+
         return $html . '</div>';
+    }
+
+    private function selectedFromRequest(): ?Node
+    {
+        if (! isset($_GET['taxmod_node'])) {
+            return null;
+        }
+
+        return $this->editor->find(absint($_GET['taxmod_node']));
+    }
+
+    /**
+     * What the selected node has — its own attributes and the ones it inherits.
+     *
+     * ⚠️ **Scaffolding, and the seed of the right-hand side** ([D-343](../../../docs/NewConcept/90-decision-log.md)).
+     * It draws **no value**: names, targets and the kind, nothing rendered. The moment a value
+     * has to appear it goes through a renderer ([R20a](../../../docs/NewConcept/30-renderer.md)),
+     * and this panel is deleted rather than grown ([D-344](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     */
+    private function attributesPanel(Node $selected, array $rows): string
+    {
+        $own = [];
+
+        foreach ($this->editor->attributesOf($selected->id) as $edge) {
+            $target = $this->editor->find($edge->toId);
+
+            $own[] = '<tr>'
+                . '<td><strong>' . esc_html($edge->name) . '</strong></td>'
+                . '<td>' . esc_html($target?->name ?? '—') . '</td>'
+                . '<td><code>' . esc_html($edge->kind->value) . '</code></td>'
+                . '<td>' . ($edge->fromId === $selected->id
+                    ? esc_html__('its own', 'taxmod')
+                    : '<em>' . esc_html__('inherited', 'taxmod') . '</em>')
+                . '</td>'
+                . '</tr>';
+        }
+
+        $html  = '<h2>' . sprintf(
+            /* translators: %s is a node name. */
+            esc_html__('Attributes of «%s»', 'taxmod'),
+            esc_html($selected->name)
+        ) . '</h2>';
+
+        $html .= '<p class="description">'
+            . esc_html__('The kind is never chosen — it is read off the branch the target sits in.', 'taxmod')
+            . '</p>';
+
+        $html .= $own === []
+            ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
+            : '<table class="wp-list-table widefat striped"><thead><tr>'
+                . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
+                . '<th>' . esc_html__('Points at', 'taxmod') . '</th>'
+                . '<th style="width:9em">' . esc_html__('Kind', 'taxmod') . '</th>'
+                . '<th style="width:7em">' . esc_html__('From', 'taxmod') . '</th>'
+                . '</tr></thead><tbody>' . implode('', $own) . '</tbody></table>';
+
+        return $html . $this->attributeForm($selected, $rows);
+    }
+
+    /**
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     */
+    private function attributeForm(Node $selected, array $rows): string
+    {
+        $options = '';
+
+        foreach ($rows as $row) {
+            $candidate = $row['node'];
+
+            // Only what could actually be a target: something inside a branch, and not the
+            // branch root itself (D-238). The core refuses the rest anyway; offering a choice
+            // that always fails is a trap.
+            $branch = $this->framework->branchOf($candidate);
+
+            if ($branch === null || $candidate->id === $this->framework->rootOf($branch)->id) {
+                continue;
+            }
+
+            $options .= '<option value="' . (int) $candidate->id . '">'
+                . esc_html($candidate->name . ' — ' . $branch->value)
+                . '</option>';
+        }
+
+        if ($options === '') {
+            return '<p><em>'
+                . esc_html__('Nothing to point at yet: put a node under Model, Compositions, Data Types or Constants first.', 'taxmod')
+                . '</em></p>';
+        }
+
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:1em 0;display:flex;gap:.5em;align-items:center">'
+            . $this->hidden($selected->id)
+            . '<input type="text" name="name" placeholder="' . esc_attr__('Name of the attribute', 'taxmod') . '" required style="width:16em">'
+            . '<select name="target">' . $options . '</select>'
+            . '<button class="button button-primary" name="do" value="add_attribute">'
+            . esc_html__('Add attribute', 'taxmod') . '</button>'
+            . '</form>';
     }
 
     /**
@@ -76,8 +180,10 @@ final class NodesScreen
 
             $body .= '<tr>';
             $body .= '<td>' . $indent . $this->expander($row, $collapsed)
-                . '<strong>' . esc_html($node->name) . '</strong></td>';
+                . '<a href="' . esc_url(add_query_arg(['page' => 'taxmod', 'taxmod_node' => $node->id], admin_url('admin.php'))) . '"><strong>'
+                . esc_html($node->name) . '</strong></a></td>';
             $body .= '<td><code>' . esc_html($node->path) . '</code></td>';
+            $body .= '<td title="' . esc_attr__('How often this row has been written. Not a version to return to — see the change group.', 'taxmod') . '">' . (int) $node->version . '</td>';
             $body .= '<td>' . $this->rowActions($row, $rows, $root, $mode) . '</td>';
             $body .= '</tr>';
         }
@@ -86,6 +192,7 @@ final class NodesScreen
             . '<thead><tr>'
             . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
             . '<th style="width:10em">' . esc_html__('Path', 'taxmod') . '</th>'
+            . '<th style="width:6em">' . esc_html__('Writes', 'taxmod') . '</th>'
             . '<th>' . esc_html__('Actions', 'taxmod') . '</th>'
             . '</tr></thead><tbody>' . $body . '</tbody></table>';
     }
@@ -246,6 +353,7 @@ final class NodesScreen
                 'restore'    => $this->editor->restore($id),
                 'trash'      => $this->editor->moveToTrash($id),
                 'trash_node' => $this->editor->moveToTrashPromotingChildren($id),
+                'add_attribute' => $this->editor->addAttribute($id, $target, $name),
                 default     => throw new \InvalidArgumentException('Unknown action.'),
             };
 
@@ -267,10 +375,15 @@ final class NodesScreen
             $message = __('Unknown action.', 'taxmod');
         }
 
-        wp_safe_redirect(add_query_arg(
-            ['page' => 'taxmod', 'taxmod_message' => rawurlencode($message)],
-            admin_url('admin.php')
-        ));
+        $back = ['page' => 'taxmod', 'taxmod_message' => rawurlencode($message)];
+
+        // Adding an attribute happens **at** a node, so the person stays there rather than
+        // being sent back to a screen with nothing selected.
+        if ($do === 'add_attribute') {
+            $back['taxmod_node'] = $id;
+        }
+
+        wp_safe_redirect(add_query_arg($back, admin_url('admin.php')));
         exit;
     }
 

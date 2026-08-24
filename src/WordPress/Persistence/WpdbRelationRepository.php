@@ -157,6 +157,46 @@ final class WpdbRelationRepository implements RelationRepository
         ));
     }
 
+
+
+    public function nextAttributePositionUnder(int $ownerId): int
+    {
+        global $wpdb;
+
+        $highest = $wpdb->get_var($wpdb->prepare(
+            'SELECT MAX(position) FROM ' . Schema::table('relations') . ' WHERE from_id = %d AND kind <> %s',
+            $ownerId,
+            RelationKind::Inheritance->value
+        ));
+
+        return $highest === null ? 0 : (int) $highest + 1;
+    }
+
+    public function attributeEdgesOf(array $ownerIds): array
+    {
+        global $wpdb;
+
+        if ($ownerIds === []) {
+            return [];
+        }
+
+        // The id list is built from integers we cast ourselves, so it carries no user input —
+        // but it is still assembled with placeholders rather than glued in (`CD-6`).
+        $places = implode(',', array_fill(0, count($ownerIds), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, from_id, to_id, kind, name, position FROM ' . Schema::table('relations') . "
+                 WHERE from_id IN ({$places}) AND kind <> %s
+                 ORDER BY position ASC, id ASC",
+                [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+            ),
+            ARRAY_A
+        );
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
     public function purgeEdgesTouching(int $nodeId): void
     {
         global $wpdb;

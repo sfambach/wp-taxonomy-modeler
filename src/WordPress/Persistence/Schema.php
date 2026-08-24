@@ -42,8 +42,11 @@ final class Schema
      *     `before_state`.
      * 3 — inheritance edges become the tree and `nodes.path` is derived from them (D-014);
      *     `relations.from_id` and `to_id` join the foreign keys.
+     * 4 — the changelog gains `change_group_id`, the bracket around one act (D-348).
+     * 5 — the three branches are seeded as framework nodes; no table changed, but the version
+     *     moves so that an already-installed copy gets them (D-161).
      */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 

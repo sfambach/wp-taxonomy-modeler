@@ -88,6 +88,30 @@ final class InMemoryRelations implements RelationRepository
         }
     }
 
+
+
+    public function nextAttributePositionUnder(int $ownerId): int
+    {
+        $edges = $this->attributeEdgesOf([$ownerId]);
+
+        return $edges === [] ? 0 : end($edges)->position + 1;
+    }
+
+    public function attributeEdgesOf(array $ownerIds): array
+    {
+        $edges = [];
+
+        foreach ($this->rows as $edge) {
+            if ($edge->kind !== RelationKind::Inheritance && in_array($edge->fromId, $ownerIds, true)) {
+                $edges[] = $edge;
+            }
+        }
+
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->position, $a->id] <=> [$b->position, $b->id]);
+
+        return $edges;
+    }
+
     public function purgeEdgesTouching(int $nodeId): void
     {
         foreach ($this->rows as $id => $edge) {

@@ -51,7 +51,25 @@ final class Plugin
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
         // the stored version is behind.
-        add_action('admin_init', Schema::ensureCurrent(...));
+        add_action('admin_init', $plugin->ensureUpToDate(...));
+    }
+
+    /**
+     * Bring an installed copy up to date without anybody remembering to deactivate first.
+     *
+     * ⚠️ **Seeding runs when the schema version moved**, not on every request: a new version
+     * may have brought new framework nodes — the branches did — and an installation that only
+     * upgraded would otherwise never get them.
+     */
+    public function ensureUpToDate(): void
+    {
+        $before = (int) get_option(Schema::VERSION_OPTION, 0);
+
+        Schema::ensureCurrent();
+
+        if ($before !== Schema::VERSION) {
+            $this->frameworkNodes()->seed();
+        }
     }
 
     public function activate(): void

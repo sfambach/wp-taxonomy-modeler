@@ -2,8 +2,8 @@
 
 namespace Taxmod\Core\Repository;
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
-
 /**
  * The few nodes the machinery stands on — the root, and the node parked things go under.
  *
@@ -25,4 +25,18 @@ interface FrameworkNodes
     public function trash(): Node;
 
     public function isProtected(Node $node): bool;
+
+    /**
+     * The node a branch hangs from — `Model`, `Compositions`, `Data Types`, `Constants`.
+     *
+     * ⚠️ **Asked for by role, never by id.** An id is meaningless (sentence 2), so hard-coding
+     * one would be the special-casing the code standard forbids outright.
+     */
+    public function rootOf(Branch $branch): Node;
+
+    /**
+     * Which branch a node sits in, or null for the few that sit outside them all — the root
+     * itself, and the trash.
+     */
+    public function branchOf(Node $node): ?Branch;
 }

@@ -8,7 +8,7 @@ rule the core cannot be trusted with.
 | Run | What it covers | Needs |
 |---|---|---|
 | **`core`** — `tests/Core/` | the domain: nodes, paths, versions, parking | nothing. No WordPress, no database |
-| **boundary** — `scripts/dev/package*-check.php` | tables, foreign keys, edges, `$wpdb`, migrations | a running WordPress and its database |
+| **boundary** — `scripts/dev/package*-check.php` | tables, foreign keys, edges, attributes, `$wpdb`, migrations | a running WordPress and its database |
 
 ```bash
 php vendor/phpunit/phpunit/phpunit
@@ -17,6 +17,7 @@ php vendor/phpunit/phpunit/phpunit
 ```bash
 php scripts/dev/package1-check.php /path/to/wordpress
 php scripts/dev/package2-check.php /path/to/wordpress
+php scripts/dev/package3-check.php /path/to/wordpress
 ```
 
 ⚠️ **A WordPress call that drifts into `Taxmod\Core` fails on the first run**, immediately,
