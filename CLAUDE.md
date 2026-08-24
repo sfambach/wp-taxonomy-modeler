@@ -3,13 +3,17 @@
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
 
-## Where things stand (2026-08-22)
+## Where things stand (2026-08-24)
 
-The project **restarted its concept phase**. The previous planning round is frozen under
-[`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept being written now
-lives in [`docs/NewConcept/`](docs/NewConcept/README.md).
+The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24: 338
+decisions, 81 open questions all answered. The previous planning round is frozen under
+[`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
+[`docs/NewConcept/`](docs/NewConcept/README.md).
 
-**Current gate: concept. No production code yet** — see `PR-2`.
+**Current gate: none — building.** [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) went
+`locked` on 2026-08-24 ([D-338](docs/NewConcept/90-decision-log.md)). Work runs in the packages of
+[`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md); **Package 1** is the
+tables and a node that survives a restart.
 
 ---
 
@@ -19,7 +23,7 @@ lives in [`docs/NewConcept/`](docs/NewConcept/README.md).
 |---|---|
 | **PR-1** | **Source of truth is [`docs/NewConcept/`](docs/NewConcept/README.md).** Nothing else. `docs/legacy/` is a frozen quarry — quote it, never inherit from it. |
 | **PR-1b** | **The legacy is harvested and closed.** Documentation and code were swept on 2026-08-23 and every finding is placed in [`03`](docs/NewConcept/_harvest/03-legacy-inspiration.md) and [`04`](docs/NewConcept/_harvest/04-legacy-code-inspiration.md) — decided, already covered, contradicting, a workaround, or deliberately not taken. **Look in the sheets first; the old material is evidence, not a source.** It is never extended and never used as a template. The old plugin code lives in [`legacy-code/`](legacy-code/README.md) and no longer runs; the repository root is free for the rebuild. |
-| **PR-2** | **No production code until [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) has status `locked`.** Spikes are allowed if the code says `THROWAWAY` at the top. |
+| **PR-2** | **[`10-domain-core.md`](docs/NewConcept/10-domain-core.md) is `locked`** since 2026-08-24 ([D-338](docs/NewConcept/90-decision-log.md)) — **production code is allowed.** What replaces the gate: **build what the document says, and when it turns out to be missing something, that becomes a decision** ([D-222](docs/NewConcept/90-decision-log.md)) — never a quiet edit to the concept. Work proceeds in the packages of [`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md), and **every package ends with something the owner can operate** and a list of what was assumed that the concept did not say. |
 | **PR-3** | **Nothing is decided until it is in [`90-decision-log.md`](docs/NewConcept/90-decision-log.md)** with a `D-<nnn>` id. A decision reached in chat and not written down did not happen. |
 | **PR-4** | **Unclear stays unclear.** Anything undecided becomes an entry in [`91-open-questions.md`](docs/NewConcept/91-open-questions.md). Never invent an answer to fill a gap, and never pick one silently because it seemed obvious. |
 | **PR-5** | **The concept is written from the statements of the owner first.** Legacy is harvested afterwards, as a cross-check, through a sheet in `docs/NewConcept/_harvest/`. |

@@ -6,17 +6,20 @@ a **tree**.
 
 ---
 
-> ## ⚠️ Concept phase — nothing here runs
+> ## Concept phase closed — building has started
 >
-> The project **restarted its planning** on 2026-08-22. The old plugin was mothballed on
-> 2026-08-23 into [`legacy-code/`](legacy-code/README.md) and no longer loads; there is no build
-> and no entry file at the root.
+> The concept was written between 2026-08-22 and 2026-08-24 and
+> [10 Domain core](docs/NewConcept/10-domain-core.md) went **`locked`** on 2026-08-24
+> ([D-338](docs/NewConcept/90-decision-log.md)). **338 decisions**, **81 open questions** — all
+> answered.
 >
-> **No production code until [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) is
-> `locked`** — rule `PR-2` in [`CLAUDE.md`](CLAUDE.md).
+> Work now runs in the packages of
+> [97 Implementation plan](docs/NewConcept/97-implementation-plan.md). ⚠️ **Every package ends
+> with something the owner can operate** — not *the storage layer is done*, which nobody can
+> check, but *you create a node, rename it, reload, and it is still there.*
 >
-> Where it stands: **337 decisions** recorded, **81 open questions** — all answered —
-> and **0 lines** of new code.
+> The old plugin was mothballed on 2026-08-23 into [`legacy-code/`](legacy-code/README.md) and
+> no longer loads.
 
 ---
 
@@ -39,7 +42,7 @@ Three doors, depending on why you came:
 |---|---|---|
 | [00 Vision and scope](docs/NewConcept/00-vision-and-scope.md) | What the product is, what it is not | `agreed` |
 | [01 Glossary](docs/NewConcept/01-glossary.md) | The words, and what each one means here | `draft` |
-| [10 Domain core](docs/NewConcept/10-domain-core.md) | The model: nodes, relations, branches, settings, storage | `draft` |
+| [10 Domain core](docs/NewConcept/10-domain-core.md) | The model: nodes, relations, branches, settings, storage | **`locked`** |
 | [20 Interaction](docs/NewConcept/20-interaction.md) | What a person may do — tree, detail view, blocks | `open` |
 | [30 Renderer](docs/NewConcept/30-renderer.md) | How anything becomes visible | `draft` |
 | [40 I18n](docs/NewConcept/40-i18n.md) | Labels, roles, locales — and why they are not the text domain | `draft` |

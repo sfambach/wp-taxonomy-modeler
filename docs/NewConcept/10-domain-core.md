@@ -1,16 +1,21 @@
 ---
 title: Domain core — the model
-status: draft
+status: locked
 round: R1 (in progress)
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 # Domain core — the model
 
-> **Status: `draft`, and ready to be judged for `locked`.** The legacy has been harvested — see
-> [`_harvest/03`](_harvest/03-legacy-inspiration.md) and [`04`](_harvest/04-legacy-code-inspiration.md),
-> both closed. No question is open and no contradiction stands.
+> **Status: `locked` since 2026-08-24** ([D-338](90-decision-log.md)). The legacy has been
+> harvested — see [`_harvest/03`](_harvest/03-legacy-inspiration.md) and
+> [`04`](_harvest/04-legacy-code-inspiration.md), both closed. No question is open and no
+> contradiction stands.
 >
+> ⚠️ **`locked` does not mean finished, it means buildable and checkable.** What is written here
+> is what gets built. **A gap found while building becomes a decision in
+> [the log](90-decision-log.md), never a quiet change to this document** (`PR-3`,
+> [D-222](90-decision-log.md)).
 > **This is the document that must reach `locked` first** ([D-004](90-decision-log.md)).
 > Renderer, i18n and persistence all hang off it.
 >
