@@ -76,6 +76,22 @@ enum SettingKey: string
     case Renderer = 'renderer';
     case Converter = 'converter';
     case Icon = 'icon';
+
+    /**
+     * Developer mode — a **posture**, and it belongs at the head of the chain
+     * ([D-122](../../../docs/NewConcept/90-decision-log.md), [D-248](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **One mode, not two.** [D-248](../../../docs/NewConcept/90-decision-log.md) folded test
+     * mode into it — *two modes that overlap are two things to explain and two ways to be in a
+     * surprising state* — so the same switch that lifts deletion protection also shows the
+     * diagnostics. **Default off**, because a switch nobody set is off.
+     *
+     * ⚠️ *It has no screen of its own yet. The installation link is where a posture belongs and it
+     * does not appear in the modeller ([OQ-039](../../../docs/NewConcept/91-open-questions.md)), so
+     * for now it is set on the **root** and inherited from there — which is the chain doing its job
+     * rather than a mechanism of its own.*
+     */
+    case Developer = 'developer';
     case Order = 'order';
 
 
@@ -129,7 +145,8 @@ enum SettingKey: string
     public function shape(): SettingShape
     {
         return match ($this) {
-            self::Mandatory, self::Hide, self::ReadOnly => SettingShape::Switch,
+            self::Mandatory, self::Hide, self::ReadOnly,
+            self::Developer                            => SettingShape::Switch,
             self::Order                                => SettingShape::Whole,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter            => SettingShape::ARegisteredName,

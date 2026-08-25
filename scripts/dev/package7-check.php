@@ -432,7 +432,8 @@ try {
             && substr_count($markup, 'value="up"') === substr_count($markup, 'value="add_child_here"')
     );
     check('and what cannot be done is disabled rather than absent', str_contains($markup, 'disabled'));
-    check('and its write count', str_contains($markup, 'taxmod-tree-writes'));
+    // ⚠️ Off by default: the write count is a diagnostic and waits for developer mode (D-248).
+    check('the write count is off unless developer mode says otherwise', ! str_contains($markup, 'taxmod-tree-writes'));
 } catch (Throwable $e) {
     check('render() returns markup rather than dying', false, $e->getMessage());
 }

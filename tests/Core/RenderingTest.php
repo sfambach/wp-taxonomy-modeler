@@ -501,10 +501,34 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('name="_nonce" value="abc123"', $markup);
 
         self::assertStringContainsString('href="https://example.test/?taxmod_node=' . $part->id . '"', $markup);
-        self::assertStringContainsString('taxmod-tree-writes', $markup);
 
         // ⚠️ The link wraps the name and **not** the buttons: a button inside a link does not work.
         self::assertLessThan(strpos($markup, '<button'), strpos($markup, '</a>'));
+    }
+
+    #[Test]
+    public function the_write_count_shows_only_in_developer_mode_and_is_off_by_default(): void
+    {
+        // ⚠️ The owner asked for it off by default, and D-248 says there is **one** mode for that
+        // rather than a switch per diagnostic. It is a **write count** and never a version (D-349).
+        $part = $this->thing('Part');
+
+        self::assertStringNotContainsString(
+            'taxmod-tree-writes',
+            $this->rendering->cellsFor([$part])[$part->id]->markup,
+            'off unless somebody said otherwise'
+        );
+
+        $this->settings->put(
+            $this->settings->chainFor($part),
+            SettingKey::Developer->value,
+            TypedValue::ofBool(true)
+        );
+
+        self::assertStringContainsString(
+            'taxmod-tree-writes',
+            $this->rendering->cellsFor([$part])[$part->id]->markup
+        );
     }
 
     #[Test]

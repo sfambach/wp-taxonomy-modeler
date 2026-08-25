@@ -108,11 +108,16 @@ final class TreeNodeRenderer implements Renderer
         $markup .= '<span class="taxmod-tree-tail" style="margin-left:auto;display:flex;'
             . 'gap:.4em;align-items:center">'
             . $this->controls($context->surroundings)
-            // ⚠️ **The write count belongs to the row, so the row draws it** — the owner: *that
-            // includes everything that makes up the row.* It is a **write count** and never a
-            // version ([D-349](../../../docs/NewConcept/90-decision-log.md)): *version* promises a
-            // state to return to, and this only says *nobody changed this row since you read it*.
+            // ⚠️ **The write count is a diagnostic and shows only in developer mode** — the owner
+            // asked for it off by default, and [D-248](../../../docs/NewConcept/90-decision-log.md)
+            // says there is **one** mode for that rather than a switch per diagnostic.
+            //
+            // ⚠️ *It is a **write count** and never a version* ([D-349](../../../docs/NewConcept/90-decision-log.md)):
+            // *version* promises a state to return to, and this only says *nobody changed this row
+            // since you read it*. **It stays visible in that mode because it earns its place** —
+            // that decision was written after a defect was found by reading these numbers.
             . ($subject instanceof Node
+                && ($context->setting(SettingKey::Developer->value)?->asBool() ?? false)
                 ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
                 : '')
             . '</span>';
