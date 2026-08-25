@@ -49,6 +49,21 @@ final class RenderContext
      * @param list<RenderedField> $parts The members, already drawn, in the order the descent found
      *                                   them. A container regroups them; it does not draw them.
      *
+     * ⚠️ **`subjectLabel` is what the node **being drawn** is called; `refersTo` is what the node a
+     * value **points at** is called.** Two fields rather than one overloaded name: the same question
+     * about different nodes. A tree row draws its own subject, a reference draws its target.
+     *
+     * @param list<string> $actions Finished controls to place with the subject, in order.
+     *
+     * ⚠️ **The core cannot build a button, and that is not a limitation to work around.** A control
+     * carries a URL and a nonce, both of which are the boundary's facts (`CD-1`), and *what may be
+     * done to this node* depends on things a renderer must not fetch — a protected node cannot be
+     * deleted ([D-194](../../../docs/NewConcept/90-decision-log.md)), the last child has no *down*
+     * ([D-050](../../../docs/NewConcept/90-decision-log.md)). **So the boundary builds them and the
+     * renderer places them**, which is the same seam as `refersTo` and `parts`. *It is also the
+     * third symptom of [OQ-087](../../../docs/NewConcept/91-open-questions.md): a word, a link, and
+     * now a control — all things a core renderer can only be handed.*
+     *
      * ⚠️ **`refersTo` is how a renderer learns about a node it is not drawing.** A reference is
      * drawn as *the target's label* (D-105), and a renderer reaches out to nothing (D-159) — so the
      * label is resolved **before** the descent, for every reference at once, and handed in. *This is
@@ -67,6 +82,8 @@ final class RenderContext
         public readonly ?SimpleType $type = null,
         public readonly ?string $refersTo = null,
         public readonly array $parts = [],
+        public readonly ?string $subjectLabel = null,
+        public readonly array $actions = [],
     ) {
     }
 

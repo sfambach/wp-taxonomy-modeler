@@ -622,3 +622,41 @@ switch and `renderer` as a list of the eligible ones, each **engine setting key*
 generalised it. **That mapping is the first piece of the next package**, and until it exists the
 settings panel prints key and value as text — which is the second way to draw a field that
 [R20a](30-renderer.md) warns about, living on borrowed time exactly as [D-350](90-decision-log.md) did.
+
+### What came after the write-up above — same day, 2026-08-25
+
+⚠️ **The section above describes Package 7 as it stood at midday.** The afternoon was spent almost
+entirely on things the owner found by **looking at the screen**, and each one is a decision rather
+than a tidy-up. Recorded here so the package's own account is not a day out of date.
+
+| | What | Found how |
+|---|---|---|
+| [D-358](90-decision-log.md) | the renderer is **picked**, never typed — and `eligibleFor()` was offering every typed renderer to a node with no type at all, *a spinner for a supplier* | *how would the user know the name?* |
+| [D-359](90-decision-log.md) | `step` belongs on the node as `range_step`, and the *homeless setting* premise was simply wrong | *look at the concept again more closely* — [R17](30-renderer.md#r12r17) had said it |
+| [D-360](90-decision-log.md) | offered and allowed are two questions; the write check was a fence [R14](30-renderer.md#r12r17) does not build | *unless you have a special use case* |
+| [D-361](90-decision-log.md) | the field-rule panel's shape, and the default **in** the list | a mockup, whose own *From* column showed why |
+| [D-362](90-decision-log.md) | a rule list is one setting value, the names in order | required by D-361 |
+| [D-363](90-decision-log.md) | the **reference renderer** — and how a renderer learns about a node it is not drawing | every constant read *no renderer* |
+| [D-364](90-decision-log.md) | a free key is not an authoring gesture — *that is what attributes are for* | the one row the panel could not draw |
+| [D-365](90-decision-log.md) | three jobs, one axis: the **type**. And a converter maps notation **both ways** | *I thought that was clear, we have the table* |
+| [D-366](90-decision-log.md) | the **form renderer**, and a container lays out parts the descent drew | three of four expected gaps were decided already |
+| [D-367](90-decision-log.md) | the tree **walks**, the node renderer **draws** — so the chooser swaps only the cell | *then we only need to swap the node renderer* |
+
+**Also in the afternoon, and both worth keeping:**
+
+- **The settings side is drawn rather than printed.** `SettingShape` and `SettingKey::typeFor()`
+  are what [R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen) needed and had never
+  been given: a setting's own value has a type, so the same renderers draw it. The panel now lists
+  **every key that applies**, not only the written ones — the owner's ask — with `here`,
+  `from #n` and `not defined` as three distinct states.
+- **The last guesser is gone.** A setting reads back as the type its key declares. Two cases keep
+  characters and say so: a free key, and a borrowing key on a node that is not a simple data type.
+
+**Counts at the end of the day: 236 core checks, and 250 at the boundary** — 28 · 48 · 23 · 33 · 24
+· 21 · 73.
+
+⚠️ **What is not built and is now well specified rather than vague:** the **chooser**
+([D-244](90-decision-log.md)) — two setting shapes and every reference edit wait on it; the
+**converters** and **validators**, whose assignment axis [D-365](90-decision-log.md) settles; the
+**rule list** as code ([D-362](90-decision-log.md) has the shape, nothing reads it yet); and the
+**tree walker** as a renderer, whose cell is the next thing to build.

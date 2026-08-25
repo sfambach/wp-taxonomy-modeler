@@ -59,6 +59,10 @@ final class ShippedRenderers
         // with no simple type could honestly be given nothing.
         $registry->add(new FormRenderer());
 
+        // ⚠️ **The tree's cell** (D-367): registered so R12 holds, not offered because *which* cell
+        // a tree draws is the surface's decision — the chooser and the trash want another.
+        $registry->addForSurfaces(new TreeNodeRenderer());
+
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());
         $registry->add(new SpinnerRenderer());

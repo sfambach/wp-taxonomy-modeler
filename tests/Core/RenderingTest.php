@@ -16,6 +16,7 @@ use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SpinnerRenderer;
+use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\SwitchRenderer;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
@@ -407,6 +408,86 @@ final class RenderingTest extends TestCase
 
         self::assertTrue($field->hasNoRenderer());
         self::assertStringContainsString('taxmod-no-renderer', $field->result->markup);
+    }
+
+    // --------------------------------------------------------- the tree's cell
+
+    #[Test]
+    public function the_cell_draws_the_icon_and_the_label(): void
+    {
+        // D-251 / R18a: the icon is a setting on the chain, the label a role and a locale — and
+        // they are different mechanisms, which D-252 wrote down so they would not be conflated.
+        $part = $this->thing('Part');
+
+        $this->settings->put(
+            $this->settings->chainFor($part),
+            SettingKey::Icon->value,
+            TypedValue::ofText('▣')
+        );
+
+        $markup = $this->rendering->cellsFor([$part])[$part->id]->markup;
+
+        self::assertStringContainsString('▣', $markup);
+        self::assertStringContainsString('Part', $markup);
+    }
+
+    #[Test]
+    public function a_cell_without_a_label_still_reads_as_something(): void
+    {
+        // ⚠️ The chain ends on the node's own name and never on nothing (D-020, D-022), so an empty
+        // cell where a name belongs is impossible by construction rather than by care.
+        $part = $this->thing('Supplier');
+
+        self::assertStringContainsString('Supplier', $this->rendering->cellsFor([$part])[$part->id]->markup);
+    }
+
+    #[Test]
+    public function the_boundarys_buttons_are_placed_and_not_escaped(): void
+    {
+        // ⚠️ The core cannot build a button — a URL and a nonce are the boundary's facts (CD-1) —
+        // so they arrive finished and are placed. Escaping them would print them.
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->cellsFor(
+            [$part],
+            [$part->id => ['<button name="up">up</button>']]
+        )[$part->id]->markup;
+
+        self::assertStringContainsString('<button name="up">up</button>', $markup);
+    }
+
+    #[Test]
+    public function every_cell_gets_its_own_icon_and_not_the_last_ones(): void
+    {
+        // ⚠️ The recurring batch fault, guarded a third time: it shows as one wrong row and gets
+        // blamed on the data.
+        $one = $this->thing('Alpha');
+        $two = $this->thing('Beta');
+
+        $this->settings->put($this->settings->chainFor($two), SettingKey::Icon->value, TypedValue::ofText('★'));
+
+        $cells = $this->rendering->cellsFor([$one, $two]);
+
+        self::assertStringNotContainsString('★', $cells[$one->id]->markup);
+        self::assertStringContainsString('★', $cells[$two->id]->markup);
+    }
+
+    #[Test]
+    public function the_cell_is_registered_but_never_offered_as_a_choice(): void
+    {
+        // ⚠️ D-367: *which* cell a tree draws is the surface's decision, not the author's — the
+        // chooser and the trash want another. Offering it would let somebody turn the detail view
+        // into a tree row. R12 still holds: it is in the registry.
+        $registry = ShippedRenderers::registry();
+
+        self::assertSame(TreeNodeRenderer::NAME, $registry->byName(TreeNodeRenderer::NAME)->name());
+        self::assertNotContains(
+            TreeNodeRenderer::NAME,
+            array_map(
+                static fn ($renderer): string => $renderer->name(),
+                $this->rendering->choicesForNode($this->thing('Part'))
+            )
+        );
     }
 
     // ---------------------------------------------------- the container renderer

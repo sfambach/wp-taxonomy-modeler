@@ -33,6 +33,9 @@ final class RendererRegistry
     /** @var array<string, Renderer> Keyed by the simple type's own value. */
     private array $defaultByType = [];
 
+    /** @var array<string, true> Names a surface asks for and nobody is offered. */
+    private array $surfaceOnly = [];
+
     public function __construct(private readonly Renderer $fallback = new PlainRenderer())
     {
         $this->add($this->fallback);
@@ -52,6 +55,28 @@ final class RendererRegistry
         foreach ($asDefaultFor as $type) {
             $this->defaultByType[$type->value] = $renderer;
         }
+    }
+
+    /**
+     * Registered, and **not offered as a choice** — a renderer a *surface* asks for by name.
+     *
+     * ⚠️ **[D-367](90-decision-log.md) makes this a real category rather than a special case.** The
+     * tree walks and the **node renderer draws**, and *which* cell is the surface's decision: the
+     * modelling tree, the chooser and the trash want the node drawn differently. **So the cell is
+     * not something a model author picks for a node** — offering it would let somebody set a tree
+     * cell as a node's renderer and turn the detail view into a row.
+     *
+     * ⚠️ **Registered all the same, because [R12](30-renderer.md#r12r17) says the registry is *the
+     * one place where all renderers are registered*.** Bypassing it and instantiating the cell at
+     * the call site would break that for the sake of one flag.
+     *
+     * *Until now only the fallback had this treatment, for the analogous reason: naming it would
+     * make «no renderer» a decision somebody made (R14b).*
+     */
+    public function addForSurfaces(Renderer $renderer): void
+    {
+        $this->byName[$renderer->name()] = $renderer;
+        $this->surfaceOnly[$renderer->name()] = true;
     }
 
     /** Render time: by name, or the fallback when the name is unknown. */
@@ -116,10 +141,11 @@ final class RendererRegistry
     ): array {
         $fitting = [];
 
-        foreach ($this->byName as $renderer) {
-            if ($renderer === $this->fallback) {
-                // ⚠️ Never offered as a choice. It is what answers when nobody chose, and
-                // putting it in the list would make *no renderer* something somebody picked.
+        foreach ($this->byName as $name => $renderer) {
+            if ($renderer === $this->fallback || isset($this->surfaceOnly[$name])) {
+                // ⚠️ Never offered as a choice. The fallback because naming it would make *no
+                // renderer* a decision somebody made (R14b); a surface renderer because *which*
+                // cell a tree draws is the surface's call and not the author's (D-367).
                 continue;
             }
 

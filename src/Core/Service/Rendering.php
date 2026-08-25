@@ -18,6 +18,7 @@ use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -293,6 +294,66 @@ final class Rendering
                 $parts
             )
         );
+    }
+
+    /**
+     * A tree's worth of nodes, each drawn by the cell — **three queries whatever the depth**.
+     *
+     * ⚠️ **The batching is the point, not an optimisation.** A cell draws the node's icon (D-251),
+     * a setting on the chain, and its label, a chain of its own — so asking per row would be two
+     * walks per row, and `CD-7` forbids the loop. Settings for every node in one query, labels in
+     * another, then every cell is drawn in memory.
+     *
+     * ⚠️ **Which cell is a parameter, and that is [D-367](90-decision-log.md)'s whole point:** the
+     * modelling tree, the chooser and the trash walk one hierarchy and draw the node differently.
+     *
+     * ⚠️ **Which role a surface reads its labels in is not decided** — the caller says and the
+     * renderer never guesses ([OQ-091](91-open-questions.md)).
+     *
+     * @param  list<Node>                   $nodes
+     * @param  array<int, list<string>>     $actions Finished controls per node id, from the
+     *                                              boundary — the core cannot build a button.
+     * @return array<int, RenderResult>     Keyed by node id.
+     */
+    public function cellsFor(
+        array $nodes,
+        array $actions = [],
+        string $cell = TreeNodeRenderer::NAME,
+        SeededRole $role = SeededRole::Table,
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): array {
+        if ($nodes === []) {
+            return [];
+        }
+
+        $settings = $this->settings->resolveForNodes($nodes);
+        $labels   = $this->labels?->forNodes($nodes, $role, $locale) ?? [];
+        $renderer = $this->renderers->byName($cell);
+
+        $cells = [];
+
+        foreach ($nodes as $node) {
+            $cells[$node->id] = $renderer->render(
+                $node,
+                new RenderContext(
+                    Purpose::Display,
+                    TypedValue::nothing(),
+                    $settings[$node->id] ?? [],
+                    $locale,
+                    $level,
+                    false,
+                    '',
+                    null,
+                    null,
+                    [],
+                    $labels[$node->id] ?? null,
+                    $actions[$node->id] ?? []
+                )
+            );
+        }
+
+        return $cells;
     }
 
     /** What this attribute's value has to be read back as. */

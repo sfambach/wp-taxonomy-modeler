@@ -229,6 +229,7 @@ final class NodesScreen
             admin_url('admin.php')
         );
 
+        // Triangles for expand and collapse — confirmed by the owner (D-368).
         return '<a href="' . esc_url($url) . '" style="display:inline-block;width:1.6em;text-decoration:none">'
             . ($row['collapsed'] ? '&#9656;' : '&#9662;') . '</a>';
     }
