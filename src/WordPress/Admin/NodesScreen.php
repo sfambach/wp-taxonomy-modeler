@@ -1301,7 +1301,11 @@ final class NodesScreen
             $outcome = match ($do) {
                 'create'         => $stay = $this->editor->createNode($name, $id)->id,
                 'add_child'      => $stay = $this->editor->createNode($name, $id)->id,
-                'add_child_here' => $this->editor->createNode(__('New node', 'taxmod'), $id),
+                // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
+                // whose whole point is *and now I want to work on that* — it makes a node with a
+                // placeholder name, so leaving the parent selected means the very next thing a
+                // person does is hunt for what they just made.
+                'add_child_here' => $stay = $this->editor->createNode(__('New node', 'taxmod'), $id)->id,
                 'rename'         => $this->editor->rename($id, $name),
                 'move'           => $this->editor->move($id, $target),
                 'up'             => $this->editor->moveUp($id),
