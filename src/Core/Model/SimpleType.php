@@ -103,6 +103,50 @@ enum SimpleType: string
     }
 
     /**
+     * The shape this type's characters must have — **one fact in one place**.
+     *
+     * ⚠️ **The browser and the core check the same rule, and they must not each carry their own
+     * copy of it.** A control that accepted what the core then refused would be the trap
+     * [R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete) exists to prevent —
+     * *a control offers only real choices* — and two regexes drifting apart is how that trap gets
+     * built by accident. So {@see valueFrom()} anchors this pattern, and a renderer puts the very
+     * same string in the control's `pattern` attribute.
+     *
+     * Null means *any characters at all*: a text, an address, a colour name. Validity beyond the
+     * shape is a **validator's** question (D-319), not this one's.
+     *
+     * ⚠️ **This is the *storage* shape, and it is the *accepted* shape only while no converter is
+     * in effect** (D-356). The owner named the case that proves it: letters in a numeric field can
+     * be exactly what is wanted — type `4k7` and mean `4700`
+     * ([R35a](../../../docs/NewConcept/30-renderer.md#r35a--notation-is-not-structure)) — because
+     * a converter *removes what cannot have been meant*
+     * ([R36a](../../../docs/NewConcept/30-renderer.md#r36a--the-converter-removes-what-cannot-have-been-meant-the-validator-asks-about-the-rest)).
+     * **So when converters arrive, the pattern comes from the converter in effect and this becomes
+     * the fallback**, or this method turns into a wall against the very notations the concept
+     * promises. *What it must never do is loosen for the case it cannot express: `1kg` is a **unit
+     * value**, a composed type of number and unit (D-220) — not an integer with text after it, and
+     * not something a pure `int` field should ever swallow.*
+     */
+    public function pattern(): ?string
+    {
+        return match ($this) {
+            self::Int     => '-?\d+',
+            self::Decimal => '-?\d+(\.\d+)?',
+            default       => null,
+        };
+    }
+
+    /** Which on-screen keyboard the control should ask for. */
+    public function inputMode(): ?string
+    {
+        return match ($this) {
+            self::Int     => 'numeric',
+            self::Decimal => 'decimal',
+            default       => null,
+        };
+    }
+
+    /**
      * Turn submitted characters into a value of this type.
      *
      * ⚠️ **This is not the converter, and the difference matters.**
@@ -142,9 +186,7 @@ enum SimpleType: string
 
     private function integer(string $characters): TypedValue
     {
-        if (preg_match('/^-?\d+$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
+        $this->mustMatchItsShape($characters);
 
         return TypedValue::ofInt((int) $characters);
     }
@@ -152,11 +194,23 @@ enum SimpleType: string
     /** Kept as the characters it arrived as — a decimal never becomes a float (D-057). */
     private function exactDecimal(string $characters): TypedValue
     {
-        if (preg_match('/^-?\d+(\.\d+)?$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
+        $this->mustMatchItsShape($characters);
 
         return TypedValue::ofDecimal($characters);
+    }
+
+    /**
+     * ⚠️ **The same pattern the control carries**, anchored. Writing the rule out a second time
+     * here is how a control and its core come to disagree, and the disagreement only shows up as
+     * *the form refuses what the field allowed*.
+     */
+    private function mustMatchItsShape(string $characters): void
+    {
+        $pattern = $this->pattern();
+
+        if ($pattern !== null && preg_match('/^' . $pattern . '$/', $characters) !== 1) {
+            throw NotAValueOfThatType::submitted($characters, $this->value);
+        }
     }
 
     private function boolean(string $characters): TypedValue

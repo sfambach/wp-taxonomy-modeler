@@ -2550,3 +2550,85 @@ years*, silently. Anything that sorts, filters or ranges over a `datetime` will 
 
 ⚠️ **Nothing depends on it yet** — no time-only value has been stored outside a check — which is
 why it is worth answering before the first model uses one rather than after.
+
+---
+
+## OQ-089 — Is a field's rule set one setting or three?
+
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-25 by the owner while Package 7 was being finished*
+
+The owner: *validator and converter and possibly renderer are **field rules** — consider whether it
+makes sense to handle them with one list.* And, on being offered *one shape, three keys*: **if we
+have an order anyway, or they are only ever used as a group, then that makes no sense.**
+
+⚠️ **The observation underneath is right and is worth more than it looks, because it touches three
+things that are open separately.** All three are *a named thing from a registry, chosen per field,
+resolved through the settings chain, overridable at the use site* — and they are three **stages of
+one pipeline** whose order is fixed and needs nobody to configure it:
+
+```mermaid
+flowchart LR
+  C["converter<br/>characters → value"] --> V["validator<br/>value → verdict"] --> R["renderer<br/>value → markup"]
+```
+
+**What a shared mechanism would settle at once:**
+
+| Open today | It would become |
+|---|---|
+| how a **renderer list** is written down — [R13a](30-renderer.md#r13a--a-node-carries-an-ordered-list-of-renderers-one-of-them-mandatory)/[D-236](90-decision-log.md) want one mandatory plus appended, and the `renderer` setting holds one name | an entry in a list |
+| where the **converter in effect** is named — [D-356](90-decision-log.md) needs it and [R33b](30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect) only says *several are eligible, exactly one is in effect* | an entry in the same list |
+| how a **validator is attached at all** — nothing says, and `SettingKey` has no `validator` | an entry again |
+
+**And his grouping point is the strong half of it.** A composed type like `Resistance` has a
+notation (`4k7`), rules about what is acceptable, and ways to be drawn — and those travel together
+as *how a resistance behaves*. Configure them as three separate things and somebody will
+eventually assemble a combination nobody meant.
+
+### ⚠️ But one key runs into a rule that is already decided, and it is the crux
+
+[D-079](90-decision-log.md) and [D-093](90-decision-log.md): the chain is walked **key by key**, so
+a consumer *may take a mix — the renderer from the type, the multiplicity from the use site, the
+icon from three levels up*. In as many words: **it is not one link winning the whole set.**
+
+**A single list makes it one link winning the whole set.** Concretely: override the renderer at one
+use site, and that override now also carries whatever converter and validators were in the list at
+the moment it was written — **and a later change to the type's converter never reaches that use
+site again.** Nothing announces it. It is the failure [D-266](90-decision-log.md) describes from the
+other direction: *a change somewhere above surfaces where nobody wanted it* — here, fails to
+surface where everybody did.
+
+⚠️ **That is not an argument about tidiness; it is the one property this model keeps paying for.** A
+model of five hundred attributes is only readable if a change at the type is *known* to arrive
+everywhere it was not deliberately overridden.
+
+### So the question is narrower than it first looked
+
+**It is not *one mechanism or three*** — the mechanism is shared either way, and it should be.
+**It is: does the shared mechanism sit under one settings key or three?**
+
+| | One key, one list | Three keys, one shape |
+|---|---|---|
+| **the group stays coherent** | ✔ by construction | ✘ three writes, and a wrong combination is assemblable |
+| **key-by-key resolution survives** ([D-093](90-decision-log.md)) | ✘ **breaks it** | ✔ untouched |
+| **narrowing direction** ([D-312](90-decision-log.md)) | one direction for entries that want three — a validator an ancestor declared should probably stay ([D-311](90-decision-log.md)), a renderer is free | one simple direction each |
+| **how many apply** | the entry's stage decides: one converter ([R33b](30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect)), all validators, one renderer plus appended ([D-236](90-decision-log.md)) | same, per key |
+
+⚠️ **There may be a third shape neither of us has put on the table:** three keys for **storage** —
+so the chain keeps working — and one **grouped presentation and one grouped act** on the surface,
+so a person configures *how a resistance behaves* once. That would take the owner's point where it
+is strongest, which is what a person does, and leave alone the property that makes the chain worth
+having. *Written down as a candidate, not as the answer.*
+
+### What has to be answered before any of it is built
+
+| | |
+|---|---|
+| **how a list is stored at all** | one value holding several names, or a key per position — and what *narrowing* means for either |
+| **whether a descendant may remove** an entry an ancestor added | the validator case is the one that matters ([D-311](90-decision-log.md)) |
+| **whether `validator` becomes a reserved key** | the other two already are ([D-084](90-decision-log.md)); a twelfth engine key must declare its direction (Package 4, assumption 3) |
+| **what stays out** | [D-356](90-decision-log.md) puts a control's permitted **values** on the **bounding settings**, not in this list. They are not field rules in this sense and should not be pulled in |
+
+⚠️ **Nothing is blocked today**: the renderer list is unused — one name is stored — and neither
+converters nor validators exist. **It is worth answering before any of the three grows its own way
+of being configured**, because three mechanisms doing the same thing differently is precisely what
+the previous round produced.

@@ -138,6 +138,18 @@ check(
     str_contains($fields[$label->id]->result->markup, 'name="taxmod_value[' . $label->id . ']"')
 );
 
+// ⚠️ R28: a control offers only real choices. The browser carries the **same** rule the core
+// applies, so a field cannot accept what the save will refuse (D-356).
+check(
+    'an int field does not offer letters it will then refuse',
+    str_contains($fields[$count->id]->result->markup, 'pattern="' . SimpleType::Int->pattern() . '"'),
+    $fields[$count->id]->result->markup
+);
+check(
+    'and a text field is given no pattern it has no business having',
+    ! str_contains($fields[$label->id]->result->markup, 'pattern')
+);
+
 echo "\n== 3. A choice at the use site beats the type default ==\n";
 $settings->put(
     $settings->chainForUseSite($count),

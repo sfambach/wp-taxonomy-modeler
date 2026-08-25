@@ -38,11 +38,27 @@ final class FieldRenderer extends TypedFieldRenderer
         return $this->shown(RenderResult::escape($this->characters($context)));
     }
 
+    /**
+     * ⚠️ **`type="text"` with a pattern, deliberately — not `type="number"`.** A number input
+     * reports an **empty value** for content it cannot parse, and an empty value here means
+     * *clear this attribute* — so a stray keystroke could delete a value rather than be refused.
+     * The same trap the colour picker has, avoided the same way: never offer a control that can
+     * lose a value on the way past.
+     *
+     * ⚠️ **The pattern is the type's own** ({@see SimpleType::pattern()}), which is what makes the
+     * browser and the core check one rule rather than two that drift — and it is what stops a
+     * plain integer field from accepting letters it will then refuse
+     * ([R28](30-renderer.md#r28r32--the-rule-complete): *a control offers only real choices*).
+     * **When converters arrive the pattern comes from the converter in effect** (D-356), because
+     * `4k7` in a numeric field is a notation to be converted, not a typo to be blocked.
+     */
     protected function input(RenderContext $context): string
     {
         return '<input type="text"'
             . $this->attribute('name', $context->fieldName)
             . $this->attribute('value', $this->characters($context))
+            . $this->attribute('pattern', $context->type?->pattern())
+            . $this->attribute('inputmode', $context->type?->inputMode())
             . '>';
     }
 }

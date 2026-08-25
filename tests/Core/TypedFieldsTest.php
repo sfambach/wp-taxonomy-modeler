@@ -209,6 +209,55 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
+    public function a_plain_integer_field_does_not_offer_letters_it_will_then_refuse(): void
+    {
+        // ⚠️ R28: a control offers only real choices. Reported by the owner — the field accepted
+        // letters and the core refused them, which is the trap that rule exists to prevent.
+        $result = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Int, [], 'v[7]')
+        );
+
+        self::assertStringContainsString('pattern="-?\d+"', $result->markup);
+        self::assertStringContainsString('inputmode="numeric"', $result->markup);
+
+        // ⚠️ Not `type="number"`: it reports an **empty value** for content it cannot parse, and
+        // empty here means *clear this attribute* — a stray keystroke would delete a value.
+        self::assertStringContainsString('type="text"', $result->markup);
+    }
+
+    #[Test]
+    public function the_control_and_the_core_check_one_rule_rather_than_two(): void
+    {
+        // ⚠️ The pattern in the markup and the rule `valueFrom()` applies are the **same string**.
+        // Two copies is how a control comes to accept what its core refuses.
+        foreach ([SimpleType::Int, SimpleType::Decimal] as $type) {
+            $pattern = $type->pattern();
+            self::assertNotNull($pattern);
+
+            $markup = (new FieldRenderer())->render(
+                $this->subject,
+                $this->context(Purpose::Edit, TypedValue::nothing(), $type, [], 'v[7]')
+            )->markup;
+
+            self::assertStringContainsString('pattern="' . $pattern . '"', $markup, $type->value);
+        }
+    }
+
+    #[Test]
+    public function a_text_field_is_not_given_a_pattern_it_has_no_business_having(): void
+    {
+        // A text takes any characters; validity beyond the shape is a validator's question (D-319).
+        $result = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Text, [], 'v[7]')
+        );
+
+        self::assertStringNotContainsString('pattern', $result->markup);
+        self::assertStringNotContainsString('inputmode', $result->markup);
+    }
+
+    #[Test]
     public function a_slider_shows_the_figure_beside_the_track(): void
     {
         $result = (new SliderRenderer())->render(
