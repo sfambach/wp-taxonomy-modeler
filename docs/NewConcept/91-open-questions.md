@@ -2641,3 +2641,85 @@ having. *Written down as a candidate, not as the answer.*
 converters nor validators exist. **It is worth answering before any of the three grows its own way
 of being configured**, because three mechanisms doing the same thing differently is precisely what
 the previous round produced.
+
+---
+
+## OQ-090 — Is a renderer a name, or is it a node?
+
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-25 by the owner, on being told the registry keys on the renderer's name*
+
+The owner, reading that Package 7's registry keyed on the renderer's **name**: *keyed on the name —
+not on an id?*
+
+Today the `renderer` setting holds a **token** in `value_text`, and the registry looks the class up
+by it. ⚠️ **The question is sharper than it sounds, because the concept has already answered the
+identical question the other way once.**
+
+### The precedent, and it is exact
+
+[D-151](90-decision-log.md): **roles are nodes**, so `labels.role_id` is a real reference — and the
+three reasons given there transfer word for word:
+
+| [D-151](90-decision-log.md)'s reason for roles | Applied to renderers |
+|---|---|
+| *a picker instead of free text* | `eligibleFor()` already produces exactly that list |
+| *no typo roles pointing nowhere* | ⚠️ today an unknown name **silently falls back** — Package 7 has a check named *a renderer nobody registered is a visible fault*, and it is visible only because the fallback marks itself |
+| *a role that can carry properties of its own* | ⚠️ **this is the big one.** `cols`, `rows` and `step` are settings belonging to **a renderer**, and Package 7 had to put them on the **field** as free keys because a renderer has nowhere to hold anything |
+
+**And there is a fourth reason the owner did not have to make, because it falls out:**
+[OQ-089](#oq-089--is-a-fields-rule-set-one-setting-or-three) is left with *how does a list live in a
+setting* as its open detail. **If a field rule is a node, the list is not a new mechanism at all** —
+it is an attribute at `0..*`, which this model does natively, with ordering on the edge
+([D-014](90-decision-log.md)'s `position`) and narrowing already defined. *That is a large prize for
+a small change of representation.*
+
+⚠️ **Nor would it be a novelty.** The **simple types are nodes** standing for engine-level concepts
+([D-119](90-decision-log.md)) and so are the seeded **roles** — nodes standing for things the code
+knows about is established practice here, not a new idea.
+
+### The argument on the other side, and it is real
+
+**An identity is per-installation.** Ids come from the `identities` table
+([D-339](90-decision-log.md)) and are meaningless outside the installation that issued them
+(sentence 2 of [the core on one page](10-domain-core.md#the-core-on-one-page)). **A token travels
+between installations and an id does not** — which matters for exactly the things that cross that
+boundary:
+
+| | |
+|---|---|
+| **data packs** ([D-175](90-decision-log.md)) | a pack naming `spinner` installs anywhere; a pack naming id `4711` installs nowhere |
+| **exports and migration** ([D-061](90-decision-log.md), [D-070](90-decision-log.md)) | ids must be remapped, tokens must not |
+| **a plugin that ships a renderer** | its node has to be seeded on install and dealt with on removal — which [D-175](90-decision-log.md) already prescribes for *every node, edge and setting a pack brought* |
+
+⚠️ **But the counter-argument is weaker than it first looks, because the model already pays this
+cost everywhere else.** Every attribute target, every label role and every constant is an id today,
+so remapping on import is work that exists and must work regardless. *A renderer would be one more
+passenger on a train already running, not a new train.*
+
+### What it does not change either way
+
+The **token stays a token**. Whether the setting holds `spinner` or a reference to a node **named**
+`spinner`, what a person reads is a **label** ([AR-2](../../CLAUDE.md)) and what is compared is
+never translated. `Renderer::name()` does not go away — a class still has to be found by something.
+The question is only **what the model stores**, and therefore what it can check and hang settings on.
+
+### The shape of an answer
+
+| | |
+|---|---|
+| **stay with names** | nothing to build; renderer-owned settings stay free keys on the field; a wrong name stays a silent fallback; [OQ-089](#oq-089--is-a-fields-rule-set-one-setting-or-three)'s list needs its own mechanism |
+| **make them nodes** | a real reference, a picker, settings that belong to the renderer, and the list mechanism for free — at the price of seeding, and of packs and exports having to remap one more kind of reference |
+| **both** | the setting stores a reference; the node's **name** is the token the registry looks up, so a pack can still be written in names and resolved on import |
+
+⚠️ **The third row is probably the answer**, and it is worth saying why: it is what
+[D-151](90-decision-log.md) already does for roles — `labels.role_id` is a reference, and the role
+node is still called `form`. **This question may therefore be less *open* than *unnoticed*.**
+
+⚠️ **Nothing is broken today**, and the reason to answer it now is not the renderer — it is that
+[D-357](90-decision-log.md) just made the same representation question apply to **converters and
+validators as well**, and answering it three times separately is how the previous round went.
+
+⚠️ *It may also be [OQ-074](#oq-074--an-enum-filled-at-runtime)'s moment. That question — an enum
+filled at runtime — was deferred until **working with the project shows it missing**, and a registry
+of named things that the model cannot check, cannot offer as a picker and cannot hang a setting on is
+a plausible sighting of exactly that.*

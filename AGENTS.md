@@ -105,21 +105,52 @@ and never restores from the cloud — which makes the mechanism less obvious, be
 backup should not rename a local file. What is certain is that the rename happened and that no
 other candidate uses that naming.*
 
-⚠️ **2026-08-25 — it happened again, twice in one session, and the exclusion did not hold.**
-`docs/NewConcept/95-roadmap.md` was written, reported as written, and then **reverted** — the two
-most recent additions simply gone. The lost text lay beside it as `95-roadmap (conflicted).md`.
-Restored, and minutes later the same file was **replaced outright** by
-`95-roadmap [conflicted].md`. **Both naming styles, round brackets and square, in one session.**
+### ⚠️ 2026-08-25 — it happened again, and the mechanism is now known
 
-**What this changes:** the earlier note says the owner excluded the source folder. **Something is
-still doing it**, so exclusion cannot be assumed to have worked, and the failure mode is worse than
-the 2026-08-24 one because it is **silent** — a write reports success and is undone afterwards. A
-fatal error announces itself; a reverted paragraph does not.
+**Twice in one session.** `docs/NewConcept/95-roadmap.md` was written, reported as written, and then
+**reverted** — the two most recent additions simply gone, lying beside it as
+`95-roadmap (conflicted).md`. Restored, and minutes later the same file was **replaced outright** by
+`95-roadmap [conflicted].md`. Both naming styles, round brackets and square, in one session.
 
-**The rule that follows is the expensive one and it is not optional: verify after writing.** Every
-documentation edit in that session was re-checked with a `grep` for its own content before
-committing, and that is the only reason the loss was caught at all. ⚠️ *Two additions were already
-gone by the time the check ran.*
+**The cause was traced rather than guessed, and the exclusion was never the problem.** Read out of
+`%LOCALAPPDATA%\pCloud\data.db`:
+
+| What the database says | |
+|---|---|
+| `syncfolder` | `localpath=C:\Devel`, `synctype=7` — a **sync pair**, and a two-way one |
+| `setting.ignorepaths` | contains `C:\Devel\Wordpress\source;` — ⚠️ **the owner's exclusion is there and is correct** |
+| `localfile` | holds `95-roadmap.md`, `90-decision-log.md` and `NodesScreen.php` **twice each** — once under `Wordpress/source/…` and once under `Wordpress/wp-content/plugins/…` |
+
+⚠️ **The exclusion cannot work here, and pCloud says so itself.** Its own
+*Backup/Sync Exclusions* dialog carries the sentence *"Items that are already part of a backup or
+sync will not be affected."* **`C:\Devel` is already a sync pair**, so adding
+`C:\Devel\Wordpress\source` to the list changes nothing about it: the list keeps **new** items out
+and removes nothing from an existing sync. **The owner did the right thing in the wrong place, and
+the wrongness is not discoverable from the list — which shows the path and looks like it is in
+force.**
+
+⚠️ **A second door is open as well, and it would survive a fix to the first.**
+`wp-content/plugins/wp-taxonomy-tree` is an **NTFS junction** pointing at
+`source/wp-taxonomy-tree`. pCloud's index holds `95-roadmap.md`, `90-decision-log.md` and
+`NodesScreen.php` **twice each** — once under `Wordpress/source/…`, once under
+`Wordpress/wp-content/plugins/…` — so the same bytes are reachable by a path the exclusion never
+names. **Three more junctions in that folder have the same exposure**: `budget-translator`,
+`wp-auto-correction`, `wp-changelog`.
+
+**Everything that looked inexplicable falls out of those two:** why excluding `source` changed
+nothing, and why *a one-way backup should not rename a local file* — it is not a backup, it is a
+**two-way sync pair** (`synctype=7`).
+
+**So the fix is the sync pair, not another exclusion.** Remove or narrow the `C:\Devel` sync;
+excluding `wp-content\plugins` as well only closes the junction door and leaves the first one
+open. ⚠️ *And the general lesson outlives pCloud: an exclusion list that cannot reach into an
+existing sync is a setting that reads as protection and is not one.*
+
+**And the rule that follows is the expensive one, which stands whatever the cause: verify after
+writing.** Every documentation edit in that session was re-checked with a `grep` for its own content
+before committing, and that is the only reason the loss was caught at all. ⚠️ *Two additions were
+already gone by the time the check ran.* A fatal error announces itself; a reverted paragraph does
+not.
 
 **Two rules that follow, and they are cheap:**
 
