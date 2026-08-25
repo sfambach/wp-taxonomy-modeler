@@ -12,7 +12,9 @@ use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
+use Taxmod\Core\Renderer\TreeRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\Purpose;
@@ -356,6 +358,65 @@ final class Rendering
         }
 
         return $cells;
+    }
+
+    /**
+     * A whole tree — the walker over the cells.
+     *
+     * ⚠️ **Two renderers, one call** ([D-367](90-decision-log.md)): every node goes through the
+     * **cell**, and the **walker** nests what came back. Which cell is a parameter, because the
+     * modelling tree, the chooser and the trash draw a node differently and must not each grow
+     * their own walker — that is the fault [D-346](90-decision-log.md) demonstrated.
+     *
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $walked
+     * @param array<int, list<Control>>  $actions
+     * @param array<int, string>         $hrefs
+     * @param array<int, Submission>     $submits
+     * @param array<int, string>         $toggles Where folding a row leads, per node id.
+     */
+    public function treeFor(
+        array $walked,
+        array $actions = [],
+        array $hrefs = [],
+        array $submits = [],
+        array $toggles = [],
+        ?int $highlight = null,
+        string $cell = TreeNodeRenderer::NAME,
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): RenderResult {
+        if ($walked === []) {
+            return RenderResult::of('');
+        }
+
+        $nodes = array_map(static fn (array $row): Node => $row['node'], $walked);
+        $cells = $this->cellsFor($nodes, $actions, $hrefs, $submits, $cell, $locale, $level);
+
+        $rows = [];
+
+        foreach ($walked as $row) {
+            $node   = $row['node'];
+            $rows[] = new DrawnRow(
+                $row['depth'],
+                $cells[$node->id],
+                $row['hasChildren'],
+                $row['collapsed'],
+                $toggles[$node->id] ?? null,
+                $node->id === $highlight
+            );
+        }
+
+        return $this->renderers->byName(TreeRenderer::NAME)->render(
+            $nodes[0],
+            new RenderContext(
+                purpose: Purpose::Display,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                editable: false,
+                surroundings: new Surroundings(rows: $rows),
+            )
+        );
     }
 
     /** What this attribute's value has to be read back as. */

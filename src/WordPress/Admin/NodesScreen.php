@@ -171,44 +171,36 @@ final class NodesScreen
         // cannot make — a **URL** and the **buttons**, both of which carry WordPress facts and
         // depend on what is allowed for that node — and the renderer decides the shape: link around
         // icon and name, controls after it.
-        $nodes   = [];
         $actions = [];
         $hrefs   = [];
         $submits = [];
+        $toggles = [];
 
         foreach ($rows as $row) {
             $node               = $row['node'];
-            $nodes[]            = $node;
             $actions[$node->id] = $this->rowActions($row, $mode);
             $submits[$node->id] = $this->submissionFor($node->id);
             $hrefs[$node->id]   = add_query_arg(
                 ['page' => 'taxmod', 'taxmod_node' => $node->id],
                 admin_url('admin.php')
             );
+
+            if ($row['hasChildren']) {
+                $toggles[$node->id] = $this->toggleUrl($node->id, $row['collapsed'], $collapsed);
+            }
         }
 
-        $cells = $this->rendering->cellsFor($nodes, $actions, $hrefs, $submits);
-
-        $body = '';
-
-        foreach ($rows as $row) {
-            $node   = $row['node'];
-            $indent = str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $row['depth']);
-            $here   = $selected !== null && $selected->id === $node->id;
-
-            // ⚠️ **Indent and the expander stay out here, and only those.** Collapsing is a
-            // question about the **hierarchy**, which is the walker's half of D-367's split — the
-            // cell draws a node and knows nothing about where it sits.
-            $body .= '<tr' . ($here ? ' style="background:#e8f0fb"' : '') . '>';
-            $body .= '<td style="display:flex;align-items:center">'
-                . $indent . $this->expander($row, $collapsed)
-                . '<span style="flex:1">' . $cells[$node->id]->markup . '</span></td>';
-            $body .= '</tr>';
-        }
-
-        return '<table class="wp-list-table widefat striped taxmod-tree">'
-            . '<thead><tr><th>' . esc_html__('Name · what can be done · writes', 'taxmod') . '</th></tr></thead>'
-            . '<tbody>' . $body . '</tbody></table>';
+        // ⚠️ **Nothing here builds markup any more.** The walker nests, the cell draws, and the
+        // screen supplies only what the core cannot make: URLs, nonces and the words on the
+        // controls. That is `R1` for the left-hand side.
+        return $this->rendering->treeFor(
+            $rows,
+            $actions,
+            $hrefs,
+            $submits,
+            $toggles,
+            $selected?->id
+        )->markup;
     }
 
     /**
@@ -278,20 +270,23 @@ final class NodesScreen
      * @param array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool} $row
      * @param list<int>                                                                                     $collapsed
      */
-    private function expander(array $row, array $collapsed): string
+    /**
+     * Where folding one row leads.
+     *
+     * ⚠️ **Only the address is the boundary's; the triangle is the walker's** (D-367, D-368). The
+     * set lives in the URL and not in a stored preference — whether it should be remembered is
+     * [OQ-082](../../../docs/NewConcept/91-open-questions.md) and a scaffolding screen does not
+     * answer it.
+     *
+     * @param list<int> $collapsed
+     */
+    private function toggleUrl(int $id, bool $isCollapsed, array $collapsed): string
     {
-        if (! $row['hasChildren']) {
-            return '<span style="display:inline-block;width:1.6em"></span>';
-        }
-
-        $id   = $row['node']->id;
-        $next = $row['collapsed']
+        $next = $isCollapsed
             ? array_values(array_diff($collapsed, [$id]))
             : array_values(array_unique([...$collapsed, $id]));
 
-        // ⚠️ The set lives in the address, not in a stored preference. Whether it should be
-        // remembered is OQ-082 and is not answered by a scaffolding screen.
-        $url = add_query_arg(
+        return add_query_arg(
             array_filter([
                 'page'             => 'taxmod',
                 'taxmod_collapsed' => implode(',', $next),
@@ -299,10 +294,6 @@ final class NodesScreen
             ]),
             admin_url('admin.php')
         );
-
-        // Triangles for expand and collapse — confirmed by the owner (D-368).
-        return '<a href="' . esc_url($url) . '" style="display:inline-block;width:1.6em;text-decoration:none">'
-            . ($row['collapsed'] ? '&#9656;' : '&#9662;') . '</a>';
     }
 
     private function addForm(Node $parent, string $label): string

@@ -63,6 +63,10 @@ final class ShippedRenderers
         // a tree draws is the surface's decision — the chooser and the trash want another.
         $registry->addForSurfaces(new TreeNodeRenderer());
 
+        // ⚠️ **The walker** (D-367): it nests what the cell drew and draws no node itself. Asked for
+        // by a surface, never chosen for a node.
+        $registry->addForSurfaces(new TreeRenderer());
+
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());
         $registry->add(new SpinnerRenderer());

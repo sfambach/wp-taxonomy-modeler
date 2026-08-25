@@ -550,6 +550,80 @@ final class RenderingTest extends TestCase
         );
     }
 
+    // --------------------------------------------------------- the tree's walker
+
+    #[Test]
+    public function the_walker_nests_and_the_cell_draws(): void
+    {
+        // ⚠️ D-367's split: the tree renderer walks and builds the hierarchy, the node renderer
+        // draws the node. Depth lives with the walker; the cell never sees it.
+        $part  = $this->thing('Part');
+        $child = $this->editor->createNode('Resistor', $part->id);
+
+        $tree = $this->rendering->treeFor([
+            ['node' => $part,  'depth' => 0, 'hasChildren' => true,  'collapsed' => false, 'isFirst' => true, 'isLast' => true],
+            ['node' => $child, 'depth' => 1, 'hasChildren' => false, 'collapsed' => false, 'isFirst' => true, 'isLast' => true],
+        ]);
+
+        self::assertStringContainsString('taxmod-tree-row', $tree->markup);
+        self::assertStringContainsString('Part', $tree->markup);
+        self::assertStringContainsString('Resistor', $tree->markup);
+
+        // The child is indented and the parent is not.
+        self::assertStringContainsString('width:1.40em', $tree->markup);
+        self::assertStringContainsString('width:0.00em', $tree->markup);
+
+        // ⚠️ Not a table: a tree is one column at varying depth, and a table forces every row to
+        // the height of its tallest cell.
+        self::assertStringNotContainsString('<table', $tree->markup);
+    }
+
+    #[Test]
+    public function the_fold_control_is_the_walkers_and_a_leaf_keeps_its_space(): void
+    {
+        // ⚠️ *Collapsing is a question about the tree* (D-345) — so the triangle is the walker's,
+        // and a cell that knew whether it was folded would know where it sits.
+        $part = $this->thing('Part');
+        $leaf = $this->thing('Supplier');
+
+        $tree = $this->rendering->treeFor(
+            [
+                ['node' => $part, 'depth' => 0, 'hasChildren' => true,  'collapsed' => true,  'isFirst' => true, 'isLast' => false],
+                ['node' => $leaf, 'depth' => 0, 'hasChildren' => false, 'collapsed' => false, 'isFirst' => false, 'isLast' => true],
+            ],
+            toggles: [$part->id => 'https://example.test/fold']
+        );
+
+        self::assertStringContainsString('href="https://example.test/fold"', $tree->markup);
+        self::assertStringContainsString('&#9656;', $tree->markup, 'collapsed shows the closed triangle');
+
+        // A leaf keeps the space, or depth stops being readable.
+        self::assertSame(2, substr_count($tree->markup, 'width:1.4em;flex:none'));
+    }
+
+    #[Test]
+    public function the_selected_row_is_marked_by_the_walker(): void
+    {
+        $part  = $this->thing('Part');
+        $other = $this->thing('Supplier');
+
+        $tree = $this->rendering->treeFor(
+            [
+                ['node' => $part,  'depth' => 0, 'hasChildren' => false, 'collapsed' => false, 'isFirst' => true, 'isLast' => false],
+                ['node' => $other, 'depth' => 0, 'hasChildren' => false, 'collapsed' => false, 'isFirst' => false, 'isLast' => true],
+            ],
+            highlight: $part->id
+        );
+
+        self::assertSame(1, substr_count($tree->markup, 'background:#e8f0fb'));
+    }
+
+    #[Test]
+    public function an_empty_tree_draws_nothing(): void
+    {
+        self::assertSame('', $this->rendering->treeFor([])->markup);
+    }
+
     // ---------------------------------------------------- the container renderer
 
     #[Test]
