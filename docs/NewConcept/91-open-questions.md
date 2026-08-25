@@ -2555,7 +2555,16 @@ why it is worth answering before the first model uses one rather than after.
 
 ## OQ-089 — Is a field's rule set one setting or three?
 
-*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-25 by the owner while Package 7 was being finished*
+> **The shape was answered the same day → [D-357](90-decision-log.md).** **Three keys for storage,
+> one group on the surface.** The owner's grouping argument holds for what a person configures and
+> not for where the fact lives: one list under one key would make one link win the whole set, which
+> [D-093](90-decision-log.md) exists to prevent.
+>
+> ⚠️ **What is still open is everything below the shape**, and it is the part that has to be built:
+> how a **list** is stored in a setting at all, what *narrowing* means for one, whether a descendant
+> may **remove** an entry an ancestor added, and whether `validator` becomes a reserved key.
+
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **shape closed → [D-357](90-decision-log.md), details open** · *raised 2026-08-25 by the owner while Package 7 was being finished*
 
 The owner: *validator and converter and possibly renderer are **field rules** — consider whether it
 makes sense to handle them with one list.* And, on being offered *one shape, three keys*: **if we

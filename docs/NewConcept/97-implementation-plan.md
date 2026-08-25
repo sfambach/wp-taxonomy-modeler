@@ -547,6 +547,17 @@ is broken: `RenderResult::followedBy()` is the combining half and it is built an
 is missing is how a list is written down** — one key holding several names, or a key per position —
 and that is a decision, not a refactor.
 
+⚠️ **And it is no longer only the renderer's problem: [D-357](90-decision-log.md) makes it the
+shape of three things.** Converter, validator and renderer are **field rules** — the owner's word —
+stored as **three keys** so the chain keeps resolving key by key ([D-093](90-decision-log.md)), and
+configured as **one group** so *how a resistance behaves* cannot be half-written. Two pieces of
+work fall out of it, and they are next-release work rather than someday work:
+
+| | |
+|---|---|
+| **how a list lives in a setting** | one value holding several names, or a key per position — and what *narrowing* means for either. It is the same question for all three keys, so it is answered once ([OQ-089](91-open-questions.md)) |
+| **the grouped panel** | one place where the three are configured together, which lands on the **settings side** — and therefore inside the very package that replaces the printed panel below |
+
 **[OQ-087](91-open-questions.md) is on the critical path of the node renderer.** A renderer that
 has to *say* something can satisfy neither `CD-1` nor `AR-2`, and the first one that must is
 [D-147](90-decision-log.md)'s computed-value marking — *not computable*, **with a reason**.
