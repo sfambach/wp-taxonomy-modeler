@@ -38,6 +38,13 @@ final class RenderContext
      * the first place (R14a), and a renderer serving two types — a spinner draws an integer and a
      * decimal — otherwise has to guess from the value it was handed. An empty decimal field would
      * then be indistinguishable from an integer one and would quietly refuse decimals.
+     *
+     * ⚠️ **`refersTo` is how a renderer learns about a node it is not drawing.** A reference is
+     * drawn as *the target's label* (D-105), and a renderer reaches out to nothing (D-159) — so the
+     * label is resolved **before** the descent, for every reference at once, and handed in. *This is
+     * the seam the summary and chooser renderers will widen; it is deliberately one string until
+     * one of them needs more, because a bag of everything-a-target-has would be fetched whether or
+     * not anybody drew it.*
      */
     public function __construct(
         public readonly Purpose $purpose,
@@ -48,6 +55,7 @@ final class RenderContext
         public readonly bool $editable = true,
         public readonly string $fieldName = '',
         public readonly ?SimpleType $type = null,
+        public readonly ?string $refersTo = null,
     ) {
     }
 
@@ -70,11 +78,18 @@ final class RenderContext
             $this->editable,
             $this->fieldName,
             $this->type,
+            $this->refersTo,
         );
     }
 
-    /** The same context around a different value — what a list does for each occurrence. */
-    public function withValue(TypedValue $value, string $fieldName = ''): self
+    /**
+     * The same context around a different value — what a list does for each occurrence.
+     *
+     * ⚠️ **The label travels with the value, not with the context.** Two occurrences of one
+     * multi-valued reference point at two different nodes, so carrying the first one's label into
+     * the second row would put the wrong name on it.
+     */
+    public function withValue(TypedValue $value, string $fieldName = '', ?string $refersTo = null): self
     {
         return new self(
             $this->purpose,
@@ -85,6 +100,7 @@ final class RenderContext
             $this->editable,
             $fieldName === '' ? $this->fieldName : $fieldName,
             $this->type,
+            $refersTo,
         );
     }
 

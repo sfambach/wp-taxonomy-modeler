@@ -63,6 +63,65 @@ final class Labels
     }
 
     /**
+     * What to show for a whole set of nodes, in one query.
+     *
+     * ⚠️ **This exists because a renderer may not fetch.** A reference is drawn as *the target's
+     * label* ([D-105](../../../docs/NewConcept/90-decision-log.md)), and a renderer is handed
+     * everything it needs and reaches out to nothing
+     * ([D-159](../../../docs/NewConcept/90-decision-log.md)) — so the labels have to be resolved
+     * **before** the descent, for every reference at once. Asking per reference would be a query
+     * per row of a parts list, which is the loop `CD-7` forbids.
+     *
+     * @param  list<Node>          $nodes
+     * @return array<int, string>  Keyed by node id.
+     */
+    public function forNodes(
+        array $nodes,
+        SeededRole $role = SeededRole::Form,
+        string $locale = '',
+        string $number = Label::BASE_NUMBER,
+    ): array {
+        if ($nodes === []) {
+            return [];
+        }
+
+        // ⚠️ Grouped by owner, because `indexed()` flattens for a single one — a batch that used
+        // it would give every node the last node's labels, which is the kind of fault that shows
+        // up as *the wrong name on one row* and gets blamed on the data.
+        $stored = [];
+
+        foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes)) as $label) {
+            if ($label->path !== '') {
+                continue;
+            }
+
+            $stored[$label->ownerId][$label->roleId . "\0" . $label->number . "\0" . $label->locale] = $label;
+        }
+
+        $roleId = $this->framework->roleId($role);
+        $helpId = $this->framework->roleId(SeededRole::Help);
+        $order  = $this->attempts($roleId, $helpId, $number, $locale);
+
+        $found = [];
+
+        foreach ($nodes as $node) {
+            $found[$node->id] = $node->name;
+
+            foreach ($order as [$tryRole, $tryNumber, $tryLocale]) {
+                $label = $stored[$node->id][$tryRole . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
+
+                if ($label !== null && $label->text !== '') {
+                    $found[$node->id] = $label->text;
+
+                    break;
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * The order the chain is tried in.
      *
      * ⚠️ **The locale falls back to the neutral row before the role gives way.** A label stored

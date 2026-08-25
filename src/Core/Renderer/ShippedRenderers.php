@@ -13,10 +13,10 @@ use Taxmod\Core\Model\SimpleType;
  * territory, and *which of the three ways to draw a number is the ordinary one* is not a property
  * of the spinner.
  *
- * ⚠️ **Two types are deliberately left without one**, and they show the fault marker until they
- * get theirs: `node_ref` wants the **reference renderer** ([D-105](90-decision-log.md)) and
- * `user_ref` a renderer that resolves a WordPress user, which is a boundary concern. *Neither is
- * built, and a quiet plain field pretending otherwise would be the worse outcome* (R14b).
+ * ⚠️ **One type is still deliberately without one** and shows the fault marker until it gets
+ * hers: `user_ref` wants a renderer that resolves a WordPress user, which is a boundary concern
+ * reaching into the core's hands. *A quiet plain field pretending otherwise would be the worse
+ * outcome* (R14b). `node_ref` got its **reference renderer** ([D-105](90-decision-log.md)).
  *
  * ```mermaid
  * flowchart LR
@@ -45,6 +45,11 @@ final class ShippedRenderers
         );
 
         $registry->add(new SwitchRenderer(), SimpleType::Bool);
+
+        // ⚠️ **The default for a reference, which is what D-105 asks for** — and it bounds the
+        // load as well as the display (R58): one label per row, not a whole target.
+        $registry->add(new ReferenceRenderer(), SimpleType::NodeRef);
+
         $registry->add(new MailtoRenderer(), SimpleType::Email);
         $registry->add(new DateTimeRenderer(), SimpleType::DateTime);
         $registry->add(new ColorRenderer(), SimpleType::Color);

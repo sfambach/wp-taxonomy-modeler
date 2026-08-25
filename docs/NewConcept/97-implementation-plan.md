@@ -539,6 +539,30 @@ move ([D-194](90-decision-log.md)), so they are read once per request — and th
 | **appended renderers** ([D-236](90-decision-log.md)) | `RenderResult::followedBy()` exists and is checked; nothing configures a **list** yet, because the `renderer` setting holds one name |
 | **the node renderer, the tree row, the split screen** | ⚠️ **this is the next package**, and it is what **deletes** the scaffolding rather than adding to it ([D-344](90-decision-log.md)) |
 
+### ⚠️ A decided rule the scaffolding deliberately does not follow
+
+**[U22](20-interaction.md#u22--settings-apply-immediately-the-save-button-stays-for-one-named-reason)
+and [D-249](90-decision-log.md): settings apply immediately.** *It is nicer if I make a setting and
+it is simply taken; at worst I can undo it.* An explicit save button is the **exception**, kept only
+because WordPress sometimes makes the page jump.
+
+**The scaffolding does the opposite** — `Set`, `Set to nothing`, `Use this renderer`, a button per
+row. That is the exception applied everywhere, and it is why the panel looks like three widgets
+doing one job.
+
+⚠️ **Left as it is, on the owner's instruction, and the reasoning is his:** *I do not want to fiddle
+with the input if it resolves itself later with proper rendering.* Immediate apply needs the drawn
+control to **be** the input — which is [R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen)'s
+*rendered under the edit purpose*, i.e. the real surface. Building it twice on a surface that gets
+deleted is the throwaway work [D-345](90-decision-log.md) exists to limit.
+
+**Recorded so nobody rediscovers it as a defect.** The panel contradicts a decision, knowingly, and
+the contradiction disappears with the scaffolding rather than being fixed in it.
+
+⚠️ **The same reasoning moves [D-361](90-decision-log.md)'s field-rule panel** — select, *Add*, a
+list per section — **out of the scaffolding and into the real surface.** It is an input design, and
+an input design built on a throwaway screen is built twice.
+
 ### ⚠️ Three things the next package inherits
 
 **The `renderer` setting holds one name, and [R13a](30-renderer.md#r13a--a-node-carries-an-ordered-list-of-renderers-one-of-them-mandatory)

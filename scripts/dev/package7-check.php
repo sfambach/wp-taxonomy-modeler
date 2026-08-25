@@ -43,6 +43,7 @@ use Taxmod\Core\Renderer\SliderRenderer;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Renderer\SwitchRenderer;
 use Taxmod\Core\Service\DataEntry;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
@@ -50,6 +51,7 @@ use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -80,7 +82,8 @@ $framework->seed();
 $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry());
+$labels    = new Labels(new WpdbLabelRepository(), $framework);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $labels);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes)->id;
 
@@ -270,12 +273,32 @@ $sub         = $rendering->fieldsFor([$notes], [], Purpose::Edit, 'taxmod_value'
 check('an authored subtype inherits its type', $sub->type === SimpleType::Text, $sub->type?->value ?? 'null');
 check('and therefore its renderer', $sub->rendererName === FieldRenderer::NAME, $sub->rendererName);
 
-echo "\n== 10. A gap looks like a gap ==\n";
-$gram      = $editor->createNode('__p7 Gramm', $framework->rootOf(Branch::Constants)->id);
-$unit      = $editor->addAttribute($part->id, $gram->id, '__p7 unit');
-$reference = $rendering->fieldsFor([$unit], [], Purpose::Display, 'taxmod_value')[0];
-check('a constant has no renderer yet, and says so', $reference->hasNoRenderer());
-check('marked in the markup rather than merely tidy (R14b)', str_contains($reference->result->markup, 'taxmod-no-renderer'));
+echo "\n== 10. A constant is drawn as its name, not as its id (D-105, D-232) ==\n";
+$gram = $editor->createNode('__p7 Gramm', $framework->rootOf(Branch::Constants)->id);
+$unit = $editor->addAttribute($part->id, $gram->id, '__p7 unit');
+
+$named = $rendering->fieldsFor(
+    [$unit],
+    [$unit->id => TypedValue::ofReference($gram->id)],
+    Purpose::Display,
+    ''
+)[0];
+
+check('the branch decides it is a reference', $named->type === SimpleType::NodeRef, $named->type?->value ?? 'null');
+check('drawn by the reference renderer', $named->rendererName === 'reference', $named->rendererName);
+check('showing the name', str_contains($named->result->markup, '__p7 Gramm'), $named->result->markup);
+check('and not the id', ! str_contains($named->result->markup, (string) $gram->id));
+
+// ⚠️ The gap that is left, and it stays visible: changing a reference means picking a node, which
+// is the chooser — decided (D-244) and not built. So the edit purpose falls back and says so.
+$editing = $rendering->fieldsFor(
+    [$unit],
+    [$unit->id => TypedValue::ofReference($gram->id)],
+    Purpose::Edit,
+    'taxmod_value'
+)[0];
+check('editing a reference still has no renderer, and says so', $editing->hasNoRenderer());
+check('marked in the markup rather than merely tidy (R14b)', str_contains($editing->result->markup, 'taxmod-no-renderer'));
 
 echo "\n== 11. Hide and read-only close a field wherever it is drawn ==\n";
 $settings->put($settings->chainForUseSite($label), SettingKey::Hide->value, TypedValue::ofBool(true));

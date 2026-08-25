@@ -141,12 +141,13 @@ final class Plugin
     private function screen(): NodesScreen
     {
         $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes());
+        $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes());
 
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
             $settings,
-            new Labels(new WpdbLabelRepository(), $this->frameworkNodes()),
+            $labels,
             new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
             $this->frameworkNodes(),
             // ⚠️ **The renderers are wired in one place.** Nothing on a surface may construct its
@@ -156,7 +157,10 @@ final class Plugin
                 new WpdbNodeRepository(),
                 $this->frameworkNodes(),
                 $settings,
-                ShippedRenderers::registry()
+                ShippedRenderers::registry(),
+                // ⚠️ Without this a reference has no name to draw, and every constant on the
+                // screen falls back to its id (D-105, D-159).
+                $labels
             )
         );
     }

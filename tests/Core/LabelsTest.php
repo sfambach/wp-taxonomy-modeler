@@ -18,6 +18,39 @@ use Taxmod\Tests\Core\Fake\InMemoryLabels;
  */
 final class LabelsTest extends TestCase
 {
+    #[Test]
+    public function a_batch_gives_each_node_its_own_label_and_not_the_last_ones(): void
+    {
+        // ⚠️ The fault this guards against is silent: a batch that flattened the stored rows the
+        // way the single-node path does would hand every node the **last** node's label, which
+        // shows up as one wrong name on one row and gets blamed on the data.
+        $one = Node::create(60, 'Resistor', 'Root');
+        $two = Node::create(61, 'Capacitor', 'Root');
+
+        $this->stored->put(new Label($one->id, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Widerstand'));
+        $this->stored->put(new Label($two->id, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Kondensator'));
+
+        $found = $this->labels->forNodes([$one, $two]);
+
+        self::assertSame('Widerstand', $found[$one->id]);
+        self::assertSame('Kondensator', $found[$two->id]);
+    }
+
+    #[Test]
+    public function a_batch_falls_back_to_the_node_name_like_the_single_walk_does(): void
+    {
+        // D-020, D-209: the chain ends on the node's own name and never on nothing.
+        $bare = Node::create(62, 'Inductor', 'Root');
+
+        self::assertSame('Inductor', $this->labels->forNodes([$bare])[$bare->id]);
+    }
+
+    #[Test]
+    public function an_empty_batch_asks_nothing(): void
+    {
+        self::assertSame([], $this->labels->forNodes([]));
+    }
+
     /** @var array<string,int> */
     private const ROLE_IDS = [
         'form'   => 8001,

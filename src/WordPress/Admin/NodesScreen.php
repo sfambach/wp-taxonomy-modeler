@@ -55,6 +55,9 @@ final class NodesScreen
      */
     private const VALUE_FIELD = 'taxmod_value';
 
+    /** A setting's own control, as `taxmod_setting[<key>]` — one row, one form, one key. */
+    private const SETTING_FIELD = 'taxmod_setting';
+
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
@@ -467,7 +470,7 @@ final class NodesScreen
 
         $body = '';
 
-        foreach ($this->rendering->settingsFor($selected, $resolved) as $row) {
+        foreach ($this->rendering->settingsFor($selected, $resolved, Purpose::Edit, self::SETTING_FIELD) as $row) {
             $setting = $row->setting;
 
             // ⚠️ Three states, and they must look different (D-266): set here, inherited from a
@@ -483,17 +486,33 @@ final class NodesScreen
                 )) . '</em>',
             };
 
+            // ⚠️ **The control sits in the row, and the bottom form is gone.** The owner, twice:
+            // *I would expect to make all settings simply in the list and not have to select
+            // something at the bottom.* It became possible the moment the table started listing
+            // every **applicable** key rather than only the written ones — a chooser for the key
+            // has nothing left to choose.
+            $acts = [['put_setting', esc_html__('Set', 'taxmod'), __('Write it here; a bounding setting may only be narrowed', 'taxmod')]];
+
+            if (! $row->shape->isAChoice()) {
+                $acts[] = ['empty_setting', esc_html__('Nothing', 'taxmod'), __('Deliberately nothing here — later changes above will not arrive', 'taxmod')];
+            }
+
+            if ($setting->setHere) {
+                $acts[] = ['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')];
+            }
+
             $body .= '<tr>'
                 . '<td><code>' . esc_html($row->key) . '</code></td>'
                 // ⚠️ Escaped by the renderer already (`RenderResult::escape()`); escaping again
                 // would print the tags instead of the control. The undrawn rows go through
                 // `esc_html` in the ordinary way.
-                . '<td>' . $this->settingCell($row) . '</td>'
+                . '<td>' . $this->form(
+                    $selected->id,
+                    $acts,
+                    '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
+                    . '<span style="flex:1">' . $this->settingCell($row) . '</span>'
+                ) . '</td>'
                 . '<td>' . $origin . '</td>'
-                . '<td>' . ($setting->setHere
-                    ? $this->form($selected->id, [['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')]], '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">')
-                    : '')
-                . '</td>'
                 . '</tr>';
         }
 
@@ -505,10 +524,9 @@ final class NodesScreen
         $html .= $body === ''
             ? '<p><em>' . esc_html__('Nothing set anywhere along the chain.', 'taxmod') . '</em></p>'
             : '<table class="wp-list-table widefat striped"><thead><tr>'
-                . '<th>' . esc_html__('Key', 'taxmod') . '</th>'
+                . '<th style="width:9em">' . esc_html__('Key', 'taxmod') . '</th>'
                 . '<th>' . esc_html__('Value', 'taxmod') . '</th>'
-                . '<th style="width:7em">' . esc_html__('From', 'taxmod') . '</th>'
-                . '<th style="width:6em"></th>'
+                . '<th style="width:8em">' . esc_html__('From', 'taxmod') . '</th>'
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
         return $html . $this->settingForm($selected);
@@ -538,32 +556,31 @@ final class NodesScreen
             . ' <span class="description">' . esc_html($why) . '</span>';
     }
 
+    /**
+     * A key the engine does not know — the one thing the rows above cannot offer.
+     *
+     * ⚠️ **What used to be here was a dropdown of the engine's own keys, and it is gone.** The
+     * owner, twice: *I would expect to make all settings simply in the list and not have to select
+     * something at the bottom.* Once the table lists every **applicable** key
+     * ({@see \Taxmod\Core\Model\SettingKey::applyingTo()}) a chooser for the key has nothing left
+     * to choose — every engine key already has a row with its own control.
+     *
+     * ⚠️ **A free key is genuinely different**: it belongs to whoever invents it, so it has no row
+     * until it exists. That is why one box survives, and why it takes a **name** rather than
+     * offering a list.
+     */
     private function settingForm(Node $selected): string
     {
-        $options = '';
-
-        foreach (SettingKey::cases() as $key) {
-            // ⚠️ A node describes a thing, and a thing has no multiplicity — that is only
-            // sayable about a *use* of it (D-351). The core refuses it here anyway; leaving it
-            // in the list would just offer a choice that always fails.
-            if ($key->isEdgeOnly()) {
-                continue;
-            }
-
-            $options .= '<option value="' . esc_attr($key->value) . '">'
-                . esc_html($key->value . ($key->isBounding() ? ' — ' . __('bounding', 'taxmod') : ''))
-                . '</option>';
-        }
-
-        return $this->form(
-            $selected->id,
-            [
-                ['put_setting', esc_html__('Set', 'taxmod'), __('Write it here; a bounding setting may only be narrowed', 'taxmod')],
-                ['empty_setting', esc_html__('Set to nothing', 'taxmod'), __('Deliberately nothing here — later changes above will not arrive', 'taxmod')],
-            ],
-            '<select name="setting_key">' . $options . '</select>'
-            . '<input type="text" name="setting_value" placeholder="' . esc_attr__('value', 'taxmod') . '" style="width:8em">'
-        ) . $this->rendererChoice($selected);
+        return '<p class="description">'
+            . esc_html__('A setting of your own. The engine\'s own keys are in the rows above, each with its own control.', 'taxmod')
+            . '</p>'
+            . $this->form(
+                $selected->id,
+                [['declare_free', esc_html__('Declare', 'taxmod'), __('Invent a key of your own — the engine\'s names are refused', 'taxmod')]],
+                '<input type="text" name="setting_key" placeholder="' . esc_attr__('key of your own', 'taxmod') . '" style="width:11em">'
+                . '<input type="text" name="setting_value" placeholder="' . esc_attr__('value', 'taxmod') . '" style="width:8em">'
+            )
+            . $this->rendererChoice($selected);
     }
 
     /**
@@ -988,7 +1005,12 @@ final class NodesScreen
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
-        $settingValue = isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '';
+        // ⚠️ **The row's own control first, the free-key box second.** Each setting is now edited
+        // where it sits, under `taxmod_setting[<key>]`; the box at the bottom exists only for a key
+        // the engine does not know, which has no row until somebody writes it.
+        $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
+            ? sanitize_text_field(wp_unslash((string) $_POST[self::SETTING_FIELD][$settingKey]))
+            : (isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '');
         $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
         $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
         $labelText    = isset($_POST['label_text']) ? sanitize_text_field(wp_unslash($_POST['label_text'])) : '';
@@ -1018,6 +1040,9 @@ final class NodesScreen
                     TypedValue::ofText($this->registeredRendererName($id, $rendererName))
                 ),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
+                // ⚠️ Its own action, because the check belongs where a **new name** is invented
+                // rather than where a known one is written.
+                'declare_free'   => $this->settings->declareFree($this->settingChain($id), $settingKey, $this->settingValue($id, $settingKey, $settingValue)),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
                 'put_multiplicity' => $this->settings->put(
                     $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),

@@ -12,14 +12,17 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Renderer\SwitchRenderer;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Tests\Core\Fake\CountingIdentities;
 use Taxmod\Tests\Core\Fake\FixedFramework;
+use Taxmod\Tests\Core\Fake\InMemoryLabels;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
 use Taxmod\Tests\Core\Fake\InMemoryRelations;
 use Taxmod\Tests\Core\Fake\InMemorySettings;
@@ -81,7 +84,13 @@ final class RenderingTest extends TestCase
 
         $this->editor    = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
         $this->settings  = new Settings($this->stored, $this->nodes, $framework);
-        $this->rendering = new Rendering($this->nodes, $framework, $this->settings, ShippedRenderers::registry());
+        $this->rendering = new Rendering(
+            $this->nodes,
+            $framework,
+            $this->settings,
+            ShippedRenderers::registry(),
+            new Labels(new InMemoryLabels(), $framework)
+        );
     }
 
     private function type(string $name, ?Node $under = null): Node
@@ -350,6 +359,47 @@ final class RenderingTest extends TestCase
 
         self::assertContains(FieldRenderer::NAME, $names);
         self::assertNotContains(SpinnerRenderer::NAME, $names);
+    }
+
+    #[Test]
+    public function a_reference_is_drawn_as_the_targets_name_and_not_as_its_id(): void
+    {
+        // ⚠️ D-105, and the label arrives **in** the context: a renderer fetches nothing (D-159),
+        // so the descent resolves every referenced node's name in one query beforehand.
+        $gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
+        $part = $this->thing('Part');
+        $unit = $this->editor->addAttribute($part->id, $gram->id, 'unit');
+
+        $field = $this->rendering->fieldsFor(
+            [$unit],
+            [$unit->id => TypedValue::ofReference($gram->id)],
+            Purpose::Display,
+            ''
+        )[0];
+
+        self::assertSame(ReferenceRenderer::NAME, $field->rendererName);
+        self::assertStringContainsString('Gramm', $field->result->markup);
+        self::assertStringNotContainsString((string) $gram->id, $field->result->markup);
+    }
+
+    #[Test]
+    public function a_reference_declines_the_edit_purpose_so_the_chooser_gap_stays_visible(): void
+    {
+        // ⚠️ Changing a reference means picking a node — the chooser, decided (D-244), not built.
+        // The descent falls back for a **value**, and the fallback marks itself (R14b).
+        $gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
+        $part = $this->thing('Part');
+        $unit = $this->editor->addAttribute($part->id, $gram->id, 'unit');
+
+        $field = $this->rendering->fieldsFor(
+            [$unit],
+            [$unit->id => TypedValue::ofReference($gram->id)],
+            Purpose::Edit,
+            'v'
+        )[0];
+
+        self::assertTrue($field->hasNoRenderer());
+        self::assertStringContainsString('taxmod-no-renderer', $field->result->markup);
     }
 
     // ------------------------------------------------------- the settings side

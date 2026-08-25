@@ -18,6 +18,7 @@ use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\MailtoRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SliderRenderer;
@@ -82,15 +83,57 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function the_two_reference_types_have_no_renderer_yet_and_say_so(): void
+    public function a_reference_is_drawn_by_the_reference_renderer_and_a_user_key_by_nothing(): void
     {
-        // ⚠️ Deliberate, not forgotten: `node_ref` wants the reference renderer (D-105) and
-        // `user_ref` one that resolves a WordPress user. A quiet plain field pretending otherwise
-        // is what R14b forbids.
+        // ⚠️ `node_ref` has its renderer now (D-105). `user_ref` still has none, deliberately: it
+        // resolves a WordPress user, which is a boundary concern reaching into the core's hands,
+        // and a quiet plain field pretending otherwise is what R14b forbids.
         $registry = ShippedRenderers::registry();
 
-        self::assertSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::NodeRef)->name());
+        self::assertSame(ReferenceRenderer::NAME, $registry->defaultFor(SimpleType::NodeRef)->name());
         self::assertSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
+    }
+
+    #[Test]
+    public function a_reference_shows_the_targets_name_and_declines_being_edited(): void
+    {
+        $renderer = new ReferenceRenderer();
+
+        $shown = $renderer->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Display,
+                TypedValue::ofReference(4711),
+                [],
+                '',
+                Level::Admin,
+                true,
+                '',
+                SimpleType::NodeRef,
+                'Gramm'
+            )
+        );
+
+        self::assertStringContainsString('Gramm', $shown->markup);
+        self::assertStringNotContainsString('4711', $shown->markup);
+
+        // ⚠️ Changing a reference means **picking** a node — the chooser, decided (D-244) and not
+        // built. Declining keeps the gap visible instead of offering a box for an id.
+        self::assertSame([Purpose::Display], $renderer->supports());
+    }
+
+    #[Test]
+    public function a_reference_whose_label_never_arrived_is_drawn_as_a_fault(): void
+    {
+        // ⚠️ It means the target is gone, or the descent did not resolve it. A bare number is the
+        // sort of thing that gets copied into a spreadsheet as if it meant something.
+        $shown = (new ReferenceRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Display, TypedValue::ofReference(4711), SimpleType::NodeRef)
+        );
+
+        self::assertStringContainsString('taxmod-dangling', $shown->markup);
+        self::assertStringContainsString('#4711', $shown->markup);
     }
 
     #[Test]

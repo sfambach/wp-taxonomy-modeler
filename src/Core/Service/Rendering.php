@@ -6,6 +6,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
@@ -49,7 +50,44 @@ final class Rendering
         private readonly FrameworkNodes $framework,
         private readonly Settings $settings,
         private readonly RendererRegistry $renderers,
+        private readonly ?Labels $labels = null,
     ) {
+    }
+
+    /**
+     * What the referenced nodes are called, for every reference in this batch, in one query.
+     *
+     * ⚠️ **Resolved before the descent begins** (D-159). A reference is drawn as its target's
+     * label (D-105) and a renderer fetches nothing, so this is the only place the labels can come
+     * from — and it is one query for the whole form rather than one per row, which is what `CD-7`
+     * forbids and what made the legacy parts list slow.
+     *
+     * @param  array<int, TypedValue> $values
+     * @return array<int, string>     Keyed by the **referenced node's** id.
+     */
+    private function namesOfReferences(array $values, string $locale): array
+    {
+        if ($this->labels === null) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($values as $value) {
+            if ($value->reference !== null) {
+                $ids[$value->reference] = true;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return $this->labels->forNodes(
+            array_values($this->nodes->byIds(array_keys($ids))),
+            SeededRole::Form,
+            $locale
+        );
     }
 
     /**
@@ -79,6 +117,7 @@ final class Rendering
 
         $types    = $this->typesOf($edges);
         $resolved = $this->settings->resolveForUseSites($edges);
+        $names    = $this->namesOfReferences($values, $locale);
         $fields   = [];
 
         foreach ($edges as $edge) {
@@ -94,15 +133,18 @@ final class Rendering
                 $renderer = $this->renderers->fallback();
             }
 
+            $value = $values[$edge->id] ?? TypedValue::nothing();
+
             $context = new RenderContext(
                 $purpose,
-                $values[$edge->id] ?? TypedValue::nothing(),
+                $value,
                 $settings,
                 $locale,
                 $level,
                 $editable,
                 $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
                 $type,
+                $value->reference === null ? null : ($names[$value->reference] ?? null),
             );
 
             $fields[] = new RenderedField(
@@ -314,7 +356,21 @@ final class Rendering
     /** @param array<int, Node> $ancestors */
     private function typeOf(Node $target, array $ancestors): ?SimpleType
     {
-        if ($this->framework->branchOf($target) !== Branch::DataTypes) {
+        $branch = $this->framework->branchOf($target);
+
+        // ⚠️ **A constant is drawn as a reference, and [D-232](90-decision-log.md) is where that
+        // comes from** — the branch decides where a value lives, and for `Constants` the value
+        // **is** a reference to a node. So the type to draw is `node_ref` whatever the constant
+        // happens to be called; nothing is read off its name.
+        //
+        // ⚠️ A `Model` target is a reference to a **record**, which has no simple type of its own
+        // and no renderer either — it wants the summary renderer (D-106) and stays undrawn until
+        // then, honestly rather than as a reference to the wrong kind of thing.
+        if ($branch === Branch::Constants) {
+            return SimpleType::NodeRef;
+        }
+
+        if ($branch !== Branch::DataTypes) {
             return null;
         }
 
