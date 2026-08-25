@@ -682,7 +682,6 @@ final class NodesScreen
             . ' style="display:flex;gap:.4em;align-items:center">'
             . $this->hidden($nodeId)
             . '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
-            . ($chosen === '' ? '' : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span>')
             . '<select name="' . esc_attr(self::SETTING_FIELD . '[' . $row->key . ']') . '"'
             . ' style="font-family:dashicons,sans-serif;font-size:1.1em">' . $options . '</select>'
             . '<button class="button" name="do" value="put_setting">' . esc_html__('Set', 'taxmod') . '</button>'
