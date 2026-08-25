@@ -496,7 +496,8 @@ final class RenderingTest extends TestCase
         // ⚠️ **The button is built here, from what the boundary described.** The owner corrected the
         // claim that a renderer cannot: what it cannot do is invent the URL, the nonce and the
         // words — composing the element out of given values is what a renderer does.
-        self::assertStringContainsString('<button class="button" name="do" value="up" title="Move up">↑</button>', $markup);
+        self::assertStringContainsString('name="do" value="up" title="Move up"', $markup);
+        self::assertStringContainsString('>↑</button>', $markup);
         self::assertStringContainsString('action="https://example.test/post"', $markup);
         self::assertStringContainsString('name="_nonce" value="abc123"', $markup);
 
@@ -504,6 +505,27 @@ final class RenderingTest extends TestCase
 
         // ⚠️ The link wraps the name and **not** the buttons: a button inside a link does not work.
         self::assertLessThan(strpos($markup, '<button'), strpos($markup, '</a>'));
+    }
+
+    #[Test]
+    public function an_ordinary_act_reads_black_and_one_that_takes_something_away_reads_red(): void
+    {
+        // ⚠️ The meaning arrives as a **fact** — `destroys` — and the renderer picks the colour.
+        // Otherwise every surface would choose its own red, and the one control that must not be
+        // clicked by accident would look different in each of them.
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->cellsFor(
+            [$part],
+            [$part->id => [
+                new Control('do', 'up', '↑', 'Move up'),
+                new Control('do', 'trash_node', '🗑', 'Park it', true, destroys: true),
+            ]],
+            submits: [$part->id => new Submission('https://example.test/post')]
+        )[$part->id]->markup;
+
+        self::assertStringContainsString('value="up" title="Move up" style="color:#1d2327"', $markup);
+        self::assertStringContainsString('value="trash_node" title="Park it" style="color:#b32d2e"', $markup);
     }
 
     #[Test]

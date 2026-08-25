@@ -149,13 +149,20 @@ final class TreeNodeRenderer implements Renderer
         $buttons = '';
 
         foreach ($surroundings->actions as $control) {
-            // ⚠️ **Greyed, not gone** (D-370): the row of buttons keeps the same shape on every
-            // row, so a position can be learnt. A disabled button submits nothing.
+            // ⚠️ **Black, and red where something is taken away.** WordPress paints `.button` blue,
+            // which makes every act look like a link; an ordinary one reads as text and the
+            // destructive one is the single thing that stands out. *The renderer decides the colour
+            // because the meaning arrives as a fact — `destroys` — rather than as a style.*
+            $colour = $control->destroys ? '#b32d2e' : '#1d2327';
+
+            // ⚠️ **Greyed, not gone** (D-370): the row keeps the same shape everywhere, so a
+            // position can be learnt. A disabled button submits nothing.
             $buttons .= '<button class="button" name="' . RenderResult::escape($control->name)
                 . '" value="' . RenderResult::escape($control->value) . '"'
                 . ($control->title === '' ? '' : ' title="' . RenderResult::escape($control->title) . '"')
-                . ($control->available ? '' : ' disabled style="opacity:.35"')
-                . '>' . RenderResult::escape($control->label) . '</button>';
+                . ($control->available ? '' : ' disabled')
+                . ' style="color:' . $colour . ($control->available ? '' : ';opacity:.35') . '">'
+                . RenderResult::escape($control->label) . '</button>';
         }
 
         return '<form method="post" action="' . RenderResult::escape($surroundings->submits->action) . '"'

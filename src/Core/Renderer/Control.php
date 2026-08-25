@@ -46,6 +46,12 @@ final class Control
      * @param string $title     The longer explanation, translated the same way. Empty for none.
      * @param bool   $available Whether it can be used now. A disabled button submits nothing, so
      *                          keeping it is a matter of layout and never of safety.
+     * @param bool   $destroys  Whether the act takes something away.
+     *
+     * ⚠️ **`destroys` is a fact about the act, not a colour.** The boundary knows what an action
+     * does; how that reads on screen is the renderer's — which is why the flag is here and the red
+     * is over there. *Otherwise every surface would pick its own red, and the one control that must
+     * never be clicked by accident would look different in each of them.*
      */
     public function __construct(
         public readonly string $name,
@@ -53,6 +59,7 @@ final class Control
         public readonly string $label,
         public readonly string $title = '',
         public readonly bool $available = true,
+        public readonly bool $destroys = false,
     ) {
     }
 }

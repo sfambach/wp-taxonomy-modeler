@@ -236,7 +236,11 @@ final class NodesScreen
                 '🗑',
                 __('Park this node; its children move up to its parent', 'taxmod'),
                 // A protected node cannot be parked (D-194) — the core refuses it anyway.
-                ! $this->framework->isProtected($row['node'])
+                ! $this->framework->isProtected($row['node']),
+                // ⚠️ It takes something away, and the renderer paints that. *Parking is not
+                // destroying — the trash is a place (D-123) — but it is the one act in this row
+                // that removes a node from where it was.*
+                destroys: true
             ),
         ];
     }
