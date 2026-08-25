@@ -164,13 +164,25 @@ final class NodesScreen
             return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
         }
 
-        // ⚠️ **Every node is drawn by the cell, in one query for the whole table** (D-367). The
-        // screen no longer decides what a row looks like — it walks and nests, which is the walker's
-        // half of the split, and the cell draws the node.
-        $cells = $this->rendering->cellsFor(array_map(
-            static fn (array $row): Node => $row['node'],
-            $rows
-        ));
+        // ⚠️ **The whole row is the cell's now** (D-367). The boundary supplies only what the core
+        // cannot make — a **URL** and the **buttons**, both of which carry WordPress facts and
+        // depend on what is allowed for that node — and the renderer decides the shape: link around
+        // icon and name, controls after it.
+        $nodes   = [];
+        $actions = [];
+        $hrefs   = [];
+
+        foreach ($rows as $row) {
+            $node             = $row['node'];
+            $nodes[]          = $node;
+            $actions[$node->id] = $this->rowActions($row, $mode);
+            $hrefs[$node->id]   = add_query_arg(
+                ['page' => 'taxmod', 'taxmod_node' => $node->id],
+                admin_url('admin.php')
+            );
+        }
+
+        $cells = $this->rendering->cellsFor($nodes, $actions, $hrefs);
 
         $body = '';
 
@@ -179,51 +191,19 @@ final class NodesScreen
             $indent = str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $row['depth']);
             $here   = $selected !== null && $selected->id === $node->id;
 
+            // ⚠️ **Indent and the expander stay out here, and only those.** Collapsing is a
+            // question about the **hierarchy**, which is the walker's half of D-367's split — the
+            // cell draws a node and knows nothing about where it sits.
             $body .= '<tr' . ($here ? ' style="background:#e8f0fb"' : '') . '>';
-            $body .= '<td>' . $indent . $this->expander($row, $collapsed)
-                . $this->selectable($node, $cells[$node->id]->markup, $here) . '</td>';
-            $body .= '<td title="' . esc_attr__('How often this row has been written. Not a version to return to — see the change group.', 'taxmod') . '">'
-                . (int) $node->version . '</td>';
-            $body .= '<td>' . $this->rowActions($row, $mode) . '</td>';
+            $body .= '<td style="display:flex;align-items:center">'
+                . $indent . $this->expander($row, $collapsed)
+                . '<span style="flex:1">' . $cells[$node->id]->markup . '</span></td>';
             $body .= '</tr>';
         }
 
         return '<table class="wp-list-table widefat striped taxmod-tree">'
-            . '<thead><tr>'
-            . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
-            . '<th style="width:5em">' . esc_html__('Writes', 'taxmod') . '</th>'
-            . '<th style="width:12em">' . esc_html__('Actions', 'taxmod') . '</th>'
-            . '</tr></thead><tbody>' . $body . '</tbody></table>';
-    }
-
-    /**
-     * Wrap a drawn cell so that clicking it selects the node.
-     *
-     * ⚠️ **The link is the boundary's, the drawing is the renderer's.** A URL is a WordPress fact
-     * (`CD-1`), so the core cannot make one — the same wall that keeps the reference renderer from
-     * drawing its link ([OQ-087](../../../docs/NewConcept/91-open-questions.md)). Here the anchor
-     * simply goes **around** the finished markup, which costs nothing and keeps the name clickable.
-     *
-     * ⚠️ *The cell can also carry **actions**, and on this screen it does not: the whole cell is a
-     * link, and buttons inside a link do not work. They stay in their own column until the real
-     * surface, which will not wrap the row.*
-     */
-    private function selectable(Node $node, string $cell, bool $selected): string
-    {
-        $url = add_query_arg(
-            ['page' => 'taxmod', 'taxmod_node' => $node->id],
-            admin_url('admin.php')
-        );
-
-        // ⚠️ **Clickable without looking like a link.** The owner: *the icon should stay black in
-        // the tree, not turn blue because of the link* — and the anchor is still what **selects** a
-        // node, so it stays and gives up its colour instead. `color:inherit` covers the icon too,
-        // because a Dashicon takes the text colour of whatever holds it.
-        return '<a href="' . esc_url($url) . '" title="' . esc_attr__('Show it on the right', 'taxmod') . '"'
-            . ' style="text-decoration:none;color:inherit' . ($selected ? ';font-weight:600' : '') . '">'
-            // Already escaped by the renderer; escaping again would print the markup.
-            . $cell
-            . '</a>';
+            . '<thead><tr><th>' . esc_html__('Name · what can be done · writes', 'taxmod') . '</th></tr></thead>'
+            . '<tbody>' . $body . '</tbody></table>';
     }
 
     /**

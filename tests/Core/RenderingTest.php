@@ -476,18 +476,35 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function the_boundarys_buttons_are_placed_and_not_escaped(): void
+    public function the_whole_row_is_the_cells_including_buttons_link_and_write_count(): void
     {
-        // ⚠️ The core cannot build a button — a URL and a nonce are the boundary's facts (CD-1) —
-        // so they arrive finished and are placed. Escaping them would print them.
+        // ⚠️ The owner: *the node renderer should render a node — a row — in the tree, and that
+        // includes **everything that makes up the row**.* So the cell draws the link around icon and
+        // name, places the controls after it, and shows the write count. What it does **not** know
+        // is where the row sits: indent and collapse are the walker's (D-367).
         $part = $this->thing('Part');
 
         $markup = $this->rendering->cellsFor(
             [$part],
-            [$part->id => ['<button name="up">up</button>']]
+            [$part->id => ['<button name="up">up</button>']],
+            [$part->id => 'https://example.test/?taxmod_node=' . $part->id]
         )[$part->id]->markup;
 
         self::assertStringContainsString('<button name="up">up</button>', $markup);
+        self::assertStringContainsString('href="https://example.test/?taxmod_node=' . $part->id . '"', $markup);
+        self::assertStringContainsString('taxmod-tree-writes', $markup);
+
+        // ⚠️ The link wraps the name and **not** the buttons: a button inside a link does not work.
+        self::assertLessThan(strpos($markup, '<button'), strpos($markup, '</a>'));
+    }
+
+    #[Test]
+    public function without_a_url_the_row_is_drawn_and_simply_not_clickable(): void
+    {
+        // A URL is a boundary fact (`CD-1`); a surface that has nowhere to go hands none in.
+        $part = $this->thing('Part');
+
+        self::assertStringNotContainsString('<a ', $this->rendering->cellsFor([$part])[$part->id]->markup);
     }
 
     #[Test]

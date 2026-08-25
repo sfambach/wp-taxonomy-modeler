@@ -43,10 +43,18 @@ final class Surroundings
      *                                     found them. A container regroups; it does not draw.
      * @param list<string>        $actions Finished controls to place with the subject, in order.
      */
+    /**
+     * @param string|null $href Where the subject is reached, when the surface has somewhere to go.
+     *
+     * ⚠️ **A URL is handed in, never built.** The core has no idea what an admin screen or a
+     * permalink looks like (`CD-1`) — but wrapping a link around what it drew is ordinary markup,
+     * so the renderer keeps deciding the **shape** of a row instead of handing that back too.
+     */
     public function __construct(
         public readonly ?string $refersTo = null,
         public readonly array $parts = [],
         public readonly array $actions = [],
+        public readonly ?string $href = null,
     ) {
     }
 
@@ -58,6 +66,6 @@ final class Surroundings
      */
     public function referringTo(?string $refersTo): self
     {
-        return new self($refersTo, $this->parts, $this->actions);
+        return new self($refersTo, $this->parts, $this->actions, $this->href);
     }
 }

@@ -312,11 +312,14 @@ final class Rendering
      * @param  list<Node>                   $nodes
      * @param  array<int, list<string>>     $actions Finished controls per node id, from the
      *                                              boundary — the core cannot build a button.
+     * @param  array<int, string>           $hrefs   Where each node is reached, per node id — a URL
+     *                                              is a boundary fact too (`CD-1`).
      * @return array<int, RenderResult>     Keyed by node id.
      */
     public function cellsFor(
         array $nodes,
         array $actions = [],
+        array $hrefs = [],
         string $cell = TreeNodeRenderer::NAME,
         string $locale = '',
         Level $level = Level::Admin,
@@ -340,7 +343,10 @@ final class Rendering
                     locale: $locale,
                     level: $level,
                     editable: false,
-                    surroundings: new Surroundings(actions: $actions[$node->id] ?? []),
+                    surroundings: new Surroundings(
+                        actions: $actions[$node->id] ?? [],
+                        href: $hrefs[$node->id] ?? null
+                    ),
                 )
             );
         }

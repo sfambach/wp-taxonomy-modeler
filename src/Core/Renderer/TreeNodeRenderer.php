@@ -85,17 +85,44 @@ final class TreeNodeRenderer implements Renderer
         // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing
         // it is two **class names**, which the core may write: a class is a string, not a call into
         // WordPress (`CD-1`). And it goes **before** the name, as it did there.
-        $markup = '<span class="taxmod-tree-node">'
-            . ($icon === '' ? '' : '<span class="dashicons dashicons-' . RenderResult::escape($icon) . '"></span> ')
+        $named = ($icon === '' ? '' : '<span class="dashicons dashicons-' . RenderResult::escape($icon) . '"></span> ')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
+        // ⚠️ **The link is put around what was drawn, not handed back to be wrapped.** A URL comes
+        // in (`CD-1` — the core cannot make one); wrapping is ordinary markup, so the renderer keeps
+        // deciding the shape of the row. *Clickable without looking like one: an anchor that gives
+        // up its colour lets the icon stay black, which is what the owner asked for.*
+        if ($context->surroundings->href !== null) {
+            $named = '<a href="' . RenderResult::escape($context->surroundings->href) . '"'
+                . ' class="taxmod-tree-select" style="text-decoration:none;color:inherit">'
+                . $named . '</a>';
+        }
+
+        // ⚠️ A `div`, not a `span`: the controls handed in are forms, and a form may not sit inside
+        // phrasing content.
+        $markup = '<div class="taxmod-tree-node" style="display:flex;gap:.5em;align-items:center">'
+            . $named;
+
         if ($context->surroundings->actions !== []) {
-            // Already finished markup from the boundary — escaping it again would print the buttons
-            // instead of offering them.
+            // ⚠️ **Outside the anchor, which is why the link wraps only icon and name**: a button
+            // inside a link does not work. Already finished markup from the boundary — escaping it
+            // again would print the controls instead of offering them.
             $markup .= '<span class="taxmod-tree-actions">'
                 . implode('', $context->surroundings->actions) . '</span>';
         }
 
-        return RenderResult::of($markup . '</span>');
+        // ⚠️ **The write count belongs to the row, so the row draws it.** The owner: *the node
+        // renderer should render a node — a row — in the tree, and that includes everything that
+        // makes up the row.* It is a **write count** and never a version
+        // ([D-349](../../../docs/NewConcept/90-decision-log.md)): the word *version* promises a
+        // state to return to, and this one only says *nobody changed this row since you read it*.
+        // *A bare number, because the sentence explaining it is a word the core cannot make
+        // ([OQ-087](../../../docs/NewConcept/91-open-questions.md)) — the surface says it once.*
+        if ($subject instanceof Node) {
+            $markup .= '<span class="taxmod-tree-writes" style="margin-left:auto;opacity:.55">'
+                . (int) $subject->version . '</span>';
+        }
+
+        return RenderResult::of($markup . '</div>');
     }
 }
