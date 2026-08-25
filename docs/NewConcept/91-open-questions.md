@@ -2733,3 +2733,58 @@ validators as well**, and answering it three times separately is how the previou
 filled at runtime — was deferred until **working with the project shows it missing**, and a registry
 of named things that the model cannot check, cannot offer as a picker and cannot hang a setting on is
 a plausible sighting of exactly that.*
+
+---
+
+## OQ-091 — Is the tree row a renderer of its own, and which role does a surface read labels in?
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **open** · *raised 2026-08-25, on trying to build the tree row*
+
+**Two questions, and they surfaced together because the same step needed both.**
+
+### 1 · Is a tree row its own renderer?
+
+[R18](30-renderer.md#r18r20--the-surfaces-are-renderers-all-the-way-up) is an owner statement from
+the first week — *the tree view consists of nodes too, so a node can be drawn in the tree by a
+renderer* — and [R18a](30-renderer.md#r18a--the-tree-row-draws-the-nodes-icon) /
+[D-251](90-decision-log.md) decide **what** it draws: the **icon**, resolved along the chain, beside
+the **label**, in a role and a locale. ⚠️ *And explicitly not the `symbol` role — an icon is a
+language-neutral glyph, a symbol is a short translated text* ([D-252](90-decision-log.md)).
+
+⚠️ **But [the inventory](30-renderer.md#the-table) flags the gap in its own words:**
+
+> still no decision that the tree row **is** a renderer — but [D-251](90-decision-log.md) speaks of
+> *the node renderer in the tree* and decides what it draws
+
+**A separate class was written and thrown away rather than committed**, because *the node renderer
+in the tree* is not the same claim as *a tree renderer*, and [D-256](90-decision-log.md) is explicit
+that the node renderer and the page renderer are **one** renderer.
+
+| Shape | What it means | What it costs |
+|---|---|---|
+| **its own renderer** | `tree-row` in the registry, chosen by the surface | ⚠️ needs a decision; and it must be **registered yet not offered**, or somebody picks it as a node's renderer and the detail view becomes a row. Today only the fallback has that treatment |
+| **the node renderer at the *reference* degree** | a row is icon + label and **nothing behind it** — which is exactly what the **reference renderer** already draws ([D-105](90-decision-log.md)) | the reference renderer's subject is a *value* that points somewhere; a row's subject **is** the node. One class, two shapes |
+| **a degree as a circumstance** | reference · summary · expand as options inside the node renderer (R15) | ⚠️ contradicts the inventory, which lists all three as **renderers** |
+
+⚠️ **The middle row is the interesting one and it was not obvious:** *icon plus label and nothing
+behind it* and *the target's label plus a link and nothing behind it* are the same drawing of the
+same amount of a node. If they are one renderer, the tree row costs no class at all.
+
+### 2 · Which role does a surface read its labels in?
+
+The five seeded roles are `form`, `table`, `select`, `symbol`, `help`
+([D-196](90-decision-log.md)), and their names read like surfaces — but **nothing says which surface
+asks for which.** It came up twice in one afternoon:
+
+| Surface | Which role? |
+|---|---|
+| a field in a form | `form` is the obvious reading and is **not written down** — [D-366](90-decision-log.md) named it as the form renderer's one real gap |
+| a row in the modelling tree | ⚠️ genuinely unclear. `table` is nearest by name; a tree is not a table, and it is certainly not a `select` |
+
+⚠️ **Two guesses in one afternoon is the signal.** The renderer must not choose — it is handed the
+label ([D-363](90-decision-log.md)) — so **the caller decides**, and a caller deciding by taste is
+how the same node ends up with two names on two screens.
+
+⚠️ **Nothing is blocked**: the label chain always ends on the node's own name
+([D-020](90-decision-log.md), [D-022](90-decision-log.md)), so every surface reads as *something*
+whatever is decided. What is at stake is whether it reads as the **same** something.

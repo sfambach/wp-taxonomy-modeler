@@ -88,6 +88,40 @@ final class SettingsTest extends TestCase
     // ------------------------------------------------------------- the walk
 
     #[Test]
+    public function a_set_of_nodes_resolves_in_one_walk_each_and_not_one_query_each(): void
+    {
+        // ⚠️ **Built for the tree, which is where N+1 hurts most.** A row draws the node's icon
+        // (D-251) — a setting on the chain — so asking per row would be a walk per row, and `CD-7`
+        // forbids the loop. This is `resolveForUseSites`' construction applied to nodes.
+        $installation = $this->settings->chainFor($this->branchRoot['data-types']);
+
+        $one = $this->type('Alpha');
+        $two = $this->type('Beta');
+
+        $this->settings->put($installation, SettingKey::Icon->value, TypedValue::ofText('inherited'));
+        $this->settings->put($this->settings->chainFor($two), SettingKey::Icon->value, TypedValue::ofText('own'));
+
+        $resolved = $this->settings->resolveForNodes([$one, $two]);
+
+        self::assertCount(2, $resolved);
+
+        // ⚠️ Each node gets **its own** answer — the fault a batch invites is handing every node
+        // the last one's, which shows as one wrong row and gets blamed on the data.
+        self::assertSame('inherited', $resolved[$one->id][SettingKey::Icon->value]->value->text);
+        self::assertSame('own', $resolved[$two->id][SettingKey::Icon->value]->value->text);
+
+        // And the origin survives, because *inherited* and *set here* must look different (D-266).
+        self::assertFalse($resolved[$one->id][SettingKey::Icon->value]->setHere);
+        self::assertTrue($resolved[$two->id][SettingKey::Icon->value]->setHere);
+    }
+
+    #[Test]
+    public function an_empty_set_of_nodes_asks_nothing(): void
+    {
+        self::assertSame([], $this->settings->resolveForNodes([]));
+    }
+
+    #[Test]
     public function the_chain_starts_at_the_installation_and_follows_the_path(): void
     {
         $type = $this->type('Text');

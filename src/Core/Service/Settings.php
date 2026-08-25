@@ -69,6 +69,42 @@ final class Settings
     }
 
     /**
+     * The same for a set of **nodes** — a tree's worth of rows in one query.
+     *
+     * ⚠️ **This exists for the same reason {@see resolveForUseSites()} does, and the tree is where
+     * it matters most.** A row draws the node's icon ([D-251](../../../docs/NewConcept/90-decision-log.md)),
+     * which is a setting resolved along the chain — so a hundred rows would be a hundred walks, and
+     * `CD-7` forbids the loop outright. The batched load is [D-014](../../../docs/NewConcept/90-decision-log.md)'s
+     * own construction applied to a set of chains instead of one.
+     *
+     * @param  list<Node>                                $nodes
+     * @return array<int, array<string, ResolvedSetting>> Keyed by node id.
+     */
+    public function resolveForNodes(array $nodes): array
+    {
+        if ($nodes === []) {
+            return [];
+        }
+
+        $chains = [];
+
+        foreach ($nodes as $node) {
+            $chains[$node->id] = $this->chainFor($node);
+        }
+
+        $everyOwner = array_values(array_unique(array_merge(...array_values($chains))));
+        $settings   = $this->settings->forOwners($everyOwner);
+
+        $resolved = [];
+
+        foreach ($chains as $nodeId => $chain) {
+            $resolved[$nodeId] = $this->walk($chain, $settings);
+        }
+
+        return $resolved;
+    }
+
+    /**
      * Resolve every setting along a chain, key by key.
      *
      * @param list<int> $chain
