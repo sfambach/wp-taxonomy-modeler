@@ -194,8 +194,12 @@ final class NodesScreen
             admin_url('admin.php')
         );
 
+        // ⚠️ **Clickable without looking like a link.** The owner: *the icon should stay black in
+        // the tree, not turn blue because of the link* — and the anchor is still what **selects** a
+        // node, so it stays and gives up its colour instead. `color:inherit` covers the icon too,
+        // because a Dashicon takes the text colour of whatever holds it.
         return '<a href="' . esc_url($url) . '" title="' . esc_attr__('Show it on the right', 'taxmod') . '"'
-            . ' style="text-decoration:none' . ($selected ? ';font-weight:600' : '') . '">'
+            . ' style="text-decoration:none;color:inherit' . ($selected ? ';font-weight:600' : '') . '">'
             // Already escaped by the renderer; escaping again would print the markup.
             . $cell
             . '</a>';
@@ -547,17 +551,27 @@ final class NodesScreen
                 $acts[] = ['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')];
             }
 
-            $body .= '<tr>'
-                . '<td><code>' . esc_html($row->key) . '</code></td>'
+            // ⚠️ **The icon row is built apart, because its control is its own form.** Every tile
+            // has to submit the icon it stands for, so the action cannot ride in a button name —
+            // and a form may not sit inside another form. *Reset still applies and is added beside.*
+            $cell = $row->key === SettingKey::Icon->value
+                ? $this->iconChoice($row, $selected->id)
+                    . ($setting->setHere ? $this->form($selected->id, [
+                        ['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')],
+                    ], '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">') : '')
                 // ⚠️ Escaped by the renderer already (`RenderResult::escape()`); escaping again
                 // would print the tags instead of the control. The undrawn rows go through
                 // `esc_html` in the ordinary way.
-                . '<td>' . $this->form(
+                : $this->form(
                     $selected->id,
                     $acts,
                     '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
                     . '<span style="flex:1">' . $this->settingCell($row) . '</span>'
-                ) . '</td>'
+                );
+
+            $body .= '<tr>'
+                . '<td><code>' . esc_html($row->key) . '</code></td>'
+                . '<td>' . $cell . '</td>'
                 . '<td>' . $origin . '</td>'
                 . '</tr>';
         }
@@ -588,13 +602,6 @@ final class NodesScreen
      */
     private function settingCell(RenderedSetting $row): string
     {
-        // ⚠️ **The icon is picked, not typed** (D-251, and the owner said so plainly). The stored
-        // value is a Dashicon **key**, so the core draws it as text like any other — the *control*
-        // is a picker, and a picker over a WordPress catalogue belongs at the boundary.
-        if ($row->key === SettingKey::Icon->value) {
-            return $this->iconChoice($row);
-        }
-
         if ($row->wasDrawn()) {
             return $row->result->markup;
         }
@@ -628,22 +635,53 @@ final class NodesScreen
      * written by whoever writes renderers, not offered as a gesture beside the real settings.
      * *A free key that is already stored still gets its row; what is gone is the invitation.*
      */
-    /** The icon, as a list to pick from, with the one in force shown beside it. */
-    private function iconChoice(RenderedSetting $row): string
+    /**
+     * The icons to pick from, **shown as icons**.
+     *
+     * ⚠️ **Not a `<select>`, and that is forced rather than chosen.** The owner: *the icon should
+     * be visible in the list so one knows what one is picking* — and an `<option>` cannot show one.
+     * Its content is plain text and browsers ignore styling inside it, so an icon font never paints
+     * there. **A grid of buttons is the only control that shows what it offers**, and it needs no
+     * JavaScript: each button submits its own key.
+     *
+     * ⚠️ *«none» writes **deliberately nothing** — a node that shows no icon although its parent
+     * has one. Returning to inherited is the **Reset** button beside the row; the two are different
+     * acts ([D-266](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function iconChoice(RenderedSetting $row, int $nodeId): string
     {
-        $chosen  = (string) ($row->setting->value->text ?? '');
-        $options = '<option value="">' . esc_html__('— none —', 'taxmod') . '</option>';
+        $chosen = (string) ($row->setting->value->text ?? '');
+        $field  = esc_attr(self::SETTING_FIELD . '[' . $row->key . ']');
+
+        $tile = static function (string $value, string $inside, string $title, bool $active) use ($field): string {
+            return '<button class="button" name="' . $field . '" value="' . esc_attr($value) . '"'
+                . ' title="' . esc_attr($title) . '"'
+                . ' style="min-width:2.2em;padding:.1em .3em;line-height:1.6'
+                . ($active ? ';box-shadow:0 0 0 2px #2271b1' : '') . '">'
+                . $inside . '</button>';
+        };
+
+        $tiles = $tile('', '&times;', __('No icon here, even if something above has one', 'taxmod'), $chosen === '');
 
         foreach (self::ICONS as $key) {
-            $options .= '<option value="' . esc_attr($key) . '"'
-                . ($key === $chosen ? ' selected' : '') . '>' . esc_html($key) . '</option>';
+            $tiles .= $tile(
+                $key,
+                '<span class="dashicons dashicons-' . esc_attr($key) . '"></span>',
+                $key,
+                $key === $chosen
+            );
         }
 
-        return ($chosen === ''
-                ? ''
-                : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span> ')
-            . '<select name="' . esc_attr(self::SETTING_FIELD . '[' . $row->key . ']') . '">'
-            . $options . '</select>';
+        // ⚠️ **Its own form, and `do` as a hidden field.** Every tile has to carry the icon it
+        // stands for, so it cannot also carry the action in its name — and a form cannot sit inside
+        // the row's own form. *Which is why this row is built apart from the others.*
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"'
+            . ' style="display:flex;flex-wrap:wrap;gap:.2em;max-width:26em;align-items:center">'
+            . $this->hidden($nodeId)
+            . '<input type="hidden" name="do" value="put_setting">'
+            . '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
+            . $tiles
+            . '</form>';
     }
 
     private function settingForm(Node $selected): string
