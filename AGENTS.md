@@ -105,6 +105,22 @@ and never restores from the cloud — which makes the mechanism less obvious, be
 backup should not rename a local file. What is certain is that the rename happened and that no
 other candidate uses that naming.*
 
+⚠️ **2026-08-25 — it happened again, twice in one session, and the exclusion did not hold.**
+`docs/NewConcept/95-roadmap.md` was written, reported as written, and then **reverted** — the two
+most recent additions simply gone. The lost text lay beside it as `95-roadmap (conflicted).md`.
+Restored, and minutes later the same file was **replaced outright** by
+`95-roadmap [conflicted].md`. **Both naming styles, round brackets and square, in one session.**
+
+**What this changes:** the earlier note says the owner excluded the source folder. **Something is
+still doing it**, so exclusion cannot be assumed to have worked, and the failure mode is worse than
+the 2026-08-24 one because it is **silent** — a write reports success and is undone afterwards. A
+fatal error announces itself; a reverted paragraph does not.
+
+**The rule that follows is the expensive one and it is not optional: verify after writing.** Every
+documentation edit in that session was re-checked with a `grep` for its own content before
+committing, and that is the only reason the loss was caught at all. ⚠️ *Two additions were already
+gone by the time the check ran.*
+
 **Two rules that follow, and they are cheap:**
 
 - **Never delete-and-recreate a file that already exists** — overwrite it. The rapid
