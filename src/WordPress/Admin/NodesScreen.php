@@ -58,6 +58,28 @@ final class NodesScreen
     /** A setting's own control, as `taxmod_setting[<key>]` — one row, one form, one key. */
     private const SETTING_FIELD = 'taxmod_setting';
 
+    /**
+     * The icons a node may be given — **Dashicon keys, without the `dashicons-` prefix**.
+     *
+     * ⚠️ **An icon is picked from an allow-list, never typed** — D-251, and
+     * [harvest 02](../../../docs/NewConcept/_harvest/02-settings-page.md): *Settings — Tree icons.
+     * An allow-list of the icons that may be assigned on a node. 39 icons, most enabled.*
+     *
+     * ⚠️ **The owner: *for now this should simply be the stock WordPress offers.*** So the list is
+     * WordPress's Dashicons and it lives **here**, at the boundary, because Dashicons are a
+     * WordPress fact — the core knows only that an icon is a key. **Curating it in Settings**
+     * (*unchecking an icon hides it from pickers*) is the next step, not this one.
+     */
+    private const ICONS = [
+        'marker', 'location', 'flag', 'star-filled', 'yes-alt', 'warning', 'info',
+        'category', 'tag', 'archive', 'portfolio', 'index-card', 'id', 'clipboard',
+        'admin-generic', 'admin-tools', 'admin-settings', 'screenoptions', 'forms',
+        'list-view', 'editor-ul', 'editor-ol', 'editor-table', 'chart-bar', 'chart-pie',
+        'media-default', 'media-document', 'media-spreadsheet', 'images-alt2',
+        'cart', 'products', 'tickets-alt', 'money-alt', 'building', 'store',
+        'groups', 'businessman', 'hammer', 'art', 'lightbulb', 'palmtree', 'shield',
+    ];
+
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
@@ -566,6 +588,13 @@ final class NodesScreen
      */
     private function settingCell(RenderedSetting $row): string
     {
+        // ⚠️ **The icon is picked, not typed** (D-251, and the owner said so plainly). The stored
+        // value is a Dashicon **key**, so the core draws it as text like any other — the *control*
+        // is a picker, and a picker over a WordPress catalogue belongs at the boundary.
+        if ($row->key === SettingKey::Icon->value) {
+            return $this->iconChoice($row);
+        }
+
         if ($row->wasDrawn()) {
             return $row->result->markup;
         }
@@ -599,6 +628,24 @@ final class NodesScreen
      * written by whoever writes renderers, not offered as a gesture beside the real settings.
      * *A free key that is already stored still gets its row; what is gone is the invitation.*
      */
+    /** The icon, as a list to pick from, with the one in force shown beside it. */
+    private function iconChoice(RenderedSetting $row): string
+    {
+        $chosen  = (string) ($row->setting->value->text ?? '');
+        $options = '<option value="">' . esc_html__('— none —', 'taxmod') . '</option>';
+
+        foreach (self::ICONS as $key) {
+            $options .= '<option value="' . esc_attr($key) . '"'
+                . ($key === $chosen ? ' selected' : '') . '>' . esc_html($key) . '</option>';
+        }
+
+        return ($chosen === ''
+                ? ''
+                : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span> ')
+            . '<select name="' . esc_attr(self::SETTING_FIELD . '[' . $row->key . ']') . '">'
+            . $options . '</select>';
+    }
+
     private function settingForm(Node $selected): string
     {
         return $this->rendererChoice($selected);

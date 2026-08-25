@@ -81,8 +81,12 @@ final class TreeNodeRenderer implements Renderer
         // and it can never read as nothing, because a node cannot exist without a name (D-022).
         $shown = $subject instanceof Node ? $subject->name : '';
 
+        // ⚠️ **An icon is a Dashicon key**, stored without the `dashicons-` prefix — the shape the
+        // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing
+        // it is two **class names**, which the core may write: a class is a string, not a call into
+        // WordPress (`CD-1`). And it goes **before** the name, as it did there.
         $markup = '<span class="taxmod-tree-node">'
-            . ($icon === '' ? '' : '<span class="taxmod-icon">' . RenderResult::escape($icon) . '</span>')
+            . ($icon === '' ? '' : '<span class="dashicons dashicons-' . RenderResult::escape($icon) . '"></span> ')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
         if ($context->surroundings->actions !== []) {

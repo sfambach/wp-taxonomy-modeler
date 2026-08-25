@@ -413,22 +413,56 @@ final class RenderingTest extends TestCase
     // --------------------------------------------------------- the tree's cell
 
     #[Test]
-    public function the_cell_draws_the_icon_and_the_label(): void
+    public function the_cell_draws_the_icon_as_a_dashicon_before_the_name(): void
     {
-        // D-251 / R18a: the icon is a setting on the chain, the label a role and a locale — and
-        // they are different mechanisms, which D-252 wrote down so they would not be conflated.
+        // ⚠️ An icon is a **Dashicon key** stored without the prefix — the legacy shape, confirmed
+        // by the owner: *for now simply the stock WordPress offers.* Drawing it is two class names,
+        // which the core may write: a class is a string, not a call into WordPress (`CD-1`).
         $part = $this->thing('Part');
 
         $this->settings->put(
             $this->settings->chainFor($part),
             SettingKey::Icon->value,
-            TypedValue::ofText('▣')
+            TypedValue::ofText('marker')
         );
 
         $markup = $this->rendering->cellsFor([$part])[$part->id]->markup;
 
-        self::assertStringContainsString('▣', $markup);
+        self::assertStringContainsString('dashicons dashicons-marker', $markup);
         self::assertStringContainsString('Part', $markup);
+
+        // Before the name, as it was in the legacy tree.
+        self::assertLessThan(strpos($markup, 'Part'), strpos($markup, 'dashicons'));
+    }
+
+    #[Test]
+    public function a_node_without_an_icon_gets_no_empty_icon_element(): void
+    {
+        $part = $this->thing('Part');
+
+        self::assertStringNotContainsString('dashicons', $this->rendering->cellsFor([$part])[$part->id]->markup);
+    }
+
+    #[Test]
+    public function the_icon_inherits_along_the_chain(): void
+    {
+        // ⚠️ **Worth a check because the legacy did it differently**: there the icon was *copied
+        // once on create* and later parent changes did **not** cascade. In this concept an icon is
+        // a **setting** (D-251, D-252) and settings inherit (D-079) — so a change above arrives.
+        // Recorded rather than reconciled: legacy is a quarry, not a source (`PR-1`).
+        $part  = $this->thing('Part');
+        $child = $this->editor->createNode('Resistor', $part->id);
+
+        $this->settings->put(
+            $this->settings->chainFor($part),
+            SettingKey::Icon->value,
+            TypedValue::ofText('marker')
+        );
+
+        self::assertStringContainsString(
+            'dashicons-marker',
+            $this->rendering->cellsFor([$child])[$child->id]->markup
+        );
     }
 
     #[Test]
