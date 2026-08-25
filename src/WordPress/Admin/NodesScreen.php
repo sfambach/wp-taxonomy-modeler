@@ -148,6 +148,7 @@ final class NodesScreen
     private function tightRows(): string
     {
         return '<style>'
+            . '.taxmod-tree{font-size:15px}'
             . '.taxmod-tree td,.taxmod-tree th{padding:2px 8px;line-height:1.5}'
             // The glyphs on the buttons and the node's own icon at the same size — one visual scale
             // for the row, with the line height held down so it stays flat.
