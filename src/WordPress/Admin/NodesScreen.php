@@ -149,9 +149,11 @@ final class NodesScreen
     {
         return '<style>'
             . '.taxmod-tree td,.taxmod-tree th{padding:2px 8px;line-height:1.5}'
-            . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .45em;line-height:1.7;font-size:11px}'
+            // The glyphs on the buttons and the node's own icon at the same size — one visual scale
+            // for the row, with the line height held down so it stays flat.
+            . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .3em;line-height:1.2;font-size:17px}'
             . '.taxmod-tree form{gap:.2em!important}'
-            . '.taxmod-tree .dashicons{font-size:25px;width:25px;height:25px;line-height:1.4;vertical-align:text-bottom}'
+            . '.taxmod-tree .dashicons{font-size:17px;width:17px;height:17px;line-height:1.2;vertical-align:text-bottom}'
             . '</style>';
     }
 
