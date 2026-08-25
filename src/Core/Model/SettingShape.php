@@ -36,6 +36,15 @@ enum SettingShape
     case Whole;
 
     /**
+     * An exact decimal of its own — a conversion factor, an offset.
+     *
+     * ⚠️ **Its own, not borrowed.** A factor is a decimal whatever the unit measures: the factor
+     * from inch to millimetre is `25.4` on a length and the shape of the value does not change
+     * because the dimension does ([D-274](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    case Exact;
+
+    /**
      * Whatever the node being configured is.
      *
      * ⚠️ **A default for a text is a text; a minimum for a decimal is a decimal.** These keys

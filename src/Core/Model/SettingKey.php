@@ -92,6 +92,41 @@ enum SettingKey: string
      * rather than a mechanism of its own.*
      */
     case Developer = 'developer';
+
+    /**
+     * How much of the parent's reference unit this one is
+     * ([D-274](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Named by the decision, not invented here:** *each unit carries its **factor** to the
+     * parent's reference unit*, so inch → millimetre is a multiplication through the shared parent.
+     * The parent **is** the dimension, because the tree is inheritance
+     * ([D-041](../../../docs/NewConcept/90-decision-log.md)) — no new construct.
+     */
+    case Factor = 'factor';
+
+    /**
+     * What has to be added after the factor — the other half of D-274's rule.
+     *
+     * ⚠️ **Without it the commonest conversion of all falls outside the rule:** °C → °F is
+     * `×1.8 + 32`. *And whatever is neither factor nor offset is a **converter**
+     * ([D-219](../../../docs/NewConcept/90-decision-log.md)) — wire gauge to cross-section is a
+     * table, not a calculation. The rule covers the linear case and hands the rest over honestly.*
+     */
+    case Offset = 'offset';
+
+    /**
+     * A prefix's power of ten — `kilo` is `3`, `milli` is `-3`.
+     *
+     * ⚠️ **Why this is not `factor`, and it is a finding rather than a preference.** A factor is an
+     * exact decimal, and the column is `decimal(30,10)`: **`yocto` needs 10⁻²⁴ and `yotta` 10²⁴**,
+     * so neither fits — ten decimal places and twenty integer ones. **A prefix is by definition a
+     * power of ten**, so the exponent is both exact and small, and nothing is lost.
+     *
+     * ⚠️ *It also keeps [D-039](../../../docs/NewConcept/90-decision-log.md)'s two axes apart: a
+     * length **changes its prefix**, a currency **changes its unit**. Prefix and factor answer
+     * different questions and would have collided in one key.*
+     */
+    case PrefixExponent = 'prefix_exponent';
     case Order = 'order';
 
 
@@ -147,7 +182,8 @@ enum SettingKey: string
         return match ($this) {
             self::Mandatory, self::Hide, self::ReadOnly,
             self::Developer                            => SettingShape::Switch,
-            self::Order                                => SettingShape::Whole,
+            self::Order, self::PrefixExponent          => SettingShape::Whole,
+            self::Factor, self::Offset                 => SettingShape::Exact,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter            => SettingShape::ARegisteredName,
             // ⚠️ These four borrow their type from whatever is being configured — a default for a
@@ -211,6 +247,7 @@ enum SettingKey: string
         return match ($this->shape()) {
             SettingShape::Switch         => SimpleType::Bool,
             SettingShape::Whole          => SimpleType::Int,
+            SettingShape::Exact          => SimpleType::Decimal,
             SettingShape::Words          => SimpleType::Text,
             SettingShape::LikeTheSubject => $subject,
             // A set to choose from, not a value to type.

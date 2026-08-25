@@ -31,8 +31,11 @@ use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -162,6 +165,65 @@ check('and is live again', count($editor->attributesOf($removable->id)) === 1);
 foreach ([$removable->id, $doomedType->id] as $scratchId) {
     $edges->purgeEdgesTouching($scratchId);
     $nodes->purgeSubtree($nodes->byId($scratchId));
+}
+
+echo "\n== Prefixes and base units are seeded under Constants (D-372) ==\n";
+$constants = $framework->rootOf(Branch::Constants);
+$underConstants = [];
+foreach ($nodes->childrenOf($constants) as $child) { $underConstants[$child->name] = $child; }
+
+check('Prefixes is there', isset($underConstants['Prefixes']));
+check('Base units is there', isset($underConstants['Base units']));
+
+if (isset($underConstants['Prefixes'])) {
+    $prefixSettings = new Settings(new WpdbSettingRepository(), $nodes, $framework);
+    $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
+
+    check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
+
+    $exponents = [];
+    foreach ($prefixSettings->resolveForNodes($prefixNodes) as $nodeId => $resolved) {
+        $exponents[$nodeId] = $resolved[SettingKey::PrefixExponent->value]->value->int ?? null;
+    }
+
+    check('every prefix carries its power of ten', ! in_array(null, $exponents, true));
+    // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
+    check('and the range reaches both ends', max($exponents) === 24 && min($exponents) === -24,
+        max($exponents) . ' … ' . min($exponents));
+}
+
+if (isset($underConstants['Base units'])) {
+    $split = [];
+    foreach ($nodes->childrenOf($underConstants['Base units']) as $child) { $split[$child->name] = $child; }
+
+    check('with prefix and without are separate', isset($split['With prefix'], $split['Without prefix']));
+
+    if (isset($split['With prefix'])) {
+        $named = array_map(static fn ($n): string => $n->name, $nodes->childrenOf($split['With prefix']));
+        // ⚠️ Gramm and never Kilogramm: the prefix axis needs an **unprefixed** base, or prefixing
+        // it would produce kilo-kilogramm. The owner said so, and the physics has to give way.
+        check('Gramm is the mass base', in_array('Gramm', $named, true));
+        check('and Kilogramm is not', ! in_array('Kilogramm', $named, true));
+    }
+
+    if (isset($split['Without prefix'])) {
+        $shifted = null;
+        foreach ($nodes->childrenOf($split['Without prefix']) as $one) {
+            if ($one->name === 'Celsius') { $shifted = $one; }
+        }
+
+        check('Celsius is there', $shifted !== null);
+
+        if ($shifted !== null) {
+            $celsius = (new Settings(new WpdbSettingRepository(), $nodes, $framework))
+                ->resolve((new Settings(new WpdbSettingRepository(), $nodes, $framework))->chainFor($shifted));
+
+            // D-274's second half: Celsius is Kelvin **shifted**, not scaled.
+            check('and carries an offset rather than only a factor',
+                ($celsius[SettingKey::Offset->value]->value->decimal ?? null) !== null,
+                $celsius[SettingKey::Offset->value]->value->decimal ?? 'none');
+        }
+    }
 }
 
 echo "\n---- $ok passed, $bad failed ----\n";

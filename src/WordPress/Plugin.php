@@ -14,6 +14,7 @@ use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
+use Taxmod\WordPress\Persistence\UnitScaffold;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -83,6 +84,7 @@ final class Plugin
         // Its own version, because the scaffold is content and the schema is machinery — they
         // move for different reasons and must not drag each other along.
         $this->baseScaffold()->importOnce();
+        $this->unitScaffold()->importOnce();
     }
 
     public function activate(): void
@@ -92,6 +94,7 @@ final class Plugin
 
         $this->frameworkNodes()->seed();
         $this->baseScaffold()->importOnce();
+        $this->unitScaffold()->importOnce();
     }
 
     public function registerMenu(): void
@@ -120,6 +123,22 @@ final class Plugin
             new TableIdentityAllocator(),
             $this->frameworkNodes(),
             new WpdbChangelog(new SystemClock())
+        );
+    }
+
+    /**
+     * Prefixes and base units, under `Constants`.
+     *
+     * ⚠️ **Its own version beside the data types', because they are different deliveries.** Raising
+     * one must not re-enter the other; that is the same reason the scaffold's version is separate
+     * from the schema's.
+     */
+    public function unitScaffold(): UnitScaffold
+    {
+        return new UnitScaffold(
+            $this->editor(),
+            $this->frameworkNodes(),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
         );
     }
 

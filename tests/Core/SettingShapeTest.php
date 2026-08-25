@@ -83,6 +83,28 @@ final class SettingShapeTest extends TestCase
     }
 
     #[Test]
+    public function a_factor_and_an_offset_are_exact_decimals_of_their_own(): void
+    {
+        // ⚠️ Their own, not borrowed: the factor from inch to millimetre is `25.4` on a length, and
+        // the shape of the value does not change because the dimension does (D-274).
+        foreach ([SettingKey::Factor, SettingKey::Offset] as $key) {
+            self::assertSame(SettingShape::Exact, $key->shape(), $key->value);
+            self::assertSame(SimpleType::Decimal, $key->typeFor(null), $key->value);
+            self::assertSame(SimpleType::Decimal, $key->typeFor(SimpleType::Int), $key->value);
+        }
+    }
+
+    #[Test]
+    public function a_prefix_is_a_whole_exponent_and_not_a_factor(): void
+    {
+        // ⚠️ **The finding, not a preference.** `decimal(30,10)` holds ten decimal places and twenty
+        // integer ones, so neither 10⁻²⁴ nor 10²⁴ fits. A prefix **is** a power of ten by
+        // definition, so the exponent is exact and small — and it keeps D-039's two axes apart.
+        self::assertSame(SettingShape::Whole, SettingKey::PrefixExponent->shape());
+        self::assertSame(SimpleType::Int, SettingKey::PrefixExponent->typeFor(null));
+    }
+
+    #[Test]
     public function order_has_a_type_of_its_own_rather_than_borrowing_one(): void
     {
         // A position among siblings is a whole number whatever the node happens to hold.
