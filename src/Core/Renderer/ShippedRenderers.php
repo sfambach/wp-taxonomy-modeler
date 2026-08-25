@@ -44,7 +44,11 @@ final class ShippedRenderers
             SimpleType::Decimal,
         );
 
-        $registry->add(new SwitchRenderer(), SimpleType::Bool);
+        // ⚠️ **The sliding switch is the default for a boolean** — the owner: *bools always with a
+        // slider.* The checkbox stays **offered**, because a variant nobody can choose is a variant
+        // that need not exist (D-018's pattern: one renderer per presentation variant).
+        $registry->add(new ToggleRenderer(), SimpleType::Bool);
+        $registry->add(new CheckboxRenderer());
 
         // ⚠️ **The default for a reference, which is what D-105 asks for** — and it bounds the
         // load as well as the display (R58): one label per row, not a whole target.

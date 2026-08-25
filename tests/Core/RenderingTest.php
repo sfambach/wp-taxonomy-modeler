@@ -22,7 +22,8 @@ use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
-use Taxmod\Core\Renderer\SwitchRenderer;
+use Taxmod\Core\Renderer\CheckboxRenderer;
+use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
@@ -122,7 +123,8 @@ final class RenderingTest extends TestCase
 
         self::assertCount(1, $fields);
         self::assertSame(SimpleType::Bool, $fields[0]->type);
-        self::assertSame(SwitchRenderer::NAME, $fields[0]->rendererName);
+        // ⚠️ The **toggle** — *bools always with a slider.* The checkbox stays offered beside it.
+        self::assertSame(ToggleRenderer::NAME, $fields[0]->rendererName);
         self::assertFalse($fields[0]->hasNoRenderer());
     }
 
@@ -329,10 +331,10 @@ final class RenderingTest extends TestCase
             $this->rendering->choicesForNode($text)
         );
 
-        self::assertNotContains(SwitchRenderer::NAME, $offered);
+        self::assertNotContains(CheckboxRenderer::NAME, $offered);
 
         // Not offered — and not forbidden either.
-        self::assertTrue($this->rendering->knowsRenderer(SwitchRenderer::NAME));
+        self::assertTrue($this->rendering->knowsRenderer(CheckboxRenderer::NAME));
 
         // What is genuinely broken is a name nothing answers to.
         self::assertFalse($this->rendering->knowsRenderer('a renderer from a plugin that is gone'));
@@ -879,8 +881,8 @@ final class RenderingTest extends TestCase
         $rows = $this->drawnSettings($int);
 
         self::assertTrue($rows[SettingKey::Mandatory->value]->wasDrawn());
-        self::assertStringContainsString('type="checkbox"', $rows[SettingKey::Mandatory->value]->result->markup);
-        self::assertSame(SwitchRenderer::NAME, $rows[SettingKey::Mandatory->value]->rendererName);
+        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::Mandatory->value]->result->markup);
+        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::Mandatory->value]->rendererName);
 
         self::assertSame(SimpleType::Int, $rows[SettingKey::RangeMin->value]->type);
         self::assertStringContainsString('3', $rows[SettingKey::RangeMin->value]->result->markup);
@@ -984,6 +986,6 @@ final class RenderingTest extends TestCase
 
         self::assertContains(SpinnerRenderer::NAME, $forNumber);
         self::assertNotContains(SpinnerRenderer::NAME, $forText);
-        self::assertNotContains(SwitchRenderer::NAME, $forNumber);
+        self::assertNotContains(CheckboxRenderer::NAME, $forNumber);
     }
 }

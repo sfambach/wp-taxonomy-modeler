@@ -24,9 +24,9 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class SwitchRenderer extends TypedFieldRenderer
+final class CheckboxRenderer extends TypedFieldRenderer
 {
-    public const NAME = 'switch';
+    public const NAME = 'checkbox';
 
     public function name(): string
     {

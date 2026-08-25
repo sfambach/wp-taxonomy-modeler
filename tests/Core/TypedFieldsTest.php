@@ -26,8 +26,9 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SliderRenderer;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Renderer\Surroundings;
-use Taxmod\Core\Renderer\SwitchRenderer;
+use Taxmod\Core\Renderer\CheckboxRenderer;
 use Taxmod\Core\Renderer\TextareaRenderer;
+use Taxmod\Core\Renderer\ToggleRenderer;
 
 /**
  * The renderers that draw one typed value, and the reading back that pairs with them.
@@ -74,7 +75,7 @@ final class TypedFieldsTest extends TestCase
             [SimpleType::Version, FieldRenderer::NAME],
             [SimpleType::Int, FieldRenderer::NAME],
             [SimpleType::Decimal, FieldRenderer::NAME],
-            [SimpleType::Bool, SwitchRenderer::NAME],
+            [SimpleType::Bool, ToggleRenderer::NAME],
             [SimpleType::Email, MailtoRenderer::NAME],
             [SimpleType::DateTime, DateTimeRenderer::NAME],
             [SimpleType::Color, ColorRenderer::NAME],
@@ -227,7 +228,7 @@ final class TypedFieldsTest extends TestCase
     #[Test]
     public function a_boolean_that_nobody_answered_is_not_drawn_as_false(): void
     {
-        $result = (new SwitchRenderer())->render(
+        $result = (new CheckboxRenderer())->render(
             $this->subject,
             $this->context(Purpose::Display, TypedValue::nothing(), SimpleType::Bool)
         );
@@ -240,7 +241,7 @@ final class TypedFieldsTest extends TestCase
     {
         // ⚠️ Without the hidden field an unticked box is absent from the request, which would be
         // read as *not answered* — and every mandatory check would become unanswerable.
-        $result = (new SwitchRenderer())->render(
+        $result = (new CheckboxRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofBool(false), SimpleType::Bool, [], 'v[7]')
         );
@@ -253,7 +254,7 @@ final class TypedFieldsTest extends TestCase
     #[Test]
     public function a_ticked_box_is_ticked(): void
     {
-        $result = (new SwitchRenderer())->render(
+        $result = (new CheckboxRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofBool(true), SimpleType::Bool, [], 'v[7]')
         );
@@ -441,7 +442,7 @@ final class TypedFieldsTest extends TestCase
     public function hide_and_read_only_close_every_typed_field_the_same_way(): void
     {
         // ⚠️ They are answered once, in the base — a subclass adds a control, never a rule.
-        foreach ([new FieldRenderer(), new SwitchRenderer(), new MailtoRenderer(), new ColorRenderer()] as $renderer) {
+        foreach ([new FieldRenderer(), new CheckboxRenderer(), new MailtoRenderer(), new ColorRenderer()] as $renderer) {
             $hidden = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Display, TypedValue::ofText('x'), SimpleType::Text, [

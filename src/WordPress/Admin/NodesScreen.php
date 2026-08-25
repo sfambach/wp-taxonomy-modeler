@@ -157,6 +157,22 @@ final class NodesScreen
             . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .3em;line-height:1.2;font-size:17px}'
             . '.taxmod-tree form{gap:.2em!important}'
             . '.taxmod-tree .dashicons{font-size:17px;width:17px;height:17px;line-height:1.2;vertical-align:text-bottom}'
+            // ⚠️ **No box around a row's buttons.** A glyph on its own reads as an action; a border
+            // round each one turns a row into a row of boxes. The hover keeps them findable.
+            . '.taxmod-tree .button{border:0;background:0 0;box-shadow:none}'
+            . '.taxmod-tree .button:hover{background:#f0f0f1;border-radius:3px}'
+            . '.taxmod-tree .button:disabled{background:0 0}'
+            // ⚠️ **The sliding switch: markup from the renderer, paint from here** (`CD-1`). Without
+            // this block it degrades to a plain checkbox rather than to nothing.
+            . '.taxmod-toggle{display:inline-flex;align-items:center;cursor:pointer}'
+            . '.taxmod-toggle-input{position:absolute;opacity:0;width:0;height:0}'
+            . '.taxmod-toggle-track{display:inline-block;position:relative;width:2.4em;height:1.2em;'
+            . 'border-radius:1em;background:#c3c4c7;transition:background .15s}'
+            . '.taxmod-toggle-track.is-on{background:#2271b1}'
+            . '.taxmod-toggle-track.is-fixed{opacity:.6}'
+            . '.taxmod-toggle-knob{position:absolute;top:.15em;left:.15em;width:.9em;height:.9em;'
+            . 'border-radius:50%;background:#fff;transition:left .15s}'
+            . '.taxmod-toggle-track.is-on .taxmod-toggle-knob{left:1.35em}'
             . '</style>';
     }
 

@@ -41,7 +41,7 @@ use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SliderRenderer;
 use Taxmod\Core\Renderer\SpinnerRenderer;
-use Taxmod\Core\Renderer\SwitchRenderer;
+use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
@@ -127,7 +127,7 @@ foreach ($rendering->fieldsFor($every, [], Purpose::Edit, 'taxmod_value') as $fi
 
 check('seven fields drawn', count($fields) === 7, (string) count($fields));
 check('an int gets the plain field', $fields[$count->id]->rendererName === FieldRenderer::NAME, $fields[$count->id]->rendererName);
-check('a bool gets the switch', $fields[$stock->id]->rendererName === SwitchRenderer::NAME, $fields[$stock->id]->rendererName);
+check('a bool gets the sliding switch', $fields[$stock->id]->rendererName === ToggleRenderer::NAME, $fields[$stock->id]->rendererName);
 check('a datetime gets the date renderer', $fields[$when->id]->rendererName === DateTimeRenderer::NAME, $fields[$when->id]->rendererName);
 check('and none of them is the fallback', count(array_filter($fields, static fn ($f): bool => $f->hasNoRenderer())) === 0);
 
@@ -352,7 +352,7 @@ check(
 
 // ⚠️ Offered and allowed are two questions (D-360). The list is what makes sense; a deliberate
 // exception is somebody's special case, and only a name nothing answers to is an error.
-check('what is not offered is still not forbidden', $rendering->knowsRenderer('switch'));
+check('what is not offered is still not forbidden', $rendering->knowsRenderer('checkbox'));
 check('a name nothing answers to is refused', ! $rendering->knowsRenderer('__p7 no such renderer'));
 check('and the fallback is not choosable at all', ! $rendering->knowsRenderer('plain'));
 
@@ -365,9 +365,9 @@ foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFo
     $rows[$row->key] = $row;
 }
 
-check('a boolean setting is drawn as a switch',
+check('a boolean setting is drawn as a sliding switch',
     isset($rows['mandatory']) && $rows['mandatory']->wasDrawn()
-        && str_contains($rows['mandatory']->result->markup, 'type="checkbox"'),
+        && str_contains($rows['mandatory']->result->markup, 'taxmod-toggle-track'),
     isset($rows['mandatory']) ? ($rows['mandatory']->result->markup ?? 'undrawn') : 'missing');
 check('a borrowing key takes the type of the node it sits on',
     isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
