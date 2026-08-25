@@ -22,28 +22,37 @@ namespace Taxmod\Core\Renderer;
  * that owns the shape of a row and one that concatenates somebody else's HTML — and `R1` wants the
  * first: *anything that shows model data goes through the renderer contract.*
  *
- * ⚠️ **What is *not* here is availability.** A control that may not be used is **left out**, never
- * greyed — the tree already says which rows cannot move ([U8](../../../docs/NewConcept/20-interaction.md)),
- * and a protected node simply has no delete ([D-194](../../../docs/NewConcept/90-decision-log.md)).
- * *Deciding that needs knowledge a renderer must not fetch (D-159), so the boundary decides by
- * omitting.*
+ * ⚠️ **Availability is carried here, not expressed by leaving the control out**
+ * ([D-370](../../../docs/NewConcept/90-decision-log.md)).
+ * [U8](../../../docs/NewConcept/20-interaction.md) said the opposite — *not greyed out, **absent***
+ * — and the owner reversed it so that **the row of buttons looks the same everywhere**. *At four
+ * controls in fixed places the eye learns a position; with omission the bin slides left on every
+ * row that cannot move up.* It also brings this in step with
+ * [R28–R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), whose own table
+ * says **disabled** and **greyed** rather than gone.
+ *
+ * ⚠️ *Deciding availability still needs knowledge a renderer must not fetch (D-159) — a protected
+ * node, the last child — so the **boundary** decides and states it here.*
  *
  * @see docs/NewConcept/30-renderer.md
  */
 final class Control
 {
     /**
-     * @param string $name  The form field it submits under.
-     * @param string $value What it submits.
-     * @param string $label What a person reads — **already translated**, because the text domain is
-     *                      the boundary's (`AR-2`).
-     * @param string $title The longer explanation, translated the same way. Empty for none.
+     * @param string $name      The form field it submits under.
+     * @param string $value     What it submits.
+     * @param string $label     What a person reads — **already translated**, because the text domain
+     *                          is the boundary's (`AR-2`).
+     * @param string $title     The longer explanation, translated the same way. Empty for none.
+     * @param bool   $available Whether it can be used now. A disabled button submits nothing, so
+     *                          keeping it is a matter of layout and never of safety.
      */
     public function __construct(
         public readonly string $name,
         public readonly string $value,
         public readonly string $label,
         public readonly string $title = '',
+        public readonly bool $available = true,
     ) {
     }
 }

@@ -144,9 +144,12 @@ final class TreeNodeRenderer implements Renderer
         $buttons = '';
 
         foreach ($surroundings->actions as $control) {
+            // ⚠️ **Greyed, not gone** (D-370): the row of buttons keeps the same shape on every
+            // row, so a position can be learnt. A disabled button submits nothing.
             $buttons .= '<button class="button" name="' . RenderResult::escape($control->name)
                 . '" value="' . RenderResult::escape($control->value) . '"'
                 . ($control->title === '' ? '' : ' title="' . RenderResult::escape($control->title) . '"')
+                . ($control->available ? '' : ' disabled style="opacity:.35"')
                 . '>' . RenderResult::escape($control->label) . '</button>';
         }
 
