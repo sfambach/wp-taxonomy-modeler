@@ -648,51 +648,81 @@ final class NodesScreen
      * has one. Returning to inherited is the **Reset** button beside the row; the two are different
      * acts ([D-266](../../../docs/NewConcept/90-decision-log.md)).*
      */
+    /**
+     * The icon as a `<select>` whose options **show** the icon.
+     *
+     * ⚠️ **I claimed this was impossible and it is not.** An `<option>` cannot hold HTML — but
+     * Dashicons is a **font**, so the glyph goes in as a *character* and the option paints it once
+     * `font-family` names the font. The stack is `dashicons, sans-serif`: the font defines glyphs
+     * only in the private-use area, so the icon comes from it and the name beside it falls through
+     * to the normal face.
+     *
+     * ⚠️ **The key-to-glyph map is read out of WordPress's own `dashicons.css`, never written down
+     * here.** A hardcoded table would be a second copy of somebody else's data, wrong the first
+     * time an icon moves — and `CD-1` puts *reading a WordPress file* exactly here, at the boundary.
+     */
     private function iconChoice(RenderedSetting $row, int $nodeId): string
     {
-        $chosen = (string) ($row->setting->value->text ?? '');
-        $field  = esc_attr(self::SETTING_FIELD . '[' . $row->key . ']');
-
-        // One entry per icon: the glyph **and** its name, so the list shows what it offers.
-        $entry = static function (string $value, string $glyph, string $label, bool $active) use ($field): string {
-            return '<button class="button-link" name="' . $field . '" value="' . esc_attr($value) . '"'
-                . ' style="display:flex;gap:.5em;align-items:center;width:100%;text-align:left;'
-                . 'padding:.25em .5em;text-decoration:none;color:inherit'
-                . ($active ? ';background:#e8f0fb;font-weight:600' : '') . '">'
-                . $glyph . '<span>' . esc_html($label) . '</span></button>';
-        };
-
-        $entries = $entry('', '<span class="dashicons dashicons-no-alt"></span>', __('no icon', 'taxmod'), $chosen === '');
+        $chosen  = (string) ($row->setting->value->text ?? '');
+        $glyphs  = $this->dashiconGlyphs();
+        $options = '<option value="">' . esc_html__('— no icon —', 'taxmod') . '</option>';
 
         foreach (self::ICONS as $key) {
-            $entries .= $entry(
-                $key,
-                '<span class="dashicons dashicons-' . esc_attr($key) . '"></span>',
-                $key,
-                $key === $chosen
-            );
+            $glyph = $glyphs[$key] ?? '';
+
+            $options .= '<option value="' . esc_attr($key) . '"'
+                . ($key === $chosen ? ' selected' : '') . '>'
+                . esc_html(($glyph === '' ? '' : $glyph . '  ') . $key)
+                . '</option>';
         }
 
-        // ⚠️ **A list that opens, with no JavaScript** — `<details>`/`<summary>` is the one control
-        // that does this in plain HTML. A native `<select>` cannot be used at all: the content of an
-        // `<option>` is text and browsers ignore styling inside it, so an icon font never paints
-        // there — and the owner's whole point is *seeing the icon in the list*.
-        //
-        // ⚠️ *Its own form, because every entry has to submit the icon it stands for and therefore
-        // cannot also carry the action in its name — and a form may not sit inside a form.*
-        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+        // ⚠️ *Its own form, because the row's form uses button names for its actions and this
+        // control has to submit a value of its own.*
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"'
+            . ' style="display:flex;gap:.4em;align-items:center">'
             . $this->hidden($nodeId)
-            . '<input type="hidden" name="do" value="put_setting">'
             . '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
-            . '<details style="display:inline-block;min-width:12em">'
-            . '<summary style="cursor:pointer;padding:.25em .5em;border:1px solid #8c8f94;border-radius:3px;background:#fff">'
-            . ($chosen === ''
-                ? esc_html__('— none —', 'taxmod')
-                : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span> ' . esc_html($chosen))
-            . '</summary>'
-            . '<div style="max-height:15em;overflow:auto;border:1px solid #8c8f94;border-top:0;background:#fff">'
-            . $entries
-            . '</div></details></form>';
+            . ($chosen === '' ? '' : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span>')
+            . '<select name="' . esc_attr(self::SETTING_FIELD . '[' . $row->key . ']') . '"'
+            . ' style="font-family:dashicons,sans-serif;font-size:1.1em">' . $options . '</select>'
+            . '<button class="button" name="do" value="put_setting">' . esc_html__('Set', 'taxmod') . '</button>'
+            . '</form>';
+    }
+
+    /**
+     * Every Dashicon key with its glyph, read out of the stylesheet WordPress ships.
+     *
+     * ⚠️ **Read, not listed.** The file states `.dashicons-marker:before { content: "\f159" }` for
+     * each one; parsing it means the glyphs are always the installed version's, and an icon that
+     * moves cannot leave a stale copy behind. **If the file is unreadable the map is empty** and the
+     * list shows names only — a missing picture rather than a wrong one.
+     *
+     * @return array<string, string> Key without the `dashicons-` prefix, to the character.
+     */
+    private function dashiconGlyphs(): array
+    {
+        $file = ABSPATH . WPINC . '/css/dashicons.css';
+
+        if (! is_readable($file)) {
+            return [];
+        }
+
+        $css = (string) file_get_contents($file);
+
+        preg_match_all(
+            '/\.dashicons-([a-z0-9-]+):before\s*\{\s*content:\s*"\\\\([0-9a-f]{4})"/i',
+            $css,
+            $found,
+            PREG_SET_ORDER
+        );
+
+        $glyphs = [];
+
+        foreach ($found as $one) {
+            $glyphs[$one[1]] = mb_chr((int) hexdec($one[2]), 'UTF-8');
+        }
+
+        return $glyphs;
     }
 
     private function settingForm(Node $selected): string
