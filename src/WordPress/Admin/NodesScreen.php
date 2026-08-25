@@ -833,24 +833,29 @@ final class NodesScreen
 
 
     /**
-     * The submitted renderer name, only if it is one this node may actually be given.
+     * The submitted renderer name, only if a renderer of that name exists.
      *
-     * ⚠️ **A `<select>` is input.** Nothing stops a crafted request naming a renderer that fits a
-     * different type, and a plain registry lookup would accept it — the value would sit in the
-     * model until render time and then quietly become the fallback. `CD-5` says validate before
-     * acting, and this is what that means here.
+     * ⚠️ **A `<select>` is input, so it is checked** (`CD-5`) — but against what **exists**, not
+     * against what is **eligible**. [D-360](../../../docs/NewConcept/90-decision-log.md): the
+     * eligible set is what the screen **offers** ([R14](../../../docs/NewConcept/30-renderer.md#r12r17):
+     * *so the settings UI can offer a choice*), and the owner drew the line where R14 leaves it —
+     * *you cannot turn a text into a binary number; well, you can, it just makes no sense, **unless
+     * you have a special use case***.
+     *
+     * ⚠️ *The first version of this refused anything off the list, which is a fence R14 does not
+     * build.* What is still caught is the thing that is genuinely broken: a name **no renderer
+     * answers to** resolves to the fallback and shows as *no renderer* on a node that has one — a
+     * fault two steps from its cause.
      */
-    private function eligibleRendererName(int $nodeId, string $submitted): string
+    private function registeredRendererName(int $nodeId, string $submitted): string
     {
         $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
 
-        foreach ($this->rendering->choicesForNode($node) as $renderer) {
-            if ($renderer->name() === $submitted) {
-                return $submitted;
-            }
+        if (! $this->rendering->knowsRenderer($submitted)) {
+            throw SettingDoesNotApply::thatRendererCannotDrawThis($submitted, $node->name);
         }
 
-        throw SettingDoesNotApply::thatRendererCannotDrawThis($submitted, $node->name);
+        return $submitted;
     }
 
     /** The chain a setting written **at this node** belongs to. */
@@ -953,13 +958,13 @@ final class NodesScreen
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
-                // ⚠️ The submitted name is checked against the **eligible** set, not merely
-                // against the registry: a select is input like any other, and a name that fits
-                // some other type would be accepted by a plain lookup (`CD-5`).
+                // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
+                // eligible set is what the screen offers, and an unusual choice is a special case
+                // rather than an error. A name no renderer answers to is the error.
                 'put_renderer'   => $this->settings->put(
                     $this->settingChain($id),
                     SettingKey::Renderer->value,
-                    TypedValue::ofText($this->eligibleRendererName($id, $rendererName))
+                    TypedValue::ofText($this->registeredRendererName($id, $rendererName))
                 ),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),

@@ -61,6 +61,22 @@ final class RendererRegistry
     }
 
     /**
+     * Whether any renderer answers to this name at all.
+     *
+     * ⚠️ **A different question from *is it eligible*, and the difference is the owner's point.**
+     * *You cannot turn a text into a binary number — well, you can, it just makes no sense, unless
+     * you have a special use case.* So {@see eligibleFor()} says what **makes sense** and builds
+     * the list a person is offered ([R14](30-renderer.md#r12r17): *so the settings UI can offer a
+     * choice*), while this says what **exists**. A name nobody registered is a real error — it
+     * resolves to the fallback and shows as *no renderer* on a node that has one. A name that is
+     * registered but unusual is somebody's special case (D-360).
+     */
+    public function knows(string $name): bool
+    {
+        return isset($this->byName[$name]) && $this->byName[$name] !== $this->fallback;
+    }
+
+    /**
      * What draws this type when nobody has chosen — and the fallback where nothing was marked.
      *
      * ⚠️ **Reaching the fallback here is the fault [R14b](30-renderer.md#r14b--the-last-resort-renderer-is-a-fault-indicator-not-a-floor)

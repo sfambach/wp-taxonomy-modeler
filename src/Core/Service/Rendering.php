@@ -158,6 +158,20 @@ final class Rendering
         return $this->renderers->eligibleFor($node, $this->typeOfNode($node), $purpose);
     }
 
+    /**
+     * Whether a renderer of this name exists — **not** whether it is the obvious choice.
+     *
+     * ⚠️ **The eligible set is guidance, not a fence** (D-360). The owner drew the line: *you
+     * cannot turn a text into a binary number — well, you can, it just makes no sense, unless you
+     * have a special use case.* [R14](30-renderer.md#r12r17) puts the type declaration behind the
+     * **offer**, and reading it as a prohibition forecloses the special case for everybody in
+     * order to prevent a mistake nobody has made yet.
+     */
+    public function knowsRenderer(string $name): bool
+    {
+        return $this->renderers->knows($name);
+    }
+
     /** The simple type a node **is**, rather than the one an attribute points at. */
     public function typeOfNode(Node $node): ?SimpleType
     {

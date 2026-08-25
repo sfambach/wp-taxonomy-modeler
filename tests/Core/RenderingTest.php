@@ -300,6 +300,37 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
+    public function what_is_offered_and_what_is_allowed_are_two_questions(): void
+    {
+        // ⚠️ The owner drew this line: *you cannot turn a text into a binary number — well, you
+        // can, it just makes no sense, unless you have a special use case* (D-360). R14 puts the
+        // type declaration behind the **offer**; reading it as a prohibition forecloses the
+        // special case for everybody to prevent a mistake nobody has made.
+        $text = $this->type('text');
+
+        $offered = array_map(
+            static fn ($renderer): string => $renderer->name(),
+            $this->rendering->choicesForNode($text)
+        );
+
+        self::assertNotContains(SwitchRenderer::NAME, $offered);
+
+        // Not offered — and not forbidden either.
+        self::assertTrue($this->rendering->knowsRenderer(SwitchRenderer::NAME));
+
+        // What is genuinely broken is a name nothing answers to.
+        self::assertFalse($this->rendering->knowsRenderer('a renderer from a plugin that is gone'));
+    }
+
+    #[Test]
+    public function the_fallback_is_not_something_anybody_can_choose(): void
+    {
+        // ⚠️ Reaching it means nobody chose and the type has no default (R14b). Naming it would
+        // make *no renderer* a decision, which is the one thing it must never look like.
+        self::assertFalse($this->rendering->knowsRenderer(PlainRenderer::NAME));
+    }
+
+    #[Test]
     public function a_thing_under_model_is_offered_no_renderer_rather_than_all_of_them(): void
     {
         // ⚠️ A supplier has no simple type; what fits it is a **structural** renderer, and none is

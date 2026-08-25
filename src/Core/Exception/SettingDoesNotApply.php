@@ -28,17 +28,20 @@ final class SettingDoesNotApply extends DomainError
     }
 
     /**
-     * A renderer that cannot draw what it was chosen for.
+     * A renderer nobody registered.
      *
-     * ⚠️ **Refused rather than stored and discovered later.** An unknown or unfitting name in the
-     * `renderer` setting resolves to the fallback at render time, which shows as *no renderer* on
-     * a node that has one — a fault two steps away from its cause. Checking at the write puts the
-     * complaint where the mistake was made.
+     * ⚠️ **Refused rather than stored and discovered later.** Such a name resolves to the fallback
+     * at render time, which shows as *no renderer* on a node that has one — a fault two steps away
+     * from its cause. Checking at the write puts the complaint where the mistake was made.
+     *
+     * ⚠️ **It does not refuse an *unusual* choice, only an *absent* one** (D-360). Which renderers
+     * make sense for a type is what the screen offers; a deliberate exception is somebody's special
+     * case and not an error.
      */
     public static function thatRendererCannotDrawThis(string $attempted, string $node): self
     {
         return new self(sprintf(
-            '«%s» is not among the renderers that can draw «%s».',
+            'No renderer answers to «%s», so «%s» would end up with none.',
             $attempted,
             $node
         ));

@@ -296,6 +296,12 @@ check(
     ), true)
 );
 
+// ⚠️ Offered and allowed are two questions (D-360). The list is what makes sense; a deliberate
+// exception is somebody's special case, and only a name nothing answers to is an error.
+check('what is not offered is still not forbidden', $rendering->knowsRenderer('switch'));
+check('a name nothing answers to is refused', ! $rendering->knowsRenderer('__p7 no such renderer'));
+check('and the fallback is not choosable at all', ! $rendering->knowsRenderer('plain'));
+
 echo "\n== 15. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
