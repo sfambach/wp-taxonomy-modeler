@@ -151,7 +151,7 @@ final class NodesScreen
             . '.taxmod-tree td,.taxmod-tree th{padding:2px 8px;line-height:1.5}'
             . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .45em;line-height:1.7;font-size:11px}'
             . '.taxmod-tree form{gap:.2em!important}'
-            . '.taxmod-tree .dashicons{font-size:20px;width:20px;height:20px;line-height:1.4;vertical-align:text-bottom}'
+            . '.taxmod-tree .dashicons{font-size:25px;width:25px;height:25px;line-height:1.4;vertical-align:text-bottom}'
             . '</style>';
     }
 
