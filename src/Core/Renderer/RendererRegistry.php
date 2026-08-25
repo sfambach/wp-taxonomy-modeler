@@ -82,8 +82,13 @@ final class RendererRegistry
     /**
      * Configuration time: what this subject may be given.
      *
-     * @param  SimpleType|null $type       Narrow to renderers that can draw it. Null asks the
-     *                                     structural question only.
+     * ⚠️ **`null` means *this subject has no simple type*, not *do not filter*.** The two look
+     * alike and conflating them is how a spinner ends up offered for a supplier: a node under
+     * `Model` has no simple type, so what fits it is a **structural** renderer — one that declares
+     * `handles() === []`, chosen for what a subject *is* rather than for what it holds. Today
+     * there are none, and an empty list is the honest answer.
+     *
+     * @param  SimpleType|null $type       The subject's type, or null when it has none.
      * @param  Purpose|null    $forPurpose Narrow to renderers that can answer for it — that is
      *                                     how *not searchable* stops being a special case.
      * @return list<Renderer>
@@ -106,7 +111,9 @@ final class RendererRegistry
                 continue;
             }
 
-            if ($type !== null && ! in_array($type, $renderer->handles(), true)) {
+            $drawn = $renderer->handles();
+
+            if ($type === null ? $drawn !== [] : ! in_array($type, $drawn, true)) {
                 continue;
             }
 

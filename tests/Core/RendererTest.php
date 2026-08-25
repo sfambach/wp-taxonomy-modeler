@@ -198,10 +198,16 @@ final class RendererTest extends TestCase
 
         // ⚠️ The fallback is never offered as a choice — picking it would make *no renderer* a
         // decision somebody made (R14b).
-        self::assertCount(0, $this->registry->eligibleFor($this->subject, null, Purpose::Search));
-        self::assertCount(1, $this->registry->eligibleFor($this->subject, null, Purpose::Display));
+        self::assertCount(0, $this->registry->eligibleFor($this->subject, SimpleType::Text, Purpose::Search));
+        self::assertCount(1, $this->registry->eligibleFor($this->subject, SimpleType::Text, Purpose::Display));
         self::assertCount(1, $this->registry->eligibleFor($this->subject, SimpleType::Text));
         self::assertCount(0, $this->registry->eligibleFor($this->subject, SimpleType::Bool));
+
+        // ⚠️ **`null` is not *do not filter*; it means the subject has no simple type at all.**
+        // What fits such a subject is a **structural** renderer — one declaring `handles() === []`
+        // — and this one draws a text. Conflating the two is how a spinner gets offered for a
+        // supplier, which is the one mistake a picker must not make.
+        self::assertCount(0, $this->registry->eligibleFor($this->subject, null));
     }
 
     // ---------------------------------------------------------------- the result

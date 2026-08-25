@@ -137,7 +137,22 @@ final class TypedFieldsTest extends TestCase
         // can execute.
         $registry = ShippedRenderers::registry();
 
-        self::assertSame([], $registry->eligibleFor($this->subject, null, Purpose::Search));
+        foreach (SimpleType::cases() as $type) {
+            self::assertSame(
+                [],
+                $registry->eligibleFor($this->subject, $type, Purpose::Search),
+                $type->value
+            );
+        }
+    }
+
+    #[Test]
+    public function a_node_with_no_simple_type_is_offered_nothing_rather_than_everything(): void
+    {
+        // ⚠️ A node under `Model` wants a **structural** renderer — a form, a table — and none is
+        // built. Offering the typed ones would be offering a spinner for a supplier, which is the
+        // one mistake a picker must not make.
+        self::assertSame([], ShippedRenderers::registry()->eligibleFor($this->subject, null));
     }
 
     // ------------------------------------------------------------ the controls

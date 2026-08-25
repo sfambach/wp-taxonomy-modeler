@@ -284,6 +284,44 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
+    public function what_may_be_chosen_at_a_type_is_the_set_that_can_draw_it(): void
+    {
+        // ⚠️ The owner: *of course the renderer should be picked — there are only certain ones for
+        // the current purpose, and how would the user know the name?* (D-358). So the set is the
+        // control, and a name never has to be known.
+        $names = array_map(
+            static fn ($renderer): string => $renderer->name(),
+            $this->rendering->choicesForNode($this->type('int'))
+        );
+
+        sort($names);
+
+        self::assertSame([FieldRenderer::NAME, 'slider', SpinnerRenderer::NAME], $names);
+    }
+
+    #[Test]
+    public function a_thing_under_model_is_offered_no_renderer_rather_than_all_of_them(): void
+    {
+        // ⚠️ A supplier has no simple type; what fits it is a **structural** renderer, and none is
+        // built. An empty list is the honest answer — offering a spinner would not be.
+        self::assertSame([], $this->rendering->choicesForNode($this->thing('Supplier')));
+    }
+
+    #[Test]
+    public function an_authored_subtype_may_be_given_what_its_type_may_be_given(): void
+    {
+        $description = $this->type('Description', $this->type('text'));
+
+        $names = array_map(
+            static fn ($renderer): string => $renderer->name(),
+            $this->rendering->choicesForNode($description)
+        );
+
+        self::assertContains(FieldRenderer::NAME, $names);
+        self::assertNotContains(SpinnerRenderer::NAME, $names);
+    }
+
+    #[Test]
     public function what_may_be_chosen_at_a_use_site_is_narrowed_by_the_type(): void
     {
         $part    = $this->thing('Part');

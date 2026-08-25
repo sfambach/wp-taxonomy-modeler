@@ -144,6 +144,32 @@ final class Rendering
     }
 
     /**
+     * The same question asked of a node — *what may this type be drawn by?*
+     *
+     * ⚠️ **This is what a person actually needs, and the owner said so plainly:** a renderer is
+     * **chosen**, never typed. *There are only certain ones for the current purpose — and how
+     * would the user know the name?* So the eligible set is the control, and the name never has to
+     * be known. It holds for converters and validators in the same way (D-358).
+     *
+     * @return list<Renderer>
+     */
+    public function choicesForNode(Node $node, ?Purpose $purpose = null): array
+    {
+        return $this->renderers->eligibleFor($node, $this->typeOfNode($node), $purpose);
+    }
+
+    /** The simple type a node **is**, rather than the one an attribute points at. */
+    public function typeOfNode(Node $node): ?SimpleType
+    {
+        $ancestorIds = $node->ancestorIds();
+
+        return $this->typeOf(
+            $node,
+            $ancestorIds === [] ? [] : $this->nodes->byIds($ancestorIds)
+        );
+    }
+
+    /**
      * The simple type behind each attribute's target, keyed by edge id.
      *
      * ⚠️ **A subtype of a type is still that type.** A node `Description` under `text` has no

@@ -2646,7 +2646,17 @@ the previous round produced.
 
 ## OQ-090 — Is a renderer a name, or is it a node?
 
-*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **open** · *raised 2026-08-25 by the owner, on being told the registry keys on the renderer's name*
+> **Closed the same day → [D-358](90-decision-log.md). A name — and it is *chosen*, never typed.**
+> The owner's two reasons for wanting nodes decide it in opposite directions: *to show which ones
+> exist* needs no node, because that is the **picker**, and the core could already produce it;
+> *to let a user create their own* does need one, and he placed that on the parking lot himself as
+> a **construction kit**. So nodes arrive with the kit, and until then would buy nothing the picker
+> does not already give.
+>
+> ⚠️ **One cost accepted knowingly:** `cols`, `rows` and `step` belong to a **renderer** and have
+> nowhere to live, so they sit on the field as free keys. That is the argument that reopens this.
+
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **closed → [D-358](90-decision-log.md)** · *raised 2026-08-25 by the owner, on being told the registry keys on the renderer's name*
 
 The owner, reading that Package 7's registry keyed on the renderer's **name**: *keyed on the name —
 not on an id?*

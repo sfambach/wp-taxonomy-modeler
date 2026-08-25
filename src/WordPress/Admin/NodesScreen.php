@@ -3,7 +3,9 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Exception\DomainError;
+use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
+use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Label;
@@ -521,6 +523,50 @@ final class NodesScreen
             ],
             '<select name="setting_key">' . $options . '</select>'
             . '<input type="text" name="setting_value" placeholder="' . esc_attr__('value', 'taxmod') . '" style="width:8em">'
+        ) . $this->rendererChoice($selected);
+    }
+
+    /**
+     * The renderer, **chosen** — never typed.
+     *
+     * ⚠️ **The owner's own words, and they settle it:** *of course the renderer should be picked —
+     * there are only certain ones for the current purpose, and how would the user know the name?*
+     * ([D-358](../../../docs/NewConcept/90-decision-log.md)). The generic box above writes a
+     * setting by typing its value, which for this key means knowing a token that lives in the
+     * code. **So this key gets the one control it always needed**, and the eligible set comes from
+     * {@see \Taxmod\Core\Service\Rendering::choicesForNode()} — the same core method the real
+     * panel will ask, narrowed by type **and** by purpose.
+     *
+     * ⚠️ **Not a rendered setting, and therefore not the line [R20a](../../../docs/NewConcept/30-renderer.md)
+     * draws.** It draws no value: it offers a set the core computed. *A picker that consumes
+     * `eligibleFor` cannot drift from the renderers, because it has no opinion of its own about
+     * what fits.*
+     */
+    private function rendererChoice(Node $selected): string
+    {
+        $eligible = $this->rendering->choicesForNode($selected);
+
+        if ($eligible === []) {
+            // ⚠️ Honest rather than empty-but-open: a node with no simple type wants a
+            // **structural** renderer — a form, a table — and none is built. Offering the typed
+            // ones here would be offering a spinner for a supplier.
+            return '<p class="description">'
+                . esc_html__('No renderer can be chosen here yet — this node is not a simple data type, and the structural renderers are not built.', 'taxmod')
+                . '</p>';
+        }
+
+        $options = '';
+
+        foreach ($eligible as $renderer) {
+            $options .= '<option value="' . esc_attr($renderer->name()) . '">'
+                . esc_html($renderer->name())
+                . '</option>';
+        }
+
+        return $this->form(
+            $selected->id,
+            [['put_renderer', esc_html__('Use this renderer', 'taxmod'), __('Only the renderers that can draw this type are offered', 'taxmod')]],
+            '<select name="renderer_name" style="flex:1">' . $options . '</select>'
         );
     }
 
@@ -786,6 +832,27 @@ final class NodesScreen
     // ------------------------------------------------------------------ acting
 
 
+    /**
+     * The submitted renderer name, only if it is one this node may actually be given.
+     *
+     * ⚠️ **A `<select>` is input.** Nothing stops a crafted request naming a renderer that fits a
+     * different type, and a plain registry lookup would accept it — the value would sit in the
+     * model until render time and then quietly become the fallback. `CD-5` says validate before
+     * acting, and this is what that means here.
+     */
+    private function eligibleRendererName(int $nodeId, string $submitted): string
+    {
+        $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
+
+        foreach ($this->rendering->choicesForNode($node) as $renderer) {
+            if ($renderer->name() === $submitted) {
+                return $submitted;
+            }
+        }
+
+        throw SettingDoesNotApply::thatRendererCannotDrawThis($submitted, $node->name);
+    }
+
     /** The chain a setting written **at this node** belongs to. */
     private function settingChain(int $nodeId): array
     {
@@ -869,6 +936,7 @@ final class NodesScreen
         $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
         $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
         $labelText    = isset($_POST['label_text']) ? sanitize_text_field(wp_unslash($_POST['label_text'])) : '';
+        $rendererName = isset($_POST['renderer_name']) ? sanitize_text_field(wp_unslash($_POST['renderer_name'])) : '';
         $stay   = $id;
 
         try {
@@ -885,6 +953,14 @@ final class NodesScreen
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
+                // ⚠️ The submitted name is checked against the **eligible** set, not merely
+                // against the registry: a select is input like any other, and a name that fits
+                // some other type would be accepted by a plain lookup (`CD-5`).
+                'put_renderer'   => $this->settings->put(
+                    $this->settingChain($id),
+                    SettingKey::Renderer->value,
+                    TypedValue::ofText($this->eligibleRendererName($id, $rendererName))
+                ),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
                 'put_multiplicity' => $this->settings->put(

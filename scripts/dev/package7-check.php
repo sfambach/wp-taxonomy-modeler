@@ -276,7 +276,27 @@ $rendering->fieldsFor($every, $back, Purpose::Edit, 'taxmod_value');
 $spent = $wpdb->num_queries - $before;
 check('seven fields do not cost seven walks', $spent <= 4, "$spent queries for 7 fields");
 
-echo "\n== 14. Clearing up ==\n";
+echo "\n== 14. The renderer is chosen, never typed (D-358) ==\n";
+$offeredForInt = array_map(
+    static fn ($r): string => $r->name(),
+    $rendering->choicesForNode($nodes->byId($seeded['int']->id))
+);
+sort($offeredForInt);
+check('an int is offered exactly its three ways', $offeredForInt === ['field', 'slider', 'spinner'], implode(', ', $offeredForInt));
+check(
+    'a thing under Model is offered nothing rather than everything',
+    $rendering->choicesForNode($nodes->byId($part->id)) === [],
+    implode(', ', array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id))))
+);
+check(
+    'a bool is not offered a spinner',
+    ! in_array('spinner', array_map(
+        static fn ($r): string => $r->name(),
+        $rendering->choicesForNode($nodes->byId($seeded['bool']->id))
+    ), true)
+);
+
+echo "\n== 15. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
