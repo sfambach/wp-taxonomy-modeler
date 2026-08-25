@@ -46,17 +46,16 @@ final class SpinnerRenderer extends TypedFieldRenderer
     }
 
     /**
-     * ⚠️ **A free setting, deliberately.** R17 names `min`, `max` and `step` together, but only
-     * the two bounds are engine-owned — they are what an override may narrow, and there is
-     * nothing to narrow about a step. Reserving the name would take a word out of every author's
-     * vocabulary for no gain (D-084).
+     * ⚠️ **An engine setting, `range_step` — the third of R17's triple**, which names `min`, `max`
+     * and `step` in one breath as settings a numeric **node** has. It was briefly a free key here,
+     * which made one of three siblings an outsider; corrected once R17 was read properly.
      *
      * Silence means `any` for a decimal and one for an integer — read off the **type**, which the
      * context is told (R14a), not guessed from whatever value happens to be in the field.
      */
     private function step(RenderContext $context): string
     {
-        return $this->numberSetting($context, 'step')
+        return $this->numberSetting($context, SettingKey::RangeStep->value)
             ?? ($context->type === SimpleType::Decimal ? 'any' : '1');
     }
 }

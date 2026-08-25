@@ -51,6 +51,25 @@ enum SettingKey: string
 
     // Choosing — they pick within the bounds.
 
+    /**
+     * How coarsely a numeric control moves — the third of R17's triple.
+     *
+     * ⚠️ **Named by the concept and therefore reserved.** [R17](../../../docs/NewConcept/30-renderer.md#r12r17)
+     * says *integer and double **nodes** need min, max and step as settings*, in one breath. The
+     * first two are `range_min` and `range_max`; leaving the third as a free key would have made
+     * one of three siblings an outsider, and an author could then define `step` to mean something
+     * else on the very nodes that use it.
+     *
+     * ⚠️ **Choosing, not bounding, and the reason is precise: nothing validates it.** A step of
+     * five does not make seven unstorable — an import, a data pack or a computed value will write
+     * seven and no rule is broken. It says how the **control** moves, not what the model permits,
+     * and [D-312](../../../docs/NewConcept/90-decision-log.md)'s narrowing rule exists for what is
+     * *allowed*: a restriction that may be reopened anywhere says nothing when it is read. **A
+     * granularity says nothing about what is allowed in the first place**, so there is nothing to
+     * protect from being reopened.
+     */
+    case RangeStep = 'range_step';
+
     /** ⚠️ A default is not a bound but a choice inside the permitted set, so it stays free. */
     case DefaultValue = 'default';
 

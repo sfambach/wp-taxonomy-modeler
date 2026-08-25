@@ -5,6 +5,7 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotAValueOfThatType;
+use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
@@ -208,6 +209,26 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('min="1"', $result->markup);
         self::assertStringContainsString('max="10"', $result->markup);
         self::assertStringContainsString('step="1"', $result->markup);
+    }
+
+    #[Test]
+    public function the_step_is_a_setting_on_the_node_like_the_two_bounds_beside_it(): void
+    {
+        // ⚠️ R17 names min, max and step in one breath as settings a numeric **node** has. `step`
+        // was briefly a free key here, which made one of three siblings an outsider.
+        self::assertTrue(SettingKey::isReserved('range_step'));
+        self::assertSame(Narrowing::Free, SettingKey::RangeStep->direction());
+
+        foreach ([new SpinnerRenderer(), new SliderRenderer()] as $renderer) {
+            $result = $renderer->render(
+                $this->subject,
+                $this->context(Purpose::Edit, TypedValue::ofInt(10), SimpleType::Int, [
+                    SettingKey::RangeStep->value => TypedValue::ofInt(5),
+                ], 'v[7]')
+            );
+
+            self::assertStringContainsString('step="5"', $result->markup, $renderer->name());
+        }
     }
 
     #[Test]

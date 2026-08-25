@@ -49,7 +49,11 @@ final class SliderRenderer extends TypedFieldRenderer
             . $this->attribute('value', $characters)
             . $this->attribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
             . $this->attribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->attribute('step', $context->type === SimpleType::Decimal ? 'any' : '1')
+            . $this->attribute(
+                'step',
+                $this->numberSetting($context, SettingKey::RangeStep->value)
+                    ?? ($context->type === SimpleType::Decimal ? 'any' : '1')
+            )
             . '>'
             . $this->shown(RenderResult::escape($characters));
     }
