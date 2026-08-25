@@ -229,6 +229,23 @@ final class NodesScreen
             $controls[] = new Control('do', 'down', '↓', __('Move down among its siblings', 'taxmod'));
         }
 
+        // ⚠️ **The bin parks the node only; the whole branch stays on the right.** That split is the
+        // legacy's and it is documented: *Trash = node only (children move up); networking icon =
+        // whole branch* ([harvest 02](../../../docs/NewConcept/_harvest/02-settings-page.md)). U1
+        // keeps the row to what is used constantly, and the variant that takes a subtree with it is
+        // the one that deserves the explanation it has over there.
+        //
+        // ⚠️ **A protected node simply has none** — left out, never greyed
+        // ([U8](../../../docs/NewConcept/20-interaction.md), [D-194](../../../docs/NewConcept/90-decision-log.md)).
+        if (! $this->framework->isProtected($row['node'])) {
+            $controls[] = new Control(
+                'do',
+                'trash_node',
+                '🗑',
+                __('Park this node; its children move up to its parent', 'taxmod')
+            );
+        }
+
         return $controls;
     }
 

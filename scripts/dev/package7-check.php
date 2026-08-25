@@ -424,6 +424,13 @@ try {
     check('render() returns markup rather than dying', str_contains($markup, '<div class="wrap">'));
     check('the tree is drawn by the cell', str_contains($markup, 'taxmod-tree-node'));
     check('a row carries its controls', str_contains($markup, 'value="add_child_here"'));
+    check('every ordinary node has a bin', str_contains($markup, 'value="trash_node"'));
+    // ⚠️ A protected node has none — left out, never greyed (U8, D-194). The root is one, and it is
+    // the first row, so a bin on it would be the first thing seen.
+    check(
+        'and a protected node does not',
+        substr_count($markup, 'value="trash_node"') < substr_count($markup, 'value="add_child_here"')
+    );
     check('and its write count', str_contains($markup, 'taxmod-tree-writes'));
 } catch (Throwable $e) {
     check('render() returns markup rather than dying', false, $e->getMessage());
