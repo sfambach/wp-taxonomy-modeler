@@ -120,7 +120,7 @@ final class NodesScreen
             . '</p>';
         $left .= $this->table($parked, 'trash', $collapsed, $selected);
 
-        $html  = '<div class="wrap">';
+        $html  = '<div class="wrap">' . $this->tightRows();
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
         $html .= $this->notice();
         $html .= '<table style="width:100%;border:0"><tr style="vertical-align:top">'
@@ -129,6 +129,27 @@ final class NodesScreen
             . '</tr></table>';
 
         return $html . '</div>';
+    }
+
+    /**
+     * Make the tree rows short.
+     *
+     * ⚠️ **The height was never the renderer's.** The owner asked whether adjusting the node
+     * renderer would do it — it would not: a row is tall because WordPress's `.button` is about
+     * thirty pixels and every row carries two or three. The icon adds a few pixels; the buttons add
+     * the rest. **So this is a boundary concern, and one small block of CSS is all of it.**
+     *
+     * ⚠️ *Scaffolding, and deliberately inline* ([D-344](../../../docs/NewConcept/90-decision-log.md)):
+     * a stylesheet to enqueue and unregister would outlive the screen it is here to shrink.
+     */
+    private function tightRows(): string
+    {
+        return '<style>'
+            . '.taxmod-tree td,.taxmod-tree th{padding:2px 8px;line-height:1.5}'
+            . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .45em;line-height:1.7;font-size:11px}'
+            . '.taxmod-tree form{gap:.2em!important}'
+            . '.taxmod-tree .dashicons{font-size:16px;width:16px;height:16px;line-height:1.4;vertical-align:text-bottom}'
+            . '</style>';
     }
 
     // ---------------------------------------------------------------- the tree
@@ -167,7 +188,7 @@ final class NodesScreen
             $body .= '</tr>';
         }
 
-        return '<table class="wp-list-table widefat striped">'
+        return '<table class="wp-list-table widefat striped taxmod-tree">'
             . '<thead><tr>'
             . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
             . '<th style="width:5em">' . esc_html__('Writes', 'taxmod') . '</th>'
