@@ -75,21 +75,21 @@ final class TreeNodeRenderer implements Renderer
     {
         $icon = $context->setting(SettingKey::Icon->value)?->text ?? '';
 
-        // ⚠️ **The label, with the node's own name behind it.** The chain ends on the name and never
-        // on nothing (D-020, D-022), so a row always reads as something — an empty cell where a name
-        // belongs is impossible by construction rather than by care.
-        $shown = $context->subjectLabel !== null && $context->subjectLabel !== ''
-            ? $context->subjectLabel
-            : ($subject instanceof Node ? $subject->name : '');
+        // ⚠️ **The node's own name, not a label** ([D-369](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *there I would take the node name.* The modelling tree is where the model is
+        // worked on, and its names are what one works with — so the cell needs nothing handed in,
+        // and it can never read as nothing, because a node cannot exist without a name (D-022).
+        $shown = $subject instanceof Node ? $subject->name : '';
 
         $markup = '<span class="taxmod-tree-node">'
             . ($icon === '' ? '' : '<span class="taxmod-icon">' . RenderResult::escape($icon) . '</span>')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
-        if ($context->actions !== []) {
+        if ($context->surroundings->actions !== []) {
             // Already finished markup from the boundary — escaping it again would print the buttons
             // instead of offering them.
-            $markup .= '<span class="taxmod-tree-actions">' . implode('', $context->actions) . '</span>';
+            $markup .= '<span class="taxmod-tree-actions">'
+                . implode('', $context->surroundings->actions) . '</span>';
         }
 
         return RenderResult::of($markup . '</span>');

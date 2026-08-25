@@ -61,13 +61,13 @@ final class ReferenceRenderer extends TypedFieldRenderer
         // ⚠️ **A reference whose label never arrived is drawn as a fault, not as an id.** It means
         // the target is gone, or the descent did not resolve it — and a bare number on screen is
         // the sort of thing that gets copied into a spreadsheet as if it meant something.
-        if ($context->refersTo === null) {
+        if ($context->surroundings->refersTo === null) {
             return '<span class="taxmod-value taxmod-dangling">'
                 . RenderResult::escape('#' . (string) $context->value->reference)
                 . '</span>';
         }
 
-        return $this->shown(RenderResult::escape($context->refersTo));
+        return $this->shown(RenderResult::escape($context->surroundings->refersTo));
     }
 
     protected function input(RenderContext $context): string

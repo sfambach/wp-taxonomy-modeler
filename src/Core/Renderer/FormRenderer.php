@@ -71,7 +71,7 @@ final class FormRenderer implements Renderer
         $rows      = '';
         $usedEdges = [];
 
-        foreach ($this->grouped($context->parts) as $part) {
+        foreach ($this->grouped($context->surroundings->parts) as $part) {
             if ($part->isHidden()) {
                 // R11, and R75's level dependency: `hide` overrides the layout wherever it
                 // matters. A hidden member takes no row at all.

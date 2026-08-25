@@ -24,6 +24,7 @@ use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SliderRenderer;
 use Taxmod\Core\Renderer\SpinnerRenderer;
+use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\SwitchRenderer;
 use Taxmod\Core\Renderer\TextareaRenderer;
 
@@ -103,15 +104,10 @@ final class TypedFieldsTest extends TestCase
         $shown = $renderer->render(
             $this->subject,
             new RenderContext(
-                Purpose::Display,
-                TypedValue::ofReference(4711),
-                [],
-                '',
-                Level::Admin,
-                true,
-                '',
-                SimpleType::NodeRef,
-                'Gramm'
+                purpose: Purpose::Display,
+                value: TypedValue::ofReference(4711),
+                type: SimpleType::NodeRef,
+                surroundings: new Surroundings(refersTo: 'Gramm'),
             )
         );
 

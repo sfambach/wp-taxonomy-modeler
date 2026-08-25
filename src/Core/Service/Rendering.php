@@ -18,6 +18,7 @@ use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
@@ -139,15 +140,17 @@ final class Rendering
             $value = $values[$edge->id] ?? TypedValue::nothing();
 
             $context = new RenderContext(
-                $purpose,
-                $value,
-                $settings,
-                $locale,
-                $level,
-                $editable,
-                $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
-                $type,
-                $value->reference === null ? null : ($names[$value->reference] ?? null),
+                purpose: $purpose,
+                value: $value,
+                settings: $settings,
+                locale: $locale,
+                level: $level,
+                editable: $editable,
+                fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
+                type: $type,
+                surroundings: new Surroundings(
+                    refersTo: $value->reference === null ? null : ($names[$value->reference] ?? null)
+                ),
             );
 
             $fields[] = new RenderedField(
@@ -282,16 +285,12 @@ final class Rendering
         return $container->render(
             $node,
             new RenderContext(
-                $purpose,
-                TypedValue::nothing(),
-                [],
-                $locale,
-                $level,
-                $editable,
-                '',
-                null,
-                null,
-                $parts
+                purpose: $purpose,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                editable: $editable,
+                surroundings: new Surroundings(parts: $parts),
             )
         );
     }
@@ -300,15 +299,15 @@ final class Rendering
      * A tree's worth of nodes, each drawn by the cell — **three queries whatever the depth**.
      *
      * ⚠️ **The batching is the point, not an optimisation.** A cell draws the node's icon (D-251),
-     * a setting on the chain, and its label, a chain of its own — so asking per row would be two
-     * walks per row, and `CD-7` forbids the loop. Settings for every node in one query, labels in
-     * another, then every cell is drawn in memory.
+     * which is a setting on the chain — so asking per row would be a walk per row, and `CD-7`
+     * forbids the loop. One query for every node's settings, then every cell drawn in memory.
+     *
+     * ⚠️ **No labels are fetched, because the tree shows the node's own name**
+     * ([D-369](90-decision-log.md)). That closed [OQ-091](91-open-questions.md)'s second half and
+     * saved a query with it.
      *
      * ⚠️ **Which cell is a parameter, and that is [D-367](90-decision-log.md)'s whole point:** the
      * modelling tree, the chooser and the trash walk one hierarchy and draw the node differently.
-     *
-     * ⚠️ **Which role a surface reads its labels in is not decided** — the caller says and the
-     * renderer never guesses ([OQ-091](91-open-questions.md)).
      *
      * @param  list<Node>                   $nodes
      * @param  array<int, list<string>>     $actions Finished controls per node id, from the
@@ -319,7 +318,6 @@ final class Rendering
         array $nodes,
         array $actions = [],
         string $cell = TreeNodeRenderer::NAME,
-        SeededRole $role = SeededRole::Table,
         string $locale = '',
         Level $level = Level::Admin,
     ): array {
@@ -328,7 +326,6 @@ final class Rendering
         }
 
         $settings = $this->settings->resolveForNodes($nodes);
-        $labels   = $this->labels?->forNodes($nodes, $role, $locale) ?? [];
         $renderer = $this->renderers->byName($cell);
 
         $cells = [];
@@ -337,18 +334,13 @@ final class Rendering
             $cells[$node->id] = $renderer->render(
                 $node,
                 new RenderContext(
-                    Purpose::Display,
-                    TypedValue::nothing(),
-                    $settings[$node->id] ?? [],
-                    $locale,
-                    $level,
-                    false,
-                    '',
-                    null,
-                    null,
-                    [],
-                    $labels[$node->id] ?? null,
-                    $actions[$node->id] ?? []
+                    purpose: Purpose::Display,
+                    value: TypedValue::nothing(),
+                    settings: $settings[$node->id] ?? [],
+                    locale: $locale,
+                    level: $level,
+                    editable: false,
+                    surroundings: new Surroundings(actions: $actions[$node->id] ?? []),
                 )
             );
         }

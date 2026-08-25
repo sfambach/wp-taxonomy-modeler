@@ -121,6 +121,14 @@ final class NodesScreen
             return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
         }
 
+        // ⚠️ **Every node is drawn by the cell, in one query for the whole table** (D-367). The
+        // screen no longer decides what a row looks like — it walks and nests, which is the walker's
+        // half of the split, and the cell draws the node.
+        $cells = $this->rendering->cellsFor(array_map(
+            static fn (array $row): Node => $row['node'],
+            $rows
+        ));
+
         $body = '';
 
         foreach ($rows as $row) {
@@ -129,7 +137,8 @@ final class NodesScreen
             $here   = $selected !== null && $selected->id === $node->id;
 
             $body .= '<tr' . ($here ? ' style="background:#e8f0fb"' : '') . '>';
-            $body .= '<td>' . $indent . $this->expander($row, $collapsed) . $this->nameLink($node, $here) . '</td>';
+            $body .= '<td>' . $indent . $this->expander($row, $collapsed)
+                . $this->selectable($node, $cells[$node->id]->markup, $here) . '</td>';
             $body .= '<td title="' . esc_attr__('How often this row has been written. Not a version to return to — see the change group.', 'taxmod') . '">'
                 . (int) $node->version . '</td>';
             $body .= '<td>' . $this->rowActions($row, $mode) . '</td>';
@@ -144,15 +153,29 @@ final class NodesScreen
             . '</tr></thead><tbody>' . $body . '</tbody></table>';
     }
 
-    private function nameLink(Node $node, bool $selected): string
+    /**
+     * Wrap a drawn cell so that clicking it selects the node.
+     *
+     * ⚠️ **The link is the boundary's, the drawing is the renderer's.** A URL is a WordPress fact
+     * (`CD-1`), so the core cannot make one — the same wall that keeps the reference renderer from
+     * drawing its link ([OQ-087](../../../docs/NewConcept/91-open-questions.md)). Here the anchor
+     * simply goes **around** the finished markup, which costs nothing and keeps the name clickable.
+     *
+     * ⚠️ *The cell can also carry **actions**, and on this screen it does not: the whole cell is a
+     * link, and buttons inside a link do not work. They stay in their own column until the real
+     * surface, which will not wrap the row.*
+     */
+    private function selectable(Node $node, string $cell, bool $selected): string
     {
         $url = add_query_arg(
             ['page' => 'taxmod', 'taxmod_node' => $node->id],
             admin_url('admin.php')
         );
 
-        return '<a href="' . esc_url($url) . '" title="' . esc_attr__('Show it on the right', 'taxmod') . '">'
-            . ($selected ? '<strong>' : '') . esc_html($node->name) . ($selected ? '</strong>' : '')
+        return '<a href="' . esc_url($url) . '" title="' . esc_attr__('Show it on the right', 'taxmod') . '"'
+            . ' style="text-decoration:none' . ($selected ? ';font-weight:600' : '') . '">'
+            // Already escaped by the renderer; escaping again would print the markup.
+            . $cell
             . '</a>';
     }
 
