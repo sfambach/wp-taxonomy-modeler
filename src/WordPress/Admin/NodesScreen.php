@@ -653,18 +653,19 @@ final class NodesScreen
         $chosen = (string) ($row->setting->value->text ?? '');
         $field  = esc_attr(self::SETTING_FIELD . '[' . $row->key . ']');
 
-        $tile = static function (string $value, string $inside, string $title, bool $active) use ($field): string {
-            return '<button class="button" name="' . $field . '" value="' . esc_attr($value) . '"'
-                . ' title="' . esc_attr($title) . '"'
-                . ' style="min-width:2.2em;padding:.1em .3em;line-height:1.6'
-                . ($active ? ';box-shadow:0 0 0 2px #2271b1' : '') . '">'
-                . $inside . '</button>';
+        // One entry per icon: the glyph **and** its name, so the list shows what it offers.
+        $entry = static function (string $value, string $glyph, string $label, bool $active) use ($field): string {
+            return '<button class="button-link" name="' . $field . '" value="' . esc_attr($value) . '"'
+                . ' style="display:flex;gap:.5em;align-items:center;width:100%;text-align:left;'
+                . 'padding:.25em .5em;text-decoration:none;color:inherit'
+                . ($active ? ';background:#e8f0fb;font-weight:600' : '') . '">'
+                . $glyph . '<span>' . esc_html($label) . '</span></button>';
         };
 
-        $tiles = $tile('', '&times;', __('No icon here, even if something above has one', 'taxmod'), $chosen === '');
+        $entries = $entry('', '<span class="dashicons dashicons-no-alt"></span>', __('no icon', 'taxmod'), $chosen === '');
 
         foreach (self::ICONS as $key) {
-            $tiles .= $tile(
+            $entries .= $entry(
                 $key,
                 '<span class="dashicons dashicons-' . esc_attr($key) . '"></span>',
                 $key,
@@ -672,16 +673,26 @@ final class NodesScreen
             );
         }
 
-        // ⚠️ **Its own form, and `do` as a hidden field.** Every tile has to carry the icon it
-        // stands for, so it cannot also carry the action in its name — and a form cannot sit inside
-        // the row's own form. *Which is why this row is built apart from the others.*
-        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"'
-            . ' style="display:flex;flex-wrap:wrap;gap:.2em;max-width:26em;align-items:center">'
+        // ⚠️ **A list that opens, with no JavaScript** — `<details>`/`<summary>` is the one control
+        // that does this in plain HTML. A native `<select>` cannot be used at all: the content of an
+        // `<option>` is text and browsers ignore styling inside it, so an icon font never paints
+        // there — and the owner's whole point is *seeing the icon in the list*.
+        //
+        // ⚠️ *Its own form, because every entry has to submit the icon it stands for and therefore
+        // cannot also carry the action in its name — and a form may not sit inside a form.*
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . $this->hidden($nodeId)
             . '<input type="hidden" name="do" value="put_setting">'
             . '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
-            . $tiles
-            . '</form>';
+            . '<details style="display:inline-block;min-width:12em">'
+            . '<summary style="cursor:pointer;padding:.25em .5em;border:1px solid #8c8f94;border-radius:3px;background:#fff">'
+            . ($chosen === ''
+                ? esc_html__('— none —', 'taxmod')
+                : '<span class="dashicons dashicons-' . esc_attr($chosen) . '"></span> ' . esc_html($chosen))
+            . '</summary>'
+            . '<div style="max-height:15em;overflow:auto;border:1px solid #8c8f94;border-top:0;background:#fff">'
+            . $entries
+            . '</div></details></form>';
     }
 
     private function settingForm(Node $selected): string
