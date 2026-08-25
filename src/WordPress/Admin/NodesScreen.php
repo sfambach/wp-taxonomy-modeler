@@ -557,30 +557,27 @@ final class NodesScreen
     }
 
     /**
-     * A key the engine does not know — the one thing the rows above cannot offer.
+     * ⚠️ **There is no form for adding a setting any more, and both halves of that were the
+     * owner's.** First the dropdown of engine keys went: *I would expect to make all settings
+     * simply in the list and not have to select something at the bottom* — which became possible
+     * once the table listed every **applicable** key rather than only the written ones
+     * ({@see \Taxmod\Core\Model\SettingKey::applyingTo()}), leaving a key chooser nothing to
+     * choose. Then the box for inventing a key of one's own went too: *the idea of making your own
+     * keys is nice, but that is what we have attributes using data types for.*
      *
-     * ⚠️ **What used to be here was a dropdown of the engine's own keys, and it is gone.** The
-     * owner, twice: *I would expect to make all settings simply in the list and not have to select
-     * something at the bottom.* Once the table lists every **applicable** key
-     * ({@see \Taxmod\Core\Model\SettingKey::applyingTo()}) a chooser for the key has nothing left
-     * to choose — every engine key already has a row with its own control.
+     * ⚠️ **He is right, and this file was the evidence.** The free-key row is the only one that
+     * cannot be drawn — nothing knows its type — and a thing that can only ever be a raw text box
+     * in a typed system is a thing people will put data in. **The test is whether a record answers
+     * it:** if it does, it is an **attribute**, with a type, a renderer, labels and validation; if
+     * it does not, it is configuration about the **model** ([D-364](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * ⚠️ **A free key is genuinely different**: it belongs to whoever invents it, so it has no row
-     * until it exists. That is why one box survives, and why it takes a **name** rather than
-     * offering a list.
+     * The mechanism stays for the second case — `cols` and `rows` are exactly that — but it is
+     * written by whoever writes renderers, not offered as a gesture beside the real settings.
+     * *A free key that is already stored still gets its row; what is gone is the invitation.*
      */
     private function settingForm(Node $selected): string
     {
-        return '<p class="description">'
-            . esc_html__('A setting of your own. The engine\'s own keys are in the rows above, each with its own control.', 'taxmod')
-            . '</p>'
-            . $this->form(
-                $selected->id,
-                [['declare_free', esc_html__('Declare', 'taxmod'), __('Invent a key of your own — the engine\'s names are refused', 'taxmod')]],
-                '<input type="text" name="setting_key" placeholder="' . esc_attr__('key of your own', 'taxmod') . '" style="width:11em">'
-                . '<input type="text" name="setting_value" placeholder="' . esc_attr__('value', 'taxmod') . '" style="width:8em">'
-            )
-            . $this->rendererChoice($selected);
+        return $this->rendererChoice($selected);
     }
 
     /**
@@ -1005,12 +1002,10 @@ final class NodesScreen
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
-        // ⚠️ **The row's own control first, the free-key box second.** Each setting is now edited
-        // where it sits, under `taxmod_setting[<key>]`; the box at the bottom exists only for a key
-        // the engine does not know, which has no row until somebody writes it.
+        // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
         $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
             ? sanitize_text_field(wp_unslash((string) $_POST[self::SETTING_FIELD][$settingKey]))
-            : (isset($_POST['setting_value']) ? sanitize_text_field(wp_unslash($_POST['setting_value'])) : '');
+            : '';
         $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
         $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
         $labelText    = isset($_POST['label_text']) ? sanitize_text_field(wp_unslash($_POST['label_text'])) : '';
@@ -1040,9 +1035,6 @@ final class NodesScreen
                     TypedValue::ofText($this->registeredRendererName($id, $rendererName))
                 ),
                 'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
-                // ⚠️ Its own action, because the check belongs where a **new name** is invented
-                // rather than where a known one is written.
-                'declare_free'   => $this->settings->declareFree($this->settingChain($id), $settingKey, $this->settingValue($id, $settingKey, $settingValue)),
                 'reset_setting'  => $this->settings->reset($id, $settingKey),
                 'put_multiplicity' => $this->settings->put(
                     $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),
