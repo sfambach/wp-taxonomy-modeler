@@ -2475,3 +2475,78 @@ the case above needs an owner that is a **combination** of the two.
 answer. That is exactly why it is worth answering now rather than after the first catalogue.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-25 while building the multiplicity control*
+
+---
+
+## OQ-087 — How does a core renderer produce a word a person reads?
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **open** · *raised 2026-08-25 while building the typed field renderers*
+
+⚠️ **Two rules that have never met before meet here, and both are load-bearing.**
+
+| Rule | Says |
+|---|---|
+| `CD-1` | the **core must not call WordPress** — not `esc_html()`, not `__()` |
+| `AR-2` ([D-019](90-decision-log.md), [D-020](90-decision-log.md)) | **nothing user-visible is hard-coded**; software strings go through the text domain |
+
+A renderer lives in the core and produces what a person sees. **So the moment a renderer needs a
+word, it can satisfy neither rule.** Escaping already has an answer — `RenderResult::escape()`,
+plain PHP — and translation does not.
+
+**It is not hypothetical; it bit three times in one afternoon:**
+
+| Where | The word it wanted |
+|---|---|
+| a boolean under the display purpose | *yes* / *no* |
+| a slider configured with no bounds | *this slider has no range* |
+| the fallback renderer | *no renderer is set for this* |
+
+**All three were dodged rather than solved**, and the dodges are worth reading as evidence: the
+boolean is drawn as a closed checkbox with no words at all; the slider silently omits its bounds
+and lets the browser invent `0–100`; and the fallback emits a **class**,
+`taxmod-no-renderer`, leaving the sentence to the boundary. ⚠️ **The third dodge is probably the
+answer in miniature** — markup carries a marker, the boundary supplies the words — but that is a
+guess, and the alternatives are real:
+
+| Shape | What it costs |
+|---|---|
+| **the context carries the phrases** it might need, supplied by the boundary | every caller must know which words a renderer will want, which couples them |
+| **the markup carries markers** and the boundary substitutes | a second pass over finished markup, and a marker vocabulary to keep |
+| **the core is allowed one injected translator** | a seam through `CD-1` — narrow, explicit, and still a seam |
+| **renderers never emit words**, only structure and classes | the strictest, and it forbids a renderer from ever explaining itself |
+
+⚠️ **Nothing is broken today** because every renderer built so far is wordless. It becomes
+pressing at the first renderer that has something to *say* — which is the [D-147](90-decision-log.md)
+computed-value marking (*not computable*, with a reason), and that is not far off.
+
+---
+
+## OQ-088 — Where does a time of day live?
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-25 while building the date renderer*
+
+[D-291](90-decision-log.md) gives date, time and both together to **one** type with a precision
+setting, and the reason is good: a birthday and an appointment are the same kind of thing, and
+splitting them would put the same rules in three places.
+
+⚠️ **But the column is a `datetime`, and a time of day has nowhere to sit in one without a date
+beside it.**
+
+Today it is parked against `1970-01-01`, and the precision setting is what says the date part
+carries no meaning. **That works and it is not right:** a stored fact nobody meant is exactly what
+this model goes to trouble to avoid, and it will leave the building — in an export, in a report, in
+a sorted list where a time compares against a real date.
+
+| Shape | What it costs |
+|---|---|
+| **keep the sentinel** and treat the precision setting as the reader of it | a date in the data that nobody wrote; every consumer must know to ignore it |
+| **a `time` column beside the others** | a sixth typed column for one granularity of one type |
+| **seconds since midnight in `value_int`** | one type mapping to two columns depending on a **setting**, which no other type does |
+| **three types after all** | reverses [D-291](90-decision-log.md), and its reasoning still holds |
+
+⚠️ **The comparison question is the sharp one**, and it is why this cannot stay a footnote: *is
+`14:32` before or after `2026-08-25 09:00`?* Under the sentinel the answer is *yes, by fifty-six
+years*, silently. Anything that sorts, filters or ranges over a `datetime` will meet it.
+
+⚠️ **Nothing depends on it yet** — no time-only value has been stored outside a check — which is
+why it is worth answering before the first model uses one rather than after.

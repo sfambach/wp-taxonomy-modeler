@@ -82,18 +82,49 @@ final class SeededFrameworkNodes implements FrameworkNodes
      * sit in no branch — and so does anything hung directly under `Primitives`, because the
      * concept splits it into `Data Types` and `Constants` and says nothing about the space
      * between. Refusing there is honest; guessing a branch would invent a rule.
+     *
+     * ⚠️ **The four roots are read once per request, and that is not a micro-optimisation.**
+     * Asking again per node made this an N+1 through the back door: drawing seven fields cost
+     * twenty-five queries, because each field asked which branch its type sat in and each answer
+     * looked up four roots. **Found by the boundary run counting queries** rather than by reading
+     * the code, which is why that check exists (`CD-7`).
      */
     public function branchOf(Node $node): ?Branch
     {
-        foreach (Branch::cases() as $branch) {
-            $root = $this->nodes->find((int) get_option(self::BRANCH_OPTIONS[$branch->value], 0));
-
-            if ($root !== null && ($node->id === $root->id || $node->isDescendantOf($root))) {
-                return $branch;
+        foreach ($this->branchRoots() as $value => $root) {
+            if ($node->id === $root->id || $node->isDescendantOf($root)) {
+                return Branch::from($value);
             }
         }
 
         return null;
+    }
+
+    /**
+     * @var array<string,Node>|null Kept for the life of this object, which is one request. The
+     *                             branch roots are framework nodes: they cannot be moved or
+     *                             deleted (D-194), so nothing can invalidate them mid-request.
+     */
+    private ?array $branchRoots = null;
+
+    /** @return array<string,Node> */
+    private function branchRoots(): array
+    {
+        if ($this->branchRoots !== null) {
+            return $this->branchRoots;
+        }
+
+        $roots = [];
+
+        foreach (self::BRANCH_OPTIONS as $value => $option) {
+            $root = $this->nodes->find((int) get_option($option, 0));
+
+            if ($root !== null) {
+                $roots[$value] = $root;
+            }
+        }
+
+        return $this->branchRoots = $roots;
     }
 
 
@@ -131,6 +162,10 @@ final class SeededFrameworkNodes implements FrameworkNodes
      */
     public function seed(): void
     {
+        // Seeding is the one thing that can make a cached branch root wrong — it is what creates
+        // them. Everything afterwards may cache freely, because they cannot move (D-194).
+        $this->branchRoots = null;
+
         $root = $this->ensure(self::ROOT_OPTION, 'Root', null);
 
         $this->ensure(self::TRASH_OPTION, 'Trash', $root);

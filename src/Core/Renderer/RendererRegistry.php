@@ -5,6 +5,7 @@ namespace Taxmod\Core\Renderer;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 
 /**
  * The registry has two jobs, and they are asked at different moments (D-217).
@@ -13,6 +14,11 @@ use Taxmod\Core\Model\SettingKey;
  * |---|---|
  * | render time | *give me the renderer of this name* |
  * | configuration time | *which renderers are eligible for this node at all* |
+ *
+ * ⚠️ **The key is the type** (R14a). That is what lets *where several are eligible and nobody has
+ * chosen, one is marked **default per type*** be a fact the registry holds, rather than a
+ * convention every caller has to remember — and it is why registration order decides nothing:
+ * a default is named when the renderer is added, or there is none.
  *
  * ⚠️ **It is internal** (D-276). No public API for other plugins hangs off it, so it may change
  * freely — the boundary exists for portability, not for third parties.
@@ -24,14 +30,28 @@ final class RendererRegistry
     /** @var array<string, Renderer> */
     private array $byName = [];
 
+    /** @var array<string, Renderer> Keyed by the simple type's own value. */
+    private array $defaultByType = [];
+
     public function __construct(private readonly Renderer $fallback = new PlainRenderer())
     {
         $this->add($this->fallback);
     }
 
-    public function add(Renderer $renderer): void
+    /**
+     * @param SimpleType ...$asDefaultFor The types this renderer answers for until somebody
+     *                                    chooses otherwise. ⚠️ **Named here rather than derived
+     *                                    from `handles()`**: three renderers handle an integer
+     *                                    and exactly one of them is the default, which is a
+     *                                    decision and not a property of the class.
+     */
+    public function add(Renderer $renderer, SimpleType ...$asDefaultFor): void
     {
         $this->byName[$renderer->name()] = $renderer;
+
+        foreach ($asDefaultFor as $type) {
+            $this->defaultByType[$type->value] = $renderer;
+        }
     }
 
     /** Render time: by name, or the fallback when the name is unknown. */
@@ -41,18 +61,52 @@ final class RendererRegistry
     }
 
     /**
+     * What draws this type when nobody has chosen — and the fallback where nothing was marked.
+     *
+     * ⚠️ **Reaching the fallback here is the fault [R14b](30-renderer.md#r14b--the-last-resort-renderer-is-a-fault-indicator-not-a-floor)
+     * describes**, not a quiet floor: a type with no default is a type somebody forgot, and the
+     * fallback marks its output so the omission is visible instead of merely tidy.
+     */
+    public function defaultFor(?SimpleType $type): Renderer
+    {
+        return $type === null
+            ? $this->fallback
+            : $this->defaultByType[$type->value] ?? $this->fallback;
+    }
+
+    public function fallback(): Renderer
+    {
+        return $this->fallback;
+    }
+
+    /**
      * Configuration time: what this subject may be given.
      *
-     * @param  Purpose|null   $forPurpose Narrow to renderers that can answer for it — that is
-     *                                    how *not searchable* stops being a special case.
+     * @param  SimpleType|null $type       Narrow to renderers that can draw it. Null asks the
+     *                                     structural question only.
+     * @param  Purpose|null    $forPurpose Narrow to renderers that can answer for it — that is
+     *                                     how *not searchable* stops being a special case.
      * @return list<Renderer>
      */
-    public function eligibleFor(Node|Relation $subject, ?Purpose $forPurpose = null): array
-    {
+    public function eligibleFor(
+        Node|Relation $subject,
+        ?SimpleType $type = null,
+        ?Purpose $forPurpose = null,
+    ): array {
         $fitting = [];
 
         foreach ($this->byName as $renderer) {
+            if ($renderer === $this->fallback) {
+                // ⚠️ Never offered as a choice. It is what answers when nobody chose, and
+                // putting it in the list would make *no renderer* something somebody picked.
+                continue;
+            }
+
             if (! $renderer->fits($subject)) {
+                continue;
+            }
+
+            if ($type !== null && ! in_array($type, $renderer->handles(), true)) {
                 continue;
             }
 
@@ -67,25 +121,31 @@ final class RendererRegistry
     }
 
     /**
-     * The renderer the chain chose — the edge's own setting, then the target, then its
-     * ancestors, then the fallback (R41). Nothing separate is walked here: the chain has already
-     * been resolved and its answer simply read.
+     * The renderer the chain chose — the edge's own setting, then the target, then its ancestors,
+     * then the type's default (R41). Nothing separate is walked here: the chain has already been
+     * resolved and its answer simply read.
+     *
+     * ⚠️ **Null means *nothing can answer for this purpose*, and it is a real answer** (D-217).
+     * That is the mechanism behind *not searchable*: a renderer that declines `Search` makes its
+     * attribute absent from the filter. **Substituting the fallback here would defeat it** — every
+     * attribute would become searchable again, through a control that cannot search. What the
+     * caller does with a null is the caller's policy, and it differs by purpose: a **value** must
+     * never silently disappear, an unanswerable **filter** must never silently appear.
      *
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings
      */
-    public function chosenFor(Node|Relation $subject, array $settings, Purpose $purpose): Renderer
-    {
+    public function chosenFor(
+        Node|Relation $subject,
+        array $settings,
+        Purpose $purpose,
+        ?SimpleType $type = null,
+    ): ?Renderer {
         $chosen = $settings[SettingKey::Renderer->value]->value->text ?? null;
 
-        if ($chosen === null) {
-            return $this->fallback;
-        }
+        $renderer = $chosen === null || $chosen === ''
+            ? $this->defaultFor($type)
+            : $this->byName($chosen);
 
-        $renderer = $this->byName($chosen);
-
-        // ⚠️ A renderer that cannot answer for this purpose is not an error — it is the
-        // mechanism. The caller gets the fallback rather than an empty field, so a value never
-        // silently disappears because somebody chose a display-only renderer.
-        return in_array($purpose, $renderer->supports(), true) ? $renderer : $this->fallback;
+        return in_array($purpose, $renderer->supports(), true) ? $renderer : null;
     }
 }

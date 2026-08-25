@@ -22,6 +22,22 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /**
+     * The attribute points at something that is not a simple data type, so its value has no
+     * characters of its own to be typed in.
+     *
+     * ⚠️ **Refused rather than stored as text.** A reference wants the reference renderer
+     * ([D-105](../../../docs/NewConcept/90-decision-log.md)) and a composed part a record of its
+     * own; keeping whatever was typed would look right until somebody tried to follow it.
+     */
+    public static function thatAttributeHasNoTypeYet(string $attribute): self
+    {
+        return new self(sprintf(
+            '«%s» does not point at a simple data type, so there is nothing to type in yet.',
+            $attribute
+        ));
+    }
+
     /** Unfinished work, and said so plainly rather than stored in the wrong place. */
     public static function compositionsNeedTheirOwnRecords(string $attribute): self
     {

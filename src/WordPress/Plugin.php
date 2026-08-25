@@ -2,9 +2,11 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
@@ -138,13 +140,24 @@ final class Plugin
 
     private function screen(): NodesScreen
     {
+        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes());
+
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
+            $settings,
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes()),
             new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
-            $this->frameworkNodes()
+            $this->frameworkNodes(),
+            // ⚠️ **The renderers are wired in one place.** Nothing on a surface may construct its
+            // own registry — two registries would mean two answers to *what draws an integer*,
+            // which is the drift R20a warns about, arrived at through the back door.
+            new Rendering(
+                new WpdbNodeRepository(),
+                $this->frameworkNodes(),
+                $settings,
+                ShippedRenderers::registry()
+            )
         );
     }
 }

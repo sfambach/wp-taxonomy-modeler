@@ -71,6 +71,7 @@ Six packages to the point where importing his real data first makes sense.
 | **4** | Settings and the chain | a default at the type, an override at the attribute, reset to inherited · **done 2026-08-24** |
 | **5** | Labels, roles, locales | the same thing is called something else in English · **done 2026-08-24** |
 | **6** | Records | enter something against a model and find it again · **done 2026-08-24** |
+| **7** | The fields look like their type | a switch is a switch, a date opens a picker — and the raw field is gone · **done 2026-08-25** |
 
 **After six, his first TablePress import has something to import into** — 23 tables, some 600
 records, in three shapes ([96 Scenario check](96-scenario-check.md)).
@@ -443,3 +444,146 @@ and must go.*
 **Composed records** (a parts list holding its own lines) · **deleting a record** · **the search
 column** ([D-167](90-decision-log.md)) · **validators and converters** · **the renderers**, which
 are what turns all of this from raw text into a usable editor.
+
+---
+
+## Package 7 — the fields look like their type · done 2026-08-25
+
+**What it delivers:** a value is no longer characters in a box. Nine of the simple types have a
+renderer that ships, the type chooses it without anybody configuring anything, and the raw entry
+field of [D-350](90-decision-log.md) is **deleted** — which is what that decision said would happen
+the day the renderers arrived.
+
+```mermaid
+flowchart LR
+  E["attribute edge"] --> T["its target"] --> Y["the simple type<br/>own name, else an ancestor's"]
+  Y --> R["the renderer<br/>the chain, else the type default"]
+  R --> M["markup"]
+```
+
+| Renderer | Draws | Default for |
+|---|---|---|
+| `field` | one line — [D-018](90-decision-log.md)'s *plain field* | `text` `char` `version` `int` `decimal` |
+| `spinner` · `slider` | the same number, bounded and as a track | offered, default for nothing |
+| `switch` | a boolean | `bool` |
+| `mailto` | an address that can be written to | `email` |
+| `datetime` | as much of a timestamp as the model asked for | `datetime` |
+| `color` | a swatch, and a picker where it is safe | `color` |
+| `textarea` | the long end of `text` | offered, default for nothing |
+
+**197 core checks** plus 28 · 48 · 23 · 33 · 24 · 21 · **51** at the boundary — **425 in all**.
+
+### Where it can be seen
+
+Pick a node under **Model**, give it attributes pointing at `bool`, `datetime`, `email` and
+`color`, add a record. The switch is a switch, the date opens a date picker, the address is
+clickable, the colour has a swatch. Each row shows *which type · which renderer* beside it, and a
+row saying **no renderer** in red is a gap rather than a style.
+
+```bash
+php vendor/phpunit/phpunit/phpunit
+```
+
+```bash
+php scripts/dev/package7-check.php C:/Devel/Wordpress
+```
+
+### ⚠️ What building it found — three of them in yesterday's own work
+
+**1 · The contract could not express [R14a](30-renderer.md#r14a--the-key-is-the-type-purpose-travels-in-the-context)'s
+second half.** The registry keyed on the renderer's **name**, so *one is marked default per type*
+had nowhere to live — every field in the product would have looked like a fault until somebody
+configured it by hand. The type is now the key it was always meant to be
+([D-352](90-decision-log.md)).
+
+**2 · The purpose fallback was right for a value and wrong for a filter.** Yesterday a renderer
+declining a purpose got the fallback substituted, *so that a value never silently disappears* —
+which defeats [D-217](90-decision-log.md) under the search purpose, where declining **is** the
+mechanism behind *not searchable*. The registry now answers nothing and the descent applies the
+policy, which differs by purpose ([D-353](90-decision-log.md)). *The test that asserted the old
+behaviour was rewritten with the reason written into it.*
+
+**3 · The fallback was a quiet grey floor**, which is what
+[R14b](30-renderer.md#r14b--the-last-resort-renderer-is-a-fault-indicator-not-a-floor) forbids in
+so many words. It now marks its own markup.
+
+**4 · An N+1 through the back door, found by the boundary run counting queries and not by reading
+the code.** Drawing seven fields cost **twenty-five** queries: each field asked which branch its
+type sat in, and each answer looked up four branch roots. The roots are framework nodes and cannot
+move ([D-194](90-decision-log.md)), so they are read once per request — and the check now asserts a
+**query count**, because that is the only way this class of fault is ever noticed.
+
+### What was assumed that the concept did not say
+
+| # | Assumption | Why | How wrong it can be |
+|---|---|---|---|
+| **1** | **A `bool` is drawn as a switch, and an unticked box means `false` rather than *unanswered*.** The control writes a hidden `0` ahead of itself. | ⚠️ No decision names a boolean renderer — [D-118](90-decision-log.md) settles the **layout** only. And a checkbox has two states where the model has three ([D-232](90-decision-log.md)): an unticked box meaning *nobody has said* would make every mandatory check unanswerable. | **Low for the control, medium for the third state.** *Deliberately nothing* is now reachable only by clearing the attribute; if it needs its own control that is a screen addition, not a change here. |
+| **2** | **The context is told which type is being drawn.** | A renderer serving two types — a spinner draws an integer and a decimal — otherwise guesses from the value it holds, and an **empty** decimal field is then indistinguishable from an integer one and quietly refuses `2.5`. | None. It is [R14a](30-renderer.md)'s key, passed rather than re-derived. |
+| **3** | **`textarea` is eligible for `text` and the default for nothing.** | A text is one line until somebody says otherwise. Guessing from the length of what happens to be stored would make the control jump about as the content grows. | Low. It is a legacy candidate rather than a decided renderer — [the inventory](30-renderer.md#the-table) marks it so. |
+| **4** | **`cols`, `rows` and `step` are read as free settings, not reserved ones.** | They shape one renderer and nothing resolves against them. Reserving three words would take them out of every author's vocabulary for no gain ([D-084](90-decision-log.md)). | Low, and additive to reverse. |
+| **5** | **A colour the picker cannot hold is edited as text.** | ⚠️ `<input type="color">` reports `#000000` for anything it cannot parse, so the next save would write **black over a value nobody touched**. A control that can lose a value on the way past is worse than a plain field. | None. [D-226](90-decision-log.md)'s coupled hex-beside-picker is **not** built: two controls writing one field need JavaScript to stay in step. |
+| **6** | **A slider with no bounds omits them and lets the browser invent `0–100`.** | Making the misconfiguration **visible** needs a sentence a person reads, and a core renderer cannot produce one — [OQ-087](91-open-questions.md). | **Medium, and it is a real hole.** A wrong-looking control rather than a wrong value, but nothing points at the cause. |
+| **7** | **The read-back refuses rather than converts.** `abc` in an integer field is an error; `25.08.2026` in a date field is an error. | ⚠️ [R36a](30-renderer.md#r36a--the-converter-removes-what-cannot-have-been-meant-the-validator-asks-about-the-rest) gives *removing what cannot have been meant* to a **converter**, and there is none. Coercing would store a `0` that can never again be told apart from one somebody meant ([D-071](90-decision-log.md)). | None in substance — but it is **rough to use** until converters exist, and that is the honest description. |
+| **8** | **Only submitted attributes are written.** | A hidden field is not in the form, and a hidden field is not a cleared one. Treating absence as *clear* would empty every hidden attribute on the first save. | None. |
+| **9** | **Form fields are keyed by the edge, `taxmod_value[<id>]`, never by position.** | A checkbox does not submit when unticked, so parallel `edge_id[]` / `value[]` arrays shift every later value onto the wrong attribute — silently, and only in the rows somebody unticked. | None. A bug designed out rather than found. |
+| **10** | **An attribute whose target is not a simple data type is refused at write, by name.** | A constant or a reference has no characters of its own yet. Storing what was typed as text would look right until somebody tried to follow it. | None — unfinished work, named as such. |
+
+### Not built, and not claimed
+
+| | Why not |
+|---|---|
+| **the reference renderer** ([D-105](90-decision-log.md)) and everything under `Constants` | it draws a **target's label**, and a renderer is handed its data and fetches nothing ([D-159](90-decision-log.md)) — so the label has to arrive **in** the context, which is a contract question rather than a renderer |
+| **`user_ref`** | it resolves a WordPress user, which is a boundary concern reaching into the core's hands |
+| **the search purpose** | a search rendering is a **condition** feeding a query builder ([D-165](90-decision-log.md)), and there is no query builder. Every typed renderer **declines** it, which is [D-217](90-decision-log.md)'s own mechanism rather than a gap |
+| **converters** | [R33](30-renderer.md)–[R36](30-renderer.md); `4k7`, notations, a locale's decimal comma. The read-back is deliberately the identity form so converters can sit **in front** of it unchanged |
+| **appended renderers** ([D-236](90-decision-log.md)) | `RenderResult::followedBy()` exists and is checked; nothing configures a **list** yet, because the `renderer` setting holds one name |
+| **the node renderer, the tree row, the split screen** | ⚠️ **this is the next package**, and it is what **deletes** the scaffolding rather than adding to it ([D-344](90-decision-log.md)) |
+
+### ⚠️ Three things the next package inherits
+
+**The `renderer` setting holds one name, and [R13a](30-renderer.md#r13a--a-node-carries-an-ordered-list-of-renderers-one-of-them-mandatory)
+wants an ordered list** — one mandatory, any number appended ([D-236](90-decision-log.md)). Nothing
+is broken: `RenderResult::followedBy()` is the combining half and it is built and checked. **What
+is missing is how a list is written down** — one key holding several names, or a key per position —
+and that is a decision, not a refactor.
+
+**[OQ-087](91-open-questions.md) is on the critical path of the node renderer.** A renderer that
+has to *say* something can satisfy neither `CD-1` nor `AR-2`, and the first one that must is
+[D-147](90-decision-log.md)'s computed-value marking — *not computable*, **with a reason**.
+
+**⚠️ And the owner's own proposal for the shape of it, made while this package was finishing —
+recorded as a proposal, not as a decision ([PR-3](../../CLAUDE.md)).** In his words: *list
+renderer → label renderer, list renderer → attribute renderer, list renderer → settings renderer
+… just a thought, to make it uniform: **the list always looks the same, and the contents are
+rendered by different renderers.***
+
+**That is not a new idea in the concept — it is the concept's own idea, applied one level higher
+than it has been so far**, and two rules already say it:
+
+| | |
+|---|---|
+| [R46/R47](30-renderer.md#r46r47--a-container-renderer-is-the-same-recursion) | a container renderer is **the same recursion** — the frame is drawn once and **every cell goes back to the registry** |
+| [a cell never inherits the container's renderer](30-renderer.md#and-a-cell-never-inherits-the-containers-renderer) | so a list of settings and a list of labels are the **same frame** with different cells |
+| [R18](30-renderer.md#r18r20--the-surfaces-are-renderers-all-the-way-up) | *the surfaces are renderers all the way up* — his statement from the first week |
+
+**What his framing adds is the count.** The scaffolding has **three** hand-built tables — labels,
+attributes, settings — and under this reading they are **one** list renderer used three times. That
+is the difference between deleting three panels and deleting one, and it is the same saving
+[R51c](30-renderer.md#r51c--set-and-table-are-retired-as-constructs-and-three-renderers-remain)
+found when it separated *the thing* from *the drawing*.
+
+⚠️ **It needs exactly the one thing named below, and nothing else.** A uniform list can only
+delegate its cells if each cell knows **what it is** — which for a setting means the mapping from
+engine key to type. *So his proposal and the gap below are the same piece of work, seen from two
+ends.*
+
+**And the settings side is still printed rather than rendered.** [R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen)
+and [D-190](90-decision-log.md) settle that the detail view **is** a series of attributes rendered
+under the edit purpose — so drawing an attribute's settings needs no renderer of its own, and that
+is the answer to a question the owner asked while this package was being built. ⚠️ **But it needs
+something that does not exist:** to render `multiplicity` as a chooser of four, `mandatory` as a
+switch and `renderer` as a list of the eligible ones, each **engine setting key** has to say what
+**type** it is. [D-351](90-decision-log.md) gave multiplicity a value type of its own and nothing
+generalised it. **That mapping is the first piece of the next package**, and until it exists the
+settings panel prints key and value as text — which is the second way to draw a field that
+[R20a](30-renderer.md) warns about, living on borrowed time exactly as [D-350](90-decision-log.md) did.

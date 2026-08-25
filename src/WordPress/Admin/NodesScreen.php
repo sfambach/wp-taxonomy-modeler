@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Exception\DomainError;
+use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Label;
@@ -10,11 +11,14 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Plugin;
@@ -39,6 +43,15 @@ final class NodesScreen
 {
     private const ACTION = 'taxmod_node';
 
+    /**
+     * The form field the record's values arrive under, as `taxmod_value[<edge id>]`.
+     *
+     * ⚠️ **Keyed by the edge, never by position.** A checkbox does not submit when it is unticked,
+     * so parallel `edge_id[]` / `value[]` arrays would shift every later value onto the wrong
+     * attribute — silently, and only in the rows somebody unticked.
+     */
+    private const VALUE_FIELD = 'taxmod_value';
+
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
@@ -46,6 +59,7 @@ final class NodesScreen
         private readonly Labels $labels,
         private readonly DataEntry $data,
         private readonly FrameworkNodes $framework,
+        private readonly Rendering $rendering,
     ) {
     }
 
@@ -583,21 +597,48 @@ final class NodesScreen
     /**
      * Write every field of one record.
      *
-     * ⚠️ **The values arrive as plain text and are guessed into a type** — a number is a number,
-     * everything else is text. That is the whole of D-350's raw surface, and it is why it must
-     * be deleted rather than grown: the real editor knows the type and does not guess.
+     * ⚠️ **Nothing is guessed any more, and that is [D-350](../../../docs/NewConcept/90-decision-log.md)
+     * closing.** The raw surface read a number as a number and everything else as text, which was
+     * defensible only for as long as no renderer existed. Each attribute now has a **type**, and
+     * the type reads its own characters back ({@see \Taxmod\Core\Model\SimpleType::valueFrom()}) —
+     * refusing what cannot have been meant instead of storing a zero nobody typed.
+     *
+     * ⚠️ **Only submitted attributes are touched.** A hidden field is not in the form, and a
+     * hidden field is not a cleared one.
      */
-    private function saveRecord(): void
+    private function saveRecord(int $nodeId): void
     {
-        $recordId = isset($_POST['record_id']) ? absint($_POST['record_id']) : 0;
-        $edgeIds  = isset($_POST['edge_id']) && is_array($_POST['edge_id']) ? $_POST['edge_id'] : [];
-        $values   = isset($_POST['value']) && is_array($_POST['value']) ? $_POST['value'] : [];
+        $recordId  = isset($_POST['record_id']) ? absint($_POST['record_id']) : 0;
+        $submitted = isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD])
+            ? $_POST[self::VALUE_FIELD]
+            : [];
 
-        foreach (array_values($edgeIds) as $index => $rawEdge) {
+        if ($submitted === []) {
+            return;
+        }
+
+        $attributes = [];
+
+        foreach ($this->editor->attributesOf($nodeId) as $edge) {
+            $attributes[$edge->id] = $edge;
+        }
+
+        // One resolution for the whole form rather than one per field (`CD-7`).
+        $types = $this->rendering->typesFor(array_values($attributes));
+
+        foreach ($submitted as $rawEdge => $rawValue) {
             $edgeId = absint($rawEdge);
-            $raw    = trim(sanitize_text_field(wp_unslash($values[$index] ?? '')));
+            $edge   = $attributes[$edgeId] ?? null;
 
-            if ($raw === '') {
+            if ($edge === null) {
+                // An edge id from a form is input. DataEntry refuses it as well; refusing twice
+                // costs nothing and this one keeps a stale form from reaching the core at all.
+                continue;
+            }
+
+            $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+
+            if ($characters === '') {
                 // Empty means unanswered — the row goes, which is a third state beside a value
                 // and an explicit nothing.
                 $this->data->clear($recordId, $edgeId);
@@ -605,7 +646,13 @@ final class NodesScreen
                 continue;
             }
 
-            $this->data->put($recordId, $edgeId, $this->settingValue($raw));
+            $type = $types[$edgeId] ?? null;
+
+            if ($type === null) {
+                throw NotYetStorable::thatAttributeHasNoTypeYet($edge->name);
+            }
+
+            $this->data->put($recordId, $edgeId, $type->valueFrom($characters));
         }
     }
 
@@ -620,11 +667,18 @@ final class NodesScreen
     /**
      * Records entered against this node, and a way to enter one.
      *
-     * ⚠️ **The one place the scaffolding accepts a value** ([D-350](../../../docs/NewConcept/90-decision-log.md)),
-     * and it does so as a bare `<input>` that knows nothing about the type — no picker, no
-     * format, no converter. That is what keeps it from being *the second way to draw a field*
-     * [R20a](../../../docs/NewConcept/30-renderer.md) warns about: it has no opinions, so it
-     * cannot drift from the renderers. **The moment it grows one, it must go.**
+     * ⚠️ **[D-350](../../../docs/NewConcept/90-decision-log.md) is closed here, on its own
+     * terms.** That decision bent [D-344](../../../docs/NewConcept/90-decision-log.md) once to
+     * allow *one raw text field per attribute*, and said in as many words: **deleted, not
+     * evolved, the moment the renderers arrive.** They have arrived. The field is gone and every
+     * value on this screen now goes through {@see \Taxmod\Core\Service\Rendering} — the same
+     * descent the real surface will use, so there is no second way to draw a field
+     * ([R20a](../../../docs/NewConcept/30-renderer.md)).
+     *
+     * ⚠️ **What is still scaffolding is the frame, not the fields.** The row, the box and the
+     * diagnostics below are markup that will be thrown away with the rest
+     * ([D-344](../../../docs/NewConcept/90-decision-log.md)). What will not be thrown away is the
+     * rendering, because it is not drawn here at all.
      */
     private function recordsPanel(Node $selected): string
     {
@@ -642,7 +696,7 @@ final class NodesScreen
 
         $html  = '<h3>' . esc_html__('Records', 'taxmod') . '</h3>';
         $html .= '<p class="description">'
-            . esc_html__('Raw entry — one plain field per attribute, no renderers yet. Deleted when they arrive.', 'taxmod')
+            . esc_html__('Every field is drawn by the renderer its type chose. A field marked «no renderer» is a gap, not a style.', 'taxmod')
             . '</p>';
 
         $html .= $this->form(
@@ -658,18 +712,16 @@ final class NodesScreen
             $held = [];
 
             foreach ($this->data->valuesOf($record->id) as $value) {
-                $held[$value->edgeId] = $value->value->describe();
+                $held[$value->edgeId] = $value->value;
             }
 
             $fields = '';
 
-            foreach ($attributes as $edge) {
-                $fields .= '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0">'
-                    . '<label style="width:11em">' . esc_html($edge->name) . '</label>'
-                    . '<input type="hidden" name="edge_id[]" value="' . (int) $edge->id . '">'
-                    . '<input type="text" name="value[]" value="' . esc_attr($held[$edge->id] ?? '') . '" style="flex:1">'
-                    . '<code style="opacity:.6">' . esc_html($edge->kind->value) . '</code>'
-                    . '</div>';
+            foreach (
+                $this->rendering->fieldsFor($attributes, $held, Purpose::Edit, self::VALUE_FIELD)
+                as $field
+            ) {
+                $fields .= $this->fieldRow($field);
             }
 
             $html .= '<div style="border:1px solid #ddd;padding:.6em;margin:.6em 0">'
@@ -689,6 +741,46 @@ final class NodesScreen
         }
 
         return $html;
+    }
+
+    /**
+     * One rendered attribute in the record box.
+     *
+     * ⚠️ **The renderer's markup goes out as it is, and that is deliberate.** `CD-5` ends with
+     * *escape on output*, and it has already happened: a renderer escapes with
+     * {@see \Taxmod\Core\Renderer\RenderResult::escape()} before returning, because markup that
+     * left unescaped would have no second chance (`CD-1` bars it from `esc_html()`). **Escaping it
+     * again here would print the tags instead of the field.** Everything this method adds around
+     * it — names, types, words — is escaped in the ordinary way.
+     *
+     * ⚠️ **`no renderer` is shown, not hidden.** It means the chain named none and the type has no
+     * default, which [R14b](../../../docs/NewConcept/30-renderer.md) says must look like the fault
+     * it is rather than like a plain field.
+     */
+    private function fieldRow(RenderedField $field): string
+    {
+        $label = '<label style="width:11em">' . esc_html($field->edge->name) . '</label>';
+
+        if ($field->isHidden()) {
+            // The model asked for it not to appear. On the **modelling** screen the modeller still
+            // needs to see that it exists, or `hide` looks like a missing attribute.
+            return '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0;opacity:.5">'
+                . $label
+                . '<em>' . esc_html__('hidden by a setting', 'taxmod') . '</em>'
+                . '</div>';
+        }
+
+        $diagnostic = $field->hasNoRenderer()
+            ? '<strong style="color:#b32d2e">' . esc_html__('no renderer', 'taxmod') . '</strong>'
+            : '<code style="opacity:.6">'
+                . esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName)
+                . '</code>';
+
+        return '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0">'
+            . $label
+            . '<span style="flex:1">' . $field->result->markup . '</span>'
+            . $diagnostic
+            . '</div>';
     }
 
     // ------------------------------------------------------------------ acting
@@ -802,7 +894,7 @@ final class NodesScreen
                 ),
                 'put_label'      => $this->labels->put(new Label($id, '', $this->framework->roleId(SeededRole::from($labelRole)), Label::BASE_NUMBER, $labelLocale, $labelText)),
                 'add_record'     => $this->data->create($id),
-                'save_record'    => $this->saveRecord(),
+                'save_record'    => $this->saveRecord($id),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 

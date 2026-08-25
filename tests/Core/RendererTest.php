@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PlainRenderer;
@@ -67,7 +68,9 @@ final class RendererTest extends TestCase
             $this->context(Purpose::Display, TypedValue::nothing())
         );
 
-        self::assertSame('<span class="taxmod-value"></span>', $result->markup);
+        // ⚠️ And it is marked `taxmod-no-renderer`: reaching the fallback at all means nobody
+        // chose and the type has no default, which R14b says must **look** like the fault it is.
+        self::assertSame('<span class="taxmod-value taxmod-no-renderer"></span>', $result->markup);
     }
 
     #[Test]
@@ -135,7 +138,7 @@ final class RendererTest extends TestCase
     {
         self::assertSame(
             PlainRenderer::NAME,
-            $this->registry->chosenFor($this->subject, [], Purpose::Display)->name()
+            $this->registry->chosenFor($this->subject, [], Purpose::Display)?->name()
         );
     }
 
@@ -153,18 +156,24 @@ final class RendererTest extends TestCase
             Purpose::Display
         );
 
-        self::assertSame(PlainRenderer::NAME, $chosen->name());
+        self::assertSame(PlainRenderer::NAME, $chosen?->name());
     }
 
     #[Test]
-    public function a_renderer_that_declines_a_purpose_is_not_used_for_it(): void
+    public function a_renderer_that_declines_a_purpose_yields_nothing_for_it(): void
     {
-        // ⚠️ Declining is the mechanism behind *not searchable* (D-217) — a missing capability,
-        // not a missing registration. The caller still gets something rather than an empty gap.
+        // ⚠️ **Corrected against the first version of this test.** It asserted that a declined
+        // purpose falls back — which is right for a **value** and wrong for a **filter**. If the
+        // registry substitutes the fallback under `Search`, every attribute becomes searchable
+        // again through a control that cannot search, and D-217's *not searchable* stops
+        // existing. So the registry answers `null` and the **caller** applies the policy, which
+        // differs by purpose (see `Rendering`).
         $displayOnly = new class implements \Taxmod\Core\Renderer\Renderer {
             public function name(): string { return 'display-only'; }
             /** @return list<Purpose> */
             public function supports(): array { return [Purpose::Display]; }
+            /** @return list<\Taxmod\Core\Model\SimpleType> */
+            public function handles(): array { return [SimpleType::Text]; }
             public function fits(Node|\Taxmod\Core\Model\Relation $subject): bool { return true; }
             public function render(Node|\Taxmod\Core\Model\Relation $subject, RenderContext $context): RenderResult
             {
@@ -181,11 +190,18 @@ final class RendererTest extends TestCase
             true
         )];
 
-        self::assertSame('display-only', $this->registry->chosenFor($this->subject, $settings, Purpose::Display)->name());
-        self::assertSame(PlainRenderer::NAME, $this->registry->chosenFor($this->subject, $settings, Purpose::Search)->name());
+        self::assertSame(
+            'display-only',
+            $this->registry->chosenFor($this->subject, $settings, Purpose::Display)?->name()
+        );
+        self::assertNull($this->registry->chosenFor($this->subject, $settings, Purpose::Search));
 
-        self::assertCount(1, $this->registry->eligibleFor($this->subject, Purpose::Search));
-        self::assertCount(2, $this->registry->eligibleFor($this->subject, Purpose::Display));
+        // ⚠️ The fallback is never offered as a choice — picking it would make *no renderer* a
+        // decision somebody made (R14b).
+        self::assertCount(0, $this->registry->eligibleFor($this->subject, null, Purpose::Search));
+        self::assertCount(1, $this->registry->eligibleFor($this->subject, null, Purpose::Display));
+        self::assertCount(1, $this->registry->eligibleFor($this->subject, SimpleType::Text));
+        self::assertCount(0, $this->registry->eligibleFor($this->subject, SimpleType::Bool));
     }
 
     // ---------------------------------------------------------------- the result

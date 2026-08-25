@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Exception\NotAValueOfThatType;
+
 /**
  * The simple data types that ship in the box.
  *
@@ -99,4 +101,126 @@ enum SimpleType: string
     {
         return array_map(static fn (self $type): string => $type->value, self::cases());
     }
+
+    /**
+     * Turn submitted characters into a value of this type.
+     *
+     * ⚠️ **This is not the converter, and the difference matters.**
+     * [R36a](../../../docs/NewConcept/30-renderer.md#r36a--the-converter-removes-what-cannot-have-been-meant-the-validator-asks-about-the-rest)
+     * gives a converter the job of *removing what cannot have been meant* — `4k7` into `4700`, a
+     * thousands separator away, a locale's comma into a point. **None of that happens here.** This
+     * is the type's own plain form, the one its control submits, and anything else is
+     * {@see \Taxmod\Core\Exception\NotAValueOfThatType} rather than a guess. When converters
+     * arrive they sit **in front** of this and nothing here changes.
+     *
+     * ⚠️ **Nothing coerces.** `(int) 'abc'` is `0`, and a zero that arrived that way can never
+     * again be told apart from one somebody meant (D-071).
+     *
+     * @throws \Taxmod\Core\Exception\NotAValueOfThatType
+     */
+    public function valueFrom(string $characters): TypedValue
+    {
+        $characters = trim($characters);
+
+        if ($characters === '') {
+            return TypedValue::nothing();
+        }
+
+        return match ($this) {
+            self::Int     => $this->integer($characters),
+            self::Decimal => $this->exactDecimal($characters),
+            self::Bool    => $this->boolean($characters),
+            self::DateTime => TypedValue::ofDate($this->timestamp($characters)),
+            self::NodeRef => $this->nodeReference($characters),
+            self::Char    => $this->oneCharacter($characters),
+            // ⚠️ Text, email, colour, version and a foreign user key are stored as given. Whether
+            // an address is one, or a version well-formed, is a **validator's** question (D-319) —
+            // and a renderer that never writes has no business tidying it either (D-159).
+            default       => TypedValue::ofText($characters),
+        };
+    }
+
+    private function integer(string $characters): TypedValue
+    {
+        if (preg_match('/^-?\d+$/', $characters) !== 1) {
+            throw NotAValueOfThatType::submitted($characters, $this->value);
+        }
+
+        return TypedValue::ofInt((int) $characters);
+    }
+
+    /** Kept as the characters it arrived as — a decimal never becomes a float (D-057). */
+    private function exactDecimal(string $characters): TypedValue
+    {
+        if (preg_match('/^-?\d+(\.\d+)?$/', $characters) !== 1) {
+            throw NotAValueOfThatType::submitted($characters, $this->value);
+        }
+
+        return TypedValue::ofDecimal($characters);
+    }
+
+    private function boolean(string $characters): TypedValue
+    {
+        return match (strtolower($characters)) {
+            '1', 'true', 'on', 'yes'  => TypedValue::ofBool(true),
+            '0', 'false', 'off', 'no' => TypedValue::ofBool(false),
+            default                   => throw NotAValueOfThatType::submitted($characters, $this->value),
+        };
+    }
+
+    private function nodeReference(string $characters): TypedValue
+    {
+        if (preg_match('/^\d+$/', $characters) !== 1) {
+            throw NotAValueOfThatType::submitted($characters, $this->value);
+        }
+
+        return TypedValue::ofReference((int) $characters);
+    }
+
+    /**
+     * ⚠️ **Counted in characters, not bytes.** `mb_strlen` is why `ä` is one `char` and not two —
+     * a `char` has a numeric identity behind it (D-329), and that identity is a code point.
+     */
+    private function oneCharacter(string $characters): TypedValue
+    {
+        if (mb_strlen($characters, 'UTF-8') !== 1) {
+            throw NotAValueOfThatType::submitted($characters, $this->value);
+        }
+
+        return TypedValue::ofText($characters);
+    }
+
+    /**
+     * The three shapes a date control submits, normalised to what the column holds.
+     *
+     * ⚠️ **A time with no date is stored against the epoch, and that is a compromise, not a
+     * design.** The column is a `datetime` (D-291 gives date, time and both to one type), so a
+     * time of day has nowhere to sit without a date beside it. The epoch is used because it is
+     * recognisable and because the precision setting is what says the date part carries no
+     * meaning — but a stored fact nobody meant is exactly what this model tries not to have. See
+     * [OQ-088](../../../docs/NewConcept/91-open-questions.md).
+     */
+    private function timestamp(string $characters): string
+    {
+        $characters = str_replace('T', ' ', $characters);
+
+        return match (true) {
+            preg_match('/^\d{4}-\d{2}-\d{2}$/', $characters) === 1
+                => $characters . ' 00:00:00',
+            preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $characters) === 1
+                => self::TIME_WITHOUT_A_DATE . ' ' . $this->withSeconds($characters),
+            preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $characters) === 1
+                => substr($characters, 0, 10) . ' ' . $this->withSeconds(substr($characters, 11)),
+            default
+                => throw NotAValueOfThatType::submitted($characters, $this->value),
+        };
+    }
+
+    private function withSeconds(string $time): string
+    {
+        return strlen($time) === 5 ? $time . ':00' : $time;
+    }
+
+    /** The date a time-of-day is parked against when it has none of its own. */
+    public const TIME_WITHOUT_A_DATE = '1970-01-01';
 }

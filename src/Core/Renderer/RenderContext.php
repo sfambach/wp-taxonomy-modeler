@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\ResolvedSetting;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 
 /**
@@ -31,6 +32,12 @@ final class RenderContext
      * @param string                         $fieldName The form field to write under, for the
      *                                                 edit purpose. Empty when nothing is being
      *                                                 edited.
+     * @param SimpleType|null                $type     Which type is being drawn.
+     *
+     * ⚠️ **The type is told, not inferred.** It is the registry key that chose the renderer in
+     * the first place (R14a), and a renderer serving two types — a spinner draws an integer and a
+     * decimal — otherwise has to guess from the value it was handed. An empty decimal field would
+     * then be indistinguishable from an integer one and would quietly refuse decimals.
      */
     public function __construct(
         public readonly Purpose $purpose,
@@ -40,6 +47,7 @@ final class RenderContext
         public readonly Level $level = Level::Admin,
         public readonly bool $editable = true,
         public readonly string $fieldName = '',
+        public readonly ?SimpleType $type = null,
     ) {
     }
 
@@ -61,6 +69,7 @@ final class RenderContext
             $this->level,
             $this->editable,
             $this->fieldName,
+            $this->type,
         );
     }
 
@@ -75,6 +84,7 @@ final class RenderContext
             $this->level,
             $this->editable,
             $fieldName === '' ? $this->fieldName : $fieldName,
+            $this->type,
         );
     }
 

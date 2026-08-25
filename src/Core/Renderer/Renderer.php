@@ -47,6 +47,21 @@ interface Renderer
     public function supports(): array;
 
     /**
+     * Which simple types it can draw — **the registry key** (R14a).
+     *
+     * ⚠️ **The lookup is by type; the purpose rides in the context.** R14a is explicit that this
+     * is the key and that [D-217](90-decision-log.md) superseded the *type **and** purpose*
+     * reading. It is also what lets *one is marked default per type* be a fact the registry
+     * holds rather than a convention the caller has to remember.
+     *
+     * An empty list means the renderer draws no simple type at all — a structural renderer such
+     * as a table or a form, chosen for what a subject **is** rather than for what it holds.
+     *
+     * @return list<\Taxmod\Core\Model\SimpleType>
+     */
+    public function handles(): array;
+
+    /**
      * Whether it is eligible for this subject at all — the registry's second job, at
      * configuration time: *which renderers may this node be given?*
      */
