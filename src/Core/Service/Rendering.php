@@ -5,12 +5,16 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\ResolvedSetting;
+use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RenderedField;
+use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -110,6 +114,91 @@ final class Rendering
         }
 
         return $fields;
+    }
+
+    /**
+     * Draw the settings resolved for a node — the settings side, through the renderers.
+     *
+     * ⚠️ **This is [R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen) applied
+     * where it had not been.** *The settings side is a series of attributes rendered under the edit
+     * purpose*, and it was printing key and value as text because nothing said what type a
+     * setting's own value has. {@see SettingKey::typeFor()} says it, and the same renderers that
+     * draw a record draw this — so there is no second way to draw a field.
+     *
+     * ⚠️ **Three rows come back undrawn, each for its own honest reason:** a **choice** wants a
+     * chooser and none is built; a **free key** has no type the engine can know; and a *borrowing*
+     * key on a subject with no type of its own has no shape to be drawn in.
+     *
+     * @param  array<string, \Taxmod\Core\Model\ResolvedSetting> $resolved
+     * @return list<RenderedSetting>
+     */
+    public function settingsFor(
+        Node $node,
+        array $resolved,
+        Purpose $purpose = Purpose::Display,
+        string $fieldPrefix = '',
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): array {
+        $subject = $this->typeOfNode($node);
+
+        // ⚠️ **Every key that applies, not only the ones somebody wrote.** The owner, on an `int`
+        // node whose chain was empty: *the settings that belong firmly to the data type — min,
+        // max, step — should be shown as such.* An unset key becomes a row with an empty control
+        // and `setHere = false`, which is the truth about it: nothing along the chain has said.
+        foreach (SettingKey::applyingTo($subject) as $key) {
+            $resolved[$key->value] ??= new ResolvedSetting(
+                $key->value,
+                TypedValue::nothing(),
+                0,
+                false
+            );
+        }
+
+        ksort($resolved);
+
+        $drawn = [];
+
+        foreach ($resolved as $key => $setting) {
+            $engineKey = SettingKey::tryFrom($key);
+            $shape     = $engineKey?->shape() ?? SettingShape::Words;
+            $type      = $engineKey?->typeFor($subject);
+
+            // A free key, a choice, or a borrowed type the subject does not have. Nothing is
+            // drawn, and the caller is told which of the three it is by the shape.
+            if ($engineKey === null || $shape->isAChoice() || $type === null) {
+                $drawn[] = new RenderedSetting($key, $shape, $type, $setting);
+
+                continue;
+            }
+
+            $renderer = $this->renderers->defaultFor($type);
+
+            $context = new RenderContext(
+                $purpose,
+                $setting->value,
+                // ⚠️ **No settings inside a setting.** The chain resolved this value; a renderer
+                // drawing it must not then resolve `hide` or `read_only` against the same node, or
+                // hiding an attribute would hide the control that un-hides it.
+                [],
+                $locale,
+                $level,
+                true,
+                $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key . ']',
+                $type,
+            );
+
+            $drawn[] = new RenderedSetting(
+                $key,
+                $shape,
+                $type,
+                $setting,
+                $renderer->render($node, $context),
+                $renderer->name()
+            );
+        }
+
+        return $drawn;
     }
 
     /** What this attribute's value has to be read back as. */

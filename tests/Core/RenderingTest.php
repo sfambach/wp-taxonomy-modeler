@@ -352,6 +352,145 @@ final class RenderingTest extends TestCase
         self::assertNotContains(SpinnerRenderer::NAME, $names);
     }
 
+    // ------------------------------------------------------- the settings side
+
+    #[Test]
+    public function a_type_shows_the_settings_that_belong_to_it_even_when_nobody_wrote_one(): void
+    {
+        // ⚠️ The owner, looking at an `int` node whose chain was empty: *the settings that belong
+        // firmly to the data type — min, max, step — should be shown as such.* A panel listing only
+        // what somebody wrote cannot say what could be written, and R33c wants the opposite.
+        $rows = $this->drawnSettings($this->type('int'));
+
+        foreach (['range_min', 'range_max', 'range_step', 'default', 'mandatory'] as $key) {
+            self::assertArrayHasKey($key, $rows, $key);
+            self::assertTrue($rows[$key]->wasDrawn(), $key);
+        }
+
+        // ⚠️ And an unwritten one says so — *nobody has said* is a third state beside *set here*
+        // and *inherited* (D-266), and it is the reason the row exists at all.
+        self::assertSame(0, $rows['range_min']->setting->fromOwnerId);
+        self::assertFalse($rows['range_min']->setting->setHere);
+        self::assertTrue($rows['range_min']->setting->value->isNothing());
+    }
+
+    #[Test]
+    public function multiplicity_is_not_offered_on_a_node(): void
+    {
+        // D-351: a node describes a thing, and a thing has no multiplicity.
+        self::assertArrayNotHasKey('multiplicity', $this->drawnSettings($this->type('int')));
+    }
+
+    #[Test]
+    public function a_thing_is_not_shown_the_settings_of_a_number(): void
+    {
+        // ⚠️ A supplier has no type to borrow, so `range_min` has no shape to be drawn in — it is
+        // left out rather than offered as an empty box that could never be filled sensibly.
+        $rows = $this->drawnSettings($this->thing('Supplier'));
+
+        self::assertArrayNotHasKey('range_min', $rows);
+        self::assertArrayHasKey('mandatory', $rows);
+    }
+
+    #[Test]
+    public function a_setting_is_drawn_by_the_renderer_its_key_asks_for(): void
+    {
+        // ⚠️ R20a: *the settings side is a series of attributes rendered under the edit purpose.*
+        // It printed text until SettingKey::typeFor() said what type a setting's value has.
+        $int = $this->type('int');
+
+        $this->settings->put($this->settings->chainFor($int), SettingKey::Mandatory->value, TypedValue::ofBool(true));
+        $this->settings->put($this->settings->chainFor($int), SettingKey::RangeMin->value, TypedValue::ofInt(3));
+
+        $rows = $this->drawnSettings($int);
+
+        self::assertTrue($rows[SettingKey::Mandatory->value]->wasDrawn());
+        self::assertStringContainsString('type="checkbox"', $rows[SettingKey::Mandatory->value]->result->markup);
+        self::assertSame(SwitchRenderer::NAME, $rows[SettingKey::Mandatory->value]->rendererName);
+
+        self::assertSame(SimpleType::Int, $rows[SettingKey::RangeMin->value]->type);
+        self::assertStringContainsString('3', $rows[SettingKey::RangeMin->value]->result->markup);
+    }
+
+    #[Test]
+    public function a_borrowing_key_takes_the_type_of_the_node_it_sits_on(): void
+    {
+        // ⚠️ The same key, two nodes, two types — which is why the type cannot live on the key.
+        $decimal = $this->type('decimal');
+        $text    = $this->type('text');
+
+        $this->settings->put($this->settings->chainFor($decimal), SettingKey::RangeMin->value, TypedValue::ofDecimal('2.50'));
+        $this->settings->put($this->settings->chainFor($text), SettingKey::DefaultValue->value, TypedValue::ofText('n/a'));
+
+        self::assertSame(
+            SimpleType::Decimal,
+            $this->drawnSettings($decimal)[SettingKey::RangeMin->value]->type
+        );
+        self::assertSame(
+            SimpleType::Text,
+            $this->drawnSettings($text)[SettingKey::DefaultValue->value]->type
+        );
+    }
+
+    #[Test]
+    public function a_choice_is_left_undrawn_rather_than_faked_as_a_field(): void
+    {
+        // ⚠️ Multiplicity's four constants and a registered name want a **chooser**, one is decided
+        // (D-244) and none is built. A text box in its place would be the second way to draw.
+        $int = $this->type('int');
+
+        $this->settings->put($this->settings->chainFor($int), SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+
+        $row = $this->drawnSettings($int)[SettingKey::Renderer->value];
+
+        self::assertFalse($row->wasDrawn());
+        self::assertTrue($row->shape->isAChoice());
+        self::assertTrue($row->isEngineOwned());
+    }
+
+    #[Test]
+    public function a_key_of_someones_own_is_not_given_a_type_the_engine_cannot_know(): void
+    {
+        // ⚠️ Reading a type off whatever value happens to be stored is the guessing D-354 ended.
+        $int = $this->type('int');
+
+        $this->settings->declareFree($this->settings->chainFor($int), 'house_style', TypedValue::ofText('narrow'));
+
+        $row = $this->drawnSettings($int)['house_style'];
+
+        self::assertFalse($row->wasDrawn());
+        self::assertFalse($row->isEngineOwned());
+        self::assertNull($row->type);
+    }
+
+    #[Test]
+    public function a_borrowing_key_on_a_thing_has_no_type_to_borrow(): void
+    {
+        // ⚠️ A fact about the model, not a missing feature: a supplier is not a simple data type,
+        // so a `default` on it has no shape to be drawn in.
+        $part = $this->thing('Part');
+
+        $this->settings->put($this->settings->chainFor($part), SettingKey::DefaultValue->value, TypedValue::ofText('x'));
+
+        $row = $this->drawnSettings($part)[SettingKey::DefaultValue->value];
+
+        self::assertFalse($row->wasDrawn());
+        self::assertNull($row->type);
+        self::assertTrue($row->isEngineOwned());
+    }
+
+    /** @return array<string, \Taxmod\Core\Renderer\RenderedSetting> */
+    private function drawnSettings(Node $node): array
+    {
+        $rows = [];
+
+        foreach ($this->rendering->settingsFor($node, $this->settings->resolve($this->settings->chainFor($node))) as $row) {
+            $rows[$row->key] = $row;
+        }
+
+        return $rows;
+    }
+
     #[Test]
     public function what_may_be_chosen_at_a_use_site_is_narrowed_by_the_type(): void
     {

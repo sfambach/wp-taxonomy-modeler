@@ -28,6 +28,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
@@ -156,12 +157,35 @@ $settings->put(
     SettingKey::Renderer->value,
     TypedValue::ofText(SpinnerRenderer::NAME)
 );
-$settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt(1));
-$settings->put($settings->chainForUseSite($count), SettingKey::RangeMax->value, TypedValue::ofInt(99));
+// ⚠️ **The bounds are narrowed relative to whatever is already inherited, not set to fixed
+// numbers.** A real installation may carry a `range_min` on the seeded `int` — this one did, put
+// there by the owner clicking around — and a bound may only ever be tightened (D-312). A check
+// that assumed an empty chain was testing a clean database rather than the rule.
+$inherited = $settings->resolve($settings->chainForUseSite($count));
+$floor     = (int) ($inherited[SettingKey::RangeMin->value]->value->int ?? 0);
+$ceiling   = (int) ($inherited[SettingKey::RangeMax->value]->value->int ?? $floor + 100);
+
+$min = $floor + 1;
+$max = $ceiling - 1;
+
+$settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($min));
+$settings->put($settings->chainForUseSite($count), SettingKey::RangeMax->value, TypedValue::ofInt($max));
 
 $chosen = $rendering->fieldsFor([$count], [], Purpose::Edit, 'taxmod_value')[0];
 check('the spinner was chosen', $chosen->rendererName === SpinnerRenderer::NAME, $chosen->rendererName);
-check('and it carries the bounds the chain resolved', str_contains($chosen->result->markup, 'min="1"') && str_contains($chosen->result->markup, 'max="99"'));
+check(
+    'and it carries the bounds the chain resolved',
+    str_contains($chosen->result->markup, 'min="' . $min . '"')
+        && str_contains($chosen->result->markup, 'max="' . $max . '"'),
+    $chosen->result->markup
+);
+
+try {
+    $settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($floor - 1));
+    check('a bound may not be widened at a use site (D-312)', false);
+} catch (CannotWiden $e) {
+    check('a bound may not be widened at a use site (D-312)', true);
+}
 
 echo "\n== 4. A choice at the type reaches every use of it ==\n";
 $settings->put(
@@ -302,7 +326,31 @@ check('what is not offered is still not forbidden', $rendering->knowsRenderer('s
 check('a name nothing answers to is refused', ! $rendering->knowsRenderer('__p7 no such renderer'));
 check('and the fallback is not choosable at all', ! $rendering->knowsRenderer('plain'));
 
-echo "\n== 15. Clearing up ==\n";
+echo "\n== 15. The settings side is drawn, not printed (R20a) ==\n";
+$intNode = $nodes->byId($seeded['int']->id);
+$settings->put($settings->chainFor($intNode), SettingKey::Mandatory->value, TypedValue::ofBool(true));
+
+$rows = [];
+foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode))) as $row) {
+    $rows[$row->key] = $row;
+}
+
+check('a boolean setting is drawn as a switch',
+    isset($rows['mandatory']) && $rows['mandatory']->wasDrawn()
+        && str_contains($rows['mandatory']->result->markup, 'type="checkbox"'),
+    isset($rows['mandatory']) ? ($rows['mandatory']->result->markup ?? 'undrawn') : 'missing');
+check('a borrowing key takes the type of the node it sits on',
+    isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
+check('a choice is left undrawn rather than faked as a field',
+    ! isset($rows['renderer']) || (! $rows['renderer']->wasDrawn() && $rows['renderer']->shape->isAChoice()));
+
+// ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
+check('mandatory reads back as a boolean, not as the number one',
+    $settings->resolve($settings->chainFor($intNode))['mandatory']->value->asBool() === true);
+
+$settings->reset($intNode->id, SettingKey::Mandatory->value);
+
+echo "\n== 16. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
@@ -314,8 +362,15 @@ foreach ([$seeded['decimal']->id] as $owner) {
     $settings->reset($owner, SettingKey::Renderer->value);
 }
 
-foreach ([$part->id, $gram->id, $description->id] as $scratch) {
-    $node = $nodes->find($scratch);
+// ⚠️ **By name, not by the ids of this run.** A run that dies before this point — one did, on a
+// `range_min` the owner had set by hand — leaves its scratch nodes behind, and the next run then
+// reports them as its own failure. Cleaning up by name makes the check self-healing.
+$scratchIds = $wpdb->get_col(
+    'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p7%" ORDER BY LENGTH(path) DESC'
+);
+
+foreach ($scratchIds as $scratch) {
+    $node = $nodes->find((int) $scratch);
     if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
 }
 

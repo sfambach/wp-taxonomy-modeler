@@ -115,4 +115,89 @@ enum SettingKey: string
     {
         return self::tryFrom($key) !== null;
     }
+
+    /**
+     * What this key's value looks like, so a control can be drawn for it.
+     *
+     * ⚠️ **`icon` is `Words` provisionally, and that is a gap rather than an answer.**
+     * [D-251](../../../docs/NewConcept/90-decision-log.md) says the tree row draws a node's icon
+     * *where one is set* and nothing says **what** an icon is — a symbol name, a media reference, a
+     * character. Treated as characters until it is decided, which is the least it can be.
+     *
+     * @see SettingShape
+     */
+    public function shape(): SettingShape
+    {
+        return match ($this) {
+            self::Mandatory, self::Hide, self::ReadOnly => SettingShape::Switch,
+            self::Order                                => SettingShape::Whole,
+            self::Multiplicity                         => SettingShape::OneOfFour,
+            self::Renderer, self::Converter            => SettingShape::ARegisteredName,
+            // ⚠️ These four borrow their type from whatever is being configured — a default for a
+            // text is a text, a minimum for a decimal is a decimal.
+            self::DefaultValue, self::RangeMin,
+            self::RangeMax, self::RangeStep            => SettingShape::LikeTheSubject,
+            self::Icon                                 => SettingShape::Words,
+        };
+    }
+
+    /**
+     * Which engine keys have anything to say about this subject, whether or not one is set.
+     *
+     * ⚠️ **This is what lets a panel show what *applies* rather than only what is *stored*.** The
+     * owner, looking at an `int` node whose chain was empty: *the settings that belong firmly to
+     * the data type — min, max, step — should be shown as such.* A panel listing only what somebody
+     * has written cannot say what could be written, and
+     * [R33c](../../../docs/NewConcept/30-renderer.md#r33c--automatic-is-a-default-never-a-fact)
+     * wants the opposite: *an automatic choice must be visible.*
+     *
+     * ⚠️ **Derived, never listed per type.** A key applies where a control can be drawn for it —
+     * {@see typeFor()} answers that — or where it is a choice from a set. Writing out *which keys
+     * an integer has* would be a table to maintain beside the truth, and the two would drift.
+     *
+     * @param  SimpleType|null $subject The simple type being configured, or null for anything else.
+     * @param  bool            $isEdge  Whether the subject is a use site rather than a node.
+     * @return list<self>
+     */
+    public static function applyingTo(?SimpleType $subject, bool $isEdge = false): array
+    {
+        $applying = [];
+
+        foreach (self::cases() as $key) {
+            // ⚠️ A node describes a thing, and a thing has no multiplicity (D-351).
+            if ($key->isEdgeOnly() && ! $isEdge) {
+                continue;
+            }
+
+            if ($key->typeFor($subject) !== null || $key->shape()->isAChoice()) {
+                $applying[] = $key;
+            }
+        }
+
+        return $applying;
+    }
+
+    /**
+     * The type a control for this key should be drawn as, given what is being configured.
+     *
+     * ⚠️ **Null means *not a typed field*** — a choice from a set, which wants a chooser rather
+     * than an input, and no chooser renderer is built yet. It also covers the honest case where the
+     * subject has no type of its own to borrow: a `default` on a node that is not a simple data
+     * type has no shape to be drawn in, and guessing `text` there would invite somebody to type a
+     * reference as characters.
+     *
+     * @param SimpleType|null $subject What the setting is being written on, where that is a simple
+     *                                 data type. Null for anything else.
+     */
+    public function typeFor(?SimpleType $subject): ?SimpleType
+    {
+        return match ($this->shape()) {
+            SettingShape::Switch         => SimpleType::Bool,
+            SettingShape::Whole          => SimpleType::Int,
+            SettingShape::Words          => SimpleType::Text,
+            SettingShape::LikeTheSubject => $subject,
+            // A set to choose from, not a value to type.
+            SettingShape::OneOfFour, SettingShape::ARegisteredName => null,
+        };
+    }
 }

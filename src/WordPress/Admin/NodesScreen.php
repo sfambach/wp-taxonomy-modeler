@@ -15,6 +15,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderedField;
+use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
@@ -447,10 +448,15 @@ final class NodesScreen
     /**
      * What the chain resolves to for this node, and where each value came from.
      *
-     * ⚠️ **A diagnostic, not the settings editor.** It prints keys and raw values in a table —
-     * it does **not** render them, because a rendered setting is a rendered value and that is
-     * the line [R20a](../../../docs/NewConcept/30-renderer.md) draws. The real editor is the
-     * frame of attributes under the `edit` purpose, and it arrives with the renderers.
+     * ⚠️ **The values are now **drawn**, which is [R20a](../../../docs/NewConcept/30-renderer.md)
+     * applied where it had not been.** *The settings side is a series of attributes rendered under
+     * the edit purpose* — and it printed key and value as text because nothing said what type a
+     * setting's own value has. {@see \Taxmod\Core\Model\SettingKey::typeFor()} says it, so the same
+     * renderers that draw a record draw this and there is no second way to draw a field.
+     *
+     * ⚠️ **The frame is still scaffolding** ([D-344](../../../docs/NewConcept/90-decision-log.md)) —
+     * a table that gets thrown away. What is not thrown away is the drawing, because it does not
+     * happen here.
      */
     private function settingsPanel(Node $selected): string
     {
@@ -461,21 +467,31 @@ final class NodesScreen
 
         $body = '';
 
-        foreach ($resolved as $key => $setting) {
-            $origin = $setting->setHere
-                ? esc_html__('here', 'taxmod')
-                : '<em>' . esc_html(sprintf(
+        foreach ($this->rendering->settingsFor($selected, $resolved) as $row) {
+            $setting = $row->setting;
+
+            // ⚠️ Three states, and they must look different (D-266): set here, inherited from a
+            // link of the chain, and **nobody has said** — the last being a key that *applies* to
+            // this type but that nothing has written, which is why it appears at all.
+            $origin = match (true) {
+                $setting->setHere            => esc_html__('here', 'taxmod'),
+                $setting->fromOwnerId === 0  => '<em class="description">' . esc_html__('not defined', 'taxmod') . '</em>',
+                default                      => '<em>' . esc_html(sprintf(
                     /* translators: %d is the id of the node or edge the value came from. */
                     __('from #%d', 'taxmod'),
                     $setting->fromOwnerId
-                )) . '</em>';
+                )) . '</em>',
+            };
 
             $body .= '<tr>'
-                . '<td><code>' . esc_html($key) . '</code></td>'
-                . '<td>' . esc_html($setting->value->describe()) . '</td>'
+                . '<td><code>' . esc_html($row->key) . '</code></td>'
+                // ⚠️ Escaped by the renderer already (`RenderResult::escape()`); escaping again
+                // would print the tags instead of the control. The undrawn rows go through
+                // `esc_html` in the ordinary way.
+                . '<td>' . $this->settingCell($row) . '</td>'
                 . '<td>' . $origin . '</td>'
                 . '<td>' . ($setting->setHere
-                    ? $this->form($selected->id, [['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')]], '<input type="hidden" name="setting_key" value="' . esc_attr($key) . '">')
+                    ? $this->form($selected->id, [['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')]], '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">')
                     : '')
                 . '</td>'
                 . '</tr>';
@@ -483,7 +499,7 @@ final class NodesScreen
 
         $html  = '<h3>' . esc_html__('Settings', 'taxmod') . '</h3>';
         $html .= '<p class="description">'
-            . esc_html__('Resolved along the chain: installation → model root → ancestors → node. Raw values — this is a diagnostic, not the editor.', 'taxmod')
+            . esc_html__('Every setting that applies to this node, whether or not anybody has written one. Each value is drawn by the renderer its key asks for; the chain runs installation → model root → ancestors → node.', 'taxmod')
             . '</p>';
 
         $html .= $body === ''
@@ -496,6 +512,30 @@ final class NodesScreen
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
         return $html . $this->settingForm($selected);
+    }
+
+    /**
+     * One setting's value in the table — drawn where it can be, and said plainly where it cannot.
+     *
+     * ⚠️ **Three reasons a row is undrawn, and they are different things.** Saying *raw* for all
+     * three would hide which one applies, and the interesting one is the last: a `default` on a
+     * node that is not a simple data type has **no type to borrow**, which is a fact about the
+     * model rather than a missing feature.
+     */
+    private function settingCell(RenderedSetting $row): string
+    {
+        if ($row->wasDrawn()) {
+            return $row->result->markup;
+        }
+
+        $why = match (true) {
+            ! $row->isEngineOwned() => __('a key of your own — the engine knows no type for it', 'taxmod'),
+            $row->shape->isAChoice() => __('chosen from a set — its own control is below', 'taxmod'),
+            default => __('this node is not a simple data type, so there is no type to borrow', 'taxmod'),
+        };
+
+        return '<code>' . esc_html($row->setting->value->describe()) . '</code>'
+            . ' <span class="description">' . esc_html($why) . '</span>';
     }
 
     private function settingForm(Node $selected): string
@@ -871,7 +911,21 @@ final class NodesScreen
      * of the setting and offers the right control; here a number is a number, everything else
      * is text. Nothing about this survives the renderers.
      */
-    private function settingValue(string $raw): TypedValue
+    /**
+     * A submitted setting value, read as the type its **key** declares.
+     *
+     * ⚠️ **The last guesser in the codebase, and it is gone.** It used to read a number as a
+     * number and everything else as text — the same regex guessing [D-354](../../../docs/NewConcept/90-decision-log.md)
+     * removed from record values, left behind here because nothing said what type a setting has.
+     * {@see SettingKey::typeFor()} says it now, so `mandatory` reads as a boolean and `range_min`
+     * on a decimal node as an exact decimal.
+     *
+     * ⚠️ **Two cases genuinely have no declared type, and they keep characters — named rather
+     * than hidden:** a **free key**, which belongs to whoever made it and about which the engine
+     * knows nothing, and a *borrowing* key on a node that is not a simple data type, which has no
+     * shape to borrow. *Neither is a guess about a value; both are the absence of a claim.*
+     */
+    private function settingValue(int $nodeId, string $key, string $raw): TypedValue
     {
         $raw = trim($raw);
 
@@ -879,15 +933,12 @@ final class NodesScreen
             return TypedValue::nothing();
         }
 
-        if (preg_match('/^-?\d+$/', $raw) === 1) {
-            return TypedValue::ofInt((int) $raw);
-        }
+        $node = $this->editor->find($nodeId);
+        $type = $node === null
+            ? null
+            : SettingKey::tryFrom($key)?->typeFor($this->rendering->typeOfNode($node));
 
-        if (preg_match('/^-?\d+\.\d+$/', $raw) === 1) {
-            return TypedValue::ofDecimal($raw);
-        }
-
-        return TypedValue::ofText($raw);
+        return $type?->valueFrom($raw) ?? TypedValue::ofText($raw);
     }
 
     private function selectedFromRequest(): ?Node
@@ -957,7 +1008,7 @@ final class NodesScreen
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
-                'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($settingValue)),
+                'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($id, $settingKey, $settingValue)),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
