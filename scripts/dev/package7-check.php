@@ -333,10 +333,14 @@ check('an int is offered exactly its three ways', $offeredForInt === ['field', '
 // ⚠️ This read *nothing rather than everything* until the form renderer existed. A thing wants a
 // **structural** renderer — chosen for what it is — and now there is one. Offering a spinner for a
 // supplier is still the mistake it always was.
+// Both structural renderers, and both legitimate for a thing: `form` stacks its attributes (D-098),
+// `node` draws it as a whole page (D-256). A typed one is still refused.
+$offeredForThing = array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id)));
+sort($offeredForThing);
 check(
     'a thing under Model is offered the structural renderers only',
-    array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id))) === ['form'],
-    implode(', ', array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id))))
+    $offeredForThing === ['form', 'node'],
+    implode(', ', $offeredForThing)
 );
 check(
     'a bool is not offered a spinner',

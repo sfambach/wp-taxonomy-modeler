@@ -13,7 +13,10 @@ use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\FormRenderer;
+use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\PlainRenderer;
+use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -354,7 +357,10 @@ final class RenderingTest extends TestCase
             $this->rendering->choicesForNode($this->thing('Supplier'))
         );
 
-        self::assertSame([FormRenderer::NAME], $names);
+        // ⚠️ Both structural renderers, and both legitimate for a thing: `form` stacks its
+        // attributes (D-098), `node` draws it as a whole page (D-256). A typed one is still refused.
+        sort($names);
+        self::assertSame([FormRenderer::NAME, NodeRenderer::NAME], $names);
     }
 
     #[Test]
@@ -594,6 +600,84 @@ final class RenderingTest extends TestCase
                 $this->rendering->choicesForNode($this->thing('Part'))
             )
         );
+    }
+
+    // ------------------------------------------------------------ the node page
+
+    #[Test]
+    public function the_page_puts_its_blocks_in_the_order_r20a_decided(): void
+    {
+        // ⚠️ **The caller says what, never where.** R20a: *what acts · what cannot be changed · the
+        // name, because that is what you change first · display · the attributes · the preview ·
+        // and last the relations, collapsed* — written down *so a rebuild does not reshuffle it for
+        // looks*. Handed in deliberately jumbled, so the order can only come from the enum.
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->nodeAsPage($part, [
+            PageSlot::Attributes->value => new Section('ATTRS', '<p>a</p>'),
+            PageSlot::Name->value       => new Section('NAME', '<p>n</p>'),
+            PageSlot::Acts->value       => new Section('ACTS', '<p>b</p>'),
+            PageSlot::Display->value    => new Section('DISPLAY', '<p>d</p>'),
+            PageSlot::Fixed->value      => new Section('FIXED', '<p>f</p>'),
+        ])->markup;
+
+        $at = static fn (string $title): int => (int) strpos($markup, $title);
+
+        self::assertLessThan($at('FIXED'), $at('ACTS'));
+        self::assertLessThan($at('NAME'), $at('FIXED'));
+        self::assertLessThan($at('DISPLAY'), $at('NAME'));
+        self::assertLessThan($at('ATTRS'), $at('DISPLAY'));
+    }
+
+    #[Test]
+    public function the_page_has_one_frame_around_everything(): void
+    {
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->nodeAsPage($part, [
+            PageSlot::Name->value => new Section('Name', '<p>n</p>'),
+        ])->markup;
+
+        self::assertStringContainsString('class="taxmod-page"', $markup);
+        self::assertSame(1, substr_count($markup, 'class="taxmod-page"'));
+    }
+
+    #[Test]
+    public function a_slot_nobody_filled_is_not_drawn(): void
+    {
+        // ⚠️ The preview and the relations are not built, and an empty titled box would claim they
+        // were. Absence says the truth; the frame need not be complete to be right.
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->nodeAsPage($part, [
+            PageSlot::Name->value    => new Section('Name', '<p>n</p>'),
+            PageSlot::Preview->value => new Section('Preview', ''),
+        ])->markup;
+
+        self::assertStringNotContainsString('Preview', $markup);
+    }
+
+    #[Test]
+    public function the_relations_block_starts_shut_because_r20a_says_so(): void
+    {
+        // *and last the relations, collapsed* — a `<details>` does that in plain HTML, which is why
+        // no other block needs one.
+        $part = $this->thing('Part');
+
+        $markup = $this->rendering->nodeAsPage($part, [
+            PageSlot::Name->value      => new Section('Name', '<p>n</p>'),
+            PageSlot::Relations->value => new Section('Relations', '<p>r</p>', collapsed: true),
+        ])->markup;
+
+        // Exactly one block starts shut, and it is not the name.
+        self::assertSame(1, substr_count($markup, '<details'));
+        self::assertLessThan((int) strpos($markup, '<details'), (int) strpos($markup, 'Name'));
+    }
+
+    #[Test]
+    public function a_page_with_nothing_in_it_draws_nothing(): void
+    {
+        self::assertSame('', $this->rendering->nodeAsPage($this->thing('Part'), [])->markup);
     }
 
     // --------------------------------------------------------- the tree's walker

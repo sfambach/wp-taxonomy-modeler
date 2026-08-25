@@ -55,9 +55,11 @@ final class Surroundings
      *                                 renderer builds the buttons rather than concatenating
      *                                 somebody else's markup.
      * @param Submission|null $submits Where those controls go, and the nonce that rides with them.
-     * @param list<DrawnRow>  $rows    Drawn cells with their depth, for a **walker** — the same
-     *                                arrangement as `parts`, one level up: the tree nests what the
-     *                                cell renderer drew ([D-367](../../../docs/NewConcept/90-decision-log.md)).
+     * @param list<DrawnRow>          $rows     Drawn cells with their depth, for a **walker** — the
+     *                                          same arrangement as `parts`, one level up: the tree
+     *                                          nests what the cell drew ([D-367](../../../docs/NewConcept/90-decision-log.md)).
+     * @param array<string, Section>  $sections Blocks of a node's page, keyed by {@see PageSlot} —
+     *                                          the frame's **order** is the enum's, not this array's.
      */
     public function __construct(
         public readonly ?string $refersTo = null,
@@ -66,6 +68,7 @@ final class Surroundings
         public readonly ?string $href = null,
         public readonly ?Submission $submits = null,
         public readonly array $rows = [],
+        public readonly array $sections = [],
     ) {
     }
 

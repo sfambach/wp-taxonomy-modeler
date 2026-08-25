@@ -17,6 +17,7 @@ use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\MailtoRenderer;
+use Taxmod\Core\Renderer\NodeRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
@@ -199,7 +200,8 @@ final class TypedFieldsTest extends TestCase
             ShippedRenderers::registry()->eligibleFor($this->subject, null)
         );
 
-        self::assertSame([FormRenderer::NAME], $names);
+        sort($names);
+        self::assertSame([FormRenderer::NAME, NodeRenderer::NAME], $names);
     }
 
     #[Test]

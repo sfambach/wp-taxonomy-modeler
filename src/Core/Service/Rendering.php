@@ -14,6 +14,8 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
+use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\TreeRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\Level;
@@ -415,6 +417,35 @@ final class Rendering
                 level: $level,
                 editable: false,
                 surroundings: new Surroundings(rows: $rows),
+            )
+        );
+    }
+
+    /**
+     * A node as a page — the frame of [R20a](30-renderer.md#r20a--the-detail-view-is-not-a-special-screen).
+     *
+     * ⚠️ **The order is not a parameter.** It lives in {@see PageSlot} because
+     * [R20a](30-renderer.md) decided it and wrote down why: *the owner walked that order out loud as
+     * the sequence in which a person actually works on a node, and it is written down so a rebuild
+     * does not reshuffle it for looks.* The caller says **what** goes in a slot, never **where**.
+     *
+     * @param array<string, Section> $sections Keyed by {@see PageSlot}'s values.
+     */
+    public function nodeAsPage(
+        Node $node,
+        array $sections,
+        Purpose $purpose = Purpose::Edit,
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): RenderResult {
+        return $this->renderers->byName(NodeRenderer::NAME)->render(
+            $node,
+            new RenderContext(
+                purpose: $purpose,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                surroundings: new Surroundings(sections: $sections),
             )
         );
     }

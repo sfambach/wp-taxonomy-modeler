@@ -14,7 +14,9 @@ use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
@@ -335,41 +337,63 @@ final class NodesScreen
                 . '</p>';
         }
 
-        $html  = '<h2>' . esc_html($selected->name) . '</h2>';
-        $html .= '<p class="description"><code>' . esc_html($selected->path) . '</code></p>';
+        // ⚠️ **The frame is the renderer's; this only says what goes in which slot** (R20a, and
+        // [PageSlot](../../../src/Core/Renderer/PageSlot.php) holds the order). The screen decides
+        // **what**, never **where** — that is the whole point of the order being decided.
+        $sections = [
+            PageSlot::Acts->value => new Section(
+                __('What can be done', 'taxmod'),
+                $this->form(
+                    $selected->id,
+                    [['add_child', esc_html__('Add a child', 'taxmod'), __('Add a child under this node', 'taxmod')]],
+                    '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required style="flex:1">'
+                )
+                . $this->form(
+                    $selected->id,
+                    [
+                        ['move', esc_html__('Move', 'taxmod'), __('Hang it under the chosen node', 'taxmod')],
+                        ['trash', esc_html__('Trash branch', 'taxmod'), __('Trash this node and everything under it', 'taxmod')],
+                        ['trash_node', esc_html__('Trash node only', 'taxmod'), __('Its children move up to its parent, and lose what they inherited from it', 'taxmod')],
+                    ],
+                    $this->parentChooser($selected, $rows, $root)
+                )
+            ),
 
-        $html .= '<h3>' . esc_html__('Name', 'taxmod') . '</h3>';
-        $html .= $this->form(
-            $selected->id,
-            [['rename', esc_html__('Rename', 'taxmod'), __('Give it another name', 'taxmod')]],
-            '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required style="flex:1">'
-        );
+            // ⚠️ *What cannot be changed*, which R20a calls a band of chips: the path is derived
+            // from the edges and never edited ([D-014](../../../docs/NewConcept/90-decision-log.md)).
+            PageSlot::Fixed->value => new Section(
+                __('What cannot be changed', 'taxmod'),
+                '<code>' . esc_html($selected->path) . '</code>'
+            ),
 
-        $html .= '<h3>' . esc_html__('Add a child', 'taxmod') . '</h3>';
-        $html .= $this->form(
-            $selected->id,
-            [['add_child', esc_html__('Add', 'taxmod'), __('Add a child under this node', 'taxmod')]],
-            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required style="flex:1">'
-        );
+            PageSlot::Name->value => new Section(
+                __('Name', 'taxmod'),
+                $this->form(
+                    $selected->id,
+                    [['rename', esc_html__('Rename', 'taxmod'), __('Give it another name', 'taxmod')]],
+                    '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required style="flex:1">'
+                )
+            ),
 
-        $html .= '<h3>' . esc_html__('Place', 'taxmod') . '</h3>';
-        $html .= $this->form(
-            $selected->id,
-            [
-                ['move', esc_html__('Move', 'taxmod'), __('Hang it under the chosen node', 'taxmod')],
-                ['trash', esc_html__('Trash branch', 'taxmod'), __('Trash this node and everything under it', 'taxmod')],
-                ['trash_node', esc_html__('Trash node only', 'taxmod'), __('Its children move up to its parent, and lose what they inherited from it', 'taxmod')],
-            ],
-            $this->parentChooser($selected, $rows, $root)
-        );
+            // ⚠️ **Labels sit in `display` and R20a names no slot for them** — an assumption, and
+            // it is written down in `PageSlot` rather than hidden here.
+            PageSlot::Display->value => new Section(
+                __('Display', 'taxmod'),
+                $this->settingsPanel($selected) . $this->labelsPanel($selected)
+            ),
 
-        $html .= $this->attributes($selected, $rows);
+            PageSlot::Attributes->value => new Section(
+                __('Attributes', 'taxmod'),
+                $this->attributes($selected, $rows)
+            ),
+        ];
 
-        $html .= $this->settingsPanel($selected);
-
-        $html .= $this->labelsPanel($selected);
-
-        return $html . $this->recordsPanel($selected);
+        // ⚠️ **Records are outside the frame, deliberately.** R20a's order is about the **model** —
+        // what a node *is* — and says nothing about a panel of entered data. Putting them in a slot
+        // would be inventing one.
+        return '<h2>' . esc_html($selected->name) . '</h2>'
+            . $this->rendering->nodeAsPage($selected, $sections)->markup
+            . $this->recordsPanel($selected);
     }
 
     /**

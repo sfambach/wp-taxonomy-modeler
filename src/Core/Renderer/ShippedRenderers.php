@@ -59,6 +59,11 @@ final class ShippedRenderers
         // with no simple type could honestly be given nothing.
         $registry->add(new FormRenderer());
 
+        // ⚠️ **A whole node as a page**, and the page renderer is the same renderer (D-256, D-233).
+        // Offered like any other structural renderer: naming it on a node means *draw this one as a
+        // page*, which is a legitimate thing for an author to want.
+        $registry->add(new NodeRenderer());
+
         // ⚠️ **The tree's cell** (D-367): registered so R12 holds, not offered because *which* cell
         // a tree draws is the surface's decision — the chooser and the trash want another.
         $registry->addForSurfaces(new TreeNodeRenderer());
