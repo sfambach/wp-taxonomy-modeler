@@ -11,11 +11,13 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
+use Taxmod\Core\Renderer\RenderResult;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -151,7 +153,10 @@ final class Rendering
                 $edge,
                 $type,
                 $renderer->name(),
-                $renderer->render($edge, $context)
+                $renderer->render($edge, $context),
+                // Carried for the **layout**: R75 puts read-only values first, as context rather
+                // than as something to fill in. A container must not resolve the chain again.
+                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? false
             );
         }
 
@@ -241,6 +246,53 @@ final class Rendering
         }
 
         return $drawn;
+    }
+
+    /**
+     * A node drawn as a whole — its members through the descent, then laid out by a container.
+     *
+     * ⚠️ **This is the shape [R46](30-renderer.md#r46r47--a-container-renderer-is-the-same-recursion)
+     * asks for, arranged so that D-159 still holds.** *Every cell goes back to the registry* — and
+     * the descent is what asks, because a renderer reaches out to nothing. The container receives
+     * the finished members in the context and regroups them (R75).
+     *
+     * ⚠️ **The container is chosen the same way a field's renderer is** — the chain, then the
+     * structural default. A node with no simple type has no *typed* renderer and this is what fits
+     * it, which is why `eligibleFor()` on a supplier stopped being empty the moment the form
+     * renderer existed.
+     *
+     * @param list<Relation>        $edges
+     * @param array<int, TypedValue> $values
+     */
+    public function nodeAsForm(
+        Node $node,
+        array $edges,
+        array $values,
+        Purpose $purpose,
+        string $fieldPrefix = '',
+        string $locale = '',
+        Level $level = Level::Admin,
+        bool $editable = true,
+    ): RenderResult {
+        $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable);
+
+        $container = $this->renderers->byName(FormRenderer::NAME);
+
+        return $container->render(
+            $node,
+            new RenderContext(
+                $purpose,
+                TypedValue::nothing(),
+                [],
+                $locale,
+                $level,
+                $editable,
+                '',
+                null,
+                null,
+                $parts
+            )
+        );
     }
 
     /** What this attribute's value has to be read back as. */

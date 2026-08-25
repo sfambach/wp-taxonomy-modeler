@@ -14,6 +14,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\ColorRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
 use Taxmod\Core\Renderer\FieldRenderer;
+use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\MailtoRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
@@ -191,12 +192,36 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function a_node_with_no_simple_type_is_offered_nothing_rather_than_everything(): void
+    public function a_node_with_no_simple_type_is_offered_the_structural_renderers_only(): void
     {
-        // ⚠️ A node under `Model` wants a **structural** renderer — a form, a table — and none is
-        // built. Offering the typed ones would be offering a spinner for a supplier, which is the
-        // one mistake a picker must not make.
-        self::assertSame([], ShippedRenderers::registry()->eligibleFor($this->subject, null));
+        // ⚠️ **This assertion used to read *nothing at all*, and the change is the point.** A node
+        // under `Model` wants a **structural** renderer — chosen for what it **is** — and until the
+        // form renderer existed there was none, so an empty list was the honest answer. Now there
+        // is one, and offering a spinner for a supplier is still the mistake it always was.
+        $names = array_map(
+            static fn ($renderer): string => $renderer->name(),
+            ShippedRenderers::registry()->eligibleFor($this->subject, null)
+        );
+
+        self::assertSame([FormRenderer::NAME], $names);
+    }
+
+    #[Test]
+    public function a_structural_renderer_declares_no_type_and_a_typed_one_declares_no_structure(): void
+    {
+        // ⚠️ The two axes stay apart: `handles()` is the type key (R14a), `fits()` the structural
+        // question. A form is not offered *for an integer*, and a spinner is not offered for a
+        // thing that has no type.
+        $registry = ShippedRenderers::registry();
+
+        self::assertSame([], (new FormRenderer())->handles());
+        self::assertNotContains(
+            FormRenderer::NAME,
+            array_map(
+                static fn ($renderer): string => $renderer->name(),
+                $registry->eligibleFor($this->subject, SimpleType::Int)
+            )
+        );
     }
 
     // ------------------------------------------------------------ the controls

@@ -54,6 +54,11 @@ final class ShippedRenderers
         $registry->add(new DateTimeRenderer(), SimpleType::DateTime);
         $registry->add(new ColorRenderer(), SimpleType::Color);
 
+        // ⚠️ **The first structural renderer** — chosen for what a subject **is** rather than for
+        // what it holds, which is why it declares no type at all (D-098). Until it existed, a node
+        // with no simple type could honestly be given nothing.
+        $registry->add(new FormRenderer());
+
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());
         $registry->add(new SpinnerRenderer());

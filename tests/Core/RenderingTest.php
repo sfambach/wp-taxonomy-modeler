@@ -10,6 +10,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRenderer;
+use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
@@ -340,11 +341,17 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function a_thing_under_model_is_offered_no_renderer_rather_than_all_of_them(): void
+    public function a_thing_under_model_is_offered_structural_renderers_and_not_typed_ones(): void
     {
-        // ⚠️ A supplier has no simple type; what fits it is a **structural** renderer, and none is
-        // built. An empty list is the honest answer — offering a spinner would not be.
-        self::assertSame([], $this->rendering->choicesForNode($this->thing('Supplier')));
+        // ⚠️ **This used to assert *nothing at all*.** A supplier has no simple type, so what fits
+        // it is a **structural** renderer — and there was none until the form renderer arrived.
+        // Offering a spinner for a supplier is still the mistake it was.
+        $names = array_map(
+            static fn ($renderer): string => $renderer->name(),
+            $this->rendering->choicesForNode($this->thing('Supplier'))
+        );
+
+        self::assertSame([FormRenderer::NAME], $names);
     }
 
     #[Test]
@@ -400,6 +407,78 @@ final class RenderingTest extends TestCase
 
         self::assertTrue($field->hasNoRenderer());
         self::assertStringContainsString('taxmod-no-renderer', $field->result->markup);
+    }
+
+    // ---------------------------------------------------- the container renderer
+
+    #[Test]
+    public function a_form_lays_out_the_members_the_descent_drew(): void
+    {
+        // ⚠️ R46's recursion, arranged so D-159 still holds: the **descent** goes back to the
+        // registry per cell, the container regroups the finished parts.
+        $part  = $this->thing('Part');
+        $label = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
+
+        $form = $this->rendering->nodeAsForm(
+            $part,
+            [$label],
+            [$label->id => TypedValue::ofText('4k7')],
+            Purpose::Display
+        );
+
+        self::assertStringContainsString('taxmod-form', $form->markup);
+        self::assertStringContainsString('label', $form->markup);
+        self::assertStringContainsString('4k7', $form->markup);
+        self::assertSame([$label->id], $form->usedEdges);
+    }
+
+    #[Test]
+    public function the_form_puts_read_only_first_booleans_last_and_keeps_the_authors_order(): void
+    {
+        // R75 / D-118: read-only values, ordinary fields, booleans collected, multi-valued last —
+        // and D-082's `position` orders **within** a group, so a careful author is not rearranged.
+        $part  = $this->thing('Part');
+        $text  = $this->type('text');
+        $bool  = $this->type('bool');
+
+        $first  = $this->editor->addAttribute($part->id, $text->id, 'aaa ordinary');
+        $flag   = $this->editor->addAttribute($part->id, $bool->id, 'bbb boolean');
+        $second = $this->editor->addAttribute($part->id, $text->id, 'ccc ordinary');
+        $fixed  = $this->editor->addAttribute($part->id, $text->id, 'ddd read only');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($fixed),
+            SettingKey::ReadOnly->value,
+            TypedValue::ofBool(true)
+        );
+
+        $markup = $this->rendering->nodeAsForm($part, [$first, $flag, $second, $fixed], [], Purpose::Display)->markup;
+
+        $order = [];
+
+        foreach (['aaa ordinary', 'bbb boolean', 'ccc ordinary', 'ddd read only'] as $name) {
+            $order[$name] = strpos($markup, $name);
+        }
+
+        self::assertLessThan($order['aaa ordinary'], $order['ddd read only'], 'read-only comes first');
+        self::assertLessThan($order['ccc ordinary'], $order['aaa ordinary'], 'position orders within the group');
+        self::assertGreaterThan($order['ccc ordinary'], $order['bbb boolean'], 'booleans are collected after the fields');
+    }
+
+    #[Test]
+    public function a_hidden_member_takes_no_row_in_the_form(): void
+    {
+        // R11, and R75's level dependency: `hide` overrides the layout wherever it matters.
+        $part   = $this->thing('Part');
+        $secret = $this->editor->addAttribute($part->id, $this->type('text')->id, 'internal');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($secret),
+            SettingKey::Hide->value,
+            TypedValue::ofBool(true)
+        );
+
+        self::assertSame('', $this->rendering->nodeAsForm($part, [$secret], [], Purpose::Display)->markup);
     }
 
     // ------------------------------------------------------- the settings side

@@ -330,9 +330,12 @@ $offeredForInt = array_map(
 );
 sort($offeredForInt);
 check('an int is offered exactly its three ways', $offeredForInt === ['field', 'slider', 'spinner'], implode(', ', $offeredForInt));
+// ⚠️ This read *nothing rather than everything* until the form renderer existed. A thing wants a
+// **structural** renderer — chosen for what it is — and now there is one. Offering a spinner for a
+// supplier is still the mistake it always was.
 check(
-    'a thing under Model is offered nothing rather than everything',
-    $rendering->choicesForNode($nodes->byId($part->id)) === [],
+    'a thing under Model is offered the structural renderers only',
+    array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id))) === ['form'],
     implode(', ', array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id))))
 );
 check(
@@ -373,7 +376,32 @@ check('mandatory reads back as a boolean, not as the number one',
 
 $settings->reset($intNode->id, SettingKey::Mandatory->value);
 
-echo "\n== 16. Clearing up ==\n";
+echo "\n== 16. A node is drawn by a container, not by a screen (D-098, R46, R75) ==\n";
+$formed = $rendering->nodeAsForm(
+    $nodes->byId($part->id),
+    $every,
+    $back,
+    Purpose::Edit,
+    'taxmod_value'
+);
+
+check('the form drew something', str_contains($formed->markup, 'taxmod-form'));
+check('every member is in it', count(array_filter(
+    $every,
+    static fn ($e): bool => str_contains($formed->markup, $e->name)
+)) === count($every) - 1, 'one is hidden by a setting from section 11');
+check('and it says which edges went into it (D-021)', $formed->usedEdges !== []);
+
+// R75: read-only values first. `__p7 contact` was made read-only in section 11.
+$readOnlyAt = strpos($formed->markup, '__p7 contact');
+$ordinaryAt = strpos($formed->markup, '__p7 count');
+check('read-only comes before the ordinary fields', $readOnlyAt !== false && $readOnlyAt < $ordinaryAt, "$readOnlyAt vs $ordinaryAt");
+
+// R75: booleans collected after the ordinary fields.
+$boolAt = strpos($formed->markup, '__p7 in stock');
+check('booleans are collected after them', $boolAt !== false && $boolAt > $ordinaryAt, "$boolAt vs $ordinaryAt");
+
+echo "\n== 17. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));

@@ -815,14 +815,22 @@ final class NodesScreen
                 $held[$value->edgeId] = $value->value;
             }
 
-            $fields = '';
+            // ⚠️ **The form is drawn by a renderer, not built here** (D-098, R46). The screen no
+            // longer decides the order of the fields, which label sits where or what a hidden one
+            // looks like — R75's grouping does, in the core, where the real surface will find it.
+            $fields = $this->rendering->nodeAsForm(
+                $selected,
+                $attributes,
+                $held,
+                Purpose::Edit,
+                self::VALUE_FIELD
+            )->markup;
 
-            foreach (
-                $this->rendering->fieldsFor($attributes, $held, Purpose::Edit, self::VALUE_FIELD)
-                as $field
-            ) {
-                $fields .= $this->fieldRow($field);
-            }
+            // ⚠️ **The diagnostic stays, beside the form rather than inside it.** *Which renderer
+            // drew what* is what found four faults today, and it is scaffolding
+            // ([D-344](../../../docs/NewConcept/90-decision-log.md)) — so it sits outside the
+            // rendered markup instead of being woven into it, where it would have to be unpicked.
+            $fields .= $this->drawnBy($this->rendering->fieldsFor($attributes, $held, Purpose::Edit));
 
             $html .= '<div style="border:1px solid #ddd;padding:.6em;margin:.6em 0">'
                 . '<strong>' . esc_html(sprintf(
@@ -857,30 +865,33 @@ final class NodesScreen
      * default, which [R14b](../../../docs/NewConcept/30-renderer.md) says must look like the fault
      * it is rather than like a plain field.
      */
-    private function fieldRow(RenderedField $field): string
+    /**
+     * Which renderer drew what — a diagnostic beside the form, never inside it.
+     *
+     * ⚠️ **It earns its place by what it has caught.** In one afternoon: a `field` where a
+     * `reference` belonged, every constant reading *no renderer*, a spinner offered for a supplier,
+     * and eight settings rows drawn empty. **None of those was visible in the markup itself** —
+     * only in the answer to *which renderer drew this*.
+     *
+     * @param list<RenderedField> $fields
+     */
+    private function drawnBy(array $fields): string
     {
-        $label = '<label style="width:11em">' . esc_html($field->edge->name) . '</label>';
+        $lines = '';
 
-        if ($field->isHidden()) {
-            // The model asked for it not to appear. On the **modelling** screen the modeller still
-            // needs to see that it exists, or `hide` looks like a missing attribute.
-            return '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0;opacity:.5">'
-                . $label
-                . '<em>' . esc_html__('hidden by a setting', 'taxmod') . '</em>'
-                . '</div>';
+        foreach ($fields as $field) {
+            $what = $field->hasNoRenderer()
+                ? '<strong style="color:#b32d2e">' . esc_html__('no renderer', 'taxmod') . '</strong>'
+                : esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName);
+
+            $lines .= '<li><code>' . esc_html($field->edge->name) . '</code> — ' . $what
+                . ($field->isHidden() ? ' · ' . esc_html__('hidden by a setting', 'taxmod') : '')
+                . '</li>';
         }
 
-        $diagnostic = $field->hasNoRenderer()
-            ? '<strong style="color:#b32d2e">' . esc_html__('no renderer', 'taxmod') . '</strong>'
-            : '<code style="opacity:.6">'
-                . esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName)
-                . '</code>';
-
-        return '<div style="display:flex;gap:.4em;align-items:center;margin:.2em 0">'
-            . $label
-            . '<span style="flex:1">' . $field->result->markup . '</span>'
-            . $diagnostic
-            . '</div>';
+        return $lines === ''
+            ? ''
+            : '<ul class="description" style="margin:.4em 0 0;opacity:.75">' . $lines . '</ul>';
     }
 
     // ------------------------------------------------------------------ acting

@@ -39,6 +39,16 @@ final class RenderContext
      * decimal — otherwise has to guess from the value it was handed. An empty decimal field would
      * then be indistinguishable from an integer one and would quietly refuse decimals.
      *
+     * ⚠️ **`parts` is how a *container* renderer gets its children, and it is the finding the form
+     * renderer produced.** [R46](../../../docs/NewConcept/30-renderer.md#r46r47--a-container-renderer-is-the-same-recursion)
+     * says *every cell goes back to the registry* — and a renderer may not reach out (D-159), so it
+     * cannot be the container that does the asking. **The descent resolves and draws the members;
+     * the container lays them out.** That keeps the recursion R46 wants without giving a renderer a
+     * repository, and it is why a container is a layout over finished parts rather than a driver.
+     *
+     * @param list<RenderedField> $parts The members, already drawn, in the order the descent found
+     *                                   them. A container regroups them; it does not draw them.
+     *
      * ⚠️ **`refersTo` is how a renderer learns about a node it is not drawing.** A reference is
      * drawn as *the target's label* (D-105), and a renderer reaches out to nothing (D-159) — so the
      * label is resolved **before** the descent, for every reference at once, and handed in. *This is
@@ -56,6 +66,7 @@ final class RenderContext
         public readonly string $fieldName = '',
         public readonly ?SimpleType $type = null,
         public readonly ?string $refersTo = null,
+        public readonly array $parts = [],
     ) {
     }
 

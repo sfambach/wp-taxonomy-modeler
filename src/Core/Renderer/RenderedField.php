@@ -17,11 +17,18 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class RenderedField
 {
+    /**
+     * @param bool $readOnly What the chain resolved for `read_only` — carried because the
+     *                       **layout** needs it: R75 puts read-only values first, as *context*
+     *                       rather than as something to fill in. Re-deriving it in a container
+     *                       would mean resolving the chain a second time.
+     */
     public function __construct(
         public readonly Relation $edge,
         public readonly ?SimpleType $type,
         public readonly string $rendererName,
         public readonly RenderResult $result,
+        public readonly bool $readOnly = false,
     ) {
     }
 
