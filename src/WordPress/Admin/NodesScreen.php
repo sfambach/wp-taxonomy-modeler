@@ -472,6 +472,18 @@ final class NodesScreen
                     : '<em>' . esc_html__('inherited', 'taxmod') . '</em>')
                 . '</td>'
                 . '<td>' . $this->multiplicityControl($edge, $resolved[$edge->id] ?? [], $here) . '</td>'
+                // ⚠️ **Only an own attribute can be removed here.** An inherited one belongs to the
+                // ancestor that declared it; removing it from a descendant would be
+                // [D-155](../../../docs/NewConcept/90-decision-log.md)'s *moved down* by another
+                // route, which is a different act and not this button.
+                . '<td>' . ($here
+                    ? $this->form(
+                        $selected->id,
+                        [['remove_attribute', '🗑', __('Remove this attribute — parked, not purged', 'taxmod')]],
+                        '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
+                    )
+                    : '')
+                . '</td>'
                 . '</tr>';
         }
 
@@ -488,9 +500,10 @@ final class NodesScreen
                 . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
                 . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
                 . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
+                . '<th style="width:3em"></th>'
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
-        return $html . $this->attributeForm($selected, $rows);
+        return $html . $this->removedAttributes($selected) . $this->attributeForm($selected, $rows);
     }
 
     /**
@@ -533,6 +546,49 @@ final class NodesScreen
     /**
      * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
      */
+    /**
+     * The removed attributes, behind a disclosure — D-128's *show deleted*.
+     *
+     * ⚠️ **Hidden by default and one click away, because that is what [D-128](../../../docs/NewConcept/90-decision-log.md)
+     * decided:** *a model full of ghost attributes is unreadable — one «show deleted» toggle away,
+     * greyed, labelled «deleted with X», with a restore action.* The label names the **act** that
+     * removed it, which is what `parked_by_group_id` carries ([D-371](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    private function removedAttributes(Node $selected): string
+    {
+        $parked = $this->editor->removedAttributesOf($selected->id);
+
+        if ($parked === []) {
+            return '';
+        }
+
+        $rows = '';
+
+        foreach ($parked as $edge) {
+            $rows .= '<div style="display:flex;gap:.5em;align-items:center;opacity:.6;margin:.2em 0">'
+                . '<span style="flex:1"><s>' . esc_html($edge->name) . '</s> '
+                . '<span class="description">' . esc_html(sprintf(
+                    /* translators: %d is the id of the act that removed it. */
+                    __('removed by act #%d', 'taxmod'),
+                    (int) $edge->parkedByGroup
+                )) . '</span></span>'
+                . $this->form(
+                    $selected->id,
+                    [['restore_attribute', esc_html__('Restore', 'taxmod'), __('Put it back', 'taxmod')]],
+                    '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
+                )
+                . '</div>';
+        }
+
+        return '<details style="margin:.6em 0"><summary style="cursor:pointer">'
+            . esc_html(sprintf(
+                /* translators: %d is how many attributes were removed. */
+                _n('%d removed attribute', '%d removed attributes', count($parked), 'taxmod'),
+                count($parked)
+            ))
+            . '</summary>' . $rows . '</details>';
+    }
+
     private function attributeForm(Node $selected, array $rows): string
     {
         $options = '';
@@ -1254,6 +1310,9 @@ final class NodesScreen
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
+                // Parked, not purged — D-123's two stages, so it can come back.
+                'remove_attribute'  => $this->editor->removeAttribute($id, $edge),
+                'restore_attribute' => $this->editor->restoreAttribute($id, $edge),
                 'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($id, $settingKey, $settingValue)),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case

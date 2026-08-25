@@ -99,10 +99,30 @@ final class InMemoryRelations implements RelationRepository
 
     public function attributeEdgesOf(array $ownerIds): array
     {
+        // Parked ones are left out here, as in the real repository: a parked attribute is hidden by
+        // default in its owning node (D-128).
+        return $this->attributesOf($ownerIds, false);
+    }
+
+    public function parkedAttributeEdgesOf(array $ownerIds): array
+    {
+        return $this->attributesOf($ownerIds, true);
+    }
+
+    /**
+     * @param  list<int>      $ownerIds
+     * @return list<Relation>
+     */
+    private function attributesOf(array $ownerIds, bool $parked): array
+    {
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->kind !== RelationKind::Inheritance && in_array($edge->fromId, $ownerIds, true)) {
+            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->fromId, $ownerIds, true)) {
+                continue;
+            }
+
+            if ($edge->isParked() === $parked) {
                 $edges[] = $edge;
             }
         }

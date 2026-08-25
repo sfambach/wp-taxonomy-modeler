@@ -40,21 +40,36 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
+        $parked    = $relation->parkedByGroup === null ? 'NULL' : '%d';
+        $arguments = [
+            $relation->version,
+            $relation->fromId,
+            $relation->toId,
+            $relation->kind->value,
+            $relation->name,
+            $relation->position,
+        ];
+
+        if ($relation->parkedByGroup !== null) {
+            $arguments[] = $relation->parkedByGroup;
+        }
+
+        $arguments[] = $relation->id;
+        $arguments[] = $expectedVersion;
+
         // The expected version rides in the WHERE, so the guard is the write itself rather
         // than a read followed by a hopeful update (P4c).
         $written = $wpdb->query(
             $wpdb->prepare(
+                // ⚠️ **A literal `NULL`, not a placeholder.** `$wpdb->prepare()` turns a null into
+                // an **empty string**, which a `bigint` column stores as **0** — and a zero change
+                // group reads as *parked by an act that never happened*. Found by a boundary check:
+                // restoring an attribute left it parked.
                 'UPDATE ' . Schema::table('relations') . '
-                 SET version = %d, from_id = %d, to_id = %d, kind = %s, name = %s, position = %d
+                 SET version = %d, from_id = %d, to_id = %d, kind = %s, name = %s, position = %d,
+                     parked_by_group_id = ' . $parked . '
                  WHERE id = %d AND version = %d',
-                $relation->version,
-                $relation->fromId,
-                $relation->toId,
-                $relation->kind->value,
-                $relation->name,
-                $relation->position,
-                $relation->id,
-                $expectedVersion
+                ...$arguments
             )
         );
 
@@ -184,10 +199,40 @@ final class WpdbRelationRepository implements RelationRepository
         // but it is still assembled with placeholders rather than glued in (`CD-6`).
         $places = implode(',', array_fill(0, count($ownerIds), '%d'));
 
+        // ⚠️ **Parked attributes are left out here**, because D-128 says a parked one is *hidden by
+        // default in its owning node — a model full of ghost attributes is unreadable*. Whoever
+        // wants to see them asks {@see parkedAttributeEdgesOf()} instead, which is the *show
+        // deleted* toggle rather than a second reading of the same query.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position FROM ' . Schema::table('relations') . "
-                 WHERE from_id IN ({$places}) AND kind <> %s
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id
+                 FROM ' . Schema::table('relations') . "
+                 WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+                 ORDER BY position ASC, id ASC",
+                [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+            ),
+            ARRAY_A
+        );
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
+    /** @return list<Relation> The removed ones, for D-128's *show deleted*. */
+    public function parkedAttributeEdgesOf(array $ownerIds): array
+    {
+        global $wpdb;
+
+        if ($ownerIds === []) {
+            return [];
+        }
+
+        $places = implode(',', array_fill(0, count($ownerIds), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id
+                 FROM ' . Schema::table('relations') . "
+                 WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
                  ORDER BY position ASC, id ASC",
                 [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
             ),
@@ -219,6 +264,7 @@ final class WpdbRelationRepository implements RelationRepository
             (string) $row['kind'],
             (string) $row['name'],
             (int) $row['position'],
+            isset($row['parked_by_group_id']) ? (int) $row['parked_by_group_id'] : null,
         );
     }
 }

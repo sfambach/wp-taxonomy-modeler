@@ -362,6 +362,102 @@ final class ModelEditor
         throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
     }
 
+    /**
+     * Remove an attribute — **parked, not purged**, and under one bracket.
+     *
+     * ⚠️ **This was missing since Package 3, and the reason was storage rather than reluctance:**
+     * `relations` had nowhere to record that an edge was gone. [D-371](../../../docs/NewConcept/90-decision-log.md)
+     * gives it `parked_by_group_id` — the **act** that parked it, not a bare flag, so
+     * [D-128](../../../docs/NewConcept/90-decision-log.md)'s *deleted with «X»* has something to
+     * name.
+     *
+     * ⚠️ **Two stages, as everywhere** ([D-123](../../../docs/NewConcept/90-decision-log.md)):
+     * parking is reversible and purging is a separate act. **So nothing else is touched** — the
+     * settings written at this use site stay, and so do the values records hold through it. *That is
+     * not laziness: [D-156](../../../docs/NewConcept/90-decision-log.md) observes that the trash
+     * preserves exactly the information a later decision needs, and deleting the overrides here
+     * would throw away what a restore has to put back.*
+     *
+     * ⚠️ **One changelog row, one group** ([D-348](../../../docs/NewConcept/90-decision-log.md)).
+     * Today the act is a single row, so the bracket is the row's own id — which is exactly what that
+     * decision prescribes, and what makes the bracket cost nothing.
+     */
+    public function removeAttribute(int $ownerId, int $edgeId): Relation
+    {
+        // ⚠️ **The parked ones are looked at too, and that is not tidiness.** Once parked, an edge
+        // leaves the live list (D-128), so a second click — a double tap, a back button, a stale
+        // form — would otherwise be refused with *not one this node owns*, which is both wrong and
+        // confusing. It **is** owned; it is already gone. So the act is idempotent.
+        foreach ($this->relations->parkedAttributeEdgesOf([$ownerId]) as $already) {
+            if ($already->id === $edgeId) {
+                return $already;
+            }
+        }
+
+        $edge = $this->ownAttribute($ownerId, $edgeId);
+
+        $group = $this->changelog->record(
+            $edge->id,
+            'relation',
+            'attribute removed',
+            $this->edgeState($edge),
+            $this->edgeState($edge->parkedBy(0))
+        );
+
+        $parked = $edge->parkedBy($group);
+
+        $this->relations->save($parked, $edge->version);
+
+        return $parked;
+    }
+
+    /**
+     * Put a removed attribute back.
+     *
+     * ⚠️ **A new change written forwards, never a rewind** ([D-172](../../../docs/NewConcept/90-decision-log.md)):
+     * history is extended, because the changelog is also the migration script
+     * ([D-061](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    public function restoreAttribute(int $ownerId, int $edgeId): Relation
+    {
+        foreach ($this->relations->parkedAttributeEdgesOf([$ownerId]) as $edge) {
+            if ($edge->id !== $edgeId) {
+                continue;
+            }
+
+            $revived = $edge->revived();
+
+            $this->changelog->record(
+                $edge->id,
+                'relation',
+                'attribute restored',
+                $this->edgeState($edge),
+                $this->edgeState($revived)
+            );
+
+            $this->relations->save($revived, $edge->version);
+
+            return $revived;
+        }
+
+        throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
+    }
+
+    /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
+    public function removedAttributesOf(int $ownerId): array
+    {
+        return $this->relations->parkedAttributeEdgesOf([$ownerId]);
+    }
+
+    /** What a changelog row records about an edge. */
+    private function edgeState(Relation $edge): string
+    {
+        return 'name=' . $edge->name
+            . ' to=' . $edge->toId
+            . ' kind=' . $edge->kind->value
+            . ' parked=' . ($edge->parkedByGroup ?? 0);
+    }
+
     public function find(int $id): ?Node
     {
         return $this->nodes->find($id);

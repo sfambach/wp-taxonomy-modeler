@@ -82,5 +82,18 @@ interface RelationRepository
     public function attributeEdgesOf(array $ownerIds): array;
 
     /** Remove the edges belonging to a purge. The only place edges are deleted outright. */
+    /**
+     * The removed attributes of these owners — D-128's *show deleted*.
+     *
+     * ⚠️ **A separate question, not a flag on the ordinary one.** A parked attribute is *hidden by
+     * default in its owning node* ([D-128](../../../docs/NewConcept/90-decision-log.md)), because a
+     * model full of ghost attributes is unreadable — so the live read leaves them out and whoever
+     * wants them asks for them.
+     *
+     * @param  list<int>      $ownerIds
+     * @return list<Relation>
+     */
+    public function parkedAttributeEdgesOf(array $ownerIds): array;
+
     public function purgeEdgesTouching(int $nodeId): void;
 }

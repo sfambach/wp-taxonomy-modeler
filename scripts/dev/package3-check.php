@@ -143,5 +143,26 @@ $dangling = (int) $wpdb->get_var(
 );
 check('no edge points at a node that is gone', $dangling === 0, "$dangling dangling");
 
+echo "\n== An attribute can be removed, and it is parked (D-371) ==\n";
+$removable = $editor->createNode('__p3 Removable', $framework->rootOf(Branch::Model)->id);
+// A branch root stands for the branch, not for a thing in it — so the attribute points at a type.
+$doomedType = $editor->createNode('__p3 Doomed type', $framework->rootOf(Branch::DataTypes)->id);
+$onIt       = $editor->addAttribute($removable->id, $doomedType->id, '__p3 doomed');
+
+$gone = $editor->removeAttribute($removable->id, $onIt->id);
+check('it is parked, not purged', $gone->isParked());
+check('and it names the act that removed it (D-128)', $gone->parkedByGroup > 0, (string) $gone->parkedByGroup);
+check('hidden by default in its owning node', $editor->attributesOf($removable->id) === []);
+check('and findable behind «show deleted»', count($editor->removedAttributesOf($removable->id)) === 1);
+
+$back = $editor->restoreAttribute($removable->id, $onIt->id);
+check('it comes back whole', ! $back->isParked() && $back->name === '__p3 doomed');
+check('and is live again', count($editor->attributesOf($removable->id)) === 1);
+
+foreach ([$removable->id, $doomedType->id] as $scratchId) {
+    $edges->purgeEdgesTouching($scratchId);
+    $nodes->purgeSubtree($nodes->byId($scratchId));
+}
+
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

@@ -47,8 +47,9 @@ final class Schema
      *     moves so that an already-installed copy gets them (D-161).
      * 6 — the label roles are seeded as nodes under their own container (D-151); again no
      *     table changed, and again the version is what carries them to an installed copy.
+     * 7 — `relations.parked_by_group_id`, so an attribute can be removed at all (D-371).
      */
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -292,6 +293,12 @@ final class Schema
                 KEY name (name)
             ) {$charset};",
 
+            // ⚠️ `parked_by_group_id` is the one place an edge can be parked (D-371). A node needs
+            // no such column, because its **position** is the mark — it sits under the trash
+            // (Package 1) — and an edge has no position in the tree, so there is no first truth to
+            // duplicate. It holds the **change group** that parked it rather than a bare flag,
+            // because D-128 wants a parked attribute labelled *deleted with «X»* and the group is
+            // where that act is described (D-348). One column, two facts, neither of them a copy.
             "CREATE TABLE {$t('relations')} (
                 id bigint(20) unsigned NOT NULL,
                 version int(10) unsigned NOT NULL DEFAULT 1,
@@ -300,9 +307,11 @@ final class Schema
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
+                parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY from_id (from_id),
-                KEY to_id (to_id)
+                KEY to_id (to_id),
+                KEY parked_by_group_id (parked_by_group_id)
             ) {$charset};",
 
             // Typed value columns, never one stringly value cast in and out (D-071, D-074).

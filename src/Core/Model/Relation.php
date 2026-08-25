@@ -23,7 +23,15 @@ final class Relation
      *                         what lets an edge carry settings and labels of its own (C8).
      * @param string $name     Empty for an inheritance edge: the tree edge has no name of its
      *                         own, the child does.
-     * @param int    $position Order among the siblings of `fromId`, counted from zero.
+     * @param int      $position     Order among the siblings of `fromId`, counted from zero.
+     * @param int|null $parkedByGroup The act that parked it, or null while it is live.
+     *
+     * ⚠️ **An edge is parked by a column, and a node is not** ([D-371](../../../docs/NewConcept/90-decision-log.md)).
+     * A node's **position** is its mark — it sits under the trash — so a flag would be the same fact
+     * twice; an edge has no position in the tree, so there is nothing to duplicate. **It holds the
+     * change group rather than a bare flag** because [D-128](../../../docs/NewConcept/90-decision-log.md)
+     * wants a parked attribute labelled *deleted with «X»*, and the group is where that act is
+     * written down ([D-348](../../../docs/NewConcept/90-decision-log.md)).
      */
     private function __construct(
         public readonly int $id,
@@ -33,7 +41,43 @@ final class Relation
         public readonly RelationKind $kind,
         public readonly string $name,
         public readonly int $position,
+        public readonly ?int $parkedByGroup = null,
     ) {
+    }
+
+    /** Whether it has been removed — parked, not purged (D-123's two stages). */
+    public function isParked(): bool
+    {
+        return $this->parkedByGroup !== null;
+    }
+
+    /** The same edge, parked by one act. */
+    public function parkedBy(int $changeGroup): self
+    {
+        return new self(
+            $this->id,
+            $this->version,
+            $this->fromId,
+            $this->toId,
+            $this->kind,
+            $this->name,
+            $this->position,
+            $changeGroup
+        );
+    }
+
+    /** The same edge, live again — what a restore writes (D-172: forwards, never a rewind). */
+    public function revived(): self
+    {
+        return new self(
+            $this->id,
+            $this->version,
+            $this->fromId,
+            $this->toId,
+            $this->kind,
+            $this->name,
+            $this->position
+        );
     }
 
     /** The tree edge: parent to child, and the only kind the tree is made of (V3). */
@@ -71,8 +115,18 @@ final class Relation
         string $kind,
         string $name,
         int $position,
+        ?int $parkedByGroup = null,
     ): self {
-        return new self($id, $version, $fromId, $toId, RelationKind::from($kind), $name, $position);
+        return new self(
+            $id,
+            $version,
+            $fromId,
+            $toId,
+            RelationKind::from($kind),
+            $name,
+            $position,
+            $parkedByGroup
+        );
     }
 
     /** The same edge pointing at a new parent, one version on. */
