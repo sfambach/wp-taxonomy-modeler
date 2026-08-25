@@ -9,7 +9,9 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\FieldRenderer;
+use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
@@ -486,11 +488,18 @@ final class RenderingTest extends TestCase
 
         $markup = $this->rendering->cellsFor(
             [$part],
-            [$part->id => ['<button name="up">up</button>']],
-            [$part->id => 'https://example.test/?taxmod_node=' . $part->id]
+            [$part->id => [new Control('do', 'up', '↑', 'Move up')]],
+            [$part->id => 'https://example.test/?taxmod_node=' . $part->id],
+            [$part->id => new Submission('https://example.test/post', ['_nonce' => 'abc123'])]
         )[$part->id]->markup;
 
-        self::assertStringContainsString('<button name="up">up</button>', $markup);
+        // ⚠️ **The button is built here, from what the boundary described.** The owner corrected the
+        // claim that a renderer cannot: what it cannot do is invent the URL, the nonce and the
+        // words — composing the element out of given values is what a renderer does.
+        self::assertStringContainsString('<button class="button" name="do" value="up" title="Move up">↑</button>', $markup);
+        self::assertStringContainsString('action="https://example.test/post"', $markup);
+        self::assertStringContainsString('name="_nonce" value="abc123"', $markup);
+
         self::assertStringContainsString('href="https://example.test/?taxmod_node=' . $part->id . '"', $markup);
         self::assertStringContainsString('taxmod-tree-writes', $markup);
 

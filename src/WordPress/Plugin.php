@@ -138,7 +138,15 @@ final class Plugin
         );
     }
 
-    private function screen(): NodesScreen
+    /**
+     * The modelling screen, wired.
+     *
+     * ⚠️ **Public so that a boundary check can render it.** A fatal error reached the screen on
+     * 2026-08-25 — a control group handed in as a string where a list was expected — and **nothing
+     * guarded it**: the boundary runs exercise services, and `render()` was the one thing with no
+     * check at all. `PR-9` asks every package to add to the net, so it does.
+     */
+    public function screen(): NodesScreen
     {
         $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes());
         $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes());

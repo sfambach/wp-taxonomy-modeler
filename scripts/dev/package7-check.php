@@ -401,7 +401,35 @@ check('read-only comes before the ordinary fields', $readOnlyAt !== false && $re
 $boolAt = strpos($formed->markup, '__p7 in stock');
 check('booleans are collected after them', $boolAt !== false && $boolAt > $ordinaryAt, "$boolAt vs $ordinaryAt");
 
-echo "\n== 17. Clearing up ==\n";
+echo "\n== 17. The screen renders at all ==\n";
+
+// ⚠️ **The check that was missing.** A fatal error reached the screen today — a control group handed
+// in as a string where a list was expected — and nothing guarded it: the boundary runs exercise
+// services, and `render()` had no check of any kind. `PR-9` asks every package to add to the net.
+// `Plugin` is constructed by `boot()` alone, so the screen is wired here the way it wires it —
+// which is itself worth having: if the two ever drift, this check says so.
+try {
+    $screen = new Taxmod\WordPress\Admin\NodesScreen(
+        $editor,
+        new Taxmod\Core\Service\Tree($nodes, $edges),
+        $settings,
+        $labels,
+        $data,
+        $framework,
+        $rendering
+    );
+
+    $markup = $screen->render();
+
+    check('render() returns markup rather than dying', str_contains($markup, '<div class="wrap">'));
+    check('the tree is drawn by the cell', str_contains($markup, 'taxmod-tree-node'));
+    check('a row carries its controls', str_contains($markup, 'value="add_child_here"'));
+    check('and its write count', str_contains($markup, 'taxmod-tree-writes'));
+} catch (Throwable $e) {
+    check('render() returns markup rather than dying', false, $e->getMessage());
+}
+
+echo "\n== 18. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));

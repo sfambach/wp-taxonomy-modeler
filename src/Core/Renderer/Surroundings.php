@@ -50,11 +50,18 @@ final class Surroundings
      * permalink looks like (`CD-1`) — but wrapping a link around what it drew is ordinary markup,
      * so the renderer keeps deciding the **shape** of a row instead of handing that back too.
      */
+    /**
+     * @param list<Control>   $actions What can be done to the subject — **described**, so that the
+     *                                 renderer builds the buttons rather than concatenating
+     *                                 somebody else's markup.
+     * @param Submission|null $submits Where those controls go, and the nonce that rides with them.
+     */
     public function __construct(
         public readonly ?string $refersTo = null,
         public readonly array $parts = [],
         public readonly array $actions = [],
         public readonly ?string $href = null,
+        public readonly ?Submission $submits = null,
     ) {
     }
 
@@ -66,6 +73,6 @@ final class Surroundings
      */
     public function referringTo(?string $refersTo): self
     {
-        return new self($refersTo, $this->parts, $this->actions, $this->href);
+        return new self($refersTo, $this->parts, $this->actions, $this->href, $this->submits);
     }
 }

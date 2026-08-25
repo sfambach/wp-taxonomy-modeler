@@ -11,7 +11,9 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\FormRenderer;
+use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
@@ -309,17 +311,18 @@ final class Rendering
      * ⚠️ **Which cell is a parameter, and that is [D-367](90-decision-log.md)'s whole point:** the
      * modelling tree, the chooser and the trash walk one hierarchy and draw the node differently.
      *
-     * @param  list<Node>                   $nodes
-     * @param  array<int, list<string>>     $actions Finished controls per node id, from the
-     *                                              boundary — the core cannot build a button.
-     * @param  array<int, string>           $hrefs   Where each node is reached, per node id — a URL
-     *                                              is a boundary fact too (`CD-1`).
-     * @return array<int, RenderResult>     Keyed by node id.
+     * @param  list<Node>                    $nodes
+     * @param  array<int, list<Control>>     $actions What can be done to each node, **described**
+     *                                               — the renderer builds the buttons.
+     * @param  array<int, string>            $hrefs   Where each node is reached, per node id.
+     * @param  array<int, Submission>        $submits Where its controls submit to, with the nonce.
+     * @return array<int, RenderResult>      Keyed by node id.
      */
     public function cellsFor(
         array $nodes,
         array $actions = [],
         array $hrefs = [],
+        array $submits = [],
         string $cell = TreeNodeRenderer::NAME,
         string $locale = '',
         Level $level = Level::Admin,
@@ -345,7 +348,8 @@ final class Rendering
                     editable: false,
                     surroundings: new Surroundings(
                         actions: $actions[$node->id] ?? [],
-                        href: $hrefs[$node->id] ?? null
+                        href: $hrefs[$node->id] ?? null,
+                        submits: $submits[$node->id] ?? null
                     ),
                 )
             );

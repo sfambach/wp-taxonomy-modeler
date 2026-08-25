@@ -13,7 +13,9 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -123,9 +125,10 @@ final class NodesScreen
         $html  = '<div class="wrap">' . $this->tightRows();
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
         $html .= $this->notice();
+        // The owner's proportions: a third for the tree, two thirds for the detail.
         $html .= '<table style="width:100%;border:0"><tr style="vertical-align:top">'
-            . '<td style="width:55%;padding:0 1.5em 0 0">' . $left . '</td>'
-            . '<td style="width:45%;padding:0">' . $this->detail($selected, $rows, $root) . '</td>'
+            . '<td style="width:33%;padding:0 1.5em 0 0">' . $left . '</td>'
+            . '<td style="width:67%;padding:0">' . $this->detail($selected, $rows, $root) . '</td>'
             . '</tr></table>';
 
         return $html . '</div>';
@@ -171,18 +174,20 @@ final class NodesScreen
         $nodes   = [];
         $actions = [];
         $hrefs   = [];
+        $submits = [];
 
         foreach ($rows as $row) {
-            $node             = $row['node'];
-            $nodes[]          = $node;
+            $node               = $row['node'];
+            $nodes[]            = $node;
             $actions[$node->id] = $this->rowActions($row, $mode);
+            $submits[$node->id] = $this->submissionFor($node->id);
             $hrefs[$node->id]   = add_query_arg(
                 ['page' => 'taxmod', 'taxmod_node' => $node->id],
                 admin_url('admin.php')
             );
         }
 
-        $cells = $this->rendering->cellsFor($nodes, $actions, $hrefs);
+        $cells = $this->rendering->cellsFor($nodes, $actions, $hrefs, $submits);
 
         $body = '';
 
@@ -213,28 +218,44 @@ final class NodesScreen
      *
      * @param array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool} $row
      */
-    private function rowActions(array $row, string $mode): string
+    private function rowActions(array $row, string $mode): array
     {
-        $node = $row['node'];
-
         if ($mode === 'trash') {
-            return $this->form($node->id, [
-                ['restore', esc_html__('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod')],
-            ]);
+            return [new Control('do', 'restore', __('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod'))];
         }
 
-        $buttons = [['add_child_here', '+', __('Add a child under this node', 'taxmod')]];
+        $controls = [new Control('do', 'add_child_here', '+', __('Add a child under this node', 'taxmod'))];
 
-        // U8: absent, not greyed — the tree already said which rows cannot move.
+        // U8: absent, not greyed — the tree already said which rows cannot move. And **omitting**
+        // is how availability reaches the renderer: deciding it needs knowledge a renderer must not
+        // fetch, so the boundary decides by leaving the control out.
         if (! $row['isFirst']) {
-            $buttons[] = ['up', '&uarr;', __('Move up among its siblings', 'taxmod')];
+            $controls[] = new Control('do', 'up', '↑', __('Move up among its siblings', 'taxmod'));
         }
 
         if (! $row['isLast']) {
-            $buttons[] = ['down', '&darr;', __('Move down among its siblings', 'taxmod')];
+            $controls[] = new Control('do', 'down', '↓', __('Move down among its siblings', 'taxmod'));
         }
 
-        return $this->form($node->id, $buttons);
+        return $controls;
+    }
+
+    /**
+     * Where a row's controls submit to, and what rides with them.
+     *
+     * ⚠️ **The two values a renderer cannot invent, and only those** — the URL and the nonce
+     * (`CD-1`, `CD-5`). Everything else about the form is built by the renderer.
+     */
+    private function submissionFor(int $id): Submission
+    {
+        return new Submission(
+            admin_url('admin-post.php'),
+            [
+                'action'         => self::ACTION,
+                'id'             => (string) $id,
+                '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $id),
+            ]
+        );
     }
 
     /**

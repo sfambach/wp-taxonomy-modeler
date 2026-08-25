@@ -103,26 +103,54 @@ final class TreeNodeRenderer implements Renderer
         $markup = '<div class="taxmod-tree-node" style="display:flex;gap:.5em;align-items:center">'
             . $named;
 
-        if ($context->surroundings->actions !== []) {
-            // ⚠️ **Outside the anchor, which is why the link wraps only icon and name**: a button
-            // inside a link does not work. Already finished markup from the boundary — escaping it
-            // again would print the controls instead of offering them.
-            $markup .= '<span class="taxmod-tree-actions">'
-                . implode('', $context->surroundings->actions) . '</span>';
-        }
-
-        // ⚠️ **The write count belongs to the row, so the row draws it.** The owner: *the node
-        // renderer should render a node — a row — in the tree, and that includes everything that
-        // makes up the row.* It is a **write count** and never a version
-        // ([D-349](../../../docs/NewConcept/90-decision-log.md)): the word *version* promises a
-        // state to return to, and this one only says *nobody changed this row since you read it*.
-        // *A bare number, because the sentence explaining it is a word the core cannot make
-        // ([OQ-087](../../../docs/NewConcept/91-open-questions.md)) — the surface says it once.*
-        if ($subject instanceof Node) {
-            $markup .= '<span class="taxmod-tree-writes" style="margin-left:auto;opacity:.55">'
-                . (int) $subject->version . '</span>';
-        }
+        // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the
+        // name to the far edge, so the names stay a readable column and the controls line up.
+        $markup .= '<span class="taxmod-tree-tail" style="margin-left:auto;display:flex;'
+            . 'gap:.4em;align-items:center">'
+            . $this->controls($context->surroundings)
+            // ⚠️ **The write count belongs to the row, so the row draws it** — the owner: *that
+            // includes everything that makes up the row.* It is a **write count** and never a
+            // version ([D-349](../../../docs/NewConcept/90-decision-log.md)): *version* promises a
+            // state to return to, and this only says *nobody changed this row since you read it*.
+            . ($subject instanceof Node
+                ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
+                : '')
+            . '</span>';
 
         return RenderResult::of($markup . '</div>');
+    }
+
+    /**
+     * The controls, built here from what the boundary described.
+     *
+     * ⚠️ **A renderer can build a button.** What it cannot do is invent the three WordPress-shaped
+     * values one needs — the form's **URL**, its **nonce**, and the **words** — so those arrive as
+     * {@see Submission} and {@see Control} and the markup is composed here. *Handing in finished
+     * HTML instead would have left the shape of a row to the surface, which is what `R1` forbids.*
+     */
+    private function controls(Surroundings $surroundings): string
+    {
+        if ($surroundings->actions === [] || $surroundings->submits === null) {
+            return '';
+        }
+
+        $fields = '';
+
+        foreach ($surroundings->submits->hidden as $name => $value) {
+            $fields .= '<input type="hidden" name="' . RenderResult::escape($name)
+                . '" value="' . RenderResult::escape($value) . '">';
+        }
+
+        $buttons = '';
+
+        foreach ($surroundings->actions as $control) {
+            $buttons .= '<button class="button" name="' . RenderResult::escape($control->name)
+                . '" value="' . RenderResult::escape($control->value) . '"'
+                . ($control->title === '' ? '' : ' title="' . RenderResult::escape($control->title) . '"')
+                . '>' . RenderResult::escape($control->label) . '</button>';
+        }
+
+        return '<form method="post" action="' . RenderResult::escape($surroundings->submits->action) . '"'
+            . ' style="display:flex;gap:.2em">' . $fields . $buttons . '</form>';
     }
 }
