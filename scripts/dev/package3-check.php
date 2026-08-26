@@ -200,10 +200,37 @@ if (isset($underConstants['Prefixes'])) {
 
     // ⚠️ The value lives as the `default`, which is what a model-level value **is** (D-026) — not a
     // trick but the definition.
-    $exponents = [];
-    foreach ($prefixSettings->resolveForNodes($prefixNodes) as $nodeId => $resolved) {
-        $exponents[$nodeId] = $resolved[SettingKey::DefaultValue->value]->value->int ?? null;
+    // ⚠️ **Read at the exponent attribute's path, not at the node's own** ([D-413](../../docs/NewConcept/90-decision-log.md)).
+    // This used to look at the empty path and pass — and it passed while the mechanism did **not
+    // work**: `kilo`'s `default = 3` sat there saying *kilo defaults to three*, which no attribute
+    // could see. *The check was right that a value should be there and wrong about where, which is why
+    // it stayed green through four days of D-378 not functioning.*
+    $exponentEdge = null;
+
+    foreach ($declaredEdges as $edge) {
+        if ($edge->name === 'exponent') {
+            $exponentEdge = $edge;
+        }
     }
+
+    $exponents = [];
+
+    foreach ($prefixNodes as $prefixNode) {
+        $resolved = $exponentEdge === null
+            ? []
+            : $prefixSettings->resolve($prefixSettings->chainFor($prefixNode), (string) $exponentEdge->id);
+
+        $exponents[$prefixNode->id] = $resolved[SettingKey::DefaultValue->value]->value->int ?? null;
+    }
+
+    check(
+        'the exponent is nowhere at the node\'s own default any more',
+        (int) $GLOBALS['wpdb']->get_var(
+            'SELECT COUNT(*) FROM ' . $GLOBALS['wpdb']->prefix . "taxmod_settings s
+             JOIN {$GLOBALS['wpdb']->prefix}taxmod_nodes n ON n.id = s.owner_id
+             WHERE s.setting_key = 'default' AND s.path = '' AND n.path LIKE '%.{$prefixes->id}.%'"
+        ) === 0
+    );
 
     check('every prefix carries its power of ten as a default', ! in_array(null, $exponents, true));
     // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.

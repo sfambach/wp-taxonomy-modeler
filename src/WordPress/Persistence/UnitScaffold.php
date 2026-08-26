@@ -50,7 +50,7 @@ final class UnitScaffold
     public const OPTION = 'taxmod_unit_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /**
      * The SI prefixes, as **powers of ten**.
@@ -195,11 +195,28 @@ final class UnitScaffold
         foreach (self::PREFIXES as $name => $power) {
             $node = $this->ensure($prefixes, $name, $created);
 
+            // ⚠️ **At the exponent attribute's path, and that is the fix** ([D-413](../../../docs/NewConcept/90-decision-log.md)).
+            // This used to write `default` at the **empty** path, meaning *kilo's own default* — and the
+            // `exponent` attribute could never see it, because a use site resolves from its target's
+            // chain and `kilo` is not in that chain. **So [D-378](../../../docs/NewConcept/90-decision-log.md)
+            // was written and did not function for four days**, measured on 2026-08-26
+            // ([OQ-099](../../../docs/NewConcept/91-open-questions.md)).
+            //
+            // ⚠️ *The path is the edge id, so the row says «kilo's value **for that attribute**» rather
+            // than «kilo's value». Those are the two different questions the column exists to keep
+            // apart, and this is the first consumer of it.*
             $this->settings->put(
                 $this->settings->chainFor($node),
                 SettingKey::DefaultValue->value,
-                TypedValue::ofInt($power)
+                TypedValue::ofInt($power),
+                (string) $exponent->id
             );
+
+            // ⚠️ **The old row is taken out rather than left beside the new one.** It said something
+            // false about the node — *kilo defaults to 3* — and a wrong answer that nobody reads is
+            // still a wrong answer sitting in the model. *`reset` at the empty path removes exactly
+            // that one and leaves the new one alone, which is what the path is for.*
+            $this->settings->reset($node->id, SettingKey::DefaultValue->value);
         }
 
         $base = $this->ensure($constants, 'Base units', $created);

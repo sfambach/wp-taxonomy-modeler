@@ -39,11 +39,15 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
@@ -163,7 +167,67 @@ check(
     ($settings->resolve($chain)[SettingKey::DefaultValue->value] ?? null)?->value->text === 'for the node itself'
 );
 
-echo "\n== 5. Tidying up ==\n";
+echo "\n== 5. The first real consumer: a prefix reads its exponent ==\n";
+
+// ⚠️ **This is what turns the column from a claim into a mechanism.** [D-378] made the exponent an
+// **attribute** of `Prefixes`, so that only prefixes have one, and its value lives as a `default`
+// ([D-026]). It had been written at the **empty** path — *kilo's own default* — where the attribute
+// could never see it, because a use site resolves from its **target's** chain and `kilo` is not in
+// it. **Written and not functioning for four days**, measured 2026-08-26.
+$rendering = new Rendering(
+    $nodes,
+    $framework,
+    $settings,
+    ShippedRenderers::registry(),
+    new Labels(new WpdbLabelRepository(), $framework)
+);
+
+$nodeNamed = static function (string $name) use ($wpdb, $nodes) {
+    $id = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
+        $name
+    ));
+
+    return $id === 0 ? null : $nodes->find($id);
+};
+
+$prefixes = $nodeNamed('Prefixes');
+$exponent = null;
+
+// ⚠️ **Not `$one`.** That variable holds the first scratch attribute, and reusing it here made the
+// tidying at the end try to remove the **exponent** edge from the scratch node. *The core refused it
+// — an inherited attribute is changed where it is declared — so a guard caught what a careless
+// variable name had started.*
+foreach ($prefixes === null ? [] : $editor->attributesOf($prefixes->id) as $candidate) {
+    if ($candidate->name === 'exponent') {
+        $exponent = $candidate;
+    }
+}
+
+if ($exponent === null) {
+    echo "  --   no exponent attribute; the unit scaffold has not run here\n";
+} else {
+    foreach (['kilo' => 3, 'mega' => 6, 'milli' => -3, 'yotta' => 24] as $name => $power) {
+        $node = $nodeNamed($name);
+        $read = $node === null ? null : $rendering->nonPersistentValue($node, $exponent);
+
+        check(
+            "«{$name}» reads its exponent through the attribute",
+            $read?->int === $power,
+            $read === null ? 'nothing' : $read->describe()
+        );
+    }
+
+    // ⚠️ *And a node that is not a prefix says **nothing** rather than zero — a missing row is a
+    // different fact from a value of none, which is the whole reason a path does not fall back.*
+    $ohm = $nodeNamed('Ohm');
+
+    if ($ohm !== null) {
+        check('a unit is not a prefix and answers nothing', $rendering->nonPersistentValue($ohm, $exponent) === null);
+    }
+}
+
+echo "\n== 6. Tidying up ==\n";
 
 $wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE owner_id = %d", $thing->id));
 

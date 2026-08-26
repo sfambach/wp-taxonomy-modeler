@@ -873,6 +873,42 @@ final class Rendering
      * @param  array<int, TypedValue>                             $held     What a record holds, if any.
      * @return array<int, TypedValue>                                       Keyed by edge id.
      */
+    /**
+     * What a **non-persistent** attribute is worth for one particular node.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["kilo"] -->|"default at path «exponent»"| V["3"]
+     *   P["Prefixes declares exponent · persistent = false"] --> K
+     * ```
+     *
+     * ⚠️ **This is the first consumer of `settings.path`** ([D-413](90-decision-log.md)) and it is
+     * what makes [D-378](90-decision-log.md) work at last. That decision made a prefix's exponent an
+     * **attribute** rather than a reserved key, so that *whoever hangs under `Prefixes` has one and
+     * nobody else does* — and its value lives as a `default`, because
+     * [D-026](90-decision-log.md) says *at model level there are no values, only defaults*.
+     *
+     * ⚠️ **Measured broken on 2026-08-26 and this is the repair.** The value had been written at the
+     * **empty** path, meaning *kilo's own default*, and the attribute could never see it: a use site
+     * resolves from its **target's** chain, and `kilo` is not in that chain. *So the question has to
+     * be asked of the node, at the attribute's path — which is exactly what the column was added
+     * for.*
+     *
+     * ⚠️ *Nothing is invented when nothing is there. A missing row means this node says nothing about
+     * that attribute, which is a different fact from «zero» and is returned as such.*
+     */
+    public function nonPersistentValue(Node $node, Relation $edge): ?TypedValue
+    {
+        $resolved = $this->settings->resolve(
+            $this->settings->chainFor($node),
+            (string) $edge->id
+        );
+
+        $default = $resolved[SettingKey::DefaultValue->value] ?? null;
+
+        return $default === null || $default->value->isNothing() ? null : $default->value;
+    }
+
     public function previewValuesFor(array $edges, array $resolved, array $held = []): array
     {
         $values = [];

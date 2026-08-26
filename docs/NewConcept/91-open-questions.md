@@ -3332,6 +3332,11 @@ the rest.*
 
 ## OQ-099 — A descendant's value for an inherited attribute has no address, and it already broke a decision
 
+> **Closed 2026-08-26 → [D-413](90-decision-log.md) and [D-414](90-decision-log.md).** The address is
+> `settings.path`, and the prefix exponent is its first consumer: `kilo` reads 3 **through the
+> attribute**, measured. *The question was raised by trying to build what the owner asked for and
+> finding the pattern it copied did not work — which is the most useful way for a question to arrive.*
+
 **Raised** 2026-08-26, by trying to build what the owner asked for and finding the pattern it copies
 does not work.
 
