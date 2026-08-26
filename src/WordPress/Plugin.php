@@ -179,6 +179,36 @@ final class Plugin
             // person clicking Reload expects. It becomes `self::VERSION` when the screen settles.*
             (string) (@filemtime($this->path('assets/admin.css')) ?: self::VERSION)
         );
+
+        $this->enqueueScript();
+    }
+
+    /**
+     * The one script this screen has, and the reason it is one line of work and one decision.
+     *
+     * ⚠️ **This screen was scriptless on purpose** — `form="…"` submits a panel from outside it, a
+     * nameless checkbox opens the chooser dialog, `<details>` holds the fold state. The owner asked
+     * three times for the tree to stay where it was, and the scriptless answer — a `#fragment` — can
+     * only **place** the selected row, never **preserve** the offset. *Told that plainly, he chose the
+     * script* ([D-408](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **In the footer, and that is not a detail.** The tree has to exist before the offset can be
+     * written to it, and `in_footer` is the version of that which needs no readiness handshake beyond
+     * the one the script already makes.
+     *
+     * ⚠️ *Same junction-safe URL as the stylesheet, for the same reason: `plugins_url()` cannot relate
+     * this repository's real path to the plugins directory, so the **folder name** is the one fact that
+     * holds on both sides.*
+     */
+    public function enqueueScript(): void
+    {
+        wp_enqueue_script(
+            'taxmod-admin',
+            plugins_url('assets/admin.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/admin.js')) ?: self::VERSION),
+            true
+        );
     }
 
     /** A path inside the plugin folder, from the file `boot()` was given. */
