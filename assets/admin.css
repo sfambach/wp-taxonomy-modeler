@@ -570,3 +570,51 @@ details.taxmod-page-block > summary {
 .taxmod-preview-hidden {
     font-style: italic;
 }
+
+/* ── The detail head ────────────────────────────────────────────────────────
+ * The owner's own sketch: a table, 3 rows, 2 columns — Action, System, Name on
+ * the left, the buttons, the constants and the name field on the right. */
+.taxmod-head {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+}
+
+.taxmod-head th,
+.taxmod-head td {
+    padding: .45em .7em;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-head tr:last-child th,
+.taxmod-head tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Narrow and quiet: the label names the row, the row is the content. */
+.taxmod-head-label {
+    width: 7em;
+    font-weight: 400;
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+    white-space: nowrap;
+}
+
+/* ⚠️ Derived, every one of them — so they read as facts and not as fields. */
+.taxmod-head-system {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3em .9em;
+    font-size: .85em;
+    color: #646970;
+}
+
+.taxmod-head-name input[type="text"] {
+    width: 100%;
+}

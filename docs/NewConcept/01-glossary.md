@@ -188,3 +188,59 @@ shows where they disagree:
 ⚠️ **The rule for writing about it: say *the chain* for a setting and *inheritance* for an attribute,
 and never the other way round.** *Where a sentence would be true either way, it is about the ancestors
 and should name them instead of picking a mechanism.*
+
+## Truth table — an attribute is not a setting
+
+The owner, 2026-08-26: *let us set up a truth table with three columns — claim, attributes, settings.
+Fill in what we already know, we complete it, and put it in the concept.* Then, in the same breath,
+the reason: *and afterwards challenge it against the individual settings.*
+
+⚠️ **Why this earns a place rather than being a summary.** The two got confused **four times in one
+day**, each time by me and each time differently: `hide` argued as *inheritance* when it travels the
+*chain*; `hide` filed as *bounding* because a table said so; a switch drawn for a key whose default is
+`true`; and `label_role` reported as *built* when it was storable, resolvable and unreachable. *A rule
+recalled is not a rule read (`PR-10`) — so here it is written down in the one shape that makes a
+mistake visible: side by side.*
+
+| Claim | Attribute | Setting |
+|---|---|---|
+| **It is inherited** | **yes** — the relation kind *is* the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)) | **no** — it is **resolved** along the chain, key by key ([D-079](90-decision-log.md), [D-093](90-decision-log.md)). *Nothing is copied down.* |
+| **It can be moved down to a subtype** | **yes** ([D-155](90-decision-log.md)) | **no** — it was never in one place to be moved from |
+| **It has a multiplicity** | **yes**, and only on the edge ([D-351](90-decision-log.md)) | **no** |
+| **It has a name a person reads** | **yes** — and the name is a **label**, per locale ([D-020](90-decision-log.md)) | **no** — it has a **key**, which is a token and never translated |
+| **It exists as a row when nobody set it** | **yes** — an edge is either there or it is not | **no** — settings are **sparse**: written only where they differ ([D-015](90-decision-log.md)) |
+| **It may be left unsaid** | **no** — an attribute is declared or absent | **yes**, and that is the normal case |
+| **It holds a value in a record** | **yes** — that is what a record *is* | **no** — a setting is about the **model**, not the data |
+| **It can be narrowed downwards and never widened** | not applicable — it is declared, not bounded | **some of them.** Bounding: permitted set, range, multiplicity, `mandatory` ([D-311](90-decision-log.md), [D-312](90-decision-log.md)). Choosing, and free: default, renderer, converter, labels, icon, order — **and `hide`, `read_only`** ([D-399](90-decision-log.md)) |
+| **It can sit on a node *and* on a use site** | it **is** the use site, seen from the owner | **yes** — both, and the use site is the last link before the moment |
+| **A renderer draws it** | **yes** — its value | **yes** — its control. *Both go through `R1`; neither is exempt* |
+| **It is recorded in the changelog** | **yes** — `attribute added` / `removed` / `restored` | ⚠️ **no, and that breaks a decision.** [D-081](90-decision-log.md): *every object has at least one changelog item*, and [D-061](90-decision-log.md) makes the changelog **the migration script**. On 2026-08-26 the database held **591 setting rows and zero changelog entries about settings** — `owner_kind` knows only `node` and `relation`. *A migration replaying it would produce a model with no settings.* |
+
+### What the table caught immediately
+
+⚠️ **A `switch` cannot say «nobody answered», and one key needs to.** `persistent` resolves to
+**`true`** when unset — the core reads `?? true`, because a value a person typed is kept unless
+somebody says otherwise — and the control draws **off**. **So the switch states the opposite of what
+is in force.** For `hide`, `read_only` and `mandatory` *off* is the true default and the switch is
+honest; `persistent` is the one that lies.
+
+*The owner found it from the screen: «persistent is not selectable at all and off by default — that is
+all wrong».* **Two candidate answers, and this is the one to challenge key by key:**
+
+1. **The switch shows the resolved value**, so an unset `persistent` draws *on*. Cheap, and it makes
+   *set* and *unset-but-true* look identical — which is the same blindness [D-352](90-decision-log.md)
+   fixed for `renderer` by showing what is in force without storing it.
+2. **The default flips to `false`**, so the switch is honest without changing the control. But then a
+   value nobody thought about stops being stored, which is the worse failure of the two.
+
+⚠️ *Not decided here. `PR-4`: it becomes a decision when the owner says which, and the same question
+has to be asked of **every** key with a non-`false` default — that is the challenge pass he asked
+for.*
+
+### The three words that keep getting swapped
+
+| Word | It answers | Not to be used for |
+|---|---|---|
+| **Inheritance** | what a node **has** | a setting — say *the chain* |
+| **Resolution chain** | what a **key** answers *here* | an attribute — say *inheritance* |
+| **Bounding** | which **direction** a setting may move | a whole category — [D-399](90-decision-log.md) took two keys out of it |

@@ -16,6 +16,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
@@ -423,52 +424,18 @@ final class NodesScreen
             // children one level up — *outdent* means exactly that, so the glyph says what happens
             // rather than merely looking destructive. The **branch** act gets the bin, because the
             // whole subtree goes.
+            // ⚠️ **One head over three rows now, drawn by {@see HeadRenderer}** — the owner's own
+            // sketch, and his question that settled where it belongs: *the head as we discussed it is
+            // still not there, that is a renderer, right?* `R1`, so yes.
+            //
+            // ⚠️ *`PageSlot::Fixed` and `PageSlot::Name` hold nothing of their own any more: their
+            // meanings became the head's second and third rows — `Fixed` is «what cannot be changed»,
+            // which is exactly the constants row. **So this is a layout change and not a new concept**,
+            // and the path stops being a chip behind the name because it now has a row that is
+            // honestly about derived facts.*
             PageSlot::Acts->value => new Section(
                 '',
-                '<div class="taxmod-toolbar">'
-                . $this->form(
-                    $selected->id,
-                    [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
-                    '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required class="taxmod-toolbar-name">'
-                )
-                // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is
-                // plain HTML — a button may name the form it belongs to — so nothing needs scripting
-                // and the panel keeps its own single form.
-                . '<button class="button button-primary taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
-                . ' name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '"'
-                . ' title="' . esc_attr__('Save every setting on this page', 'taxmod') . '">'
-                // ⚠️ **The diskette, not `dashicons-saved`** — that one is a **tick**, and the owner
-                // spotted it at once. One sign for saving on the whole screen.
-                . '<span aria-label="' . esc_attr__('Save', 'taxmod') . '">💾</span></button>'
-                . $this->form(
-                    $selected->id,
-                    [
-                        ['move', '', __('Hang it under the chosen node', 'taxmod'), 'move'],
-                        ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
-                        ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
-                    ],
-                    $this->parentChooser($selected, $rows, $root)
-                )
-                . '</div>'
-            ),
-            // ⚠️ **The path rides behind the name and has no band of its own.** R20a calls the fixed
-            // things *a band of chips*, and a chip is what this is — derived from the edges and never
-            // edited ([D-014](../../../docs/NewConcept/90-decision-log.md)). *The owner, seeing a
-            // heading over a single read-only string: `push the path behind the name and leave out a
-            // few headings`. A band for one chip was a frame around a frame.*
-            PageSlot::Name->value => new Section(
-                '',
-                $this->form(
-                    $selected->id,
-                    [['rename', esc_html__('Rename', 'taxmod'), __('Give it another name', 'taxmod')]],
-                    '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required style="flex:1">'
-                    // ⚠️ Inside the same row, so the chip reads as belonging to the name rather than
-                    // as a line of its own. Its `title` says what it is, since a bare dotted number
-                    // is the sort of thing that gets copied somewhere as if it meant something.
-                    . '<code class="taxmod-path" title="'
-                    . esc_attr__('Where it hangs in the tree. Derived from the edges and never edited.', 'taxmod')
-                    . '">' . esc_html($selected->path) . '</code>'
-                )
+                $this->head($selected, $rows, $root)
             ),
 
             // ⚠️ **Labels sit in `display` and R20a names no slot for them** — an assumption, and
@@ -666,6 +633,92 @@ final class NodesScreen
             ),
         ];
     }
+    /**
+     * The detail head, as the owner drew it: three labelled rows, two columns.
+     *
+     * His sketch: *form, 3 rows, 2 columns — left column Action, System, Name; right column the tool
+     * buttons and parts, then constants like path, id and version, creation, last change, change
+     * owner; the name field's Rename goes and is saved by the page save.*
+     *
+     * ⚠️ **The labels live here and not in the renderer**, because *Action*, *System* and *Name* are
+     * user-visible software strings and go through the text domain (`AR-2`) — the core has no `__()`
+     * and must not grow one (`CD-1`). *The renderer is handed three titled sections and decides only
+     * the shape.*
+     *
+     * ⚠️ **Rename is gone.** [D-392](../../../docs/NewConcept/90-decision-log.md): *what is actually
+     * saved is the page, not the single value.* The name field names the settings form with
+     * `form="…"`, so the page save writes it.
+     */
+    private function head(Node $selected, array $rows, Node $root): string
+    {
+        $acts = '<div class="taxmod-toolbar">'
+            . $this->form(
+                $selected->id,
+                [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
+                '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required class="taxmod-toolbar-name">'
+            )
+            // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
+            // HTML — a button may name the form it belongs to — so nothing needs scripting.
+            . '<button class="button button-primary taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
+            . ' name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '"'
+            . ' title="' . esc_attr__('Save every setting on this page', 'taxmod') . '">'
+            // ⚠️ The diskette, not `dashicons-saved` — that one is a **tick**, and the owner spotted it.
+            . '<span aria-label="' . esc_attr__('Save', 'taxmod') . '">💾</span></button>'
+            . $this->form(
+                $selected->id,
+                [
+                    ['move', '', __('Hang it under the chosen node', 'taxmod'), 'move'],
+                    ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
+                    ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
+                ],
+                $this->parentChooser($selected, $rows, $root)
+            )
+            . '</div>';
+
+        return $this->rendering->headFor($selected, [
+            HeadRenderer::ACTION   => new Section(__('Action', 'taxmod'), $acts),
+            HeadRenderer::SYSTEM   => new Section(__('System', 'taxmod'), $this->constants($selected)),
+            HeadRenderer::NAME_ROW => new Section(
+                __('Name', 'taxmod'),
+                '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
+                . ' form="' . esc_attr(SettingsRenderer::formFor($selected)) . '">'
+            ),
+        ])->markup;
+    }
+
+    /**
+     * What cannot be changed — `PageSlot::Fixed`'s meaning, as a row of chips.
+     *
+     * ⚠️ **Every one of these is derived**, which is what makes them belong together: `path` comes off
+     * the edges ([D-014](../../../docs/NewConcept/90-decision-log.md)), `id` is handed out once and
+     * never reissued ([D-340](../../../docs/NewConcept/90-decision-log.md)), `version` rises so a
+     * record can say what it was written against ([D-060](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Creation, last change and who changed it are not here yet, and that is a wiring gap rather
+     * than a missing decision.** `Changelog::summaryOf()` and {@see \Taxmod\Core\Model\ChangeSummary}
+     * are built and checked; this screen has no changelog collaborator to ask. *Saying so is worth
+     * more than drawing three empty chips — and it is the same fault shape as `hide` storing
+     * correctly while nothing read it ([D-396](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function constants(Node $selected): string
+    {
+        $chips = [
+            [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the edges and never edited.', 'taxmod')],
+            [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
+            [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
+        ];
+
+        $html = '';
+
+        foreach ($chips as [$label, $value, $why]) {
+            $html .= '<span class="taxmod-chip" title="' . esc_attr($why) . '">'
+                . '<span class="taxmod-chip-label">' . esc_html($label) . '</span> '
+                . '<code>' . esc_html($value) . '</code></span>';
+        }
+
+        return $html;
+    }
+
     /**
      * Where this node could go — everywhere except itself and its own subtree.
      *

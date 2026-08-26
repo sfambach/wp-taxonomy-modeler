@@ -95,6 +95,12 @@ final class ShippedRenderers
         // ⚠️ **One record as a block** — the fourth hand-built panel to go through `R1` (D-393).
         $registry->addForSurfaces(new RecordRenderer());
 
+        // ⚠️ **The fifth hand-built panel to become a renderer** — the owner, pointing at a head
+        // that still had none of his layout: *that is a renderer, right?* Surface-only, because a
+        // node's **head** is a screen's furniture and never a model author's choice of how a value
+        // looks.
+        $registry->addForSurfaces(new HeadRenderer());
+
         // ⚠️ **One settings panel for a node and for an attribute alike.** Surface-only: it is
         // asked for by a panel, never named as a node's `renderer`, because it draws a subject's
         // **configuration** and not its value.

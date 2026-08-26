@@ -14,6 +14,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\AttributeRenderer;
 use Taxmod\Core\Renderer\ChoiceRenderer;
+use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
 use Taxmod\Core\Renderer\Control;
@@ -936,6 +937,35 @@ final class Rendering
         }
 
         return ['shown' => $shown, 'hidden' => $hidden, 'fixed' => $fixed];
+    }
+    /**
+     * The detail head — three labelled rows, drawn by {@see HeadRenderer}.
+     *
+     * ⚠️ **The screen states the facts and the renderer decides the shape**, which is the same seam
+     * every other panel uses ([D-393](90-decision-log.md)): the buttons, the constants and the name
+     * field are boundary matter — they carry nonces, capabilities and translated labels — and how
+     * they are arranged is not.
+     *
+     * @param array<string, Section> $rows Keyed by `HeadRenderer::ACTION` / `SYSTEM` / `NAME_ROW`.
+     */
+    public function headFor(
+        Node $node,
+        array $rows,
+        Purpose $purpose = Purpose::Edit,
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): RenderResult {
+        return $this->renderers->byName(HeadRenderer::NAME)->render(
+            $node,
+            new RenderContext(
+                purpose: $purpose,
+                value: TypedValue::nothing(),
+                settings: [],
+                locale: $locale,
+                level: $level,
+                surroundings: new Surroundings(sections: $rows)
+            )
+        );
     }
     public function nodeAsForm(
         Node $node,
