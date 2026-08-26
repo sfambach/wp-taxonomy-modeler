@@ -3243,3 +3243,74 @@ carries everything.*
 
 ⚠️ *`PR-4`: still not decided, and no concept document moves. **But the shape of the decision is now
 clear enough to write in one sentence**, which it was not two rounds ago.*
+
+## OQ-098 — Is a value that can only live in one place a field rather than a setting?
+
+**Raised** 2026-08-26, by the owner, about the edge.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [02 Attribute and setting](02-attribute-and-setting.md)
+
+> *We have to talk about edges too. Attribute name, from, to, type, multiplicity, persistent are all
+> just **fields of the edge** and should be persisted there — in the relations table, I mean — so they
+> would have nothing at all to do with settings.*
+
+### The rule underneath it, which is sharper than the list
+
+**A setting is defined by being resolvable.** It has a chain, and the chain is what makes it a setting
+rather than a value. **A key whose chain can only ever have one candidate is a column wearing a
+costume.**
+
+⚠️ *So the test is one question per key: **can this be answered in more than one place?** If not, it is
+a field.*
+
+### Measured, and it proves his point harder than he put it
+
+| What he names | Today |
+|---|---|
+| `name`, `from`, `to` | **already columns** — `name`, `from_id`, `to_id`. Nobody disputes these |
+| `type` | **not a field and does not need to be** — the attribute's type **is** `to_id`, the node it points at. A `type` column would store a derivation twice |
+| `multiplicity` | a **setting**, and **edge-only** by [D-351](90-decision-log.md) — so its chain has exactly one candidate |
+| `persistent` | a **setting**, and *not* edge-only: [D-377](90-decision-log.md) says *set on the type, inherited by the attribute, overridable there* |
+| `mandatory` | a setting; the owner has just argued it should be edge-only too, for [D-351](90-decision-log.md)'s reason |
+
+⚠️ **And one of them is already stored both ways.** `position` is a **column** on `relations` — **84
+edges use it** — while `order` is also a **setting key**, with **2 rows**. *The same fact, two homes,
+and which of them decides the order is an open question nobody had asked.* **That is the duplicated-fact
+prohibition, live in the schema**, and it has to be resolved whichever way this question goes.
+
+### Applying the test to all sixteen keys
+
+| Answerable in more than one place? | Keys | Then |
+|---|---|---|
+| **no — the edge is the only place** | `multiplicity` ([D-351](90-decision-log.md)), `order`, and `mandatory` if the owner's argument lands | **columns** |
+| **yes — a type says one thing, a use site another** | `hide`, `read_only`, `range_min`/`max`/`step`, `default`, `renderer`, `converter`, `validator`, `icon`, `factor`, `offset` | **settings** |
+| **depends on a decision** | `persistent` — [D-377](90-decision-log.md) put it on the type deliberately; the owner has since been surprised twice by it travelling ([D-400](90-decision-log.md)) | **his call** |
+
+### What speaks for it
+
+- **It removes a walk that can only have one answer.** Resolving `multiplicity` today means asking six
+  links what they think about a key only the last one may hold.
+- **It matches the two concepts.** *Name, from, to, multiplicity* are **what the attribute is** — they
+  belong to the thing, like a column belongs to a row. A setting is a **decision about** it.
+- **It is cheaper and it is legible**, which is the same argument the owner makes in
+  [OQ-097](#oq-097--should-settings-be-materialised-into-the-inheriting-node-instead-of-resolved) —
+  *at the attribute, everything is directly readable*. For these keys it costs nothing to agree.
+- **`position` proves the design already leans that way** — somebody made ordering a column because it
+  is a property of the edge, and then a key was added for the same thing.
+
+### What it costs
+
+- **It supersedes [D-377](90-decision-log.md) for `persistent`**, which was decided with a reason: *set
+  on the type, inherited by the attribute*. That reason has to be withdrawn explicitly, not
+  outgrown quietly.
+- **The panel stops being «the settings panel».** It would draw **columns and settings together** —
+  which is more honest, and means `SettingsRenderer` needs to be told that some rows are fields.
+  *`R1` still holds; it is the same renderer with two sources.*
+- **A schema step**, and one that must migrate the 8 `multiplicity` rows and 2 `order` rows into
+  columns without losing them.
+- **`default` cannot follow them.** It is `LikeTheSubject` — its **type** changes with the subject — so
+  it cannot be one column. *That is the natural floor of this idea: only keys with a fixed shape can be
+  columns.*
+
+⚠️ *`PR-4`: undecided. But **`order` versus `position` is a fault today**, whatever is decided about
+the rest.*
