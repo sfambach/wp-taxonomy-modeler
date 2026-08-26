@@ -237,10 +237,7 @@ final class NodesScreen
             // load, so a fresh document starts at the top and the row a person just clicked is off
             // screen again. *`#taxmod-node-<id>` makes the browser scroll that row into view — inside
             // the tree's own scroll pane — with no script and nothing stored.*
-            $hrefs[$node->id] = add_query_arg(
-                ['page' => 'taxmod', 'taxmod_node' => $node->id],
-                admin_url('admin.php')
-            ) . '#taxmod-node-' . $node->id;
+            $hrefs[$node->id] = $this->backTo($node->id) . '#taxmod-node-' . $node->id;
 
             if ($row['hasChildren']) {
                 $toggles[$node->id] = $this->toggleUrl($node->id, $row['collapsed'], $collapsed);
@@ -2150,16 +2147,13 @@ final class NodesScreen
      */
     private function hiddenToggle(bool $showing): string
     {
-        $to = add_query_arg(
-            array_filter([
-                'page'            => 'taxmod',
-                'taxmod_node'     => $this->selectedFromRequest()?->id,
-                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
-                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
-                    : null,
-                'taxmod_hidden'   => $showing ? null : '1',
-            ]),
-            admin_url('admin.php')
+        // ⚠️ *One place assembles this address now ({@see backTo()}) — this method used to carry the
+        // folded set itself, the row links carried it too, and the redirect after an act carried
+        // neither. **Three careful copies that disagreed**, which is what the owner reported as «show
+        // hidden flips when I press a button».*
+        $to = $this->backTo(
+            $this->selectedFromRequest()?->id,
+            ['taxmod_hidden' => $showing ? null : '1']
         );
 
         return '<a class="taxmod-show-hidden" href="' . esc_url($to) . '">'
@@ -2308,11 +2302,57 @@ final class NodesScreen
 
         // Everything now happens **at** a node, so the person stays there rather than being
         // sent back to a screen with nothing selected.
-        wp_safe_redirect(add_query_arg(
-            ['page' => 'taxmod', 'taxmod_message' => rawurlencode($message), 'taxmod_node' => $stay],
-            admin_url('admin.php')
-        ));
+        wp_safe_redirect($this->backTo($stay, ['taxmod_message' => rawurlencode($message)]));
         exit;
+    }
+
+    /**
+     * The address a person should land on after an act — **with every circumstance still on it**.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["an act"] --> B["backTo()"]
+     *   B --> N["the node"] & C["the folded branches"] & H["show hidden"]
+     * ```
+     *
+     * ⚠️ **This exists because a circumstance was dropped three times in a row.** The owner reported
+     * the third: *when I press delete, «show hidden nodes» flips.* It did — and so did the folded set,
+     * which nobody had noticed: the redirect carried only `page`, the message and the node, while the
+     * **links** in the tree carried `taxmod_collapsed` and the hidden toggle carried both. *Three
+     * places assembling the same URL, each remembering a different subset.*
+     *
+     * ⚠️ **So there is one place now, and adding a fourth circumstance means changing one line.** That
+     * is the whole reason it is a method rather than three careful copies — the copies were careful and
+     * still disagreed.
+     *
+     * ⚠️ *A circumstance is not model state ([D-389](../../../docs/NewConcept/90-decision-log.md),
+     * [D-396](../../../docs/NewConcept/90-decision-log.md)) — it is who is looking, right now. It rides
+     * in the query string precisely so that it is **not** stored, and the price of that is having to
+     * carry it, which is what this pays.*
+     *
+     * @param array<string, string> $extra
+     */
+    private function backTo(?int $nodeId, array $extra = []): string
+    {
+        return add_query_arg(
+            array_filter([
+                'page'        => 'taxmod',
+                'taxmod_node' => $nodeId,
+                // The folded branches and the hidden mode, exactly as they arrived.
+                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
+                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
+                    : null,
+                'taxmod_hidden' => isset($_GET['taxmod_hidden'])
+                    ? sanitize_text_field(wp_unslash($_GET['taxmod_hidden']))
+                    : null,
+                // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
+                // to it.** The hidden toggle is the caller that needs it: passing `null` for
+                // `taxmod_hidden` replaces the ambient value and `array_filter` then drops the key —
+                // which is what *stop showing hidden nodes* has to mean in a URL.
+                ...$extra,
+            ]),
+            admin_url('admin.php')
+        );
     }
 
     private function notice(): string
