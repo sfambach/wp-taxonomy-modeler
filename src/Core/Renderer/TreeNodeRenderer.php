@@ -100,7 +100,17 @@ final class TreeNodeRenderer implements Renderer
 
         // ⚠️ A `div`, not a `span`: the controls handed in are forms, and a form may not sit inside
         // phrasing content.
-        $markup = '<div class="taxmod-tree-node" style="display:flex;gap:.5em;align-items:center">'
+        // ⚠️ **An id per row, so the browser can scroll to it.** The owner: *the tree always slides to
+        // the top when I select a node at the bottom — it should stay where it is; probably you reload
+        // instead of only re-rendering?* **He is right about the cause**: selecting a node is a full
+        // page load, because this screen has no script at all, and a fresh document starts at the top.
+        //
+        // ⚠️ *So the row gets an address and the link gets a `#fragment` — the browser then scrolls the
+        // selected row into view by itself, inside the tree's own scroll pane. **No script, no stored
+        // offset, and it survives a bookmark.** It is coarser than restoring an exact pixel offset, and
+        // «the node I picked is on screen» is what was actually asked for.*
+        $markup = '<div class="taxmod-tree-node" id="taxmod-node-' . (int) $subject->id . '"'
+            . ' style="display:flex;gap:.5em;align-items:center">'
             . $named;
 
         // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the

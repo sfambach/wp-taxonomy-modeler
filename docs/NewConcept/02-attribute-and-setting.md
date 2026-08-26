@@ -22,6 +22,7 @@ not a rule read.**
 
 | What is here | |
 |---|---|
+| [Where the settings discussion stands](#where-the-settings-discussion-stands--2026-08-26) | **start here** — what is settled, what is open, and the one column that unblocks five things |
 | [Inheritance is not the resolution chain](#-inheritance-is-not-the-resolution-chain) | the two mechanisms that share an ancestor walk |
 | [Two concepts, not two kinds of the same thing](#two-concepts-not-two-kinds-of-the-same-thing) | what each one **is**, and the test that decides which you are holding |
 | [Truth table](#truth-table--an-attribute-is-not-a-setting) | rows 1–12, node against attribute |
@@ -34,6 +35,80 @@ not a rule read.**
 [OQ-097](91-open-questions.md) asks whether settings should be **materialised** into the inheriting
 node instead of resolved. If it lands, **eight of the twenty-five rows change and two of them reverse**
 — which is counted there, not here.*
+
+## Where the settings discussion stands — 2026-08-26
+
+The owner: *I am slowly losing the overview in the settings discussion. Can you update the docs so I can
+read, and then we talk.* **This page is that.** One line per thing, pointing into the detail rather than
+repeating it.
+
+### Settled today — eight decisions
+
+| | | |
+|---|---|---|
+| [D-399](90-decision-log.md) | **`hide` and `read_only` leave the bounding category** | they are settings, not classification — hiding promises nobody anything |
+| [D-400](90-decision-log.md) | **a constant is drawn as a reference; no bare id reaches a surface** | and a renderer that cannot serve gives way to the **type's default**, not to the fallback |
+| [D-401](90-decision-log.md) | **a `bool` has two states; «not set» is not a third** | the control shows the stored value, else the default |
+| [D-402](90-decision-log.md) | **a subtype has its ancestor's settings until it says otherwise — *per key*** | set `range_min` and you still get the ancestor's `default` |
+| [D-403](90-decision-log.md) | **every setting write is journalled**, against its owner | 591 rows had no history at all; `owner_kind` gained `installation` |
+| [D-404](90-decision-log.md) | **a key's own default lives at the installation identity** | [D-079](90-decision-log.md) had said so four days earlier and nothing had used it |
+| [D-405](90-decision-log.md) | **`mandatory` is gone** — the multiplicity's floor *is* mandatoriness | and the guarantee got **stronger**: one edge, nowhere to loosen it |
+| [D-406](90-decision-log.md) | **`hide`/`read_only` free in the code too** | D-399's other half, which had been written and not built |
+
+### Open — and what each one is actually asking
+
+| | The question in one line | Weight |
+|---|---|---|
+| [OQ-092](91-open-questions.md) | **does `settings` need a `path` column?** | ⚠️ **the bottleneck — five things wait on it** |
+| [OQ-099](91-open-questions.md) | where does a **descendant's** value for an **inherited** attribute live? | *the same column, found from the other end* |
+| [OQ-097](91-open-questions.md) | should settings be **written into** the inheriting node instead of resolved? | eight of twenty-five table rows change; two reverse |
+| [OQ-098](91-open-questions.md) | is a value that can live in **only one place** a **field** rather than a setting? | `multiplicity`, `order` — and `order` is already stored twice |
+| [OQ-093](91-open-questions.md) | how does a key say **which subjects** it applies to? | a text node is still offered `factor` |
+| [OQ-095](91-open-questions.md) | may an **attribute own labels**, or is its name only a column? | measured: 17 edge names, **zero** edge labels |
+| [OQ-096](91-open-questions.md) | is a **subtype substitutable** where a reference is typed? | drawing already says yes; validation says nothing |
+| [OQ-094](91-open-questions.md) | how does a person type `Ω`, `µ`, `£`? | not a settings question, but it sits in the same panel |
+
+### The one thing that unblocks the most
+
+⚠️ **[OQ-092](91-open-questions.md)'s `path` column on `settings`.** It is the address for *«this
+place's value for that key»*, and **five separate things wait for it**:
+
+| | |
+|---|---|
+| several **renderers** and several **validators** | [D-236](90-decision-log.md), [D-158](90-decision-log.md) — decided, unbuildable |
+| several **defaults** | [C30](10-domain-core.md) — decided, unbuildable |
+| the **prefix exponent** working at all | [D-378](90-decision-log.md) — decided, and **measured not to function** |
+| **`factor`/`offset` as attributes** | the owner said yes; it needs the address first |
+| **materialised settings** | [OQ-097](91-open-questions.md) needs a per-`(node, edge)` row |
+
+*Three of those five are **already decided**. That is the argument: the column is not a new feature, it
+is the thing four decisions assumed existed.*
+
+### Buildable now, no decision needed
+
+| | |
+|---|---|
+| **`exponent`, `factor`, `multiplicator` as subtypes of `int`/`decimal`** | a node under `int` **is** an `int` — `my_int` proves it. Each carries its own bounds and renderer, which is the owner's *«we would know what is used in the renderer»* |
+| **`order` retires in favour of the `position` column** | nothing reads the key; 84 edges use the column ([row 30](97-implementation-plan.md)) |
+| **a required field marked as required** | `Multiplicity::requiresOne()` exists and had no caller ([row 31](97-implementation-plan.md)) |
+| **the tidying** | 590 orphaned rows, 8 empty rows ([rows 28–29](97-implementation-plan.md)) |
+
+### What kept going wrong today, so it is not repeated
+
+⚠️ **Four decisions were written and not built**, and every one was found by the owner looking at the
+screen rather than by a green test run:
+
+| | |
+|---|---|
+| `hide` stored correctly and **nothing read it** | [D-396](90-decision-log.md) |
+| `label_role` storable, resolvable and **unreachable** — no control | [row 20](97-implementation-plan.md) |
+| `hide`/`read_only` **half-built** — the renderer greyed out, the refusal stayed | [D-406](90-decision-log.md) |
+| the **prefix exponent** written and **not connected** | [OQ-099](91-open-questions.md) |
+
+⚠️ **And three facts were stored twice**: `mandatory` beside the multiplicity ([D-405](90-decision-log.md)),
+`order` beside `position` ([row 30](97-implementation-plan.md)), and a bool's default invented eight
+times in readers ([D-404](90-decision-log.md)). *The same shape every time: something derivable was
+given a home of its own.*
 
 ---
 ## ⚠️ Inheritance is not the resolution chain

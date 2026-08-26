@@ -224,10 +224,14 @@ final class NodesScreen
             $node               = $row['node'];
             $actions[$node->id] = $this->rowActions($row, $mode);
             $submits[$node->id] = $this->submissionFor($node->id);
-            $hrefs[$node->id]   = add_query_arg(
+            // ⚠️ **The fragment is what keeps the tree where it was.** Selecting a node is a full page
+            // load, so a fresh document starts at the top and the row a person just clicked is off
+            // screen again. *`#taxmod-node-<id>` makes the browser scroll that row into view — inside
+            // the tree's own scroll pane — with no script and nothing stored.*
+            $hrefs[$node->id] = add_query_arg(
                 ['page' => 'taxmod', 'taxmod_node' => $node->id],
                 admin_url('admin.php')
-            );
+            ) . '#taxmod-node-' . $node->id;
 
             if ($row['hasChildren']) {
                 $toggles[$node->id] = $this->toggleUrl($node->id, $row['collapsed'], $collapsed);
