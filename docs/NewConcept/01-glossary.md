@@ -309,6 +309,49 @@ model root.
 decision wanted the key to own «what it stands for when nobody said anything»; putting it at the
 installation makes the same answer **visible and changeable** instead of compiled in. **`persistent`
 stops being a `?? true` buried in a reader** and becomes one row a person can see.
+### Settings on an attribute — the use site is the last link
+
+The third column the owner asked for: *then on with attribute settings and a table for it.* Everything
+below is **measured on 2026-08-26** against attribute `1398` («int» on `Parts List`, pointing at
+`int` = `1171`), not recalled.
+
+```mermaid
+flowchart LR
+    I["641 installation"] --> R["1 model root"] --> A["406 · 408 ancestors"] --> T["1171 int · the target"] --> E["1398 the edge"]
+```
+
+**The chain of a use site is the chain of its *target* plus the edge**, and the edge is **last** — so a
+setting written at the attribute wins over the type it points at, over the type's ancestors, and over
+the installation. *Measured: `641 → 1 → 406 → 408 → 1171 → 1398`.*
+
+| # | Claim | Setting on a **node** | Setting at a **use site** (an attribute) |
+|---|---|---|---|
+| **13** | **Where it sits in the walk** | one of the links — installation, root, an ancestor, or the node | **the last link, always.** Nothing resolves after it |
+| **14** | **Whose type its value takes** | the node's own, where the key is `LikeTheSubject` | **the target's.** `range_min` on an attribute pointing at `int` is an `int` |
+| **15** | **Keys that exist only here** | — | **`multiplicity`** ([D-351](90-decision-log.md)) and **`order`**, because ordering is per parent. *Measured: `multiplicity` on a node is refused — «belongs to a use of a node, not to the node itself — set it on the attribute»* |
+| **16** | **Narrowing a bound** | may narrow what an ancestor said | **may narrow, and is the narrowest point there is.** *Measured: `range_min = 10` took at the edge while `range_max` and `renderer` still read `← von 1171`* |
+| **17** | **Its own name** | a plain `name` column, and labels beside it | **a plain `name` column only.** *Measured: 17 edges carry a name, **zero** labels belong to an edge* — [OQ-095](91-open-questions.md) asks whether that is a rule or an accident |
+| **18** | **Renaming it** | free | **only where the attribute is declared** ([D-376](90-decision-log.md)). *An inherited attribute belongs to the ancestor, and renaming it from a descendant would rename it for everybody, silently* |
+| **19** | **It is journalled** | as `node` | as `relation` — same table, same shape ([D-403](90-decision-log.md)) |
+
+#### Why this is the answer to «what is the difference between an attribute and a setting»
+
+The owner asked it while looking at `int`'s bounds: *that is sort of the difference between attribute
+and setting, we will come to it later.* **Rows 13 to 19 are that difference, and it is not a list of
+features:**
+
+- **An attribute is a *thing* in the model.** It has an identity, a name, a target, and it is
+  inherited — the owner's own anchor: *attributes behave like OO in inheritance*.
+- **A setting is an *answer* to a question, at a place.** It has no identity a person navigates to; it
+  has a key, a place in a walk, and a value.
+
+⚠️ **Which is why the same key means different things at different places, and that is a feature.**
+`range_min` on `int` says *what an integer is*; `range_min` on **this attribute** says *what this
+field accepts*. **Same key, same type, different scope** — and the walk is what tells them apart.
+
+⚠️ *And it is why a setting on a **constant** reaches every attribute pointing at it — which surprised
+the owner when `persistent = 0` on `Base units` stopped a unit from being stored
+([D-400](90-decision-log.md)). Nothing was inherited; the constant is simply **in the walk**.*
 ### The three words that keep getting swapped
 
 | Word | It answers | Not to be used for |

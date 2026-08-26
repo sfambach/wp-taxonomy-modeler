@@ -35,7 +35,7 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public function __construct(
         private readonly ModelEditor $editor,
