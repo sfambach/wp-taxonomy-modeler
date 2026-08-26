@@ -373,7 +373,8 @@ check('and the fallback is not choosable at all', ! $rendering->knowsRenderer('p
 
 echo "\n== 15. The settings side is drawn, not printed (R20a) ==\n";
 $intNode = $nodes->byId($seeded['int']->id);
-$settings->put($settings->chainFor($intNode), SettingKey::Mandatory->value, TypedValue::ofBool(true));
+// ⚠️ `mandatory` was the switch here until [D-405]; `hide` makes the same point and still exists.
+$settings->put($settings->chainFor($intNode), SettingKey::Hide->value, TypedValue::ofBool(true));
 
 $rows = [];
 foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode))) as $row) {
@@ -381,9 +382,9 @@ foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFo
 }
 
 check('a boolean setting is drawn as a sliding switch',
-    isset($rows['mandatory']) && $rows['mandatory']->wasDrawn()
-        && str_contains($rows['mandatory']->result->markup, 'taxmod-toggle-track'),
-    isset($rows['mandatory']) ? ($rows['mandatory']->result->markup ?? 'undrawn') : 'missing');
+    isset($rows['hide']) && $rows['hide']->wasDrawn()
+        && str_contains($rows['hide']->result->markup, 'taxmod-toggle-track'),
+    isset($rows['hide']) ? ($rows['hide']->result->markup ?? 'undrawn') : 'missing');
 check('a borrowing key takes the type of the node it sits on',
     isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
 // ⚠️ **This check used to assert the opposite, and the old reason was honest at the time:** a
@@ -407,10 +408,10 @@ check('a choice with nothing in it is a dead control, not an empty one',
     isset($editRows['converter']) ? substr($editRows['converter']->result->markup ?? 'undrawn', 0, 90) : 'missing');
 
 // ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
-check('mandatory reads back as a boolean, not as the number one',
-    $settings->resolve($settings->chainFor($intNode))['mandatory']->value->asBool() === true);
+check('a switch reads back as a boolean, not as the number one',
+    $settings->resolve($settings->chainFor($intNode))['hide']->value->asBool() === true);
 
-$settings->reset($intNode->id, SettingKey::Mandatory->value);
+$settings->reset($intNode->id, SettingKey::Hide->value);
 
 echo "\n== 16. A node is drawn by a container, not by a screen (D-098, R46, R75) ==\n";
 $formed = $rendering->nodeAsForm(

@@ -41,6 +41,12 @@ final class CannotWiden extends DomainError
         ));
     }
 
+    /**
+     * ⚠️ *Named for `mandatory`, which no longer exists ([D-405]). It still serves `hide` and
+     * `read_only`… **no: those became free in both directions too ([D-406]).** So nothing reaches this
+     * any more, and it is kept only because deleting a named refusal is a separate decision from
+     * changing what refuses.*
+     */
     public static function mandatoryStays(SettingKey $key): self
     {
         return new self(sprintf(

@@ -839,6 +839,22 @@ final class NodesScreen
                     __('Save this attribute — its name and how often it may occur', 'taxmod'),
                     $own
                 ),
+                // ⚠️ **Duplicate, and only for an own attribute** — the owner: *duplicate for the
+                // attribute is missing too.* An inherited one belongs to the ancestor that declared
+                // it, so copying it from here would put a second declaration where the first never was.
+                //
+                // ⚠️ *The copy needs a **different name**: [D-281](../../../docs/NewConcept/90-decision-log.md)
+                // refuses an edge with the same `from`, `kind`, `to` **and name**, because the name is
+                // part of what makes an edge itself. So the boundary supplies «(copy)» — a translatable
+                // word the core has no business inventing (`AR-2`).*
+                new Control(
+                    'do',
+                    'duplicate_attribute',
+                    __('Duplicate', 'taxmod'),
+                    __('Copy this attribute with its settings — under a new name, because an edge is partly its name', 'taxmod'),
+                    $own,
+                    icon: 'admin-page'
+                ),
                 // ⚠️ **Only an own attribute can be removed here.** An inherited one belongs to the
                 // ancestor that declared it; removing it from a descendant would be
                 // [D-155](../../../docs/NewConcept/90-decision-log.md)'s *moved down* by another
@@ -2113,6 +2129,18 @@ final class NodesScreen
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
                 'save_attribute'    => $this->saveAttribute($id, $edge, $attributeName, $settingValue),
+                // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an edge
+                // with the same name, and inventing a suffix is writing user-visible text — which
+                // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
+                'duplicate_attribute' => $this->editor->duplicateAttribute(
+                    $id,
+                    $edge,
+                    sprintf(
+                        /* translators: %s: the name of the attribute being copied. */
+                        __('%s (copy)', 'taxmod'),
+                        $this->editor->ownAttribute($id, $edge)->name
+                    )
+                )->id,
                 // ⚠️ **`$edge` decides the owner** (D-381): the same three acts serve a node and a use site,
                 // and a write meant for one attribute must not land on the type it points at.
                 // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the

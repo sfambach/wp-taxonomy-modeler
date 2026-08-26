@@ -34,10 +34,19 @@ enum SettingKey: string
      */
     case Multiplicity = 'multiplicity';
 
-    /** ⚠️ Once an ancestor declares it, it stays for every descendant (D-311). */
-    case Mandatory = 'mandatory';
+    // ⚠️ **`mandatory` used to be here and is gone** ([D-405](../../../docs/NewConcept/90-decision-log.md)).
+    // The owner: *whether a field is mandatory is already determined by the multiplicity — whether it
+    // runs from zero to something or from one to something. **From one it means it is mandatory.***
+    // **There is no fifth combination**, so the two keys could never disagree, and a fact that cannot
+    // disagree with another fact is the same fact. {@see Multiplicity::requiresOne()} is the answer.
 
-    /** Hidden here and below. Once hidden, never revealed further down. */
+    /**
+     * Hidden here and below — **and a descendant may reveal it again** ([D-399](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *It used to say «once hidden, never revealed further down». The owner overruled that: `hide`
+     * and `read_only` must be settable on a node whatever the parent says, because they are **settings,
+     * not classification** — hiding a field promises nobody anything, so there is nothing to protect.*
+     */
     case Hide = 'hide';
 
     /** Fixed here and below. Once fixed, never unfixed further down. */
@@ -194,7 +203,13 @@ enum SettingKey: string
             self::Multiplicity                          => Narrowing::BySubset,
             self::RangeMin                              => Narrowing::OnlyUp,
             self::RangeMax                              => Narrowing::OnlyDown,
-            self::Mandatory, self::Hide, self::ReadOnly => Narrowing::OnceOnAlwaysOn,
+            // ⚠️ **`hide` and `read_only` are free in both directions** ([D-399](../../../docs/NewConcept/90-decision-log.md)),
+            // and this line was the half of that decision that never got built. *It still said
+            // `OnceOnAlwaysOn`, so a descendant could not reveal what an ancestor hid — which is
+            // exactly what the owner stated as fact and I only implemented the other half of.*
+            //
+            // ⚠️ *The one-way rule that remains lives on `Multiplicity` and on the ranges, where it is
+            // about what a classification **guarantees**. Hiding a field guarantees nobody anything.*
             default                                     => Narrowing::Free,
         };
     }
@@ -218,7 +233,7 @@ enum SettingKey: string
     public function shape(): SettingShape
     {
         return match ($this) {
-            self::Mandatory, self::Hide, self::ReadOnly,
+            self::Hide, self::ReadOnly,
             self::Persistent                           => SettingShape::Switch,
             self::Order                                => SettingShape::Whole,
             self::Factor, self::Offset                 => SettingShape::Exact,

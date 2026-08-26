@@ -420,42 +420,61 @@ final class SettingsTest extends TestCase
     #[Test]
     public function what_an_ancestor_declares_mandatory_stays_mandatory(): void
     {
+        // ⚠️ **Same guarantee, one key** ([D-405](../../docs/NewConcept/90-decision-log.md)). This
+        // used to write `mandatory` and expect the refusal; `mandatory` is gone because the
+        // **multiplicity already says it** — `1..1` and `1..*` require one, `0..1` and `0..*` do not,
+        // and there is no fifth combination. *So the thing worth testing is unchanged and the key it
+        // is tested through is different.*
         // ⚠️ D-311, from the owner's own case: a bird can fly — but what about a penguin? The
         // answer is that *every bird has a name* must keep meaning something, or a
         // classification guarantees nothing about the group it names.
-        $type  = $this->type('Text');
-        $chain = $this->settings->chainFor($type);
+        // ⚠️ **On an edge, because multiplicity is edge-only** — which is the owner's own reason for
+        // folding `mandatory` into it: an obligation belongs to a **use** of a node, never to the node.
+        $edge  = $this->attributeEdge();
+        $chain = $this->settings->chainForUseSite($edge);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, TypedValue::ofBool(true));
+        $this->settings->put([self::INSTALLATION], SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::Mandatory->value, TypedValue::ofBool(false));
+        // `0..1` drops the floor from one to zero — which is exactly «no longer mandatory».
+        $this->settings->put($chain, SettingKey::Multiplicity->value, TypedValue::ofText('0..1'));
     }
 
     #[Test]
     public function something_not_yet_mandatory_may_become_mandatory(): void
     {
-        $type  = $this->type('Text');
-        $chain = $this->settings->chainFor($type);
+        $edge  = $this->attributeEdge();
+        $chain = $this->settings->chainForUseSite($edge);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Mandatory->value, TypedValue::ofBool(false));
-        $this->settings->put($chain, SettingKey::Mandatory->value, TypedValue::ofBool(true));
+        // Raising the floor from zero to one **is** «becoming mandatory», and it narrows, so it holds.
+        $this->settings->put([self::INSTALLATION], SettingKey::Multiplicity->value, TypedValue::ofText('0..1'));
+        $this->settings->put($chain, SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
 
-        self::assertTrue($this->settings->resolve($chain)[SettingKey::Mandatory->value]->value->asBool());
+        $resolved = $this->settings->resolve($chain)[SettingKey::Multiplicity->value]->value->text;
+
+        self::assertSame('1..1', $resolved);
+        self::assertTrue(Multiplicity::fromSetting($resolved)->requiresOne());
     }
 
     #[Test]
-    public function what_is_hidden_above_cannot_be_revealed_below(): void
+    public function what_is_hidden_above_may_be_revealed_below(): void
     {
+        // ⚠️ **This test asserted the opposite until [D-399](../../docs/NewConcept/90-decision-log.md)**,
+        // and it was honest then. The owner overruled the rule it was defending: *`hide` and
+        // `read_only` must be settable on the node no matter what the parent has — that is a fact,
+        // otherwise the concept does not work. **It is a setting, not an attribute.***
+        //
+        // ⚠️ *Bounding exists so a classification **guarantees** something about a group. `mandatory`
+        // was a promise; hiding a field promises nobody anything, so there was nothing to protect —
+        // and the rule had been reasoned from the category rather than from the reason under it.*
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
         $this->settings->put([self::INSTALLATION], SettingKey::Hide->value, TypedValue::ofBool(true));
-
-        $this->expectException(CannotWiden::class);
-
         $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(false));
+
+        self::assertFalse($this->settings->resolve($chain)[SettingKey::Hide->value]->value->asBool());
     }
 
     #[Test]
@@ -523,12 +542,15 @@ final class SettingsTest extends TestCase
     #[Test]
     public function every_engine_key_says_which_way_it_may_move(): void
     {
-        self::assertTrue(SettingKey::Mandatory->isBounding());
-        self::assertTrue(SettingKey::Hide->isBounding());
+        // ⚠️ **Two keys left the bounding category on 2026-08-26** ([D-399](../../docs/NewConcept/90-decision-log.md)):
+        // `hide` and `read_only`. What remains bounding is what a classification **guarantees** — the
+        // ranges and the multiplicity. *`mandatory` is not here at all any more
+        // ([D-405](../../docs/NewConcept/90-decision-log.md)): the multiplicity says it.*
+        self::assertFalse(SettingKey::Hide->isBounding());
+        self::assertFalse(SettingKey::ReadOnly->isBounding());
         self::assertTrue(SettingKey::RangeMax->isBounding());
         self::assertTrue(SettingKey::Multiplicity->isBounding());
         self::assertTrue(SettingKey::Multiplicity->isEdgeOnly());
-        self::assertFalse(SettingKey::Mandatory->isEdgeOnly());
         self::assertFalse(SettingKey::DefaultValue->isBounding());
         self::assertFalse(SettingKey::Renderer->isBounding());
         self::assertFalse(SettingKey::Icon->isBounding());

@@ -32,7 +32,7 @@ namespace Taxmod\Core\Model;
  * same key, two groups, because the key borrows its type from what is being configured
  * ({@see SettingKey::typeFor()}) and the borrowing is the thing that makes it belong.
  *
- * ⚠️ **`Rules` holds what is true of anything at all** — `mandatory`, `hide`, `read_only`,
+ * ⚠️ **`Rules` holds what is true of anything at all** — `hide`, `read_only`,
  * `multiplicity`, `persistent`, `order`. *A thing can be required whatever it holds.*
  *
  * ⚠️ **There were three fixed groups for an hour and one of them is gone.** `Internal` was made for

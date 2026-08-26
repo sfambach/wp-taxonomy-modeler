@@ -28,7 +28,8 @@ final class SettingShapeTest extends TestCase
     #[Test]
     public function the_switches_are_switches(): void
     {
-        foreach ([SettingKey::Mandatory, SettingKey::Hide, SettingKey::ReadOnly] as $key) {
+        // ⚠️ `mandatory` was here until [D-405]: the multiplicity says it, so the key is gone.
+        foreach ([SettingKey::Hide, SettingKey::ReadOnly, SettingKey::Persistent] as $key) {
             self::assertSame(SettingShape::Switch, $key->shape(), $key->value);
             self::assertSame(SimpleType::Bool, $key->typeFor(null), $key->value);
         }

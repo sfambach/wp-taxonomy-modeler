@@ -1,7 +1,12 @@
 # Attribute and setting — two concepts
 
-**An attribute is a question the model asks its users. A setting is a decision the modeller makes about
-a question.** Everything in this document follows from that one line.
+**With attributes I configure additional fields on a node. With settings I say how those fields should
+behave.** — the owner, 2026-08-26, correcting an earlier attempt of mine.
+
+⚠️ **His line replaced «an attribute is a question, a setting is a decision about a question», and it
+earned the replacement.** Mine put the *user* at the centre and was not wrong; **his puts the field at
+the centre, and only his explains where things go.** *I had the focus wrong, which is how a definition
+that reads well can still be the wrong tool.*
 
 ⚠️ **Why it is its own document.** It grew inside [`01-glossary.md`](01-glossary.md) over one day —
 2026-08-26 — until it was three hundred of that file's four hundred and sixty lines. *A glossary is
@@ -77,8 +82,17 @@ flowchart TB
     end
 ```
 
-**An attribute is a question. A setting is a decision about a question.** Everything else follows from
-that, including every row of the tables below.
+**An attribute puts a field on a node. A setting says how that field behaves.** Everything else follows
+from that, including every row of the tables below.
+
+⚠️ **And the test of a definition is whether it tells you where a thing goes.** His does:
+
+| Key | Why it is a setting, in his terms |
+|---|---|
+| **`multiplicity`** | *how many fields hang there* — a statement about the field, not a field of its own |
+| **`persistent`** | *is the field saved along* — likewise |
+| **`renderer`, `converter`, `range_*`, `default`** | plainly *how it behaves* |
+| **`mandatory`** | ⚠️ **it is not one.** *See below — the multiplicity already says it.* |
 
 | | **Attribute** | **Setting** |
 |---|---|---|
@@ -89,6 +103,43 @@ that, including every row of the tables below.
 | **Who invents it** | a person, freely, with a name they choose | **nobody.** Sixteen engine keys; a reserved name cannot be invented ([D-084](90-decision-log.md)) |
 | **What it is called** | a **name**, which is user-visible text | a **key**, which is a token and never translated |
 
+### `mandatory` is redundant — the multiplicity already says it
+
+> *With `mandatory` opinions differ. Thinking about it, it is basically a concept error — because
+> whether a field is mandatory is already determined by the multiplicity: whether it runs from zero to
+> something or from one to something. **From one it means it is mandatory.***
+
+⚠️ **He is right, and the code already agrees with him without anybody noticing.**
+
+| Multiplicity | Lower bound | Mandatory? |
+|---|---|---|
+| `0..1` | 0 | no |
+| `1..1` | 1 | **yes** |
+| `0..*` | 0 | no |
+| `1..*` | 1 | **yes** |
+
+**There is no fifth combination.** `0..1` *and* mandatory would mean *at most one, and you must give
+one* — which is `1..1`. `0..*` and mandatory is `1..*`. **So the two keys can never disagree, and a
+fact that cannot disagree with another fact is the same fact.**
+
+⚠️ **Measured, 2026-08-26, and it is worse than redundant:**
+
+- `Multiplicity::requiresOne()` **already exists** — `$this === ExactlyOne || $this === OneToMany` —
+  and is **called from nowhere outside its own class.** *The derived answer was written and never
+  asked for.*
+- `mandatory` is threaded through **23 files** as a key of its own: its shape, its category, the
+  renderers that draw it, the narrowing rules, four checks and five tests.
+- In the database: **3 `mandatory` rows against 9 `multiplicity` rows.**
+
+⚠️ **And it dissolves the argument I had built against materialising settings.**
+[D-311](90-decision-log.md)'s *«every bird has a name»* was the strongest thing I had — and it is
+expressed by a **multiplicity of `1..*`**, on the edge, where it can only be. *So the guarantee needs
+one key, not two, and it was never `mandatory` that carried it.*
+
+⚠️ *This is the **third** duplicated fact found in one day, and the pattern is the same every time: a
+value that is derivable was given a home of its own. The others were `order` versus `position`
+([OQ-098](91-open-questions.md), list row 30) and a bool's default invented eight times in readers
+([D-401](90-decision-log.md), [D-404](90-decision-log.md)).*
 ### The test that decides it, and it is the owner's own
 
 > ***How does the user know he needs the multiplier?***
@@ -319,6 +370,44 @@ field accepts*. **Same key, same type, different scope** — and the walk is wha
 ⚠️ *And it is why a setting on a **constant** reaches every attribute pointing at it — which surprised
 the owner when `persistent = 0` on `Base units` stopped a unit from being stored
 ([D-400](90-decision-log.md)). Nothing was inherited; the constant is simply **in the walk**.*
+### The same key means related but different things at a node and at an attribute
+
+The owner asked for this list to sit beside the comparison tables, and gave the two entries that make
+the point:
+
+> *`hide` on the node has a slightly different nuance than on the attribute. `hide` on the node:
+> **hide it from the tree view**. `hide` on the attribute: **the user does not get to see it on input
+> or output**. Both are hiding, but nuances.*
+
+> *Even though we used it as an example — a **type** cannot be persistent or not. **It can make a
+> default.***
+
+⚠️ **Both are confirmed by the code, which is why they are worth writing down rather than arguing
+about.** `hide` has **two implementations**: the tree filters its rows by it, and the field renderers
+return nothing for it. And `DataEntry::keepsValues(Relation $edge)` takes an **edge** — *the question
+«is this kept» is only ever asked of an attribute, so whatever a type says can only ever be a default
+travelling down the chain.*
+
+| Key | At a **node** (a type, a constant, a subject area) | At an **attribute** (a use site) |
+|---|---|---|
+| **`hide`** | **left out of the tree view** unless *show hidden* is on ([D-396](90-decision-log.md)) | the person **does not see the field**, on input or on output |
+| **`persistent`** | **a default** for attributes that point here — a type cannot itself be kept or not kept | **whether this field's value is kept** ([D-377](90-decision-log.md)); `keepsValues()` asks only this |
+| **`default`** | the default for **anything** of this type | the default for **this field** |
+| **`renderer`**, `converter`, `validator` | how **anything** of this type is drawn, converted, checked | how **this field** is |
+| **`range_min`/`max`/`step`** | what **the type permits** — `int` is bounded by its column | what **this field accepts**, which may be narrower |
+| **`multiplicity`** | — *does not apply*: a thing has no multiplicity ([D-351](90-decision-log.md)) | **how many of this field** there are, and its floor is mandatoriness ([D-405](90-decision-log.md)) |
+| **`read_only`** | ⚠️ **unclear.** At an attribute it plainly means *the field cannot be edited*; what it means about a **type** is not stated anywhere | the field is **shown and not editable** |
+| **`icon`** | the node's **own** icon, in the tree and wherever it is named ([D-390](90-decision-log.md)) | ⚠️ **unclear** — whether an attribute has an icon of its own, or borrows its target's |
+| **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node | ⚠️ **unclear** — nothing says what they would mean at a use site |
+
+⚠️ **The pattern in the clear rows is one sentence: at a node the setting is about *the kind of thing*;
+at an attribute it is about *this field*.** *`hide` looks like an exception and is not — a node's «kind
+of thing» includes its place in the tree, which is what a modeller sees; an attribute's is a field,
+which is what a user sees. **Same rule, two audiences.***
+
+⚠️ *The three unclear rows are unclear in the documents, not just to me — `read_only` on a type, `icon`
+on an attribute, and `factor` at a use site are offered by the panel and mean nothing that anybody has
+written down. `PR-4`: they are questions, not gaps to fill in by guessing.*
 ### The three words that keep getting swapped
 
 | Word | It answers | Not to be used for |

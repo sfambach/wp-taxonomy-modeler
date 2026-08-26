@@ -189,6 +189,43 @@ final class ModelEditor
     }
 
     /**
+     * Copy one attribute beside itself — **and the name has to come in**, unlike a node's copy.
+     *
+     * The owner: *duplicate for the attribute is missing too.*
+     *
+     * ⚠️ **A node's copy may carry the same name and an attribute's may not.**
+     * [D-022](../../../docs/NewConcept/90-decision-log.md) makes node names explicitly *not unique*,
+     * so `duplicate()` reuses one. But [D-281](../../../docs/NewConcept/90-decision-log.md) refuses a
+     * **duplicate edge** — same `from`, `kind`, `to` **and name** — because *`Breite` and `Höhe` both
+     * reach `int` and are two different things; the name is part of what makes an edge itself.* **So a
+     * copy with the same name is not a copy, it is the same edge, and the core refuses it.**
+     *
+     * ⚠️ **Which is why the name is a parameter and not derived here.** Inventing «Breite 2» would be
+     * the core writing user-visible content, and a suffix like *(copy)* is a translatable string that
+     * belongs at the boundary (`AR-2`, `CD-1`). *The surface knows what «copy» is called; this does
+     * not.*
+     *
+     * ⚠️ **Its own settings travel with it**, for the same reason a node's do: a copy that resolves
+     * differently from its original is not a copy. *Its labels do not, because an edge owns none —
+     * measured 2026-08-26: 17 edges carry a name and zero labels belong to an edge
+     * ([OQ-095](../../../docs/NewConcept/91-open-questions.md)).*
+     */
+    public function duplicateAttribute(int $ownerId, int $edgeId, string $name): Relation
+    {
+        // ⚠️ **`ownAttribute()` and not `attributesOf()`**: an inherited attribute belongs to the
+        // ancestor that declared it, and copying it from a descendant would put a second declaration
+        // in a place that never had the first ([D-376](../../../docs/NewConcept/90-decision-log.md)
+        // refuses renaming for the same reason).
+        $edge = $this->ownAttribute($ownerId, $edgeId);
+
+        $copy = $this->addAttribute($ownerId, $edge->toId, $name);
+
+        $this->copySettings($edge->id, $copy->id);
+
+        return $copy;
+    }
+
+    /**
      * The original's **own** settings, onto the copy.
      *
      * ⚠️ **Own, not resolved** — and the difference is the whole point. Copying what the original

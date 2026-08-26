@@ -17,7 +17,7 @@ namespace Taxmod\Core\Model;
  *
  * ```mermaid
  * flowchart TD
- *   S["a setting key"] --> F["a type of its own<br/>mandatory · order"]
+ *   S["a setting key"] --> F["a type of its own<br/>order · factor"]
  *   S --> L["whatever the subject is<br/>default · range_min · range_max · range_step"]
  *   S --> C["a choice from a set<br/>multiplicity · renderer · converter"]
  * ```
@@ -29,7 +29,7 @@ namespace Taxmod\Core\Model;
  */
 enum SettingShape
 {
-    /** True or false — `mandatory`, `hide`, `read_only`. */
+    /** True or false — `hide`, `read_only`, `persistent`. *`mandatory` was here until [D-405].* */
     case Switch;
 
     /** A whole number of its own, independent of whatever is being configured. */

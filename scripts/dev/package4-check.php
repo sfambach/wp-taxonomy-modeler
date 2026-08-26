@@ -31,6 +31,7 @@ use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\ReservedKey;
 use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
@@ -141,9 +142,36 @@ check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::Ran
 try { $settings->put($chainSite, SettingKey::RangeMax->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
 catch (CannotWiden $e) { check('and may not be raised', true); }
 
-$settings->put($chainType, SettingKey::Mandatory->value, TypedValue::ofBool(true));
-try { $settings->put($chainSite, SettingKey::Mandatory->value, TypedValue::ofBool(false)); check('mandatory stays mandatory', false); }
-catch (CannotWiden $e) { check('mandatory stays mandatory', true); }
+// ⚠️ **Same guarantee, one key** ([D-405](../../docs/NewConcept/90-decision-log.md)). `mandatory` is
+// gone: the multiplicity says it — `1..1` and `1..*` require one, `0..1` and `0..*` do not, and there
+// is no fifth combination. *The floor of the multiplicity **is** mandatoriness, and it is edge-only,
+// which is the owner's own reason for folding the two together.*
+// ⚠️ **And the guarantee holds more strongly than the old rule did, for a reason worth writing
+// down.** My first attempt here expected a `CannotWiden` when the floor was dropped — and it was
+// **allowed**, because narrowing compares against what is **inherited** and overwriting your own
+// value at the same link always may. *Multiplicity is **edge-only**, so there is never an
+// ancestor multiplicity to narrow against.*
+//
+// ⚠️ **The guarantee is that there is only one place to say it.** `Resistor` inheriting `Value`
+// from `Passiv` inherits the **same edge** — one edge, one multiplicity, no descendant copy. So a
+// descendant cannot loosen an obligation because it has nowhere to say anything, which is a
+// stronger form of [D-311](../../docs/NewConcept/90-decision-log.md) than the one-way rule was.
+$settings->put($chainSite, SettingKey::Multiplicity->value, TypedValue::ofText('1..1'));
+check(
+    'a floor of one makes the attribute mandatory',
+    Multiplicity::fromSetting($settings->resolve($chainSite)[SettingKey::Multiplicity->value]->value->text)->requiresOne()
+);
+
+$sub = $editor->createNode('__p4 Sub', $part->id);
+$inherited = null;
+foreach ($editor->attributesOf($sub->id) as $one) { if ($one->id === $edge->id) { $inherited = $one; } }
+
+check('a descendant inherits the very same edge, not a copy', $inherited !== null && $inherited->id === $edge->id);
+check(
+    'so it reads the same obligation and has nowhere to loosen it',
+    $inherited !== null
+        && Multiplicity::fromSetting($settings->resolve($settings->chainForUseSite($inherited))[SettingKey::Multiplicity->value]->value->text)->requiresOne()
+);
 
 $settings->put($chainType, SettingKey::DefaultValue->value, TypedValue::ofText('a'));
 $settings->put($chainSite, SettingKey::DefaultValue->value, TypedValue::ofText('b'));

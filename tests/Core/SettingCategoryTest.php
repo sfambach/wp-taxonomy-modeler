@@ -90,7 +90,6 @@ final class SettingCategoryTest extends TestCase
         // ⚠️ A thing can be required, hidden, fixed, counted or ordered whatever it holds — none of
         // these borrows a type, so none of them belongs to one.
         $rules = [
-            SettingKey::Mandatory,
             SettingKey::Hide,
             SettingKey::ReadOnly,
             SettingKey::Multiplicity,

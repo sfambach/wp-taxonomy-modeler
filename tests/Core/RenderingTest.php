@@ -932,7 +932,8 @@ final class RenderingTest extends TestCase
         // what somebody wrote cannot say what could be written, and R33c wants the opposite.
         $rows = $this->drawnSettings($this->type('int'));
 
-        foreach (['range_min', 'range_max', 'range_step', 'default', 'mandatory'] as $key) {
+        // ⚠️ `mandatory` was in this list until [D-405]: the multiplicity says it, so the key is gone.
+        foreach (['range_min', 'range_max', 'range_step', 'default', 'hide'] as $key) {
             self::assertArrayHasKey($key, $rows, $key);
             self::assertTrue($rows[$key]->wasDrawn(), $key);
         }
@@ -959,7 +960,10 @@ final class RenderingTest extends TestCase
         $rows = $this->drawnSettings($this->thing('Supplier'));
 
         self::assertArrayNotHasKey('range_min', $rows);
-        self::assertArrayHasKey('mandatory', $rows);
+        // ⚠️ A key that applies to **anything** still appears — `hide` stands in for what `mandatory`
+        // used to demonstrate here ([D-405]), and it makes the point better: it is a rule about the
+        // field, not about its type.
+        self::assertArrayHasKey('hide', $rows);
     }
 
     #[Test]
@@ -969,14 +973,15 @@ final class RenderingTest extends TestCase
         // It printed text until SettingKey::typeFor() said what type a setting's value has.
         $int = $this->type('int');
 
-        $this->settings->put($this->settings->chainFor($int), SettingKey::Mandatory->value, TypedValue::ofBool(true));
+        $this->settings->put($this->settings->chainFor($int), SettingKey::Hide->value, TypedValue::ofBool(true));
         $this->settings->put($this->settings->chainFor($int), SettingKey::RangeMin->value, TypedValue::ofInt(3));
 
         $rows = $this->drawnSettings($int);
 
-        self::assertTrue($rows[SettingKey::Mandatory->value]->wasDrawn());
-        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::Mandatory->value]->result->markup);
-        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::Mandatory->value]->rendererName);
+        // A switch is still drawn as a switch; which switch is beside the point of this test.
+        self::assertTrue($rows[SettingKey::Hide->value]->wasDrawn());
+        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::Hide->value]->result->markup);
+        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::Hide->value]->rendererName);
 
         self::assertSame(SimpleType::Int, $rows[SettingKey::RangeMin->value]->type);
         self::assertStringContainsString('3', $rows[SettingKey::RangeMin->value]->result->markup);
