@@ -220,9 +220,18 @@ final class NodesScreen
         $submits = [];
         $toggles = [];
 
+        // ⚠️ **Resolved once for every row** (`CD-7`): the eye has to know whether it is offering to
+        // hide or to reveal, and asking per row would be a walk per row.
+        //
+        // ⚠️ *`showsHidden()` is asked again here rather than threaded down as a parameter. It is a
+        // fact about **this request** and it already has exactly one reader — passing it through two
+        // methods would make a second place that could disagree with the first.*
+        $hidden     = $this->hiddenAmong($rows);
+        $showHidden = $this->showsHidden();
+
         foreach ($rows as $row) {
             $node               = $row['node'];
-            $actions[$node->id] = $this->rowActions($row, $mode);
+            $actions[$node->id] = $this->rowActions($row, $mode, $hidden[$node->id] ?? false, $showHidden);
             $submits[$node->id] = $this->submissionFor($node->id);
             // ⚠️ **The fragment is what keeps the tree where it was.** Selecting a node is a full page
             // load, so a fresh document starts at the top and the row a person just clicked is off
@@ -264,10 +273,44 @@ final class NodesScreen
      *
      * @param array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool} $row
      */
-    private function rowActions(array $row, string $mode): array
+    private function rowActions(array $row, string $mode, bool $hidden = false, bool $showHidden = false): array
     {
         if ($mode === 'trash') {
             return [new Control('do', 'restore', __('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod'))];
+        }
+
+        // ⚠️ **The eye, and it is the first thing in the row.** The owner: *before the plus, so nobody
+        // hits delete by accident* — a button pressed twenty times in a row while tidying belongs as far
+        // from the bin as the row is wide.
+        //
+        // ⚠️ **Only while *show hidden nodes* is on, and that is a different rule from
+        // [D-370](../../../docs/NewConcept/90-decision-log.md)'s «greyed, never absent».** That rule is
+        // about an act that is impossible *for this node* — the last child has no «down» — and greying
+        // keeps the row's shape steady. **This is a mode, not a node**: with the toggle off, hiding a row
+        // makes it vanish on the spot, so the eye would be a button whose result you cannot see. *Every
+        // row loses it together, so the shape stays consistent either way.*
+        //
+        // ⚠️ *And it needed no renderer, which is the owner's own remark: **it is of course a renderer** —
+        // and it already was. A row draws the `Control`s it is handed ([D-367](../../../docs/NewConcept/90-decision-log.md)),
+        // so an act arrives as data and `R1` holds without a line being written for it.*
+        $eye = [];
+
+        if ($showHidden) {
+            $eye[] = new Control(
+                'do',
+                'toggle_hide',
+                $hidden ? __('Show', 'taxmod') : __('Hide', 'taxmod'),
+                // ⚠️ The glyph says what the **click** does, not what the state is. A hidden row offers
+                // an open eye — *make this visible* — and a visible row a crossed one. *Labelling the
+                // state instead would make every eye in the tree a question about which it means.*
+                $hidden
+                    ? __('Show this node again — it is hidden from the tree and from every chooser', 'taxmod')
+                    : __('Hide this node from the tree and from every chooser', 'taxmod'),
+                // A protected node stays visible: the framework's own nodes are how a person finds
+                // anything at all ([D-194](../../../docs/NewConcept/90-decision-log.md)).
+                ! $this->framework->isProtected($row['node']),
+                icon: $hidden ? 'visibility' : 'hidden'
+            );
         }
 
         // ⚠️ **Always the same four, in the same order** ([D-370](../../../docs/NewConcept/90-decision-log.md)).
@@ -281,6 +324,7 @@ final class NodesScreen
         // keeps the row to what is used constantly, and the variant that takes a subtree with it
         // deserves the explanation it has over there.
         return [
+            ...$eye,
             // ⚠️ Icons rather than characters for the same reason as the bin (D-380): `+`, `↑` and `↓`
             // are text glyphs whose weight follows the body font, so they read as hairlines beside a
             // 17px icon. A Dashicon takes `font-size` and `color` and comes out solid.
@@ -1997,13 +2041,78 @@ final class NodesScreen
      * and says what a **key** answers here.
      *
      * ⚠️ *They are confusable because the chain **walks the inheritance edges**: the same ancestors,
-     * two different questions. `hide` moves down the **chain** ([D-311](../../../docs/NewConcept/90-decision-log.md),
-     * [D-312](../../../docs/NewConcept/90-decision-log.md): once hidden, never revealed further down),
-     * so a child of a hidden node resolves to hidden and nothing here has to walk or remember. A
-     * filter tracking ancestors itself would be a second implementation of **the chain**.*
+     * two different questions. `hide` moves down the **chain**, so a child of a hidden node resolves to
+     * hidden and nothing here has to walk or remember. A filter tracking ancestors itself would be a
+     * second implementation of **the chain**.*
+     *
+     * ⚠️ **It no longer says «once hidden, never revealed further down».** That was
+     * [D-312](../../../docs/NewConcept/90-decision-log.md)'s narrowing rule, and
+     * [D-399](../../../docs/NewConcept/90-decision-log.md) took `hide` out of it —
+     * [D-411](../../../docs/NewConcept/90-decision-log.md) then ended the rule altogether. *A descendant
+     * may reveal what an ancestor hid, which is what the eye in the row depends on.*
      *
      * ⚠️ **One query for the whole tree** (`CD-7`): every row's chain is resolved in one batch, not
      * one per row.
+     *
+     * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     * @return array<int, bool>                                                                          Keyed by node id.
+     */
+    private function hiddenAmong(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $resolved = $this->settings->resolveForNodes(array_map(
+            static fn (array $row): Node => $row['node'],
+            $rows
+        ));
+
+        $hidden = [];
+
+        foreach ($rows as $row) {
+            $hidden[$row['node']->id] =
+                (($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true;
+        }
+
+        return $hidden;
+    }
+
+    /**
+     * Turn `hide` on or off for one node, and leave it selected.
+     *
+     * ⚠️ **Written at the node, which is what makes it revocable** ([D-406](../../../docs/NewConcept/90-decision-log.md)).
+     * Until that decision `hide` could only ever be turned **on** further down — so an eye in the row
+     * would have been a one-way button, which is not a toggle. *The eye is only buildable because that
+     * half of D-399 got built.*
+     *
+     * ⚠️ **Flipped against the resolved value, not against a stored one.** A node with no row of its
+     * own inherits `false`, and a toggle that read the absent row as *unknown* would need a first click
+     * that does nothing.
+     */
+    private function toggleHidden(int $nodeId): int
+    {
+        $node = $this->editor->find($nodeId);
+
+        if ($node === null) {
+            return $nodeId;
+        }
+
+        $chain = $this->settings->chainFor($node);
+        $now   = ($this->settings->resolve($chain)[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false;
+
+        $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(! $now));
+
+        return $nodeId;
+    }
+
+    /**
+     * The rows that are not hidden — what the tree actually draws while *show hidden* is off.
+     *
+     * ⚠️ *Its own method rather than a second use of {@see hiddenAmong()}, because the two want
+     * opposite things: this one **drops** the hidden rows, that one has to **keep** them so a row can
+     * offer to unhide. Sharing a method that returns one of the two would mean a flag, and a flag
+     * deciding which half of an answer you get is how a reader loses track.*
      *
      * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
      * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}>
@@ -2117,6 +2226,10 @@ final class NodesScreen
                 // does: the point of duplicating is *and now I want to work on that one*, and it
                 // carries the original's name, so leaving the original selected would show two
                 // identical rows and no way to tell which is which.
+                // ⚠️ *`$stay` keeps the node selected. Hiding it does not deselect it — with **show
+                // hidden** off the row vanishes from the tree while its detail page stays open, and
+                // that is the one arrangement in which the act can be undone by the same button.*
+                'toggle_hide'    => $stay = $this->toggleHidden($id),
                 'duplicate'      => $stay = $this->editor->duplicate($id)->id,
                 'rename'         => $this->editor->rename($id, $name),
                 'move'           => $this->editor->move($id, $target),
