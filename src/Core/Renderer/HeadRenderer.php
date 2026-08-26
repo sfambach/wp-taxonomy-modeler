@@ -9,27 +9,28 @@ use Taxmod\Core\Model\SimpleType;
 /**
  * The detail head: what a node **is**, what can be **done** to it, and what cannot be changed.
  *
- * The owner's layout, given as a sketch: *form, 3 rows, 2 columns — left column Action, System,
- * Name; right column the tool buttons and parts, then constants like path, id and version, creation,
- * last change, change owner; the name field's Rename goes and is saved by the page save.*
+ * The owner's layout, given as a sketch and then **corrected by him after seeing it built**. First:
+ * *form, 3 rows, 2 columns — left column Action, System, Name; right column the tool buttons and
+ * parts, then constants like path, id and version; the name field's Rename goes and is saved by the
+ * page save.* Then, looking at the result: *name into the first row, swap the «name» label for
+ * «node», and actions are not their own row but behind the name field. The heading with the node name
+ * goes.*
  *
- * And then, looking at a screen that still had none of it: *the head as we discussed it is still not
- * there — that is a renderer, right?* **Yes**, and that is the whole reason this class exists rather
- * than another block of markup in the screen: `R1`. It is the **fifth** hand-built panel to go
+ * And the question that settled where any of this belongs: *the head as we discussed it is still not
+ * there — that is a renderer, right?* **Yes**, `R1`. It is the **fifth** hand-built panel to go
  * through it, after labels, settings, an attribute row and a record ([D-393](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ```mermaid
  * flowchart LR
- *   A["PageSlot::Acts"]  --> H[this renderer]
- *   F["PageSlot::Fixed"] --> H
- *   N["PageSlot::Name"]  --> H
- *   H --> T["one table · 3 rows · 2 columns"]
+ *   A["PageSlot::Acts + Name"] --> H[this renderer]
+ *   F["PageSlot::Fixed"]       --> H
+ *   H --> T["one table · 2 rows · 2 columns"]
  * ```
  *
- * ⚠️ **The three rows are the three slots that already existed**, which is why this is a layout
- * change and not a new concept: `Acts` is *what acts — the buttons*, `Fixed` is *what cannot be
- * changed*, `Name` is *the name, because that is what you change first*. **The head draws them
- * together instead of as three loose bands**, and their meanings are unchanged.
+ * ⚠️ **Two rows and not three, and the heading is gone.** *A page whose first row already holds an
+ * editable name does not need the same name printed above it in larger type* — and once the acts sit
+ * beside the name, `Acts` and `Name` are one row about **the node**. `Fixed` stays exactly what it
+ * was: *what cannot be changed*.
  *
  * ⚠️ **The row labels arrive as section titles and are not written here.** *A left-hand column
  * saying «Action» is user-visible software text, so it goes through the text domain at the boundary
@@ -45,25 +46,32 @@ final class HeadRenderer implements Renderer
 {
     public const NAME = 'head';
 
-    /** The buttons, the child field, the move target. */
-    public const ACTION = 'action';
+    /**
+     * The node itself: its name, and what can be done to it — **one row, not two**.
+     *
+     * ⚠️ **The owner collapsed his own three-row sketch after seeing it**: *name into the first row,
+     * swap the «name» label for «node», and actions are not their own row but behind the name field.
+     * The heading with the node name goes.* **He is right and the reason is that the heading was the
+     * duplicate**: a page whose first row already holds an editable name does not need the same name
+     * printed above it in larger type.
+     *
+     * ⚠️ *The label says **Node** and not «Name» because the row is no longer only the name — it is
+     * the node: what it is called and what you may do to it, read across.*
+     */
+    public const NODE = 'node';
 
     /** Path, id, version, creation, last change, who changed it — read-only, every one derived. */
     public const SYSTEM = 'system';
 
-    /** The name field. No Rename button: the page save writes it ([D-392](../../../docs/NewConcept/90-decision-log.md)). */
-    public const NAME_ROW = 'name';
-
     /**
-     * The order the rows are read in, and it is the owner's order.
+     * Two rows, in this order.
      *
-     * ⚠️ *Not alphabetical and not the enum's order — he said *Action, System, name*, and the reason
-     * shows in the middle row: the constants sit between what you **do** and what you **type**,
-     * where they can be glanced at without being in the way.*
+     * ⚠️ *What you **change** first, then what you may only **read** — which is why the constants
+     * cannot be row one however useful they are to glance at.*
      *
      * @var list<string>
      */
-    private const ORDER = [self::ACTION, self::SYSTEM, self::NAME_ROW];
+    private const ORDER = [self::NODE, self::SYSTEM];
 
     public function name(): string
     {

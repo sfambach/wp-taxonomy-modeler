@@ -16,6 +16,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\Core\Renderer\DialogChooserRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
@@ -474,8 +475,10 @@ final class NodesScreen
         // would be inventing one.
         // ⚠️ *The same box as a band, though it is not one* — it sits outside the frame by the note
             // above, and looking like the odd one out would suggest that was an accident (D-392).
-        return '<h2>' . esc_html($selected->name) . '</h2>'
-            . $this->rendering->nodeAsPage($selected, $sections)->markup
+        // ⚠️ **No heading with the node name.** The owner: *the heading with the node name goes.* *The
+        // head's first row already holds that name as an editable field — printing it again above in
+        // larger type was the duplication, and he saw it the moment the head existed.*
+        return $this->rendering->nodeAsPage($selected, $sections)->markup
             . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>';
     }
 
@@ -651,7 +654,12 @@ final class NodesScreen
      */
     private function head(Node $selected, array $rows, Node $root): string
     {
-        $acts = '<div class="taxmod-toolbar">'
+        // ⚠️ **The name field first, and the acts behind it** — the owner, correcting his own sketch
+        // after seeing it: *name into the first row, actions not their own row but behind the name
+        // field.* It names the settings form with `form="…"`, so the page save writes it
+        // ([D-392](../../../docs/NewConcept/90-decision-log.md)) and `Rename` is gone.
+        $node = '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
+            . ' form="' . esc_attr(SettingsRenderer::formFor($selected)) . '">'
             . $this->form(
                 $selected->id,
                 [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
@@ -667,22 +675,18 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [
-                    ['move', '', __('Hang it under the chosen node', 'taxmod'), 'move'],
                     ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
                     ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                 ],
+                // ⚠️ **The move button *is* the dialog's opener** — the owner: *button move with dialog
+                // tree chooser*, and then *nicht inline*. So the chooser no longer sits beside a move
+                // button; it is behind it, and its own confirm lives inside the overlay.
                 $this->parentChooser($selected, $rows, $root)
-            )
-            . '</div>';
+            );
 
         return $this->rendering->headFor($selected, [
-            HeadRenderer::ACTION   => new Section(__('Action', 'taxmod'), $acts),
-            HeadRenderer::SYSTEM   => new Section(__('System', 'taxmod'), $this->constants($selected)),
-            HeadRenderer::NAME_ROW => new Section(
-                __('Name', 'taxmod'),
-                '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
-                . ' form="' . esc_attr(SettingsRenderer::formFor($selected)) . '">'
-            ),
+            HeadRenderer::NODE   => new Section(__('Node', 'taxmod'), $node),
+            HeadRenderer::SYSTEM => new Section(__('System', 'taxmod'), $this->constants($selected)),
         ])->markup;
     }
 
@@ -748,13 +752,31 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ **The move button opens the dialog and a second one inside it confirms.** The owner:
+        // *button move with dialog tree chooser*, then *nicht inline*. **A `<label>` is the opener**,
+        // because a `<button>` inside a form would submit it — so the trigger looks like a button and
+        // is not one, and the only real button is the confirm inside the overlay.
+        $trigger = '<span class="button taxmod-icon-button" title="'
+            . esc_attr__('Move it under another node', 'taxmod') . '">'
+            . '<span class="dashicons dashicons-move" aria-hidden="true"></span>'
+            . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>'
+            . '</span>';
+
+        $confirm = '<button class="button button-primary" name="do" value="move">'
+            . esc_html__('Move here', 'taxmod') . '</button>';
+
         return $this->rendering->chooserFor(
             $rows,
             'target',
             $node->parentId(),
             $barred,
             $this->labels->of($node, SeededRole::Form, $this->localeFromRequest()),
-            __('Nothing here can be a parent.', 'taxmod')
+            __('Nothing here can be a parent.', 'taxmod'),
+            DialogChooserRenderer::NAME,
+            $this->localeFromRequest(),
+            Level::Admin,
+            $trigger,
+            $confirm
         )->markup;
     }
 

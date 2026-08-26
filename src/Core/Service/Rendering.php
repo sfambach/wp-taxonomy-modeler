@@ -408,6 +408,12 @@ final class Rendering
         string $chooser = DialogChooserRenderer::NAME,
         string $locale = '',
         Level $level = Level::Admin,
+        // ⚠️ **What opens the dialog, and what confirms inside it** — both boundary markup, because
+        // both are buttons with capabilities, titles and translated labels behind them. *The owner
+        // wants the **move button** to be the opener: «button move with dialog tree chooser», then
+        // «nicht inline». So the surface hands in its own trigger and the renderer stops guessing.*
+        string $trigger = '',
+        string $confirm = '',
     ): RenderResult {
         $barred = [];
 
@@ -443,6 +449,8 @@ final class Rendering
                     refersTo: $chosenName,
                     sections: [
                         DialogChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup),
+                        DialogChooserRenderer::TRIGGER    => new Section('', $trigger),
+                        DialogChooserRenderer::CONFIRM    => new Section('', $confirm),
                     ]
                 ),
             )

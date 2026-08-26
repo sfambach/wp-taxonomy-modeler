@@ -22,11 +22,25 @@ use Taxmod\Core\Model\SimpleType;
  *   D --> T["the tree, walked · one cell per node"]
  * ```
  *
- * ⚠️ **A `<details>` and not a modal, and that is a deliberate floor rather than a shortcut.** A real
- * dialog needs scripting to open, to trap focus and to close on Escape; `<details>` gives *shut by
- * default, one click away* in plain HTML, and it degrades to an open list rather than to nothing.
- * *When the search inside it arrives — which is D-244's own reason for preferring a dialog — this
- * grows a real dialog and the summary line stays what it is.*
+ * ⚠️ **A real overlay, because `<details>` was not one.** It began as a `<details>` — *shut by
+ * default, one click away, no scripting* — and the owner looked at the result twice: *tree chooser
+ * dialog here, please*, then, when told it already was the dialog renderer, **`nicht inline`**. He is
+ * right: `<details>` expands **in place**, pushing the page down. A person calls that inline whatever
+ * the class is named, and [D-244](../../../docs/NewConcept/90-decision-log.md) chose the dialog
+ * precisely to get away from that.
+ *
+ * ⚠️ **And it is still scriptless.** A hidden checkbox with no `name` carries the open state, a
+ * `<label>` styled as the trigger flips it, and CSS shows the overlay while it is checked. *No `name`
+ * means it never submits, so a chooser sitting inside a form cannot corrupt what the form sends —
+ * which is the same reason `form="…"` was chosen over scripting for the save button.*
+ *
+ * ⚠️ **The trigger is handed in** ({@see self::TRIGGER}), because the owner wants *the move button*
+ * to be what opens it — not a button beside a field. *A dialog whose opener is supplied can be opened
+ * by whatever the surface already has, and the renderer stops guessing what the trigger should look
+ * like.*
+ *
+ * ⚠️ *What is still missing against a real `<dialog>`: focus is not trapped and Escape does not
+ * close. Both need script. The shade closes it on a click, which is the part people reach for first.*
  *
  * ⚠️ **Shut by default, showing what is chosen.** That is the whole difference from
  * {@see InlineChooserRenderer}: a closed field needs only enough text to **recognise** — `Ω` — while
@@ -45,6 +59,24 @@ final class DialogChooserRenderer implements Renderer
 
     /** Where the walked tree of candidates is looked for in {@see Surroundings::$sections}. */
     public const CANDIDATES = 'candidates';
+
+    /**
+     * What opens the dialog, handed in by the surface.
+     *
+     * ⚠️ *The owner: **button move with dialog tree chooser** — so the move button is the opener
+     * rather than a second control beside it. Absent, the current value opens it, which is what a
+     * plain reference field wants.*
+     */
+    public const TRIGGER = 'trigger';
+
+    /**
+     * What confirms the pick, drawn inside the overlay.
+     *
+     * ⚠️ *It has to be **inside** the dialog, because a person who opened it to choose must be able
+     * to say «this one» without hunting for a button behind the shade. It is the surface's markup for
+     * the same reason the trigger is: it carries a capability, a nonce and a translated label.*
+     */
+    public const CONFIRM = 'confirm';
 
     public function name(): string
     {
@@ -85,16 +117,56 @@ final class DialogChooserRenderer implements Renderer
             );
         }
 
+        // ⚠️ **One id per subject, because a checkbox is addressed by `for=`.** Two dialogs sharing an
+        // id would open each other — the same class of fault as the four identical form ids that one
+        // page grew before [D-397](../../../docs/NewConcept/90-decision-log.md)'s check caught them.
+        $switch = 'taxmod-dialog-' . $subject->id;
+
+        // ⚠️ The closed field: **what is chosen**, and only enough of it to recognise (D-263).
+        $current = $context->surroundings->refersTo === null
+            ? '<span class="taxmod-nothing">—</span>'
+            : RenderResult::escape($context->surroundings->refersTo);
+
+        $trigger = $context->surroundings->sections[self::TRIGGER] ?? null;
+
+        return $this->overlay($switch, $current, $trigger, $tree, $context);
+    }
+
+    /** The confirm bar, left out entirely when the surface handed in nothing to confirm with. */
+    private function foot(RenderContext $context): string
+    {
+        $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
+
+        if ($confirm === null || $confirm->body === '') {
+            return '';
+        }
+
+        return '<span class="taxmod-dialog-foot">' . $confirm->body . '</span>';
+    }
+
+    private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
+    {
+
         return RenderResult::of(
-            '<details class="taxmod-chooser">'
-            // ⚠️ The closed field: **what is chosen**, and only enough of it to recognise (D-263).
-            . '<summary class="taxmod-chooser-current">'
-            . ($context->surroundings->refersTo === null
-                ? '<span class="taxmod-nothing">—</span>'
-                : RenderResult::escape($context->surroundings->refersTo))
-            . '</summary>'
-            . '<div class="taxmod-chooser-tree">' . $tree->body . '</div>'
-            . '</details>'
+            '<span class="taxmod-chooser">'
+            // No `name`, so it never submits — a chooser inside a form must not change what the form
+            // sends.
+            . '<input type="checkbox" class="taxmod-dialog-switch" id="' . RenderResult::escape($switch) . '">'
+            . '<label class="taxmod-dialog-open" for="' . RenderResult::escape($switch) . '">'
+            . ($trigger === null || $trigger->body === '' ? $current : $trigger->body)
+            . '</label>'
+            . '<span class="taxmod-dialog">'
+            // ⚠️ The shade is a second `<label>` for the same switch, which is how a click outside
+            // closes it without script.
+            . '<label class="taxmod-dialog-shade" for="' . RenderResult::escape($switch) . '"></label>'
+            . '<span class="taxmod-dialog-panel">'
+            . '<span class="taxmod-dialog-head">'
+            . '<span class="taxmod-chooser-current">' . $current . '</span>'
+            . '<label class="taxmod-dialog-close" for="' . RenderResult::escape($switch) . '">&times;</label>'
+            . '</span>'
+            . '<span class="taxmod-chooser-tree">' . $tree->body . '</span>'
+            . $this->foot($context)
+            . '</span></span></span>'
         );
     }
 }

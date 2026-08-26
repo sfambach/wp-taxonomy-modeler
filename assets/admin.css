@@ -618,3 +618,86 @@ details.taxmod-page-block > summary {
 .taxmod-head-name input[type="text"] {
     width: 100%;
 }
+
+/* ── The dialog chooser ─────────────────────────────────────────────────────
+ * "nicht inline" — the owner, looking at a <details> that pushed the page down.
+ * A real overlay, still without script: a nameless checkbox holds the open
+ * state, a <label> flips it, and this shows the panel while it is checked. */
+.taxmod-dialog-switch {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.taxmod-dialog-open {
+    cursor: pointer;
+}
+
+.taxmod-dialog {
+    display: none;
+}
+
+.taxmod-dialog-switch:checked ~ .taxmod-dialog {
+    display: block;
+}
+
+/* Above everything, including the admin menu, so it cannot open behind it. */
+.taxmod-dialog-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, .45);
+    cursor: pointer;
+}
+
+.taxmod-dialog-panel {
+    position: fixed;
+    z-index: 100001;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    width: min(38em, calc(100vw - 2em));
+    max-height: min(34em, calc(100vh - 4em));
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+
+.taxmod-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6em;
+    padding: .5em .7em;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.taxmod-dialog-close {
+    cursor: pointer;
+    font-size: 1.4em;
+    line-height: 1;
+    padding: 0 .2em;
+    color: #646970;
+}
+
+/* The tree scrolls inside the panel, never the panel inside the page. */
+.taxmod-dialog-panel .taxmod-chooser-tree {
+    overflow: auto;
+    padding: .5em .7em;
+}
+
+/* ── The head, second pass ──────────────────────────────────────────────────
+ * "name in die erste zeile, name label durch knoten tauschen und actions keine
+ * eigene zeile sondern hinter namens feld" — so row one holds both. */
+.taxmod-head-node {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+}
+
+.taxmod-head-node input[type="text"][name="name"] {
+    flex: 1;
+    min-width: 8em;
+}
