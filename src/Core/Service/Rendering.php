@@ -445,6 +445,11 @@ final class Rendering
                 value: $chosen === null ? TypedValue::nothing() : TypedValue::ofReference($chosen),
                 locale: $locale,
                 level: $level,
+                // ⚠️ **The field name reaches the chooser, and it has to.** {@see DialogChooserRenderer}
+                // builds its switch id from the subject **and** this — and both choosers on the node
+                // page are built from the *first walked node*, so without it the ids matched and **each
+                // trigger opened both dialogs**. *Measured: `taxmod-dialog-402` twice.*
+                fieldName: $fieldName,
                 surroundings: new Surroundings(
                     refersTo: $chosenName,
                     sections: [

@@ -120,7 +120,12 @@ final class DialogChooserRenderer implements Renderer
         // ⚠️ **One id per subject, because a checkbox is addressed by `for=`.** Two dialogs sharing an
         // id would open each other — the same class of fault as the four identical form ids that one
         // page grew before [D-397](../../../docs/NewConcept/90-decision-log.md)'s check caught them.
-        $switch = 'taxmod-dialog-' . $subject->id;
+        // ⚠️ **The field name goes into the id, and that was a real collision.** Two choosers on one
+        // page — the move target and an attribute's target — are both built from the **first walked
+        // node**, so both ids were `taxmod-dialog-402` and **each label opened both dialogs**. *The
+        // docblock above had warned about exactly this and I built it anyway; measuring the ids is
+        // what found it, not reading the warning.*
+        $switch = 'taxmod-dialog-' . $subject->id . '-' . preg_replace('/[^a-z0-9_-]/i', '', $context->fieldName);
 
         // ⚠️ The closed field: **what is chosen**, and only enough of it to recognise (D-263).
         $current = $context->surroundings->refersTo === null

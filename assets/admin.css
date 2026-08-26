@@ -782,3 +782,60 @@ details.taxmod-page-block > summary {
 .taxmod-tree-node-hidden .dashicons {
     color: #a7aaad;
 }
+
+/* ── The message after an act ─────────────────────────────────────────────────
+ *
+ * ⚠️ The owner found the real cause of the page jump here: *the whole page jumps
+ * because of the message output at the top — can that be prevented and the
+ * messages still kept?* It can. `position: fixed` takes the notice out of the
+ * flow, so the page after an act is laid out exactly like the page before it —
+ * which is what lets a restored scroll offset land where it was measured.
+ *
+ * ⚠️ It is deliberately **not** called `notice`: wp-admin relocates every
+ * `.notice` to just under the h1 with its own script, which would put it back
+ * into the flow and undo all of this. */
+.taxmod-toast {
+    position: fixed;
+    z-index: 100002;
+    top: 46px;
+    right: 24px;
+    max-width: 26em;
+    padding: .7em 1.1em;
+    border-radius: 4px;
+    border-left: 4px solid;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .18);
+    font-size: 13px;
+    line-height: 1.5;
+
+    /* Fades on its own: a fixed overlay that stayed would sit on the tree until
+     * the next reload. Held opaque for four seconds, then gone — and
+     * `pointer-events` goes with it so it cannot swallow a click afterwards. */
+    animation: taxmod-toast-out 5s ease-in forwards;
+}
+
+.taxmod-toast-ok {
+    border-left-color: #00a32a;
+}
+
+.taxmod-toast-bad {
+    border-left-color: #d63638;
+}
+
+@keyframes taxmod-toast-out {
+    0%, 80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+/* Somebody who asked not to see motion sees it appear and stay. */
+@media (prefers-reduced-motion: reduce) {
+    .taxmod-toast {
+        animation: none;
+    }
+}

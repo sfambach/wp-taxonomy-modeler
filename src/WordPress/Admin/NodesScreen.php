@@ -1035,34 +1035,68 @@ final class NodesScreen
 
     private function attributeForm(Node $selected, array $rows): string
     {
-        $options = '';
+        // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
+        // same eighty entries with middle dots that the parent chooser had before — and worse here,
+        // because a target may be any node in four branches, so the list was the whole model flattened.
+        //
+        // ⚠️ **An impossible target is barred rather than omitted**, the same way the move chooser does
+        // it: a branch root cannot be a target ([D-238](../../../docs/NewConcept/90-decision-log.md)),
+        // and neither can a node in no branch at all — but **leaving them out tears a hole in the
+        // hierarchy**, because a child of an impossible target can be a perfectly good one. *The cell
+        // draws such a row as text with no radio.*
+        $barred = [];
 
         foreach ($rows as $row) {
             $candidate = $row['node'];
             $branch    = $this->framework->branchOf($candidate);
 
-            // Only what could actually be a target: inside a branch, and not the branch root
-            // itself (D-238).
             if ($branch === null || $candidate->id === $this->framework->rootOf($branch)->id) {
-                continue;
+                $barred[] = $candidate->id;
             }
-
-            $options .= '<option value="' . (int) $candidate->id . '">'
-                . esc_html($candidate->name . ' — ' . $branch->value)
-                . '</option>';
         }
 
-        if ($options === '') {
+        if (count($barred) === count($rows)) {
             return '<p><em>'
                 . esc_html__('Nothing to point at yet: put a node under Model, Compositions, Data Types or Constants first.', 'taxmod')
                 . '</em></p>';
         }
 
+        // ⚠️ *The dialog rather than the inline chooser, because that is the default
+        // ([D-244](../../../docs/NewConcept/90-decision-log.md)) and because this sits inside a form
+        // that already has a name field — a tree unfolding in place would push the button it belongs to
+        // off the screen.*
+        $chooser = $this->rendering->chooserFor(
+            $rows,
+            // ⚠️ **Its own field name, not `target` again.** The move chooser already uses `target`, and
+            // two radio groups of one name on one page is a collision waiting for a second reader — *and
+            // it is honest besides: «where does this node go» and «what does this attribute point at»
+            // are two questions.*
+            'attribute_target',
+            null,
+            $barred,
+            null,
+            __('Nothing here can be a target.', 'taxmod'),
+            DialogChooserRenderer::NAME,
+            $this->localeFromRequest(),
+            Level::Admin,
+            '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this attribute points at', 'taxmod') . '">'
+            . '<span class="dashicons dashicons-networking" aria-hidden="true"></span>'
+            . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
+            . '</span>',
+            '<button class="button button-primary" name="do" value="add_attribute">'
+            . esc_html__('Add attribute', 'taxmod') . '</button>'
+        )->markup;
+
+        // ⚠️ **No second «Add attribute» outside the dialog.** The act needs a target, and the target is
+        // picked inside — so the one button that finishes it lives where the choice is made. *Two
+        // buttons for one act is what the settings panel was corrected for
+        // ([D-392](../../../docs/NewConcept/90-decision-log.md)).*
         return $this->form(
             $selected->id,
-            [['add_attribute', esc_html__('Add attribute', 'taxmod'), __('Point at a target; the kind follows', 'taxmod')]],
+            [],
             '<input type="text" name="name" placeholder="' . esc_attr__('Name of the attribute', 'taxmod') . '" required style="flex:1">'
-            . '<select name="target" style="flex:1">' . $options . '</select>'
+            . $chooser
         );
     }
 
@@ -2207,6 +2241,8 @@ final class NodesScreen
         $do = $this->submittedAct();
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
+        // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see attributeForm()}).*
+        $pointsAt     = isset($_POST['attribute_target']) ? absint($_POST['attribute_target']) : 0;
         $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
@@ -2248,7 +2284,7 @@ final class NodesScreen
                 'restore'        => $this->editor->restore($id),
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
-                'add_attribute'  => $this->editor->addAttribute($id, $target, $name),
+                'add_attribute'  => $this->editor->addAttribute($id, $pointsAt, $name),
                 // Parked, not purged — D-123's two stages, so it can come back.
                 'remove_attribute'  => $this->editor->removeAttribute($id, $edge),
                 'restore_attribute' => $this->editor->restoreAttribute($id, $edge),
@@ -2392,6 +2428,26 @@ final class NodesScreen
         );
     }
 
+    /**
+     * The message after an act — **and it does not push the page down**.
+     *
+     * ⚠️ **The owner found the real cause of the jump here, after three attempts at the tree:** *I see
+     * now why the whole page jumps — because of the message output at the top. Can that be prevented and
+     * the messages still kept?* **Yes**, and it is the better diagnosis: the tree was being restored
+     * correctly and then everything below a newly inserted notice moved down anyway.
+     *
+     * ⚠️ **So the notice leaves the flow.** `position: fixed` means it overlays instead of displacing —
+     * the page after an act is laid out exactly as the page before it, which is what makes a restored
+     * scroll offset land where it was measured.
+     *
+     * ⚠️ **Its own class rather than WordPress's `notice`, and that is deliberate.** `wp-admin` moves
+     * every `.notice` to just under the `h1` with script of its own, which would put it back into the
+     * flow and undo this. *Keeping the colours means writing them; keeping the position means not being
+     * called `notice`.*
+     *
+     * ⚠️ *It fades on its own after a few seconds, because a fixed overlay that stays would sit on top
+     * of the tree until the next reload. The animation is CSS, so nothing here has to know about time.*
+     */
     private function notice(): string
     {
         if (! isset($_GET['taxmod_message'])) {
@@ -2399,12 +2455,10 @@ final class NodesScreen
         }
 
         $message = sanitize_text_field(wp_unslash($_GET['taxmod_message']));
+        $ok      = $message === 'ok';
 
-        if ($message === 'ok') {
-            return '<div class="notice notice-success is-dismissible"><p>'
-                . esc_html__('Done.', 'taxmod') . '</p></div>';
-        }
-
-        return '<div class="notice notice-error is-dismissible"><p>' . esc_html($message) . '</p></div>';
+        return '<div class="taxmod-toast' . ($ok ? ' taxmod-toast-ok' : ' taxmod-toast-bad') . '" role="status">'
+            . esc_html($ok ? __('Done.', 'taxmod') : $message)
+            . '</div>';
     }
 }
