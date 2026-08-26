@@ -614,9 +614,20 @@ $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state L
 $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p7%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 
+// ⚠️ **Rewritten 2026-08-26 for [D-423](../../docs/NewConcept/90-decision-log.md), not loosened.** It
+// used to assert that `decimal` holds **no setting rows at all** — a fair reading of *did this check
+// litter?* while settings were sparse ([D-015](../../docs/NewConcept/90-decision-log.md)). **Now every
+// node legitimately carries its own rows**, so the old form failed with *3 left* the moment the
+// backfill ran, and those three are `persistent`, `hide` and `read_only` doing exactly what they
+// should.
+//
+// ⚠️ *What the check actually needs to know is narrower and was always the point: **the key this run
+// wrote is gone.** Counting every row was a proxy that stopped being equivalent — and a proxy that
+// fails for the right reason still has to be replaced by the thing it stood for.*
 $stray = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id = %d',
-    $seeded['decimal']->id
+    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id = %d AND setting_key = %s',
+    $seeded['decimal']->id,
+    SettingKey::Renderer->value
 ));
 check('no renderer choice is left on a seeded type', $stray === 0, "$stray left");
 
