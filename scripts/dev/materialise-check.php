@@ -199,6 +199,54 @@ $none = $settings->pull($settings->chainFor($child), 'x_own_only');
 check('a pull with nothing above reports false', $none === false);
 check('and it left the value alone', ownValue($child->id, 'x_own_only') === 'mine', ownValue($child->id, 'x_own_only') ?? '—');
 
+echo "\n== rows at a path travel too, because a child inherits the same edge ids ==\n";
+
+// ⚠️ **The owner corrected me into this.** I shipped materialising with the empty path only, worried a
+// child's rows would point at *edges chosen for its parent*. He: ***I do not understand — nonsense?***
+// A `path` is a chain of **edge ids**, and a child does not get copies of its parent's attribute edges
+// — it inherits them, the same ids. So the address is the child's own address.
+$holder2 = $editor->createNode('__mat_holder2', $root->id);
+$made[]  = $holder2->id;
+
+$pathEdge = $editor->addAttribute($holder2->id, $type->id, 'adressiert');
+
+// The parent's answer *for that one attribute* — path rows are what D-413 added.
+$settings->put($settings->chainFor($holder2), SettingKey::DefaultValue->value, TypedValue::ofInt(31), (string) $pathEdge->id);
+
+$heir   = $editor->createNode('__mat_heir', $holder2->id);
+$made[] = $heir->id;
+
+$atPath = $wpdb->get_var($wpdb->prepare(
+    "SELECT value_int FROM {$table} WHERE owner_id = %d AND setting_key = %s AND path = %s LIMIT 1",
+    $heir->id,
+    SettingKey::DefaultValue->value,
+    (string) $pathEdge->id
+));
+
+check('the heir carries the parent\'s answer for that attribute', (string) $atPath === '31', var_export($atPath, true));
+
+// ⚠️ **The counter-check**: the address must be the **same** edge id, not the empty path. *Copying a
+// path row into the empty path would look like a value the node holds about itself.*
+$atEmpty = $wpdb->get_var($wpdb->prepare(
+    "SELECT value_int FROM {$table} WHERE owner_id = %d AND setting_key = %s AND path = '' LIMIT 1",
+    $heir->id,
+    SettingKey::DefaultValue->value
+));
+
+check('and it did not collapse into the empty path', $atEmpty === null || (string) $atEmpty !== '31', var_export($atEmpty, true));
+
+// ⚠️ *And the edge it names really is one the heir inherits — otherwise the address would be valid
+// only by accident.*
+$inherited = false;
+
+foreach ($editor->attributesOf($heir->id) as $seen) {
+    if ($seen->id === $pathEdge->id) {
+        $inherited = true;
+    }
+}
+
+check('the edge the path names is one the heir inherits', $inherited);
+
 echo "\n== tidying up ==\n";
 
 // ⚠️ **Everything that hangs off them, not just the nodes** — leaving the settings and the

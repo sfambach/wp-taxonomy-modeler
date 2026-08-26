@@ -631,14 +631,34 @@ details.taxmod-page-block > summary {
  * "nicht inline" — the owner, looking at a <details> that pushed the page down.
  * A real overlay, still without script: a nameless checkbox holds the open
  * state, a <label> flips it, and this shows the panel while it is checked. */
+/* ⚠️ **The blue frame around the move button was this element's focus ring.** `opacity: 0` hides a
+   checkbox from the eye and leaves it **in the layout and focusable** — so clicking the label moved
+   focus into it and the browser drew a ring, in the admin's own `#007cba`, around a box nobody can
+   see. The owner: *the frame is blue, so it probably has something to do with a link?* Same colour,
+   different cause — and his noticing the colour is what found it.
+
+   ⚠️ *Clipped rather than `display: none`, because a `display: none` checkbox is still toggled by its
+   label and is no longer reachable by keyboard at all — which would trade a stray ring for a dialog
+   that cannot be opened without a mouse.* */
 .taxmod-dialog-switch {
     position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
     opacity: 0;
     pointer-events: none;
 }
 
 .taxmod-dialog-open {
     cursor: pointer;
+}
+
+/* ⚠️ **The ring has to land somewhere**, or keyboard focus becomes invisible: the switch is clipped,
+   so the mark moves onto the thing a person actually sees. */
+.taxmod-dialog-switch:focus-visible + .taxmod-dialog-open {
+    box-shadow: 0 0 0 1px #007cba;
+    border-radius: 3px;
 }
 
 .taxmod-dialog {

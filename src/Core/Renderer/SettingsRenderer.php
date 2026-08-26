@@ -255,6 +255,20 @@ final class SettingsRenderer implements Renderer
                 default     => $control->available,
             };
 
+            // ⚠️ **An unavailable reset is left out, not greyed** — the owner, pointing at the panel:
+            // *delete still there* and then, asked what he wanted, ***exactly, reset not there when
+            // nothing was set***. The row already knew (`setHere`); what it did was draw the button
+            // `disabled` at `opacity:.35`, which is *there* to a person looking at it.
+            //
+            // ⚠️ *Only this one act, and deliberately not the others. [R30](../../../docs/NewConcept/30-renderer.md)
+            // wants a **control** whose choice is impossible to be marked rather than hidden, because
+            // a missing field cannot be told from a forgotten one. **An act is not a control**: a
+            // button that could never do anything here is not information, it is furniture — and
+            // `empty` stays greyed precisely because its absence would say something.*
+            if ($control->name === self::RESET && ! $available) {
+                continue;
+            }
+
             // ⚠️ **Named per row, because one form now holds them all.** With a form per row the key
             // rode in a hidden field; in one form a button has to say **which** setting it means, so
             // it submits as `empty[<key>]`. *That is also what lets the page-head save coexist with

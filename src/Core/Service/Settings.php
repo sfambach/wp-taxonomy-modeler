@@ -335,44 +335,77 @@ final class Settings
      * were **in force** rather than the handful that happened to be stored. *Copying `ownedBy()` —
      * which is what {@see ModelEditor::duplicate()} does — would give a new node almost nothing.*
      *
-     * ⚠️ **Only the empty path, and this is a known limit rather than an oversight.** A row at a
-     * path is *this owner's answer for one particular place* ([D-413](../../../docs/NewConcept/90-decision-log.md))
-     * — `default` at path `4654` is what this node says about that one attribute. **Whether those
-     * travel to a child is not decided**, and copying them silently would point a child's rows at
-     * edges chosen for its parent.
+     * ⚠️ **Rows at a path travel too, and the owner had to correct me to get there.** I first shipped
+     * this taking only the empty path, on the worry that a child's rows would end up pointing at
+     * *edges chosen for its parent*. He: ***I do not understand — nonsense?*** **He is right, and the
+     * reason is inheritance itself.** A `path` is a chain of **edge ids**
+     * ([D-413](../../../docs/NewConcept/90-decision-log.md), [D-045](../../../docs/NewConcept/90-decision-log.md)),
+     * and a child does not get copies of its parent's attribute edges — *it inherits them, the same
+     * ids* ({@see ModelEditor::attributesOf()} walks `[...ancestorIds, id]`). **So the address is
+     * still the child's own address**, and dropping those rows was the thing that lost information.
+     *
+     * ⚠️ *Where the worry **does** apply is {@see ModelEditor::duplicate()} — a copy gets **new** edges
+     * (`addAttribute()` per attribute), so a path naming the original's edge ids means nothing on the
+     * copy and would have to be remapped. Different act, real problem, not this one.*
      *
      * @param  list<int> $source Any chain; what it resolves to is what gets written.
      * @param  list<int> $target Ending at the owner receiving the rows.
-     * @return list<string>      The keys written, so a caller can say what it did.
+     * @return list<string>      The keys written, as `key` or `key@path`.
      */
     public function materialise(array $source, array $target): array
     {
         $ownerId = $target[count($target) - 1];
         $written = [];
 
-        foreach ($this->resolve($source) as $key => $resolved) {
-            // ⚠️ **Never over a row the owner already has.** Materialising runs on creation, but a
-            // caller may run it again — and overwriting would undo the very edit this whole design
-            // exists to make possible.
-            if ($this->valueAt($ownerId, $key, '') !== null) {
-                continue;
+        foreach ($this->pathsAlong($source) as $path) {
+            foreach ($this->resolve($source, $path) as $key => $resolved) {
+                // ⚠️ **Never over a row the owner already has.** Materialising runs on creation, but
+                // a caller may run it again — and overwriting would undo the very edit this whole
+                // design exists to make possible.
+                if ($this->valueAt($ownerId, $key, $path) !== null) {
+                    continue;
+                }
+
+                $engine = SettingKey::tryFrom($key);
+
+                // ⚠️ *`multiplicity` is edge-only, so a node must not receive it — and `put()` would
+                // refuse it with an exception. Asking first keeps materialising from having to catch
+                // its own refusals.*
+                if ($engine !== null && $engine->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
+                    continue;
+                }
+
+                $this->put($target, $key, $resolved->value, $path);
+
+                $written[] = $path === '' ? $key : $key . '@' . $path;
             }
-
-            $engine = SettingKey::tryFrom($key);
-
-            // ⚠️ *`multiplicity` is edge-only, so a node must not receive it — and `put()` would
-            // refuse it with an exception. Asking first keeps materialising from having to catch its
-            // own refusals.*
-            if ($engine !== null && $engine->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
-                continue;
-            }
-
-            $this->put($target, $key, $resolved->value);
-
-            $written[] = $key;
         }
 
         return $written;
+    }
+
+    /**
+     * Every address the chain has anything stored at — the empty one always, then the rest.
+     *
+     * ⚠️ **The empty path is included even when nothing sits there**, because that is where every
+     * engine key lives; the others are the per-place answers [D-413](../../../docs/NewConcept/90-decision-log.md)
+     * added. *One query, and the walk that follows filters in memory — a query per path would be the
+     * N+1 `CD-7` forbids, and paths multiply faster than chains do.*
+     *
+     * @param  list<int>    $chain
+     * @return list<string>
+     */
+    private function pathsAlong(array $chain): array
+    {
+        $paths = [''];
+
+        foreach ($this->settings->forOwners($chain) as $one) {
+            if ($one->path !== '' && ! in_array($one->path, $paths, true)) {
+                $paths[] = $one->path;
+            }
+        }
+
+        return $paths;
     }
 
     /**
