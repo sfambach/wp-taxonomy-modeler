@@ -3105,8 +3105,13 @@ position rather than a bug.** What changes is what the model *is*: today it **gu
 descendant is wider than its ancestor; afterwards it **records what a person decided**. *Both are
 defensible. Only the first can be relied on by a validator without asking anybody.*
 
-⚠️ *Residual, and it is small: nothing would **detect** a child left wider than its parent. That is a
-validator's job and validators are list rows 5 and 8 — so the answer exists, it is just not built.*
+⚠️ **Withdrawn 2026-08-26 by the owner, and it was never a residual.** I wrote here that *nothing would
+detect a child left wider than its parent — that is a validator's job.* He: *we had taken this
+dependency out of the settings — the «wider» thing. That is a setting at the node and it can be
+changed. **Nobody has to find that.*** **[D-411](90-decision-log.md) had already abolished the rule** —
+*a range on a node is a **default for its fields**, not a promise about a group* — so being wider is
+not a defect; it is what overriding a default looks like. *I quoted D-411 to justify materialising and
+kept its abolished rule alive as a debt in the same breath.* Settled in [D-423](90-decision-log.md).
 
 **To objection 2 — `reset` pulls from the next higher node.**
 
