@@ -538,3 +538,35 @@ details.taxmod-page-block > summary {
     height: 16px;
     line-height: 1;
 }
+
+/* ── The preview ────────────────────────────────────────────────────────────
+ * Two renderings of one descent, side by side (D-160). The owner asked for it
+ * to see the flags work: `read_only` is the setting whose whole meaning is
+ * that the two sides differ, so they have to be readable at once. */
+.taxmod-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20em, 1fr));
+    gap: 1em;
+    align-items: start;
+}
+
+.taxmod-preview-side {
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    background: #fff;
+    padding: .6em .8em;
+}
+
+.taxmod-preview-side h4 {
+    margin: 0 0 .5em;
+    font-size: .9em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+}
+
+/* Named, never silently dropped: a preview that quietly loses a field cannot be
+ * told apart from one that forgot it. */
+.taxmod-preview-hidden {
+    font-style: italic;
+}

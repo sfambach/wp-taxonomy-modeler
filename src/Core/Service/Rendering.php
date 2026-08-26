@@ -762,6 +762,16 @@ final class Rendering
 
         $drawn = [];
 
+        // ⚠️ **`hide` puts the renderer out of force** ([D-399](90-decision-log.md)). The owner:
+        // *`hide` would have to override the renderer — so **no renderer is valid**, because it is
+        // not used here; the field should then be greyed out.* **This is the honest answer to an
+        // empty renderer**, and it narrows [D-352](90-decision-log.md) rather than breaking it: a
+        // renderer is always resolved *where something is drawn*, and a hidden field draws nothing.
+        //
+        // ⚠️ *Read with `($a['x'] ?? null)?->y` and never `$a['x']?->y` — the second warns on a
+        // missing key, which is a bug that was written two files from this line on 2026-08-26.*
+        $hidden = (($resolved[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true;
+
         foreach ($resolved as $key => $setting) {
             $engineKey = SettingKey::tryFrom($key);
             $shape     = $engineKey?->shape() ?? SettingShape::Words;
@@ -773,7 +783,7 @@ final class Rendering
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId);
+                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $hidden);
 
                 continue;
             }
@@ -832,6 +842,101 @@ final class Rendering
      * @param list<Relation>        $edges
      * @param array<int, TypedValue> $values
      */
+    /**
+     * What a preview should be filled with, when nothing has been entered.
+     *
+     * ⚠️ **[D-160](90-decision-log.md) is explicit that this exists**: *the preview loads the test
+     * data and renders that … **defaults remain the fallback** where no pack covers the model.* The
+     * owner's reason is the whole point of a preview — *a form of empty fields shows that the
+     * structure exists, a filled one shows whether it **reads***.
+     *
+     * ⚠️ **This is not «no record is the default record».** That was the tempting version and
+     * [D-160](90-decision-log.md) turned it down: a missing value is **not answered**
+     * ([D-232](90-decision-log.md)), and a real form must keep showing it that way. *So the
+     * substitution happens here, for the preview only, and never on the way into storage.*
+     *
+     * ⚠️ **A default is a `choosing` setting, so it may be anything the type permits**
+     * ([D-312](90-decision-log.md)) — which is why this reads the resolved chain rather than the
+     * edge: a default written at the type is exactly the one a preview should show.
+     *
+     * @param  list<Relation>                                    $edges
+     * @param  array<int, array<string, ResolvedSetting>>         $resolved Settings per edge id.
+     * @param  array<int, TypedValue>                             $held     What a record holds, if any.
+     * @return array<int, TypedValue>                                       Keyed by edge id.
+     */
+    public function previewValuesFor(array $edges, array $resolved, array $held = []): array
+    {
+        $values = [];
+
+        foreach ($edges as $edge) {
+            // ⚠️ **Real data wins.** The order is decided — *real data → rows marked as test data →
+            // the type's sample value* — and the middle rung does not exist yet
+            // ([C28](10-domain-core.md) has no column), so this is the first and the third.
+            if (isset($held[$edge->id]) && ! $held[$edge->id]->isNothing()) {
+                $values[$edge->id] = $held[$edge->id];
+
+                continue;
+            }
+
+            $default = $resolved[$edge->id][SettingKey::DefaultValue->value] ?? null;
+
+            if ($default !== null && ! $default->value->isNothing()) {
+                $values[$edge->id] = $default->value;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Which edges a preview may leave out, and which it must draw dead rather than absent.
+     *
+     * ⚠️ **This is what the owner is after** — *we need the preview to fix the flag and renderer
+     * concept errors.* `hide` and `read_only` are stored, resolved and had **no surface that showed
+     * them doing anything**: a settings panel draws the switch, not its effect. **Here they have
+     * one.**
+     *
+     * ```mermaid
+     * flowchart LR
+     *   H["hide = true"] --> G["gone from the preview"]
+     *   R["read_only = true"] --> D["drawn, not editable"]
+     * ```
+     *
+     * ⚠️ **The two are not variations of one thing.** `hide` removes the row; `read_only` keeps it
+     * and refuses the edit — *a computed value a reader should see and nobody may type*. Collapsing
+     * them would make a read-only field invisible, which is the opposite of what it is for.
+     *
+     * @param  list<Relation>                            $edges
+     * @param  array<int, array<string, ResolvedSetting>> $resolved
+     * @return array{shown: list<Relation>, hidden: list<Relation>, fixed: list<int>}
+     */
+    public function previewVisibilityFor(array $edges, array $resolved): array
+    {
+        $shown  = [];
+        $hidden = [];
+        $fixed  = [];
+
+        foreach ($edges as $edge) {
+            $keys = $resolved[$edge->id] ?? [];
+
+            // ⚠️ `($a['x'] ?? null)?->y` and **not** `$a['x']?->y` — the second is a warning on a
+            // missing key, which is a bug this file's own docblock warns about and which was written
+            // two files away on 2026-08-26.
+            if ((($keys[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true) {
+                $hidden[] = $edge;
+
+                continue;
+            }
+
+            $shown[] = $edge;
+
+            if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? false) === true) {
+                $fixed[] = $edge->id;
+            }
+        }
+
+        return ['shown' => $shown, 'hidden' => $hidden, 'fixed' => $fixed];
+    }
     public function nodeAsForm(
         Node $node,
         array $edges,
@@ -1053,6 +1158,7 @@ final class Rendering
         ?SimpleType $subjectType = null,
         array $choices = [],
         string $formId = '',
+        bool $hidden = false,
     ): RenderedSetting {
         $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
         $options  = [];
@@ -1110,7 +1216,12 @@ final class Rendering
             // nothing would follow (D-015: settings are sparse).
             $mayBeNothing = false;
 
-            if ($setting->value->isNothing()) {
+            // ⚠️ **Out of force where the subject is hidden** ([D-399](90-decision-log.md)). *Nothing
+            // draws a hidden field, so «which renderer draws it» has no answer to force — and
+            // showing one would be the control asserting a fact that is not one.*
+            if ($hidden) {
+                $mayBeNothing = true;
+            } elseif ($setting->value->isNothing()) {
                 $inForce = $this->renderers->defaultFor(
                     $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)
                 );
@@ -1146,6 +1257,12 @@ final class Rendering
                     locale: $locale,
                     level: $level,
                     fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key->value . ']',
+                    // ⚠️ **Greyed and not removed** ([D-399](90-decision-log.md), [R30](30-renderer.md)):
+                    // a control that vanishes when a switch is thrown makes a person hunt for the row
+                    // they were about to use. *A disabled control submits nothing, so keeping it costs
+                    // nothing — which is the same argument the choice renderer already makes for a
+                    // model that cannot be satisfied.*
+                    editable: ! ($hidden && $key === SettingKey::Renderer),
                     surroundings: new Surroundings(options: $options, mayBeNothing: $mayBeNothing, formId: $formId)
                 )
             ),

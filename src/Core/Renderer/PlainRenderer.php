@@ -53,6 +53,27 @@ final class PlainRenderer implements Renderer
             return RenderResult::of('');
         }
 
+        // ⚠️ **A reference is never drawn here, and reaching this line means a renderer is
+        // mis-set.** This is the fallback — *nothing draws this yet* ([R14b](../../../docs/NewConcept/30-renderer.md)) —
+        // and a reference belongs to {@see ReferenceRenderer}, which has to be *handed* its
+        // target's label ([D-105](../../../docs/NewConcept/90-decision-log.md), [D-159](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ *It used to call `describe()` and print `→ 285` — a **bare id on screen**, which
+        // [D-363](../../../docs/NewConcept/90-decision-log.md) forbids. The owner found it by
+        // setting `renderer = chooser-inline` on a constant: a chooser is for **picking**, so it is
+        // registered for surfaces only, the descent could not use it, and this ran instead. **A
+        // silent fallback that invents a value is worse than one that says it cannot draw.***
+        if ($context->value->isAReference()) {
+            return RenderResult::of(
+                // ⚠️ **The same class the rest of this renderer uses.** A test caught me inventing a
+                // second one: *`taxmod-no-renderer`* is how a missing renderer already reads on this
+                // screen, and a fault that styles itself differently reads as a different kind of
+                // problem. *The class is the vocabulary; a new word needs a reason.*
+                '<span class="taxmod-value taxmod-no-renderer">'
+                . RenderResult::escape($this->cannotDraw()) . '</span>'
+            );
+        }
+
         $shown = $context->value->isNothing() ? '' : $context->value->describe();
 
         // ⚠️ **Marked as a fault, because it is one** (R14b). Reaching the fallback means the
@@ -75,4 +96,16 @@ final class PlainRenderer implements Renderer
             . ' value="' . RenderResult::escape($shown) . '">'
         );
     }
+    /**
+     * What a renderer says when it has been handed something it may not draw.
+     *
+     * ⚠️ **It names the cause rather than the symptom.** *«No renderer» sends a person looking at
+     * the renderer control, which is exactly where the answer is — the stored name is one no field
+     * can use.*
+     */
+    private function cannotDraw(): string
+    {
+        return 'no renderer here — the one set for this cannot draw a reference';
+    }
+
 }

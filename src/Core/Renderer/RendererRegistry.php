@@ -232,10 +232,55 @@ final class RendererRegistry
     ): ?Renderer {
         $chosen = $settings[SettingKey::Renderer->value]->value->text ?? null;
 
-        $renderer = $chosen === null || $chosen === ''
-            ? $this->defaultFor($type)
-            : $this->byName($chosen);
+        if ($chosen === null || $chosen === '') {
+            $renderer = $this->defaultFor($type);
 
-        return in_array($purpose, $renderer->supports(), true) ? $renderer : null;
+            return in_array($purpose, $renderer->supports(), true) ? $renderer : null;
+        }
+
+        $named = $this->byName($chosen);
+
+        // ⚠️ **A named renderer that cannot serve here is not in force, and the *type's default*
+        // draws — not the fallback.** The owner found this by asking *how do we render a constant
+        // node?* after setting `renderer = chooser-inline` on `Base units`: **a chooser is for
+        // picking**, so it is registered for surfaces only and supports `Edit`, and the field descent
+        // asked it for `Display`. It said no, `fieldsFor()` reached for the fallback, and the fallback
+        // printed the reference as `→ 4044`. *The unit `Ω` became a bare id, which is the same fault
+        // he had already reported once as `→ 285`.*
+        //
+        // ⚠️ **Why the type's default and not nothing.** The type still says what a `node_ref` looks
+        // like — `reference` (R14a) — and a setting that cannot apply here has no business removing an
+        // answer the registry already holds. *The fallback means «nothing draws this», and something
+        // does.*
+        //
+        // ⚠️ *What this does **not** do is tell anybody the stored name is unusable. It is substituted
+        // quietly, and quiet substitution is how the bug hid in the first place — so the renderer
+        // control has to say it, and that is its own row on the working list.*
+        if (in_array($purpose, $named->supports(), true) && ! isset($this->surfaceOnly[$chosen])) {
+            return $named;
+        }
+
+        // ⚠️ **Three cases, and the tests were right that they are three.** My first attempt
+        // substituted the type's default for all of them and broke two checks that had been honest
+        // when written — *`PR-9` earning its place*:
+        //
+        // | The stored name | What must happen |
+        // |---|---|
+        // | **unknown to the registry** | the **fallback**, visibly — somebody typed a name that does not exist, and substituting would hide it |
+        // | **known but cannot serve here** | the **type's default** — the type still says what a `node_ref` looks like |
+        // | **known, cannot serve, and the type has no default either** | **nothing** — a renderer that declines a purpose yields nothing for it |
+        //
+        // ⚠️ *The middle row is the fix; the outer two are what the tests were defending.*
+        if (! isset($this->byName[$chosen])) {
+            return in_array($purpose, $this->fallback->supports(), true) ? $this->fallback : null;
+        }
+
+        $default = $this->defaultFor($type);
+
+        if ($default === $this->fallback) {
+            return null;
+        }
+
+        return in_array($purpose, $default->supports(), true) ? $default : null;
     }
 }

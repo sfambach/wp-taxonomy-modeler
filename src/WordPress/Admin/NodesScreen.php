@@ -16,6 +16,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\Section;
@@ -490,6 +491,15 @@ final class NodesScreen
                 '',
                 $this->attributes($selected, $rows)
             ),
+
+            // ⚠️ **The slot has been empty since Package 4 and it was not idle, it was blocked —
+            // on the wrong thing.** I had it waiting for the test-data column; [D-160](../../../docs/NewConcept/90-decision-log.md)
+            // says *defaults remain the fallback*, so it was buildable all along. *The owner asked
+            // for it because it is the only surface on which `hide` and `read_only` show an effect.*
+            PageSlot::Preview->value => new Section(
+                '',
+                $this->previewPanel($selected)
+            ),
         ];
 
         // ⚠️ **Records are outside the frame, deliberately.** R20a's order is about the **model** —
@@ -502,6 +512,160 @@ final class NodesScreen
             . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>';
     }
 
+    /**
+     * How this node reads when it is filled in — and the only place the flags show their effect.
+     *
+     * The owner, 2026-08-26: *we need the preview to fix the flag and renderer concept errors.* That
+     * is the argument for building it now rather than after the test-data column: **`hide` and
+     * `read_only` were stored, resolved and invisible.** A settings panel draws the *switch*; nothing
+     * drew what the switch *does*, so a concept fault in either could not be seen at all.
+     *
+     * ```mermaid
+     * flowchart TB
+     *   V["values: a record · else the defaults"] --> D["as a reader sees it — Purpose::Display"]
+     *   V --> E["as an editor sees it — Purpose::Edit"]
+     *   H["hide = true"] --> N["named below, drawn in neither"]
+     * ```
+     *
+     * ⚠️ **Two renderings of one descent, not two features.** [D-160](../../../docs/NewConcept/90-decision-log.md)
+     * says the preview *is the same single mode, fed with realistic values* — so this pulls the same
+     * renderers through `Purpose::Display` and `Purpose::Edit` and lets the difference be the point.
+     * *`read_only` is exactly the setting whose whole meaning is that those two differ.*
+     *
+     * ⚠️ **Defaults are the decided fallback, not a shortcut** — [D-160](../../../docs/NewConcept/90-decision-log.md)
+     * in as many words: *defaults remain the fallback where no pack covers the model.* Which is why
+     * this row was buildable today and I had listed it as blocked: the test-data column
+     * ([C28](../../../docs/NewConcept/10-domain-core.md), list row 17) improves the middle rung of
+     * *real data → marked rows → sample value*, and the first and third already exist.
+     *
+     * ⚠️ **A hidden row is named rather than silently absent.** *A preview that quietly drops a field
+     * is indistinguishable from a preview that forgot it* — and the owner is using this screen to
+     * judge whether `hide` is right, so what it removed has to be legible.
+     */
+    private function previewPanel(Node $selected): string
+    {
+        $branch = $this->framework->branchOf($selected);
+
+        if ($branch === null || ! $branch->holdsData()) {
+            return $this->heading(
+                __('Preview', 'taxmod'),
+                __('Only a node that can hold records has something to preview. A data type or a constant describes something rather than being one.', 'taxmod')
+            ) . '<p><em>' . esc_html__('Nothing to preview here.', 'taxmod') . '</em></p>';
+        }
+
+        $edges = $this->editor->attributesOf($selected->id);
+
+        $html = $this->heading(
+            __('Preview', 'taxmod'),
+            __('How this node reads when it is filled in. The left column is what a reader sees, the right what an editor sees — a field that differs between them is read-only, and that is the point of looking.', 'taxmod')
+        );
+
+        if ($edges === []) {
+            return $html . '<p><em>' . esc_html__('No attributes yet, so there is nothing to fill in.', 'taxmod') . '</em></p>';
+        }
+
+        $resolved = $this->settings->resolveForUseSites($edges);
+        $seen     = $this->previewSource($selected);
+
+        $values     = $this->rendering->previewValuesFor($edges, $resolved, $seen['held']);
+        $visibility = $this->rendering->previewVisibilityFor($edges, $resolved);
+        $locale     = $this->localeFromRequest();
+
+        $html .= '<p class="description taxmod-preview-source">' . esc_html($seen['says']) . '</p>';
+
+        $html .= '<div class="taxmod-preview">';
+
+        foreach ([
+            [__('As a reader sees it', 'taxmod'), Purpose::Display, false],
+            [__('As an editor sees it', 'taxmod'), Purpose::Edit, true],
+        ] as [$title, $purpose, $editable]) {
+            $html .= '<div class="taxmod-preview-side">'
+                . '<h4>' . esc_html($title) . '</h4>'
+                // ⚠️ **No field prefix.** A preview must not be submittable: two forms with the same
+                // field names on one page is how a person saves the thing they were only looking at.
+                . $this->rendering->nodeAsForm(
+                    $selected,
+                    $visibility['shown'],
+                    $values,
+                    $purpose,
+                    '',
+                    $locale,
+                    Level::Admin,
+                    $editable
+                )->markup
+                . '</div>';
+        }
+
+        $html .= '</div>';
+
+        if ($visibility['hidden'] !== []) {
+            $names = [];
+
+            foreach ($visibility['hidden'] as $edge) {
+                $names[] = $edge->name;
+            }
+
+            $html .= '<p class="description taxmod-preview-hidden">'
+                . esc_html(sprintf(
+                    /* translators: %s: comma-separated attribute names. */
+                    __('Left out by hide: %s', 'taxmod'),
+                    implode(', ', $names)
+                ))
+                . '</p>';
+        }
+
+        if ($visibility['fixed'] !== []) {
+            $html .= '<p class="description">'
+                . esc_html(sprintf(
+                    /* translators: %d: how many attributes are read-only. */
+                    _n('%d attribute is read-only, so it is drawn on both sides and editable on neither.', '%d attributes are read-only, so they are drawn on both sides and editable on neither.', count($visibility['fixed']), 'taxmod'),
+                    count($visibility['fixed'])
+                ))
+                . '</p>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * What the preview is filled with, and a sentence saying so.
+     *
+     * ⚠️ **The provenance is shown, not implied.** *A filled preview is worth looking at only if a
+     * person knows whether they are seeing real data or the defaults* — otherwise a good-looking
+     * preview over sample values reads as proof that the model holds real ones.
+     *
+     * @return array{held: array<int, \Taxmod\Core\Model\TypedValue>, says: string}
+     */
+    private function previewSource(Node $selected): array
+    {
+        $records = $this->data->recordsOf($selected->id);
+
+        if ($records === []) {
+            return [
+                'held' => [],
+                'says' => __('Filled from the defaults — nothing has been entered against this node yet.', 'taxmod'),
+            ];
+        }
+
+        // ⚠️ **The first record and not a chosen one.** Which record to preview is a question nobody
+        // has asked yet, and inventing an answer would be `PR-4`'s failure — so it takes the first
+        // and says which.
+        $first = $records[0];
+        $held  = [];
+
+        foreach ($this->data->valuesOf($first->id) as $value) {
+            $held[$value->edgeId] = $value->value;
+        }
+
+        return [
+            'held' => $held,
+            'says' => sprintf(
+                /* translators: %d: the record's id. */
+                __('Filled from record #%d, with the defaults where it says nothing.', 'taxmod'),
+                $first->id
+            ),
+        ];
+    }
     /**
      * Where this node could go — everywhere except itself and its own subtree.
      *

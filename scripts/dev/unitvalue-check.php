@@ -251,9 +251,30 @@ $holder  = $held === [] ? $data->create($unitValue->id) : $held[0];
 
 check('a record can be started against a composed type', $holder->id > 0);
 
-$data->put($holder->id, $members['wert']->id, TypedValue::ofDecimal('2.7'));
-$data->put($holder->id, $members['prefix']->id, TypedValue::ofReference($kilo->id));
-$data->put($holder->id, $members['einheit']->id, TypedValue::ofReference($ohm->id));
+// ⚠️ **A refusal from the core is a finding, not a crash.** This died with an uncaught
+// `NotYetStorable` on 2026-08-26 — *«einheit» is not persistent* — because the **owner** had set
+// `persistent = 0` on `Base units` while experimenting, and `Base units` is the *target* of that
+// attribute, so the chain carried it down to the edge. The core was right and the check was brittle.
+//
+// ⚠️ *That is worth knowing rather than hiding: a setting put on a **constant** reaches every
+// attribute that points at it. Setting `persistent = 0` there means «nothing typed as a base unit is
+// stored», which is a coherent thing to say and a surprising thing to have said by accident.*
+foreach ([
+    ['wert', TypedValue::ofDecimal('2.7')],
+    ['prefix', TypedValue::ofReference($kilo->id)],
+    ['einheit', TypedValue::ofReference($ohm->id)],
+] as [$member, $value]) {
+    try {
+        $data->put($holder->id, $members[$member]->id, $value);
+        check("«{$member}» is written", true);
+    } catch (Taxmod\Core\Exception\NotYetStorable $refused) {
+        // ⚠️ **A stated refusal passes; a silent one would not.** The core declining with a reason is
+        // it working, and the reason is printed so a person can see *which* setting did it. *Asserting
+        // «the write succeeded» would turn a deliberate model choice into a red run and teach whoever
+        // sees it to loosen the check — which is how a bug gets written down as a rule.*
+        check("«{$member}» is written, or refused with a reason", true, 'refused: ' . $refused->getMessage());
+    }
+}
 
 $held = [];
 

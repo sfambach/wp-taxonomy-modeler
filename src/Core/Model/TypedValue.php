@@ -113,7 +113,21 @@ final class TypedValue
             && $this->reference === $other->reference;
     }
 
-    /** For a message or a log line — never for storage or comparison. */
+    /**
+     * For a message, a log line or a diagnostic — **never for storage, comparison or a surface**.
+     *
+     * ⚠️ **The last of those three was missing and it cost a visible bug.** A reference used to
+     * come back as `→ 285`, two renderers called this to draw a value, and a **bare id reached the
+     * screen** — which [D-363](../../../docs/NewConcept/90-decision-log.md) forbids in as many
+     * words: *a bare number is the sort of thing that gets copied into a spreadsheet as if it meant
+     * something.* It was also a domain object deciding what a thing looks like, which the code
+     * standard forbids outright.
+     *
+     * ⚠️ **So a reference now describes itself as a reference and does not spell out the id.** *A
+     * reference's appearance is its target's label, and only a renderer that has been handed that
+     * label can draw it ([D-105](../../../docs/NewConcept/90-decision-log.md),
+     * [D-159](../../../docs/NewConcept/90-decision-log.md)).*
+     */
     public function describe(): string
     {
         return match (true) {
@@ -121,8 +135,14 @@ final class TypedValue
             $this->int !== null            => (string) $this->int,
             $this->decimal !== null        => $this->decimal,
             $this->date !== null           => $this->date,
-            $this->reference !== null      => '→ ' . $this->reference,
+            $this->reference !== null      => '(a reference)',
             default                        => (string) $this->text,
         };
+    }
+
+    /** Whether this value points at a node, which only a reference renderer may draw. */
+    public function isAReference(): bool
+    {
+        return $this->reference !== null;
     }
 }
