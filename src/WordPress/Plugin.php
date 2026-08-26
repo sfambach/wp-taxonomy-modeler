@@ -12,6 +12,7 @@ use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\BaseScaffold;
+use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
@@ -90,6 +91,7 @@ final class Plugin
         // move for different reasons and must not drag each other along.
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
+        $this->compositionScaffold()->importOnce();
     }
 
     public function activate(): void
@@ -100,6 +102,7 @@ final class Plugin
         $this->frameworkNodes()->seed();
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
+        $this->compositionScaffold()->importOnce();
     }
 
     public function registerMenu(): void
@@ -256,6 +259,22 @@ final class Plugin
             $this->frameworkNodes(),
             new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock())),
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes())
+        );
+    }
+
+    /**
+     * The composed types the concept names as its own test — an address, a dimension, a recipe.
+     *
+     * ⚠️ **After the unit scaffold, and that ordering is load-bearing.** `Dimension` and `Backrezept`
+     * are built out of `Einheitenwert`, which the unit delivery owns; run the other way round and the
+     * scaffold refuses rather than creating a second node of that name.
+     */
+    public function compositionScaffold(): CompositionScaffold
+    {
+        return new CompositionScaffold(
+            $this->editor(),
+            $this->frameworkNodes(),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
         );
     }
 
