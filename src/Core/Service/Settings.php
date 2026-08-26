@@ -123,10 +123,13 @@ final class Settings
      *
      * @return array<string,ResolvedSetting>
      */
-    public function resolve(array $chain): array
+    public function resolve(array $chain, string $path = ''): array
     {
         // One query for the whole chain (D-014), then the walk happens in memory.
-        return $this->walk($chain, $this->settings->forOwners($chain));
+        //
+        // ⚠️ *One query **regardless of path**, filtered inside the walk. A second query per path
+        // would be the N+1 `CD-7` forbids, and paths multiply faster than chains do.*
+        return $this->walk($chain, $this->settings->forOwners($chain), $path);
     }
 
     /**
@@ -174,7 +177,7 @@ final class Settings
      *                                                 possibly for others — extras are skipped.
      * @return array<string, ResolvedSetting>
      */
-    private function walk(array $chain, array $settings): array
+    private function walk(array $chain, array $settings, string $path = ''): array
     {
         $position = array_flip($chain);
         $winner   = [];
@@ -183,6 +186,16 @@ final class Settings
             $at = $position[$setting->ownerId] ?? null;
 
             if ($at === null) {
+                continue;
+            }
+
+            // ⚠️ **A path never falls back to the empty one, and that refusal is the point of it.**
+            // `default` at path `4654` is *this node's value for that attribute*; `default` at the
+            // empty path is *this node's own default*. **Two different questions** — and reading one
+            // as the other is exactly what the prefix exponent died of: `kilo` carried `default = 3`
+            // at the empty path and the `exponent` attribute could never see it
+            // ([OQ-099](../../../docs/NewConcept/91-open-questions.md)).
+            if ($setting->path !== $path) {
                 continue;
             }
 
@@ -208,27 +221,31 @@ final class Settings
      *
      * @param list<int> $chain The chain the owner is the **last** link of.
      */
-    public function put(array $chain, string $key, TypedValue $value): void
+    public function put(array $chain, string $key, TypedValue $value, string $path = ''): void
     {
         $ownerId = $chain[count($chain) - 1];
         $engine  = SettingKey::tryFrom($key);
 
         if ($engine === null) {
             // A free key may be anything that is not one of the engine's names (D-084).
-            $was = $this->valueAt($ownerId, $key);
+            $was = $this->valueAt($ownerId, $key, $path);
 
-            $this->settings->put(new Setting($ownerId, $key, $value));
+            $this->settings->put(new Setting($ownerId, $key, $value, $path));
             $this->note($ownerId, $key, $was, $value);
 
             return;
         }
 
         $this->refuseWhereItDoesNotApply($engine, $ownerId, $value);
-        $this->refuseWidening($engine, $chain, $value);
 
-        $was = $this->valueAt($ownerId, $key);
+        // ⚠️ *The path goes in so a bound is compared with a bound **for the same place**. Measuring
+        // `range_min` at path `4654` against `range_min` at the empty path would refuse a value on
+        // the strength of an answer to a different question.*
+        $this->refuseWidening($engine, $chain, $value, $path);
 
-        $this->settings->put(new Setting($ownerId, $key, $value));
+        $was = $this->valueAt($ownerId, $key, $path);
+
+        $this->settings->put(new Setting($ownerId, $key, $value, $path));
         $this->note($ownerId, $key, $was, $value);
     }
 
@@ -253,9 +270,11 @@ final class Settings
      * ⚠️ **Not the same as writing nothing.** After a reset, later changes at the base arrive
      * here once more; after *set to nothing*, they deliberately do not.
      */
-    public function reset(int $ownerId, string $key): void
+    public function reset(int $ownerId, string $key, string $path = ''): void
     {
-        $this->settings->forget($ownerId, $key);
+        // ⚠️ *`path` says **which** place is forgotten. Without it, resetting a node's own default
+        // would also throw away what it says about each of its attributes.*
+        $this->settings->forget($ownerId, $key, $path);
     }
 
     /**
@@ -288,10 +307,10 @@ final class Settings
         }
     }
 
-    private function refuseWidening(SettingKey $key, array $chain, TypedValue $value): void
+    private function refuseWidening(SettingKey $key, array $chain, TypedValue $value, string $path = ''): void
     {
         $above     = array_slice($chain, 0, -1);
-        $inherited = $this->resolve($above)[$key->value] ?? null;
+        $inherited = $this->resolve($above, $path)[$key->value] ?? null;
 
         if ($inherited === null || $inherited->value->isNothing()) {
             return;
@@ -408,10 +427,10 @@ final class Settings
         );
     }
     /** What this owner has stored under this key right now, or nothing. */
-    private function valueAt(int $ownerId, string $key): ?TypedValue
+    private function valueAt(int $ownerId, string $key, string $path = ''): ?TypedValue
     {
         foreach ($this->settings->ownedBy($ownerId) as $one) {
-            if ($one->key === $key) {
+            if ($one->key === $key && $one->path === $path) {
                 return $one->value;
             }
         }

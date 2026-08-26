@@ -2795,6 +2795,16 @@ whatever is decided. What is at stake is whether it reads as the **same** someth
 
 ## OQ-092 — Does `settings` need a `path` column, so one owner can hold several defaults?
 
+> **Closed 2026-08-26 → [D-413](90-decision-log.md).** **Yes**, and it is schema version 8.
+> The owner: *yes, start with the column.* It was the right thing to build before deciding
+> [OQ-097](#oq-097--should-settings-be-materialised-into-the-inheriting-node-instead-of-resolved),
+> because **it is needed either way** — four decisions had already assumed it existed and one of
+> them ([D-378](90-decision-log.md)) was measured not to function without it.
+>
+> ⚠️ *One correction to the question as it was asked: it is **not** «several defaults». One key
+> still holds one answer at one place ([D-409](90-decision-log.md)); the path says **which place**.
+> Several rows for one key at one place would be a multiplicity, and a setting has none.*
+
 **Raised** 2026-08-25, while [D-373](90-decision-log.md) put a prefix's exponent on a read-only
 `default`.
 

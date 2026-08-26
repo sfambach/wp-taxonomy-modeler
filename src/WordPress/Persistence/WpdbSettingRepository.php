@@ -30,7 +30,7 @@ final class WpdbSettingRepository implements SettingRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT owner_id, setting_key, value_int, value_decimal, value_text, value_date, value_ref
+                'SELECT owner_id, setting_key, path, value_int, value_decimal, value_text, value_date, value_ref
                  FROM ' . Schema::table('settings') . "
                  WHERE owner_id IN ({$places})",
                 array_map(intval(...), $ownerIds)
@@ -52,24 +52,26 @@ final class WpdbSettingRepository implements SettingRepository
 
         $value = $setting->value;
 
-        // `replace` keys on the UNIQUE (owner_id, setting_key), so one setting stays one row —
+        // `replace` keys on the UNIQUE (owner_id, setting_key, path), so one setting at one place stays
+        // one row —
         // sparse storage means what is written is what differs, never a full copy (D-015).
         $wpdb->replace(
             Schema::table('settings'),
             [
                 'owner_id'      => $setting->ownerId,
                 'setting_key'   => $setting->key,
+                'path'          => $setting->path,
                 'value_int'     => $value->int,
                 'value_decimal' => $value->decimal,
                 'value_text'    => $value->text,
                 'value_date'    => $value->date,
                 'value_ref'     => $value->reference,
             ],
-            ['%d', '%s', '%d', '%s', '%s', '%s', '%d']
+            ['%d', '%s', '%s', '%d', '%s', '%s', '%s', '%d']
         );
     }
 
-    public function forget(int $ownerId, string $key): void
+    public function forget(int $ownerId, string $key, string $path = ''): void
     {
         global $wpdb;
 
@@ -77,8 +79,8 @@ final class WpdbSettingRepository implements SettingRepository
         // different from a row holding nothing (D-266).
         $wpdb->delete(
             Schema::table('settings'),
-            ['owner_id' => $ownerId, 'setting_key' => $key],
-            ['%d', '%s']
+            ['owner_id' => $ownerId, 'setting_key' => $key, 'path' => $path],
+            ['%d', '%s', '%s']
         );
     }
 
@@ -95,7 +97,8 @@ final class WpdbSettingRepository implements SettingRepository
                 $row['value_text'] === null ? null : (string) $row['value_text'],
                 $row['value_date'] === null ? null : (string) $row['value_date'],
                 $row['value_ref'] === null ? null : (int) $row['value_ref'],
-            )
+            ),
+            (string) ($row['path'] ?? '')
         );
     }
 }

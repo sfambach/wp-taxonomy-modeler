@@ -48,8 +48,13 @@ final class Schema
      * 6 — the label roles are seeded as nodes under their own container (D-151); again no
      *     table changed, and again the version is what carries them to an installed copy.
      * 7 — `relations.parked_by_group_id`, so an attribute can be removed at all (D-371).
+     * 8 — `settings.path`, the address a setting needs to say **which** place it answers for
+     *     (OQ-092). The unique key becomes `(owner_id, setting_key, path)`; an empty path means
+     *     the owner itself, so every existing row keeps its meaning untouched. **Four decisions
+     *     had assumed this column existed** — D-236, D-158, C30 and D-378 — and the last of them
+     *     was measured on 2026-08-26 to be written and not functioning because of it.
      */
-    public const VERSION = 7;
+    public const VERSION = 8;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -102,7 +107,61 @@ final class Schema
         self::backfillIdentities();
         self::backfillInheritanceEdges();
         self::dropRetiredColumns();
+        self::widenSettingUniqueKey();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * Take `path` into the settings unique key — because `dbDelta` never touches an index it has
+     * already created.
+     *
+     * ⚠️ **This is the half a schema bump does not do for you.** Adding the column worked on the
+     * first run; the key stayed `(owner_id, setting_key)`, so a second row for the same key at a
+     * different path would have been refused by a constraint nobody had noticed was still there.
+     * *Measured before writing this: the column existed and `SHOW INDEX` still listed two columns.*
+     *
+     * ⚠️ **Safe in this direction and only in this direction.** The old key is **stricter** than the
+     * new one, so no existing row can collide — widening a unique key can never fail on data that a
+     * narrower one already accepted. *Narrowing one would be the opposite and would need the
+     * duplicates found first.*
+     */
+    private static function widenSettingUniqueKey(): void
+    {
+        global $wpdb;
+
+        $table = self::table('settings');
+
+        $columns = $wpdb->get_col($wpdb->prepare(
+            'SELECT COLUMN_NAME FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s
+             ORDER BY SEQ_IN_INDEX',
+            $table,
+            'owner_key'
+        ));
+
+        // Already three columns, or the index is not there at all on a fresh install where dbDelta
+        // built it from the current definition.
+        if ($columns === [] || in_array('path', $columns, true)) {
+            return;
+        }
+
+        // ⚠️ **The new index goes in before the old one comes out, and that order is the whole
+        // difference between working and silently doing nothing.** `settings.owner_id` carries a
+        // foreign key to `identities` ([D-339]), and `owner_key` is an index MySQL can use to enforce
+        // it — so `DROP INDEX` alone is **refused**, without an exception a caller would see.
+        //
+        // ⚠️ *Adding `owner_key_path` first gives the constraint a second index that also begins with
+        // `owner_id`. The drop then succeeds, and the temporary name is renamed into place — which is
+        // three statements to do one thing, and the reason is written here so nobody tidies it back
+        // into one.*
+        $wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY owner_key_path (owner_id,setting_key,path)");
+
+        if ($wpdb->last_error !== '') {
+            return;
+        }
+
+        $wpdb->query("ALTER TABLE {$table} DROP INDEX owner_key");
+        $wpdb->query("ALTER TABLE {$table} RENAME INDEX owner_key_path TO owner_key");
     }
 
     /**
@@ -316,17 +375,33 @@ final class Schema
 
             // Typed value columns, never one stringly value cast in and out (D-071, D-074).
             // No floating point anywhere: a price and a tolerance are exact (D-057).
+            // ⚠️ **`path` is an address, not a multiplicity** ([D-409](../../../docs/NewConcept/90-decision-log.md),
+            // [OQ-092](../../../docs/NewConcept/91-open-questions.md)). One key still holds one answer
+            // at one place; `path` says **which place** — which attribute of this node, which member of
+            // a composed value. *Several rows for one key at one place would be a multiplicity, and a
+            // setting has none.*
+            //
+            // ⚠️ **Four decisions had already assumed it existed**, which is the argument for building
+            // it before anything else: several renderers ([D-236](../../../docs/NewConcept/90-decision-log.md)),
+            // several validators ([D-158](../../../docs/NewConcept/90-decision-log.md)), several defaults
+            // (C30), and the prefix exponent ([D-378](../../../docs/NewConcept/90-decision-log.md)) —
+            // which was measured on 2026-08-26 to be **written and not connected** for exactly this
+            // reason: `kilo`'s value had nowhere to sit that the `exponent` attribute could read.
+            //
+            // ⚠️ **Empty means «the owner itself»**, so every row written before this version keeps its
+            // meaning without being touched — the same choice `labels.path` made, and the same default.
             "CREATE TABLE {$t('settings')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 owner_id bigint(20) unsigned NOT NULL,
                 setting_key varchar(191) NOT NULL,
+                path varchar(255) NOT NULL DEFAULT '',
                 value_int bigint(20) DEFAULT NULL,
                 value_decimal decimal(30,10) DEFAULT NULL,
                 value_text mediumtext DEFAULT NULL,
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY owner_key (owner_id,setting_key),
+                UNIQUE KEY owner_key (owner_id,setting_key,path),
                 KEY value_ref (value_ref)
             ) {$charset};",
 

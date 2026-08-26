@@ -39,7 +39,11 @@ interface SettingRepository
      * ⚠️ **Not the same as storing nothing** (D-266). This is the *reset* half, and it must be
      * an explicit act rather than the side effect of clearing a field.
      */
-    public function forget(int $ownerId, string $key): void;
+    /**
+     * ⚠️ *`path` addresses **which place** the row answered for — empty is the owner itself
+     * ([D-409](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function forget(int $ownerId, string $key, string $path = ''): void;
 
     /** Everything one owner holds — for a screen showing what was set **here**. */
     public function ownedBy(int $ownerId): array;
