@@ -754,7 +754,12 @@ final class NodesScreen
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
-            . '<button class="button button-primary taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
+            // ⚠️ **No `button-primary`, and it was contradicting itself** ([row 38](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+            // The owner: *why a diskette with a blue background?* Because it carried
+            // `button-primary` **and** `taxmod-icon-button`, and the second exists precisely to take
+            // a button's background away. *Whichever the cascade favoured won, so the one button in
+            // the row that is styled like the others was styled unlike them.*
+            . '<button class="button taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
             . ' name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '"'
             . ' title="' . esc_attr__('Save every setting on this page', 'taxmod') . '">'
             // ⚠️ The diskette, not `dashicons-saved` — that one is a **tick**, and the owner spotted it.
@@ -1351,11 +1356,14 @@ final class NodesScreen
         // **the** one. *And he is right to be unsure it belongs in the list at all — see the working
         // list: once the admin page can declare it, this is a fact about the installation and the
         // picker can simply show the language.*
-        $offered[self::neutralLocale()] = sprintf(
-            /* translators: %s is a locale code, e.g. en_US. */
-            __('%s — default', 'taxmod'),
-            self::neutralLocale()
-        );
+        // ⚠️ **The suffix is gone, on the owner's word** ([row 39](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)):
+        // *«default» is too wide, not fully readable — maybe just leave it out, we have the setting
+        // now.* **The interesting half is his reason**: the neutral locale is moving off a WordPress
+        // option onto the installation identity ([D-397](../../../docs/NewConcept/90-decision-log.md)),
+        // so a select that announces which locale is *the* default repeats a fact that is about to
+        // have its own screen. *A narrow control saying half a word is worse than one saying the
+        // language, and the language is all a person is choosing here.*
+        $offered[self::neutralLocale()] = self::neutralLocale();
 
         ksort($offered);
 

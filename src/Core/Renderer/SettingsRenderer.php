@@ -315,8 +315,25 @@ final class SettingsRenderer implements Renderer
             return RenderResult::escape($this->word($context, 'here'));
         }
 
-        return '<em title="' . RenderResult::escape($this->word($context, 'inherited'))
-            . '">↑ #' . (int) $drawn->setting->fromOwnerId . '</em>';
+        // ⚠️ **The id is gone, and it was a bare number on screen** ([D-363](../../../docs/NewConcept/90-decision-log.md)
+        // forbids exactly that: *a bare number is the sort of thing that gets copied into a
+        // spreadsheet as if it meant something*). The owner found it: *a strange override arrow? An
+        // arrow up and `#641`.* **`#641` is the installation identity and `#4030` is `Base units`** —
+        // both have names, and this drew neither.
+        //
+        // ⚠️ *This docblock used to defend the id as **diagnostic**. It is diagnostic to me and to
+        // nobody else, which is the same mistake `→ 285` made one row up the working list.*
+        //
+        // ⚠️ **What replaces it is the arrow alone, carrying the word in its title** — *inherited*,
+        // which is the whole of what a reader needs to not overwrite an ancestor's value believing
+        // the field was blank. **Showing the owner's *name* instead needs it handed in**
+        // ([D-159](../../../docs/NewConcept/90-decision-log.md): a renderer fetches nothing), and
+        // that is a separate piece of wiring rather than a reason to keep printing a number.
+        //
+        // ⚠️ *And it is about to be rare: once settings are materialised
+        // ([D-423](../../../docs/NewConcept/90-decision-log.md)) every owner carries its own row, so
+        // `setHere` is true and this branch is reached only by nodes that predate the change.*
+        return '<em title="' . RenderResult::escape($this->word($context, 'inherited')) . '">↑</em>';
     }
 
     /** A word the boundary translated, or the key itself where it did not send one. */

@@ -356,6 +356,14 @@ details.taxmod-page-block > summary {
     padding: 0 .25em;
     min-height: 0;
     line-height: 1;
+    /* ⚠️ **A `<label>` needs telling; a `<button>` already knows.** The move trigger is a label —
+       a `<button>` inside a form would submit it — and a label is laid out as **inline text**, so
+       the same classes gave it a different box from its neighbours. The owner asked twice: first
+       *«leicht versetzt»*, then *why is the move button smaller, why still a box.* Moving the
+       classes onto the label (D-418) was not enough, because what differed was the element's own
+       display type. */
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .taxmod-icon-button:hover:not(:disabled) {
