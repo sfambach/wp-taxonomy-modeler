@@ -189,6 +189,74 @@ shows where they disagree:
 and never the other way round.** *Where a sentence would be true either way, it is about the ancestors
 and should name them instead of picking a mechanism.*
 
+## Two concepts, not two kinds of the same thing
+
+The owner, after three rounds of tables: *the distinction between settings and attributes is missing
+for me. We have to show that these are two different concepts.* **He is right that the tables below
+compare them without ever saying what each one is.**
+
+```mermaid
+flowchart TB
+    subgraph A["An ATTRIBUTE is a question the model asks its users"]
+      A1["Resistor · resistance = ?"] --> A2["a value in a record"]
+    end
+    subgraph S["A SETTING is a decision the modeller makes about a question"]
+      S1["decimal · min 0 · spinner · mandatory"] --> S2["how that question behaves"]
+    end
+```
+
+**An attribute is a question. A setting is a decision about a question.** Everything else follows from
+that, including every row of the tables below.
+
+| | **Attribute** | **Setting** |
+|---|---|---|
+| **What it is** | a **question the model asks its users** — *what is this resistor's resistance?* | a **decision the modeller makes** about that question — *it is a decimal, minimum 0, drawn as a spinner* |
+| **Who answers it** | whoever **uses** the model, once per record | whoever **authors** the model, once |
+| **What it produces** | **data** — a value in a record | **behaviour** — how the field looks, what it accepts, whether it is kept |
+| **Where it exists** | **only where somebody declared it**, and downwards from there — *local by construction* | **on every node, always** — *global by construction* ([D-378](90-decision-log.md)) |
+| **Who invents it** | a person, freely, with a name they choose | **nobody.** Sixteen engine keys; a reserved name cannot be invented ([D-084](90-decision-log.md)) |
+| **What it is called** | a **name**, which is user-visible text | a **key**, which is a token and never translated |
+
+### The test that decides it, and it is the owner's own
+
+> ***How does the user know he needs the multiplier?***
+
+He asked that twice on 2026-08-25 and it settled [D-378](90-decision-log.md). **A reserved setting key
+cannot answer it.** Measured rather than argued: `SettingKey::applyingTo()` offers **eleven** keys on a
+node with no type at all — so *a text node was being offered a prefix exponent*. **Nothing says where a
+reserved key belongs, because a reserved name is global by construction.**
+
+**An attribute answers it with inheritance**: `Prefixes` declares `exponent`, so *whoever hangs under
+`Prefixes` has one and nobody else does*.
+
+⚠️ **So the test is: «how would a person know this applies to them?»**
+
+| If the answer is | then it is |
+|---|---|
+| *because an ancestor declared it, and I am under that ancestor* | an **attribute** |
+| *because it is one of the sixteen and it always applies* | a **setting** |
+| **nothing** | a setting key used where an attribute belonged — *which is the mistake [D-378](90-decision-log.md) caught* |
+
+⚠️ *And the owner tested the alternative to destruction before accepting it. He proposed a
+`Berechnungsgrundlage` data type, then found its flaw himself: **how would the renderer know which
+attribute to use?** Finding an attribute by the name of the node it points at is special-casing by
+name, which the code standard forbids outright.*
+
+### Why they blur, and it is not carelessness
+
+Four things make them look alike, and all four are true:
+
+1. **Both hang off a node.** An attribute is an edge from it; a setting is a row keyed by its id.
+2. **Both are configured in the same panel**, one above the other, on the same screen.
+3. **Both travel downwards.** An attribute by inheritance, a setting by the chain — [and those are not
+   the same mechanism](#-inheritance-is-not-the-resolution-chain), which is its own section for the
+   same reason.
+4. **A setting can be *about* an attribute.** `mandatory` at a use site is a decision about a question
+   — so the sentence *«the attribute is mandatory»* is true and describes a **setting**.
+
+⚠️ **The fourth is the real trap.** *«This attribute is mandatory, has a range of 0 to 10 and is drawn
+as a spinner»* is one sentence describing **one attribute and three settings** — and nothing in the
+sentence marks where one ends and the others begin. **The tables below are for exactly that sentence.**
 ## Truth table — an attribute is not a setting
 
 The owner, 2026-08-26: *let us set up a truth table with three columns — claim, attributes, settings.*
