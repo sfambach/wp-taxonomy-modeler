@@ -78,7 +78,12 @@ final class DataEntry
         // it *appears* to work. **`RenderContext::setting()` carries this exact warning in its own
         // docblock and I wrote the bug two files away** — found by storing a real value, because
         // `persistent` is unset on almost every attribute.
-        return ($resolved[SettingKey::Persistent->value] ?? null)?->value->asBool() ?? true;
+        return ($resolved[SettingKey::Persistent->value] ?? null)?->value->asBool()
+            // ⚠️ **The key answers, not this line** ([D-401](../../../docs/NewConcept/90-decision-log.md)).
+            // *This `?? true` is the one the owner caught twice: it made the data layer read
+            // `persistent` as on while the switch drew it off, so the control stated the opposite of
+            // what was in force.*
+            ?? SettingKey::Persistent->defaultSwitch();
     }
 
     /**

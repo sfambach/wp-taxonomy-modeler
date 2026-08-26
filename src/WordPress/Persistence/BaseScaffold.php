@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -35,7 +36,7 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     public function __construct(
         private readonly ModelEditor $editor,
@@ -195,10 +196,30 @@ final class BaseScaffold
         $chain    = [$this->framework->installationId()];
         $resolved = $this->settings->resolve($chain);
 
-        // ⚠️ Only where nothing is there: an installation may have decided otherwise, and a
-        // scaffold that overwrites on upgrade would undo that.
-        if (! isset($resolved[SettingKey::Persistent->value])) {
-            $this->settings->put($chain, SettingKey::Persistent->value, TypedValue::ofBool(true));
+        // ⚠️ **Every switch, and the value comes off the key** ([D-401](../../../docs/NewConcept/90-decision-log.md)).
+        // *`persistent` was written here by hand and `hide` and `read_only` were not, which is why two
+        // of the three defaults still lived as `?? false` inside readers. A loop cannot forget the
+        // third one.*
+        foreach (SettingKey::cases() as $key) {
+            // ⚠️ **Switches only, and that is a decision rather than an oversight.** `multiplicity`
+            // has a declared default too, but {@see \Taxmod\Core\Model\Multiplicity} already owns it
+            // and [D-015](../../../docs/NewConcept/90-decision-log.md) argues against storing it:
+            // *an absent row **means** `0..1`, and writing it everywhere would make «nobody has
+            // narrowed this» indistinguishable from «somebody chose the widest option».* The keys
+            // with no declared default are skipped by the same test.
+            if ($key->shape() !== SettingShape::Switch) {
+                continue;
+            }
+
+            $declared = $key->declaredDefault();
+
+            // ⚠️ Only where nothing is there: an installation may have decided otherwise, and a
+            // scaffold that overwrites on upgrade would undo that.
+            if ($declared === null || isset($resolved[$key->value])) {
+                continue;
+            }
+
+            $this->settings->put($chain, $key->value, $declared);
         }
     }
 

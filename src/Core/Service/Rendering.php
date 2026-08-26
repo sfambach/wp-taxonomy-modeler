@@ -249,7 +249,7 @@ final class Rendering
                 $renderer->render($edge, $context),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
-                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? false
+                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch()
             );
         }
 
@@ -784,7 +784,7 @@ final class Rendering
         //
         // ⚠️ *Read with `($a['x'] ?? null)?->y` and never `$a['x']?->y` — the second warns on a
         // missing key, which is a bug that was written two files from this line on 2026-08-26.*
-        $hidden = (($resolved[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true;
+        $hidden = (($resolved[SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
 
         foreach ($resolved as $key => $setting) {
             $engineKey = SettingKey::tryFrom($key);
@@ -972,7 +972,7 @@ final class Rendering
             // ⚠️ `($a['x'] ?? null)?->y` and **not** `$a['x']?->y` — the second is a warning on a
             // missing key, which is a bug this file's own docblock warns about and which was written
             // two files away on 2026-08-26.
-            if ((($keys[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true) {
+            if ((($keys[SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true) {
                 $hidden[] = $edge;
 
                 continue;
@@ -980,7 +980,7 @@ final class Rendering
 
             $shown[] = $edge;
 
-            if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? false) === true) {
+            if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? SettingKey::ReadOnly->defaultSwitch()) === true) {
                 $fixed[] = $edge->id;
             }
         }

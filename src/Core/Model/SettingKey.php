@@ -9,16 +9,16 @@ namespace Taxmod\Core\Model;
  * are the engine's, so an author cannot define a setting called `hide` and silently break
  * rendering. Everything else is a free key belonging to whoever made it.
  *
- * ⚠️ **Bounding settings may only be tightened downwards; choosing settings are free**
- * (D-312). The reason is not tidiness: **a restriction that may be reopened anywhere says
- * nothing when it is read.** To know what is allowed you would have to inspect every use site,
- * and at five hundred attributes the model is then only locally readable.
+ * ⚠️ **~~Bounding settings may only be tightened downwards; choosing settings are free~~ — retired by
+ * [D-411](../../../docs/NewConcept/90-decision-log.md).** *An attribute may reopen anything a node
+ * said: «if something is hidden I can make it visible elsewhere; if it is read-only here I can make it
+ * editable there.»* A range on a node is a **default for its fields**, not a promise about a group —
+ * so being wider below is not a violation but what overriding a default looks like. **The code that
+ * still enforces the old rule is list row 34**, and it is marked rather than deleted here because
+ * removing a refusal deserves its own diff.
  *
- * ```mermaid
- * flowchart LR
- *   B["bounding · what is possible"] -->|narrower only| D["down the chain"]
- *   C["choosing · which one inside the bounds"] -->|free| D
- * ```
+ * ⚠️ *Marked at all because a docblock stating a retired rule is how a retired rule keeps getting
+ * reasoned from — which happened three times on 2026-08-26 alone (`PR-10`).*
  *
  * @see docs/NewConcept/10-domain-core.md
  */
@@ -251,6 +251,66 @@ enum SettingKey: string
             // key by heart. *Which icons exist is a boundary fact and arrives with the options.*
             self::Icon                                 => SettingShape::ARegisteredName,
         };
+    }
+
+    /**
+     * What this key means when **nobody has said anything** — or `null` where it means nothing.
+     *
+     * ⚠️ **This is [D-401](../../../docs/NewConcept/90-decision-log.md)'s one home.** The owner,
+     * refusing both ways out offered him: *neither a nor b. We said a bool can have only two states,
+     * «not set» does not exist. **If a value is there then the value, otherwise the default.*** *And
+     * the default was being invented in twelve places as `?? false` or `?? true` — across three
+     * renderers, `RenderContext`, `DataEntry`, three spots in `Rendering` and three on the nodes
+     * screen. The duplicated-fact prohibition, in the most literal form it takes in this codebase.*
+     *
+     * ⚠️ **It already cost the owner two reports of one bug.** `persistent` resolved to `true` inside
+     * a reader while the switch drew **off**, so *the control stated the opposite of what was in
+     * force* — he caught it twice ([D-377](../../../docs/NewConcept/90-decision-log.md),
+     * [D-404](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Two consumers, one answer, and that is the point.**
+     * {@see \Taxmod\WordPress\Persistence\BaseScaffold} writes these onto the **installation
+     * identity** so the existing walk answers for every node ([D-404](../../../docs/NewConcept/90-decision-log.md)),
+     * and every reader asks **the same method** where the row is missing. *A row a person can see and
+     * change, with a compiled-in answer underneath it rather than instead of it.*
+     *
+     * ⚠️ **`multiplicity` delegates rather than repeating itself.** `Multiplicity::standard()` already
+     * owns *what an attribute means when nobody has said* — `0..1`, on the owner's word — and copying
+     * `0..1` into this match would be a second home for the very fact this method exists to have one
+     * of.
+     */
+    public function declaredDefault(): ?TypedValue
+    {
+        return match ($this) {
+            // ⚠️ *`true`, and it is the one that went wrong* ([D-377](../../../docs/NewConcept/90-decision-log.md)).
+            self::Persistent   => TypedValue::ofBool(true),
+            self::Hide,
+            self::ReadOnly     => TypedValue::ofBool(false),
+            self::Multiplicity => TypedValue::ofText(Multiplicity::standard()->value),
+            // ⚠️ **Nothing, and that is an answer.** A range, a factor or a renderer has no meaning
+            // nobody chose — [D-352](../../../docs/NewConcept/90-decision-log.md) resolves a renderer
+            // from the **type** instead, which is a different mechanism and must not be shadowed here.
+            default            => null,
+        };
+    }
+
+    /**
+     * The same answer for a switch, unwrapped — what a two-state key is when nothing is stored.
+     *
+     * ⚠️ **Exists so a reader never writes `?? false` again.** *Every caller had the fallback inline,
+     * which is how `persistent` came to be read as `true` in one file and drawn as `off` in another.*
+     *
+     * @throws \LogicException where the key is not a switch — asking a range for its boolean default
+     *                         is a mistake in the caller, not a value to invent.
+     */
+    public function defaultSwitch(): bool
+    {
+        if ($this->shape() !== SettingShape::Switch) {
+            throw new \LogicException("The setting «{$this->value}» is not a switch.");
+        }
+
+        // ⚠️ Read off `declaredDefault()` rather than repeated — one home means one `match`.
+        return $this->declaredDefault()?->asBool() ?? false;
     }
 
     /**

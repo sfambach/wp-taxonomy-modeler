@@ -51,7 +51,7 @@ abstract class TypedFieldRenderer implements Renderer
         // the markup afterwards (D-021).
         $used = $subject instanceof Relation ? [$subject->id] : [];
 
-        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? false) {
+        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
             return new RenderResult('', $used);
         }
 

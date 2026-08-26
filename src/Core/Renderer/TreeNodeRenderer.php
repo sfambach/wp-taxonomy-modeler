@@ -117,7 +117,7 @@ final class TreeNodeRenderer implements Renderer
         // ⚠️ *The cell reads it from its own resolved settings, the way it already reads the icon. It
         // needed no plumbing and no new parameter: `cellsFor()` hands every cell the node's settings
         // ([D-159](../../../docs/NewConcept/90-decision-log.md)), and `hide` was in them all along.*
-        $hidden = ($context->setting(SettingKey::Hide->value)?->asBool() ?? false) === true;
+        $hidden = ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
             . ' id="taxmod-node-' . (int) $subject->id . '"'

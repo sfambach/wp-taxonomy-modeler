@@ -2131,7 +2131,7 @@ final class NodesScreen
 
         foreach ($rows as $row) {
             $hidden[$row['node']->id] =
-                (($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? false) === true;
+                (($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
         }
 
         return $hidden;
@@ -2158,7 +2158,8 @@ final class NodesScreen
         }
 
         $chain = $this->settings->chainFor($node);
-        $now   = ($this->settings->resolve($chain)[SettingKey::Hide->value] ?? null)?->value->asBool() ?? false;
+        $now   = ($this->settings->resolve($chain)[SettingKey::Hide->value] ?? null)?->value->asBool()
+            ?? SettingKey::Hide->defaultSwitch();
 
         $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(! $now));
 
@@ -2190,7 +2191,8 @@ final class NodesScreen
         $kept = [];
 
         foreach ($rows as $row) {
-            $hide = ($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? false;
+            $hide = ($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool()
+                ?? SettingKey::Hide->defaultSwitch();
 
             if (! $hide) {
                 $kept[] = $row;

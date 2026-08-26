@@ -49,7 +49,7 @@ final class PlainRenderer implements Renderer
 
     public function render(Node|Relation $subject, RenderContext $context): RenderResult
     {
-        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? false) {
+        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
             return RenderResult::of('');
         }
 

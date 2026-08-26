@@ -30,8 +30,12 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Settings;
+use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -67,6 +71,7 @@ $editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $fram
 $scaffold  = new BaseScaffold($editor, $framework);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes);
+$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 
 echo "\n== 1. Every simple type is there ==\n";
 $scaffold->import();
@@ -125,6 +130,71 @@ $colourNow = $colour === null ? null : $nodes->byId($colour->id);
 check('and color is back under Data Types',
     $colourNow === null || str_starts_with($colourNow->path, $dataTypes->path . '.'),
     $colourNow?->path ?? '—');
+
+// ⚠️ **[D-401](../../docs/NewConcept/90-decision-log.md): every switch has one declared default, and
+// it lives on the key.** Before this, three keys had three homes — `persistent` was written onto the
+// installation identity by hand, `hide` and `read_only` were invented inside readers as `?? false`, and
+// that is how the data layer came to read `persistent` as **on** while the switch drew it **off**.
+echo "\n== 6. Every switch declares its default in one place (D-401) ==\n";
+
+$installation = $framework->installationId();
+$declared     = $settings->resolve([$installation]);
+
+foreach (SettingKey::cases() as $key) {
+    if ($key->shape() !== SettingShape::Switch) {
+        continue;
+    }
+
+    $stored = ($declared[$key->value] ?? null)?->value->asBool();
+
+    check(
+        "«{$key->value}» is declared on the installation identity",
+        $stored !== null,
+        $stored === null ? 'no row' : 'ok'
+    );
+
+    // ⚠️ *The row and the key must agree.* Two homes that happen to hold the same value today is
+    // exactly the state this decision ended — the failure only shows when one of them is changed.
+    check(
+        "  · and it agrees with the key",
+        $stored === $key->defaultSwitch(),
+        var_export($stored, true) . ' vs ' . var_export($key->defaultSwitch(), true)
+    );
+}
+
+// ⚠️ **The counter-check that gives the block its meaning**: a key that is *not* a switch must have
+// **no** boolean default to hand out. *Without this, a `declaredDefault()` that answered `false` for
+// everything would pass every assertion above.*
+$threw = false;
+
+try {
+    SettingKey::RangeMin->defaultSwitch();
+} catch (\LogicException) {
+    $threw = true;
+}
+
+check('asking a range for its switch default is refused', $threw);
+
+// ⚠️ **And the point of the whole thing, measured at a node rather than at the installation**: a node
+// with no row of its own resolves all three, because the installation is the first link of the chain
+// ([D-079](../../docs/NewConcept/90-decision-log.md)) — so no reader ever needs a fallback.
+$probe = $editor->childrenOf($dataTypes->id)[0] ?? null;
+
+if ($probe !== null) {
+    $at = $settings->resolve($settings->chainFor($probe));
+
+    foreach (SettingKey::cases() as $key) {
+        if ($key->shape() !== SettingShape::Switch) {
+            continue;
+        }
+
+        check(
+            "«{$probe->name}» resolves «{$key->value}» without a fallback",
+            isset($at[$key->value]),
+            'nothing resolved'
+        );
+    }
+}
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);
