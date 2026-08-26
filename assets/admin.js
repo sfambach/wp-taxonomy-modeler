@@ -24,32 +24,36 @@
 		return document.querySelector( '.taxmod-tree' );
 	}
 
+	// ⚠️ **Read once, at the very top, and this is the bug that made the whole script useless.** The
+	// owner: *with collapsed nodes the tree still jumps when I select a node.* It jumped with every
+	// node — because **the browser's own jump to `#taxmod-node-<id>` is a scroll event**, so the
+	// watcher below wrote *that* position into storage, and every later `restore()` then read it back
+	// and «restored» the place the fragment had jumped to.
+	//
+	// ⚠️ *So the offset is captured **before** anything can scroll, and `restore()` uses the captured
+	// value rather than re-reading. Three restore points against a browser were fine; three restore
+	// points reading a value the browser had already overwritten were three ways to do nothing.*
+	//
+	// ⚠️ Storage can throw, not merely come back empty — a private window, cleared site data, a browser
+	// set to refuse it. A tree that fails to load because a preference could not be read would be worse
+	// than a tree that starts at the top.
+	var saved = null;
+
+	try {
+		saved = window.sessionStorage.getItem( KEY );
+	} catch ( e ) {
+		saved = null;
+	}
+
 	function restore() {
 		var tree = pane();
 
-		if ( ! tree ) {
+		if ( ! tree || saved === null ) {
 			return;
 		}
 
-		var saved = null;
-
-		// ⚠️ Storage can throw, not merely come back empty — a private window, cleared site data,
-		// a browser set to refuse it. A tree that fails to load because a preference could not be
-		// read would be worse than a tree that starts at the top.
-		try {
-			saved = window.sessionStorage.getItem( KEY );
-		} catch ( e ) {
-			return;
-		}
-
-		if ( saved === null ) {
-			return;
-		}
-
-		// ⚠️ **After the fragment, deliberately.** The browser has already jumped to
-		// `#taxmod-node-<id>` by now, so writing `scrollTop` here wins — and if the offset is
-		// stale (the tree got shorter), the browser clamps it and the fragment's placement is
-		// what remains visible.
+		// ⚠️ *If the offset is stale — the tree got shorter because a branch is folded — the browser
+		// clamps it, and what remains visible is the bottom of the tree rather than a wrong place.*
 		tree.scrollTop = parseInt( saved, 10 ) || 0;
 	}
 
@@ -98,11 +102,12 @@
 		document.addEventListener( 'DOMContentLoaded', restore );
 	}
 
-	window.addEventListener( 'load', restore );
-
-	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', watch );
-	} else {
+	// ⚠️ **The watcher starts only after the last restore, and the order is the whole fix.** While it
+	// was attached earlier, the browser's own fragment jump fired a scroll event, the watcher saved that
+	// position, and the next restore faithfully put the tree back where the fragment had gone. *A
+	// listener that records what it is competing with cannot be told apart from no listener at all.*
+	window.addEventListener( 'load', function () {
+		restore();
 		watch();
-	}
+	} );
 } )();

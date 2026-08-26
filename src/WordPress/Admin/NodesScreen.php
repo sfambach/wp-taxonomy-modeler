@@ -237,7 +237,19 @@ final class NodesScreen
             // load, so a fresh document starts at the top and the row a person just clicked is off
             // screen again. *`#taxmod-node-<id>` makes the browser scroll that row into view — inside
             // the tree's own scroll pane — with no script and nothing stored.*
-            $hrefs[$node->id] = $this->backTo($node->id) . '#taxmod-node-' . $node->id;
+            // ⚠️ **No `#fragment` any more, and dropping it is the third time the same lesson.** It was
+            // the interim for a screen with no script; the script exists now
+            // ([D-408](../../../docs/NewConcept/90-decision-log.md)) and restores the exact offset — so
+            // the fragment was competing with it: the browser jumped to the row, then the script moved
+            // the tree back, one visible flicker per click.
+            //
+            // ⚠️ *`scroll-margin-top` went for exactly this reason an hour earlier, and it is worth
+            // stating as a habit rather than as three coincidences: **a workaround that outlives its
+            // reason becomes a second answer to a question that already has one.***
+            //
+            // ⚠️ *The row still keeps its `id` — nothing points at it now, and it costs a few bytes to
+            // leave an address in place for whatever wants to link to a node later.*
+            $hrefs[$node->id] = $this->backTo($node->id);
 
             if ($row['hasChildren']) {
                 $toggles[$node->id] = $this->toggleUrl($node->id, $row['collapsed'], $collapsed);
