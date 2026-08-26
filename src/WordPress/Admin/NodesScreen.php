@@ -281,6 +281,20 @@ final class NodesScreen
             // are text glyphs whose weight follows the body font, so they read as hairlines beside a
             // 17px icon. A Dashicon takes `font-size` and `color` and comes out solid.
             new Control('do', 'add_child_here', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2'),
+            // ⚠️ **Duplicate, asked for three times** — the owner, in the end plainly: *duplicating
+            // `my_int` does not work, no button in the tree nor in the head.* The title says what does
+            // **not** come along, because a copy that silently dropped forty children would be a
+            // surprise and a copy that silently brought them would be a different one.
+            new Control(
+                'do',
+                'duplicate',
+                __('Duplicate', 'taxmod'),
+                __('Copy this node beside itself, with its own settings and attributes — not its children and not its records', 'taxmod'),
+                // A protected node cannot be copied: a second Trash would give the framework two
+                // places to look and one of them would be wrong (D-194).
+                ! $this->framework->isProtected($row['node']),
+                icon: 'admin-page'
+            ),
             new Control('do', 'up', __('Up', 'taxmod'), __('Move up among its siblings', 'taxmod'), ! $row['isFirst'], icon: 'arrow-up-alt2'),
             new Control('do', 'down', __('Down', 'taxmod'), __('Move down among its siblings', 'taxmod'), ! $row['isLast'], icon: 'arrow-down-alt2'),
             new Control(
@@ -675,6 +689,7 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [
+                    ['duplicate', '', __('Copy this node beside itself, with its own settings and attributes — not its children and not its records', 'taxmod'), 'admin-page'],
                     ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
                     ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                 ],
@@ -756,11 +771,12 @@ final class NodesScreen
         // *button move with dialog tree chooser*, then *nicht inline*. **A `<label>` is the opener**,
         // because a `<button>` inside a form would submit it — so the trigger looks like a button and
         // is not one, and the only real button is the confirm inside the overlay.
-        $trigger = '<span class="button taxmod-icon-button" title="'
-            . esc_attr__('Move it under another node', 'taxmod') . '">'
-            . '<span class="dashicons dashicons-move" aria-hidden="true"></span>'
-            . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>'
-            . '</span>';
+        // ⚠️ **The classes go on the `<label>` itself and not on a `<span>` inside it.** A `<span
+        // class="button">` is styled like a button and laid out like a span, which is why the owner saw
+        // the move button *«leicht versetzt»* beside the others. *The label is the control; nesting a
+        // fake one inside it gave the box model two owners.*
+        $trigger = '<span class="dashicons dashicons-move" aria-hidden="true"></span>'
+            . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>';
 
         $confirm = '<button class="button button-primary" name="do" value="move">'
             . esc_html__('Move here', 'taxmod') . '</button>';
@@ -2077,6 +2093,11 @@ final class NodesScreen
                 // placeholder name, so leaving the parent selected means the very next thing a
                 // person does is hunt for what they just made.
                 'add_child_here' => $stay = $this->editor->createNode(__('New node', 'taxmod'), $id)->id,
+                // ⚠️ **The copy becomes the selected node**, for the same reason `add_child_here`
+                // does: the point of duplicating is *and now I want to work on that one*, and it
+                // carries the original's name, so leaving the original selected would show two
+                // identical rows and no way to tell which is which.
+                'duplicate'      => $stay = $this->editor->duplicate($id)->id,
                 'rename'         => $this->editor->rename($id, $name),
                 'move'           => $this->editor->move($id, $target),
                 'up'             => $this->editor->moveUp($id),

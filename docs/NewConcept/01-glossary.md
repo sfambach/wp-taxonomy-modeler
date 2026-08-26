@@ -334,6 +334,33 @@ the installation. *Measured: `641 → 1 → 406 → 408 → 1171 → 1398`.*
 | **18** | **Renaming it** | free | **only where the attribute is declared** ([D-376](90-decision-log.md)). *An inherited attribute belongs to the ancestor, and renaming it from a descendant would rename it for everybody, silently* |
 | **19** | **It is journalled** | as `node` | as `relation` — same table, same shape ([D-403](90-decision-log.md)) |
 
+#### Where the two are stored — the owner: *even if they are almost the same*
+
+He asked for the storage places to be in the table *even though they are nearly identical* — and the
+«nearly» is the interesting part.
+
+| # | Claim | Setting on a **node** | Setting at a **use site** |
+|---|---|---|---|
+| **20** | **Which table** | `taxmod_settings` | **the same table.** Not a second one, not a second column |
+| **21** | **What `owner_id` holds** | the node's id | the **edge's** id |
+| **22** | **Why one column can hold both** | **one id space.** *Measured: highest node `10047`, highest edge `10048` — they interleave, and **zero** ids are shared* | ditto. [D-340](90-decision-log.md) — an id once handed out is never reissued, and the allocator does not care what asked for one |
+| **23** | **Which column the value goes in** | `value_int` · `value_decimal` · `value_text` · `value_date` · `value_ref`, chosen by the key's type | identical |
+| **24** | **How many rows one key may have** | **one** — `UNIQUE (owner_id, setting_key)` | **one.** *Which is [OQ-092](91-open-questions.md): there is no `path` column, so «several values under one key» has nowhere to go, and it blocks three decided things* |
+| **25** | **What it is journalled as** | `owner_kind = node` | `owner_kind = relation` ([D-403](90-decision-log.md)) |
+
+⚠️ **So the storage is genuinely the same and that is the design, not an economy.** [D-019](90-decision-log.md)
+made every settable thing an **identity**, and a node and an edge are two kinds of identity — so
+`owner_id` addresses «whatever this belongs to» and the difference lives entirely in **where that id
+sits in the walk**.
+
+⚠️ **The one asymmetry worth knowing.** A node has an id *and a place in the tree*, so its chain is
+found by walking its ancestors. An edge has an id and **two ends**, so its chain is *its target's whole
+chain, then itself* — which is why row 13 says the edge is always last. *Same table, same column,
+different question asked of it.*
+
+⚠️ *And a third kind of owner exists that is neither: the **installation identity**, which holds a
+key's own default ([D-404](90-decision-log.md)) and has no node behind it. That is why `owner_kind`
+needed a third value.*
 #### Why this is the answer to «what is the difference between an attribute and a setting»
 
 The owner asked it while looking at `int`'s bounds: *that is sort of the difference between attribute

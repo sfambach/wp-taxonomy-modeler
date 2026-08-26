@@ -701,3 +701,51 @@ details.taxmod-page-block > summary {
     flex: 1;
     min-width: 8em;
 }
+
+/* ── Buttons: never blue, and never half-aligned ─────────────────────────────
+ *
+ * ⚠️ **Why the head kept its borders while the tree lost them.** WordPress styles
+ * `.wp-core-ui .button` — *two* classes — and my borderless rule was the single
+ * class `.taxmod-icon-button`, so it lost every time. `.taxmod-tree .button` is
+ * also two classes, which is exactly why the tree looked right and nothing else
+ * did. *Specificity, not a missing rule.*
+ *
+ * ⚠️ **The owner's rule, stated twice:** either no border and just the icon, or a
+ * grey one. What he was actually seeing was WordPress blue, which is neither. */
+.wp-core-ui .taxmod-toolbar .button,
+.wp-core-ui .taxmod-toolbar .taxmod-icon-button {
+    border: 1px solid #c3c4c7;
+    background: #fff;
+    box-shadow: none;
+    color: #2c3338;
+}
+
+.wp-core-ui .taxmod-toolbar .button:hover:not(:disabled) {
+    background: #f6f7f7;
+    border-color: #8c8f94;
+}
+
+/* The primary save keeps its fill; it is the one act that should stand out. */
+.wp-core-ui .taxmod-toolbar .button-primary {
+    border-color: #2271b1;
+}
+
+/* A label is not a button, so it needs the box model spelled out — otherwise it
+ * sits a pixel or two off its neighbours, which is what «leicht versetzt» was. */
+.wp-core-ui .taxmod-dialog-open {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 .5em;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+/* Borderless stays borderless where it was agreed: a tree row. */
+.wp-core-ui .taxmod-tree .button,
+.wp-core-ui .taxmod-tree .taxmod-icon-button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+}

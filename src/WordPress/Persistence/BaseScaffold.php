@@ -35,7 +35,7 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     public function __construct(
         private readonly ModelEditor $editor,
@@ -56,6 +56,7 @@ final class BaseScaffold
         $created = $this->import();
 
         $this->boundTheNumbers();
+        $this->declareKeyDefaults();
 
         update_option(self::OPTION, self::VERSION, true);
 
@@ -168,4 +169,37 @@ final class BaseScaffold
 
         return null;
     }
+    /**
+     * What a key means when nobody has said anything — written at the installation identity.
+     *
+     * ⚠️ **[D-404](../../../docs/NewConcept/90-decision-log.md) says where this belongs and this is
+     * the first use of it**: the installation identity is the *first link* of the resolution chain
+     * ([D-079](../../../docs/NewConcept/90-decision-log.md)), so a default written there is answered
+     * for every node and every use site by the walk that already exists.
+     *
+     * ⚠️ **`persistent` is why it got built.** [D-377](../../../docs/NewConcept/90-decision-log.md)
+     * decided *default true* and the switch drew **off**, because a switch shows what is stored and
+     * nothing was. The owner caught it twice — *persistent is not selectable at all and off by
+     * default, that is all wrong*, then *persistent on int still off*. **A control that states the
+     * opposite of what is in force is worse than a missing one.**
+     *
+     * ⚠️ *One row instead of eight `?? true` inventions scattered across renderers and services —
+     * and a row a person can see and change, which a compiled-in answer never is.*
+     */
+    private function declareKeyDefaults(): void
+    {
+        if ($this->settings === null) {
+            return;
+        }
+
+        $chain    = [$this->framework->installationId()];
+        $resolved = $this->settings->resolve($chain);
+
+        // ⚠️ Only where nothing is there: an installation may have decided otherwise, and a
+        // scaffold that overwrites on upgrade would undo that.
+        if (! isset($resolved[SettingKey::Persistent->value])) {
+            $this->settings->put($chain, SettingKey::Persistent->value, TypedValue::ofBool(true));
+        }
+    }
+
 }

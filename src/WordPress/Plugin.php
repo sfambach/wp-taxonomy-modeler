@@ -204,7 +204,11 @@ final class Plugin
             new WpdbRelationRepository(),
             new TableIdentityAllocator(),
             $this->frameworkNodes(),
-            new WpdbChangelog(new SystemClock())
+            new WpdbChangelog(new SystemClock()),
+            // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
+            // original, so its own settings and labels travel with it.
+            new WpdbSettingRepository(),
+            new WpdbLabelRepository()
         );
     }
 
@@ -243,7 +247,11 @@ final class Plugin
             new WpdbNodeRepository(),
             new WpdbRelationRepository(),
             new TableIdentityAllocator(),
-            new WpdbChangelog(new SystemClock())
+            new WpdbChangelog(new SystemClock()),
+            // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
+            // original, so its own settings and labels travel with it.
+            new WpdbSettingRepository(),
+            new WpdbLabelRepository()
         );
     }
 

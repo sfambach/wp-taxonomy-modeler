@@ -11,7 +11,11 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\Setting;
+use Taxmod\Core\Repository\LabelRepository;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\SettingRepository;
 use Taxmod\Core\Repository\RelationRepository;
 
 /**
@@ -44,6 +48,12 @@ final class ModelEditor
         private readonly IdentityAllocator $identities,
         private readonly FrameworkNodes $framework,
         private readonly Changelog $changelog,
+        // ⚠️ **Only `duplicate()` uses these, and that is why they are optional.** A copy has to
+        // resolve exactly like its original or it is not a copy — which means its **own** settings
+        // and labels travel with it. *Everything else in this service moves nodes and edges around
+        // and has no business reading either.*
+        private readonly ?SettingRepository $settings = null,
+        private readonly ?LabelRepository $labels = null,
     ) {
     }
 
@@ -104,6 +114,120 @@ final class ModelEditor
      * accidentally composed into an order, so every order breeds its own supplier — not by
      * catching it afterwards but by never offering it.
      */
+    /**
+     * Copy a node beside itself — **the node, not its subtree and not its records.**
+     *
+     * The owner asked for it three times, the last one bluntly: *duplicating `my_int` does not work,
+     * no button in the tree nor in the head of the settings.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   N["the node"] --> C["a sibling copy"]
+     *   S["its own settings"] --> C
+     *   A["its own attribute declarations"] --> C
+     *   K["its children"] -.->|not copied| C
+     *   R["its records"] -.->|not copied| C
+     * ```
+     *
+     * ⚠️ **Nothing in the concept covered this**, so the scope is stated here rather than assumed:
+     * every mention of «duplicate» in `docs/NewConcept/` is about duplicate **detection**
+     * ([D-167](../../../docs/NewConcept/90-decision-log.md)), which is a different thing entirely.
+     *
+     * ⚠️ **Why the subtree is left out.** A copy of `Electronic Parts` that silently brought forty
+     * descendants along is not a duplicate, it is an import — and the person who wanted *this node,
+     * like that one* now has forty nodes to park. *The narrow act composes: duplicate, then move
+     * children in. The wide one does not decompose.*
+     *
+     * ⚠️ **Why records are left out.** A record belongs to the model it was written against
+     * ([D-060](../../../docs/NewConcept/90-decision-log.md)) — copying twenty of them onto a new model
+     * would invent twenty facts nobody entered.
+     *
+     * ⚠️ **What *does* come along, and why each.** Its **own settings**, because a copy that resolves
+     * differently from its original is not a copy. Its **own attribute declarations**, as new edges —
+     * an attribute is an edge owned by the node ([D-031](../../../docs/NewConcept/90-decision-log.md)),
+     * so there is nothing to share and a copy either declares its own or declares none. *Inherited
+     * attributes are not copied because they were never here: the copy is a sibling, so it inherits
+     * exactly what the original inherits.*
+     *
+     * ⚠️ *Names need no trick — [D-022](../../../docs/NewConcept/90-decision-log.md) makes them
+     * explicitly **not unique**, so the copy simply carries the same name and the person renames it.*
+     */
+    public function duplicate(int $nodeId): Node
+    {
+        $node = $this->nodes->byId($nodeId);
+
+        // ⚠️ **The machinery's own nodes are not copyable** ([D-194]): a second `Trash` or a second
+        // `Primitives` would give the framework two places to look and one of them would be wrong.
+        if ($this->framework->isProtected($node)) {
+            throw NodeIsProtected::named($node->name);
+        }
+
+        // ⚠️ *The root has no parent, so a copy would have nowhere to be a sibling of.*
+        $parentId = $node->parentId()
+            ?? throw NodeIsProtected::named($node->name);
+
+        $copy = $this->createNode($node->name, $parentId);
+
+        // ⚠️ **Its own declarations only**, which is what `ownAttribute()` already distinguishes: an
+        // inherited attribute belongs to an ancestor and the copy inherits it too, by sitting where it
+        // sits.
+        foreach ($this->attributesOf($node->id) as $edge) {
+            // ⚠️ **`fromId` is what «own» means** — the same test {@see ownAttribute()} makes. An
+            // inherited edge belongs to an ancestor, and the copy inherits it by sitting where it
+            // sits; declaring it again would give the subtree the same attribute twice.
+            if ($edge->fromId !== $node->id) {
+                continue;
+            }
+
+            $this->addAttribute($copy->id, $edge->toId, $edge->name);
+        }
+
+        $this->copySettings($node->id, $copy->id);
+        $this->copyLabels($node->id, $copy->id);
+
+        return $copy;
+    }
+
+    /**
+     * The original's **own** settings, onto the copy.
+     *
+     * ⚠️ **Own, not resolved** — and the difference is the whole point. Copying what the original
+     * *resolves* would freeze its ancestors' answers into the copy, so a later change above would
+     * reach the original and not the copy. *Copying only what it holds keeps both of them children
+     * of the same parent, which is what a sibling copy is.*
+     *
+     * ⚠️ *Written straight to the repository rather than through {@see \Taxmod\Core\Service\Settings}:
+     * the values were already accepted once at this exact place in the chain, so re-running the
+     * bounds checks would refuse nothing and could refuse something — a bound the original was
+     * narrowed **to** is not a widening for the copy.*
+     */
+    private function copySettings(int $fromId, int $toId): void
+    {
+        if ($this->settings === null) {
+            return;
+        }
+
+        foreach ($this->settings->ownedBy($fromId) as $one) {
+            $this->settings->put(new Setting($toId, $one->key, $one->value));
+        }
+    }
+
+    /**
+     * The original's labels, onto the copy — every role, every locale.
+     *
+     * ⚠️ *The owner spotted the settings half through the **icon**; labels are the same argument.
+     * A copy whose name reads differently in German than its original is not a copy either.*
+     */
+    private function copyLabels(int $fromId, int $toId): void
+    {
+        if ($this->labels === null) {
+            return;
+        }
+
+        foreach ($this->labels->forOwners([$fromId]) as $one) {
+            $this->labels->put(new Label($toId, $one->path, $one->roleId, $one->number, $one->locale, $one->text));
+        }
+    }
     public function addAttribute(int $ownerId, int $targetId, string $name): Relation
     {
         $owner  = $this->nodes->byId($ownerId);

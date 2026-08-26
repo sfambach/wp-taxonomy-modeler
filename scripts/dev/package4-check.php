@@ -119,9 +119,18 @@ $settings->reset($edge->id, SettingKey::Renderer->value);
 check('but after a reset it does', $settings->resolve($chainSite)[SettingKey::Renderer->value]->value->text === '__p4 changed later');
 
 echo "\n== 6. Storage is sparse ==\n";
+// ⚠️ **Counted per key, not per owner, and that is a correction rather than a loosening.** This line
+// counted every row belonging to the installation, the type and the edge — which was the same number
+// as «rows for the key I wrote» only for as long as the installation held **nothing**. Since
+// [D-404](../../docs/NewConcept/90-decision-log.md) it holds a key's own default (`persistent = true`),
+// so the count went to 2 and the check reported the opposite of what it meant.
+//
+// ⚠️ *Sparseness is a claim about **one key**: writing `renderer` in one place must leave one row, not
+// a row per link of the chain. Counting the owners' whole rows measured «is anything else stored
+// anywhere», which was never the claim.*
 $rows = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id IN (%d, %d, %d)',
-    $installation, $text->id, $edge->id));
+    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id IN (%d, %d, %d) AND setting_key = %s',
+    $installation, $text->id, $edge->id, SettingKey::Renderer->value));
 check('one written setting, one row', $rows === 1, "$rows rows");
 
 echo "\n== 7. Bounding narrows, choosing is free ==\n";
