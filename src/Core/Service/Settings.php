@@ -278,6 +278,104 @@ final class Settings
     }
 
     /**
+     * Fetch what the link **above** says into this link's own row — `reset` once settings are
+     * materialised ([D-423](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Why forgetting the row stops being an answer.** With every owner carrying its own rows
+     * there is no walk left to fall through, so `forget()` would leave **nothing** rather than the
+     * inherited value. The owner: *I could say Reset on the node or on the attribute, and then it
+     * **fetches it from the next higher node's setting**.*
+     *
+     * ⚠️ **«Above» is the chain minus its last link, and that is why no relation repository is
+     * needed here.** A chain already ends at its owner — `[installation, …, parent, node]` for a
+     * node and `[installation, …, target, edge]` for an attribute — so *above* is `array_slice(…,
+     * 0, -1)` in both cases. *This service cannot look up an edge's target and does not have to:
+     * the caller that built the chain already knew it.*
+     *
+     * ⚠️ **Nothing above is an answer, not a failure** — the owner: *if there is nothing there, then
+     * they were its own settings.* So a pull either finds a value or proves there never was one, and
+     * in the second case the row is left exactly as it stands.
+     *
+     * @param  list<int> $chain Ending at the owner whose row is being pulled into.
+     * @return bool      Whether a value was found above and written.
+     */
+    public function pull(array $chain, string $key, string $path = ''): bool
+    {
+        $above = array_slice($chain, 0, -1);
+
+        if ($above === []) {
+            // The installation is the first link; there is nothing over it by construction.
+            return false;
+        }
+
+        $value = ($this->resolve($above, $path)[$key] ?? null)?->value;
+
+        if ($value === null) {
+            return false;
+        }
+
+        $this->put($chain, $key, $value, $path);
+
+        return true;
+    }
+
+    /**
+     * Write what a chain resolves to into a **new** owner's own rows — the copy
+     * [D-423](../../../docs/NewConcept/90-decision-log.md) asks for on inheriting and on creating an
+     * attribute.
+     *
+     * ⚠️ **This is the whole of materialising, and it is deliberately one method.** The owner's two
+     * rules are the same act with a different source: *on inheriting, the settings are written into
+     * the inheriting node* — source is the **parent**'s chain — and *when an attribute is created,
+     * all settings of the node are taken into the attribute* — source is the **target**'s chain.
+     *
+     * ⚠️ **It resolves rather than copying rows, and that matters for the tree that already
+     * exists.** A parent whose own settings are sparse ([D-015](../../../docs/NewConcept/90-decision-log.md))
+     * still resolves to a full set through the chain, so a child created today gets the values that
+     * were **in force** rather than the handful that happened to be stored. *Copying `ownedBy()` —
+     * which is what {@see ModelEditor::duplicate()} does — would give a new node almost nothing.*
+     *
+     * ⚠️ **Only the empty path, and this is a known limit rather than an oversight.** A row at a
+     * path is *this owner's answer for one particular place* ([D-413](../../../docs/NewConcept/90-decision-log.md))
+     * — `default` at path `4654` is what this node says about that one attribute. **Whether those
+     * travel to a child is not decided**, and copying them silently would point a child's rows at
+     * edges chosen for its parent.
+     *
+     * @param  list<int> $source Any chain; what it resolves to is what gets written.
+     * @param  list<int> $target Ending at the owner receiving the rows.
+     * @return list<string>      The keys written, so a caller can say what it did.
+     */
+    public function materialise(array $source, array $target): array
+    {
+        $ownerId = $target[count($target) - 1];
+        $written = [];
+
+        foreach ($this->resolve($source) as $key => $resolved) {
+            // ⚠️ **Never over a row the owner already has.** Materialising runs on creation, but a
+            // caller may run it again — and overwriting would undo the very edit this whole design
+            // exists to make possible.
+            if ($this->valueAt($ownerId, $key, '') !== null) {
+                continue;
+            }
+
+            $engine = SettingKey::tryFrom($key);
+
+            // ⚠️ *`multiplicity` is edge-only, so a node must not receive it — and `put()` would
+            // refuse it with an exception. Asking first keeps materialising from having to catch its
+            // own refusals.*
+            if ($engine !== null && $engine->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
+                continue;
+            }
+
+            $this->put($target, $key, $resolved->value);
+
+            $written[] = $key;
+        }
+
+        return $written;
+    }
+
+    /**
      * ⚠️ **Compared against what the chain says *above* this link**, not against the resolved
      * value — otherwise a link would be measured against itself and every write would pass.
      *

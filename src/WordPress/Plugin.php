@@ -241,7 +241,12 @@ final class Plugin
             // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
             // original, so its own settings and labels travel with it.
             new WpdbSettingRepository(),
-            new WpdbLabelRepository()
+            new WpdbLabelRepository(),
+            // ⚠️ **The materialiser** ([D-423](../../../docs/NewConcept/90-decision-log.md)): a new
+            // node gets its parent's settings written into it, and a new attribute its target's.
+            // *Handed in rather than made required, because the core tests and the boundary checks
+            // build this service to move nodes about and have nothing to furnish.*
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
         );
     }
 

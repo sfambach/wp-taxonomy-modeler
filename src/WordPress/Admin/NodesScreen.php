@@ -2334,7 +2334,11 @@ final class NodesScreen
                 // ⚠️ **These two name their key in the button** (`do[<key>]`), because one form now
                 // holds every row and a hidden `setting_key` could only ever say one of them.
                 'empty_setting'  => $this->settings->put($this->settingChain($id, $edge), $this->keyOfRowAct(), TypedValue::nothing()),
-                'reset_setting'  => $this->settings->reset($edge === 0 ? $id : $edge, $this->keyOfRowAct()),
+                // ⚠️ **Reset **pulls** now rather than forgetting** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
+                // With every owner carrying its own rows there is no walk left to fall through, so
+                // dropping the row would leave **nothing** instead of the inherited value. *The chain
+                // is what says where «above» is, which is why it is handed in rather than an id.*
+                'reset_setting'  => $this->settings->pull($this->settingChain($id, $edge), $this->keyOfRowAct()),
                 'put_multiplicity' => $this->settings->put(
                     $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),
                     SettingKey::Multiplicity->value,

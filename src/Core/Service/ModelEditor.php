@@ -54,6 +54,13 @@ final class ModelEditor
         // and has no business reading either.*
         private readonly ?SettingRepository $settings = null,
         private readonly ?LabelRepository $labels = null,
+        // ⚠️ **The *service*, not the repository, and it is here for materialising**
+        // ([D-423](../../../docs/NewConcept/90-decision-log.md)). A new node's rows are what its
+        // parent **resolves** to, which only the service can answer — the repository above holds
+        // rows and knows nothing of chains. *Optional for the same reason as the other two: the
+        // eighteen places that construct this service mostly move nodes around, and a required
+        // argument would make every one of them declare a dependency it never uses.*
+        private readonly ?Settings $materialiser = null,
     ) {
     }
 
@@ -75,7 +82,33 @@ final class ModelEditor
         $this->relations->add($edge);
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
 
+        // ⚠️ **The parent's settings are written into the child** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *on inheriting, the settings are written into the inheriting node, where they can
+        // be changed.* **After the changelog entry on purpose** — the node exists before it is
+        // furnished, and each setting write journals itself ([D-403](../../../docs/NewConcept/90-decision-log.md)),
+        // so the order in the log reads the way it happened.
+        $this->materialise($parent, $node);
+
         return $node;
+    }
+
+    /**
+     * Give a fresh node its own copy of what its parent resolves to.
+     *
+     * ⚠️ *Silently absent where no materialiser was handed in, which is the same contract the
+     * settings and labels repositories above already have — a caller that only moves nodes about
+     * gets the old sparse behaviour and nothing breaks.*
+     */
+    private function materialise(Node $parent, Node $child): void
+    {
+        if ($this->materialiser === null) {
+            return;
+        }
+
+        $this->materialiser->materialise(
+            $this->materialiser->chainFor($parent),
+            $this->materialiser->chainFor($child)
+        );
     }
 
     public function rename(int $id, string $name): Node
@@ -300,6 +333,18 @@ final class ModelEditor
             null,
             sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value)
         );
+
+        // ⚠️ **The target's settings are written into the attribute** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *when an attribute is created, **all** settings of the node are taken into the
+        // attribute and can be changed there.* **The source is the *target*, not the owner** — the
+        // type is what an attribute is configured like, and it is also what its `reset` pulls from,
+        // so creation and reset agree by construction.
+        if ($this->materialiser !== null) {
+            $this->materialiser->materialise(
+                $this->materialiser->chainFor($target),
+                $this->materialiser->chainForUseSite($edge)
+            );
+        }
 
         return $edge;
     }
