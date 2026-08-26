@@ -3149,5 +3149,97 @@ real answer is that retargeting names which settings it will drop and asks.*
 | **Retargeting warns about settings it invalidates** | a requirement on an act that does not exist yet |
 | **26× the rows** | still true, and still the thing the audit's 590 orphans warn about |
 
-⚠️ *`PR-4`: still open, and the owner asked for it to be **worked in, not decided** — so nothing in
-[10 Domain core](10-domain-core.md) or the truth table moves until he says.*
+### Third round — the narrowing rule falls with inheritance, and one structural thing remains
+
+**He withdrew the objection I had built my case on, and he is entitled to.**
+
+> *Currently the ancestor sees to it that the descendant can only get stricter. But the proposal was
+> not to follow the rules blindly — it was to **detach settings from inheritance and OO**. And if we
+> detach from that, we no longer have those restrictions.*
+
+⚠️ **His example is the argument, and it holds.** *Invent a field `Prozentwert` with a range of 0 to 10
+per cent. I want a child of it with a range of 0 to 20. Nothing whatsoever speaks against that.* **He is
+right, and [D-312](90-decision-log.md)'s «narrower only» was never reasoned from settings** — it was
+reasoned from *classification*, where a subtype promising less than its supertype breaks the promise.
+*A setting is not a promise about a group. It is an answer at a place.*
+
+⚠️ *He also concedes the weaker half himself: in OO, overriding a property lets you assign a different
+value — «depending on how the object is set up, the argument is not quite so strong, but it is one».
+**Taking it over from the parent first and then saying «no, up to twenty» is exactly what
+materialisation is.***
+
+### The type change, sharpened by him into two rules
+
+> *With `text` we have a length. That is a different setting than for a number. So when I pick a new
+> type, the new type's settings should be taken over. Two rules: the old type's settings are lost, and
+> the new type's are freshly set.*
+
+⚠️ **This is cleaner than the warning I asked for**, because it removes the conflict instead of
+reporting it: a retarget is **not** an edit of the existing settings, it is a **new start from the new
+type**. *`range_min` on an attribute that now points at `text` does not become wrong — it does not
+survive.*
+
+### What still speaks against it: one thing, and it is structural
+
+⚠️ **A descendant has no address for a setting on an attribute it inherited.** Measured, 2026-08-26:
+
+> `Resistor` inherits `Value` from `Passiv`. The use-site chain of that attribute is
+> `641 → 1 → 406 → 408 → 1173 (decimal) → 3850 (the edge)`.
+> **Neither `Resistor` nor `Passiv` is in it.**
+
+**A use site resolves from its *target's* chain, never from its owner's.** So:
+
+- **Today** `Resistor` cannot say anything about `Value` at all — and that is a real gap the walk hides,
+  not a feature.
+- **Materialised** it becomes a blocker rather than a gap: rule 1 says the inheriting node takes the
+  settings over, and for an inherited attribute **there is nowhere to put them.** The edge belongs to
+  `Passiv`; writing there would change it for every descendant at once, which is the opposite of the
+  intent.
+
+⚠️ **What it needs is an address for the pair `(node, edge)`** — and that is **the same missing column
+that already blocks three decided things**: [OQ-092](#oq-092)'s `path` on `settings`. *So the
+prerequisite for the proposal is a schema step that three other decisions are already waiting for,
+which makes it cheaper than it looks and impossible to skip.*
+
+⚠️ *And it changes the cost estimate: not 26× but **26× per level of inheritance that overrides
+anything**, because each descendant carries its own copies of the edges' settings.*
+
+### So the answer to «what still speaks against it»
+
+| | |
+|---|---|
+| ~~bounding settings stop being guarantees~~ | **withdrawn.** The guarantee came from classification and was applied to settings by inheritance; detaching is the point |
+| ~~correction from above dies~~ | **answered** by `reset` as a pull |
+| ~~performance~~ | **it was never an argument**, in either direction — legibility is |
+| **no address for `(node, edge)`** | **stands, and is the only blocker.** Needs [OQ-092](#oq-092)'s column first |
+| the row count | accepted knowingly, and higher than first measured |
+| unwatched rows drift | the audit's 590 orphans are the warning, not a veto |
+
+### What it would do to the truth table — eight of twenty-five rows
+
+The owner: *and then let us take a look at the truth table regarding attributes and settings.* Counted
+against [01 Glossary](01-glossary.md) as it stands:
+
+| Row | Today | If the proposal lands |
+|---|---|---|
+| **1** *is inherited* | resolved, key by key | **written in, then independent** |
+| **2** *can be moved down* | no — never in one place | it **is** in a place, so «moved down» becomes «copied» |
+| **5** *exists as a row when nobody set it* | **no** — sparse ([D-015](90-decision-log.md)) | **yes, always** — ⚠️ *reverses* |
+| **6** *may be left unsaid* | **yes**, the normal case | **no** — ⚠️ *reverses* |
+| **8** *narrower only* | bounding vs choosing ([D-312](90-decision-log.md)) | **falls away** — his central point |
+| **13** *where it sits in the walk* | the last link | **there is no walk** |
+| **15** *keys only at a use site* | `multiplicity`, `order` | **`mandatory` joins them** |
+| **16** *narrowing at a use site* | the narrowest point there is | **falls away** with row 8 |
+| **24** *one row per key* | `UNIQUE (owner_id, setting_key)` | needs the **`(node, edge)`** address |
+
+⚠️ **Seventeen rows do not move**, and that is worth as much as the eight that do: the **storage**
+(rows 20–23, 25), the **types** (row 14), what an attribute *is* (rows 3, 4, 7, 9–12, 17–19).
+*So this is a change to **how a setting reaches a place**, and to nothing else — which is a smaller
+change than three rounds of argument made it sound.*
+
+⚠️ *Two of the eight **reverse** rather than shift — rows 5 and 6, sparseness. Those are the ones a
+person would notice: today most owners carry nothing (36 of 112, measured); afterwards every owner
+carries everything.*
+
+⚠️ *`PR-4`: still not decided, and no concept document moves. **But the shape of the decision is now
+clear enough to write in one sentence**, which it was not two rounds ago.*
