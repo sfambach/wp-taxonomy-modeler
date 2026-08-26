@@ -83,13 +83,26 @@
 		}, { passive: true } );
 	}
 
+	// ⚠️ **Restored three times, and each one is for a different competitor.** The owner reported the
+	// remainder: *and the tree still jumps slightly.* It did, because the browser scrolls to
+	// `#taxmod-node-<id>` on its own — the scriptless fallback — and a single restore on
+	// `DOMContentLoaded` can land either side of that.
+	//
+	// ⚠️ *Right now: the script sits in the footer, so the tree is already parsed and setting the offset
+	// here happens before the first paint — no flash. On `DOMContentLoaded`: for the case where it is
+	// not. On `load`: **after** the browser has finished its own fragment scroll, which is the one that
+	// was winning. Three cheap writes of one number beats guessing which order a browser picks.*
+	restore();
+
 	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', function () {
-			restore();
-			watch();
-		} );
+		document.addEventListener( 'DOMContentLoaded', restore );
+	}
+
+	window.addEventListener( 'load', restore );
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', watch );
 	} else {
-		restore();
 		watch();
 	}
 } )();

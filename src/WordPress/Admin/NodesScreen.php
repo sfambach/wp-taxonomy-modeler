@@ -368,13 +368,29 @@ final class NodesScreen
      */
     private function submissionFor(int $id): Submission
     {
+        // ⚠️ **The circumstances travel in the form, and this is where my first fix was wrong.**
+        // {@see backTo()} reads them out of the request — but an act is a **POST to
+        // `admin-post.php`**, and a POST has no query string at all. So carrying them on the redirect
+        // was carrying nothing: there was nothing left to read by then.
+        //
+        // ⚠️ *The owner reported it twice, and the second time was after I had «fixed» it: **the show
+        // hidden setting still disappears when choosing a function at the node.** He was right both
+        // times — the first report was the missing redirect, the second the missing hidden fields, and
+        // only the second closes it.*
         return new Submission(
             admin_url('admin-post.php'),
-            [
-                'action'         => self::ACTION,
-                'id'             => (string) $id,
-                '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $id),
-            ]
+            array_filter([
+                'action'        => self::ACTION,
+                'id'            => (string) $id,
+                '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $id),
+                // Exactly as they arrived, so the act can hand them straight back.
+                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
+                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
+                    : null,
+                'taxmod_hidden' => isset($_GET['taxmod_hidden'])
+                    ? sanitize_text_field(wp_unslash($_GET['taxmod_hidden']))
+                    : null,
+            ])
         );
     }
 
@@ -2332,19 +2348,40 @@ final class NodesScreen
      *
      * @param array<string, string> $extra
      */
+    /**
+     * One circumstance, from wherever this request happens to be carrying it.
+     *
+     * ⚠️ **A page load has it in the query string, an act has it in the posted form.** Those are the
+     * only two ways it can arrive, and a reader that knows one of them works exactly half the time —
+     * which is how «show hidden» kept disappearing after the first fix.
+     *
+     * ⚠️ *Never `$_REQUEST`: it folds cookies in too, and a circumstance that could come from a cookie
+     * would be one that outlives the visit it belongs to.*
+     */
+    private function circumstance(string $key): ?string
+    {
+        $raw = $_POST[$key] ?? $_GET[$key] ?? null;
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        return sanitize_text_field(wp_unslash((string) $raw));
+    }
+
     private function backTo(?int $nodeId, array $extra = []): string
     {
         return add_query_arg(
             array_filter([
                 'page'        => 'taxmod',
                 'taxmod_node' => $nodeId,
-                // The folded branches and the hidden mode, exactly as they arrived.
-                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
-                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
-                    : null,
-                'taxmod_hidden' => isset($_GET['taxmod_hidden'])
-                    ? sanitize_text_field(wp_unslash($_GET['taxmod_hidden']))
-                    : null,
+                // ⚠️ **From the query string *or* the posted form**, and it has to be both. A page
+                // load carries them in the URL; an **act** is a POST to `admin-post.php`, which has no
+                // query string — so the form carries them instead ({@see submissionFor()}). *Reading
+                // only `$_GET` was my first attempt at this and it fixed nothing, because by the time
+                // the redirect is built there is no `$_GET` left.*
+                'taxmod_collapsed' => $this->circumstance('taxmod_collapsed'),
+                'taxmod_hidden'    => $this->circumstance('taxmod_hidden'),
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for
                 // `taxmod_hidden` replaces the ambient value and `array_filter` then drops the key —
