@@ -3314,3 +3314,117 @@ prohibition, live in the schema**, and it has to be resolved whichever way this 
 
 ⚠️ *`PR-4`: undecided. But **`order` versus `position` is a fault today**, whatever is decided about
 the rest.*
+
+## OQ-099 — A descendant's value for an inherited attribute has no address, and it already broke a decision
+
+**Raised** 2026-08-26, by trying to build what the owner asked for and finding the pattern it copies
+does not work.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-378](90-decision-log.md), [OQ-098](#oq-098--is-a-value-that-can-only-live-in-one-place-a-field-rather-than-a-setting)
+
+The owner asked for `factor` and `offset` to become attributes, the way the prefix exponent did
+([D-378](90-decision-log.md)) — *yes, I want that.* **Measuring the pattern first showed that the
+pattern is not working.**
+
+### What the exponent actually does
+
+`UnitScaffold` writes, and its own comment states the intent — *each prefix's `default` **is** its
+model-level value*:
+
+| Written | Where |
+|---|---|
+| `persistent = false` | on the **edge** (`chainForUseSite($exponent)`) |
+| `default = 3`, `6`, `-3` … | on each **prefix node** (`chainFor($node)`) |
+
+⚠️ **And the two never meet.** Measured: the `exponent` edge's chain is
+`641 → 1 → 406 → 408 → 1171 (int) → 4654 (the edge)`. **`kilo` (4004) is not in it** — a use site
+resolves from its **target's** chain, never from its owner's ([OQ-098](#oq-098--is-a-value-that-can-only-live-in-one-place-a-field-rather-than-a-setting)
+measured the same thing for `Resistor` and `Value`).
+
+**So reading the exponent through the attribute gives `(nothing)` from `int`.** `kilo`'s `default = 3`
+is a **node-level** default — it answers *what does anything of kilo's type default to*, not *what is
+kilo's exponent*. **Nothing in `Taxmod\Core` reads the exponent at all**; only the scaffold writes it.
+
+⚠️ *This is the fourth «written and not built» of the day, and the largest: the other three were a
+setting nothing read ([D-396](90-decision-log.md)), a key nothing could reach (`label_role`) and half a
+decision ([D-406](90-decision-log.md)). This one is a **mechanism** that a later decision was about to
+be built on.*
+
+### Why the setting-key version works and the attribute version does not
+
+**Because a key gives exactly the address that is missing.** `Celsius` carries `factor = 1.0` and
+`offset = -273.15` **on itself**, and the chain resolves them when `Celsius` is the subject. *An
+attribute cannot do that, because its settings hang off the edge and the edge is shared by every
+descendant.*
+
+| | Address for «this node's value for that attribute» |
+|---|---|
+| **setting key** (`factor` on `Celsius`) | ✔ the node's own row |
+| **attribute** (`factor` declared at `Base units`) | ✘ **none** — the edge is one row for all units |
+
+### One column, five things waiting
+
+⚠️ **[OQ-092](#oq-092)'s `settings.path` is the address**, and it is now the bottleneck for five decided
+or asked-for things:
+
+| Waiting on it | |
+|---|---|
+| **several renderers, several validators** | [D-236](90-decision-log.md), [D-158](90-decision-log.md) — list rows 5 and 8 |
+| **several defaults** | [C30](10-domain-core.md) |
+| **the prefix exponent working at all** | [D-378](90-decision-log.md) — *already decided and not functioning* |
+| **`factor` and `offset` as attributes** | the owner's *yes*, list row 32 |
+| **materialised settings** | [OQ-097](#oq-097--should-settings-be-materialised-into-the-inheriting-node-instead-of-resolved), which needs a per-`(node, edge)` row for the same reason |
+
+⚠️ *So the honest answer to «yes I want that» is **not yet, and here is the one thing that unblocks it**
+— rather than building two more settings that store a value nothing can read.*
+
+### His next proposal: `faktor`, `multiplicator`, `exponent` as specialisations of `int`
+
+> *I wonder whether we should create factor, multiplicator, exponent as **specialisations (kind) of
+> `int`** or so — then one can simply use them. And we would also know what is used in the renderer.*
+
+⚠️ **The proposal splits into two claims, and they have opposite answers.**
+
+| Claim | |
+|---|---|
+| **a subtype gives the field its own bounds, renderer and converter** | ✔ **true, works today, costs nothing new** |
+| **a subtype tells a converter which attribute to use** | ✘ **the flaw he found himself in [D-378](90-decision-log.md), and it is still fatal** |
+
+#### The half that works — and it is the larger half
+
+**A node under `int` *is* an `int`.** Measured, 2026-08-26: `my_int` resolves `typeOfNode = int` while
+being its own node, so it inherits `int`'s bounds and renderer and may narrow or replace either. *That
+is the whole of this morning's worked example, and it needs no decision.*
+
+⚠️ **So «we would know what is used in the renderer» is right, and it is right for the ordinary
+reason**: the type carries its own `renderer` and the registry resolves **by type**
+([R14a](30-renderer.md)). An `exponent` field would draw as an exponent field because `exponent` says
+so — **no name-matching anywhere.** *`exponent` as an `int` bounded −24…24 with a spinner is a better
+`exponent` than a bare `int` with a comment.*
+
+#### The half that does not — and it is his own objection
+
+[D-378](90-decision-log.md) records him proposing a `Berechnungsgrundlage` type and then killing it:
+*how would the renderer know which attribute to use? It could look for one of type
+Berechnungsgrundlage … but I am not really convinced.* **The decision agrees and says why:** *finding
+an attribute **by the name of the node it points at** is special-casing by node name, which the code
+standard forbids outright.*
+
+⚠️ **Three named types make that three special cases instead of one.** *A converter asking «which of my
+attributes points at `exponent`?» is the same lookup, however many types there are.*
+
+#### And it leaves the address problem exactly where it was
+
+⚠️ **A type says what a value *is*. It does not say where a *particular node's* value lives.** `kilo`
+would still need somewhere to put `3`, and an attribute pointing at `exponent` has the same shared-edge
+problem as one pointing at `int`. **[OQ-092](#oq-092)'s column is untouched by this.**
+
+### So the buildable step, separated from the blocked one
+
+| Now, no decision needed | Waiting on the column |
+|---|---|
+| **the three subtypes**, each with its own bounds and renderer — `exponent` as −24…24, `factor` and `multiplicator` as decimals | **where a node's own value for an inherited attribute lives** |
+| *nothing in the concept forbids a subtype of a data type; `my_int` is one and it works* | *`factor`/`offset` as attributes, several renderers, several defaults, the exponent functioning at all* |
+
+⚠️ *`PR-4`: the subtypes are content and his to seed; the addressing is a schema decision. **The first
+does not wait for the second**, which is the useful part of this proposal.*
