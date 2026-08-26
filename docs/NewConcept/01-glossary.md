@@ -191,52 +191,78 @@ and should name them instead of picking a mechanism.*
 
 ## Truth table — an attribute is not a setting
 
-The owner, 2026-08-26: *let us set up a truth table with three columns — claim, attributes, settings.
-Fill in what we already know, we complete it, and put it in the concept.* Then, in the same breath,
-the reason: *and afterwards challenge it against the individual settings.*
+The owner, 2026-08-26: *let us set up a truth table with three columns — claim, attributes, settings.*
+Then, once it existed: *can you number the rows, then it is easier to talk about* — and the reason he
+wanted it at all: ***there are a lot of wrong claims in there that I probably read past while
+conceiving.***
 
-⚠️ **Why this earns a place rather than being a summary.** The two got confused **four times in one
-day**, each time by me and each time differently: `hide` argued as *inheritance* when it travels the
-*chain*; `hide` filed as *bounding* because a table said so; a switch drawn for a key whose default is
-`true`; and `label_role` reported as *built* when it was storable, resolvable and unreachable. *A rule
-recalled is not a rule read (`PR-10`) — so here it is written down in the one shape that makes a
-mistake visible: side by side.*
+⚠️ **So the table is numbered and it says which cells are sourced and which are mine.** A cell with a
+`D-` id was read; a cell marked ⚠️ was **asserted by me while filling the table in** and is exactly
+what he is looking for. *Two were already wrong before he looked — see rows 4 and 8.*
 
-| Claim | Attribute | Setting |
+| # | Claim | Attribute | Setting |
+|---|---|---|---|
+| **1** | **It is inherited** | **yes** — the relation kind *is* the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)). *The owner: **attributes behave like OO in inheritance*** | ⚠️ **«no» was too sharp.** **What you get is inherited** — the owner, as fact: *as long as he changes no settings, all of `int`'s settings apply; if he changes something, those override* ([D-402](90-decision-log.md)). **How** differs: a setting is **answered by walking**, not copied down ([D-079](90-decision-log.md), [D-093](90-decision-log.md)), and overriding is **per key** — set `range_min` and you still get `int`'s `default` |
+| **2** | **It can be moved down to a subtype** | **yes** ([D-155](90-decision-log.md)) | **no** — it was never in one place to be moved from |
+| **3** | **It has a multiplicity** | **yes**, and only on the edge ([D-351](90-decision-log.md)) | ⚠️ **undecided, and I wrote «no».** *Multiplicity **is** a setting key, so the claim reads oddly; what it should ask is whether **one key may hold several values**, and that is [OQ-092](91-open-questions.md) — open, and it blocks three decided things* |
+| **4** | **Its name is a label, per locale** | ⚠️ **no — I had this wrong.** An attribute's name is a **plain column** on the relation. *Measured: 17 edges carry a name, **zero** labels belong to an edge; all 46 labels belong to nodes.* Whether an edge *may* own labels is undecided | **no** — a setting has a **key**, which is a token and never translated |
+| **5** | **It exists as a row when nobody set it** | **yes** — an edge is either there or it is not | **no** — settings are **sparse**: written only where they differ ([D-015](90-decision-log.md)) |
+| **6** | **It may be left unsaid** | **no** — an attribute is declared or absent | **yes**, and that is the normal case |
+| **7** | **It holds a value in a record** | **yes** — that is what a record *is* | **no** — a setting is about the **model**; at model level there are no values, only defaults ([D-026](90-decision-log.md)) |
+| **8** | **It may be narrowed downwards and never widened** | ⚠️ **the cell was «not applicable» and that is wrong.** An attribute's **multiplicity** is a bounding setting *on the edge*, so an attribute **is** narrowed downwards — through its settings | **some of them.** Bounding: permitted set, range, multiplicity, `mandatory` ([D-311](90-decision-log.md), [D-312](90-decision-log.md)). Free: default, renderer, converter, labels, icon, order — **and `hide`, `read_only`** ([D-399](90-decision-log.md)) |
+| **9** | **It can sit on a node *and* on a use site** | it **is** the use site, seen from the owner ([10 Domain core](10-domain-core.md)) | **yes** — both. *Measured: 36 settings on nodes, 11 on edges* |
+| **10** | **A renderer draws it** | **yes** — its value | **yes** — its control. *Both go through `R1`; neither is exempt* |
+| **11** | **It is recorded in the changelog** | **yes** — `attribute added` / `removed` / `restored` | ⚠️ **no, and that breaks a decision.** [D-081](90-decision-log.md): *every object has at least one changelog item*, and [D-061](90-decision-log.md) makes the changelog **the migration script**. Measured: **591 setting rows, zero changelog entries about settings** — `owner_kind` knows only `node` and `relation`. *A migration replaying it would produce a model with no settings* |
+| **12** | **A `bool` has exactly two states** | — | **yes, and «not set» is not a third one** ([D-401](90-decision-log.md)) |
+
+### Row 12 — settled by the owner, and it corrected me twice
+
+I had offered two ways out and he refused both: ***neither a nor b. We said a bool can have only two
+states, «not set» does not exist. If a value is there then the value, otherwise the default.***
+
+⚠️ **The mistake in both my candidates was the same**: I treated *unset* as something the control has
+to **express**. It is not a state of the value at all — it is a fact about **storage**, and settings
+being sparse ([D-015](90-decision-log.md)) is why storage is empty most of the time. **That «set true»
+and «defaulted true» look identical on screen is correct, not a defect.**
+
+⚠️ **What it demands in the code is one home for the default.** `persistent` resolved to `true` in a
+**reader** — `?? true` inside the data layer — while the switch drew *off*, and the same invention
+appears **eight times** across renderers and services as `?? false` or `?? true`. *That is the
+duplicated-fact prohibition: one place owns each piece of state.* **The key owns what it stands for
+when nobody said anything**, and both the control and every reader ask it.
+
+### The worked example — `my_int` under `int`
+
+The owner asked to settle the table *against a few simple examples* rather than by argument. This is
+the first, in his words: *I have a node `my_int` that inherits from `int`, so it would have all
+attributes of `int` (there are none) but also all settings of `int`.*
+
+⚠️ **Built and measured on 2026-08-26**, on the owner's word — *`my_int` is only an example, but we can
+create it to verify everything.* `int` carries three own settings — `default = 300`,
+`range_min = 3333`, `renderer = field` — which is enough to make every interesting case concrete.
+
+| What `my_int` does | What it gets | Measured |
 |---|---|---|
-| **It is inherited** | **yes** — the relation kind *is* the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)) | **no** — it is **resolved** along the chain, key by key ([D-079](90-decision-log.md), [D-093](90-decision-log.md)). *Nothing is copied down.* |
-| **It can be moved down to a subtype** | **yes** ([D-155](90-decision-log.md)) | **no** — it was never in one place to be moved from |
-| **It has a multiplicity** | **yes**, and only on the edge ([D-351](90-decision-log.md)) | **no** |
-| **It has a name a person reads** | **yes** — and the name is a **label**, per locale ([D-020](90-decision-log.md)) | **no** — it has a **key**, which is a token and never translated |
-| **It exists as a row when nobody set it** | **yes** — an edge is either there or it is not | **no** — settings are **sparse**: written only where they differ ([D-015](90-decision-log.md)) |
-| **It may be left unsaid** | **no** — an attribute is declared or absent | **yes**, and that is the normal case |
-| **It holds a value in a record** | **yes** — that is what a record *is* | **no** — a setting is about the **model**, not the data |
-| **It can be narrowed downwards and never widened** | not applicable — it is declared, not bounded | **some of them.** Bounding: permitted set, range, multiplicity, `mandatory` ([D-311](90-decision-log.md), [D-312](90-decision-log.md)). Choosing, and free: default, renderer, converter, labels, icon, order — **and `hide`, `read_only`** ([D-399](90-decision-log.md)) |
-| **It can sit on a node *and* on a use site** | it **is** the use site, seen from the owner | **yes** — both, and the use site is the last link before the moment |
-| **A renderer draws it** | **yes** — its value | **yes** — its control. *Both go through `R1`; neither is exempt* |
-| **It is recorded in the changelog** | **yes** — `attribute added` / `removed` / `restored` | ⚠️ **no, and that breaks a decision.** [D-081](90-decision-log.md): *every object has at least one changelog item*, and [D-061](90-decision-log.md) makes the changelog **the migration script**. On 2026-08-26 the database held **591 setting rows and zero changelog entries about settings** — `owner_kind` knows only `node` and `relation`. *A migration replaying it would produce a model with no settings.* |
+| **nothing** | `default 300`, `range_min 3333`, `renderer field` — all `← von 1171` | ✔ **exactly as he stated** |
+| sets **`range_min = 0`** | **refused** — `CannotWiden`: *«range_min» is inherited as 3333 and may only be narrowed, not set to 0* | ⚠️ **the exception his sentence did not mention** |
+| sets **`range_min = 5000`** | `range_min 5000` here, `default` and `renderer` still `← von 1171` | ✔ overriding is **per key** |
+| sets **`renderer = spinner`** | `renderer spinner` here | ✔ a **choosing** setting is free in either direction |
+| then `int`'s `default` changes to `1` | `default 1 ← von 1171`, reaching `my_int` at once | ✔ nothing was copied |
 
-### What the table caught immediately
+⚠️ **The refusal is the finding.** *«If he changes something, those override»* holds for **choosing**
+settings without qualification, and for **bounding** settings **only in the narrowing direction**
+([D-312](90-decision-log.md)). `range_min` is bounding, so `3333 → 0` is not an override but a
+widening, and the core stops it. **The same split that [D-399](90-decision-log.md) had just taken
+`hide` and `read_only` out of** — which is why it is worth measuring rather than reasoning about.
 
-⚠️ **A `switch` cannot say «nobody answered», and one key needs to.** `persistent` resolves to
-**`true`** when unset — the core reads `?? true`, because a value a person typed is kept unless
-somebody says otherwise — and the control draws **off**. **So the switch states the opposite of what
-is in force.** For `hide`, `read_only` and `mandatory` *off* is the true default and the switch is
-honest; `persistent` is the one that lies.
+⚠️ **Why the third row is the argument for the whole mechanism.** If a subtype took a **copy** of its
+ancestor's settings and edited that, changing `int` later would stop reaching `my_int` — and a
+classification whose parent cannot be corrected is worth little. *That is the same reason settings are
+sparse rather than materialised ([D-015](90-decision-log.md)).*
 
-*The owner found it from the screen: «persistent is not selectable at all and off by default — that is
-all wrong».* **Two candidate answers, and this is the one to challenge key by key:**
-
-1. **The switch shows the resolved value**, so an unset `persistent` draws *on*. Cheap, and it makes
-   *set* and *unset-but-true* look identical — which is the same blindness [D-352](90-decision-log.md)
-   fixed for `renderer` by showing what is in force without storing it.
-2. **The default flips to `false`**, so the switch is honest without changing the control. But then a
-   value nobody thought about stops being stored, which is the worse failure of the two.
-
-⚠️ *Not decided here. `PR-4`: it becomes a decision when the owner says which, and the same question
-has to be asked of **every** key with a non-`false` default — that is the challenge pass he asked
-for.*
-
+⚠️ *One thing this example cannot settle is whether a record typed `int` may hold a `my_int` —
+[OQ-096](91-open-questions.md). `typeOf()` already walks ancestors to find a simple type, so **drawing**
+says yes; validation and storage say nothing.*
 ### The three words that keep getting swapped
 
 | Word | It answers | Not to be used for |
@@ -244,3 +270,9 @@ for.*
 | **Inheritance** | what a node **has** | a setting — say *the chain* |
 | **Resolution chain** | what a **key** answers *here* | an attribute — say *inheritance* |
 | **Bounding** | which **direction** a setting may move | a whole category — [D-399](90-decision-log.md) took two keys out of it |
+
+⚠️ **Why this section exists at all.** The two got confused **four times in one day**, each time by me
+and each time differently: `hide` argued as *inheritance* when it travels the *chain*; `hide` filed as
+*bounding* because a table said so; a switch drawn *off* for a key whose default is `true`; and
+`label_role` reported as *built* when it was storable, resolvable and unreachable. *A rule recalled is
+not a rule read (`PR-10`).*

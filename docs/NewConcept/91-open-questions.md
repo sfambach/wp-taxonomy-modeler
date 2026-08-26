@@ -2924,3 +2924,58 @@ special-casing-by-name failure the code standard forbids.
 
 ⚠️ **What must not happen is picking one silently.** Candidate 2 changes what a stored value means,
 and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays open until he says.*
+
+## OQ-095 — May an attribute own labels, or is its name only a column?
+
+**Raised** 2026-08-26, while checking a cell of the truth table that I had filled in from memory.
+
+*Blocks:* [01 Glossary](01-glossary.md) · *Status:* open · *raised by* the truth table, row 4
+
+**I wrote that an attribute's name is a label per locale. Measured, it is not.** 17 edges carry a name
+in the `relations.name` column; **zero** labels belong to an edge, and all 46 labels belong to nodes.
+
+⚠️ **The schema does not forbid it.** `labels.owner_id` is an identity like any other
+([D-019](90-decision-log.md)), so an edge *could* own labels — nothing has ever written one.
+
+⚠️ **It matters because of what a use site is.** *A use site is an attribute — the same relation seen
+from the owning node*, and [D-386](90-decision-log.md) already lets a **role** be asked for per edge
+(`label_role`, which is how `k` is drawn instead of `kilo`). **So the edge is already the thing that
+decides which label to read.** Whether it may also *own* one is the unanswered half.
+
+| | |
+|---|---|
+| **For** | `BOM Position` on a parts list wants a heading in every language, and its target's label is the wrong text |
+| **Against** | it duplicates a fact — the target already has labels, and two homes for «what this reads as» is the prohibition, not a feature |
+| **A third way** | the edge owns nothing and points at a **role**; anything more is a label on the *target*. That is what is built and it may be the whole answer |
+
+⚠️ *Not decided. `PR-4`.*
+
+
+## OQ-096 — Is a subtype substitutable for its parent where a reference is typed?
+
+**Raised** 2026-08-26, by the owner's own framing.
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-031](90-decision-log.md), [D-041](90-decision-log.md)
+
+His statement, which is the anchor: *I have a node `my_int` that inherits from `int`, so it would have
+all attributes of `int` (there are none) but also all settings of `int`.* **Attributes behave like OO
+in inheritance.**
+
+⚠️ **Everything in that sentence is already true of the model** — see [the truth table](01-glossary.md),
+rows 1 and 8. What it does **not** say is the part OO gives you for free: **substitutability.**
+
+**The question:** an attribute is typed `int`. A record holds a reference. **May that reference be a
+`my_int`?**
+
+| | |
+|---|---|
+| **If yes** | that is Liskov, and it is what «behaves like OO» would lead a person to expect. It also means a validator must accept a whole subtree, not one id |
+| **If no** | inheritance shapes *what a node has* and nothing else — and then «like OO» holds for members and stops at types |
+
+⚠️ **It is not academic: `typeOf()` already walks ancestors to find a simple type**, so a descendant of
+`int` **is** treated as an `int` for drawing. *So the answer is already «yes» for renderers and
+unstated for validation and storage* — which is the shape of gap that
+[D-400](90-decision-log.md) came out of.
+
+⚠️ *`my_int` does not exist yet: `int` has no children at all. So this is answerable by building the
+example rather than by argument, and the owner has asked to do exactly that.*

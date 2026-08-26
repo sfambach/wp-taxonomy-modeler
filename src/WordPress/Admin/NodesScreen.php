@@ -1847,8 +1847,28 @@ final class NodesScreen
      * should do with a partial batch is genuinely undecided and is on the roadmap; failing loudly is
      * the honest interim rather than writing twenty-nine and mentioning none.*
      */
-    private function saveSettings(int $nodeId, int $edgeId): void
+    private function saveSettings(int $nodeId, int $edgeId, string $name = ''): void
     {
+        // ⚠️ **The page save writes the name too, and forgetting that was a regression I shipped.**
+        // [D-392](../../../docs/NewConcept/90-decision-log.md) put the name field inside this form and
+        // dropped `Rename`; this method only ever read `taxmod_setting[…]`, so **the name arrived and
+        // was thrown away**. The owner found it in one try: *changing and saving a node name does not
+        // work at the moment — name not in the form?* **It was in the form; nothing read it.**
+        //
+        // ⚠️ *Only for a node. An **edge**'s name is `save_attribute`'s business, and only where the
+        // attribute is declared ([D-376](../../../docs/NewConcept/90-decision-log.md)) — renaming an
+        // inherited one from a descendant would rename it for everybody, silently.*
+        if ($edgeId === 0 && $name !== '') {
+            $node = $this->editor->find($nodeId);
+
+            // ⚠️ *Only when it actually differs.* A page save posts the name every time, and renaming
+            // a node to what it already is would write a changelog entry per save — «renamed» twenty
+            // times with nothing renamed.
+            if ($node !== null && $node->name !== $name) {
+                $this->editor->rename($nodeId, $name);
+            }
+        }
+
         $submitted = isset($_POST[self::SETTING_FIELD]) && is_array($_POST[self::SETTING_FIELD])
             ? wp_unslash($_POST[self::SETTING_FIELD])
             : [];
@@ -2076,7 +2096,7 @@ final class NodesScreen
                 // and a write meant for one attribute must not land on the type it points at.
                 // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
                 // panel is one form, so there is no single key to write — every changed value is.
-                'put_setting'    => $this->saveSettings($id, $edge),
+                'put_setting'    => $this->saveSettings($id, $edge, $name),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
