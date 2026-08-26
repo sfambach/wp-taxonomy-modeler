@@ -94,7 +94,6 @@ final class SettingCategoryTest extends TestCase
             SettingKey::ReadOnly,
             SettingKey::Multiplicity,
             SettingKey::Persistent,
-            SettingKey::Order,
         ];
 
         foreach ($rules as $key) {

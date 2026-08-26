@@ -173,8 +173,11 @@ enum SettingKey: string
      */
     case Persistent = 'persistent';
 
-
-    case Order = 'order';
+    // ⚠️ **`order` used to be here and is gone** ([D-407](../../../docs/NewConcept/90-decision-log.md)).
+    // The owner: *if `order` is not used then remove it.* **It was not used**: nothing in
+    // `Taxmod\Core` read it, and the ordering it claimed to hold is the `position` **column** on
+    // `relations` — 84 edges use that, `FormRenderer` sorts by it, and `moveUp`/`moveDown` write it.
+    // *Two homes for one fact, and only one of them was ever the truth.*
 
 
     /**
@@ -235,7 +238,6 @@ enum SettingKey: string
         return match ($this) {
             self::Hide, self::ReadOnly,
             self::Persistent                           => SettingShape::Switch,
-            self::Order                                => SettingShape::Whole,
             self::Factor, self::Offset                 => SettingShape::Exact,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter,

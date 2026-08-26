@@ -749,3 +749,18 @@ details.taxmod-page-block > summary {
     background: 0 0;
     box-shadow: none;
 }
+
+/* ── Where a fragment puts the selected row ──────────────────────────────────
+ *
+ * ⚠️ **A fragment scrolls its target to the top of the scroll container**, and the
+ * owner saw exactly that: *it still jumps, only not as far — the selected node
+ * gets pushed right to the top edge.* `scroll-margin-top` is the one lever CSS
+ * gives: the browser leaves this much space above the target, so the row lands
+ * well inside the pane instead of flush against its edge.
+ *
+ * ⚠️ *This softens the jump and cannot remove it. Keeping the **exact** offset
+ * needs the offset itself, and reading it back needs script — which this screen
+ * has none of, deliberately. That is a decision, not a detail. */
+.taxmod-tree-node {
+    scroll-margin-top: 40vh;
+}

@@ -107,12 +107,12 @@ final class SettingShapeTest extends TestCase
         self::assertSame(SimpleType::Int, SettingKey::DefaultValue->typeFor(SimpleType::Int));
     }
 
-    #[Test]
-    public function order_has_a_type_of_its_own_rather_than_borrowing_one(): void
-    {
-        // A position among siblings is a whole number whatever the node happens to hold.
-        self::assertSame(SimpleType::Int, SettingKey::Order->typeFor(SimpleType::Text));
-    }
+    // ⚠️ **`order` had a test and no reader** ([D-407](../../docs/NewConcept/90-decision-log.md)).
+    // The key is gone. Ordering lives in the `position` **column** on `relations`, which
+    // `FormRenderer` sorts by and `moveUp`/`moveDown` write — 84 edges use it.
+    //
+    // ⚠️ *A test asserting the shape of a key nothing consulted was the most honest thing about it: it
+    // was right about the shape and the shape was never asked for.*
 
     #[Test]
     public function an_icon_is_chosen_from_a_set_and_never_typed(): void
