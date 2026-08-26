@@ -10,6 +10,7 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 |---|---|---|---|
 | 00 | [Vision and scope](00-vision-and-scope.md) | `agreed` | owner statements V1–V9 |
 | 01 | [Glossary](01-glossary.md) | `draft` | fixed vocabulary, rejected words, dictation notes |
+| 02 | [Attribute and setting](02-attribute-and-setting.md) | `draft` | **two concepts, not two kinds of one** — the truth table, the worked example, the storage places |
 | 10 | [Domain core — the model](10-domain-core.md) | `draft`, ready to be judged | **The model as it stands** — the part to build from; behind it the 25 passes as reasoning |
 | 20 | [Interaction](20-interaction.md) | `open` | U0 … U17 |
 | 30 | [Renderer](30-renderer.md) | `draft` (caught up 2026-08-23) | owner statements R1–R76; registry, surfaces, preview |

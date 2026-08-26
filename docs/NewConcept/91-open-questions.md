@@ -2929,7 +2929,7 @@ and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays op
 
 **Raised** 2026-08-26, while checking a cell of the truth table that I had filled in from memory.
 
-*Blocks:* [01 Glossary](01-glossary.md) · *Status:* open · *raised by* the truth table, row 4
+*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* open · *raised by* the truth table, row 4
 
 **I wrote that an attribute's name is a label per locale. Measured, it is not.** 17 edges carry a name
 in the `relations.name` column; **zero** labels belong to an edge, and all 46 labels belong to nodes.
@@ -2961,7 +2961,7 @@ His statement, which is the anchor: *I have a node `my_int` that inherits from `
 all attributes of `int` (there are none) but also all settings of `int`.* **Attributes behave like OO
 in inheritance.**
 
-⚠️ **Everything in that sentence is already true of the model** — see [the truth table](01-glossary.md),
+⚠️ **Everything in that sentence is already true of the model** — see [the truth table](02-attribute-and-setting.md),
 rows 1 and 8. What it does **not** say is the part OO gives you for free: **substitutability.**
 
 **The question:** an attribute is typed `int`. A record holds a reference. **May that reference be a
@@ -3031,7 +3031,7 @@ parent narrows `range_min` **later**, every existing child keeps its wider copy 
 breaks **silently** — checking at write time cannot help, because the copies are already there.
 
 **2. Correction from above dies, and it was measured working this morning.**
-The third row of [the `my_int` example](01-glossary.md): changing `int`'s `default` reached `my_int`
+The third row of [the `my_int` example](02-attribute-and-setting.md): changing `int`'s `default` reached `my_int`
 **at once**, *because nothing was copied*. Under materialisation that becomes a dialog — and a dialog
 reaches only the nodes that exist **at that moment**. A child that answered *no* is then permanently
 detached, with **no way to see that it is detached and no way back**. *Today `reset()` is the way back
@@ -3133,7 +3133,7 @@ nobody can trust — and that is a better argument than the one he made.*
 that does not exist rather than a bug in one that does.
 
 ⚠️ **It matters more than it looks.** `range_min` on an attribute pointing at `int` is an `int`
-([the type table](01-glossary.md), `LikeTheSubject`). Point the same attribute at `text` and the row
+([the type table](02-attribute-and-setting.md), `LikeTheSubject`). Point the same attribute at `text` and the row
 still exists, still says `-9223372036854775808`, and now means nothing. **The conflict is not that
 settings are lost — it is that they are silently kept and become wrong.** *A warning is the minimum; the
 real answer is that retargeting names which settings it will drop and asks.*
@@ -3218,7 +3218,7 @@ anything**, because each descendant carries its own copies of the edges' setting
 ### What it would do to the truth table — eight of twenty-five rows
 
 The owner: *and then let us take a look at the truth table regarding attributes and settings.* Counted
-against [01 Glossary](01-glossary.md) as it stands:
+against [02 Attribute and setting](02-attribute-and-setting.md) as it stands:
 
 | Row | Today | If the proposal lands |
 |---|---|---|
