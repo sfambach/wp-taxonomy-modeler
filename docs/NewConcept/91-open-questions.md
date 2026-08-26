@@ -2999,7 +2999,7 @@ example rather than by argument, and the owner has asked to do exactly that.*
 
 **Raised** 2026-08-26, by the owner, as three rules and two questions.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* the truth table
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* **answered 2026-08-26 by [D-423](90-decision-log.md)** · *raised by* the truth table
 
 His proposal, in his words:
 
