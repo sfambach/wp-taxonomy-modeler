@@ -2979,3 +2979,90 @@ unstated for validation and storage* — which is the shape of gap that
 
 ⚠️ *`my_int` does not exist yet: `int` has no children at all. So this is answerable by building the
 example rather than by argument, and the owner has asked to do exactly that.*
+
+## OQ-097 — Should settings be materialised into the inheriting node instead of resolved?
+
+**Raised** 2026-08-26, by the owner, as three rules and two questions.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* the truth table
+
+His proposal, in his words:
+
+1. *On inheriting, the settings are **written into** the inheriting node, where they can be changed.*
+2. *If a parent node changes its settings, it asks whether that should be changed in the child nodes
+   and in the attribute too — both ticked by default, the user can untick.*
+3. *When an attribute is created, **all** settings of the node are taken into the attribute and can be
+   changed there.*
+
+And: *what do you think of the proposal — we detach settings from the inheritance rules.* Then:
+***really all?*** and *can you challenge this.*
+
+### Answer to «really all?» — no, and the number is 15
+
+**Measured, 2026-08-26.** 16 engine keys exist. At a node with a simple type **15** apply; at an
+attribute **16** (`multiplicity` is edge-only, [D-351](90-decision-log.md)). So «all» is already 15
+before anything is copied.
+
+| | Today | Materialised |
+|---|---|---|
+| owners (95 nodes + 17 attribute edges) | 112 | 112 |
+| **owners carrying any setting at all** | **36** | 112 |
+| **setting rows** | **65** live | **~1697** |
+| | | **≈ 26×**, and it grows with the model, not with the modelling |
+
+### Where the proposal is right, and it is not a small part
+
+- **The display problem is real.** `← von 1171` tells a person where a value came from and **not** what
+  would happen if they edited it there. That is the complaint underneath all three rules.
+- **The surprise is real.** A setting on a **constant** reaches every attribute pointing at it — which
+  is how `persistent = 0` on `Base units` stopped a unit being stored ([D-400](90-decision-log.md)).
+  Nothing was inherited; the constant was simply *in the walk*, and nothing said so.
+- **Rule 3 is the strongest of the three.** An attribute is a **use site** — a place where a person is
+  deciding — and copying the node's answers there as a starting point is not duplication of a fact, it
+  is a **new decision seeded with the old one**.
+
+### Where it breaks — three objections, in order of weight
+
+**1. Bounding settings stop being guarantees, and that is what they are for.**
+[D-311](90-decision-log.md) states it: *what an ancestor declares **mandatory** stays mandatory for
+every descendant … otherwise «every bird has a name» would never hold, and a classification that
+guarantees nothing about a group is worth nothing.* A **copy can be unticked**. Worse than that: if the
+parent narrows `range_min` **later**, every existing child keeps its wider copy and the invariant
+breaks **silently** — checking at write time cannot help, because the copies are already there.
+
+**2. Correction from above dies, and it was measured working this morning.**
+The third row of [the `my_int` example](01-glossary.md): changing `int`'s `default` reached `my_int`
+**at once**, *because nothing was copied*. Under materialisation that becomes a dialog — and a dialog
+reaches only the nodes that exist **at that moment**. A child that answered *no* is then permanently
+detached, with **no way to see that it is detached and no way back**. *Today `reset()` is the way back
+([D-266](90-decision-log.md)), and `package4-check` measures it: «but after a reset it does».*
+
+**3. It stores every fact twice, which the code standard forbids outright.**
+*One place owns each piece of state; everything else derives.* And an hour before this was raised, the
+model audit found **590 setting rows belonging to owners that no longer exist** — rows nobody was
+watching. *Materialising multiplies exactly the thing that already drifted.*
+
+**4. The dialog has no right answer for a child that already changed the key.** Overwrite their
+choice, or skip them? Both are wrong for somebody, and the person clicking cannot know which children
+are which.
+
+### What would give him what he wants without losing the guarantees
+
+⚠️ **The line to cut along is one he already drew: [D-312](90-decision-log.md)'s bounding / choosing
+split.**
+
+| His goal | Without materialising |
+|---|---|
+| see every setting at the node | the panel already resolves all of them — what is missing is a **per-key marker: «follows» / «has its own»**, which is the information `← von 1171` fails to give |
+| change it right there | already possible: writing at the node **is** the override. What is missing is that it does not *look* possible |
+| know who follows when a parent changes | the dialog, **as information**: *12 descendants follow this, 3 have their own*. No copying |
+| a new attribute starts from the node's settings | **take rule 3, as an offer** — a tick-box that copies the node's **choosing** settings into the new attribute |
+
+⚠️ **And never materialise a bounding key.** `mandatory`, `range_min`/`max`/`step`, `multiplicity` are
+**guarantees**; a copy is not a guarantee. `default`, `renderer`, `converter`, `validator`, `icon`,
+`order`, `factor`, `offset` are **choices** — those copy harmlessly, because nothing depends on them
+staying equal.
+
+⚠️ *So the honest answer to «what do you think» is: **right for choosing settings, wrong for bounding
+ones** — and that is not a compromise between two positions, it is the line his own D-312 already
+draws. `PR-4`: undecided until he says.*
