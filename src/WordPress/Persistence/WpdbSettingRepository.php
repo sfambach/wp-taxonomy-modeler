@@ -90,7 +90,8 @@ final class WpdbSettingRepository implements SettingRepository
             (string) $row['setting_key'],
             TypedValue::fromStorage(
                 $row['value_int'] === null ? null : (int) $row['value_int'],
-                $row['value_decimal'] === null ? null : (string) $row['value_decimal'],
+                    // ⚠️ The padding `decimal(30,10)` adds on read is taken off here and nowhere else.
+                    StoredDecimal::read($row['value_decimal']),
                 $row['value_text'] === null ? null : (string) $row['value_text'],
                 $row['value_date'] === null ? null : (string) $row['value_date'],
                 $row['value_ref'] === null ? null : (int) $row['value_ref'],

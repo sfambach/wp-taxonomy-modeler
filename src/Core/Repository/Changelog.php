@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Repository;
 
+use Taxmod\Core\Model\ChangeSummary;
+
 /**
  * Frozen history. **Every object has at least one item**, because creation must be logged —
  * `creation_date` is read from here rather than stored twice (D-080, D-081).
@@ -64,4 +66,16 @@ interface Changelog
      * **format** is now a contract: see {@see Changelog::record()}.
      */
     public function pathBeforeLastParking(int $ownerId): ?string;
+
+    /**
+     * When this subject appeared, when it last changed, and who did it.
+     *
+     * ⚠️ **Two rows, not the whole history.** The owner wants *creation, last change, change owner* on
+     * the page, and reading every act to find two of them would be a query that grows with the age of
+     * the installation — the first and the last are one statement each.
+     *
+     * ⚠️ *Null fields are a real answer: a node seeded before the changelog existed has no history,
+     * and showing the moment somebody first touched it as its birthday would be a lie.*
+     */
+    public function summaryOf(int $ownerId): ChangeSummary;
 }

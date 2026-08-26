@@ -53,6 +53,23 @@ final class Control
      * is over there. *Otherwise every surface would pick its own red, and the one control that must
      * never be clicked by accident would look different in each of them.*
      */
+    /**
+     * @param string $icon A Dashicon key without its `dashicons-` prefix, or empty for none. When
+     *                     set, the renderer draws the icon **instead of** the label — and the label
+     *                     is still required, because it is what a screen reader is left with.
+     *
+     * ⚠️ **This exists because an emoji is an outline and an icon font is a face.** The owner: *the
+     * bin icon is still very thin, hardly recognisable.* `🗑` renders as a hairline glyph at button
+     * size in most system emoji fonts and no CSS can thicken it; `dashicons-trash` is a **font
+     * glyph**, so it takes `color` and `font-size` like text and comes out solid. *The same reason
+     * the tree row draws its node icon as a Dashicon rather than a picture
+     * ([D-251](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **A key and not markup**, so the boundary states which icon and the renderer decides how an
+     * icon is drawn — the same division as `destroys` stating a fact and the renderer choosing the
+     * red. *Handing in a `<span class="dashicons …">` would put the shape of a control back on the
+     * surface, which is what `R1` is for.*
+     */
     public function __construct(
         public readonly string $name,
         public readonly string $value,
@@ -60,6 +77,7 @@ final class Control
         public readonly string $title = '',
         public readonly bool $available = true,
         public readonly bool $destroys = false,
+        public readonly string $icon = '',
     ) {
     }
 }

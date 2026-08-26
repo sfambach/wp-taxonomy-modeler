@@ -4,12 +4,17 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\ChoiceRenderer;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\RenderContext;
+use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\FormRenderer;
@@ -51,8 +56,18 @@ final class RenderingTest extends TestCase
     private Settings $settings;
     private ModelEditor $editor;
     private Rendering $rendering;
+    private InMemoryLabels $labelStore;
     /** @var array<string,Node> */
     private array $branchRoot = [];
+
+    /**
+     * ⚠️ **Distinct ids per role, because the double used to answer `0` for every one of them** —
+     * so `form` and `symbol` were the same role and a test of *which* label was drawn could not
+     * fail. That is a test double hiding the thing under test.
+     *
+     * @var array<string,int>
+     */
+    private const ROLE_IDS = ['form' => 901, 'table' => 902, 'select' => 903, 'symbol' => 904, 'help' => 905];
 
     protected function setUp(): void
     {
@@ -88,7 +103,9 @@ final class RenderingTest extends TestCase
         $this->branchRoot['data-types'] = $make('Data Types', $primitives);
         $this->branchRoot['constants']  = $make('Constants', $primitives);
 
-        $framework = new FixedFramework($root, $trash, $this->branchRoot, self::INSTALLATION);
+        $framework = new FixedFramework($root, $trash, $this->branchRoot, self::INSTALLATION, self::ROLE_IDS);
+
+        $this->labelStore = new InMemoryLabels();
 
         $this->editor    = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
         $this->settings  = new Settings($this->stored, $this->nodes, $framework);
@@ -97,7 +114,7 @@ final class RenderingTest extends TestCase
             $framework,
             $this->settings,
             ShippedRenderers::registry(),
-            new Labels(new InMemoryLabels(), $framework)
+            new Labels($this->labelStore, $framework)
         );
     }
 
@@ -401,6 +418,84 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
+    public function an_attribute_says_which_label_of_its_target_to_show(): void
+    {
+        // ⚠️ **This is D-049's promised setting, and `2k7` is the case that needs it.** The owner:
+        // *I type `2k7` and it lands in two different fields, the `2.7` and the `k`* (D-220) — where
+        // `k` is not stored at all: what a record holds is a **reference to `kilo`** (D-039's
+        // value + prefix + unit, one row per member by path, D-134), and `k` is that node's
+        // `symbol` label resolved at render time (D-049, D-260).
+        //
+        // ⚠️ **Two edges at one target, because that is what could not work before.** The role was
+        // nailed to `form` in the descent, so a prefix could only ever read `kilo`. Keying the
+        // resolved names by **target** would have been the same bug one level up: whichever edge
+        // was resolved second would have won for both.
+        $kilo = $this->editor->createNode('kilo', $this->branchRoot['constants']->id);
+
+        $this->labelStore->put(new Label(
+            $kilo->id,
+            '',
+            self::ROLE_IDS['symbol'],
+            Label::BASE_NUMBER,
+            '',
+            'k'
+        ));
+
+        $resistor = $this->thing('Widerstandswert');
+        $short    = $this->editor->addAttribute($resistor->id, $kilo->id, 'prefix');
+        $spelled  = $this->editor->addAttribute($resistor->id, $kilo->id, 'prefix in full');
+
+        // The setting rides on the **edge** — the use site, which is what makes the two differ.
+        $this->settings->put(
+            $this->settings->chainForUseSite($short),
+            Rendering::LABEL_ROLE,
+            TypedValue::ofText(SeededRole::Symbol->value)
+        );
+
+        $fields = $this->rendering->fieldsFor(
+            [$short, $spelled],
+            [
+                $short->id   => TypedValue::ofReference($kilo->id),
+                $spelled->id => TypedValue::ofReference($kilo->id),
+            ],
+            Purpose::Display,
+            ''
+        );
+
+        self::assertStringContainsString('k</', $fields[0]->result->markup, 'the symbol role was not used');
+        self::assertStringNotContainsString('kilo', $fields[0]->result->markup);
+
+        // The other edge said nothing, so it keeps the ordinary role — same node, other text.
+        self::assertStringContainsString('kilo', $fields[1]->result->markup);
+    }
+
+    #[Test]
+    public function an_unknown_label_role_falls_back_instead_of_breaking_the_form(): void
+    {
+        // ⚠️ A typo, an import or a data pack can name a role outside the seeded set (D-196).
+        // Refusing to draw the whole form over one misspelt setting would be the wrong trade — and
+        // it stays visible as wrong, because the text shown is the ordinary one.
+        $kilo = $this->editor->createNode('kilo', $this->branchRoot['constants']->id);
+        $part = $this->thing('Part');
+        $edge = $this->editor->addAttribute($part->id, $kilo->id, 'prefix');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            Rendering::LABEL_ROLE,
+            TypedValue::ofText('symbool')
+        );
+
+        $field = $this->rendering->fieldsFor(
+            [$edge],
+            [$edge->id => TypedValue::ofReference($kilo->id)],
+            Purpose::Display,
+            ''
+        )[0];
+
+        self::assertStringContainsString('kilo', $field->result->markup);
+    }
+
+    #[Test]
     public function a_reference_declines_the_edit_purpose_so_the_chooser_gap_stays_visible(): void
     {
         // ⚠️ Changing a reference means picking a node — the chooser, decided (D-244), not built.
@@ -549,15 +644,14 @@ final class RenderingTest extends TestCase
             'off unless somebody said otherwise'
         );
 
-        $this->settings->put(
-            $this->settings->chainFor($part),
-            SettingKey::Developer->value,
-            TypedValue::ofBool(true)
-        );
-
+        // ⚠️ **It arrives as a circumstance and no longer as a setting** (D-389). The owner:
+        // *develop is not a setting on the node but a setting in the WordPress admin settings menu* —
+        // so nothing is written to the chain here, the caller simply says so. *That is also the whole
+        // argument: on the chain it could differ per branch, and «developer mode, but only under
+        // Compositions» is not a thing.*
         self::assertStringContainsString(
             'taxmod-tree-writes',
-            $this->rendering->cellsFor([$part])[$part->id]->markup
+            $this->rendering->cellsFor([$part], developerMode: true)[$part->id]->markup
         );
     }
 
@@ -909,19 +1003,74 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function a_choice_is_left_undrawn_rather_than_faked_as_a_field(): void
+    public function a_choice_is_drawn_as_a_set_and_not_as_a_text_box(): void
     {
-        // ⚠️ Multiplicity's four constants and a registered name want a **chooser**, one is decided
-        // (D-244) and none is built. A text box in its place would be the second way to draw.
+        // ⚠️ **This test used to assert the opposite**, and the old reason was honest at the time:
+        // a choice wants a chooser and none was built, so a text box in its place would have been
+        // the second way to draw a field (R20a). **The chooser exists**, so the reason is gone —
+        // and the assertion is rewritten rather than loosened, because a test that no longer
+        // matches the decision is worse than no test.
         $int = $this->type('int');
 
         $this->settings->put($this->settings->chainFor($int), SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
 
-        $row = $this->drawnSettings($int)[SettingKey::Renderer->value];
+        $row = $this->drawnSettings($int, Purpose::Edit)[SettingKey::Renderer->value];
 
-        self::assertFalse($row->wasDrawn());
+        self::assertTrue($row->wasDrawn());
         self::assertTrue($row->shape->isAChoice());
-        self::assertTrue($row->isEngineOwned());
+        self::assertSame(ChoiceRenderer::NAME, $row->rendererName);
+
+        // The eligible renderers are the set, so the one that is set is in it and the plain field is
+        // there beside it — a real control, because there is more than one outcome.
+        self::assertStringContainsString('<select', $row->result->markup);
+        self::assertStringContainsString(SpinnerRenderer::NAME, $row->result->markup);
+        self::assertStringNotContainsString('disabled', $row->result->markup);
+    }
+
+    #[Test]
+    public function a_choice_with_nothing_to_choose_is_disabled_rather_than_an_empty_box(): void
+    {
+        // ⚠️ **R31**: with no available entry there is nothing to choose and the control is
+        // disabled. `converter` is the honest live case — D-219 decided converters and none is
+        // built — so the row draws as a dead control instead of a box that looks fillable.
+        $row = $this->drawnSettings($this->type('int'), Purpose::Edit)[SettingKey::Converter->value];
+
+        self::assertTrue($row->wasDrawn());
+        self::assertStringContainsString('disabled', $row->result->markup);
+    }
+
+    #[Test]
+    public function one_entry_that_may_also_be_left_empty_stays_a_live_control(): void
+    {
+        // ⚠️ **R31b, and the case the rule must not be over-applied to.** *The test is never how
+        // many rows are in the list but how many outcomes this control can produce.* One entry plus
+        // *nothing* is two outcomes, so greying it out would remove a decision the user really has.
+        $renderer = ShippedRenderers::registry()->byName(ChoiceRenderer::NAME);
+
+        $live = $renderer->render(
+            $this->thing('Part'),
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::nothing(),
+                surroundings: new Surroundings(options: ['only' => 'the only one'], mayBeNothing: true)
+            )
+        );
+
+        self::assertStringNotContainsString('disabled', $live->markup);
+
+        // The same single entry where nothing is **not** an answer is genuinely decided — R30 —
+        // so it is preselected and greyed rather than merely offered.
+        $decided = $renderer->render(
+            $this->thing('Other'),
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::nothing(),
+                surroundings: new Surroundings(options: ['only' => 'the only one'], mayBeNothing: false)
+            )
+        );
+
+        self::assertStringContainsString('disabled', $decided->markup);
+        self::assertStringContainsString('selected', $decided->markup);
     }
 
     #[Test]
@@ -956,11 +1105,17 @@ final class RenderingTest extends TestCase
     }
 
     /** @return array<string, \Taxmod\Core\Renderer\RenderedSetting> */
-    private function drawnSettings(Node $node): array
+    private function drawnSettings(Node $node, Purpose $purpose = Purpose::Display): array
     {
         $rows = [];
 
-        foreach ($this->rendering->settingsFor($node, $this->settings->resolve($this->settings->chainFor($node))) as $row) {
+        $drawn = $this->rendering->settingsFor(
+            $node,
+            $this->settings->resolve($this->settings->chainFor($node)),
+            $purpose
+        );
+
+        foreach ($drawn as $row) {
             $rows[$row->key] = $row;
         }
 

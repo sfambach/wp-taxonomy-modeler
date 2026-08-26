@@ -95,13 +95,15 @@ final class SettingShapeTest extends TestCase
     }
 
     #[Test]
-    public function a_prefix_is_a_whole_exponent_and_not_a_factor(): void
+    public function a_default_borrows_the_type_of_what_it_sits_on(): void
     {
-        // ⚠️ **The finding, not a preference.** `decimal(30,10)` holds ten decimal places and twenty
-        // integer ones, so neither 10⁻²⁴ nor 10²⁴ fits. A prefix **is** a power of ten by
-        // definition, so the exponent is exact and small — and it keeps D-039's two axes apart.
-        self::assertSame(SettingShape::Whole, SettingKey::PrefixExponent->shape());
-        self::assertSame(SimpleType::Int, SettingKey::PrefixExponent->typeFor(null));
+        // ⚠️ **A default is how a model-level value is expressed at all** — [D-026](../../docs/NewConcept/90-decision-log.md):
+        // *at model level there are no values, only defaults*. It briefly carried a prefix's exponent
+        // through a read-only default (the withdrawn D-373); that is now `persistent` plus a default
+        // (D-377, D-378), and this row still holds the part that was never in question: a default
+        // takes the type of whatever it sits on.
+        self::assertSame(SettingShape::LikeTheSubject, SettingKey::DefaultValue->shape());
+        self::assertSame(SimpleType::Int, SettingKey::DefaultValue->typeFor(SimpleType::Int));
     }
 
     #[Test]
@@ -112,11 +114,14 @@ final class SettingShapeTest extends TestCase
     }
 
     #[Test]
-    public function an_icon_is_characters_for_now_and_that_is_a_gap(): void
+    public function an_icon_is_chosen_from_a_set_and_never_typed(): void
     {
-        // ⚠️ D-251 says the tree row draws an icon *where one is set* and nothing says what an
-        // icon **is** — a symbol name, a media reference, a character. Characters is the least it
-        // can be, and it is provisional.
-        self::assertSame(SimpleType::Text, SettingKey::Icon->typeFor(null));
+        // ⚠️ **This test used to assert `text`, and «characters is the least it can be» was honest
+        // while nothing could offer a set.** D-390 ends that: the installation hands the icons in and
+        // the chooser draws them, so a text box would be asking somebody to know a Dashicon key by
+        // heart. *What D-251 left open — what an icon **is** — is still open; what closed is the
+        // question of how a person picks one.*
+        self::assertTrue(SettingKey::Icon->shape()->isAChoice());
+        self::assertNull(SettingKey::Icon->typeFor(null));
     }
 }

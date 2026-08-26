@@ -33,6 +33,9 @@ final class RendererRegistry
     /** @var array<string, Renderer> Keyed by the simple type's own value. */
     private array $defaultByType = [];
 
+    /** @var array<string, array<string, Renderer>> Type ⇒ purpose ⇒ renderer. See {@see addForPurpose()}. */
+    private array $defaultByTypeAndPurpose = [];
+
     /** @var array<string, true> Names a surface asks for and nobody is offered. */
     private array $surfaceOnly = [];
 
@@ -108,11 +111,49 @@ final class RendererRegistry
      * describes**, not a quiet floor: a type with no default is a type somebody forgot, and the
      * fallback marks its output so the omission is visible instead of merely tidy.
      */
-    public function defaultFor(?SimpleType $type): Renderer
+    public function defaultFor(?SimpleType $type, ?Purpose $purpose = null): Renderer
     {
-        return $type === null
-            ? $this->fallback
-            : $this->defaultByType[$type->value] ?? $this->fallback;
+        if ($type === null) {
+            return $this->fallback;
+        }
+
+        // ⚠️ **A purpose-specific default wins where one was marked** ([D-108](90-decision-log.md),
+        // [D-244](90-decision-log.md)): a reference is *shown* by the reference renderer and *picked*
+        // by a chooser, and those are deliberately two renderers rather than one with a switch.
+        if ($purpose !== null) {
+            $forPurpose = $this->defaultByTypeAndPurpose[$type->value][$purpose->value] ?? null;
+
+            if ($forPurpose !== null) {
+                return $forPurpose;
+            }
+        }
+
+        return $this->defaultByType[$type->value] ?? $this->fallback;
+    }
+
+    /**
+     * A default for one type **and one purpose**, where showing and choosing are different renderers.
+     *
+     * ⚠️ **[D-108](90-decision-log.md) needs this and [R14a](30-renderer.md#r14a--the-key-is-the-type-purpose-travels-in-the-context)
+     * alone could not express it.** R14a marks one default *per type*; D-108 settles that a chooser is
+     * **two separate renderers** rather than one with a switch, and [D-244](90-decision-log.md) makes
+     * the **dialog** the default. So a reference is drawn one way and picked another — and until now
+     * `node_ref` had a single default that **declined** `edit`, so the descent fell back and marked
+     * every reference field as a fault.
+     *
+     * ⚠️ *The type default stays the general answer; this overrides it only where a purpose genuinely
+     * wants a different renderer. Registered as an offered renderer too, because a person may pick the
+     * **inline** chooser instead — D-244 flips the default and leaves D-108's construction alone.*
+     *
+     * @var array<string, array<string, Renderer>>
+     */
+    public function addForPurpose(Renderer $renderer, Purpose $purpose, SimpleType ...$types): void
+    {
+        $this->byName[$renderer->name()] = $renderer;
+
+        foreach ($types as $type) {
+            $this->defaultByTypeAndPurpose[$type->value][$purpose->value] = $renderer;
+        }
     }
 
     public function fallback(): Renderer

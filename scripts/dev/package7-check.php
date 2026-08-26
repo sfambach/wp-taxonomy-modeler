@@ -205,7 +205,12 @@ $record = $data->create($part->id);
 
 $typed = [
     [$count,  '42',                 static fn ($v): bool => $v->int === 42],
-    [$weight, '2.50',               static fn ($v): bool => $v->decimal === '2.5000000000'],
+    // ⚠️ **This line used to expect `2.5000000000`, which was the bug written down as a rule.**
+    // `decimal(30,10)` pads on read, and the padding was reaching the screen — `2.7 kΩ` drew as
+    // `2.7000000000 k Ω`. It comes off in the repository now (D-394), so a decimal reads back as a
+    // number. *That `2.50` returns as `2.5` and not as typed is a real loss and a different question:
+    // once written, `2.50` and `2.5` are one row — OQ-085 asks how much precision a decimal has.*
+    [$weight, '2.50',               static fn ($v): bool => $v->decimal === '2.5'],
     [$label,  '4k7',                static fn ($v): bool => $v->text === '4k7'],
     [$stock,  '1',                  static fn ($v): bool => $v->asBool() === true],
     [$mail,   'a@b.example',        static fn ($v): bool => $v->text === 'a@b.example'],
@@ -371,8 +376,25 @@ check('a boolean setting is drawn as a sliding switch',
     isset($rows['mandatory']) ? ($rows['mandatory']->result->markup ?? 'undrawn') : 'missing');
 check('a borrowing key takes the type of the node it sits on',
     isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
-check('a choice is left undrawn rather than faked as a field',
-    ! isset($rows['renderer']) || (! $rows['renderer']->wasDrawn() && $rows['renderer']->shape->isAChoice()));
+// ⚠️ **This check used to assert the opposite, and the old reason was honest at the time:** a
+// choice wanted a chooser and none was built, so a text box would have been the second way to draw
+// a field (R20a). **The chooser exists** (R28-R32 implemented in full), so the assertion is
+// rewritten rather than deleted — a check that no longer matches the decision is worse than none.
+$editRows = [];
+foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode)), Purpose::Edit) as $row) {
+    $editRows[$row->key] = $row;
+}
+
+check('a choice is drawn as a set of real possibilities',
+    isset($editRows['renderer']) && $editRows['renderer']->wasDrawn()
+        && str_contains($editRows['renderer']->result->markup, '<select'),
+    isset($editRows['renderer']) ? substr($editRows['renderer']->result->markup ?? 'undrawn', 0, 90) : 'missing');
+
+// ⚠️ **R31**: nothing to choose means the control is disabled rather than an empty box that looks
+// fillable. `converter` is the honest live case - D-219 decided them and none is built.
+check('a choice with nothing in it is a dead control, not an empty one',
+    isset($editRows['converter']) && str_contains($editRows['converter']->result->markup ?? '', 'disabled'),
+    isset($editRows['converter']) ? substr($editRows['converter']->result->markup ?? 'undrawn', 0, 90) : 'missing');
 
 // ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
 check('mandatory reads back as a boolean, not as the number one',
@@ -425,7 +447,16 @@ try {
 
     $markup = $screen->render();
 
-    check('render() returns markup rather than dying', str_contains($markup, '<div class="wrap">'));
+    check('render() returns markup rather than dying', str_starts_with($markup, '<div class="wrap"'));
+    // ⚠️ **This line used to look for the literal `<div class="wrap">`** and broke the moment
+    // [D-397](../../docs/NewConcept/90-decision-log.md) put the chosen sizes on the wrapper as custom
+    // properties. *It was testing the string rather than the thing; a check that pins markup it does
+    // not care about fails for reasons that teach nobody anything.* **So it now asserts what it meant
+    // — the screen opens with its wrapper — and the sizes get a check of their own.**
+    check(
+        'the chosen sizes ride on the wrapper',
+        (bool) preg_match('#^<div class="wrap" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup)
+    );
     check('the tree is drawn by the cell', str_contains($markup, 'taxmod-tree-node'));
     check('a row carries its controls', str_contains($markup, 'value="add_child_here"'));
     // ⚠️ **The same four controls on every row** (D-370). What cannot be done is greyed, not gone —
@@ -438,8 +469,108 @@ try {
     check('and what cannot be done is disabled rather than absent', str_contains($markup, 'disabled'));
     // ⚠️ Off by default: the write count is a diagnostic and waits for developer mode (D-248).
     check('the write count is off unless developer mode says otherwise', ! str_contains($markup, 'taxmod-tree-writes'));
+
+    // ⚠️ **And now with a node *selected*, because that is the half the check was missing.** The
+    // fatal it was written for happened in the tree; the very next one happened in the **detail**
+    // pane — `RenderResult` has `markup` and the attribute renderer asked it for `html` — and this
+    // check sailed past it, because with nothing selected the detail pane draws *nothing selected*
+    // and no attribute row is ever built. *A smoke check that only exercises the empty state is a
+    // smoke check for the empty state.*
+    $withAttributes = null;
+
+    foreach ($editor->childrenOf($framework->rootOf(Branch::Compositions)->id) as $candidate) {
+        if ($editor->attributesOf($candidate->id) !== []) {
+            $withAttributes = $candidate;
+        }
+    }
+
+    if ($withAttributes === null) {
+        check('a node with attributes exists to select', false, 'nothing under Compositions has any');
+    } else {
+        $_GET['taxmod_node'] = (string) $withAttributes->id;
+
+        $detail = $screen->render();
+
+        unset($_GET['taxmod_node']);
+
+        check('render() survives a node that has attributes', str_starts_with($detail, '<div class="wrap"'));
+        check('the attribute table is drawn by the attribute renderer', str_contains($detail, 'taxmod-attribute"'));
+        // R1: the name is a field, not text — which is the thing the owner asked for.
+        check('an own attribute\'s name is editable', str_contains($detail, 'taxmod-attribute-rename'));
+        // ⚠️ The multiplicity comes from the settings side through the choice renderer, so a select
+        // in this cell is also the proof that no second control was built beside it (D-376).
+        check('the multiplicity is a real chooser', str_contains($detail, 'taxmod-choice'));
+        check('and it posts to the field the handler reads', str_contains($detail, 'taxmod_setting[multiplicity]'));
+
+        // ⚠️ **The settings panel is one form and the save button is outside it** (D-392). *Checked
+        // because the two halves are in different files: the renderer gives the form its id, the
+        // screen puts a `form="…"` button in the head, and neither notices if the other changes.*
+        // ⚠️ **A panel per subject, and every id distinct** — the node has one and so does every
+        // attribute row (D-381). *A fixed id looked right and was wrong: `form="…"` finds the first
+        // match, so the head button would have saved whichever panel came earliest in the document.
+        // This check found that within a minute of the id being written.*
+        preg_match_all('#id="(taxmod-settings-\d+)"#', $detail, $panels);
+        check('every settings panel has an id of its own',
+            $panels[1] !== [] && count($panels[1]) === count(array_unique($panels[1])),
+            implode(' ', $panels[1]));
+        check('a row is a row and no longer a form', ! str_contains($detail, 'class="taxmod-setting" style'));
+        check('and a button outside the form names it', (bool) preg_match('#form="taxmod-settings-\d+"#', $detail));
+        // ⚠️ A row act has to say **which** row: with one form a hidden key could say only one.
+        check('a row act names its own key', (bool) preg_match('#name="do\[[a-z_]+\]"#', $detail));
+        // ⚠️ **No boxes round the icons, anywhere** — the owner said it twice because the first fix
+        // reached only the tree. The renderers mark such a button now, so this counts the mark.
+        check('every icon button is marked so no surface has to guess',
+            substr_count($detail, 'taxmod-icon-button') > 0
+                && substr_count($detail, '<span class="dashicons') >= substr_count($detail, 'taxmod-icon-button'));
+        // ⚠️ *not defined* stood on almost every row and said what an empty control already says.
+        check('nothing is said where nothing was said', ! str_contains($detail, 'not defined'));
+        // ⚠️ **`1..1` reads `1`** — shown, never stored: the option's value keeps the stored form.
+        check('exactly one reads as 1 while storing 1..1', str_contains($detail, 'value="1..1">1<'));
+        // The owner's ask: the settings half scrolls on its own so the tree stays put.
+        check('the detail half has its own scrollbar', str_contains($detail, 'taxmod-detail-pane'));
+    }
 } catch (Throwable $e) {
     check('render() returns markup rather than dying', false, $e->getMessage());
+}
+
+echo "\n== 17b. The stylesheet actually reaches a browser ==\n";
+
+// ⚠️ **The check that was missing, and the reason it is worded this way.** The screen's paint moved
+// into `assets/admin.css` (D-391) and then **never loaded**: this repository reaches
+// `wp-content/plugins` through a Windows **junction**, which is not a symlink, so `plugins_url()`
+// could not relate the real path to the plugins directory and concatenated it —
+// `…/wp-content/plugins/C:/Devel/Wordpress/source/wp-taxonomy-tree/assets/admin.css`.
+//
+// ⚠️ *I had "verified" it by building the path by hand and asking whether **that** URL answered. It
+// did. **A check that constructs what it is verifying verifies nothing** — so this one asks the plugin
+// what it enqueued and fetches exactly that. The owner said the screen still looked wrong twice while
+// I told him to reload.*
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+do_action('admin_menu');
+do_action('admin_print_styles-toplevel_page_taxmod');
+
+$style = $GLOBALS['wp_styles']->registered['taxmod-admin'] ?? null;
+
+check('the stylesheet is enqueued on the screen', $style !== null);
+
+if ($style !== null) {
+    check(
+        'and its URL is under wp-content/plugins, not a filesystem path',
+        (bool) preg_match('#^https?://[^/]+/wp-content/plugins/[^:]+/assets/admin\.css$#', (string) $style->src),
+        (string) $style->src
+    );
+
+    $headers = @get_headers((string) $style->src, true, stream_context_create([
+        'http' => ['method' => 'HEAD', 'timeout' => 5, 'ignore_errors' => true],
+    ]));
+    $status = is_array($headers[0] ?? null) ? $headers[0][0] : ($headers[0] ?? 'no answer');
+
+    check('and a browser asking for it gets it', str_contains((string) $status, '200'), (string) $status);
+
+    // ⚠️ Versioned by the file's own change time while the screen is being built, so every save is a
+    // new URL — the owner reloaded three times on a stylesheet that was correct and cached.
+    check('and every save is a new URL', (string) $style->ver !== '');
 }
 
 echo "\n== 18. Clearing up ==\n";

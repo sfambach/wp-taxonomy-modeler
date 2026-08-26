@@ -45,6 +45,19 @@ final class TypedValue
     }
 
     /** Exact decimals as a string — never floating point (D-057). */
+    /**
+     * An exact decimal, **as it arrived**.
+     *
+     * ⚠️ **Nothing is normalised here, and I tried to.** Reading a stored `2.7` back as
+     * `2.7000000000` is wrong on screen, so I trimmed trailing zeros in this constructor — and a test
+     * caught it: *`2.50` must not come back as `2.5`* ([D-057](../../../docs/NewConcept/90-decision-log.md)).
+     * **The test is right and the fix was in the wrong place.** What somebody typed is theirs; the ten
+     * zeros are a **storage artefact** of `decimal(30,10)`, so they are trimmed where the padded string
+     * arrives — in the repository — and never here.
+     *
+     * ⚠️ *That the scale a person typed is not preserved through storage at all is true and is a
+     * different question: [OQ-085](../../../docs/NewConcept/91-open-questions.md).*
+     */
     public static function ofDecimal(string $value): self
     {
         return new self(decimal: $value);

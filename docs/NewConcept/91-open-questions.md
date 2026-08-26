@@ -865,7 +865,9 @@ different options — which would be [D-018](90-decision-log.md) working exactly
 > default and the choice in the moment turn out to be the two ends of the walk [D-015](90-decision-log.md)
 > already describes.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-032](90-decision-log.md), [R24](30-renderer.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed** · *raised by* [D-032](90-decision-log.md), [R24](30-renderer.md)
+
+> ⚠️ **The status line said `open` until 2026-08-26**, four days after the answer was written above it — and that stale word cost something real: [D-397](90-decision-log.md) was recorded as *closing* this question and had to be corrected, because a screen was built on candidate 1 for a fact that [D-079](90-decision-log.md) had already put on the installation identity. *A closed question that still reads `open` is worse than an open one: it invites the answer to be given twice.*
 
 [D-032](90-decision-log.md) puts a configured default behaviour in the admin menu — for instance
 whether node selection prefers inline or dialog. **That setting belongs to the installation, not
@@ -2788,3 +2790,137 @@ how the same node ends up with two names on two screens.
 ⚠️ **Nothing is blocked**: the label chain always ends on the node's own name
 ([D-020](90-decision-log.md), [D-022](90-decision-log.md)), so every surface reads as *something*
 whatever is decided. What is at stake is whether it reads as the **same** something.
+
+---
+
+## OQ-092 — Does `settings` need a `path` column, so one owner can hold several defaults?
+
+**Raised** 2026-08-25, while [D-373](90-decision-log.md) put a prefix's exponent on a read-only
+`default`.
+
+The table says one:
+
+```sql
+UNIQUE KEY `owner_key` (`owner_id`, `setting_key`)
+```
+
+So a node holds exactly **one** `default`. [D-373](90-decision-log.md) works because `Prefixes`
+declares exactly one attribute that needs one. A node declaring two — a value *and* a unit, both
+pre-filled — could not express the second.
+
+⚠️ **And the concept already asks for more than one.**
+[C30](10-domain-core.md) says *defaults work with multiplicity: several defaults, several pre-filled
+rows*. At `0..*` that is several values under one key, and the unique key forbids it outright. So
+this is not a convenience; it is a written requirement the storage cannot meet.
+
+⚠️ **The owner is right that «one default per owner» was never decided.** It is a **consequence** of
+the unique key, not a rule anybody wrote — and C30 says it is the wrong consequence.
+
+**The candidate answer, and it is the same move already made three times.**
+[D-158](90-decision-log.md), giving `labels` a `path` column, said so in as many words:
+
+> exactly as `record_values` did ([D-134](90-decision-log.md)) and as override addressing already
+> uses ([D-045](90-decision-log.md)): **third place, same mechanism, no new concept.**
+
+A fourth would make the key `(owner_id, setting_key, path)`, with an empty `path` meaning what it
+means today — *this setting is about the owner itself, not about one attribute on it*.
+
+| | |
+|---|---|
+| **What it buys** | C30's several defaults; a per-attribute default on a node that declares more than one; and it retires the workaround in [D-373](90-decision-log.md) |
+| **What it costs** | a schema version, a migration that touches every settings row's uniqueness, and one more column that is empty almost always |
+| **What must be decided with it** | whether `path` addresses an **attribute** (an edge id) or a **member chain** as `record_values` uses it — the two look alike and are not |
+
+⚠️ **Nothing is blocked.** The prefix branch works, and every setting resolved today has an empty
+path. What is at stake is the first node that wants two pre-filled attributes, and
+[OQ-086](#) — where a subtype's override of an *inherited* attribute hangs — is the same
+neighbourhood: both are *this setting is about **which** attribute*, which the table cannot say.
+
+---
+
+## OQ-093 — How does a setting key say which subjects it applies to?
+
+**Raised** 2026-08-25, by the owner, in three observations that turned out to be one question.
+
+| His words | What it exposed |
+|---|---|
+| *but I could set that anywhere, on any node* | a reserved key is global by construction |
+| *how does the user know he needs the multiplier?* | nothing tells him, and nothing can |
+| *what still bothers me is that presentation settings and «real» settings are mixed together* | the panel has no axis to separate them |
+
+Measured rather than argued — `SettingKey::applyingTo()` on three subjects:
+
+```
+a text node        → … range_step default … factor offset order
+a node with no type → mandatory hide read_only renderer converter icon developer factor offset order
+```
+
+**A text node is offered `factor` and `offset`.** Both are D-274's unit-conversion facts, meaningless
+there. `icon` is offered on an **attribute edge**, where it means nothing either
+([D-382](90-decision-log.md) drops it by hand).
+
+⚠️ **The reasoning in `applyingTo()` was right for one group and wrong for another.** It says a key
+applies *where a control can be drawn for it*, and refuses to keep a table of *which keys an integer
+has* because *the two would drift*. **That holds for the borrowing keys** — `range_min` on an integer
+*is* an integer, so drawability and relevance are the same fact. **It fails for keys with a type of
+their own**: `factor` is a decimal on a recipe as readily as on a unit, so being drawable says nothing.
+
+⚠️ **The only axis a key has today runs one way.** `isEdgeOnly()` marks the one key that applies
+*only* to a use site ([D-351](90-decision-log.md)). There is no reverse — *node only* — and no way to
+say *only in this branch*.
+
+**Candidates, none of them decided.**
+
+| | What it would do | What breaks |
+|---|---|---|
+| **the branch** | `factor`/`offset` apply under `Constants` | `prefix_exponent` applied to `Prefixes`, not all constants — and finer than a branch means naming a node, which `CD-9` forbids |
+| **the chain** | a key appears where somebody up the chain has said something about it | it is the mechanism already there, and needs nothing new — *set it on `Prefixes` and every prefix inherits the relevance* |
+| **an attribute instead of a key** | inheritance answers *who has one* exactly ([D-378](90-decision-log.md)) | only works where a record could answer, which `persistent` ([D-377](90-decision-log.md)) now makes possible |
+
+⚠️ **The second looks strongest and it is not free of doubt:** it makes *relevant* and *set somewhere*
+the same thing, so a key nobody has touched anywhere would never appear — and that is exactly what
+[R33c](30-renderer.md#r33c--automatic-is-a-default-never-a-fact) argues against for the **renderer**,
+where an automatic choice must stay visible ([D-383](90-decision-log.md)).
+
+⚠️ **Nothing is blocked.** Every key resolves correctly; what is wrong is only what a panel *offers*.
+But it is the second time in one day that the panel offering too much produced a real decision — the
+free-key box went for the same reason ([D-364](90-decision-log.md)) — so the noise is a symptom worth
+answering rather than trimming.
+
+## OQ-094 — How does a person enter a character that is not on their keyboard?
+
+**Raised** 2026-08-26, by the owner: *how does the user enter the pound sign in `symbol`? A symbol
+chooser?*
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised while building row 1
+
+**Today he types it, or he pastes it.** Nothing helps him, and for `Ω`, `µ`, `°`, `Å`, `‰`, `£` or `€`
+that is most of the symbols a unit actually needs.
+
+⚠️ **The obvious answer is the icon chooser, and it does not transfer.** The icon became a choice
+([D-390](90-decision-log.md)) because **Dashicons is a closed set**: the boundary can list every
+member, so a `<select>` is complete and a free field would only invite a name that does not exist.
+**Symbols are not a closed set.** A chooser over «the symbols we thought of» makes every symbol
+nobody thought of *unenterable* — which is worse than a plain field, and it is the
+special-casing-by-name failure the code standard forbids.
+
+| | |
+|---|---|
+| **The two are also different kinds of thing** | `icon` is a **setting** whose shape is `ARegisteredName`; `symbol` is a **label role** ([D-261](90-decision-log.md), [D-262](90-decision-log.md)) — free text, and *not translatable by default, because `Ω` is `Ω` everywhere*. **A registered name may be chosen from a list; a label may not.** |
+
+**Candidates:**
+
+1. **A chooser *beside* a free field, not instead of it.** The field stays authoritative; the chooser
+   inserts. Costs script the screen does not have yet, and needs an answer to *which symbols* — but
+   that answer may be short and wrong-proof, because being incomplete is harmless when the field
+   still accepts anything.
+2. **A converter.** `\Omega` or `ohm` typed into the field becomes `Ω` on write. Reuses a mechanism
+   already decided ([D-219](90-decision-log.md), [R33](30-renderer.md)) and needs no script — but it
+   is a second spelling for every symbol, and nothing tells a person the spelling exists. *That is
+   [OQ-093](#oq-093--how-does-a-setting-key-say-which-subjects-it-applies-to)'s «how does the user
+   know he needs the multiplier?» again, on a different key.*
+3. **Nothing — the operating system already has one.** Windows and macOS both ship a character
+   picker. Honest, free, and the owner asked the question anyway, which is the evidence against it.
+
+⚠️ **What must not happen is picking one silently.** Candidate 2 changes what a stored value means,
+and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays open until he says.*

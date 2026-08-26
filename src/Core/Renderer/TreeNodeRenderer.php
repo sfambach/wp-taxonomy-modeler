@@ -117,7 +117,7 @@ final class TreeNodeRenderer implements Renderer
             // since you read it*. **It stays visible in that mode because it earns its place** —
             // that decision was written after a defect was found by reading these numbers.
             . ($subject instanceof Node
-                && ($context->setting(SettingKey::Developer->value)?->asBool() ?? false)
+                && $context->developerMode
                 ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
                 : '')
             . '</span>';
@@ -139,30 +139,16 @@ final class TreeNodeRenderer implements Renderer
             return '';
         }
 
-        $fields = '';
-
-        foreach ($surroundings->submits->hidden as $name => $value) {
-            $fields .= '<input type="hidden" name="' . RenderResult::escape($name)
-                . '" value="' . RenderResult::escape($value) . '">';
-        }
+        $fields = ControlMarkup::hidden($surroundings->submits);
 
         $buttons = '';
 
         foreach ($surroundings->actions as $control) {
-            // ⚠️ **Black, and red where something is taken away.** WordPress paints `.button` blue,
-            // which makes every act look like a link; an ordinary one reads as text and the
-            // destructive one is the single thing that stands out. *The renderer decides the colour
-            // because the meaning arrives as a fact — `destroys` — rather than as a style.*
-            $colour = $control->destroys ? '#b32d2e' : '#1d2327';
-
-            // ⚠️ **Greyed, not gone** (D-370): the row keeps the same shape everywhere, so a
-            // position can be learnt. A disabled button submits nothing.
-            $buttons .= '<button class="button" name="' . RenderResult::escape($control->name)
-                . '" value="' . RenderResult::escape($control->value) . '"'
-                . ($control->title === '' ? '' : ' title="' . RenderResult::escape($control->title) . '"')
-                . ($control->available ? '' : ' disabled')
-                . ' style="color:' . $colour . ($control->available ? '' : ';opacity:.35') . '">'
-                . RenderResult::escape($control->label) . '</button>';
+            // ⚠️ **Composed in one place** ({@see ControlMarkup}) — greyed rather than gone (D-370),
+            // red only where something is taken away, and an icon-only button marked so no surface
+            // has to guess. *There were four copies of this and the borderless rule reached one of
+            // them, which is how boxes came back around the icons everywhere else.*
+            $buttons .= ControlMarkup::button($control);
         }
 
         return '<form method="post" action="' . RenderResult::escape($surroundings->submits->action) . '"'

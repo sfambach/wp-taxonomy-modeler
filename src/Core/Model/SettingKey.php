@@ -75,23 +75,31 @@ enum SettingKey: string
 
     case Renderer = 'renderer';
     case Converter = 'converter';
-    case Icon = 'icon';
 
     /**
-     * Developer mode — a **posture**, and it belongs at the head of the chain
-     * ([D-122](../../../docs/NewConcept/90-decision-log.md), [D-248](../../../docs/NewConcept/90-decision-log.md)).
+     * Which validator checks what is entered — the third of the triple, and it was missing.
      *
-     * ⚠️ **One mode, not two.** [D-248](../../../docs/NewConcept/90-decision-log.md) folded test
-     * mode into it — *two modes that overlap are two things to explain and two ways to be in a
-     * surprising state* — so the same switch that lifts deletion protection also shows the
-     * diagnostics. **Default off**, because a switch nobody set is off.
+     * ⚠️ **The owner named the three apart himself, and the reason is worth keeping:** *an `int`
+     * converter is something different from an `int` validator or renderer. The **renderer** says how
+     * it is shown, the **converter** says convert the output to binary, and the **validator** checks
+     * whether the input is correct. So each has its own job.* Two of the three had keys and the third
+     * did not — noticed on the settings panel, where he simply said *validator (display) setting is
+     * missing*.
      *
-     * ⚠️ *It has no screen of its own yet. The installation link is where a posture belongs and it
-     * does not appear in the modeller ([OQ-039](../../../docs/NewConcept/91-open-questions.md)), so
-     * for now it is set on the **root** and inherited from there — which is the chain doing its job
-     * rather than a mechanism of its own.*
+     * ⚠️ **Several, eventually, and that is already decided.**
+     * [D-158](../../../docs/NewConcept/90-decision-log.md) says a message is *per validator, not per
+     * attribute* — *an attribute may carry range, format and uniqueness checks, three messages rather
+     * than one* — so one key holding one name is the first step and not the final shape. *It is
+     * honest as a first step because nothing can choose a second validator until any validator
+     * exists.*
+     *
+     * ⚠️ *Like `converter`, it draws today as a **dead** control: none is built
+     * ([D-219](../../../docs/NewConcept/90-decision-log.md) decided them), and R28–R32 wants a
+     * disabled control rather than an empty box that looks fillable.*
      */
-    case Developer = 'developer';
+    case Validator = 'validator';
+
+    case Icon = 'icon';
 
     /**
      * How much of the parent's reference unit this one is
@@ -115,18 +123,48 @@ enum SettingKey: string
     case Offset = 'offset';
 
     /**
-     * A prefix's power of ten — `kilo` is `3`, `milli` is `-3`.
+     * Whether a value given through this attribute is **kept**. Default **true**.
      *
-     * ⚠️ **Why this is not `factor`, and it is a finding rather than a preference.** A factor is an
-     * exact decimal, and the column is `decimal(30,10)`: **`yocto` needs 10⁻²⁴ and `yotta` 10²⁴**,
-     * so neither fits — ten decimal places and twenty integer ones. **A prefix is by definition a
-     * power of ten**, so the exponent is both exact and small, and nothing is lost.
+     * ⚠️ **The owner brought it from object orientation and it is the piece that was missing:** *there
+     * are attributes of an object, and there are ones that get persisted and ones that do not. A
+     * multiplicator is not persistent — it counts only as an attribute.* **That justifies an
+     * attribute where a record can never answer**, which is the thing four attempts had failed to
+     * justify: a `node_label` type, a read-only-default trick, a reserved key on every node, and a
+     * type marked derived. *All four were trying to say **this is not stored** in a place that could
+     * not say it.*
      *
-     * ⚠️ *It also keeps [D-039](../../../docs/NewConcept/90-decision-log.md)'s two axes apart: a
-     * length **changes its prefix**, a currency **changes its unit**. Prefix and factor answer
-     * different questions and would have collided in one key.*
+     * ```mermaid
+     * flowchart LR
+     *   T["a simple type · persistent = false"] --> A["every attribute using it"]
+     *   A -->|"may override"| U["one use site"]
+     * ```
+     *
+     * ⚠️ **Set on the type, inherited by the attribute, overridable there** — the owner's own
+     * arrangement: *what we have on the attribute we have on the node too … first as a setting on
+     * simple data types, the attribute takes it over and can override it.* That is the ordinary chain
+     * ([D-015](../../../docs/NewConcept/90-decision-log.md), [D-032](../../../docs/NewConcept/90-decision-log.md))
+     * and needs nothing new. **A type can therefore declare itself a calculation basis once** and
+     * every use of it inherits that, instead of every author remembering it per edge.
+     *
+     * ⚠️ **Why *here* and not on {@see SimpleType}, which is where I first put the same idea and it
+     * failed.** As a property of the **type** it made one of twelve types answer *no column at all*,
+     * which is a hole in the type system. As a setting on the **subject** it is a decision per use,
+     * resolved by the chain like every other — the same word, one level down, and that level is what
+     * makes it work.
+     *
+     * ⚠️ **Choosing rather than bounding, and it is not a permission.**
+     * [D-312](../../../docs/NewConcept/90-decision-log.md)'s narrowing rule governs what is
+     * *allowed*; persistence governs what *happens*. *Flipping it is a storage change and not a
+     * relaxation — the same shape as [D-134](../../../docs/NewConcept/90-decision-log.md)'s note that
+     * changing a multiplicity from `1` to `1..*` becomes a migration.*
+     *
+     * ⚠️ **A model-level value still has a home**: [D-026](../../../docs/NewConcept/90-decision-log.md)
+     * — *at model level there are no values, only defaults* — so a non-persistent attribute's value
+     * is its `default`, which is what a default has always been.
      */
-    case PrefixExponent = 'prefix_exponent';
+    case Persistent = 'persistent';
+
+
     case Order = 'order';
 
 
@@ -181,16 +219,20 @@ enum SettingKey: string
     {
         return match ($this) {
             self::Mandatory, self::Hide, self::ReadOnly,
-            self::Developer                            => SettingShape::Switch,
-            self::Order, self::PrefixExponent          => SettingShape::Whole,
+            self::Persistent                           => SettingShape::Switch,
+            self::Order                                => SettingShape::Whole,
             self::Factor, self::Offset                 => SettingShape::Exact,
             self::Multiplicity                         => SettingShape::OneOfFour,
-            self::Renderer, self::Converter            => SettingShape::ARegisteredName,
+            self::Renderer, self::Converter,
+            self::Validator                            => SettingShape::ARegisteredName,
             // ⚠️ These four borrow their type from whatever is being configured — a default for a
             // text is a text, a minimum for a decimal is a decimal.
             self::DefaultValue, self::RangeMin,
             self::RangeMax, self::RangeStep            => SettingShape::LikeTheSubject,
-            self::Icon                                 => SettingShape::Words,
+            // ⚠️ **An icon is chosen from a set, not typed** (D-390): the installation offers a
+            // list and a person picks one, so a text box here would ask somebody to know a Dashicon
+            // key by heart. *Which icons exist is a boundary fact and arrives with the options.*
+            self::Icon                                 => SettingShape::ARegisteredName,
         };
     }
 

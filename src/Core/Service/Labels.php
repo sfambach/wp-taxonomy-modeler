@@ -13,14 +13,19 @@ use Taxmod\Core\Repository\LabelRepository;
  *
  * ```mermaid
  * flowchart LR
- *   A["role · number"] --> B["role · one"] --> C["help · one"] --> D["node.name"]
+ *   A["role · number"] --> B["role · one"] --> D["node.name"]
  * ```
  *
  * ⚠️ **Number before role** (D-153): a missing plural form falls back to the base form of the
  * **same** role before giving up on the role. *Resistances* falling back to *Resistance* is a
- * near miss; falling back to the help text is a different word entirely.
+ * near miss; falling back to a different role would answer a different question.
  *
- * ⚠️ **The chain ends on `node.name` and never on nothing** (D-020, D-209). A screen with an
+ * ⚠️ **`help` is not in the chain** (D-386) — it was, and it made a `form` label nobody wrote
+ * inherit the whole help **sentence**. The owner found it on a real node. *The intent of D-020
+ * survives — a role only needs storing where it should genuinely differ — but the thing the others
+ * are a variation of is the **node's own name**, never the long text.*
+ *
+ * ⚠️ **The chain ends on `node.name` and never on nothing** (D-020). A screen with an
  * empty cell where a name should be is worse than a screen showing the internal name — and the
  * internal name is always there, because a node cannot exist without one (D-022).
  *
@@ -49,9 +54,8 @@ final class Labels
         $stored = $this->indexed($this->labels->forOwners([$node->id]), $path);
 
         $roleId = $this->framework->roleId($role);
-        $helpId = $this->framework->roleId(SeededRole::Help);
 
-        foreach ($this->attempts($roleId, $helpId, $number, $locale) as [$tryRole, $tryNumber, $tryLocale]) {
+        foreach ($this->attempts($roleId, $number, $locale) as [$tryRole, $tryNumber, $tryLocale]) {
             $found = $stored[$tryRole . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
 
             if ($found !== null && $found->text !== '') {
@@ -99,8 +103,7 @@ final class Labels
         }
 
         $roleId = $this->framework->roleId($role);
-        $helpId = $this->framework->roleId(SeededRole::Help);
-        $order  = $this->attempts($roleId, $helpId, $number, $locale);
+        $order = $this->attempts($roleId, $number, $locale);
 
         $found = [];
 
@@ -130,7 +133,7 @@ final class Labels
      *
      * @return list<array{0: int, 1: string, 2: string}>
      */
-    private function attempts(int $roleId, int $helpId, string $number, string $locale): array
+    private function attempts(int $roleId, string $number, string $locale): array
     {
         $locales = $locale === '' ? [''] : [$locale, ''];
         $numbers = $number === Label::BASE_NUMBER ? [Label::BASE_NUMBER] : [$number, Label::BASE_NUMBER];
@@ -143,10 +146,20 @@ final class Labels
             }
         }
 
-        foreach ($locales as $tryLocale) {
-            $order[] = [$helpId, Label::BASE_NUMBER, $tryLocale];
-        }
-
+        // ⚠️ **`help` is deliberately *not* in this chain** ([D-386](../../../docs/NewConcept/90-decision-log.md)),
+        // and that supersedes the chain of [D-020](../../../docs/NewConcept/90-decision-log.md) and
+        // [D-209](../../../docs/NewConcept/90-decision-log.md). Those said `<role>` → `help` →
+        // `node.name`, and the owner caught what it does on a real node: a `form` label that nobody
+        // wrote inherited **the whole help sentence** — *condensator is an electronic part that has a
+        // capacity and can store current* — as the node's name.
+        //
+        // ⚠️ **The intent survives, only the intermediary was wrong.** D-020 wanted *a role only
+        // needs storing where it should genuinely differ*; `help` was never the thing the others are
+        // a variation of. **The node's own base name is** — always present, never translated, a label
+        // of last resort by D-020's own description — so it is the whole fallback now.
+        //
+        // ⚠️ *`help` keeps its other job untouched: it is the long text and the tooltip. What it stops
+        // being is everybody else's default.*
         return $order;
     }
 

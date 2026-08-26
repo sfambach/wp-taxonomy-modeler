@@ -181,15 +181,39 @@ if (isset($underConstants['Prefixes'])) {
 
     check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
 
-    $exponents = [];
-    foreach ($prefixSettings->resolveForNodes($prefixNodes) as $nodeId => $resolved) {
-        $exponents[$nodeId] = $resolved[SettingKey::PrefixExponent->value]->value->int ?? null;
+    // ⚠️ **An attribute declared *not persistent*** (D-378). The owner brought the distinction
+    // from object orientation — *there are attributes that get persisted and ones that do not; a
+    // multiplicator is not persistent* — and that is what justifies an attribute where no record can
+    // ever answer. **Its worth is that inheritance says who has an exponent**, which a reserved key
+    // offered on every text node in the system cannot.
+    $declaredEdges = $editor->attributesOf($underConstants['Prefixes']->id);
+    $declared      = array_map(static fn ($e): string => $e->name, $declaredEdges);
+    check('Prefixes declares an exponent attribute', in_array('exponent', $declared, true), implode(', ', $declared));
+
+    $notKept = [];
+    foreach ($declaredEdges as $edge) {
+        $onEdge = $prefixSettings->resolve($prefixSettings->chainForUseSite($edge));
+        $notKept[$edge->name] = ($onEdge[SettingKey::Persistent->value]->value->asBool() ?? true) === false;
     }
 
-    check('every prefix carries its power of ten', ! in_array(null, $exponents, true));
+    check('and declares it non-persistent, so nothing tries to store it', ($notKept['exponent'] ?? false) === true);
+
+    // ⚠️ The value lives as the `default`, which is what a model-level value **is** (D-026) — not a
+    // trick but the definition.
+    $exponents = [];
+    foreach ($prefixSettings->resolveForNodes($prefixNodes) as $nodeId => $resolved) {
+        $exponents[$nodeId] = $resolved[SettingKey::DefaultValue->value]->value->int ?? null;
+    }
+
+    check('every prefix carries its power of ten as a default', ! in_array(null, $exponents, true));
     // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
     check('and the range reaches both ends', max($exponents) === 24 && min($exponents) === -24,
         max($exponents) . ' … ' . min($exponents));
+    // ⚠️ **The counter-check that keeps the flip honest:** the setting route left twenty
+    // `prefix_exponent` rows behind, and a stale row under a retired key answers nothing while
+    // cluttering every panel. The key is gone from the enum, so this asserts the data went with it.
+    check('and no row is left under the retired key',
+        (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM {$GLOBALS['wpdb']->prefix}taxmod_settings WHERE setting_key = 'prefix_exponent'") === 0);
 }
 
 if (isset($underConstants['Base units'])) {

@@ -8,21 +8,36 @@ rule the core cannot be trusted with.
 | Run | What it covers | Needs |
 |---|---|---|
 | **`core`** — `tests/Core/` | the domain: nodes, paths, versions, parking | nothing. No WordPress, no database |
-| **boundary** — `scripts/dev/package*-check.php` | tables, foreign keys, edges, attributes, `$wpdb`, migrations | a running WordPress and its database |
+| **boundary** — `scripts/dev/*-check.php` | tables, foreign keys, edges, attributes, `$wpdb`, migrations, and both admin screens | a running WordPress and its database |
+| **references** — `scripts/dev/references-check.php` | that every `D-` and `OQ-` the repository cites actually exists | nothing |
 
 ```bash
 php vendor/phpunit/phpunit/phpunit
 ```
 
 ```bash
-php scripts/dev/package1-check.php /path/to/wordpress
-php scripts/dev/package2-check.php /path/to/wordpress
-php scripts/dev/package3-check.php /path/to/wordpress
-php scripts/dev/package4-check.php /path/to/wordpress
-php scripts/dev/package5-check.php /path/to/wordpress
-php scripts/dev/package6-check.php /path/to/wordpress
-php scripts/dev/scaffold-check.php /path/to/wordpress
+for c in scripts/dev/*-check.php; do php "$c" || echo "FAILED: $c"; done
 ```
+
+⚠️ **The boundary run is a glob and no longer a hand-written list**, because the hand-written
+one went stale: `package7`, `unitvalue`, `settings-screen` and `references` all existed while this
+file still named seven scripts. *A list of checks that omits checks is worse than no list — it reads
+as the whole net.*
+
+| Check | What it guards |
+|---|---|
+| `package1`…`package7` | one per package of [97 Implementation plan](../docs/NewConcept/97-implementation-plan.md) |
+| `scaffold` | the seeded data types and framework nodes |
+| `unitvalue` | a value with a prefix and a unit — `2.7 kΩ` stored and read back ([D-394](../docs/NewConcept/90-decision-log.md)) |
+| `settings-screen` | the installation screen, and that its two sizes reach the stylesheet ([D-397](../docs/NewConcept/90-decision-log.md)) |
+| `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
+
+⚠️ **`references-check` exists because seven decisions were cited in code and never written**, all
+on 2026-08-26 — `D-392` through `D-397`, each sitting in a docblock as if it had authority. *A
+dangling id is not a typo: it is a rule that nobody agreed to, quoted as though somebody had.*
+
+⚠️ **A check reports `all green` or a count of failures and exits non-zero**, so the loop above is
+the whole boundary run.
 
 ⚠️ **A WordPress call that drifts into `Taxmod\Core` fails on the first run**, immediately,
 because nothing is there to answer it. That is a mechanical check on `CD-1`, not a promise.

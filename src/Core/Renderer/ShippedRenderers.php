@@ -76,6 +76,41 @@ final class ShippedRenderers
         // by a surface, never chosen for a node.
         $registry->addForSurfaces(new TreeRenderer());
 
+        // ⚠️ **What a subject is called, in one locale** — the third hand-built panel to go through
+        // `R1` (D-384). Surface-only for the same reason as the settings panel.
+        $registry->addForSurfaces(new LabelsRenderer());
+
+        // ⚠️ **The two choosers of D-108, and the dialog is the default** (D-244). Registered
+        // against the **edit** purpose for `node_ref`, which is what `addForPurpose()` exists for: a
+        // reference is *shown* by the reference renderer and *picked* by a chooser, and R14a's one
+        // default per type could not say both. *Until this, `node_ref` had a default that declined
+        // `edit`, so every reference field fell back and drew as a fault.*
+        $registry->addForPurpose(new DialogChooserRenderer(), Purpose::Edit, SimpleType::NodeRef);
+        $registry->add(new InlineChooserRenderer());
+
+        // ⚠️ **The chooser's cell** (D-367) — the thing that split was built for: one walker, several
+        // cells. Surface-only, because *which* cell a tree draws is never a model author's choice.
+        $registry->addForSurfaces(new ChooserCellRenderer());
+
+        // ⚠️ **One record as a block** — the fourth hand-built panel to go through `R1` (D-393).
+        $registry->addForSurfaces(new RecordRenderer());
+
+        // ⚠️ **One settings panel for a node and for an attribute alike.** Surface-only: it is
+        // asked for by a panel, never named as a node's `renderer`, because it draws a subject's
+        // **configuration** and not its value.
+        $registry->addForSurfaces(new SettingsRenderer());
+
+        // ⚠️ **One answer out of a set, and the only implementation of R28–R32.** Surface-only
+        // because it is chosen for a **shape** rather than for a type: nothing about a node says
+        // *draw me as a choice*, and the set it needs has to be handed in by whoever knows it.
+        $registry->addForSurfaces(new ChoiceRenderer());
+
+        // ⚠️ **The attribute row, and the first renderer whose subject is an **edge**.** Surface-only
+        // for the same reason as the tree's cell: it is asked for by a panel, and naming it as a
+        // node's `renderer` would be meaningless — it cannot draw a node at all ({@see
+        // AttributeRenderer::fits()}).
+        $registry->addForSurfaces(new AttributeRenderer());
+
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());
         $registry->add(new SpinnerRenderer());

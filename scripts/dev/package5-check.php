@@ -79,8 +79,16 @@ $thing = $editor->createNode('__p5 Widerstandswert', $framework->rootOf(Branch::
 
 check('with nothing stored, the node name is used', $labels->of($thing, SeededRole::Form) === '__p5 Widerstandswert');
 
+// ⚠️ **This check used to assert the opposite, and so did the concept** (D-020, D-209 put `help` in
+// the chain). **The owner found what it does on a real node**: a label nobody wrote inherited the
+// whole help sentence, so a column heading read *condensator is an electronic part that has a
+// capacity …*. D-386 takes `help` out; the node's own name is the whole fallback.
 $stored->put(new Label($thing->id, '', $framework->roleId(SeededRole::Help), 'one', '', '__p5 the long description'));
-check('a missing role falls through to help', $labels->of($thing, SeededRole::Table) === '__p5 the long description');
+check('a missing role keeps the node name and does not inherit the help sentence',
+    $labels->of($thing, SeededRole::Table) === '__p5 Widerstandswert',
+    $labels->of($thing, SeededRole::Table));
+check('and help still answers when it is what was asked for',
+    $labels->of($thing, SeededRole::Help) === '__p5 the long description');
 
 $stored->put(new Label($thing->id, '', $framework->roleId(SeededRole::Table), 'one', '', 'R'));
 check('and the asked-for role wins once it exists', $labels->of($thing, SeededRole::Table) === 'R');

@@ -3,17 +3,25 @@
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
 
-## Where things stand (2026-08-24)
+## Where things stand (2026-08-26)
 
-The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24: 338
-decisions, 81 open questions all answered. The previous planning round is frozen under
+The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
+since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
+for: **398 decisions, 93 open questions.** The previous planning round is frozen under
 [`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
 [`docs/NewConcept/`](docs/NewConcept/README.md).
 
 **Current gate: none — building.** [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) went
-`locked` on 2026-08-24 ([D-338](docs/NewConcept/90-decision-log.md)). Work runs in the packages of
-[`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md); **Package 1** is the
-tables and a node that survives a restart.
+`locked` on 2026-08-24 ([D-338](docs/NewConcept/90-decision-log.md)). **Packages 1–7 are built and
+guarded**; work now runs down [the working list](docs/NewConcept/97-implementation-plan.md#the-working-list),
+which is where the owner's posted changes are appended in the order he asks for them, and **not** the
+roadmap — the roadmap is *later, maybe*, the list is *next, in this order*.
+
+⚠️ **These two numbers go stale and there is a check for the thing that matters.**
+`scripts/dev/references-check.php` fails if any file cites a `D-` or `OQ-` id that was never written —
+which is how **seven decisions came to sit in docblocks with no entry in the log** on 2026-08-26. *A
+count in a rules file is a changelog; a dangling id is a rule nobody agreed to, quoted as though
+somebody had.*
 
 ---
 
@@ -31,6 +39,9 @@ tables and a node that survives a restart.
 | **PR-7** | **Report faithfully.** If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. |
 | **PR-8** | **Rule hygiene** applies to this file — see the last section. |
 | **PR-9** | **Both test runs are green before anything is committed** ([D-342](docs/NewConcept/90-decision-log.md)) — the **core** run under PHPUnit, which loads no WordPress, and the **boundary** run against a real database. **Every package adds its checks to the net**; a package nothing guards is one the next may quietly break. See [`tests/README.md`](tests/README.md). |
+
+| **PR-10** | **Look it up before you say it. No claim about the concept without a quotation from it.** Whenever an answer turns on *what was decided* — a mechanism, a rule, where something belongs — read the source and **quote the sentence**, with its `D-<nnn>`. Recalling it is not reading it. ⚠️ *This rule exists because 2026-08-25 measured the difference: every answer given from memory that day was wrong — «a constant has no records» cited the data layer against a model-level question, «`default` is one key per owner» was reported as a rule when it is a consequence of a unique key, and a `node_label` type was designed for a value that is never stored. Every answer given after a `grep` held — and twice it showed the **owner** his own error, which memory never does.* Also **orient before starting**: the tail of [`90-decision-log.md`](docs/NewConcept/90-decision-log.md), [`91-open-questions.md`](docs/NewConcept/91-open-questions.md) and the current package in [`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md). A conversation summary is a reminder of what happened, never a substitute for the documents. |
+| **PR-11** | **Never write the result of a text transformation back to a file unguarded.** Check that a replacement actually matched before saving, and prefer the editing tools over regular expressions on source. ⚠️ *`preg_replace` returned `null` on a bad pattern and `null` was written straight to disk — a file emptied to zero bytes, and it was not yet in git. `sed` eats the backslashes out of PHP namespaces the same way.* |
 
 Dev environment (Laragon on Windows, SQLite on the cloud VM): [`AGENTS.md`](AGENTS.md).
 

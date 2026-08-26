@@ -60,6 +60,30 @@ final class Surroundings
      *                                          nests what the cell drew ([D-367](../../../docs/NewConcept/90-decision-log.md)).
      * @param array<string, Section>  $sections Blocks of a node's page, keyed by {@see PageSlot} —
      *                                          the frame's **order** is the enum's, not this array's.
+     * @param array<string, RenderedSetting> $configured Drawn settings **of the subject**, by key.
+     *
+     * ⚠️ **Its own field rather than squeezed into `parts`.** A part is a **member** of the subject —
+     * an attribute of a node — while a setting *configures* the subject; the two are drawn alike and
+     * mean different things, and one list holding both would make a container guess which it had.
+     * *The docblock above predicted this field would be wanted and named the reason: the shape
+     * belongs here, not on the context.*
+     */
+    /**
+     * @param array<string, string> $options      What may be chosen, value ⇒ **already translated**
+     *                                            label. This is the field the docblock above
+     *                                            predicted: *the chooser will want a fifth field —
+     *                                            the set that may be picked.*
+     * @param bool                  $mayBeNothing Whether leaving it unanswered is itself a real
+     *                                            answer.
+     *
+     * ⚠️ **`mayBeNothing` is a separate fact and not derivable from `options`**, which is exactly
+     * what [R31b](../../../docs/NewConcept/30-renderer.md#r31b--the-rule-counts-possibilities-not-entries)
+     * turns on: *the test is never how many rows are in the list but how many **outcomes** this
+     * control can produce.* One entry plus *nothing* is two outcomes and a live control; one entry
+     * without it is one and already decided. **A renderer counting only rows would grey out the very
+     * case where a person still has a take-it-or-leave-it decision** — R28–R32's fourth row, which
+     * the concept marks as where the rule must not be over-applied. [R29](../../../docs/NewConcept/30-renderer.md)
+     * says where the answer comes from: the **multiplicity**, which is not a renderer's to resolve.
      */
     public function __construct(
         public readonly ?string $refersTo = null,
@@ -69,6 +93,23 @@ final class Surroundings
         public readonly ?Submission $submits = null,
         public readonly array $rows = [],
         public readonly array $sections = [],
+        public readonly array $configured = [],
+        public readonly array $options = [],
+        public readonly bool $mayBeNothing = true,
+        /**
+         * The `id` of the form a control belongs to, when it cannot sit inside it.
+         *
+         * ⚠️ **This exists because a real bug needed it and the owner found it**: *multiplicity is not
+         * saved, or something else goes wrong changing 0..1 to 0..\** on `Bauteilliste`'s `Position`.
+         * The attribute row is a `<tr>`, its multiplicity sits in one `<td>` and its acts build a
+         * `<form>` in **another** — so the control was **outside** the form and submitted nothing.
+         * *HTML forbids a form wrapping table rows, so the control has to name the form instead:
+         * `form="…"`, which is plain HTML and needs no scripting.*
+         *
+         * ⚠️ *The same seam the page-head save button uses ([D-392](../../../docs/NewConcept/90-decision-log.md)),
+         * pointing the other way: there a **button** stands outside its form, here a **field** does.*
+         */
+        public readonly string $formId = '',
     ) {
     }
 

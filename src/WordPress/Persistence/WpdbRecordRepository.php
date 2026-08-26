@@ -89,7 +89,8 @@ final class WpdbRecordRepository implements RecordRepository
                 (string) $r['locale'],
                 TypedValue::fromStorage(
                     $r['value_int'] === null ? null : (int) $r['value_int'],
-                    $r['value_decimal'] === null ? null : (string) $r['value_decimal'],
+                    // ⚠️ The padding `decimal(30,10)` adds on read is taken off here and nowhere else.
+                    StoredDecimal::read($r['value_decimal']),
                     $r['value_text'] === null ? null : (string) $r['value_text'],
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],

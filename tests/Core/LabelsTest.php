@@ -93,14 +93,22 @@ final class LabelsTest extends TestCase
     }
 
     #[Test]
-    public function a_missing_role_falls_through_to_help(): void
+    public function a_missing_role_does_not_inherit_the_help_sentence(): void
     {
-        // D-209: `long` is gone and the chain ends on `help`.
+        // ⚠️ **This test used to assert the opposite, and the concept used to say so** — D-020 and
+        // D-209 put `help` in the chain. **The owner found what that does on a real node:** a `form`
+        // label nobody wrote inherited the whole help sentence as the node's name, so a column
+        // heading read *condensator is an electronic part that has a capacity …*. D-386 takes `help`
+        // out of the chain; the intent of D-020 survives, but the thing the others are a variation of
+        // is the **node's own name** and never the long text.
         $this->write('help', 'The value of the resistance in ohms');
 
+        self::assertSame('Widerstandswert', $this->labels->of($this->node, SeededRole::Table));
+
+        // ⚠️ And `help` keeps its own job: asked for directly, it answers.
         self::assertSame(
             'The value of the resistance in ohms',
-            $this->labels->of($this->node, SeededRole::Table)
+            $this->labels->of($this->node, SeededRole::Help)
         );
     }
 
@@ -158,10 +166,12 @@ final class LabelsTest extends TestCase
     #[Test]
     public function an_empty_text_does_not_count_as_an_answer(): void
     {
+        // ⚠️ An empty text is not an answer, so the chain walks on — and since D-386 the next
+        // link is the node's own name rather than the help sentence.
         $this->write('form', '');
         $this->write('help', 'The description');
 
-        self::assertSame('The description', $this->labels->of($this->node, SeededRole::Form));
+        self::assertSame('Widerstandswert', $this->labels->of($this->node, SeededRole::Form));
     }
 
     #[Test]

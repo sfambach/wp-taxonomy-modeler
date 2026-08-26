@@ -2,6 +2,7 @@
 
 namespace Taxmod\Tests\Core\Fake;
 
+use Taxmod\Core\Model\ChangeSummary;
 use Taxmod\Core\Repository\Changelog;
 
 /** Keeps what was logged so a test can assert that an unchanged save wrote nothing. */
@@ -126,5 +127,14 @@ final class RecordedChanges implements Changelog
         }
 
         return $rows;
+    }
+
+    /**
+     * ⚠️ *Answers **nothing known** rather than inventing timestamps: the double has no clock, and a
+     * fabricated birthday in a test is a fact nobody can trace back to a decision.*
+     */
+    public function summaryOf(int $ownerId): ChangeSummary
+    {
+        return new ChangeSummary();
     }
 }

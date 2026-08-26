@@ -10,6 +10,7 @@ use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -58,6 +59,10 @@ final class Plugin
         add_action('admin_menu', $plugin->registerMenu(...));
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
 
+        // ⚠️ **The installation's own screen** (D-397) — three decisions had been deferred to it and
+        // each had its own interim: developer mode, the neutral locale, the tree's scale.
+        add_action('admin_post_' . SettingsScreen::ACTION, $plugin->handleSettings(...));
+
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
         // the stored version is behind.
@@ -99,7 +104,7 @@ final class Plugin
 
     public function registerMenu(): void
     {
-        add_menu_page(
+        $hook = add_menu_page(
             __('Taxonomy Modeller', 'taxmod'),
             __('Taxonomy Modeller', 'taxmod'),
             self::CAPABILITY,
@@ -108,6 +113,83 @@ final class Plugin
             'dashicons-networking',
             30
         );
+
+        // ⚠️ **A sub-page and not a second top-level menu.** It configures the modeller, so it
+        // belongs under it — and it is the screen [OQ-039](../../../docs/NewConcept/91-open-questions.md)
+        // has been waiting for since Package 4.
+        add_submenu_page(
+            'taxmod',
+            __('Installation', 'taxmod'),
+            __('Installation', 'taxmod'),
+            self::CAPABILITY,
+            'taxmod-settings',
+            fn () => print (new SettingsScreen())->render()
+        );
+
+        // ⚠️ **On this screen's own hook**, so the stylesheet is not loaded onto every page in
+        // `wp-admin`. `add_menu_page()` returns the hook, which is why the wiring lives here rather
+        // than beside the other hooks in `boot()`.
+        if ($hook !== false) {
+            add_action('admin_print_styles-' . $hook, $this->enqueueStyle(...));
+        }
+    }
+
+    /**
+     * The modelling screen's stylesheet — a real file, and only on that screen.
+     *
+     * ⚠️ **It used to be a `<style>` block inside the screen class**, and the owner asked the question
+     * that settles it: *do you put that in a taxmod css or do you hard-code it?* Hard-coded, and fine
+     * while it was three lines for the tree; at forty it was a stylesheet living in a PHP string —
+     * every quote escaped, no editor help, re-sent on every page load rather than cached.
+     *
+     * ⚠️ **Hooked on the screen's own hook rather than on `admin_enqueue_scripts` broadly**, so it is
+     * not loaded onto every page in `wp-admin`. *`add_menu_page()` returns that hook, which is why the
+     * enqueue is wired here and not beside the other hooks in `boot()`.*
+     *
+     * ⚠️ **Versioned with the plugin** so a released change actually reaches a browser that has the
+     * old file cached. **And `dashicons` is declared a dependency**, because the icon chooser draws
+     * glyphs as *characters* in a `<select>` and needs the font present — on an admin page WordPress
+     * loads it anyway, and depending on that would be depending on an accident.
+     */
+    public function enqueueStyle(): void
+    {
+        // ⚠️ **The URL is built from the *plugin folder*, not from `$this->file`, and that was a real
+        // bug that shipped for an hour.** This repository is developed in `…/source/wp-taxonomy-tree`
+        // and reaches `wp-content/plugins` through a **junction**, which is not a symlink — so
+        // `plugins_url()` cannot relate the real path to the plugins directory and simply concatenates
+        // it, producing
+        // `…/wp-content/plugins/C:/Devel/Wordpress/source/wp-taxonomy-tree/assets/admin.css`.
+        //
+        // ⚠️ *The stylesheet therefore never loaded, and I told the owner to reload — twice — because
+        // my own check had built a path by hand and so measured the wrong thing. He said the screen
+        // still looked wrong and he was right. **A check that constructs what it is verifying verifies
+        // nothing.***
+        //
+        // ⚠️ **The folder name is the one fact that holds on both sides**, because WordPress loads the
+        // plugin as `<folder>/<file>` and the junction keeps the folder name — so this asks
+        // `plugins_url()` about a path it can actually relate.
+        wp_enqueue_style(
+            'taxmod-admin',
+            plugins_url('assets/admin.css', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            ['dashicons'],
+            // ⚠️ **The file's own change time, not the plugin version, while this is being built.**
+            // The owner reloaded three times on a stylesheet that was already correct because the
+            // browser held the previous one — `VERSION` moves once per release, and during a session
+            // like today it moves never. *`filemtime` makes every save a new URL, which is what a
+            // person clicking Reload expects. It becomes `self::VERSION` when the screen settles.*
+            (string) (@filemtime($this->path('assets/admin.css')) ?: self::VERSION)
+        );
+    }
+
+    /** A path inside the plugin folder, from the file `boot()` was given. */
+    private function path(string $inside): string
+    {
+        return dirname($this->file) . '/' . $inside;
+    }
+
+    public function handleSettings(): void
+    {
+        (new SettingsScreen())->handlePost();
     }
 
     public function handleNodeAction(): void
@@ -138,7 +220,8 @@ final class Plugin
         return new UnitScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
+            new Labels(new WpdbLabelRepository(), $this->frameworkNodes())
         );
     }
 

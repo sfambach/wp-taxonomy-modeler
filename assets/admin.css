@@ -1,0 +1,540 @@
+/*
+ * The modelling screen's own paint.
+ *
+ * ⚠️ A real stylesheet rather than a `<style>` block in PHP — the owner asked the question that
+ * settles it: *do you put that in a taxmod css or do you hard-code it?* It was hard-coded, and that
+ * was fine while it was three lines for the tree. At forty it is a stylesheet living inside a string:
+ * no editor help, every quote escaped, and re-sent on every page load instead of being cached.
+ *
+ * ⚠️ **The renderers deliberately keep their inline layout and only class names come here.** A
+ * renderer states the shape of a row — that a form is a flex row, that a cell is a column — because
+ * that shape *is* the drawing and it has to hold on any surface. What belongs here is what is true
+ * of **this screen**: sizes, weights, colours, the paint on a switch. *A renderer that hard-coded a
+ * height would carry it into every block on the front end too.*
+ *
+ * @see docs/NewConcept/30-renderer.md
+ */
+
+/* ── The panels: flat fields ─────────────────────────────────────────────────
+ *
+ * ⚠️ The owner named both causes: *the borders in the fields are a bit big for my taste, which makes
+ * them quite tall … or margin?* Both. WordPress gives an admin `input` and `select` a `min-height`
+ * of 30px, 3px of padding **and** a 1px margin — so a row of five fields carries five gaps too.
+ */
+.taxmod-labels input,
+.taxmod-labels select,
+.taxmod-labels textarea,
+.taxmod-settings input,
+.taxmod-settings select {
+    min-height: 0;
+    padding: 2px 6px;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.taxmod-settings .button {
+    min-height: 0;
+    padding: 1px .5em;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ⚠️ Dashicons is a **font**, so a glyph shows inside an `<option>` once the control asks for that
+ * font — which is what lets the icon be a plain `<select>` instead of a grid of tiles. I had claimed
+ * this was impossible until the owner said flatly *Cursor could do that*. */
+.taxmod-settings select[name$="[icon]"] {
+    font-family: dashicons, sans-serif;
+    font-size: 1.05em;
+}
+
+/* ── The tree ────────────────────────────────────────────────────────────── */
+
+/* ⚠️ **The size comes from the installation screen** ([D-397](docs/NewConcept/90-decision-log.md)):
+ * the owner walked these numbers himself — *one pixel bigger*, *make 20*, *25px*, back to 17 — and
+ * asked for them *in the settings*. The fallback is what the file used to hard-code, so a page without
+ * the custom property looks exactly as it did. */
+.taxmod-tree {
+    font-size: var(--taxmod-font, 15px);
+}
+
+.taxmod-tree td,
+.taxmod-tree th {
+    padding: 2px 8px;
+    line-height: 1.5;
+}
+
+/* The button glyphs and the node's own icon at one scale, with the line height held down so the row
+ * stays flat. *The owner asked for the button icons and I enlarged the wrong one first.* */
+.taxmod-tree .button {
+    min-height: 0;
+    height: auto;
+    padding: 0 .3em;
+    line-height: 1.2;
+    font-size: var(--taxmod-icon, 17px);
+}
+
+.taxmod-tree .dashicons {
+    font-size: var(--taxmod-icon, 17px);
+    width: var(--taxmod-icon, 17px);
+    height: var(--taxmod-icon, 17px);
+    line-height: 1.2;
+    vertical-align: text-bottom;
+}
+
+.taxmod-tree form {
+    gap: .2em !important;
+}
+
+/* ⚠️ **No box around a row's buttons.** A glyph on its own reads as an action; a border round each
+ * one turns a row into a row of boxes. The hover keeps them findable. */
+.taxmod-tree .button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+}
+
+.taxmod-tree .button:hover {
+    background: #f0f0f1;
+    border-radius: 3px;
+}
+
+.taxmod-tree .button:disabled {
+    background: 0 0;
+}
+
+/* ── The sliding switch ──────────────────────────────────────────────────────
+ *
+ * ⚠️ **Markup from the renderer, paint from here** (`CD-1`). The owner asked for it by name —
+ * *for the bool node renderer there should also be a version with a slider* — and without this block
+ * it degrades to a plain checkbox rather than to nothing.
+ */
+.taxmod-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.taxmod-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.taxmod-toggle-track {
+    display: inline-block;
+    position: relative;
+    width: 2.4em;
+    height: 1.2em;
+    border-radius: 1em;
+    background: #c3c4c7;
+    transition: background .15s;
+}
+
+.taxmod-toggle-track.is-on {
+    background: #2271b1;
+}
+
+.taxmod-toggle-track.is-fixed {
+    opacity: .6;
+}
+
+.taxmod-toggle-knob {
+    position: absolute;
+    top: .15em;
+    left: .15em;
+    width: .9em;
+    height: .9em;
+    border-radius: 50%;
+    background: #fff;
+    transition: left .15s;
+}
+
+.taxmod-toggle-track.is-on .taxmod-toggle-knob {
+    left: 1.35em;
+}
+
+/* ── Marks a reader has to be able to tell apart ─────────────────────────── */
+
+/* ⚠️ A gap, not a style: a field nothing could draw says so rather than looking plain (R14b). */
+.taxmod-no-renderer,
+.taxmod-dangling,
+.taxmod-unsatisfiable {
+    color: #b32d2e;
+}
+
+/* *Nothing is nothing* (D-232) — an unanswered value is an em dash and not an empty cell. */
+.taxmod-nothing {
+    opacity: .5;
+}
+
+/* A choice whose stored value is no longer in the set — usually a member somebody deleted. */
+.taxmod-unknown-choice {
+    color: #b32d2e;
+    text-decoration: line-through;
+}
+
+.taxmod-settings-heading {
+    margin: .6em 0 .2em;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: .8em;
+}
+
+/* ── A box per band ──────────────────────────────────────────────────────────
+ *
+ * ⚠️ **The owner asked for the boxes he had drawn on the screenshot**: *please draw the boxes from
+ * the picture.* His red annotations were not marking faults — they were showing where he wanted
+ * frames. *I had read the earlier «look at a few more frames» as «remove a few» and softened them
+ * to a hairline; the second sentence corrected it. The headings going was right and separate.*
+ *
+ * ⚠️ **A box groups; the headings named.** With four headings gone the frame is what says *these
+ * things belong together*, which is the job the heading used to do and does more quietly.
+ */
+.taxmod-page-block {
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    padding: .6em .8em;
+    margin: .7em 0;
+    background: #fff;
+}
+
+/* ⚠️ The first heading inside a box loses its top margin — the box already provides the gap, and
+ * both together push the title away from its own frame. */
+.taxmod-page-block > h3:first-child {
+    margin-top: 0;
+}
+
+/* ⚠️ *A `details` band paints its own frame the same way, so the collapsed relations block does not
+ * read as the one thing on the page that is not boxed.* */
+.taxmod-page-block[open] > summary,
+details.taxmod-page-block > summary {
+    margin: 0;
+}
+
+/* The path behind the name — a chip, not a line. */
+.taxmod-path {
+    opacity: .55;
+    font-size: .85em;
+    background: 0 0;
+    padding: 0;
+    cursor: help;
+    white-space: nowrap;
+}
+
+/* ⚠️ The heading and its `?` on one baseline, so the mark does not push the line taller. */
+.taxmod-page-block h3 .dashicons,
+.taxmod-detail-pane h2 .dashicons,
+.taxmod-tree-pane h2 .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+/* ── The settings panel: two columns, and no boxes round the icons ───────────
+ *
+ * ⚠️ The owner, in one breath: *let us make the settings two-column, that makes room — «not defined»
+ * gone, the save button goes in the page header, the Nothing button could be the bin again.* Two
+ * columns fit because the rows are short: a key, a control, a mark, two acts.
+ *
+ * ⚠️ *The grid collapses to one column on a narrow pane — the tree already takes a third of the
+ * width, and two columns inside two thirds of a laptop screen would put a `select` in 6em.*
+ */
+/* ⚠️ **Two grids nested, and the inner one is the reason the columns line up.** A row of its own
+ * grid measures itself, so the key column of the left half and the key column of the right half ended
+ * up different widths — *that is what «formatting nicer would be good too» was looking at.* The row is
+ * now a **subgrid**, so every row in the panel shares one set of column widths.
+ *
+ * ⚠️ *`subgrid` has a fallback below for browsers without it: the fixed `9em` key column, which is
+ * what the rows had before — worse, but never broken.*
+ */
+.taxmod-settings-group {
+    display: block;
+}
+
+/* ⚠️ **A group is two sub-grids, not one grid of everything.** `auto-fit` over the whole group gave
+ * four columns at width and one when narrow — the owner: *now we are infinitely-columned depending on
+ * the width.* **Switches and fields want different widths**, and a grid gives every column the same
+ * one, so a single text field forces the switches to be as wide as it is.
+ *
+ * ⚠️ *His own ordering: «bool first, it needs little space and can be multi-column, and then fields
+ * only two-column». Read off the setting's **shape** in the renderer, not off a list of keys.*
+ */
+/* ⚠️ **The number of columns is capped, and `auto-fit` alone cannot cap it.** The owner: *please
+ * limit the columns, otherwise this happens* — four columns of switches on a wide screen, scattered
+ * across the pane with the eye unable to hold a row together. **`auto-fit` fits as many as the room
+ * allows, which is a different question from as many as help.**
+ *
+ * ⚠️ *So the counts are stated: one column when narrow, then two, then three for switches and two
+ * for fields. A field needs room to be read back and a switch does not, which is why the caps differ.*
+ */
+.taxmod-settings-switches,
+.taxmod-settings-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 1.6em;
+}
+
+@media (min-width: 1100px) {
+    .taxmod-settings-switches,
+    .taxmod-settings-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1500px) {
+    /* Switches gain a third; fields stay at two, on purpose. */
+    .taxmod-settings-switches {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+/* A switch needs no room for its value, so its key column can be shorter. */
+.taxmod-settings-switches .taxmod-setting {
+    grid-template-columns: 7.5em auto 3.2em 3.4em;
+}
+
+/* The heading spans every column, so a group reads as a group. */
+.taxmod-settings-heading {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: .2em;
+}
+
+.taxmod-setting {
+    display: grid;
+    /* ⚠️ Fixed widths, because that is what makes every row line up **across both columns** — a
+     * row measuring itself gave the left half and the right half different key columns. */
+    grid-template-columns: 7.5em minmax(0, 1fr) 3.2em 3.4em;
+    align-items: center;
+    column-gap: .5em;
+    padding: .12em 0;
+}
+
+/* ⚠️ Zebra, faintly: at a dozen rows in two columns the eye needs to keep a row together across
+ * four cells. *Faint enough to disappear when one is not looking for it.* */
+.taxmod-setting:nth-child(odd) {
+    background: #fafafa;
+}
+
+.taxmod-setting input[type="text"],
+.taxmod-setting select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.taxmod-setting-key {
+    background: 0 0;
+    padding: 0;
+    font-size: .9em;
+    overflow-wrap: anywhere;
+}
+
+.taxmod-setting-from {
+    font-size: .85em;
+    opacity: .7;
+    white-space: nowrap;
+}
+
+.taxmod-setting-acts {
+    display: flex;
+    gap: .1em;
+}
+
+/* ── No box around an icon button, anywhere ──────────────────────────────────
+ *
+ * ⚠️ **The owner said it twice because the first fix reached one place only**: *in the node renderer
+ * you have put boxes around the icons again — away with them … it seems to be the case throughout.*
+ * The borderless rule had been scoped to `.taxmod-tree`, and three more panels grew icon buttons
+ * afterwards. **The renderers now mark such a button themselves** ({@see ControlMarkup::ICON_ONLY}),
+ * so this rule needs no place to be scoped to and cannot be outgrown again.
+ */
+.taxmod-icon-button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+    padding: 0 .25em;
+    min-height: 0;
+    line-height: 1;
+}
+
+.taxmod-icon-button:hover:not(:disabled) {
+    background: #f0f0f1;
+    border-radius: 3px;
+}
+
+.taxmod-icon-button .dashicons {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* ── A record as a block ─────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *I assume a record is not a renderer yet either.* Half right — the **fields** were
+ * drawn by the form renderer already; everything around them was hand-built. This is the paint for
+ * {@see \Taxmod\Core\Renderer\RecordRenderer}, the fourth panel to go through `R1`.
+ */
+.taxmod-record {
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: .6em .8em;
+    margin: .6em 0;
+}
+
+.taxmod-record-head {
+    font-size: .9em;
+    opacity: .7;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-acts {
+    display: flex;
+    gap: .2em;
+    margin-top: .5em;
+}
+
+/* ⚠️ *Which renderer drew what* — scaffolding (D-344), so it is faint and sits apart from the form
+ * rather than woven into it, where it would have to be unpicked when the scaffolding goes. */
+.taxmod-record-diagnostic {
+    margin-top: .6em;
+    border-top: 1px solid #f0f0f1;
+    padding-top: .4em;
+    font-size: .85em;
+    opacity: .6;
+}
+
+/* ── The tree on white ───────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *would you make the background of the tree white too, I think it looks better.* And
+ * it does — the detail half is a column of white boxes, so a grey tree beside them read as the one
+ * unfinished part of the screen rather than as a different kind of thing.
+ */
+.taxmod-tree-pane {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    padding: .6em .8em;
+}
+
+/* ⚠️ WordPress paints `.striped` rows grey; on white that reads as a second background rather than
+ * as an aid, and the tree already has its indentation to follow. */
+.taxmod-tree-pane .striped > tbody > :nth-child(odd),
+.taxmod-tree-pane .wp-list-table.striped > tbody > :nth-child(odd) {
+    background: 0 0;
+}
+
+/* The row under the pointer, and the one being looked at — enough to find, not enough to stripe. */
+.taxmod-tree tbody tr:hover {
+    background: #f6f7f7;
+}
+
+/* ── The toolbar ─────────────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *the toolbar is not quite perfect yet, it should be **one line**, icons for move and
+ * trash.* It was three lines because it is three separate `<form>`s — three different acts with three
+ * different fields, which has to stay — so they are laid out as one strip instead of being merged.
+ */
+.taxmod-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5em;
+}
+
+/* Each little form contributes its buttons to the same line rather than starting a new one. */
+.taxmod-acts {
+    display: flex;
+    align-items: center;
+    gap: .2em;
+    margin: 0;
+}
+
+/* ⚠️ The name field takes the room that is left, so the acts sit at the right and the line does not
+ * break as soon as the pane narrows. */
+.taxmod-toolbar-name {
+    flex: 1 1 12em;
+    min-width: 8em;
+}
+
+.taxmod-toolbar select {
+    max-width: 16em;
+}
+
+/* ── The tree chooser ────────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner, looking at a flat eighty-entry `<select>` with middle-dot indents: *the select would
+ * have to be the tree chooser.* It is the modelling tree's own walker with a different cell — D-367's
+ * *one walker, several cells*, which until now had only ever had one.
+ */
+.taxmod-chooser {
+    display: inline-block;
+    max-width: 100%;
+}
+
+.taxmod-chooser-current {
+    cursor: pointer;
+    padding: 2px 6px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #fff;
+    min-width: 10em;
+}
+
+/* ⚠️ Bounded and scrolling: a hundred prefixes must not push the toolbar off the screen. */
+.taxmod-chooser-tree {
+    max-height: 18em;
+    overflow: auto;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: .3em .5em;
+    margin-top: .2em;
+    background: #fff;
+    min-width: 18em;
+}
+
+.taxmod-chooser-row {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    cursor: pointer;
+}
+
+/* ⚠️ **A row that cannot be picked is shown, not removed** — its child may be pickable, so taking it
+ * out would tear a hole in the hierarchy. Greyed, with no radio, and not clickable. */
+.taxmod-chooser-fixed {
+    opacity: .45;
+    cursor: default;
+}
+
+.taxmod-chooser-row:hover {
+    background: #f6f7f7;
+}
+
+/* ── Showing what is hidden ──────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
+ * some prefixes. For that we need a switch on the tree view, «show hidden nodes», default off.*
+ */
+.taxmod-show-hidden {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    font-size: .85em;
+    text-decoration: none;
+    opacity: .7;
+    margin: 0 0 .4em;
+}
+
+.taxmod-show-hidden:hover {
+    opacity: 1;
+}
+
+.taxmod-show-hidden .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}

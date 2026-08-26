@@ -158,3 +158,33 @@ over them.
 | *Andofall* | **Undo-Fall** |
 | *Inumwerte* | **Enum-Werte** |
 | *aufplänen* | **aufblähen** — to bloat |
+
+## ⚠️ Inheritance is not the resolution chain
+
+Both terms are in the table above and both are precise. They get confused all the same, and it
+happened on 2026-08-26: I explained why hiding a node hides its subtree by saying *inheritance*, and
+the owner cut it off — *your argument for `hide` was inheritance, but a setting on a node has nothing
+to do with attribute inheritance. Perhaps we need to sharpen the terms.*
+
+He is right that they must not be one word.
+
+| | It answers | Its mechanism |
+|---|---|---|
+| **Inheritance** · *Vererbung* | **what a node has** — `Resistor` has `resistance` because `Bauteil` declared it | the relation **kind** that forms the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)) |
+| **Resolution chain** · *Auflösungskette* | **what a key answers here** — `hide` is true on `yotta` because somebody wrote it there | installation → model root → ancestors → node → use site, walked **key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)) |
+
+**Why they are confusable, and it is not carelessness:** the chain's middle section *is* the
+inheritance edges. Same ancestors, same walk upwards — so *a child of a hidden node is hidden* is true
+through the **chain** and would be equally true-sounding said as *inheritance*. The difference only
+shows where they disagree:
+
+- An **attribute** is inherited and a **setting** is not: the setting is *resolved*. Nothing is copied
+  down, nothing is owned twice, and a value written at the node simply wins over one written above it.
+- An attribute may be **moved down** to a subtype ([D-155](90-decision-log.md)); a setting cannot be
+  moved anywhere, because it was never in one place to begin with.
+- Multiplicity is **edge-only** ([D-351](90-decision-log.md)) and still travels the chain — which is
+  impossible to state at all if the two words are one.
+
+⚠️ **The rule for writing about it: say *the chain* for a setting and *inheritance* for an attribute,
+and never the other way round.** *Where a sentence would be true either way, it is about the ancestors
+and should name them instead of picking a mechanism.*

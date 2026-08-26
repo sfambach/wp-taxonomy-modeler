@@ -45,6 +45,34 @@ final class Relation
     ) {
     }
 
+    /**
+     * The same edge under another name, one version on.
+     *
+     * ⚠️ **An attribute's name is trimmed like a node's, and an empty one is refused.** Nothing
+     * decided that for edges — [D-022](../../../docs/NewConcept/90-decision-log.md) governs node
+     * names — but *the use site is an attribute* argues they are the same kind of thing, and it is
+     * the assumption Package 3 recorded rather than invented quietly.
+     */
+    public function renamedTo(string $name): self
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            throw InvalidName::empty();
+        }
+
+        return new self(
+            $this->id,
+            $this->version + 1,
+            $this->fromId,
+            $this->toId,
+            $this->kind,
+            $name,
+            $this->position,
+            $this->parkedByGroup
+        );
+    }
+
     /** Whether it has been removed — parked, not purged (D-123's two stages). */
     public function isParked(): bool
     {

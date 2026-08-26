@@ -443,6 +443,31 @@ final class ModelEditor
         throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
     }
 
+    /**
+     * Rename an attribute.
+     *
+     * ⚠️ **Only where it is declared.** An inherited attribute belongs to the ancestor that
+     * declared it, so renaming it from a descendant would rename it for every other user too —
+     * silently. {@see ownAttribute()} refuses that, which is the same guard removal uses.
+     */
+    public function renameAttribute(int $ownerId, int $edgeId, string $name): Relation
+    {
+        $edge    = $this->ownAttribute($ownerId, $edgeId);
+        $renamed = $edge->renamedTo($name);
+
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            'attribute renamed',
+            $this->edgeState($edge),
+            $this->edgeState($renamed)
+        );
+
+        $this->relations->save($renamed, $edge->version);
+
+        return $renamed;
+    }
+
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
     public function removedAttributesOf(int $ownerId): array
     {

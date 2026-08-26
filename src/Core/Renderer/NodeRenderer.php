@@ -81,8 +81,10 @@ final class NodeRenderer implements Renderer
         }
 
         return RenderResult::of(
-            '<div class="taxmod-page" style="border:1px solid #c3c4c7;background:#fff;'
-            . 'border-radius:3px;padding:0 1em 1em">' . $body . '</div>'
+            // ⚠️ **The frame carries no paint of its own any more** (D-391, D-392): each band inside
+            // draws its own box now, so a border here made a box inside a box. *What a renderer states
+            // is that the page **is** one container; how heavy that container looks is the surface's.*
+            '<div class="taxmod-page">' . $body . '</div>'
         );
     }
 
@@ -95,7 +97,15 @@ final class NodeRenderer implements Renderer
      */
     private function block(Section $section): string
     {
-        $heading = '<h3 style="margin:1em 0 .4em">' . RenderResult::escape($section->title) . '</h3>';
+        // ⚠️ **An empty title means no heading**, and the owner asked for that after seeing the whole
+        // page: *look at a few more frames, and push the path behind the name, and leave out a few
+        // headings.* Three bands had a heading over a single control — *Name* over a name field,
+        // *Display* over two panels that carry their own headings — and a heading that repeats what
+        // is directly under it is a line of noise. *An empty string rather than a second field,
+        // because «this band has no heading» is exactly «its heading is nothing».*
+        $heading = $section->title === ''
+            ? ''
+            : '<h3 style="margin:1em 0 .4em">' . RenderResult::escape($section->title) . '</h3>';
 
         if (! $section->collapsed) {
             return '<div class="taxmod-page-block">' . $heading . $section->body . '</div>';

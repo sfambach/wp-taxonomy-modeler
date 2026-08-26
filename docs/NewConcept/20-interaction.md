@@ -760,3 +760,38 @@ drawn up when the block is built, on the owner's own instruction
 - ~~What is special in Gutenberg and in the front end.~~ → **answered by U28**
   ([D-253](90-decision-log.md)), with the server-side rendering of blocks decided alongside it
   ([D-254](90-decision-log.md), in [30 Renderer](30-renderer.md)).
+
+### U31 · An explanation lives in a question mark, and it is written for somebody who has not read the concept
+
+The owner, looking at a screen of grey paragraphs: *banish the text into a question-mark icon and
+make it user-friendly* — and then: *we can make that a rule, by the way.*
+
+```mermaid
+flowchart LR
+    H["a heading"] --> Q["? · the explanation, on hover"]
+    H --> C["the panel itself, unobstructed"]
+```
+
+**Two halves, and the second is the one that matters.**
+
+| | |
+|---|---|
+| **Hidden** | a panel explains itself in a `?` beside its heading, never in a paragraph above it. Six panels stacked with six paragraphs is a screen where the paragraphs are the content. |
+| **Rewritten** | the sentence has to be readable by somebody who has never opened `docs/NewConcept/`. *Each value is drawn by the renderer its key asks for; the chain runs installation → model root → ancestors → node* is **true and it is not an explanation** — it names four mechanisms and answers no question a person has. |
+
+⚠️ **The test for the text: does it answer a question somebody actually has in front of that panel?**
+*A value not set here is inherited from further up — the column on the right says where it came from*
+passes. *The chain runs installation → model root → ancestors → node* does not, and it was the same
+fact.
+
+⚠️ **A `title`, not a disclosure that opens.** Nothing depends on reading it, and a panel that opens
+adds a thing to click to every heading on the screen. *Where an explanation is genuinely required
+before acting, it is not a hint — it is a step, and it belongs in the flow.*
+
+⚠️ **The icon is a Dashicon and not a `?` character**, for the reason
+[D-380](90-decision-log.md) settled for the bin: a punctuation mark takes the weight of the body font
+and reads as a hairline beside a 17px glyph.
+
+⚠️ *This is not `R1` being bent. A heading and its hint are **software strings** belonging to the
+boundary ([AR-2](../../CLAUDE.md)) — the same class of thing as the word on a button — and no model
+data passes through them.*

@@ -96,6 +96,32 @@ enum SimpleType: string
         };
     }
 
+    /**
+     * The word a person reads for this type.
+     *
+     * ⚠️ **`int` reads *integer* and `decimal` reads *double***, which is how the owner named them
+     * when he asked for the grouping: *settings for `int` category integer, settings for `double`
+     * category double.* The stored names are the short machine ones and stay that way; this is only
+     * what a heading shows.
+     *
+     * ⚠️ *English here and translated at the boundary, because the core cannot make a word (`AR-2`,
+     * [OQ-087](../../../docs/NewConcept/91-open-questions.md)). What it can do is say **which** word,
+     * so a twelfth type gets a heading without anybody remembering to add one.*
+     */
+    public function humanName(): string
+    {
+        return match ($this) {
+            self::Int      => 'integer',
+            self::Decimal  => 'double',
+            self::NodeRef  => 'node reference',
+            self::UserRef  => 'user reference',
+            self::DateTime => 'date and time',
+            self::Char     => 'character',
+            self::Bool     => 'yes or no',
+            default        => $this->value,
+        };
+    }
+
     /** @return list<string> The node names, in the order they are seeded. */
     public static function names(): array
     {

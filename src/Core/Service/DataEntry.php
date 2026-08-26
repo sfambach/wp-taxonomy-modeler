@@ -5,6 +5,8 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Record;
+use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\RecordValue;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
@@ -35,13 +37,48 @@ use Taxmod\Core\Repository\RelationRepository;
  */
 final class DataEntry
 {
+    /**
+     * @param Settings|null $settings Optional so the existing wiring keeps working; without it the
+     *                                `persistent` flag cannot be resolved and every attribute is
+     *                                treated as persistent, which is the default anyway.
+     */
     public function __construct(
         private readonly RecordRepository $records,
         private readonly RelationRepository $relations,
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
         private readonly Clock $clock,
+        private readonly ?Settings $settings = null,
     ) {
+    }
+
+    /**
+     * Whether values given through this attribute are kept at all.
+     *
+     * ⚠️ **The teeth behind [D-378](../../../docs/NewConcept/90-decision-log.md).** The owner brought
+     * the distinction from object orientation — *there are attributes that get persisted and ones
+     * that do not; a multiplicator is not persistent* — and a flag nothing enforces is decoration.
+     * **So a write through a non-persistent attribute is refused rather than dropped**: dropping it
+     * silently would let a form appear to save and lose the value, which is worse than either
+     * storing it or saying no.
+     *
+     * ⚠️ *Resolved along the ordinary chain, so a **type** may declare itself non-persistent once and
+     * every attribute using it inherits that — the owner's arrangement.*
+     */
+    public function keepsValues(Relation $edge): bool
+    {
+        if ($this->settings === null) {
+            return true;
+        }
+
+        $resolved = $this->settings->resolve($this->settings->chainForUseSite($edge));
+
+        // ⚠️ **`??` before `?->`, because a missing array key is not a null object.** The two look
+        // alike and are not: `$a['x']?->y` on an absent key raises a warning and then yields null, so
+        // it *appears* to work. **`RenderContext::setting()` carries this exact warning in its own
+        // docblock and I wrote the bug two files away** — found by storing a real value, because
+        // `persistent` is unset on almost every attribute.
+        return ($resolved[SettingKey::Persistent->value] ?? null)?->value->asBool() ?? true;
     }
 
     /**
@@ -87,6 +124,13 @@ final class DataEntry
             throw NotYetStorable::thatBranchHasNoRecords($target->name);
         }
 
+        // ⚠️ **A non-persistent attribute has no place to put a value** (D-378) — it exists to be
+        // read by a calculation, and its model-level value is its `default` (D-026). Refused rather
+        // than dropped: a silent drop lets a form look as though it saved.
+        if (! $this->keepsValues($edge)) {
+            throw NotYetStorable::thatAttributeKeepsNothing($edge->name);
+        }
+
         // ⚠️ Refused rather than guessed: a composed part is a record of its own, and nothing
         // here creates one yet. Storing it inline would put the value in the wrong place and
         // look right until somebody tried to share it.
@@ -97,10 +141,118 @@ final class DataEntry
         $this->records->putValue(RecordValue::direct($recordId, $edgeId, $value, $locale));
     }
 
+    /**
+     * Start a **composed part** — a record of its own, owned by the holder.
+     *
+     * ⚠️ **This is what [D-232](../../../docs/NewConcept/90-decision-log.md) asks for and nothing had
+     * built.** *A target in `Compositions` gets **its own records***, and the reason underneath is the
+     * owner's own: **does the member need an identity?** *A row does — you point at it, order it,
+     * delete a single one. A number in a list does not.* He drew the same line himself: *simple types
+     * and composed types can just be stored there; where it gets harder is whole row types, whole
+     * tables — there I would insist it is external.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   H["the holder's record"] -->|value_ref| P["the part's own record"]
+     *   P --> V["its own values, by path"]
+     * ```
+     *
+     * ⚠️ **The link is the holder's `value_ref` and there is no back-link.** A part has no owner
+     * column: it is reached from above, which is what makes *dies with the holder* a walk rather than
+     * a flag to keep in step ([C12](../../../docs/NewConcept/10-domain-core.md)).
+     *
+     * ⚠️ **One part per occurrence, and asking twice makes a second one.** *That is the point of it
+     * having an identity* — two positions on an order are two positions, and a method that quietly
+     * reused the first would make them one thing wearing two names.
+     *
+     * @param string $path Where under the holder it sits. Empty for a direct attribute, so the edge
+     *                     id is the whole path; an index like `2` for the third of several.
+     */
+    public function createPart(int $recordId, int $edgeId, string $path = ''): Record
+    {
+        $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        $edge   = $this->edgeOf($record, $edgeId);
+        $target = $this->nodes->byId($edge->toId);
+        $branch = $this->framework->branchOf($target);
+
+        // ⚠️ Refused rather than accommodated: a part is only a part where the branch says the value
+        // has records of its own. Anywhere else the value belongs *in* the holder's record and a part
+        // would be a second home for it.
+        if ($branch === null || $branch->storage() !== Storage::OwnRecords) {
+            throw NotYetStorable::thatIsNotAComposedPart($edge->name);
+        }
+
+        $part = $this->create($target->id);
+
+        // The holder points at it, which is the whole of the relationship.
+        $this->records->putValue(new RecordValue(
+            $recordId,
+            $path === '' ? (string) $edgeId : $path,
+            $edgeId,
+            '',
+            TypedValue::ofReference($part->id)
+        ));
+
+        return $part;
+    }
+
+    /**
+     * Every part a record owns, by the path that reaches it.
+     *
+     * ⚠️ **Read from the holder's own values**, because that is the only place the link lives. *One
+     * query per level rather than one per value: a parts list of thirty rows asks once, which is what
+     * `CD-7` is about.*
+     *
+     * @return array<string, int> path ⇒ the part record's id
+     */
+    public function partsOf(int $recordId): array
+    {
+        $record = $this->records->find($recordId);
+
+        if ($record === null) {
+            return [];
+        }
+
+        $model = $this->nodes->byId($record->modelId);
+        $owned = [];
+
+        foreach ($this->relations->attributeEdgesOf([...$model->ancestorIds(), $model->id]) as $edge) {
+            $target = $this->nodes->byId($edge->toId);
+            $branch = $this->framework->branchOf($target);
+
+            if ($branch !== null && $branch->storage() === Storage::OwnRecords) {
+                $owned[$edge->id] = true;
+            }
+        }
+
+        $parts = [];
+
+        foreach ($this->records->valuesOf($recordId) as $value) {
+            if (isset($owned[$value->edgeId]) && $value->value->reference !== null) {
+                $parts[$value->path] = $value->value->reference;
+            }
+        }
+
+        return $parts;
+    }
+
     /** Take a value out again, so the attribute is simply unanswered (D-232's three states). */
     public function clear(int $recordId, int $edgeId, string $locale = ''): void
     {
         $this->records->forgetValue($recordId, (string) $edgeId, $locale);
+    }
+
+    /**
+     * Take a value out again, addressed by its **path** rather than by its edge.
+     *
+     * ⚠️ **The two are not the same and confusing them removed the wrong row.** A direct attribute's
+     * path *is* its edge id, so {@see clear()} reads as if it covered everything — but the second
+     * occurrence of a multi-valued member is `<edge>.1`, and clearing by edge silently took out the
+     * **first** one. *Found while making a check idempotent: it cleared what it meant to keep.*
+     */
+    public function clearPath(int $recordId, string $path, string $locale = ''): void
+    {
+        $this->records->forgetValue($recordId, $path, $locale);
     }
 
     /** @return list<RecordValue> */

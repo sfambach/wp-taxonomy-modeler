@@ -12,11 +12,16 @@ use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\Section;
+use Taxmod\Core\Renderer\LabelSlot;
+use Taxmod\Core\Renderer\LabelsRenderer;
+use Taxmod\Core\Renderer\SettingsRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
@@ -63,6 +68,21 @@ final class NodesScreen
     private const SETTING_FIELD = 'taxmod_setting';
 
     /**
+     * Where an attribute's new name is submitted, keyed by edge id.
+     *
+     * ⚠️ **Its own prefix rather than sharing the settings one**, because two different kinds of
+     * thing under one name — `taxmod_setting[multiplicity]` beside `taxmod_setting[418]` — is how a
+     * numeric key ends up read as a setting key by whoever maintains this next.
+     */
+    private const NAME_FIELD = 'taxmod_attribute_name';
+
+    /** Where the labels panel submits its texts, keyed by role. */
+    private const LABEL_FIELD = 'taxmod_label';
+
+    /** Stands in for the chosen locale until the browser puts the real one in its place. */
+    private const LOCALE_MARKER = '__taxmod_locale__';
+
+    /**
      * The icons a node may be given — **Dashicon keys, without the `dashicons-` prefix**.
      *
      * ⚠️ **An icon is picked from an allow-list, never typed** — D-251, and
@@ -107,7 +127,23 @@ final class NodesScreen
         $parked    = $this->tree->rowsUnder($trash, [], $collapsed);
         $selected  = $this->selectedFromRequest();
 
-        $left  = '<h2>' . esc_html__('The tree', 'taxmod') . '</h2>';
+        // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
+        // some prefixes. For that we need a switch on the tree view, «show hidden nodes», default off.*
+        //
+        // ⚠️ **He also reported it as broken, and it was not: it stored and nothing read it.** A
+        // setting nothing consumes looks exactly like a setting that will not save — *which is why a
+        // flag and its effect belong in the same package.*
+        $showHidden = $this->showsHidden();
+        $rows       = $showHidden ? $rows : $this->withoutHidden($rows);
+        $parked     = $showHidden ? $parked : $this->withoutHidden($parked);
+
+        $left  = $this->heading(
+            __('The tree', 'taxmod'),
+            __('Everything you have modelled. A node set to «hide» is left out unless you ask for it.', 'taxmod'),
+            'h2'
+        );
+        $left .= $this->hiddenToggle($showHidden);
 
         // ⚠️ **Under Model, not under the root.** A node hung directly on the root sits in no
         // branch at all: it can hold no records and no attribute may point at it — a dead end
@@ -118,62 +154,46 @@ final class NodesScreen
             __('Add a subject area under Model', 'taxmod')
         );
         $left .= $this->table($rows, 'tree', $collapsed, $selected);
-        $left .= '<h2>' . esc_html__('Trash', 'taxmod') . '</h2>';
-        $left .= '<p class="description">'
-            . esc_html__('Parked, not gone. A parked node is still a node, so nothing that pointed at it dangles.', 'taxmod')
-            . '</p>';
+        $left .= $this->heading(
+            __('Trash', 'taxmod'),
+            __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here.', 'taxmod'),
+            'h2'
+        );
         $left .= $this->table($parked, 'trash', $collapsed, $selected);
 
-        $html  = '<div class="wrap">' . $this->tightRows();
+        // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
+        // and cacheable, and the two numbers a person picked ride on the page ([D-397](../../../docs/NewConcept/90-decision-log.md)).
+        // *The alternative was a `<style>` block again, which is what the stylesheet was extracted from.*
+        $html  = '<div class="wrap" style="'
+            . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
+            . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
         $html .= $this->notice();
         // The owner's proportions: a third for the tree, two thirds for the detail.
+        //
+        // ⚠️ **Each half scrolls on its own and the page itself does not.** The owner asked for the
+        // settings half first and then saw the consequence: *the tree is so big that it needs a
+        // scrollbar too, and then the general one should hopefully go away.* It does — a page
+        // scrollbar exists only because something overflows the page, so once **both** columns are
+        // bounded there is nothing left to scroll. *With only one of them bounded the tree slides
+        // away while one reads the settings, which is the worse of the two halves to lose: the tree
+        // is what one navigates by.*
+        //
+        // ⚠️ *`calc` rather than a fixed height, because the admin bar, the heading and the notice
+        // are all variable — guessing a number would leave a gap on one screen and clip on another.*
+        $pane = 'max-height:calc(100vh - 12em);overflow-y:auto;overflow-x:hidden';
+
         $html .= '<table style="width:100%;border:0"><tr style="vertical-align:top">'
-            . '<td style="width:33%;padding:0 1.5em 0 0">' . $left . '</td>'
-            . '<td style="width:67%;padding:0">' . $this->detail($selected, $rows, $root) . '</td>'
+            . '<td style="width:33%;padding:0 1.5em 0 0">'
+            . '<div class="taxmod-tree-pane" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
+            . '</td>'
+            . '<td style="width:67%;padding:0">'
+            . '<div class="taxmod-detail-pane" style="' . $pane . ';padding-right:.6em">'
+            . $this->detail($selected, $rows, $root)
+            . '</div></td>'
             . '</tr></table>';
 
         return $html . '</div>';
-    }
-
-    /**
-     * Make the tree rows short.
-     *
-     * ⚠️ **The height was never the renderer's.** The owner asked whether adjusting the node
-     * renderer would do it — it would not: a row is tall because WordPress's `.button` is about
-     * thirty pixels and every row carries two or three. The icon adds a few pixels; the buttons add
-     * the rest. **So this is a boundary concern, and one small block of CSS is all of it.**
-     *
-     * ⚠️ *Scaffolding, and deliberately inline* ([D-344](../../../docs/NewConcept/90-decision-log.md)):
-     * a stylesheet to enqueue and unregister would outlive the screen it is here to shrink.
-     */
-    private function tightRows(): string
-    {
-        return '<style>'
-            . '.taxmod-tree{font-size:15px}'
-            . '.taxmod-tree td,.taxmod-tree th{padding:2px 8px;line-height:1.5}'
-            // The glyphs on the buttons and the node's own icon at the same size — one visual scale
-            // for the row, with the line height held down so it stays flat.
-            . '.taxmod-tree .button{min-height:0;height:auto;padding:0 .3em;line-height:1.2;font-size:17px}'
-            . '.taxmod-tree form{gap:.2em!important}'
-            . '.taxmod-tree .dashicons{font-size:17px;width:17px;height:17px;line-height:1.2;vertical-align:text-bottom}'
-            // ⚠️ **No box around a row's buttons.** A glyph on its own reads as an action; a border
-            // round each one turns a row into a row of boxes. The hover keeps them findable.
-            . '.taxmod-tree .button{border:0;background:0 0;box-shadow:none}'
-            . '.taxmod-tree .button:hover{background:#f0f0f1;border-radius:3px}'
-            . '.taxmod-tree .button:disabled{background:0 0}'
-            // ⚠️ **The sliding switch: markup from the renderer, paint from here** (`CD-1`). Without
-            // this block it degrades to a plain checkbox rather than to nothing.
-            . '.taxmod-toggle{display:inline-flex;align-items:center;cursor:pointer}'
-            . '.taxmod-toggle-input{position:absolute;opacity:0;width:0;height:0}'
-            . '.taxmod-toggle-track{display:inline-block;position:relative;width:2.4em;height:1.2em;'
-            . 'border-radius:1em;background:#c3c4c7;transition:background .15s}'
-            . '.taxmod-toggle-track.is-on{background:#2271b1}'
-            . '.taxmod-toggle-track.is-fixed{opacity:.6}'
-            . '.taxmod-toggle-knob{position:absolute;top:.15em;left:.15em;width:.9em;height:.9em;'
-            . 'border-radius:50%;background:#fff;transition:left .15s}'
-            . '.taxmod-toggle-track.is-on .taxmod-toggle-knob{left:1.35em}'
-            . '</style>';
     }
 
     // ---------------------------------------------------------------- the tree
@@ -220,7 +240,13 @@ final class NodesScreen
             $hrefs,
             $submits,
             $toggles,
-            $selected?->id
+            $selected?->id,
+            \Taxmod\Core\Renderer\TreeNodeRenderer::NAME,
+            '',
+            \Taxmod\Core\Renderer\Level::Admin,
+            // ⚠️ **A circumstance, read from the option** (D-389) — the write count is a diagnostic
+            // and waits for developer mode, which is now a fact about the installation.
+            $this->inDeveloperMode()
         )->markup;
     }
 
@@ -248,20 +274,26 @@ final class NodesScreen
         // keeps the row to what is used constantly, and the variant that takes a subtree with it
         // deserves the explanation it has over there.
         return [
-            new Control('do', 'add_child_here', '+', __('Add a child under this node', 'taxmod')),
-            new Control('do', 'up', '↑', __('Move up among its siblings', 'taxmod'), ! $row['isFirst']),
-            new Control('do', 'down', '↓', __('Move down among its siblings', 'taxmod'), ! $row['isLast']),
+            // ⚠️ Icons rather than characters for the same reason as the bin (D-380): `+`, `↑` and `↓`
+            // are text glyphs whose weight follows the body font, so they read as hairlines beside a
+            // 17px icon. A Dashicon takes `font-size` and `color` and comes out solid.
+            new Control('do', 'add_child_here', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2'),
+            new Control('do', 'up', __('Up', 'taxmod'), __('Move up among its siblings', 'taxmod'), ! $row['isFirst'], icon: 'arrow-up-alt2'),
+            new Control('do', 'down', __('Down', 'taxmod'), __('Move down among its siblings', 'taxmod'), ! $row['isLast'], icon: 'arrow-down-alt2'),
             new Control(
                 'do',
                 'trash_node',
-                '🗑',
+                // ⚠️ The **label** stays a word even though an icon is drawn — it is the accessible
+                // name, and `🗑` was replaced because an emoji outline cannot be thickened (D-380).
+                __('Park', 'taxmod'),
                 __('Park this node; its children move up to its parent', 'taxmod'),
                 // A protected node cannot be parked (D-194) — the core refuses it anyway.
                 ! $this->framework->isProtected($row['node']),
                 // ⚠️ It takes something away, and the renderer paints that. *Parking is not
                 // destroying — the trash is a place (D-123) — but it is the one act in this row
                 // that removes a node from where it was.*
-                destroys: true
+                destroys: true,
+                icon: 'trash'
             ),
         ];
     }
@@ -287,14 +319,32 @@ final class NodesScreen
     /**
      * @param list<array{0: string, 1: string, 2: string}> $buttons value, label, title
      */
+    /**
+     * A little form of acts.
+     *
+     * ⚠️ **Composed through {@see ControlMarkup} like every other button on the screen**, so an
+     * icon-only act is marked as one and no surface has to guess from its contents. *Four renderers
+     * already went through that door; this was the last place still writing `<button>` by hand, and it
+     * is why the toolbar's icons came back with boxes round them.*
+     *
+     * @param list<array{0: string, 1: string, 2: string, 3?: string, 4?: bool}> $buttons
+     *        value · label · title · optional Dashicon key · optional *destroys*
+     */
     private function form(int $id, array $buttons, string $extra = ''): string
     {
-        $html = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em;flex-wrap:wrap;align-items:center">'
+        $html = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="taxmod-acts">'
             . $this->hidden($id) . $extra;
 
-        foreach ($buttons as [$value, $label, $title]) {
-            $html .= '<button class="button" name="do" value="' . esc_attr($value) . '" title="' . esc_attr($title) . '">'
-                . $label . '</button>';
+        foreach ($buttons as $button) {
+            $html .= ControlMarkup::button(new Control(
+                'do',
+                $button[0],
+                $button[1] === '' ? $button[2] : $button[1],
+                $button[2],
+                true,
+                $button[4] ?? false,
+                $button[3] ?? ''
+            ));
         }
 
         return $html . '</form>';
@@ -357,49 +407,87 @@ final class NodesScreen
         // [PageSlot](../../../src/Core/Renderer/PageSlot.php) holds the order). The screen decides
         // **what**, never **where** — that is the whole point of the order being decided.
         $sections = [
+            // ⚠️ **No heading, because this band becomes a toolbar.** The owner: *«what can be
+            // done» can go too — we put a toolbar there with save, delete, move in it.* A heading over
+            // a row of buttons names what the buttons already say; a toolbar names itself by being
+            // one. *Only the heading goes today — the toolbar itself is on the roadmap beside
+            // page-level saving, because what «save» means at page scope is not decided yet.*
+            // ⚠️ **One row, and the acts carry icons** — the owner: *the toolbar is not quite perfect
+            // yet, it should be one line, icons for move and trash … the select would have to be the
+            // tree chooser.* It was three lines because it was three separate `<form>`s stacked; they
+            // are still three forms (three different acts, three different fields) but laid out as one
+            // strip, which is what a toolbar is.
+            //
+            // ⚠️ **`outdent` for *trash node only*, and that is not decoration.** The act promotes the
+            // children one level up — *outdent* means exactly that, so the glyph says what happens
+            // rather than merely looking destructive. The **branch** act gets the bin, because the
+            // whole subtree goes.
             PageSlot::Acts->value => new Section(
-                __('What can be done', 'taxmod'),
-                $this->form(
+                '',
+                '<div class="taxmod-toolbar">'
+                . $this->form(
                     $selected->id,
-                    [['add_child', esc_html__('Add a child', 'taxmod'), __('Add a child under this node', 'taxmod')]],
-                    '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required style="flex:1">'
+                    [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
+                    '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required class="taxmod-toolbar-name">'
                 )
+                // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is
+                // plain HTML — a button may name the form it belongs to — so nothing needs scripting
+                // and the panel keeps its own single form.
+                . '<button class="button button-primary taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
+                . ' name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '"'
+                . ' title="' . esc_attr__('Save every setting on this page', 'taxmod') . '">'
+                // ⚠️ **The diskette, not `dashicons-saved`** — that one is a **tick**, and the owner
+                // spotted it at once. One sign for saving on the whole screen.
+                . '<span aria-label="' . esc_attr__('Save', 'taxmod') . '">💾</span></button>'
                 . $this->form(
                     $selected->id,
                     [
-                        ['move', esc_html__('Move', 'taxmod'), __('Hang it under the chosen node', 'taxmod')],
-                        ['trash', esc_html__('Trash branch', 'taxmod'), __('Trash this node and everything under it', 'taxmod')],
-                        ['trash_node', esc_html__('Trash node only', 'taxmod'), __('Its children move up to its parent, and lose what they inherited from it', 'taxmod')],
+                        ['move', '', __('Hang it under the chosen node', 'taxmod'), 'move'],
+                        ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
+                        ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                     ],
                     $this->parentChooser($selected, $rows, $root)
                 )
+                . '</div>'
             ),
-
-            // ⚠️ *What cannot be changed*, which R20a calls a band of chips: the path is derived
-            // from the edges and never edited ([D-014](../../../docs/NewConcept/90-decision-log.md)).
-            PageSlot::Fixed->value => new Section(
-                __('What cannot be changed', 'taxmod'),
-                '<code>' . esc_html($selected->path) . '</code>'
-            ),
-
+            // ⚠️ **The path rides behind the name and has no band of its own.** R20a calls the fixed
+            // things *a band of chips*, and a chip is what this is — derived from the edges and never
+            // edited ([D-014](../../../docs/NewConcept/90-decision-log.md)). *The owner, seeing a
+            // heading over a single read-only string: `push the path behind the name and leave out a
+            // few headings`. A band for one chip was a frame around a frame.*
             PageSlot::Name->value => new Section(
-                __('Name', 'taxmod'),
+                '',
                 $this->form(
                     $selected->id,
                     [['rename', esc_html__('Rename', 'taxmod'), __('Give it another name', 'taxmod')]],
                     '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required style="flex:1">'
+                    // ⚠️ Inside the same row, so the chip reads as belonging to the name rather than
+                    // as a line of its own. Its `title` says what it is, since a bare dotted number
+                    // is the sort of thing that gets copied somewhere as if it meant something.
+                    . '<code class="taxmod-path" title="'
+                    . esc_attr__('Where it hangs in the tree. Derived from the edges and never edited.', 'taxmod')
+                    . '">' . esc_html($selected->path) . '</code>'
                 )
             ),
 
             // ⚠️ **Labels sit in `display` and R20a names no slot for them** — an assumption, and
             // it is written down in `PageSlot` rather than hidden here.
             PageSlot::Display->value => new Section(
-                __('Display', 'taxmod'),
-                $this->settingsPanel($selected) . $this->labelsPanel($selected)
+                '',
+                // ⚠️ **The icon leads the band, and it is not a setting row** (D-382). The owner:
+                // *the icon looks out of place in the settings, it is only a property or mark of the
+                // node.* He is right, and the code had already said so — its control had to be lifted
+                // out of the panel because a form cannot sit inside a form, which I had dismissed as
+                // an HTML limitation. `PageSlot::Display`'s own docblock places labels here because *a
+                // label is what a thing is called*; an icon is how it is **marked**, the same band.
+                $this->labelsPanel($selected) . $this->settingsPanel($selected)
             ),
 
+            // ⚠️ **No band heading, because the panel carries its own** — with the `?` on it. Two
+            // identical headings, one above the other, was the duplication the owner's *leave out a
+            // few headings* was pointing at even where he had not counted them.
             PageSlot::Attributes->value => new Section(
-                __('Attributes', 'taxmod'),
+                '',
                 $this->attributes($selected, $rows)
             ),
         ];
@@ -407,9 +495,11 @@ final class NodesScreen
         // ⚠️ **Records are outside the frame, deliberately.** R20a's order is about the **model** —
         // what a node *is* — and says nothing about a panel of entered data. Putting them in a slot
         // would be inventing one.
+        // ⚠️ *The same box as a band, though it is not one* — it sits outside the frame by the note
+            // above, and looking like the odd one out would suggest that was an accident (D-392).
         return '<h2>' . esc_html($selected->name) . '</h2>'
             . $this->rendering->nodeAsPage($selected, $sections)->markup
-            . $this->recordsPanel($selected);
+            . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>';
     }
 
     /**
@@ -423,21 +513,32 @@ final class NodesScreen
      */
     private function parentChooser(Node $node, array $rows, Node $root): string
     {
-        $options = '<option value="' . (int) $root->id . '">' . esc_html__('— top level —', 'taxmod') . '</option>';
+        // ⚠️ **A tree chooser and no longer a flat `<select>`** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner, looking at eighty entries prefixed with middle dots: *the select would have to be
+        // the tree chooser.* **It also could not say no:** every branch root was in the list, and
+        // `Model`, `Primitives` and `Label roles` are not sensible parents for a subject area.
+        //
+        // ⚠️ *Its own subtree is now **barred** rather than **omitted** — the cell draws such a row as
+        // text with no radio. Leaving it out tore a hole in the hierarchy, because a child of an
+        // impossible parent can be a perfectly good one.*
+        $barred = [];
 
         foreach ($rows as $row) {
             $candidate = $row['node'];
 
             if ($candidate->id === $node->id || $candidate->isDescendantOf($node)) {
-                continue;
+                $barred[] = $candidate->id;
             }
-
-            $options .= '<option value="' . (int) $candidate->id . '">'
-                . esc_html(str_repeat('· ', $row['depth']) . $candidate->name)
-                . '</option>';
         }
 
-        return '<select name="target" style="flex:1">' . $options . '</select>';
+        return $this->rendering->chooserFor(
+            $rows,
+            'target',
+            $node->parentId(),
+            $barred,
+            $this->labels->of($node, SeededRole::Form, $this->localeFromRequest()),
+            __('Nothing here can be a parent.', 'taxmod')
+        )->markup;
     }
 
     /**
@@ -452,45 +553,93 @@ final class NodesScreen
      */
     private function attributes(Node $selected, array $rows): string
     {
-        $body  = '';
         $edges = $this->editor->attributesOf($selected->id);
+        $body  = '';
 
-        // Two queries for every attribute's whole chain, however many there are (`CD-7`).
-        $resolved = $this->settings->resolveForUseSites($edges);
-        $targets  = $this->editor->targetsOf($edges);
+        // ⚠️ **Through the renderer, and the acts arrive as **facts** rather than as markup**
+        // ([D-376](../../../docs/NewConcept/90-decision-log.md)). The boundary knows the nonce, the
+        // URL, the words and what is allowed; the renderer decides the shape of the row. That is the
+        // difference between `R1` being followed and a renderer that concatenates somebody's HTML.
+        $actions = [];
+        $submits = [];
 
         foreach ($edges as $edge) {
-            $target = $targets[$edge->toId] ?? null;
-            $here   = $edge->fromId === $selected->id;
+            $own = $edge->fromId === $selected->id;
 
-            $body .= '<tr>'
-                . '<td><strong>' . esc_html($edge->name) . '</strong></td>'
-                . '<td>' . esc_html($target?->name ?? '—') . '</td>'
-                . '<td><code>' . esc_html($edge->kind->value) . '</code></td>'
-                . '<td>' . ($here
-                    ? esc_html__('own', 'taxmod')
-                    : '<em>' . esc_html__('inherited', 'taxmod') . '</em>')
-                . '</td>'
-                . '<td>' . $this->multiplicityControl($edge, $resolved[$edge->id] ?? [], $here) . '</td>'
+            $actions[$edge->id] = [
+                // ⚠️ The two words the core cannot make ([OQ-087](../../../docs/NewConcept/91-open-questions.md)):
+                // the text domain is the boundary's (`AR-2`), so they travel with the controls.
+                new Control('word:own', '', __('own', 'taxmod')),
+                new Control('word:inherited', '', __('inherited', 'taxmod')),
+                new Control('word:settings', '', __('Settings of this use site', 'taxmod')),
+                // ⚠️ **One button for the whole row, not one per value** — the owner's ask for the
+                // settings side applies here for the same reason: a row with two independent submits
+                // has no answer to *what does Enter do*. It writes the name and the multiplicity
+                // together, and each only where it actually changed.
+                new Control(
+                    'do',
+                    'save_attribute',
+                    // The owner likes the diskette and it stays the sign for saving everywhere.
+                    '💾',
+                    __('Save this attribute — its name and how often it may occur', 'taxmod'),
+                    $own
+                ),
                 // ⚠️ **Only an own attribute can be removed here.** An inherited one belongs to the
                 // ancestor that declared it; removing it from a descendant would be
                 // [D-155](../../../docs/NewConcept/90-decision-log.md)'s *moved down* by another
-                // route, which is a different act and not this button.
-                . '<td>' . ($here
-                    ? $this->form(
-                        $selected->id,
-                        [['remove_attribute', '🗑', __('Remove this attribute — parked, not purged', 'taxmod')]],
-                        '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
-                    )
-                    : '')
-                . '</td>'
-                . '</tr>';
+                // route, which is a different act and not this button. **Greyed rather than absent**
+                // (D-370), so the row keeps its shape.
+                new Control(
+                    'do',
+                    'remove_attribute',
+                    __('Remove', 'taxmod'),
+                    __('Remove this attribute — parked, not purged', 'taxmod'),
+                    $own,
+                    true,
+                    'trash'
+                ),
+            ];
+
+            $submits[$edge->id] = new Submission(
+                admin_url('admin-post.php'),
+                [
+                    'action'         => self::ACTION,
+                    'id'             => (string) $selected->id,
+                    'edge'           => (string) $edge->id,
+                    'setting_key'    => SettingKey::Multiplicity->value,
+                    '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                ]
+            );
         }
 
-        $html  = '<h3>' . esc_html__('Attributes', 'taxmod') . '</h3>';
-        $html .= '<p class="description">'
-            . esc_html__('The kind is never chosen — it is read off the branch the target sits in.', 'taxmod')
-            . '</p>';
+        $settingSubmits = [];
+
+        foreach ($edges as $edge) {
+            $settingSubmits[$edge->id] = $this->settingSubmission($edge->id, $selected->id);
+        }
+
+        $attributeRows = $this->rendering->attributesFor(
+            $edges,
+            $selected->id,
+            $actions,
+            $submits,
+            self::NAME_FIELD,
+            self::SETTING_FIELD,
+            '',
+            \Taxmod\Core\Renderer\Level::Admin,
+            $this->settingActs(),
+            $settingSubmits,
+            __('Settings of this use site', 'taxmod')
+        );
+
+        foreach ($attributeRows as $row) {
+            $body .= $row->result->markup;
+        }
+
+        $html = $this->heading(
+            __('Attributes', 'taxmod'),
+            __('What this node has. «Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod')
+        );
 
         $html .= $body === ''
             ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
@@ -504,43 +653,6 @@ final class NodesScreen
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
         return $html . $this->removedAttributes($selected) . $this->attributeForm($selected, $rows);
-    }
-
-    /**
-     * How often this attribute may occur — four constants, on the edge (D-351).
-     *
-     * ⚠️ **Only offered on an attribute the node owns.** An inherited attribute belongs to an
-     * ancestor, and where a *subtype's* narrowing of it would hang is not decided
-     * ([OQ-086](../../../docs/NewConcept/91-open-questions.md)). Offering a control that writes
-     * to the ancestor's edge would change it for every sibling too — quietly, which is the worst
-     * way to be wrong.
-     *
-     * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $resolved
-     */
-    private function multiplicityControl(\Taxmod\Core\Model\Relation $edge, array $resolved, bool $isOwn): string
-    {
-        $current = $resolved[SettingKey::Multiplicity->value] ?? null;
-        $now     = $current?->value->text;
-
-        if (! $isOwn) {
-            return '<em>' . esc_html($now ?? '—') . '</em>';
-        }
-
-        $options = '';
-
-        foreach (Multiplicity::cases() as $one) {
-            $options .= '<option value="' . esc_attr($one->value) . '"'
-                . selected($now, $one->value, false) . '>' . esc_html($one->notation()) . '</option>';
-        }
-
-        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:flex;gap:.3em">'
-            . $this->hidden($edge->fromId)
-            . '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
-            . '<select name="setting_value">' . $options . '</select>'
-            . '<button class="button" name="do" value="put_multiplicity" title="'
-            . esc_attr__('It may only be narrowed to one it contains — 0..1 and 1..* contain neither', 'taxmod')
-            . '">' . esc_html__('Set', 'taxmod') . '</button>'
-            . '</form>';
     }
 
     /**
@@ -624,194 +736,54 @@ final class NodesScreen
 
 
     /**
-     * What the chain resolves to for this node, and where each value came from.
+     * The node's settings — **the same panel the attribute row shows**.
      *
-     * ⚠️ **The values are now **drawn**, which is [R20a](../../../docs/NewConcept/30-renderer.md)
-     * applied where it had not been.** *The settings side is a series of attributes rendered under
-     * the edit purpose* — and it printed key and value as text because nothing said what type a
-     * setting's own value has. {@see \Taxmod\Core\Model\SettingKey::typeFor()} says it, so the same
-     * renderers that draw a record draw this and there is no second way to draw a field.
+     * ⚠️ **One panel, and the owner said it twice.** First *the settings under the attribute have to
+     * look exactly like the settings in the node*, then, having compared them: *take the attribute
+     * view, it looks better.* So the hand-built table that stood here is gone and
+     * {@see \Taxmod\Core\Renderer\SettingsRenderer} draws both. **What was wrong was not the look but
+     * that there were two of them** — `R1` allows one way to draw a thing, and the last time two
+     * existed the multiplicity control quietly posted to a field nobody read ([D-376](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * ⚠️ **The frame is still scaffolding** ([D-344](../../../docs/NewConcept/90-decision-log.md)) —
-     * a table that gets thrown away. What is not thrown away is the drawing, because it does not
-     * happen here.
+     * ⚠️ *The icon row keeps its own control, because every tile has to submit the icon it stands
+     * for and a form may not sit inside another form. It is placed **after** the panel rather than
+     * inside it — one exception, visible, instead of a special case threaded through the renderer.*
      */
     private function settingsPanel(Node $selected): string
     {
-        $chain    = $this->settings->chainFor($selected);
-        $resolved = $this->settings->resolve($chain);
+        $resolved = $this->settings->resolve($this->settings->chainFor($selected));
 
         ksort($resolved);
 
-        $body = '';
+        $panel = $this->rendering->settingsPanelFor(
+            $selected,
+            $resolved,
+            $this->settingActs(),
+            $this->settingSubmission($selected->id, $selected->id),
+            Purpose::Edit,
+            self::SETTING_FIELD,
+            '',
+            \Taxmod\Core\Renderer\Level::Admin,
+            [],
+            // ⚠️ **Which icons exist is a boundary fact** (`CD-1`) — the core cannot list Dashicons —
+            // so the set is handed in and the chooser places it (D-390). *The owner: `with the
+            // settings simply do a group by category and write it above`; the icon then needs no row
+            // of its own at all, which is what it had been given as a workaround.*
+            [SettingKey::Icon->value => $this->iconChoices()]
+        );
 
-        foreach ($this->rendering->settingsFor($selected, $resolved, Purpose::Edit, self::SETTING_FIELD) as $row) {
-            $setting = $row->setting;
+        $html = $this->heading(
+            __('Settings', 'taxmod'),
+            __('Everything that can be set here, whether or not anybody has. A value not set here is inherited from further up — the column on the right says where it came from.', 'taxmod')
+        );
 
-            // ⚠️ Three states, and they must look different (D-266): set here, inherited from a
-            // link of the chain, and **nobody has said** — the last being a key that *applies* to
-            // this type but that nothing has written, which is why it appears at all.
-            $origin = match (true) {
-                $setting->setHere            => esc_html__('here', 'taxmod'),
-                $setting->fromOwnerId === 0  => '<em class="description">' . esc_html__('not defined', 'taxmod') . '</em>',
-                default                      => '<em>' . esc_html(sprintf(
-                    /* translators: %d is the id of the node or edge the value came from. */
-                    __('from #%d', 'taxmod'),
-                    $setting->fromOwnerId
-                )) . '</em>',
-            };
-
-            // ⚠️ **The control sits in the row, and the bottom form is gone.** The owner, twice:
-            // *I would expect to make all settings simply in the list and not have to select
-            // something at the bottom.* It became possible the moment the table started listing
-            // every **applicable** key rather than only the written ones — a chooser for the key
-            // has nothing left to choose.
-            $acts = [['put_setting', esc_html__('Set', 'taxmod'), __('Write it here; a bounding setting may only be narrowed', 'taxmod')]];
-
-            if (! $row->shape->isAChoice()) {
-                $acts[] = ['empty_setting', esc_html__('Nothing', 'taxmod'), __('Deliberately nothing here — later changes above will not arrive', 'taxmod')];
-            }
-
-            if ($setting->setHere) {
-                $acts[] = ['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')];
-            }
-
-            // ⚠️ **The icon row is built apart, because its control is its own form.** Every tile
-            // has to submit the icon it stands for, so the action cannot ride in a button name —
-            // and a form may not sit inside another form. *Reset still applies and is added beside.*
-            $cell = $row->key === SettingKey::Icon->value
-                ? $this->iconChoice($row, $selected->id)
-                    . ($setting->setHere ? $this->form($selected->id, [
-                        ['reset_setting', esc_html__('Reset', 'taxmod'), __('Make it inherited again — not the same as setting it to nothing', 'taxmod')],
-                    ], '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">') : '')
-                // ⚠️ Escaped by the renderer already (`RenderResult::escape()`); escaping again
-                // would print the tags instead of the control. The undrawn rows go through
-                // `esc_html` in the ordinary way.
-                : $this->form(
-                    $selected->id,
-                    $acts,
-                    '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
-                    . '<span style="flex:1">' . $this->settingCell($row) . '</span>'
-                );
-
-            $body .= '<tr>'
-                . '<td><code>' . esc_html($row->key) . '</code></td>'
-                . '<td>' . $cell . '</td>'
-                . '<td>' . $origin . '</td>'
-                . '</tr>';
-        }
-
-        $html  = '<h3>' . esc_html__('Settings', 'taxmod') . '</h3>';
-        $html .= '<p class="description">'
-            . esc_html__('Every setting that applies to this node, whether or not anybody has written one. Each value is drawn by the renderer its key asks for; the chain runs installation → model root → ancestors → node.', 'taxmod')
-            . '</p>';
-
-        $html .= $body === ''
+        $html .= $panel->markup === ''
             ? '<p><em>' . esc_html__('Nothing set anywhere along the chain.', 'taxmod') . '</em></p>'
-            : '<table class="wp-list-table widefat striped"><thead><tr>'
-                . '<th style="width:9em">' . esc_html__('Key', 'taxmod') . '</th>'
-                . '<th>' . esc_html__('Value', 'taxmod') . '</th>'
-                . '<th style="width:8em">' . esc_html__('From', 'taxmod') . '</th>'
-                . '</tr></thead><tbody>' . $body . '</tbody></table>';
+            : $panel->markup;
 
-        return $html . $this->settingForm($selected);
+        return $html;
     }
 
-    /**
-     * One setting's value in the table — drawn where it can be, and said plainly where it cannot.
-     *
-     * ⚠️ **Three reasons a row is undrawn, and they are different things.** Saying *raw* for all
-     * three would hide which one applies, and the interesting one is the last: a `default` on a
-     * node that is not a simple data type has **no type to borrow**, which is a fact about the
-     * model rather than a missing feature.
-     */
-    private function settingCell(RenderedSetting $row): string
-    {
-        if ($row->wasDrawn()) {
-            return $row->result->markup;
-        }
-
-        $why = match (true) {
-            ! $row->isEngineOwned() => __('a key of your own — the engine knows no type for it', 'taxmod'),
-            $row->shape->isAChoice() => __('chosen from a set — its own control is below', 'taxmod'),
-            default => __('this node is not a simple data type, so there is no type to borrow', 'taxmod'),
-        };
-
-        return '<code>' . esc_html($row->setting->value->describe()) . '</code>'
-            . ' <span class="description">' . esc_html($why) . '</span>';
-    }
-
-    /**
-     * ⚠️ **There is no form for adding a setting any more, and both halves of that were the
-     * owner's.** First the dropdown of engine keys went: *I would expect to make all settings
-     * simply in the list and not have to select something at the bottom* — which became possible
-     * once the table listed every **applicable** key rather than only the written ones
-     * ({@see \Taxmod\Core\Model\SettingKey::applyingTo()}), leaving a key chooser nothing to
-     * choose. Then the box for inventing a key of one's own went too: *the idea of making your own
-     * keys is nice, but that is what we have attributes using data types for.*
-     *
-     * ⚠️ **He is right, and this file was the evidence.** The free-key row is the only one that
-     * cannot be drawn — nothing knows its type — and a thing that can only ever be a raw text box
-     * in a typed system is a thing people will put data in. **The test is whether a record answers
-     * it:** if it does, it is an **attribute**, with a type, a renderer, labels and validation; if
-     * it does not, it is configuration about the **model** ([D-364](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * The mechanism stays for the second case — `cols` and `rows` are exactly that — but it is
-     * written by whoever writes renderers, not offered as a gesture beside the real settings.
-     * *A free key that is already stored still gets its row; what is gone is the invitation.*
-     */
-    /**
-     * The icons to pick from, **shown as icons**.
-     *
-     * ⚠️ **Not a `<select>`, and that is forced rather than chosen.** The owner: *the icon should
-     * be visible in the list so one knows what one is picking* — and an `<option>` cannot show one.
-     * Its content is plain text and browsers ignore styling inside it, so an icon font never paints
-     * there. **A grid of buttons is the only control that shows what it offers**, and it needs no
-     * JavaScript: each button submits its own key.
-     *
-     * ⚠️ *«none» writes **deliberately nothing** — a node that shows no icon although its parent
-     * has one. Returning to inherited is the **Reset** button beside the row; the two are different
-     * acts ([D-266](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    /**
-     * The icon as a `<select>` whose options **show** the icon.
-     *
-     * ⚠️ **I claimed this was impossible and it is not.** An `<option>` cannot hold HTML — but
-     * Dashicons is a **font**, so the glyph goes in as a *character* and the option paints it once
-     * `font-family` names the font. The stack is `dashicons, sans-serif`: the font defines glyphs
-     * only in the private-use area, so the icon comes from it and the name beside it falls through
-     * to the normal face.
-     *
-     * ⚠️ **The key-to-glyph map is read out of WordPress's own `dashicons.css`, never written down
-     * here.** A hardcoded table would be a second copy of somebody else's data, wrong the first
-     * time an icon moves — and `CD-1` puts *reading a WordPress file* exactly here, at the boundary.
-     */
-    private function iconChoice(RenderedSetting $row, int $nodeId): string
-    {
-        $chosen  = (string) ($row->setting->value->text ?? '');
-        $glyphs  = $this->dashiconGlyphs();
-        $options = '<option value="">' . esc_html__('— no icon —', 'taxmod') . '</option>';
-
-        foreach (self::ICONS as $key) {
-            $glyph = $glyphs[$key] ?? '';
-
-            $options .= '<option value="' . esc_attr($key) . '"'
-                . ($key === $chosen ? ' selected' : '') . '>'
-                . esc_html(($glyph === '' ? '' : $glyph . '  ') . $key)
-                . '</option>';
-        }
-
-        // ⚠️ *Its own form, because the row's form uses button names for its actions and this
-        // control has to submit a value of its own.*
-        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"'
-            . ' style="display:flex;gap:.4em;align-items:center">'
-            . $this->hidden($nodeId)
-            . '<input type="hidden" name="setting_key" value="' . esc_attr($row->key) . '">'
-            . '<select name="' . esc_attr(self::SETTING_FIELD . '[' . $row->key . ']') . '"'
-            . ' style="font-family:dashicons,sans-serif;font-size:1.1em">' . $options . '</select>'
-            . '<button class="button" name="do" value="put_setting">' . esc_html__('Set', 'taxmod') . '</button>'
-            . '</form>';
-    }
 
     /**
      * Every Dashicon key with its glyph, read out of the stylesheet WordPress ships.
@@ -847,11 +819,6 @@ final class NodesScreen
         }
 
         return $glyphs;
-    }
-
-    private function settingForm(Node $selected): string
-    {
-        return $this->rendererChoice($selected);
     }
 
     /**
@@ -900,12 +867,19 @@ final class NodesScreen
 
 
     /**
-     * What this node is called in each seeded role — resolved, with the chain doing its work.
+     * What the node is called — **through the renderer**, and enterable.
      *
-     * ⚠️ **A diagnostic like the settings panel**: it prints the resolved text and whether it
-     * came from a stored label or fell through to the node's own name. The real editor offers
-     * the roles beside the name, which is what keeps them filled at all (D-196) — and it
-     * arrives with the renderers.
+     * ⚠️ **The third hand-built panel to go** ([D-384](../../../docs/NewConcept/90-decision-log.md)),
+     * after the attribute table and the settings panel. It printed `esc_html` into a table and had no
+     * way to **enter** anything: every text went through a role-plus-locale form at the bottom, which
+     * is the *select something at the bottom* the owner had already had removed once from the settings
+     * side.
+     *
+     * ⚠️ **His layout, and each part of it earns its place:** the locale is chosen **once** at the top,
+     * because a person works in a language and not in a language per field; the short roles share one
+     * line because they hold words; `help` gets its own row because it holds a sentence *that doubles
+     * as the tooltip and ends the chain* ([D-209](../../../docs/NewConcept/90-decision-log.md)); and a
+     * blank line marks the seam, which is the one distinction this panel makes.
      */
     private function labelsPanel(Node $selected): string
     {
@@ -913,59 +887,131 @@ final class NodesScreen
         $stored = [];
 
         foreach ($this->labels->storedFor($selected->id) as $label) {
-            $stored[$label->roleId . "\0" . $label->locale] = $label->text;
+            if ($label->path === '') {
+                $stored[$label->roleId . "\0" . $label->locale] = $label->text;
+            }
         }
 
-        $body = '';
+        $slots = [];
 
         foreach (SeededRole::cases() as $role) {
-            $roleId  = $this->framework->roleId($role);
-            $written = $stored[$roleId . "\0" . $locale] ?? null;
+            $roleId = $this->framework->roleId($role);
 
-            $body .= '<tr>'
-                . '<td><code>' . esc_html($role->value) . '</code></td>'
-                . '<td>' . esc_html($this->labels->of($selected, $role, $locale)) . '</td>'
-                . '<td>' . ($written !== null
-                    ? esc_html__('stored', 'taxmod')
-                    : '<em>' . esc_html__('fell through', 'taxmod') . '</em>')
-                . '</td>'
-                . '<td>' . ($role->translatableByDefault()
+            $slots[] = new LabelSlot(
+                $role->value,
+                // ⚠️ What the chain answers — another locale, `help`, and in the end the node's own
+                // name (D-020). It becomes the field's placeholder, so an empty box reads as *nothing
+                // is stored here* rather than as *this has no name*.
+                $this->labels->of($selected, $role, $locale),
+                $stored[$roleId . "\0" . $locale] ?? null,
+                self::LABEL_FIELD . '[' . $role->value . ']',
+                // ⚠️ `help` is the long one, and that is read off the role rather than off a list of
+                // names in this method — a sixth role lands somewhere sensible by itself (`CD-9`).
+                $role === SeededRole::Help,
+                $role->translatableByDefault(),
+                $role->translatableByDefault()
                     ? ''
-                    : '<span title="' . esc_attr__('A symbol is the same everywhere; translating it invites a wrong entry.', 'taxmod') . '">'
-                        . esc_html__('not translated by default', 'taxmod') . '</span>')
-                . '</td>'
-                . '</tr>';
+                    : __('the same in every language', 'taxmod')
+            );
         }
 
-        $html  = '<h3>' . esc_html__('Labels', 'taxmod') . '</h3>';
-        $html .= '<p class="description">'
-            . esc_html(sprintf(
-                /* translators: %s is a locale code, or the word for none. */
-                __('Chain: role → help → the node\'s own name. Locale: %s', 'taxmod'),
-                $locale === '' ? __('neutral', 'taxmod') : $locale
-            ))
-            . '</p>';
+        $html = $this->heading(
+            __('Labels', 'taxmod'),
+            __('What this node is called, in the language chosen on the left. Leave a field empty and the grey text is what will be shown instead — in the end, the node\'s own name.', 'taxmod')
+        );
 
-        $html .= '<table class="wp-list-table widefat striped"><thead><tr>'
-            . '<th style="width:6em">' . esc_html__('Role', 'taxmod') . '</th>'
-            . '<th>' . esc_html__('Shows as', 'taxmod') . '</th>'
-            . '<th style="width:7em">' . esc_html__('Source', 'taxmod') . '</th>'
-            . '<th></th>'
-            . '</tr></thead><tbody>' . $body . '</tbody></table>';
+        return $html . $this->rendering->labelsPanelFor(
+            $selected,
+            $slots,
+            [new Control('do', LabelsRenderer::WRITE, '💾', __('Write every text for this locale', 'taxmod'))],
+            new Submission(
+                admin_url('admin-post.php'),
+                [
+                    'action'        => self::ACTION,
+                    'id'            => (string) $selected->id,
+                    'label_locale'  => $locale,
+                    '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                ]
+            ),
+            ['locale' => new Section(__('Locale', 'taxmod'), $this->localePicker($locale, $selected->id))],
+            Purpose::Edit,
+            $locale
+        )->markup;
+    }
+
+    /**
+     * The locale, switched without carrying anything along.
+     *
+     * ⚠️ **A `GET` and not a form of its own inside the panel**, because switching language is
+     * **navigation**: it must not save half-typed entries, and the chosen locale then survives in the
+     * URL the way the folded set does ([OQ-082](../../../docs/NewConcept/91-open-questions.md)).
+     *
+     * ⚠️ *The offered set is the neutral row plus whatever WordPress has installed — a boundary fact
+     * (`CD-1`), which is why it is composed here and handed in as a finished control.*
+     */
+    private function localePicker(string $current, int $nodeId): string
+    {
+        // ⚠️ **One locale *is* the neutral one, rather than «neutral» being a choice of its own**
+        // ([D-387](../../../docs/NewConcept/90-decision-log.md)). The owner: *neutral is probably too
+        // much — we declare `en_US` as neutral in the admin config.* The empty `locale` column stays
+        // exactly what it was — **a row that is valid everywhere** — but a person no longer picks it
+        // as a language, because it is not one.
+        //
+        // ⚠️ *Which locale plays the part belongs on an installation screen that does not exist yet —
+        // the same hole `developer` sits in ([OQ-039](../../../docs/NewConcept/91-open-questions.md)).
+        // Until it does, the **site's own language** plays it, which is admin configuration in
+        // WordPress's own terms and needs nothing invented.*
+        $offered = [];
+
+        foreach (get_available_languages() as $one) {
+            $offered[$one] = $one;
+        }
+
+        // ⚠️ **«default» and not «everywhere», on the owner's word** — *everywhere is odd, default
+        // would be nicer.* He is right: *everywhere* describes the **row**, which is stored without a
+        // locale and therefore valid anywhere; a person choosing a language wants to know which one is
+        // **the** one. *And he is right to be unsure it belongs in the list at all — see the working
+        // list: once the admin page can declare it, this is a fact about the installation and the
+        // picker can simply show the language.*
+        $offered[self::neutralLocale()] = sprintf(
+            /* translators: %s is a locale code, e.g. en_US. */
+            __('%s — default', 'taxmod'),
+            self::neutralLocale()
+        );
+
+        ksort($offered);
 
         $options = '';
 
-        foreach (SeededRole::cases() as $role) {
-            $options .= '<option value="' . esc_attr($role->value) . '">' . esc_html($role->value) . '</option>';
+        foreach ($offered as $value => $shown) {
+            $options .= '<option value="' . esc_attr((string) $value) . '"'
+                // ⚠️ The screen works in `''` where the neutral locale was picked, so the option to
+                // mark is the neutral one — otherwise the picker would show nothing selected on the
+                // very language it is working in.
+                . selected($current === '' ? self::neutralLocale() : $current, (string) $value, false)
+                . '>' . esc_html((string) $shown) . '</option>';
         }
 
-        return $html . $this->form(
-            $selected->id,
-            [['put_label', esc_html__('Set label', 'taxmod'), __('Write it for this role and locale', 'taxmod')]],
-            '<select name="label_role">' . $options . '</select>'
-            . '<input type="text" name="label_locale" value="' . esc_attr($locale) . '" placeholder="' . esc_attr__('locale', 'taxmod') . '" style="width:6em">'
-            . '<input type="text" name="label_text" placeholder="' . esc_attr__('text', 'taxmod') . '" style="flex:1">'
-        );
+        // ⚠️ **A bare `select` that navigates, and no form of its own** — because the owner wants it
+        // on the same line as the short fields (*then we save space*), and those live **inside** the
+        // entry form, where HTML forbids a second one. *It carries no `name`, so it submits nothing
+        // when the entry form is saved: it is a control that moves, not a value that is written.*
+        //
+        // ⚠️ *The cost is honest and small: without scripting it does nothing, so the locale is
+        // reachable only through the URL. The admin screen already depends on scripting for the
+        // Dashicon glyphs and the fold state; a hidden submit button beside it would be a second way
+        // to do one thing, which is what `R1` argues against everywhere else.*
+        $base = add_query_arg(['page' => 'taxmod', 'taxmod_node' => (int) $nodeId], admin_url('admin.php'));
+
+        // ⚠️ The address is built with a marker and the marker is replaced in the browser, so the
+        // locale never has to be spliced into a URL by string arithmetic on either side.
+        $pattern = esc_url_raw(add_query_arg('taxmod_locale', self::LOCALE_MARKER, $base));
+
+        return '<select class="taxmod-locale" style="max-width:100%"'
+            . ' onchange="location.href=' . esc_attr(wp_json_encode($pattern))
+            . '.replace(' . esc_attr(wp_json_encode(self::LOCALE_MARKER))
+            . ',encodeURIComponent(this.value))">'
+            . $options . '</select>';
     }
 
     /**
@@ -1030,11 +1076,42 @@ final class NodesScreen
         }
     }
 
+    /**
+     * Which locale the screen is working in, as the **storage** spells it.
+     *
+     * ⚠️ **The neutral locale maps to the empty column, and that mapping lives here alone**
+     * ([D-387](../../../docs/NewConcept/90-decision-log.md)). The owner: *we declare `en_US` as
+     * neutral in the admin config.* So a person picks a real language, and the one declared neutral
+     * is stored as the **row that is valid everywhere** — which is what an empty `locale` has always
+     * meant ([D-317](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *One place, because a mapping done in two would eventually store `en_US` in one and `''` in
+     * the other, and the two rows would then disagree with nobody able to say which is right.*
+     */
     private function localeFromRequest(): string
     {
-        return isset($_GET['taxmod_locale'])
+        $asked = isset($_GET['taxmod_locale'])
             ? sanitize_text_field(wp_unslash($_GET['taxmod_locale']))
-            : '';
+            : self::neutralLocale();
+
+        return $asked === self::neutralLocale() ? '' : $asked;
+    }
+
+    /**
+     * Which language stands for *everywhere*.
+     *
+     * ⚠️ **The site's own, until there is a screen to declare it on.** An installation posture
+     * belongs on an installation screen and there is none — the same hole `developer` sits in
+     * ([OQ-039](../../../docs/NewConcept/91-open-questions.md)). *Reading `get_locale()` is admin
+     * configuration in WordPress's own terms, so nothing is invented and nothing has to be migrated
+     * when the screen arrives: one function changes.*
+     */
+    private static function neutralLocale(): string
+    {
+        // ⚠️ **Declared on the installation screen now** ([D-397](../../../docs/NewConcept/90-decision-log.md)),
+        // and it still falls back to the site language where nobody has declared one — so an
+        // installation that never opens that screen behaves exactly as it did.
+        return SettingsScreen::neutralLocale();
     }
 
 
@@ -1059,19 +1136,19 @@ final class NodesScreen
         $branch = $this->framework->branchOf($selected);
 
         if ($branch === null || ! $branch->holdsData()) {
-            return '<h3>' . esc_html__('Records', 'taxmod') . '</h3>'
-                . '<p class="description">'
-                . esc_html__('Only things under Model and Compositions have records of their own.', 'taxmod')
-                . '</p>';
+            return $this->heading(
+                __('Records', 'taxmod'),
+                __('Nothing can be entered here. Only nodes under Model and Compositions hold records; a data type or a constant describes something rather than being one.', 'taxmod')
+            );
         }
 
         $attributes = $this->editor->attributesOf($selected->id);
         $records    = $this->data->recordsOf($selected->id);
 
-        $html  = '<h3>' . esc_html__('Records', 'taxmod') . '</h3>';
-        $html .= '<p class="description">'
-            . esc_html__('Every field is drawn by the renderer its type chose. A field marked «no renderer» is a gap, not a style.', 'taxmod')
-            . '</p>';
+        $html = $this->heading(
+            __('Records', 'taxmod'),
+            __('Things entered against this node. Each field looks the way its type says it should; a field marked «no renderer» is missing something, not styled oddly.', 'taxmod')
+        );
 
         $html .= $this->form(
             $selected->id,
@@ -1089,37 +1166,32 @@ final class NodesScreen
                 $held[$value->edgeId] = $value->value;
             }
 
-            // ⚠️ **The form is drawn by a renderer, not built here** (D-098, R46). The screen no
-            // longer decides the order of the fields, which label sits where or what a hidden one
-            // looks like — R75's grouping does, in the core, where the real surface will find it.
-            $fields = $this->rendering->nodeAsForm(
+            // ⚠️ **Through the renderer** (D-393). The screen states the facts — what this record
+            // is called, where a save goes, the nonce — and {@see RecordRenderer} decides the shape.
+            $html .= $this->rendering->recordAsBlock(
                 $selected,
                 $attributes,
                 $held,
-                Purpose::Edit,
-                self::VALUE_FIELD
-            )->markup;
-
-            // ⚠️ **The diagnostic stays, beside the form rather than inside it.** *Which renderer
-            // drew what* is what found four faults today, and it is scaffolding
-            // ([D-344](../../../docs/NewConcept/90-decision-log.md)) — so it sits outside the
-            // rendered markup instead of being woven into it, where it would have to be unpicked.
-            $fields .= $this->drawnBy($this->rendering->fieldsFor($attributes, $held, Purpose::Edit));
-
-            $html .= '<div style="border:1px solid #ddd;padding:.6em;margin:.6em 0">'
-                . '<strong>' . esc_html(sprintf(
+                sprintf(
                     /* translators: 1: record id, 2: the model version it was written against. */
                     __('Record #%1$d · written against version %2$d', 'taxmod'),
                     $record->id,
                     $record->modelVersion
-                )) . '</strong>'
-                . $this->form(
-                    $selected->id,
-                    [['save_record', esc_html__('Save', 'taxmod'), __('Write these values', 'taxmod')]],
-                    '<input type="hidden" name="record_id" value="' . (int) $record->id . '">'
-                    . '<div style="flex:1 0 100%">' . $fields . '</div>'
-                )
-                . '</div>';
+                ),
+                [new Control('do', 'save_record', '💾', __('Write these values', 'taxmod'))],
+                new Submission(
+                    admin_url('admin-post.php'),
+                    [
+                        'action'        => self::ACTION,
+                        'id'            => (string) $selected->id,
+                        'record_id'     => (string) $record->id,
+                        '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                    ]
+                ),
+                self::VALUE_FIELD,
+                $this->drawnBy($this->rendering->fieldsFor($attributes, $held, Purpose::Edit)),
+                $this->inDeveloperMode()
+            )->markup;
         }
 
         return $html;
@@ -1198,8 +1270,22 @@ final class NodesScreen
     }
 
     /** The chain a setting written **at this node** belongs to. */
-    private function settingChain(int $nodeId): array
+    /**
+     * The chain a setting is written to — the **node's**, or the **use site's** when an edge is named.
+     *
+     * ⚠️ **The edge case had no way in until the panels were unified** ([D-381](../../../docs/NewConcept/90-decision-log.md)).
+     * The attribute row now shows every setting that applies to a use site, and `persistent`
+     * ([D-378](../../../docs/NewConcept/90-decision-log.md)) is one of them — so a write that landed
+     * on the **node** instead would set it for the type and every other user of it, quietly. *The
+     * form states which owner it means; a zero means the node, which is what an absent edge has always
+     * meant on this screen.*
+     */
+    private function settingChain(int $nodeId, int $edgeId = 0): array
     {
+        if ($edgeId !== 0) {
+            return $this->settings->chainForUseSite($this->editor->ownAttribute($nodeId, $edgeId));
+        }
+
         return $this->settings->chainFor($this->editor->find($nodeId) ?? $this->framework->root());
     }
 
@@ -1261,6 +1347,423 @@ final class NodesScreen
         return array_values(array_filter(array_map('absint', explode(',', $raw))));
     }
 
+    /**
+     * One row of the attribute table, saved — its name and how often it may occur.
+     *
+     * ⚠️ **Two acts behind one button, and each runs only where something changed.** The owner asked
+     * for this shape on the settings side — *first the buttons at the top as the concept describes,
+     * not every value on its own* — and a row with two independent submits has no answer to *what
+     * does Enter do*. **Writing unconditionally would be worse than not offering the button**: every
+     * click would land a changelog entry and a version bump for a row nobody touched, and
+     * [D-349](../../../docs/NewConcept/90-decision-log.md)'s write count would stop meaning
+     * *somebody changed this*.
+     *
+     * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
+     * still applies and a widening is still refused by the core rather than here.*
+     */
+    private function saveAttribute(int $id, int $edge, string $name, string $multiplicity): void
+    {
+        $existing = $this->editor->ownAttribute($id, $edge);
+
+        if ($name !== '' && $name !== $existing->name) {
+            $this->editor->renameAttribute($id, $edge, $name);
+        }
+
+        if ($multiplicity === '') {
+            return;
+        }
+
+        $chain  = $this->settings->chainForUseSite($existing);
+        $before = $this->settings->resolve($chain)[SettingKey::Multiplicity->value] ?? null;
+
+        if ($before?->value->text === $multiplicity) {
+            return;
+        }
+
+        $this->settings->put($chain, SettingKey::Multiplicity->value, TypedValue::ofText($multiplicity));
+    }
+
+    /**
+     * The three acts every settings row offers, and the words it needs.
+     *
+     * ⚠️ **Handed in once and greyed per row by the renderer**, which is where that decision belongs:
+     * `Nothing` means nothing for a choice — its empty option already is nothing — and `Reset` only
+     * means something where the value was written here. Both follow from what the drawn row already
+     * carries, so the boundary would have to re-derive them.
+     *
+     * @return list<Control>
+     */
+    private function settingActs(): array
+    {
+        return [
+            // ⚠️ **The write act stays in the list although a row no longer draws it** — the renderer
+            // skips it, and the page-head button submits the same form. *Keeping one list means the
+            // words and the nonce are declared once.*
+            new Control('do', SettingsRenderer::WRITE, '💾', __('Save every setting on this page', 'taxmod')),
+            // ⚠️ **The bin again, on the owner's ask** — *the Nothing button could be the bin again.*
+            // It **is** a removal: *deliberately nothing here* stops the chain, so a later change
+            // further up will not arrive. `destroys` paints it red for the same reason.
+            new Control(
+                'do',
+                SettingsRenderer::EMPTY,
+                __('Nothing', 'taxmod'),
+                __('Deliberately nothing here — later changes above will not arrive', 'taxmod'),
+                true,
+                true,
+                'trash'
+            ),
+            new Control(
+                'do',
+                SettingsRenderer::RESET,
+                __('Reset', 'taxmod'),
+                __('Make it inherited again — not the same as setting it to nothing', 'taxmod'),
+                true,
+                false,
+                'undo'
+            ),
+            new Control('word:inherited', '', __('inherited from further up', 'taxmod')),
+            new Control('word:here', '', __('here', 'taxmod')),
+            new Control('word:undefined', '', __('not defined', 'taxmod')),
+            // ⚠️ The category headings (D-385). Words, so they travel like every other word the core
+            // cannot make itself (`AR-2`, OQ-087).
+            // ⚠️ *Back to «Display» on the owner's word. I had renamed it to «How it is handled» because the
+            // group holds the validator and the converter as well as the renderer — true, and he prefers
+            // the shorter one. His screen, his word.*
+            new Control('word:display', '', __('Display', 'taxmod')),
+            new Control('word:rules', '', __('Rules', 'taxmod')),
+            // ⚠️ **One word per simple type**, because a group can be named after the type being
+            // configured (D-390) and the core cannot make a word (`AR-2`, OQ-087). *Generated from
+            // the enum rather than listed, so a twelfth type gets a heading without anybody
+            // remembering — the word is its own name until somebody translates it.*
+            ...array_map(
+                static fn (SimpleType $type): Control => new Control('word:' . $type->value, '', $type->humanName()),
+                SimpleType::cases()
+            ),
+        ];
+    }
+
+    private function settingSubmission(int $ownerId, int $nodeId): Submission
+    {
+        return new Submission(
+            admin_url('admin-post.php'),
+            [
+                'action'        => self::ACTION,
+                'id'            => (string) $nodeId,
+                // ⚠️ Present only for an **edge**, and the handler reads it to know which owner the
+                // setting belongs to. Zero for a node, which is what *no edge* has always meant here.
+                'edge'          => (string) ($ownerId === $nodeId ? 0 : $ownerId),
+                '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $nodeId),
+            ]
+        );
+    }
+
+    /**
+     * Every label of one node, for one locale, in one act.
+     *
+     * ⚠️ **An empty field means *forget it here*, not *store an empty text*.** The two are different
+     * ([D-020](../../../docs/NewConcept/90-decision-log.md)): a stored empty string would **end** the
+     * fallback chain and the node would read as nameless, while an absent row lets the chain answer.
+     * *So a cleared box removes the row, which is what clearing a box means.*
+     *
+     * ⚠️ *Written only where something changed, so a save on an untouched panel is not five writes and
+     * five changelog entries — the same reasoning as the attribute row's.*
+     */
+    private function saveLabels(int $nodeId, string $locale): void
+    {
+        $submitted = isset($_POST[self::LABEL_FIELD]) && is_array($_POST[self::LABEL_FIELD])
+            ? wp_unslash($_POST[self::LABEL_FIELD])
+            : [];
+
+        $stored = [];
+
+        foreach ($this->labels->storedFor($nodeId) as $label) {
+            if ($label->path === '' && $label->locale === $locale) {
+                $stored[$label->roleId] = $label->text;
+            }
+        }
+
+        foreach (SeededRole::cases() as $role) {
+            if (! array_key_exists($role->value, $submitted)) {
+                continue;
+            }
+
+            $roleId = $this->framework->roleId($role);
+            $text   = sanitize_textarea_field((string) $submitted[$role->value]);
+            $before = $stored[$roleId] ?? null;
+
+            if ($text === (string) $before) {
+                continue;
+            }
+
+            $this->labels->put(new Label($nodeId, '', $roleId, Label::BASE_NUMBER, $locale, $text));
+        }
+    }
+
+    /**
+     * A heading with its explanation folded into a question mark.
+     *
+     * The owner: *banish the text into a question-mark icon and make it user-friendly.* ⚠️ **Two
+     * asks, and the second is the one that matters.** Hiding a sentence saves a line; the sentences
+     * themselves were written for somebody who had read the concept — *each value is drawn by the
+     * renderer its key asks for; the chain runs installation → model root → ancestors → node* is
+     * true and it is not an explanation. **So they were rewritten as well as tucked away.**
+     *
+     * ⚠️ **A `title`, not a panel that opens.** The text is a hint and nothing depends on reading
+     * it; a disclosure would add a thing to click on every heading of the screen. *And the icon is a
+     * Dashicon for the same reason the bin is ([D-380](../../../docs/NewConcept/90-decision-log.md)):
+     * `?` as a character is a hairline beside a 17px glyph.*
+     *
+     * ⚠️ *Not a renderer, and `R1` is not bent: this shows no model data. It is a **software string**
+     * belonging to the boundary (`AR-2`) — the same class of thing as the word on a button.*
+     */
+    private function heading(string $text, string $hint, string $level = 'h3'): string
+    {
+        return '<' . $level . ' style="display:flex;align-items:center;gap:.3em">'
+            . esc_html($text)
+            . '<span class="dashicons dashicons-editor-help" title="' . esc_attr($hint) . '"'
+            . ' style="font-size:17px;width:17px;height:17px;line-height:1;opacity:.5;cursor:help"'
+            . ' aria-label="' . esc_attr($hint) . '"></span>'
+            . '</' . $level . '>';
+    }
+
+    /**
+     * The icons an installation offers — **the glyph beside its key**, so a person sees what they pick.
+     *
+     * ⚠️ **Which icons exist is a boundary fact** (`CD-1`): the core cannot list Dashicons, so the
+     * set is handed to the chooser and the chooser places it ([D-390](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **The glyph is a *character*, which is what makes this a plain `<select>` at all.** Dashicons
+     * is a **font**, so the icon renders inside an `<option>` once the control asks for that font —
+     * something I had claimed was impossible until the owner said flatly *Cursor could do that*.
+     *
+     * @return array<string, string> Dashicon key ⇒ what a person reads.
+     */
+    private function iconChoices(): array
+    {
+        $glyphs  = $this->dashiconGlyphs();
+        $offered = [];
+
+        foreach (self::ICONS as $key) {
+            $glyph = $glyphs[$key] ?? '';
+
+            $offered[$key] = ($glyph === '' ? '' : $glyph . '  ') . $key;
+        }
+
+        return $offered;
+    }
+
+    /**
+     * Which act was clicked, whether it named a key or not.
+     *
+     * ⚠️ **A settings row's act submits as `do[<key>]`** and everything else as plain `do`
+     * ([D-392](../../../docs/NewConcept/90-decision-log.md)). One form holds the whole panel now, so
+     * the key cannot ride in a hidden field — a single field could only say one row.
+     */
+    private function submittedAct(): string
+    {
+        $raw = $_POST['do'] ?? '';
+
+        if (is_array($raw)) {
+            $raw = reset($raw);
+        }
+
+        return sanitize_key(wp_unslash((string) $raw));
+    }
+
+    /**
+     * Which setting a row's act meant.
+     *
+     * ⚠️ **Read out of the button's own name**, and sanitised like any key. *Returning `''` where
+     * nothing was named is deliberate: the core then refuses it rather than this method guessing at a
+     * key, and a refusal names the problem where a guess would write to the wrong row.*
+     */
+    private function keyOfRowAct(): string
+    {
+        $raw = $_POST['do'] ?? '';
+
+        if (! is_array($raw) || $raw === []) {
+            return '';
+        }
+
+        return sanitize_text_field(wp_unslash((string) array_key_first($raw)));
+    }
+
+    /**
+     * Every setting on the panel, written in one act.
+     *
+     * The owner: *the save button goes in the page header* — so there is no single key to write, and
+     * the panel submits every control it drew.
+     *
+     * ⚠️ **Only what changed is written.** A save on an untouched panel would otherwise land a
+     * changelog entry per key, and [D-349](../../../docs/NewConcept/90-decision-log.md)'s write count
+     * would stop meaning *somebody changed this*.
+     *
+     * ⚠️ **A field that is absent is not the same as one that is empty.** A `select` that is disabled
+     * — R28–R32's greyed control — submits **nothing**, and treating that as *set it to nothing* would
+     * wipe a value by drawing the row. *So only keys actually present are considered.*
+     *
+     * ⚠️ **A refusal on one key does not silently pass.** A bounding setting may only be narrowed
+     * ([D-312](../../../docs/NewConcept/90-decision-log.md)), so the core can refuse one of thirty —
+     * the first refusal is reported and the rest of the batch is abandoned. *What a page-level save
+     * should do with a partial batch is genuinely undecided and is on the roadmap; failing loudly is
+     * the honest interim rather than writing twenty-nine and mentioning none.*
+     */
+    private function saveSettings(int $nodeId, int $edgeId): void
+    {
+        $submitted = isset($_POST[self::SETTING_FIELD]) && is_array($_POST[self::SETTING_FIELD])
+            ? wp_unslash($_POST[self::SETTING_FIELD])
+            : [];
+
+        if ($submitted === []) {
+            return;
+        }
+
+        $chain    = $this->settingChain($nodeId, $edgeId);
+        $resolved = $this->settings->resolve($chain);
+
+        foreach ($submitted as $key => $raw) {
+            $key = sanitize_text_field((string) $key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $value  = $this->settingValue($nodeId, $key, sanitize_text_field((string) $raw));
+            $before = $resolved[$key] ?? null;
+
+            // ⚠️ **Compared against what the chain *answers*, not against what was written here — and
+            // the difference was a real defect.** A switch always submits `0` or `1`, never nothing
+            // ([D-315](../../../docs/NewConcept/90-decision-log.md)'s hidden field is what makes *off*
+            // mean false), so on the old test every unset switch counted as changed and a page save
+            // wrote `hide=false`, `mandatory=false` and — worst — **`persistent=false`** onto every
+            // node somebody looked at. *`persistent=false` silently stops an attribute from storing
+            // anything (D-378): a save that touched nothing would have broken data entry.*
+            //
+            // ⚠️ *The owner asked for exactly this: **check whether the default values are right.**
+            // They were not, and the cause is that «unset» and «false» look identical on a switch.*
+            //
+            // ⚠️ **And the inherited case still writes**, which is why the comparison is against the
+            // resolved value: an ancestor saying `hide = true` shows the switch **on**, so turning it
+            // off differs from what the chain answers and must be kept.
+            if ($before !== null && $before->value->equals($value)) {
+                continue;
+            }
+
+            $this->settings->put($chain, $key, $value);
+        }
+    }
+
+    /**
+     * Whether the installation is in developer mode.
+     *
+     * ⚠️ **A WordPress option and no longer a setting on a node**
+     * ([D-389](../../../docs/NewConcept/90-decision-log.md)). The owner: *develop is not a setting on
+     * the node but a setting in the WordPress admin settings menu.* A posture is a fact about the
+     * installation, and on the settings chain it could differ per branch — which is meaningless.
+     *
+     * ⚠️ *It has no screen to be set on yet, so it is off unless somebody sets the option by hand.
+     * That is the same interim `developer` always had, one layer out: the option exists, the screen
+     * for it does not, and one function changes when it arrives.*
+     */
+    public const DEVELOPER_OPTION = 'taxmod_developer';
+
+    private function inDeveloperMode(): bool
+    {
+        // ⚠️ *Read in one place so the screen and its checks cannot disagree — the option name still
+        // lives here because this screen owns the tree's diagnostics.*
+        return SettingsScreen::inDeveloperMode();
+    }
+
+    /**
+     * Whether hidden nodes are being shown.
+     *
+     * ⚠️ **Off unless asked, which is the owner's word and also the only safe default.** *A switch
+     * nobody set is off* — and a tree that showed hidden nodes by default would make `hide` look
+     * broken all over again.
+     *
+     * ⚠️ *In the URL, like the folded set: a posture of **this view** rather than of the installation,
+     * so two tabs can differ and nothing is stored. Whether it should be remembered is
+     * [OQ-082](../../../docs/NewConcept/91-open-questions.md)'s neighbourhood and not decided.*
+     */
+    private function showsHidden(): bool
+    {
+        return isset($_GET['taxmod_hidden']) && $_GET['taxmod_hidden'] === '1';
+    }
+
+    /**
+     * Rows whose resolved `hide` is true, left out.
+     *
+     * ⚠️ **A subtree disappears for free, and it is the *resolution chain* doing it — not attribute
+     * inheritance.** The owner sharpened this and he was right: *your argument for `hide` was
+     * inheritance, but a setting on a node has nothing to do with attribute inheritance.* The glossary
+     * keeps them apart — **inheritance** is the relation kind that forms the tree and says what a node
+     * **has**; the **resolution chain** is *installation → model root → ancestors → node → use site,
+     * walked key by key* ([D-079](../../../docs/NewConcept/90-decision-log.md), [D-093](../../../docs/NewConcept/90-decision-log.md)),
+     * and says what a **key** answers here.
+     *
+     * ⚠️ *They are confusable because the chain **walks the inheritance edges**: the same ancestors,
+     * two different questions. `hide` moves down the **chain** ([D-311](../../../docs/NewConcept/90-decision-log.md),
+     * [D-312](../../../docs/NewConcept/90-decision-log.md): once hidden, never revealed further down),
+     * so a child of a hidden node resolves to hidden and nothing here has to walk or remember. A
+     * filter tracking ancestors itself would be a second implementation of **the chain**.*
+     *
+     * ⚠️ **One query for the whole tree** (`CD-7`): every row's chain is resolved in one batch, not
+     * one per row.
+     *
+     * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}>
+     */
+    private function withoutHidden(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $resolved = $this->settings->resolveForNodes(array_map(
+            static fn (array $row): Node => $row['node'],
+            $rows
+        ));
+
+        $kept = [];
+
+        foreach ($rows as $row) {
+            $hide = ($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? false;
+
+            if (! $hide) {
+                $kept[] = $row;
+            }
+        }
+
+        return $kept;
+    }
+
+    /**
+     * The switch that shows them anyway.
+     *
+     * ⚠️ **A link and not a form**, because it changes what this view shows and nothing else — the
+     * same shape as folding a branch. *It carries the folded set and the selected node along, or
+     * asking to see hidden nodes would silently unfold the tree and lose the page.*
+     */
+    private function hiddenToggle(bool $showing): string
+    {
+        $to = add_query_arg(
+            array_filter([
+                'page'            => 'taxmod',
+                'taxmod_node'     => $this->selectedFromRequest()?->id,
+                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
+                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
+                    : null,
+                'taxmod_hidden'   => $showing ? null : '1',
+            ]),
+            admin_url('admin.php')
+        );
+
+        return '<a class="taxmod-show-hidden" href="' . esc_url($to) . '">'
+            . '<span class="dashicons dashicons-' . ($showing ? 'visibility' : 'hidden') . '"></span> '
+            . esc_html($showing ? __('hiding hidden nodes again', 'taxmod') : __('show hidden nodes', 'taxmod'))
+            . '</a>';
+    }
+
     private function hidden(int $id): string
     {
         return '<input type="hidden" name="action" value="' . self::ACTION . '">'
@@ -1282,7 +1785,12 @@ final class NodesScreen
 
         check_admin_referer(self::ACTION . '_' . $id, '_taxmod_nonce');
 
-        $do     = isset($_POST['do']) ? sanitize_key(wp_unslash($_POST['do'])) : '';
+        // ⚠️ **`do` may arrive as an array**, because a settings row's act names its key in the
+        // button — `do[range_min]` ([D-392](../../../docs/NewConcept/90-decision-log.md)). One form
+        // now holds every row, so a hidden `setting_key` could only ever say one of them. *Reading it
+        // as a string would have warned and then acted on nothing, which is the worst of the three
+        // outcomes.*
+        $do = $this->submittedAct();
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
@@ -1291,9 +1799,13 @@ final class NodesScreen
         $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
             ? sanitize_text_field(wp_unslash((string) $_POST[self::SETTING_FIELD][$settingKey]))
             : '';
-        $labelRole    = isset($_POST['label_role']) ? sanitize_key(wp_unslash($_POST['label_role'])) : 'form';
+        // ⚠️ **Read by edge id, because that is what the row's field is keyed on.** Sanitised like
+        // any other name and then handed to the act, which trims it and refuses an empty one — the
+        // rule lives in the model (`Relation::renamedTo()`) and not a second, softer copy here.
+        $attributeName = isset($_POST[self::NAME_FIELD][$edge])
+            ? sanitize_text_field(wp_unslash((string) $_POST[self::NAME_FIELD][$edge]))
+            : '';
         $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
-        $labelText    = isset($_POST['label_text']) ? sanitize_text_field(wp_unslash($_POST['label_text'])) : '';
         $rendererName = isset($_POST['renderer_name']) ? sanitize_text_field(wp_unslash($_POST['renderer_name'])) : '';
         $stay   = $id;
 
@@ -1317,7 +1829,15 @@ final class NodesScreen
                 // Parked, not purged — D-123's two stages, so it can come back.
                 'remove_attribute'  => $this->editor->removeAttribute($id, $edge),
                 'restore_attribute' => $this->editor->restoreAttribute($id, $edge),
-                'put_setting'    => $this->settings->put($this->settingChain($id), $settingKey, $this->settingValue($id, $settingKey, $settingValue)),
+                // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
+                // because an inherited attribute belongs to the ancestor and renaming it from a
+                // descendant would rename it for every other user, silently.
+                'save_attribute'    => $this->saveAttribute($id, $edge, $attributeName, $settingValue),
+                // ⚠️ **`$edge` decides the owner** (D-381): the same three acts serve a node and a use site,
+                // and a write meant for one attribute must not land on the type it points at.
+                // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
+                // panel is one form, so there is no single key to write — every changed value is.
+                'put_setting'    => $this->saveSettings($id, $edge),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
@@ -1326,14 +1846,18 @@ final class NodesScreen
                     SettingKey::Renderer->value,
                     TypedValue::ofText($this->registeredRendererName($id, $rendererName))
                 ),
-                'empty_setting'  => $this->settings->put($this->settingChain($id), $settingKey, TypedValue::nothing()),
-                'reset_setting'  => $this->settings->reset($id, $settingKey),
+                // ⚠️ **These two name their key in the button** (`do[<key>]`), because one form now
+                // holds every row and a hidden `setting_key` could only ever say one of them.
+                'empty_setting'  => $this->settings->put($this->settingChain($id, $edge), $this->keyOfRowAct(), TypedValue::nothing()),
+                'reset_setting'  => $this->settings->reset($edge === 0 ? $id : $edge, $this->keyOfRowAct()),
                 'put_multiplicity' => $this->settings->put(
                     $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),
                     SettingKey::Multiplicity->value,
                     TypedValue::ofText($settingValue)
                 ),
-                'put_label'      => $this->labels->put(new Label($id, '', $this->framework->roleId(SeededRole::from($labelRole)), Label::BASE_NUMBER, $labelLocale, $labelText)),
+                // ⚠️ **One act for the whole panel** (D-384): the owner's rule for saving, and the
+                // only shape that answers *what does Enter do* with five fields on screen.
+                'put_labels'     => $this->saveLabels($id, $labelLocale),
                 'add_record'     => $this->data->create($id),
                 'save_record'    => $this->saveRecord($id),
                 default          => throw new \InvalidArgumentException('Unknown action.'),

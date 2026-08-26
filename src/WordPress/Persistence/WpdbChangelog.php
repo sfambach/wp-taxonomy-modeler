@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Model\ChangeSummary;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\Clock;
 
@@ -199,5 +200,41 @@ final class WpdbChangelog implements Changelog
         $id = get_current_user_id();
 
         return $id > 0 ? $id : null;
+    }
+
+    public function summaryOf(int $ownerId): ChangeSummary
+    {
+        global $wpdb;
+
+        $table = Schema::table('changelog');
+
+        // ⚠️ **Ordered by `id` and not by `at`.** Two acts in the same second are ordinary — a save
+        // writes several rows — and a timestamp cannot order them. The id is the sequence.
+        $first = $wpdb->get_row($wpdb->prepare(
+            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id ASC LIMIT 1',
+            $ownerId
+        ));
+
+        if ($first === null) {
+            return new ChangeSummary();
+        }
+
+        $last = $wpdb->get_row($wpdb->prepare(
+            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id DESC LIMIT 1',
+            $ownerId
+        ));
+
+        // ⚠️ *The first row is only a **creation** where it says so. A node seeded before the
+        // changelog existed has a first row that is a rename or a move, and calling that its birthday
+        // would be a guess presented as a fact.*
+        $created = $first->what === 'created';
+
+        return new ChangeSummary(
+            $created ? (string) $first->at : null,
+            $created ? (int) $first->by_user_id : null,
+            (string) $last->at,
+            (int) $last->by_user_id,
+            (string) $last->what
+        );
     }
 }

@@ -47,6 +47,33 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /**
+     * ⚠️ **Not a *yet*, unlike its neighbours here.** The others say *nobody has built this*; this
+     * one says *the model declared that nothing is kept* ([D-378](../../../docs/NewConcept/90-decision-log.md)),
+     * which is an answer and not a gap. It shares the class because the caller's question is the
+     * same — *can this value be stored* — and the honest reply is no either way.
+     */
+    public static function thatAttributeKeepsNothing(string $attribute): self
+    {
+        return new self(sprintf(
+            '«%s» is not persistent — its value lives as a default and is read, never written.',
+            $attribute
+        ));
+    }
+
+    /**
+     * ⚠️ *A part exists only where the branch says the value has records of its own
+     * ([D-232](../../../docs/NewConcept/90-decision-log.md)). Anywhere else the value belongs **in**
+     * the holder's record, and a part would be a second home for the same fact.*
+     */
+    public static function thatIsNotAComposedPart(string $attribute): self
+    {
+        return new self(sprintf(
+            '«%s» does not point into Compositions, so its value lives in the record itself.',
+            $attribute
+        ));
+    }
+
     public static function noSuchRecord(int $id): self
     {
         return new self(sprintf('There is no record %d.', $id));

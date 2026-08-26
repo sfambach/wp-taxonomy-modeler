@@ -3,11 +3,17 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 
 /**
@@ -44,7 +50,7 @@ final class UnitScaffold
     public const OPTION = 'taxmod_unit_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     /**
      * The SI prefixes, as **powers of ten**.
@@ -52,6 +58,10 @@ final class UnitScaffold
      * ⚠️ **An exponent and not a factor**, because `decimal(30,10)` cannot hold 10⁻²⁴ or 10²⁴ — ten
      * decimal places and twenty integer ones. A prefix **is** a power of ten by definition, so the
      * exponent loses nothing (D-372).
+     *
+     * ⚠️ **Each value lands as the `prefix_exponent` **setting** on the prefix node** (D-377) —
+     * the same shape as `factor` and `offset` on a unit (D-274), because a prefix is a constant and
+     * a constant holds no records.
      *
      * @var array<string, int>
      */
@@ -90,10 +100,44 @@ final class UnitScaffold
         'Stück'   => [],
     ];
 
+    /**
+     * The short form of each prefix and unit — **labels, in the `symbol` role**.
+     *
+     * ⚠️ **A label and never an attribute, and [D-260](../../../docs/NewConcept/90-decision-log.md)
+     * is where that was settled** — the modelled `symbol` attribute went, because a symbol in the
+     * data *and* in the labels is one fact in two homes. **What a record holds is the reference to
+     * `kilo`**; `k` is this row, resolved when something draws it.
+     *
+     * ⚠️ *The owner reached that conclusion himself while we argued about it: **we store the id of
+     * the constant and therefore do not need the trick.** Before that we had a data type, a
+     * read-only default and a `path` column on the table between us — three constructions for
+     * something the concept had already solved.*
+     *
+     * ⚠️ **One locale row each, and that is D-260's own point:** `Ω` and `k` are fixed by a
+     * standard, so they are identical in every language and need exactly one row. `Stück` is the
+     * counter-example — `St` in German, `pc` in English — and it is why the mechanism is labels
+     * rather than a language-neutral setting.
+     *
+     * ⚠️ *`deca` is `da` — **two** characters. Which is, incidentally, the proof that a symbol is
+     * not a `char`: nineteen of the twenty fit in one and the twentieth does not.*
+     *
+     * @var array<string, string>
+     */
+    private const SYMBOLS = [
+        'yotta' => 'Y', 'zetta' => 'Z', 'exa' => 'E', 'peta' => 'P', 'tera' => 'T',
+        'giga'  => 'G', 'mega'  => 'M', 'kilo' => 'k', 'hecto' => 'h', 'deca' => 'da',
+        'deci'  => 'd', 'centi' => 'c', 'milli' => 'm', 'micro' => 'µ', 'nano' => 'n',
+        'pico'  => 'p', 'femto' => 'f', 'atto' => 'a', 'zepto' => 'z', 'yocto' => 'y',
+        'Gramm' => 'g', 'Meter' => 'm', 'Liter' => 'l', 'Sekunde' => 's', 'Ampere' => 'A',
+        'Ohm'   => 'Ω', 'Farad' => 'F', 'Watt' => 'W', 'Volt' => 'V', 'Henry' => 'H',
+        'Hertz' => 'Hz', 'Kelvin' => 'K', 'Celsius' => '°C', 'Stück' => 'St',
+    ];
+
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
         private readonly Settings $settings,
+        private readonly Labels $labels,
     ) {
     }
 
@@ -127,13 +171,34 @@ final class UnitScaffold
 
         $prefixes = $this->ensure($constants, 'Prefixes', $created);
 
-        foreach (self::PREFIXES as $name => $exponent) {
+        // ⚠️ **An attribute that is declared **not persistent**** ([D-378](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner brought the distinction from object orientation and it is what finally justifies
+        // an attribute here: *there are attributes that get persisted and ones that do not — a
+        // multiplicator is not persistent, it counts only as an attribute.*
+        //
+        // ⚠️ **What this buys over a reserved setting key is the owner's own question answered:**
+        // *how does the user know he needs the multiplier?* Because **`Prefixes` declares it** and
+        // inheritance says who has one. A global key is offered on every text node in the system and
+        // nothing says where it belongs.
+        //
+        // ⚠️ *And the value has a home without a trick:* [D-026](../../../docs/NewConcept/90-decision-log.md)
+        // — *at model level there are no values, only defaults* — so each prefix's `default` **is**
+        // its model-level value, which is what a default has always been.
+        $exponent = $this->attribute($prefixes, 'exponent', 'int');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($exponent),
+            SettingKey::Persistent->value,
+            TypedValue::ofBool(false)
+        );
+
+        foreach (self::PREFIXES as $name => $power) {
             $node = $this->ensure($prefixes, $name, $created);
 
             $this->settings->put(
                 $this->settings->chainFor($node),
-                SettingKey::PrefixExponent->value,
-                TypedValue::ofInt($exponent)
+                SettingKey::DefaultValue->value,
+                TypedValue::ofInt($power)
             );
         }
 
@@ -167,7 +232,120 @@ final class UnitScaffold
             }
         }
 
+        $this->unitValue($prefixes, $base, $created);
+
         return $created;
+    }
+
+    /**
+     * The attribute of this name on this node, made if it is not there.
+     *
+     * ⚠️ **The kind is never chosen** ([D-161](../../../docs/NewConcept/90-decision-log.md)): the
+     * target sits in `Data Types`, so the edge is a composition and nobody said so.
+     */
+    private function attribute(Node $owner, string $name, string $typeName): Relation
+    {
+        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+            if ($edge->name === $name && $edge->fromId === $owner->id) {
+                return $edge;
+            }
+        }
+
+        $type = null;
+
+        foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
+            if ($child->name === $typeName) {
+                $type = $child;
+            }
+        }
+
+        if ($type === null) {
+            // ⚠️ The base scaffold delivers the simple types; if it has not run there is nothing to
+            // point at, and inventing a type here would be a second place that creates them.
+            throw new \RuntimeException("The data type «{$typeName}» is not there yet.");
+        }
+
+        return $this->editor->addAttribute($owner->id, $type->id, $name);
+    }
+
+    /**
+     * An attribute pointing at a node given directly, rather than at a data type found by name.
+     *
+     * ⚠️ **Separate from {@see attribute()} because the two resolve differently, not because the
+     * kind differs.** A data type is looked up by name under one branch root; a constant is a node
+     * somebody already holds. *The kind itself is never passed either way — it is read off the
+     * branch the target sits in ([D-161](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function attributeTo(Node $owner, string $name, Node $target): Relation
+    {
+        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+            if ($edge->name === $name && $edge->fromId === $owner->id) {
+                return $edge;
+            }
+        }
+
+        return $this->editor->addAttribute($owner->id, $target->id, $name);
+    }
+
+    /**
+     * The composed type of [D-039](../../../docs/NewConcept/90-decision-log.md): **value + optional
+     * prefix + unit**, as one notion.
+     *
+     * ⚠️ **One notion and therefore one type, which is [D-220](../../../docs/NewConcept/90-decision-log.md)'s
+     * whole point.** The owner, describing the entry: *I type `2k7` and it lands in two different
+     * fields, the `2.7` and the `k` — I think we need some kind of combinatorial renderer here.*
+     * D-220's answer: **those are not two fields**, they are members of one value that is incomplete
+     * without them, so a composed type is the unit of rendering and no new kind of renderer is
+     * needed. This is that type, existing at last.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   U["Einheitenwert"] --> W["wert · decimal"]
+     *   U --> P["prefix · 0..1 · → Prefixes"]
+     *   U --> E["einheit · 1 · → Base units"]
+     * ```
+     *
+     * ⚠️ **The prefix is `0..1` because D-039 says *optional*** — `12 Stück` has no prefix and
+     * `2.7 kΩ` has one. *Mandatory would have forced a prefix onto every count in the system, and
+     * `1` as a prefix node is not the same thing as no prefix at all.*
+     *
+     * ⚠️ **Both references ask for the `symbol` role**, which is the setting D-049 promised and
+     * nothing had ever set. Without it the descent draws the `form` label and `2.7 kΩ` reads
+     * *2.7 kilo Ohm*.
+     *
+     * ⚠️ **What this does *not* yet do is hold a value**, and the reason is narrower than I first
+     * wrote. `DataEntry::put()` refuses a target whose branch stores `OwnRecords`, and `Compositions`
+     * does — **correctly**: [D-232](../../../docs/NewConcept/90-decision-log.md) says *the branch
+     * decides where a value is stored, not the multiplicity*, and it **supersedes**
+     * [D-133](../../../docs/NewConcept/90-decision-log.md), which I had cited against the code.
+     * *So a composed value gets **its own record**, owned by the holder and dying with it — and that
+     * is what is not built. The type can be modelled and drawn; storing one is the next step.*
+     *
+     * @param list<string> $created
+     */
+    private function unitValue(Node $prefixes, Node $baseUnits, array &$created): void
+    {
+        $compositions = $this->framework->rootOf(Branch::Compositions);
+        $unitValue    = $this->ensure($compositions, 'Einheitenwert', $created);
+
+        $this->attribute($unitValue, 'wert', 'decimal');
+
+        $prefix = $this->attributeTo($unitValue, 'prefix', $prefixes);
+        $unit   = $this->attributeTo($unitValue, 'einheit', $baseUnits);
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($prefix),
+            SettingKey::Multiplicity->value,
+            TypedValue::ofText(Multiplicity::ZeroToOne->value)
+        );
+
+        foreach ([$prefix, $unit] as $edge) {
+            $this->settings->put(
+                $this->settings->chainForUseSite($edge),
+                Rendering::LABEL_ROLE,
+                TypedValue::ofText(SeededRole::Symbol->value)
+            );
+        }
     }
 
     /**
@@ -183,6 +361,8 @@ final class UnitScaffold
     {
         foreach ($this->editor->childrenOf($parent->id) as $child) {
             if ($child->name === $name) {
+                $this->label($child);
+
                 return $child;
             }
         }
@@ -190,6 +370,40 @@ final class UnitScaffold
         $made      = $this->editor->createNode($name, $parent->id);
         $created[] = $name;
 
+        $this->label($made);
+
         return $made;
+    }
+
+    /**
+     * Give the node its `symbol` label, where one is known.
+     *
+     * ⚠️ **Written on every pass, not only on creation.** The nodes existed before the symbols did,
+     * so a create-only write would have left every install that already ran the scaffold without
+     * them — and the scaffold's version guard ([D-119](../../../docs/NewConcept/90-decision-log.md))
+     * deliberately stops it from re-entering. *Putting a label that is already there costs one write
+     * and is the difference between this working and only working on a fresh database.*
+     *
+     * ⚠️ **The empty locale, which is the fallback everything lands on** ([D-020](../../../docs/NewConcept/90-decision-log.md)):
+     * `Ω` is right in every language, so a German row and an English row would be the same text
+     * twice. Where a symbol genuinely differs — `St` against `pc` — a locale row is added beside
+     * this one and wins.
+     */
+    private function label(Node $node): void
+    {
+        $symbol = self::SYMBOLS[$node->name] ?? null;
+
+        if ($symbol === null) {
+            return;
+        }
+
+        $this->labels->put(new Label(
+            $node->id,
+            '',
+            $this->framework->roleId(SeededRole::Symbol),
+            Label::BASE_NUMBER,
+            '',
+            $symbol
+        ));
     }
 }
