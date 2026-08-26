@@ -109,7 +109,18 @@ final class TreeNodeRenderer implements Renderer
         // selected row into view by itself, inside the tree's own scroll pane. **No script, no stored
         // offset, and it survives a bookmark.** It is coarser than restoring an exact pixel offset, and
         // «the node I picked is on screen» is what was actually asked for.*
-        $markup = '<div class="taxmod-tree-node" id="taxmod-node-' . (int) $subject->id . '"'
+        // ⚠️ **A hidden node says so while it is being shown.** The owner: *hidden nodes should also get
+        // grey text in the shown state.* With *show hidden* on, a hidden row is otherwise
+        // indistinguishable from a visible one — and the whole point of that mode is to work **on** the
+        // hidden ones.
+        //
+        // ⚠️ *The cell reads it from its own resolved settings, the way it already reads the icon. It
+        // needed no plumbing and no new parameter: `cellsFor()` hands every cell the node's settings
+        // ([D-159](../../../docs/NewConcept/90-decision-log.md)), and `hide` was in them all along.*
+        $hidden = ($context->setting(SettingKey::Hide->value)?->asBool() ?? false) === true;
+
+        $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
+            . ' id="taxmod-node-' . (int) $subject->id . '"'
             . ' style="display:flex;gap:.5em;align-items:center">'
             . $named;
 

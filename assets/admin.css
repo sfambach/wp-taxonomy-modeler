@@ -764,3 +764,23 @@ details.taxmod-page-block > summary {
 .taxmod-tree-node {
     scroll-margin-top: 40vh;
 }
+
+/* ── A hidden node, while it is being shown ──────────────────────────────────
+ *
+ * ⚠️ The owner: *hidden nodes should also get grey text in the shown state.* With
+ * *show hidden* on, a hidden row would otherwise look exactly like a visible one —
+ * and working on the hidden ones is the entire purpose of that mode.
+ *
+ * ⚠️ Grey and not struck through or italic: it says «not part of the working tree»
+ * without saying «broken». The crossed-out eye in the row says what it is; this
+ * only has to make the row recede. */
+.taxmod-tree-node-hidden .taxmod-tree-name,
+.taxmod-tree-node-hidden a {
+    color: #8c8f94;
+}
+
+/* The icon fades with the name, or a grey label beside a black glyph reads as a
+ * rendering fault rather than as a state. */
+.taxmod-tree-node-hidden .dashicons {
+    color: #a7aaad;
+}
