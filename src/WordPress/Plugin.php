@@ -220,14 +220,21 @@ final class Plugin
         return new UnitScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock())),
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes())
         );
     }
 
     private function baseScaffold(): BaseScaffold
     {
-        return new BaseScaffold($this->editor(), $this->frameworkNodes());
+        return new BaseScaffold(
+            $this->editor(),
+            $this->frameworkNodes(),
+            // ⚠️ **Handed in so the scaffold can say what a number type permits.** The owner:
+            // *`range_min` and `range_max` on `int` should be int's min and max.* The bounds come
+            // from the column it is stored in, because storage is what refuses.
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
+        );
     }
 
     private function frameworkNodes(): SeededFrameworkNodes
@@ -250,7 +257,7 @@ final class Plugin
      */
     public function screen(): NodesScreen
     {
-        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes());
+        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()));
         $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes());
 
         return new NodesScreen(

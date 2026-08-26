@@ -183,11 +183,21 @@ check(
     $chosen->result->markup
 );
 
-try {
-    $settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($floor - 1));
-    check('a bound may not be widened at a use site (D-312)', false);
-} catch (CannotWiden $e) {
-    check('a bound may not be widened at a use site (D-312)', true);
+// ⚠️ **A widening has to be constructible before it can be refused**, and since 2026-08-26 it may
+// not be: the owner asked for `int` to carry its real bounds — *`range_min` and `range_max` on `int`
+// should be int's min and max* — so the resolved floor can be `PHP_INT_MIN`, and `$floor - 1`
+// silently becomes a **float**. *That is not the check being wrong; it is the check meeting a
+// stronger fact than it was written for.*
+if ($floor === PHP_INT_MIN) {
+    // Nothing wider exists, which is a better guarantee than «widening is refused».
+    check('the floor is the widest an integer can be, so nothing can widen it', true, (string) $floor);
+} else {
+    try {
+        $settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($floor - 1));
+        check('a bound may not be widened at a use site (D-312)', false);
+    } catch (CannotWiden $e) {
+        check('a bound may not be widened at a use site (D-312)', true);
+    }
 }
 
 echo "\n== 4. A choice at the type reaches every use of it ==\n";

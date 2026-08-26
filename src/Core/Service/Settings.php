@@ -14,6 +14,7 @@ use Taxmod\Core\Model\Setting;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\SettingRepository;
 
@@ -41,6 +42,17 @@ final class Settings
         private readonly SettingRepository $settings,
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
+        // ⚠️ **New, and it closes a hole that cost two wrong answers in one day.** The owner:
+        // *that we should change — settings should be recorded.* Until now **591 setting rows had
+        // zero changelog entries**: `owner_kind` knew only `node` and `relation`, so
+        // [D-081](../../../docs/NewConcept/90-decision-log.md)'s *every object has at least one
+        // changelog item* was false of the most-edited table in the model, and
+        // [D-061](../../../docs/NewConcept/90-decision-log.md)'s *the changelog is the migration
+        // script* would have replayed into a model with no settings.
+        //
+        // ⚠️ *Optional, because the core must keep working without one — a scaffold, a test and a
+        // migration all write settings and none of them has a person behind the change.*
+        private readonly ?Changelog $changelog = null,
     ) {
     }
 
@@ -203,7 +215,10 @@ final class Settings
 
         if ($engine === null) {
             // A free key may be anything that is not one of the engine's names (D-084).
+            $was = $this->valueAt($ownerId, $key);
+
             $this->settings->put(new Setting($ownerId, $key, $value));
+            $this->note($ownerId, $key, $was, $value);
 
             return;
         }
@@ -211,7 +226,10 @@ final class Settings
         $this->refuseWhereItDoesNotApply($engine, $ownerId, $value);
         $this->refuseWidening($engine, $chain, $value);
 
+        $was = $this->valueAt($ownerId, $key);
+
         $this->settings->put(new Setting($ownerId, $key, $value));
+        $this->note($ownerId, $key, $was, $value);
     }
 
     /**
@@ -340,4 +358,75 @@ final class Settings
 
         return $left < $right;
     }
+    /**
+     * One changelog line per setting written or cleared.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   S["a setting written"] --> O["recorded against its OWNER"]
+     *   O --> Q["«what happened to this node» now includes its settings"]
+     * ```
+     *
+     * ⚠️ **Against the owner and not against the setting**, and that is the whole design decision. A
+     * setting has no identity a person navigates to — they look at a **node** and ask what changed. So
+     * the entry hangs off the node or the edge, `owner_kind` keeps its two values, **no schema step is
+     * needed**, and {@see \Taxmod\Core\Model\ChangeSummary} starts reporting the changes it was blind
+     * to.
+     *
+     * ⚠️ **Nothing is recorded when nothing changed.** A page save posts every key on the panel, so
+     * without this a single save would write thirty entries with thirty unchanged values — and a
+     * journal that logs non-events is one nobody reads.
+     *
+     * ⚠️ *`before` and `after` are `describe()`d, which is a **diagnostic** rendering and deliberately
+     * not a stored value ([D-400](../../../docs/NewConcept/90-decision-log.md)): a reference reads as
+     * «(a reference)» here rather than as a bare id, because a log line is prose and not data.*
+     */
+    private function note(int $ownerId, string $key, ?TypedValue $was, ?TypedValue $now): void
+    {
+        if ($this->changelog === null) {
+            return;
+        }
+
+        $before = $was === null || $was->isNothing() ? null : $was->describe();
+        $after  = $now === null || $now->isNothing() ? null : $now->describe();
+
+        if ($before === $after) {
+            return;
+        }
+
+        $this->changelog->record(
+            $ownerId,
+            // ⚠️ **Three kinds, because the installation identity is neither.** An edge carries
+            // settings as readily as a node ([D-381]) and the id alone cannot say which — so it is
+            // asked. *And the **installation** has an identity with no node behind it, which is where
+            // a key's own default lives ([D-079](../../../docs/NewConcept/90-decision-log.md)); the
+            // first version of this line called that a `relation`, which was simply a lie.*
+            $this->kindOf($ownerId),
+            $after === null ? "setting {$key} cleared" : "setting {$key} set",
+            $before,
+            $after
+        );
+    }
+    /** What this owner has stored under this key right now, or nothing. */
+    private function valueAt(int $ownerId, string $key): ?TypedValue
+    {
+        foreach ($this->settings->ownedBy($ownerId) as $one) {
+            if ($one->key === $key) {
+                return $one->value;
+            }
+        }
+
+        return null;
+    }
+
+    /** Which of the three things this owner id is. */
+    private function kindOf(int $ownerId): string
+    {
+        if ($ownerId === $this->framework->installationId()) {
+            return 'installation';
+        }
+
+        return $this->nodes->find($ownerId) === null ? 'relation' : 'node';
+    }
+
 }

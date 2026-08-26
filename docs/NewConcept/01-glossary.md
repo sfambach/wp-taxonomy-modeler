@@ -263,6 +263,52 @@ sparse rather than materialised ([D-015](90-decision-log.md)).*
 ⚠️ *One thing this example cannot settle is whether a record typed `int` may hold a `my_int` —
 [OQ-096](91-open-questions.md). `typeOf()` already walks ancestors to find a simple type, so **drawing**
 says yes; validation and storage say nothing.*
+### What data type a setting has — and where its default lives
+
+The owner: *what we also have not defined is which data types settings have. With attributes it is
+clear, I set it — but with settings it is currently only a text, or?* Then: *hold the types down in
+the docs, and a setting can have a default — where could that be stored?*
+
+⚠️ **Not text. Five shapes, and four keys take the type of the *subject*.**
+
+| Shape | Its data type | Keys |
+|---|---|---|
+| `Switch` | `bool` | `mandatory`, `hide`, `read_only`, `persistent` |
+| `LikeTheSubject` | **whatever the subject is** | `range_min`, `range_max`, `range_step`, `default` |
+| `Exact` | `decimal` | `factor`, `offset` |
+| `Whole` | `int` | `order` |
+| `OneOfFour`, `ARegisteredName` | **none — a choice, not a value** | `multiplicity`, `renderer`, `converter`, `validator`, `icon` |
+
+⚠️ **`LikeTheSubject` is the one that answers his question properly.** On `int`, `range_min` **is** an
+`int`; on `decimal` it is a `decimal`. *A minimum typed as text would be sortable as `"10" < "9"`, and
+a `default` that is not the type it defaults for is not a default.* Measured against the code, not
+recalled.
+
+⚠️ **The five shapes are not five storage columns.** `record_values` and `settings` both carry
+`value_int`, `value_decimal`, `value_text`, `value_date`, `value_ref` — so a setting is stored in the
+column its type names, exactly as a record value is. *One mechanism, two uses.*
+
+#### Where a key's own default lives: at the installation identity
+
+**Nowhere new.** [D-079](90-decision-log.md) decided in 2026-08-22 that *an installation-wide default
+is a setting on a reserved installation identity, and that identity is the **first link** of the
+resolution chain*. So a key's default is **a setting like any other**, written one link above the
+model root.
+
+⚠️ **Measured, 2026-08-26.** `chainFor()` returns `[installationId(), …ancestors, node]`. Writing
+`persistent = true` at identity `641` made `my_int` resolve it as `1 ← von 641`; removing it made
+`my_int` empty again. **The mechanism was already there and nothing had used it.**
+
+| Where a default could have gone | Why not |
+|---|---|
+| **hard-coded on the key**, in PHP | it is then not a *default* but a law: nobody can change what `persistent` means for their installation |
+| **on each type node** | right for a fact *about that type* — `int`'s `step = 1` — and wrong for a fact about the *key*, which would then be repeated on every type |
+| **on the installation identity** | ✔ it is the first link of a walk that already exists, it is data, and it is editable |
+
+⚠️ *This is what [D-401](90-decision-log.md) needs and it is better than what D-401 asked for.* That
+decision wanted the key to own «what it stands for when nobody said anything»; putting it at the
+installation makes the same answer **visible and changeable** instead of compiled in. **`persistent`
+stops being a `?? true` buried in a reader** and becomes one row a person can see.
 ### The three words that keep getting swapped
 
 | Word | It answers | Not to be used for |

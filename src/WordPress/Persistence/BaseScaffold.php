@@ -3,9 +3,13 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Settings;
 
 /**
  * The base scaffold — the simple data types, imported **once**.
@@ -31,11 +35,14 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
+        // ⚠️ **New here, and only for the bounds.** A scaffold that creates the type but not what
+        // the type *permits* leaves the most useful fact about `int` unsaid.
+        private readonly ?Settings $settings = null,
     ) {
     }
 
@@ -47,6 +54,8 @@ final class BaseScaffold
         }
 
         $created = $this->import();
+
+        $this->boundTheNumbers();
 
         update_option(self::OPTION, self::VERSION, true);
 
@@ -83,5 +92,80 @@ final class BaseScaffold
         }
 
         return $created;
+    }
+    /**
+     * What a seeded number type actually permits, taken from the column it is stored in.
+     *
+     * The owner: *`range_min` and `range_max` on `int` should be int's min and max — so minus size to
+     * plus size of `int`.* **And the bounds come from storage rather than from PHP**, because storage
+     * is what refuses: `value_int` is a `bigint`, `value_decimal` is `decimal(30,10)`.
+     *
+     * ⚠️ **This makes the narrowing rule real rather than theoretical.** [D-312](../../../docs/NewConcept/90-decision-log.md)
+     * says a bounding setting may only be tightened downwards; with nothing at the top there was
+     * nothing to tighten *from*, so `my_int` could set any minimum at all. *Now a descendant narrows a
+     * real range, which is what the rule was written for.*
+     *
+     * ⚠️ **What is deliberately not done: locking them at the defining type.** The owner asked for it —
+     * *since it is a data type and laid down by us, it should not be changeable in `int` (in
+     * descendants it should)* — and then answered his own question: *is that a lot to do? if so leave
+     * it, then users can adjust the type, which is not so bad.* **It is a lot**: nothing in the model
+     * can say *this control is fixed at this node and free below*. `read_only` locks a **value**, not a
+     * setting's control. *That is a new axis and it is on the working list, not smuggled in here.*
+     *
+     * ⚠️ *`decimal(30,10)` leaves twenty integer digits, which is far past what a float can hold — so
+     * the bound is written as a **string** and never through a PHP number.*
+     */
+    private function boundTheNumbers(): void
+    {
+        if ($this->settings === null) {
+            return;
+        }
+
+        // ⚠️ **`step` belongs here too** — the owner: *step still on default 1*. For a whole number it
+        // is the only honest step: `int` with `step = 0.5` is not an `int`. *A descendant may widen the
+        // step to 5 or 10; `step` is a **choosing** setting, not a bound.*
+        $bounds = [
+            // bigint, signed.
+            'int' => ['-9223372036854775808', '9223372036854775807', '1'],
+        ];
+
+        foreach ($bounds as $name => [$low, $high, $step]) {
+            $node = $this->typeNamed($name);
+
+            if ($node === null) {
+                continue;
+            }
+
+            $chain = $this->settings->chainFor($node);
+
+            // ⚠️ **Written only where nothing is there.** A person may already have narrowed `int`, and
+            // a scaffold that overwrites on every upgrade would undo their work — which is the same
+            // reason the scaffold has a version at all.
+            $resolved = $this->settings->resolve($chain);
+
+            if (! isset($resolved[SettingKey::RangeMin->value])) {
+                $this->settings->put($chain, SettingKey::RangeMin->value, TypedValue::ofInt((int) $low));
+            }
+
+            if (! isset($resolved[SettingKey::RangeMax->value])) {
+                $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofInt((int) $high));
+            }
+
+            if (! isset($resolved[SettingKey::RangeStep->value])) {
+                $this->settings->put($chain, SettingKey::RangeStep->value, TypedValue::ofInt((int) $step));
+            }
+        }
+    }
+
+    /** The seeded data type with this name — the same lookup `importOnce()` already does. */
+    private function typeNamed(string $name): ?Node
+    {
+        foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
+            if ($child->name === $name) {
+                return $child;
+            }
+        }
+
+        return null;
     }
 }
