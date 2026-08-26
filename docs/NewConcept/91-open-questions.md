@@ -3502,9 +3502,22 @@ as `hide` on **every field of that type**, in every form and every preview.
 | **the newer meaning** | the **eye in the tree row**, built 2026-08-26: *this row is not shown while «show hidden» is off* — a view gesture, and it writes the same key |
 
 ⚠️ **So the overload belongs to the eye, and the eye is mine.** The owner asked for it in order to
-*optimise the tree and hide superfluous prefixes* — and hiding `Prefixes` that way would silently stop
-`Einheitenwert.prefix` from being drawn anywhere. **It has not fired yet: there are zero `hide` rows in
-the database, so the eye has been built and never used.** *Which is luck, not a safeguard.*
+*optimise the tree and hide superfluous prefixes*, and that is exactly what he did with it: **six
+prefixes carry `hide` today** — `zetta`, `exa`, `femto`, `atto`, `zepto`, `yocto`.
+
+⚠️ **Correction, and it is recorded rather than edited away.** I first wrote here that *there are zero
+`hide` rows, so the eye has been built and never used.* **That came from a query against a column that
+does not exist** — `settings` has no `value_bool`; a boolean lives in `value_int` — and `$wpdb` answers
+a broken query with an empty result, not with an error. *So «no rows» was my SQL failing, reported as a
+fact about his model. It is the same class of mistake `PR-10` was written for, one layer down: I looked
+it up instead of recalling it, and did not check that the lookup had worked.*
+
+⚠️ **What the measurement actually says: the fault has not fired, and the reason is luck of a narrower
+kind.** All 24 attribute edges were resolved and **none** comes back hidden — because every one of the
+six hidden nodes is a **leaf**. An attribute points at `Prefixes`, the **parent**; a hidden **child** of
+it is not in that chain. **The collision fires the first time a hidden node is an attribute's target or
+an ancestor of one** — that is, the first time he hides a *type* node, which is precisely the kind of
+node one hides to tidy a tree.
 
 ⚠️ **Three things the proposal gets right.**
 
