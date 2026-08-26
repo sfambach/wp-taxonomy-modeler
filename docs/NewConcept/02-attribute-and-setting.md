@@ -390,24 +390,69 @@ travelling down the chain.*
 
 | Key | At a **node** (a type, a constant, a subject area) | At an **attribute** (a use site) |
 |---|---|---|
-| **`hide`** | **left out of the tree view** unless *show hidden* is on ([D-396](90-decision-log.md)) | the person **does not see the field**, on input or on output |
+| **`hide`** | **gone from the whole screen** unless *show hidden* is on ([D-396](90-decision-log.md)) — the tree, **and every chooser and selection**. The owner: *`hide` on the node means more — I also do not see it as a choice in selections or the tree chooser.* ⚠️ *Measured: with `hide = true` and the toggle off, «yotta» occurs **0 times** on the page; without it, 3 — the tree row, the move chooser and the attribute-target select* | the person **does not see the field**, on input or on output |
 | **`persistent`** | **a default** for attributes that point here — a type cannot itself be kept or not kept | **whether this field's value is kept** ([D-377](90-decision-log.md)); `keepsValues()` asks only this |
 | **`default`** | the default for **anything** of this type | the default for **this field** |
 | **`renderer`**, `converter`, `validator` | how **anything** of this type is drawn, converted, checked | how **this field** is |
 | **`range_min`/`max`/`step`** | what **the type permits** — `int` is bounded by its column | what **this field accepts**, which may be narrower |
 | **`multiplicity`** | — *does not apply*: a thing has no multiplicity ([D-351](90-decision-log.md)) | **how many of this field** there are, and its floor is mandatoriness ([D-405](90-decision-log.md)) |
-| **`read_only`** | ⚠️ **unclear.** At an attribute it plainly means *the field cannot be edited*; what it means about a **type** is not stated anywhere | the field is **shown and not editable** |
-| **`icon`** | the node's **own** icon, in the tree and wherever it is named ([D-390](90-decision-log.md)) | ⚠️ **unclear** — whether an attribute has an icon of its own, or borrows its target's |
-| **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node | ⚠️ **unclear** — nothing says what they would mean at a use site |
+| **`read_only`** | **a Vorgabe** for attributes pointing here, which the attribute may set **or revoke again** — the owner, 2026-08-26. *Nothing reads it about the node itself: all three readers ask about drawing a **field*** | the field is **shown and not editable** ([D-406](90-decision-log.md) makes revoking possible; until then it was refused) |
+| **`icon`** | the node's **own** icon, in the tree and wherever it is named ([D-390](90-decision-log.md)) | **possible and purposeless — for now.** The owner: *it could be overridden at the attribute but makes no sense, **unless** it is used in the front end or in the renderer for the presentation.* ⚠️ *So it stays offered and undefined on purpose: the meaning arrives with the renderer that wants it, and inventing one before then would be deciding for a caller that does not exist* |
+| **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node, **and in use**: `Celsius` carries `factor = 1.0`, `offset = -273.15` | ⚠️ **unclear** — nothing says what they would mean at a use site |
 
+#### The three switches, and why only one of them acts on the node
+
+The owner settled `read_only` the same way he settled `persistent`, and the two answers together make a
+pattern worth stating:
+
+| Switch | At a node it is… | Measured |
+|---|---|---|
+| **`hide`** | **an effect *and* a Vorgabe** — the node is gone from **everywhere it could be picked**, and fields using it are hidden | two implementations, and the first covers three places because they **share one walk** ([D-367](90-decision-log.md)): `withoutHidden()` filters the rows, and the tree, the move chooser and the target select all draw from those same rows |
+| **`read_only`** | **a Vorgabe only** — *it gives what the attribute can additionally set, or revoke again* | all three readers are about drawing a **field**; nothing asks it about a node |
+| **`persistent`** | **a Vorgabe only** | `keepsValues(Relation $edge)` takes an **edge**; the question is never put to a type |
+
+⚠️ **So `hide` is the exception and the other two are the rule**: a switch at a node normally says
+nothing about the node, only about the fields that reach it. *`hide` is different because a node **is**
+visible in its own right — it has a row in the tree — while «editable» and «kept» are things only a
+field can be.*
+
+⚠️ **And all three are revocable at the attribute since [D-406](90-decision-log.md).** That is what
+makes «Vorgabe» the right word rather than «rule»: *a Vorgabe that could not be revoked would be a
+bound, and the owner took these two out of bounding for exactly that reason.*
 ⚠️ **The pattern in the clear rows is one sentence: at a node the setting is about *the kind of thing*;
 at an attribute it is about *this field*.** *`hide` looks like an exception and is not — a node's «kind
 of thing» includes its place in the tree, which is what a modeller sees; an attribute's is a field,
 which is what a user sees. **Same rule, two audiences.***
 
-⚠️ *The three unclear rows are unclear in the documents, not just to me — `read_only` on a type, `icon`
-on an attribute, and `factor` at a use site are offered by the panel and mean nothing that anybody has
-written down. `PR-4`: they are questions, not gaps to fill in by guessing.*
+⚠️ **Two of the three unclear rows were answered by the owner within the hour**, and the third stands.
+*`read_only` at a node is a Vorgabe the attribute may set or revoke; `icon` at an attribute is possible
+and purposeless until a renderer wants it; `factor` and `offset` at a use site still mean nothing that
+anybody has written down.*
+
+#### `factor` was not replaced — the prefix exponent was
+
+The owner, 2026-08-26: *`factor` does not exist any more, we replaced it with the attribute solution.
+`offset` — I do not know where that comes from.*
+
+⚠️ **Measured, and it is the other way round on both counts.**
+
+| His memory | What the documents and the database say |
+|---|---|
+| *`factor` does not exist any more* | it exists and **it is in use**: `Celsius` carries `factor = 1.0` and `offset = -273.15`, which is Kelvin ↔ Celsius working exactly as [D-274](90-decision-log.md) describes |
+| *replaced by the attribute solution* | **[D-378](90-decision-log.md) replaced the *prefix exponent*, not `factor`.** No decision after D-274 mentions `factor` at all |
+| *I do not know where `offset` comes from* | **from his own requirement in [D-274](90-decision-log.md)**: *temperature needs **more than a factor** — °C → °F is `×1.8 + 32`, an **offset** — so the rule is factor **and** offset* |
+
+⚠️ **But the argument he remembers is real, and it does apply.** [D-378](90-decision-log.md)'s reason
+for making the exponent an attribute was: *a reserved setting key is **global by construction** — a
+text node was being offered a prefix exponent — while an attribute is local, because `Prefixes` declares
+it and only its descendants have it.* **That is word for word true of `factor`**: it is offered on every
+node in the tree, and only units can use it.
+
+⚠️ **So this is a decision waiting to be made, not a decision already made** — `PR-3`: *a decision
+reached in chat and not written down did not happen.* If D-378's argument is extended, `Celsius`'s two
+values become **attributes of the unit** and the two keys go the way `mandatory` went
+([D-405](90-decision-log.md)). *That is a migration of six rows, four of which are empty junk anyway.*
+
 ### The three words that keep getting swapped
 
 | Word | It answers | Not to be used for |
