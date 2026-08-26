@@ -3063,6 +3063,91 @@ split.**
 `order`, `factor`, `offset` are **choices** — those copy harmlessly, because nothing depends on them
 staying equal.
 
-⚠️ *So the honest answer to «what do you think» is: **right for choosing settings, wrong for bounding
-ones** — and that is not a compromise between two positions, it is the line his own D-312 already
-draws. `PR-4`: undecided until he says.*
+⚠️ *That was my first answer: **right for choosing settings, wrong for bounding ones.** He answered
+every objection, and two of the three answers hold.*
+
+### His answers, and what survives them
+
+**To objection 1 — `mandatory` should be edge-only, like `multiplicity`.**
+
+> *Mandatory I would only see on the attribute. Mandatory on a node makes no sense.*
+
+⚠️ **This is right, it is independent of the whole question, and it deserves its own decision.**
+`mandatory` says *this field must be answered* — which is a property of a **use**, not of a type. `int`
+is not mandatory; *the position on a parts list* is. **It is [D-351](90-decision-log.md)'s argument
+verbatim, applied to a second key**: *a node describes a thing, and a thing has no multiplicity.* A
+thing has no obligation either.
+
+*And it removes `mandatory` from this discussion entirely — [D-311](90-decision-log.md)'s «every bird
+has a name» was the strongest objection to materialising, and it turns out to have been about a key
+that should never have been on a node.*
+
+**To the narrowing-later problem — the user confirms, and the confirmation reaches children *and*
+attributes.**
+
+⚠️ **This does not make the invariant hold; it replaces it with a decision, and that is a legitimate
+position rather than a bug.** What changes is what the model *is*: today it **guarantees** that no
+descendant is wider than its ancestor; afterwards it **records what a person decided**. *Both are
+defensible. Only the first can be relied on by a validator without asking anybody.*
+
+⚠️ *Residual, and it is small: nothing would **detect** a child left wider than its parent. That is a
+validator's job and validators are list rows 5 and 8 — so the answer exists, it is just not built.*
+
+**To objection 2 — `reset` pulls from the next higher node.**
+
+> *I could of course say Reset on the node or on the attribute, and then it fetches it from the next
+> higher node's setting.*
+
+⚠️ **This is the answer I said was missing, and it closes the objection.** My complaint was that a
+child which answered *no* would be **permanently detached with no way back**. `reset` as a **pull** is
+the way back, and it is the same gesture [D-266](90-decision-log.md) already defines — only its meaning
+changes from *remove my row so the walk continues* to *fetch the value from above into my row*.
+
+⚠️ *Residual, and this one is a real question: for an **attribute**, what is «the next higher node»?
+Its **owner** (the node declaring it) or its **target** (the type it points at)? Today's chain says the
+target's chain then the edge — so «higher» has two candidates and they answer differently.*
+
+**To objection 3 — his performance argument, which I have to correct.**
+
+> *We do have more data, but at the node the settings are directly readable, so we get better
+> performance — we no longer have to do a depth search.*
+
+⚠️ **There is no depth search today.** Measured: `WpdbSettingRepository::forOwners()` loads the whole
+chain in **one** query — `WHERE owner_id IN (…)` — because `CD-7` forbids a query per level and
+[D-014](90-decision-log.md) built the batched walk for exactly this. *So materialising does not remove
+a walk; it makes the same single query touch fewer rows.*
+
+⚠️ **But the goal underneath it is right and is the strongest argument in the whole proposal:
+legibility.** *At the node, the settings are directly readable* — that is true today only through
+resolution, and resolution is what a person cannot see. **A row is legible; a walk has to be
+explained.** *So the case for the proposal is not speed, it is that a model nobody can read is a model
+nobody can trust — and that is a better argument than the one he made.*
+
+### And one finding of his own, which is independent of all of this
+
+> *When I change an attribute's type, all settings are lost and we may have a conflict. Warning
+> needed!*
+
+⚠️ **Correct, and there is no such act yet** — `ModelEditor` has `addAttribute`, `renameAttribute`,
+`removeAttribute`, `restoreAttribute` and nothing that **retargets**. So this is a requirement on an act
+that does not exist rather than a bug in one that does.
+
+⚠️ **It matters more than it looks.** `range_min` on an attribute pointing at `int` is an `int`
+([the type table](01-glossary.md), `LikeTheSubject`). Point the same attribute at `text` and the row
+still exists, still says `-9223372036854775808`, and now means nothing. **The conflict is not that
+settings are lost — it is that they are silently kept and become wrong.** *A warning is the minimum; the
+real answer is that retargeting names which settings it will drop and asks.*
+
+### Where it stands
+
+| | |
+|---|---|
+| **`mandatory` becomes edge-only** | his point, independent, ready to decide |
+| **`reset` as a pull** | closes objection 2 |
+| **Confirmation instead of a guarantee** | a deliberate change of what the model promises — worth stating in those words before deciding |
+| **Performance** | not an argument; **legibility** is, and a stronger one |
+| **Retargeting warns about settings it invalidates** | a requirement on an act that does not exist yet |
+| **26× the rows** | still true, and still the thing the audit's 590 orphans warn about |
+
+⚠️ *`PR-4`: still open, and the owner asked for it to be **worked in, not decided** — so nothing in
+[10 Domain core](10-domain-core.md) or the truth table moves until he says.*
