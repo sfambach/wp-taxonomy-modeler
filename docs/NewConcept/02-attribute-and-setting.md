@@ -28,7 +28,7 @@ not a rule read.**
 | [Truth table](#truth-table--an-attribute-is-not-a-setting) | rows 1–12, node against attribute |
 | [The worked example](#the-worked-example--my_int-under-int) | `my_int` under `int`, built and measured |
 | [What data type a setting has](#what-data-type-a-setting-has--and-where-its-default-lives) | five shapes, and where a key's default lives |
-| [Settings on an attribute](#settings-on-an-attribute--the-use-site-is-the-last-link) | rows 13–19, the use site |
+| [Settings on an attribute](#settings-on-an-attribute--the-use-site-is-the-last-link) | rows 13–19, the attribute |
 | [Where the two are stored](#where-the-two-are-stored--the-owner-even-if-they-are-almost-the-same) | rows 20–25, one table and one id space |
 
 ⚠️ *An open question is being argued against this document right now:
@@ -42,7 +42,7 @@ The owner: *I am slowly losing the overview in the settings discussion. Can you 
 read, and then we talk.* **This page is that.** One line per thing, pointing into the detail rather than
 repeating it.
 
-### Settled today — eight decisions
+### Settled today — twelve decisions
 
 | | | |
 |---|---|---|
@@ -54,6 +54,12 @@ repeating it.
 | [D-404](90-decision-log.md) | **a key's own default lives at the installation identity** | [D-079](90-decision-log.md) had said so four days earlier and nothing had used it |
 | [D-405](90-decision-log.md) | **`mandatory` is gone** — the multiplicity's floor *is* mandatoriness | and the guarantee got **stronger**: one edge, nowhere to loosen it |
 | [D-406](90-decision-log.md) | **`hide`/`read_only` free in the code too** | D-399's other half, which had been written and not built |
+| [D-407](90-decision-log.md) | **the `order` key is removed** | ordering is the `position` column, which 84 edges use and nothing else ever read |
+| [D-408](90-decision-log.md) | **the screen gets its first script** — eight lines, one number | a `#fragment` can place a row and cannot preserve an offset |
+| [D-409](90-decision-log.md) | **a setting has no multiplicity** | one key, one answer, per place |
+| [D-410](90-decision-log.md) | **an attribute has a name in every language** | it carries labels, like a node — closes [OQ-095](91-open-questions.md) |
+| [D-411](90-decision-log.md) | **the narrowing rule is gone** | an attribute may reopen anything a node said |
+| [D-412](90-decision-log.md) | **a `bool` may not have a floor of zero** | two states means it is always answered |
 
 ### Open — and what each one is actually asking
 
@@ -123,7 +129,7 @@ He is right that they must not be one word.
 | | It answers | Its mechanism |
 |---|---|---|
 | **Inheritance** · *Vererbung* | **what a node has** — `Resistor` has `resistance` because `Bauteil` declared it | the relation **kind** that forms the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)) |
-| **Resolution chain** · *Auflösungskette* | **what a key answers here** — `hide` is true on `yotta` because somebody wrote it there | installation → model root → ancestors → node → use site, walked **key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)) |
+| **Resolution chain** · *Auflösungskette* | **what a key answers here** — `hide` is true on `yotta` because somebody wrote it there | installation → model root → ancestors → node → attribute, walked **key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)) |
 
 **Why they are confusable, and it is not carelessness:** the chain's middle section *is* the
 inheritance edges. Same ancestors, same walk upwards — so *a child of a hidden node is hidden* is true
@@ -249,7 +255,7 @@ Four things make them look alike, and all four are true:
 3. **Both travel downwards.** An attribute by inheritance, a setting by the chain — [and those are not
    the same mechanism](#-inheritance-is-not-the-resolution-chain), which is its own section for the
    same reason.
-4. **A setting can be *about* an attribute.** `mandatory` at a use site is a decision about a question
+4. **A setting can be *about* an attribute.** `mandatory` on an attribute is a decision about a question
    — so the sentence *«the attribute is mandatory»* is true and describes a **setting**.
 
 ⚠️ **The fourth is the real trap.** *«This attribute is mandatory, has a range of 0 to 10 and is drawn
@@ -257,45 +263,41 @@ as a spinner»* is one sentence describing **one attribute and three settings** 
 sentence marks where one ends and the others begin. **The tables below are for exactly that sentence.**
 ## Truth table — an attribute is not a setting
 
-The owner, 2026-08-26: *let us set up a truth table with three columns — claim, attributes, settings.*
-Then, once it existed: *can you number the rows, then it is easier to talk about* — and the reason he
-wanted it at all: ***there are a lot of wrong claims in there that I probably read past while
-conceiving.***
+Twelve statements, checked against both. **The table says what is true and points at the decision; the
+reasoning lives there, not here** — the owner asked for it that way: *put a reference to a decision, and
+if the reader wants to know more they can go to it.*
 
-⚠️ **So the table is numbered and it says which cells are sourced and which are mine.** A cell with a
-`D-` id was read; a cell marked ⚠️ was **asserted by me while filling the table in** and is exactly
-what he is looking for. *Two were already wrong before he looked — see rows 4 and 8.*
+| # | Statement | Attribute | Setting | Decision |
+|---|---|---|---|---|
+| **1** | is inherited | **yes** | **no — it is a copy** | [D-031](90-decision-log.md) · [OQ-097](91-open-questions.md) |
+| **2** | can be moved down to a subtype | **yes** | **possible, not built** | [D-155](90-decision-log.md) |
+| **3** | has a multiplicity | **yes** | **no** | [D-351](90-decision-log.md) · [D-409](90-decision-log.md) |
+| **4** | has a name in every language | **yes** | **no — a key is a token** | [D-410](90-decision-log.md) · [OQ-100](91-open-questions.md) |
+| **5** | exists as a row when nobody set it | **yes** | **open** | [OQ-097](91-open-questions.md) |
+| **6** | may be left unsaid | **no** | **open** | [OQ-097](91-open-questions.md) |
+| **7** | holds a value in a record | **yes** — several where the multiplicity allows | **no** | [D-026](90-decision-log.md) |
+| **8** | may only ever become stricter | **no** | **no — an attribute may reopen anything** | [D-399](90-decision-log.md) · [D-411](90-decision-log.md) |
+| **9** | sits on a node **and** on an attribute | it **is** the attribute | **yes, both** | [D-381](90-decision-log.md) |
+| **10** | a renderer draws it | **yes** | **yes** | [D-098](90-decision-log.md) · `R1` |
+| **11** | is recorded in the changelog | **yes** | **yes** | [D-403](90-decision-log.md) |
+| **12** | a `bool` has exactly two states | **yes** | **yes** | [D-401](90-decision-log.md) · [D-412](90-decision-log.md) |
 
-| # | Claim | Attribute | Setting |
-|---|---|---|---|
-| **1** | **It is inherited** | **yes** — the relation kind *is* the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)). *The owner: **attributes behave like OO in inheritance*** | ⚠️ **«no» was too sharp.** **What you get is inherited** — the owner, as fact: *as long as he changes no settings, all of `int`'s settings apply; if he changes something, those override* ([D-402](90-decision-log.md)). **How** differs: a setting is **answered by walking**, not copied down ([D-079](90-decision-log.md), [D-093](90-decision-log.md)), and overriding is **per key** — set `range_min` and you still get `int`'s `default` |
-| **2** | **It can be moved down to a subtype** | **yes** ([D-155](90-decision-log.md)) | **no** — it was never in one place to be moved from |
-| **3** | **It has a multiplicity** | **yes**, and only on the edge ([D-351](90-decision-log.md)) | ⚠️ **undecided, and I wrote «no».** *Multiplicity **is** a setting key, so the claim reads oddly; what it should ask is whether **one key may hold several values**, and that is [OQ-092](91-open-questions.md) — open, and it blocks three decided things* |
-| **4** | **Its name is a label, per locale** | ⚠️ **no — I had this wrong.** An attribute's name is a **plain column** on the relation. *Measured: 17 edges carry a name, **zero** labels belong to an edge; all 46 labels belong to nodes.* Whether an edge *may* own labels is undecided | **no** — a setting has a **key**, which is a token and never translated |
-| **5** | **It exists as a row when nobody set it** | **yes** — an edge is either there or it is not | **no** — settings are **sparse**: written only where they differ ([D-015](90-decision-log.md)) |
-| **6** | **It may be left unsaid** | **no** — an attribute is declared or absent | **yes**, and that is the normal case |
-| **7** | **It holds a value in a record** | **yes** — that is what a record *is* | **no** — a setting is about the **model**; at model level there are no values, only defaults ([D-026](90-decision-log.md)) |
-| **8** | **It may be narrowed downwards and never widened** | ⚠️ **the cell was «not applicable» and that is wrong.** An attribute's **multiplicity** is a bounding setting *on the edge*, so an attribute **is** narrowed downwards — through its settings | **some of them.** Bounding: permitted set, range, multiplicity, `mandatory` ([D-311](90-decision-log.md), [D-312](90-decision-log.md)). Free: default, renderer, converter, labels, icon, order — **and `hide`, `read_only`** ([D-399](90-decision-log.md)) |
-| **9** | **It can sit on a node *and* on a use site** | it **is** the use site, seen from the owner ([10 Domain core](10-domain-core.md)) | **yes** — both. *Measured: 36 settings on nodes, 11 on edges* |
-| **10** | **A renderer draws it** | **yes** — its value | **yes** — its control. *Both go through `R1`; neither is exempt* |
-| **11** | **It is recorded in the changelog** | **yes** — `attribute added` / `removed` / `restored` | ⚠️ **no, and that breaks a decision.** [D-081](90-decision-log.md): *every object has at least one changelog item*, and [D-061](90-decision-log.md) makes the changelog **the migration script**. Measured: **591 setting rows, zero changelog entries about settings** — `owner_kind` knows only `node` and `relation`. *A migration replaying it would produce a model with no settings* |
-| **12** | **A `bool` has exactly two states** | — | **yes, and «not set» is not a third one** ([D-401](90-decision-log.md)) |
+### Reading the table
 
-### Row 12 — settled by the owner, and it corrected me twice
+**Rows 5 and 6 are the only open ones**, and they are one question: if a setting is written into the
+inheriting node rather than looked up ([OQ-097](91-open-questions.md)), then every setting has a row and
+none may be left unsaid. *Until that is settled, the built behaviour is the opposite of what row 1 now
+says — the code still looks a setting up rather than copying it.*
 
-I had offered two ways out and he refused both: ***neither a nor b. We said a bool can have only two
-states, «not set» does not exist. If a value is there then the value, otherwise the default.***
+⚠️ **Row 8 changed today and it is worth a sentence.** Settings used to be split into *bounding* — only
+ever stricter — and *choosing*. The owner ended it: *I can simply set the setting on the attribute and
+override it. If something is hidden I can make it visible elsewhere; if it is read-only here I can make
+it editable there.* So **an attribute may reopen anything a node said** ([D-411](90-decision-log.md)),
+and the narrowing rule is gone.
 
-⚠️ **The mistake in both my candidates was the same**: I treated *unset* as something the control has
-to **express**. It is not a state of the value at all — it is a fact about **storage**, and settings
-being sparse ([D-015](90-decision-log.md)) is why storage is empty most of the time. **That «set true»
-and «defaulted true» look identical on screen is correct, not a defect.**
-
-⚠️ **What it demands in the code is one home for the default.** `persistent` resolved to `true` in a
-**reader** — `?? true` inside the data layer — while the switch drew *off*, and the same invention
-appears **eight times** across renderers and services as `?? false` or `?? true`. *That is the
-duplicated-fact prohibition: one place owns each piece of state.* **The key owns what it stands for
-when nobody said anything**, and both the control and every reader ask it.
+⚠️ **Row 12 has a second half.** A `bool` has two states, so it is always answered — which means **a
+`bool` attribute may not have a floor of zero** ([D-412](90-decision-log.md)). *`0..1` on a `bool` says
+«maybe true, maybe false, maybe neither», and there is no neither.*
 
 ### The worked example — `my_int` under `int`
 
@@ -375,7 +377,7 @@ model root.
 decision wanted the key to own «what it stands for when nobody said anything»; putting it at the
 installation makes the same answer **visible and changeable** instead of compiled in. **`persistent`
 stops being a `?? true` buried in a reader** and becomes one row a person can see.
-### Settings on an attribute — the use site is the last link
+### Settings on an attribute — the attribute is the last link
 
 The third column the owner asked for: *then on with attribute settings and a table for it.* Everything
 below is **measured on 2026-08-26** against attribute `1398` («int» on `Parts List`, pointing at
@@ -386,13 +388,13 @@ flowchart LR
     I["641 installation"] --> R["1 model root"] --> A["406 · 408 ancestors"] --> T["1171 int · the target"] --> E["1398 the edge"]
 ```
 
-**The chain of a use site is the chain of its *target* plus the edge**, and the edge is **last** — so a
+**The chain of a attribute is the chain of its *target* plus the edge**, and the edge is **last** — so a
 setting written at the attribute wins over the type it points at, over the type's ancestors, and over
 the installation. *Measured: `641 → 1 → 406 → 408 → 1171 → 1398`.*
 
-| # | Claim | Setting on a **node** | Setting at a **use site** (an attribute) |
+| # | Statement | On a **node** | On an **attribute** |
 |---|---|---|---|
-| **13** | **Where it sits in the walk** | one of the links — installation, root, an ancestor, or the node | **the last link, always.** Nothing resolves after it |
+| **13** | where it sits in the walk | one of the links | **the last one, always** |
 | **14** | **Whose type its value takes** | the node's own, where the key is `LikeTheSubject` | **the target's.** `range_min` on an attribute pointing at `int` is an `int` |
 | **15** | **Keys that exist only here** | — | **`multiplicity`** ([D-351](90-decision-log.md)) and **`order`**, because ordering is per parent. *Measured: `multiplicity` on a node is refused — «belongs to a use of a node, not to the node itself — set it on the attribute»* |
 | **16** | **Narrowing a bound** | may narrow what an ancestor said | **may narrow, and is the narrowest point there is.** *Measured: `range_min = 10` took at the edge while `range_max` and `renderer` still read `← von 1171`* |
@@ -405,7 +407,7 @@ the installation. *Measured: `641 → 1 → 406 → 408 → 1171 → 1398`.*
 He asked for the storage places to be in the table *even though they are nearly identical* — and the
 «nearly» is the interesting part.
 
-| # | Claim | Setting on a **node** | Setting at a **use site** |
+| # | Claim | Setting on a **node** | Setting on an **attribute** |
 |---|---|---|---|
 | **20** | **Which table** | `taxmod_settings` | **the same table.** Not a second one, not a second column |
 | **21** | **What `owner_id` holds** | the node's id | the **edge's** id |
@@ -463,7 +465,7 @@ return nothing for it. And `DataEntry::keepsValues(Relation $edge)` takes an **e
 «is this kept» is only ever asked of an attribute, so whatever a type says can only ever be a default
 travelling down the chain.*
 
-| Key | At a **node** (a type, a constant, a subject area) | At an **attribute** (a use site) |
+| Key | At a **node** (a type, a constant, a subject area) | At an **attribute** (a attribute) |
 |---|---|---|
 | **`hide`** | **gone from the whole screen** unless *show hidden* is on ([D-396](90-decision-log.md)) — the tree, **and every chooser and selection**. The owner: *`hide` on the node means more — I also do not see it as a choice in selections or the tree chooser.* ⚠️ *Measured: with `hide = true` and the toggle off, «yotta» occurs **0 times** on the page; without it, 3 — the tree row, the move chooser and the attribute-target select* | the person **does not see the field**, on input or on output |
 | **`persistent`** | **a default** for attributes that point here — a type cannot itself be kept or not kept | **whether this field's value is kept** ([D-377](90-decision-log.md)); `keepsValues()` asks only this |
@@ -473,7 +475,7 @@ travelling down the chain.*
 | **`multiplicity`** | — *does not apply*: a thing has no multiplicity ([D-351](90-decision-log.md)) | **how many of this field** there are, and its floor is mandatoriness ([D-405](90-decision-log.md)) |
 | **`read_only`** | **a Vorgabe** for attributes pointing here, which the attribute may set **or revoke again** — the owner, 2026-08-26. *Nothing reads it about the node itself: all three readers ask about drawing a **field*** | the field is **shown and not editable** ([D-406](90-decision-log.md) makes revoking possible; until then it was refused) |
 | **`icon`** | the node's **own** icon, in the tree and wherever it is named ([D-390](90-decision-log.md)) | **possible and purposeless — for now.** The owner: *it could be overridden at the attribute but makes no sense, **unless** it is used in the front end or in the renderer for the presentation.* ⚠️ *So it stays offered and undefined on purpose: the meaning arrives with the renderer that wants it, and inventing one before then would be deciding for a caller that does not exist* |
-| **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node, **and in use**: `Celsius` carries `factor = 1.0`, `offset = -273.15` | ⚠️ **unclear** — nothing says what they would mean at a use site |
+| **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node, **and in use**: `Celsius` carries `factor = 1.0`, `offset = -273.15` | ⚠️ **unclear** — nothing says what they would mean on an attribute |
 
 #### The three switches, and why only one of them acts on the node
 
@@ -501,7 +503,7 @@ which is what a user sees. **Same rule, two audiences.***
 
 ⚠️ **Two of the three unclear rows were answered by the owner within the hour**, and the third stands.
 *`read_only` at a node is a Vorgabe the attribute may set or revoke; `icon` at an attribute is possible
-and purposeless until a renderer wants it; `factor` and `offset` at a use site still mean nothing that
+and purposeless until a renderer wants it; `factor` and `offset` on an attribute still mean nothing that
 anybody has written down.*
 
 #### `factor` was not replaced — the prefix exponent was

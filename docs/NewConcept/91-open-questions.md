@@ -2929,7 +2929,12 @@ and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays op
 
 **Raised** 2026-08-26, while checking a cell of the truth table that I had filled in from memory.
 
-*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* open · *raised by* the truth table, row 4
+*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* **closed** · *raised by* the truth table, row 4
+
+> **Closed 2026-08-26 → [D-410](90-decision-log.md).** **Yes** — the owner: *there ought to be
+> multi-language for attributes too; the attribute settings need a labels part as well. I can
+> decide that right here.* It was an accident, not a rule: the storage always allowed it and
+> nobody had written a row.
 
 **I wrote that an attribute's name is a label per locale. Measured, it is not.** 17 edges carry a name
 in the `relations.name` column; **zero** labels belong to an edge, and all 46 labels belong to nodes.
@@ -3428,3 +3433,33 @@ problem as one pointing at `int`. **[OQ-092](#oq-092)'s column is untouched by t
 
 ⚠️ *`PR-4`: the subtypes are content and his to seed; the addressing is a schema decision. **The first
 does not wait for the second**, which is the useful part of this proposal.*
+
+
+## OQ-100 — Should a setting key's *name* be translatable, even though the key is not?
+
+**Raised** 2026-08-26, by the owner, while reviewing row 4 of the truth table.
+
+*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md), [40 i18n](40-i18n.md) · *Status:* open
+
+> *A setting is a key, that is not really translated. I only wonder whether it would not be nicer if we
+> at least had a translation, so that a German user can read it better when it is an English term. **We
+> should question that.***
+
+⚠️ **The key itself cannot be translated and that is not in question.** `hide` is a token: it is
+written into the database, matched in code and reserved against authors inventing it
+([D-084](90-decision-log.md)). *Translating it would mean the same setting had a different name per
+locale, which is the one thing a key must not have.*
+
+⚠️ **What he is asking about is the **label on the control** — and that is ordinary software text.**
+Everything else user-visible on this screen already goes through the text domain (`AR-2`): the buttons,
+the headings, the explanations. **The setting rows are the exception, and they are the exception by
+oversight rather than by decision** — they print the raw key.
+
+| | |
+|---|---|
+| **for** | *«Verbergen»* reads better than *«hide»* for a German modeller, and every other word on the screen is already translated |
+| **against** | a person reading the concept, the log or an error message sees `hide`; a screen that says *Verbergen* makes those three documents harder to search |
+| **a third way** | show both — the translated word, with the key beside it in small type. *The panel already does this for a node's id and path* |
+
+⚠️ *`PR-4`: not decided. It is cheap either way — one `__()` per key — which is exactly why it should be
+decided rather than done because it is cheap.*
