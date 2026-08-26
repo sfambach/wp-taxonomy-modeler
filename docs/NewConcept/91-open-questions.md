@@ -3478,3 +3478,60 @@ oversight rather than by decision** — they print the raw key.
 
 ⚠️ *`PR-4`: not decided. It is cheap either way — one `__()` per key — which is exactly why it should be
 decided rather than done because it is cheap.*
+
+
+## OQ-101 — Hiding a node and not drawing its fields are two things sharing one key. Where does each belong?
+
+**Raised** 2026-08-26, by the owner, immediately after asking for the eye in the tree row.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* open
+
+> *I am wondering whether hiding the node and hiding the output are two things, and whether the second
+> could not simply be covered by the **don't-render** 😉 — that one could be made available everywhere.
+> Then we have a `hide` at the node which we could **remove from the settings** and take as a fixed node
+> component (table).*
+
+⚠️ **He is right, and it is a fault today rather than a tidiness question.** Measured on scratch nodes:
+the resolution chain of a field is `installation → root → parent → **the target node** → the edge`, so
+the target node sits **inside** what the field resolves. `hide` written on a node therefore comes back
+as `hide` on **every field of that type**, in every form and every preview.
+
+| | |
+|---|---|
+| **the older meaning** | [D-399](90-decision-log.md): declared at a **type**, *the fields of this type are not drawn* — and the inheritance is the **feature**, which is why the leak is not a bug in D-399 |
+| **the newer meaning** | the **eye in the tree row**, built 2026-08-26: *this row is not shown while «show hidden» is off* — a view gesture, and it writes the same key |
+
+⚠️ **So the overload belongs to the eye, and the eye is mine.** The owner asked for it in order to
+*optimise the tree and hide superfluous prefixes* — and hiding `Prefixes` that way would silently stop
+`Einheitenwert.prefix` from being drawn anywhere. **It has not fired yet: there are zero `hide` rows in
+the database, so the eye has been built and never used.** *Which is luck, not a safeguard.*
+
+⚠️ **Three things the proposal gets right.**
+
+| | |
+|---|---|
+| **it removes the leak by construction** | a **column** is not in the chain, is not inherited and cannot be overridden at a use site — so the two meanings can no longer reach each other, and nobody has to remember a rule |
+| **`dont-render` is `R1`, and it composes** | [D-236](90-decision-log.md) gives a node an **ordered list** of renderers; *draw nothing* is an ordinary member of that list. **What is displayed is a renderer's business** — a setting that suppresses drawing is the renderer's job done by a key |
+| **it dissolves [D-399](90-decision-log.md)'s greyed control instead of drawing it** | today `hide = true` puts the renderer *out of force* and the renderer control is greyed — **a setting disabling another setting's choice**. With `dont-render`, hiding **is** the choice: one control, no cross-key rule, nothing to grey |
+
+⚠️ **And three things it does not answer. The first is the decisive one and it is not ours to guess.**
+
+**1 · Is a hidden node hidden for *everyone*?** A column is a **model fact**: it goes in the changelog,
+survives a migration, and every editor sees the node gone. A per-person *«do not show me these»* is
+neither a column nor a setting — it is a user option, and [D-389](90-decision-log.md) /
+[D-396](90-decision-log.md) already put *show hidden nodes* in the **request** as a circumstance. *His
+own words — «superfluous prefixes» — read installation-wide rather than personal, but «reads like» is
+not a decision.*
+
+**2 · Does a hidden node stop being *offerable*?** The owner, the same day: *`hide` at the node means
+more — I do not see it in selections or in the tree chooser either.* That is a **model** fact and argues
+for the column. But it collides with [R31](30-renderer.md): *a control with no possible answer is a
+fault in the model.* **Hide every candidate and the field becomes unsatisfiable** — so this needs a rule
+about what a chooser does when everything it could offer is hidden.
+
+**3 · Does *draw nothing* need a purpose?** `hide` is purpose-blind today. *Not shown when reading but
+editable when editing* is a different thing from *never drawn*, and it is the neighbour of `read_only`,
+whose entire meaning is that the two purposes differ ([D-160](90-decision-log.md)).
+
+⚠️ *`PR-4`: none of this is decided. What is **established** is the measurement — one key, two
+meanings, and the chain carries the node's meaning into the field's.*
