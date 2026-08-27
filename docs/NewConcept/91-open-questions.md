@@ -3848,12 +3848,13 @@ would put presentation inside a domain object, which the prohibitions forbid out
 **Raised** 2026-08-26, by the owner, immediately after [D-440](90-decision-log.md) separated class from
 object.
 
-⚠️ **Answered the same day by [D-441](90-decision-log.md)**, and by a better name than either of the two
-this question weighed: `Record` becomes `NodeRecord`, `RecordValue` becomes `EdgeRecord`, and the column
-becomes `node_id` — *because on a class that says which kind of record it is, `node_id` stops being
-imprecise.* The settings half he raised in the same breath is [OQ-106](#oq-106--do-settings-split-the-same-way-into-nodesetting-and-edgesetting).
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* **answered 2026-08-26 by [D-441](90-decision-log.md)**
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-441](90-decision-log.md).** *Und mit einem
+besseren Namen als beide, die hier gewogen wurden: `Record` wird `NodeRecord`, `RecordValue` wird
+`EdgeRecord`, und die Spalte wird `node_id` — weil an einer Klasse, die sagt, um welche Art Record es
+geht, `node_id` aufhört, unpräzise zu sein.* Die Settings-Hälfte, die er im selben Atemzug aufwarf, ist
+[OQ-106](#oq-106--do-settings-split-the-same-way-into-nodesetting-and-edgesetting).
 
 > *Then why is it not called `node_id`?*
 

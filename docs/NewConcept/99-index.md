@@ -9,7 +9,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | | |
 |---|---|
 | Entscheidungen | **441**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **106**, davon **90** noch offen |
+| Offene Fragen | **106**, davon **89** noch offen |
 
 ## Offene Fragen
 
@@ -121,7 +121,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-102](91-open-questions.md) | beantwortet | Should the live tables keep old versions with a delete flag, or should the journal become restorable? |
 | [OQ-103](91-open-questions.md) | **offen** | Should the whole model be read once into an identity map, with writes going back per object? |
 | [OQ-104](91-open-questions.md) | **offen** | Should a value be passed as an object rather than looked up by edge id? |
-| [OQ-105](91-open-questions.md) | **offen** | `records.model_id` points at a node. Should it not say so? |
+| [OQ-105](91-open-questions.md) | beantwortet | `records.model_id` points at a node. Should it not say so? |
 | [OQ-106](91-open-questions.md) | **offen** | Do settings split the same way, into `NodeSetting` and `EdgeSetting`? |
 
 ## Entscheidungen
