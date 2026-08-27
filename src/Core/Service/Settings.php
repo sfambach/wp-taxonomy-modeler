@@ -366,6 +366,19 @@ final class Settings
                     continue;
                 }
 
+                // ⚠️ **A row whose value is nothing is never copied, and leaving this out cost real
+                // damage the same day.** The backfill turned **8 valueless rows into 90**: an empty
+                // row resolves as *set here* and stops the chain ([row 29](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
+                // so materialising one hands a child a full stop instead of a value. *The owner found
+                // it by asking why `factor` hangs on a text node — 26 of the 90 were `factor` and 26
+                // were `offset`.*
+                //
+                // ⚠️ *It is deliberately silent rather than a refusal: an empty row upstream is a
+                // fault to be cleaned up, not a reason for creating a node to fail.*
+                if ($resolved->value->isNothing()) {
+                    continue;
+                }
+
                 $engine = SettingKey::tryFrom($key);
 
                 // ⚠️ *`multiplicity` is edge-only, so a node must not receive it — and `put()` would
