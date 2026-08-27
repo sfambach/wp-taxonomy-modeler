@@ -23,7 +23,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class RenderedSetting
+final class RenderedSetting implements Renderable
 {
     public function __construct(
         public readonly string $key,
@@ -90,5 +90,33 @@ final class RenderedSetting
     public function isEngineOwned(): bool
     {
         return SettingKey::isReserved($this->key);
+    }
+
+    /**
+     * Was ein Leser fuer diese Einstellung liest — der Schluessel.
+     *
+     * ⚠️ **Der Eigentuemer fragte: *ist ein Setting damit auch ein renderable object?* — und die Antwort
+     * ist ja, weil es beides hat: einen Namen und einen Inhalt.** *Damit ist dies der **zweite**
+     * Implementierer des Vertrags, und ein Vertrag mit einem Implementierer garantiert niemandem etwas.*
+     *
+     * ⚠️ *Der Schluessel selbst, weil ob ein Schluesselname uebersetzbar ist, [OQ-100](../../../docs/NewConcept/91-open-questions.md)
+     * noch nicht entschieden hat. Das Wort, das dort herauskommt, wird hier zurueckgegeben — an einer
+     * Stelle, und genau das ist der Sinn einer Methode gegenueber einer Eigenschaft.*
+     */
+    public function label(): string
+    {
+        return $this->key;
+    }
+
+    /**
+     * Der aufgeloeste Wert als Zeichen — leer, wo nichts gesetzt ist.
+     *
+     * ⚠️ *Nichts wird als nichts gezeichnet, nie als Strich und nie als Null
+     * ([D-232](../../../docs/NewConcept/90-decision-log.md)): ein fehlender Wert heisst **nicht
+     * beantwortet**, und ein Platzhalter wuerde das vor dem Leser verbergen.*
+     */
+    public function content(): string
+    {
+        return $this->setting->value->isNothing() ? '' : $this->setting->value->describe();
     }
 }

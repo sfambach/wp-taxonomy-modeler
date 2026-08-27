@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **437**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **439**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **102**, davon **86** noch offen |
 
 ## Offene Fragen
@@ -564,3 +564,5 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-435](90-decision-log.md) | 2026-08-26 | agreed | An attribute is reordered with the same two buttons a node has — and `position` turns out to belong to the |
 | [D-436](90-decision-log.md) | 2026-08-26 | agreed | `name` belongs on `Identity` too: a node and an edge both have one, and both are translatable the same way. Supersedes the «only» in D-080. |
 | [D-437](90-decision-log.md) | 2026-08-26 | agreed | `Identity` and *renderable* are two things, and D-091 merged them. The seam is named now; the signature moves when there is a second implementor. |
+| [D-438](90-decision-log.md) | 2026-08-26 | agreed | A setting is a renderable object too — and it is the second implementor the contract needed. |
+| [D-439](90-decision-log.md) | 2026-08-26 | agreed | Everything that is displayed implements `Renderable`. Measured: three of twelve do. |
