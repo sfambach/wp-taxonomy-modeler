@@ -3747,3 +3747,56 @@ a query instead of a replay, and that is the difference between a feature and a 
 ([row 28](97-implementation-plan.md#the-working-list)) and 8 rows holding no value at all
 ([row 29](97-implementation-plan.md#the-working-list)). *Whichever way this is decided, that page is where
 it lands.*
+
+
+## OQ-103 — Should the whole model be read once into an identity map, with writes going back per object?
+
+**Raised** 2026-08-26, by the owner, after asking how the tree is built.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), [10 Domain core](10-domain-core.md) · *Status:* open
+
+> *Is there a way to read all objects — nodes, edges, settings — from the database at once and hold
+> them as objects in memory, and on change write the change of the object back to the database?*
+
+⚠️ **Yes, and it is cheap. Measured before answering.**
+
+| | |
+|---|---|
+| everything in one go | **4 queries, 2 ms, 470 KB** |
+| what that is | 88 nodes, 119 edges, 414 settings, 46 labels |
+| what the screen costs today | **41 queries, 33 ms** — and it was 111 until `rootOf()` was memoised |
+| how far it scales | ≈ 5 MB at 1 000 nodes, ≈ 52 MB at 10 000, against a 512 MB limit |
+
+⚠️ **So the pattern is an *identity map* plus a *unit of work***: one read per table, every row hydrated
+once, every reader handed the same object, and a write going back through the repository it came from.
+
+⚠️ **What it would replace is not the tree.** The tree is already two queries and assembled in memory
+([D-014](90-decision-log.md)). *What costs the other 39 is everything asking the same small questions
+again — which is why the honest version of this proposal is «read four tables once», not «cache the
+tree».*
+
+### Two things must survive it, and they are the whole risk
+
+**1 · [D-089](90-decision-log.md)'s optimistic locking.** *Compare `version` on save, refuse and show
+what changed.* A map that writes back must still send the **expected version** — `save($object,
+$expectedVersion)` is how the repositories are shaped today. **A write-back that trusts its own copy is
+exactly how two editors silently overwrite each other**, and concurrent entry is stated there as *the
+normal case*.
+
+**2 · [D-014](90-decision-log.md)'s single truth.** *The tree **is** the inheritance edges; `path` is
+derived from them.* An in-memory map is a **cache of rows** and must never become a second place where
+the model lives — every write goes through a repository, and the map is refreshed from it rather than
+patched beside it.
+
+### Within a request or across requests — two different questions
+
+| | |
+|---|---|
+| **within one request** | straightforward: 41 queries → ~5, no invalidation problem, nothing shared between users. *This is the part worth doing and it needs no new decision beyond «do it».* |
+| **across requests** | a different thing entirely. It needs invalidation on every write, WordPress's object cache is **not** guaranteed to be persistent, and two PHP workers would hold two copies — *at which point D-089's version check is the only thing standing between them.* |
+
+⚠️ *My recommendation: the per-request map, and not the cross-request one yet. The measured win is 41 →
+about 5 queries for 470 KB, which is a good trade; the cross-request version buys 2 ms and buys a whole
+class of staleness. **And it is worth doing before [row 11](97-implementation-plan.md#the-working-list)'s
+auto-save**, because an interactive screen makes many small writes and each one currently pays for the
+same reads again.*

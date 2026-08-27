@@ -9,7 +9,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | | |
 |---|---|
 | Entscheidungen | **439**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **102**, davon **86** noch offen |
+| Offene Fragen | **103**, davon **87** noch offen |
 
 ## Offene Fragen
 
@@ -119,6 +119,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-100](91-open-questions.md) | **offen** | Should a setting key's *name* be translatable, even though the key is not? |
 | [OQ-101](91-open-questions.md) | beantwortet | Hiding a node and not drawing its fields are two things sharing one key. Where does each belong? |
 | [OQ-102](91-open-questions.md) | beantwortet | Should the live tables keep old versions with a delete flag, or should the journal become restorable? |
+| [OQ-103](91-open-questions.md) | **offen** | Should the whole model be read once into an identity map, with writes going back per object? |
 
 ## Entscheidungen
 
