@@ -3848,6 +3848,11 @@ would put presentation inside a domain object, which the prohibitions forbid out
 **Raised** 2026-08-26, by the owner, immediately after [D-440](90-decision-log.md) separated class from
 object.
 
+⚠️ **Answered the same day by [D-441](90-decision-log.md)**, and by a better name than either of the two
+this question weighed: `Record` becomes `NodeRecord`, `RecordValue` becomes `EdgeRecord`, and the column
+becomes `node_id` — *because on a class that says which kind of record it is, `node_id` stops being
+imprecise.* The settings half he raised in the same breath is [OQ-106](#oq-106--do-settings-split-the-same-way-into-nodesetting-and-edgesetting).
+
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
 
 > *Then why is it not called `node_id`?*
@@ -3925,3 +3930,43 @@ it. *Two of the three are decided and justified. Adding `connection` would make 
 the prose already says everywhere and the class is the outlier. That is a large mechanical rename and it
 buys one thing only, which is that the code and the documents stop using two words for one class.
 `NodeRecord` / `EdgeRecord` is worth doing on its own and does not wait for it.*
+
+
+## OQ-106 — Do settings split the same way, into `NodeSetting` and `EdgeSetting`?
+
+**Raised** 2026-08-26, by the owner, in the same breath as the record rename.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+
+> *Record the rename — similarly it must be so with settings.*
+
+⚠️ **The argument transfers, and the measurement says the polymorphism is real.**
+
+| a setting row owns | rows |
+|---|---|
+| a **node** | 307 |
+| an **edge** | 104 |
+| the **installation identity** | 3 |
+
+⚠️ **And the distinction already has teeth**: `multiplicity` is `isEdgeOnly()` ([D-351](90-decision-log.md))
+— *a node describes a thing, and a thing has no multiplicity.* So the code already asks *is this owner an
+edge* and refuses when the answer is wrong. **A type would ask it once instead of at every write.**
+
+### Why it is a question and not a copy of [D-441](90-decision-log.md)
+
+**The third owner.** A record's class is always a node, so `NodeRecord` / `EdgeRecord` covers everything.
+A setting's owner may be the **installation identity** — three rows today, and they are the declared
+defaults for the switches ([D-404](90-decision-log.md)). *That owner is neither a node nor an edge; it is
+an identity with no node behind it ([D-079](90-decision-log.md)). So the pair would have to become a
+triple, or the third case would need a home of its own.*
+
+⚠️ *And a second-order effect worth naming before anybody splits the table: the **resolution chain** walks
+installation → root → ancestors → node → use site ([D-079](90-decision-log.md)) — **one walk across all
+three owner kinds.** A split into three types must not become a split into three queries, or `CD-7` is
+broken by a rename.*
+
+⚠️ *My recommendation: **the classes, not the table.** `NodeSetting`, `EdgeSetting` and
+`InstallationSetting` as three readings of one row — the polymorphic `owner_id` and the single walk stay,
+and the type says which kind is in hand. That gets D-351's check for free and costs no schema change,
+which is the opposite trade from [D-441](90-decision-log.md), where the column name itself was the thing
+that lied.*

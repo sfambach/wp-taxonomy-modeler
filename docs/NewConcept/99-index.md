@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **440**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **105**, davon **89** noch offen |
+| Entscheidungen | **441**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **106**, davon **90** noch offen |
 
 ## Offene Fragen
 
@@ -122,6 +122,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-103](91-open-questions.md) | **offen** | Should the whole model be read once into an identity map, with writes going back per object? |
 | [OQ-104](91-open-questions.md) | **offen** | Should a value be passed as an object rather than looked up by edge id? |
 | [OQ-105](91-open-questions.md) | **offen** | `records.model_id` points at a node. Should it not say so? |
+| [OQ-106](91-open-questions.md) | **offen** | Do settings split the same way, into `NodeSetting` and `EdgeSetting`? |
 
 ## Entscheidungen
 
@@ -570,3 +571,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-438](90-decision-log.md) | 2026-08-26 | agreed | A setting is a renderable object too — and it is the second implementor the contract needed. |
 | [D-439](90-decision-log.md) | 2026-08-26 | agreed | Everything that is displayed implements `Renderable`. Measured: three of twelve do. |
 | [D-440](90-decision-log.md) | 2026-08-26 | agreed | A node is a *class*, a record is an *object*. `content()` being empty on a node is correct, not a gap — and that resolves the knot. |
+| [D-441](90-decision-log.md) | 2026-08-26 | agreed | `Record` becomes `NodeRecord`, `RecordValue` becomes `EdgeRecord` — and `records.model_id` becomes `node_id`. Answers OQ-105. |
