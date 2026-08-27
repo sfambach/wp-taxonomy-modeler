@@ -66,7 +66,7 @@ interface Renderer
      * Whether it is eligible for this subject at all — the registry's second job, at
      * configuration time: *which renderers may this node be given?*
      */
-    public function fits(Identity $subject): bool;
+    public function fits(Renderable $subject): bool;
 
-    public function render(Identity $subject, RenderContext $context): RenderResult;
+    public function render(Renderable $subject, RenderContext $context): RenderResult;
 }

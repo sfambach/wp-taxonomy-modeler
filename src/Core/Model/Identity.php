@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Renderer\Renderable;
+
 /**
  * What a node and an edge have in common: an **id** from the one space, and a **version**.
  *
@@ -46,7 +48,7 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-abstract class Identity
+abstract class Identity implements Renderable
 {
     /**
      * @param int $id      Drawn from the one model space ([C11](../../../docs/NewConcept/10-domain-core.md)),

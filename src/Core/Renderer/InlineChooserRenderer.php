@@ -43,12 +43,12 @@ final class InlineChooserRenderer implements Renderer
         return [SimpleType::NodeRef];
     }
 
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return true;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $tree = $context->surroundings->sections[DialogChooserRenderer::CANDIDATES] ?? null;
 

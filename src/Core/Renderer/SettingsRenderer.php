@@ -70,7 +70,7 @@ final class SettingsRenderer implements Renderer
      * the same `id` four times. *Duplicate ids do not warn; `form="…"` simply finds the first one, so
      * the head button would have saved whichever panel happened to be earliest in the document.*
      */
-    public static function formFor(Identity $subject): string
+    public static function formFor(Renderable $subject): string
     {
         return 'taxmod-settings-' . $subject->id;
     }
@@ -91,12 +91,12 @@ final class SettingsRenderer implements Renderer
         return [];
     }
 
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return true;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         // ⚠️ **Grouped by what a setting is *about*** ([D-385](../../../docs/NewConcept/90-decision-log.md)).
         // The owner had been uneasy about it before he could name it — *what still bothers me is that

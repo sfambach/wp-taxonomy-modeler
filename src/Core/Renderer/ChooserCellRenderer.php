@@ -66,12 +66,12 @@ final class ChooserCellRenderer implements Renderer
         return [];
     }
 
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return $subject instanceof Node;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         if (! $subject instanceof Node) {
             return RenderResult::of('');

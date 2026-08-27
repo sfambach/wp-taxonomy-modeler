@@ -62,12 +62,12 @@ final class FormRenderer implements Renderer
      * would mean — the target's attributes, or the edge's own — is not decided, and answering it
      * here by accident is how a concept acquires a rule nobody wrote.
      */
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return $subject instanceof Node;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $rows      = '';
         $usedEdges = [];

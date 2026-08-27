@@ -42,13 +42,13 @@ final class PlainRenderer implements Renderer
         return SimpleType::cases();
     }
 
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         // It is the fallback. Refusing anything would leave something undrawable.
         return true;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
             return RenderResult::of('');

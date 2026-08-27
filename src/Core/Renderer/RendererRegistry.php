@@ -177,7 +177,7 @@ final class RendererRegistry
      * @return list<Renderer>
      */
     public function eligibleFor(
-        Identity $subject,
+        Renderable $subject,
         ?SimpleType $type = null,
         ?Purpose $forPurpose = null,
     ): array {
@@ -226,7 +226,7 @@ final class RendererRegistry
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings
      */
     public function chosenFor(
-        Identity $subject,
+        Renderable $subject,
         array $settings,
         Purpose $purpose,
         ?SimpleType $type = null,

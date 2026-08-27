@@ -66,12 +66,12 @@ final class LabelsRenderer implements Renderer
         return [];
     }
 
-    public function fits(Identity $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return true;
     }
 
-    public function render(Identity $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $rows = $context->surroundings->rows;
 
