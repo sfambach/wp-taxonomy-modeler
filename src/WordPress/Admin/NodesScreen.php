@@ -599,14 +599,71 @@ final class NodesScreen
      * is indistinguishable from a preview that forgot it* — and the owner is using this screen to
      * judge whether `hide` is right, so what it removed has to be legible.
      */
+    /**
+     * A node that **is** a field, drawn both ways — or `''` where it is not one.
+     *
+     * ⚠️ **The two columns are the whole point** ([D-101](../../../docs/NewConcept/90-decision-log.md),
+     * [D-160](../../../docs/NewConcept/90-decision-log.md)): `read_only` is the setting whose entire
+     * meaning is that display and edit differ, and at a **type** there is no second row to compare
+     * against — so the comparison has to be the two purposes.
+     *
+     * ⚠️ *Empty string rather than `null`, because every other panel on this screen returns markup and
+     * a second convention would be one more thing to remember.*
+     */
+    private function typePreview(Node $selected): string
+    {
+        // ⚠️ **Data types only, and measuring found the reason.** `Rendering::typeOf()` answers
+        // `node_ref` for anything under `Constants` ([D-232](../../../docs/NewConcept/90-decision-log.md)),
+        // so a constant would preview as a **chooser with no candidates handed in** — which draws the
+        // red *nothing draws this* marker. *Measured on `Prefixes`: `<input class="taxmod-no-renderer">`.
+        // A preview that invents a fault where there is none is worse than no preview.*
+        //
+        // ⚠️ *And it is the scope the owner asked about: «why no preview on the simple **data
+        // types**». A constant previewed as a reference needs its candidates walked and handed in,
+        // which is a different job.*
+        if ($this->framework->branchOf($selected) !== Branch::DataTypes) {
+            return '';
+        }
+
+        $display = $this->rendering->valueOfType($selected, Purpose::Display, locale: $this->localeFromRequest());
+
+        if ($display === null) {
+            return '';
+        }
+
+        $edit = $this->rendering->valueOfType($selected, Purpose::Edit, locale: $this->localeFromRequest());
+
+        return $this->heading(
+            __('Preview', 'taxmod'),
+            __('What a field of this type looks like with the settings above. Left is what a reader sees, right what an editor sees — if the two differ, that is «read only» doing its job. The value shown is this type\'s default; it needs no record.', 'taxmod')
+        )
+            . '<table class="taxmod-preview"><tbody><tr>'
+            . '<th scope="row">' . esc_html($selected->name) . '</th>'
+            . '<td>' . $display->markup . '</td>'
+            . '<td>' . ($edit?->markup ?? '') . '</td>'
+            . '</tr></tbody></table>';
+    }
+
     private function previewPanel(Node $selected): string
     {
         $branch = $this->framework->branchOf($selected);
 
+        // ⚠️ **A simple type previews *itself*** ([D-430](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *why no preview on the simple data types?* **Because the check below answers «does
+        // this node hold records» when the useful question is «can it be drawn as a field»** — and for
+        // a data type the first is no and the second is what it *is*. *`range_min`, `range_step`,
+        // `renderer` and `read_only` are configured here, so this was the one screen that could show
+        // what they do and the one screen that said there was nothing to show.*
+        $asValue = $this->typePreview($selected);
+
+        if ($asValue !== '') {
+            return $asValue;
+        }
+
         if ($branch === null || ! $branch->holdsData()) {
             return $this->heading(
                 __('Preview', 'taxmod'),
-                __('Only a node that can hold records has something to preview. A data type or a constant describes something rather than being one.', 'taxmod')
+                __('Only a node that can hold records has something to preview. A composed type or a model is drawn by a renderer that does not exist yet.', 'taxmod')
             ) . '<p><em>' . esc_html__('Nothing to preview here.', 'taxmod') . '</em></p>';
         }
 

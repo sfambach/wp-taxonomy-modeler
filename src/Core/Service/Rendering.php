@@ -257,6 +257,68 @@ final class Rendering
     }
 
     /**
+     * A node drawn **as a value** — what a field of this type looks like, with this node's settings.
+     *
+     * ⚠️ **[D-430](../../../docs/NewConcept/90-decision-log.md), and it exists because the descent
+     * takes edges while a type node has none.** The owner: *why no preview on the simple data types?*
+     * The panel refused them for a reason that answers a different question — *only a node that can
+     * hold records has something to preview* — which is right about **records** and wrong about
+     * **fields**: a data type does not hold one, it **is** one.
+     *
+     * ⚠️ **No synthetic edge.** {@see RendererRegistry::chosenFor()} and {@see Renderer::render()}
+     * already accept a `Node`, so nothing has to be invented to fit a signature — *a fake `Relation`
+     * in the core to satisfy a parameter list is the kind of thing that later gets stored.*
+     *
+     * ⚠️ **It resolves the chain once and finds its own example.** The value is the node's resolved
+     * `default`, which is the same third rung {@see previewValuesFor()} uses — *real data → rows
+     * marked as test data → the type's sample.* A type has no records, so the first two cannot apply
+     * and the third is the whole of it.
+     *
+     * ⚠️ *Returns `null` where the node is no simple type at all, so the surface can say so rather
+     * than draw an empty box: a composed node or a model wants [row 36](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s
+     * composite renderer, which does not exist.*
+     */
+    public function valueOfType(
+        Node $node,
+        Purpose $purpose,
+        ?TypedValue $value = null,
+        string $locale = '',
+        Level $level = Level::Admin,
+        bool $editable = true,
+    ): ?RenderResult {
+        $type = $this->typeOf($node, $this->nodes->byIds($node->ancestorIds()));
+
+        if ($type === null) {
+            return null;
+        }
+
+        $settings = $this->settings->resolve($this->settings->chainFor($node));
+
+        if ($value === null || $value->isNothing()) {
+            $value = ($settings[SettingKey::DefaultValue->value] ?? null)?->value ?? TypedValue::nothing();
+        }
+
+        // ⚠️ *The fallback rather than nothing, for the same reason a field falls back: a value must
+        // never silently disappear, and the fallback marks itself (R14b).*
+        $renderer = $this->renderers->chosenFor($node, $settings, $purpose, $type)
+            ?? $this->renderers->fallback();
+
+        return $renderer->render($node, new RenderContext(
+            purpose: $purpose,
+            value: $value,
+            settings: $settings,
+            locale: $locale,
+            level: $level,
+            editable: $editable,
+            // ⚠️ **Nameless on purpose**: this is a preview, and a named field inside the settings
+            // form would be submitted as if somebody had filled it in.
+            fieldName: '',
+            type: $type,
+            surroundings: new Surroundings(),
+        ));
+    }
+
+    /**
      * The settings panel's markup for rows that were already drawn.
      *
      * ⚠️ **Split out because both callers need it and one of them has already drawn the rows.** The
