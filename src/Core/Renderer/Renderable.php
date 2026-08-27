@@ -3,40 +3,60 @@
 namespace Taxmod\Core\Renderer;
 
 /**
- * Something a renderer can draw. **The owner's `IRenderAble`, and it promises nothing.**
+ * The agreement that an object may be rendered — **and the methods are the agreement**.
  *
- * ⚠️ **Why it has no members: *rendering is independent of the id*** — his sentence, and it settles the
- * shape. A renderer is **handed** everything it needs through {@see RenderContext}
- * ([D-159](../../../docs/NewConcept/90-decision-log.md)): the value, the resolved settings, the locale,
- * the field name, the surrounding markup. *So there is nothing left for the subject to promise, and an
- * interface that demanded a method would be demanding it for the convenience of the type checker.*
+ * ⚠️ **The owner's own words, and they correct a marker interface I had built instead:** *«`Renderable`
+ * is an interface, it is the agreement that an object may be rendered. **Functions in the interface
+ * guarantee the interface** — for example `getLabel()`, `getContent()` and a few more; that guarantees
+ * a renderer can render them.»*
  *
- * ⚠️ **It is not {@see \Taxmod\Core\Model\Identity}, and conflating the two was the mistake.** The
- * owner: *you have now simply mixed two things together, `Identity` and `IRenderable`?* — and
- * [D-164](../../../docs/NewConcept/90-decision-log.md) is the proof rather than the argument: *records
- * do not share the model's identity space.* **A record is not an `Identity` and must still be
- * drawable**, so «has an id in the model space» cannot be the contract for «can be drawn».
+ * ⚠️ **Why a marker was wrong.** I had argued that *rendering is independent of the id*, therefore the
+ * interface should promise nothing. **The first half is his and it is right; the conclusion was mine and
+ * it was not** — independence from the **id** says nothing about independence from a **label** or from
+ * **content**. *A contract that guarantees nothing cannot guarantee that a renderer can draw what it is
+ * handed, which is the entire purpose of having one.*
+ *
+ * ⚠️ **This does not weaken [D-159](../../../docs/NewConcept/90-decision-log.md) — it is how D-159 gets
+ * kept.** *A renderer fetches nothing*: it asks the object it was handed, and the object was prepared
+ * before the descent began. **The renderer still reaches for no repository**; what changes is that it
+ * stops reading raw properties off a model class and asks a question instead.
  *
  * ```mermaid
- * flowchart TD
- *   R["Renderable · can be drawn"] --> I["Identity · id · version · name"]
- *   I --> N["Node"]
- *   I --> E["Relation"]
- *   R -.->|"S7"| V["a composed value · no model id at all"]
- *   R -.->|"D-106"| C["a record · its own id space"]
+ * flowchart LR
+ *   R["a renderer"] -->|asks| A["label()"]
+ *   R -->|asks| C["content()"]
+ *   R -.->|never| D["a repository"]
  * ```
  *
- * ⚠️ **[D-091](../../../docs/NewConcept/90-decision-log.md) wrote `render(Renderable $subject, …)` and
- * that reads as *only things with a model id may be drawn*** — which is exactly what would keep a
- * record and a composed value undrawable. *The signature says `Renderable` now; `Identity` implements
- * it, and the second implementor is the one S7 needs.*
+ * ⚠️ **Named without the `get` prefix**, which is this codebase's convention everywhere else
+ * (`name()`, `notation()`, `handles()`) — *his `getLabel()` and `getContent()` are these two.*
  *
- * ⚠️ *One implementor today, and that is not a reason to wait. The owner asked for it twice and then
- * once more sharply — and the whole point of a contract is that the second party arrives later; naming
- * it afterwards would mean changing forty signatures at the moment S7 is hardest.*
+ * ⚠️ *«And a few more» is deliberately not guessed. Two are asked for and two are here; a third arrives
+ * when a renderer needs it, because an interface grown ahead of its callers guarantees things nobody
+ * checks (`PR-4`).*
  *
  * @see docs/NewConcept/30-renderer.md
  */
 interface Renderable
 {
+    /**
+     * The word a person reads for this thing.
+     *
+     * ⚠️ *Not necessarily its `name`: [D-105](../../../docs/NewConcept/90-decision-log.md) wants a
+     * reference drawn as its **target's label**, and [row 21](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+     * is open because a chooser draws the raw database column instead. **A method is what makes that
+     * fixable in one place** — a property could only ever return the column.*
+     */
+    public function label(): string;
+
+    /**
+     * What it holds, as characters — empty where it holds nothing.
+     *
+     * ⚠️ *Empty is a real answer and not a gap: a node and an edge **have** no content of their own,
+     * which is why the value of a field travels in {@see RenderContext} today. **That is the seam S7
+     * closes**: a composed value is a renderable that answers this properly, and it has no model id at
+     * all ([D-232](../../../docs/NewConcept/90-decision-log.md)) — which is exactly why the parameter
+     * could not stay `Identity`.*
+     */
+    public function content(): string;
 }

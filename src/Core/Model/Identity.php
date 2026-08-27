@@ -86,4 +86,32 @@ abstract class Identity implements Renderable
         public readonly string $name,
     ) {
     }
+
+    /**
+     * {@inheritDoc}
+     *
+     * ⚠️ *The base name, because that is the only word a model object holds by itself. A **label** —
+     * per locale, per role ([D-410](../../../docs/NewConcept/90-decision-log.md)) — lives in its own
+     * table and is resolved by {@see \Taxmod\Core\Service\Labels}; a renderable that has one hands it
+     * back here instead, which is how [row 21](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+     * gets fixed without a renderer reaching for anything.*
+     */
+    public function label(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * ⚠️ **Empty, and it is an answer rather than a gap.** *A node and an edge hold no value of their
+     * own — an attribute's value belongs to a **record**, and where it is stored is the branch's
+     * decision ([D-232](../../../docs/NewConcept/90-decision-log.md)). So the field's value travels in
+     * {@see \Taxmod\Core\Renderer\RenderContext} today, and the renderable that answers this properly
+     * is the composed value S7 needs.*
+     */
+    public function content(): string
+    {
+        return '';
+    }
 }
