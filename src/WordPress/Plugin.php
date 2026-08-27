@@ -174,7 +174,12 @@ final class Plugin
         wp_enqueue_style(
             'taxmod-admin',
             plugins_url('assets/admin.css', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
-            ['dashicons'],
+            // ⚠️ **`buttons` is a dependency because this stylesheet overrides it.** `.taxmod-icon-button`
+            // and WordPress's `.button` are both a single class, so they have **the same specificity**
+            // and the later one wins — and without declaring the dependency, «later» was not ours to
+            // decide. *The owner reported the boxes around the icons twice; my first two explanations
+            // were about the wrong element entirely.*
+            ['dashicons', 'buttons'],
             // ⚠️ **The file's own change time, not the plugin version, while this is being built.**
             // The owner reloaded three times on a stylesheet that was already correct because the
             // browser held the previous one — `VERSION` moves once per release, and during a session

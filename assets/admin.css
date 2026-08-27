@@ -348,7 +348,18 @@ details.taxmod-page-block > summary {
  * The borderless rule had been scoped to `.taxmod-tree`, and three more panels grew icon buttons
  * afterwards. **The renderers now mark such a button themselves** ({@see ControlMarkup::ICON_ONLY}),
  * so this rule needs no place to be scoped to and cannot be outgrown again.
+ *
+ * ⚠️ **Reported a third time — and the first two fixes were about reach when the cause was
+ * specificity.** `.taxmod-icon-button` and WordPress's own `.button` are **both a single class**, so
+ * they weigh the same and the later stylesheet wins. **Ours declared no dependency on `buttons`**, so
+ * «later» was never ours to decide: the rule was correct and sometimes simply lost. *Two fixes that
+ * widened the selector's reach could not have helped, because reach was never what failed.*
+ *
+ * ⚠️ *`.button.taxmod-icon-button` is two classes and outweighs `.button` whatever the order; the
+ * `buttons` dependency in `Plugin::enqueue()` makes the order right as well. Belt and braces, because
+ * this one has now cost three reports.*
  */
+.button.taxmod-icon-button,
 .taxmod-icon-button {
     border: 0;
     background: 0 0;
@@ -366,6 +377,7 @@ details.taxmod-page-block > summary {
     vertical-align: middle;
 }
 
+.button.taxmod-icon-button:hover:not(:disabled),
 .taxmod-icon-button:hover:not(:disabled) {
     background: #f0f0f1;
     border-radius: 3px;
