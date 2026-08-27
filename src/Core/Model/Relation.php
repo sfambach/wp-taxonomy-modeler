@@ -16,7 +16,7 @@ use Taxmod\Core\Exception\InvalidName;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Relation
+final class Relation extends Identity
 {
     /**
      * @param int    $id       From the model identity space, shared with nodes (C11) — which is
@@ -34,8 +34,8 @@ final class Relation
      * written down ([D-348](../../../docs/NewConcept/90-decision-log.md)).
      */
     private function __construct(
-        public readonly int $id,
-        public readonly int $version,
+        int $id,
+        int $version,
         public readonly int $fromId,
         public readonly int $toId,
         public readonly RelationKind $kind,
@@ -43,6 +43,8 @@ final class Relation
         public readonly int $position,
         public readonly ?int $parkedByGroup = null,
     ) {
+        // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
+        parent::__construct($id, $version);
     }
 
     /**

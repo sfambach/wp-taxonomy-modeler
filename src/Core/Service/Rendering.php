@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -330,7 +331,7 @@ final class Rendering
      */
     private function panelBody(
         array $configured,
-        Node|Relation $subject,
+        Identity $subject,
         array $acts,
         ?Submission $submits,
         string $locale,
@@ -375,7 +376,7 @@ final class Rendering
      * @param  array<string, Section> $sections The locale picker, keyed `locale`.
      */
     public function labelsPanelFor(
-        Node|Relation $subject,
+        Identity $subject,
         array $slots,
         array $acts = [],
         ?Submission $submits = null,
@@ -631,7 +632,7 @@ final class Rendering
      * @param  Submission|null                                  $submits Where a row's act goes.
      */
     public function settingsPanelFor(
-        Node|Relation $subject,
+        Identity $subject,
         array $resolved,
         array $acts = [],
         ?Submission $submits = null,
@@ -802,7 +803,7 @@ final class Rendering
      * @return list<RenderedSetting>
      */
     public function settingsFor(
-        Node|Relation $node,
+        Identity $node,
         array $resolved,
         Purpose $purpose = Purpose::Display,
         string $fieldPrefix = '',
@@ -1288,7 +1289,7 @@ final class Rendering
      * for exactly that rather than an empty box that looks fillable.*
      */
     private function drawChoice(
-        Node|Relation $subject,
+        Identity $subject,
         SettingKey $key,
         SettingShape $shape,
         ResolvedSetting $setting,

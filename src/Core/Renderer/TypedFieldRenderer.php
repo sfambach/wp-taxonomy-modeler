@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
@@ -40,12 +41,12 @@ abstract class TypedFieldRenderer implements Renderer
      * registry key (R14a). `fits()` stays for the structural questions a later renderer needs to
      * ask: a table renderer only fits a multi-valued edge (D-098).
      */
-    public function fits(Node|Relation $subject): bool
+    public function fits(Identity $subject): bool
     {
         return true;
     }
 
-    final public function render(Node|Relation $subject, RenderContext $context): RenderResult
+    final public function render(Identity $subject, RenderContext $context): RenderResult
     {
         // The edge whose value went into this rendering — metadata a caller cannot recover from
         // the markup afterwards (D-021).

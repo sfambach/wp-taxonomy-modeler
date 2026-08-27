@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SimpleType;
@@ -61,12 +62,12 @@ final class FormRenderer implements Renderer
      * would mean — the target's attributes, or the edge's own — is not decided, and answering it
      * here by accident is how a concept acquires a rule nobody wrote.
      */
-    public function fits(Node|Relation $subject): bool
+    public function fits(Identity $subject): bool
     {
         return $subject instanceof Node;
     }
 
-    public function render(Node|Relation $subject, RenderContext $context): RenderResult
+    public function render(Identity $subject, RenderContext $context): RenderResult
     {
         $rows      = '';
         $usedEdges = [];

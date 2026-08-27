@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
@@ -176,7 +177,7 @@ final class RendererRegistry
      * @return list<Renderer>
      */
     public function eligibleFor(
-        Node|Relation $subject,
+        Identity $subject,
         ?SimpleType $type = null,
         ?Purpose $forPurpose = null,
     ): array {
@@ -225,7 +226,7 @@ final class RendererRegistry
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings
      */
     public function chosenFor(
-        Node|Relation $subject,
+        Identity $subject,
         array $settings,
         Purpose $purpose,
         ?SimpleType $type = null,

@@ -13,7 +13,7 @@ use Taxmod\Core\Exception\InvalidName;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Node
+final class Node extends Identity
 {
     /**
      * @param int    $id      From the model identity space, shared with relations (C11).
@@ -24,11 +24,14 @@ final class Node
      *                        **Derived** and rebuildable — never a second truth (D-014).
      */
     private function __construct(
-        public readonly int $id,
-        public readonly int $version,
+        int $id,
+        int $version,
         public readonly string $name,
         public readonly string $path,
     ) {
+        // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
+        // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
+        parent::__construct($id, $version);
     }
 
     /**

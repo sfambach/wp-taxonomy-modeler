@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
@@ -41,13 +42,13 @@ final class PlainRenderer implements Renderer
         return SimpleType::cases();
     }
 
-    public function fits(Node|Relation $subject): bool
+    public function fits(Identity $subject): bool
     {
         // It is the fallback. Refusing anything would leave something undrawable.
         return true;
     }
 
-    public function render(Node|Relation $subject, RenderContext $context): RenderResult
+    public function render(Identity $subject, RenderContext $context): RenderResult
     {
         if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
             return RenderResult::of('');

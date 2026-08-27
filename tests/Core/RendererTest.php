@@ -174,8 +174,8 @@ final class RendererTest extends TestCase
             public function supports(): array { return [Purpose::Display]; }
             /** @return list<\Taxmod\Core\Model\SimpleType> */
             public function handles(): array { return [SimpleType::Text]; }
-            public function fits(Node|\Taxmod\Core\Model\Relation $subject): bool { return true; }
-            public function render(Node|\Taxmod\Core\Model\Relation $subject, RenderContext $context): RenderResult
+            public function fits(\Taxmod\Core\Model\Identity $subject): bool { return true; }
+            public function render(\Taxmod\Core\Model\Identity $subject, RenderContext $context): RenderResult
             {
                 return RenderResult::of('shown');
             }
