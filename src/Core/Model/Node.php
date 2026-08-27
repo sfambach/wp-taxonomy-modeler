@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Renderer\Renderable;
+
 use Taxmod\Core\Exception\InvalidName;
 
 /**
@@ -13,7 +15,7 @@ use Taxmod\Core\Exception\InvalidName;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Node extends Identity
+final class Node extends Identity implements Renderable
 {
     /**
      * @param int    $id      From the model identity space, shared with relations (C11).
@@ -134,5 +136,23 @@ final class Node extends Identity
         }
 
         return $name;
+    }
+
+    /**
+     * Was ein Leser fuer diesen Knoten liest — der Name, weil der Modellbaum den rohen Namen zeigt
+     * ([D-369](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    public function label(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * Leer, und das ist eine Antwort: ein Knoten haelt keinen eigenen Wert. Der Wert eines Feldes
+     * gehoert einem **Datensatz** ([D-232](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    public function content(): string
+    {
+        return '';
     }
 }

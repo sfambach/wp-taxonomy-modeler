@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Renderer\Renderable;
+
 use Taxmod\Core\Exception\InvalidName;
 
 /**
@@ -16,7 +18,7 @@ use Taxmod\Core\Exception\InvalidName;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Relation extends Identity
+final class Relation extends Identity implements Renderable
 {
     /**
      * @param int    $id       From the model identity space, shared with nodes (C11) — which is
@@ -173,5 +175,25 @@ final class Relation extends Identity
     public function movedTo(int $position): self
     {
         return $this->reparentedTo($this->fromId, $position);
+    }
+
+    /**
+     * Was ein Leser fuer diese Kante liest — der Name des Attributs.
+     *
+     * ⚠️ *Noch der rohe Name. [D-105](../../../docs/NewConcept/90-decision-log.md) will eine Referenz
+     * als **Label des Ziels** gezeichnet sehen, und [Zeile 21](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+     * ist genau darum offen — **eine Methode ist, was das an einer Stelle behebbar macht.***
+     */
+    public function label(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * Leer: eine Kante haelt keinen Wert, sie sagt nur, wo einer hingehoert.
+     */
+    public function content(): string
+    {
+        return '';
     }
 }
