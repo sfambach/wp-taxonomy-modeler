@@ -324,8 +324,10 @@ details.taxmod-page-block > summary {
     }
 }
 /* A switch needs no room for its value, so its key column can be shorter. */
+/* ⚠️ *The switch rows carry the same four columns and had the same two stale widths — a second copy
+   of one measurement, which is why both were wrong at once.* */
 .taxmod-settings-switches .taxmod-setting {
-    grid-template-columns: 7.5em auto 3.2em 3.4em;
+    grid-template-columns: 7.5em auto 1.4em 4.4em;
 }
 
 /* The heading spans every column, so a group reads as a group. */
@@ -338,8 +340,21 @@ details.taxmod-page-block > summary {
 .taxmod-setting {
     display: grid;
     /* ⚠️ Fixed widths, because that is what makes every row line up **across both columns** — a
-     * row measuring itself gave the left half and the right half different key columns. */
-    grid-template-columns: 7.5em minmax(0, 1fr) 3.2em 3.4em;
+     * row measuring itself gave the left half and the right half different key columns.
+     *
+     * ⚠️ **Two of the four changed today and both were my doing.** The owner: *the gap to the field
+     * is too large, it should be right against it* and *the buttons are still below.* **The third
+     * column used to hold the word «here»**, which [D-423](../docs/NewConcept/90-decision-log.md)
+     * made true of every row and which was therefore removed — leaving `3.2em` of nothing wedged
+     * between the field and its buttons. *An empty column is not a gap somebody chose.* It now holds
+     * only the rare inherited arrow, so `1.4em` is the whole of what it needs.
+     *
+     * ⚠️ *And the acts column grew because the buttons did: `inline-flex` centring
+     * ([the icons sat too low](../docs/NewConcept/97-implementation-plan.md#the-working-list)) made
+     * two icon buttons wider than `3.4em`, so they wrapped under the field. **A fixed width has to be
+     * re-measured whenever what stands in it changes** — that is the cost of fixed, and it is still
+     * cheaper than rows that do not line up.* */
+    grid-template-columns: 7.5em minmax(0, 1fr) 1.4em 4.4em;
     align-items: center;
     column-gap: .5em;
     padding: .12em 0;
