@@ -3559,7 +3559,7 @@ meanings, and the chain carries the node's meaning into the field's.*
 
 **Raised** 2026-08-26, by the owner, after asking for a single change number.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **answered 2026-08-26 by [D-427](90-decision-log.md) — the journal becomes restorable; the live tables keep one row per thing**
 
 > *To store all changes I think we need old versions that have a delete flag — so the same node with
 > different settings but only one is active, and the same for edges and settings. **Do we have our own
