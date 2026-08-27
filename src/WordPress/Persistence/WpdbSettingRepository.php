@@ -101,4 +101,30 @@ final class WpdbSettingRepository implements SettingRepository
             (string) ($row['path'] ?? '')
         );
     }
+
+    /**
+     * Every row these owners hold, gone — one statement, never a loop (`CD-7`).
+     *
+     * ⚠️ *Ids are cast to `int` by this method, so the list carries no user input — and it is still
+     * assembled with placeholders rather than glued in (`CD-6`).*
+     *
+     * @param list<int> $ownerIds
+     */
+    public function forgetOwners(array $ownerIds): int
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map(intval(...), $ownerIds)));
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        $places = implode(",", array_fill(0, count($ids), "%d"));
+
+        return (int) $wpdb->query($wpdb->prepare(
+            "DELETE FROM " . Schema::table("settings") . " WHERE owner_id IN ({$places})",
+            ...$ids
+        ));
+    }
 }

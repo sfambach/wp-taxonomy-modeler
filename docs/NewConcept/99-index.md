@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **432**, davon **26** ersetzt oder teilweise überholt |
+| Entscheidungen | **433**, davon **26** ersetzt oder teilweise überholt |
 | Offene Fragen | **102**, davon **86** noch offen |
 
 ## Offene Fragen
@@ -559,3 +559,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-430](90-decision-log.md) | 2026-08-26 | agreed | A simple type gets a preview of *itself* — one field, drawn both ways. The branch check was answering the wrong question. |
 | [D-431](90-decision-log.md) | 2026-08-26 | agreed | A setting is the system's. No screen creates one, so nothing has to delete one — and `reset` therefore only ever pulls. Closes row 48. |
 | [D-432](90-decision-log.md) | 2026-08-26 | agreed | `Identity` becomes real: everything renderable is one, and `render()` takes it instead of a union. Implements D-091, which said so and was built othe… |
+| [D-433](90-decision-log.md) | 2026-08-26 | agreed | Choosing several registered names in order gets its own renderer — a `` cannot express either half. |

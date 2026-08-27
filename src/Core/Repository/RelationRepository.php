@@ -95,5 +95,18 @@ interface RelationRepository
      */
     public function parkedAttributeEdgesOf(array $ownerIds): array;
 
+    /**
+     * Every edge with one end on any of these nodes — **both** ends, and every kind.
+     *
+     * ⚠️ **Both ends and every kind, because a purge has to reach what hangs off an edge.** An edge is
+     * an identity ([D-080](../../../docs/NewConcept/90-decision-log.md)) and may carry settings and
+     * labels of its own, so the tidy-up needs its **id** and not only its deletion — *which is why this
+     * exists beside {@see self::purgeEdgesTouching()} rather than instead of it.*
+     *
+     * @param  list<int>      $nodeIds
+     * @return list<Relation>
+     */
+    public function edgesTouching(array $nodeIds): array;
+
     public function purgeEdgesTouching(int $nodeId): void;
 }

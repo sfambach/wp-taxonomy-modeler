@@ -26,4 +26,15 @@ interface LabelRepository
 
     /** Remove one label so the chain falls through to the next step. */
     public function forget(int $ownerId, string $path, int $roleId, string $number, string $locale): void;
+
+    /**
+     * Every label these owners hold, gone.
+     *
+     * ⚠️ *Same reason as the settings: a name in eight languages outliving the node it named is not
+     * history, it is litter — the changelog is where history lives ([D-065](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param  list<int> $ownerIds
+     * @return int
+     */
+    public function forgetOwners(array $ownerIds): int;
 }

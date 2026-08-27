@@ -145,4 +145,17 @@ final class InMemoryRelations implements RelationRepository
     {
         return count($this->rows);
     }
+
+    public function edgesTouching(array $nodeIds): array
+    {
+        $found = [];
+
+        foreach ($this->rows as $edge) {
+            if (in_array($edge->fromId, $nodeIds, true) || in_array($edge->toId, $nodeIds, true)) {
+                $found[] = $edge;
+            }
+        }
+
+        return $found;
+    }
 }

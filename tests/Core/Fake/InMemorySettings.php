@@ -47,4 +47,18 @@ final class InMemorySettings implements SettingRepository
     {
         return count($this->rows);
     }
+
+    public function forgetOwners(array $ownerIds): int
+    {
+        $gone = 0;
+
+        foreach ($this->rows as $key => $row) {
+            if (in_array($row->ownerId, $ownerIds, true)) {
+                unset($this->rows[$key]);
+                $gone++;
+            }
+        }
+
+        return $gone;
+    }
 }

@@ -242,6 +242,37 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+    /**
+     * Every edge with one end on any of these nodes — both ends, every kind.
+     *
+     * ⚠️ *One statement for the whole set, because a purge over forty parked nodes must not be forty
+     * queries (`CD-7`). Ids are cast here, so nothing user-written reaches the SQL, and placeholders
+     * are used anyway (`CD-6`).*
+     */
+    public function edgesTouching(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map(intval(...), $nodeIds)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $places = implode(",", array_fill(0, count($ids), "%d"));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM " . Schema::table("relations") . "
+                 WHERE from_id IN ({$places}) OR to_id IN ({$places})",
+                ...[...$ids, ...$ids]
+            ),
+            ARRAY_A
+        );
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
     public function purgeEdgesTouching(int $nodeId): void
     {
         global $wpdb;

@@ -159,9 +159,23 @@ final class NodesScreen
         $left .= $this->table($rows, 'tree', $collapsed, $selected);
         $left .= $this->heading(
             __('Trash', 'taxmod'),
-            __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here.', 'taxmod'),
+            __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here. «Clear» is the other half: it removes them for good and keeps their ids and their history, so nothing is ever handed out twice and the changelog still says what was there.', 'taxmod'),
             'h2'
         );
+        // ⚠️ **The clear button, on the owner's ask** — *build a button behind the Trash label,
+        // «clear», so we can tidy up.* **Only when there is something to clear**: a button that can
+        // never act is furniture ([D-429](../../../docs/NewConcept/90-decision-log.md)), and an empty
+        // trash needs no act. *Marked `destroys`, which is what makes it red on every surface without
+        // a colour being written here.*
+        if ($parked !== []) {
+            $left .= $this->form(
+                $trash->id,
+                // ⚠️ *A word and not an icon: the tree's bin **parks**, and a second bin next to it
+                // that **deletes** would be two pictures for two opposite acts. The word says which.*
+                [['clear_trash', __('Clear', 'taxmod'), __('Remove everything in the trash for good — the ids and the changelog stay', 'taxmod'), '', true]]
+            );
+        }
+
         $left .= $this->table($parked, 'trash', $collapsed, $selected);
 
         // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
@@ -420,6 +434,35 @@ final class NodesScreen
      * @param list<array{0: string, 1: string, 2: string, 3?: string, 4?: bool}> $buttons
      *        value · label · title · optional Dashicon key · optional *destroys*
      */
+    /**
+     * Empty the trash and say what went — the boundary half of {@see ModelEditor::clearTrash()}.
+     *
+     * ⚠️ **The counts are reported and not swallowed**, because this is the one act on the screen that
+     * cannot be undone. *A silent «done» after an irreversible act leaves a person guessing whether it
+     * ran, and the guess is answered by looking at the tree — which is exactly when it is too late.*
+     *
+     * ⚠️ *And it names what stayed, not only what went: the ids and the changelog. Otherwise the
+     * honest design ([D-340](../../../docs/NewConcept/90-decision-log.md), [D-065](../../../docs/NewConcept/90-decision-log.md))
+     * looks like a purge that missed something.*
+     */
+    private function clearedTrash(): string
+    {
+        $gone = $this->editor->clearTrash();
+
+        if ($gone['nodes'] === 0) {
+            return __('The trash was already empty.', 'taxmod');
+        }
+
+        return sprintf(
+            /* translators: 1: nodes, 2: edges, 3: settings, 4: labels. */
+            __('Trash cleared: %1$d nodes, %2$d edges, %3$d settings and %4$d labels are gone. Their ids and their changelog entries stay.', 'taxmod'),
+            $gone['nodes'],
+            $gone['edges'],
+            $gone['settings'],
+            $gone['labels']
+        );
+    }
+
     private function form(int $id, array $buttons, string $extra = ''): string
     {
         $html = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="taxmod-acts">'
@@ -2379,6 +2422,11 @@ final class NodesScreen
                 'up'             => $this->editor->moveUp($id),
                 'down'           => $this->editor->moveDown($id),
                 'restore'        => $this->editor->restore($id),
+                // ⚠️ **Der endgueltige Akt** ([Zeile 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
+                // auf seine Bitte: *bau mal einen Button hinter Trash Label clear damit wir aufraeumen
+                // koennen.* **Was bleibt, ist Absicht**: Identitaeten ([D-340](../../../docs/NewConcept/90-decision-log.md))
+                // und Changelog ([D-065](../../../docs/NewConcept/90-decision-log.md)) ueberleben die Sache.
+                'clear_trash'    => $this->clearedTrash(),
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 'add_attribute'  => $this->editor->addAttribute($id, $pointsAt, $name),
@@ -2437,13 +2485,20 @@ final class NodesScreen
 
             // ⚠️ A restore that leaves children behind must say so — it is the one outcome
             // where *done* would be a lie (D-347).
-            $message = $outcome instanceof RestoreResult && ! $outcome->everythingCameBack()
-                ? sprintf(
+            // ⚠️ **An act that returns a sentence of its own keeps it.** *Clearing the trash is the one
+            // act on this screen that cannot be undone, and a silent «Done.» would leave a person
+            // guessing whether it ran — the answer then sits in the tree, which is exactly too late.*
+            $message = 'ok';
+
+            if (is_string($outcome) && $outcome !== '') {
+                $message = $outcome;
+            } elseif ($outcome instanceof RestoreResult && ! $outcome->everythingCameBack()) {
+                $message = sprintf(
                     /* translators: %s is a comma-separated list of node names. */
                     __('Restored — but these were left where they are, because they were moved since: %s', 'taxmod'),
                     implode(', ', $outcome->leftBehind)
-                )
-                : 'ok';
+                );
+            }
         } catch (DomainError $error) {
             // Exceptions inside the core, translated at the boundary (`CD-10`). The message is
             // the domain's own words, so it survives the redirect rather than being replaced by

@@ -365,6 +365,97 @@ final class ModelEditor
         return $this->relations->attributeEdgesOf([...$node->ancestorIds(), $node->id]);
     }
 
+    /**
+     * Empty the trash for good — the act [row 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+     * asks for, and the owner: *build a button behind the Trash label, «clear», so we can tidy up.*
+     *
+     * ⚠️ **What it keeps is the whole design, not an oversight.** The **identities** stay, because
+     * [D-340](../../../docs/NewConcept/90-decision-log.md) says an id once handed out is never
+     * reissued; the **changelog** stays, because [D-065](../../../docs/NewConcept/90-decision-log.md)
+     * built it to *outlive what it refers to*. **So a purge removes the thing and keeps the record
+     * that it existed.**
+     *
+     * ⚠️ **And it takes what belongs to a node with it**, which is
+     * [row 28](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s rule from the
+     * writing side: settings, labels, records and edges. *720 rows once belonged to owners that no
+     * longer existed, because deleting a node used to take only the row called «node».*
+     *
+     * ⚠️ **The trash itself is never touched** — it is framework-protected
+     * ([D-194](../../../docs/NewConcept/90-decision-log.md)) and it is the parent of what it holds, so
+     * its own inheritance edges go with the children and it stays behind, empty.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   T["Trash"] --> P["parked · everything under it"]
+     *   P --> G["records · values · settings · labels · edges · nodes"]
+     *   P --> K["identities · changelog<br/>stay"]
+     * ```
+     *
+     * @return array<string, int> What went, keyed for a surface to report.
+     */
+    public function clearTrash(): array
+    {
+        $trash  = $this->framework->trash();
+        $parked = $this->nodes->subtreeOf($trash);
+
+        if ($parked === []) {
+            return ['nodes' => 0, 'edges' => 0, 'settings' => 0, 'labels' => 0];
+        }
+
+        $ids   = array_map(static fn (Node $one): int => $one->id, $parked);
+        $edges = [];
+
+        foreach ($this->relations->edgesTouching($ids) as $edge) {
+            $edges[] = $edge->id;
+        }
+
+        // ⚠️ **Order matters**: what points at something goes before what it points at, or a foreign
+        // key refuses. *Settings and labels hang off both nodes and edges, so they go first of all.*
+        $owners = [...$ids, ...$edges];
+
+        $gone = [
+            'settings' => $this->settings?->forgetOwners($owners) ?? 0,
+            'labels'   => $this->labels?->forgetOwners($owners) ?? 0,
+            'edges'    => count($edges),
+            'nodes'    => count($ids),
+        ];
+
+        // ⚠️ **The children are read before anything is deleted, and getting that wrong cost a run.**
+        // The first version purged the edges first — *and the edges are how a child of the trash is
+        // found.* `childrenOf()` then returned nothing, `purgeSubtree()` was never called, and 53 nodes
+        // stayed behind while the act reported them gone. **A tidy-up must not destroy its own map
+        // before reading it.**
+        //
+        // ⚠️ *And the edge loop was not merely mis-ordered, it was redundant:
+        // {@see NodeRepository::purgeSubtree()} deletes a subtree's edges **and** its nodes in two
+        // statements. Its own comment says why the edges go first — «a relation row whose node is gone
+        // is the dangling reference the whole two-stage deletion exists to avoid».*
+        // ⚠️ **By path and not by edge, and measuring is what settled it.** `childrenOf()` reads the
+        // **inheritance edges**, and a first run left **53 nodes standing**: under the trash sit nodes
+        // whose edge was removed by an earlier raw-SQL tidy-up of mine, so an edge-walk cannot see them
+        // at all. *`subtreeOf()` asks the materialised path, which is the truth about «under the trash»
+        // — [D-014](../../../docs/NewConcept/90-decision-log.md) derives the path from the edges, and
+        // when the two disagree the orphan is exactly what has to go.*
+        //
+        // ⚠️ *Each call deletes by path prefix, so overlapping subtrees cost a statement and change
+        // nothing — no ordering by depth is needed.*
+        foreach ($parked as $one) {
+            $this->nodes->purgeSubtree($one);
+        }
+
+        // ⚠️ *One entry for the act, against the trash — the individual nodes keep their own history,
+        // which is the point of keeping the changelog at all.*
+        $this->changelog->record(
+            $trash->id,
+            'node',
+            'trash cleared',
+            sprintf('%d parked', count($ids)),
+            sprintf('%d nodes, %d edges, %d settings, %d labels', $gone['nodes'], $gone['edges'], $gone['settings'], $gone['labels'])
+        );
+
+        return $gone;
+    }
+
     /** Hang a node under a different parent, taking everything below it along. */
     public function move(int $id, int $newParentId): Node
     {

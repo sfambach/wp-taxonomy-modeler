@@ -45,6 +45,18 @@ interface SettingRepository
      */
     public function forget(int $ownerId, string $key, string $path = ''): void;
 
+    /**
+     * Every row these owners hold, gone — the writing side of a purge.
+     *
+     * ⚠️ **This exists because deleting a node used to leave its settings behind**, which is how
+     * 720 rows came to belong to owners that no longer existed (list row 28). *A node and what it
+     * says about itself go together or the tidy-up is not one.*
+     *
+     * @param  list<int> $ownerIds
+     * @return int       How many rows went, so an act can say what it did.
+     */
+    public function forgetOwners(array $ownerIds): int;
+
     /** Everything one owner holds — for a screen showing what was set **here**. */
     public function ownedBy(int $ownerId): array;
 }
