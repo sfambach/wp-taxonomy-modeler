@@ -136,6 +136,102 @@ check(
     SettingsScreen::inDeveloperMode() === (bool) get_option(Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, false)
 );
 
+echo "\n== the three switches actually take, form to row ==\n";
+
+// ⚠️ **The owner reported this three times** — *persistence cannot be switched by the GUI* — and every
+// answer I gave was reasoned rather than measured. **This drives the screen's own save method**, because
+// that is where the reports came from: the core wrote all six values fine while the panel appeared not
+// to, so a core test would have been green throughout.
+//
+// ⚠️ *On a scratch node, never on his `int`: [row 23](../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+// says a checker must not read data a person is editing, and writing it is worse.*
+$ids       = new Taxmod\WordPress\Persistence\TableIdentityAllocator();
+$log       = new Taxmod\WordPress\Persistence\WpdbChangelog(new Taxmod\WordPress\SystemClock());
+$nodeRepo  = new Taxmod\WordPress\Persistence\WpdbNodeRepository();
+$edgeRepo  = new Taxmod\WordPress\Persistence\WpdbRelationRepository();
+$rowRepo   = new Taxmod\WordPress\Persistence\WpdbSettingRepository();
+$framework = new Taxmod\WordPress\Persistence\SeededFrameworkNodes($nodeRepo, $edgeRepo, $ids, $log);
+$settings  = new Taxmod\Core\Service\Settings($rowRepo, $nodeRepo, $framework, $log);
+$editor    = new Taxmod\Core\Service\ModelEditor(
+    $nodeRepo,
+    $edgeRepo,
+    $ids,
+    $framework,
+    $log,
+    $rowRepo,
+    new Taxmod\WordPress\Persistence\WpdbLabelRepository(),
+    $settings
+);
+
+$scratch = $editor->createNode('__ss_switches', $framework->rootOf(Taxmod\Core\Model\Branch::Compositions)->id);
+$screen  = (new ReflectionMethod(Taxmod\WordPress\Plugin::class, 'screen'))->invoke($plugin);
+$save    = new ReflectionMethod($screen, 'saveSettings');
+
+global $wpdb;
+
+$table = $wpdb->prefix . 'taxmod_settings';
+
+$keptPost = $_POST;
+
+foreach ([
+    [Taxmod\Core\Model\SettingKey::Persistent, '0'],
+    [Taxmod\Core\Model\SettingKey::Persistent, '1'],
+    [Taxmod\Core\Model\SettingKey::ReadOnly, '1'],
+    [Taxmod\Core\Model\SettingKey::ReadOnly, '0'],
+    [Taxmod\Core\Model\SettingKey::Hide, '1'],
+    [Taxmod\Core\Model\SettingKey::Hide, '0'],
+] as [$key, $want]) {
+    $_POST = ['taxmod_setting' => [$key->value => $want]];
+
+    $save->invoke($screen, $scratch->id, 0, '');
+
+    $stored = $wpdb->get_var($wpdb->prepare(
+        "SELECT value_int FROM {$table} WHERE owner_id = %d AND setting_key = %s AND path = '' LIMIT 1",
+        $scratch->id,
+        $key->value
+    ));
+
+    check("{$key->value} → {$want}", (string) $stored === $want, var_export($stored, true));
+}
+
+// ⚠️ **The counter-check that gives the six above their meaning**: a key the form did **not** submit
+// must be left alone. *Without it, a save method that wrote every switch on every request would pass
+// all six — and that exact fault once put `persistent = false` onto every node somebody looked at.*
+$settings->put($settings->chainFor($scratch), Taxmod\Core\Model\SettingKey::ReadOnly->value, Taxmod\Core\Model\TypedValue::ofBool(true));
+
+$_POST = ['taxmod_setting' => [Taxmod\Core\Model\SettingKey::Hide->value => '1']];
+
+$save->invoke($screen, $scratch->id, 0, '');
+
+$untouched = $wpdb->get_var($wpdb->prepare(
+    "SELECT value_int FROM {$table} WHERE owner_id = %d AND setting_key = %s AND path = '' LIMIT 1",
+    $scratch->id,
+    Taxmod\Core\Model\SettingKey::ReadOnly->value
+));
+
+check('a key the form did not send is left alone', (string) $untouched === '1', var_export($untouched, true));
+
+$_POST = $keptPost;
+
+// ⚠️ Everything that hangs off it, not just the node — see list row 28.
+$in    = (string) $scratch->id;
+$edges = array_map('intval', $wpdb->get_col("SELECT id FROM {$wpdb->prefix}taxmod_relations WHERE from_id = {$in} OR to_id = {$in}"));
+$own   = $edges === [] ? $in : $in . ',' . implode(',', $edges);
+
+$wpdb->query("DELETE FROM {$table} WHERE owner_id IN ({$own})");
+$wpdb->query("DELETE FROM {$wpdb->prefix}taxmod_labels WHERE owner_id IN ({$own})");
+
+if ($edges !== []) {
+    $wpdb->query("DELETE FROM {$wpdb->prefix}taxmod_relations WHERE id IN (" . implode(',', $edges) . ')');
+}
+
+$wpdb->query("DELETE FROM {$wpdb->prefix}taxmod_nodes WHERE id = {$in}");
+
+check(
+    'the check leaves no scratch node behind',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_nodes WHERE name = '__ss_switches'") === 0
+);
+
 echo "\n", $failed === 0 ? "all green\n" : "{$failed} failed\n";
 
 exit($failed === 0 ? 0 : 1);
