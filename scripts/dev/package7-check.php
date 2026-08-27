@@ -634,6 +634,31 @@ $scratchIds = $wpdb->get_col(
     'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p7%" ORDER BY LENGTH(path) DESC'
 );
 
+// ⚠️ **What hangs off them goes first, and measuring is what found this.** After the 892 orphaned
+// setting rows were cleared, the whole net was run check by check and the counter watched: **this file
+// was the only one still leaking, five rows a run.** *It deleted the nodes and the edges and left their
+// settings behind — [row 28](../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s fault
+// in its purest form, produced by the very net that is supposed to catch it.*
+// ⚠️ **By endpoint *and* by name, and the second half took a second measurement.** The first fix
+// gathered edges through `edgesTouching()` — their endpoints — and **five rows still leaked**: three
+// edge owners survived because their nodes had already gone in an earlier run, so no endpoint pointed
+// at them any more. *The raw delete below finds those edges by **name**, so the cleanup has to look
+// them up the same way, or it clears the settings of exactly the edges it can still see.*
+$ownersToClear = array_map('intval', $scratchIds);
+
+foreach ($edges->edgesTouching($ownersToClear) as $edge) {
+    $ownersToClear[] = $edge->id;
+}
+
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"') as $named) {
+    $ownersToClear[] = (int) $named;
+}
+
+if ($ownersToClear !== []) {
+    (new WpdbSettingRepository())->forgetOwners($ownersToClear);
+    (new WpdbLabelRepository())->forgetOwners($ownersToClear);
+}
+
 foreach ($scratchIds as $scratch) {
     $node = $nodes->find((int) $scratch);
     if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }

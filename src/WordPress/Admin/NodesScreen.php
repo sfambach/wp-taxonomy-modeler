@@ -2205,6 +2205,25 @@ final class NodesScreen
                 continue;
             }
 
+            // ⚠️ **An empty field does not create a row, and this was the source of the litter.**
+            // Measured 2026-08-26: **17 rows held no value at all** — `icon`, `factor` and `offset` on
+            // exactly the nodes the owner had opened. *A page save writes every key on the panel, so
+            // every field left blank wrote an all-`NULL` row — and the resolver reads such a row as
+            // «set here» and stops the chain ([row 29](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+            // Five of them on a minutes-old node once made `persistent` impossible to switch on.*
+            //
+            // ⚠️ **Only where nothing is stored yet, and the distinction is the whole point.** *«Nothing
+            // here» is a real, reachable state — the `empty` act writes it deliberately
+            // ([D-266](../../../docs/NewConcept/90-decision-log.md)) — so a save may not undo it and may
+            // not invent it either. Blank field plus no row means the person did not fill it in; blank
+            // field plus an existing row is a change, and changes are kept.*
+            // ⚠️ *`setHere` and not `!== null`: since [D-423](../../../docs/NewConcept/90-decision-log.md)
+            // almost every key **resolves**, so «no value» would practically never be true — the
+            // question is whether this owner holds a row of **its own**.*
+            if ($value->isNothing() && ($before === null || ! $before->setHere)) {
+                continue;
+            }
+
             $this->settings->put($chain, $key, $value);
         }
     }

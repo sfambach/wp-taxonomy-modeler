@@ -127,10 +127,32 @@ check('writing twice leaves one row', $rows === 1, "$rows rows");
 check('and the second write won', $labels->of($thing, SeededRole::Form, 'de_DE') === '__p5 zweimal geschrieben');
 
 echo "\n== 7. The check cleans up after itself ==\n";
+
+// ⚠️ **By owner, not by text — and the leak that taught it was one row reading `R`.** *`DELETE …
+// WHERE text LIKE "__p5%"` catches every label this file **names** after itself and misses the one it
+// wrote as a **symbol**, because a symbol is one character and cannot carry a prefix. Measured after
+// the orphan sweep: this file leaked exactly one label a run.*
+//
+// ⚠️ *Owners are the honest key here for the same reason they are in
+// {@see \Taxmod\Core\Service\ModelEditor::clearTrash()}: what hangs off a thing goes when the thing
+// goes, and a name is a description of the thing rather than a handle on what it owns.*
+$ownersToClear = [$thing->id, $text->id];
+
+foreach ($edges->edgesTouching($ownersToClear) as $edge) {
+    $ownersToClear[] = $edge->id;
+}
+
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p5%"') as $named) {
+    $ownersToClear[] = (int) $named;
+}
+
+$stored->forgetOwners($ownersToClear);
+
 foreach ([$thing->id, $text->id] as $scratch) {
     $node = $nodes->find($scratch);
     if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
 }
+
 $wpdb->query('DELETE FROM ' . Schema::table('labels') . ' WHERE text LIKE "__p5%"');
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p5%"');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p5%"');
