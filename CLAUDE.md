@@ -7,7 +7,7 @@ Cursor, or a human.
 
 The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
 since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
-for: **398 decisions, 93 open questions.** The previous planning round is frozen under
+for: **432 decisions, 102 open questions.** The previous planning round is frozen under
 [`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
 [`docs/NewConcept/`](docs/NewConcept/README.md).
 
