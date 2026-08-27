@@ -2,7 +2,7 @@
 
 namespace Taxmod\WordPress\Persistence;
 
-use Taxmod\Core\Model\Setting;
+use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\SettingRepository;
 
@@ -46,7 +46,7 @@ final class WpdbSettingRepository implements SettingRepository
         return $this->forOwners([$ownerId]);
     }
 
-    public function put(Setting $setting): void
+    public function put(SettingRecord $setting): void
     {
         global $wpdb;
 
@@ -85,9 +85,9 @@ final class WpdbSettingRepository implements SettingRepository
     }
 
     /** @param array<string,mixed> $row */
-    private function hydrate(array $row): Setting
+    private function hydrate(array $row): SettingRecord
     {
-        return new Setting(
+        return new SettingRecord(
             (int) $row['owner_id'],
             (string) $row['setting_key'],
             TypedValue::fromStorage(

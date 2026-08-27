@@ -69,14 +69,14 @@ $part = $editor->createNode('__p6 Part', $framework->rootOf(Branch::Model)->id);
 $text = $editor->createNode('__p6 Text', $framework->rootOf(Branch::DataTypes)->id);
 $gram = $editor->createNode('__p6 Gramm', $framework->rootOf(Branch::Constants)->id);
 
-$description = $editor->addAttribute($part->id, $text->id, '__p6 description');
-$unit        = $editor->addAttribute($part->id, $gram->id, '__p6 unit');
+$description = $editor->addField($part->id, $text->id, '__p6 description');
+$unit        = $editor->addField($part->id, $gram->id, '__p6 unit');
 
 echo "\n== 1. A record against a model ==\n";
 $record = $data->create($part->id);
 check('it is stored', $record->id > 0);
-check('against the right model', $record->modelId === $part->id);
-check('and it keeps the version it was written against', $record->modelVersion === $nodes->byId($part->id)->version);
+check('against the right model', $record->nodeId === $part->id);
+check('and it keeps the version it was written against', $record->nodeVersion === $nodes->byId($part->id)->version);
 
 try { $data->create($text->id); check('a data type has no records of its own', false); }
 catch (NotYetStorable $e) { check('a data type has no records of its own', true); }
@@ -109,12 +109,12 @@ check('both records are listed under the model', count(array_filter(
 
 echo "\n== 5. Refusals ==\n";
 $line = $editor->createNode('__p6 Line', $framework->rootOf(Branch::Compositions)->id);
-$has  = $editor->addAttribute($part->id, $line->id, '__p6 lines');
+$has  = $editor->addField($part->id, $line->id, '__p6 lines');
 try { $data->put($record->id, $has->id, TypedValue::ofInt(1)); check('a composed target is refused rather than stored wrongly', false); }
 catch (NotYetStorable $e) { check('a composed target is refused rather than stored wrongly', true); }
 
 $supplier = $editor->createNode('__p6 Supplier', $framework->rootOf(Branch::Model)->id);
-$alien    = $editor->addAttribute($supplier->id, $text->id, '__p6 note');
+$alien    = $editor->addField($supplier->id, $text->id, '__p6 note');
 try { $data->put($record->id, $alien->id, TypedValue::ofText('nowhere')); check('an attribute of another model is refused', false); }
 catch (NotYetStorable $e) { check('an attribute of another model is refused', true); }
 

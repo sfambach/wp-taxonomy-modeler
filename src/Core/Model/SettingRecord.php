@@ -11,7 +11,7 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Setting
+final class SettingRecord
 {
     public function __construct(
         public readonly int $ownerId,

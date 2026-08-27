@@ -2,8 +2,8 @@
 
 namespace Taxmod\Core\Repository;
 
-use Taxmod\Core\Model\Record;
-use Taxmod\Core\Model\RecordValue;
+use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 
 /**
@@ -17,17 +17,17 @@ use Taxmod\Core\Model\TypedValue;
  */
 interface RecordRepository
 {
-    public function add(Record $record): int;
+    public function add(NodeRecord $record): int;
 
-    public function find(int $id): ?Record;
+    public function find(int $id): ?NodeRecord;
 
-    /** @return list<Record> Every record entered against one model node. */
-    public function ofModel(int $modelId): array;
+    /** @return list<NodeRecord> Every record entered against one model node. */
+    public function ofNode(int $nodeId): array;
 
-    /** @return list<RecordValue> Everything one record holds, in one statement. */
+    /** @return list<EdgeRecord> Everything one record holds, in one statement. */
     public function valuesOf(int $recordId): array;
 
-    public function putValue(RecordValue $value): void;
+    public function putValue(EdgeRecord $value): void;
 
     public function forgetValue(int $recordId, string $path, string $locale): void;
 

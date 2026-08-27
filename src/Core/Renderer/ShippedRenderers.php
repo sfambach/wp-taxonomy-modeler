@@ -114,8 +114,8 @@ final class ShippedRenderers
         // ⚠️ **The attribute row, and the first renderer whose subject is an **edge**.** Surface-only
         // for the same reason as the tree's cell: it is asked for by a panel, and naming it as a
         // node's `renderer` would be meaningless — it cannot draw a node at all ({@see
-        // AttributeRenderer::fits()}).
-        $registry->addForSurfaces(new AttributeRenderer());
+        // FieldRowRenderer::fits()}).
+        $registry->addForSurfaces(new FieldRowRenderer());
 
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());

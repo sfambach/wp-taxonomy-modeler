@@ -97,11 +97,11 @@ function dumpTable(string $table): string
 $nodeIds = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name NOT LIKE '\\_\\_%'"));
 
 // ⚠️ **One query, not one per node** (`CD-7`). *The first version of this loop asked
-// `attributeEdgesOf()` inside the loop to find one edge by id — the N+1 the code standard forbids,
+// `fieldEdgesOf()` inside the loop to find one edge by id — the N+1 the code standard forbids,
 // written in a file whose whole purpose is to touch every row once.*
 $attributes = [];
 
-foreach ($edges->attributeEdgesOf($nodeIds) as $one) {
+foreach ($edges->fieldEdgesOf($nodeIds) as $one) {
     $attributes[] = $one;
 }
 

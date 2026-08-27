@@ -23,7 +23,7 @@ use Taxmod\Tests\Core\Fake\RecordedChanges;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class AttributeTest extends TestCase
+final class FieldTest extends TestCase
 {
     #[Test]
     public function an_attribute_can_be_removed_and_it_is_parked_not_purged(): void
@@ -31,44 +31,44 @@ final class AttributeTest extends TestCase
         // ⚠️ This was missing since Package 3, and the reason was **storage**: `relations` had
         // nowhere to record that an edge was gone (D-371). Two stages as everywhere (D-123).
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addAttribute($part->id, $this->under('data-types', 'text')->id, 'label');
+        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $removed = $this->editor->removeAttribute($part->id, $edge->id);
+        $removed = $this->editor->removeField($part->id, $edge->id);
 
         self::assertTrue($removed->isParked());
         self::assertNotNull($removed->parkedByGroup, 'it names the act that removed it (D-128)');
 
         // Hidden by default in its owning node — a model full of ghosts is unreadable (D-128).
-        self::assertSame([], $this->editor->attributesOf($part->id));
-        self::assertCount(1, $this->editor->removedAttributesOf($part->id));
+        self::assertSame([], $this->editor->fieldsOf($part->id));
+        self::assertCount(1, $this->editor->removedFieldsOf($part->id));
     }
 
     #[Test]
     public function a_removed_attribute_can_come_back(): void
     {
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addAttribute($part->id, $this->under('data-types', 'text')->id, 'label');
+        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $this->editor->removeAttribute($part->id, $edge->id);
-        $back = $this->editor->restoreAttribute($part->id, $edge->id);
+        $this->editor->removeField($part->id, $edge->id);
+        $back = $this->editor->restoreField($part->id, $edge->id);
 
         // ⚠️ Everything it had comes back with it — the name, the target, the kind. Parking is not
         // purging (D-123), which is exactly why nothing else had to be preserved by hand.
         self::assertFalse($back->isParked());
         self::assertSame($edge->name, $back->name);
         self::assertSame($edge->toId, $back->toId);
-        self::assertCount(1, $this->editor->attributesOf($part->id));
-        self::assertSame([], $this->editor->removedAttributesOf($part->id));
+        self::assertCount(1, $this->editor->fieldsOf($part->id));
+        self::assertSame([], $this->editor->removedFieldsOf($part->id));
     }
 
     #[Test]
     public function removing_it_twice_changes_nothing_the_second_time(): void
     {
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addAttribute($part->id, $this->under('data-types', 'text')->id, 'label');
+        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $first  = $this->editor->removeAttribute($part->id, $edge->id);
-        $second = $this->editor->removeAttribute($part->id, $edge->id);
+        $first  = $this->editor->removeField($part->id, $edge->id);
+        $second = $this->editor->removeField($part->id, $edge->id);
 
         // ⚠️ The same act, not a second one — otherwise a double click would write two brackets and
         // the history would claim it was removed twice.
@@ -83,13 +83,13 @@ final class AttributeTest extends TestCase
         $part     = $this->under('model', 'Part');
         $resistor = $this->editor->createNode('Resistor', $part->id);
 
-        $this->editor->addAttribute($part->id, $this->under('data-types', 'text')->id, 'label');
+        $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $inherited = $this->editor->attributesOf($resistor->id)[0];
+        $inherited = $this->editor->fieldsOf($resistor->id)[0];
 
         $this->expectException(NotAPossibleTarget::class);
 
-        $this->editor->removeAttribute($resistor->id, $inherited->id);
+        $this->editor->removeField($resistor->id, $inherited->id);
     }
 
     private InMemoryNodes $nodes;
@@ -158,7 +158,7 @@ final class AttributeTest extends TestCase
         $order    = $this->under('model', 'Order');
         $supplier = $this->under('model', 'Supplier');
 
-        $edge = $this->editor->addAttribute($order->id, $supplier->id, 'supplied by');
+        $edge = $this->editor->addField($order->id, $supplier->id, 'supplied by');
 
         self::assertSame(RelationKind::Aggregation, $edge->kind);
     }
@@ -171,7 +171,7 @@ final class AttributeTest extends TestCase
 
         self::assertSame(
             RelationKind::Composition,
-            $this->editor->addAttribute($order->id, $line->id, 'lines')->kind
+            $this->editor->addField($order->id, $line->id, 'lines')->kind
         );
     }
 
@@ -187,11 +187,11 @@ final class AttributeTest extends TestCase
 
         self::assertSame(
             RelationKind::Composition,
-            $this->editor->addAttribute($part->id, $text->id, 'description')->kind
+            $this->editor->addField($part->id, $text->id, 'description')->kind
         );
         self::assertSame(
             RelationKind::Aggregation,
-            $this->editor->addAttribute($part->id, $unit->id, 'unit')->kind
+            $this->editor->addField($part->id, $unit->id, 'unit')->kind
         );
     }
 
@@ -222,7 +222,7 @@ final class AttributeTest extends TestCase
 
         $this->expectException(NotAPossibleTarget::class);
 
-        $this->editor->addAttribute($part->id, $this->branchRoot['data-types']->id, 'description');
+        $this->editor->addField($part->id, $this->branchRoot['data-types']->id, 'description');
     }
 
     #[Test]
@@ -236,7 +236,7 @@ final class AttributeTest extends TestCase
 
         $this->expectException(NotAPossibleTarget::class);
 
-        $this->editor->addAttribute($part->id, $limbo->id, 'something');
+        $this->editor->addField($part->id, $limbo->id, 'something');
     }
 
     #[Test]
@@ -249,7 +249,7 @@ final class AttributeTest extends TestCase
 
         $this->expectException(NotAPossibleTarget::class);
 
-        $this->editor->addAttribute($part->id, $gone->id, 'description');
+        $this->editor->addField($part->id, $gone->id, 'description');
     }
 
     #[Test]
@@ -260,7 +260,7 @@ final class AttributeTest extends TestCase
 
         $this->expectException(InvalidName::class);
 
-        $this->editor->addAttribute($part->id, $text->id, '   ');
+        $this->editor->addField($part->id, $text->id, '   ');
     }
 
     #[Test]
@@ -269,7 +269,7 @@ final class AttributeTest extends TestCase
         $part = $this->under('model', 'Part');
         $text = $this->under('data-types', 'Text');
 
-        $edge = $this->editor->addAttribute($part->id, $text->id, 'description');
+        $edge = $this->editor->addField($part->id, $text->id, 'description');
 
         self::assertNotSame($edge->id, $part->id);
         self::assertNotSame($edge->id, $text->id);
@@ -283,11 +283,11 @@ final class AttributeTest extends TestCase
         $part  = $this->editor->createNode('Part', $thing->id);
         $text  = $this->under('data-types', 'Text');
 
-        $this->editor->addAttribute($thing->id, $text->id, 'description');
+        $this->editor->addField($thing->id, $text->id, 'description');
 
         $names = array_map(
             static fn (Relation $r): string => $r->name,
-            $this->editor->attributesOf($part->id)
+            $this->editor->fieldsOf($part->id)
         );
 
         self::assertSame(['description'], $names);
@@ -300,12 +300,12 @@ final class AttributeTest extends TestCase
         $part  = $this->editor->createNode('Part', $thing->id);
         $text  = $this->under('data-types', 'Text');
 
-        $this->editor->addAttribute($thing->id, $text->id, 'description');
-        $this->editor->addAttribute($part->id, $text->id, 'part number');
+        $this->editor->addField($thing->id, $text->id, 'description');
+        $this->editor->addField($part->id, $text->id, 'part number');
 
         $names = array_map(
             static fn (Relation $r): string => $r->name,
-            $this->editor->attributesOf($part->id)
+            $this->editor->fieldsOf($part->id)
         );
 
         sort($names);
@@ -321,9 +321,9 @@ final class AttributeTest extends TestCase
         $other = $this->editor->createNode('Other', $thing->id);
         $text  = $this->under('data-types', 'Text');
 
-        $this->editor->addAttribute($part->id, $text->id, 'part number');
+        $this->editor->addField($part->id, $text->id, 'part number');
 
-        self::assertSame([], $this->editor->attributesOf($other->id));
+        self::assertSame([], $this->editor->fieldsOf($other->id));
     }
 
     #[Test]
@@ -333,6 +333,6 @@ final class AttributeTest extends TestCase
         $thing = $this->under('model', 'Thing');
         $this->editor->createNode('Part', $thing->id);
 
-        self::assertSame([], $this->editor->attributesOf($thing->id));
+        self::assertSame([], $this->editor->fieldsOf($thing->id));
     }
 }

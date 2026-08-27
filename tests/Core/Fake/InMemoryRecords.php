@@ -2,41 +2,41 @@
 
 namespace Taxmod\Tests\Core\Fake;
 
-use Taxmod\Core\Model\Record;
-use Taxmod\Core\Model\RecordValue;
+use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
 
 /** Records in an array, with their own counter — a separate id space, as D-164 requires. */
 final class InMemoryRecords implements RecordRepository
 {
-    /** @var array<int,Record> */
+    /** @var array<int,NodeRecord> */
     private array $records = [];
 
-    /** @var array<string,RecordValue> */
+    /** @var array<string,EdgeRecord> */
     private array $values = [];
 
     private int $lastId = 0;
 
-    public function add(Record $record): int
+    public function add(NodeRecord $record): int
     {
         $id = ++$this->lastId;
 
-        $this->records[$id] = new Record($id, $record->modelId, $record->modelVersion, $record->createdAt);
+        $this->records[$id] = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
 
         return $id;
     }
 
-    public function find(int $id): ?Record
+    public function find(int $id): ?NodeRecord
     {
         return $this->records[$id] ?? null;
     }
 
-    public function ofModel(int $modelId): array
+    public function ofNode(int $nodeId): array
     {
         return array_values(array_filter(
             $this->records,
-            static fn (Record $r): bool => $r->modelId === $modelId
+            static fn (NodeRecord $r): bool => $r->nodeId === $nodeId
         ));
     }
 
@@ -44,11 +44,11 @@ final class InMemoryRecords implements RecordRepository
     {
         return array_values(array_filter(
             $this->values,
-            static fn (RecordValue $v): bool => $v->recordId === $recordId
+            static fn (EdgeRecord $v): bool => $v->recordId === $recordId
         ));
     }
 
-    public function putValue(RecordValue $value): void
+    public function putValue(EdgeRecord $value): void
     {
         $this->values[$this->key($value->recordId, $value->path, $value->locale)] = $value;
     }

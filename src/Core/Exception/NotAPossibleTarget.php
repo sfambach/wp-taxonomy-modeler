@@ -33,11 +33,27 @@ final class NotAPossibleTarget extends DomainError
      * every sibling too, and where a subtype's own narrowing would hang is not decided
      * ([OQ-086](../../../docs/NewConcept/91-open-questions.md)).
      */
-    public static function notAnOwnAttribute(int $edgeId): self
+    public static function notAnOwnField(int $edgeId): self
     {
         return new self(sprintf(
-            'Attribute %d is not one this node owns — an inherited attribute is changed where it is declared.',
+            'Field %d is not one this node owns — an inherited field is changed where it is declared.',
             $edgeId
+        ));
+    }
+
+    /**
+     * A converter name nobody answers to.
+     *
+     * ⚠️ **Refused rather than answered with the nearest thing.** *A stored name that resolves to
+     * «none» would show a value unmapped on a field whose setting says it is mapped — a fault two
+     * steps from its cause, which is the same reasoning
+     * [D-360](../../../docs/NewConcept/90-decision-log.md) applies to a renderer nobody registered.*
+     */
+    public static function noConverterNamed(string $attempted): self
+    {
+        return new self(sprintf(
+            'No converter answers to «%s».',
+            $attempted
         ));
     }
 

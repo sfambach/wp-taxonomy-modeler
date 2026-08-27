@@ -82,7 +82,7 @@ echo "\n== 2. The chain ==\n";
 $thing = $editor->createNode('__p4 Thing', $framework->rootOf(Branch::Model)->id);
 $part  = $editor->createNode('__p4 Part', $thing->id);
 $text  = $editor->createNode('__p4 Text', $framework->rootOf(Branch::DataTypes)->id);
-$edge  = $editor->addAttribute($part->id, $text->id, '__p4 description');
+$edge  = $editor->addField($part->id, $text->id, '__p4 description');
 
 $chainType = $settings->chainFor($text);
 $chainSite = $settings->chainForUseSite($edge);
@@ -164,7 +164,7 @@ check(
 
 $sub = $editor->createNode('__p4 Sub', $part->id);
 $inherited = null;
-foreach ($editor->attributesOf($sub->id) as $one) { if ($one->id === $edge->id) { $inherited = $one; } }
+foreach ($editor->fieldsOf($sub->id) as $one) { if ($one->id === $edge->id) { $inherited = $one; } }
 
 check('a descendant inherits the very same edge, not a copy', $inherited !== null && $inherited->id === $edge->id);
 check(

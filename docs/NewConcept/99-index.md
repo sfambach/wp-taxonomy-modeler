@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **441**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **106**, davon **89** noch offen |
+| Entscheidungen | **462**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **115**, davon **25** noch offen |
 
 ## Offene Fragen
 
@@ -17,90 +17,90 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | Frage | Stand | Worum es geht |
 |---|---|---|
-| [OQ-001](91-open-questions.md) | **offen** | What is in the shared base of node and relation? |
-| [OQ-002](91-open-questions.md) | **offen** | If the tree is inheritance only, what are the other edges? |
-| [OQ-003](91-open-questions.md) | **offen** | Is `Relation.type` a node or an enum? |
-| [OQ-004](91-open-questions.md) | **offen** | Do node subtypes exist at all? |
-| [OQ-005](91-open-questions.md) | **offen** | `RendererRegistry` or `RendererRegister`? |
-| [OQ-006](91-open-questions.md) | **offen** | Renderer contract: what is the actual method set? |
+| [OQ-001](91-open-questions.md) | beantwortet | What is in the shared base of node and relation? |
+| [OQ-002](91-open-questions.md) | beantwortet | If the tree is inheritance only, what are the other edges? |
+| [OQ-003](91-open-questions.md) | beantwortet | Is `Relation.type` a node or an enum? |
+| [OQ-004](91-open-questions.md) | beantwortet | Do node subtypes exist at all? |
+| [OQ-005](91-open-questions.md) | beantwortet | `RendererRegistry` or `RendererRegister`? |
+| [OQ-006](91-open-questions.md) | beantwortet | Renderer contract: what is the actual method set? |
 | [OQ-007](91-open-questions.md) | **offen** | Where do renderer, converter and validators attach? |
-| [OQ-008](91-open-questions.md) | **offen** | Must every object have a changelog entry? |
-| [OQ-009](91-open-questions.md) | **offen** | Is the delivery target still a WordPress plugin? |
-| [OQ-010](91-open-questions.md) | **offen** | Is an *attribute* the same thing as an *edge*? |
-| [OQ-011](91-open-questions.md) | **offen** | What is an attribute's *type*? |
+| [OQ-008](91-open-questions.md) | beantwortet | Must every object have a changelog entry? |
+| [OQ-009](91-open-questions.md) | beantwortet | Is the delivery target still a WordPress plugin? |
+| [OQ-010](91-open-questions.md) | beantwortet | Is an *attribute* the same thing as an *edge*? |
+| [OQ-011](91-open-questions.md) | beantwortet | What is an attribute's *type*? |
 | [OQ-012](91-open-questions.md) | beantwortet | Custom tables, or WordPress terms/posts? |
 | [OQ-013](91-open-questions.md) | beantwortet | What exactly is a "setting", versus an attribute? |
-| [OQ-014](91-open-questions.md) | **offen** | Where does the renderer run: PHP or JavaScript? |
-| [OQ-015](91-open-questions.md) | **offen** | Where does the content live? |
-| [OQ-016](91-open-questions.md) | **offen** | Is "setting" one thing, or two? |
-| [OQ-017](91-open-questions.md) | **offen** | Which attributes does every node have? |
+| [OQ-014](91-open-questions.md) | beantwortet | Where does the renderer run: PHP or JavaScript? |
+| [OQ-015](91-open-questions.md) | beantwortet | Where does the content live? |
+| [OQ-016](91-open-questions.md) | beantwortet | Is "setting" one thing, or two? |
+| [OQ-017](91-open-questions.md) | beantwortet | Which attributes does every node have? |
 | [OQ-018](91-open-questions.md) | **offen** | Where does the value of an extended attribute live? |
-| [OQ-019](91-open-questions.md) | **offen** | Cycles and depth in the render descent |
-| [OQ-020](91-open-questions.md) | **offen** | Loading the subgraph without an N+1 |
+| [OQ-019](91-open-questions.md) | beantwortet | Cycles and depth in the render descent |
+| [OQ-020](91-open-questions.md) | beantwortet | Loading the subgraph without an N+1 |
 | [OQ-021](91-open-questions.md) | **offen** | Composition and aggregation: what is the difference here? |
 | [OQ-022](91-open-questions.md) | beantwortet | One settings table, or one per owner kind? |
-| [OQ-023](91-open-questions.md) | **offen** | Is inheritance one edge kind, or a separate construct? |
+| [OQ-023](91-open-questions.md) | beantwortet | Is inheritance one edge kind, or a separate construct? |
 | [OQ-024](91-open-questions.md) | **offen** | How are resolved settings computed without melting down? |
-| [OQ-025](91-open-questions.md) | **offen** | How is a deep override addressed and stored? |
-| [OQ-037](91-open-questions.md) | **offen** | What exactly happens when an override is promoted? |
-| [OQ-038](91-open-questions.md) | **offen** | Is a chooser a renderer? |
+| [OQ-025](91-open-questions.md) | beantwortet | How is a deep override addressed and stored? |
+| [OQ-037](91-open-questions.md) | beantwortet | What exactly happens when an override is promoted? |
+| [OQ-038](91-open-questions.md) | beantwortet | Is a chooser a renderer? |
 | [OQ-039](91-open-questions.md) | beantwortet | Where do installation-wide settings live? |
-| [OQ-026](91-open-questions.md) | **offen** | A part used in only one place: a node, or something smaller? |
+| [OQ-026](91-open-questions.md) | beantwortet | A part used in only one place: a node, or something smaller? |
 | [OQ-027](91-open-questions.md) | **offen** | Does an attribute freeze its definition, or track it? |
-| [OQ-028](91-open-questions.md) | **offen** | Is the set of label roles fixed, or extensible? |
-| [OQ-029](91-open-questions.md) | **offen** | Are the length hints advisory or enforced? |
-| [OQ-030](91-open-questions.md) | **offen** | May a model author write their own validator message? |
+| [OQ-028](91-open-questions.md) | beantwortet | Is the set of label roles fixed, or extensible? |
+| [OQ-029](91-open-questions.md) | beantwortet | Are the length hints advisory or enforced? |
+| [OQ-030](91-open-questions.md) | beantwortet | May a model author write their own validator message? |
 | [OQ-031](91-open-questions.md) | **offen** | How does existing data survive a model change? |
 | [OQ-032](91-open-questions.md) | **offen** | Is the base name required, and unique anywhere? |
-| [OQ-033](91-open-questions.md) | **offen** | Where does preview test data live? |
-| [OQ-034](91-open-questions.md) | **offen** | Is the preview a renderer, or a caller of one? |
+| [OQ-033](91-open-questions.md) | beantwortet | Where does preview test data live? |
+| [OQ-034](91-open-questions.md) | beantwortet | Is the preview a renderer, or a caller of one? |
 | [OQ-035](91-open-questions.md) | **offen** | Can a relation reach something that is not a model node? |
-| [OQ-036](91-open-questions.md) | **offen** | Do instances share the identity space? |
-| [OQ-040](91-open-questions.md) | **offen** | Is a currency a branch of units, or a separate concept? |
-| [OQ-041](91-open-questions.md) | **offen** | Is a prefix a node or an enum? |
-| [OQ-042](91-open-questions.md) | **offen** | Does an attribute's type name one node, or a branch? |
-| [OQ-043](91-open-questions.md) | **offen** | Is the unit tree shipped, or authored? |
-| [OQ-044](91-open-questions.md) | **offen** | How are calculations modelled? |
-| [OQ-045](91-open-questions.md) | **offen** | What can a calculation expression reach? |
-| [OQ-046](91-open-questions.md) | **offen** | When does a model calculation run? |
-| [OQ-047](91-open-questions.md) | **offen** | What is the expression language, and who writes it? |
-| [OQ-048](91-open-questions.md) | **offen** | How does the tool know where data may be entered? |
-| [OQ-049](91-open-questions.md) | **offen** | Can a label be frozen at the moment of use? |
-| [OQ-050](91-open-questions.md) | **offen** | What does a tool-independent export look like? |
-| [OQ-051](91-open-questions.md) | **offen** | Does staged resolution need the intermediate model versions? |
-| [OQ-052](91-open-questions.md) | **offen** | What can the resolver offer beyond showing a conflict? |
-| [OQ-053](91-open-questions.md) | **offen** | What happens to a model that cannot be satisfied? |
-| [OQ-054](91-open-questions.md) | **offen** | Is a currency amount stored as entered, or normalised? |
-| [OQ-055](91-open-questions.md) | **offen** | Where does an exchange rate come from? |
-| [OQ-056](91-open-questions.md) | **offen** | How many conditions can one query carry? |
+| [OQ-036](91-open-questions.md) | beantwortet | Do instances share the identity space? |
+| [OQ-040](91-open-questions.md) | beantwortet | Is a currency a branch of units, or a separate concept? |
+| [OQ-041](91-open-questions.md) | beantwortet | Is a prefix a node or an enum? |
+| [OQ-042](91-open-questions.md) | beantwortet | Does an attribute's type name one node, or a branch? |
+| [OQ-043](91-open-questions.md) | beantwortet | Is the unit tree shipped, or authored? |
+| [OQ-044](91-open-questions.md) | beantwortet | How are calculations modelled? |
+| [OQ-045](91-open-questions.md) | beantwortet | What can a calculation expression reach? |
+| [OQ-046](91-open-questions.md) | beantwortet | When does a model calculation run? |
+| [OQ-047](91-open-questions.md) | beantwortet | What is the expression language, and who writes it? |
+| [OQ-048](91-open-questions.md) | beantwortet | How does the tool know where data may be entered? |
+| [OQ-049](91-open-questions.md) | beantwortet | Can a label be frozen at the moment of use? |
+| [OQ-050](91-open-questions.md) | beantwortet | What does a tool-independent export look like? |
+| [OQ-051](91-open-questions.md) | beantwortet | Does staged resolution need the intermediate model versions? |
+| [OQ-052](91-open-questions.md) | beantwortet | What can the resolver offer beyond showing a conflict? |
+| [OQ-053](91-open-questions.md) | beantwortet | What happens to a model that cannot be satisfied? |
+| [OQ-054](91-open-questions.md) | beantwortet | Is a currency amount stored as entered, or normalised? |
+| [OQ-055](91-open-questions.md) | beantwortet | Where does an exchange rate come from? |
+| [OQ-056](91-open-questions.md) | beantwortet | How many conditions can one query carry? |
 | [OQ-057](91-open-questions.md) | beantwortet | Is undo in scope? |
-| [OQ-058](91-open-questions.md) | **offen** | How does a subtype narrow an inherited attribute? |
-| [OQ-059](91-open-questions.md) | **offen** | May an override widen, or only narrow? |
-| [OQ-060](91-open-questions.md) | **offen** | Optimistic or pessimistic locking? |
-| [OQ-061](91-open-questions.md) | **offen** | Does the descent walk the model, the record, or both? |
-| [OQ-062](91-open-questions.md) | **offen** | What does *not computable* look like? |
-| [OQ-063](91-open-questions.md) | **offen** | What identifies a record, for finding duplicates? |
-| [OQ-064](91-open-questions.md) | **offen** | How is a contains-search made fast? |
-| [OQ-065](91-open-questions.md) | **offen** | Does a seed item need a provenance marker? |
-| [OQ-066](91-open-questions.md) | **offen** | What happens to data when a node is moved? |
-| [OQ-067](91-open-questions.md) | **offen** | Does a parked record still hold its unique values? |
-| [OQ-068](91-open-questions.md) | **offen** | Is there a symmetric declaration for aggregation-only? |
+| [OQ-058](91-open-questions.md) | beantwortet | How does a subtype narrow an inherited attribute? |
+| [OQ-059](91-open-questions.md) | beantwortet | May an override widen, or only narrow? |
+| [OQ-060](91-open-questions.md) | beantwortet | Optimistic or pessimistic locking? |
+| [OQ-061](91-open-questions.md) | beantwortet | Does the descent walk the model, the record, or both? |
+| [OQ-062](91-open-questions.md) | beantwortet | What does *not computable* look like? |
+| [OQ-063](91-open-questions.md) | beantwortet | What identifies a record, for finding duplicates? |
+| [OQ-064](91-open-questions.md) | beantwortet | How is a contains-search made fast? |
+| [OQ-065](91-open-questions.md) | beantwortet | Does a seed item need a provenance marker? |
+| [OQ-066](91-open-questions.md) | beantwortet | What happens to data when a node is moved? |
+| [OQ-067](91-open-questions.md) | beantwortet | Does a parked record still hold its unique values? |
+| [OQ-068](91-open-questions.md) | beantwortet | Is there a symmetric declaration for aggregation-only? |
 | [OQ-069](91-open-questions.md) | beantwortet | Views: deferred, with an entry criterion |
-| [OQ-070](91-open-questions.md) | **offen** | How does renderer resolution stay cheap in a long list? |
+| [OQ-070](91-open-questions.md) | beantwortet | How does renderer resolution stay cheap in a long list? |
 | [OQ-071](91-open-questions.md) | **offen** | How is borrowed WordPress marked? |
 | [OQ-072](91-open-questions.md) | **offen** | How is the importer told what maps to what? |
-| [OQ-073](91-open-questions.md) | **offen** | What is the branch without data called? |
-| [OQ-074](91-open-questions.md) | **offen** | Is there an enum filled at runtime? |
-| [OQ-075](91-open-questions.md) | **offen** | How does a record have versions? |
-| [OQ-076](91-open-questions.md) | **offen** | Can a reader hand a parameter to a rendering? |
-| [OQ-077](91-open-questions.md) | **offen** | A conversion that depends on the other value |
-| [OQ-078](91-open-questions.md) | **offen** | Where is the *relationship as a node* pattern taught? |
-| [OQ-079](91-open-questions.md) | **offen** | Where does the shape stop being suitable? |
-| [OQ-080](91-open-questions.md) | **offen** | Is there a page per record? |
+| [OQ-073](91-open-questions.md) | beantwortet | What is the branch without data called? |
+| [OQ-074](91-open-questions.md) | beantwortet | Is there an enum filled at runtime? |
+| [OQ-075](91-open-questions.md) | beantwortet | How does a record have versions? |
+| [OQ-076](91-open-questions.md) | beantwortet | Can a reader hand a parameter to a rendering? |
+| [OQ-077](91-open-questions.md) | beantwortet | A conversion that depends on the other value |
+| [OQ-078](91-open-questions.md) | beantwortet | Where is the *relationship as a node* pattern taught? |
+| [OQ-079](91-open-questions.md) | beantwortet | Where does the shape stop being suitable? |
+| [OQ-080](91-open-questions.md) | beantwortet | Is there a page per record? |
 | [OQ-081](91-open-questions.md) | beantwortet | Which token do the Gutenberg blocks and the text domain use? |
 | [OQ-082](91-open-questions.md) | **offen** | How does the split behave? |
 | [OQ-083](91-open-questions.md) | beantwortet | Does restoring a node put its promoted children back? |
-| [OQ-084](91-open-questions.md) | **offen** | Does a node's version move when only its path was rewritten? |
+| [OQ-084](91-open-questions.md) | beantwortet | Does a node's version move when only its path was rewritten? |
 | [OQ-085](91-open-questions.md) | **offen** | How much precision does a decimal have? |
 | [OQ-086](91-open-questions.md) | **offen** | Where does a subtype's override of an inherited attribute hang? |
 | [OQ-087](91-open-questions.md) | **offen** | How does a core renderer produce a word a person reads? |
@@ -115,14 +115,23 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-096](91-open-questions.md) | **offen** | Is a subtype substitutable for its parent where a reference is typed? |
 | [OQ-097](91-open-questions.md) | beantwortet | Should settings be materialised into the inheriting node instead of resolved? |
 | [OQ-098](91-open-questions.md) | **offen** | Is a value that can only live in one place a field rather than a setting? |
-| [OQ-099](91-open-questions.md) | **offen** | A descendant's value for an inherited attribute has no address, and it already broke a decision |
+| [OQ-099](91-open-questions.md) | beantwortet | A descendant's value for an inherited attribute has no address, and it already broke a decision |
 | [OQ-100](91-open-questions.md) | **offen** | Should a setting key's *name* be translatable, even though the key is not? |
 | [OQ-101](91-open-questions.md) | beantwortet | Hiding a node and not drawing its fields are two things sharing one key. Where does each belong? |
 | [OQ-102](91-open-questions.md) | beantwortet | Should the live tables keep old versions with a delete flag, or should the journal become restorable? |
 | [OQ-103](91-open-questions.md) | **offen** | Should the whole model be read once into an identity map, with writes going back per object? |
 | [OQ-104](91-open-questions.md) | **offen** | Should a value be passed as an object rather than looked up by edge id? |
 | [OQ-105](91-open-questions.md) | beantwortet | `records.model_id` points at a node. Should it not say so? |
-| [OQ-106](91-open-questions.md) | **offen** | Do settings split the same way, into `NodeSetting` and `EdgeSetting`? |
+| [OQ-106](91-open-questions.md) | beantwortet | Do settings split the same way, into `NodeSetting` and `EdgeSetting`? |
+| [OQ-107](91-open-questions.md) | **offen** | What declares a free setting? Today nothing does. |
+| [OQ-108](91-open-questions.md) | beantwortet | How does a tree row say how many records a class has? |
+| [OQ-109](91-open-questions.md) | **offen** | One key holds one answer, so where does an *ordered list* of renderers live? |
+| [OQ-110](91-open-questions.md) | beantwortet | Does hiding a placement hide what hangs below it? |
+| [OQ-111](91-open-questions.md) | beantwortet | `hide` and a null renderer say the same thing. Which one owns it? |
+| [OQ-112](91-open-questions.md) | beantwortet | Does the renderer descend, and is everything still loaded before it starts? |
+| [OQ-113](91-open-questions.md) | beantwortet | D-426 and D-448–D-456 contradict each other about `hide`, and the fault D-426 fixed still reproduces |
+| [OQ-114](91-open-questions.md) | beantwortet | Do `read_only` and `persistent` follow `hide` out of the settings? |
+| [OQ-115](91-open-questions.md) | **offen** | A write through a non-persistent field: refused, or silently skipped? |
 
 ## Entscheidungen
 
@@ -529,7 +538,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-396](90-decision-log.md) | 2026-08-26 | agreed | `hide` on a node hides it from the tree, and the tree carries a *show hidden* switch that is off by default. |
 | [D-397](90-decision-log.md) | 2026-08-26 | agreed | The installation gets its own screen, under the modeller — and D-079 already decided which of its facts may live there. |
 | [D-398](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt | A bounding boolean is a *choice* and not a switch, because a two-state switch cannot express a one-way bound. |
-| [D-399](90-decision-log.md) | 2026-08-26 | agreed | `hide` and `read_only` are freely settable on any node, whatever an ancestor says — they leave the bounding category. And `hide` puts the renderer ou… |
+| [D-399](90-decision-log.md) | 2026-08-26 | agreed | `hide` and `read_only` are freely settable on any node, whatever an ancestor says — they leave the bounding category. ~~And `hide` puts the renderer … |
 | [D-400](90-decision-log.md) | 2026-08-26 | agreed | A constant is drawn as a *reference to it*, resolved to the label role the referring edge asks for — and a renderer that cannot serve a purpose is no… |
 | [D-401](90-decision-log.md) | 2026-08-26 | ⚠️ D-404 — eine Zeile an der Installationsidentität | A `bool` setting has exactly two states, and «not set» is not one of them: the control shows the stored value if there is one, otherwise the key's de… |
 | [D-402](90-decision-log.md) | 2026-08-26 | agreed | A subtype has its ancestor's settings until it says otherwise, and «otherwise» is said *per key*, never per node. Stated as fact by the owner; it con… |
@@ -552,11 +561,11 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-419](90-decision-log.md) | 2026-08-26 | agreed | The saved scroll offset is read once, before anything can scroll — and the `#fragment` is gone. That was the bug that made the whole script useless. |
 | [D-420](90-decision-log.md) | 2026-08-26 | agreed | The script saves what actually scrolls — the |
 | [D-421](90-decision-log.md) | 2026-08-26 | agreed | The three composed types the concept names as its own test now exist — and measured at three rungs, C116's *works immediately* is true of the model a… |
-| [D-422](90-decision-log.md) | 2026-08-26 | agreed | `don't-render` has no purpose, no variants and no say over the tree — it is one renderer that means *this is not drawn*, everywhere. |
+| [D-422](90-decision-log.md) | 2026-08-26 | agreed | ⚠️ Dropped by D-456: the owner, 2026-08-27 — *«we do not currently need the no-render renderer, `hide` at the edge does that»*. *Everything this row … |
 | [D-423](90-decision-log.md) | 2026-08-26 | agreed | Settings are materialised into the inheriting node and into the attribute, `reset` becomes a *pull*, and — measured — this changes nothing on the rea… |
 | [D-424](90-decision-log.md) | 2026-08-26 | agreed | The confirmation for pushing a change downwards is *one* list for the whole panel — every affected setting named, each with a yes/no switch. |
 | [D-425](90-decision-log.md) | 2026-08-26 | agreed | A `path` survives inheriting and must be *remapped* on duplicating — because inheritance keeps the edge ids and a copy does not. |
-| [D-426](90-decision-log.md) | 2026-08-26 | agreed | Hiding a node is a |
+| [D-426](90-decision-log.md) | 2026-08-26 | agreed | ⚠️ Extended by D-457, not overturned: the column half stands, and it applies to an |
 | [D-427](90-decision-log.md) | 2026-08-26 | agreed | History stays in one home: the journal becomes restorable, and the live tables keep exactly one row per thing. Answers OQ-102. |
 | [D-428](90-decision-log.md) | 2026-08-26 | agreed | A simple type's node is called by a spelled-out name — `Integer`, not `int` — while the enum value stays the identifier. |
 | [D-429](90-decision-log.md) | 2026-08-26 | agreed | A `bool` setting has exactly two controls: the switch, and `reset`. There is no bin. |
@@ -572,3 +581,24 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-439](90-decision-log.md) | 2026-08-26 | agreed | Everything that is displayed implements `Renderable`. Measured: three of twelve do. |
 | [D-440](90-decision-log.md) | 2026-08-26 | agreed | A node is a *class*, a record is an *object*. `content()` being empty on a node is correct, not a gap — and that resolves the knot. |
 | [D-441](90-decision-log.md) | 2026-08-26 | agreed | `Record` becomes `NodeRecord`, `RecordValue` becomes `EdgeRecord` — and `records.model_id` becomes `node_id`. Answers OQ-105. |
+| [D-442](90-decision-log.md) | 2026-08-27 | agreed | A setting is a class and a stored setting is its instance: `Setting` becomes `SettingRecord`, and `SettingKey` is the blueprint. Settings do |
+| [D-443](90-decision-log.md) | 2026-08-27 | agreed | `NOT NULL` is an attribute of a setting's shape, asked in the core — and exactly one shape has it. The column stays nullable. |
+| [D-444](90-decision-log.md) | 2026-08-27 | agreed | There is one renderer contract, not a class renderer and a record renderer: a renderer is handed the object, and where a |
+| [D-445](90-decision-log.md) | 2026-08-27 | agreed | The input is always the class, and what it needs is prepared and handed in beside it — the preview included. It does not fetch. Refines D-444. |
+| [D-446](90-decision-log.md) | 2026-08-27 | agreed | The tree's node renderer may show a record count, because counting what was handed in is not fetching. Answers OQ-108. |
+| [D-447](90-decision-log.md) | 2026-08-27 | agreed | Converters are built, and the four things the concept did not say are settled here. |
+| [D-448](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Superseded the same day by D-449, which puts `hide` on the |
+| [D-449](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Superseded by D-453: the owner — *we never talked about a |
+| [D-450](90-decision-log.md) | 2026-08-27 | agreed | `hide` on an edge is an abort criterion for the descent: from there down, nothing is rendered. And a renderer that draws nothing is a legitimate thin… |
+| [D-451](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Its reading is corrected by D-452: the owner — *that has nothing to do with inheritance* — and he is right that the chain is a |
+| [D-452](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ One claim in this row is withdrawn: «a renderer has no registry» is |
+| [D-453](90-decision-log.md) | 2026-08-27 | agreed | `hide` belongs to |
+| [D-454](90-decision-log.md) | 2026-08-27 | agreed | An id lookup — load once, fetch objects by id — and the contradiction between `CD-7`'s up-front loading and the abort disappears without either side … |
+| [D-455](90-decision-log.md) | 2026-08-27 | agreed | The whole-model store stays a thought model. The requirement is the smaller one: |
+| [D-456](90-decision-log.md) | 2026-08-27 | agreed | `hide` means one thing in both places — «render no further» — and the no-render renderer is not needed, because `hide` on the edge does it. Answers O… |
+| [D-457](90-decision-log.md) | 2026-08-27 | agreed | `hide` is a |
+| [D-458](90-decision-log.md) | 2026-08-27 | agreed | Settings and attribute values share one table. Answers the question left open by D-442 and OQ-106. |
+| [D-459](90-decision-log.md) | 2026-08-27 | agreed | «Attribute» becomes «field». What we define are fields in a record. |
+| [D-460](90-decision-log.md) | 2026-08-28 | agreed | `persistent` stays a setting: it needs the chain, and the use site overrides the node |
+| [D-461](90-decision-log.md) | 2026-08-28 | agreed | `read_only` stays a setting and is freely settable at the field, in both directions. The tightening rule stays gone — D-411 is untouched. And the wor… |
+| [D-462](90-decision-log.md) | 2026-08-28 | agreed | The three renames are built — and the four collisions they exposed are the content of this entry. |

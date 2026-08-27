@@ -42,7 +42,7 @@ interface RelationRepository
     public function nextPositionUnder(int $parentId): int;
 
     /** One past the last position among a node's **attributes** — where a new one goes. */
-    public function nextAttributePositionUnder(int $ownerId): int;
+    public function nextFieldPositionUnder(int $ownerId): int;
 
     /**
      * Hang every child of one parent under another, in one statement.
@@ -79,7 +79,7 @@ interface RelationRepository
      *
      * @return list<Relation>
      */
-    public function attributeEdgesOf(array $ownerIds): array;
+    public function fieldEdgesOf(array $ownerIds): array;
 
     /** Remove the edges belonging to a purge. The only place edges are deleted outright. */
     /**
@@ -93,7 +93,7 @@ interface RelationRepository
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    public function parkedAttributeEdgesOf(array $ownerIds): array;
+    public function parkedFieldEdgesOf(array $ownerIds): array;
 
     /**
      * Every edge with one end on any of these nodes — **both** ends, and every kind.

@@ -69,7 +69,7 @@ function previewOf(object $screen, int $nodeId): string
 
 echo "== the preview appears where records are possible, and not elsewhere ==\n";
 
-$model = (int) $wpdb->get_var("SELECT model_id FROM {$prefix}records GROUP BY model_id ORDER BY COUNT(*) DESC LIMIT 1");
+$model = (int) $wpdb->get_var("SELECT node_id FROM {$prefix}records GROUP BY node_id ORDER BY COUNT(*) DESC LIMIT 1");
 
 check('a model with records was found to test against', $model > 0, (string) $model);
 

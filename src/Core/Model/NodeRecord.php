@@ -16,12 +16,12 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Record
+final class NodeRecord
 {
     public function __construct(
         public readonly int $id,
-        public readonly int $modelId,
-        public readonly int $modelVersion,
+        public readonly int $nodeId,
+        public readonly int $nodeVersion,
         public readonly string $createdAt,
     ) {
     }

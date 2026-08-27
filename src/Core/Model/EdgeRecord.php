@@ -18,7 +18,7 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
-final class RecordValue
+final class EdgeRecord
 {
     /**
      * @param string $path   Edge ids from the record's model down to this value, `.`-separated.

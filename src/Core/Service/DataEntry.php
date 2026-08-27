@@ -4,10 +4,10 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\Record;
+use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\RecordValue;
+use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\Clock;
@@ -92,16 +92,16 @@ final class DataEntry
      * ⚠️ **Only a branch that has instances can have one** (D-183). A data type has no
      * instances of its own — a `Text` node is not a thing somebody owns three of.
      */
-    public function create(int $modelId): Record
+    public function create(int $nodeId): NodeRecord
     {
-        $model  = $this->nodes->byId($modelId);
+        $model  = $this->nodes->byId($nodeId);
         $branch = $this->framework->branchOf($model);
 
         if ($branch === null || ! $branch->holdsData()) {
             throw NotYetStorable::thatBranchHasNoRecords($model->name);
         }
 
-        $record = new Record(
+        $record = new NodeRecord(
             0,
             $model->id,
             $model->version,
@@ -110,7 +110,7 @@ final class DataEntry
 
         $id = $this->records->add($record);
 
-        return new Record($id, $record->modelId, $record->modelVersion, $record->createdAt);
+        return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
     }
 
     /**
@@ -133,7 +133,7 @@ final class DataEntry
         // read by a calculation, and its model-level value is its `default` (D-026). Refused rather
         // than dropped: a silent drop lets a form look as though it saved.
         if (! $this->keepsValues($edge)) {
-            throw NotYetStorable::thatAttributeKeepsNothing($edge->name);
+            throw NotYetStorable::thatFieldKeepsNothing($edge->name);
         }
 
         // ⚠️ Refused rather than guessed: a composed part is a record of its own, and nothing
@@ -143,7 +143,7 @@ final class DataEntry
             throw NotYetStorable::compositionsNeedTheirOwnRecords($edge->name);
         }
 
-        $this->records->putValue(RecordValue::direct($recordId, $edgeId, $value, $locale));
+        $this->records->putValue(EdgeRecord::direct($recordId, $edgeId, $value, $locale));
     }
 
     /**
@@ -173,7 +173,7 @@ final class DataEntry
      * @param string $path Where under the holder it sits. Empty for a direct attribute, so the edge
      *                     id is the whole path; an index like `2` for the third of several.
      */
-    public function createPart(int $recordId, int $edgeId, string $path = ''): Record
+    public function createPart(int $recordId, int $edgeId, string $path = ''): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
@@ -190,7 +190,7 @@ final class DataEntry
         $part = $this->create($target->id);
 
         // The holder points at it, which is the whole of the relationship.
-        $this->records->putValue(new RecordValue(
+        $this->records->putValue(new EdgeRecord(
             $recordId,
             $path === '' ? (string) $edgeId : $path,
             $edgeId,
@@ -218,10 +218,10 @@ final class DataEntry
             return [];
         }
 
-        $model = $this->nodes->byId($record->modelId);
+        $model = $this->nodes->byId($record->nodeId);
         $owned = [];
 
-        foreach ($this->relations->attributeEdgesOf([...$model->ancestorIds(), $model->id]) as $edge) {
+        foreach ($this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]) as $edge) {
             $target = $this->nodes->byId($edge->toId);
             $branch = $this->framework->branchOf($target);
 
@@ -260,19 +260,19 @@ final class DataEntry
         $this->records->forgetValue($recordId, $path, $locale);
     }
 
-    /** @return list<RecordValue> */
+    /** @return list<EdgeRecord> */
     public function valuesOf(int $recordId): array
     {
         return $this->records->valuesOf($recordId);
     }
 
-    /** @return list<Record> */
-    public function recordsOf(int $modelId): array
+    /** @return list<NodeRecord> */
+    public function recordsOf(int $nodeId): array
     {
-        return $this->records->ofModel($modelId);
+        return $this->records->ofNode($nodeId);
     }
 
-    public function find(int $recordId): ?Record
+    public function find(int $recordId): ?NodeRecord
     {
         return $this->records->find($recordId);
     }
@@ -280,7 +280,7 @@ final class DataEntry
     /**
      * Every record holding this value at this attribute.
      *
-     * @return list<Record>
+     * @return list<NodeRecord>
      */
     public function findByValue(int $edgeId, TypedValue $value): array
     {
@@ -303,10 +303,10 @@ final class DataEntry
      * ⚠️ **Checked rather than trusted.** An edge id arriving from a form is input, and a value
      * written against an attribute the model does not have is a value nothing will ever read.
      */
-    private function edgeOf(Record $record, int $edgeId): \Taxmod\Core\Model\Relation
+    private function edgeOf(NodeRecord $record, int $edgeId): \Taxmod\Core\Model\Relation
     {
-        $model = $this->nodes->byId($record->modelId);
-        $owned = $this->relations->attributeEdgesOf([...$model->ancestorIds(), $model->id]);
+        $model = $this->nodes->byId($record->nodeId);
+        $owned = $this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]);
 
         foreach ($owned as $edge) {
             if ($edge->id === $edgeId) {
@@ -314,6 +314,6 @@ final class DataEntry
             }
         }
 
-        throw NotYetStorable::notAnAttributeOfThisModel($edgeId, $model->name);
+        throw NotYetStorable::notAFieldOfThisModel($edgeId, $model->name);
     }
 }

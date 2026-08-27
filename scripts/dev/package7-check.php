@@ -114,13 +114,13 @@ if (count($seeded) < 7) {
     exit(1);
 }
 
-$count  = $editor->addAttribute($part->id, $seeded['int']->id, '__p7 count');
-$weight = $editor->addAttribute($part->id, $seeded['decimal']->id, '__p7 weight');
-$label  = $editor->addAttribute($part->id, $seeded['text']->id, '__p7 label');
-$stock  = $editor->addAttribute($part->id, $seeded['bool']->id, '__p7 in stock');
-$mail   = $editor->addAttribute($part->id, $seeded['email']->id, '__p7 contact');
-$when   = $editor->addAttribute($part->id, $seeded['datetime']->id, '__p7 checked');
-$colour = $editor->addAttribute($part->id, $seeded['color']->id, '__p7 body colour');
+$count  = $editor->addField($part->id, $seeded['int']->id, '__p7 count');
+$weight = $editor->addField($part->id, $seeded['decimal']->id, '__p7 weight');
+$label  = $editor->addField($part->id, $seeded['text']->id, '__p7 label');
+$stock  = $editor->addField($part->id, $seeded['bool']->id, '__p7 in stock');
+$mail   = $editor->addField($part->id, $seeded['email']->id, '__p7 contact');
+$when   = $editor->addField($part->id, $seeded['datetime']->id, '__p7 checked');
+$colour = $editor->addField($part->id, $seeded['color']->id, '__p7 body colour');
 
 $every = [$count, $weight, $label, $stock, $mail, $when, $colour];
 
@@ -314,14 +314,14 @@ check('an empty field is unanswered rather than zero', $types[$count->id]->value
 
 echo "\n== 9. A subtype of a type is still that type ==\n";
 $description = $editor->createNode('__p7 Description', $seeded['text']->id);
-$notes       = $editor->addAttribute($part->id, $description->id, '__p7 notes');
+$notes       = $editor->addField($part->id, $description->id, '__p7 notes');
 $sub         = $rendering->fieldsFor([$notes], [], Purpose::Edit, 'taxmod_value')[0];
 check('an authored subtype inherits its type', $sub->type === SimpleType::Text, $sub->type?->value ?? 'null');
 check('and therefore its renderer', $sub->rendererName === FieldRenderer::NAME, $sub->rendererName);
 
 echo "\n== 10. A constant is drawn as its name, not as its id (D-105, D-232) ==\n";
 $gram = $editor->createNode('__p7 Gramm', $framework->rootOf(Branch::Constants)->id);
-$unit = $editor->addAttribute($part->id, $gram->id, '__p7 unit');
+$unit = $editor->addField($part->id, $gram->id, '__p7 unit');
 
 $named = $rendering->fieldsFor(
     [$unit],
@@ -521,7 +521,7 @@ try {
     $withAttributes = null;
 
     foreach ($editor->childrenOf($framework->rootOf(Branch::Compositions)->id) as $candidate) {
-        if ($editor->attributesOf($candidate->id) !== []) {
+        if ($editor->fieldsOf($candidate->id) !== []) {
             $withAttributes = $candidate;
         }
     }

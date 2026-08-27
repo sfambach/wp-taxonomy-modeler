@@ -88,7 +88,7 @@ function membersOf(ModelEditor $editor, \Taxmod\Core\Model\Node $node): array
 {
     $members = [];
 
-    foreach ($editor->attributesOf($node->id) as $edge) {
+    foreach ($editor->fieldsOf($node->id) as $edge) {
         if ($edge->fromId === $node->id) {
             $members[$edge->name] = $edge;
         }

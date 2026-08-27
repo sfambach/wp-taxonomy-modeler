@@ -21,9 +21,9 @@ here — it is not deleted.
 > `type` is not in the base — a node's type *is* its inheritance branch, and a relation carries its
 > own `kind`. `creation_date` came off and is derived from the changelog.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [OQ-017](#oq-017--which-attributes-does-every-node-have) · *Status:* open · *re-framed 2026-08-22 at the request of the owner*
+*Blocks:* [10 Domain core](10-domain-core.md), [OQ-017](#oq-017--which-attributes-does-every-node-have) · *Status:* **closed 2026-08-22 → [D-080](90-decision-log.md)** · *re-framed 2026-08-22 at the request of the owner*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-060](90-decision-log.md), [D-080](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-060](90-decision-log.md), [D-080](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The first wording of this question was too vague to act on. Concretely, it is **four small
 decisions**, and only the last is difficult.
@@ -86,9 +86,9 @@ still blocks the core.
 > same class distinguished by kind; edges cross branches by design; the inheritance edge is
 > protected.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-012](90-decision-log.md), [D-161](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-012](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-012](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [V1](00-vision-and-scope.md) says *nodes and edges*; [V3](00-vision-and-scope.md) says the
 tree is inheritance **only**. So non-inheritance edges exist. Open:
@@ -138,9 +138,9 @@ enum.
 are the same *shape* of question, and the criterion above decides both — but it can decide them
 differently, and here it does.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-036](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-036](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-036](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [`TreeMeremaid.md`](TreeMeremaid.md) draws `Node <-- Relation : type`, i.e. the type is
 itself a node — types are **data**, editable by the user. [`I18nMeremaid.md`](I18nMeremaid.md)
@@ -156,7 +156,7 @@ leans toward types-as-data, but does not settle it for edges.
 
 > **Closed 2026-08-22 → [D-036](90-decision-log.md):** eine Knotenklasse, Verhalten in registrierten Strategien.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [40 I18n](40-i18n.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md), [40 I18n](40-i18n.md) · *Status:* **closed 2026-08-22 → [D-036](90-decision-log.md)**
 
 [V5](00-vision-and-scope.md) says all nodes are fundamentally the same.
 [`I18nMeremaid.md`](I18nMeremaid.md) draws `DomainNode`, `ValueNode` and `I18nValueNode` as
@@ -230,7 +230,7 @@ so if V7 is softened, this recommendation should be re-argued rather than kept.
 
 The original text:
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-091](90-decision-log.md)**
 
 [`RendererMeremaid.md`](RendererMeremaid.md) declares **both**, with overlapping methods
 (`getRendererByName` / `getRendererByType` vs. `getRenderer(NodeType)` /
@@ -244,9 +244,9 @@ registry itself a renderer, or only a lookup?
 
 > **Closed 2026-08-22 → [D-091](90-decision-log.md):** eine Methode, Subjekt ist eine Identität — Knoten oder Kante.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-091](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-091](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-091](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The PHP sketch in [`RendererMeremaid.md`](RendererMeremaid.md) declares `render()` twice with
 different signatures. **PHP has no method overloading**, so that cannot be built as written.
@@ -289,9 +289,9 @@ one-or-more validators. [`TreeMeremaid.md`](TreeMeremaid.md) puts exactly these 
 > migration script and `creation_date` is read from it, then creation must always be logged. Whether
 > that enables undo became [OQ-057](#oq-057--is-undo-in-scope).
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-081](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-081](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-081](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [`TreeMeremaid.md`](TreeMeremaid.md) draws `WPClassHead "1" --o "1..*" ChangeLogItem` —
 cardinality `1..*` means **no object may exist without at least one changelog item**. If that
@@ -305,9 +305,9 @@ open: `ChangeLogItem.undo()` — is undo in scope at all, and what is undoable?
 > **Closed 2026-08-23 → [D-169](90-decision-log.md).** Yes — and WordPress is used fully rather than
 > kept at a distance. What is borrowed is written down instead; how, is [OQ-071](#oq-071--how-is-borrowed-wordpress-marked).
 
-*Blocks:* [00 Vision and scope](00-vision-and-scope.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+*Blocks:* [00 Vision and scope](00-vision-and-scope.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-23 → [D-169](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-169](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-169](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The legacy round targeted a WP plugin serving host plugins such as `wp-electronic-parts`, and
 the seed base class is named `WPClassHead`. The 2026-08-22 statement does not mention
@@ -322,9 +322,9 @@ WordPress-independent with WordPress only as a persistence and UI host.
 > The wrapper the owner described is real and lives in the user interface — one dialog writes one
 > relation row plus a few settings rows.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-031](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-031](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-031](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [C1/C2](10-domain-core.md) describe an attribute as having a name, a type, and a kind of
 connection to another node. [V1](00-vision-and-scope.md) describes the model as nodes and
@@ -351,9 +351,9 @@ it deserves to be re-argued rather than assumed.
 > at**. `to` is the type, `kind` is the connection — two fields of one edge.
 
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-025](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-025](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-025](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [C2](10-domain-core.md) lists *type* and *kind of connection* as two separate things. So the
 type is presumably not the edge kind. Candidates: a data type (`int`, `string`, …) — which
@@ -415,9 +415,9 @@ obvious candidate — confirm or replace it.
 > editor so that no node type ever needs its own JavaScript.
 
 
-*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-021](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-021](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-021](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [R1](30-renderer.md) says display happens **only** through a renderer, and [V8](00-vision-and-scope.md)
 puts a renderer on essentially every node. That describes renderers as part of the model.
@@ -489,9 +489,9 @@ nothing in the statements so far demands it.
 > tables owned by the plugin, beside the model and not inside it: `records` and `record_values`.
 > Where a single value physically sits then follows from relation kind and multiplicity.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open, deliberately deferred
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-083](90-decision-log.md), [D-133](90-decision-log.md)**, deliberately deferred
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-083](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-083](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-007](90-decision-log.md) puts the **model** — nodes, settings, relations — into tables owned
 by the plugin. It says nothing about the **content** that a model describes: the actual
@@ -513,9 +513,9 @@ whether *model* and *instance* are even different kinds of thing.
 > on the wrong axis — renderer, converter and validators are set on the node as initial values and
 > overridden at a use site, exactly like `min`.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *Raised by* [C3–C5](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-084](90-decision-log.md), [D-078](90-decision-log.md)** · *Raised by* [C3–C5](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-084](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-084](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 Two different kinds of thing currently share the word:
 
@@ -546,9 +546,9 @@ consumed by the tool, yet only one of them describes the domain. Candidate answe
 > Everything else that looked like a candidate belongs elsewhere — `type` to the branch, `order` to
 > the edge, and the rest to settings.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [C4](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-082](90-decision-log.md)** · *Raised by* [C4](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-082](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-082](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 C4 puts the attributes common to all nodes on the node itself — i.e. they become **columns**.
 That makes the list a schema commitment: adding one later is a migration, not an edit.
@@ -603,9 +603,9 @@ question seen from two sides. They should be answered together, in one sitting.
 > a depth limit additionally **warns**, because there something really is missing. One guard for both
 > the render descent and the calculation walk.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *Raised by* [R5, R7](30-renderer.md)
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-100](90-decision-log.md)** · *Raised by* [R5, R7](30-renderer.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-100](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-100](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 R7 descends: node → attributes → target nodes → their renderers → their attributes. Nothing in
 the statement bounds that walk. Two ways it does not terminate:
@@ -626,9 +626,9 @@ renderer emits when it stops (nothing, a placeholder, a link).
 > renderer touches the database. The ancestor walk is served by an indexed structure, decided as
 > a schema shape rather than added later.
 
-*Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [R7](30-renderer.md) vs `CD-7`
+*Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-014](90-decision-log.md)** · *Raised by* [R7](30-renderer.md) vs `CD-7`
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-014](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-014](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The descent in R7 is the exact shape `CD-7` forbids: if each step loads its target node, its
 settings and its edges from the database, rendering one composed node costs one query per node
@@ -646,7 +646,9 @@ node or a loaded graph, which is the same question as R3.
 
 ## OQ-021 — Composition and aggregation: what is the difference here?
 
-> **Answered 2026-08-22 → both are needed, and the difference is lifecycle.**
+> **⚠️ Nicht beantwortet — die Antwort hat keine Entscheidungs-Id.** *Gefunden 2026-08-27 beim Aufraeumen der Statuszeilen: dieses Zitat sagt «answered», und **keine einzige Zeile im Entscheidungs-Log nennt OQ-021**. Nach `PR-3` ist das keine Antwort: «nichts ist entschieden, bevor es im Log steht — eine im Gespraech erreichte und nicht aufgeschriebene Entscheidung ist nicht passiert».* **Die Frage steht also offen, und sie ist keine Kleinigkeit**: stirbt ein zusammengesetzter Teil mit seinem Ganzen, und kann ein aggregierter Teil zu zwei Ganzen gehoeren? *Wenn die Antworten sich nicht unterscheiden, hat das Modell eine Kantenart mit zwei Namen.*
+>
+> ~~Answered 2026-08-22 → both are needed, and the difference is lifecycle.~~
 > [C12/C13](10-domain-core.md): a composed part belongs to the whole and is deleted with it; an
 > aggregated target is independent and always another node. The follow-on question — whether a
 > composed part may be stored inline instead of as a node — is
@@ -699,9 +701,9 @@ matter beyond naming.
 > **Closed 2026-08-22 → [D-012](90-decision-log.md): one construct.** Inheritance is one kind of
 > `Relation`, with its special rules carried as invariants rather than as a second class.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *asked by the owner, 2026-08-22*
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-012](90-decision-log.md)** · *asked by the owner, 2026-08-22*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-012](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-012](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner is unsure whether it is better to define edges generically and give inheritance extra
 rules, or to take inheritance out as its own construct.
@@ -775,9 +777,9 @@ changing a type later would leave existing attributes on the old definition. Unl
 > override path made of names is ambiguous. **Override paths are built from edge ids.** Less
 > readable, and correct.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C15](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-015](90-decision-log.md)** · *raised by* [C15](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-015](90-decision-log.md), [D-033](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-015](90-decision-log.md), [D-033](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [C15](10-domain-core.md) says attribute settings must reach into all children of the target
 node. Read literally, an attribute would carry a full copy of the configuration of everything
@@ -855,9 +857,9 @@ affected overrides can be found and shown at all.
 > *what does promotion do* — depends on how many use the target: **one** means restore on the target,
 > **several** means specialise.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-033](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-156](90-decision-log.md)** · *raised by* [D-033](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-156](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-156](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 Promotion turns `[#88].max = 99` on edge `#42` into a real attribute at that level. Mechanically
 that is a new relation plus its settings, built from what the override already held. Nothing new
@@ -884,9 +886,9 @@ recovered, with the author naming it. Confirm before assuming.
 > setting with **inline** as the default; the popup is render-conform because the renderer supplies
 > markup and metadata while one generic JS component supplies the behaviour.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [R25–R27](30-renderer.md)
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-107](90-decision-log.md)** · *raised by* [R25–R27](30-renderer.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-107](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-107](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [R1](30-renderer.md) says all display goes through a renderer, and
 [R18](30-renderer.md) already made the tree view one. A chooser displays a tree — the same tree,
@@ -936,9 +938,9 @@ question about whether tool behaviour and domain content share a mechanism.
 > edge, living beneath its whole, with an *add composed child here* action so building one is not
 > tedious. Structure is never inlined as a second storage form.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by the owner, 2026-08-22*
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-017](90-decision-log.md)** · *raised by the owner, 2026-08-22*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-017](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-017](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The example: a parts list is made of positions. Strictly, a position is its own node, referenced
 from the parts list by an attribute with multiplicity `1..*`. But a position is used nowhere
@@ -1016,9 +1018,9 @@ is [OQ-049](#oq-049--can-a-label-be-frozen-at-the-moment-of-use).
 > the owner is not convinced it earns a column, and the trigger for revisiting is written down.
 > `long` is mandatory as the fallback anchor and doubles as the tooltip.
 
-*Blocks:* [40 I18n](40-i18n.md) · *Status:* open
+*Blocks:* [40 I18n](40-i18n.md) · *Status:* **closed 2026-08-22 → [D-151](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-151](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-151](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [I4](40-i18n.md) names four roles — long, form, table, symbol — plus a locale-neutral icon
 ([I5](40-i18n.md)). Is that list closed, or may a model author add a role?
@@ -1037,9 +1039,9 @@ worth something on its own.
 > advisory by default — a limit set from German bites in Finnish — and enforceable where a real
 > constraint exists.
 
-*Blocks:* [40 I18n](40-i18n.md) · *Status:* open
+*Blocks:* [40 I18n](40-i18n.md) · *Status:* **closed 2026-08-22 → [D-152](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-152](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-152](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [`I18nMeremaid.md`](I18nMeremaid.md) annotates each text role with a length: long `10`, short
 `5`, table `10`, form label `15`, symbol `3`. Whether those are guidance for whoever writes the
@@ -1055,9 +1057,9 @@ bite in Finnish.
 > mechanism rather than adding a second one, and **per validator**, which needed a `path` column on
 > `labels`. The offered correction stays code.
 
-*Blocks:* [40 I18n](40-i18n.md), [30 Renderer](30-renderer.md) · *Status:* open
+*Blocks:* [40 I18n](40-i18n.md), [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-158](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-158](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-158](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A shipped validator message is a software string with placeholders filled from the node
 settings. If a model author may replace it with their own wording, that message becomes content
@@ -1138,9 +1140,9 @@ name is now a confirmed member of the fixed set, so it becomes a column.
 > test data. Not a third kind of thing after all — the preview renders the node in the data view
 > over those rows and falls back to the defaults.
 
-*Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [R22](30-renderer.md)
+*Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-028](90-decision-log.md)** · *raised by* [R22](30-renderer.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-028](90-decision-log.md), [D-052](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-028](90-decision-log.md), [D-052](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [R21–R23](30-renderer.md) give every node a preview driven by sample data, so that switching a
 renderer or changing a setting shows its effect immediately.
@@ -1166,9 +1168,9 @@ Option 3 is worth examining first precisely because it needs nothing, and it deg
 > **Closed 2026-08-22 → [D-096](90-decision-log.md): a caller.** The preview simply invokes render
 > twice, once editable and once not — no mode the contract has to know about, and no exception to R1.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [R20 vs R21](30-renderer.md)
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-096](90-decision-log.md)** · *raised by* [R20 vs R21](30-renderer.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-096](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-096](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [R21](30-renderer.md) says the preview is *assembled from* the chosen renderer, which reads as a
 caller. [R20](30-renderer.md) says the settings page around it is itself a page renderer. So the
@@ -1221,9 +1223,9 @@ The first is the smallest and should be tried first.
 > nodes and relations keep sharing one, because there the ambiguity is real. The argument for one
 > shared space turned out to rest on a mis-reading of [D-131](90-decision-log.md).
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-026](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-164](90-decision-log.md)** · *raised by* [D-026](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-164](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-164](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [C11](10-domain-core.md) gave nodes and relations one id space, which is what makes `owner` a
 single real foreign key. [D-026](90-decision-log.md) adds a second layer. Does an instance draw
@@ -1247,9 +1249,9 @@ model tables small. Confirm before it is assumed, and settle it together with
 
 > **Closed 2026-08-22 → [D-039](90-decision-log.md):** ein Einheitswert, zwei Zweige derselben Form.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C40](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-039](90-decision-log.md)** · *raised by* [C40](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-039](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-039](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [C40](10-domain-core.md) names a two-part split: base units and currencies.
 
@@ -1275,9 +1277,9 @@ question.
 > experience: the previous enum type had to be dropped once fixed values turned out to carry further
 > properties.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-116](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-116](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-116](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The standard tree has `Konstanten › Präfixe` with pico, nano, Micro, Milli, Centi, Kilo, Mega —
 **nodes**.
@@ -1296,9 +1298,9 @@ Note the tree also encodes *whether a family takes a prefix at all* by inheritan
 
 > **Closed 2026-08-22 → [D-041](90-decision-log.md):** der Typ ist ein Ast, polymorph.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · **large**
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-041](90-decision-log.md)** · **large**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-041](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-041](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-025](90-decision-log.md) says the type of an attribute is the node the relation points at. The
 unit example strains that reading.
@@ -1326,9 +1328,9 @@ whether the allowed set is the branch's whole subtree or only its direct childre
 > **Closed 2026-08-22 → [D-119](90-decision-log.md): shipped as a seed, then authored.** The scaffold is
 > imported once and afterwards belongs to the author; updates offer new items and never overwrite.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [95 Roadmap](95-roadmap.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md), [95 Roadmap](95-roadmap.md) · *Status:* **closed 2026-08-22 → [D-119](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-119](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-119](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 Metres, grams and euros are the same everywhere. Shipping them saves every user the work and
 gives renderers something to rely on. Letting the author build them keeps the engine free of
@@ -1344,9 +1346,9 @@ happens on plugin update.
 
 > **Closed 2026-08-22 → [D-043](90-decision-log.md):** Eigenschaft eines Attributs, keine Kantenart.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · **gap, not legacy debris**
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-043](90-decision-log.md)** · **gap, not legacy debris**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-043](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-043](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [V6](00-vision-and-scope.md) named *special nodes for data types and for calculations* on the
 first day. Data types have been worked out since; **calculations have not been touched.**
@@ -1375,9 +1377,9 @@ calculations — so the two were always meant to work together.
 
 > **Closed 2026-08-22 → [D-045](90-decision-log.md):** relativer Pfad aus Kanten-IDs.
 
-*Blocks:* [60 Calculation](60-calculation.md) · *Status:* open
+*Blocks:* [60 Calculation](60-calculation.md) · *Status:* **closed 2026-08-22 → [D-045](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-045](90-decision-log.md), [D-140](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-045](90-decision-log.md), [D-140](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 Siblings only, descendants across composition, across aggregation to a shared node, upward to an
 ancestor? Each step outward makes the invalidation graph larger and the cycle risk higher. The
@@ -1392,9 +1394,9 @@ composed collection*; nothing has asked for more yet.
 > Forced by the search requirement ([D-070](90-decision-log.md)) — a value derived on read cannot
 > be filtered on without computing it for every candidate.
 
-*Blocks:* [60 Calculation](60-calculation.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+*Blocks:* [60 Calculation](60-calculation.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-072](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-072](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-072](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 On write, on read, or cached with invalidation. The same three options as
 [OQ-024](#oq-024--how-are-resolved-settings-computed-without-melting-down), and the answer should
@@ -1408,9 +1410,9 @@ probably match it — one caching story for the whole system rather than two.
 > and aggregates from a small closed set; operands are edge ids; a typed formula field may later be
 > a second way to author the same structure. Hard cases become registered strategies.
 
-*Blocks:* [60 Calculation](60-calculation.md) · *Status:* open
+*Blocks:* [60 Calculation](60-calculation.md) · *Status:* **closed 2026-08-22 → [D-130](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-130](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-130](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A picked operation over a picked field (which is what the old `Definition › Aggregate` branch
 did — *op chosen per field slot*) is safe, limited and needs no parser. A free expression is
@@ -1429,9 +1431,9 @@ one.
 > resolves to a **node** or to a **record**. What is standalone is decided by the edges
 > (aggregation versus composition only), and only for nodes whose instances are records at all.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C55](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-131](90-decision-log.md), [D-132](90-decision-log.md)** · *raised by* [C55](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-048](90-decision-log.md), [D-132](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-048](90-decision-log.md), [D-132](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-042](90-decision-log.md) says type nodes and model nodes are the same construct in different
 roles. Nothing structural separates them — so how does the interface know where to offer *enter
@@ -1458,9 +1460,9 @@ it changes meaning as soon as someone reuses a node.
 > for freezing dissolves: an exported PDF is **detached** the moment it is produced, so
 > regenerating it later giving different wording is expected rather than wrong.
 
-*Blocks:* [40 I18n](40-i18n.md) · *Status:* open · *raised by* [D-049](90-decision-log.md) · *re-written 2026-08-22, the first version was too abstract*
+*Blocks:* [40 I18n](40-i18n.md) · *Status:* **closed 2026-08-22 → [D-053](90-decision-log.md)** · *raised by* [D-049](90-decision-log.md) · *re-written 2026-08-22, the first version was too abstract*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-053](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-053](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 ### The concrete case
 
@@ -1509,9 +1511,9 @@ definition changes, do existing things follow it, or keep what was true?*
 > side; and **view exports** (CSV, PDF, interactive list) which are renderers and need not
 > round-trip. Import conflicts go to the conflict resolver.
 
-*Blocks:* [70 Migration](70-migration.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [M5](70-migration.md)
+*Blocks:* [70 Migration](70-migration.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-058](90-decision-log.md), [D-059](90-decision-log.md)** · *raised by* [M5](70-migration.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-058](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-058](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner accepted the readability cost of id references and noted the model structure had already
 broken database-level readability anyway. That is true, and it has a consequence worth stating:
@@ -1540,9 +1542,9 @@ support and debugging. One join, and it turns unreadable rows into readable ones
 > versions coexist until resolved. And what resolution needs is the **changes**, not the
 > snapshots — which the model changelog already is.
 
-*Blocks:* [70 Migration](70-migration.md) · *Status:* open · *raised by* [M8](70-migration.md)
+*Blocks:* [70 Migration](70-migration.md) · *Status:* **closed 2026-08-22 → [D-060](90-decision-log.md), [D-061](90-decision-log.md)** · *raised by* [M8](70-migration.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-060](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-060](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [M8](70-migration.md) resolves a repeatedly changed model **stage by stage**. Two readings, and
 they need different storage:
@@ -1565,9 +1567,9 @@ versions — which nothing has bounded yet.
 > fill by hand, delete. A transformation is a **converter applied to a column**, so no separate
 > transformation language is needed.
 
-*Blocks:* [70 Migration](70-migration.md) · *Status:* open
+*Blocks:* [70 Migration](70-migration.md) · *Status:* **closed 2026-08-22 → [D-062](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-062](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-062](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [V9](00-vision-and-scope.md) already established the pattern that a **validator may offer a
 correction**, not merely report a fault. The resolver is the same idea at model scale, so it
@@ -1586,9 +1588,9 @@ orphaned override is promoted ([D-033](90-decision-log.md)) — the same shape o
 > a model conflict rather than blocked — but data entry against the model stays barred until it is
 > resolved.
 
-*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [R29–R31](30-renderer.md)
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-157](90-decision-log.md)** · *raised by* [R29–R31](30-renderer.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-157](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-157](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 An attribute with multiplicity `1` or `1..*` whose permitted set is **empty** demands an answer
 that cannot be given. The natural way to arrive there is an allow-list
@@ -1609,9 +1611,9 @@ needs the check to run at configuration time, where [D-050](90-decision-log.md) 
 > **rate of that day is frozen and stored beside the amount**, and the converted figure is derived
 > from the two.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *needs a yes or no*
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-22 → [D-064](90-decision-log.md)** · *needs a yes or no*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-064](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-064](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-051](90-decision-log.md) says a **prefix normalises, a unit does not** — so an amount stays in
 the currency it was entered in. A phrase in the owner statement of 2026-08-22 can be read as
@@ -1636,9 +1638,9 @@ the amount, or the number means nothing later.
 > Option 2 and 3 combined, as the owner sketched: fetch once a day for the known currencies, store
 > under that date, and the core reads only the table. Daily granularity — intraday is not needed.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-064](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-069](90-decision-log.md)** · *raised by* [D-064](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-069](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-069](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-064](90-decision-log.md) freezes a rate into a record. It does not say where that number comes
 from, and the answer decides whether this concept acquires a dependency on the outside world.
@@ -1662,9 +1664,9 @@ whoever supplies the number, the record keeps it.
 > **Closed 2026-08-23 → [D-165](90-decision-log.md).** Any number correctly, about three quickly, and a
 > flat per-model projection for the reporting case — a cache, never a second place where values live.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-070](90-decision-log.md)
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-23 → [D-165](90-decision-log.md)** · *raised by* [D-070](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-165](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-165](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A single condition is an indexed range scan on `(edge_id, value)` and is fast. Combining
 conditions — over a thousand euro **and** containing part X — means intersecting two such lookups.
@@ -1722,9 +1724,9 @@ migration it caused, and what happens when the thing being undone has since been
 > inherited attributes, not only narrow them. One override shape, two possible owners, same
 > addressing, same walk. C9 is untouched.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *found while writing* [D-086](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-087](90-decision-log.md)** · *found while writing* [D-086](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-087](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-087](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 `Part` has the attribute `lieferant` as edge `#10`, multiplicity `0..1`. `Passiv` inherits from
 `Part` and should be able to **narrow** it to `1` — every passive component must name a
@@ -1759,9 +1761,9 @@ first case where an override owner is a node rather than a use site.
 > loosening could break. The *constraint versus presentation* marking proposed below is therefore
 > **dropped**, not answered.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-087](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-088](90-decision-log.md)** · *raised by* [D-087](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-088](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-088](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 `Passiv` narrows `lieferant` to exactly `1` — every passive component must name a supplier. A use
 site of `Passiv` then sets it back to `0..1`. **That breaks the guarantee the subtype just made**,
@@ -1793,9 +1795,9 @@ accepted and reported as a model conflict the way a breaking model change is
 > corrected the origin of this question: the statement was *changes are **logged***, not *locked* —
 > locking turned out to be a real question regardless.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C85](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-089](90-decision-log.md)** · *raised by* [C85](10-domain-core.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-089](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-089](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner named *changes are locked* as one of the two purposes of the base class. Two different
 things go by that name:
@@ -1859,9 +1861,9 @@ the normal case and blocking it would make the product unusable.
 > front, one mode. The preview is fed from a test data pack rather than from defaults. The cost of
 > resolving renderers in a long list became [OQ-070](#oq-070--how-does-renderer-resolution-stay-cheap-in-a-long-list).
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-091](90-decision-log.md)
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-159](90-decision-log.md), [D-160](90-decision-log.md)** · *raised by* [D-091](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-159](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-159](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [R38–R41](30-renderer.md) describe the walk over the **model**: node → renderer → own properties →
 edges → target node → and round again. That is complete for drawing a *structure*.
@@ -1895,9 +1897,9 @@ two, and the preview stops being special.
 > explicitly rejected. In a column *not computable* is `NULL`, so it satisfies neither `> 1000` nor
 > `< 1000`, and the search interface needs *not computable* as its own filter.
 
-*Blocks:* [60 Calculation](60-calculation.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-104](90-decision-log.md)
+*Blocks:* [60 Calculation](60-calculation.md), [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-22 → [D-147](90-decision-log.md)** · *raised by* [D-104](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-147](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-147](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-104](90-decision-log.md) forbids a truncated calculation from producing a number. So a computed
 attribute has a state that is **not a value**: *not computable* — because a cycle was hit, an input
@@ -1928,9 +1930,9 @@ answer that nobody will notice.
 > remains open is only whether there is also a **hard uniqueness constraint** on some attribute —
 > enforced rather than advisory — and that is a different setting from the identifying set.
 
-*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-111](90-decision-log.md)
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-112](90-decision-log.md), [D-114](90-decision-log.md)** · *raised by* [D-111](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-112](90-decision-log.md), [D-114](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-112](90-decision-log.md), [D-114](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 *Before creating something new, check whether it already exists* needs something to check
 **against**, and nothing in the concept provides it.
@@ -1969,9 +1971,9 @@ duplicates nobody would have created anyway.
 > the quick search with prefix hits ranked first, an explicit operator field in the filter, no
 > wildcard character. The growth stage stays deferred until there is real data to look at.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-112](90-decision-log.md)
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-23 → [D-167](90-decision-log.md)** · *raised by* [D-112](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-167](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-167](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A wildcard on both sides — `LIKE '%x%'` — **cannot use an ordinary index**. On a few hundred parts
 nobody notices; on tens of thousands it is a table scan **on every keystroke**, in a field the user
@@ -2001,9 +2003,9 @@ never a second source of truth.
 > **Closed 2026-08-23 → [D-174](90-decision-log.md).** Yes, and in two parts: *from the seed* and
 > *changed since*. Untouched is updated silently; changed is left alone and reported.
 
-*Blocks:* [70 Migration](70-migration.md) · *Status:* open, low urgency · *raised by* [C97](10-domain-core.md), [D-121](90-decision-log.md)
+*Blocks:* [70 Migration](70-migration.md) · *Status:* **closed 2026-08-23 → [D-174](90-decision-log.md)**, low urgency · *raised by* [C97](10-domain-core.md), [D-121](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-174](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-174](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-121](90-decision-log.md) removed the *template* flag's protective job. A different job may remain:
 **knowing which items came from the seed**, so that a plugin update offers only what is genuinely
@@ -2028,9 +2030,9 @@ Worth deciding when the update flow is actually built, not now.
 > and it never loses data, because the edge id is stable and records reference the id. Up is
 > additive, down is removing, and a mandatory attribute makes even up a break.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [70 Migration](70-migration.md) · *Status:* open · *raised by* [D-124](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [70 Migration](70-migration.md) · *Status:* **closed 2026-08-22 → [D-155](90-decision-log.md)** · *raised by* [D-124](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-155](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-155](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 Moving a node between branches changes its **inheritance**, so it may gain attributes it did not
 have and lose attributes it did. Records written before the move hold values for the lost ones.
@@ -2052,9 +2054,9 @@ move is exactly such a change.
 > owner chose the opposite of the proposal below, and better: holding the value means a **restore can
 > never collide**, so the conflict this question worried about never arises.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-123](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-154](90-decision-log.md)** · *raised by* [D-123](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-154](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-154](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A record with a `unique` article number ([D-114](90-decision-log.md)) is parked
 ([D-123](90-decision-log.md)). Does its number still block a new record?
@@ -2076,9 +2078,9 @@ taken* with no way to see by what.
 > **Closed 2026-08-22 → [D-161](90-decision-log.md).** No switch — and no question either. The kind is
 > derived from the branch the target sits in, so the wrong kind is never on offer.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised while binding the `Kompositionen` node*
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-22 → [D-161](90-decision-log.md)** · *raised while binding the `Kompositionen` node*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-161](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-161](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 `Kompositionen` declares **only composition edges may point at me** ([D-135](90-decision-log.md)).
 The symmetric declaration — **only aggregation edges may point at me** — is not obviously useless.
@@ -2143,9 +2145,9 @@ which is exactly [D-140](90-decision-log.md)'s escape hatch and would hang natur
 > **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
 > inventing; the entry names the event that reopens it.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-159](90-decision-log.md)
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-23 → [D-203](90-decision-log.md)** · *raised by* [D-159](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-203](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-203](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner raised it while accepting [D-159](90-decision-log.md):
 
@@ -2242,9 +2244,9 @@ saying the same thing twice.
 > **Closed 2026-08-23 → [D-185](90-decision-log.md), name corrected by [D-188](90-decision-log.md).**
 > `Primitives` — English per [D-187](90-decision-log.md), with `Bausteine` as the German label.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-183](90-decision-log.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-185](90-decision-log.md), [D-188](90-decision-log.md)** · *raised by* [D-183](90-decision-log.md)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-185](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-185](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-183](90-decision-log.md) settles that `Model` and `Kompositionen` hold data and the rest does
 not. The rest is called `Definition` in the legacy tree and the owner wants a better word: *for that
@@ -2276,9 +2278,9 @@ of explanation, why nothing they enter will ever be stored there.
 > **Deferred by decision 2026-08-23 → [D-200](90-decision-log.md).** Not answerable today without
 > inventing; the entry names the event that reopens it.
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open, deferred by the owner · *raised 2026-08-23*
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-204](90-decision-log.md), [D-205](90-decision-log.md)**, deferred by the owner · *raised 2026-08-23*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-204](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-204](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner: *what is the difference between an enum I define at modelling time and one I want to
 fill at runtime, in the front end or Gutenberg? I am not currently sure there is even a use case
@@ -2320,9 +2322,9 @@ Six worlds were modelled against the concept before locking the domain core
 
 > **Closed 2026-08-23 → [D-305](90-decision-log.md).**
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §1
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-305](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §1
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-305](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-305](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 *There are boards in different versions, which then have different parts lists* — the owner, twice,
 setting it aside both times. The model version of [D-060](90-decision-log.md) is a **stamp** saying
@@ -2339,9 +2341,9 @@ nothing else — not that they share an identity, and not which one a reference 
 
 > **Closed 2026-08-23 → [D-309](90-decision-log.md).**
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-23 → [D-309](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §2
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-309](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-309](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 *Four portions instead of two* multiplies every quantity in a recipe. It is not a stored value and
 not a computed attribute, because the input comes from **the person reading**, at that moment.
@@ -2356,9 +2358,9 @@ computed*.
 
 > **Closed 2026-08-23 → [D-306](90-decision-log.md).**
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-306](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §2
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-306](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-306](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 [D-274](90-decision-log.md) puts the factor on the **unit** — right for inch and metre. A tablespoon
 of flour is 10 g, of sugar 12 g, of honey 21 g: **the factor belongs to the pairing** of unit and
@@ -2371,9 +2373,9 @@ work this way.
 
 > **Closed 2026-08-23 → [D-307](90-decision-log.md).**
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §4
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **closed 2026-08-23 → [D-307](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §4
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-307](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-307](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A relationship carrying its own values — supplier **plus** customer number **plus** since-when —
 is modelled as a **composition that aggregates**. Everything needed exists.
@@ -2388,9 +2390,9 @@ Not a gap in the model. A gap in what the model **says about itself**.
 
 > **Closed 2026-08-23 → [D-308](90-decision-log.md).**
 
-*Blocks:* [00 Vision and scope](00-vision-and-scope.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §5
+*Blocks:* [00 Vision and scope](00-vision-and-scope.md) · *Status:* **closed 2026-08-23 → [D-308](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §5
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-308](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-308](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 A hundred thousand sensor readings become several hundred thousand rows carrying two useful numbers
 each. The projection ([D-228](90-decision-log.md)) speeds reading and changes nothing about writing
@@ -2403,7 +2405,7 @@ store — but the concept should **say so**, so that nobody discovers it with a 
 
 > **Closed 2026-08-23 → [D-309](90-decision-log.md).**
 
-*Blocks:* [20 Interaction](20-interaction.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §6
+*Blocks:* [20 Interaction](20-interaction.md), [30 Renderer](30-renderer.md) · *Status:* **closed 2026-08-23 → [D-309](90-decision-log.md)** · *raised by* [96](96-scenario-check.md) §6
 
 ⚠️ **Downgraded the same evening** after looking at the owner's site: his pattern is data embedded in hand-written posts, which [D-206](90-decision-log.md) covers. Still wanted for a real catalogue; no longer the blocker.  Five hundred parts cannot each get a hand-built Gutenberg
 page. A catalogue needs **one template and a route**: `/bauteil/bc547b` finds the record and renders
@@ -2539,9 +2541,9 @@ extended either way. That says nothing about which object's counter is the right
 five-hundred-row write, which is exactly the loop `CD-7` forbids — and the reason `moveSubtree`
 is one statement today.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from watching the numbers*
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-24 → [D-349](90-decision-log.md)**** · *raised 2026-08-24 by the owner, from watching the numbers*
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-349](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-349](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 ---
 
@@ -3073,7 +3075,7 @@ and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays op
 
 **Raised** 2026-08-26, while checking a cell of the truth table that I had filled in from memory.
 
-*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* **closed** · *raised by* the truth table, row 4
+*Blocks:* [02 Attribute and setting](02-field-and-setting.md) · *Status:* **closed** · *raised by* the truth table, row 4
 
 > **Closed 2026-08-26 → [D-410](90-decision-log.md).** **Yes** — the owner: *there ought to be
 > multi-language for attributes too; the attribute settings need a labels part as well. I can
@@ -3110,7 +3112,7 @@ His statement, which is the anchor: *I have a node `my_int` that inherits from `
 all attributes of `int` (there are none) but also all settings of `int`.* **Attributes behave like OO
 in inheritance.**
 
-⚠️ **Everything in that sentence is already true of the model** — see [the truth table](02-attribute-and-setting.md),
+⚠️ **Everything in that sentence is already true of the model** — see [the truth table](02-field-and-setting.md),
 rows 1 and 8. What it does **not** say is the part OO gives you for free: **substitutability.**
 
 **The question:** an attribute is typed `int`. A record holds a reference. **May that reference be a
@@ -3180,7 +3182,7 @@ parent narrows `range_min` **later**, every existing child keeps its wider copy 
 breaks **silently** — checking at write time cannot help, because the copies are already there.
 
 **2. Correction from above dies, and it was measured working this morning.**
-The third row of [the `my_int` example](02-attribute-and-setting.md): changing `int`'s `default` reached `my_int`
+The third row of [the `my_int` example](02-field-and-setting.md): changing `int`'s `default` reached `my_int`
 **at once**, *because nothing was copied*. Under materialisation that becomes a dialog — and a dialog
 reaches only the nodes that exist **at that moment**. A child that answered *no* is then permanently
 detached, with **no way to see that it is detached and no way back**. *Today `reset()` is the way back
@@ -3287,7 +3289,7 @@ nobody can trust — and that is a better argument than the one he made.*
 that does not exist rather than a bug in one that does.
 
 ⚠️ **It matters more than it looks.** `range_min` on an attribute pointing at `int` is an `int`
-([the type table](02-attribute-and-setting.md), `LikeTheSubject`). Point the same attribute at `text` and the row
+([the type table](02-field-and-setting.md), `LikeTheSubject`). Point the same attribute at `text` and the row
 still exists, still says `-9223372036854775808`, and now means nothing. **The conflict is not that
 settings are lost — it is that they are silently kept and become wrong.** *A warning is the minimum; the
 real answer is that retargeting names which settings it will drop and asks.*
@@ -3372,7 +3374,7 @@ anything**, because each descendant carries its own copies of the edges' setting
 ### What it would do to the truth table — eight of twenty-five rows
 
 The owner: *and then let us take a look at the truth table regarding attributes and settings.* Counted
-against [02 Attribute and setting](02-attribute-and-setting.md) as it stands:
+against [02 Attribute and setting](02-field-and-setting.md) as it stands:
 
 | Row | Today | If the proposal lands |
 |---|---|---|
@@ -3402,7 +3404,7 @@ clear enough to write in one sentence**, which it was not two rounds ago.*
 
 **Raised** 2026-08-26, by the owner, about the edge.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [02 Attribute and setting](02-attribute-and-setting.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [02 Attribute and setting](02-field-and-setting.md)
 
 > *We have to talk about edges too. Attribute name, from, to, type, multiplicity, persistent are all
 > just **fields of the edge** and should be persisted there — in the relations table, I mean — so they
@@ -3479,9 +3481,9 @@ the rest.*
 **Raised** 2026-08-26, by trying to build what the owner asked for and finding the pattern it copies
 does not work.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-378](90-decision-log.md), [OQ-098](#oq-098--is-a-value-that-can-only-live-in-one-place-a-field-rather-than-a-setting)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed 2026-08-26 → [D-413](90-decision-log.md), [D-414](90-decision-log.md)** · *raised by* [D-378](90-decision-log.md), [OQ-098](#oq-098--is-a-value-that-can-only-live-in-one-place-a-field-rather-than-a-setting)
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-414](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+⚠️ **Entschieden in [D-414](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 
 The owner asked for `factor` and `offset` to become attributes, the way the prefix exponent did
 ([D-378](90-decision-log.md)) — *yes, I want that.* **Measuring the pattern first showed that the
@@ -3530,7 +3532,7 @@ or asked-for things:
 
 | Waiting on it | |
 |---|---|
-| **several renderers, several validators** | [D-236](90-decision-log.md), [D-158](90-decision-log.md) — list rows 5 and 8 |
+| ~~**several renderers, several validators**~~ — **it was not waiting on this**, see [OQ-109](#oq-109--one-key-holds-one-answer-so-where-does-an-ordered-list-of-renderers-live): `path` is an address, so it holds one answer per place and not a list | [D-236](90-decision-log.md), [D-158](90-decision-log.md) — list rows 5 and 8 |
 | **several defaults** | [C30](10-domain-core.md) |
 | **the prefix exponent working at all** | [D-378](90-decision-log.md) — *already decided and not functioning* |
 | **`factor` and `offset` as attributes** | the owner's *yes*, list row 32 |
@@ -3595,7 +3597,7 @@ does not wait for the second**, which is the useful part of this proposal.*
 
 **Raised** 2026-08-26, by the owner, while reviewing row 4 of the truth table.
 
-*Blocks:* [02 Attribute and setting](02-attribute-and-setting.md), [40 i18n](40-i18n.md) · *Status:* open
+*Blocks:* [02 Attribute and setting](02-field-and-setting.md), [40 i18n](40-i18n.md) · *Status:* open
 
 > *A setting is a key, that is not really translated. I only wonder whether it would not be nicer if we
 > at least had a translation, so that a German user can read it better when it is an English term. **We
@@ -3625,7 +3627,7 @@ decided rather than done because it is cheap.*
 
 **Raised** 2026-08-26, by the owner, immediately after asking for the eye in the tree row.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* **closed 2026-08-26 — part 3 by [D-422](90-decision-log.md), parts 1 and 2 by [D-426](90-decision-log.md): a column on `nodes`**
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-field-and-setting.md) · *Status:* **closed 2026-08-26 — part 3 by [D-422](90-decision-log.md), parts 1 and 2 by [D-426](90-decision-log.md): a column on `nodes`**
 
 > *I am wondering whether hiding the node and hiding the output are two things, and whether the second
 > could not simply be covered by the **don't-render** 😉 — that one could be made available everywhere.
@@ -3850,7 +3852,7 @@ object.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* **answered 2026-08-26 by [D-441](90-decision-log.md)**
 
-⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-441](90-decision-log.md).** *Und mit einem
+⚠️ **Entschieden in [D-441](90-decision-log.md).** *Diese Zeile stand hier, solange der Status oben noch `open` sagte, obwohl das Log die Frage längst nannte — am 2026-08-27 wurden **66 solche Statuszeilen** nachgezogen. Der Verweis bleibt, weil er die Fundstelle ist; die Warnung ist erledigt.*
 besseren Namen als beide, die hier gewogen wurden: `Record` wird `NodeRecord`, `RecordValue` wird
 `EdgeRecord`, und die Spalte wird `node_id` — weil an einer Klasse, die sagt, um welche Art Record es
 geht, `node_id` aufhört, unpräzise zu sein.* Die Settings-Hälfte, die er im selben Atemzug aufwarf, ist
@@ -3937,7 +3939,7 @@ buys one thing only, which is that the code and the documents stop using two wor
 
 **Raised** 2026-08-26, by the owner, in the same breath as the record rename.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* **closed → [D-442](90-decision-log.md) — no, and my recommendation below was wrong**
 
 > *Record the rename — similarly it must be so with settings.*
 
@@ -3966,8 +3968,456 @@ installation → root → ancestors → node → use site ([D-079](90-decision-l
 three owner kinds.** A split into three types must not become a split into three queries, or `CD-7` is
 broken by a rename.*
 
-⚠️ *My recommendation: **the classes, not the table.** `NodeSetting`, `EdgeSetting` and
+### Answered — and not the way this question asked it · [D-442](90-decision-log.md)
+
+⚠️ **The split is not by owner, it is by class and instance.** The owner: *not so fast, I would have
+expected that we have settings (a class) and `SettingRecord` as the instance* — *nothing more, the record
+can hold the possible values of settings and the class gives the blueprint.* **So `Setting` becomes
+`SettingRecord` and `SettingKey` is the blueprint**; there is no `NodeSetting`.
+
+⚠️ **Why the recommendation below is wrong, measured.** *`records` and `record_values` are **two tables
+with different columns** — two real shapes, which is what made [D-441](90-decision-log.md) legible.
+`settings` is **one** table with one column set, and only **1 of 14** keys behaves differently by owner
+(`multiplicity`), which one `isEdgeOnly()` check already handles.* He said it first: *I do not yet see why
+that needs a new record type or object type or whatever it is.* **The three owner kinds are a
+polymorphic column, not three types.**
+
+⚠️ *~~My recommendation: **the classes, not the table.**~~ Retired by [D-442](90-decision-log.md) and kept
+visible rather than deleted, because a withdrawn recommendation that is quietly removed is one that gets
+reasoned from again (`PR-10`).* `NodeSetting`, `EdgeSetting` and
 `InstallationSetting` as three readings of one row — the polymorphic `owner_id` and the single walk stay,
 and the type says which kind is in hand. That gets D-351's check for free and costs no schema change,
 which is the opposite trade from [D-441](90-decision-log.md), where the column name itself was the thing
 that lied.*
+---
+
+## OQ-107 — What declares a free setting? Today nothing does.
+
+**Raised** 2026-08-27, by measurement, while [D-442](90-decision-log.md) split the blueprint from the instance.
+
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *Opened by* [D-442](90-decision-log.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-458](90-decision-log.md).** *Der Status steht noch auf `open`, und zu Recht: [D-458](90-decision-log.md) gibt einem freien Schlüssel **eine Identität**, woran ein Bauplan überhaupt hängen kann — beantwortet aber nicht, **wer die Kante anlegt und wo sie hängt**. Siehe den Abschnitt am Ende dieser Frage.*
+
+⚠️ **[D-442](90-decision-log.md) says a setting is a class and a stored setting is its instance. For a
+free key there is no class.**
+
+| key in the database | rows | what declares it |
+|---|---|---|
+| `persistent`, `read_only`, `hide`, … | 331 | `SettingKey` — shape, direction, type, declared default |
+| **`label_role`** | **3** | **nothing — the name in the row is all there is** |
+
+[D-084](90-decision-log.md) permits free keys: *a free key may be anything that is not one of the
+engine's names.* It does not say **what says how one behaves.** So a free key has no shape, which means
+no renderer can be chosen for it, no `NOT NULL` can be declared for it ([D-443](90-decision-log.md)), and
+no direction is known when it moves down the chain.
+
+⚠️ *`label_role` is the measured case and it is worth reading twice: it is the engine's own doing, not an
+author's. **Something the engine writes is going through the door meant for what authors invent.***
+
+### What the question actually is
+
+Not *how do we store a free key* — that is settled. It is **where its blueprint lives**, and the choices
+differ in who may create one:
+
+- **A row declares itself** — the shape travels with the value. Cheapest, and no author has to declare
+  anything before writing; the cost is that two rows for one key could disagree.
+- **A declaration is a node** — a free key is modelled, like everything else in this plugin
+  ([AR-1](../../CLAUDE.md)). Consistent, and it makes a free key a first-class thing an author can label
+  and set settings on; the cost is a bootstrap question, because settings would then depend on nodes that
+  themselves carry settings.
+- **A free key has no blueprint by design** — it is an opaque store, drawn as characters and never more.
+  Honest and small, and it says outright that free keys cannot be rendered properly.
+
+⚠️ *Not answered here, and deliberately not answered in passing while renaming: `declareFree()` already
+exists and takes a value, so whichever way this goes has one place to change.*
+
+### Was [D-458](90-decision-log.md) daran ändert
+
+⚠️ **Die Frage wird kleiner, aber nicht beantwortet.** *[D-458](90-decision-log.md) legt Settings und
+Feldwerte in eine Tabelle, und dabei wird `setting_key` — eine **Zeichenkette** — zu `edge_id`, einer
+**Identität**. **Damit hat ein freier Schlüssel überhaupt erst etwas, woran ein Bauplan hängen kann**:
+eine Kante trägt Typ, Label, Reihenfolge und Multiplizität wie jede andere.*
+
+⚠️ *Was offen bleibt, ist die eigentliche Frage: **wer legt so eine Kante an, und wo hängt sie?** Die
+drei Möglichkeiten unten stehen unverändert — sie heißen dann nur nicht mehr «wo liegt der Bauplan»,
+sondern «an welchem Knoten hängt das Feld, das diesen Schlüssel beschreibt». **Und der Bootstrap aus
+[D-458](90-decision-log.md) ist genau diese Frage für die vierzehn Schlüssel der Engine selbst.***
+
+---
+
+## OQ-108 — How does a tree row say how many records a class has?
+
+**Raised** 2026-08-27, by the owner, while limiting his own proposal about renderers.
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **closed → [D-446](90-decision-log.md), same day it was raised** · *Raised beside* [D-444](90-decision-log.md)
+
+⚠️ **Answered by the owner in one sentence** — *just as the node renderer can count the records* — and the
+answer is *«yes, and it costs nothing new»*: under [D-445](90-decision-log.md) the renderer is handed what
+the drawing needs, prepared before the descent, so **counting a prepared input is arithmetic and not a
+query.** `Renderable` needs no third method. *What a tree row is handed is the **count**, prepared for the
+whole visible tree in one query the way `resolveForNodes` already prepares settings; a form is handed the
+records themselves. Same rule — what is prepared follows from what is drawn.* His verdict on that split:
+*good idea.*
+
+> *The node renderer in the tree only renders classes, so nodes as such and not the records — but if we
+> later want to show the record count, then it has to be more.*
+
+⚠️ **He is limiting the rule he had just proposed, and the limit is right.** [D-444](90-decision-log.md)
+says a renderer is always handed a record, and a class is shown through a **test record**. *The tree is
+the exception that proves the scope: it draws the class **as a class**, on purpose — a test record on a
+tree row would be a value nobody asked for.*
+
+⚠️ **And a count is a third thing, which is why this is a question.** `Renderable` promises `label()` and
+`content()`. *A count is neither: it is not what the class is called and not what it holds — it is a
+statement about **how many instances exist**, which the class does not know and the renderer must not go
+fetch ([D-159](90-decision-log.md) — a renderer reads no repository).*
+
+| what a tree row would show | where it comes from |
+|---|---|
+| the label | the class, [D-105](90-decision-log.md) |
+| the icon | a setting on the chain, [D-251](90-decision-log.md) |
+| **a record count** | **counted per row, and `CD-7` forbids the loop** |
+
+### The two halves that have to be answered together
+
+1. **What the interface promises.** *«And a few more»* is what the owner said about `label()` and
+   `content()`, and the interface deliberately guessed none of them (`PR-4`). A count is the first
+   concrete candidate for a third method — or evidence that counts belong beside the object rather than
+   in it.
+2. **Who counts.** One query for the whole visible tree, prepared before the descent and handed in the
+   way settings already are (`resolveForNodes`) — *or the row is not a renderer's business at all.* **The
+   first is the shape everything else on that screen already uses**, which is the argument for it and not
+   yet a decision.
+---
+
+## OQ-109 — One key holds one answer, so where does an *ordered list* of renderers live?
+
+**Raised** 2026-08-27, by measurement, on picking up [row 5](97-implementation-plan.md#the-working-list).
+
+*Blocks:* [30 Renderer](30-renderer.md), list rows 5 and 8 · *Status:* open
+
+⚠️ **The blocker row 5 named is stale, and the real one is one level down.** *Row 5 said several
+renderers wait on `settings.path` — but `path` is **built** ([D-413](90-decision-log.md), schema 8), and
+[D-409](90-decision-log.md) is explicit about what it is not: «an address, not a multiplicity … one key
+still holds one answer at one place; `path` says **which** place.»*
+
+**Measured, that is enforced by the schema:**
+
+```
+UNIQUE KEY `owner_key` (`owner_id`, `setting_key`, `path`)
+```
+
+So one owner, one key, one place ⇒ **one row.** And [D-236](90-decision-log.md) wants the opposite: *a
+node carries an ordered **list** of renderers — one mandatory, the rest optional additions.*
+[D-158](90-decision-log.md) wants validators the same way. **Two decided things and no place to put
+them.**
+
+### The candidates, with what each costs
+
+| where the list lives | what it costs |
+|---|---|
+| **one row whose value *is* an ordered list** | Nothing changes in the schema and the unique key stays honest. *But a value that is a list has to be separated by something, and a renderer name containing that something breaks silently — the sort of fault `NotAValueOfThatType` exists to prevent.* |
+| **an ordinal in the key** — `(owner, key, path, position)` | The list becomes first-class and ordering is a column, which is how the tree already orders siblings ([D-014](90-decision-log.md)). *Costs a schema version, and every existing read of a single-valued key has to mean «position 0» — 331 rows today.* |
+| **renderers as attributes rather than settings** | The model **already** has ordered lists: an attribute edge carries `position`. *But [D-364](90-decision-log.md)'s own test says which side a thing belongs on — «no record answers *which renderer*, so it is a setting and not an attribute» — so this contradicts a decision rather than extending one.* |
+
+⚠️ *Not answered here, and deliberately not picked in passing: the second option changes a unique key that
+five decisions already lean on, and the first one is cheap in exactly the way that is hard to reverse
+once data exists.*
+
+⚠️ **One thing that is already built and should not be re-decided**: `RenderResult::followedBy()` — the
+*composing* half of [D-236](90-decision-log.md) works and is checked. **What is missing is only where the
+list is stored**, which is why this is a storage question and not a renderer question.
+---
+
+## OQ-110 — Does hiding a placement hide what hangs below it?
+
+**Raised** 2026-08-27, beside [D-449](90-decision-log.md), by measuring that it has never come up.
+
+*Blocks:* [30 Renderer](30-renderer.md), list row 58 · *Status:* **closed → [D-450](90-decision-log.md), the same day it was raised**
+
+⚠️ **Answered by the owner, and it dissolves the cost below rather than paying it.** He: *from the
+point where `hide` is on the attribute, nothing is rendered any further — I would say that is an abort
+criterion for the descent.* **An abort means the child is never produced**, so the row-with-no-parent
+case named below never arises and the tree needs no rule for it. *It was never two options; it was one
+plus a fault.*
+
+⚠️ *And the case the abort cannot express — «draw nothing **here**, carry on below» — got its own home
+in the same message: a renderer that does nothing, [R1](30-renderer.md)s `dont-render`, list row 57.*
+
+⚠️ **[D-449](90-decision-log.md) puts `hide` on the edge, and that makes this question sharp for the
+first time.** *When `hide` sat on the node it was one flag per node and the chain answered downwards like
+any other setting. On the edge it says «this **placement** is not shown» — and a child hangs on its
+**own** edge, which nobody hid.*
+
+**Measured, and there is nothing to lean on:**
+
+| | |
+|---|---|
+| nodes with `hide = true` today | **7** |
+| of those, with children | **0** — all six hidden prefixes are leaves |
+| hidden nodes anywhere in the installation with children | **none** |
+
+*So the situation has never arisen, and the code's current behaviour is not evidence of an intention.*
+
+### The two answers, and what each costs
+
+- **Hiding a placement hides the subtree.** What a person means by hiding a branch, almost always — and
+  it needs no second setting. *The cost is that it is no longer one edge's own statement: the tree walk
+  has to carry «hidden above» down with it, and a child that says nothing inherits an answer from an
+  edge it does not point at.*
+- **Hiding a placement hides only that node.** Each edge speaks for itself, which is what putting the
+  setting on the edge was **for**. *The cost is that hiding a branch of twenty nodes means twenty
+  settings, and a child of a hidden node would render into a tree whose parent is not there — so the
+  tree would have to decide what to do with an orphaned row anyway.*
+
+⚠️ **The second cost is the one that decides it, and it is not a preference.** *If a child renders while
+its parent's placement does not, the tree has a row with no parent — and the tree draws by `path`
+([D-014](90-decision-log.md)), so that row's path names a node nobody is showing. **Whatever the answer,
+the tree needs a rule for that case**, which means the cheap-looking option is not actually cheaper.*
+
+⚠️ *Not to be settled while building row 58. It changes what the tree filter reads and how deep it
+reads, and that is the difference between a filter and a walk.*
+---
+
+## OQ-111 — `hide` and a null renderer say the same thing. Which one owns it?
+
+**Raised** 2026-08-27, by the owner's own observation, while [D-449](90-decision-log.md)–[D-452](90-decision-log.md) settled what hiding *does*.
+
+*Blocks:* [30 Renderer](30-renderer.md), list rows 57 and 58 · *Status:* **closed → [D-456](90-decision-log.md)**
+
+⚠️ **`hide` owns it** — and the owner reached my conclusion by a shorter road than my argument below:
+*«we do not **currently** need the no-render renderer, `hide` at the edge does that.»* **If the second
+thing does not exist, there is nothing to divide.** *The composing case — one member of [D-236](90-decision-log.md)s
+ordered list contributing nothing — is untouched by this and stays blocked on [OQ-109](#oq-109--one-key-holds-one-answer-so-where-does-an-ordered-list-of-renderers-live).*
+
+> *The no-render renderer would also stop and not look deeper, because it does nothing — **same effect,
+> only a different concept.***
+
+⚠️ **He is right, and it makes the two a duplicated fact.** Both are settings, and both may sit on a use
+site ([D-032](90-decision-log.md), [R14a](30-renderer.md) let an edge override the renderer). So
+
+- `hide = true` on an edge, and
+- `renderer = <draws nothing>` on the same edge
+
+**are one statement in two spellings.** The code standard forbids exactly that: ❌ *«Duplicating a fact.
+One place owns each piece of state.»* *Left as is, a node can be hidden and not hidden at once depending
+which key you ask.*
+
+### What each side has going for it
+
+| | for | against |
+|---|---|---|
+| **`hide` owns it** | it is a **yes/no**, and a yes/no stored as a registered name is a wider type than the fact needs — the point [D-443](90-decision-log.md) just made about switches. The tree **filters** on it, and a filter comparing a name against a token is a boolean in disguise. It is built, and resolved for a whole tree in one query | the concept says the opposite in as many words (below) |
+| **the renderer owns it** | *«What is displayed is a renderer's business — a setting that suppresses drawing is the renderer's job done by a key»* | that sentence is about `dont-render` **as a member of an ordered list** ([R1](30-renderer.md), *«and it composes»*) — a contributing-nothing member of a list of several renderers is a different case from *«do not show this at all»*, and the ordered list is blocked on [OQ-109](#oq-109--one-key-holds-one-answer-so-where-does-an-ordered-list-of-renderers-live) |
+
+⚠️ **My recommendation: `hide` owns «do not show this», and a null renderer exists only for the composing
+case** — which is blocked, so not now. *That keeps the yes/no a yes/no, keeps the tree filter cheap, and
+leaves the concept's sentence true where it was written: inside a list of renderers.*
+
+⚠️ *What must not happen is both being buildable for the same effect. If the renderer wins, `hide` goes
+and list row 58 becomes a migration instead of a narrowing; if `hide` wins, list row 57 stays parked
+behind [OQ-109](#oq-109--one-key-holds-one-answer-so-where-does-an-ordered-list-of-renderers-live). **Either answer removes a row; leaving it open keeps two.***
+---
+
+## OQ-112 — Does the renderer descend, and is everything still loaded before it starts?
+
+**Raised** 2026-08-27, by two questions from the owner that turned out to be one question.
+
+*Blocks:* [30 Renderer](30-renderer.md), list rows 57 and 58 · *Status:* **closed → [D-454](90-decision-log.md), the same day**
+
+⚠️ **Answered by the owner with a third option I had not considered: an id lookup.** *«Load once, fetch
+the object by id»* — **descending stops being a fetch**, so `CD-7` keeps its up-front load, a renderer may
+hold the store and descend, and the abort is honest because it is about the **walk** and not about the
+loading. *My framing below — «one of the two gives» — was a false alternative.* Measured: the whole model
+is **6 queries, 3 ms, 422 KB** for 726 objects.
+
+> *Who told you a renderer has no access to the registry?* — and — *the loading thing you defined as well,
+> and I do not quite know why.*
+
+⚠️ **Both answers are the same shape: I derived it and then quoted the derivation as though it were
+decided.**
+
+| claim | who | what the source actually says |
+|---|---|---|
+| a renderer has no registry | **nobody** — three docblocks citing [D-159](90-decision-log.md) | D-159 forbids **fetching per edge** and **writing**. A registry lookup is neither |
+| everything is loaded before the descent starts | derived, in D-159's own words *«follows from `CD-7`»* | the owner's words in D-159 are that the renderer **needs the record to reason**, nothing about when it is loaded |
+
+*The owner's contribution to D-159 was: «is it necessary for the renderer to work properly? Yes — because
+depending on the data, the renderer may have to adapt its output.» **That is about need, not about
+timing.***
+
+### The contradiction the two questions expose together
+
+| | |
+|---|---|
+| `CD-7` / [D-159](90-decision-log.md) | load everything up front; do not query per level |
+| the abort ([D-450](90-decision-log.md), [D-452](90-decision-log.md)) | stop before the node and **do not look at its children** |
+
+**If everything is loaded up front, the children were already looked at.** *Measured: the tree costs two
+queries for the whole visible set, and hidden rows are filtered **after** loading. So the abort saves
+drawing work and **not one query** — which is fine as tidiness and is not what «does not look at the
+children» sounds like.*
+
+⚠️ **And that is the case for the owner's reading.** *A renderer that descends itself only walks where it
+draws, so a hidden branch is **never loaded**. That does not break `CD-7` — it swaps its reasoning: not
+«everything up front, so nothing is fetched per level», but «per level is fine when one level costs one
+query, and a hidden branch costs none».*
+
+### What has to be answered
+
+1. **May a renderer hold the registry and descend?** *Nothing decided forbids it. The reason not to is
+   that a renderer able to reach out is a renderer able to reintroduce a per-node query one class at a
+   time — a habit, not a rule, and habits are what `CD-7` exists to make unnecessary.*
+2. **Then does `CD-7`'s up-front loading still hold?** *It cannot hold in its current wording **and** let
+   the abort mean what it says. One of the two gives.*
+
+⚠️ *Not decided in passing. It touches how every surface in the plugin gets its data, and `CD-7` is a
+code standard rather than a decision — so changing it changes [`CLAUDE.md`](../../CLAUDE.md), which is a
+different kind of edit from adding a `D-`.*
+---
+
+## OQ-113 — [D-426](90-decision-log.md) and [D-448](90-decision-log.md)–[D-456](90-decision-log.md) contradict each other about `hide`, and the fault D-426 fixed still reproduces
+
+**Raised** 2026-08-27, on reading D-426 for the first time — after building six decisions on top of the topic without it.
+
+*Blocks:* list rows 37, 46, 58 · *Status:* **dissolved → [D-457](90-decision-log.md), an hour after it was raised**
+
+⚠️ **There was no contradiction. There was one word of mine.** *The owner said **attribute** on both days —
+2026-08-26: «a `hide` at the node which we could **remove from the settings** and take as a fixed node
+attribute»; 2026-08-27: «edge and node both having an **attribute** `hide`». **I read «setting» into it both
+times**, because `hide` is a setting key today, and six decisions followed from that word.* With «property of
+the identity» every statement from both days agrees, [D-426](90-decision-log.md) is **extended** rather than
+overturned, and the fault below **cannot occur** — what is not in the chain reaches no field of a type.
+
+*The measurement is kept because it is why the column half was right, and because it reproduced live.*
+
+⚠️ **Two decisions, both on the owner's word, one day apart, saying opposite things.**
+
+| | says |
+|---|---|
+| **[D-426](90-decision-log.md)**, 2026-08-26 | *«Hiding a node is a **column on `nodes`**, not a setting — and with that the `hide` setting goes away entirely.»* The owner, asked whether a hidden node is hidden for everyone: ***column on the node.*** |
+| **[D-448](90-decision-log.md)–[D-456](90-decision-log.md)**, 2026-08-27 | `hide` **stays a setting**, sits on **node and edge**, and means *«render no further»*. The owner: *«`hide` simply means render no further, at the edge and at the node.»* |
+
+### Why this is not a tidy-up: the fault is live
+
+[D-426](90-decision-log.md) was not a preference. It fixed something [OQ-101](#oq-101) had established by
+experiment: *«an attribute's chain contains its **target node**, so `hide` written on a node came back as
+`hide` on **every field of that type** — the eye in the tree row and [D-399](90-decision-log.md)'s «fields
+of this type are not drawn» were one key doing two jobs. **A column is not in the chain**, so the two can
+no longer reach each other by construction rather than by a rule somebody has to remember.»*
+
+**Measured again on 2026-08-27, on a scratch type with two fields:**
+
+```
+Zwei Felder vom Typ «__oq Zahl». Vorher:      eins: da     zwei: da
+hide=true auf den TYP (nicht auf die Felder): eins: LEER   zwei: LEER
+```
+
+*So as long as `hide` is a setting **on a node**, hiding a type blanks every field of that type. That is
+the behaviour D-426 called a fault, and it is still in the code.*
+
+### The three readings, and what each costs
+
+- **`hide` only on the edge.** The fault cannot occur — an edge is one placement, and nothing else
+  resolves through it. *But the owner said explicitly «edge **and** node both have an attribute `hide`»,
+  so this is not what he asked for; it is what I twice read into it ([D-449](90-decision-log.md)).*
+- **`hide` on both, and blanking every field of a type is *correct*.** *«Render no further» applied to a
+  type means exactly that. Consistent, and it accepts what D-426 called a fault — which is allowed, since
+  the owner may overrule his own decision, but it should be **said** rather than arrived at.*
+- **[D-426](90-decision-log.md)'s split stands**: a column for *this node is not shown*, and something
+  else for *this value is not drawn*. *Then today's six decisions apply to the column and the abort, and
+  the word «setting» in them is wrong.*
+
+⚠️ **What must not happen is building either way and finding out later.** *Rows 37, 46 and 58 all touch
+this, and 46 (*«`hide` becomes a column»*) is D-426's own row. **Whichever answer wins deletes rows the
+other one needs**, so the build waits.*
+
+⚠️ *And the method failure is worth keeping next to the question: six decisions were written on this topic
+without reading the decision from the day before. `references-check` was green throughout — it verifies
+that a cited id **exists**, and none of the six cited D-426 at all. `PR-10` says «recalling it is not
+reading it»; the gap it does not cover is **not knowing there was something to read**. That is list row 59
+and it is now the second fault it would have caught.*
+---
+
+## OQ-114 — Do `read_only` and `persistent` follow `hide` out of the settings?
+
+**Raised** 2026-08-27, beside [D-457](90-decision-log.md), because the same argument reaches them and nobody has applied it.
+
+*Blocks:* [10 Domain core](10-domain-core.md), list row 46 · *Status:* **closed 2026-08-28 → [D-460](90-decision-log.md) and [D-461](90-decision-log.md): no, neither follows**
+
+⚠️ **`persistent` is settled and it went the way the table below predicted.** The owner reasoned it out
+himself — *«the `persistent` on the relation beats the `not persistent` on the node», and the reverse too* —
+**which is the chain with an override, measured working in both directions.** And his closing line named the
+reason the two keys part company for good: *«`persistent` is an instruction for the **saving** mechanism»*,
+where `hide` instructs the drawing walk. **Two subsystems, so one mechanism was never called for.**
+
+*What remains is `read_only` alone, and the argument below applies to it unchanged.*
+
+⚠️ **[D-457](90-decision-log.md) makes `hide` a property of the identity — a column on a node and a column
+on an edge — and the three switch keys are the same shape.** *Measured: `hide` 83 node rows and 26 edge
+rows, `read_only` 85 and 26, `persistent` 84 and 27. **All three sit in the intersection**, which is
+exactly the argument that moved `hide`.*
+
+### But the argument that moved `hide` does not obviously carry
+
+`hide` left the settings for a **measured** reason ([OQ-101](#oq-101--hiding-a-node-and-not-drawing-its-fields-are-two-things-sharing-one-key-where-does-each-belong),
+[D-426](90-decision-log.md)): as a setting it is in the chain, and an attribute's chain contains its
+**target node** — so hiding a type blanked every field of that type. *Two jobs, one key.*
+
+**`read_only` has no second job.** *«This is not editable» applied to a type and inherited by every field
+of that type is not a fault — it is what a type-level default is **for**, and [D-411](90-decision-log.md)
+says so in the owner's own words: «if it is read-only here I can make it editable there».* Same for
+`persistent`.
+
+| | is it in the chain by accident, or on purpose? |
+|---|---|
+| `hide` | **by accident** — the chain gave it a second meaning nobody asked for |
+| `read_only` | **on purpose** — inheriting down a type is the point |
+| `persistent` | **on purpose**, same reading |
+
+⚠️ **So the honest answer may be «no, and that is not an inconsistency».** *Two of the three want the
+chain; one did not. Moving all three for symmetry would take the chain away from the two that use it —
+and [D-411](90-decision-log.md)'s override is what would break.*
+
+⚠️ *What makes this a question rather than an answer: if `hide` is a column and `read_only` is a setting,
+then the settings screen draws two things that look identical and behave differently, and nothing on the
+screen says which is which. **That is a real cost and it is the argument for moving all three** — it is
+just not the argument that moved `hide`.*
+---
+
+## OQ-115 — A write through a non-persistent field: refused, or silently skipped?
+
+**Raised** 2026-08-28, beside [D-460](90-decision-log.md), because the owner's sentence and the built code promise different things.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+
+| | says |
+|---|---|
+| **the owner**, 2026-08-28 | *«the node says persistent and I say not persistent on the field — then it simply **is not saved along**»* |
+| **the code**, `DataEntry::keepsValues()` | **refuses the write** — *«dropping it silently would let a form appear to save and lose the value, which is worse than either storing it or saying no»* |
+
+⚠️ **These are two different promises to whoever is typing, and neither is obviously wrong.**
+
+- **Skip** is what «not saved along» says, and it is what a person expects from a field that is
+  decoration: a multiplicator, a computed helper. *Nobody typed into it expecting to keep the value.*
+- **Refuse** protects the case where somebody **did** type into it. *A form that says «saved» and kept
+  nothing is the fault that argument was written against — and it was written after that fault happened.*
+
+### What decides it is probably who wrote the value
+
+⚠️ *A non-persistent field can be reached two ways, and they are not the same situation:*
+
+| how the value arrives | skip or refuse |
+|---|---|
+| a **person** typed it into a form | **refuse** — otherwise the screen lies |
+| an **import, a data pack, a calculation** writes a whole record and this field happens to be in it | **skip** — refusing would fail an import over a field nobody meant to store |
+
+*So «it depends on the caller» is a real possible answer, and it is the one that makes both his sentence
+and the docblock true. **But it needs saying**: today there is one method and it refuses, so an import
+carrying a non-persistent field would fail.*
+
+⚠️ *And a third reading nobody has raised: **the field should not be offered at all.** If it cannot be
+stored, drawing an editable control for it is the actual fault, and then neither skip nor refuse ever
+happens. That is `read_only`'s territory and it is why [OQ-114](#oq-114--do-read_only-and-persistent-follow-hide-out-of-the-settings)
+should probably be answered first.*

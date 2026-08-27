@@ -90,30 +90,30 @@ final class InMemoryRelations implements RelationRepository
 
 
 
-    public function nextAttributePositionUnder(int $ownerId): int
+    public function nextFieldPositionUnder(int $ownerId): int
     {
-        $edges = $this->attributeEdgesOf([$ownerId]);
+        $edges = $this->fieldEdgesOf([$ownerId]);
 
         return $edges === [] ? 0 : end($edges)->position + 1;
     }
 
-    public function attributeEdgesOf(array $ownerIds): array
+    public function fieldEdgesOf(array $ownerIds): array
     {
         // Parked ones are left out here, as in the real repository: a parked attribute is hidden by
         // default in its owning node (D-128).
-        return $this->attributesOf($ownerIds, false);
+        return $this->fieldsOf($ownerIds, false);
     }
 
-    public function parkedAttributeEdgesOf(array $ownerIds): array
+    public function parkedFieldEdgesOf(array $ownerIds): array
     {
-        return $this->attributesOf($ownerIds, true);
+        return $this->fieldsOf($ownerIds, true);
     }
 
     /**
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    private function attributesOf(array $ownerIds, bool $parked): array
+    private function fieldsOf(array $ownerIds, bool $parked): array
     {
         $edges = [];
 

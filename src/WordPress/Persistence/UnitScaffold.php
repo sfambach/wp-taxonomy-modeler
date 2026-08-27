@@ -263,7 +263,7 @@ final class UnitScaffold
      */
     private function attribute(Node $owner, string $name, string $typeName): Relation
     {
-        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {
                 return $edge;
             }
@@ -288,7 +288,7 @@ final class UnitScaffold
             throw new \RuntimeException("The data type «{$typeName}» is not there yet.");
         }
 
-        return $this->editor->addAttribute($owner->id, $type->id, $name);
+        return $this->editor->addField($owner->id, $type->id, $name);
     }
 
     /**
@@ -299,15 +299,15 @@ final class UnitScaffold
      * somebody already holds. *The kind itself is never passed either way — it is read off the
      * branch the target sits in ([D-161](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function attributeTo(Node $owner, string $name, Node $target): Relation
+    private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
-        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {
                 return $edge;
             }
         }
 
-        return $this->editor->addAttribute($owner->id, $target->id, $name);
+        return $this->editor->addField($owner->id, $target->id, $name);
     }
 
     /**
@@ -353,8 +353,8 @@ final class UnitScaffold
 
         $this->attribute($unitValue, 'wert', 'decimal');
 
-        $prefix = $this->attributeTo($unitValue, 'prefix', $prefixes);
-        $unit   = $this->attributeTo($unitValue, 'einheit', $baseUnits);
+        $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes);
+        $unit   = $this->fieldTo($unitValue, 'einheit', $baseUnits);
 
         $this->settings->put(
             $this->settings->chainForUseSite($prefix),

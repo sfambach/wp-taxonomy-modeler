@@ -97,6 +97,23 @@ final class Surroundings
         public readonly array $options = [],
         public readonly bool $mayBeNothing = true,
         /**
+         * Whether this reference points at a **record** rather than at a node.
+         *
+         * ⚠️ **A prepared fact, so no renderer has to ask** ([D-445](../../../docs/NewConcept/90-decision-log.md)):
+         * the descent already resolved the edge's type, and `null` there means the target is not a
+         * data type and not a constant — *`typeOf()`'s own words: «a `Model` target is a reference to
+         * a **record**, which has no simple type of its own and no renderer either — it wants the
+         * summary renderer ([D-106](../../../docs/NewConcept/90-decision-log.md))».* **Costs nothing:
+         * the type was resolved for the whole form in one query before the descent began.**
+         *
+         * ⚠️ **Why it exists at all — the message was blaming the wrong thing.** *Measured
+         * 2026-08-27 on a `resistance` attribute pointing at `Einheitenwert`: the fallback said «the
+         * one set for this cannot draw a reference», which sends a person to the renderer control
+         * where **nothing is wrong**. The renderer it needs does not exist yet. A fault that names
+         * the wrong cause costs more than one that says «not built».*
+         */
+        public readonly bool $refersToARecord = false,
+        /**
          * The `id` of the form a control belongs to, when it cannot sit inside it.
          *
          * ⚠️ **This exists because a real bug needed it and the owner found it**: *multiplicity is not

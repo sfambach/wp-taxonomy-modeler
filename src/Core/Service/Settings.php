@@ -10,7 +10,7 @@ use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
-use Taxmod\Core\Model\Setting;
+use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -173,7 +173,7 @@ final class Settings
 
     /**
      * @param  list<int>                     $chain
-     * @param  list<Setting>                 $settings Everything stored for those owners, and
+     * @param  list<SettingRecord>                 $settings Everything stored for those owners, and
      *                                                 possibly for others — extras are skipped.
      * @return array<string, ResolvedSetting>
      */
@@ -230,7 +230,7 @@ final class Settings
             // A free key may be anything that is not one of the engine's names (D-084).
             $was = $this->valueAt($ownerId, $key, $path);
 
-            $this->settings->put(new Setting($ownerId, $key, $value, $path));
+            $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
             $this->note($ownerId, $key, $was, $value);
 
             return;
@@ -245,7 +245,7 @@ final class Settings
 
         $was = $this->valueAt($ownerId, $key, $path);
 
-        $this->settings->put(new Setting($ownerId, $key, $value, $path));
+        $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
         $this->note($ownerId, $key, $was, $value);
     }
 
@@ -341,11 +341,11 @@ final class Settings
      * reason is inheritance itself.** A `path` is a chain of **edge ids**
      * ([D-413](../../../docs/NewConcept/90-decision-log.md), [D-045](../../../docs/NewConcept/90-decision-log.md)),
      * and a child does not get copies of its parent's attribute edges — *it inherits them, the same
-     * ids* ({@see ModelEditor::attributesOf()} walks `[...ancestorIds, id]`). **So the address is
+     * ids* ({@see ModelEditor::fieldsOf()} walks `[...ancestorIds, id]`). **So the address is
      * still the child's own address**, and dropping those rows was the thing that lost information.
      *
      * ⚠️ *Where the worry **does** apply is {@see ModelEditor::duplicate()} — a copy gets **new** edges
-     * (`addAttribute()` per attribute), so a path naming the original's edge ids means nothing on the
+     * (`addField()` per attribute), so a path naming the original's edge ids means nothing on the
      * copy and would have to be remapped. Different act, real problem, not this one.*
      *
      * @param  list<int> $source Any chain; what it resolves to is what gets written.
@@ -438,6 +438,12 @@ final class Settings
     {
         if ($key->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
             throw SettingDoesNotApply::toANode($key);
+        }
+
+        // `NOT NULL` asked of the shape, not compared against one key (D-442). The column is
+        // nullable because an `int` needs it, so the core is the only place that can hold this line.
+        if (! $key->shape()->allowsNothing() && $value->isNothing()) {
+            throw SettingDoesNotApply::hasNoEmptyState($key);
         }
 
         // The four constants are the type, so a value outside them is refused here rather than

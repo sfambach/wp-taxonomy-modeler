@@ -174,7 +174,7 @@ final class WpdbRelationRepository implements RelationRepository
 
 
 
-    public function nextAttributePositionUnder(int $ownerId): int
+    public function nextFieldPositionUnder(int $ownerId): int
     {
         global $wpdb;
 
@@ -187,7 +187,7 @@ final class WpdbRelationRepository implements RelationRepository
         return $highest === null ? 0 : (int) $highest + 1;
     }
 
-    public function attributeEdgesOf(array $ownerIds): array
+    public function fieldEdgesOf(array $ownerIds): array
     {
         global $wpdb;
 
@@ -201,7 +201,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         // ⚠️ **Parked attributes are left out here**, because D-128 says a parked one is *hidden by
         // default in its owning node — a model full of ghost attributes is unreadable*. Whoever
-        // wants to see them asks {@see parkedAttributeEdgesOf()} instead, which is the *show
+        // wants to see them asks {@see parkedFieldEdgesOf()} instead, which is the *show
         // deleted* toggle rather than a second reading of the same query.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
@@ -218,7 +218,7 @@ final class WpdbRelationRepository implements RelationRepository
     }
 
     /** @return list<Relation> The removed ones, for D-128's *show deleted*. */
-    public function parkedAttributeEdgesOf(array $ownerIds): array
+    public function parkedFieldEdgesOf(array $ownerIds): array
     {
         global $wpdb;
 

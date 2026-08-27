@@ -12,7 +12,7 @@ use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Model\Label;
-use Taxmod\Core\Model\Setting;
+use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Repository\LabelRepository;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\SettingRepository;
@@ -204,7 +204,7 @@ final class ModelEditor
         // ⚠️ **Its own declarations only**, which is what `ownAttribute()` already distinguishes: an
         // inherited attribute belongs to an ancestor and the copy inherits it too, by sitting where it
         // sits.
-        foreach ($this->attributesOf($node->id) as $edge) {
+        foreach ($this->fieldsOf($node->id) as $edge) {
             // ⚠️ **`fromId` is what «own» means** — the same test {@see ownAttribute()} makes. An
             // inherited edge belongs to an ancestor, and the copy inherits it by sitting where it
             // sits; declaring it again would give the subtree the same attribute twice.
@@ -212,7 +212,7 @@ final class ModelEditor
                 continue;
             }
 
-            $this->addAttribute($copy->id, $edge->toId, $edge->name);
+            $this->addField($copy->id, $edge->toId, $edge->name);
         }
 
         $this->copySettings($node->id, $copy->id);
@@ -243,15 +243,15 @@ final class ModelEditor
      * measured 2026-08-26: 17 edges carry a name and zero labels belong to an edge
      * ([OQ-095](../../../docs/NewConcept/91-open-questions.md)).*
      */
-    public function duplicateAttribute(int $ownerId, int $edgeId, string $name): Relation
+    public function duplicateField(int $ownerId, int $edgeId, string $name): Relation
     {
-        // ⚠️ **`ownAttribute()` and not `attributesOf()`**: an inherited attribute belongs to the
+        // ⚠️ **`ownAttribute()` and not `fieldsOf()`**: an inherited attribute belongs to the
         // ancestor that declared it, and copying it from a descendant would put a second declaration
         // in a place that never had the first ([D-376](../../../docs/NewConcept/90-decision-log.md)
         // refuses renaming for the same reason).
         $edge = $this->ownAttribute($ownerId, $edgeId);
 
-        $copy = $this->addAttribute($ownerId, $edge->toId, $name);
+        $copy = $this->addField($ownerId, $edge->toId, $name);
 
         $this->copySettings($edge->id, $copy->id);
 
@@ -278,7 +278,7 @@ final class ModelEditor
         }
 
         foreach ($this->settings->ownedBy($fromId) as $one) {
-            $this->settings->put(new Setting($toId, $one->key, $one->value));
+            $this->settings->put(new SettingRecord($toId, $one->key, $one->value));
         }
     }
 
@@ -298,7 +298,7 @@ final class ModelEditor
             $this->labels->put(new Label($toId, $one->path, $one->roleId, $one->number, $one->locale, $one->text));
         }
     }
-    public function addAttribute(int $ownerId, int $targetId, string $name): Relation
+    public function addField(int $ownerId, int $targetId, string $name): Relation
     {
         $owner  = $this->nodes->byId($ownerId);
         $target = $this->nodes->byId($targetId);
@@ -322,7 +322,7 @@ final class ModelEditor
             $target->id,
             $branch->relationKind(),
             $name,
-            $this->relations->nextAttributePositionUnder($owner->id)
+            $this->relations->nextFieldPositionUnder($owner->id)
         );
 
         $this->relations->add($edge);
@@ -358,11 +358,11 @@ final class ModelEditor
      *
      * @return list<Relation>
      */
-    public function attributesOf(int $nodeId): array
+    public function fieldsOf(int $nodeId): array
     {
         $node = $this->nodes->byId($nodeId);
 
-        return $this->relations->attributeEdgesOf([...$node->ancestorIds(), $node->id]);
+        return $this->relations->fieldEdgesOf([...$node->ancestorIds(), $node->id]);
     }
 
     /**
@@ -654,11 +654,11 @@ final class ModelEditor
      * an inherited one belongs to an ancestor, and reordering it from a descendant would reorder it
      * for everybody.*
      */
-    public function moveAttribute(int $ownerId, int $edgeId, int $direction): void
+    public function moveField(int $ownerId, int $edgeId, int $direction): void
     {
         $own = [];
 
-        foreach ($this->relations->attributeEdgesOf([$ownerId]) as $edge) {
+        foreach ($this->relations->fieldEdgesOf([$ownerId]) as $edge) {
             if ($edge->fromId === $ownerId) {
                 $own[] = $edge;
             }
@@ -696,13 +696,13 @@ final class ModelEditor
      */
     public function ownAttribute(int $ownerId, int $edgeId): Relation
     {
-        foreach ($this->attributesOf($ownerId) as $edge) {
+        foreach ($this->fieldsOf($ownerId) as $edge) {
             if ($edge->id === $edgeId && $edge->fromId === $ownerId) {
                 return $edge;
             }
         }
 
-        throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
+        throw NotAPossibleTarget::notAnOwnField($edgeId);
     }
 
     /**
@@ -725,13 +725,13 @@ final class ModelEditor
      * Today the act is a single row, so the bracket is the row's own id — which is exactly what that
      * decision prescribes, and what makes the bracket cost nothing.
      */
-    public function removeAttribute(int $ownerId, int $edgeId): Relation
+    public function removeField(int $ownerId, int $edgeId): Relation
     {
         // ⚠️ **The parked ones are looked at too, and that is not tidiness.** Once parked, an edge
         // leaves the live list (D-128), so a second click — a double tap, a back button, a stale
         // form — would otherwise be refused with *not one this node owns*, which is both wrong and
         // confusing. It **is** owned; it is already gone. So the act is idempotent.
-        foreach ($this->relations->parkedAttributeEdgesOf([$ownerId]) as $already) {
+        foreach ($this->relations->parkedFieldEdgesOf([$ownerId]) as $already) {
             if ($already->id === $edgeId) {
                 return $already;
             }
@@ -761,9 +761,9 @@ final class ModelEditor
      * history is extended, because the changelog is also the migration script
      * ([D-061](../../../docs/NewConcept/90-decision-log.md)).
      */
-    public function restoreAttribute(int $ownerId, int $edgeId): Relation
+    public function restoreField(int $ownerId, int $edgeId): Relation
     {
-        foreach ($this->relations->parkedAttributeEdgesOf([$ownerId]) as $edge) {
+        foreach ($this->relations->parkedFieldEdgesOf([$ownerId]) as $edge) {
             if ($edge->id !== $edgeId) {
                 continue;
             }
@@ -783,7 +783,7 @@ final class ModelEditor
             return $revived;
         }
 
-        throw NotAPossibleTarget::notAnOwnAttribute($edgeId);
+        throw NotAPossibleTarget::notAnOwnField($edgeId);
     }
 
     /**
@@ -793,7 +793,7 @@ final class ModelEditor
      * declared it, so renaming it from a descendant would rename it for every other user too —
      * silently. {@see ownAttribute()} refuses that, which is the same guard removal uses.
      */
-    public function renameAttribute(int $ownerId, int $edgeId, string $name): Relation
+    public function renameField(int $ownerId, int $edgeId, string $name): Relation
     {
         $edge    = $this->ownAttribute($ownerId, $edgeId);
         $renamed = $edge->renamedTo($name);
@@ -812,9 +812,9 @@ final class ModelEditor
     }
 
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
-    public function removedAttributesOf(int $ownerId): array
+    public function removedFieldsOf(int $ownerId): array
     {
-        return $this->relations->parkedAttributeEdgesOf([$ownerId]);
+        return $this->relations->parkedFieldEdgesOf([$ownerId]);
     }
 
     /** What a changelog row records about an edge. */

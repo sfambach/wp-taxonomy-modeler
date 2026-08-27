@@ -24,6 +24,7 @@ use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
+use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
@@ -114,7 +115,8 @@ final class RenderingTest extends TestCase
             $framework,
             $this->settings,
             ShippedRenderers::registry(),
-            new Labels($this->labelStore, $framework)
+            new Labels($this->labelStore, $framework),
+            ShippedConverters::registry()
         );
     }
 
@@ -134,7 +136,7 @@ final class RenderingTest extends TestCase
     public function an_attribute_is_drawn_by_the_default_of_the_type_it_points_at(): void
     {
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('bool')->id, 'in stock');
+        $edge = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
 
         $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
 
@@ -155,7 +157,7 @@ final class RenderingTest extends TestCase
         $description = $this->type('Description', $text);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $description->id, 'notes');
+        $edge = $this->editor->addField($part->id, $description->id, 'notes');
 
         $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
 
@@ -171,7 +173,7 @@ final class RenderingTest extends TestCase
         $impostor = $this->editor->createNode('text', $this->branchRoot['model']->id);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $impostor->id, 'supplier');
+        $edge = $this->editor->addField($part->id, $impostor->id, 'supplier');
 
         $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
 
@@ -187,7 +189,7 @@ final class RenderingTest extends TestCase
         // D-032 / R14a: *I give the whole thing a new look by using it.* The chain already does
         // this; nothing separate is walked for the renderer.
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('int')->id, 'count');
+        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
         $this->settings->put(
             $this->settings->chainForUseSite($edge),
@@ -205,8 +207,8 @@ final class RenderingTest extends TestCase
     {
         $int  = $this->type('int');
         $part = $this->thing('Part');
-        $one  = $this->editor->addAttribute($part->id, $int->id, 'count');
-        $two  = $this->editor->addAttribute($part->id, $int->id, 'spare count');
+        $one  = $this->editor->addField($part->id, $int->id, 'count');
+        $two  = $this->editor->addField($part->id, $int->id, 'spare count');
 
         $this->settings->put(
             $this->settings->chainFor($int),
@@ -224,7 +226,7 @@ final class RenderingTest extends TestCase
     public function a_renderer_nobody_registered_is_a_visible_fault_not_a_silent_one(): void
     {
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('int')->id, 'count');
+        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
         $this->settings->put(
             $this->settings->chainForUseSite($edge),
@@ -247,7 +249,7 @@ final class RenderingTest extends TestCase
         // answers for search yet (D-217's mechanism), so the same attribute is drawn for display
         // and left out entirely for search.
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('bool')->id, 'in stock');
+        $edge = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
 
         self::assertCount(1, $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v'));
         self::assertCount(0, $this->rendering->fieldsFor([$edge], [], Purpose::Search, 'v'));
@@ -259,8 +261,8 @@ final class RenderingTest extends TestCase
         // ⚠️ A checkbox does not submit when unticked. Positional names would shift every later
         // value onto the wrong attribute — silently, and only for the rows somebody unticked.
         $part = $this->thing('Part');
-        $flag = $this->editor->addAttribute($part->id, $this->type('bool')->id, 'in stock');
-        $name = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
+        $flag = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
+        $name = $this->editor->addField($part->id, $this->type('text')->id, 'label');
 
         $fields = $this->rendering->fieldsFor([$flag, $name], [], Purpose::Edit, 'taxmod_value');
 
@@ -272,8 +274,8 @@ final class RenderingTest extends TestCase
     public function what_a_record_holds_is_drawn_and_what_it_does_not_is_left_empty(): void
     {
         $part   = $this->thing('Part');
-        $filled = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
-        $empty  = $this->editor->addAttribute($part->id, $this->type('text')->id, 'notes');
+        $filled = $this->editor->addField($part->id, $this->type('text')->id, 'label');
+        $empty  = $this->editor->addField($part->id, $this->type('text')->id, 'notes');
 
         $fields = $this->rendering->fieldsFor(
             [$filled, $empty],
@@ -291,7 +293,7 @@ final class RenderingTest extends TestCase
     {
         // D-021: metadata a caller cannot recover from the markup afterwards.
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
+        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'label');
 
         $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
 
@@ -304,7 +306,7 @@ final class RenderingTest extends TestCase
         // ⚠️ It stays in the list so the caller can tell *hidden* from *not an attribute of this
         // model*; the markup is what is empty (R11).
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $this->type('text')->id, 'internal');
+        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
         $this->settings->put(
             $this->settings->chainForUseSite($edge),
@@ -403,7 +405,7 @@ final class RenderingTest extends TestCase
         // so the descent resolves every referenced node's name in one query beforehand.
         $gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
         $part = $this->thing('Part');
-        $unit = $this->editor->addAttribute($part->id, $gram->id, 'unit');
+        $unit = $this->editor->addField($part->id, $gram->id, 'unit');
 
         $field = $this->rendering->fieldsFor(
             [$unit],
@@ -442,8 +444,8 @@ final class RenderingTest extends TestCase
         ));
 
         $resistor = $this->thing('Widerstandswert');
-        $short    = $this->editor->addAttribute($resistor->id, $kilo->id, 'prefix');
-        $spelled  = $this->editor->addAttribute($resistor->id, $kilo->id, 'prefix in full');
+        $short    = $this->editor->addField($resistor->id, $kilo->id, 'prefix');
+        $spelled  = $this->editor->addField($resistor->id, $kilo->id, 'prefix in full');
 
         // The setting rides on the **edge** — the use site, which is what makes the two differ.
         $this->settings->put(
@@ -477,7 +479,7 @@ final class RenderingTest extends TestCase
         // it stays visible as wrong, because the text shown is the ordinary one.
         $kilo = $this->editor->createNode('kilo', $this->branchRoot['constants']->id);
         $part = $this->thing('Part');
-        $edge = $this->editor->addAttribute($part->id, $kilo->id, 'prefix');
+        $edge = $this->editor->addField($part->id, $kilo->id, 'prefix');
 
         $this->settings->put(
             $this->settings->chainForUseSite($edge),
@@ -502,7 +504,7 @@ final class RenderingTest extends TestCase
         // The descent falls back for a **value**, and the fallback marks itself (R14b).
         $gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
         $part = $this->thing('Part');
-        $unit = $this->editor->addAttribute($part->id, $gram->id, 'unit');
+        $unit = $this->editor->addField($part->id, $gram->id, 'unit');
 
         $field = $this->rendering->fieldsFor(
             [$unit],
@@ -513,6 +515,122 @@ final class RenderingTest extends TestCase
 
         self::assertTrue($field->hasNoRenderer());
         self::assertStringContainsString('taxmod-no-renderer', $field->result->markup);
+
+        // ⚠️ **And it blames the renderer control, correctly**: a constant *can* be drawn, the name
+        // stored here just cannot draw it. The record case below must not say the same thing.
+        self::assertStringContainsString('the one set for this cannot draw', $field->result->markup);
+    }
+
+    #[Test]
+    public function a_reference_to_a_record_says_the_summary_renderer_is_missing_and_not_that_one_is_mis_set(): void
+    {
+        // Working list row 2: `→ 285` was a **bare record id on screen**, which D-363 forbids. The id
+        // is gone, but measuring 2026-08-27 showed the marker then blamed *«the one set for this
+        // cannot draw a reference»* — and for a record that is false: nothing is mis-set, the
+        // summary renderer (D-106) is not built. A fault naming the wrong cause sends a person to a
+        // control with nothing to fix.
+        $composed = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $part     = $this->thing('Resistor');
+        $edge     = $this->editor->addField($part->id, $composed->id, 'resistance');
+
+        $field = $this->rendering->fieldsFor(
+            [$edge],
+            // A record id, not a node id — which is exactly why no simple type comes back for it.
+            [$edge->id => TypedValue::ofReference(999_001)],
+            Purpose::Display
+        )[0];
+
+        self::assertTrue($field->hasNoRenderer(), 'it is still a marked fault, not a value');
+        self::assertStringNotContainsString('999001', $field->result->markup, 'and never the bare id');
+        self::assertStringContainsString('summary renderer', $field->result->markup);
+        self::assertStringNotContainsString('the one set for this cannot draw', $field->result->markup);
+    }
+
+    // ------------------------------------------------ the converter in effect · D-219
+
+    #[Test]
+    public function the_converter_in_effect_decides_the_characters_and_no_renderer_knows_it_exists(): void
+    {
+        // Working list row 7: the `converter` key existed and drew as a **dead** control, because
+        // nothing was registered. D-219 decided converters; this is the descent running one.
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+
+        $before = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+
+        self::assertStringContainsString('12', $before->result->markup, 'no converter means shown as stored');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            SettingKey::Converter->value,
+            TypedValue::ofText('roman')
+        );
+
+        $after = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+
+        self::assertStringContainsString('XII', $after->result->markup);
+        // ⚠️ *The same renderer as before* — the mapping changed, the form did not. That is D-219's
+        // split: the converter is the mapping, the renderer is the form.
+        self::assertSame($before->rendererName, $after->rendererName);
+    }
+
+    #[Test]
+    public function nothing_stays_nothing_whatever_converter_is_in_effect(): void
+    {
+        // ⚠️ A mapping of a value that is not there would be a reading of an unanswered question
+        // (D-232) — and `roman` would have drawn its out-of-range marker over an empty field.
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            SettingKey::Converter->value,
+            TypedValue::ofText('roman')
+        );
+
+        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Display)[0];
+
+        self::assertStringNotContainsString('—', $field->result->markup);
+    }
+
+    #[Test]
+    public function a_converter_that_cannot_map_this_type_is_left_out_rather_than_run(): void
+    {
+        // ⚠️ **A type can change under a stored setting** — an attribute repointed from `int` to
+        // `text` — and running an integer mapping over characters would invent a reading. So
+        // eligibility is checked at the drawing too, not only where the name was chosen.
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'notes');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            SettingKey::Converter->value,
+            TypedValue::ofText('roman')
+        );
+
+        $field = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofText('12')], Purpose::Display)[0];
+
+        self::assertStringContainsString('12', $field->result->markup);
+    }
+
+    #[Test]
+    public function a_converter_name_nobody_registered_shows_the_stored_value_rather_than_taking_the_form_down(): void
+    {
+        // ⚠️ **The value is still true, it just is not mapped.** A data pack that removed a converter
+        // would otherwise throw on every form that named it — so the honest failure here is to show
+        // the value stored, and refusing belongs at the **write** where the name is chosen (D-360).
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            SettingKey::Converter->value,
+            TypedValue::ofText('ein-konverter-den-es-nicht-gibt')
+        );
+
+        $field = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+
+        self::assertStringContainsString('12', $field->result->markup);
     }
 
     // --------------------------------------------------------- the tree's cell
@@ -858,7 +976,7 @@ final class RenderingTest extends TestCase
         // ⚠️ R46's recursion, arranged so D-159 still holds: the **descent** goes back to the
         // registry per cell, the container regroups the finished parts.
         $part  = $this->thing('Part');
-        $label = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
+        $label = $this->editor->addField($part->id, $this->type('text')->id, 'label');
 
         $form = $this->rendering->nodeAsForm(
             $part,
@@ -882,10 +1000,10 @@ final class RenderingTest extends TestCase
         $text  = $this->type('text');
         $bool  = $this->type('bool');
 
-        $first  = $this->editor->addAttribute($part->id, $text->id, 'aaa ordinary');
-        $flag   = $this->editor->addAttribute($part->id, $bool->id, 'bbb boolean');
-        $second = $this->editor->addAttribute($part->id, $text->id, 'ccc ordinary');
-        $fixed  = $this->editor->addAttribute($part->id, $text->id, 'ddd read only');
+        $first  = $this->editor->addField($part->id, $text->id, 'aaa ordinary');
+        $flag   = $this->editor->addField($part->id, $bool->id, 'bbb boolean');
+        $second = $this->editor->addField($part->id, $text->id, 'ccc ordinary');
+        $fixed  = $this->editor->addField($part->id, $text->id, 'ddd read only');
 
         $this->settings->put(
             $this->settings->chainForUseSite($fixed),
@@ -911,7 +1029,7 @@ final class RenderingTest extends TestCase
     {
         // R11, and R75's level dependency: `hide` overrides the layout wherever it matters.
         $part   = $this->thing('Part');
-        $secret = $this->editor->addAttribute($part->id, $this->type('text')->id, 'internal');
+        $secret = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
         $this->settings->put(
             $this->settings->chainForUseSite($secret),
@@ -1036,12 +1154,33 @@ final class RenderingTest extends TestCase
     public function a_choice_with_nothing_to_choose_is_disabled_rather_than_an_empty_box(): void
     {
         // ⚠️ **R31**: with no available entry there is nothing to choose and the control is
-        // disabled. `converter` is the honest live case — D-219 decided converters and none is
-        // built — so the row draws as a dead control instead of a box that looks fillable.
-        $row = $this->drawnSettings($this->type('int'), Purpose::Edit)[SettingKey::Converter->value];
+        // disabled — a dead control instead of a box that looks fillable.
+        //
+        // ⚠️ **This test used to use `converter` as its live case, and row 7 took that away.** *«None
+        // is built» was true until 2026-08-27; two are now registered, so `converter` draws a real
+        // control on an `int`. The rule did not change — its example had to.* **`text` is the honest
+        // one now**: neither shipped converter maps characters, so an attribute of that type has an
+        // empty set and the row is dead for the reason R31 describes.
+        $row = $this->drawnSettings($this->type('text'), Purpose::Edit)[SettingKey::Converter->value];
 
         self::assertTrue($row->wasDrawn());
         self::assertStringContainsString('disabled', $row->result->markup);
+    }
+
+    #[Test]
+    public function the_converter_control_comes_alive_where_a_converter_is_eligible(): void
+    {
+        // The other half of the rule above, and the point of list row 7: a set that is **not** empty
+        // draws a live control offering exactly the eligible names.
+        $row = $this->drawnSettings($this->type('int'), Purpose::Edit)[SettingKey::Converter->value];
+
+        self::assertStringNotContainsString('disabled', $row->result->markup);
+        self::assertStringContainsString('roman', $row->result->markup);
+        self::assertStringContainsString('hexadecimal', $row->result->markup);
+
+        // ⚠️ **And *nothing* stays an outcome, unlike the renderer choice** (R33b): no converter means
+        // the value is shown as it is stored, so there is no default to force.
+        self::assertStringContainsString('<option value="" selected>', $row->result->markup);
     }
 
     #[Test]
@@ -1131,8 +1270,8 @@ final class RenderingTest extends TestCase
     public function what_may_be_chosen_at_a_use_site_is_narrowed_by_the_type(): void
     {
         $part    = $this->thing('Part');
-        $number  = $this->editor->addAttribute($part->id, $this->type('int')->id, 'count');
-        $written = $this->editor->addAttribute($part->id, $this->type('text')->id, 'label');
+        $number  = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $written = $this->editor->addField($part->id, $this->type('text')->id, 'label');
 
         $forNumber = array_map(
             static fn ($renderer): string => $renderer->name(),

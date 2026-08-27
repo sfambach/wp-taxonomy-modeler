@@ -1,4 +1,19 @@
-# Attribute and setting — two concepts
+# Field and setting — two concepts
+
+> ⚠️ **The word is «field» since 2026-08-28 ([D-459](90-decision-log.md)).** The owner: *maybe we should
+> rename our attribute — it always causes confusion between a class attribute and our definition. Let us
+> call them **fields**, because what we do is define fields in a record.*
+>
+> **And the sentence below is the evidence he was right:** written on 2026-08-26, it says *«with
+> attributes I configure additional **fields**»* — **both words, for one thing, in one line.** *The code
+> had the same split: `attribute` 498 times in the modelling half, `field` 305 in the drawing half.*
+>
+> **What was renamed and what was not.** *The **code** is renamed throughout — classes, methods, tokens,
+> and the words a person reads on screen. The **decision log** and the **open questions** are not: they
+> record what was said, with dates and quotations, and 561 of the 1142 mentions live there. Renaming
+> inside testimony would falsify it. The remaining prose in the living concept documents — 178 sentences
+> in [`10-domain-core.md`](10-domain-core.md) alone — is [row 62](97-implementation-plan.md#the-working-list),
+> because it has to be read sentence by sentence and is not a sweep.*
 
 **With attributes I configure additional fields on a node. With settings I say how those fields should
 behave.** — the owner, 2026-08-26, correcting an earlier attempt of mine.

@@ -53,8 +53,13 @@ final class Schema
      *     the owner itself, so every existing row keeps its meaning untouched. **Four decisions
      *     had assumed this column existed** — D-236, D-158, C30 and D-378 — and the last of them
      *     was measured on 2026-08-26 to be written and not functioning because of it.
+     * 9 — `records.model_id` becomes `node_id` and `model_version` becomes `node_version`
+     *     (D-441). **A rename, not a change**: no row moves. The index comes with the column,
+     *     because `dbDelta` has no notion of a rename and would build a second one beside it.
+     *     *The old name was measured to mislead: it pointed into `Compositions` for 21 of 24
+     *     records while `Model` is also the name of a branch in the tree.*
      */
-    public const VERSION = 8;
+    public const VERSION = 9;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -100,6 +105,12 @@ final class Schema
     {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
+        // ⚠️ **Before `dbDelta`, and that order is the whole trick.** *`dbDelta` compares a table
+        // against a `CREATE TABLE` and **adds** what is missing — it has no notion of a rename. Run
+        // afterwards, it would create `node_id` beside `model_id` and leave both, with the data in
+        // the one nothing reads any more.*
+        self::renameRecordColumns();
+
         foreach (self::statements() as $sql) {
             dbDelta($sql);
         }
@@ -109,6 +120,70 @@ final class Schema
         self::dropRetiredColumns();
         self::widenSettingUniqueKey();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * `records.model_id` becomes `node_id`, `model_version` becomes `node_version` — schema 9.
+     *
+     * ⚠️ **A rename and nothing else: no row changes, no value moves.** [D-441](../../../docs/NewConcept/90-decision-log.md)
+     * asked for it *because the old name lied* — measured, `model_id` pointed into `Compositions` for
+     * **21 of 24** records and into `Model` for 3, while `Model` is simultaneously the name of a branch
+     * in the tree. *A reader who knew the tree read it as «points into Model» and was wrong four times
+     * out of five.*
+     *
+     * ⚠️ **The index has to come with the column, or `dbDelta` adds a second one.** *A renamed column
+     * keeps its index, but the index keeps the **old name** — and `dbDelta`, comparing against a
+     * definition that says `KEY node_id`, would helpfully create it. Two indexes over one column,
+     * neither wrong, both there forever.*
+     *
+     * ⚠️ *Every step asks first. This runs on every activation, so it has to be a no-op the second
+     * time — and on a fresh install the table does not exist at all yet, which is the first thing
+     * checked.*
+     */
+    private static function renameRecordColumns(): void
+    {
+        global $wpdb;
+
+        $table = self::table('records');
+
+        // A fresh install: `dbDelta` will create the table with the new names in a moment.
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+            return;
+        }
+
+        $renames = [
+            ['model_id', 'node_id', 'bigint(20) unsigned NOT NULL'],
+            ['model_version', 'node_version', 'int(10) unsigned NOT NULL'],
+        ];
+
+        foreach ($renames as [$from, $to, $type]) {
+            $present = $wpdb->get_col($wpdb->prepare(
+                'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                $table,
+                $from
+            ));
+
+            if ($present === []) {
+                continue;
+            }
+
+            // ⚠️ `CHANGE` and not `RENAME COLUMN`: the latter wants MySQL 8, and this plugin does not
+            // get to choose the server it lands on.
+            $wpdb->query("ALTER TABLE {$table} CHANGE {$from} {$to} {$type}");
+        }
+
+        $index = $wpdb->get_col($wpdb->prepare(
+            'SELECT INDEX_NAME FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+            $table,
+            'model_id'
+        ));
+
+        if ($index !== []) {
+            // Drop and recreate rather than `RENAME INDEX`, for the same portability reason.
+            $wpdb->query("ALTER TABLE {$table} DROP INDEX model_id, ADD KEY node_id (node_id)");
+        }
     }
 
     /**
@@ -442,11 +517,11 @@ final class Schema
             // The record identity space is its own (D-164), so AUTO_INCREMENT serves it.
             "CREATE TABLE {$t('records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-                model_id bigint(20) unsigned NOT NULL,
-                model_version int(10) unsigned NOT NULL,
+                node_id bigint(20) unsigned NOT NULL,
+                node_version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
                 PRIMARY KEY  (id),
-                KEY model_id (model_id)
+                KEY node_id (node_id)
             ) {$charset};",
 
             // Keyed on a path with the last edge repeated in edge_id, so that

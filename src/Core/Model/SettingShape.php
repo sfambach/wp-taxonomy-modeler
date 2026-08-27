@@ -86,4 +86,26 @@ enum SettingShape
     {
         return $this === self::OneOfFour || $this === self::ARegisteredName;
     }
+
+    /**
+     * Whether a row of this shape may hold no value at all — **`NOT NULL`, as an attribute of the
+     * shape rather than a rule about one key.**
+     *
+     * ⚠️ **The owner's framing, and it is the better one**: *«an int setting must have a value» is
+     * wrong, null is allowed; «a bool can be unset» is wrong, it can only be 0 or 1 — but all of it
+     * is coverable through the same structure.* So the column stays nullable because an `int`
+     * genuinely needs it, and what differs is **one declared attribute per shape**, asked in one
+     * place. *Comparing against `Switch` by name in the writing path would have been the
+     * special-casing `CD` forbids, and it would not have extended to the next shape that wants it.*
+     *
+     * ⚠️ *Why it has to be refused at all, measured on 2026-08-27: an empty switch row does not read
+     * back as «nothing», it reads as **«false, set here»** — so it stops the chain, and an ancestor
+     * saying `hide = true` is silently overruled by a row that says nothing.
+     * [D-401](../../../docs/NewConcept/90-decision-log.md) had already decided the state does not
+     * exist; nothing enforced it.*
+     */
+    public function allowsNothing(): bool
+    {
+        return $this !== self::Switch;
+    }
 }

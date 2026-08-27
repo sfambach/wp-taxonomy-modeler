@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\RecordValue;
+use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
@@ -81,7 +81,7 @@ final class DataEntryTest extends TestCase
         $this->text = $this->editor->createNode('Text', $this->branchRoot['data-types']->id);
         $this->gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
 
-        $this->description = $this->editor->addAttribute($this->part->id, $this->text->id, 'description');
+        $this->description = $this->editor->addField($this->part->id, $this->text->id, 'description');
     }
 
     #[Test]
@@ -89,7 +89,7 @@ final class DataEntryTest extends TestCase
     {
         $record = $this->data->create($this->part->id);
 
-        self::assertSame($this->part->id, $record->modelId);
+        self::assertSame($this->part->id, $record->nodeId);
         self::assertGreaterThan(0, $record->id);
     }
 
@@ -103,7 +103,7 @@ final class DataEntryTest extends TestCase
 
         $this->editor->rename($this->part->id, 'Bauteil');
 
-        self::assertSame($before, $this->data->find($record->id)->modelVersion);
+        self::assertSame($before, $this->data->find($record->id)->nodeVersion);
         self::assertGreaterThan($before, $this->nodes->byId($this->part->id)->version);
     }
 
@@ -148,7 +148,7 @@ final class DataEntryTest extends TestCase
     #[Test]
     public function a_constant_is_stored_as_a_reference_to_a_node(): void
     {
-        $unit   = $this->editor->addAttribute($this->part->id, $this->gram->id, 'unit');
+        $unit   = $this->editor->addField($this->part->id, $this->gram->id, 'unit');
         $record = $this->data->create($this->part->id);
 
         $this->data->put($record->id, $unit->id, TypedValue::ofReference($this->gram->id));
@@ -165,7 +165,7 @@ final class DataEntryTest extends TestCase
         // ⚠️ Unfinished work, said plainly. Storing it inline would look right until somebody
         // tried to share it.
         $line = $this->editor->createNode('Order line', $this->branchRoot['compositions']->id);
-        $has  = $this->editor->addAttribute($this->part->id, $line->id, 'lines');
+        $has  = $this->editor->addField($this->part->id, $line->id, 'lines');
 
         $record = $this->data->create($this->part->id);
 
@@ -190,7 +190,7 @@ final class DataEntryTest extends TestCase
     public function an_attribute_of_a_different_model_is_refused(): void
     {
         $other = $this->editor->createNode('Supplier', $this->branchRoot['model']->id);
-        $alien = $this->editor->addAttribute($other->id, $this->text->id, 'note');
+        $alien = $this->editor->addField($other->id, $this->text->id, 'note');
 
         $record = $this->data->create($this->part->id);
 
@@ -270,7 +270,7 @@ final class DataEntryTest extends TestCase
         // record, not five records.
         $record = $this->data->create($this->part->id);
 
-        $this->records->putValue(new RecordValue(
+        $this->records->putValue(new EdgeRecord(
             $record->id,
             $this->description->id . '.1',
             $this->description->id,

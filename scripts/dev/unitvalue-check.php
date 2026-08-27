@@ -97,7 +97,7 @@ if ($unitValue === null) {
 
 $members = [];
 
-foreach ($editor->attributesOf($unitValue->id) as $edge) {
+foreach ($editor->fieldsOf($unitValue->id) as $edge) {
     $members[$edge->name] = $edge;
 }
 
@@ -329,13 +329,13 @@ $thing ??= $editor->createNode('__uv Resistor', $framework->rootOf(Branch::Model
 
 $has = null;
 
-foreach ($editor->attributesOf($thing->id) as $edge) {
+foreach ($editor->fieldsOf($thing->id) as $edge) {
     if ($edge->name === 'resistance') {
         $has = $edge;
     }
 }
 
-$has ??= $editor->addAttribute($thing->id, $unitValue->id, 'resistance');
+$has ??= $editor->addField($thing->id, $unitValue->id, 'resistance');
 
 $existing = $data->recordsOf($thing->id);
 $owner    = $existing === [] ? $data->create($thing->id) : $existing[0];
@@ -347,7 +347,7 @@ $parts = $data->partsOf($owner->id);
 $part  = $parts === [] ? null : $data->find((int) reset($parts));
 $part ??= $data->createPart($owner->id, $has->id);
 
-check('a part is a record of the composed type', $part->modelId === $unitValue->id);
+check('a part is a record of the composed type', $part->nodeId === $unitValue->id);
 check('and the holder points at it', in_array($part->id, $data->partsOf($owner->id), true));
 
 // ⚠️ **Asking again makes another part**, which is the point of it having an identity: two positions

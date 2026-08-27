@@ -15,8 +15,16 @@ namespace Taxmod\Core\Model;
  * signature; [D-339](../../../docs/NewConcept/90-decision-log.md) made it a **table**.
  *
  * ⚠️ **The table was built and the type was not, and that is worse than neither.** `taxmod_identities`
- * holds every id ever handed out, while `Node|Relation` stood in forty signatures — *a half-built
+ * holds every id ever handed out, while `Node|Relation` stood in **forty** signatures — *a half-built
  * decision, where the built half makes the missing one look finished.*
+ *
+ * ⚠️ **Closed 2026-08-28: the union is down to none.** *Forty across eighteen files became two, and both
+ * of those were stale docblock sentences rather than code. What carries the contract now is a pair:
+ * **this class** for what a node and an edge share — `id`, `version`, `name` — and
+ * {@see \Taxmod\Core\Renderer\Renderable} for what a renderer may ask of anything it draws. The owner
+ * separated those two himself: «`Renderable` is an interface … functions in the interface guarantee the
+ * interface», and «the `Identity` class would have everything that node and edge have in common —
+ * **independent of the interface**».*
  *
  * ⚠️ **A parent class rather than an interface, on the owner's own design.**
  * [C86](../../../docs/NewConcept/10-domain-core.md): *a parent class is not strictly necessary — but it

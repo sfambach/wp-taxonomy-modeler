@@ -111,7 +111,7 @@ check('and falls back to the base form of the same role', $labels->of($thing, Se
 
 echo "\n== 5. A label hangs on an identity, so an edge can carry one ==\n";
 $text = $editor->createNode('__p5 Text', $framework->rootOf(Branch::DataTypes)->id);
-$edge = $editor->addAttribute($thing->id, $text->id, '__p5 description');
+$edge = $editor->addField($thing->id, $text->id, '__p5 description');
 $stored->put(new Label($edge->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
 
 $onEdge = $stored->forOwners([$edge->id]);

@@ -153,7 +153,7 @@ final class CompositionScaffold
         $dimension = $this->ensure($compositions, 'Dimension', $created);
 
         foreach (['laenge', 'breite', 'hoehe'] as $member) {
-            $this->attributeTo($dimension, $member, $unitValue);
+            $this->fieldTo($dimension, $member, $unitValue);
         }
     }
 
@@ -179,16 +179,16 @@ final class CompositionScaffold
         // third amount belong to the fourth name.
         $ingredient = $this->ensure($compositions, 'Zutat', $created);
 
-        $this->attributeTo($ingredient, 'menge', $unitValue);
+        $this->fieldTo($ingredient, 'menge', $unitValue);
         $this->attribute($ingredient, 'bezeichnung', 'text');
 
         $recipe = $this->ensure($compositions, 'Backrezept', $created);
 
         $this->attribute($recipe, 'titel', 'text');
-        $this->attributeTo($recipe, 'backzeit', $unitValue);
-        $this->attributeTo($recipe, 'ofentemperatur', $unitValue);
+        $this->fieldTo($recipe, 'backzeit', $unitValue);
+        $this->fieldTo($recipe, 'ofentemperatur', $unitValue);
 
-        $this->widen($this->attributeTo($recipe, 'zutat', $ingredient), Multiplicity::OneToMany);
+        $this->widen($this->fieldTo($recipe, 'zutat', $ingredient), Multiplicity::OneToMany);
     }
 
     /**
@@ -246,7 +246,7 @@ final class CompositionScaffold
     /** An attribute pointing at a simple type, found by name under the data types. */
     private function attribute(Node $owner, string $name, string $typeName): Relation
     {
-        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {
                 return $edge;
             }
@@ -261,7 +261,7 @@ final class CompositionScaffold
 
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
             if ($wanted !== null && SimpleType::fromNodeName($child->name) === $wanted) {
-                return $this->editor->addAttribute($owner->id, $child->id, $name);
+                return $this->editor->addField($owner->id, $child->id, $name);
             }
         }
 
@@ -269,14 +269,14 @@ final class CompositionScaffold
     }
 
     /** An attribute pointing at a node given directly, rather than at a type found by name. */
-    private function attributeTo(Node $owner, string $name, Node $target): Relation
+    private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
-        foreach ($this->editor->attributesOf($owner->id) as $edge) {
+        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {
                 return $edge;
             }
         }
 
-        return $this->editor->addAttribute($owner->id, $target->id, $name);
+        return $this->editor->addField($owner->id, $target->id, $name);
     }
 }

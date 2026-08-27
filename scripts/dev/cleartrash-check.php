@@ -97,7 +97,7 @@ echo "\n== something to throw away ==\n";
 $root  = $framework->rootOf(Branch::Compositions);
 $doomed = $editor->createNode('__ct doomed', $root->id);
 $target = $editor->createNode('__ct target', $root->id);
-$edge   = $editor->addAttribute($doomed->id, $target->id, 'feld');
+$edge   = $editor->addField($doomed->id, $target->id, 'feld');
 
 $settings->put($settings->chainFor($doomed), SettingKey::RangeMax->value, TypedValue::ofInt(77));
 // ⚠️ *The role is a **seeded node** ([D-196](../../docs/NewConcept/90-decision-log.md)), so `role_id`

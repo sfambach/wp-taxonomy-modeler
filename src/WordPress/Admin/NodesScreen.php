@@ -77,7 +77,7 @@ final class NodesScreen
      * thing under one name — `taxmod_setting[multiplicity]` beside `taxmod_setting[418]` — is how a
      * numeric key ends up read as a setting key by whoever maintains this next.
      */
-    private const NAME_FIELD = 'taxmod_attribute_name';
+    private const NAME_FIELD = 'taxmod_field_name';
 
     /** Where the labels panel submits its texts, keyed by role. */
     private const LABEL_FIELD = 'taxmod_label';
@@ -360,7 +360,7 @@ final class NodesScreen
                 'do',
                 'duplicate',
                 __('Duplicate', 'taxmod'),
-                __('Copy this node beside itself, with its own settings and attributes — not its children and not its records', 'taxmod'),
+                __('Copy this node beside itself, with its own settings and fields — not its children and not its records', 'taxmod'),
                 // A protected node cannot be copied: a second Trash would give the framework two
                 // places to look and one of them would be wrong (D-194).
                 ! $this->framework->isProtected($row['node']),
@@ -728,7 +728,7 @@ final class NodesScreen
             ) . '<p><em>' . esc_html__('Nothing to preview here.', 'taxmod') . '</em></p>';
         }
 
-        $edges = $this->editor->attributesOf($selected->id);
+        $edges = $this->editor->fieldsOf($selected->id);
 
         $html = $this->heading(
             __('Preview', 'taxmod'),
@@ -736,7 +736,7 @@ final class NodesScreen
         );
 
         if ($edges === []) {
-            return $html . '<p><em>' . esc_html__('No attributes yet, so there is nothing to fill in.', 'taxmod') . '</em></p>';
+            return $html . '<p><em>' . esc_html__('No fields yet, so there is nothing to fill in.', 'taxmod') . '</em></p>';
         }
 
         $resolved = $this->settings->resolveForUseSites($edges);
@@ -793,7 +793,7 @@ final class NodesScreen
             $html .= '<p class="description">'
                 . esc_html(sprintf(
                     /* translators: %d: how many attributes are read-only. */
-                    _n('%d attribute is read-only, so it is drawn on both sides and editable on neither.', '%d attributes are read-only, so they are drawn on both sides and editable on neither.', count($visibility['fixed']), 'taxmod'),
+                    _n('%d field is read-only, so it is drawn on both sides and editable on neither.', '%d fields are read-only, so they are drawn on both sides and editable on neither.', count($visibility['fixed']), 'taxmod'),
                     count($visibility['fixed'])
                 ))
                 . '</p>';
@@ -898,7 +898,7 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [
-                    ['duplicate', '', __('Copy this node beside itself, with its own settings and attributes — not its children and not its records', 'taxmod'), 'admin-page'],
+                    ['duplicate', '', __('Copy this node beside itself, with its own settings and fields — not its children and not its records', 'taxmod'), 'admin-page'],
                     ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
                     ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                 ],
@@ -1026,7 +1026,7 @@ final class NodesScreen
      */
     private function attributes(Node $selected, array $rows): string
     {
-        $edges = $this->editor->attributesOf($selected->id);
+        $edges = $this->editor->fieldsOf($selected->id);
         $body  = '';
 
         // ⚠️ **Through the renderer, and the acts arrive as **facts** rather than as markup**
@@ -1070,10 +1070,10 @@ final class NodesScreen
                 // together, and each only where it actually changed.
                 new Control(
                     'do',
-                    'save_attribute',
+                    'save_field',
                     // The owner likes the diskette and it stays the sign for saving everywhere.
                     '💾',
-                    __('Save this attribute — its name and how often it may occur', 'taxmod'),
+                    __('Save this field — its name and how often it may occur', 'taxmod'),
                     $own
                 ),
                 // ⚠️ **Up and down, the same two the tree row has** — the owner: *the attribute row
@@ -1088,18 +1088,18 @@ final class NodesScreen
                 // now the order of attributes was the order they happened to be created in.*
                 new Control(
                     'do',
-                    'attribute_up',
+                    'field_up',
                     __('Up', 'taxmod'),
-                    __('Move this attribute up among the ones declared here', 'taxmod'),
+                    __('Move this field up among the ones declared here', 'taxmod'),
                     $own && $edge->id !== $firstOwn,
                     false,
                     'arrow-up-alt2'
                 ),
                 new Control(
                     'do',
-                    'attribute_down',
+                    'field_down',
                     __('Down', 'taxmod'),
-                    __('Move this attribute down among the ones declared here', 'taxmod'),
+                    __('Move this field down among the ones declared here', 'taxmod'),
                     $own && $edge->id !== $lastOwn,
                     false,
                     'arrow-down-alt2'
@@ -1114,9 +1114,9 @@ final class NodesScreen
                 // word the core has no business inventing (`AR-2`).*
                 new Control(
                     'do',
-                    'duplicate_attribute',
+                    'duplicate_field',
                     __('Duplicate', 'taxmod'),
-                    __('Copy this attribute with its settings — under a new name, because an edge is partly its name', 'taxmod'),
+                    __('Copy this field with its settings — under a new name, because an edge is partly its name', 'taxmod'),
                     $own,
                     icon: 'admin-page'
                 ),
@@ -1127,9 +1127,9 @@ final class NodesScreen
                 // (D-370), so the row keeps its shape.
                 new Control(
                     'do',
-                    'remove_attribute',
+                    'remove_field',
                     __('Remove', 'taxmod'),
-                    __('Remove this attribute — parked, not purged', 'taxmod'),
+                    __('Remove this field — parked, not purged', 'taxmod'),
                     $own,
                     true,
                     'trash'
@@ -1154,7 +1154,7 @@ final class NodesScreen
             $settingSubmits[$edge->id] = $this->settingSubmission($edge->id, $selected->id);
         }
 
-        $attributeRows = $this->rendering->attributesFor(
+        $attributeRows = $this->rendering->fieldRowsFor(
             $edges,
             $selected->id,
             $actions,
@@ -1173,7 +1173,7 @@ final class NodesScreen
         }
 
         $html = $this->heading(
-            __('Attributes', 'taxmod'),
+            __('Fields', 'taxmod'),
             __('What this node has. «Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod')
         );
 
@@ -1188,7 +1188,7 @@ final class NodesScreen
                 . '<th style="width:3em"></th>'
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
-        return $html . $this->removedAttributes($selected) . $this->attributeForm($selected, $rows);
+        return $html . $this->removedFields($selected) . $this->fieldForm($selected, $rows);
     }
 
     /**
@@ -1202,9 +1202,9 @@ final class NodesScreen
      * greyed, labelled «deleted with X», with a restore action.* The label names the **act** that
      * removed it, which is what `parked_by_group_id` carries ([D-371](../../../docs/NewConcept/90-decision-log.md)).
      */
-    private function removedAttributes(Node $selected): string
+    private function removedFields(Node $selected): string
     {
-        $parked = $this->editor->removedAttributesOf($selected->id);
+        $parked = $this->editor->removedFieldsOf($selected->id);
 
         if ($parked === []) {
             return '';
@@ -1222,7 +1222,7 @@ final class NodesScreen
                 )) . '</span></span>'
                 . $this->form(
                     $selected->id,
-                    [['restore_attribute', esc_html__('Restore', 'taxmod'), __('Put it back', 'taxmod')]],
+                    [['restore_field', esc_html__('Restore', 'taxmod'), __('Put it back', 'taxmod')]],
                     '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
                 )
                 . '</div>';
@@ -1231,13 +1231,13 @@ final class NodesScreen
         return '<details style="margin:.6em 0"><summary style="cursor:pointer">'
             . esc_html(sprintf(
                 /* translators: %d is how many attributes were removed. */
-                _n('%d removed attribute', '%d removed attributes', count($parked), 'taxmod'),
+                _n('%d removed field', '%d removed fields', count($parked), 'taxmod'),
                 count($parked)
             ))
             . '</summary>' . $rows . '</details>';
     }
 
-    private function attributeForm(Node $selected, array $rows): string
+    private function fieldForm(Node $selected, array $rows): string
     {
         // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
@@ -1276,7 +1276,7 @@ final class NodesScreen
             // two radio groups of one name on one page is a collision waiting for a second reader — *and
             // it is honest besides: «where does this node go» and «what does this attribute point at»
             // are two questions.*
-            'attribute_target',
+            'field_target',
             null,
             $barred,
             null,
@@ -1284,14 +1284,14 @@ final class NodesScreen
             DialogChooserRenderer::NAME,
             $this->localeFromRequest(),
             Level::Admin,
-            '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this attribute points at', 'taxmod') . '">'
+            '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this field points at', 'taxmod') . '">'
             . '<span class="dashicons dashicons-networking" aria-hidden="true"></span>'
             . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
             . '</span>',
             ControlMarkup::button(new Control(
                 'do',
-                'add_attribute',
-                __('Add attribute', 'taxmod'),
+                'add_field',
+                __('Add field', 'taxmod'),
                 '',
                 true,
                 false,
@@ -1309,7 +1309,7 @@ final class NodesScreen
         return $this->form(
             $selected->id,
             [],
-            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the attribute', 'taxmod') . '" required style="flex:1">'
+            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" required style="flex:1">'
             . $chooser
         );
     }
@@ -1622,12 +1622,31 @@ final class NodesScreen
 
         $attributes = [];
 
-        foreach ($this->editor->attributesOf($nodeId) as $edge) {
+        foreach ($this->editor->fieldsOf($nodeId) as $edge) {
             $attributes[$edge->id] = $edge;
         }
 
         // One resolution for the whole form rather than one per field (`CD-7`).
         $types = $this->rendering->typesFor(array_values($attributes));
+
+        // ⚠️ **Gathered first, then read in one pass** — because the converter in effect has to run on
+        // the way **in** as well ([R36](../../../docs/NewConcept/30-renderer.md), list row 7). *A field
+        // that draws `XII` and saves `XII` as text is a field that lost its value.* Reading per field
+        // would resolve the converter setting per field, which is `CD-7`'s loop.
+        $typedIn = [];
+
+        foreach ($submitted as $rawEdge => $rawValue) {
+            $edgeId = absint($rawEdge);
+
+            if (isset($attributes[$edgeId])) {
+                $typedIn[$edgeId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+            }
+        }
+
+        $values = $this->rendering->valuesFrom(
+            array_values($attributes),
+            array_filter($typedIn, static fn (string $one): bool => $one !== '')
+        );
 
         foreach ($submitted as $rawEdge => $rawValue) {
             $edgeId = absint($rawEdge);
@@ -1652,10 +1671,12 @@ final class NodesScreen
             $type = $types[$edgeId] ?? null;
 
             if ($type === null) {
-                throw NotYetStorable::thatAttributeHasNoTypeYet($edge->name);
+                throw NotYetStorable::thatFieldHasNoTypeYet($edge->name);
             }
 
-            $this->data->put($recordId, $edgeId, $type->valueFrom($characters));
+            // ⚠️ *Already read above, converter and all. The `??` is not a fallback for a missing
+            // value — `valuesFrom()` answers for every edge that had a type, and this one does.*
+            $this->data->put($recordId, $edgeId, $values[$edgeId] ?? $type->valueFrom($characters));
         }
     }
 
@@ -1725,7 +1746,7 @@ final class NodesScreen
             );
         }
 
-        $attributes = $this->editor->attributesOf($selected->id);
+        $attributes = $this->editor->fieldsOf($selected->id);
         $records    = $this->data->recordsOf($selected->id);
 
         $html = $this->heading(
@@ -1759,7 +1780,7 @@ final class NodesScreen
                     /* translators: 1: record id, 2: the model version it was written against. */
                     __('Record #%1$d · written against version %2$d', 'taxmod'),
                     $record->id,
-                    $record->modelVersion
+                    $record->nodeVersion
                 ),
                 [new Control('do', 'save_record', '💾', __('Write these values', 'taxmod'))],
                 new Submission(
@@ -1909,13 +1930,37 @@ final class NodesScreen
         return $type?->valueFrom($raw) ?? TypedValue::ofText($raw);
     }
 
+    /**
+     * ⚠️ **Read once per request, not once per caller.** *Three places ask for the selected node and
+     * measuring showed two of them hitting the database — the owner's ask was «simply make sure objects
+     * are not loaded twice» ([D-455](../../../docs/NewConcept/90-decision-log.md)), and this is the
+     * smaller half of it. The larger half was one shared {@see \Taxmod\WordPress\Plugin} store.*
+     *
+     * ⚠️ **Keyed on the requested id, and that is not belt-and-braces — the unkeyed version was a real
+     * regression and the boundary run caught it in one minute.** *`preview-check` and `package7-check`
+     * change `$_GET['taxmod_node']` between two renders of the same screen, so a memo that remembered
+     * «already asked» handed back the **previous** node. One request has one query string in production;
+     * a checker is a legitimate caller that does not, and **a memo must not outlive the thing it depends
+     * on.***
+     *
+     * ⚠️ *The key is the raw id and not a null check on `$selected`, because **null is a real answer**:
+     * no `taxmod_node`, or an id nothing answers to. Keying on the id keeps that answer cached too.*
+     *
+     * @var array<int, ?Node>
+     */
+    private array $selected = [];
+
     private function selectedFromRequest(): ?Node
     {
         if (! isset($_GET['taxmod_node'])) {
             return null;
         }
 
-        return $this->editor->find(absint($_GET['taxmod_node']));
+        $id = absint($_GET['taxmod_node']);
+
+        return array_key_exists($id, $this->selected)
+            ? $this->selected[$id]
+            : $this->selected[$id] = $this->editor->find($id);
     }
 
     /** @return list<int> */
@@ -1944,12 +1989,12 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveAttribute(int $id, int $edge, string $name, string $multiplicity): void
+    private function saveField(int $id, int $edge, string $name, string $multiplicity): void
     {
         $existing = $this->editor->ownAttribute($id, $edge);
 
         if ($name !== '' && $name !== $existing->name) {
-            $this->editor->renameAttribute($id, $edge, $name);
+            $this->editor->renameField($id, $edge, $name);
         }
 
         if ($multiplicity === '') {
@@ -2479,8 +2524,8 @@ final class NodesScreen
         $do = $this->submittedAct();
         $name   = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
-        // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see attributeForm()}).*
-        $pointsAt     = isset($_POST['attribute_target']) ? absint($_POST['attribute_target']) : 0;
+        // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see fieldForm()}).*
+        $pointsAt     = isset($_POST['field_target']) ? absint($_POST['field_target']) : 0;
         $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
@@ -2519,8 +2564,8 @@ final class NodesScreen
                 'move'           => $this->editor->move($id, $target),
                 // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
                 // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
-                'attribute_up'   => $this->editor->moveAttribute($id, $edge, -1),
-                'attribute_down' => $this->editor->moveAttribute($id, $edge, 1),
+                'field_up'   => $this->editor->moveField($id, $edge, -1),
+                'field_down' => $this->editor->moveField($id, $edge, 1),
                 'up'             => $this->editor->moveUp($id),
                 'down'           => $this->editor->moveDown($id),
                 'restore'        => $this->editor->restore($id),
@@ -2531,18 +2576,18 @@ final class NodesScreen
                 'clear_trash'    => $this->clearedTrash(),
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
-                'add_attribute'  => $this->editor->addAttribute($id, $pointsAt, $name),
+                'add_field'  => $this->editor->addField($id, $pointsAt, $name),
                 // Parked, not purged — D-123's two stages, so it can come back.
-                'remove_attribute'  => $this->editor->removeAttribute($id, $edge),
-                'restore_attribute' => $this->editor->restoreAttribute($id, $edge),
+                'remove_field'  => $this->editor->removeField($id, $edge),
+                'restore_field' => $this->editor->restoreField($id, $edge),
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
-                'save_attribute'    => $this->saveAttribute($id, $edge, $attributeName, $settingValue),
+                'save_field'    => $this->saveField($id, $edge, $attributeName, $settingValue),
                 // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an edge
                 // with the same name, and inventing a suffix is writing user-visible text — which
                 // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
-                'duplicate_attribute' => $this->editor->duplicateAttribute(
+                'duplicate_field' => $this->editor->duplicateField(
                     $id,
                     $edge,
                     sprintf(

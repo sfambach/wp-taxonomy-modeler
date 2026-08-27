@@ -71,7 +71,7 @@ final class PlainRenderer implements Renderer
                 // screen, and a fault that styles itself differently reads as a different kind of
                 // problem. *The class is the vocabulary; a new word needs a reason.*
                 '<span class="taxmod-value taxmod-no-renderer">'
-                . RenderResult::escape($this->cannotDraw()) . '</span>'
+                . RenderResult::escape($this->cannotDraw($context)) . '</span>'
             );
         }
 
@@ -103,9 +103,20 @@ final class PlainRenderer implements Renderer
      * ⚠️ **It names the cause rather than the symptom.** *«No renderer» sends a person looking at
      * the renderer control, which is exactly where the answer is — the stored name is one no field
      * can use.*
+     *
+     * ⚠️ **And there are two causes, which is why the context is asked.** *Measured 2026-08-27 on a
+     * `resistance` attribute pointing at `Einheitenwert`: both cases said «the one set for this
+     * cannot draw a reference», and for a record reference that is **false** — nothing is mis-set,
+     * the summary renderer ([D-106](../../../docs/NewConcept/90-decision-log.md)) is not built. A
+     * fault that names the wrong cause sends a person to a control where there is nothing to fix,
+     * which is worse than one that admits what is missing.*
      */
-    private function cannotDraw(): string
+    private function cannotDraw(RenderContext $context): string
     {
+        if ($context->surroundings->refersToARecord) {
+            return 'not drawn yet — showing a record needs the summary renderer, which is not built';
+        }
+
         return 'no renderer here — the one set for this cannot draw a reference';
     }
 

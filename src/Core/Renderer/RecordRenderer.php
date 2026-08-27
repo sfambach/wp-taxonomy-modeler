@@ -29,10 +29,15 @@ use Taxmod\Core\Model\SimpleType;
  * *That is not a workaround: what this draws is «one record **of this model**», and which record it
  * happens to be is a fact that travels in the context like a value does.*
  *
- * ⚠️ **The form arrives drawn.** A renderer cannot call another renderer — it has no registry
- * ([D-159](../../../docs/NewConcept/90-decision-log.md)) — so the descent draws the fields and this
- * places them, exactly as the attribute row places its settings panel
- * ([D-381](../../../docs/NewConcept/90-decision-log.md)).
+ * ⚠️ **The form arrives drawn** — the descent draws the fields and this places them, exactly as the
+ * attribute row places its settings panel ([D-381](../../../docs/NewConcept/90-decision-log.md)).
+ *
+ * ⚠️ **~~A renderer cannot call another renderer — it has no registry~~ — never decided.** *The owner
+ * asked who had said so and the answer was **nobody**: [D-159](../../../docs/NewConcept/90-decision-log.md)
+ * forbids **fetching per edge** and **writing**, and a registry lookup is neither. See
+ * {@see \Taxmod\Core\Service\Rendering::recordAsBlock()} for the full correction. **How it is built is
+ * not the same as what is required**, and stating the second when you mean the first is how a
+ * convention becomes a rule nobody agreed to (`PR-10`).*
  *
  * ⚠️ **The diagnostic sits beside the form and never inside it.** *Which renderer drew what* found
  * four faults in one afternoon and is scaffolding ([D-344](../../../docs/NewConcept/90-decision-log.md))

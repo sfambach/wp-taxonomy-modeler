@@ -25,7 +25,9 @@ use Taxmod\Core\Model\SimpleType;
  * ```
  *
  * ⚠️ **That the subject may be an edge was in the contract from the start** and had never been
- * used. {@see Renderer::fits()} takes `Node|Relation` because
+ * used. {@see Renderer::fits()} takes {@see Renderable} — *it said `Node|Relation` until 2026-08-28,
+ * which was the union [D-091](../../../docs/NewConcept/90-decision-log.md) had asked to be a type all
+ * along* — because
  * [C11](../../../docs/NewConcept/10-domain-core.md) gives both their identity from one space and
  * [D-091](../../../docs/NewConcept/90-decision-log.md) resolves a `renderer` setting on either —
  * *so an attribute row is not a new mechanism, it is the half of an old one nothing had exercised.*
@@ -41,16 +43,31 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class AttributeRenderer implements Renderer
+final class FieldRowRenderer implements Renderer
 {
-    public const NAME = 'attribute';
+    public const NAME = 'field-row';
+
+    /**
+     * ⚠️ **`field-row` and not `field`, and the collision is worth recording.** *[D-459](../../../docs/NewConcept/90-decision-log.md)
+     * renames «attribute» to «field», and {@see FieldRenderer} already answers to `field` — that one
+     * draws **one value** as a plain input, a field in the HTML sense. This one draws **one field of
+     * the model as a row**. Two different things that the old vocabulary kept apart by accident.*
+     *
+     * ⚠️ *Measured before choosing: `field` is stored in **4** setting rows and `attribute` in **none**,
+     * so this token could move and the other could not. **A renamed token that somebody had chosen
+     * would be a renderer nobody can find any more** — refused at the write by [D-360](../../../docs/NewConcept/90-decision-log.md),
+     * which is the check that would have caught it, one screen too late.*
+     */
 
     /**
      * Where the handed-in settings panel is looked for in {@see Surroundings::$sections}.
      *
-     * ⚠️ **The panel is handed in, never built here, and that is the whole point.** A renderer
-     * cannot call another renderer — it has no registry ([D-159](../../../docs/NewConcept/90-decision-log.md))
-     * — so the descent draws {@see SettingsRenderer} once and this places it. *For a few minutes
+     * ⚠️ **The panel is handed in, never built here, and that is the whole point.** ~~A renderer
+     * cannot call another renderer — it has no registry ([D-159](../../../docs/NewConcept/90-decision-log.md))~~
+     * — **that claim was never decided; see {@see \Taxmod\Core\Service\Rendering::recordAsBlock()}.**
+     * The reason that survives is the one below: **the panel must look identical wherever it appears**,
+     * so it is drawn once and placed, not rebuilt per site.
+     * The descent draws {@see SettingsRenderer} once and this places it. *For a few minutes
      * this class built a list of its own, and the owner caught it immediately: `the settings under
      * the attribute have to look exactly like the settings in the node`.*
      */

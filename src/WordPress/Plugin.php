@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
@@ -300,9 +301,27 @@ final class Plugin
         );
     }
 
+    /**
+     * ⚠️ **One per request, and the `??=` is the whole point.** *This was a factory that built a new
+     * one on every call, and it is called **17 times** — so the store inside
+     * {@see SeededFrameworkNodes} was memoising into up to seventeen separate empty caches. Measured
+     * on one page: **13 single-node reads, 7 of them the four branch roots**, which is impossible with
+     * one instance and inevitable with several.*
+     *
+     * ⚠️ *Safe for the reason that class already documents: a framework node cannot move
+     * ([D-194](../../docs/NewConcept/90-decision-log.md)), and the one thing that creates them —
+     * `seed()` — clears the caches itself. **Sharing the instance is what its own comment assumed all
+     * along.***
+     *
+     * ⚠️ *The owner asked for exactly this and nothing more: «we should simply make sure objects are
+     * not loaded twice» — not the whole-model store, which stays a thought model
+     * ([D-455](../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private ?SeededFrameworkNodes $frameworkNodes = null;
+
     private function frameworkNodes(): SeededFrameworkNodes
     {
-        return new SeededFrameworkNodes(
+        return $this->frameworkNodes ??= new SeededFrameworkNodes(
             new WpdbNodeRepository(),
             new WpdbRelationRepository(),
             new TableIdentityAllocator(),
@@ -344,7 +363,12 @@ final class Plugin
                 ShippedRenderers::registry(),
                 // ⚠️ Without this a reference has no name to draw, and every constant on the
                 // screen falls back to its id (D-105, D-159).
-                $labels
+                $labels,
+                // ⚠️ **Wired in the same one place, for the same reason.** *Two converter registries
+                // would mean two answers to «which mappings may this type be given» — and the
+                // `converter` setting drew as a **dead** control until there was one to ask
+                // (D-219, list row 7).*
+                ShippedConverters::registry()
             )
         );
     }

@@ -79,10 +79,10 @@ $line     = $editor->createNode('__p3 Line', $framework->rootOf(Branch::Composit
 $text     = $editor->createNode('__p3 Text', $framework->rootOf(Branch::DataTypes)->id);
 $gram     = $editor->createNode('__p3 Gramm', $framework->rootOf(Branch::Constants)->id);
 
-$byModel        = $editor->addAttribute($order->id, $supplier->id, 'supplied by');
-$byComposition  = $editor->addAttribute($order->id, $line->id, 'lines');
-$byDataType     = $editor->addAttribute($order->id, $text->id, 'note');
-$byConstant     = $editor->addAttribute($order->id, $gram->id, 'unit');
+$byModel        = $editor->addField($order->id, $supplier->id, 'supplied by');
+$byComposition  = $editor->addField($order->id, $line->id, 'lines');
+$byDataType     = $editor->addField($order->id, $text->id, 'note');
+$byConstant     = $editor->addField($order->id, $gram->id, 'unit');
 
 check('Model → aggregation', $byModel->kind === RelationKind::Aggregation, $byModel->kind->value);
 check('Compositions → composition', $byComposition->kind === RelationKind::Composition, $byComposition->kind->value);
@@ -103,11 +103,11 @@ check('its id came from the shared identity space', (int) $wpdb->get_var($wpdb->
 echo "\n== 4. Attributes are inherited ==\n";
 $part    = $editor->createNode('__p3 Part', $order->id);
 $deeper  = $editor->createNode('__p3 Deeper', $part->id);
-$ownEdge = $editor->addAttribute($part->id, $text->id, 'part number');
+$ownEdge = $editor->addField($part->id, $text->id, 'part number');
 
 $names = static fn (int $id): array => array_map(
     static fn (Relation $r): string => $r->name,
-    $editor->attributesOf($id)
+    $editor->fieldsOf($id)
 );
 
 check('the child sees what the parent declares', in_array('supplied by', $names($part->id), true), implode(', ', $names($part->id)));
@@ -116,14 +116,14 @@ check('a grandchild sees both too', count(array_intersect(['supplied by', 'part 
 check('the parent does not see the child\'s', ! in_array('part number', $names($order->id), true));
 
 echo "\n== 5. Refusals ==\n";
-try { $editor->addAttribute($part->id, $framework->rootOf(Branch::DataTypes)->id, 'x'); check('a branch root is refused', false); }
+try { $editor->addField($part->id, $framework->rootOf(Branch::DataTypes)->id, 'x'); check('a branch root is refused', false); }
 catch (NotAPossibleTarget $e) { check('a branch root is refused', true); }
 
-try { $editor->addAttribute($part->id, $framework->root()->id, 'x'); check('a node in no branch is refused', false); }
+try { $editor->addField($part->id, $framework->root()->id, 'x'); check('a node in no branch is refused', false); }
 catch (NotAPossibleTarget $e) { check('a node in no branch is refused', true); }
 
 $editor->moveToTrash($gram->id);
-try { $editor->addAttribute($part->id, $gram->id, 'x'); check('a parked target is refused', false); }
+try { $editor->addField($part->id, $gram->id, 'x'); check('a parked target is refused', false); }
 catch (NotAPossibleTarget $e) { check('a parked target is refused', true); }
 
 echo "\n== 6. The inheritance edge is not an attribute ==\n";
@@ -150,17 +150,17 @@ echo "\n== An attribute can be removed, and it is parked (D-371) ==\n";
 $removable = $editor->createNode('__p3 Removable', $framework->rootOf(Branch::Model)->id);
 // A branch root stands for the branch, not for a thing in it — so the attribute points at a type.
 $doomedType = $editor->createNode('__p3 Doomed type', $framework->rootOf(Branch::DataTypes)->id);
-$onIt       = $editor->addAttribute($removable->id, $doomedType->id, '__p3 doomed');
+$onIt       = $editor->addField($removable->id, $doomedType->id, '__p3 doomed');
 
-$gone = $editor->removeAttribute($removable->id, $onIt->id);
+$gone = $editor->removeField($removable->id, $onIt->id);
 check('it is parked, not purged', $gone->isParked());
 check('and it names the act that removed it (D-128)', $gone->parkedByGroup > 0, (string) $gone->parkedByGroup);
-check('hidden by default in its owning node', $editor->attributesOf($removable->id) === []);
-check('and findable behind «show deleted»', count($editor->removedAttributesOf($removable->id)) === 1);
+check('hidden by default in its owning node', $editor->fieldsOf($removable->id) === []);
+check('and findable behind «show deleted»', count($editor->removedFieldsOf($removable->id)) === 1);
 
-$back = $editor->restoreAttribute($removable->id, $onIt->id);
+$back = $editor->restoreField($removable->id, $onIt->id);
 check('it comes back whole', ! $back->isParked() && $back->name === '__p3 doomed');
-check('and is live again', count($editor->attributesOf($removable->id)) === 1);
+check('and is live again', count($editor->fieldsOf($removable->id)) === 1);
 
 foreach ([$removable->id, $doomedType->id] as $scratchId) {
     $edges->purgeEdgesTouching($scratchId);
@@ -186,7 +186,7 @@ if (isset($underConstants['Prefixes'])) {
     // multiplicator is not persistent* — and that is what justifies an attribute where no record can
     // ever answer. **Its worth is that inheritance says who has an exponent**, which a reserved key
     // offered on every text node in the system cannot.
-    $declaredEdges = $editor->attributesOf($underConstants['Prefixes']->id);
+    $declaredEdges = $editor->fieldsOf($underConstants['Prefixes']->id);
     $declared      = array_map(static fn ($e): string => $e->name, $declaredEdges);
     check('Prefixes declares an exponent attribute', in_array('exponent', $declared, true), implode(', ', $declared));
 

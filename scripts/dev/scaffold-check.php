@@ -104,7 +104,7 @@ check('and has no records of its own — the value sits in the holder\'s record'
 
 echo "\n== 3. An attribute pointing at one gets its kind without being asked ==\n";
 $thing = $editor->createNode('__sc thing', $framework->rootOf(Branch::Model)->id);
-$edge  = $editor->addAttribute($thing->id, $present['int']->id, '__sc count');
+$edge  = $editor->addField($thing->id, $present['int']->id, '__sc count');
 check('the kind is composition', $edge->kind === RelationKind::Composition, $edge->kind->value);
 
 echo "\n== 4. Imported once, then hands off (D-119) ==\n";

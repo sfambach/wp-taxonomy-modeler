@@ -110,8 +110,8 @@ echo "\n== 2. One key, two places ==\n";
 
 $thing = $editor->createNode('__path Thing', $framework->rootOf(Branch::Model)->id);
 $text  = $editor->createNode('__path Text', $framework->rootOf(Branch::DataTypes)->id);
-$one   = $editor->addAttribute($thing->id, $text->id, '__path first');
-$two   = $editor->addAttribute($thing->id, $text->id, '__path second');
+$one   = $editor->addField($thing->id, $text->id, '__path first');
+$two   = $editor->addField($thing->id, $text->id, '__path second');
 
 $chain = $settings->chainFor($thing);
 
@@ -137,7 +137,7 @@ check('the second attribute reads its own', $atSecond?->value->text === 'for the
 
 echo "\n== 3. A path does not fall back to the empty one ==\n";
 
-$third = $editor->addAttribute($thing->id, $text->id, '__path third');
+$third = $editor->addField($thing->id, $text->id, '__path third');
 
 // Nothing was ever written at this path, and the node's own default must not stand in for it.
 $atThird = $settings->resolve($chain, (string) $third->id)[SettingKey::DefaultValue->value] ?? null;
@@ -198,7 +198,7 @@ $exponent = null;
 // tidying at the end try to remove the **exponent** edge from the scratch node. *The core refused it
 // — an inherited attribute is changed where it is declared — so a guard caught what a careless
 // variable name had started.*
-foreach ($prefixes === null ? [] : $editor->attributesOf($prefixes->id) as $candidate) {
+foreach ($prefixes === null ? [] : $editor->fieldsOf($prefixes->id) as $candidate) {
     if ($candidate->name === 'exponent') {
         $exponent = $candidate;
     }
@@ -232,7 +232,7 @@ echo "\n== 6. Tidying up ==\n";
 $wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE owner_id = %d", $thing->id));
 
 foreach ([$one, $two, $third] as $edge) {
-    $editor->removeAttribute($thing->id, $edge->id);
+    $editor->removeField($thing->id, $edge->id);
 }
 
 $editor->moveToTrash($thing->id);

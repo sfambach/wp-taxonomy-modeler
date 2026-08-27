@@ -30,7 +30,7 @@ final class NotYetStorable extends DomainError
      * ([D-105](../../../docs/NewConcept/90-decision-log.md)) and a composed part a record of its
      * own; keeping whatever was typed would look right until somebody tried to follow it.
      */
-    public static function thatAttributeHasNoTypeYet(string $attribute): self
+    public static function thatFieldHasNoTypeYet(string $attribute): self
     {
         return new self(sprintf(
             '«%s» does not point at a simple data type, so there is nothing to type in yet.',
@@ -53,7 +53,7 @@ final class NotYetStorable extends DomainError
      * which is an answer and not a gap. It shares the class because the caller's question is the
      * same — *can this value be stored* — and the honest reply is no either way.
      */
-    public static function thatAttributeKeepsNothing(string $attribute): self
+    public static function thatFieldKeepsNothing(string $attribute): self
     {
         return new self(sprintf(
             '«%s» is not persistent — its value lives as a default and is read, never written.',
@@ -79,8 +79,8 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('There is no record %d.', $id));
     }
 
-    public static function notAnAttributeOfThisModel(int $edgeId, string $model): self
+    public static function notAFieldOfThisModel(int $edgeId, string $model): self
     {
-        return new self(sprintf('Attribute %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));
+        return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));
     }
 }

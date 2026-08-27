@@ -2,7 +2,7 @@
 
 namespace Taxmod\Core\Repository;
 
-use Taxmod\Core\Model\Setting;
+use Taxmod\Core\Model\SettingRecord;
 
 /**
  * Storage for settings, stated as the walk needs it.
@@ -26,12 +26,12 @@ interface SettingRepository
      *
      * @param list<int> $ownerIds
      *
-     * @return list<Setting>
+     * @return list<SettingRecord>
      */
     public function forOwners(array $ownerIds): array;
 
     /** Write or replace one setting. */
-    public function put(Setting $setting): void;
+    public function put(SettingRecord $setting): void;
 
     /**
      * Remove a setting so that it is inherited again.

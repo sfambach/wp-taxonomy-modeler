@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Service;
 
+use Taxmod\Core\Converter\Converter;
+use Taxmod\Core\Converter\ConverterRegistry;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Renderer\Renderable;
@@ -14,7 +16,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
-use Taxmod\Core\Renderer\AttributeRenderer;
+use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\ChoiceRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
@@ -73,7 +75,142 @@ final class Rendering
         private readonly Settings $settings,
         private readonly RendererRegistry $renderers,
         private readonly ?Labels $labels = null,
+        /**
+         * ⚠️ **Optional, so every existing caller keeps working with no converter in effect** — which
+         * is a complete state and not a gap ([R33b](../../../docs/NewConcept/30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect)):
+         * *no converter means the value is shown as it is stored.* Same shape as `$labels`, for the
+         * same reason.
+         */
+        private readonly ?ConverterRegistry $converters = null,
     ) {
+    }
+
+    /**
+     * What was typed into a form, as values to store — the converter's other direction.
+     *
+     * ⚠️ **The mirror of {@see self::fieldsFor()}, and it has to be, or the round trip is broken.**
+     * *A field that draws `XII` and saves `XII` as text is a field that lost its value. [R36](../../../docs/NewConcept/30-renderer.md)
+     * puts the reason plainly: the converter runs **on the way in as well**, and that is what makes
+     * `> XII` in a search box possible at all.*
+     *
+     * ⚠️ **One resolution for the whole form, not one per field** (`CD-7`). *Same construction as the
+     * drawing side: settings and types for every edge at once, then a loop with no query in it.*
+     *
+     * ⚠️ **Only an invertible converter is asked** ([D-076](../../../docs/NewConcept/90-decision-log.md)).
+     * *A lossy one is display only, so what a person typed into it is read by the type — which is the
+     * honest reading: the characters on screen were never the whole value.*
+     *
+     * @param  list<Relation>        $edges      The attributes the form drew.
+     * @param  array<int, string>    $characters What was typed, by edge id. Empty strings belong to
+     *                                           the caller: an empty field means *unanswered* and the
+     *                                           row goes, which is not this method's decision.
+     * @return array<int, TypedValue>            By edge id, for every edge that had a type.
+     */
+    public function valuesFrom(array $edges, array $characters): array
+    {
+        if ($edges === []) {
+            return [];
+        }
+
+        $types    = $this->typesOf($edges);
+        $resolved = $this->settings->resolveForUseSites($edges);
+        $values   = [];
+
+        foreach ($edges as $edge) {
+            $typed = $characters[$edge->id] ?? null;
+            $type  = $types[$edge->id] ?? null;
+
+            if ($typed === null || $type === null) {
+                continue;
+            }
+
+            $converter = $this->readingConverter($resolved[$edge->id] ?? [], $type);
+
+            // ⚠️ *`NotAValueOfThatType` travels on either way — from the converter or from the type.
+            // Both refuse rather than coerce, and the boundary turns it into a `WP_Error` (`CD-10`).*
+            $values[$edge->id] = $converter === null
+                ? $type->valueFrom($typed)
+                : $converter->written($typed, $type);
+        }
+
+        return $values;
+    }
+
+    /**
+     * The converter that may read this field back, or `null` where none may.
+     *
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function readingConverter(array $settings, ?SimpleType $type): ?Converter
+    {
+        if ($this->converters === null || $type === null) {
+            return null;
+        }
+
+        $name = ($settings[SettingKey::Converter->value] ?? null)?->value->text;
+
+        if ($name === null || $name === '' || ! $this->converters->knows($name)) {
+            return null;
+        }
+
+        $converter = $this->converters->byName($name);
+
+        // ⚠️ *Three conditions and all three are load-bearing: registered, eligible for this type, and
+        // **invertible**. Dropping the last one would let a rounding converter parse `8.50` back and
+        // store the rounded number over the one that was there.*
+        if (! $converter->isInvertible() || ! in_array($type, $converter->handles(), true)) {
+            return null;
+        }
+
+        return $converter;
+    }
+
+    /**
+     * The characters the converter in effect produces, or `null` where none is.
+     *
+     * ⚠️ **Resolved here and never in a renderer** ([D-159](../../../docs/NewConcept/90-decision-log.md),
+     * [D-445](../../../docs/NewConcept/90-decision-log.md)): the descent knows the chain, the registry
+     * and the type, so it runs the mapping and hands the result over.
+     *
+     * ⚠️ **A converter nobody registered is left as it is rather than refused.** *`byName()` throws, and
+     * `NotAPossibleTarget` here would take down a whole form because one attribute names a converter a
+     * data pack removed. **The value is still true** — it just is not mapped — so the honest failure is
+     * to show it stored, the same way [R14b](../../../docs/NewConcept/30-renderer.md)'s fallback shows
+     * rather than hides. Refusing belongs at the **write**, where the name is chosen
+     * ([D-360](../../../docs/NewConcept/90-decision-log.md)), and that is `SettingDoesNotApply`'s job.*
+     *
+     * ⚠️ *A mapping that cannot read the value it was handed is the same case: `range_min` on a text,
+     * `roman` on `4000`. It says so in its own output ({@see \Taxmod\Core\Converter\RomanNumeralConverter::shown()}),
+     * which is where a reader can see it.*
+     *
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function convertedCharacters(
+        TypedValue $value,
+        array $settings,
+        ?SimpleType $type,
+    ): ?string {
+        if ($this->converters === null || $value->isNothing() || $type === null) {
+            return null;
+        }
+
+        $chosen = $settings[SettingKey::Converter->value] ?? null;
+        $name   = $chosen?->value->text;
+
+        if ($name === null || $name === '' || ! $this->converters->knows($name)) {
+            return null;
+        }
+
+        $converter = $this->converters->byName($name);
+
+        // ⚠️ *Eligibility is checked here too, not only when the name is chosen: a type can change
+        // under a stored setting — an attribute repointed from `Integer` to `Text` — and running an
+        // integer mapping over characters would invent a reading rather than refuse one.*
+        if (! in_array($type, $converter->handles(), true)) {
+            return null;
+        }
+
+        return $converter->shown($value);
     }
 
     /**
@@ -240,8 +377,15 @@ final class Rendering
                 surroundings: new Surroundings(
                     // ⚠️ By **edge**, not by target: the role that decided this text belongs to the
                     // edge, so two attributes pointing at one node can show `k` and `kilo`.
-                    refersTo: $value->reference === null ? null : ($names[$edge->id] ?? null)
+                    refersTo: $value->reference === null ? null : ($names[$edge->id] ?? null),
+                    // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
+                    // reference with no simple type behind it is a reference to a record: `typeOf()`
+                    // answers `node_ref` for a constant and a real type for a data type, so `null`
+                    // here is the composed case — *and it is the summary renderer (D-106) that is
+                    // missing, not a renderer that is mis-set.*
+                    refersToARecord: $value->reference !== null && $type === null,
                 ),
+                shown: $this->convertedCharacters($value, $settings, $type),
             );
 
             $fields[] = new RenderedField(
@@ -574,8 +718,16 @@ final class Rendering
     /**
      * One record as a block — heading, its drawn form, its acts.
      *
-     * ⚠️ **The form is drawn here and placed there** ([D-159](90-decision-log.md)): a renderer has no
-     * registry, so the descent draws the fields and {@see RecordRenderer} frames them.
+     * ⚠️ **The form is drawn here and placed there**: the descent draws the fields and
+     * {@see RecordRenderer} frames them.
+     *
+     * ⚠️ **This is how it was built and not what any decision requires** — the owner asked *«who told
+     * you a renderer has no access to the registry?»* and the answer was **nobody.** *[D-159](90-decision-log.md)
+     * says the narrower thing: «the descent has two inputs, **both loaded before it starts**», «a
+     * descent that fetches per edge is N+1 by construction» and «the renderer never writes». **A
+     * registry lookup is neither a fetch nor a write**, so nothing decided forbids a renderer from
+     * descending. Three docblocks claimed it did, citing D-159, and then got quoted back as though
+     * D-159 had said it — `PR-10`'s dangling rule, with a citation to make it look agreed.*
      *
      * @param list<Relation>         $edges  The model's attributes, in the order they are shown.
      * @param array<int, TypedValue> $values What this record holds, keyed by edge id.
@@ -706,7 +858,7 @@ final class Rendering
      *                                                    declares it.
      * @return list<RenderedField>
      */
-    public function attributesFor(
+    public function fieldRowsFor(
         array $edges,
         int $declaredBy,
         array $actions = [],
@@ -723,7 +875,7 @@ final class Rendering
             return [];
         }
 
-        $renderer = $this->renderers->byName(AttributeRenderer::NAME);
+        $renderer = $this->renderers->byName(FieldRowRenderer::NAME);
         $resolved = $this->settings->resolveForUseSites($edges);
         $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
 
@@ -742,9 +894,9 @@ final class Rendering
             $configured = [];
 
             // ⚠️ **The row's controls name the row's form**, because a `<tr>` cannot be wrapped in
-            // one — see {@see AttributeRenderer::formFor()}. Without it the multiplicity select sat
+            // one — see {@see FieldRowRenderer::formFor()}. Without it the multiplicity select sat
             // outside every form and submitted nothing.
-            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], AttributeRenderer::formFor($edge)) as $drawn) {
+            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], FieldRowRenderer::formFor($edge)) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
 
@@ -766,7 +918,7 @@ final class Rendering
                     // handed in as a section — which is what stops the attribute row from growing a
                     // second settings list of its own.
                     sections: [
-                        AttributeRenderer::SETTINGS => new Section(
+                        FieldRowRenderer::SETTINGS => new Section(
                             $settingsTitle,
                             $this->panelBody($configured, $edge, $settingActs, $settingSubmits[$edge->id] ?? null, $locale, $level),
                             true
@@ -1334,6 +1486,23 @@ final class Rendering
         if ($choices[$key->value] ?? null) {
             $options      = $choices[$key->value];
             $mayBeNothing = true;
+        }
+
+        // ⚠️ **The converter's set comes from the converter registry, and it may be empty.** *An empty
+        // set draws as a disabled control, which R28–R32 asked for over an empty box that looks
+        // fillable — so this branch does not need to special-case «none registered»: no options is
+        // already the honest state.*
+        //
+        // ⚠️ **And unlike the renderer below, *nothing* stays an outcome.** No converter means the value
+        // is shown as it is stored ([R33b](30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect)),
+        // so there is no default to force and `mayBeNothing` is left alone. *Forcing one here would map
+        // every number in the installation the moment a converter was registered.*
+        if ($shape === SettingShape::ARegisteredName && $key === SettingKey::Converter && $this->converters !== null) {
+            $forType = $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject);
+
+            foreach ($this->converters->eligibleFor($forType) as $one) {
+                $options[$one->name()] = $one->name();
+            }
         }
 
         if ($shape === SettingShape::ARegisteredName && $key === SettingKey::Renderer) {

@@ -68,6 +68,23 @@ final class RenderContext
         public readonly ?SimpleType $type = null,
         public readonly Surroundings $surroundings = new Surroundings(),
         public readonly bool $developerMode = false,
+        /**
+         * The value already run through the converter in effect, or `null` where none is.
+         *
+         * ⚠️ **Prepared, not fetched** ([D-445](../../../docs/NewConcept/90-decision-log.md)): the
+         * descent resolves which converter applies and runs it, so a renderer does not know converters
+         * exist. *That is [D-159](../../../docs/NewConcept/90-decision-log.md) held rather than bent —
+         * a renderer is handed what it needs and reaches for nothing.*
+         *
+         * ⚠️ **`null` and `''` mean different things.** *`null` is «no converter is in effect, show the
+         * stored value»; an empty string is a converter that mapped the value to nothing. Collapsing
+         * them would make an unmapped value and a deliberately blank one look identical.*
+         *
+         * ⚠️ *It carries characters and not a `TypedValue`, because that is what a converter produces:
+         * [D-219](../../../docs/NewConcept/90-decision-log.md) calls the converter **the mapping** and
+         * the renderer **the form**, so the mapping's output is what a person reads.*
+         */
+        public readonly ?string $shown = null,
     ) {
     }
 

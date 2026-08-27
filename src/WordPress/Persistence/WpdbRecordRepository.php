@@ -2,8 +2,8 @@
 
 namespace Taxmod\WordPress\Persistence;
 
-use Taxmod\Core\Model\Record;
-use Taxmod\Core\Model\RecordValue;
+use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
 
@@ -19,15 +19,15 @@ use Taxmod\Core\Repository\RecordRepository;
  */
 final class WpdbRecordRepository implements RecordRepository
 {
-    public function add(Record $record): int
+    public function add(NodeRecord $record): int
     {
         global $wpdb;
 
         $wpdb->insert(
             Schema::table('records'),
             [
-                'model_id'      => $record->modelId,
-                'model_version' => $record->modelVersion,
+                'node_id'      => $record->nodeId,
+                'node_version' => $record->nodeVersion,
                 'created_at'    => $record->createdAt,
             ],
             ['%d', '%d', '%s']
@@ -36,13 +36,13 @@ final class WpdbRecordRepository implements RecordRepository
         return (int) $wpdb->insert_id;
     }
 
-    public function find(int $id): ?Record
+    public function find(int $id): ?NodeRecord
     {
         global $wpdb;
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, model_id, model_version, created_at FROM ' . Schema::table('records') . ' WHERE id = %d',
+                'SELECT id, node_id, node_version, created_at FROM ' . Schema::table('records') . ' WHERE id = %d',
                 $id
             ),
             ARRAY_A
@@ -51,15 +51,15 @@ final class WpdbRecordRepository implements RecordRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
-    public function ofModel(int $modelId): array
+    public function ofNode(int $nodeId): array
     {
         global $wpdb;
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, model_id, model_version, created_at FROM ' . Schema::table('records') . '
-                 WHERE model_id = %d ORDER BY id ASC',
-                $modelId
+                'SELECT id, node_id, node_version, created_at FROM ' . Schema::table('records') . '
+                 WHERE node_id = %d ORDER BY id ASC',
+                $nodeId
             ),
             ARRAY_A
         );
@@ -82,7 +82,7 @@ final class WpdbRecordRepository implements RecordRepository
         );
 
         return array_map(
-            static fn (array $r): RecordValue => new RecordValue(
+            static fn (array $r): EdgeRecord => new EdgeRecord(
                 (int) $r['record_id'],
                 (string) $r['path'],
                 (int) $r['edge_id'],
@@ -100,7 +100,7 @@ final class WpdbRecordRepository implements RecordRepository
         );
     }
 
-    public function putValue(RecordValue $value): void
+    public function putValue(EdgeRecord $value): void
     {
         global $wpdb;
 
@@ -159,12 +159,12 @@ final class WpdbRecordRepository implements RecordRepository
     }
 
     /** @param array<string,mixed> $row */
-    private function hydrate(array $row): Record
+    private function hydrate(array $row): NodeRecord
     {
-        return new Record(
+        return new NodeRecord(
             (int) $row['id'],
-            (int) $row['model_id'],
-            (int) $row['model_version'],
+            (int) $row['node_id'],
+            (int) $row['node_version'],
             (string) $row['created_at'],
         );
     }

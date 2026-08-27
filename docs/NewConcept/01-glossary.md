@@ -162,7 +162,7 @@ over them.
 ## ⚠️ Attribute and setting — moved out
 
 The distinction between the two, the truth table, the worked example and the storage places used to
-live here. They are now [`02-attribute-and-setting.md`](02-attribute-and-setting.md), because they had
+live here. They are now [`02-field-and-setting.md`](02-field-and-setting.md), because they had
 grown to three hundred lines and **a glossary is where a word is looked up, not where an argument is
 made.**
 

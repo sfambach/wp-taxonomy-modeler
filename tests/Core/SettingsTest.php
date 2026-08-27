@@ -139,7 +139,7 @@ final class SettingsTest extends TestCase
         // of one walk, not two mechanisms.
         $thing = $this->editor->createNode('Thing', $this->branchRoot['model']->id);
         $type  = $this->type('Text');
-        $edge  = $this->editor->addAttribute($thing->id, $type->id, 'description');
+        $edge  = $this->editor->addField($thing->id, $type->id, 'description');
 
         $chain = $this->settings->chainForUseSite($edge);
 
@@ -197,7 +197,7 @@ final class SettingsTest extends TestCase
     {
         $thing = $this->editor->createNode('Thing', $this->branchRoot['model']->id);
         $type  = $this->type('Text');
-        $edge  = $this->editor->addAttribute($thing->id, $type->id, 'description');
+        $edge  = $this->editor->addField($thing->id, $type->id, 'description');
 
         $this->settings->put($this->settings->chainFor($type), SettingKey::Renderer->value, TypedValue::ofText('plain'));
         $this->settings->put($this->settings->chainForUseSite($edge), SettingKey::Renderer->value, TypedValue::ofText('markdown'));
@@ -337,6 +337,44 @@ final class SettingsTest extends TestCase
         $this->settings->put($chain, SettingKey::RangeMin->value, TypedValue::ofInt(0));
     }
 
+    // ------------------------------------------------------ a switch has no empty · D-401, D-429
+
+    #[Test]
+    public function a_switch_refuses_an_empty_value(): void
+    {
+        // The owner: *may a bool be empty in the database?* Measured, it could — and an empty
+        // switch row read back as «false, set here», which stops the chain and silently overrules
+        // an ancestor that said true. D-401 says that state does not exist, so the write is refused.
+        $type = $this->type('Text');
+
+        $this->expectException(SettingDoesNotApply::class);
+
+        $this->settings->put(
+            $this->settings->chainFor($type),
+            SettingKey::Hide->value,
+            TypedValue::nothing()
+        );
+    }
+
+    #[Test]
+    public function a_switch_is_unset_by_pulling_what_the_chain_says_above(): void
+    {
+        // The way out that replaces it (D-423): not an empty row, but the value from above.
+        $parent = $this->type('Text');
+        $child  = $this->editor->createNode('Sondertext', $parent->id);
+
+        $this->settings->put($this->settings->chainFor($parent), SettingKey::Hide->value, TypedValue::ofBool(true));
+        $this->settings->put($this->settings->chainFor($child), SettingKey::Hide->value, TypedValue::ofBool(false));
+
+        self::assertFalse($this->settings->resolve($this->settings->chainFor($child))[SettingKey::Hide->value]->value->asBool());
+
+        $this->settings->pull($this->settings->chainFor($child), SettingKey::Hide->value);
+
+        $resolved = $this->settings->resolve($this->settings->chainFor($child))[SettingKey::Hide->value];
+
+        self::assertTrue($resolved->value->asBool(), 'reset pulls the parent value into the row');
+    }
+
     // ------------------------------------------------------ multiplicity · D-351
 
     #[Test]
@@ -414,7 +452,7 @@ final class SettingsTest extends TestCase
     {
         $thing = $this->editor->createNode('Thing', $this->branchRoot['model']->id);
 
-        return $this->editor->addAttribute($thing->id, $this->type('Text')->id, 'description');
+        return $this->editor->addField($thing->id, $this->type('Text')->id, 'description');
     }
 
     #[Test]

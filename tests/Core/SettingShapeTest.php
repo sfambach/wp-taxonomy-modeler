@@ -125,4 +125,21 @@ final class SettingShapeTest extends TestCase
         self::assertTrue(SettingKey::Icon->shape()->isAChoice());
         self::assertNull(SettingKey::Icon->typeFor(null));
     }
+
+    // -------------------------------------------------- not null, per shape · D-442
+
+    #[Test]
+    public function only_a_switch_forbids_an_empty_value(): void
+    {
+        // The owner drew the line: *«an int setting must have a value» is wrong, null is allowed;
+        // «a bool can be unset» is wrong, it can only be 0 or 1 — but all of it is coverable
+        // through the same structure.* So `NOT NULL` is one attribute of the shape, and exactly
+        // one shape has it.
+        $forbidding = array_values(array_filter(
+            SettingShape::cases(),
+            static fn (SettingShape $shape): bool => ! $shape->allowsNothing()
+        ));
+
+        self::assertSame([SettingShape::Switch], $forbidding);
+    }
 }

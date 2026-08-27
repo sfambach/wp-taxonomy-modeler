@@ -73,10 +73,24 @@ abstract class TypedFieldRenderer implements Renderer
      *
      * ⚠️ **Nothing is drawn as nothing** — never a dash, never a zero. A missing value means
      * *not answered* (D-232), and a placeholder would hide that from the reader for good.
+     *
+     * ⚠️ **This is the one place a converter takes effect, and that is why it is `final`.** *The
+     * descent runs the converter in effect and hands the characters in
+     * ([D-445](../../../docs/NewConcept/90-decision-log.md)); every typed field already came through
+     * here for its characters, so `2k7`, `XII` and `FF` arrive without a single renderer knowing
+     * converters exist. **Sixteen renderers would have been sixteen chances to forget** — `CD-7`'s
+     * reasoning applied to a mapping instead of to a query.*
+     *
+     * ⚠️ *Nothing still wins over a converter: a mapping of a value that is not there would be a
+     * reading of an unanswered question.*
      */
     final protected function characters(RenderContext $context): string
     {
-        return $context->value->isNothing() ? '' : $context->value->describe();
+        if ($context->value->isNothing()) {
+            return '';
+        }
+
+        return $context->shown ?? $context->value->describe();
     }
 
     /**

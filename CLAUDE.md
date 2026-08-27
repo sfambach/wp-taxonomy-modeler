@@ -3,11 +3,11 @@
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
 
-## Where things stand (2026-08-26)
+## Where things stand (2026-08-28)
 
 The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
 since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
-for: **432 decisions, 102 open questions.** The previous planning round is frozen under
+for: **459 decisions, 25 open questions.** *The second number fell from 102 to 25 on 2026-08-27 without a single question being answered: **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`.** That is what a count in a rules file is worth — and why the check below matters more than the number.* The previous planning round is frozen under
 [`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
 [`docs/NewConcept/`](docs/NewConcept/README.md).
 

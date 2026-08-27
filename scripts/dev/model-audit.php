@@ -104,7 +104,7 @@ echo "\n== Datensaetze ==\n";
 
 say(
     'Datensaetze, deren Modell fehlt',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records rc WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = rc.model_id)")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records rc WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = rc.node_id)")
 );
 
 say(

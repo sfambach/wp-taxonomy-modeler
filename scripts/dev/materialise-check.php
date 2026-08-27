@@ -163,7 +163,7 @@ $settings->put($settings->chainFor($type), SettingKey::RangeMin->value, TypedVal
 $holder = $editor->createNode('__mat_holder', $root->id);
 $made[] = $holder->id;
 
-$edge = $editor->addAttribute($holder->id, $type->id, 'feld');
+$edge = $editor->addField($holder->id, $type->id, 'feld');
 
 check('the attribute has rows of its own', ownRows($edge->id) > 0, (string) ownRows($edge->id));
 check('  · range_min came from the target, not the owner', ownValue($edge->id, SettingKey::RangeMin->value) === '7', ownValue($edge->id, SettingKey::RangeMin->value) ?? '—');
@@ -208,7 +208,7 @@ echo "\n== rows at a path travel too, because a child inherits the same edge ids
 $holder2 = $editor->createNode('__mat_holder2', $root->id);
 $made[]  = $holder2->id;
 
-$pathEdge = $editor->addAttribute($holder2->id, $type->id, 'adressiert');
+$pathEdge = $editor->addField($holder2->id, $type->id, 'adressiert');
 
 // The parent's answer *for that one attribute* — path rows are what D-413 added.
 $settings->put($settings->chainFor($holder2), SettingKey::DefaultValue->value, TypedValue::ofInt(31), (string) $pathEdge->id);
@@ -239,7 +239,7 @@ check('and it did not collapse into the empty path', $atEmpty === null || (strin
 // only by accident.*
 $inherited = false;
 
-foreach ($editor->attributesOf($heir->id) as $seen) {
+foreach ($editor->fieldsOf($heir->id) as $seen) {
     if ($seen->id === $pathEdge->id) {
         $inherited = true;
     }
