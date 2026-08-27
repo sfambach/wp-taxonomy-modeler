@@ -332,8 +332,17 @@ final class SettingsRenderer implements Renderer
             return '';
         }
 
+        // ⚠️ **`here` is gone, because materialising made it the answer for every row.** The owner:
+        // *why does «here» stand behind the fields?* **Because since [D-423](../../../docs/NewConcept/90-decision-log.md)
+        // it stands behind all of them** — every owner carries its own rows, so `setHere` is true
+        // almost everywhere and the word marks nothing.
+        //
+        // ⚠️ *This column exists for the opposite case, and its own docblock says so: the one thing a
+        // mark prevents a mistake in is **inherited**, because overwriting an ancestor's value
+        // believing the field was blank is what it is there to stop. `here` is the ordinary state and
+        // the ordinary state needs no label.* **Measured: 344 rows set here against 3 inherited.**
         if ($drawn->setting->setHere) {
-            return RenderResult::escape($this->word($context, 'here'));
+            return '';
         }
 
         // ⚠️ **The id is gone, and it was a bare number on screen** ([D-363](../../../docs/NewConcept/90-decision-log.md)
