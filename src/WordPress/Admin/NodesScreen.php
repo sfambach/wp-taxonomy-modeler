@@ -633,15 +633,33 @@ final class NodesScreen
 
         $edit = $this->rendering->valueOfType($selected, Purpose::Edit, locale: $this->localeFromRequest());
 
-        return $this->heading(
+        $html = $this->heading(
             __('Preview', 'taxmod'),
-            __('What a field of this type looks like with the settings above. Left is what a reader sees, right what an editor sees — if the two differ, that is «read only» doing its job. The value shown is this type\'s default; it needs no record.', 'taxmod')
-        )
-            . '<table class="taxmod-preview"><tbody><tr>'
-            . '<th scope="row">' . esc_html($selected->name) . '</th>'
-            . '<td>' . $display->markup . '</td>'
-            . '<td>' . ($edit?->markup ?? '') . '</td>'
-            . '</tr></tbody></table>';
+            __('What a field of this type looks like with the settings above. If the two sides differ, that is «read only» doing its job. The value shown is this type\'s default; it needs no record.', 'taxmod')
+        );
+
+        // ⚠️ **The same two sides as the attribute preview, and the same words** — the owner: *the
+        // render field and the output sit next to each other without separation; maybe put a heading
+        // over them.* **He was looking at a table I had put inside `.taxmod-preview`**, a class that
+        // exists to lay out two labelled columns. *So the fix is not a new heading but the shape that
+        // was already there: two `taxmod-preview-side` blocks, each with its own `<h4>`.*
+        //
+        // ⚠️ *His own words are the headings — «As a reader sees it» / «As an editor sees it» — because
+        // two previews on one screen saying the same thing differently is worse than either wording.*
+        $html .= '<div class="taxmod-preview">';
+
+        foreach ([
+            [__('As a reader sees it', 'taxmod'), $display],
+            [__('As an editor sees it', 'taxmod'), $edit],
+        ] as [$title, $side]) {
+            $html .= '<div class="taxmod-preview-side">'
+                . '<h4>' . esc_html($title) . '</h4>'
+                . '<p><strong>' . esc_html($selected->name) . '</strong> '
+                . ($side?->markup ?? '')
+                . '</p></div>';
+        }
+
+        return $html . '</div>';
     }
 
     private function previewPanel(Node $selected): string
