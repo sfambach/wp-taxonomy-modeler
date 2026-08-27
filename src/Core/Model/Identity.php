@@ -58,9 +58,30 @@ abstract class Identity
      *                     optimistic locking, and the reason two people editing two settings of one
      *                     node do not silently overwrite each other.
      */
+    /**
+     * @param string $name What the thing is called, in the neutral base language.
+     *
+     * ⚠️ **On the owner's word, and it supersedes D-080's «only»**
+     * ([D-436](../../../docs/NewConcept/90-decision-log.md)): *edge and node both have names and both
+     * should be translatable.* **Both carry one and by [D-410](../../../docs/NewConcept/90-decision-log.md)
+     * both carry labels for it** — so it passes C86's own test, *all the attributes that relations and
+     * nodes have in common*. *D-080 was written before an attribute had labels; D-410 changed the
+     * answer, not a preference.*
+     *
+     * ⚠️ **The mechanism is shared, the meaning is not.** A node's name is what an **author** works
+     * with and the modelling tree draws it raw ([D-369](../../../docs/NewConcept/90-decision-log.md));
+     * an attribute's name is the field's own word. *Same column, same translation path, two readings —
+     * which is what a shared head is for.*
+     *
+     * ⚠️ *This does **not** settle [row 21](../../../docs/NewConcept/97-implementation-plan.md#the-working-list):
+     * a **renderer** still must not read a name off its subject ([D-159](../../../docs/NewConcept/90-decision-log.md)),
+     * and the chooser drawing `$subject->name` where a target's **label** belongs is a fault wherever
+     * the property lives.*
+     */
     protected function __construct(
         public readonly int $id,
         public readonly int $version,
+        public readonly string $name,
     ) {
     }
 }

@@ -26,12 +26,12 @@ final class Node extends Identity
     private function __construct(
         int $id,
         int $version,
-        public readonly string $name,
+        string $name,
         public readonly string $path,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
-        parent::__construct($id, $version);
+        parent::__construct($id, $version, $name);
     }
 
     /**

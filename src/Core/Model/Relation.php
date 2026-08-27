@@ -39,12 +39,12 @@ final class Relation extends Identity
         public readonly int $fromId,
         public readonly int $toId,
         public readonly RelationKind $kind,
-        public readonly string $name,
+        string $name,
         public readonly int $position,
         public readonly ?int $parkedByGroup = null,
     ) {
         // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
-        parent::__construct($id, $version);
+        parent::__construct($id, $version, $name);
     }
 
     /**

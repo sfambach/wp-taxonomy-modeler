@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **435**, davon **27** ersetzt oder teilweise überholt |
+| Entscheidungen | **437**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **102**, davon **86** noch offen |
 
 ## Offene Fragen
@@ -206,7 +206,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-077](90-decision-log.md) | 2026-08-22 | agreed | A node may carry several converters; which one applies is a setting. |
 | [D-078](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | ~~Settings are one construct with two scopes — a `scope` column separating model-scope keys (`min`, `max`, `step`) from system-scope keys (`hide`, `r… |
 | [D-079](90-decision-log.md) | 2026-08-22 | agreed` (confirmed by the owner 2026-08-22) | An installation-wide default is a setting on a reserved installation identity |
-| [D-080](90-decision-log.md) | 2026-08-22 | agreed` (confirmed by the owner 2026-08-23) | `Identity` carries `id` and `version` only. |
+| [D-080](90-decision-log.md) | 2026-08-22 | ⚠️ D-436 — `name` gehoert dazu, weil Knoten und Kante beide einen tragen und beide ihn uebersetzbar machen (D-410) | `Identity` carries `id` and `version` only. |
 | [D-081](90-decision-log.md) | 2026-08-22 | agreed | Every object has at least one changelog item — the seed's `1..*` was right. |
 | [D-082](90-decision-log.md) | 2026-08-22 | agreed` (proposal) | Every node has exactly four fixed attributes: `id`, `version`, `name`, `path`. |
 | [D-083](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | Seven tables. |
@@ -562,3 +562,5 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-433](90-decision-log.md) | 2026-08-26 | agreed | Choosing several registered names in order gets its own renderer — a `` cannot express either half. |
 | [D-434](90-decision-log.md) | 2026-08-26 | agreed | The standard multiplicity becomes `1`. Supersedes the value in D-379, which keeps everything else it says. |
 | [D-435](90-decision-log.md) | 2026-08-26 | agreed | An attribute is reordered with the same two buttons a node has — and `position` turns out to belong to the |
+| [D-436](90-decision-log.md) | 2026-08-26 | agreed | `name` belongs on `Identity` too: a node and an edge both have one, and both are translatable the same way. Supersedes the «only» in D-080. |
+| [D-437](90-decision-log.md) | 2026-08-26 | agreed | `Identity` and *renderable* are two things, and D-091 merged them. The seam is named now; the signature moves when there is a second implementor. |
