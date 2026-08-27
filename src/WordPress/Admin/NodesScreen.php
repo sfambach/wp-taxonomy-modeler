@@ -518,7 +518,7 @@ final class NodesScreen
         return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:1em 0;display:flex;gap:.5em">'
             . $this->hidden($parent->id)
             . '<input type="text" name="name" placeholder="' . esc_attr($label) . '" required style="flex:1">'
-            . '<button class="button button-primary" name="do" value="create">' . esc_html__('Add', 'taxmod') . '</button>'
+            . ControlMarkup::button(new Control('do', 'create', __('Add', 'taxmod'), '', true, false, '', '', true))
             . '</form>';
     }
 
@@ -877,11 +877,24 @@ final class NodesScreen
             // `button-primary` **and** `taxmod-icon-button`, and the second exists precisely to take
             // a button's background away. *Whichever the cascade favoured won, so the one button in
             // the row that is styled like the others was styled unlike them.*
-            . '<button class="button taxmod-icon-button" form="' . esc_attr(SettingsRenderer::formFor($selected)) . '"'
-            . ' name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '"'
-            . ' title="' . esc_attr__('Save every setting on this page', 'taxmod') . '">'
-            // ⚠️ The diskette, not `dashicons-saved` — that one is a **tick**, and the owner spotted it.
-            . '<span aria-label="' . esc_attr__('Save', 'taxmod') . '">💾</span></button>'
+            // ⚠️ **Through the one place, like every other button now** — the owner: *every time new
+            // buttons appear they look odd again; is there a button renderer? Let us build it and use
+            // it everywhere.* *This was the last of four written out by hand, and the one his blue
+            // diskette came from.*
+            . ControlMarkup::button(new Control(
+                'do',
+                SettingsRenderer::WRITE,
+                __('Save', 'taxmod'),
+                __('Save every setting on this page', 'taxmod'),
+                true,
+                false,
+                // ⚠️ No Dashicon: the icon font has no diskette, and `dashicons-saved` is a **tick** —
+                // which the owner spotted. So the character is handed in and the label stays the name.
+                '',
+                SettingsRenderer::formFor($selected),
+                false,
+                '💾'
+            ))
             . $this->form(
                 $selected->id,
                 [
@@ -974,8 +987,17 @@ final class NodesScreen
         $trigger = '<span class="dashicons dashicons-move" aria-hidden="true"></span>'
             . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>';
 
-        $confirm = '<button class="button button-primary" name="do" value="move">'
-            . esc_html__('Move here', 'taxmod') . '</button>';
+        $confirm = ControlMarkup::button(new Control(
+            'do',
+            'move',
+            __('Move here', 'taxmod'),
+            '',
+            true,
+            false,
+            '',
+            '',
+            true
+        ));
 
         return $this->rendering->chooserFor(
             $rows,
@@ -1219,8 +1241,18 @@ final class NodesScreen
             . '<span class="dashicons dashicons-networking" aria-hidden="true"></span>'
             . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
             . '</span>',
-            '<button class="button button-primary" name="do" value="add_attribute">'
-            . esc_html__('Add attribute', 'taxmod') . '</button>'
+            ControlMarkup::button(new Control(
+                'do',
+                'add_attribute',
+                __('Add attribute', 'taxmod'),
+                '',
+                true,
+                false,
+                '',
+                '',
+                // ⚠️ *The leading act of its dialog — a person opened the chooser to do this one thing.*
+                true
+            ))
         )->markup;
 
         // ⚠️ **No second «Add attribute» outside the dialog.** The act needs a target, and the target is
