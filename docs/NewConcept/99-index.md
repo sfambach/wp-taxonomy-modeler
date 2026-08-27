@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **439**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **440**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **104**, davon **88** noch offen |
 
 ## Offene Fragen
@@ -568,3 +568,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-437](90-decision-log.md) | 2026-08-26 | agreed | `Identity` and *renderable* are two things, and D-091 merged them. The seam is named now; the signature moves when there is a second implementor. |
 | [D-438](90-decision-log.md) | 2026-08-26 | agreed | A setting is a renderable object too — and it is the second implementor the contract needed. |
 | [D-439](90-decision-log.md) | 2026-08-26 | agreed | Everything that is displayed implements `Renderable`. Measured: three of twelve do. |
+| [D-440](90-decision-log.md) | 2026-08-26 | agreed | A node is a *class*, a record is an *object*. `content()` being empty on a node is correct, not a gap — and that resolves the knot. |
