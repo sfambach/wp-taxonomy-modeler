@@ -3489,7 +3489,7 @@ decided rather than done because it is cheap.*
 
 **Raised** 2026-08-26, by the owner, immediately after asking for the eye in the tree row.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* open
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-attribute-and-setting.md) · *Status:* **closed 2026-08-26 — part 3 by [D-422](90-decision-log.md), parts 1 and 2 by [D-426](90-decision-log.md): a column on `nodes`**
 
 > *I am wondering whether hiding the node and hiding the output are two things, and whether the second
 > could not simply be covered by the **don't-render** 😉 — that one could be made available everywhere.
@@ -3553,3 +3553,61 @@ whose entire meaning is that the two purposes differ ([D-160](90-decision-log.md
 
 ⚠️ *`PR-4`: none of this is decided. What is **established** is the measurement — one key, two
 meanings, and the chain carries the node's meaning into the field's.*
+
+
+## OQ-102 — Should the live tables keep old versions with a delete flag, or should the journal become restorable?
+
+**Raised** 2026-08-26, by the owner, after asking for a single change number.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+
+> *To store all changes I think we need old versions that have a delete flag — so the same node with
+> different settings but only one is active, and the same for edges and settings. **Do we have our own
+> table for the settings? Do our problems come from not having our own table?** If we have several
+> versions we also need something to clean up old versions — that would be something for the clean-up
+> page in the admin module.*
+
+⚠️ **Two of the three questions have measured answers, and one of them is *no, that is not the cause*.**
+
+| His question | Measured |
+|---|---|
+| do settings have their own table? | **yes** — `taxmod_settings`, 1266 rows, its own primary key and foreign key. Eight own tables in total |
+| do the problems come from not having one? | **no.** Today's faults were *sparse versus materialised* ([D-423](90-decision-log.md)) and *a default invented in twelve readers* ([D-401](90-decision-log.md)). Neither is about where rows live |
+| is there a change number? | **the column exists and groups almost nothing** — see below |
+
+⚠️ **The change number is the part that is already half-built and worth finishing first, and the
+measurement is stark.** `changelog.change_group_id` exists, 2282 of 2322 entries carry one, across 1945
+groups — **and 0 of those 1945 groups contain more than one kind of owner.** 1609 hold a single entry.
+
+> **So a group id is being handed out per write, not per change.** *A node renamed, its edge reordered
+> and its setting written in one act get three groups. Exactly what he is asking for is what the column
+> was for, and it is not happening.* That is a fault with a decided mechanism, listed as row 45.
+
+⚠️ **On the big proposal: what he actually wants is *restorability*, and that is the axis the answer
+turns on.** There are two ways to get it and they are not equivalent.
+
+| | **version the live tables** (his proposal) | **make the journal restorable** |
+|---|---|---|
+| where history lives | in `nodes`, `relations`, `settings`, beside the current row | in `changelog`, where [D-061](90-decision-log.md) already puts it |
+| reading *how it was* | a query | a replay |
+| the unique key | **`UNIQUE (owner_id, setting_key, path)` has to go.** MySQL has no partial unique index, so *only one active version* stops being enforceable by the schema and becomes a rule in code — *which is the one job a unique key does* | untouched |
+| every read | 145 call sites gain an *is active* filter; forget one and a dead version is read as current | untouched |
+| duplicated fact | **history in two homes.** The changelog already records before and after | one home |
+| cleaning up | needed, and it touches **live** tables | needed, and it touches only an append-only journal — prunable by date |
+
+⚠️ **What is genuinely missing today, and it is his point restated precisely: the journal is lossy.**
+Measured on real rows — a setting entry reads `what = "setting range_min set"`, `before = NULL`,
+`after = "10"`. **The value is there; the `path` is not, and neither is the type.** So a replay can say
+*something set range_min to 10* and cannot say *for which place*. [D-061](90-decision-log.md) claims the
+changelog **is** the migration script, and against `path` ([D-413](90-decision-log.md)) that claim is
+currently false.
+
+⚠️ *My recommendation is the second column — **structure the journal, do not version the live tables***
+— because it closes the same gap without moving history into two homes or giving up the unique key. **But
+the first column buys something real** and should not be dismissed: *show me this node as it was* becomes
+a query instead of a replay, and that is the difference between a feature and a script.
+
+⚠️ **The clean-up page is right either way**, and it already has work waiting: 720 orphaned setting rows
+([row 28](97-implementation-plan.md#the-working-list)) and 8 rows holding no value at all
+([row 29](97-implementation-plan.md#the-working-list)). *Whichever way this is decided, that page is where
+it lands.*
