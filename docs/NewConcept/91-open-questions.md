@@ -3878,3 +3878,36 @@ written against*.
 ⚠️ *What makes this a question rather than a fix: it is a **stored column name**, so it needs a schema
 version, a `dbDelta` and every reader — `Record::$modelId`, `$modelVersion`, the repository and the
 record renderer. **Cheap today at 24 records and never cheaper again.***
+
+### The owner's better pair: `NodeRecord` and `EdgeRecord`
+
+> *`NodeRecord` and `EdgeRecord` would be better — or is the object of an edge called `edge` or
+> `connection`?*
+
+⚠️ **The pair is exact, and the parallel is already built — only named otherwise.** Measured:
+
+| model level | runtime level | called today |
+|---|---|---|
+| `Node` — a class | an instance of it | `Record` |
+| `Relation` — a field | one value of that field on that instance | `RecordValue` |
+
+*So `NodeRecord` / `EdgeRecord` renames nothing conceptual; it makes the existing symmetry legible. And
+it settles `model_id` at the same time: on a `NodeRecord` the column is simply `node_id`, because the
+class **is** the node — the imprecision `node_id` alone would have had disappears once the class name
+says which kind of record it is.*
+
+⚠️ **Two nuances to keep honest, both measured.** **One**, `RecordValue.path` is a **chain of edge ids**
+([D-045](90-decision-log.md)) and today every path is a single link — `edge_id` and `path` agree. *When a
+nested composed value arrives (S7) the path gets several links, and an «edge record» is then addressed by
+a **path**, not by one edge.* **Two**, the unique key is `(record_id, path, locale)`: the same occurrence
+in two languages is **two rows**, so an `EdgeRecord` is one *localised* value rather than one value.
+
+⚠️ **On `edge` versus `connection`: neither is the problem — the problem is that there are already
+three words.** The class is `Relation`, every docblock says **edge**, and
+[D-031](90-decision-log.md) settles that **attribute** is the same thing seen from the node that owns
+it. *Two of the three are decided and justified. Adding `connection` would make four.*
+
+⚠️ *My recommendation: **do not add a word — remove one.** `Relation` → `Edge`, because «edge» is what
+the prose already says everywhere and the class is the outlier. That is a large mechanical rename and it
+buys one thing only, which is that the code and the documents stop using two words for one class.
+`NodeRecord` / `EdgeRecord` is worth doing on its own and does not wait for it.*
