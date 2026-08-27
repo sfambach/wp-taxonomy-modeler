@@ -255,17 +255,24 @@ final class SettingsRenderer implements Renderer
                 default     => $control->available,
             };
 
-            // ⚠️ **An unavailable reset is left out, not greyed** — the owner, pointing at the panel:
-            // *delete still there* and then, asked what he wanted, ***exactly, reset not there when
-            // nothing was set***. The row already knew (`setHere`); what it did was draw the button
-            // `disabled` at `opacity:.35`, which is *there* to a person looking at it.
+            // ⚠️ **An act that cannot act is left out, not greyed.** The owner, pointing at the panel:
+            // *delete still there* — then, asked what he wanted, ***exactly, reset not there when
+            // nothing was set***. The row already knew; what it drew was `disabled` at `opacity:.35`,
+            // which is *there* to a person looking at it.
             //
-            // ⚠️ *Only this one act, and deliberately not the others. [R30](../../../docs/NewConcept/30-renderer.md)
-            // wants a **control** whose choice is impossible to be marked rather than hidden, because
-            // a missing field cannot be told from a forgotten one. **An act is not a control**: a
-            // button that could never do anything here is not information, it is furniture — and
-            // `empty` stays greyed precisely because its absence would say something.*
-            if ($control->name === self::RESET && ! $available) {
+            // ⚠️ **This started as the reset button only, and he found the counterexample within the
+            // hour**: *no, it **has** one, and that surprised me* — about the bin on a `bool`. **I had
+            // argued the opposite one paragraph earlier** — that `empty` should stay greyed *because
+            // its absence would say something* — and it does not: a switch has no third state, so
+            // `empty` is impossible there **categorically**, not merely for now. *A greyed button that
+            // can never become available is furniture, and the argument I made for `reset` was the
+            // argument against my own exception.*
+            //
+            // ⚠️ *It applies to **acts** and never to controls. [R30](../../../docs/NewConcept/30-renderer.md)
+            // wants a control whose choice is impossible **marked** rather than hidden, because a
+            // missing field cannot be told from a forgotten one. A button is not a field: nobody
+            // wonders what a button that is not there would have done.*
+            if (! $available) {
                 continue;
             }
 
