@@ -3800,3 +3800,44 @@ about 5 queries for 470 KB, which is a good trade; the cross-request version buy
 class of staleness. **And it is worth doing before [row 11](97-implementation-plan.md#the-working-list)'s
 auto-save**, because an interactive screen makes many small writes and each one currently pays for the
 same reads again.*
+
+
+## OQ-104 — Should a value be passed as an object rather than looked up by edge id?
+
+**Raised** 2026-08-26, by the owner, as a thought to keep rather than a decision to act on.
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open
+
+> *My problem is that if we do not work with objects, `IRenderable` does not work — then we have to work
+> with the id and can throw it away.*
+
+⚠️ **The worry does not hold in general, and it holds exactly once.** Measured: `render()` takes a
+`Renderable` and **no renderer is ever handed an id as its subject**; `Node`, `Relation` and
+`RenderedSetting` all fulfil the contract today. *So `Renderable` works, and it works without an identity
+map — that is [OQ-103](#oq-103--should-the-whole-model-be-read-once-into-an-identity-map-with-writes-going-back-per-object)'s
+question and a separate one.*
+
+⚠️ **Where he is right, and it is the last place rendering still works with ids.** `Node::content()`
+returns `''` because a node holds no value — **the value of a field travels beside the subject, in an
+array keyed by edge id** (`Rendering::fieldsFor($edges, $values, …)`). *So for a field, the thing being
+drawn is not the thing being passed. That is his earlier sentence exactly: «you currently pass an id, but
+really you should pass an object of what is to be rendered.»*
+
+### The thought, kept as stated
+
+**`TypedValue` implements `Renderable`.** It answers its own `content()`, and a field's value is **handed
+in as an object** instead of looked up in an id-keyed array. Then:
+
+| | |
+|---|---|
+| what disappears | the last id-keyed side channel in the descent |
+| what it enables | [D-439](90-decision-log.md)'s rule reaching a **value**, which is what S7's composite renderer needs — *a composed value has no model id at all ([D-232](90-decision-log.md)), so it can never be addressed this way* |
+| what it does **not** need | an identity map, a cache, or any change to how often the model is read |
+
+⚠️ *Not decided and not built: he asked for it to be held as a thought. What makes it worth holding is
+that it is small, self-contained, and the prerequisite S7 will otherwise discover the hard way — the
+composite renderer cannot key a composed value by an edge id, because there is no id to key it by.*
+
+⚠️ *And one caution for whoever builds it: `TypedValue` is a **value object** shared by settings,
+records and fields alike. Giving it a rendering contract is cheap; giving it a **renderer's opinion**
+would put presentation inside a domain object, which the prohibitions forbid outright.*
