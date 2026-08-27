@@ -62,19 +62,44 @@ final class SeededFrameworkNodes implements FrameworkNodes
     ) {
     }
 
+    /**
+     * @var array<string, Node> The seeded nodes this request has already read, by option name.
+     *
+     * ⚠️ **Measured, and it is the same fault {@see self::branchRoots()} was already fixed for.** One
+     * page of the modelling screen made **111 queries, and 83 of them read a single node by id — 70 of
+     * those from `rootOf()`.** *The comment beside `branchRoots()` had already written the lesson down —
+     * «asking again per node made this an N+1 through the back door» — and this method never got it.*
+     *
+     * ⚠️ *Safe because a framework node cannot move ([D-194](../../../docs/NewConcept/90-decision-log.md)):
+     * it is protected, so nothing can reparent or rename it mid-request. The one thing that **creates**
+     * them is {@see self::seed()}, which clears this.*
+     */
+    private array $seeded = [];
+
     public function root(): Node
     {
-        return $this->nodes->byId((int) get_option(self::ROOT_OPTION, 0));
+        return $this->remembered(self::ROOT_OPTION);
     }
 
     public function trash(): Node
     {
-        return $this->nodes->byId((int) get_option(self::TRASH_OPTION, 0));
+        return $this->remembered(self::TRASH_OPTION);
     }
 
     public function rootOf(Branch $branch): Node
     {
-        return $this->nodes->byId((int) get_option(self::BRANCH_OPTIONS[$branch->value], 0));
+        return $this->remembered(self::BRANCH_OPTIONS[$branch->value]);
+    }
+
+    /**
+     * The node an option points at — read once per request.
+     *
+     * ⚠️ *`byId()` and not `find()`: a missing framework node is a broken installation, and the
+     * exception says so where a `null` would travel on and surface as something else entirely.*
+     */
+    private function remembered(string $option): Node
+    {
+        return $this->seeded[$option] ??= $this->nodes->byId((int) get_option($option, 0));
     }
 
     /**
@@ -116,11 +141,16 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         $roots = [];
 
+        // ⚠️ **Through the same store, so a branch root is read once per request and not twice.**
+        // *Two caches over the same eight nodes is the duplicated-fact prohibition in miniature: after
+        // `rootOf()` was memoised, the page still read 14 single nodes where 8 exist, because this
+        // method kept its own copy. Measured, that was 6 wasted queries a page.*
         foreach (self::BRANCH_OPTIONS as $value => $option) {
-            $root = $this->nodes->find((int) get_option($option, 0));
+            $root = $this->seeded[$option] ?? $this->nodes->find((int) get_option($option, 0));
 
             if ($root !== null) {
-                $roots[$value] = $root;
+                $this->seeded[$option] = $root;
+                $roots[$value]         = $root;
             }
         }
 
@@ -165,6 +195,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
         // Seeding is the one thing that can make a cached branch root wrong — it is what creates
         // them. Everything afterwards may cache freely, because they cannot move (D-194).
         $this->branchRoots = null;
+        $this->seeded      = [];
 
         $root = $this->ensure(self::ROOT_OPTION, 'Root', null);
 
