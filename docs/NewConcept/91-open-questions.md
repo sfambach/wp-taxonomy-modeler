@@ -3886,10 +3886,24 @@ record renderer. **Cheap today at 24 records and never cheaper again.***
 
 ⚠️ **The pair is exact, and the parallel is already built — only named otherwise.** Measured:
 
-| model level | runtime level | called today |
+| class | its instance | the instance names |
 |---|---|---|
-| `Node` — a class | an instance of it | `Record` |
-| `Relation` — a field | one value of that field on that instance | `RecordValue` |
+| `Node` | `Record` | **its class** |
+| `Relation` | `RecordValue` | **its class *and* the object it lives in** |
+
+⚠️ **Correction, and the owner is right.** I had written *«`Relation` — a field | one value of that field»*
+and he challenged it: *why do you write «a value of this field»? A relation is a class too, so a record of
+it is an instance too — why do you make a difference here?* **Measured, there is no difference of that
+kind**: `Node` and `Relation` both extend `Identity` and both carry `id`, `version`, `name`. *A relation
+is a class in exactly the same sense, and «value» was a weaker word for the same thing —
+[C8](10-domain-core.md) already says an edge is **a first-class thing that can carry settings and labels
+of its own**.*
+
+⚠️ **The real difference is containment, and it is measurable.** `records.model_id` is `NOT NULL` and
+`record_values.record_id` is `NOT NULL` — so **an edge instance names two things**: its class *and* the
+object it belongs to; a node instance names one. *That follows from [D-031](90-decision-log.md): an
+attribute **is** an edge owned by the node, so its instances live inside that node's instances. Not «a
+value rather than an instance» — an instance with one parent more.*
 
 *So `NodeRecord` / `EdgeRecord` renames nothing conceptual; it makes the existing symmetry legible. And
 it settles `model_id` at the same time: on a `NodeRecord` the column is simply `node_id`, because the
