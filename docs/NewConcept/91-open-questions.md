@@ -3841,3 +3841,40 @@ composite renderer cannot key a composed value by an edge id, because there is n
 ⚠️ *And one caution for whoever builds it: `TypedValue` is a **value object** shared by settings,
 records and fields alike. Giving it a rendering contract is cheap; giving it a **renderer's opinion**
 would put presentation inside a domain object, which the prohibitions forbid outright.*
+
+
+## OQ-105 — `records.model_id` points at a node. Should it not say so?
+
+**Raised** 2026-08-26, by the owner, immediately after [D-440](90-decision-log.md) separated class from
+object.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+
+> *Then why is it not called `node_id`?*
+
+⚠️ **`CD-9`: *names say what the thing is; rename when the word lies.* Measured, it lies.**
+
+| | |
+|---|---|
+| what `model_id` points at | a **node** — always, 24 of 24, none dangling |
+| where those nodes live | **21 of 24 records point into `Compositions`**, 3 into `Model` |
+| and `Model` is also | **the name of a branch** in the tree, beside `Compositions`, `Primitives`, `Trash`, `Label roles` |
+
+⚠️ **So one word carries two meanings in one system, and the common case contradicts the reading.**
+*«Model» in `model_id` means **the class this is an instance of**; «Model» in the tree means **one
+particular branch**. A reader who knows the tree will read `model_id` as «points into `Model`» — and be
+wrong four times out of five.*
+
+⚠️ **`node_id` would be true and less precise.** *Every node is a node; only some are classes you can
+instantiate — `Integer` is a node and nothing is ever an instance of it
+([`Branch::holdsData()`](10-domain-core.md) is what decides). So `node_id` trades one imprecision for
+another: it stops lying and stops saying anything.*
+
+⚠️ **My recommendation: `class_id`, because [D-440](90-decision-log.md) just made that the vocabulary** —
+*a node is a class, a record is an object.* Then `model_version` becomes `class_version`, which is what
+[D-060](90-decision-log.md) already means when it says *every record states which model shape it was
+written against*.
+
+⚠️ *What makes this a question rather than a fix: it is a **stored column name**, so it needs a schema
+version, a `dbDelta` and every reader — `Record::$modelId`, `$modelVersion`, the repository and the
+record renderer. **Cheap today at 24 records and never cheaper again.***
