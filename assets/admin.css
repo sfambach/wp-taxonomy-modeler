@@ -135,6 +135,40 @@
     background: #2271b1;
 }
 
+/* ⚠️ **The switch had no reaction to being clicked, and that is why the owner said none of the three
+   works.** `is-on` is written by the **server** at render time, so the knob only ever moved after a
+   save and a reload: a click flipped the hidden checkbox correctly and **nothing on screen changed.**
+   *Measured through `saveSettings()` the three switches always took — which is exactly why the
+   measurement missed it. I tested the save and he was testing the click.*
+
+   ⚠️ **`is-on` stays and is not redundant**: a `Purpose::Display` rendering draws the track with **no
+   checkbox at all** ({@see ToggleRenderer::track()} with `$live = false`), so the class is the only
+   state it has. The two agree at load, because the server sets `checked` as well — and from the first
+   click onwards these rules are what a person sees. */
+.taxmod-toggle-input:checked ~ .taxmod-toggle-track {
+    background: #2271b1;
+}
+
+.taxmod-toggle-input:checked ~ .taxmod-toggle-track .taxmod-toggle-knob {
+    left: 1.35em;
+}
+
+/* ⚠️ *And the reverse, because `is-on` is still on the element after a click that turned it **off**:
+   without this the knob would slide back and the rail would stay blue.* */
+.taxmod-toggle-input:not(:checked) ~ .taxmod-toggle-track.is-on {
+    background: #c3c4c7;
+}
+
+.taxmod-toggle-input:not(:checked) ~ .taxmod-toggle-track.is-on .taxmod-toggle-knob {
+    left: .15em;
+}
+
+/* ⚠️ *Keyboard focus has to be visible on the thing a person sees, for the same reason the dialog
+   trigger needed it: the input itself is `opacity: 0` and has no box to ring.* */
+.taxmod-toggle-input:focus-visible ~ .taxmod-toggle-track {
+    box-shadow: 0 0 0 2px #007cba;
+}
+
 .taxmod-toggle-track.is-fixed {
     opacity: .6;
 }
