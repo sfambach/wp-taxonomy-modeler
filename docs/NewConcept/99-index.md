@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **433**, davon **26** ersetzt oder teilweise überholt |
+| Entscheidungen | **435**, davon **27** ersetzt oder teilweise überholt |
 | Offene Fragen | **102**, davon **86** noch offen |
 
 ## Offene Fragen
@@ -505,7 +505,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-376](90-decision-log.md) | 2026-08-25 | agreed | An attribute is a drawn subject like any other: the `attribute` renderer, with the name editable where it is declared. `1..1` reads `1`. And the mult… |
 | [D-377](90-decision-log.md) | 2026-08-25 | agreed | `persistent` — an attribute may declare that its value is |
 | [D-378](90-decision-log.md) | 2026-08-25 | agreed | A prefix's exponent is an attribute of `Prefixes`, declared non-persistent — and the reason it beats a reserved key is the owner's own question. |
-| [D-379](90-decision-log.md) | 2026-08-25 | agreed | Multiplicity is never nothing: unset means `0..1`. |
+| [D-379](90-decision-log.md) | 2026-08-25 | ⚠️ D-434 — der Standard ist `1` | Multiplicity is never nothing: unset means `0..1`. |
 | [D-380](90-decision-log.md) | 2026-08-25 | agreed | R28–R32 is implemented, and it is one renderer: the chooser. Its test is outcomes, never rows. |
 | [D-381](90-decision-log.md) | 2026-08-25 | agreed | One settings panel, for a node and for an attribute alike — and it closed a hole rather than only tidying. |
 | [D-382](90-decision-log.md) | 2026-08-25 | agreed | The icon is a mark of a node, not one of its settings — it moves to the head of the Display band. Its |
@@ -560,3 +560,5 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-431](90-decision-log.md) | 2026-08-26 | agreed | A setting is the system's. No screen creates one, so nothing has to delete one — and `reset` therefore only ever pulls. Closes row 48. |
 | [D-432](90-decision-log.md) | 2026-08-26 | agreed | `Identity` becomes real: everything renderable is one, and `render()` takes it instead of a union. Implements D-091, which said so and was built othe… |
 | [D-433](90-decision-log.md) | 2026-08-26 | agreed | Choosing several registered names in order gets its own renderer — a `` cannot express either half. |
+| [D-434](90-decision-log.md) | 2026-08-26 | agreed | The standard multiplicity becomes `1`. Supersedes the value in D-379, which keeps everything else it says. |
+| [D-435](90-decision-log.md) | 2026-08-26 | agreed | An attribute is reordered with the same two buttons a node has — and `position` turns out to belong to the |

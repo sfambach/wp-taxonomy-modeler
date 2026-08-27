@@ -46,25 +46,33 @@ enum Multiplicity: string
     case OneToMany = '1..*';
 
     /**
-     * What an attribute means when nobody has said — **`0..1`**, on the owner's word.
+     * What an attribute means when nobody has said — **`1`**, on the owner's word
+     * ([D-434](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ **There is no such thing as an attribute without a multiplicity**, so *unset* had to mean
      * something and it was meaning nothing: the chooser offered a blank option and the screen showed
-     * an em dash. The owner: *multiplicity may not be empty, the default is `0..1`.*
+     * an em dash ([D-379](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ **Not seeded onto every edge, because settings are sparse**
      * ([D-015](../../../docs/NewConcept/90-decision-log.md)). An absent row **means** this rather
-     * than being a gap to fill — writing `0..1` onto every attribute would put a fact in a thousand
-     * places and make *nobody has narrowed this* indistinguishable from *somebody chose the widest
-     * option*.
+     * than being a gap to fill — writing it onto every attribute would put a fact in a thousand
+     * places and make *nobody has narrowed this* indistinguishable from *somebody chose it*.
      *
-     * ⚠️ *`0..1` and not `1`: the widest of the two single-valued forms. A default that **required** a
-     * value would make every new attribute mandatory the moment it is created, which is a rule
-     * nobody asked for arriving through a default.*
+     * ⚠️ **It was `0..1` and the reason against `1` was his own**, kept here because a reversed
+     * decision is worth reading twice: *«a default that **required** a value would make every new
+     * attribute mandatory the moment it is created, which is a rule nobody asked for arriving through
+     * a default.»* **Now it is asked for** — and by
+     * [D-405](../../../docs/NewConcept/90-decision-log.md) that is exactly what it does, in his words:
+     * *a floor of one **is** mandatoriness.*
+     *
+     * ⚠️ *Measured when it changed: **23 of 32 attribute edges** carried no row of their own, so their
+     * meaning flipped from optional to required in one edit. Nothing enforces it yet
+     * ([row 31](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) — the rule lands
+     * before the enforcement, which is the right order and only safe if the rule is known first.*
      */
     public static function standard(): self
     {
-        return self::ZeroToOne;
+        return self::ExactlyOne;
     }
 
     /**

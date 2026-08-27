@@ -1036,6 +1036,25 @@ final class NodesScreen
         $actions = [];
         $submits = [];
 
+        // ⚠️ **Which of its own attributes is first and which is last** — the owner: *the attribute row
+        // should have up and down buttons like the nodes in the tree.* *A button that cannot act is left
+        // out ([D-429](../../../docs/NewConcept/90-decision-log.md)), so the ends of the list have to be
+        // known before the row is drawn — exactly as the tree already passes `isFirst` and `isLast`.*
+        //
+        // ⚠️ *Only its **own**: an inherited attribute is ordered where it was declared
+        // ([D-376](../../../docs/NewConcept/90-decision-log.md)), and reordering it from a descendant
+        // would reorder it for everybody.*
+        $ownOrder = [];
+
+        foreach ($edges as $edge) {
+            if ($edge->fromId === $selected->id) {
+                $ownOrder[] = $edge->id;
+            }
+        }
+
+        $firstOwn = $ownOrder[0] ?? 0;
+        $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
+
         foreach ($edges as $edge) {
             $own = $edge->fromId === $selected->id;
 
@@ -1056,6 +1075,34 @@ final class NodesScreen
                     '💾',
                     __('Save this attribute — its name and how often it may occur', 'taxmod'),
                     $own
+                ),
+                // ⚠️ **Up and down, the same two the tree row has** — the owner: *the attribute row
+                // should have up and down buttons like the nodes in the tree; `position` is part of node
+                // and also part of edge.* **Measured: it is part of the edge only** — a node's order is
+                // its *inheritance* edge's position, so this is the same column reached through a
+                // different sibling list, not a fact waiting for a shared base class.
+                //
+                // ⚠️ *And it is the missing half of [row 30](../../../docs/NewConcept/97-implementation-plan.md#the-working-list):
+                // [D-407](../../../docs/NewConcept/90-decision-log.md) made `position` the single home
+                // for order and removed the `order` setting — **and nobody built the gesture**, so until
+                // now the order of attributes was the order they happened to be created in.*
+                new Control(
+                    'do',
+                    'attribute_up',
+                    __('Up', 'taxmod'),
+                    __('Move this attribute up among the ones declared here', 'taxmod'),
+                    $own && $edge->id !== $firstOwn,
+                    false,
+                    'arrow-up-alt2'
+                ),
+                new Control(
+                    'do',
+                    'attribute_down',
+                    __('Down', 'taxmod'),
+                    __('Move this attribute down among the ones declared here', 'taxmod'),
+                    $own && $edge->id !== $lastOwn,
+                    false,
+                    'arrow-down-alt2'
                 ),
                 // ⚠️ **Duplicate, and only for an own attribute** — the owner: *duplicate for the
                 // attribute is missing too.* An inherited one belongs to the ancestor that declared
@@ -2470,6 +2517,10 @@ final class NodesScreen
                 'duplicate'      => $stay = $this->editor->duplicate($id)->id,
                 'rename'         => $this->editor->rename($id, $name),
                 'move'           => $this->editor->move($id, $target),
+                // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
+                // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
+                'attribute_up'   => $this->editor->moveAttribute($id, $edge, -1),
+                'attribute_down' => $this->editor->moveAttribute($id, $edge, 1),
                 'up'             => $this->editor->moveUp($id),
                 'down'           => $this->editor->moveDown($id),
                 'restore'        => $this->editor->restore($id),

@@ -627,6 +627,52 @@ final class ModelEditor
         $this->swapWithNeighbour($id, 1);
     }
 
+    /**
+     * Move an attribute among the attributes its owner declares.
+     *
+     * ⚠️ **The owner, 2026-08-26: *the attribute row should have up and down buttons like the nodes in
+     * the tree.*** And his reason for expecting it to be shared: *«`position` is part of node and also
+     * part of edge, that is why I had moved it into the `Identity` class — which we do not have.»*
+     *
+     * ⚠️ **Measured, and the answer is better than the expectation: `position` lives *only* on the
+     * edge.** `Node` carries `id`, `version`, `name`, `path` and no position at all — **a node's order
+     * among its siblings is its *inheritance edge's* position**, which is
+     * [D-014](../../../docs/NewConcept/90-decision-log.md) working as designed: *the tree **is** the
+     * edges.* So this is not a fact waiting for a shared base class; **it is the same column, reached
+     * through a different sibling list**, and {@see self::swapWithNeighbour()} was already doing it for
+     * nodes.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   N["a node"] --> I["its inheritance edge · position"]
+     *   A["an attribute"] --> E["its own edge · position"]
+     *   I --> S["one swap"]
+     *   E --> S
+     * ```
+     *
+     * ⚠️ *Only among the attributes **declared here** ([D-376](../../../docs/NewConcept/90-decision-log.md)):
+     * an inherited one belongs to an ancestor, and reordering it from a descendant would reorder it
+     * for everybody.*
+     */
+    public function moveAttribute(int $ownerId, int $edgeId, int $direction): void
+    {
+        $own = [];
+
+        foreach ($this->relations->attributeEdgesOf([$ownerId]) as $edge) {
+            if ($edge->fromId === $ownerId) {
+                $own[] = $edge;
+            }
+        }
+
+        foreach ($own as $edge) {
+            if ($edge->id === $edgeId) {
+                $this->swapAmong($edge, $own, $direction);
+
+                return;
+            }
+        }
+    }
+
 
     /** The node with this id, or null. Used by surfaces that may be handed a stale link. */
     /**
@@ -803,6 +849,22 @@ final class ModelEditor
         $edge     = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
         $siblings = $this->relations->childEdgesOf($edge->fromId);
 
+        $this->swapAmong($edge, $siblings, $direction, $id, 'node');
+    }
+
+    /**
+     * Swap one edge with its neighbour in a given list — the whole of reordering, for both callers.
+     *
+     * ⚠️ **Extracted rather than copied** ([D-435](../../../docs/NewConcept/90-decision-log.md)): a
+     * node reorders its **inheritance** edge among its parent's children, an attribute reorders **its
+     * own** edge among the attributes its owner declares. *Two sibling lists, one column, one swap —
+     * and a second copy of the equal-positions trick below is exactly how the two would drift.*
+     *
+     * @param list<Relation> $siblings In the order the list is drawn.
+     */
+    private function swapAmong(Relation $edge, array $siblings, int $direction, ?int $subject = null, string $kind = 'relation'): void
+    {
+
         $here = null;
 
         foreach ($siblings as $index => $sibling) {
@@ -833,7 +895,7 @@ final class ModelEditor
         $this->relations->save($edge->movedTo($yours), $edge->version);
         $this->relations->save($other->movedTo($mine), $other->version);
 
-        $this->changelog->record($id, 'node', 'reordered', (string) $here, (string) $there);
+        $this->changelog->record($subject ?? $edge->id, $kind, 'reordered', (string) $here, (string) $there);
     }
 
     /**
