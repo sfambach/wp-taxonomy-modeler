@@ -83,7 +83,8 @@ $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $labels);
+$registry  = ShippedRenderers::registry();
+$rendering = new Rendering($nodes, $framework, $settings, $registry, $labels);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes)->id;
 
@@ -130,7 +131,24 @@ foreach ($rendering->fieldsFor($every, [], Purpose::Edit, 'taxmod_value') as $fi
 }
 
 check('seven fields drawn', count($fields) === 7, (string) count($fields));
-check('an int gets the plain field', $fields[$count->id]->rendererName === FieldRenderer::NAME, $fields[$count->id]->rendererName);
+// ⚠️ **Umgeschrieben 2026-08-26 auf das, was diese Pruefung wirklich meint — Zeile 23.**
+// Sie behauptete *an int gets the plain field* und wurde rot, als der Eigentuemer am `Integer`-Knoten
+// `renderer = spinner` einstellte. **Das war kein Fehler im Code, sondern die Pruefung, die sich an
+// bearbeitbare Daten lehnt** — derselbe Mangel, den `unitvalue-check` mit `persistent` hatte.
+// *Was hier zaehlt, sind zwei Tatsachen, und keine davon haengt an seiner Wahl: der **Standard** fuer
+// `int` ist das schlichte Feld ([R33c](../../docs/NewConcept/30-renderer.md)), und gezeichnet wird,
+// **was die Kette sagt** — was sein `spinner` gerade beweist.*
+check(
+    'the type default for int is the plain field',
+    $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name() === FieldRenderer::NAME,
+    $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name()
+);
+$chainSays = ($settings->resolveForUseSites([$count])[$count->id][SettingKey::Renderer->value] ?? null)?->value->text;
+check(
+    'and an int is drawn by whatever its chain says',
+    $fields[$count->id]->rendererName === ($chainSays ?? FieldRenderer::NAME),
+    $fields[$count->id]->rendererName . ' vs ' . ($chainSays ?? '(nichts gesetzt)')
+);
 check('a bool gets the sliding switch', $fields[$stock->id]->rendererName === ToggleRenderer::NAME, $fields[$stock->id]->rendererName);
 check('a datetime gets the date renderer', $fields[$when->id]->rendererName === DateTimeRenderer::NAME, $fields[$when->id]->rendererName);
 check('and none of them is the fallback', count(array_filter($fields, static fn ($f): bool => $f->hasNoRenderer())) === 0);
@@ -148,10 +166,19 @@ check(
 
 // ⚠️ R28: a control offers only real choices. The browser carries the **same** rule the core
 // applies, so a field cannot accept what the save will refuse (D-356).
+// ⚠️ **Umgeschrieben 2026-08-26 auf die Regel statt auf eine Schreibweise — Zeile 23.** Sie verlangte
+// wortwoertlich `pattern="…"` und wurde rot, als der Eigentuemer `renderer = spinner` einstellte: ein
+// `type="number"` traegt dieselbe Regel als `min`/`max`/`step`. *Der Spinner war richtig, die Zusicherung
+// zu eng — sie pruefte die Vokabel eines Renderers, wo [D-356](../../docs/NewConcept/90-decision-log.md)
+// eine Tatsache verlangt: **das Steuerelement traegt die Regel, die der Kern anwendet.** Welche Form es
+// dafuer hat, ist die Sache des Steuerelements.*
+$intMarkup = $fields[$count->id]->result->markup;
+
 check(
     'an int field does not offer letters it will then refuse',
-    str_contains($fields[$count->id]->result->markup, 'pattern="' . SimpleType::Int->pattern() . '"'),
-    $fields[$count->id]->result->markup
+    str_contains($intMarkup, 'pattern="' . SimpleType::Int->pattern() . '"')
+        || (str_contains($intMarkup, 'type="number"') && str_contains($intMarkup, 'step=')),
+    $intMarkup
 );
 check(
     'and a text field is given no pattern it has no business having',
