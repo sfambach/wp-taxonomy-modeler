@@ -23,6 +23,8 @@ here — it is not deleted.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [OQ-017](#oq-017--which-attributes-does-every-node-have) · *Status:* open · *re-framed 2026-08-22 at the request of the owner*
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-060](90-decision-log.md), [D-080](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 The first wording of this question was too vague to act on. Concretely, it is **four small
 decisions**, and only the last is difficult.
 
@@ -86,6 +88,8 @@ still blocks the core.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-012](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [V1](00-vision-and-scope.md) says *nodes and edges*; [V3](00-vision-and-scope.md) says the
 tree is inheritance **only**. So non-inheritance edges exist. Open:
 
@@ -135,6 +139,8 @@ are the same *shape* of question, and the criterion above decides both — but i
 differently, and here it does.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-036](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [`TreeMeremaid.md`](TreeMeremaid.md) draws `Node <-- Relation : type`, i.e. the type is
 itself a node — types are **data**, editable by the user. [`I18nMeremaid.md`](I18nMeremaid.md)
@@ -240,6 +246,8 @@ registry itself a renderer, or only a lookup?
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-091](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 The PHP sketch in [`RendererMeremaid.md`](RendererMeremaid.md) declares `render()` twice with
 different signatures. **PHP has no method overloading**, so that cannot be built as written.
 Needs one decision: distinct method names (`renderSingle` / `renderCollection`), or one method
@@ -262,6 +270,8 @@ contains both answers.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-077](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [V8](00-vision-and-scope.md) says essentially every node has one renderer, one converter and
 one-or-more validators. [`TreeMeremaid.md`](TreeMeremaid.md) puts exactly these on
 `Configuration`. Open:
@@ -281,6 +291,8 @@ one-or-more validators. [`TreeMeremaid.md`](TreeMeremaid.md) puts exactly these 
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-081](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [`TreeMeremaid.md`](TreeMeremaid.md) draws `WPClassHead "1" --o "1..*" ChangeLogItem` —
 cardinality `1..*` means **no object may exist without at least one changelog item**. If that
 is intended (creation is always logged), say so explicitly; if `0..*` was meant, fix it. Also
@@ -294,6 +306,8 @@ open: `ChangeLogItem.undo()` — is undo in scope at all, and what is undoable?
 > kept at a distance. What is borrowed is written down instead; how, is [OQ-071](#oq-071--how-is-borrowed-wordpress-marked).
 
 *Blocks:* [00 Vision and scope](00-vision-and-scope.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-169](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The legacy round targeted a WP plugin serving host plugins such as `wp-electronic-parts`, and
 the seed base class is named `WPClassHead`. The 2026-08-22 statement does not mention
@@ -309,6 +323,8 @@ WordPress-independent with WordPress only as a persistence and UI host.
 > relation row plus a few settings rows.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-031](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [C1/C2](10-domain-core.md) describe an attribute as having a name, a type, and a kind of
 connection to another node. [V1](00-vision-and-scope.md) describes the model as nodes and
@@ -336,6 +352,8 @@ it deserves to be re-argued rather than assumed.
 
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-025](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [C2](10-domain-core.md) lists *type* and *kind of connection* as two separate things. So the
 type is presumably not the edge kind. Candidates: a data type (`int`, `string`, …) — which
@@ -398,6 +416,8 @@ obvious candidate — confirm or replace it.
 
 
 *Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-021](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [R1](30-renderer.md) says display happens **only** through a renderer, and [V8](00-vision-and-scope.md)
 puts a renderer on essentially every node. That describes renderers as part of the model.
@@ -471,6 +491,8 @@ nothing in the statements so far demands it.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open, deliberately deferred
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-083](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-007](90-decision-log.md) puts the **model** — nodes, settings, relations — into tables owned
 by the plugin. It says nothing about the **content** that a model describes: the actual
 instances a user creates once a model exists.
@@ -492,6 +514,8 @@ whether *model* and *instance* are even different kinds of thing.
 > overridden at a use site, exactly like `min`.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *Raised by* [C3–C5](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-084](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 Two different kinds of thing currently share the word:
 
@@ -524,6 +548,8 @@ consumed by the tool, yet only one of them describes the domain. Candidate answe
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [C4](10-domain-core.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-082](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 C4 puts the attributes common to all nodes on the node itself — i.e. they become **columns**.
 That makes the list a schema commitment: adding one later is a migration, not an edit.
 
@@ -544,6 +570,8 @@ Note the overlap with [OQ-001](#oq-001--one-base-class-or-two-wpclasshead-vs-ide
 
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [C2 vs C5](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-026](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 Two statements describe the same concept in two storage locations:
 
@@ -577,6 +605,8 @@ question seen from two sides. They should be answered together, in one sitting.
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *Raised by* [R5, R7](30-renderer.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-100](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 R7 descends: node → attributes → target nodes → their renderers → their attributes. Nothing in
 the statement bounds that walk. Two ways it does not terminate:
 
@@ -597,6 +627,8 @@ renderer emits when it stops (nothing, a placeholder, a link).
 > a schema shape rather than added later.
 
 *Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *Raised by* [R7](30-renderer.md) vs `CD-7`
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-014](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The descent in R7 is the exact shape `CD-7` forbids: if each step loads its target node, its
 settings and its edges from the database, rendering one composed node costs one query per node
@@ -668,6 +700,8 @@ matter beyond naming.
 > `Relation`, with its special rules carried as invariants rather than as a second class.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *asked by the owner, 2026-08-22*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-012](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The owner is unsure whether it is better to define edges generically and give inheritance extra
 rules, or to take inheritance out as its own construct.
@@ -742,6 +776,8 @@ changing a type later would leave existing attributes on the old definition. Unl
 > readable, and correct.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C15](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-015](90-decision-log.md), [D-033](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [C15](10-domain-core.md) says attribute settings must reach into all children of the target
 node. Read literally, an attribute would carry a full copy of the configuration of everything
@@ -821,6 +857,8 @@ affected overrides can be found and shown at all.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-033](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-156](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 Promotion turns `[#88].max = 99` on edge `#42` into a real attribute at that level. Mechanically
 that is a new relation plus its settings, built from what the override already held. Nothing new
 is required, but several things are unstated:
@@ -847,6 +885,8 @@ recovered, with the author naming it. Confirm before assuming.
 > markup and metadata while one generic JS component supplies the behaviour.
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [R25–R27](30-renderer.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-107](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [R1](30-renderer.md) says all display goes through a renderer, and
 [R18](30-renderer.md) already made the tree view one. A chooser displays a tree — the same tree,
@@ -897,6 +937,8 @@ question about whether tool behaviour and domain content share a mechanism.
 > tedious. Structure is never inlined as a second storage form.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by the owner, 2026-08-22*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-017](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The example: a parts list is made of positions. Strictly, a position is its own node, referenced
 from the parts list by an attribute with multiplicity `1..*`. But a position is used nowhere
@@ -976,6 +1018,8 @@ is [OQ-049](#oq-049--can-a-label-be-frozen-at-the-moment-of-use).
 
 *Blocks:* [40 I18n](40-i18n.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-151](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [I4](40-i18n.md) names four roles — long, form, table, symbol — plus a locale-neutral icon
 ([I5](40-i18n.md)). Is that list closed, or may a model author add a role?
 
@@ -995,6 +1039,8 @@ worth something on its own.
 
 *Blocks:* [40 I18n](40-i18n.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-152](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [`I18nMeremaid.md`](I18nMeremaid.md) annotates each text role with a length: long `10`, short
 `5`, table `10`, form label `15`, symbol `3`. Whether those are guidance for whoever writes the
 label, hard limits a validator rejects, or hints a renderer uses to truncate, is not stated —
@@ -1010,6 +1056,8 @@ bite in Finnish.
 > `labels`. The offered correction stays code.
 
 *Blocks:* [40 I18n](40-i18n.md), [30 Renderer](30-renderer.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-158](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 A shipped validator message is a software string with placeholders filled from the node
 settings. If a model author may replace it with their own wording, that message becomes content
@@ -1062,6 +1110,8 @@ inheritance.
 
 *Blocks:* [40 I18n](40-i18n.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-020](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-022](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-020](90-decision-log.md) gives every node a locale-neutral base name that is always present.
 Two things follow that were not stated:
 
@@ -1090,6 +1140,8 @@ name is now a confirmed member of the fixed set, so it becomes a column.
 
 *Blocks:* [30 Renderer](30-renderer.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [R22](30-renderer.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-028](90-decision-log.md), [D-052](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [R21–R23](30-renderer.md) give every node a preview driven by sample data, so that switching a
 renderer or changing a setting shows its effect immediately.
 
@@ -1115,6 +1167,8 @@ Option 3 is worth examining first precisely because it needs nothing, and it deg
 > twice, once editable and once not — no mode the contract has to know about, and no exception to R1.
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [R20 vs R21](30-renderer.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-096](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [R21](30-renderer.md) says the preview is *assembled from* the chosen renderer, which reads as a
 caller. [R20](30-renderer.md) says the settings page around it is itself a page renderer. So the
@@ -1169,6 +1223,8 @@ The first is the smallest and should be tried first.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-026](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-164](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [C11](10-domain-core.md) gave nodes and relations one id space, which is what makes `owner` a
 single real foreign key. [D-026](90-decision-log.md) adds a second layer. Does an instance draw
 from the same space?
@@ -1192,6 +1248,8 @@ model tables small. Confirm before it is assumed, and settle it together with
 > **Closed 2026-08-22 → [D-039](90-decision-log.md):** ein Einheitswert, zwei Zweige derselben Form.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C40](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-039](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [C40](10-domain-core.md) names a two-part split: base units and currencies.
 
@@ -1219,6 +1277,8 @@ question.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-116](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 The standard tree has `Konstanten › Präfixe` with pico, nano, Micro, Milli, Centi, Kilo, Mega —
 **nodes**.
 
@@ -1237,6 +1297,8 @@ Note the tree also encodes *whether a family takes a prefix at all* by inheritan
 > **Closed 2026-08-22 → [D-041](90-decision-log.md):** der Typ ist ein Ast, polymorph.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · **large**
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-041](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [D-025](90-decision-log.md) says the type of an attribute is the node the relation points at. The
 unit example strains that reading.
@@ -1266,6 +1328,8 @@ whether the allowed set is the branch's whole subtree or only its direct childre
 
 *Blocks:* [10 Domain core](10-domain-core.md), [95 Roadmap](95-roadmap.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-119](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 Metres, grams and euros are the same everywhere. Shipping them saves every user the work and
 gives renderers something to rely on. Letting the author build them keeps the engine free of
 domain knowledge and matches [V7](00-vision-and-scope.md).
@@ -1281,6 +1345,8 @@ happens on plugin update.
 > **Closed 2026-08-22 → [D-043](90-decision-log.md):** Eigenschaft eines Attributs, keine Kantenart.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · **gap, not legacy debris**
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-043](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [V6](00-vision-and-scope.md) named *special nodes for data types and for calculations* on the
 first day. Data types have been worked out since; **calculations have not been touched.**
@@ -1311,6 +1377,8 @@ calculations — so the two were always meant to work together.
 
 *Blocks:* [60 Calculation](60-calculation.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-045](90-decision-log.md), [D-140](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 Siblings only, descendants across composition, across aggregation to a shared node, upward to an
 ancestor? Each step outward makes the invalidation graph larger and the cycle risk higher. The
 parts-list case ([K3](60-calculation.md)) needs at least *own siblings* and *aggregate over a
@@ -1326,6 +1394,8 @@ composed collection*; nothing has asked for more yet.
 
 *Blocks:* [60 Calculation](60-calculation.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-072](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 On write, on read, or cached with invalidation. The same three options as
 [OQ-024](#oq-024--how-are-resolved-settings-computed-without-melting-down), and the answer should
 probably match it — one caching story for the whole system rather than two.
@@ -1339,6 +1409,8 @@ probably match it — one caching story for the whole system rather than two.
 > a second way to author the same structure. Hard cases become registered strategies.
 
 *Blocks:* [60 Calculation](60-calculation.md) · *Status:* open
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-130](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 A picked operation over a picked field (which is what the old `Definition › Aggregate` branch
 did — *op chosen per field slot*) is safe, limited and needs no parser. A free expression is
@@ -1358,6 +1430,8 @@ one.
 > (aggregation versus composition only), and only for nodes whose instances are records at all.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C55](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-048](90-decision-log.md), [D-132](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [D-042](90-decision-log.md) says type nodes and model nodes are the same construct in different
 roles. Nothing structural separates them — so how does the interface know where to offer *enter
@@ -1385,6 +1459,8 @@ it changes meaning as soon as someone reuses a node.
 > regenerating it later giving different wording is expected rather than wrong.
 
 *Blocks:* [40 I18n](40-i18n.md) · *Status:* open · *raised by* [D-049](90-decision-log.md) · *re-written 2026-08-22, the first version was too abstract*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-053](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 ### The concrete case
 
@@ -1435,6 +1511,8 @@ definition changes, do existing things follow it, or keep what was true?*
 
 *Blocks:* [70 Migration](70-migration.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [M5](70-migration.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-058](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 The owner accepted the readability cost of id references and noted the model structure had already
 broken database-level readability anyway. That is true, and it has a consequence worth stating:
 **the tool becomes critical infrastructure.** Deactivate the plugin and the data are inaccessible;
@@ -1464,6 +1542,8 @@ support and debugging. One join, and it turns unreadable rows into readable ones
 
 *Blocks:* [70 Migration](70-migration.md) · *Status:* open · *raised by* [M8](70-migration.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-060](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [M8](70-migration.md) resolves a repeatedly changed model **stage by stage**. Two readings, and
 they need different storage:
 
@@ -1487,6 +1567,8 @@ versions — which nothing has bounded yet.
 
 *Blocks:* [70 Migration](70-migration.md) · *Status:* open
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-062](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [V9](00-vision-and-scope.md) already established the pattern that a **validator may offer a
 correction**, not merely report a fault. The resolver is the same idea at model scale, so it
 should offer moves rather than only listing problems.
@@ -1505,6 +1587,8 @@ orphaned override is promoted ([D-033](90-decision-log.md)) — the same shape o
 > resolved.
 
 *Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [R29–R31](30-renderer.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-157](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 An attribute with multiplicity `1` or `1..*` whose permitted set is **empty** demands an answer
 that cannot be given. The natural way to arrive there is an allow-list
@@ -1526,6 +1610,8 @@ needs the check to run at configuration time, where [D-050](90-decision-log.md) 
 > from the two.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *needs a yes or no*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-064](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [D-051](90-decision-log.md) says a **prefix normalises, a unit does not** — so an amount stays in
 the currency it was entered in. A phrase in the owner statement of 2026-08-22 can be read as
@@ -1552,6 +1638,8 @@ the amount, or the number means nothing later.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-064](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-069](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-064](90-decision-log.md) freezes a rate into a record. It does not say where that number comes
 from, and the answer decides whether this concept acquires a dependency on the outside world.
 
@@ -1575,6 +1663,8 @@ whoever supplies the number, the record keeps it.
 > flat per-model projection for the reporting case — a cache, never a second place where values live.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-070](90-decision-log.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-165](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 A single condition is an indexed range scan on `(edge_id, value)` and is fast. Combining
 conditions — over a thousand euro **and** containing part X — means intersecting two such lookups.
@@ -1634,6 +1724,8 @@ migration it caused, and what happens when the thing being undone has since been
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *found while writing* [D-086](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-087](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 `Part` has the attribute `lieferant` as edge `#10`, multiplicity `0..1`. `Passiv` inherits from
 `Part` and should be able to **narrow** it to `1` — every passive component must name a
 supplier.
@@ -1669,6 +1761,8 @@ first case where an override owner is a node rather than a use site.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-087](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-088](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 `Passiv` narrows `lieferant` to exactly `1` — every passive component must name a supplier. A use
 site of `Passiv` then sets it back to `0..1`. **That breaks the guarantee the subtype just made**,
 and the walk as decided would let it, because the use site comes last and last wins.
@@ -1700,6 +1794,8 @@ accepted and reported as a model conflict the way a breaking model change is
 > locking turned out to be a real question regardless.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [C85](10-domain-core.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-089](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The owner named *changes are locked* as one of the two purposes of the base class. Two different
 things go by that name:
@@ -1765,6 +1861,8 @@ the normal case and blocking it would make the product unusable.
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-091](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-159](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [R38–R41](30-renderer.md) describe the walk over the **model**: node → renderer → own properties →
 edges → target node → and round again. That is complete for drawing a *structure*.
 
@@ -1799,6 +1897,8 @@ two, and the preview stops being special.
 
 *Blocks:* [60 Calculation](60-calculation.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-104](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-147](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-104](90-decision-log.md) forbids a truncated calculation from producing a number. So a computed
 attribute has a state that is **not a value**: *not computable* — because a cycle was hit, an input
 is missing, or a dependency is itself not computable.
@@ -1829,6 +1929,8 @@ answer that nobody will notice.
 > enforced rather than advisory — and that is a different setting from the identifying set.
 
 *Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-111](90-decision-log.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-112](90-decision-log.md), [D-114](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 *Before creating something new, check whether it already exists* needs something to check
 **against**, and nothing in the concept provides it.
@@ -1869,6 +1971,8 @@ duplicates nobody would have created anyway.
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md), [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-112](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-167](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 A wildcard on both sides — `LIKE '%x%'` — **cannot use an ordinary index**. On a few hundred parts
 nobody notices; on tens of thousands it is a table scan **on every keystroke**, in a field the user
 is typing into.
@@ -1899,6 +2003,8 @@ never a second source of truth.
 
 *Blocks:* [70 Migration](70-migration.md) · *Status:* open, low urgency · *raised by* [C97](10-domain-core.md), [D-121](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-174](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-121](90-decision-log.md) removed the *template* flag's protective job. A different job may remain:
 **knowing which items came from the seed**, so that a plugin update offers only what is genuinely
 new rather than re-offering everything.
@@ -1924,6 +2030,8 @@ Worth deciding when the update flow is actually built, not now.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [70 Migration](70-migration.md) · *Status:* open · *raised by* [D-124](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-155](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 Moving a node between branches changes its **inheritance**, so it may gain attributes it did not
 have and lose attributes it did. Records written before the move hold values for the lost ones.
 
@@ -1946,6 +2054,8 @@ move is exactly such a change.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-123](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-154](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 A record with a `unique` article number ([D-114](90-decision-log.md)) is parked
 ([D-123](90-decision-log.md)). Does its number still block a new record?
 
@@ -1967,6 +2077,8 @@ taken* with no way to see by what.
 > derived from the branch the target sits in, so the wrong kind is never on offer.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised while binding the `Kompositionen` node*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-161](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 `Kompositionen` declares **only composition edges may point at me** ([D-135](90-decision-log.md)).
 The symmetric declaration — **only aggregation edges may point at me** — is not obviously useless.
@@ -2033,6 +2145,8 @@ which is exactly [D-140](90-decision-log.md)'s escape hatch and would hang natur
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [D-159](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-203](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 The owner raised it while accepting [D-159](90-decision-log.md):
 
 > *It is not unreasonable to have both right now, model and data — but later, with larger lists, it
@@ -2063,6 +2177,8 @@ twelve call sites made their own assumption.
 ## OQ-071 — How is borrowed WordPress marked?
 
 *Blocks:* [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-169](90-decision-log.md)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-170](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 [D-169](90-decision-log.md) settles *that* the borrowing is recorded. **How** is open. The owner
 suggested a **`wp` prefix or suffix** on the code concerned.
@@ -2128,6 +2244,8 @@ saying the same thing twice.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [D-183](90-decision-log.md)
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-185](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-183](90-decision-log.md) settles that `Model` and `Kompositionen` hold data and the rest does
 not. The rest is called `Definition` in the legacy tree and the owner wants a better word: *for that
 we probably need another term — those have no data, they are only a means to an end.*
@@ -2159,6 +2277,8 @@ of explanation, why nothing they enter will ever be stored there.
 > inventing; the entry names the event that reopens it.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open, deferred by the owner · *raised 2026-08-23*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-204](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The owner: *what is the difference between an enum I define at modelling time and one I want to
 fill at runtime, in the front end or Gutenberg? I am not currently sure there is even a use case
@@ -2202,6 +2322,8 @@ Six worlds were modelled against the concept before locking the domain core
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §1
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-305](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 *There are boards in different versions, which then have different parts lists* — the owner, twice,
 setting it aside both times. The model version of [D-060](90-decision-log.md) is a **stamp** saying
 which shape a record was written against; it is not something a person edits and it says nothing
@@ -2219,6 +2341,8 @@ nothing else — not that they share an identity, and not which one a reference 
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-309](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 *Four portions instead of two* multiplies every quantity in a recipe. It is not a stored value and
 not a computed attribute, because the input comes from **the person reading**, at that moment.
 
@@ -2234,6 +2358,8 @@ computed*.
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §2
 
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-306](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
+
 [D-274](90-decision-log.md) puts the factor on the **unit** — right for inch and metre. A tablespoon
 of flour is 10 g, of sugar 12 g, of honey 21 g: **the factor belongs to the pairing** of unit and
 substance, and today that conversion cannot be expressed at all.
@@ -2246,6 +2372,8 @@ work this way.
 > **Closed 2026-08-23 → [D-307](90-decision-log.md).**
 
 *Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §4
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-307](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 A relationship carrying its own values — supplier **plus** customer number **plus** since-when —
 is modelled as a **composition that aggregates**. Everything needed exists.
@@ -2261,6 +2389,8 @@ Not a gap in the model. A gap in what the model **says about itself**.
 > **Closed 2026-08-23 → [D-308](90-decision-log.md).**
 
 *Blocks:* [00 Vision and scope](00-vision-and-scope.md) · *Status:* open · *raised by* [96](96-scenario-check.md) §5
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-308](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 A hundred thousand sensor readings become several hundred thousand rows carrying two useful numbers
 each. The projection ([D-228](90-decision-log.md)) speeds reading and changes nothing about writing
@@ -2410,6 +2540,8 @@ five-hundred-row write, which is exactly the loop `CD-7` forbids — and the rea
 is one statement today.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* **open** · *raised 2026-08-24 by the owner, from watching the numbers*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-349](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 ---
 
@@ -2741,6 +2873,8 @@ a plausible sighting of exactly that.*
 ## OQ-091 — Is the tree row a renderer of its own, and which role does a surface read labels in?
 
 *Blocks:* [30 Renderer](30-renderer.md) · *Status:* **open** · *raised 2026-08-25, on trying to build the tree row*
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-367](90-decision-log.md), [D-369](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 **Two questions, and they surfaced together because the same step needed both.**
 
@@ -3346,6 +3480,8 @@ the rest.*
 does not work.
 
 *Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [D-378](90-decision-log.md), [OQ-098](#oq-098--is-a-value-that-can-only-live-in-one-place-a-field-rather-than-a-setting)
+
+⚠️ **Eine Entscheidung nennt diese Frage als beantwortet: [D-414](90-decision-log.md).** *Der Status steht noch auf `open`, weil das Log oft nur einen Teil schliesst — «settles the hard half of», «answers the shape of». **Nachzulesen ist, ob ganz oder teilweise**; bis dahin ist die Frage hier gefuehrt und der Verweis ist die Warnung, sie nicht fuer unberuehrt zu halten.*
 
 The owner asked for `factor` and `offset` to become attributes, the way the prefix exponent did
 ([D-378](90-decision-log.md)) — *yes, I want that.* **Measuring the pattern first showed that the
