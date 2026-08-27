@@ -7,6 +7,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
@@ -251,8 +252,15 @@ final class CompositionScaffold
             }
         }
 
+        // ⚠️ **Matched through {@see SimpleType::fromNodeName()}, not by the literal string**
+        // ([D-428](../../../docs/NewConcept/90-decision-log.md)). The seeded types are now called
+        // `Integer` and `Decimal` rather than `int` and `decimal` — *and resolving both spellings to
+        // the same case means every caller that still says `'decimal'` keeps working, instead of a
+        // rename on a screen turning into a sweep of string literals across scaffolds and checks.*
+        $wanted = SimpleType::fromNodeName($typeName);
+
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
-            if ($child->name === $typeName) {
+            if ($wanted !== null && SimpleType::fromNodeName($child->name) === $wanted) {
                 return $this->editor->addAttribute($owner->id, $child->id, $name);
             }
         }

@@ -9,6 +9,7 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\Labels;
@@ -270,8 +271,13 @@ final class UnitScaffold
 
         $type = null;
 
+        // ⚠️ **Matched through {@see SimpleType::fromNodeName()}** ([D-428](../../../docs/NewConcept/90-decision-log.md)):
+        // the seeded types are called `Integer` and `Decimal` now, and resolving both spellings keeps
+        // every caller that still says `'decimal'` working.
+        $wanted = SimpleType::fromNodeName($typeName);
+
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
-            if ($child->name === $typeName) {
+            if ($wanted !== null && SimpleType::fromNodeName($child->name) === $wanted) {
                 $type = $child;
             }
         }

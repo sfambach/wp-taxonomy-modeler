@@ -122,10 +122,70 @@ enum SimpleType: string
         };
     }
 
+    /**
+     * The name the **node** carries in the tree — spelled out, not abbreviated.
+     *
+     * ⚠️ **The owner: *the data type `int` is shown as `int`, `decimal` as `decimal` — unify that,
+     * for `int` = `Integer`.*** He is pointing at an inconsistency that `CD-9` already forbids in
+     * code and that the tree had inherited: *no abbreviations that need a lookup.* `decimal` reads as
+     * a word, `int` does not, and both sit in the same list.
+     *
+     * ⚠️ **This is a **name**, not a label, and [D-369](../../../docs/NewConcept/90-decision-log.md)
+     * is why.** *The modelling tree shows a node's own name … «there I would take the node name».* So
+     * making the tree read `Integer` means the node **is** called `Integer` — a label would not show
+     * there at all.
+     *
+     * ⚠️ **And that is why `value` stays what it is.** The node's name was doing two jobs: what a
+     * person reads **and** how {@see self::fromNodeName()} recognises the type. *Renaming the enum's
+     * values instead would have meant a sweep of some seventy string literals across scaffolds,
+     * checks and tests — for a change that is about a word on a screen.* **The identifier stays
+     * short and machine-shaped; the name becomes the word.**
+     *
+     * ⚠️ *Two choices in here are mine and are flagged rather than smuggled: `Decimal` rather than
+     * {@see self::humanName()}'s **double** — he asked for consistent spelling, not a different word
+     * — and `Boolean` rather than **yes or no**, which is a phrase for a heading and not a name a
+     * person types.*
+     */
+    public function nodeName(): string
+    {
+        return match ($this) {
+            self::Int      => 'Integer',
+            self::Decimal  => 'Decimal',
+            self::Text     => 'Text',
+            self::Char     => 'Character',
+            self::Bool     => 'Boolean',
+            self::Email    => 'Email',
+            self::DateTime => 'Date and time',
+            self::Color    => 'Color',
+            self::Version  => 'Version',
+            self::NodeRef  => 'Node reference',
+            self::UserRef  => 'User reference',
+        };
+    }
+
+    /**
+     * The type a node of this name stands for — by its **name**, which is the only link there is.
+     *
+     * ⚠️ **Both spellings answer, and that is not indecision.** A tree that has not been migrated yet
+     * still holds a node called `int`, and a renderer asking *what type is this* must not go blank in
+     * between. *The old value is accepted for as long as an installation can still carry it; the new
+     * name is what gets written.*
+     */
+    public static function fromNodeName(string $name): ?self
+    {
+        foreach (self::cases() as $type) {
+            if ($name === $type->nodeName() || $name === $type->value) {
+                return $type;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<string> The node names, in the order they are seeded. */
     public static function names(): array
     {
-        return array_map(static fn (self $type): string => $type->value, self::cases());
+        return array_map(static fn (self $type): string => $type->nodeName(), self::cases());
     }
 
     /**

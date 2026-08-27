@@ -36,7 +36,7 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     public function __construct(
         private readonly ModelEditor $editor,
@@ -79,18 +79,41 @@ final class BaseScaffold
         $taken = [];
 
         foreach ($this->editor->childrenOf($dataTypes->id) as $child) {
-            $taken[$child->name] = true;
+            $taken[$child->name] = $child;
         }
 
         $created = [];
 
+        // ⚠️ **The short machine name becomes the spelled-out one** ([D-428](../../../docs/NewConcept/90-decision-log.md)).
+        // The owner: *the data type `int` is shown as `int`, `decimal` as `decimal` — unify that, for
+        // `int` = `Integer`.* **A rename and not a label**, because
+        // [D-369](../../../docs/NewConcept/90-decision-log.md) says the modelling tree shows a node's
+        // own name — *«there I would take the node name»* — so a label would not appear there at all.
+        //
+        // ⚠️ *Renaming rather than re-seeding, because these nodes are pointed at: every attribute in
+        // the model targets one of them, and creating `Integer` beside `int` would leave every
+        // existing field attached to the old one.*
         foreach (SimpleType::cases() as $type) {
-            if (isset($taken[$type->value])) {
+            $old = $taken[$type->value] ?? null;
+
+            if ($old === null || isset($taken[$type->nodeName()])) {
                 continue;
             }
 
-            $this->editor->createNode($type->value, $dataTypes->id);
-            $created[] = $type->value;
+            $this->editor->rename($old->id, $type->nodeName());
+
+            $taken[$type->nodeName()] = $old;
+
+            unset($taken[$type->value]);
+        }
+
+        foreach (SimpleType::cases() as $type) {
+            if (isset($taken[$type->nodeName()])) {
+                continue;
+            }
+
+            $this->editor->createNode($type->nodeName(), $dataTypes->id);
+            $created[] = $type->nodeName();
         }
 
         return $created;

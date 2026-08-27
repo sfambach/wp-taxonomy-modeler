@@ -33,6 +33,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -144,10 +145,17 @@ foreach (['strasse', 'hausnummer', 'plz', 'ort', 'land'] as $member) {
 // ⚠️ **The modelling point of the example, asserted rather than commented.** `plz` as an integer
 // would drop the leading zero of `01067` and refuse `12a` outright — so this asserts the *type*, not
 // a rendering.
+// ⚠️ *Compared through {@see SimpleType::fromNodeName()} rather than against the literal `'text'`
+// ([D-428](../../docs/NewConcept/90-decision-log.md)): the node is called `Text` now, and what this
+// assertion is about is the **type**, never its spelling.*
 foreach (['plz', 'hausnummer'] as $identifier) {
     $target = isset($addressMembers[$identifier]) ? $nodes->byId($addressMembers[$identifier]->toId) : null;
 
-    check("{$identifier} is text, not a number", $target?->name === 'text', $target?->name ?? '—');
+    check(
+        "{$identifier} is text, not a number",
+        $target !== null && SimpleType::fromNodeName($target->name) === SimpleType::Text,
+        $target?->name ?? '—'
+    );
 }
 
 $drawnAddress = [];

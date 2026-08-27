@@ -89,10 +89,14 @@ $dataTypes = $framework->rootOf(Branch::DataTypes)->id;
 
 // ⚠️ The seeded simple types are found by name rather than made again — they are content that
 // ships once (D-119), and a second `int` beside the real one would be a different node.
+// ⚠️ **Keyed by the type's identifier, not by the node's name** ([D-428](../../docs/NewConcept/90-decision-log.md)):
+// the nodes are called `Integer` and `Decimal` now, while the enum value stayed `int` and `decimal`
+// because that is what recognises a type. *So every `$seeded['int']` below keeps meaning what it meant,
+// and the key says which of the two words it is.*
 $seeded = [];
 foreach ($nodes->childrenOf($framework->rootOf(Branch::DataTypes)) as $child) {
-    $type = SimpleType::tryFrom($child->name);
-    if ($type !== null) { $seeded[$child->name] = $child; }
+    $type = SimpleType::fromNodeName($child->name);
+    if ($type !== null) { $seeded[$type->value] = $child; }
 }
 
 $part = $editor->createNode('__p7 Part', $framework->rootOf(Branch::Model)->id);

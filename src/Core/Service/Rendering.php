@@ -1460,14 +1460,14 @@ final class Rendering
             return null;
         }
 
-        $own = SimpleType::tryFrom($target->name);
+        $own = SimpleType::fromNodeName($target->name);
 
         if ($own !== null) {
             return $own;
         }
 
         foreach (array_reverse($target->ancestorIds()) as $id) {
-            $found = isset($ancestors[$id]) ? SimpleType::tryFrom($ancestors[$id]->name) : null;
+            $found = isset($ancestors[$id]) ? SimpleType::fromNodeName($ancestors[$id]->name) : null;
 
             if ($found !== null) {
                 return $found;

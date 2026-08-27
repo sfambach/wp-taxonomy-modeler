@@ -78,8 +78,16 @@ $scaffold->import();
 
 $present = [];
 
+// ⚠️ **Keyed by the type's **identifier**, not by the node's name** ([D-428](../../docs/NewConcept/90-decision-log.md)).
+// The seeded nodes are called `Integer` and `Text` now; the enum value stayed `int` and `text` because
+// it is what recognises a type. *Keying by identifier is what keeps every `$present['int']` below
+// meaning what it always meant — and it says out loud which of the two words is the key.*
 foreach ($editor->childrenOf($dataTypes->id) as $child) {
-    $present[$child->name] = $child;
+    $type = SimpleType::fromNodeName($child->name);
+
+    if ($type !== null) {
+        $present[$type->value] = $child;
+    }
 }
 
 foreach (SimpleType::cases() as $type) {
@@ -119,8 +127,28 @@ if ($colour !== null) {
 }
 
 echo "\n== 5. The check cleans up after itself ==\n";
-$edges->purgeEdgesTouching($thing->id);
-$nodes->purgeSubtree($nodes->byId($thing->id));
+
+// ⚠️ **By name and not only by this run's id** — the same self-healing `package7-check` already has,
+// and it is here because two runs of mine died before this line on 2026-08-26 and left a `__sc thing`
+// each. *A cleanup that only knows the ids of the run it is in reports the **previous** run's litter
+// as its own failure, which is the least useful thing a check can say.*
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "\\_\\_sc%" ORDER BY LENGTH(path) DESC') as $stale) {
+    $node = $nodes->find((int) $stale);
+
+    if ($node !== null) {
+        $edges->purgeEdgesTouching($node->id);
+        $nodes->purgeSubtree($node);
+    }
+}
+
+// ⚠️ *The loop above already takes this run's node — it matches the same pattern. Looking it up
+// again unguarded is how the first version of this cleanup threw `NodeNotFound` on its own success.*
+$still = $nodes->find($thing->id);
+
+if ($still !== null) {
+    $edges->purgeEdgesTouching($still->id);
+    $nodes->purgeSubtree($still);
+}
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__sc%"');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__sc%"');
 $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__sc%"');
