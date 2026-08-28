@@ -538,6 +538,9 @@ final class Rendering
      * @param  list<LabelSlot>       $slots
      * @param  list<Control>         $acts
      * @param  array<string, Section> $sections The locale picker, keyed `locale`.
+     * @param  string                $formId   The page's form, when the panel is to be saved **with
+     *                                         the page** rather than by a button of its own — then it
+     *                                         draws no form and its fields name this one.
      */
     public function labelsPanelFor(
         Renderable $subject,
@@ -548,6 +551,7 @@ final class Rendering
         Purpose $purpose = Purpose::Edit,
         string $locale = '',
         Level $level = Level::Admin,
+        string $formId = '',
     ): RenderResult {
         return $this->renderers->byName(LabelsRenderer::NAME)->render(
             $subject,
@@ -560,7 +564,8 @@ final class Rendering
                     actions: $acts,
                     submits: $submits,
                     rows: $slots,
-                    sections: $sections
+                    sections: $sections,
+                    formId: $formId
                 )
             )
         );

@@ -44,6 +44,31 @@ function lead(string $text, int $keep = 150): string
 // ── Decisions ──
 require __DIR__ . '/lib/supersessions.php';
 
+/**
+ * Die Kategorien einer Entscheidung — aus der Dokumentspalte, die es schon gibt.
+ *
+ * @return list<string>
+ */
+function taxmodCategories(string $cell): array
+{
+    preg_match_all('/\[[^\]]+\]\((\d{2})-([a-z0-9-]+)\.md\)/', $cell, $m, PREG_SET_ORDER);
+
+    $out = [];
+
+    foreach ($m as $one) {
+        // ⚠️ *Nur die Konzeptdokumente 00–70 sind Sachgebiete. `90` bis `99` sind das Log, die
+        // Fragen, die Arbeitsliste und der Index selbst — sie sagen nichts darüber, **worum** es
+        // geht, und als Kategorie würden sie die Liste verwässern.*
+        if ((int) $one[1] > 70) {
+            continue;
+        }
+
+        $out[$one[1] . '-' . $one[2]] = true;
+    }
+
+    return array_keys($out);
+}
+
 // ⚠️ **Dieselbe Stelle wie `supersession-check.php`** (`lib/supersessions.php`). *Vorher hatte
 // jede ihre eigene Erkennung: die Prüfung an den Verben, dieser Index an zwei deutschen
 // Wendungen. **Am 2026-08-28 war die Prüfung grün und hier stand dieselbe Entscheidung als
@@ -66,6 +91,13 @@ foreach (file($root . '90-decision-log.md') as $line) {
         'lead'   => lead($cells[2] ?? ''),
         'status' => str_contains($status, 'superseded') ? 'superseded' : trim($status, '`'),
         'over'   => implode(', ', $overtakenBy[$m[1]] ?? []),
+        // ⚠️ **Die Kategorie stand schon da und war nur nicht lesbar.** *Der Eigentümer fragte,
+        // ob wir Kategorien einführen sollten, «damit man filtern kann — für Dich halt auch für
+        // die Suche». **Gemessen: 485 von 486 Zeilen nennen ihr Dokument, und das ist die
+        // Kategorie** — Domänenkern 216, Renderer 192, Interaktion 98, Persistenz 90. Mehrere pro
+        // Entscheidung gibt es auch schon: 231 Zeilen nennen zwei, 25 nennen drei. *Eine zweite
+        // Reihe einzuführen wäre dieselbe Tatsache zweimal und 486 Zeilen Handarbeit.*
+        'cats'   => taxmodCategories($cells[count($cells) - 2] ?? ''),
     ];
 }
 
@@ -121,8 +153,52 @@ foreach ($questions as $id => $q) {
     );
 }
 
+// ── Nach Sachgebiet, damit man filtern kann ──────────────────────────────────
+//
+// ⚠️ **Der Eigentümer fragte nach Kategorien — «damit man filtern kann, für Dich halt auch für die
+// Suche» — und die Antwort war, dass es sie schon gibt.** *Gemessen: **485 von 486** Zeilen nennen
+// ihr Dokument, und das **ist** das Sachgebiet. Auch mehrere pro Entscheidung, was er ausdrücklich
+// wollte: 231 Zeilen nennen zwei, 25 nennen drei. **Eine zweite Reihe einzuführen wäre dieselbe
+// Tatsache zweimal und 486 Zeilen Handarbeit.** Was fehlte, war nur: sichtbar machen.*
+$byCategory = [];
+
+foreach ($rows as $r) {
+    foreach ($r['cats'] as $cat) {
+        $byCategory[$cat][] = $r['id'];
+    }
+}
+
+uasort($byCategory, static fn (array $a, array $b): int => count($b) <=> count($a));
+
+$md .= "\n## Entscheidungen nach Sachgebiet\n\n"
+    . "⚠️ *Kein neues Merkmal — das ist die Dokumentspalte jeder Log-Zeile, nur lesbar gemacht.\n"
+    . "Eine Entscheidung steht in mehreren Gebieten, wenn sie mehrere betrifft.*\n\n"
+    . "| Sachgebiet | Entscheidungen | davon überholt |\n|---|---|---|\n";
+
+// ⚠️ **Nur die Zahl, nicht die Ids.** *Die erste Fassung listete alle 216 Ids des Domänenkerns in eine
+// Zelle — der Index wuchs von 81 auf 116 KB und die Übersicht war unlesbarer als das, was sie
+// übersichtlich machen sollte. **Wer die Zeilen eines Gebiets sucht, filtert die Tabelle darunter nach
+// dem Namen des Gebiets**; dafür steht er dort in jeder Zeile.*
+foreach ($byCategory as $cat => $ids) {
+    $ueberholt = 0;
+
+    foreach ($rows as $r) {
+        if (in_array($r['id'], $ids, true) && $r['over'] !== '') {
+            ++$ueberholt;
+        }
+    }
+
+    $md .= sprintf(
+        "| [%s](%s.md) | **%d** | %s |\n",
+        $cat,
+        $cat,
+        count($ids),
+        $ueberholt === 0 ? '—' : (string) $ueberholt
+    );
+}
+
 $md .= "\n## Entscheidungen\n\n⚠️ *Eine überholte Entscheidung steht hier mit ihrem Nachfolger, weil sie\nsich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche Antworten kostete.*\n\n"
-    . "| Nr. | Datum | Stand | Worum es geht |\n|---|---|---|---|\n";
+    . "| Nr. | Datum | Stand | Sachgebiet | Worum es geht |\n|---|---|---|---|---|\n";
 
 foreach ($rows as $r) {
     // ⚠️ *«Ersetzt durch» und nicht bloss «ersetzt»: wer die Zeile liest, will sofort wissen, wo
@@ -131,7 +207,14 @@ foreach ($rows as $r) {
         ? '⚠️ ersetzt durch ' . $r['over']
         : ($r['status'] === 'superseded' ? '⚠️ ersetzt' : $r['status']);
 
-    $md .= sprintf("| [%s](90-decision-log.md) | %s | %s | %s |\n", $r['id'], $r['date'], $stand, $r['lead']);
+    $md .= sprintf(
+        "| [%s](90-decision-log.md) | %s | %s | %s | %s |\n",
+        $r['id'],
+        $r['date'],
+        $stand,
+        $r['cats'] === [] ? '⚠️ **keins**' : implode(', ', $r['cats']),
+        $r['lead']
+    );
 }
 
 if (file_put_contents($out, $md) === false) {

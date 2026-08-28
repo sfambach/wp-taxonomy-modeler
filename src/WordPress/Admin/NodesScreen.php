@@ -1616,10 +1616,25 @@ final class NodesScreen
      * line because they hold words; `help` gets its own row because it holds a sentence *that doubles
      * as the tooltip and ends the chain* ([D-209](../../../docs/NewConcept/90-decision-log.md)); and a
      * blank line marks the seam, which is the one distinction this panel makes.
+     *
+     * ⚠️ **The texts go with the page now**, on the owner's word — *labels should be saved with the
+     * page too.* So the panel names the settings form ({@see SettingsRenderer::formFor()}) instead of
+     * drawing one, the same `form="…"` seam the page-head save button already uses
+     * ([D-392](../../../docs/NewConcept/90-decision-log.md)) — **pointing the other way**: there a
+     * button stands outside its form, here five fields do.
+     *
+     * ⚠️ **Only `label_locale` rides along, because the rest is already in that form.** *`action`,
+     * `id`, `edge` and the nonce are the settings panel's hidden fields; sending them a second time
+     * would put two `id` fields in one submission, where the last one silently wins.*
+     *
+     * ⚠️ *And the locale **must** ride along: it is chosen by a `GET` and lives in the URL, which a
+     * `POST` to `admin-post.php` cannot see. Without the hidden field every page save would write the
+     * right text against the neutral locale.*
      */
     private function labelsPanel(Node $selected): string
     {
-        $locale = $this->localeFromRequest();
+        $locale   = $this->localeFromRequest();
+        $pageForm = SettingsRenderer::formFor($selected);
         $stored = [];
 
         foreach ($this->labels->storedFor($selected->id) as $label) {
@@ -1659,19 +1674,24 @@ final class NodesScreen
         return $html . $this->rendering->labelsPanelFor(
             $selected,
             $slots,
-            [Control::saving('do', LabelsRenderer::WRITE, __('Save', 'taxmod'), __('Write every text for this locale', 'taxmod'))],
-            new Submission(
-                admin_url('admin-post.php'),
-                [
-                    'action'        => self::ACTION,
-                    'id'            => (string) $selected->id,
-                    'label_locale'  => $locale,
-                    '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
-                ]
-            ),
+            // ⚠️ **The panel's own button stays and now saves the page**, because a field belongs to
+            // exactly one form: with the texts in the page's form, a button submitting anything else
+            // would submit an empty one. *Whether a second button in the same place as the head's is
+            // still wanted is the owner's to say — it is kept rather than quietly removed.*
+            [Control::saving(
+                'do',
+                LabelsRenderer::WRITE,
+                __('Save', 'taxmod'),
+                __('Save this page — every setting and every text for this locale', 'taxmod'),
+                true,
+                $pageForm
+            )],
+            new Submission(admin_url('admin-post.php'), ['label_locale' => $locale]),
             ['locale' => new Section(__('Locale', 'taxmod'), $this->localePicker($locale, $selected->id))],
             Purpose::Edit,
-            $locale
+            $locale,
+            Level::Admin,
+            $pageForm
         )->markup;
     }
 
@@ -2269,6 +2289,20 @@ final class NodesScreen
      *
      * ⚠️ *Written only where something changed, so a save on an untouched panel is not five writes and
      * five changelog entries — the same reasoning as the attribute row's.*
+     *
+     * ⚠️ **Since the texts travel with the page save, «unchanged» carries the whole weight of that
+     * sentence.** *A text field always submits, empty or not — the same shape of trap the settings
+     * panel had with a switch that always sends `0` or `1`
+     * ([D-392](../../../docs/NewConcept/90-decision-log.md)), where every untouched switch counted as
+     * changed and wrote `persistent=false` onto every node somebody opened. Here the comparison is
+     * against what is **stored in this locale** and not against what the chain answers, which is the
+     * one right yardstick: the chain's answer is the field's **placeholder**, so treating it as the
+     * value would write the fallback into a row on the first save of any page.*
+     *
+     * ⚠️ **An empty field where a row exists **removes** it, and that is D-384 rather than a
+     * refinement.** *It was written as `put(…, '')`, which stores a row that says nothing — and the
+     * fallback reader only survives it because it happens to skip empty texts. Measured before the
+     * change: 46 label rows, **0** of them empty, so nothing existing depends on the old shape.*
      */
     private function saveLabels(int $nodeId, string $locale): void
     {
@@ -2297,7 +2331,15 @@ final class NodesScreen
                 continue;
             }
 
-            $this->labels->put(new Label($nodeId, '', $roleId, Label::BASE_NUMBER, $locale, $text));
+            $label = new Label($nodeId, '', $roleId, Label::BASE_NUMBER, $locale, $text);
+
+            if ($text === '') {
+                $this->labels->forget($label);
+
+                continue;
+            }
+
+            $this->labels->put($label);
         }
     }
 
@@ -2388,6 +2430,31 @@ final class NodesScreen
         }
 
         return sanitize_text_field(wp_unslash((string) array_key_first($raw)));
+    }
+
+    /**
+     * Everything the node page holds — its name, its settings and its texts — in one act.
+     *
+     * The owner, 2026-08-28: *labels should be saved with the page too.*
+     *
+     * ⚠️ **One method because it is one act, not because the two writes are alike.** The bracket that
+     * gives a change its number is around the whole POST ([D-470](../../../docs/NewConcept/90-decision-log.md)),
+     * so a rename, a setting and a text saved together already share one `change_group_id` — *what
+     * this method adds is that they are saved together at all.*
+     *
+     * ⚠️ **The order is settings first and it matters for exactly one thing:** a bounding setting may
+     * only be narrowed and the core refuses ([D-312](../../../docs/NewConcept/90-decision-log.md)), so
+     * a refusal stops the act before the texts are written. *That is the interim `saveSettings()`
+     * already documents — failing loudly on a partial batch — and putting the labels after it keeps
+     * one rule for the whole page instead of two.*
+     *
+     * ⚠️ *`$locale` comes from a hidden field and not from the URL: the page is saved by a `POST` to
+     * `admin-post.php`, which never sees the `taxmod_locale` the panel was drawn with.*
+     */
+    private function saveNodePage(int $nodeId, int $edgeId, string $name, string $locale): void
+    {
+        $this->saveSettings($nodeId, $edgeId, $name);
+        $this->saveLabels($nodeId, $locale);
     }
 
     /**
@@ -2756,7 +2823,13 @@ final class NodesScreen
                 // and a write meant for one attribute must not land on the type it points at.
                 // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
                 // panel is one form, so there is no single key to write — every changed value is.
-                'put_setting'    => $this->saveSettings($id, $edge, $name),
+                // ⚠️ **And the labels come with it**, on the owner's word — *labels should be saved
+                // with the page too.* **Two names for one act**, because there are two buttons for it:
+                // the head's diskette and the labels panel's own. *`put_labels` used to write only the
+                // texts; now that the texts sit in the page's form, a labels-only act would have read
+                // every setting the person had just edited and thrown it away.*
+                'put_setting',
+                'put_labels'     => $this->saveNodePage($id, $edge, $name, $labelLocale),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
@@ -2778,9 +2851,6 @@ final class NodesScreen
                     SettingKey::Multiplicity->value,
                     TypedValue::ofText($settingValue)
                 ),
-                // ⚠️ **One act for the whole panel** (D-384): the owner's rule for saving, and the
-                // only shape that answers *what does Enter do* with five fields on screen.
-                'put_labels'     => $this->saveLabels($id, $labelLocale),
                 'add_record'     => $this->data->create($id),
                 'save_record'    => $this->saveRecord($id),
                 default          => throw new \InvalidArgumentException('Unknown action.'),

@@ -23,7 +23,7 @@ use Taxmod\Core\Renderer\Surroundings;
  */
 final class LabelsRendererTest extends TestCase
 {
-    private function drawn(array $slots, Purpose $purpose = Purpose::Edit): string
+    private function drawn(array $slots, Purpose $purpose = Purpose::Edit, string $formId = ''): string
     {
         return ShippedRenderers::registry()->byName(LabelsRenderer::NAME)->render(
             Node::create(7, 'Condensator', null),
@@ -31,10 +31,11 @@ final class LabelsRendererTest extends TestCase
                 purpose: $purpose,
                 value: TypedValue::nothing(),
                 surroundings: new Surroundings(
-                    actions: [new Control('do', LabelsRenderer::WRITE, 'save')],
+                    actions: [new Control('do', LabelsRenderer::WRITE, 'save', form: $formId)],
                     submits: new Submission('/post.php', ['id' => '7']),
                     rows: $slots,
-                    sections: ['locale' => new Section('Locale', '<select name="l"></select>')]
+                    sections: ['locale' => new Section('Locale', '<select name="l"></select>')],
+                    formId: $formId
                 )
             )
         )->markup;
@@ -108,6 +109,43 @@ final class LabelsRendererTest extends TestCase
             '#<form method="post"[^>]*>.*taxmod_label\[form\].*taxmod_label\[help\].*put_labels.*</form>#s',
             $markup
         );
+    }
+
+    #[Test]
+    public function handed_a_page_form_it_draws_none_and_every_field_names_that_one(): void
+    {
+        // ⚠️ The owner, 2026-08-28: *labels should be saved with the page too.* **A field belongs to
+        // exactly one form**, so joining the page's is a move and not an addition: the panel gives up
+        // its own `<form>` and every field — the long one and the hidden ones included — names the
+        // page's instead (D-392's `form="…"` seam, pointing at fields rather than at a button).
+        $markup = $this->drawn(
+            [$this->slot('form'), $this->slot('help', true)],
+            Purpose::Edit,
+            'taxmod-settings-7'
+        );
+
+        self::assertStringNotContainsString('<form ', $markup);
+
+        // The short field, the long field, the hidden field carrying the locale — and the button.
+        // ⚠️ *Counted as well as matched: a field that keeps quiet about its form submits nothing and
+        // says nothing about it, which is the fault this whole seam exists for.*
+        self::assertSame(4, substr_count($markup, 'form="taxmod-settings-7"'));
+        self::assertMatchesRegularExpression('#<input type="text"[^>]*form="taxmod-settings-7"#', $markup);
+        self::assertMatchesRegularExpression('#<textarea[^>]*form="taxmod-settings-7"#', $markup);
+        self::assertMatchesRegularExpression('#<input type="hidden"[^>]*form="taxmod-settings-7"#', $markup);
+        self::assertMatchesRegularExpression('#<button[^>]*form="taxmod-settings-7"#', $markup);
+    }
+
+    #[Test]
+    public function without_a_page_form_no_field_claims_one(): void
+    {
+        // ⚠️ **The other half, and it is the one that would have gone unnoticed.** *A stray
+        // `form="…"` on a field inside its own form takes the field **out** of it — the empty
+        // attribute has to be left out rather than written empty.*
+        $markup = $this->drawn([$this->slot('form'), $this->slot('help', true)]);
+
+        self::assertStringNotContainsString('form=""', $markup);
+        self::assertStringNotContainsString(' form="', $markup);
     }
 
     #[Test]

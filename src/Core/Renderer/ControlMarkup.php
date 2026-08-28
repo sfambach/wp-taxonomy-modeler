@@ -120,8 +120,17 @@ final class ControlMarkup
      *
      * ⚠️ *The other half of the same duplication — four renderers spelling out the same loop over
      * `Submission::$hidden`.*
+     *
+     * @param string $formId The form these fields belong to when they cannot sit inside it, for
+     *                       HTML's own `form="…"`. Empty where they are nested in it.
+     *
+     * ⚠️ **A hidden field outside its form submits nothing, and it does so silently** — the same seam
+     * {@see \Taxmod\Core\Renderer\Surroundings::$formId} was built for, pointing the third way: a
+     * **panel** whose fields belong to a form drawn further down the page
+     * ([D-392](../../../docs/NewConcept/90-decision-log.md)). *Without it the locale would arrive as
+     * the neutral one on every page save, which writes the right text against the wrong language.*
      */
-    public static function hidden(Submission $submits): string
+    public static function hidden(Submission $submits, string $formId = ''): string
     {
         $fields = '';
 
@@ -130,6 +139,9 @@ final class ControlMarkup
                 'type'  => 'hidden',
                 'name'  => $name,
                 'value' => $value,
+                // An empty attribute is left out rather than written empty ({@see RenderResult::htmlTag()}),
+                // so the nested case needs no branch of its own.
+                'form'  => $formId,
             ]);
         }
 

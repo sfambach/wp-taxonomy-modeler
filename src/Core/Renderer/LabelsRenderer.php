@@ -41,6 +41,11 @@ use Taxmod\Core\Model\SimpleType;
  * off {@see LabelSlot}, not off a list of names — so a sixth role added tomorrow lands somewhere
  * sensible instead of silently joining the word row.
  *
+ * ⚠️ **The panel does not have to own its form.** Handed a {@see Surroundings::$formId} it draws none
+ * and every field names the page's instead — the owner's *labels should be saved with the page too*,
+ * which is [D-392](../../../docs/NewConcept/90-decision-log.md) reaching the last panel that still had
+ * a save button of its own. *See {@see self::entryForm()} for why that is a move and not an addition.*
+ *
  * @see docs/NewConcept/40-i18n.md
  */
 final class LabelsRenderer implements Renderer
@@ -116,11 +121,19 @@ final class LabelsRenderer implements Renderer
     }
 
     /**
-     * The one form that holds every field and the save button.
+     * The form the fields belong to — **its own, or one drawn elsewhere on the page**.
      *
      * ⚠️ **One form and one button for the whole panel** — the owner's rule for saving (*what is
      * really saved is the page, not the single value*), and here also the only shape that works: five
      * fields with five buttons has no answer to what Enter does.
+     *
+     * ⚠️ **And with a `formId` handed in there is no form here at all**, because the owner asked for
+     * the next step of the same rule: *labels should be saved with the page too.* **A field belongs to
+     * exactly one form** — `form="…"` overrides the element it is nested in — so joining the page's
+     * form is not an addition but a **move**: the panel gives up its own `<form>` and every field,
+     * hidden ones included, names the page's instead ([D-392](../../../docs/NewConcept/90-decision-log.md)).
+     * *That is why this is one branch and not two shapes at once: a panel that tried to keep both
+     * would have half its fields submitting nowhere, which is the silent fault `formId` was built for.*
      */
     private function entryForm(string $inside, RenderContext $context): string
     {
@@ -130,10 +143,16 @@ final class LabelsRenderer implements Renderer
             return $inside;
         }
 
-        $fields = ControlMarkup::hidden($submits);
+        $formId = $context->surroundings->formId;
+
+        // ⚠️ *The buttons need no branch: a {@see Control} carries the form it submits, so whoever
+        // names the page's form on the fields names it on the button too.*
+        if ($formId !== '') {
+            return ControlMarkup::hidden($submits, $formId) . $inside . $this->acts($context);
+        }
 
         return '<form method="post" action="' . RenderResult::escape($submits->action) . '">'
-            . $fields . $inside . $this->acts($context) . '</form>';
+            . ControlMarkup::hidden($submits) . $inside . $this->acts($context) . '</form>';
     }
 
     /**
@@ -198,6 +217,8 @@ final class LabelsRenderer implements Renderer
                 'value'       => $slot->stored ?? '',
                 'placeholder' => $slot->shown,
                 'title'       => $slot->note === '' ? null : $slot->note,
+                // ⚠️ Absent where the panel owns its form, and then the field is simply nested in it.
+                'form'        => $context->surroundings->formId,
                 'style'       => 'width:100%',
             ])
             . '</label>';
@@ -213,9 +234,15 @@ final class LabelsRenderer implements Renderer
             return $head . '<span>' . RenderResult::escape($slot->shown) . '</span></div>';
         }
 
+        $formId = $context->surroundings->formId;
+
         return $head
             . '<textarea name="' . RenderResult::escape($slot->fieldName) . '" rows="2"'
             . ' placeholder="' . RenderResult::escape($slot->shown) . '"'
+            // ⚠️ *The long field needs the same seam as the short ones — it was the one that would
+            // have been forgotten, because it is the only field here built by hand rather than
+            // through {@see RenderResult::htmlTag()}.*
+            . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
             . ' style="width:100%">' . RenderResult::escape($slot->stored ?? '') . '</textarea>'
             . '</div>';
     }

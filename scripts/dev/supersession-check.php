@@ -56,26 +56,62 @@ printf("Entscheidungen: %d\n", count($rows));
 $unanswered = [];
 $answered   = 0;
 
+$hidden = [];
+
 foreach (taxmodSupersessions($rows) as $victim => $killers) {
+    $cells = explode(" | ", rtrim($rows[$victim], " |
+"));
+    // ⚠️ *220 Zeichen: so weit liest jemand, der einer Id aus einem Docblock folgt, bevor er glaubt zu
+    // wissen, was dort steht. Die Zahl ist gesetzt und nicht gemessen — sie ist eine Behauptung über
+    // Leseverhalten, und sie steht hier, damit sie kritisierbar ist.*
+    $head  = mb_substr($cells[2] ?? '', 0, 220);
+
+    $upFront = false;
+
     foreach ($killers as $killer) {
-        // Das Opfer muss seinen Nachfolger nennen — in der Statuszelle oder irgendwo in seiner Zeile.
+        // Das Opfer muss seinen Nachfolger nennen — irgendwo in seiner Zeile.
         if (str_contains($rows[$victim], $killer)) {
             ++$answered;
-
-            continue;
+        } else {
+            $unanswered[$victim][$killer] = true;
         }
 
-        $unanswered[$victim][$killer] = true;
+        // ⚠️ **Und zwar VORN.** *Gemessen am 2026-08-28: **25 von 28** überholten Entscheidungen sagten
+        // es erst irgendwo in 1400 Zeichen Prosa. Wer aus einem Docblock kommt — `D-133` wird **49-mal**
+        // zitiert, `D-217` **59-mal** — liest dann die ersetzte Regel und nicht den Hinweis. **Der
+        // Eigentümer hat genau das gemeldet: «jedes Mal, wenn Du auf eine Id referenzierst, kann ich die
+        // nicht lesen.»***
+        if (str_contains($head, $killer)) {
+            $upFront = true;
+        }
+    }
+
+    if (! $upFront) {
+        $hidden[$victim] = array_keys($killers === [] ? [] : array_flip($killers));
     }
 }
 echo "\n== jede ersetzte Entscheidung nennt ihren Nachfolger ==\n";
 
-if ($unanswered === []) {
-    printf("  ok   %d Ersetzungen, jede beidseitig verzeichnet\n", $answered);
+if ($unanswered === [] && $hidden === []) {
+    printf("  ok   %d Ersetzungen, jede beidseitig verzeichnet und im ersten Satz genannt\n", $answered);
 
     echo "\nall green\n";
 
     exit(0);
+}
+
+foreach ($hidden as $victim => $killers) {
+    printf(
+        "  SPAET %-7s nennt %s erst spaeter in der Zeile — wer aus einem Docblock kommt, liest die ersetzte Regel\n",
+        $victim,
+        implode(', ', $killers)
+    );
+}
+
+if ($unanswered === []) {
+    printf("\n%d Ersetzungen beidseitig verzeichnet, %d sagen es nicht vorn.\n", $answered, count($hidden));
+
+    exit(1);
 }
 
 foreach ($unanswered as $victim => $killers) {

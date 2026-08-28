@@ -169,6 +169,21 @@ final class Labels
         $this->labels->put($label);
     }
 
+    /**
+     * Forget one label, so the chain answers again.
+     *
+     * ⚠️ **Not the same as storing an empty text** ([D-384](../../../docs/NewConcept/90-decision-log.md)):
+     * *an empty field means **forget the row**, not store an empty text.* A row that is there and says
+     * nothing is litter — and it is the reader of `text !== ''` above who has to remember to skip it,
+     * which is one place too many to have to remember anything.
+     *
+     * *The text of the label handed in is ignored; only where it sits is read.*
+     */
+    public function forget(Label $label): void
+    {
+        $this->labels->forget($label->ownerId, $label->path, $label->roleId, $label->number, $label->locale);
+    }
+
     /** @return list<Label> Everything stored for this owner, for a screen that lists them. */
     public function storedFor(int $ownerId): array
     {
