@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Service;
 
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
@@ -254,10 +255,21 @@ final class Labels
      * ([D-403](../../../docs/NewConcept/90-decision-log.md)): *ein Label hat keine Identität, zu der
      * jemand hinnavigiert — man sieht einen **Knoten** an und fragt, was sich geändert hat.*
      *
-     * ⚠️ **Was in der Zeile steht, sind die drei Angaben, die eine Adresse ausmachen** — Rolle, Locale
-     * und, wo einer da ist, der Pfad. *[Zeile 47](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
-     * verlangt für Settings dasselbe: **ein Eintrag ohne Adresse ist nicht abspielbar.** Hier von
-     * Anfang an mit, statt es später nachzurüsten.*
+     * ⚠️ **Die Adresse steht in den Zustandsspalten und nicht mehr im `what` — das war hier zuerst
+     * falsch herum.** *Diese Methode schrieb `label role=733 locale=(neutral) path=… set` in das
+     * `what`-Feld. Gemessen spricht dreierlei dagegen: `what` wird **auf Gleichheit** abgefragt
+     * ({@see Changelog::actAround()} fragt `WHERE what = %s`), es wird auf dem Knotenbildschirm **roh
+     * angezeigt**, und es hat schon **19 von 31** unterschiedlichen Werten an Schlüsselnamen verloren.
+     * Eine Adresse im Verb macht jedes Vorkommen zu einem eigenen Verb.* **Und der Umbau kostet
+     * nichts:** *diese Schreibweise ist von heute, in der Tabelle stand **keine einzige** Zeile davon.*
+     *
+     * ⚠️ **Ein Format, eine Stelle** ({@see FrozenState}): Rolle, Pfad, Numerus, Locale und Text sind
+     * dieselben Felder, die auch ein Setting schreibt, gebaut vom selben Erbauer. *Zwei Dienste mit je
+     * eigener Zeichenkette waren zwei Formate, und das zweite hat niemand gelesen.*
+     *
+     * ⚠️ *Eine **leere** Locale bleibt leer und wird nicht «(neutral)» — das war Prosa für einen
+     * Bildschirm in einer Spalte, aus der ein Abspieler liest. Leer heisst locale-neutral, genau wie
+     * ein leerer Pfad den Eigentümer selbst meint ([D-413](../../../docs/NewConcept/90-decision-log.md)).*
      *
      * ⚠️ *Nichts wird verzeichnet, wenn sich nichts geändert hat — ein Textfeld sendet **immer**, und
      * bei jedem Seitenspeichern ([D-488](../../../docs/NewConcept/90-decision-log.md)). Ein Journal,
@@ -269,12 +281,15 @@ final class Labels
             return;
         }
 
-        $wo = sprintf(
-            'label role=%d locale=%s%s',
-            $label->roleId,
-            $label->locale === '' ? '(neutral)' : $label->locale,
-            $label->path === '' ? '' : ' path=' . $label->path
-        );
+        // ⚠️ *Der Text steht **zuletzt**, weil er das einzige Feld ist, das Leerzeichen enthalten
+        // darf; {@see FrozenState} verweigert jede andere Reihenfolge.*
+        $state = static fn (?string $text): ?string => $text === null ? null : FrozenState::of([
+            'role'   => $label->roleId,
+            'path'   => $label->path,
+            'number' => $label->number,
+            'locale' => $label->locale,
+            'text'   => $text,
+        ])->write();
 
         $this->changelog->record(
             $label->ownerId,
@@ -282,9 +297,9 @@ final class Labels
             // und die Id allein sagt nicht welches. Ohne das Repository bliebe nur Raten — und geraten
             // hat `Settings` diese Spalte schon einmal, was dort als «einfach eine Lüge» steht.*
             $this->nodes === null || $this->nodes->find($label->ownerId) !== null ? 'node' : 'relation',
-            $now === null ? $wo . ' cleared' : $wo . ' set',
-            $was,
-            $now
+            $now === null ? 'label cleared' : 'label set',
+            $state($was),
+            $state($now)
         );
     }
 

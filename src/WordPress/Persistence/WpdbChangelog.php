@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\ChangeSummary;
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\Clock;
 
@@ -226,15 +227,18 @@ final class WpdbChangelog implements Changelog
             'parked'
         ));
 
-        if ($before === null) {
-            return null;
-        }
-
-        // ⚠️ Read from the **last** `path=`, not the first: a node may legitimately be called
-        // something containing ` path=`, and the path is written last.
-        $at = strrpos((string) $before, ' path=');
-
-        return $at === false ? null : substr((string) $before, $at + 6);
+        // ⚠️ **Read through {@see FrozenState} and no longer with a search from the right.** *The old
+        // line was `strrpos(' path=')`, and the **same line stood a second time** in the test double —
+        // two readers for one format, which is how a format comes to disagree with itself. It also
+        // could not have been kept: the node state now writes `path` **before** the name
+        // ([D-427](../../../docs/NewConcept/90-decision-log.md)), so «the last `path=`» stopped
+        // meaning «the address».*
+        //
+        // ⚠️ *Both orders parse to the same address, and that is measured rather than argued: the
+        // boundary check reads **every** row in the table with both the old rule and this one and
+        // asserts they agree — 0 of 10745 rows carry ` path=` twice, which is the only case where they
+        // could differ.*
+        return FrozenState::parse($before === null ? null : (string) $before)?->field('path');
     }
 
     private function human(): ?int

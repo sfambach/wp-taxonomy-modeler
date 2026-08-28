@@ -1,0 +1,358 @@
+<?php declare(strict_types=1);
+
+/**
+ * A journal entry carries its address — against the real table, and against every row already in it.
+ *
+ * ⚠️ **The fault this ends was measured, not suspected** ([D-427](../../docs/NewConcept/90-decision-log.md)):
+ * a setting row read `what = "setting min set"`, `before = NULL`, `after = "10"`. *Something set `min`
+ * to 10, and not **for which place** ([D-413](../../docs/NewConcept/90-decision-log.md)). Of 5773
+ * setting rows in this database, **0** named a path.*
+ *
+ * ⚠️ **Two halves, and the second is the one that could not be a core test.** *Part 1 writes a
+ * setting at a path and reads the address back out of the column. Part 2 walks **every row that
+ * already exists** — 10000-odd of them, in four dialects — and asserts that the new reader gets the
+ * same address out of them as the `strrpos(' path=')` it replaced. A fake table with three rows in it
+ * cannot make that promise; only the grown one can.*
+ *
+ * ⚠️ *Nothing is rewritten and nothing is deleted. The old setting rows lack an address that **cannot
+ * be recovered** — stamping `path=` on them would falsify the ones that were written at a real path —
+ * so [D-476](../../docs/NewConcept/90-decision-log.md)'s rule applies: a step that destroys has to be
+ * able to say what it destroys, and here it cannot.*
+ */
+
+$root = $argv[1] ?? getenv('WP_ROOT') ?: null;
+
+if ($root === null) {
+    $dir = getcwd();
+
+    while ($dir !== '' && ! is_readable($dir . '/wp-load.php')) {
+        $up  = dirname($dir);
+        $dir = $up === $dir ? '' : $up;
+    }
+
+    $root = $dir;
+}
+
+if ($root === '' || ! is_readable($root . '/wp-load.php')) {
+    fwrite(STDERR, "Cannot find wp-load.php. Pass the WordPress folder as the first argument.\n");
+    exit(2);
+}
+
+define('WP_USE_THEMES', false);
+
+require $root . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\Settings;
+use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\TableIdentityAllocator;
+use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\Persistence\WpdbSettingRepository;
+use Taxmod\WordPress\SystemClock;
+
+global $wpdb;
+
+$ok  = 0;
+$bad = 0;
+
+function check(string $what, bool $passed, string $detail = ''): void
+{
+    global $ok, $bad;
+
+    if ($passed) {
+        ++$ok;
+        echo "  OK   $what\n";
+    } else {
+        ++$bad;
+        echo "  FAIL $what" . ($detail !== '' ? " — $detail" : '') . "\n";
+    }
+}
+
+/** ⚠️ *An empty result and a broken query look identical through `$wpdb`, so every read says so.* */
+function sane(string $where): void
+{
+    global $wpdb;
+
+    if ($wpdb->last_error !== '') {
+        fwrite(STDERR, "Query broken ({$where}): {$wpdb->last_error}\n");
+        exit(2);
+    }
+}
+
+Schema::install();
+update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
+
+$changelog = new WpdbChangelog(new SystemClock());
+$nodes     = new WpdbNodeRepository();
+$edges     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $changelog);
+$framework->seed();
+
+$editor   = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $changelog);
+$settings = new Settings(new WpdbSettingRepository(), $nodes, $framework, $changelog);
+$labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog, $nodes);
+
+$journal = Schema::table('changelog');
+
+// ── 1. A setting written at a path says which place ────────────────────────
+echo "\n== 1. The address reaches the column ==\n";
+
+$mark = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) FROM {$journal}");
+sane('high water mark');
+
+$thing = $editor->createNode('__ja Thing', $framework->rootOf(Branch::Model)->id);
+$text  = $editor->createNode('__ja Text', $framework->rootOf(Branch::DataTypes)->id);
+$first = $editor->addField($thing->id, $text->id, '__ja first');
+
+$chain = $settings->chainFor($thing);
+
+// ⚠️ *The same key twice: once for the node itself, once for one of its attributes. **This is the
+// pair the old journal could not tell apart** — both rows read `after = "10"`.*
+$settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
+$settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10), (string) $first->id);
+
+$rows = $wpdb->get_results($wpdb->prepare(
+    "SELECT what, before_state, after_state FROM {$journal}
+     WHERE id > %d AND what LIKE %s ORDER BY id ASC",
+    $mark,
+    'setting ' . SettingKey::Min->value . ' %'
+), ARRAY_A);
+sane('the two setting rows');
+
+check('both writes were journalled', count($rows) === 2, (string) count($rows));
+
+$own = FrozenState::parse($rows[0]['after_state'] ?? null);
+$at  = FrozenState::parse($rows[1]['after_state'] ?? null);
+
+check('the first entry names the key', $own?->field('key') === SettingKey::Min->value, $rows[0]['after_state'] ?? 'nothing');
+check('and its path is the empty one — the owner itself', $own?->field('path') === '', var_export($own?->field('path'), true));
+check('the second entry names the attribute it answers for', $at?->field('path') === (string) $first->id, var_export($at?->field('path'), true));
+
+// ⚠️ **The whole promise of the row in one line.** *Two writes of the same key with the same value
+// used to leave two identical columns; a replay had no way to put either back in the right place.*
+check(
+    'the two entries are distinguishable at all',
+    ($rows[0]['after_state'] ?? null) !== ($rows[1]['after_state'] ?? null),
+    (string) ($rows[0]['after_state'] ?? '')
+);
+
+check('the type travels', $at?->field('type') === 'int', var_export($at?->field('type'), true));
+
+// ⚠️ *Guarded rather than trusting the field above: with the old, address-less entry this line threw
+// and the check **died** instead of reporting — a check that crashes tells you less than one that
+// fails, because the remaining sections never run.*
+check(
+    'and the value can be rebuilt from what was stored',
+    $at?->field('type') !== null
+        && TypedValue::ofInt(10)->equals(TypedValue::ofTypeName((string) $at->field('type'), (string) $at->field('value')))
+);
+
+// ── 2. A text value with spaces comes back whole ───────────────────────────
+echo "\n== 2. A value that could break the format ==\n";
+
+$mark2 = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) FROM {$journal}");
+sane('second mark');
+
+$nasty = 'two words = one path=9 thing';
+
+$settings->put($chain, SettingKey::DefaultValue->value, TypedValue::ofText($nasty), (string) $first->id);
+
+$row = $wpdb->get_var($wpdb->prepare(
+    "SELECT after_state FROM {$journal} WHERE id > %d AND what LIKE %s ORDER BY id DESC LIMIT 1",
+    $mark2,
+    'setting %'
+));
+sane('the text row');
+
+$read = FrozenState::parse($row === null ? null : (string) $row);
+
+check('the text survived the round trip through the column', $read?->field('value') === $nasty, (string) $row);
+check('and the address was not taken from inside the text', $read?->field('path') === (string) $first->id, var_export($read?->field('path'), true));
+
+// ── 3. A label writes its address in the state and a verb in `what` ────────
+echo "\n== 3. The label side speaks the same format ==\n";
+
+$mark3 = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) FROM {$journal}");
+sane('third mark');
+
+$role = $framework->roleId(SeededRole::Form);
+
+if ($role === 0) {
+    echo "  --   no seeded label roles here; the label half is skipped\n";
+} else {
+    $labels->put(new Label($thing->id, (string) $first->id, $role, Label::BASE_NUMBER, '', '__ja Ein Text mit Leerzeichen'));
+
+    $labelRow = $wpdb->get_row($wpdb->prepare(
+        "SELECT what, after_state FROM {$journal} WHERE id > %d AND what LIKE %s ORDER BY id DESC LIMIT 1",
+        $mark3,
+        'label%'
+    ), ARRAY_A);
+    sane('the label row');
+
+    check('`what` is a verb again, not a data structure', ($labelRow['what'] ?? '') === 'label set', (string) ($labelRow['what'] ?? 'nothing'));
+
+    $labelState = FrozenState::parse($labelRow['after_state'] ?? null);
+
+    check('the role is in the state', $labelState?->field('role') === (string) $role, var_export($labelState?->field('role'), true));
+    check('the path is in the state', $labelState?->field('path') === (string) $first->id, var_export($labelState?->field('path'), true));
+    check('and the text came back whole', $labelState?->field('text') === '__ja Ein Text mit Leerzeichen', var_export($labelState?->field('text'), true));
+}
+
+// ── 4. Every row that already exists still gives up its address ────────────
+echo "\n== 4. Every row already in the table ==\n";
+
+$all = $wpdb->get_results("SELECT id, before_state, after_state FROM {$journal}", ARRAY_A);
+sane('the whole journal');
+
+// ⚠️ *The rule this replaced, kept here as the thing to be measured against. A check that only
+// asserted the new reader works would be green on a reader that quietly answers differently.*
+$oldRule = static function (?string $stored): ?string {
+    if ($stored === null) {
+        return null;
+    }
+
+    $at = strrpos($stored, ' path=');
+
+    return $at === false ? null : substr($stored, $at + 6);
+};
+
+$disagreed = [];
+$parsed    = 0;
+$withPath  = 0;
+$plain     = 0;
+$oldOrder  = 0;
+$oldWrong  = 0;
+
+foreach ($all as $row) {
+    foreach (['before_state', 'after_state'] as $column) {
+        $stored = $row[$column];
+
+        if ($stored === null || $stored === '') {
+            continue;
+        }
+
+        ++$parsed;
+
+        $state = FrozenState::parse((string) $stored);
+
+        if ($state === null) {
+            $disagreed[] = "#{$row['id']} {$column}: nothing came back";
+
+            continue;
+        }
+
+        if ($state->plainValue() !== null) {
+            ++$plain;
+
+            // A row that is not a field list must come back byte for byte.
+            if ($state->write() !== $stored) {
+                $disagreed[] = "#{$row['id']} {$column}: a plain row changed";
+            }
+
+            continue;
+        }
+
+        $path = $state->field('path');
+
+        if ($path === null) {
+            continue;
+        }
+
+        ++$withPath;
+
+        // ⚠️ **The comparison only means something where the old rule was applicable at all** — a row
+        // in the **old** order, where `path` is the last field. *Measured on those, the two rules must
+        // agree on every single row: 0 of 10745 rows hold ` path=` twice, which is the only case where
+        // they could differ, and this is what keeps that measurement true tomorrow.*
+        if (str_ends_with((string) $stored, ' path=' . $path)) {
+            ++$oldOrder;
+
+            if ($path !== $oldRule((string) $stored)) {
+                $disagreed[] = sprintf('#%d %s: «%s» vs «%s»', $row['id'], $column, $path, (string) $oldRule((string) $stored));
+            }
+
+            continue;
+        }
+
+        // ⚠️ *And on a row in the **new** order the old rule is simply wrong — it would hand back the
+        // path with the name glued to it. **That is the evidence the reader had to be replaced** and
+        // not merely tidied: it is counted rather than asserted in prose.*
+        if ($path !== $oldRule((string) $stored)) {
+            ++$oldWrong;
+        }
+    }
+}
+
+printf(
+    "       %d rows, %d state columns read, %d field lists with a path (%d in the old order), %d plain\n",
+    count($all),
+    $parsed,
+    $withPath,
+    $oldOrder,
+    $plain
+);
+
+check('every stored state was readable', $disagreed === [], implode(' | ', array_slice($disagreed, 0, 5)));
+check('and the table is big enough for that to mean something', $parsed > 1000, (string) $parsed);
+check('thousands of rows in the old order were actually compared', $oldOrder > 1000, (string) $oldOrder);
+// ⚠️ *Not a nicety: it says the old reader **could not have been kept**. Any row whose `path` is not
+// the last field — every setting entry now, and every node state written since — makes
+// `strrpos(' path=')` answer the path with the rest of the row glued to it.*
+check(
+    'and the rule that was replaced is measurably wrong on rows in the new format',
+    $oldWrong > 0,
+    sprintf('%d rows where `strrpos(\' path=\')` answers something else', $oldWrong)
+);
+
+// ── 5. The reader the restore depends on ───────────────────────────────────
+echo "\n== 5. Parking and coming back, through the new order ==\n";
+
+$was = $nodes->byId($thing->id)->path;
+
+$editor->moveToTrash($thing->id);
+
+check(
+    'the old place is still found in the journal',
+    $changelog->pathBeforeLastParking($thing->id) === $was,
+    var_export($changelog->pathBeforeLastParking($thing->id), true) . ' vs ' . $was
+);
+
+$restored = $editor->restore($thing->id);
+
+check('and the node came back to it', $restored->node->path === $was, $restored->node->path);
+
+// ── 6. Tidying up ─────────────────────────────────────────────────────────
+echo "\n== 6. Tidying up ==\n";
+
+$editor->removeField($thing->id, $first->id);
+$editor->moveToTrash($thing->id);
+$editor->moveToTrash($text->id);
+
+foreach ([$thing->id, $text->id, $first->id] as $id) {
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('settings') . ' WHERE owner_id = %d', $id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('labels') . ' WHERE owner_id = %d', $id));
+    $wpdb->query($wpdb->prepare("DELETE FROM {$journal} WHERE owner_id = %d", $id));
+}
+
+sane('tidying');
+
+check(
+    'the scratch journal rows are gone',
+    (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$journal} WHERE owner_id = %d", $thing->id)) === 0
+);
+
+echo "\n---- {$ok} passed, {$bad} failed ----\n";
+
+exit($bad === 0 ? 0 : 1);

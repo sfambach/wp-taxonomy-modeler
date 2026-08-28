@@ -5,6 +5,7 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\ReservedKey;
 use Taxmod\Core\Exception\SettingDoesNotApply;
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
@@ -235,7 +236,7 @@ final class Settings
             }
 
             $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
-            $this->note($ownerId, $key, $was, $value);
+            $this->note($ownerId, $key, $path, $was, $value);
 
             return;
         }
@@ -254,7 +255,7 @@ final class Settings
         }
 
         $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
-        $this->note($ownerId, $key, $was, $value);
+        $this->note($ownerId, $key, $path, $was, $value);
     }
 
     /**
@@ -578,18 +579,41 @@ final class Settings
      * without this a single save would write thirty entries with thirty unchanged values — and a
      * journal that logs non-events is one nobody reads.
      *
-     * ⚠️ *`before` and `after` are `describe()`d, which is a **diagnostic** rendering and deliberately
-     * not a stored value ([D-400](../../../docs/NewConcept/90-decision-log.md)): a reference reads as
-     * «(a reference)» here rather than as a bare id, because a log line is prose and not data.*
+     * ⚠️ **The two state columns carry the address, and `what` does not** — that is the choice
+     * [D-427](../../../docs/NewConcept/90-decision-log.md) asks for, in its own words: *«so
+     * `before_state` / `after_state` stop being prose and become structured: for a setting, the key,
+     * the path, the type and the value.»* **Three measurements decided it against the other place.**
+     * *`what` is matched by **equality** — {@see Changelog::actAround()} asks `WHERE what = %s`, so an
+     * address baked into the verb can only be found by somebody who already knows it. `what` is also
+     * **shown raw** on the node screen as «what the last change was». And it counts: **19 of the 31
+     * distinct `what` values** in the table are already `setting <key> …` rather than a verb, and a
+     * path in there would multiply that by every place a key answers for.*
+     *
+     * ⚠️ *The key stays in `what` as well, and that is not the duplication the code standard forbids.
+     * **Both columns are written in one statement out of one variable and never touched again**, so
+     * the two cannot drift — which is the whole risk that prohibition guards against. What it buys:
+     * **5773 existing rows** keep saying exactly what they said, and the chip on the screen keeps
+     * naming the key.*
+     *
+     * ⚠️ **`describe()` is gone from here, deliberately.** *It is prose
+     * ([D-400](../../../docs/NewConcept/90-decision-log.md)) — `10` does not say whether ten is an
+     * integer, a decimal or the characters «10», and a reference described itself as «(a reference)»
+     * with the id dropped. **A replay cannot re-point a reference at «(a reference)».** So the state
+     * carries {@see TypedValue::typeName()} and {@see TypedValue::rawValue()}, which round-trip.*
+     *
+     * ⚠️ *An **empty** `path=` means the owner itself and is a measured answer; a row with **no**
+     * `path` field at all is one written before this ([D-413](../../../docs/NewConcept/90-decision-log.md)
+     * draws exactly that line for the column). The two must stay distinguishable, which is why no
+     * migration stamps `path=` onto the old rows.*
      */
-    private function note(int $ownerId, string $key, ?TypedValue $was, ?TypedValue $now): void
+    private function note(int $ownerId, string $key, string $path, ?TypedValue $was, ?TypedValue $now): void
     {
         if ($this->changelog === null) {
             return;
         }
 
-        $before = $was === null || $was->isNothing() ? null : $was->describe();
-        $after  = $now === null || $now->isNothing() ? null : $now->describe();
+        $before = $this->state($key, $path, $was);
+        $after  = $this->state($key, $path, $now);
 
         if ($before === $after) {
             return;
@@ -603,10 +627,37 @@ final class Settings
             // a key's own default lives ([D-079](../../../docs/NewConcept/90-decision-log.md)); the
             // first version of this line called that a `relation`, which was simply a lie.*
             $this->kindOf($ownerId),
-            $after === null ? "setting {$key} cleared" : "setting {$key} set",
+            $now === null || $now->isNothing() ? "setting {$key} cleared" : "setting {$key} set",
             $before,
             $after
         );
+    }
+
+    /**
+     * One side of a setting change, as the four things a replay needs.
+     *
+     * ⚠️ **`null` and «nothing» stop being the same answer here, and they never were.** *A missing
+     * row says *inherit again*; a row holding nothing says **deliberately nothing here** and stops a
+     * change above from arriving ([D-266](../../../docs/NewConcept/90-decision-log.md),
+     * [D-401](../../../docs/NewConcept/90-decision-log.md)). Both used to leave a `NULL` column, so
+     * the journal could not tell «there was no row» from «somebody emptied it» — and a replay of the
+     * second would have restored an inheritance nobody asked for.*
+     *
+     * ⚠️ *`value` is last because it is the only one of the four that can hold a space —
+     * {@see FrozenState} refuses any other order.*
+     */
+    private function state(string $key, string $path, ?TypedValue $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return FrozenState::of([
+            'key'   => $key,
+            'path'  => $path,
+            'type'  => $value->typeName(),
+            'value' => $value->rawValue(),
+        ])->write();
     }
     /** What this owner has stored under this key right now, or nothing. */
     private function valueAt(int $ownerId, string $key, string $path = ''): ?TypedValue

@@ -33,6 +33,7 @@ as the whole net.*
 | `preview` | the preview, and that `hide` and `read_only` actually **do** something ([D-160](../docs/NewConcept/90-decision-log.md), [D-399](../docs/NewConcept/90-decision-log.md)) |
 | `path` | `settings.path` — the address, and that a path never falls back to the empty one ([D-413](../docs/NewConcept/90-decision-log.md)) |
 | `labels-page-save` | that the texts travel with the page save — the fields name the page's form, an unchanged one writes nothing, an emptied one loses its row ([D-384](../docs/NewConcept/90-decision-log.md), [D-392](../docs/NewConcept/90-decision-log.md)) |
+| `journal-address` | that a journal entry carries its **address** and not only its value — key, path, type and value, readable back out of the column ([D-427](../docs/NewConcept/90-decision-log.md)) — **and that all 10918 rows already in the table still parse**, with the reader it replaced compared against on every one of the 2904 in the old order |
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
 
 ⚠️ **`references-check` exists because seven decisions were cited in code and never written**, all

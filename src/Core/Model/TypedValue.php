@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
+use Taxmod\Core\Exception\NotAValueOfThatType;
+
 /**
  * What a value holds — in a typed column, never one stringly value cast in and out (D-071).
  *
@@ -144,5 +146,76 @@ final class TypedValue
     public function isAReference(): bool
     {
         return $this->reference !== null;
+    }
+
+    /**
+     * Which of the five columns carries this value — the `type` a journal entry needs.
+     *
+     * ⚠️ **This is the half {@see describe()} cannot give**, and it is why a journal entry was not
+     * replayable ([D-427](../../../docs/NewConcept/90-decision-log.md)): `describe()` is prose —
+     * `10` says nothing about whether ten is an integer, an exact decimal or the text «10», and a
+     * reference reads as «(a reference)» with the id deliberately gone
+     * ([D-400](../../../docs/NewConcept/90-decision-log.md),
+     * [D-363](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *A boolean answers `int`, and that is not a gap: `0` and `1` in the integer column **is**
+     * how a boolean is stored ([D-315](../../../docs/NewConcept/90-decision-log.md)), so
+     * `ofBool(true)` and `ofInt(1)` are the same value and must come back as the same value.*
+     */
+    public function typeName(): string
+    {
+        return match (true) {
+            $this->isNothing()        => 'nothing',
+            $this->int !== null       => 'int',
+            $this->decimal !== null   => 'decimal',
+            $this->date !== null      => 'date',
+            $this->reference !== null => 'reference',
+            default                   => 'text',
+        };
+    }
+
+    /**
+     * The value as the characters that were stored — **data, not prose**.
+     *
+     * ⚠️ **A reference spells out its id here, which {@see describe()} refuses to do.** *The two are
+     * for different readers: `describe()` feeds a message or a screen, where a bare id is forbidden
+     * outright ([D-363](../../../docs/NewConcept/90-decision-log.md)) because a number copied out of
+     * a page looks like it means something. A journal state feeds a **replay**, and a replay cannot
+     * re-point a reference at «(a reference)».*
+     *
+     * ⚠️ *So anything that ever shows a journal state to a person renders the reference through its
+     * target's label, exactly as every other surface does — the column being honest is not a licence
+     * to print it.*
+     */
+    public function rawValue(): string
+    {
+        return match (true) {
+            $this->isNothing()        => '',
+            $this->int !== null       => (string) $this->int,
+            $this->decimal !== null   => $this->decimal,
+            $this->date !== null      => $this->date,
+            $this->reference !== null => (string) $this->reference,
+            default                   => (string) $this->text,
+        };
+    }
+
+    /**
+     * Rebuild from {@see typeName()} and {@see rawValue()} — the round trip a replay walks back.
+     *
+     * ⚠️ *Refuses an unknown name rather than falling back to text: a type nobody wrote is a journal
+     * row from a future version, and reading it as a string would put the wrong thing in a column
+     * without anybody noticing.*
+     */
+    public static function ofTypeName(string $type, string $rawValue): self
+    {
+        return match ($type) {
+            'nothing'   => self::nothing(),
+            'int'       => self::ofInt((int) $rawValue),
+            'decimal'   => self::ofDecimal($rawValue),
+            'date'      => self::ofDate($rawValue),
+            'reference' => self::ofReference((int) $rawValue),
+            'text'      => self::ofText($rawValue),
+            default     => throw NotAValueOfThatType::submitted($rawValue, $type),
+        };
     }
 }

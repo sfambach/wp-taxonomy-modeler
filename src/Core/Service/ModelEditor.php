@@ -6,6 +6,7 @@ use Taxmod\Core\Exception\CannotRestore;
 use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NotAPossibleTarget;
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
@@ -1021,13 +1022,20 @@ final class ModelEditor
         return $this->relations->parkedFieldEdgesOf([$ownerId]);
     }
 
-    /** What a changelog row records about an edge. */
+    /**
+     * What a changelog row records about an edge.
+     *
+     * ⚠️ *`name` last, for the same reason it is last in {@see state()}: an attribute's name may hold
+     * a space, and a field behind it could not be told apart from the name.*
+     */
     private function edgeState(Relation $edge): string
     {
-        return 'name=' . $edge->name
-            . ' to=' . $edge->toId
-            . ' kind=' . $edge->kind->value
-            . ' parked=' . ($edge->parkedByGroup ?? 0);
+        return FrozenState::of([
+            'to'     => $edge->toId,
+            'kind'   => $edge->kind->value,
+            'parked' => $edge->parkedByGroup ?? 0,
+            'name'   => $edge->name,
+        ])->write();
     }
 
     public function find(int $id): ?Node
@@ -1148,9 +1156,20 @@ final class ModelEditor
      *
      * Deliberately the four fixed attributes and nothing else — the changelog records what the
      * object *was*, and a node is exactly those four things.
+     *
+     * ⚠️ **`name` moved to the end, and that is the whole change.** *A name may contain a space —
+     * measured, **844** existing rows do — so it is the one field that cannot have another field
+     * behind it. {@see FrozenState} refuses the old order outright rather than writing a row whose
+     * `path` has to be dug out with a search from the right. **Both orders read the same**, which the
+     * boundary check asserts against every row in the table rather than in principle.*
      */
     private function state(Node $node): string
     {
-        return sprintf('id=%d version=%d name=%s path=%s', $node->id, $node->version, $node->name, $node->path);
+        return FrozenState::of([
+            'id'      => $node->id,
+            'version' => $node->version,
+            'path'    => $node->path,
+            'name'    => $node->name,
+        ])->write();
     }
 }

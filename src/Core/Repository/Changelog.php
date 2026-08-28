@@ -40,11 +40,24 @@ interface Changelog
     public function endAct(): void;
 
     /**
+     * Write one row.
+     *
+     * ⚠️ **The two state columns have a format and it is a contract, not a habit**
+     * ([D-427](../../../docs/NewConcept/90-decision-log.md)): they are built and read by
+     * {@see \Taxmod\Core\Model\FrozenState} and by nothing else. *Callers do not assemble the string
+     * themselves — that is how there came to be three dialects and a value with no address.*
+     *
+     * ⚠️ **The address belongs in the state, never in `what`.** *`what` is matched by **equality**
+     * here ({@see actAround()}) and shown raw on a screen, so an address in the verb turns every place
+     * into its own verb: measured, **19 of the 31** distinct values in the table were already a key
+     * rather than a verb.*
+     *
      * @param int         $ownerId       Node or relation id, from the model identity space.
      * @param string      $ownerKind     `node` or `relation` — stored alongside because the
      *                                   changelog outlives what it refers to (D-065).
      * @param string      $what          Short verb: `created`, `renamed`, `moved`, `parked`.
-     * @param string|null $before        The previous state, or null when there was none.
+     * @param string|null $before        The previous state as {@see \Taxmod\Core\Model\FrozenState}
+     *                                  writes it, or null when there was none.
      * @param string|null $after         The new state, or null when the object is gone.
      * @param int|null    $changeGroupId The act this row belongs to; null starts a new one.
      *

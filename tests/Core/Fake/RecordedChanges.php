@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Model\ChangeSummary;
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Repository\Changelog;
 
 /** Keeps what was logged so a test can assert that an unchanged save wrote nothing. */
@@ -106,13 +107,17 @@ final class RecordedChanges implements Changelog
         return $rows;
     }
 
+    /**
+     * ⚠️ **Reads through {@see FrozenState}, like the real one.** *This method used to hold its own
+     * copy of `strrpos(' path=')` — a second reader for the same format, in the double that is
+     * supposed to prove the format works. A double that parses differently from the thing it stands
+     * in for can be green while the format is broken.*
+     */
     public function pathBeforeLastParking(int $ownerId): ?string
     {
         foreach (array_reverse($this->entries) as [$id, , $what, $before]) {
             if ($id === $ownerId && $what === 'parked' && $before !== null) {
-                $at = strrpos($before, ' path=');
-
-                return $at === false ? null : substr($before, $at + 6);
+                return FrozenState::parse($before)?->field('path');
             }
         }
 
