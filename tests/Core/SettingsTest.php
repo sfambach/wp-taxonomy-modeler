@@ -598,4 +598,57 @@ final class SettingsTest extends TestCase
         self::assertFalse(SettingKey::Renderer->isBounding());
         self::assertFalse(SettingKey::Icon->isBounding());
     }
+
+    // ------------------------------------- ein unveränderter Wert schreibt nichts
+
+    /**
+     * ⚠️ **Der Wächter sass an der falschen Stelle, und der Eigentümer hat danach gefragt:** *«wie
+     * merkst Du Dir aktuell Änderungen auf der Einstellungsseite, oder schreibst Du immer alle?»*
+     * **Gemessen: die Seite verglich und übersprang, dieser Dienst schrieb immer.** *Für die Oberfläche
+     * war es gelöst, für ein Scaffold oder einen Import nicht — und die zwei Aufrufer hätten die Regel
+     * je einzeln richtig haben müssen.*
+     */
+    #[Test]
+    public function writing_the_same_value_again_writes_nothing(): void
+    {
+        $node  = $this->type('Widerstand');
+        $chain = $this->settings->chainFor($node);
+
+        $this->settings->put($chain, SettingKey::Icon->value, TypedValue::ofText('screenoptions'));
+
+        $nachErstem = $this->stored->writes;
+
+        self::assertGreaterThan(0, $nachErstem);
+
+        $this->settings->put($chain, SettingKey::Icon->value, TypedValue::ofText('screenoptions'));
+
+        self::assertSame($nachErstem, $this->stored->writes, 'derselbe Wert darf nichts schreiben');
+
+        $this->settings->put($chain, SettingKey::Icon->value, TypedValue::ofText('admin-tools'));
+
+        self::assertSame($nachErstem + 1, $this->stored->writes, 'ein anderer Wert schon');
+    }
+
+    /**
+     * ⚠️ **Gegen das *hier* Gespeicherte und nicht gegen die Kette, und das ist der ganze Unterschied.**
+     * *«Hier gesetzt» und «von oben geerbt» sind zwei verschiedene Zustände
+     * ([D-266](../../docs/NewConcept/90-decision-log.md)) — löst die Kette `X` auf und schreibt jemand
+     * `X` ausdrücklich **hier** hin, ist das eine echte Änderung. **Gegen die Kette zu vergleichen
+     * würde genau diesen Schreibvorgang verschlucken.***
+     */
+    #[Test]
+    public function writing_what_the_chain_already_answers_still_writes_it_here(): void
+    {
+        $parent = $this->type('int');
+        $child  = $this->editor->createNode('my int', $parent->id);
+
+        $this->settings->put($this->settings->chainFor($parent), SettingKey::Icon->value, TypedValue::ofText('screenoptions'));
+
+        $vorher = $this->stored->writes;
+
+        // Der Kind-Knoten erbt den Wert — und schreibt ihn jetzt ausdrücklich bei sich hin.
+        $this->settings->put($this->settings->chainFor($child), SettingKey::Icon->value, TypedValue::ofText('screenoptions'));
+
+        self::assertSame($vorher + 1, $this->stored->writes);
+    }
 }

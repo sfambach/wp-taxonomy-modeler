@@ -186,6 +186,14 @@ final class Labels
     {
         $was = $this->storedText($label);
 
+        // ⚠️ *Derselbe Wächter wie in {@see Settings::put()}, und aus demselben Grund: **ein Textfeld
+        // sendet immer**, und seit [D-488](../../../docs/NewConcept/90-decision-log.md) bei jedem
+        // Seitenspeichern. Ohne das schriebe ein Speichern fünf Zeilen neu, von denen niemand eine
+        // angefasst hat.*
+        if ($was === $label->text) {
+            return;
+        }
+
         $this->labels->put($label);
 
         $this->note($label, $was, $label->text);

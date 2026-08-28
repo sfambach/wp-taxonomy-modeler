@@ -230,6 +230,10 @@ final class Settings
             // A free key may be anything that is not one of the engine's names (D-084).
             $was = $this->valueAt($ownerId, $key, $path);
 
+            if ($this->unchanged($was, $value)) {
+                return;
+            }
+
             $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
             $this->note($ownerId, $key, $was, $value);
 
@@ -245,8 +249,36 @@ final class Settings
 
         $was = $this->valueAt($ownerId, $key, $path);
 
+        if ($this->unchanged($was, $value)) {
+            return;
+        }
+
         $this->settings->put(new SettingRecord($ownerId, $key, $value, $path));
         $this->note($ownerId, $key, $was, $value);
+    }
+
+    /**
+     * Steht dieser Wert hier schon genauso?
+     *
+     * ⚠️ **Der Wächter sass an der falschen Stelle, und das war gemessen.** *Der Eigentümer fragte, wie
+     * sich die Seite Änderungen merkt — «oder schreibst Du immer alle?». Gemessen: die **Seite**
+     * ({@see \Taxmod\WordPress\Admin\NodesScreen::saveSettings()}) verglich und übersprang, dieser
+     * **Dienst** schrieb **immer**. Derselbe Wert zweimal gesetzt ergab zwei Schreibabfragen. **Für die
+     * Oberfläche war es gelöst, für ein Scaffold oder einen Import nicht** — und die beiden Aufrufer
+     * hätten die Regel je einzeln richtig haben müssen.*
+     *
+     * ⚠️ **Gegen das *hier* Gespeicherte und nicht gegen die Kette**, was der ganze Unterschied ist:
+     * *löst die Kette `X` auf und schreibt jemand `X` ausdrücklich **hier** hin, ist das eine echte
+     * Änderung — «hier gesetzt» und «von oben geerbt» sind zwei verschiedene Zustände
+     * ([D-266](../../../docs/NewConcept/90-decision-log.md)). Gegen die Kette zu vergleichen würde
+     * diesen Schreibvorgang verschlucken.*
+     *
+     * ⚠️ *Steht **nach** den Verweigerungen, nicht davor: eine Grenzverletzung soll auch dann gemeldet
+     * werden, wenn der Wert sich nicht ändert.*
+     */
+    private function unchanged(?TypedValue $was, TypedValue $now): bool
+    {
+        return $was !== null && $was->equals($now);
     }
 
     /**

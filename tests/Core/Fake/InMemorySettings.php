@@ -11,6 +11,16 @@ final class InMemorySettings implements SettingRepository
     /** @var array<string,SettingRecord> keyed by owner and key */
     private array $rows = [];
 
+    /**
+     * Wie oft geschrieben wurde.
+     *
+     * ⚠️ *Damit ein Kerntest die Zusage «ein unveraenderter Wert schreibt nichts» pruefen kann. **Ohne
+     * das ist sie nur an der Datenbank messbar**, und ein Doppelgaenger, der den Mechanismus nicht
+     * abbilden kann, kann auch nicht fuer ihn rot werden — die Lehre aus `RecordedChanges` und der
+     * Akt-Klammer.*
+     */
+    public int $writes = 0;
+
     public function forOwners(array $ownerIds): array
     {
         $found = [];
@@ -31,6 +41,8 @@ final class InMemorySettings implements SettingRepository
 
     public function put(SettingRecord $setting): void
     {
+        ++$this->writes;
+
         // ⚠️ **The array key includes the path, because the real table's unique key does**
         // ([D-409](../../../docs/NewConcept/90-decision-log.md)). *A fake that forgets an address the
         // SQL one keeps is a fake that passes where the real thing fails.*

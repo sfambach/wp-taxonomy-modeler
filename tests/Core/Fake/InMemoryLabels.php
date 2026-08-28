@@ -11,6 +11,9 @@ final class InMemoryLabels implements LabelRepository
     /** @var array<string,Label> */
     private array $rows = [];
 
+    /** Wie oft geschrieben wurde — siehe {@see InMemorySettings::$writes}. */
+    public int $writes = 0;
+
     public function forOwners(array $ownerIds): array
     {
         $found = [];
@@ -26,6 +29,8 @@ final class InMemoryLabels implements LabelRepository
 
     public function put(Label $label): void
     {
+        ++$this->writes;
+
         $this->rows[$this->key($label->ownerId, $label->path, $label->roleId, $label->number, $label->locale)] = $label;
     }
 
