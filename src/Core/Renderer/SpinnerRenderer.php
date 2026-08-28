@@ -31,17 +31,17 @@ final class SpinnerRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     protected function input(RenderContext $context): string
     {
         return '<input type="number"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->characters($context))
-            . $this->attribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
-            . $this->attribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->attribute('step', $this->step($context))
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $this->outputValue($context))
+            . $this->createHtmlAttribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
+            . $this->createHtmlAttribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
+            . $this->createHtmlAttribute('step', $this->step($context))
             . '>';
     }
 

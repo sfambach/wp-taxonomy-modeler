@@ -35,7 +35,7 @@ final class FieldRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     /**
@@ -55,10 +55,10 @@ final class FieldRenderer extends TypedFieldRenderer
     protected function input(RenderContext $context): string
     {
         return '<input type="text"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->characters($context))
-            . $this->attribute('pattern', $context->type?->pattern())
-            . $this->attribute('inputmode', $context->type?->inputMode())
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $this->outputValue($context))
+            . $this->createHtmlAttribute('pattern', $context->type?->pattern())
+            . $this->createHtmlAttribute('inputmode', $context->type?->inputMode())
             . '>';
     }
 }

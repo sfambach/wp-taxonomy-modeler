@@ -83,7 +83,7 @@ final class FieldRowRenderer implements Renderer
      */
     public static function formFor(Relation $edge): string
     {
-        return 'taxmod-attribute-' . $edge->id;
+        return 'taxmod-field-' . $edge->id;
     }
 
     public function name(): string
@@ -122,14 +122,14 @@ final class FieldRowRenderer implements Renderer
         $cells = $this->nameCell($subject, $context)
             // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
             // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
-            . $this->cell($context->surroundings->refersTo ?? '—', 'taxmod-attribute-target')
-            . $this->cell($subject->kind->value, 'taxmod-attribute-kind', true)
+            . $this->cell($context->surroundings->refersTo ?? '—', 'taxmod-field-target')
+            . $this->cell($subject->kind->value, 'taxmod-field-kind', true)
             . $this->origin($context)
-            . $this->cell($this->multiplicity($context), 'taxmod-attribute-many', false, true)
-            . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-attribute-acts', false, true);
+            . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
+            . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-field-acts', false, true);
 
         return RenderResult::of(
-            '<tr class="taxmod-attribute">' . $cells . '</tr>'
+            '<tr class="taxmod-field">' . $cells . '</tr>'
             . $this->settingsRow($context)
         );
     }
@@ -156,7 +156,7 @@ final class FieldRowRenderer implements Renderer
             return '';
         }
 
-        return '<tr class="taxmod-attribute-settings"><td colspan="6" style="padding:0 0 .6em">'
+        return '<tr class="taxmod-field-settings"><td colspan="6" style="padding:0 0 .6em">'
             . '<details' . ($panel->collapsed ? '' : ' open') . '><summary style="cursor:pointer">'
             . RenderResult::escape($panel->title)
             . '</summary>' . $panel->body . '</details></td></tr>';
@@ -174,13 +174,13 @@ final class FieldRowRenderer implements Renderer
         if ($context->purpose !== Purpose::Edit || ! $context->editable) {
             return $this->cell(
                 '<strong>' . RenderResult::escape($subject->name) . '</strong>',
-                'taxmod-attribute-name',
+                'taxmod-field-name',
                 false,
                 true
             );
         }
 
-        $field = '<input type="text" class="taxmod-attribute-rename"'
+        $field = '<input type="text" class="taxmod-field-rename"'
             . ' name="' . RenderResult::escape($context->fieldName) . '"'
             . ' value="' . RenderResult::escape($subject->name) . '"'
             // ⚠️ **Required, and the rule is the model's**: an attribute cannot be nameless
@@ -188,7 +188,7 @@ final class FieldRowRenderer implements Renderer
             // says rather than a second, softer rule of its own — the mistake `int` made once.
             . ' required style="width:100%">';
 
-        return $this->cell($field, 'taxmod-attribute-name', false, true);
+        return $this->cell($field, 'taxmod-field-name', false, true);
     }
 
     /**
@@ -204,7 +204,7 @@ final class FieldRowRenderer implements Renderer
             $context->editable
                 ? $this->word($context, 'own')
                 : '<em>' . $this->word($context, 'inherited') . '</em>',
-            'taxmod-attribute-from',
+            'taxmod-field-from',
             false,
             true
         );

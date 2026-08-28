@@ -41,10 +41,10 @@ final class CheckboxRenderer extends TypedFieldRenderer
     protected function display(RenderContext $context): string
     {
         if ($context->value->isNothing()) {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
-        return $this->shown(
+        return $this->createHtmlValueSpan(
             '<input type="checkbox" disabled'
             . ($context->value->asBool() ? ' checked' : '')
             . '>'
@@ -53,7 +53,7 @@ final class CheckboxRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        $name = $this->attribute('name', $context->fieldName);
+        $name = $this->createHtmlAttribute('name', $context->fieldName);
 
         // The hidden field is what makes *unticked* mean false rather than absent. PHP keeps the
         // last of two equal names, so the box overrides it when it is ticked.

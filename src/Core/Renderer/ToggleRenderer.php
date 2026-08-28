@@ -52,16 +52,16 @@ final class ToggleRenderer extends TypedFieldRenderer
     protected function display(RenderContext $context): string
     {
         if ($context->value->isNothing()) {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
-        return $this->shown($this->track($context->value->asBool(), false));
+        return $this->createHtmlValueSpan($this->track($context->value->asBool(), false));
     }
 
     protected function input(RenderContext $context): string
     {
         $on   = ! $context->value->isNothing() && $context->value->asBool();
-        $name = $this->attribute('name', $context->fieldName);
+        $name = $this->createHtmlAttribute('name', $context->fieldName);
 
         // The hidden field is what makes *off* mean false rather than absent. PHP keeps the last of
         // two equal names, so the switch overrides it when it is on.

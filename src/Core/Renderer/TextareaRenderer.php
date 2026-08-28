@@ -40,16 +40,16 @@ final class TextareaRenderer extends TypedFieldRenderer
         // rewriting the value on the way out, and the same text would read differently
         // depending on which renderer drew it.
         return '<span class="taxmod-value" style="white-space:pre-wrap">'
-            . RenderResult::escape($this->characters($context))
+            . RenderResult::escape($this->outputValue($context))
             . '</span>';
     }
 
     protected function input(RenderContext $context): string
     {
         return '<textarea'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('cols', $this->numberSetting($context, 'cols'))
-            . $this->attribute('rows', $this->numberSetting($context, 'rows'))
-            . '>' . RenderResult::escape($this->characters($context)) . '</textarea>';
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('cols', $this->numberSetting($context, 'cols'))
+            . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
+            . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';
     }
 }

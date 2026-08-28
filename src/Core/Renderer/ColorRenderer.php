@@ -36,48 +36,48 @@ final class ColorRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        $characters = $this->characters($context);
+        $outputValue = $this->outputValue($context);
 
-        if ($characters === '') {
-            return $this->shown('');
+        if ($outputValue === '') {
+            return $this->createHtmlValueSpan('');
         }
 
-        return $this->shown(
-            $this->patch($characters) . RenderResult::escape($characters)
+        return $this->createHtmlValueSpan(
+            $this->patch($outputValue) . RenderResult::escape($outputValue)
         );
     }
 
     protected function input(RenderContext $context): string
     {
-        $characters = $this->characters($context);
+        $outputValue = $this->outputValue($context);
 
-        if ($characters !== '' && ! $this->pickerCanHold($characters)) {
+        if ($outputValue !== '' && ! $this->pickerCanHold($outputValue)) {
             return '<input type="text"'
-                . $this->attribute('name', $context->fieldName)
-                . $this->attribute('value', $characters)
-                . '>' . $this->patch($characters);
+                . $this->createHtmlAttribute('name', $context->fieldName)
+                . $this->createHtmlAttribute('value', $outputValue)
+                . '>' . $this->patch($outputValue);
         }
 
         return '<input type="color"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $characters)
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $outputValue)
             . '>';
     }
 
-    private function pickerCanHold(string $characters): bool
+    private function pickerCanHold(string $outputValue): bool
     {
-        return preg_match('/^#[0-9a-fA-F]{6}$/', $characters) === 1;
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $outputValue) === 1;
     }
 
     /** A swatch of whatever was stored — inline, because a renderer ships no stylesheet. */
-    private function patch(string $characters): string
+    private function patch(string $outputValue): string
     {
-        if (! $this->pickerCanHold($characters)) {
+        if (! $this->pickerCanHold($outputValue)) {
             return '';
         }
 
         return '<span class="taxmod-swatch" style="display:inline-block;width:1em;height:1em;'
             . 'vertical-align:middle;margin-right:.3em;border:1px solid #8c8f94;background:'
-            . RenderResult::escape($characters) . '"></span>';
+            . RenderResult::escape($outputValue) . '"></span>';
     }
 }

@@ -43,15 +43,15 @@ final class DateTimeRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->forControl($context, ' ')));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->forControl($context, ' ')));
     }
 
     protected function input(RenderContext $context): string
     {
         return '<input'
-            . $this->attribute('type', $this->controlType($context))
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->forControl($context, 'T'))
+            . $this->createHtmlAttribute('type', $this->controlType($context))
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $this->forControl($context, 'T'))
             . '>';
     }
 
@@ -72,7 +72,7 @@ final class DateTimeRenderer extends TypedFieldRenderer
     /** @param string $separator What sits between date and time — a space to read, a `T` to submit. */
     private function forControl(RenderContext $context, string $separator): string
     {
-        $stored = $this->characters($context);
+        $stored = $this->outputValue($context);
 
         if ($stored === '') {
             return '';

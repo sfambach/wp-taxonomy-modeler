@@ -37,24 +37,24 @@ final class SliderRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     protected function input(RenderContext $context): string
     {
-        $characters = $this->characters($context);
+        $outputValue = $this->outputValue($context);
 
         return '<input type="range"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $characters)
-            . $this->attribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
-            . $this->attribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->attribute(
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $outputValue)
+            . $this->createHtmlAttribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
+            . $this->createHtmlAttribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
+            . $this->createHtmlAttribute(
                 'step',
                 $this->numberSetting($context, SettingKey::RangeStep->value)
                     ?? ($context->type === SimpleType::Decimal ? 'any' : '1')
             )
             . '>'
-            . $this->shown(RenderResult::escape($characters));
+            . $this->createHtmlValueSpan(RenderResult::escape($outputValue));
     }
 }

@@ -34,15 +34,15 @@ final class MailtoRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        $address = $this->characters($context);
+        $address = $this->outputValue($context);
 
         if ($address === '') {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
         // `rawurlencode` would eat the `@`; the address goes in escaped as an attribute, which is
         // what stops a `"` in it from breaking out of the href.
-        return $this->shown(
+        return $this->createHtmlValueSpan(
             '<a href="mailto:' . RenderResult::escape($address) . '">'
             . RenderResult::escape($address)
             . '</a>'
@@ -52,8 +52,8 @@ final class MailtoRenderer extends TypedFieldRenderer
     protected function input(RenderContext $context): string
     {
         return '<input type="email"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->characters($context))
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            . $this->createHtmlAttribute('value', $this->outputValue($context))
             . '>';
     }
 }

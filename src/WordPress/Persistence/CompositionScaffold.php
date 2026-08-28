@@ -133,7 +133,7 @@ final class CompositionScaffold
         $address = $this->ensure($compositions, 'Adresse', $created);
 
         foreach (['strasse', 'hausnummer', 'plz', 'ort', 'land'] as $member) {
-            $this->attribute($address, $member, 'text');
+            $this->field($address, $member, 'text');
         }
     }
 
@@ -180,11 +180,11 @@ final class CompositionScaffold
         $ingredient = $this->ensure($compositions, 'Zutat', $created);
 
         $this->fieldTo($ingredient, 'menge', $unitValue);
-        $this->attribute($ingredient, 'bezeichnung', 'text');
+        $this->field($ingredient, 'bezeichnung', 'text');
 
         $recipe = $this->ensure($compositions, 'Backrezept', $created);
 
-        $this->attribute($recipe, 'titel', 'text');
+        $this->field($recipe, 'titel', 'text');
         $this->fieldTo($recipe, 'backzeit', $unitValue);
         $this->fieldTo($recipe, 'ofentemperatur', $unitValue);
 
@@ -244,7 +244,7 @@ final class CompositionScaffold
     }
 
     /** An attribute pointing at a simple type, found by name under the data types. */
-    private function attribute(Node $owner, string $name, string $typeName): Relation
+    private function field(Node $owner, string $name, string $typeName): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {

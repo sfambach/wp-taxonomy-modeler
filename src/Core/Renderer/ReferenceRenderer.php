@@ -55,7 +55,7 @@ final class ReferenceRenderer extends TypedFieldRenderer
     protected function display(RenderContext $context): string
     {
         if ($context->value->isNothing()) {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
         // ⚠️ **A reference whose label never arrived is drawn as a fault, not as an id.** It means
@@ -67,7 +67,7 @@ final class ReferenceRenderer extends TypedFieldRenderer
                 . '</span>';
         }
 
-        return $this->shown(RenderResult::escape($context->surroundings->refersTo));
+        return $this->createHtmlValueSpan(RenderResult::escape($context->surroundings->refersTo));
     }
 
     protected function input(RenderContext $context): string

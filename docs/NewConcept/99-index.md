@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **462**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **115**, davon **25** noch offen |
+| Entscheidungen | **463**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **117**, davon **27** noch offen |
 
 ## Offene Fragen
 
@@ -132,6 +132,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-113](91-open-questions.md) | beantwortet | D-426 and D-448–D-456 contradict each other about `hide`, and the fault D-426 fixed still reproduces |
 | [OQ-114](91-open-questions.md) | beantwortet | Do `read_only` and `persistent` follow `hide` out of the settings? |
 | [OQ-115](91-open-questions.md) | **offen** | A write through a non-persistent field: refused, or silently skipped? |
+| [OQ-116](91-open-questions.md) | **offen** | A renderer declares its event handlers, the field registers, WordPress dispatches. How exactly? |
+| [OQ-117](91-open-questions.md) | **offen** | Should `RenderContext` carry only settings, and the data travel separately? |
 
 ## Entscheidungen
 
@@ -602,3 +604,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-460](90-decision-log.md) | 2026-08-28 | agreed | `persistent` stays a setting: it needs the chain, and the use site overrides the node |
 | [D-461](90-decision-log.md) | 2026-08-28 | agreed | `read_only` stays a setting and is freely settable at the field, in both directions. The tightening rule stays gone — D-411 is untouched. And the wor… |
 | [D-462](90-decision-log.md) | 2026-08-28 | agreed | The three renames are built — and the four collisions they exposed are the content of this entry. |
+| [D-463](90-decision-log.md) | 2026-08-28 | agreed | The renderer design, written down at last — in the owner's words, and it was already built. |

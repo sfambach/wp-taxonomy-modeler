@@ -4421,3 +4421,109 @@ carrying a non-persistent field would fail.*
 stored, drawing an editable control for it is the actual fault, and then neither skip nor refuse ever
 happens. That is `read_only`'s territory and it is why [OQ-114](#oq-114--do-read_only-and-persistent-follow-hide-out-of-the-settings)
 should probably be answered first.*
+---
+
+## OQ-116 — A renderer declares its event handlers, the field registers, WordPress dispatches. How exactly?
+
+**Raised** 2026-08-28, by the owner, on asking who handles the events of a rendered field.
+
+*Blocks:* [30 Renderer](30-renderer.md), list rows 11 and 26 · *Status:* open
+
+> *I had thought that **every renderer also has one or more event handlers**. Then the field has to
+> **register itself for events** — that could happen in the background, and in WordPress, when the event
+> fires, the event is called. But that is only the rough concept, we would still have to refine it.*
+
+⚠️ **Measured first, because the answer to «who does it today» is: nobody.**
+
+| | |
+|---|---|
+| `assets/admin.js` | **123 lines, one job** — remember and restore the tree's scroll position. Nothing about fields |
+| inline handlers in the whole codebase | **one** — the locale `<select>`, which sets `location.href` |
+| everything else | a plain HTML form: `<input>` in a `<form>`, a button, a full page round-trip |
+
+*That is why the switches needed a CSS `:checked` rule rather than a listener, and why the owner's
+earlier report — «if I switch the renderer to spinner nothing happens; in the previous project all of
+that was interactive and saving was automatic» — describes a gap and not a bug.*
+
+### Why it is a blocker and not a nice-to-have
+
+**[List row 11](97-implementation-plan.md#the-working-list) is auto-save**, and his own words for it are
+*«leaving a field saved its content»* — **that is an event on a field.** Built without an answer here, it
+becomes one handler wired by hand, and the second one is built differently.
+
+### What refinement has to settle
+
+1. **What does a renderer declare?** *A name, or code?* `Renderer::supports()` already returns a list of
+   purposes; an `events()` beside it is the cheapest shape and stays declarative. **Code in the core is
+   the one thing that cannot happen**: `CD-1` says the core calls no WordPress, so a renderer can neither
+   `wp_enqueue_script` nor add a hook.
+2. **What is «the field registers itself»?** *Markup carrying `data-` attributes that one script reads, or
+   a registry the boundary builds while drawing?* The first needs no bookkeeping; the second knows what
+   is on the page before it is sent.
+3. **Where does the handler run?** *In the browser only (a listener), on the server (a REST route or
+   `admin-ajax`), or both — a listener that calls a route?* Auto-save needs the server; a focus trap
+   ([row 26](97-implementation-plan.md#the-working-list)) needs only the browser. **So it is probably
+   both, and then the declaration has to say which.**
+4. **What may a handler reach?** *[D-159](90-decision-log.md) says a renderer reaches for nothing while
+   drawing. A handler runs **after** drawing, so that rule does not obviously apply — but nothing states
+   what replaces it.*
+
+⚠️ *And one thing worth deciding early because it is cheap now and expensive later: **does a renderer's
+event declaration travel with its registration** (`ShippedRenderers`) or with each rendering? The first
+is one place; the second lets one node's field behave differently from another's — which is what a
+setting is for, and would make events settable along the chain like everything else.*
+---
+
+## OQ-117 — Should `RenderContext` carry only settings, and the data travel separately?
+
+**Raised** 2026-08-28, by the owner, revising his own description of the renderer from an hour earlier.
+
+*Blocks:* [30 Renderer](30-renderer.md), list rows 54 and 64 · *Status:* open
+
+> *We should also think about whether the context should not contain **only settings**. The data does not
+> belong in there, in my opinion.*
+
+⚠️ **He is revising himself, and the revision is worth more than the original.** *An hour earlier, in
+[D-463](90-decision-log.md), he described it as «a context that contains all the settings and,
+optionally, the data». **Now he separates the two**, and the reason the second reading is better is
+visible in what the field actually holds.*
+
+**Measured — the eleven fields of `RenderContext`, sorted by what they are:**
+
+| what it is | fields |
+|---|---|
+| **circumstance** — who is asking and how | `purpose`, `locale`, `level`, `editable`, `fieldName`, `developerMode` |
+| **settings** — resolved along the chain | `settings` |
+| **the model** | `type` |
+| **the data** | **`value`**, and **`shown`** (the same datum, converted) |
+| mixed | `surroundings` — a label, a submission, options, actions |
+
+*So «context» today means four different things at once, and only one of them is settings. **His
+objection is not about the data alone** — it is that the name promises one thing and the class holds
+four.*
+
+### And there is a place the data could go instead
+
+⚠️ **[D-444](90-decision-log.md) and [D-445](90-decision-log.md) already point at it.** *The renderable is
+handed in as the **class**, and what the drawing needs is **prepared beside it**. If the data left the
+context, the natural home is the subject: **a record is a renderable**, and then `render($record,
+$context)` is one thing carrying its own value instead of two things that have to be kept in step.*
+
+*That is the same thought as his test record for the preview ([list row 54](97-implementation-plan.md#the-working-list)),
+approached from the other side — which is why these two questions should be answered together or not at
+all.*
+
+### What has to be settled
+
+1. **Does the data go onto the subject, or into a third parameter?** *On the subject is fewer moving
+   parts and matches [D-444](90-decision-log.md). A third parameter keeps `Node` free of values, which
+   [D-440](90-decision-log.md) may want — a class holds no content.*
+2. **What happens to `shown`?** *It is the converted datum, so it follows the datum wherever it goes —
+   and its name is already on the list to become `convertedText`.*
+3. **Do the circumstances stay in one bag?** *Six of eleven fields are circumstance. If the data leaves,
+   what remains is «settings plus circumstance», and «context» is a fair name for that — but it would be
+   worth saying so rather than leaving it implied.*
+
+⚠️ *Not to be built alongside something else. It changes the signature every renderer implements, and the
+proof that such a change is pure is a byte-identical snapshot of all renderer output — which exists as a
+tool now (880 outputs) and should be used for this.*

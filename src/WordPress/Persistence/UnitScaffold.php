@@ -185,7 +185,7 @@ final class UnitScaffold
         // ⚠️ *And the value has a home without a trick:* [D-026](../../../docs/NewConcept/90-decision-log.md)
         // — *at model level there are no values, only defaults* — so each prefix's `default` **is**
         // its model-level value, which is what a default has always been.
-        $exponent = $this->attribute($prefixes, 'exponent', 'int');
+        $exponent = $this->field($prefixes, 'exponent', 'int');
 
         $this->settings->put(
             $this->settings->chainForUseSite($exponent),
@@ -261,7 +261,7 @@ final class UnitScaffold
      * ⚠️ **The kind is never chosen** ([D-161](../../../docs/NewConcept/90-decision-log.md)): the
      * target sits in `Data Types`, so the edge is a composition and nobody said so.
      */
-    private function attribute(Node $owner, string $name, string $typeName): Relation
+    private function field(Node $owner, string $name, string $typeName): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
             if ($edge->name === $name && $edge->fromId === $owner->id) {
@@ -294,7 +294,7 @@ final class UnitScaffold
     /**
      * An attribute pointing at a node given directly, rather than at a data type found by name.
      *
-     * ⚠️ **Separate from {@see attribute()} because the two resolve differently, not because the
+     * ⚠️ **Separate from {@see field()} because the two resolve differently, not because the
      * kind differs.** A data type is looked up by name under one branch root; a constant is a node
      * somebody already holds. *The kind itself is never passed either way — it is read off the
      * branch the target sits in ([D-161](../../../docs/NewConcept/90-decision-log.md)).*
@@ -351,7 +351,7 @@ final class UnitScaffold
         $compositions = $this->framework->rootOf(Branch::Compositions);
         $unitValue    = $this->ensure($compositions, 'Einheitenwert', $created);
 
-        $this->attribute($unitValue, 'wert', 'decimal');
+        $this->field($unitValue, 'wert', 'decimal');
 
         $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes);
         $unit   = $this->fieldTo($unitValue, 'einheit', $baseUnits);

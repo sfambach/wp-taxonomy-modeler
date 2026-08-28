@@ -536,9 +536,9 @@ try {
         unset($_GET['taxmod_node']);
 
         check('render() survives a node that has attributes', str_starts_with($detail, '<div class="wrap"'));
-        check('the attribute table is drawn by the attribute renderer', str_contains($detail, 'taxmod-attribute"'));
+        check('the field table is drawn by the field-row renderer', str_contains($detail, 'taxmod-field"'));
         // R1: the name is a field, not text — which is the thing the owner asked for.
-        check('an own attribute\'s name is editable', str_contains($detail, 'taxmod-attribute-rename'));
+        check('an own attribute\'s name is editable', str_contains($detail, 'taxmod-field-rename'));
         // ⚠️ The multiplicity comes from the settings side through the choice renderer, so a select
         // in this cell is also the proof that no second control was built beside it (D-376).
         check('the multiplicity is a real chooser', str_contains($detail, 'taxmod-choice'));
