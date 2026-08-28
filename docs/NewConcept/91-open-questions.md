@@ -4883,3 +4883,30 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 ⚠️ *Und `min`/`max` sind dabei nicht dasselbe wie `Spalten`/`Zeilen`: die ersten beschränken einen **Wert** und gehören ins Modell ([D-468](90-decision-log.md) verbietet dort sogar das Aufweiten), die zweiten beschränken ein **Steuerelement** und sind freie Schlüssel des Textarea-Renderers ([OQ-120](#oq-120--deklariert-ein-renderer-seine-eigenschaften-und-gilt-derselbe-schnitt-für-konverter-und-validatoren)). Seine eigene Unsicherheit — «wobei ich mir da noch nicht ganz sicher bin» — trifft genau diese Naht.*
 
 ⚠️ *Nicht entschieden (`PR-4`). Was hier **nicht** offen ist: dass ein Knoten festlegt, welche Renderer er zulässt — das hat er im selben Atemzug verworfen ([D-483](90-decision-log.md)).*
+
+---
+
+## OQ-125 — Heissen «der Wert ist ein Zeiger» und «der Wert liegt als Zeiger» weiter fast gleich?
+
+**Raised** 2026-08-28, vom Eigentümer, an einem Symptom: *«du verwendest immer andere Begriffe `***_ref` — das zeigt, dass da Unklarheiten bestehen. Wollen wir die mal auflösen?»*
+
+*Blocks:* [01 Glossary](01-glossary.md), [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Die Familie ist aufgelöst und liegt an einer Stelle** — [01 Glossary](01-glossary.md#referenz--drei-fragen-ein-wort). *Drei Fragen trugen ein Wort, und die Antworten sind jetzt sortiert. **Zwei Namen bleiben, und die sind sein Vokabular, nicht mein Code.***
+
+| | heisst heute | und meint |
+|---|---|---|
+| `SimpleType` | `NodeRef` | der Wert **ist** ein Zeiger auf einen Knoten |
+| `Storage` | `NodeReference` | der Wert **liegt** als Zeiger auf einen Knoten |
+
+⚠️ **Warum es nicht harmlos ist:** *beide werden am Zweig `Constants` wahr. **Man muss sie also nie auseinander lesen** — und merkt deshalb nie, dass sie Verschiedenes sagen. Genau so entstand die Verwechslung, die er gerochen hat.*
+
+### Die Kandidaten
+
+| | Vorschlag | Kosten |
+|---|---|---|
+| **`Storage` liest sich als Ort** | `InsideTheRecord`, `OwnRecords`, **`PointsAtANode`**, **`PointsOutside`** | *dann antworten alle vier auf «wo liegt der Wert», statt zwei auf «wo» und zwei auf «was». **4 Fundstellen**, davon 2 Tests — billig* |
+| **`SimpleType::NodeRef` bleibt** | — | *er ist ehrlich: der Wert **ist** ein Knotenzeiger. 10 Fundstellen, und `node_ref` steht als Zeichenkette in der Datenbank* |
+| **nichts umbenennen, nur das Glossar** | — | *am billigsten, und die Falle bleibt gestellt* |
+
+⚠️ *Was ich **ohne** Rückfrage tue, weil `CD-9` es verlangt und es kein Vokabular von ihm ist: `Surroundings::$refersTo` heisst künftig `targetLabel`. **Es hält ein Label und keinen Zeiger** — der einzige Name der Familie, bei dem das Wort lügt. 10 Dateien, mechanisch, und es wartet, bis der Icon-Lauf im Hintergrund fertig ist, damit wir nicht in derselben Datei kollidieren.*

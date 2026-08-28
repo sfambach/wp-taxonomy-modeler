@@ -9,7 +9,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | | |
 |---|---|
 | Entscheidungen | **484**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **124**, davon **31** noch offen |
+| Offene Fragen | **125**, davon **32** noch offen |
 
 ## Offene Fragen
 
@@ -141,6 +141,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-122](91-open-questions.md) | **offen** | Wo wohnen Export und Import: auf der Konfigurationsseite oder auf einer eigenen? |
 | [OQ-123](91-open-questions.md) | beantwortet | Wo wohnt «normaler Knoten» in der Supported-Liste, und wie beansprucht ein Renderer einen *bestimmten* Knoten? |
 | [OQ-124](91-open-questions.md) | beantwortet | Gibt es im Code spezialisierte Knotenklassen? D-036 hat das delegiert und um Korrektur gebeten |
+| [OQ-125](91-open-questions.md) | **offen** | Heissen «der Wert ist ein Zeiger» und «der Wert liegt als Zeiger» weiter fast gleich? |
 
 ## Entscheidungen
 

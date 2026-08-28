@@ -130,6 +130,45 @@ Kept so a discarded term cannot quietly return under another name.
 | *hide* as a flag on a node | The legacy control that went unused because it sat on the wrong object. What may be picked belongs to the **use site** ([D-181](90-decision-log.md)). ⚠️ **Built as a node column on 2026-08-27 and removed again on 2026-08-28** — the owner: *«I do not simply create a model node and then say I will not draw it»*. It is one column on the **edge**: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) ([D-467](90-decision-log.md)). |
 | *View* as a catch-all for anything reusable | A **view** is a deferred *calculation* belonging to no node ([OQ-069](91-open-questions.md)); a **report** is prepared *output* — an exported parts list, an invoice — and belongs to the renderer side. Two concepts, two homes, never one word ([D-201](90-decision-log.md)). |
 
+## Referenz — drei Fragen, ein Wort
+
+**Der Eigentümer hat es gerochen, bevor es jemand aufgeschrieben hatte:** *«du verwendest immer andere Begriffe `***_ref` — das zeigt, dass da Unklarheiten bestehen. Wollen wir die mal auflösen?»* Diese Stelle besitzt die Familie ([D-469](90-decision-log.md)); jede andere Erwähnung zeigt hierher.
+
+⚠️ **Die Unklarheit ist keine Nachlässigkeit, sie ist ein Zusammenfallen: drei verschiedene Fragen tragen dasselbe Wort, und zwei ihrer Antworten treffen sich am Zweig `Constants`.**
+
+### 1 · Was für ein Wert ist das? — `SimpleType`
+
+| Fall | Bedeutung | Stand |
+|---|---|---|
+| `NodeRef` (`node_ref`) | der Wert **ist** ein Zeiger auf einen Knoten im Modell | entsteht, wenn ein Feld in den Zweig `Constants` zeigt ([D-232](90-decision-log.md)); drei Renderer lesen ihn — `reference` zum Zeigen, die zwei Chooser zum Wählen. **Gemessen: 4 von 32 Feldern** |
+| `UserRef` (`user_ref`) | ein Zeiger auf einen **WordPress-Benutzer**, als Text gespeichert (`P4d`, [D-171](90-decision-log.md)) | ⚠️ **kein Renderer** — gemessen fällt er auf den Auffang (`TypedFieldsTest`). Von den 11 Typen ist er der einzige ohne einen; **das ist die Abweichung, die [D-484](90-decision-log.md) sichtbar machen soll** |
+
+### 2 · Wo liegt der Wert? — `Storage`, entschieden vom **Zweig**
+
+| Zweig | Speicherort |
+|---|---|
+| `Model` | `ExternalReference` |
+| `Compositions` | `OwnRecords` |
+| `DataTypes` | `InsideTheRecord` |
+| `Constants` | `NodeReference` |
+
+⚠️ *`ExternalReference` hat **einen** Leser, und der ist ein Test. Der Zweig `Model` soll so speichern und nichts tut es bisher — kein Fehler, aber es heisst, dass die Bedeutung dieses Falls unerprobt ist.*
+
+### 3 · Was wird gezeichnet?
+
+| Name | Was er wirklich hält |
+|---|---|
+| `TypedValue::ofReference()`, Spalte `value_ref` | **der gespeicherte Zeiger selbst** — eine Id |
+| `ReferenceRenderer` | zeichnet einen Zeiger, und zwar als **Label des Ziels** ([D-105](90-decision-log.md)) |
+| `Surroundings::$refersTo` | ⚠️ **ein Label, kein Zeiger.** *Hier lügt das Wort, und `CD-9` verlangt umbenennen. Vorschlag: `targetLabel`* |
+| `Surroundings::$refersToARecord` | ein `bool` über die **Art des Ziels** — ein Record statt eines Knotens ([D-445](90-decision-log.md)) |
+
+### Die zwei Stolperstellen, die bleiben
+
+⚠️ **`SimpleType::NodeRef` gegen `Storage::NodeReference`.** *Fast dasselbe Wort für «der Wert **ist** ein Zeiger» und «der Wert **liegt** als Zeiger». Beide werden am Zweig `Constants` wahr, weshalb man sie nie auseinander lesen muss und deshalb nie merkt, dass sie Verschiedenes sagen.* **Was zu klären ist:** [OQ-125](91-open-questions.md).
+
+⚠️ *Und was hier **nicht** hingehört, damit es nicht wieder mitwandert: `records.node_id` ist kein Referenztyp, sondern die Spalte, mit der ein Datensatz seinen Knoten nennt ([D-460](90-decision-log.md)s Umbenennung, Schema 9).*
+
 ## Dictation notes
 
 The owner statements were dictated, and speech recognition produces a few recurring substitutions.
