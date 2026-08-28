@@ -63,7 +63,14 @@ foreach ($rows as $killer => $line) {
     // *«**[D-232](#) supersedes** [D-133](#)»* — reporting **another** decision's supersession, which
     // the naive pattern read as *D-375 supersedes D-133*. *So a hit only counts when no other decision
     // is named immediately before the verb: whoever stands there is the subject of the sentence.*
-    if (! preg_match_all('/(?<before>[^.|]{0,40})[Ss]upersedes[^.|]{0,110}?(?<victim>D-\d+)/', $line, $hit, PREG_SET_ORDER)) {
+    // ⚠️ **Auch die deutschen Verben, und dass sie fehlten hat sofort Schaden gemacht.** *Das Log ist
+    // zweisprachig geworden: die älteren Zeilen sagen «supersedes», die neueren «überholt» oder
+    // «ersetzt». **[D-484](../../docs/NewConcept/90-decision-log.md) überholte am 2026-08-28 die
+    // Repräsentationshälfte von [D-036](../../docs/NewConcept/90-decision-log.md) — auf Deutsch —
+    // und diese Prüfung sah es nicht, also bekam D-036 nie seinen Rückverweis und stand weiter als
+    // `agreed` im Index.* **Eine Prüfung, die nur eine Sprache kennt, ist in einer zweisprachigen
+    // Datei blind, und sie sagt es nicht.**
+    if (! preg_match_all('/(?<before>[^.|]{0,40})(?:[Ss]upersedes|überholt|ersetzt)[^.|]{0,110}?(?<victim>D-\d+)/u', $line, $hit, PREG_SET_ORDER)) {
         continue;
     }
 

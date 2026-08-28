@@ -185,7 +185,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-033](90-decision-log.md) | 2026-08-22 | agreed | Orphaned overrides are never cascade-deleted. |
 | [D-034](90-decision-log.md) | 2026-08-22 | agreed | Node selection is one unified interaction |
 | [D-035](90-decision-log.md) | 2026-08-22 | agreed | A chooser takes two nodes: |
-| [D-036](90-decision-log.md) | 2026-08-22 | agreed` (delegated) | Relation kinds are an enum |
+| [D-036](90-decision-log.md) | 2026-08-22 | agreed` (delegated) | ⚠️ Die Repräsentationshälfte ist ersetzt durch D-484: der Eigentümer will |
 | [D-037](90-decision-log.md) | 2026-08-22 | agreed | A model change is breaking or not depending on the existing data, not on the kind of change. |
 | [D-038](90-decision-log.md) | 2026-08-22 | agreed | Relation kinds do not belong in the tree. |
 | [D-039](90-decision-log.md) | 2026-08-22 | agreed | A unit value is one notion |
