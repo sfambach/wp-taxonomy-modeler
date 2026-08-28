@@ -13,6 +13,32 @@ final class RecordedChanges implements Changelog
 
     private int $lastRow = 0;
 
+    /**
+     * ⚠️ **The bracket is mirrored here on purpose, and a fake that did not would be worse than
+     * none.** *`recordMany()` once wrote a whole act into group zero against the real database while
+     * this double reported it fine — the comment in {@see \Taxmod\WordPress\Persistence\WpdbChangelog}
+     * still records that day. **A double that cannot reproduce the mechanism cannot fail for it.***
+     */
+    private int $depth = 0;
+
+    private ?int $openAct = null;
+
+    public function beginAct(): void
+    {
+        ++$this->depth;
+    }
+
+    public function endAct(): void
+    {
+        if ($this->depth > 0) {
+            --$this->depth;
+        }
+
+        if ($this->depth === 0) {
+            $this->openAct = null;
+        }
+    }
+
     public function record(
         int $ownerId,
         string $ownerKind,
@@ -21,9 +47,15 @@ final class RecordedChanges implements Changelog
         ?string $after,
         ?int $changeGroupId = null,
     ): int {
+        $changeGroupId ??= $this->openAct;
+
         // The row that opens an act becomes its own group, exactly as the SQL one does.
         $row   = ++$this->lastRow;
         $group = $changeGroupId ?? $row;
+
+        if ($this->depth > 0) {
+            $this->openAct ??= $group;
+        }
 
         $this->entries[] = [$ownerId, $ownerKind, $what, $before, $after, $group];
 

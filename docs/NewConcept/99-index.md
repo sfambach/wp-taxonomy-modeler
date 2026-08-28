@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **469**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **470**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **119**, davon **29** noch offen |
 
 ## Offene Fragen
@@ -613,3 +613,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-467](90-decision-log.md) | 2026-08-28 | agreed | `hide` lives on the |
 | [D-468](90-decision-log.md) | 2026-08-28 | agreed | Widening stays refused for `min` and `max`. The narrowing rule does |
 | [D-469](90-decision-log.md) | 2026-08-28 | agreed | One topic, one owning place — and every other mention points at it. The owner asked for it and the first application shows why. |
+| [D-470](90-decision-log.md) | 2026-08-28 | agreed | An act is bracketed, and the bracket is what gives a change its number. Builds D-348 at last — the column had been there for two days and grouped not… |

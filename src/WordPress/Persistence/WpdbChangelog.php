@@ -22,8 +22,36 @@ use Taxmod\Core\Repository\Clock;
  */
 final class WpdbChangelog implements Changelog
 {
+    /**
+     * How many brackets are open, and the number the outermost one adopted.
+     *
+     * ⚠️ *Two fields rather than one, because the number only exists once a row has been written:
+     * `$depth` says «an act is running», `$openAct` says «and it is this one». Between `beginAct()`
+     * and the act's first `record()` the first is set and the second is not — which is correct rather
+     * than a gap.*
+     */
+    private int $depth = 0;
+
+    private ?int $openAct = null;
+
     public function __construct(private readonly Clock $clock)
     {
+    }
+
+    public function beginAct(): void
+    {
+        ++$this->depth;
+    }
+
+    public function endAct(): void
+    {
+        if ($this->depth > 0) {
+            --$this->depth;
+        }
+
+        if ($this->depth === 0) {
+            $this->openAct = null;
+        }
     }
 
     public function record(
@@ -35,6 +63,11 @@ final class WpdbChangelog implements Changelog
         ?int $changeGroupId = null,
     ): int {
         global $wpdb;
+
+        // ⚠️ **An open act adopts the row, and an explicit id still wins.** *The thirteen callers that
+        // pass a group on purpose keep working exactly as before; the bracket only answers for the
+        // ones that passed nothing and therefore each opened an act of their own.*
+        $changeGroupId ??= $this->openAct;
 
         $table = Schema::table('changelog');
 
@@ -67,6 +100,11 @@ final class WpdbChangelog implements Changelog
             $opened
         ));
 
+        // ⚠️ *And if a bracket is open, this row is the one that gave it its number.*
+        if ($this->depth > 0) {
+            $this->openAct ??= $opened;
+        }
+
         return $opened;
     }
 
@@ -78,6 +116,10 @@ final class WpdbChangelog implements Changelog
         if ($rows === []) {
             return $changeGroupId ?? 0;
         }
+
+        // ⚠️ *Same adoption as {@see record()} — a batch written inside a bracket is part of that act
+        // and not an act of its own.*
+        $changeGroupId ??= $this->openAct;
 
         $table = Schema::table('changelog');
         $at    = $this->clock->now()->format('Y-m-d H:i:s');
@@ -129,6 +171,10 @@ final class WpdbChangelog implements Changelog
             $opened,
             $opened
         ));
+
+        if ($this->depth > 0) {
+            $this->openAct ??= $opened;
+        }
 
         return $opened;
     }
@@ -229,11 +275,20 @@ final class WpdbChangelog implements Changelog
         // would be a guess presented as a fact.*
         $created = $first->what === 'created';
 
+        // ⚠️ **`(int) null` is `0`, and that undid the whole of [D-296](../../../docs/NewConcept/90-decision-log.md)
+        // on the way out.** *The column stores null correctly — measured, **7696 rows** of it against
+        // 1262 human ones — and this cast turned every one of them into «user 0» for a reader. The
+        // screen then drew `#0`, which is neither a person nor the machine.*
+        //
+        // ⚠️ *Written as a closure rather than twice, because the second copy is where the next
+        // reader's cast will go back in.*
+        $who = static fn (?string $id): ?int => $id === null ? null : (int) $id;
+
         return new ChangeSummary(
             $created ? (string) $first->at : null,
-            $created ? (int) $first->by_user_id : null,
+            $created ? $who($first->by_user_id) : null,
             (string) $last->at,
-            (int) $last->by_user_id,
+            $who($last->by_user_id),
             (string) $last->what
         );
     }

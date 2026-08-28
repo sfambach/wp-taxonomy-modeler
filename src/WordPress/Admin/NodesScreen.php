@@ -28,6 +28,7 @@ use Taxmod\Core\Renderer\SettingsRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
+use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
@@ -115,6 +116,12 @@ final class NodesScreen
         private readonly DataEntry $data,
         private readonly FrameworkNodes $framework,
         private readonly Rendering $rendering,
+        // ⚠️ **Here so an act can have a number** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // *The screen does not write history — the services do — but it is the only place that knows
+        // where **one act** starts and ends, which is what a change number means. And it has to be
+        // the **same** object the services hold: seven `new WpdbChangelog(…)` in `Plugin` are now one
+        // ({@see \Taxmod\WordPress\Plugin::changelog()}).*
+        private readonly Changelog $changelog,
     ) {
     }
 
@@ -927,11 +934,21 @@ final class NodesScreen
      * never reissued ([D-340](../../../docs/NewConcept/90-decision-log.md)), `version` rises so a
      * record can say what it was written against ([D-060](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * ⚠️ **Creation, last change and who changed it are not here yet, and that is a wiring gap rather
-     * than a missing decision.** `Changelog::summaryOf()` and {@see \Taxmod\Core\Model\ChangeSummary}
-     * are built and checked; this screen has no changelog collaborator to ask. *Saying so is worth
-     * more than drawing three empty chips — and it is the same fault shape as `hide` storing
-     * correctly while nothing read it ([D-396](../../../docs/NewConcept/90-decision-log.md)).*
+     * ⚠️ **Creation, last change and who changed it were «a wiring gap rather than a missing
+     * decision» — and the wire arrived** with [list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list),
+     * which had to give this screen a changelog for a different reason entirely. *`summaryOf()` and
+     * {@see \Taxmod\Core\Model\ChangeSummary} had been built and checked and unreachable, which is the
+     * same fault shape as `hide` storing correctly while nothing read it
+     * ([D-396](../../../docs/NewConcept/90-decision-log.md)). **Three of those in a row is what made
+     * that a habit worth naming.***
+     *
+     * ⚠️ *A chip only appears where something is known: a node seeded before the changelog existed has
+     * no history, and «created: —» reads as a fault rather than as an honest absence
+     * ({@see ChangeSummary::isKnown()}).*
+     *
+     * ⚠️ **The user id becomes a name here and only here.** *Who user 1 **is** belongs to WordPress and
+     * the core has no idea (`CD-1`, [D-171](../../../docs/NewConcept/90-decision-log.md)) — so the
+     * boundary turns the number into a name, exactly as it turns a nonce into a form.*
      */
     private function constants(Node $selected): string
     {
@@ -940,6 +957,25 @@ final class NodesScreen
             [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
             [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
         ];
+
+        $history = $this->changelog->summaryOf($selected->id);
+
+        if ($history->createdAt !== null) {
+            $chips[] = [
+                __('Created', 'taxmod'),
+                $this->when($history->createdAt, $history->createdBy),
+                __('The first entry in the changelog. Read from there and stored nowhere else.', 'taxmod'),
+            ];
+        }
+
+        if ($history->changedAt !== null) {
+            $chips[] = [
+                __('Changed', 'taxmod'),
+                $this->when($history->changedAt, $history->changedBy)
+                    . ($history->lastAct === null ? '' : ' · ' . $history->lastAct),
+                __('The last entry in the changelog, and what it was.', 'taxmod'),
+            ];
+        }
 
         $html = '';
 
@@ -950,6 +986,34 @@ final class NodesScreen
         }
 
         return $html;
+    }
+
+    /**
+     * A moment, and who was behind it, in the reader's own settings.
+     *
+     * ⚠️ **`date_i18n()` and not `date()`** — the format and the timezone are the installation's
+     * choice, and hardcoding either would show a German administrator an American date on his own
+     * screen (`AR-2`'s argument, applied to a format rather than to a word).
+     *
+     * ⚠️ *A missing user is the **machine**, not an unknown person: a change made by cron, WP-CLI or an
+     * import records no user on purpose ([D-296](../../../docs/NewConcept/90-decision-log.md)) — a
+     * wrong name in the history is worse than no name.*
+     */
+    private function when(string $at, ?int $byUserId): string
+    {
+        $stamp = strtotime($at);
+
+        $shown = $stamp === false
+            ? $at
+            : date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $stamp);
+
+        if ($byUserId === null) {
+            return $shown . ' · ' . __('the machine', 'taxmod');
+        }
+
+        $user = get_userdata($byUserId);
+
+        return $shown . ' · ' . ($user === false ? '#' . $byUserId : $user->display_name);
     }
 
     /**
@@ -2528,6 +2592,22 @@ final class NodesScreen
         $rendererName = isset($_POST['renderer_name']) ? sanitize_text_field(wp_unslash($_POST['renderer_name'])) : '';
         $stay   = $id;
 
+        // ⚠️ **One act, one change number** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // The owner: *whatever was changed in one change — edge, node, setting — if they were changed
+        // together they should have one change number.* **This `match` is where an act begins**: one
+        // POST is one thing a person did, and everything it writes belongs together.
+        //
+        // ⚠️ *Measured before the bracket: a node renamed, its edge reordered and its setting written
+        // in one act produced **three** groups. `change_group_id` existed, was decided
+        // ([D-348](../../../docs/NewConcept/90-decision-log.md)) and grouped nothing — 1609 of 1945
+        // groups held a single row.*
+        //
+        // ⚠️ **In `finally`, so a refusal still closes it.** *An act that throws has written whatever
+        // it wrote before throwing, and leaving the bracket open would put the **next** person's act
+        // in the same group. A half-written act is a fact; a group that swallows the following one is
+        // a lie.*
+        $this->changelog->beginAct();
+
         try {
             $outcome = match ($do) {
                 'create'         => $stay = $this->editor->createNode($name, $id)->id,
@@ -2639,6 +2719,8 @@ final class NodesScreen
             $message = $error->getMessage();
         } catch (\InvalidArgumentException) {
             $message = __('Unknown action.', 'taxmod');
+        } finally {
+            $this->changelog->endAct();
         }
 
         // Everything now happens **at** a node, so the person stays there rather than being

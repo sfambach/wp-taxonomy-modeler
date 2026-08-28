@@ -66,6 +66,26 @@ final class ModelEditor
 
     public function createNode(string $name, int $parentId): Node
     {
+        // ⚠️ **Creating a node is one change, not three** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // *Measured against the real database: `created` plus the two settings this method materialises
+        // landed in **three** change groups, because a group was opened per write. **Nobody performs
+        // «materialise `read_only`» as an act** — they create a node, and the settings come with it.*
+        //
+        // ⚠️ *Nested brackets are counted, so this is harmless when the boundary already opened one
+        // ({@see \Taxmod\WordPress\Admin\NodesScreen::handlePost()}) — **the outermost bracket is the
+        // act**, which is the one a person performed. And it means a caller that is not a screen
+        // (activation, a scaffold, WP-CLI) still gets one group per node instead of three.*
+        $this->changelog->beginAct();
+
+        try {
+            return $this->createdNode($name, $parentId);
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    private function createdNode(string $name, int $parentId): Node
+    {
         $parent = $this->nodes->byId($parentId);
 
         // Two identities, because an edge is a first-class thing that can carry settings and
@@ -235,6 +255,20 @@ final class ModelEditor
      */
     public function duplicate(int $nodeId): Node
     {
+        // ⚠️ **Ein Akt, eine Änderungsnummer** ([Zeile 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // *Ein Duplikat legt einen Knoten an, kopiert seine Felder, seine Settings und seine Labels — **fünf Schreibstellen, ein Akt.** Verschachtelte Klammern werden gezählt, also gewinnt die äußere — die,
+        // die jemand tatsächlich ausgeführt hat.*
+        $this->changelog->beginAct();
+
+        try {
+            return $this->duplicatedNode($nodeId);
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    private function duplicatedNode(int $nodeId): Node
+    {
         $node = $this->nodes->byId($nodeId);
 
         // ⚠️ **The machinery's own nodes are not copyable** ([D-194]): a second `Trash` or a second
@@ -301,6 +335,20 @@ final class ModelEditor
      * ([OQ-095](../../../docs/NewConcept/91-open-questions.md)).*
      */
     public function duplicateField(int $ownerId, int $edgeId, string $name): Relation
+    {
+        // ⚠️ **Ein Akt, eine Änderungsnummer** ([Zeile 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // *Dasselbe wie beim Knoten, eine Ebene tiefer. Verschachtelte Klammern werden gezählt, also gewinnt die äußere — die,
+        // die jemand tatsächlich ausgeführt hat.*
+        $this->changelog->beginAct();
+
+        try {
+            return $this->duplicatedField($ownerId, $edgeId, $name);
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    private function duplicatedField(int $ownerId, int $edgeId, string $name): Relation
     {
         // ⚠️ **`ownAttribute()` and not `fieldsOf()`**: an inherited attribute belongs to the
         // ancestor that declared it, and copying it from a descendant would put a second declaration
@@ -408,6 +456,20 @@ final class ModelEditor
         }
     }
     public function addField(int $ownerId, int $targetId, string $name): Relation
+    {
+        // ⚠️ **Ein Akt, eine Änderungsnummer** ([Zeile 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // *Ein Feld anlegen schreibt die Kante **und** materialisiert, was der Zieltyp sagt. Verschachtelte Klammern werden gezählt, also gewinnt die äußere — die,
+        // die jemand tatsächlich ausgeführt hat.*
+        $this->changelog->beginAct();
+
+        try {
+            return $this->addedField($ownerId, $targetId, $name);
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    private function addedField(int $ownerId, int $targetId, string $name): Relation
     {
         $owner  = $this->nodes->byId($ownerId);
         $target = $this->nodes->byId($targetId);

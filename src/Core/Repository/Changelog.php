@@ -16,6 +16,30 @@ use Taxmod\Core\Model\ChangeSummary;
 interface Changelog
 {
     /**
+     * Open an act: everything recorded until {@see endAct()} belongs to **one change**.
+     *
+     * ⚠️ **The owner asked for this and the column was already there and grouping nothing**
+     * ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)): *I think
+     * we need a unique change number — whatever was changed in one change, edge, node, setting, if
+     * they were changed together they should have one change number.* **Measured before the bracket:
+     * 2282 rows across 1945 groups, 1609 of them holding a single row, and 0 of 1945 spanning more
+     * than one kind of owner.** *A group id was handed out per **write** rather than per change.*
+     *
+     * ⚠️ **No new counter, so [D-348](../../../docs/NewConcept/90-decision-log.md) stands
+     * untouched**: the group is still *the id of the act's first row*. This only says **which rows
+     * belong to that first one** — the bracket holds no number of its own until a row arrives, which
+     * is also why it returns nothing.
+     *
+     * ⚠️ **Re-entrant on purpose.** *A boundary act calls a service that calls another — `duplicate()`
+     * creates a node, which records — and each of those may open a bracket of its own. Counting depth
+     * makes the **outermost** one the act, which is the one a person performed.*
+     */
+    public function beginAct(): void;
+
+    /** Close the innermost act; the outermost close ends the grouping. */
+    public function endAct(): void;
+
+    /**
      * @param int         $ownerId       Node or relation id, from the model identity space.
      * @param string      $ownerKind     `node` or `relation` — stored alongside because the
      *                                   changelog outlives what it refers to (D-065).

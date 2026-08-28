@@ -243,7 +243,7 @@ final class Plugin
             new WpdbRelationRepository(),
             new TableIdentityAllocator(),
             $this->frameworkNodes(),
-            new WpdbChangelog(new SystemClock()),
+            $this->changelog(),
             // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
             // original, so its own settings and labels travel with it.
             new WpdbSettingRepository(),
@@ -252,7 +252,7 @@ final class Plugin
             // node gets its parent's settings written into it, and a new attribute its target's.
             // *Handed in rather than made required, because the core tests and the boundary checks
             // build this service to move nodes about and have nothing to furnish.*
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
         );
     }
 
@@ -268,7 +268,7 @@ final class Plugin
         return new UnitScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock())),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes())
         );
     }
@@ -285,7 +285,7 @@ final class Plugin
         return new CompositionScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
         );
     }
 
@@ -297,7 +297,7 @@ final class Plugin
             // ⚠️ **Handed in so the scaffold can say what a number type permits.** The owner:
             // *`range_min` and `range_max` on `int` should be int's min and max.* The bounds come
             // from the column it is stored in, because storage is what refuses.
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()))
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
         );
     }
 
@@ -317,6 +317,29 @@ final class Plugin
      * not loaded twice» — not the whole-model store, which stays a thought model
      * ([D-455](../../docs/NewConcept/90-decision-log.md)).*
      */
+    /**
+     * The one changelog, shared by everything that writes to it.
+     *
+     * ⚠️ **This had to become one object before an act could have a number.** *`new WpdbChangelog(…)`
+     * stood **seven** times in this file — the editor got one, each of the four `Settings` got one,
+     * the framework seeder got one, the screen's settings got one. That cost nothing while a group id
+     * was handed out per write, and it makes the bracket
+     * ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) impossible:
+     * `beginAct()` on the screen's copy would say nothing to the editor's copy, and the act would
+     * still fall into as many groups as it had writers.*
+     *
+     * ⚠️ *Same reason `frameworkNodes()` below is memoised, and the same shape. **A collaborator that
+     * holds state has to be one collaborator** — which is a thing worth checking for the next one,
+     * because seven copies of a stateless object were merely wasteful and seven copies of this one
+     * were wrong.*
+     */
+    private ?WpdbChangelog $changelog = null;
+
+    private function changelog(): WpdbChangelog
+    {
+        return $this->changelog ??= new WpdbChangelog(new SystemClock());
+    }
+
     private ?SeededFrameworkNodes $frameworkNodes = null;
 
     private function frameworkNodes(): SeededFrameworkNodes
@@ -325,7 +348,7 @@ final class Plugin
             new WpdbNodeRepository(),
             new WpdbRelationRepository(),
             new TableIdentityAllocator(),
-            new WpdbChangelog(new SystemClock()),
+            $this->changelog(),
             // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
             // original, so its own settings and labels travel with it.
             new WpdbSettingRepository(),
@@ -343,7 +366,7 @@ final class Plugin
      */
     public function screen(): NodesScreen
     {
-        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new WpdbChangelog(new SystemClock()));
+        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog());
         $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes());
 
         return new NodesScreen(
@@ -369,7 +392,10 @@ final class Plugin
                 // `converter` setting drew as a **dead** control until there was one to ask
                 // (D-219, list row 7).*
                 ShippedConverters::registry()
-            )
+            ),
+            // ⚠️ *The same object the editor and the settings hold — that is the whole point of it
+            // being memoised. A second one would open a bracket nobody writes into.*
+            $this->changelog()
         );
     }
 }

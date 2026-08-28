@@ -501,7 +501,13 @@ try {
         $labels,
         $data,
         $framework,
-        $rendering
+        $rendering,
+        // ⚠️ **Dieser Check hat sich selbst bewiesen.** *Sein Kommentar oben sagt «wenn die beiden je
+        // auseinanderlaufen, sagt dieser Check es» — und genau das ist am 2026-08-28 passiert, als der
+        // Screen einen Changelog bekam ([Zeile 45](../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // **Dasselbe Exemplar wie oben**, denn die Klammer nuetzt nur, wenn Schreiber und Klammer ein
+        // Objekt teilen.*
+        $log
     );
 
     $markup = $screen->render();
