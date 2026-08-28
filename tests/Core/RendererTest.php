@@ -113,16 +113,24 @@ final class RendererTest extends TestCase
     }
 
     #[Test]
-    public function hidden_draws_nothing_at_all(): void
+    public function a_renderer_no_longer_knows_what_hidden_means(): void
     {
+        // ⚠️ **This test used to assert the opposite, and the reversal is D-457.** *`hide` was a
+        // setting, and a renderer handed a `hide = true` context returned an empty string. Now `hide`
+        // is a **column on the identity** and an **abort**: the descent stops before it asks a renderer
+        // at all (D-450, D-452).*
+        //
+        // ⚠️ *So a renderer given a setting called `hide` must **ignore** it — there is no such setting
+        // any more, and a renderer that still honoured one would be a second answer to a question the
+        // model already answers. The value is drawn, because drawing is all this class does.*
         $result = (new PlainRenderer())->render(
             $this->subject,
             $this->context(Purpose::Display, TypedValue::ofText('secret'), [
-                SettingKey::Hide->value => TypedValue::ofBool(true),
+                'hide' => TypedValue::ofBool(true),
             ])
         );
 
-        self::assertSame('', $result->markup);
+        self::assertStringContainsString('secret', $result->markup);
     }
 
     // -------------------------------------------------------------- the registry

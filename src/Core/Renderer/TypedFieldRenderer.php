@@ -52,10 +52,15 @@ abstract class TypedFieldRenderer implements Renderer
         // the markup afterwards (D-021).
         $used = $subject instanceof Relation ? [$subject->id] : [];
 
-        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
-            return new RenderResult('', $used);
-        }
-
+        // ⚠️ **The `hide` check that stood here is gone, and its absence is the decision**
+        // ([D-457](../../../docs/NewConcept/90-decision-log.md), [D-450](../../../docs/NewConcept/90-decision-log.md)).
+        // *`hide` is a **column** on the identity now, not a setting, and it is an **abort**: the
+        // descent stops before it asks a renderer at all. A renderer that returned an empty string
+        // had already been asked — and its children had already been drawn.*
+        //
+        // ⚠️ *What that removes is not a line but a class of fault: as a setting, `hide` on a **type**
+        // reached every field of that type through the chain, and the check here is where it landed.
+        // **Measured twice** (OQ-101, and again 2026-08-27).*
         return new RenderResult(
             $context->mayEdit() ? $this->input($context) : $this->display($context),
             $used

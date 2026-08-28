@@ -30,19 +30,20 @@ final class Node extends Identity implements Renderable
         int $version,
         string $name,
         public readonly string $path,
+        bool $hide = false,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
-        parent::__construct($id, $version, $name);
+        parent::__construct($id, $version, $name, $hide);
     }
 
     /**
      * Rebuild a node from what storage holds. No validation beyond the name — storage is
      * trusted, input is not.
      */
-    public static function fromStorage(int $id, int $version, string $name, string $path): self
+    public static function fromStorage(int $id, int $version, string $name, string $path, bool $hide = false): self
     {
-        return new self($id, $version, $name, $path);
+        return new self($id, $version, $name, $path, $hide);
     }
 
     /**
@@ -76,7 +77,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path);
+        return new self($this->id, $this->version + 1, $name, $this->path, $this->hide);
     }
 
     /**
@@ -93,9 +94,29 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path);
+        return new self($this->id, $this->version + 1, $this->name, $path, $this->hide);
     }
 
+    /**
+     * The same node hidden or shown again, one version on.
+     *
+     * ⚠️ **Returns the same instance when nothing changed**, exactly as {@see self::renamedTo()} does —
+     * so switching the eye twice does not raise the version twice
+     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *A model change and therefore a version change: it goes in the changelog, survives a
+     * migration, and every editor sees the node gone ([D-426](../../../docs/NewConcept/90-decision-log.md)).
+     * A per-person «do not show me these» would have been a user option and is explicitly not what the
+     * owner asked for.*
+     */
+    public function withHide(bool $hide): self
+    {
+        if ($hide === $this->hide) {
+            return $this;
+        }
+
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $hide);
+    }
     /**
      * The ids of this node's ancestors, nearest last, without the node itself.
      *

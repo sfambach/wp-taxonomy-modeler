@@ -347,21 +347,37 @@ check('editing a reference still has no renderer, and says so', $editing->hasNoR
 check('marked in the markup rather than merely tidy (R14b)', str_contains($editing->result->markup, 'taxmod-no-renderer'));
 
 echo "\n== 11. Hide and read-only close a field wherever it is drawn ==\n";
-$settings->put($settings->chainForUseSite($label), SettingKey::Hide->value, TypedValue::ofBool(true));
+// ⚠️ *Die Spalte, nicht die Einstellung ([D-457]): `hide` ist eine Eigenschaft der Platzierung,
+// und der Abstieg **bricht ab** statt ein leeres Feld zu zeichnen ([D-450]).*
+$edges->save($label->withHide(true), $label->version);
+
+// ⚠️ *Frisch holen, und zwar **alle**: eine Kante ist unveraenderlich, also haelt jede aeltere
+// Kopie weiter `hide = false`. Genau das hat diese Pruefung beim Umbau gefangen.*
+$frisch = [];
+foreach ($edges->fieldEdgesOf([$part->id]) as $one) { $frisch[$one->id] = $one; }
+$label = $frisch[$label->id] ?? $label;
+$every = array_map(static fn ($e) => $frisch[$e->id] ?? $e, $every);
 $settings->put($settings->chainForUseSite($mail), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
 
 $closed = [];
 foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_value') as $field) {
     $closed[$field->edge->id] = $field;
 }
-check('a hidden attribute draws nothing at all', $closed[$label->id]->isHidden());
-check('it stays in the list, so hidden is not mistaken for missing', count($closed) === 2);
+// ⚠️ **Beide Behauptungen sind 2026-08-28 gedreht** ([D-450], [D-452], [D-457]): `hide` ist ein
+// **Abbruch**. Das Feld wird nicht leer gezeichnet, es wird **nicht aufgezaehlt** — «und schaut auch
+// nicht mehr auf die Kinder» ist die Formulierung des Eigentuemers, und eine Listenzeile mit leerem
+// Markup erfuellt sie nicht.
+check('a hidden field is not enumerated at all', ! isset($closed[$label->id]));
+check('and the others are still there', count($closed) === 1);
 check('a read-only address is shown, not offered', ! str_contains($closed[$mail->id]->result->markup, '<input'));
 check('and it is still a link', str_contains($closed[$mail->id]->result->markup, 'mailto:'));
 
 echo "\n== 12. Not searchable is a missing capability, not a special case ==\n";
 check('no attribute is offered for search yet (D-217)', $rendering->fieldsFor($every, [], Purpose::Search, 'q') === []);
-check('a value is never dropped the same way', count($rendering->fieldsFor($every, [], Purpose::Display, '')) === 7);
+// ⚠️ *Sechs von sieben: eines ist seit Abschnitt 11 versteckt, und `hide` ist ein **Abbruch** —
+// es wird nicht aufgezaehlt ([D-450]). Die Aussage der Zeile bleibt dieselbe: **ein Wert wird nicht
+// stillschweigend weggelassen**, nur weil ein Zweck nichts damit anfangen kann.*
+check('a value is never dropped the same way', count($rendering->fieldsFor($every, [], Purpose::Display, '')) === count($every) - 1);
 
 echo "\n== 13. The whole form costs a fixed number of queries (CD-7) ==\n";
 $before = $wpdb->num_queries;
@@ -404,8 +420,9 @@ check('and the fallback is not choosable at all', ! $rendering->knowsRenderer('p
 
 echo "\n== 15. The settings side is drawn, not printed (R20a) ==\n";
 $intNode = $nodes->byId($seeded['int']->id);
-// ⚠️ `mandatory` was the switch here until [D-405]; `hide` makes the same point and still exists.
-$settings->put($settings->chainFor($intNode), SettingKey::Hide->value, TypedValue::ofBool(true));
+// ⚠️ `mandatory` was the switch here until [D-405] and `hide` until [D-457] — `read_only` makes the
+// same point and is the one that stays a setting ([D-461]).
+$settings->put($settings->chainFor($intNode), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
 
 $rows = [];
 foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode))) as $row) {
@@ -413,9 +430,9 @@ foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFo
 }
 
 check('a boolean setting is drawn as a sliding switch',
-    isset($rows['hide']) && $rows['hide']->wasDrawn()
-        && str_contains($rows['hide']->result->markup, 'taxmod-toggle-track'),
-    isset($rows['hide']) ? ($rows['hide']->result->markup ?? 'undrawn') : 'missing');
+    isset($rows['read_only']) && $rows['read_only']->wasDrawn()
+        && str_contains($rows['read_only']->result->markup, 'taxmod-toggle-track'),
+    isset($rows['read_only']) ? ($rows['read_only']->result->markup ?? 'undrawn') : 'missing');
 check('a borrowing key takes the type of the node it sits on',
     isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
 // ⚠️ **This check used to assert the opposite, and the old reason was honest at the time:** a
@@ -440,9 +457,9 @@ check('a choice with nothing in it is a dead control, not an empty one',
 
 // ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
 check('a switch reads back as a boolean, not as the number one',
-    $settings->resolve($settings->chainFor($intNode))['hide']->value->asBool() === true);
+    $settings->resolve($settings->chainFor($intNode))['read_only']->value->asBool() === true);
 
-$settings->reset($intNode->id, SettingKey::Hide->value);
+$settings->reset($intNode->id, SettingKey::ReadOnly->value);
 
 echo "\n== 16. A node is drawn by a container, not by a screen (D-098, R46, R75) ==\n";
 $formed = $rendering->nodeAsForm(
@@ -457,7 +474,7 @@ check('the form drew something', str_contains($formed->markup, 'taxmod-form'));
 check('every member is in it', count(array_filter(
     $every,
     static fn ($e): bool => str_contains($formed->markup, $e->name)
-)) === count($every) - 1, 'one is hidden by a setting from section 11');
+)) === count($every) - 1, 'one is hidden by the column from section 11');
 check('and it says which edges went into it (D-021)', $formed->usedEdges !== []);
 
 // R75: read-only values first. `__p7 contact` was made read-only in section 11.

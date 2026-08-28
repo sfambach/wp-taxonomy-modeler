@@ -301,23 +301,27 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function hiding_an_attribute_leaves_the_field_in_the_list_and_empty(): void
+    public function a_hidden_field_is_not_enumerated_at_all(): void
     {
-        // ⚠️ It stays in the list so the caller can tell *hidden* from *not an attribute of this
-        // model*; the markup is what is empty (R11).
+        // ⚠️ **This test asserted the opposite until 2026-08-28, and the reversal is the decision.**
+        // *It said «it stays in the list so the caller can tell hidden from not-an-attribute; the markup
+        // is what is empty». Under D-450 and D-452 `hide` is an **abort**: the walk stops **before**
+        // drawing and **before** looking for children.*
+        //
+        // ⚠️ *An empty markup meant the renderer had already been asked — and for a composed value its
+        // members had already been drawn and thrown away. «Does not look at the children» is the owner's
+        // own wording, and a list entry with empty markup does not honour it.*
         $part = $this->thing('Part');
         $edge = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
-        $this->settings->put(
-            $this->settings->chainForUseSite($edge),
-            SettingKey::Hide->value,
-            TypedValue::ofBool(true)
-        );
+        self::assertCount(1, $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v'));
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+        // The column, not a setting — D-457. Hiding is a property of the placement.
+        $this->edges->save($edge->withHide(true), $edge->version);
 
-        self::assertCount(1, $fields);
-        self::assertTrue($fields[0]->isHidden());
+        $fresh = $this->edges->fieldEdgesOf([$part->id]);
+
+        self::assertSame([], $this->rendering->fieldsFor($fresh, [], Purpose::Display, 'v'));
     }
 
     #[Test]
@@ -1028,16 +1032,18 @@ final class RenderingTest extends TestCase
     public function a_hidden_member_takes_no_row_in_the_form(): void
     {
         // R11, and R75's level dependency: `hide` overrides the layout wherever it matters.
+        //
+        // ⚠️ *The mechanism changed on 2026-08-28 and the outcome did not: `hide` is a **column** on
+        // the placement (D-457), not a setting on its chain. The form is empty because the field was
+        // never enumerated, rather than because its markup came back empty.*
         $part   = $this->thing('Part');
         $secret = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
-        $this->settings->put(
-            $this->settings->chainForUseSite($secret),
-            SettingKey::Hide->value,
-            TypedValue::ofBool(true)
-        );
+        $this->edges->save($secret->withHide(true), $secret->version);
 
-        self::assertSame('', $this->rendering->nodeAsForm($part, [$secret], [], Purpose::Display)->markup);
+        $fresh = $this->edges->fieldEdgesOf([$part->id]);
+
+        self::assertSame('', $this->rendering->nodeAsForm($part, $fresh, [], Purpose::Display)->markup);
     }
 
     // ------------------------------------------------------- the settings side
@@ -1051,7 +1057,9 @@ final class RenderingTest extends TestCase
         $rows = $this->drawnSettings($this->type('int'));
 
         // ⚠️ `mandatory` was in this list until [D-405]: the multiplicity says it, so the key is gone.
-        foreach (['range_min', 'range_max', 'range_step', 'default', 'hide'] as $key) {
+        // ⚠️ *`hide` verliess diese Liste 2026-08-28 — es ist eine Spalte und kein Setting mehr
+        // ([D-457]). `read_only` steht dafuer, weil es einer bleibt ([D-461]).*
+        foreach (['range_min', 'range_max', 'range_step', 'default', 'read_only'] as $key) {
             self::assertArrayHasKey($key, $rows, $key);
             self::assertTrue($rows[$key]->wasDrawn(), $key);
         }
@@ -1081,7 +1089,7 @@ final class RenderingTest extends TestCase
         // ⚠️ A key that applies to **anything** still appears — `hide` stands in for what `mandatory`
         // used to demonstrate here ([D-405]), and it makes the point better: it is a rule about the
         // field, not about its type.
-        self::assertArrayHasKey('hide', $rows);
+        self::assertArrayHasKey('read_only', $rows);
     }
 
     #[Test]
@@ -1091,15 +1099,15 @@ final class RenderingTest extends TestCase
         // It printed text until SettingKey::typeFor() said what type a setting's value has.
         $int = $this->type('int');
 
-        $this->settings->put($this->settings->chainFor($int), SettingKey::Hide->value, TypedValue::ofBool(true));
+        $this->settings->put($this->settings->chainFor($int), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
         $this->settings->put($this->settings->chainFor($int), SettingKey::RangeMin->value, TypedValue::ofInt(3));
 
         $rows = $this->drawnSettings($int);
 
         // A switch is still drawn as a switch; which switch is beside the point of this test.
-        self::assertTrue($rows[SettingKey::Hide->value]->wasDrawn());
-        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::Hide->value]->result->markup);
-        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::Hide->value]->rendererName);
+        self::assertTrue($rows[SettingKey::ReadOnly->value]->wasDrawn());
+        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::ReadOnly->value]->result->markup);
+        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::ReadOnly->value]->rendererName);
 
         self::assertSame(SimpleType::Int, $rows[SettingKey::RangeMin->value]->type);
         self::assertStringContainsString('3', $rows[SettingKey::RangeMin->value]->result->markup);

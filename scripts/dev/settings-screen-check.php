@@ -178,8 +178,10 @@ foreach ([
     [Taxmod\Core\Model\SettingKey::Persistent, '1'],
     [Taxmod\Core\Model\SettingKey::ReadOnly, '1'],
     [Taxmod\Core\Model\SettingKey::ReadOnly, '0'],
-    [Taxmod\Core\Model\SettingKey::Hide, '1'],
-    [Taxmod\Core\Model\SettingKey::Hide, '0'],
+    // ⚠️ *`hide` stand hier bis 2026-08-28 und ist seit [D-457] eine Spalte, kein Setting.
+    // `read_only` ist der Schalter, der einer bleibt ([D-461]).*
+    [Taxmod\Core\Model\SettingKey::ReadOnly, '1'],
+    [Taxmod\Core\Model\SettingKey::ReadOnly, '0'],
 ] as [$key, $want]) {
     $_POST = ['taxmod_setting' => [$key->value => $want]];
 
@@ -199,7 +201,7 @@ foreach ([
 // all six — and that exact fault once put `persistent = false` onto every node somebody looked at.*
 $settings->put($settings->chainFor($scratch), Taxmod\Core\Model\SettingKey::ReadOnly->value, Taxmod\Core\Model\TypedValue::ofBool(true));
 
-$_POST = ['taxmod_setting' => [Taxmod\Core\Model\SettingKey::Hide->value => '1']];
+$_POST = ['taxmod_setting' => [Taxmod\Core\Model\SettingKey::ReadOnly->value => '1']];
 
 $save->invoke($screen, $scratch->id, 0, '');
 

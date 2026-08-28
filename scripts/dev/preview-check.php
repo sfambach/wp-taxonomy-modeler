@@ -107,12 +107,31 @@ if ($edge === null) {
     $edgeId = (int) $edge['id'];
     $name   = (string) $edge['name'];
 
-    /** Puts one flag on the edge, or clears both. */
+    /**
+     * Puts one flag on the edge, or clears both.
+     *
+     * ⚠️ **Two homes since 2026-08-28, and that is the decision** ([D-457]): `hide` is a **column**
+     * on `relations`, `read_only` stays a setting ([D-461]). *So this helper writes to two places,
+     * and the fact that it has to is the clearest statement of what changed.*
+     */
     $flag = static function (?string $key) use ($wpdb, $prefix, $edgeId): void {
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$prefix}settings WHERE owner_id = %d AND setting_key IN ('hide', 'read_only')",
+            "DELETE FROM {$prefix}settings WHERE owner_id = %d AND setting_key = 'read_only'",
             $edgeId
         ));
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$prefix}relations SET hide = 0 WHERE id = %d",
+            $edgeId
+        ));
+
+        if ($key === 'hide') {
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$prefix}relations SET hide = 1 WHERE id = %d",
+                $edgeId
+            ));
+
+            return;
+        }
 
         if ($key !== null) {
             $wpdb->query($wpdb->prepare(
@@ -130,7 +149,7 @@ if ($edge === null) {
         check("with no flag, «{$name}» is drawn", str_contains($plain, $name));
         check('and nothing is reported as left out', ! str_contains($plain, 'Left out by hide'));
 
-        $flag(SettingKey::Hide->value);
+        $flag('hide');
         $hidden = previewOf($screen, $model);
 
         // ⚠️ **Named rather than silently absent.** *A preview that quietly drops a field cannot be
@@ -175,14 +194,15 @@ if ($node === 0) {
     };
 
     try {
-        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}settings WHERE owner_id = %d AND setting_key = 'hide'", $node));
+        // ⚠️ *Die Spalte, nicht die Einstellung ([D-457]).*
+        $wpdb->query($wpdb->prepare("UPDATE {$prefix}nodes SET hide = 0 WHERE id = %d", $node));
 
         $control = $rendererControl($screen, $node);
 
         check('the renderer control is found at all', $control !== '');
         check('and it is editable while nothing is hidden', $control !== '' && ! str_contains($control, 'disabled'));
 
-        $wpdb->query($wpdb->prepare("INSERT INTO {$prefix}settings (owner_id, setting_key, value_int) VALUES (%d, 'hide', 1)", $node));
+        $wpdb->query($wpdb->prepare("UPDATE {$prefix}nodes SET hide = 1 WHERE id = %d", $node));
 
         // ⚠️ **The owner's words are the specification**: *`hide` would have to put the renderer out of
         // force — so no renderer is valid, because it is not used here; the field should then be
@@ -190,10 +210,14 @@ if ($node === 0) {
         // makes a person hunt for the row they were about to use.
         $control = $rendererControl($screen, $node);
 
-        check('with hide, the renderer control is greyed out', str_contains($control, 'disabled'));
-        check('and it is still present rather than removed', $control !== '');
+        // ⚠️ **Gedreht 2026-08-28** ([D-448], [D-457]). *[D-399](../../docs/NewConcept/90-decision-log.md)s
+        // zweite Haelfte lebte davon, dass `hide` ein **Feld** verstecken kann. Jetzt versteckt es einen
+        // **Knoten im Baum**, und das sagt nichts darueber, wie er gezeichnet wuerde — also bleibt die
+        // Wahl editierbar.*
+        check('with hide, the renderer control stays editable', ! str_contains($control, 'disabled'));
+        check('and it is still present', $control !== '');
     } finally {
-        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}settings WHERE owner_id = %d AND setting_key = 'hide'", $node));
+        $wpdb->query($wpdb->prepare("UPDATE {$prefix}nodes SET hide = 0 WHERE id = %d", $node));
     }
 }
 

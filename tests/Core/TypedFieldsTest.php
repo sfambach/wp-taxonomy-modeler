@@ -439,17 +439,19 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function hide_and_read_only_close_every_typed_field_the_same_way(): void
+    public function read_only_closes_every_typed_field_the_same_way(): void
     {
+        // ⚠️ **`hide` left this test on 2026-08-28, and that is the point of D-457.** *It used to
+        // assert that `hide` and `read_only` close a field «the same way» — and they never were the
+        // same thing. `read_only` **keeps the field and refuses the edit**; `hide` now stops the walk
+        // before a renderer is asked at all, so there is nothing here for it to do.*
+        //
+        // ⚠️ *`read_only` stays a setting and stays freely settable in both directions
+        // ([D-461](../../docs/NewConcept/90-decision-log.md)) — only `hide` left the settings, because
+        // only `hide` had a second meaning nobody asked for.*
+        //
         // ⚠️ They are answered once, in the base — a subclass adds a control, never a rule.
         foreach ([new FieldRenderer(), new CheckboxRenderer(), new MailtoRenderer(), new ColorRenderer()] as $renderer) {
-            $hidden = $renderer->render(
-                $this->subject,
-                $this->context(Purpose::Display, TypedValue::ofText('x'), SimpleType::Text, [
-                    SettingKey::Hide->value => TypedValue::ofBool(true),
-                ])
-            );
-
             $fixed = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::ofText('x'), SimpleType::Text, [
@@ -457,9 +459,24 @@ final class TypedFieldsTest extends TestCase
                 ], 'v[7]')
             );
 
-            self::assertSame('', $hidden->markup, $renderer->name());
             self::assertStringNotContainsString('<input type="text" name', $fixed->markup, $renderer->name());
         }
+    }
+
+    #[Test]
+    public function a_renderer_ignores_a_setting_called_hide_because_there_is_no_such_setting(): void
+    {
+        // ⚠️ *The guard against the old behaviour creeping back: a context carrying `hide` must draw
+        // the value anyway. `hide` is a column on the identity (D-457) and an abort in the descent
+        // (D-450) — a renderer honouring it would be a second answer to a settled question.*
+        $drawn = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Display, TypedValue::ofText('x'), SimpleType::Text, [
+                'hide' => TypedValue::ofBool(true),
+            ])
+        );
+
+        self::assertStringContainsString('x', $drawn->markup);
     }
 
     // ------------------------------------------------------------ reading back

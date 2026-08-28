@@ -214,7 +214,7 @@ catch (CannotWiden $e) { check('0..1 and 1..* are incomparable, so neither repla
 $settings->reset($installation, SettingKey::Multiplicity->value);
 
 echo "\n== 8. Reserved names ==\n";
-try { $settings->declareFree($chainType, 'hide', TypedValue::ofBool(true)); check('an engine name is refused', false); }
+try { $settings->declareFree($chainType, 'renderer', TypedValue::ofText('plain')); check('an engine name is refused', false); }
 catch (ReservedKey $e) { check('an engine name is refused', true); }
 $settings->declareFree($chainType, '__p4 mine', TypedValue::ofText('yes'));
 check('a name of its own is allowed', $settings->resolve($chainType)['__p4 mine']->value->text === 'yes');

@@ -345,6 +345,25 @@ final class Rendering
             return [];
         }
 
+        // ⚠️ **The abort, and it is the descent's job rather than a renderer's**
+        // ([D-450](90-decision-log.md), [D-452](90-decision-log.md), [D-457](90-decision-log.md)): a
+        // hidden placement is not drawn and **not enumerated**. *Before, a renderer returned an empty
+        // string — which means it had already been asked, and for a composed value its members had
+        // already been drawn and thrown away.*
+        //
+        // ⚠️ **The edge's `hide`, and deliberately not the target node's.** *That distinction is what
+        // keeps [D-426](90-decision-log.md)'s fix: as a setting, `hide` on a **type** reached every
+        // field of that type and blanked them all — measured twice. A field is one **placement** of a
+        // type, so hiding the type must not hide the fields that point at it. **A node's own `hide`
+        // stops the walk where the walk enters the node** — the tree, and a composed value's members —
+        // not where something merely points at it.* Recorded as [OQ-118](91-open-questions.md), because
+        // the concept says «render no further» and does not say which walk.
+        $edges = array_values(array_filter($edges, static fn (Relation $edge): bool => ! $edge->hide));
+
+        if ($edges === []) {
+            return [];
+        }
+
         $types    = $this->typesOf($edges);
         $resolved = $this->settings->resolveForUseSites($edges);
         $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);
@@ -1000,7 +1019,16 @@ final class Rendering
         //
         // ⚠️ *Read with `($a['x'] ?? null)?->y` and never `$a['x']?->y` — the second warns on a
         // missing key, which is a bug that was written two files from this line on 2026-08-26.*
-        $hidden = (($resolved[SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
+        // ⚠️ **Read off the subject now** ([D-457](90-decision-log.md)): `hide` is a column on
+        // {@see \Taxmod\Core\Model\Identity}, so there is no resolved setting to ask.
+        //
+        // ⚠️ **And [D-399](90-decision-log.md)'s second half is narrowed away by [D-448](90-decision-log.md)**:
+        // *a hidden **node** has a renderer choice like any other, so the greying lost its ground.*
+        // What survives is the case this line was written for — **a hidden placement draws nothing,
+        // so «which renderer draws it» has no answer to force.*
+        // ⚠️ *`$hidden` stood here, read for [D-399](90-decision-log.md)'s greying. With
+        // [D-448](90-decision-log.md) the greying is gone, and so is its reader — a variable that
+        // decides nothing is the dead code `CLAUDE.md` forbids outright.*
 
         foreach ($resolved as $key => $setting) {
             $engineKey = SettingKey::tryFrom($key);
@@ -1013,7 +1041,7 @@ final class Rendering
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $hidden);
+                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId);
 
                 continue;
             }
@@ -1188,7 +1216,8 @@ final class Rendering
             // ⚠️ `($a['x'] ?? null)?->y` and **not** `$a['x']?->y` — the second is a warning on a
             // missing key, which is a bug this file's own docblock warns about and which was written
             // two files away on 2026-08-26.
-            if ((($keys[SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true) {
+            // ⚠️ *The edge's own column ([D-457](90-decision-log.md)) — no chain, no resolution.*
+            if ($edge->hide) {
                 $hidden[] = $edge;
 
                 continue;
@@ -1453,7 +1482,6 @@ final class Rendering
         ?SimpleType $subjectType = null,
         array $choices = [],
         string $formId = '',
-        bool $hidden = false,
     ): RenderedSetting {
         $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
         $options  = [];
@@ -1528,12 +1556,12 @@ final class Rendering
             // nothing would follow (D-015: settings are sparse).
             $mayBeNothing = false;
 
-            // ⚠️ **Out of force where the subject is hidden** ([D-399](90-decision-log.md)). *Nothing
-            // draws a hidden field, so «which renderer draws it» has no answer to force — and
-            // showing one would be the control asserting a fact that is not one.*
-            if ($hidden) {
-                $mayBeNothing = true;
-            } elseif ($setting->value->isNothing()) {
+            // ⚠️ *The `hide` exception that stood here is gone with [D-448](90-decision-log.md). It set
+            // `mayBeNothing` for a hidden subject so the choice could stay empty — and it rested on
+            // [D-399](90-decision-log.md)'s second half, which lived on `hide` being able to hide a
+            // **field**. **A hidden node has a renderer choice like any other**: it is not shown in the
+            // tree, and that says nothing about how it would be drawn.*
+            if ($setting->value->isNothing()) {
                 $inForce = $this->renderers->defaultFor(
                     $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)
                 );
@@ -1574,7 +1602,12 @@ final class Rendering
                     // they were about to use. *A disabled control submits nothing, so keeping it costs
                     // nothing — which is the same argument the choice renderer already makes for a
                     // model that cannot be satisfied.*
-                    editable: ! ($hidden && $key === SettingKey::Renderer),
+                    // ⚠️ **The greying is gone** ([D-448](90-decision-log.md), confirmed by
+                    // [D-457](90-decision-log.md)). *It was `! ($hidden && $key === Renderer)` and it
+                    // implemented [D-399](90-decision-log.md)'s second half — which lived on `hide`
+                    // being able to hide a **field**. Now it hides a node in the tree, and a hidden
+                    // node's renderer choice is as real as any other's.*
+                    editable: true,
                     surroundings: new Surroundings(options: $options, mayBeNothing: $mayBeNothing, formId: $formId)
                 )
             ),

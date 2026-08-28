@@ -44,9 +44,10 @@ final class Relation extends Identity implements Renderable
         string $name,
         public readonly int $position,
         public readonly ?int $parkedByGroup = null,
+        bool $hide = false,
     ) {
         // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
-        parent::__construct($id, $version, $name);
+        parent::__construct($id, $version, $name, $hide);
     }
 
     /**
@@ -94,7 +95,8 @@ final class Relation extends Identity implements Renderable
             $this->kind,
             $this->name,
             $this->position,
-            $changeGroup
+            $changeGroup,
+            $this->hide
         );
     }
 
@@ -148,6 +150,7 @@ final class Relation extends Identity implements Renderable
         string $name,
         int $position,
         ?int $parkedByGroup = null,
+        bool $hide = false,
     ): self {
         return new self(
             $id,
@@ -157,7 +160,8 @@ final class Relation extends Identity implements Renderable
             RelationKind::from($kind),
             $name,
             $position,
-            $parkedByGroup
+            $parkedByGroup,
+            $hide
         );
     }
 
@@ -168,9 +172,34 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $parentId, $this->toId, $this->kind, $this->name, $position);
+        return new self($this->id, $this->version + 1, $parentId, $this->toId, $this->kind, $this->name, $position, null, $this->hide);
     }
 
+    /**
+     * The same edge hidden or shown again, one version on.
+     *
+     * ⚠️ *Same shape as {@see Node::withHide()}, and it exists because the owner asked for both:
+     * «edge and node both having an attribute `hide`» ([D-457](../../../docs/NewConcept/90-decision-log.md)).
+     * A node hides itself; a **placement** hides what hangs there.*
+     */
+    public function withHide(bool $hide): self
+    {
+        if ($hide === $this->hide) {
+            return $this;
+        }
+
+        return new self(
+            $this->id,
+            $this->version + 1,
+            $this->fromId,
+            $this->toId,
+            $this->kind,
+            $this->name,
+            $this->position,
+            $this->parkedByGroup,
+            $hide
+        );
+    }
     /** The same edge in a different place among its siblings, one version on. */
     public function movedTo(int $position): self
     {

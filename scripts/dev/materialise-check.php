@@ -134,7 +134,12 @@ check('  · read_only came along', ownValue($child->id, SettingKey::ReadOnly->va
 
 // ⚠️ **The switches the installation declares travel too** (D-401/D-404) — otherwise «every setting
 // has a row» would be true of the edited ones and false of the defaulted ones.
-foreach ([SettingKey::Persistent, SettingKey::Hide] as $key) {
+//
+// ⚠️ *`hide` left this list on 2026-08-28: it is a **column** on the identity now and not a setting
+// at all ([D-457]), so there is no row for it to materialise and no declared default on the
+// installation identity. `persistent` and `read_only` stay settings and stay in the list ([D-460],
+// [D-461]) — only `hide` had a second meaning nobody asked for.*
+foreach ([SettingKey::Persistent] as $key) {
     check("  · {$key->value} is a row rather than a resolution", ownValue($child->id, $key->value) !== null, 'missing');
 }
 

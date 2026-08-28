@@ -1,0 +1,113 @@
+<?php declare(strict_types=1);
+
+/** Der Abbruch: ein versteckter Knoten nimmt seinen Ast mit aus dem Baum. */
+
+define('WP_ADMIN', true);
+define('WP_USE_THEMES', false);
+
+require 'C:/Devel/Wordpress/wp-load.php';
+require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+
+wp_set_current_user(1);
+
+use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Service\ModelEditor;
+use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, TableIdentityAllocator, WpdbChangelog, WpdbNodeRepository, WpdbRelationRepository};
+use Taxmod\WordPress\SystemClock;
+
+$nodes = new WpdbNodeRepository();
+$edges = new WpdbRelationRepository();
+$ids   = new TableIdentityAllocator();
+$log   = new WpdbChangelog(new SystemClock());
+$fw    = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+
+$editor = new ModelEditor($nodes, $edges, $ids, $fw, $log);
+
+$failed = 0;
+
+$say = static function (bool $ok, string $what) use (&$failed): void {
+    printf("  %-4s %s\n", $ok ? 'ok' : 'FAIL', $what);
+
+    if (! $ok) {
+        ++$failed;
+    }
+};
+
+$ast   = $editor->createNode('__ab Ast', $fw->rootOf(Branch::Model)->id);
+$kind  = $editor->createNode('__ab Kind', $ast->id);
+$enkel = $editor->createNode('__ab Enkel', $kind->id);
+
+$r = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+
+$plugin = $r->newInstanceWithoutConstructor();
+$r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+
+$screen = $plugin->screen();
+
+$sichtbar = static function (\Taxmod\WordPress\Admin\NodesScreen $screen, array $namen): array {
+    $markup = $screen->render();
+    $da     = [];
+
+    foreach ($namen as $name) {
+        $da[$name] = str_contains($markup, $name);
+    }
+
+    return $da;
+};
+
+$namen = ['__ab Ast', '__ab Kind', '__ab Enkel'];
+
+echo "== vorher stehen alle drei im Baum ==\n";
+
+$vorher = $sichtbar($screen, $namen);
+
+foreach ($namen as $name) {
+    $say($vorher[$name], sprintf('«%s» ist da', $name));
+}
+
+echo "\n== jetzt den Ast verstecken ==\n";
+
+$editor->hideNode($ast->id, true);
+
+$nachher = $sichtbar($plugin->screen(), $namen);
+
+foreach ($namen as $name) {
+    $say(! $nachher[$name], sprintf('«%s» ist weg', $name));
+}
+
+echo "\n== und wieder zeigen ==\n";
+
+$editor->hideNode($ast->id, false);
+
+$wieder = $sichtbar($plugin->screen(), $namen);
+
+foreach ($namen as $name) {
+    $say($wieder[$name], sprintf('«%s» ist zurueck', $name));
+}
+
+// aufraeumen
+global $wpdb;
+
+$p = $wpdb->prefix . 'taxmod_';
+
+foreach ([$enkel->id, $kind->id, $ast->id] as $id) {
+    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$id} OR to_id = {$id}"));
+    $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
+
+    $wpdb->query("DELETE FROM {$p}settings WHERE owner_id IN ({$own})");
+    $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
+    $wpdb->query("DELETE FROM {$p}changelog WHERE owner_id IN ({$own})");
+
+    if ($e) {
+        $wpdb->query('DELETE FROM ' . $p . 'relations WHERE id IN (' . implode(',', $e) . ')');
+    }
+
+    $wpdb->query("DELETE FROM {$p}nodes WHERE id = {$id}");
+}
+
+echo "\n";
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '__ab %'") === 0, 'die Wiese ist wieder weg');
+
+printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
+
+exit($failed === 0 ? 0 : 1);

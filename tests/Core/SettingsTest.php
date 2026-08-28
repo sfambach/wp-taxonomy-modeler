@@ -351,7 +351,7 @@ final class SettingsTest extends TestCase
 
         $this->settings->put(
             $this->settings->chainFor($type),
-            SettingKey::Hide->value,
+            SettingKey::ReadOnly->value,
             TypedValue::nothing()
         );
     }
@@ -363,14 +363,14 @@ final class SettingsTest extends TestCase
         $parent = $this->type('Text');
         $child  = $this->editor->createNode('Sondertext', $parent->id);
 
-        $this->settings->put($this->settings->chainFor($parent), SettingKey::Hide->value, TypedValue::ofBool(true));
-        $this->settings->put($this->settings->chainFor($child), SettingKey::Hide->value, TypedValue::ofBool(false));
+        $this->settings->put($this->settings->chainFor($parent), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+        $this->settings->put($this->settings->chainFor($child), SettingKey::ReadOnly->value, TypedValue::ofBool(false));
 
-        self::assertFalse($this->settings->resolve($this->settings->chainFor($child))[SettingKey::Hide->value]->value->asBool());
+        self::assertFalse($this->settings->resolve($this->settings->chainFor($child))[SettingKey::ReadOnly->value]->value->asBool());
 
-        $this->settings->pull($this->settings->chainFor($child), SettingKey::Hide->value);
+        $this->settings->pull($this->settings->chainFor($child), SettingKey::ReadOnly->value);
 
-        $resolved = $this->settings->resolve($this->settings->chainFor($child))[SettingKey::Hide->value];
+        $resolved = $this->settings->resolve($this->settings->chainFor($child))[SettingKey::ReadOnly->value];
 
         self::assertTrue($resolved->value->asBool(), 'reset pulls the parent value into the row');
     }
@@ -509,10 +509,10 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::Hide->value, TypedValue::ofBool(true));
-        $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(false));
+        $this->settings->put([self::INSTALLATION], SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+        $this->settings->put($chain, SettingKey::ReadOnly->value, TypedValue::ofBool(false));
 
-        self::assertFalse($this->settings->resolve($chain)[SettingKey::Hide->value]->value->asBool());
+        self::assertFalse($this->settings->resolve($chain)[SettingKey::ReadOnly->value]->value->asBool());
     }
 
     #[Test]
@@ -544,12 +544,17 @@ final class SettingsTest extends TestCase
     #[Test]
     public function a_free_setting_cannot_take_one_of_the_engines_names(): void
     {
-        // D-084: an author who defines a setting called `hide` would silently break rendering.
+        // D-084: an author who defines a setting called `renderer` would silently break rendering.
+        //
+        // ⚠️ *This test said `hide` until 2026-08-28, and the change is not cosmetic: `hide` is a
+        // **column** now ([D-457]) and therefore **no longer a reserved key at all** — a free setting
+        // may legitimately be called that. `renderer` takes its place because it is still one of the
+        // engine's own and still would break rendering.*
         $type = $this->type('Text');
 
         $this->expectException(ReservedKey::class);
 
-        $this->settings->declareFree($this->settings->chainFor($type), 'hide', TypedValue::ofBool(true));
+        $this->settings->declareFree($this->settings->chainFor($type), 'renderer', TypedValue::ofText('plain'));
     }
 
     #[Test]
@@ -584,7 +589,7 @@ final class SettingsTest extends TestCase
         // `hide` and `read_only`. What remains bounding is what a classification **guarantees** — the
         // ranges and the multiplicity. *`mandatory` is not here at all any more
         // ([D-405](../../docs/NewConcept/90-decision-log.md)): the multiplicity says it.*
-        self::assertFalse(SettingKey::Hide->isBounding());
+        self::assertFalse(SettingKey::ReadOnly->isBounding());
         self::assertFalse(SettingKey::ReadOnly->isBounding());
         self::assertTrue(SettingKey::RangeMax->isBounding());
         self::assertTrue(SettingKey::Multiplicity->isBounding());

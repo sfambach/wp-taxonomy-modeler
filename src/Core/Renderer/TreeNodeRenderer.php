@@ -118,7 +118,14 @@ final class TreeNodeRenderer implements Renderer
         // ⚠️ *The cell reads it from its own resolved settings, the way it already reads the icon. It
         // needed no plumbing and no new parameter: `cellsFor()` hands every cell the node's settings
         // ([D-159](../../../docs/NewConcept/90-decision-log.md)), and `hide` was in them all along.*
-        $hidden = ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
+        // ⚠️ **Read off the subject, not out of the settings** ([D-457](../../../docs/NewConcept/90-decision-log.md)).
+        // *`hide` is a column on {@see \Taxmod\Core\Model\Identity} now — so the cell asks the node it
+        // is drawing instead of a resolved chain, which is both simpler and the reason a hidden **type**
+        // no longer reaches the fields that point at it.*
+        //
+        // ⚠️ *A `RenderedSetting` is a `Renderable` and not an `Identity`, so the check is by type
+        // rather than by trust: only an identity can be hidden.*
+        $hidden = $subject instanceof Identity && $subject->hide;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
             . ' id="taxmod-node-' . (int) $subject->id . '"'

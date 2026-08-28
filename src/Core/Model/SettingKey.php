@@ -41,13 +41,22 @@ enum SettingKey: string
     // disagree with another fact is the same fact. {@see Multiplicity::requiresOne()} is the answer.
 
     /**
-     * Hidden here and below — **and a descendant may reveal it again** ([D-399](../../../docs/NewConcept/90-decision-log.md)).
+     * ⚠️ **`Hide` was here and is gone since 2026-08-28 — [D-457](../../../docs/NewConcept/90-decision-log.md).**
      *
-     * ⚠️ *It used to say «once hidden, never revealed further down». The owner overruled that: `hide`
-     * and `read_only` must be settable on a node whatever the parent says, because they are **settings,
-     * not classification** — hiding a field promises nobody anything, so there is nothing to protect.*
+     * *It is a **column** on {@see \Taxmod\Core\Model\Identity} now, on a node and on an edge. The
+     * reason is measured twice: as a **setting** it sat in the resolution chain, and an attribute's chain
+     * contains its **target node** — so hiding a **type** blanked **every field of that type**
+     * ([OQ-101](../../../docs/NewConcept/91-open-questions.md), and again on 2026-08-27).*
+     *
+     * ⚠️ *[D-426](../../../docs/NewConcept/90-decision-log.md) put it plainly: «a column is not in the
+     * chain, so the two can no longer reach each other **by construction** rather than by a rule
+     * somebody has to remember.» **This tombstone exists so nobody adds the key back**, which is what
+     * a reader who finds `hide` in the settings screen's history would otherwise reasonably do.*
+     *
+     * ⚠️ *`read_only` and `persistent` did **not** follow it out ([D-460](../../../docs/NewConcept/90-decision-log.md),
+     * [D-461](../../../docs/NewConcept/90-decision-log.md)): they want the chain, and inheriting down a
+     * type is the point of them rather than an accident.*
      */
-    case Hide = 'hide';
 
     /** Fixed here and below. Once fixed, never unfixed further down. */
     case ReadOnly = 'read_only';
@@ -236,7 +245,7 @@ enum SettingKey: string
     public function shape(): SettingShape
     {
         return match ($this) {
-            self::Hide, self::ReadOnly,
+            self::ReadOnly,
             self::Persistent                           => SettingShape::Switch,
             self::Factor, self::Offset                 => SettingShape::Exact,
             self::Multiplicity                         => SettingShape::OneOfFour,
@@ -284,7 +293,6 @@ enum SettingKey: string
         return match ($this) {
             // ⚠️ *`true`, and it is the one that went wrong* ([D-377](../../../docs/NewConcept/90-decision-log.md)).
             self::Persistent   => TypedValue::ofBool(true),
-            self::Hide,
             self::ReadOnly     => TypedValue::ofBool(false),
             self::Multiplicity => TypedValue::ofText(Multiplicity::standard()->value),
             // ⚠️ **Nothing, and that is an answer.** A range, a factor or a renderer has no meaning

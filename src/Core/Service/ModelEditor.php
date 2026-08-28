@@ -129,6 +129,43 @@ final class ModelEditor
     }
 
     /**
+     * Hide a node, or show it again.
+     *
+     * ⚠️ **A column and not a setting** ([D-426](../../../docs/NewConcept/90-decision-log.md),
+     * [D-457](../../../docs/NewConcept/90-decision-log.md)). *That is what makes it impossible for
+     * hiding a **type** to blank every field of that type — a column is not in the resolution chain,
+     * «by construction rather than by a rule somebody has to remember».*
+     *
+     * ⚠️ **It means «render no further»** ([D-456](../../../docs/NewConcept/90-decision-log.md)) and it
+     * is an **abort**: the walk stops before drawing this node and before looking for its children
+     * ([D-450](../../../docs/NewConcept/90-decision-log.md)). *So the subtree disappears because it is
+     * never reached — not because anything inherits, which is how it happened by accident before.*
+     *
+     * ⚠️ *Logged like a rename, because it is a model change: it survives a migration and every editor
+     * sees it. An unchanged switch writes nothing and raises no version ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function hideNode(int $id, bool $hide): Node
+    {
+        $node   = $this->nodes->byId($id);
+        $hidden = $node->withHide($hide);
+
+        if ($hidden === $node) {
+            return $node;
+        }
+
+        $this->nodes->save($hidden, $node->version);
+        $this->changelog->record(
+            $id,
+            'node',
+            $hide ? 'hidden' : 'shown',
+            $this->state($node),
+            $this->state($hidden)
+        );
+
+        return $hidden;
+    }
+
+    /**
      * Give a node an attribute by pointing it at a target. **The kind is not a parameter.**
      *
      * ⚠️ **An attribute *is* a relation** (D-031) — two names for one thing, seen from the node

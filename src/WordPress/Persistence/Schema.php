@@ -58,8 +58,14 @@ final class Schema
      *     because `dbDelta` has no notion of a rename and would build a second one beside it.
      *     *The old name was measured to mislead: it pointed into `Compositions` for 21 of 24
      *     records while `Model` is also the name of a branch in the tree.*
+     * 10 — `nodes.hide` and `relations.hide`, and the `hide` **setting** goes away entirely
+     *      (D-426, D-457). *A column is **not in the chain**, which is the whole point: as a
+     *      setting, `hide` on a type blanked every field of that type, because an attribute's
+     *      chain contains its target node. Measured twice — by experiment on 2026-08-26 and
+     *      again on 2026-08-27.* **Both node and edge, because the owner asked for both**:
+     *      «edge and node both having an attribute `hide`».
      */
-    public const VERSION = 9;
+    public const VERSION = 10;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -119,7 +125,59 @@ final class Schema
         self::backfillInheritanceEdges();
         self::dropRetiredColumns();
         self::widenSettingUniqueKey();
+        self::moveHideOutOfSettings();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * `hide` moves from the settings table into two columns — schema 10.
+     *
+     * ⚠️ **The point is that a column is *not in the chain*.** *[OQ-101](../../../docs/NewConcept/91-open-questions.md)
+     * established it by experiment and 2026-08-27 reproduced it: `hide` as a **setting** on a type
+     * blanked **every field of that type**, because an attribute's chain contains its target node.
+     * [D-426](../../../docs/NewConcept/90-decision-log.md): «a column is not in the chain, so the two can
+     * no longer reach each other **by construction** rather than by a rule somebody has to remember.»*
+     *
+     * ⚠️ **Both tables, because the owner asked for both** ([D-457](../../../docs/NewConcept/90-decision-log.md)):
+     * *«edge and node both having an attribute `hide`»* — a node hides itself, a placement hides what
+     * hangs there.
+     *
+     * ⚠️ **After `dbDelta`, unlike the rename in schema 9** — this one needs the columns to exist before
+     * it can write into them, and `dbDelta` is what creates them. *The opposite order to
+     * {@see self::renameRecordColumns()}, and for the opposite reason.*
+     *
+     * ⚠️ *Only `value_int = 1` travels. A `hide = 0` row says «not hidden», which is what the column
+     * already defaults to — writing it would be copying a default into 109 rows.*
+     */
+    private static function moveHideOutOfSettings(): void
+    {
+        global $wpdb;
+
+        $settings = self::table('settings');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $settings)) !== $settings) {
+            return;
+        }
+
+        // Nothing to do on a fresh install, and a no-op on every activation after the first.
+        if ((int) $wpdb->get_var("SELECT COUNT(*) FROM {$settings} WHERE setting_key = 'hide'") === 0) {
+            return;
+        }
+
+        foreach (['nodes', 'relations'] as $name) {
+            $table = self::table($name);
+
+            $wpdb->query(
+                "UPDATE {$table} t
+                 JOIN {$settings} s ON s.owner_id = t.id AND s.setting_key = 'hide' AND s.value_int = 1
+                 SET t.hide = 1"
+            );
+        }
+
+        // ⚠️ *Deleted, not kept «just in case». The changelog is the record of what happened
+        // ([D-061](../../../docs/NewConcept/90-decision-log.md)); a second copy in a table nothing
+        // reads is the duplicated fact the standard forbids.*
+        $wpdb->query("DELETE FROM {$settings} WHERE setting_key = 'hide'");
     }
 
     /**
@@ -422,6 +480,7 @@ final class Schema
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
+                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY path (path),
                 KEY name (name)
@@ -442,6 +501,7 @@ final class Schema
                 name varchar(191) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
+                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY from_id (from_id),
                 KEY to_id (to_id),

@@ -50,9 +50,9 @@ final class PlainRenderer implements Renderer
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? SettingKey::Hide->defaultSwitch()) {
-            return RenderResult::of('');
-        }
+        // ⚠️ *The `hide` check that stood here is gone — see {@see TypedFieldRenderer::render()} for
+        // why. `hide` is a column and an abort ([D-457](../../../docs/NewConcept/90-decision-log.md)),
+        // so nothing asks a renderer for a hidden thing.*
 
         // ⚠️ **A reference is never drawn here, and reaching this line means a renderer is
         // mis-set.** This is the fallback — *nothing draws this yet* ([R14b](../../../docs/NewConcept/30-renderer.md)) —

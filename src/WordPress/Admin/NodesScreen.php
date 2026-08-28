@@ -2398,9 +2398,11 @@ final class NodesScreen
 
         $hidden = [];
 
+        // ⚠️ *Off the node's own column ([D-457](../../../docs/NewConcept/90-decision-log.md)) — no
+        // resolution, no chain. The resolved settings above stay for the icon, which is still a
+        // setting and still needs the walk.*
         foreach ($rows as $row) {
-            $hidden[$row['node']->id] =
-                (($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool() ?? SettingKey::Hide->defaultSwitch()) === true;
+            $hidden[$row['node']->id] = $row['node']->hide;
         }
 
         return $hidden;
@@ -2426,11 +2428,10 @@ final class NodesScreen
             return $nodeId;
         }
 
-        $chain = $this->settings->chainFor($node);
-        $now   = ($this->settings->resolve($chain)[SettingKey::Hide->value] ?? null)?->value->asBool()
-            ?? SettingKey::Hide->defaultSwitch();
-
-        $this->settings->put($chain, SettingKey::Hide->value, TypedValue::ofBool(! $now));
+        // ⚠️ **One call where there were three** ([D-457](../../../docs/NewConcept/90-decision-log.md)):
+        // resolve the chain, read the switch, write the setting — all of it gone, because the node
+        // carries its own answer. *The editor logs it as a model change, the way a rename is logged.*
+        $this->editor->hideNode($nodeId, ! $node->hide);
 
         return $nodeId;
     }
@@ -2452,18 +2453,48 @@ final class NodesScreen
             return [];
         }
 
-        $resolved = $this->settings->resolveForNodes(array_map(
-            static fn (array $row): Node => $row['node'],
-            $rows
-        ));
+        // ⚠️ **A whole query is gone with the setting** ([D-457](../../../docs/NewConcept/90-decision-log.md)).
+        // *Filtering the tree used to resolve every visible node's settings — one query for the whole
+        // tree, but a query, and one whose only consumer was this `if`. The column arrives with the row
+        // that was already loaded, so the filter now costs nothing.*
+        //
+        // ⚠️ **And it takes the subtree with it, which is the abort**
+        // ([D-450](../../../docs/NewConcept/90-decision-log.md), [D-452](../../../docs/NewConcept/90-decision-log.md)).
+        // *Dropping only the hidden row would leave its children standing — a tree row whose parent is
+        // not there, which is the fault [OQ-110](../../../docs/NewConcept/91-open-questions.md) named
+        // before it was answered. The owner's words: «it stops before rendering itself and does not look
+        // at the children either.»*
+        //
+        // ⚠️ *`path` is what makes it cheap: a node's path contains every ancestor's id
+        // ([D-014](../../../docs/NewConcept/90-decision-log.md)), so «is a hidden node above me» is a
+        // set membership test on ids already in hand. **No walk, no second query** — measured on a
+        // scratch branch: the child's path `1.402.24453.24455` carries the hidden `24453`.*
+        $hiddenIds = [];
+
+        foreach ($rows as $row) {
+            if ($row['node']->hide) {
+                $hiddenIds[$row['node']->id] = true;
+            }
+        }
+
+        if ($hiddenIds === []) {
+            return $rows;
+        }
 
         $kept = [];
 
         foreach ($rows as $row) {
-            $hide = ($resolved[$row['node']->id][SettingKey::Hide->value] ?? null)?->value->asBool()
-                ?? SettingKey::Hide->defaultSwitch();
+            $stopped = false;
 
-            if (! $hide) {
+            foreach (explode('.', $row['node']->path) as $step) {
+                if (isset($hiddenIds[(int) $step])) {
+                    $stopped = true;
+
+                    break;
+                }
+            }
+
+            if (! $stopped) {
                 $kept[] = $row;
             }
         }

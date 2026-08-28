@@ -4527,3 +4527,43 @@ all.*
 ⚠️ *Not to be built alongside something else. It changes the signature every renderer implements, and the
 proof that such a change is pure is a byte-identical snapshot of all renderer output — which exists as a
 tool now (880 outputs) and should be used for this.*
+---
+
+## OQ-118 — «Render no further» — which walk does a node's `hide` stop?
+
+**Raised** 2026-08-28, while building [list row 46](97-implementation-plan.md#the-working-list), because the concept says what `hide` means and not where it applies.
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open — **built under a stated assumption**
+
+⚠️ **[D-456](90-decision-log.md) settles the meaning and leaves the reach open.** *«`hide` simply means
+render no further, at the edge and at the node.» **Which walk?** A node is reached from more than one
+direction, and the answer differs by direction:*
+
+| a node is reached | should its `hide` stop the walk? |
+|---|---|
+| as a **tree row**, through its inheritance edge | **yes** — this is what the eye in the tree does, and 7 rows rely on it |
+| as a **composed value's member**, descending into it | **yes** — the walk genuinely enters the node |
+| because a **field points at it as its type** | **no**, built that way — see below |
+
+### Why the third one is a «no», and it is the whole of [D-426](90-decision-log.md)
+
+*As a **setting**, `hide` on a type reached every field of that type through the chain and blanked them
+all. Measured twice — by experiment in [OQ-101](#oq-101--hiding-a-node-and-not-drawing-its-fields-are-two-things-sharing-one-key-where-does-each-belong)
+and again on 2026-08-27. **A column fixed the mechanism, not the question**: if the descent asked «is the
+target node hidden?» the same fault would return, wearing a different hat.*
+
+**So `Rendering::fieldsFor()` filters on the edge's own `hide` and never on its target's** — a field is
+one **placement** of a type, and hiding the type must not hide the placements. *That is the assumption
+the build states rather than hides (`PR-2`).*
+
+### What is genuinely undecided
+
+1. **Is «a field points at a hidden type» really no?** *The argument above is strong for the fault it
+   prevents. But somebody who hides `Integer` might reasonably expect no integer fields anywhere — and
+   the honest answer to that is «then hide the fields», which is a different amount of work.*
+2. **What about a composed value?** *Nothing descends into a composed node yet (S7), so the second row
+   of the table is untested and unbuilt. **When it is built, it must ask the node** — and that is the
+   first place the distinction will actually bite.*
+3. **Does hiding an inheritance edge and hiding its child node mean the same thing?** *Measured: every
+   node has exactly one inheritance edge and the root has none, so the two are almost interchangeable in
+   the tree — «almost», because the root can never be hidden either way, which is correct.*
