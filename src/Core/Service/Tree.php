@@ -32,6 +32,16 @@ final class Tree
     }
 
     /**
+     * @var array<int,true> Which nodes hang on a hidden inheritance edge — filled by
+     *                     {@see self::rowsUnder()} so that a row can carry the fact.
+     *
+     * ⚠️ *Only meaningful while `showHidden` is on: with it off those rows do not exist. It is a
+     * field rather than a parameter because {@see self::collect()} recurses and would have to
+     * thread it through every level.*
+     */
+    private array $hiddenTargets = [];
+
+    /**
      * Everything below a node, depth-first, in the order the edges give.
      *
      * ⚠️ **Collapsing is answered here, not on the screen.** Which rows a person can see is a
@@ -44,9 +54,9 @@ final class Tree
      *                             the screen shows it separately.
      * @param list<int> $collapsed Ids that are shown but whose children are not.
      *
-     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}>
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}>
      */
-    public function rowsUnder(Node $root, array $skip = [], array $collapsed = []): array
+    public function rowsUnder(Node $root, array $skip = [], array $collapsed = [], bool $showHidden = false): array
     {
         $byId = [];
 
@@ -55,12 +65,36 @@ final class Tree
         }
 
         $childIdsByParent = [];
+        $hidden           = [];
 
         foreach ($this->relations->allInheritanceEdges() as $edge) {
-            if (isset($byId[$edge->toId])) {
-                $childIdsByParent[$edge->fromId][] = $edge->toId;
+            if (! isset($byId[$edge->toId])) {
+                continue;
+            }
+
+            $childIdsByParent[$edge->fromId][] = $edge->toId;
+
+            if ($edge->hide) {
+                $hidden[$edge->toId] = true;
             }
         }
+
+        // ⚠️ **The abort, and it costs nothing because `$skip` already is one**
+        // ([D-450](../../../docs/NewConcept/90-decision-log.md), [D-452](../../../docs/NewConcept/90-decision-log.md)).
+        // *A skipped id is not listed **and** `collect()` never descends into it, so a hidden placement
+        // takes its subtree with it by construction. The owner's words: «it stops before rendering
+        // itself and does not look at the children either.»*
+        //
+        // ⚠️ **`hide` sits on the **inheritance edge**, which is what puts a node in the tree at all**
+        // ([D-014](../../../docs/NewConcept/90-decision-log.md), [D-467](../../../docs/NewConcept/90-decision-log.md)).
+        // *So the walk already has the answer in the edges it just loaded — no second query, and no
+        // filter afterwards. **The path-based filter this replaced lived in the screen** and had to
+        // reconstruct from `path` what the walk knew all along.*
+        if (! $showHidden) {
+            $skip = [...$skip, ...array_keys($hidden)];
+        }
+
+        $this->hiddenTargets = $hidden;
 
         $rows = [];
         $this->collect($root->id, 0, $byId, $childIdsByParent, array_flip($skip), array_flip($collapsed), $rows);
@@ -73,7 +107,7 @@ final class Tree
      * @param array<int,list<int>>  $childIdsByParent
      * @param array<int,int>        $skip
      * @param array<int,int>        $collapsed
-     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}> $rows
      */
     private function collect(
         int $parentId,
@@ -102,6 +136,8 @@ final class Tree
                 // that U8 can be kept: a control that cannot act is **absent**, not greyed.
                 'isFirst'     => $index === 0,
                 'isLast'      => $index === $last,
+                // ⚠️ *Only ever true while «show hidden» is on — otherwise the row is not here at all.*
+                'hidden'      => isset($this->hiddenTargets[$childId]),
             ];
 
             if (! $isCollapsed) {

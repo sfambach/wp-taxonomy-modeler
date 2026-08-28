@@ -125,10 +125,11 @@ final class NodesScreen
 
         // Two queries for the whole tree, whatever its depth — the traversal is solved once,
         // in Tree, and this screen only draws what comes back (`CD-7`).
-        $collapsed = $this->collapsedFromRequest();
-        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed);
-        $parked    = $this->tree->rowsUnder($trash, [], $collapsed);
-        $selected  = $this->selectedFromRequest();
+        $collapsed  = $this->collapsedFromRequest();
+        $showHidden = $this->showsHidden();
+        $rows       = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden);
+        $parked     = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
+        $selected   = $this->selectedFromRequest();
 
         // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
@@ -137,9 +138,13 @@ final class NodesScreen
         // ⚠️ **He also reported it as broken, and it was not: it stored and nothing read it.** A
         // setting nothing consumes looks exactly like a setting that will not save — *which is why a
         // flag and its effect belong in the same package.*
-        $showHidden = $this->showsHidden();
-        $rows       = $showHidden ? $rows : $this->withoutHidden($rows);
-        $parked     = $showHidden ? $parked : $this->withoutHidden($parked);
+        //
+        // ⚠️ **The filter that stood here is gone into the walk**
+        // ([D-467](../../../docs/NewConcept/90-decision-log.md)). *`hide` sits on the **inheritance
+        // edge**, which is the one thing that puts a node in the tree — so `Tree::rowsUnder()` already
+        // has the answer in the edges it just loaded, and a hidden placement is simply not followed.
+        // **That takes the subtree with it by construction**, where this screen had to reconstruct the
+        // ancestry from `path` to get the same result.*
 
         $left  = $this->heading(
             __('The tree', 'taxmod'),
@@ -2387,22 +2392,17 @@ final class NodesScreen
      */
     private function hiddenAmong(array $rows): array
     {
-        if ($rows === []) {
-            return [];
-        }
-
-        $resolved = $this->settings->resolveForNodes(array_map(
-            static fn (array $row): Node => $row['node'],
-            $rows
-        ));
-
         $hidden = [];
 
-        // ⚠️ *Off the node's own column ([D-457](../../../docs/NewConcept/90-decision-log.md)) — no
-        // resolution, no chain. The resolved settings above stay for the icon, which is still a
-        // setting and still needs the walk.*
+        // ⚠️ **Off the row, which carries it since [D-467](../../../docs/NewConcept/90-decision-log.md).**
+        // *`hide` lives on the **inheritance edge**, and `Tree::rowsUnder()` loads those edges anyway —
+        // so the walk answers it and this method only rearranges. **What stood here before was a query**
+        // resolving every visible node's settings, and its only consumer was this one flag.*
+        //
+        // ⚠️ *True only while «show hidden» is on: with it off a hidden row is not in `$rows` at all,
+        // because the walk did not follow its edge.*
         foreach ($rows as $row) {
-            $hidden[$row['node']->id] = $row['node']->hide;
+            $hidden[$row['node']->id] = $row['hidden'];
         }
 
         return $hidden;
@@ -2422,85 +2422,25 @@ final class NodesScreen
      */
     private function toggleHidden(int $nodeId): int
     {
-        $node = $this->editor->find($nodeId);
-
-        if ($node === null) {
-            return $nodeId;
-        }
-
-        // ⚠️ **One call where there were three** ([D-457](../../../docs/NewConcept/90-decision-log.md)):
-        // resolve the chain, read the switch, write the setting — all of it gone, because the node
-        // carries its own answer. *The editor logs it as a model change, the way a rename is logged.*
-        $this->editor->hideNode($nodeId, ! $node->hide);
+        // ⚠️ **The eye writes the node's **inheritance edge**, not the node**
+        // ([D-467](../../../docs/NewConcept/90-decision-log.md)). *That edge is what puts the node in
+        // the tree ([D-014](../../../docs/NewConcept/90-decision-log.md)), so hiding it is hiding the
+        // placement — which is what the owner meant: «I do not simply create a model node and then say
+        // I will not draw it».*
+        //
+        // ⚠️ *The root has no inheritance edge and therefore cannot be hidden. **That is correct rather
+        // than a gap**: it is machinery ([D-194](../../../docs/NewConcept/90-decision-log.md)), and the
+        // editor answers with the id unchanged instead of failing.*
+        $this->editor->hidePlacement($nodeId);
 
         return $nodeId;
     }
 
-    /**
-     * The rows that are not hidden — what the tree actually draws while *show hidden* is off.
-     *
-     * ⚠️ *Its own method rather than a second use of {@see hiddenAmong()}, because the two want
-     * opposite things: this one **drops** the hidden rows, that one has to **keep** them so a row can
-     * offer to unhide. Sharing a method that returns one of the two would mean a flag, and a flag
-     * deciding which half of an answer you get is how a reader loses track.*
-     *
-     * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
-     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}>
-     */
-    private function withoutHidden(array $rows): array
-    {
-        if ($rows === []) {
-            return [];
-        }
-
-        // ⚠️ **A whole query is gone with the setting** ([D-457](../../../docs/NewConcept/90-decision-log.md)).
-        // *Filtering the tree used to resolve every visible node's settings — one query for the whole
-        // tree, but a query, and one whose only consumer was this `if`. The column arrives with the row
-        // that was already loaded, so the filter now costs nothing.*
-        //
-        // ⚠️ **And it takes the subtree with it, which is the abort**
-        // ([D-450](../../../docs/NewConcept/90-decision-log.md), [D-452](../../../docs/NewConcept/90-decision-log.md)).
-        // *Dropping only the hidden row would leave its children standing — a tree row whose parent is
-        // not there, which is the fault [OQ-110](../../../docs/NewConcept/91-open-questions.md) named
-        // before it was answered. The owner's words: «it stops before rendering itself and does not look
-        // at the children either.»*
-        //
-        // ⚠️ *`path` is what makes it cheap: a node's path contains every ancestor's id
-        // ([D-014](../../../docs/NewConcept/90-decision-log.md)), so «is a hidden node above me» is a
-        // set membership test on ids already in hand. **No walk, no second query** — measured on a
-        // scratch branch: the child's path `1.402.24453.24455` carries the hidden `24453`.*
-        $hiddenIds = [];
-
-        foreach ($rows as $row) {
-            if ($row['node']->hide) {
-                $hiddenIds[$row['node']->id] = true;
-            }
-        }
-
-        if ($hiddenIds === []) {
-            return $rows;
-        }
-
-        $kept = [];
-
-        foreach ($rows as $row) {
-            $stopped = false;
-
-            foreach (explode('.', $row['node']->path) as $step) {
-                if (isset($hiddenIds[(int) $step])) {
-                    $stopped = true;
-
-                    break;
-                }
-            }
-
-            if (! $stopped) {
-                $kept[] = $row;
-            }
-        }
-
-        return $kept;
-    }
+    // ⚠️ *`withoutHidden()` stood here and is gone into `Tree::rowsUnder()`
+    // ([D-467](../../../docs/NewConcept/90-decision-log.md)). It filtered rows **after** the walk and
+    // had to read every node's `path` to find a hidden ancestor. **The walk owns both facts**: it
+    // loads the inheritance edges anyway, and not following one takes its subtree with it — so the
+    // subtree disappears by construction rather than by a second pass.*
 
     /**
      * The switch that shows them anyway.

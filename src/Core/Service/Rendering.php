@@ -1318,6 +1318,7 @@ final class Rendering
         string $locale = '',
         Level $level = Level::Admin,
         bool $developerMode = false,
+        array $hidden = [],
     ): array {
         if ($nodes === []) {
             return [];
@@ -1341,7 +1342,10 @@ final class Rendering
                     surroundings: new Surroundings(
                         actions: $actions[$node->id] ?? [],
                         href: $hrefs[$node->id] ?? null,
-                        submits: $submits[$node->id] ?? null
+                        submits: $submits[$node->id] ?? null,
+                        // ⚠️ *Prepared, not asked: a cell draws a **node** and `hide` sits on its
+                        // **edge** ([D-467](90-decision-log.md), [D-445](90-decision-log.md)).*
+                        hidden: $hidden[$node->id] ?? false
                     ),
                     // ⚠️ **A circumstance and not a setting** (D-389): developer mode is a fact about
                     // the installation, so the boundary reads it from a WordPress option and hands it
@@ -1385,7 +1389,16 @@ final class Rendering
         }
 
         $nodes = array_map(static fn (array $row): Node => $row['node'], $walked);
-        $cells = $this->cellsFor($nodes, $actions, $hrefs, $submits, $cell, $locale, $level, $developerMode);
+        // ⚠️ *The rows already carry it — {@see \Taxmod\Core\Service\Tree::rowsUnder()} reads it off
+        // the inheritance edges it loads anyway ([D-467](90-decision-log.md)). No parameter at the
+        // boundary, and no query here.*
+        $hidden = [];
+
+        foreach ($walked as $row) {
+            $hidden[$row['node']->id] = $row['hidden'] ?? false;
+        }
+
+        $cells = $this->cellsFor($nodes, $actions, $hrefs, $submits, $cell, $locale, $level, $developerMode, $hidden);
 
         $rows = $this->drawnRows($walked, $cells, $toggles, $highlight);
 

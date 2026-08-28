@@ -30,20 +30,19 @@ final class Node extends Identity implements Renderable
         int $version,
         string $name,
         public readonly string $path,
-        bool $hide = false,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
-        parent::__construct($id, $version, $name, $hide);
+        parent::__construct($id, $version, $name);
     }
 
     /**
      * Rebuild a node from what storage holds. No validation beyond the name — storage is
      * trusted, input is not.
      */
-    public static function fromStorage(int $id, int $version, string $name, string $path, bool $hide = false): self
+    public static function fromStorage(int $id, int $version, string $name, string $path): self
     {
-        return new self($id, $version, $name, $path, $hide);
+        return new self($id, $version, $name, $path);
     }
 
     /**
@@ -77,7 +76,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path, $this->hide);
+        return new self($this->id, $this->version + 1, $name, $this->path);
     }
 
     /**
@@ -94,29 +93,15 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path, $this->hide);
+        return new self($this->id, $this->version + 1, $this->name, $path);
     }
 
-    /**
-     * The same node hidden or shown again, one version on.
-     *
-     * ⚠️ **Returns the same instance when nothing changed**, exactly as {@see self::renamedTo()} does —
-     * so switching the eye twice does not raise the version twice
-     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ *A model change and therefore a version change: it goes in the changelog, survives a
-     * migration, and every editor sees the node gone ([D-426](../../../docs/NewConcept/90-decision-log.md)).
-     * A per-person «do not show me these» would have been a user option and is explicitly not what the
-     * owner asked for.*
-     */
-    public function withHide(bool $hide): self
-    {
-        if ($hide === $this->hide) {
-            return $this;
-        }
+    // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
+    // ([D-467](../../../docs/NewConcept/90-decision-log.md)). **Hiding is about a placement, not
+    // about a thing** — the owner: «I do not simply create a model node and then say I will not draw
+    // it, that would be nonsense». A node is hidden by hiding the inheritance edge that puts it in
+    // the tree, which is one thing to hide rather than two that can disagree.*
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $hide);
-    }
     /**
      * The ids of this node's ancestors, nearest last, without the node itself.
      *

@@ -29,7 +29,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path, hide FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
+            $wpdb->prepare('SELECT id, version, name, path FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
             ARRAY_A
         );
 
@@ -52,7 +52,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, hide FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
                 ...array_map(intval(...), $ids)
             ),
             ARRAY_A
@@ -78,7 +78,6 @@ final class WpdbNodeRepository implements NodeRepository
                 'version' => $node->version,
                 'name'    => $node->name,
                 'path'    => $node->path,
-                'hide'    => $node->hide ? 1 : 0,
             ],
             ['%d', '%d', '%s', '%s']
         );
@@ -92,11 +91,10 @@ final class WpdbNodeRepository implements NodeRepository
         // a read followed by a hopeful update (P4c).
         $written = $wpdb->query(
             $wpdb->prepare(
-                'UPDATE ' . Schema::table('nodes') . ' SET version = %d, name = %s, path = %s, hide = %d WHERE id = %d AND version = %d',
+                'UPDATE ' . Schema::table('nodes') . ' SET version = %d, name = %s, path = %s WHERE id = %d AND version = %d',
                 $node->version,
                 $node->name,
                 $node->path,
-                $node->hide ? 1 : 0,
                 $node->id,
                 $expectedVersion
             )
@@ -151,7 +149,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, hide FROM ' . Schema::table('nodes') . '
+                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . '
                  WHERE path LIKE %s
                  ORDER BY path ASC',
                 $wpdb->esc_like($root->path . '.') . '%'
@@ -217,7 +215,6 @@ final class WpdbNodeRepository implements NodeRepository
             (int) $row['version'],
             (string) $row['name'],
             (string) $row['path'],
-            (bool) ($row['hide'] ?? false),
         );
     }
 }

@@ -144,22 +144,33 @@ final class ModelEditor
      * ⚠️ *Logged like a rename, because it is a model change: it survives a migration and every editor
      * sees it. An unchanged switch writes nothing and raises no version ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    public function hideNode(int $id, bool $hide): Node
+    public function hidePlacement(int $nodeId, ?bool $hide = null): ?Relation
     {
-        $node   = $this->nodes->byId($id);
-        $hidden = $node->withHide($hide);
+        $edge = $this->relations->inheritanceEdgeTo($nodeId);
 
-        if ($hidden === $node) {
-            return $node;
+        // ⚠️ *The root has no inheritance edge, so it cannot be hidden — correct rather than a gap
+        // ([D-194](../../../docs/NewConcept/90-decision-log.md)): it is machinery. Answering `null`
+        // keeps the caller from having to know that.*
+        if ($edge === null) {
+            return null;
         }
 
-        $this->nodes->save($hidden, $node->version);
+        // ⚠️ *`null` means «the other way», which is what a switch in a tree row wants. An explicit
+        // value is for callers that know the state they want — a data pack, a migration, a test.*
+        $wanted = $hide ?? ! $edge->hide;
+        $hidden = $edge->withHide($wanted);
+
+        if ($hidden === $edge) {
+            return $edge;
+        }
+
+        $this->relations->save($hidden, $edge->version);
         $this->changelog->record(
-            $id,
-            'node',
-            $hide ? 'hidden' : 'shown',
-            $this->state($node),
-            $this->state($hidden)
+            $edge->id,
+            'relation',
+            $wanted ? 'hidden' : 'shown',
+            $edge->hide ? '1' : '0',
+            $wanted ? '1' : '0'
         );
 
         return $hidden;

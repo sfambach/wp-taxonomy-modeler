@@ -68,8 +68,13 @@ final class Schema
      *      on the owner: «shorter, we do not need the range». **16 rows, a rename and nothing
      *      else.** *The new names were free — a collision would have hit the unique key and
      *      failed loudly, which is the good failure.*
+     * 12 — `nodes.hide` goes; `hide` lives on the **edge** alone (D-467). *The owner narrowed
+     *      schema 10 once the access he thought was missing turned out to exist: «then we only
+     *      need it on the edge». **Hiding is about a placement**, and a node-level flag had no
+     *      use case behind it — «I do not simply create a model node and then say I will not
+     *      draw it, that would be nonsense».* All 7 values travel to their inheritance edge.
      */
-    public const VERSION = 11;
+    public const VERSION = 12;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -131,7 +136,61 @@ final class Schema
         self::widenSettingUniqueKey();
         self::moveHideOutOfSettings();
         self::shortenRangeKeys();
+        self::moveHideOntoTheEdge();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * `nodes.hide` goes; `hide` lives on the **edge** alone — schema 12.
+     *
+     * ⚠️ **The owner narrowed it once the access he thought was missing turned out to exist.** *He had
+     * said «we have no access to the inheritance edge at the moment, that is my problem here» — and
+     * measured, {@see \Taxmod\Core\Repository\RelationRepository::inheritanceEdgeTo()} is there with an
+     * implementation. On being shown that: **«then we only need it on the edge».***
+     *
+     * ⚠️ **And his reason is better than the mechanism.** *«I do not simply create a model node and then
+     * say I will not draw it — that would be nonsense. Where I would say it is on the **fields** of a
+     * model node, when I only want something in the background, to calculate with.» So hiding is about
+     * a **placement**, and a node-level flag had no use case behind it — [D-457](../../../docs/NewConcept/90-decision-log.md)
+     * gave it one on my reading of «both», not on his.*
+     *
+     * ⚠️ *Every one of the 7 hidden nodes has exactly one inheritance edge to travel to — measured
+     * before writing this, 7 of 7. **The root has none and can therefore never be hidden**, which is
+     * correct rather than a gap: it is machinery ([D-194](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private static function moveHideOntoTheEdge(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $nodes)) !== $nodes) {
+            return;
+        }
+
+        $present = $wpdb->get_col($wpdb->prepare(
+            'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+            $nodes,
+            'hide'
+        ));
+
+        if ($present === []) {
+            return;
+        }
+
+        $relations = self::table('relations');
+
+        // ⚠️ *The value travels **before** the column goes, and the join is the inheritance edge —
+        // which is the one thing that puts a node in the tree ([D-014]).*
+        $wpdb->query(
+            "UPDATE {$relations} r
+             JOIN {$nodes} n ON n.id = r.to_id AND r.kind = 'inheritance'
+             SET r.hide = 1
+             WHERE n.hide = 1"
+        );
+
+        $wpdb->query("ALTER TABLE {$nodes} DROP COLUMN hide");
     }
 
     /**
@@ -517,7 +576,6 @@ final class Schema
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
-                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY path (path),
                 KEY name (name)

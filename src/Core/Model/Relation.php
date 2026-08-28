@@ -44,10 +44,29 @@ final class Relation extends Identity implements Renderable
         string $name,
         public readonly int $position,
         public readonly ?int $parkedByGroup = null,
-        bool $hide = false,
+        /**
+         * Whether the walk stops at this placement.
+         *
+         * ⚠️ **On the edge alone, and the owner narrowed it there himself** ([D-467](../../../docs/NewConcept/90-decision-log.md)):
+         * *«then we only need it on the edge»*, once the access he thought was missing —
+         * {@see \Taxmod\Core\Repository\RelationRepository::inheritanceEdgeTo()} — turned out to exist.
+         *
+         * ⚠️ **Hiding is about a placement, not about a thing.** *«I do not simply create a model node
+         * and then say I will not draw it — that would be nonsense. Where I would say it is on the
+         * **fields** of a model node, when I only want something in the background, to calculate with.»*
+         *
+         * ⚠️ *A column and never a setting ([D-426](../../../docs/NewConcept/90-decision-log.md)): as a
+         * setting it sat in the resolution chain, and an attribute chain contains its **target node** —
+         * so hiding a type blanked every field of that type. Measured twice.*
+         *
+         * ⚠️ *It means «render no further» ([D-456](../../../docs/NewConcept/90-decision-log.md)) and it
+         * is an **abort**: the walk stops before drawing and before looking for children. In the tree
+         * that falls out of `$skip` — a placement not followed takes its subtree with it.*
+         */
+        public readonly bool $hide = false,
     ) {
         // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
-        parent::__construct($id, $version, $name, $hide);
+        parent::__construct($id, $version, $name);
     }
 
     /**

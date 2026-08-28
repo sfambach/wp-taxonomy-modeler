@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **466**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **468**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **119**, davon **29** noch offen |
 
 ## Offene Fragen
@@ -554,7 +554,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-408](90-decision-log.md) | 2026-08-26 | agreed | The modelling screen gets its first script — eight lines that keep the tree where it was, and nothing else. |
 | [D-409](90-decision-log.md) | 2026-08-26 | agreed | A setting has no multiplicity. One key, one answer, per place — and «edge-only» stops being a property of `multiplicity` because an attribute *is* th… |
 | [D-410](90-decision-log.md) | 2026-08-26 | agreed | An attribute has a name in every language — it carries labels, like a node. Answers OQ-095. |
-| [D-411](90-decision-log.md) | 2026-08-26 | agreed | The narrowing rule is gone. An attribute may reopen anything a node said. Supersedes D-312's bounding/choosing split. |
+| [D-411](90-decision-log.md) | 2026-08-26 | agreed | ⚠️ Narrowed back for `min` and `max` by D-468: the owner — *«it would contradict the contract I gave earlier at the node … those two we can forbid a … |
 | [D-412](90-decision-log.md) | 2026-08-26 | agreed | A `bool` may not have a floor of zero. Two states means it is always answered. |
 | [D-413](90-decision-log.md) | 2026-08-26 | agreed | `settings` gains a `path` column — the address a setting needs to say |
 | [D-414](90-decision-log.md) | 2026-08-26 | agreed | The prefix exponent is connected — D-378 works four days after it was decided, and the column has a consumer instead of a claim. |
@@ -610,3 +610,5 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-464](90-decision-log.md) | 2026-08-28 | agreed | `hide` is built as a column with an abort — schema 10, and the setting key is gone. |
 | [D-465](90-decision-log.md) | 2026-08-28 | agreed | `RenderResult::htmlTag()` — one place knows how an element is spelled. Builds D-463's rule, and the owner's naming convention is what makes it a prom… |
 | [D-466](90-decision-log.md) | 2026-08-28 | agreed | `range_min`, `range_max` and `range_step` become `min`, `max` and `step` — schema 11. The rename only; what «no value» means is |
+| [D-467](90-decision-log.md) | 2026-08-28 | agreed | `hide` lives on the |
+| [D-468](90-decision-log.md) | 2026-08-28 | agreed | Widening stays refused for `min` and `max`. The narrowing rule does |

@@ -115,17 +115,15 @@ final class TreeNodeRenderer implements Renderer
         // indistinguishable from a visible one — and the whole point of that mode is to work **on** the
         // hidden ones.
         //
-        // ⚠️ *The cell reads it from its own resolved settings, the way it already reads the icon. It
-        // needed no plumbing and no new parameter: `cellsFor()` hands every cell the node's settings
-        // ([D-159](../../../docs/NewConcept/90-decision-log.md)), and `hide` was in them all along.*
-        // ⚠️ **Read off the subject, not out of the settings** ([D-457](../../../docs/NewConcept/90-decision-log.md)).
-        // *`hide` is a column on {@see \Taxmod\Core\Model\Identity} now — so the cell asks the node it
-        // is drawing instead of a resolved chain, which is both simpler and the reason a hidden **type**
-        // no longer reaches the fields that point at it.*
-        //
-        // ⚠️ *A `RenderedSetting` is a `Renderable` and not an `Identity`, so the check is by type
-        // rather than by trust: only an identity can be hidden.*
-        $hidden = $subject instanceof Identity && $subject->hide;
+        // ⚠️ **Handed in, because a cell draws a **node** and `hide` sits on its **edge**.**
+        // *This line has been rewritten three times and the last one is the design:
+        // it read a **setting** (which put `hide` in the chain, so hiding a type blanked every field of
+        // that type — [D-426](../../../docs/NewConcept/90-decision-log.md)), then a **column on the
+        // node** ([D-457](../../../docs/NewConcept/90-decision-log.md)), and now the prepared fact
+        // ([D-467](../../../docs/NewConcept/90-decision-log.md), [D-445](../../../docs/NewConcept/90-decision-log.md)):
+        // `hide` is on the **inheritance edge**, which is what puts the node in the tree at all, and
+        // `Tree::rowsUnder()` loads those edges anyway.*
+        $hidden = $context->surroundings->hidden;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
             . ' id="taxmod-node-' . (int) $subject->id . '"'

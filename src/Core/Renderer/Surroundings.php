@@ -114,6 +114,17 @@ final class Surroundings
          */
         public readonly bool $refersToARecord = false,
         /**
+         * Whether this placement is hidden — prepared by the descent, never asked for.
+         *
+         * ⚠️ **`hide` lives on the **inheritance edge** ([D-467](../../../docs/NewConcept/90-decision-log.md)),
+         * and a tree cell draws the **node**.** *So the cell cannot read it off its subject; the walk
+         * loads those edges anyway and hands the answer in ([D-445](../../../docs/NewConcept/90-decision-log.md)).*
+         *
+         * ⚠️ *Only ever true in developer mode's «show hidden» view: with it off the row does not
+         * exist, because the walk did not follow its edge.*
+         */
+        public readonly bool $hidden = false,
+        /**
          * The `id` of the form a control belongs to, when it cannot sit inside it.
          *
          * ⚠️ **This exists because a real bug needed it and the owner found it**: *multiplicity is not

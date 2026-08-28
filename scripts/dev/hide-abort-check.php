@@ -44,44 +44,48 @@ $r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonom
 
 $screen = $plugin->screen();
 
-$sichtbar = static function (\Taxmod\WordPress\Admin\NodesScreen $screen, array $namen): array {
+// ⚠️ **Auf die Zeilen-Id geprueft und nicht auf den Namen.** *Ein abgebrochener Lauf hinterlaesst
+// Knoten mit demselben Namen, und `str_contains($markup, '__ab Ast')` findet dann den **Rest** statt
+// die Wiese dieses Laufs. Genau das hat diese Pruefung beim Umbau falsch gemeldet.*
+$sichtbar = static function (\Taxmod\WordPress\Admin\NodesScreen $screen, array $ids): array {
     $markup = $screen->render();
     $da     = [];
 
-    foreach ($namen as $name) {
-        $da[$name] = str_contains($markup, $name);
+    foreach ($ids as $name => $id) {
+        $da[$name] = str_contains($markup, 'id="taxmod-node-' . $id . '"');
     }
 
     return $da;
 };
 
-$namen = ['__ab Ast', '__ab Kind', '__ab Enkel'];
+$namen = ['__ab Ast' => $ast->id, '__ab Kind' => $kind->id, '__ab Enkel' => $enkel->id];
 
 echo "== vorher stehen alle drei im Baum ==\n";
 
 $vorher = $sichtbar($screen, $namen);
 
-foreach ($namen as $name) {
+foreach (array_keys($namen) as $name) {
     $say($vorher[$name], sprintf('«%s» ist da', $name));
 }
 
 echo "\n== jetzt den Ast verstecken ==\n";
 
-$editor->hideNode($ast->id, true);
+// ⚠️ *Die Vererbungskante, nicht der Knoten ([D-467]) — `hidePlacement()` findet sie selbst.*
+$editor->hidePlacement($ast->id, true);
 
 $nachher = $sichtbar($plugin->screen(), $namen);
 
-foreach ($namen as $name) {
+foreach (array_keys($namen) as $name) {
     $say(! $nachher[$name], sprintf('«%s» ist weg', $name));
 }
 
 echo "\n== und wieder zeigen ==\n";
 
-$editor->hideNode($ast->id, false);
+$editor->hidePlacement($ast->id, false);
 
 $wieder = $sichtbar($plugin->screen(), $namen);
 
-foreach ($namen as $name) {
+foreach (array_keys($namen) as $name) {
     $say($wieder[$name], sprintf('«%s» ist zurueck', $name));
 }
 

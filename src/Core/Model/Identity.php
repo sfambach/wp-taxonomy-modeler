@@ -91,26 +91,11 @@ abstract class Identity
         public readonly int $id,
         public readonly int $version,
         public readonly string $name,
-        /**
-         * Whether the walk stops here — a node hides itself, a placement hides what hangs there.
-         *
-         * ⚠️ **Here rather than in the settings, and that is the whole of [D-457](../../../docs/NewConcept/90-decision-log.md).**
-         * *The owner said it first: «`hide` could be moved into `Identity`, then it is a property both
-         * node and edge have.» It took me two wrong readings to get there — node-only, then edge-only —
-         * and it was «both» all along.*
-         *
-         * ⚠️ **As a setting it had a second meaning nobody asked for.** *Measured twice: `hide` on a
-         * **type** blanked **every field of that type**, because an attribute's chain contains its target
-         * node. [D-426](../../../docs/NewConcept/90-decision-log.md): «a column is not in the chain, so
-         * the two can no longer reach each other **by construction** rather than by a rule somebody has
-         * to remember.»*
-         *
-         * ⚠️ *It means one thing — «render no further» ([D-456](../../../docs/NewConcept/90-decision-log.md)) —
-         * and it is an **abort**: the walk stops before drawing this and before looking for children
-         * ([D-450](../../../docs/NewConcept/90-decision-log.md), [D-452](../../../docs/NewConcept/90-decision-log.md)).
-         * The subtree disappears because it is never reached, not because anything inherits.*
-         */
-        public readonly bool $hide = false,
+        // ⚠️ *`hide` stood here and went to {@see Relation} alone ([D-467](../../../docs/NewConcept/90-decision-log.md)).
+        // **It is not in the intersection after all**: a node is hidden by hiding the inheritance edge
+        // that puts it in the tree, so only an edge ever carries it. *`read_only` and `persistent`
+        // remain the genuine intersection candidates ([OQ-114](../../../docs/NewConcept/91-open-questions.md)),
+        // and both stay settings ([D-460](../../../docs/NewConcept/90-decision-log.md), [D-461](../../../docs/NewConcept/90-decision-log.md)).*
     ) {
     }
 }
