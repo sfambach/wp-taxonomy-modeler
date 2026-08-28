@@ -443,16 +443,53 @@ details.taxmod-page-block > summary {
     border-radius: 3px;
 }
 
+/* ── How big an icon is drawn: one sum, one place ─────────────────────────────
+ *
+ * ⚠️ **The size the owner picked on the installation screen was reaching nothing.**
+ * [D-397](../docs/NewConcept/90-decision-log.md) says *the two sizes reach the stylesheet as custom
+ * properties … the fallbacks are what the file used to hard-code* — and the property was on the
+ * wrapper as promised. **Measured in the browser: raising `--taxmod-icon` from 17px to 30px moved no
+ * glyph at all, in the tree or in a panel.** The rule below hard-coded `17px`, and it is one class
+ * pair like `.taxmod-tree .dashicons` — so it simply came later and won. *A number in a stylesheet
+ * beat a control the owner had walked himself, and nothing said so.*
+ *
+ * ⚠️ **`--taxmod-icon-more` is an addition, not a factor**, so the result stays a whole pixel. *A
+ * factor of 1.2 on 17 gives 20.4, and a 20.4px box beside a 20.4px box leaves a hairline the eye
+ * reads as a rendering fault.* Zero everywhere unless a region asks for more.
+ */
+.taxmod-icon-button {
+    --taxmod-icon-drawn: calc(var(--taxmod-icon, 17px) + var(--taxmod-icon-more, 0px));
+}
+
 /* ⚠️ **`display: block`, because a dashicon is a font character.** An inline glyph carries its font's
    descent even inside a flex container, and that descent is what reads as *a little too low*.
    *Blocking it takes the line box out of the picture instead of tuning a pixel count — and it is why
    `vertical-align` is gone from here: the button centres the glyph now, so nothing is left to align.* */
 .taxmod-icon-button .dashicons {
     display: block;
-    font-size: 17px;
-    width: 17px;
-    height: 17px;
+    font-size: var(--taxmod-icon-drawn);
+    width: var(--taxmod-icon-drawn);
+    height: var(--taxmod-icon-drawn);
     line-height: 1;
+}
+
+/* ⚠️ **The diskette is a character and had no size of its own.** Measured in the head row: the save
+   button drew at 21×13 between five 24×17 neighbours, because the glyph span carried no class and so
+   took the admin page's 13px. *WordPress's emoji script then swaps the character for an
+   `<img class="emoji">` sized `1em`, which is why sizing the span is enough to size the picture.* */
+.taxmod-icon-button .taxmod-icon-glyph {
+    display: block;
+    font-size: var(--taxmod-icon-drawn);
+    line-height: 1;
+}
+
+/* ⚠️ **The panels get the bigger icon, the tree keeps the size he tuned.** The owner: *the icons in
+   the settings area could be a bit bigger.* One addition on the pane rather than a second number per
+   panel — and the tree is deliberately outside it, because 17px is where he stopped walking.
+   ⚠️ *Whether this should be a second control on the installation screen instead of a constant here is
+   his to decide; the sum above is ready for it either way.* */
+.taxmod-detail-pane {
+    --taxmod-icon-more: 3px;
 }
 
 /* ── A record as a block ─────────────────────────────────────────────────────
@@ -814,36 +851,28 @@ details.taxmod-page-block > summary {
  * also two classes, which is exactly why the tree looked right and nothing else
  * did. *Specificity, not a missing rule.*
  *
- * ⚠️ **The owner's rule, stated twice:** either no border and just the icon, or a
- * grey one. What he was actually seeing was WordPress blue, which is neither. */
-.wp-core-ui .taxmod-toolbar .button,
-.wp-core-ui .taxmod-toolbar .taxmod-icon-button {
-    border: 1px solid #c3c4c7;
-    background: #fff;
-    box-shadow: none;
-    color: #2c3338;
-}
-
-.wp-core-ui .taxmod-toolbar .button:hover:not(:disabled) {
-    background: #f6f7f7;
-    border-color: #8c8f94;
-}
-
-/* The primary save keeps its fill; it is the one act that should stand out. */
-.wp-core-ui .taxmod-toolbar .button-primary {
-    border-color: #2271b1;
-}
-
-/* A label is not a button, so it needs the box model spelled out — otherwise it
- * sits a pixel or two off its neighbours, which is what «leicht versetzt» was. */
+ * ⚠️ **Three `.wp-core-ui .taxmod-toolbar …` rules stood here and they were dead** — nothing has
+ * rendered a `taxmod-toolbar` since the head became `.taxmod-head-node`; only `.taxmod-toolbar-name`
+ * survived the rename. **They are gone rather than kept**, because what they said was
+ * `border: 1px solid` on `.taxmod-icon-button` at three classes — *a loaded rule pointing at the exact
+ * fault the owner has now reported four times, waiting for the class name to come back.*
+ *
+ * ⚠️ *`.taxmod-toolbar { display: flex }` and `.taxmod-toolbar select` are dead the same way and are
+ * left alone: layout that draws nothing is untidy, a border rule that outweighs the borderless one is
+ * a trap.*
+ *
+ * ⚠️ **This next block was the answer to «leicht versetzt» and has become the cause of it.** It spelled the
+ * box model out for a `<label>` back when `.taxmod-icon-button` was not a flex container — and once
+ * that rule became one, the only thing left here that differed was the size: **measured in the head
+ * row, the move label drew at 30×30 between five buttons at 24×17**, the tallest thing on the line and
+ * the reason the row does not read as a row.
+ *
+ * ⚠️ *So what stays is `box-sizing`, which a label genuinely does not get from `.button`. The display,
+ * the centring and the padding come from `.taxmod-icon-button` like every other icon control — the
+ * label carries that class ({@see \Taxmod\Core\Renderer\DialogChooserRenderer}) and always has.
+ * A fix kept past its cause is a second answer to a question that already has one.* */
 .wp-core-ui .taxmod-dialog-open {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 30px;
-    padding: 0 .5em;
     box-sizing: border-box;
-    vertical-align: middle;
 }
 
 /* Borderless stays borderless where it was agreed: a tree row. */

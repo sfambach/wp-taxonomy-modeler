@@ -303,7 +303,11 @@ final class Plugin
             // node gets its parent's settings written into it, and a new attribute its target's.
             // *Handed in rather than made required, because the core tests and the boundary checks
             // build this service to move nodes about and have nothing to furnish.*
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
+            // ⚠️ **Damit `clearTrash()` die Daten mitnimmt** — [C102](../../docs/NewConcept/10-domain-core.md):
+            // *ein Record ohne seinen Knoten ist undenkbar.* Ohne dieses Argument überlebten die Records
+            // ihren Knoten, während der Docblock der Methode behauptete, sie gingen mit.
+            new WpdbRecordRepository()
         );
     }
 

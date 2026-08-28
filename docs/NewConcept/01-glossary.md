@@ -163,44 +163,58 @@ Kept so a discarded term cannot quietly return under another name.
 | `Surroundings::$refersTo` | ⚠️ **ein Label, kein Zeiger.** *Hier lügt das Wort, und `CD-9` verlangt umbenennen. Vorschlag: `targetLabel`* |
 | `Surroundings::$refersToARecord` | ein `bool` über die **Art des Ziels** — ein Record statt eines Knotens ([D-445](90-decision-log.md)) |
 
-### Jede Stelle im Schema, die eine Knoten-Id hält — vollständig, gemessen 2026-08-28
+### Jede Stelle im Schema, die eine Knoten-Id hält — gemessen 2026-08-28
 
-**Der Eigentümer hat den Fall gestellt und nach den übrigen gefragt:** *«wir haben eine Knotenreferenz, die sagt: ich bin ein Attribut und ich habe als Datentyp einen Knoten. … Könntest Du diesen Fall mal in sich schliessen und sagen, ob da noch was unklar ist. … Nenn mir doch einfach mal die anderen Fälle, in denen das vorkommt.»*
+**Der Eigentümer hat den Fall gestellt und nach den übrigen gefragt:** *«wir haben eine Knotenreferenz, die sagt: ich bin ein Attribut und ich habe als Datentyp einen Knoten. … Nenn mir doch einfach mal die anderen Fälle, in denen das vorkommt.»*
 
-⚠️ **Und er hat meine erste Sortierung verworfen, zu Recht:** *«warum trennst Du die `relations.to_id` von der `relations.from_id` und den anderen Ids? **Das sind alles Referenzen auf Knoten.**»* *Ich hatte nach **Bedeutung** getrennt — «wem gehört es» gegen «wie hängt es zusammen» — und das ist keine Eigenschaft der Spalte, sondern eine Erzählung darüber. **Die Achse, die etwas leistet, ist eine andere: bedeutet die Zeile ohne ihr Ziel noch etwas?***
+⚠️ **Zwei meiner Sortierungen hat er verworfen, beide zu Recht — und die zweite war schlimmer.**
 
-| Spalte | zeigt auf | Zeile ohne ihr Ziel | Fremdschlüssel |
-|---|---|---|---|
-| `relations.from_id` | Knoten | **bedeutungslos** | ✓ `identities` |
-| `relations.to_id` | Knoten — *der **Typ** des Feldes* | **bedeutungslos** | ✓ `identities` |
-| `settings.owner_id` | Knoten **oder** Kante | bedeutungslos | ✓ `identities` |
-| `labels.owner_id` | Knoten oder Kante | bedeutungslos | ✓ `identities` |
-| `changelog.owner_id` | Knoten oder Kante | **absichtlich verwaist** ([D-065](90-decision-log.md): die Geschichte überlebt die Sache) | ✓ `identities` |
-| **`records.node_id`** | Knoten | **bedeutungslos** | **✗** |
-| **`record_values.edge_id`** | Kante | **bedeutungslos** | **✗** |
-| **`labels.role_id`** | Knoten | **bedeutungslos** | **✗** |
-| `settings.value_ref` | Knoten | veraltet, bleibt lesbar | ✗ |
-| `record_values.value_ref` | Knoten | veraltet, bleibt lesbar | ✗ |
-| `nodes.path` | eine **Kette** von Knoten-Ids | abgeleitet, jederzeit neu baubar ([D-014](90-decision-log.md)) | Text, kann keinen haben |
-| `settings.path`, `labels.path` | eine Kette von **Kanten**-Ids | die Zeile antwortet dann für eine Stelle, die es nicht gibt | Text, kann keinen haben |
+*Zuerst hatte ich nach **Bedeutung** getrennt («wem gehört es» gegen «wie hängt es zusammen»), und er: «warum trennst Du die `relations.to_id` von der `from_id`? **Das sind alles Referenzen auf Knoten.**» Richtig — das war eine Erzählung über die Spalte, keine Eigenschaft von ihr.*
 
-#### Sein Fall ist geschlossen
+*Dann schrieb ich eine Spalte «Zeile ohne ihr Ziel» mit den Werten «bedeutungslos» und «veraltet», und er: **«Du machst Dir wieder Schlussfolgerungen, die wir hier gar nicht beschliessen.»** Auch richtig, und das ist der schwerere Fehler: **ich habe eine Wertung als Messung ausgegeben.** Die Spalte ist entfernt. Was bleibt, ist gemessen.*
 
-*«Ein Attribut hat als Datentyp einen Knoten»* steht in `relations.to_id`, und die Spalte ist **abgesichert**: ein Fremdschlüssel auf `identities` verhindert, dass sie ins Leere zeigt. **Da ist nichts unklar.** *Und sie gilt für **jedes** Feld, nicht nur für eines mit einem Konstanten-Ziel — der Typ eines Feldes ist immer ein Knoten ([D-011](90-decision-log.md): ein Attribut ist eine Relation).*
+#### Die Spalten
 
-#### Was unklar ist: drei tragende Spalten ohne Absicherung
+| Spalte | hält die Id von | Fremdschlüssel |
+|---|---|---|
+| `relations.from_id` | einem Knoten | → `identities` |
+| `relations.to_id` | einem Knoten — *dem **Typ** des Feldes* | → `identities` |
+| `settings.owner_id` | einem Knoten **oder** einer Kante | → `identities` |
+| `labels.owner_id` | einem Knoten oder einer Kante | → `identities` |
+| `changelog.owner_id` | einem Knoten oder einer Kante | → `identities` |
+| `records.node_id` | einem Knoten | **keiner** |
+| `record_values.edge_id` | einer Kante | **keiner** |
+| `labels.role_id` | einem Knoten — *die **Rolle** eines Labels ist ein Knoten* | **keiner** |
+| `settings.value_ref` | einem Knoten — *der **Wert** ist die Id* | **keiner** |
+| `record_values.value_ref` | einem Knoten — *der **Wert** ist die Id* | **keiner** |
+| `nodes.path` | einer **Kette** von Knoten-Ids, gepunktet | Text — kann keinen haben |
+| `settings.path`, `labels.path` | einer Kette von **Kanten**-Ids | Text — kann keinen haben |
 
-⚠️ **Von 7 Fremdschlüsseln sichern alle die fünf Spalten, deren Ziel eine Identität ist. Drei ebenso tragende Spalten haben keinen** — und ohne ihr Ziel ist die Zeile nicht veraltet, sondern **Unsinn**:
+#### ⚠️ Was ein Fremdschlüssel hier **nicht** leistet, und das ist der Kern
 
-| | ohne Ziel ist es |
+**Jeder der sieben zeigt auf `identities`, nicht auf `nodes`.** *Gemessen: `identities` hat **28670** Zeilen, `nodes` hat **91** — eine Id wird einmal vergeben und nie wieder ([D-340](90-decision-log.md)). **Ein Fremdschlüssel garantiert also nur, dass diese Id einmal ausgegeben wurde. Er garantiert nicht, dass der Knoten noch existiert.***
+
+*Damit ist der Unterschied zwischen «abgesichert» und «nicht abgesichert» viel kleiner, als er aussieht — und die Frage des Eigentümers, «wo ist denn das Loch für Knoten, die genutzt werden», hat die Antwort: **es gibt keins, weil der Fremdschlüssel benutzt und gelöscht nicht unterscheidet.***
+
+#### Wie es heute wirklich steht — Zeilen, deren Ziel es nicht mehr gibt
+
+| Spalte | solche Zeilen |
 |---|---|
-| `records.node_id` | ein Datensatz, der nicht sagt, wovon er einer ist |
-| `record_values.edge_id` | ein Wert, der nicht sagt, für welches Feld |
-| `labels.role_id` | ein Label, das nicht sagt, ob es `form`, `table` oder `select` ist |
+| `relations.to_id`, `relations.from_id` | 0 |
+| `settings.value_ref` | 0 |
+| `labels.role_id` | 0 |
+| **`records.node_id`** | **1** |
+| **`record_values.edge_id`** | **7** — dieselben, die die Cleanup-Seite zeigt ([D-479](90-decision-log.md)) |
 
-⚠️ *Die zwei **Wert**-Spalten darunter sind der harmlosere Fall: dort veraltet ein Zeiger und die Zeile bleibt lesbar. **Genau diese Sorte findet die Cleanup-Seite** ([D-479](90-decision-log.md)) als «7 Werte ohne Kante» auf der laufenden Installation — belegt also, dass der Fall eintritt.*
+⚠️ *Die vier oberen sind sauber, aber **nicht weil** ein Fremdschlüssel sie hält.*
 
-⚠️ **Und eine der drei hat noch niemand eine Knotenreferenz genannt: `labels.role_id`.** *Die Rolle eines Labels **ist** ein Knoten ([D-023](90-decision-log.md), [D-151](90-decision-log.md) sät die Rollen als Knoten). **Dieselbe Tatsache wie `node_ref`, ohne den Begriff, ohne Renderer, ohne Fremdschlüssel.***
+⚠️ **Und die acht Zeilen sind eine einzige Leiche, zweimal gezählt — der Eigentümer hat es erraten, bevor es gemessen war.** *Er: «wir haben eine Menge Datenmüll noch da, dadurch dass der Baum gewachsen ist. Ist es vielleicht das Problem, dass die einfach nicht richtig gefüllt sind und Du jetzt denkst, das werden irgendwelche Regeln?» **Genau so war es.** Gemessen: alle acht gehören zu **Record 879**, angelegt am 2026-08-28 um 08:30, der auf Knoten 23878 zeigt — und zu diesem Knoten gibt es **keinen einzigen Changelog-Eintrag**, er wurde also von Hand aus der Tabelle gelöscht und nicht über die Anwendung. Die Werte lauten `42`, `4k7`, `a@b.example`, `#663399`: die Testdaten-Signatur von `package7-check.php`. **Es ist Abfall aus einem Prüflauf, und ich habe daraus Struktur gelesen.***
+
+⚠️ *Was das für die Fremdschlüssel heisst: **der Beleg dafür, dass es «in der Praxis vorkommt», ist weg.** Es kam vor, weil jemand — ich — Knoten unter der Anwendung wegräumte. Ob die drei Spalten trotzdem einen bekommen sollten, bleibt eine Frage, aber ohne diesen Beleg und damit kleiner, als sie aussah.*
+
+#### Sein Fall, geschlossen
+
+*«Ein Attribut hat als Datentyp einen Knoten»* steht in `relations.to_id`. Die Spalte existiert, sie hält die Id, und sie hat einen Fremdschlüssel auf `identities`. *Sie gilt für **jedes** Feld, nicht nur für eines mit einem Konstanten-Ziel — der Typ eines Feldes ist immer ein Knoten ([D-011](90-decision-log.md): ein Attribut ist eine Relation).* **Gemessen zeigt heute keine davon ins Leere.**
 
 #### Ein Wort, überall
 
@@ -209,9 +223,9 @@ Kept so a discarded term cannot quietly return under another name.
 | hiess | heisst |
 |---|---|
 | `Storage::NodeReference` (`node-reference`) | **`Storage::NodeRef` (`node-ref`)** — 3 Stellen, eine davon ein Test; der Wert ist nirgends gespeichert, geprüft |
-| `SimpleType::NodeRef` (`node_ref`) | **bleibt** — `node_ref` steht als Zeichenkette in der Datenbank, es zu ändern kostet eine Migration |
+| `SimpleType::NodeRef` (`node_ref`) | **bleibt** — `node_ref` steht als Zeichenkette in der Datenbank |
 
-⚠️ *Schreibweise, nicht Bedeutung — deshalb ohne Rückfrage (`CD-9`). **Die Bedeutungsfrage bleibt offen**: [OQ-125](91-open-questions.md), ob `Storage` überhaupt bleibt, wenn die Produktion einen seiner vier Fälle liest.*
+⚠️ *Schreibweise, nicht Bedeutung (`CD-9`). Die Bedeutungsfrage liegt in [OQ-125](91-open-questions.md).*
 
 ---
 

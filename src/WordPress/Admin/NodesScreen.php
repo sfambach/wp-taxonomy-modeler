@@ -963,19 +963,18 @@ final class NodesScreen
             // buttons appear they look odd again; is there a button renderer? Let us build it and use
             // it everywhere.* *This was the last of four written out by hand, and the one his blue
             // diskette came from.*
-            . ControlMarkup::button(new Control(
+            // ⚠️ No Dashicon: the icon font has no diskette, and `dashicons-saved` is a **tick** — which
+            // the owner spotted. So the character is handed in and the label stays the name.
+            // ⚠️ *This one was the only one of five that got the slot right, and it says nothing about
+            // care: it got it right because it was written out with all ten arguments. The other four
+            // were short calls and counted wrong. {@see Control::saving()} removes the counting.*
+            . ControlMarkup::button(Control::saving(
                 'do',
                 SettingsRenderer::WRITE,
                 __('Save', 'taxmod'),
                 __('Save every setting on this page', 'taxmod'),
                 true,
-                false,
-                // ⚠️ No Dashicon: the icon font has no diskette, and `dashicons-saved` is a **tick** —
-                // which the owner spotted. So the character is handed in and the label stays the name.
-                '',
                 SettingsRenderer::formFor($selected),
-                false,
-                '💾'
             ))
             . $this->form(
                 $selected->id,
@@ -1207,11 +1206,14 @@ final class NodesScreen
                 // settings side applies here for the same reason: a row with two independent submits
                 // has no answer to *what does Enter do*. It writes the name and the multiplicity
                 // together, and each only where it actually changed.
-                new Control(
+                // ⚠️ **Through {@see Control::saving()}, because the diskette used to sit in `$label`
+                // here** — the owner: *icons are boxes again and the wrong alignment*. Measured on this
+                // very row: `<button class="button">💾</button>`, 49×41 next to 24×17 neighbours, and
+                // the whole icon group crooked because of it.
+                Control::saving(
                     'do',
                     'save_field',
-                    // The owner likes the diskette and it stays the sign for saving everywhere.
-                    '💾',
+                    __('Save', 'taxmod'),
                     __('Save this field — its name and how often it may occur', 'taxmod'),
                     $own
                 ),
@@ -1657,7 +1659,7 @@ final class NodesScreen
         return $html . $this->rendering->labelsPanelFor(
             $selected,
             $slots,
-            [new Control('do', LabelsRenderer::WRITE, '💾', __('Write every text for this locale', 'taxmod'))],
+            [Control::saving('do', LabelsRenderer::WRITE, __('Save', 'taxmod'), __('Write every text for this locale', 'taxmod'))],
             new Submission(
                 admin_url('admin-post.php'),
                 [
@@ -1936,7 +1938,7 @@ final class NodesScreen
                     $record->id,
                     $record->nodeVersion
                 ),
-                [new Control('do', 'save_record', '💾', __('Write these values', 'taxmod'))],
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))],
                 new Submission(
                     admin_url('admin-post.php'),
                     [
@@ -2199,7 +2201,7 @@ final class NodesScreen
             // ⚠️ **The write act stays in the list although a row no longer draws it** — the renderer
             // skips it, and the page-head button submits the same form. *Keeping one list means the
             // words and the nonce are declared once.*
-            new Control('do', SettingsRenderer::WRITE, '💾', __('Save every setting on this page', 'taxmod')),
+            Control::saving('do', SettingsRenderer::WRITE, __('Save', 'taxmod'), __('Save every setting on this page', 'taxmod')),
             // ⚠️ **The bin again, on the owner's ask** — *the Nothing button could be the bin again.*
             // It **is** a removal: *deliberately nothing here* stops the chain, so a later change
             // further up will not arrive. `destroys` paints it red for the same reason.

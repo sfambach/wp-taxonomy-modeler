@@ -39,6 +39,39 @@ namespace Taxmod\Core\Renderer;
 final class Control
 {
     /**
+     * The one character that stands for saving, because Dashicons has no diskette.
+     *
+     * ⚠️ **It lives here because it was written out five times and four of them were wrong.** Measured
+     * on the rendered node page: `put_labels` and `save_field` reached the browser as
+     * `<button class="button">💾</button>` — WordPress's blue-bordered secondary button, 49×41 among
+     * 17px neighbours — because the character had been handed in as the **label** rather than as the
+     * glyph, and {@see ControlMarkup} decides «this is an icon» from `icon` and `glyph` alone. *So the
+     * class of fault was not a missing CSS rule and not a fourth copy of the markup: it was a
+     * positional argument landing in the slot next door.*
+     */
+    public const SAVE_GLYPH = '💾';
+
+    /**
+     * A save act, with the diskette in the slot it belongs in.
+     *
+     * ⚠️ **This exists so the glyph cannot land in the label again.** *Four of the five save buttons
+     * passed `💾` as the third positional argument, which is `$label` — and a label is drawn as words,
+     * so those four lost the class that takes a button's box away. One named constructor is the same
+     * cure `ControlMarkup` already applied to the markup side: the thing that has to be got right is
+     * stated once.*
+     */
+    public static function saving(
+        string $name,
+        string $value,
+        string $label,
+        string $title = '',
+        bool $available = true,
+        string $form = '',
+    ): self {
+        return new self($name, $value, $label, $title, $available, false, '', $form, false, self::SAVE_GLYPH);
+    }
+
+    /**
      * @param string $name      The form field it submits under.
      * @param string $value     What it submits.
      * @param string $label     What a person reads — **already translated**, because the text domain
@@ -106,11 +139,17 @@ final class Control
         /**
          * A character to draw instead of the label, where the icon font has no word for it.
          *
-         * ⚠️ **This exists for exactly one button and is not a second `icon`.** The page save draws
-         * `💾`, and it does so **against** the icon font on the owner's own observation: *`dashicons-saved`
-         * is a tick.* There is no diskette in Dashicons, so the choice is a character or the wrong
-         * picture — *and the label stays what a screen reader is left with, which is why this is a
-         * third field and not a label holding an emoji.*
+         * ⚠️ **It was written for exactly one button and there are now five**, which is the whole story
+         * of the boxes coming back. The page save draws `💾` **against** the icon font on the owner's
+         * own observation: *`dashicons-saved` is a tick.* There is no diskette in Dashicons, so the
+         * choice is a character or the wrong picture — *and the label stays what a screen reader is
+         * left with, which is why this is a third field and not a label holding an emoji.*
+         *
+         * ⚠️ **Hand it in through {@see self::saving()} rather than by position.** *`$label` is the
+         * third argument and this is the tenth; four call sites put the diskette in the third, so the
+         * button drew it as a word and never got the class that removes its box. A label holding an
+         * emoji is also the thing this field exists to prevent — it makes «floppy disk» the accessible
+         * name of the save button.*
          *
          * ⚠️ *`icon` wins where both are given: a Dashicon takes `color` and `font-size` like text and
          * an emoji does not, which is the whole argument in the `icon` docblock above.*

@@ -15,6 +15,7 @@ use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Repository\LabelRepository;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\RecordRepository;
 use Taxmod\Core\Repository\SettingRepository;
 use Taxmod\Core\Repository\RelationRepository;
 
@@ -61,6 +62,11 @@ final class ModelEditor
         // eighteen places that construct this service mostly move nodes around, and a required
         // argument would make every one of them declare a dependency it never uses.*
         private readonly ?Settings $materialiser = null,
+        // ⚠️ **Nur `clearTrash()` braucht es, und es fehlte — deshalb überlebten Records ihren Knoten.**
+        // *Optional aus demselben Grund wie die drei darüber: die achtzehn Stellen, die diesen Dienst
+        // bauen, verschieben meist nur Knoten und hätten sonst eine Abhängigkeit zu erklären, die sie
+        // nie benutzen.*
+        private readonly ?RecordRepository $records = null,
     ) {
     }
 
@@ -570,7 +576,7 @@ final class ModelEditor
         $parked = $this->nodes->subtreeOf($trash);
 
         if ($parked === []) {
-            return ['nodes' => 0, 'edges' => 0, 'settings' => 0, 'labels' => 0];
+            return ['nodes' => 0, 'edges' => 0, 'settings' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];
         }
 
         $ids   = array_map(static fn (Node $one): int => $one->id, $parked);
@@ -584,9 +590,28 @@ final class ModelEditor
         // key refuses. *Settings and labels hang off both nodes and edges, so they go first of all.*
         $owners = [...$ids, ...$edges];
 
+        // ⚠️ **Die Daten gehen mit, und das fehlte — [C102](../../../docs/NewConcept/10-domain-core.md)
+        // durchgesetzt.** *Der Docblock über dieser Methode behauptete es seit dem Anfang («und es nimmt
+        // mit, was zu einem Knoten gehört: settings, labels, **records** und edges», und das Diagramm
+        // zeichnet «records · values»), **gelöscht wurden vier von sechs**. Geschrieben und nicht
+        // gebaut, dasselbe Muster wie `hide` gespeichert-und-nie-gelesen
+        // ([D-396](../../../docs/NewConcept/90-decision-log.md)) und der Container in
+        // {@see Rendering::containerFor()} — **das dritte Mal am selben Tag.***
+        //
+        // ⚠️ **Der Eigentümer, auf seine eigene Regel hin:** *«solange noch eine Referenz da ist, kann
+        // ein Knoten nicht endgültig gelöscht werden. Somit wäre ein Record ohne Knoten undenkbar. Und
+        // wenn man ihn löschen will und das Risiko eingeht, dann müssen die Daten mitgelöscht werden …
+        // **sonst weiss man ja auch gar nicht, wie dieser Record interpretiert werden soll.**»*
+        //
+        // ⚠️ *Vor den Knoten, aus demselben Grund wie settings und labels: was zeigt, geht vor dem,
+        // worauf es zeigt.*
+        $data = $this->records?->forgetNodes($ids) ?? ['records' => 0, 'values' => 0];
+
         $gone = [
             'settings' => $this->settings?->forgetOwners($owners) ?? 0,
             'labels'   => $this->labels?->forgetOwners($owners) ?? 0,
+            'records'  => $data['records'],
+            'values'   => $data['values'],
             'edges'    => count($edges),
             'nodes'    => count($ids),
         ];
@@ -621,7 +646,15 @@ final class ModelEditor
             'node',
             'trash cleared',
             sprintf('%d parked', count($ids)),
-            sprintf('%d nodes, %d edges, %d settings, %d labels', $gone['nodes'], $gone['edges'], $gone['settings'], $gone['labels'])
+            sprintf(
+                '%d nodes, %d edges, %d settings, %d labels, %d records, %d values',
+                $gone['nodes'],
+                $gone['edges'],
+                $gone['settings'],
+                $gone['labels'],
+                $gone['records'],
+                $gone['values']
+            )
         );
 
         return $gone;

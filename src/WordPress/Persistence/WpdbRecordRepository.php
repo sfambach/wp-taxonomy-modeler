@@ -168,4 +168,50 @@ final class WpdbRecordRepository implements RecordRepository
             (string) $row['created_at'],
         );
     }
+
+    /**
+     * ⚠️ **Die Werte zuerst, die Records danach** — sonst findet die zweite Anweisung nicht mehr,
+     * welche Records es waren. *Derselbe Reihenfolgefehler, den `clearTrash()` schon einmal gemacht
+     * hat: die Kanten vor den Knoten zu löschen nahm den Weg mit, auf dem die Knoten gefunden wurden,
+     * und 53 blieben liegen.*
+     *
+     * ⚠️ *`$wpdb->last_error` wird nach **jeder** Anweisung gelesen: eine kaputte Abfrage antwortet mit
+     * einem leeren Ergebnis und sieht aus wie «nichts zu löschen».*
+     */
+    public function forgetNodes(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map(intval(...), $nodeIds)));
+
+        if ($ids === []) {
+            return ['records' => 0, 'values' => 0];
+        }
+
+        $places  = implode(',', array_fill(0, count($ids), '%d'));
+        $records = Schema::table('records');
+        $values  = Schema::table('record_values');
+
+        $goneValues = (int) $wpdb->query($wpdb->prepare(
+            "DELETE v FROM {$values} v
+             INNER JOIN {$records} r ON r.id = v.record_id
+             WHERE r.node_id IN ({$places})",
+            ...$ids
+        ));
+
+        if ($wpdb->last_error !== '') {
+            throw new \RuntimeException('Die Werte der Datensätze liessen sich nicht löschen: ' . $wpdb->last_error);
+        }
+
+        $goneRecords = (int) $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$records} WHERE node_id IN ({$places})",
+            ...$ids
+        ));
+
+        if ($wpdb->last_error !== '') {
+            throw new \RuntimeException('Die Datensätze liessen sich nicht löschen: ' . $wpdb->last_error);
+        }
+
+        return ['records' => $goneRecords, 'values' => $goneValues];
+    }
 }

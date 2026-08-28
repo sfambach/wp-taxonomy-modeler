@@ -32,6 +32,16 @@ final class ControlMarkup
     public const ICON_ONLY = 'taxmod-icon-button';
 
     /**
+     * Marks a drawn character standing in for an icon, so it takes the same size as a Dashicon.
+     *
+     * ⚠️ **Measured: the diskette was 13px beside 17px Dashicons in the same row** — the glyph span had
+     * no class, so the only size it could get was the inherited `font-size` of an admin page. *And
+     * WordPress's emoji script then replaces the character with an `<img class="emoji">` sized `1em`,
+     * which inherits the same wrong number. Naming the span is what lets one rule size both faces.*
+     */
+    public const GLYPH_FACE = 'taxmod-icon-glyph';
+
+    /**
      * @param bool|null $available Overrides the control's own answer, for a row that decides per
      *                            row — the settings panel greys `Reset` where nothing was set here.
      */
@@ -97,7 +107,8 @@ final class ControlMarkup
         }
 
         if ($control->glyph !== '') {
-            return '<span aria-label="' . RenderResult::escape($control->label) . '">'
+            return '<span class="' . self::GLYPH_FACE . '"'
+                . ' aria-label="' . RenderResult::escape($control->label) . '">'
                 . RenderResult::escape($control->glyph) . '</span>';
         }
 

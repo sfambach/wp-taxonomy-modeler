@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **484**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **486**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **125**, davon **32** noch offen |
 
 ## Offene Fragen
@@ -634,3 +634,5 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-482](90-decision-log.md) | 2026-08-28 | agreed | Ein Renderer ist Code, also muss sein Anspruch auch Code sein: wer einen eigenen Renderer will, wird ein |
 | [D-483](90-decision-log.md) | 2026-08-28 | agreed | Der Container eines Knotens kommt aus der Kette — gebaut. Und ein Knoten sagt |
 | [D-484](90-decision-log.md) | 2026-08-28 | agreed | Spezialisierte Knotenklassen im Code — auf sein Wort, und es korrigiert die delegierte Hälfte von D-036. Schliesst OQ-124. |
+| [D-485](90-decision-log.md) | 2026-08-28 | agreed | Ein Datensatz ohne seinen Knoten darf es nicht geben, und der Löschpfad setzt das jetzt durch. C102 gebaut. |
+| [D-486](90-decision-log.md) | 2026-08-28 | agreed | Die Kästen um die Icons kamen von einem Positionsargument, nicht von einer CSS-Regel — und `--taxmod-icon` war überall tot. |

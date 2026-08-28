@@ -74,7 +74,17 @@ final class DataEntryTest extends TestCase
 
         $framework = new FixedFramework($root, $trash, $this->branchRoot);
 
-        $this->editor = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
+        // ⚠️ *Das Record-Repository geht mit hinein, weil `clearTrash()` es braucht, um die Daten
+        // mitzunehmen ([C102](../../docs/NewConcept/10-domain-core.md)). **Ohne es überlebte ein
+        // Record seinen Knoten** — und der Docblock der Methode behauptete das Gegenteil.*
+        $this->editor = new ModelEditor(
+            $this->nodes,
+            $this->edges,
+            $identities,
+            $framework,
+            new RecordedChanges(),
+            records: $this->records
+        );
         $this->data   = new DataEntry($this->records, $this->edges, $this->nodes, $framework, new FixedClock());
 
         $this->part = $this->editor->createNode('Part', $this->branchRoot['model']->id);
@@ -281,5 +291,55 @@ final class DataEntryTest extends TestCase
 
         self::assertCount(2, $this->data->valuesOf($record->id));
         self::assertCount(1, $this->data->recordsOf($this->part->id));
+    }
+
+    // ------------------------------------- ein Record ohne seinen Knoten darf es nicht geben
+
+    /**
+     * ⚠️ **[C102](../../docs/NewConcept/10-domain-core.md) durchgesetzt, und der Eigentümer hat die
+     * Regel gestellt:** *«solange noch eine Referenz da ist, kann ein Knoten nicht endgültig gelöscht
+     * werden. Somit wäre ein Record ohne Knoten undenkbar. Und wenn man ihn löschen will und das Risiko
+     * eingeht, dann müssen die Daten mitgelöscht werden … **sonst weiss man ja auch gar nicht, wie
+     * dieser Record interpretiert werden soll.**»*
+     *
+     * ⚠️ *Der Docblock von `clearTrash()` behauptete das seit dem Anfang — «settings, labels, **records**
+     * und edges» — und die Methode löschte vier von sechs. **Geschrieben und nicht gebaut.***
+     */
+    #[Test]
+    public function clearing_the_trash_takes_a_nodes_records_with_it(): void
+    {
+        $record = $this->data->create($this->part->id);
+
+        $this->data->put($record->id, $this->description->id, TypedValue::ofText('4k7'));
+
+        self::assertCount(1, $this->data->recordsOf($this->part->id));
+        self::assertCount(1, $this->data->valuesOf($record->id));
+
+        $this->editor->moveToTrash($this->part->id);
+
+        $gone = $this->editor->clearTrash();
+
+        // ⚠️ *Der Akt sagt auch, was ging — eine Oberfläche muss «und 1 Datensatz» nennen können.*
+        self::assertSame(1, $gone['records']);
+        self::assertSame(1, $gone['values']);
+
+        self::assertSame([], $this->data->recordsOf($this->part->id));
+        self::assertSame([], $this->data->valuesOf($record->id));
+    }
+
+    #[Test]
+    public function a_record_of_an_untouched_node_survives_the_clearing(): void
+    {
+        // ⚠️ *Die Gegenprobe, ohne die die obige Zusage auch von einem `DELETE FROM records` erfüllt
+        // wäre.*
+        $other       = $this->editor->createNode('Widerstand', $this->branchRoot['model']->id);
+        $otherRecord = $this->data->create($other->id);
+
+        $this->data->create($this->part->id);
+        $this->editor->moveToTrash($this->part->id);
+        $this->editor->clearTrash();
+
+        self::assertCount(1, $this->data->recordsOf($other->id));
+        self::assertNotNull($this->records->find($otherRecord->id));
     }
 }

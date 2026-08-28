@@ -71,6 +71,38 @@ final class InMemoryRecords implements RecordRepository
         return array_values(array_unique($found));
     }
 
+    /**
+     * ⚠️ *Der Doppelgänger muss dasselbe leisten wie die SQL-Fassung, sonst kann ein Kerntest für den
+     * Mechanismus nicht rot werden — genau der Fehler, den `RecordedChanges` mit der Akt-Klammer
+     * einmal gemacht hat.*
+     *
+     * @param  list<int> $nodeIds
+     * @return array{records: int, values: int}
+     */
+    public function forgetNodes(array $nodeIds): array
+    {
+        $ids   = array_values(array_unique(array_map(intval(...), $nodeIds)));
+        $gone  = ['records' => 0, 'values' => 0];
+
+        foreach ($this->records as $id => $record) {
+            if (! in_array($record->nodeId, $ids, true)) {
+                continue;
+            }
+
+            foreach (array_keys($this->values) as $key) {
+                if (str_starts_with((string) $key, $id . "\0")) {
+                    unset($this->values[$key]);
+                    ++$gone['values'];
+                }
+            }
+
+            unset($this->records[$id]);
+            ++$gone['records'];
+        }
+
+        return $gone;
+    }
+
     private function key(int $recordId, string $path, string $locale): string
     {
         return $recordId . "\0" . $path . "\0" . $locale;
