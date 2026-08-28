@@ -81,6 +81,30 @@ classDiagram
 - **Diagrams do not contradict each other.** If two units need different shapes of the same
   thing, that is an open question, not two diagrams.
 
+## One topic, one owning place
+
+**A topic gets one section that owns it. Every other mention is a pointer to that section.**
+([D-469](90-decision-log.md).) The owner: *«everything that concerns one point or one subject area,
+one category, simply summarise it together, so that one can then also find it together.»*
+
+| | |
+|---|---|
+| **the owning section** | states the **current** state completely, and carries the thread's history as a table so a reader sees which arguments were already tried |
+| **every other mention** | is corrected, or reduced to a link |
+| **a mention that was wrong** | says so — *«this used to say X, and here is why it changed»* |
+
+⚠️ **The failure this prevents is contradiction, not length.** *Measured on `hide`, which spanned
+eleven decisions across six documents: a rule demanded a renderer honour a flag it never sees, and
+two copies of one table disagreed because a correction had reached only the nearer one.* **A
+duplicated table is the specific thing to look for** — the second copy is where a retired rule
+survives.
+
+⚠️ *Consolidating is not compressing. Nothing decided is dropped: the corrections are the valuable
+part, because they say which readings were tried and failed. See
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) for the worked example.*
+
+---
+
 ## Why this way
 
 The seed sketches ([`TreeMeremaid.md`](TreeMeremaid.md),

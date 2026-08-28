@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **468**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **469**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **119**, davon **29** noch offen |
 
 ## Offene Fragen
@@ -109,7 +109,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-090](91-open-questions.md) | beantwortet | Is a renderer a name, or is it a node? |
 | [OQ-091](91-open-questions.md) | **offen** | Is the tree row a renderer of its own, and which role does a surface read labels in? |
 | [OQ-092](91-open-questions.md) | beantwortet | Does `settings` need a `path` column, so one owner can hold several defaults? |
-| [OQ-093](91-open-questions.md) | beantwortet | How does a setting key say which subjects it applies to? |
+| [OQ-093](91-open-questions.md) | **offen** | How does a setting key say which subjects it applies to? |
 | [OQ-094](91-open-questions.md) | **offen** | How does a person enter a character that is not on their keyboard? |
 | [OQ-095](91-open-questions.md) | beantwortet | May an attribute own labels, or is its name only a column? |
 | [OQ-096](91-open-questions.md) | **offen** | Is a subtype substitutable for its parent where a reference is typed? |
@@ -134,7 +134,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-115](91-open-questions.md) | **offen** | A write through a non-persistent field: refused, or silently skipped? |
 | [OQ-116](91-open-questions.md) | **offen** | A renderer declares its event handlers, the field registers, WordPress dispatches. How exactly? |
 | [OQ-117](91-open-questions.md) | **offen** | Should `RenderContext` carry only settings, and the data travel separately? |
-| [OQ-118](91-open-questions.md) | **offen** | «Render no further» — which walk does a node's `hide` stop? |
+| [OQ-118](91-open-questions.md) | beantwortet | «Render no further» — which walk does a node's `hide` stop? |
 | [OQ-119](91-open-questions.md) | **offen** | In one table, what tells a setting from a field value? |
 
 ## Entscheidungen
@@ -612,3 +612,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-466](90-decision-log.md) | 2026-08-28 | agreed | `range_min`, `range_max` and `range_step` become `min`, `max` and `step` — schema 11. The rename only; what «no value» means is |
 | [D-467](90-decision-log.md) | 2026-08-28 | agreed | `hide` lives on the |
 | [D-468](90-decision-log.md) | 2026-08-28 | agreed | Widening stays refused for `min` and `max`. The narrowing rule does |
+| [D-469](90-decision-log.md) | 2026-08-28 | agreed | One topic, one owning place — and every other mention points at it. The owner asked for it and the first application shows why. |

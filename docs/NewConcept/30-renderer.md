@@ -95,7 +95,7 @@ Related, from [Vision and scope](00-vision-and-scope.md):
 | **R8** | Three display levels: the **admin module** (where models are rendered), **Gutenberg blocks** (fill data, make it available to the site), and the **frontend** (display, and possibly user input). |
 | **R9** | A renderer — an integer renderer, say — must carry **options for these different circumstances**. |
 | **R10** | Every renderer must support **editable / not editable**. |
-| **R11** | A renderer must honour whether a node is **visible** (`hide`), as set on the attributes. |
+| **R11** | A renderer must honour whether a node is **visible** (`hide`), as set on the attributes. ⚠️ **Held, and by a mechanism that makes the renderer's part of it empty** — see [R11 as it was built](#r11-as-it-was-built--the-renderer-never-sees-hide). |
 
 ### R6, R7 — how a node finds its renderer, and how the descent works
 
@@ -154,8 +154,27 @@ flowchart LR
 
 The same renderer serves all three levels; the level is a **circumstance** it is given (R9),
 not a reason for a second implementation. Two circumstances are named so far: the level
-itself, and **editable / not editable** (R10). `hide` (R11) is a third input, but it comes
-from the node's settings rather than from the caller.
+itself, and **editable / not editable** (R10).
+
+#### R11 as it was built — the renderer never sees `hide`
+
+⚠️ **`hide` is *not* a third circumstance, and the finished mechanism is better than the rule.**
+*It stood here as «an input that comes from the node's settings» while `hide` was a setting. It is
+**one column on the edge** now ([D-467](90-decision-log.md), owned by [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)), and the
+**descent drops the edge before any renderer is asked** ([D-450](90-decision-log.md),
+[D-456](90-decision-log.md)).*
+
+| | |
+|---|---|
+| **R11's demand** | *a renderer must honour whether a node is visible* |
+| **How it is met** | by a renderer never being called for something hidden |
+| **What that buys** | there is no way for a renderer to get it wrong, and no *no-render* renderer is needed ([D-456](90-decision-log.md)) |
+
+⚠️ *One consequence, and it is the reason this is written out: a **tree cell** cannot read the flag
+off its subject either, because a cell draws a **node** and the flag sits on its **edge**. Developer
+mode's «show hidden» view needs it to grey the row, so the walk hands it in as a prepared fact
+([D-445](90-decision-log.md)) — the one place `hide` reaches a renderer at all, and it arrives
+**answered** rather than asked.*
 
 **Answered:** [D-021](90-decision-log.md) settles what was [OQ-014](91-open-questions.md).
 **Renderers are PHP**, and they serve all three levels, all three of which WordPress renders in
@@ -1534,11 +1553,17 @@ sparse storage only works if reading merges per key.
 *Always honour every attribute, no special arrangements.* Concretely, a renderer that draws a value
 must take account of **all** of these, every time:
 
-`hide` · `read_only` · the chosen converter · `min` · `max` · `step` · multiplicity · the label in
+`read_only` · the chosen converter · `min` · `max` · `step` · multiplicity · the label in
 the right role and locale.
 
-Not *the ones this renderer cares about* — **all of them.** A renderer that ignores `hide` produces
-a visible field that the model says is invisible, and the bug shows up somewhere else entirely.
+Not *the ones this renderer cares about* — **all of them.** A renderer that ignores `read_only`
+produces an editable field that the model says is fixed, and the bug shows up somewhere else
+entirely.
+
+⚠️ **`hide` was first in that list and is deliberately not in it any more.** *Not because the demand
+was dropped — because it was met somewhere a renderer cannot break it: the descent removes the edge
+before a renderer is asked ([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge), [D-467](90-decision-log.md)). **A rule that no
+renderer can violate does not belong in a list of rules renderers must follow.***
 
 This pairs with [D-056](90-decision-log.md): *a control offers only real choices.* One rule says
 never present a decision already made; this one says never ignore what the model stated. Agreed
@@ -1546,9 +1571,10 @@ as [D-094](90-decision-log.md).
 
 **And it is not the same as *the engine branches on it*.** [D-085](90-decision-log.md) draws the
 finer line: a renderer must honour `min` and `max` too — a spinner cannot be drawn without
-them — and what differs is **who owns the meaning**. The engine defines `hide`, `read_only`,
+them — and what differs is **who owns the meaning**. The engine defines `read_only`,
 `renderer`, `converter`, `validators` identically for every node; a **type** defines `min`,
-`max`, `step`, and a spinner reads them because it is registered *for that type*.
+`max`, `step`, and a spinner reads them because it is registered *for that type*. *(`hide` stood in
+the engine's list and has left the settings altogether — [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge).)*
 
 ### R42/R43 — and R49 removes the exception again
 
@@ -2901,7 +2927,10 @@ improved away later.
 
 *Not shown at every level, but at least in the admin* is a **circumstance**
 ([R9](#owner-statement--2026-08-22-second-pass)), not a new mechanism: read-only values default to
-visible in the admin and hidden in the frontend, and `hide` overrides that wherever it matters.
+visible in the admin and hidden in the frontend. ⚠️ *This used to end «and `hide` overrides that
+wherever it matters», which reads as a resolution between two settings. It is not one: a hidden
+placement is **not drawn at any level**, because the descent never reaches it
+([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)). There is nothing to override — the field is absent, not overruled.*
 
 ### Consequences of R1
 

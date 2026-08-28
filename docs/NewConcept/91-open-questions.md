@@ -555,7 +555,7 @@ That makes the list a schema commitment: adding one later is a migration, not an
 
 So the set has to be enumerated and then frozen. Candidates visible so far, none confirmed:
 `id`, `type`, `name`, parent / inheritance edge, `version`, `creation_date`, `renderer_key`.
-Note the overlap with [OQ-001](#oq-001--one-base-class-or-two-wpclasshead-vs-identity) — whether
+Note the overlap with [OQ-001](#oq-001--what-is-in-the-shared-base-of-node-and-relation) — whether
 `version` and `creation_date` belong on the node at all, or are derived from the change history.
 
 ---
@@ -681,10 +681,10 @@ settings table. Options:
    both keys, at the price of two code paths for one concept.
 3. **One id space for everything with identity.** If `Node` and `Relation` draw their ids from
    one sequence — which is what a shared `Identity` base implies
-   ([OQ-001](#oq-001--one-base-class-or-two-wpclasshead-vs-identity)) — a single `owner_id`
+   ([OQ-001](#oq-001--what-is-in-the-shared-base-of-node-and-relation)) — a single `owner_id`
    points at one table and the foreign key is real again.
 
-Option 3 is the one that makes [OQ-001](#oq-001--one-base-class-or-two-wpclasshead-vs-identity)
+Option 3 is the one that makes [OQ-001](#oq-001--what-is-in-the-shared-base-of-node-and-relation)
 matter beyond naming.
 
 > **Answered 2026-08-22 → option 3.** [C11](10-domain-core.md): nodes and edges share
@@ -2865,7 +2865,7 @@ node is still called `form`. **This question may therefore be less *open* than *
 [D-357](90-decision-log.md) just made the same representation question apply to **converters and
 validators as well**, and answering it three times separately is how the previous round went.
 
-⚠️ *It may also be [OQ-074](#oq-074--an-enum-filled-at-runtime)'s moment. That question — an enum
+⚠️ *It may also be [OQ-074](#oq-074--is-there-an-enum-filled-at-runtime)'s moment. That question — an enum
 filled at runtime — was deferred until **working with the project shows it missing**, and a registry
 of named things that the model cannot check, cannot offer as a picker and cannot hang a setting on is
 a plausible sighting of exactly that.*
@@ -2988,6 +2988,33 @@ neighbourhood: both are *this setting is about **which** attribute*, which the t
 
 **Raised** 2026-08-25, by the owner, in three observations that turned out to be one question.
 
+*Blocks:* [02 Field and setting](02-field-and-setting.md) · *Status:* open — **[D-385](90-decision-log.md) und [D-390](90-decision-log.md) nennt diese Frage**, beide ausdrücklich als Teilantwort
+
+⚠️ **Two decisions claim it and both say so in their own words — this is the *remainder*, not the
+question.** *[D-385](90-decision-log.md): «**this groups; it does not decide where a key applies.** A
+text node is still offered `factor`.» [D-390](90-decision-log.md) goes further — «a key that belongs
+to a type is offered where that type is, **the grouping and the applying are one mechanism seen
+twice**» — and then names what it cannot reach:*
+
+> **What OQ-093 still holds:** `factor` and `offset` belong to a **unit**, which is a node under
+> `Constants` and **not a simple type** — so nothing can place them by type and they fall to the
+> rules. *A text node is still offered `factor`.*
+
+⚠️ **So the open part has a shape: a key that belongs to a *branch* rather than to a type.** *Placing
+by type is built and works. `factor` and `offset` are the two keys it cannot place, because what they
+belong to is `Constants` — and a branch is a node, not a `SimpleType`.*
+
+⚠️ **This question had **no status line at all** until 2026-08-28, which is why it never appeared in
+any count of what is open.** *It was found by listing the open questions rather than by a check —
+`question-symmetry-check.php` skipped a question whose block never matched `*Status:*`, so a missing
+line was quieter than a wrong one. **The check now fails on it.***
+
+⚠️ **What the code answers today, measured, so the gap is the stated one:** `SettingKey::isEdgeOnly()`
+answers it for **exactly one key** (`multiplicity`), and `shape()` says what **type** a key takes.
+*Nothing says which **subjects** a key applies to — so a `factor` can be written on a text node and
+nothing objects. This is the same gap [OQ-107](#oq-107--what-declares-a-free-setting-today-nothing-does)
+names from the other side.*
+
 | His words | What it exposed |
 |---|---|
 | *but I could set that anywhere, on any node* | a reserved key is global by construction |
@@ -3075,7 +3102,7 @@ and candidate 1 changes what a renderer is allowed to do. *`PR-4`: this stays op
 
 **Raised** 2026-08-26, while checking a cell of the truth table that I had filled in from memory.
 
-*Blocks:* [02 Attribute and setting](02-field-and-setting.md) · *Status:* **closed** · *raised by* the truth table, row 4
+*Blocks:* [02 Field and setting](02-field-and-setting.md) · *Status:* **closed** · *raised by* the truth table, row 4
 
 > **Closed 2026-08-26 → [D-410](90-decision-log.md).** **Yes** — the owner: *there ought to be
 > multi-language for attributes too; the attribute settings need a labels part as well. I can
@@ -3353,7 +3380,7 @@ survive.*
   intent.
 
 ⚠️ **What it needs is an address for the pair `(node, edge)`** — and that is **the same missing column
-that already blocks three decided things**: [OQ-092](#oq-092)'s `path` on `settings`. *So the
+that already blocks three decided things**: [OQ-092](#oq-092--does-settings-need-a-path-column-so-one-owner-can-hold-several-defaults)'s `path` on `settings`. *So the
 prerequisite for the proposal is a schema step that three other decisions are already waiting for,
 which makes it cheaper than it looks and impossible to skip.*
 
@@ -3367,14 +3394,14 @@ anything**, because each descendant carries its own copies of the edges' setting
 | ~~bounding settings stop being guarantees~~ | **withdrawn.** The guarantee came from classification and was applied to settings by inheritance; detaching is the point |
 | ~~correction from above dies~~ | **answered** by `reset` as a pull |
 | ~~performance~~ | **it was never an argument**, in either direction — legibility is |
-| **no address for `(node, edge)`** | **stands, and is the only blocker.** Needs [OQ-092](#oq-092)'s column first |
+| **no address for `(node, edge)`** | **stands, and is the only blocker.** Needs [OQ-092](#oq-092--does-settings-need-a-path-column-so-one-owner-can-hold-several-defaults)'s column first |
 | the row count | accepted knowingly, and higher than first measured |
 | unwatched rows drift | the audit's 590 orphans are the warning, not a veto |
 
 ### What it would do to the truth table — eight of twenty-five rows
 
 The owner: *and then let us take a look at the truth table regarding attributes and settings.* Counted
-against [02 Attribute and setting](02-field-and-setting.md) as it stands:
+against [02 Field and setting](02-field-and-setting.md) as it stands:
 
 | Row | Today | If the proposal lands |
 |---|---|---|
@@ -3404,7 +3431,7 @@ clear enough to write in one sentence**, which it was not two rounds ago.*
 
 **Raised** 2026-08-26, by the owner, about the edge.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [02 Attribute and setting](02-field-and-setting.md)
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) · *Status:* open · *raised by* [02 Field and setting](02-field-and-setting.md)
 
 > *We have to talk about edges too. Attribute name, from, to, type, multiplicity, persistent are all
 > just **fields of the edge** and should be persisted there — in the relations table, I mean — so they
@@ -3439,7 +3466,13 @@ prohibition, live in the schema**, and it has to be resolved whichever way this 
 | Answerable in more than one place? | Keys | Then |
 |---|---|---|
 | **no — the edge is the only place** | `multiplicity` ([D-351](90-decision-log.md)), `order`, and `mandatory` if the owner's argument lands | **columns** |
-| **yes — a type says one thing, a use site another** | `hide`, `read_only`, `range_min`/`max`/`step`, `default`, `renderer`, `converter`, `validator`, `icon`, `factor`, `offset` | **settings** |
+| **yes — a type says one thing, a use site another** | `read_only`, `min`/`max`/`step`, `default`, `renderer`, `converter`, `validator`, `icon`, `factor`, `offset` | **settings** |
+
+⚠️ **`hide` was the first entry in that row and it has since answered this very question the other
+way** ([D-467](90-decision-log.md), [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)): *it can only live in **one** place — the
+edge — and it became a **column**. **So this question has one worked example now instead of none**,
+and the shape of the answer is: if only one owner can ever say it, the chain buys nothing and a
+column says it once. (The key names were shortened in schema 11, [D-466](90-decision-log.md).)*
 | **depends on a decision** | `persistent` — [D-377](90-decision-log.md) put it on the type deliberately; the owner has since been surprised twice by it travelling ([D-400](90-decision-log.md)) | **his call** |
 
 ### What speaks for it
@@ -3527,7 +3560,7 @@ descendant.*
 
 ### One column, five things waiting
 
-⚠️ **[OQ-092](#oq-092)'s `settings.path` is the address**, and it is now the bottleneck for five decided
+⚠️ **[OQ-092](#oq-092--does-settings-need-a-path-column-so-one-owner-can-hold-several-defaults)'s `settings.path` is the address**, and it is now the bottleneck for five decided
 or asked-for things:
 
 | Waiting on it | |
@@ -3580,7 +3613,7 @@ attributes points at `exponent`?» is the same lookup, however many types there 
 
 ⚠️ **A type says what a value *is*. It does not say where a *particular node's* value lives.** `kilo`
 would still need somewhere to put `3`, and an attribute pointing at `exponent` has the same shared-edge
-problem as one pointing at `int`. **[OQ-092](#oq-092)'s column is untouched by this.**
+problem as one pointing at `int`. **[OQ-092](#oq-092--does-settings-need-a-path-column-so-one-owner-can-hold-several-defaults)'s column is untouched by this.**
 
 ### So the buildable step, separated from the blocked one
 
@@ -3597,7 +3630,7 @@ does not wait for the second**, which is the useful part of this proposal.*
 
 **Raised** 2026-08-26, by the owner, while reviewing row 4 of the truth table.
 
-*Blocks:* [02 Attribute and setting](02-field-and-setting.md), [40 i18n](40-i18n.md) · *Status:* open
+*Blocks:* [02 Field and setting](02-field-and-setting.md), [40 i18n](40-i18n.md) · *Status:* open
 
 > *A setting is a key, that is not really translated. I only wonder whether it would not be nicer if we
 > at least had a translation, so that a German user can read it better when it is an English term. **We
@@ -3627,12 +3660,20 @@ decided rather than done because it is cheap.*
 
 **Raised** 2026-08-26, by the owner, immediately after asking for the eye in the tree row.
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Attribute and setting](02-field-and-setting.md) · *Status:* **closed 2026-08-26 — part 3 by [D-422](90-decision-log.md), parts 1 and 2 by [D-426](90-decision-log.md): a column on `nodes`**
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md), [02 Field and setting](02-field-and-setting.md) · *Status:* **closed 2026-08-26 — part 3 by [D-422](90-decision-log.md), parts 1 and 2 by [D-426](90-decision-log.md): a column on `nodes`**
 
 > *I am wondering whether hiding the node and hiding the output are two things, and whether the second
 > could not simply be covered by the **don't-render** 😉 — that one could be made available everywhere.
 > Then we have a `hide` at the node which we could **remove from the settings** and take as a fixed node
 > component (table).*
+
+⚠️ **This is where the whole `hide` thread starts, and it ran for two more days after this question
+closed. The finished mechanism is in one place: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)**
+([D-469](90-decision-log.md) asks for that pointer). *Reading his sentence again with the answer in
+hand: **he got two of three right in one breath** — «remove from the settings» and «a fixed component
+(table)» are exactly what was built. What took eleven decisions was the third part, «a `hide` **at the
+node**»: it was built that way, and he himself took it back the next day — «I do not simply create a
+model node and then say I will not draw it» ([D-467](90-decision-log.md)).*
 
 ⚠️ **He is right, and it is a fault today rather than a tidiness question.** Measured on scratch nodes:
 the resolution chain of a field is `installation → root → parent → **the target node** → the edge`, so
@@ -4301,7 +4342,7 @@ overturned, and the fault below **cannot occur** — what is not in the chain re
 
 ### Why this is not a tidy-up: the fault is live
 
-[D-426](90-decision-log.md) was not a preference. It fixed something [OQ-101](#oq-101) had established by
+[D-426](90-decision-log.md) was not a preference. It fixed something [OQ-101](#oq-101--hiding-a-node-and-not-drawing-its-fields-are-two-things-sharing-one-key-where-does-each-belong) had established by
 experiment: *«an attribute's chain contains its **target node**, so `hide` written on a node came back as
 `hide` on **every field of that type** — the eye in the tree row and [D-399](90-decision-log.md)'s «fields
 of this type are not drawn» were one key doing two jobs. **A column is not in the chain**, so the two can
@@ -4533,7 +4574,22 @@ tool now (880 outputs) and should be used for this.*
 
 **Raised** 2026-08-28, while building [list row 46](97-implementation-plan.md#the-working-list), because the concept says what `hide` means and not where it applies.
 
-*Blocks:* [30 Renderer](30-renderer.md) · *Status:* open — **built under a stated assumption**
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* closed 2026-08-28 → [D-467](90-decision-log.md), nennt diese Frage — **dissolved rather than answered**
+
+⚠️ **The question had a false premise and [D-467](90-decision-log.md) removed it: there is no node's
+`hide`.** *`nodes.hide` was dropped the same day — the flag sits on the **inheritance edge**, which is
+what puts the node in the tree at all. So «which walk does a **node's** `hide` stop» has no subject
+left: the question is asked of an **edge** now, and an edge is reached from exactly one direction.*
+
+| It was asked | It is answered by the shape |
+|---|---|
+| a node reached as a **tree row** | its **inheritance** edge carries the flag; the walk drops the row and its subtree |
+| a node reached as a **composed member** | the **attribute** edge into it carries the flag; the descent drops the field |
+| a node reached because a **field is typed by it** | **structurally impossible to affect.** *The flag is not on the node, so there is nothing for a type reference to pick up — the fault [D-426](90-decision-log.md) measured (hiding a type blanked every field of that type) cannot be written again* |
+
+⚠️ **The third row is why this is worth recording as dissolved and not merely closed.** *It was
+«**no**, built that way» — a decision a reader had to trust. It is now a consequence of where the
+column sits, and **the whole discussion is in one place**: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge).*
 
 ⚠️ **[D-456](90-decision-log.md) settles the meaning and leaves the reach open.** *«`hide` simply means
 render no further, at the edge and at the node.» **Which walk?** A node is reached from more than one

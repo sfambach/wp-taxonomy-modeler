@@ -83,9 +83,11 @@ the thing that also writes the code, nobody can check the code. So the test for 
 9. **Settings resolve along one chain:** installation → model root → ancestors → node → use site,
    walked key by key, stored sparsely.
 
-10. **Bounding settings may only be tightened downwards; choosing settings are free.** Permitted
-    set, range, multiplicity, mandatory, `hide`, `read_only` narrow only. Default, renderer,
-    converter, labels, icon, order are free.
+10. **Three settings narrow only; every other one is free** ([D-468](90-decision-log.md)) —
+    `multiplicity`, `min`, `max`, and that is the **whole** list, checked against the code. What
+    left it: `mandatory` is gone ([D-405](90-decision-log.md)), `hide` is not a setting at all
+    (see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)), and `read_only` and `persistent` are free in both directions
+    ([D-460](90-decision-log.md), [D-461](90-decision-log.md)).
 
 11. **A label is text in one role and one locale.** Roles are nodes, seeded and extensible.
 
@@ -277,15 +279,40 @@ outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md
 **A use site is an attribute** — the same relation seen from the owning node. **Bounding settings may only
 be tightened downwards; choosing settings are free** ([D-312](90-decision-log.md)):
 
-| Kind | Examples | Direction |
-|---|---|---|
-| **bounding** | permitted set · range · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
-| **choosing** | default value · renderer · converter · labels · icon · order | **free** |
+#### The three that narrow — and they are the whole list
 
-So a child may **hide** what the parent shows and never reveal what it hid; may **fix** what the
-parent left editable and never unfix what it computed. A **default** is not a bound but a choice
-inside the permitted set, and stays free. Where more is genuinely needed it is added **at the type**,
-where it is visible in one place.
+**Three keys may only be tightened downwards. Every other key is free in both directions**
+([D-468](90-decision-log.md), narrowing [D-411](90-decision-log.md) back to exactly these).
+*This table is checked against the code: it is what `SettingKey::direction()` answers, and
+everything not named here answers `Free`.*
+
+| Key | Direction | Why this one is bounded |
+|---|---|---|
+| `multiplicity` | **by subset** | `0..*` may become `0..1`, never the reverse — a promise about how many there are |
+| `min` | **up only** | the owner: *«the node says minus ten to ten and we say minus twenty to twenty — **not nice**. It would contradict the contract I gave earlier at the node»* |
+| `max` | **down only** | the same sentence, from the other end |
+
+⚠️ **A range is a promise; a choice is not.** That is the whole test, and it is why the list shrank
+to three. *A default value, a renderer, a converter, a label, an icon, an order — none of them
+guarantee anything to a reader of the model, so nothing is lost by letting a descendant say
+otherwise.*
+
+#### What left the bounded list, and why
+
+*Each of these was in the table above and is not any more. Kept, because «it used to narrow» is the
+first thing a reader assumes about a key they find.*
+
+| Key | Where it went | Decision |
+|---|---|---|
+| `mandatory` | **gone as a key.** The guarantee it tried to make lives in the **multiplicity**, which is unreachable from a descendant because an inherited attribute **is the same edge** | [D-405](90-decision-log.md) |
+| `hide` | **not a setting at all** — one column on the edge, out of the chain entirely. See [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge) | [D-467](90-decision-log.md) |
+| `read_only` | **free.** The owner: *«if it is read-only here I can make it editable there»* | [D-411](90-decision-log.md), [D-461](90-decision-log.md) |
+| `persistent` | **free**, and stays a setting rather than becoming a column | [D-460](90-decision-log.md) |
+| permitted set | never was a key of its own; a restriction is a **type**, not a setting ([C117](#c117--there-is-no-fixed-value-only-a-restriction)) | [D-221](90-decision-log.md) |
+
+⚠️ **Why the strict half is strict at all:** a restriction that may be reopened anywhere **says
+nothing when read** — to know what is allowed you would have to inspect every use site. Where more
+is genuinely needed it is added **at the type**, where it is visible in one place.
 
 ⚠️ **One axis is strict: what an ancestor declares **mandatory** stays mandatory for every descendant** ([D-311](90-decision-log.md)). It may be tightened downwards, never loosened — otherwise *every bird has a name* would never hold, and a classification that guarantees nothing about a group is worth nothing. An attribute that does not apply to a descendant is **moved down** ([D-155](90-decision-log.md)), not refused.
 
@@ -331,6 +358,80 @@ revocable at the use site and must be **visible**.
 **The unit of saving is the group that belongs together** ([D-300](90-decision-log.md)) — an
 allow-list is **one** value that happens to be a set; a switch is a group of one and waits for
 nobody.
+
+---
+
+### Hiding — `hide` is one column, and it is on the edge
+
+**One boolean on the edge, and one abort in the walk that follows edges** ([D-467](90-decision-log.md)).
+That is the entire mechanism. It is written out here, in one place, because it was decided **eleven
+times in three days** and several of those decisions correct each other — so this section owns it and
+every other mention in these documents points here.
+
+```mermaid
+flowchart LR
+  P["parent node"] -->|"inheritance edge · hide"| N["node"] --- S["its subtree<br/>never reached"]
+  O["owning node"] -->|"attribute edge · hide"| F["field"]
+```
+
+⚠️ **Two readers, one column, and they are the same question asked of two kinds of edge.** An
+attribute **is** a relation ([D-011](90-decision-log.md)), and the tree **is** the inheritance edges
+([D-014](90-decision-log.md)) — so *«do not draw from here down»* needs no second mechanism:
+
+| Reader | Which edge | What stops |
+|---|---|---|
+| the **tree walk** | the **inheritance** edge — the one thing that puts a node in the tree at all | the row, **and its whole subtree** |
+| the **form descent** | an **attribute** edge | that field, and everything composed under it |
+
+**The subtree falls out of the existing structure rather than being built.** A hidden target joins
+the walk's `skip` set, which already meant *not listed **and** not descended into* — so a hidden
+placement takes its branch with it **by construction**. And the walk loads those edges anyway, so
+there is no second query and no filter afterwards.
+
+⚠️ **The root cannot be hidden, and that is correct rather than a gap.** It has no inheritance edge
+([D-194](90-decision-log.md)), so there is nowhere to write the flag — the editor answers *nothing
+changed* instead of failing.
+
+⚠️ **In developer mode a hidden row can be shown**, and then it says so in grey ([D-464](90-decision-log.md)).
+Without that mode the row does not exist, because the walk never followed its edge.
+
+#### What `hide` is **not**, and each of these was tried
+
+| Not | Why not | Decision |
+|---|---|---|
+| a **setting** | a setting resolves along the chain installation → root → ancestors → node → use site, and a **type** is an ancestor. Measured: `hide` on a type blanked **every field of that type**. *A column is not in the chain — that is the whole reason it left* | [D-426](90-decision-log.md), [D-457](90-decision-log.md) |
+| a **column on the node** | built, and removed the next day. The owner: *«I do not simply create a model node and then say I will not draw it — that would be nonsense.»* **A node-level flag had no use case behind it**; hiding is about a **placement** from the start | [D-467](90-decision-log.md) |
+| **inheritance** | the chain is a *side effect* here, never the mechanism. The owner cut this argument off in as many words: *«that has nothing to do with inheritance»* | [D-452](90-decision-log.md) |
+| a **bounding setting** | it was in that category and left it: *bounding exists so a classification **guarantees** something about a group, and hiding a field guarantees nobody anything* | [D-399](90-decision-log.md), [D-411](90-decision-log.md) |
+| a **renderer's business** | a renderer never resolves it and never sees it. **The descent filters the edge out before any renderer runs** — so a *no-render* renderer is not needed either | [D-456](90-decision-log.md), [D-159](90-decision-log.md) |
+| a **greying** | a hidden **node** has a renderer choice like any other, so greying the control lost its ground. What survives is narrower: a hidden placement draws nothing, so *which renderer draws it* has no answer to force | [D-448](90-decision-log.md) |
+
+#### How it got here — the eleven, in order
+
+*Kept as a row each, because the corrections are the interesting part and a reader who finds only the
+last one cannot tell which arguments were already tried.*
+
+| Decision | What it said | What became of it |
+|---|---|---|
+| [D-426](90-decision-log.md) | `hide` is not a setting — it is a **column** | stands; the column half is still true |
+| [D-448](90-decision-log.md) | it means one thing: *is this drawn* — and the greying goes | superseded the same day by D-449; its measurement stands |
+| [D-449](90-decision-log.md) | **edge only** | superseded by D-453 — *the edge-only restriction was mine* |
+| [D-450](90-decision-log.md) | on an edge it is an **abort** for the descent, not a skip | **stands, and it is the load-bearing one** |
+| [D-451](90-decision-log.md) | argued the abort from inheritance | reading corrected by D-452; its three measurements stand |
+| [D-452](90-decision-log.md) | *«that has nothing to do with inheritance»* | stands. Also withdrew a rule nobody had decided — *«a renderer has no registry»* was in three docblocks and in **no** decision |
+| [D-453](90-decision-log.md) | **both** node and edge — an `Identity` property | narrowed to the edge alone by D-467 |
+| [D-456](90-decision-log.md) | it means *render no further* in both places; no *no-render* renderer needed | stands |
+| [D-457](90-decision-log.md) | a property of the identity, never chain-resolved | the *never chain-resolved* half stands and is the point |
+| [D-464](90-decision-log.md) | **built** — schema 10, the setting key deleted | stands as the build record |
+| [D-467](90-decision-log.md) | **the edge alone.** `nodes.hide` dropped, schema 12 | **current** |
+
+⚠️ **What this thread cost, recorded so it is not paid twice.** *Six of these decisions were made
+without reading D-426, which had already answered the question the day before. The reason is one
+word: the owner said «Attribut» on both days, and I read «Setting» both times — his word for a
+property of an edge, mine for a row in the settings table. **The fault it produced was reproduced
+live before it was fixed**: `hide` on a type blanked every field of that type. And the second rebuild
+deleted more than it added — 65 lines of after-the-fact filtering went for one line of substance in
+the walk.*
 
 ---
 
@@ -833,14 +934,12 @@ one construct with a different `owner_id`.
 ([D-312](90-decision-log.md), superseding [D-310](90-decision-log.md) and the widening half of
 [D-088](90-decision-log.md)).
 
-| Kind | Examples | Direction |
-|---|---|---|
-| **bounding** — it limits what is possible | permitted set · range `min`/`max` · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
-| **choosing** — it picks within the bounds | default value · renderer · converter · labels · icon · order | **free** |
-
-**Why the strict half:** a restriction that may be reopened anywhere **says nothing when read** —
-to know what is allowed you would have to inspect every use site. **And what an ancestor declares
-mandatory stays mandatory for every descendant** ([D-311](90-decision-log.md)).
+⚠️ **The list of bounded keys lives in one place now**, and it is
+[The three that narrow](#the-three-that-narrow--and-they-are-the-whole-list): `multiplicity`, `min`, `max`, and nothing else.
+*The table that stood here named six and four of them had left — `mandatory` as a key
+([D-405](90-decision-log.md)), `hide` out of the settings entirely ([D-467](90-decision-log.md)),
+`read_only` and `persistent` free ([D-461](90-decision-log.md), [D-460](90-decision-log.md)). **Two
+copies of one table is how that happens**: the correction reached one of them.*
 
 **Orphaned overrides are never cascade-deleted** ([D-033](90-decision-log.md)); they are promoted
 ([D-156](90-decision-log.md)) or shown, never quietly removed.
@@ -948,7 +1047,7 @@ and removable ([D-175](90-decision-log.md)).
 | `slug` | a boundary concern ([D-195](90-decision-log.md)) |
 | a *fixed value* | a restriction collapsing to one ([D-221](90-decision-log.md)) |
 | `set`, `table` as constructs | a composed type plus a renderer ([D-246](90-decision-log.md)) |
-| a per-node *hide* flag | selectability belongs to the use site ([D-181](90-decision-log.md)) |
+| a per-node *hide* flag | selectability belongs to the use site ([D-181](90-decision-log.md)). ⚠️ **Reaffirmed three days later by the owner and built that way**: *«I do not simply create a model node and then say I will not draw it»* — `hide` sits on the **placement**, see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge) ([D-467](90-decision-log.md)) |
 | record versioning as a mechanism | versions are records under the thing ([D-305](90-decision-log.md)) |
 | conversion as a property of a unit | a conversion is a record ([D-306](90-decision-log.md)) |
 | a running number per record | the `id` identifies; a number circle is parked ([D-267](90-decision-log.md), [D-268](90-decision-log.md)) |
@@ -1248,7 +1347,7 @@ flowchart LR
 instance. Half of [OQ-018](91-open-questions.md) was therefore the wrong question — it mixed the
 two layers and asked where *the value* of a model-level attribute lives. There is none.
 
-C25 answers [OQ-011](91-open-questions.md) outright: [C2](#owner-statement--2026-08-22)
+C25 answers [OQ-011](91-open-questions.md) outright: [C2](#owner-statements--2026-08-22)
 listed *type* and *connection kind* as two separate things, and now it is clear why. They are
 **two fields of the same edge** — `to` is the type, `kind` is the connection.
 
@@ -2187,7 +2286,9 @@ Four, and the shortness is a good sign:
 
 Everything else that looked like a candidate turned out to belong elsewhere: **`type`** is the
 inheritance branch, **`order`** belongs to the *edge* because ordering is per parent, and
-**`hide`, `read_only`, renderer and converter choices** are system-scope settings.
+**`read_only`, renderer and converter choices** are system-scope settings — and **`hide` is not
+among them any more**: it is a column on the edge, see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)
+([D-467](90-decision-log.md)).
 
 ## Owner statement — 2026-08-22, sixteenth pass: an override owner may be a node
 
@@ -2212,12 +2313,19 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    B["Part · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].hide = true"]
+    B["Part · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].read_only = true"]
     B --> U["a use site · edge #77<br/>[#10].step = 5"]
 ```
 
 This answers [OQ-058](91-open-questions.md), and with the wider reading C83 gives it: **an
 override is the same thing wherever it sits. Only its owner differs.**
+
+⚠️ **The example in that diagram was changed and the change is worth naming.** *It said
+`[#10].hide = true` when it was drawn on 2026-08-22, because `hide` was a setting then. It is a
+column on the edge now ([D-467](90-decision-log.md), see
+[Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)), so as an example of an **override** it
+had stopped being one. `read_only` makes C83s point unchanged — it is a real setting, it really
+overrides, and it is free in both directions ([D-461](90-decision-log.md)).*
 
 | Owner | Means |
 |---|---|
@@ -3516,7 +3624,8 @@ neighbour of it:
 - Which objects carry configuration, and which do not.
 - The resolution walk: what wins when an ancestor and a descendant both define something.
 - Where the renderer / converter / validator assignment of a node is recorded (V8).
-- Where hide, read-only and order live.
+- Where read-only and order live — and **`hide` is answered**: one column on the edge, see
+  [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge).
 - **The one-sentence distinction between a setting and an attribute** — both are name/type/value
   triples hanging off a node, and without that sentence they will keep collapsing into each
   other ([OQ-013](91-open-questions.md)).

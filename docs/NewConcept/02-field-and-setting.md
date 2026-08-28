@@ -43,7 +43,7 @@ not a rule read.**
 | [Truth table](#truth-table--an-attribute-is-not-a-setting) | rows 1–12, node against attribute |
 | [The worked example](#the-worked-example--my_int-under-int) | `my_int` under `int`, built and measured |
 | [What data type a setting has](#what-data-type-a-setting-has--and-where-its-default-lives) | five shapes, and where a key's default lives |
-| [Settings on an attribute](#settings-on-an-attribute--the-use-site-is-the-last-link) | rows 13–19, the attribute |
+| [Settings on an attribute](#settings-on-an-attribute--the-attribute-is-the-last-link) | rows 13–19, the attribute |
 | [Where the two are stored](#where-the-two-are-stored--the-owner-even-if-they-are-almost-the-same) | rows 20–25, one table and one id space |
 
 ⚠️ *An open question is being argued against this document right now:
@@ -61,7 +61,7 @@ repeating it.
 
 | | | |
 |---|---|---|
-| [D-399](90-decision-log.md) | **`hide` and `read_only` leave the bounding category** | they are settings, not classification — hiding promises nobody anything |
+| [D-399](90-decision-log.md) | **`hide` and `read_only` leave the bounding category** | they are settings, not classification — hiding promises nobody anything. ⚠️ *`hide` went further and stopped being a setting at all: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) ([D-467](90-decision-log.md))* |
 | [D-400](90-decision-log.md) | **a constant is drawn as a reference; no bare id reaches a surface** | and a renderer that cannot serve gives way to the **type's default**, not to the fallback |
 | [D-401](90-decision-log.md) | **a `bool` has two states; «not set» is not a third** | the control shows the stored value, else the default |
 | [D-402](90-decision-log.md) | **a subtype has its ancestor's settings until it says otherwise — *per key*** | set `range_min` and you still get the ancestor's `default` |
@@ -144,7 +144,7 @@ He is right that they must not be one word.
 | | It answers | Its mechanism |
 |---|---|---|
 | **Inheritance** · *Vererbung* | **what a node has** — `Resistor` has `resistance` because `Bauteil` declared it | the relation **kind** that forms the tree ([D-031](90-decision-log.md), [D-041](90-decision-log.md)) |
-| **Resolution chain** · *Auflösungskette* | **what a key answers here** — `hide` is true on `yotta` because somebody wrote it there | installation → model root → ancestors → node → attribute, walked **key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)) |
+| **Resolution chain** · *Auflösungskette* | **what a key answers here** — `read_only` is true on `yotta` because somebody wrote it there. ⚠️ *This example used to be `hide`, and `hide` is **not in the chain any more** ([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)) — a stale example in the very section about confusing two mechanisms would be the joke writing itself* | installation → model root → ancestors → node → attribute, walked **key by key** ([D-079](90-decision-log.md), [D-093](90-decision-log.md)) |
 
 **Why they are confusable, and it is not carelessness:** the chain's middle section *is* the
 inheritance edges. Same ancestors, same walk upwards — so *a child of a hidden node is hidden* is true
@@ -356,10 +356,17 @@ the docs, and a setting can have a default — where could that be stored?*
 
 | Shape | Its data type | Keys |
 |---|---|---|
-| `Switch` | `bool` | `mandatory`, `hide`, `read_only`, `persistent` |
-| `LikeTheSubject` | **whatever the subject is** | `range_min`, `range_max`, `range_step`, `default` |
+| `Switch` | `bool` | `read_only`, `persistent` |
+| `LikeTheSubject` | **whatever the subject is** | `min`, `max`, `step`, `default` |
 | `Exact` | `decimal` | `factor`, `offset` |
-| `Whole` | `int` | `order` |
+| `Whole` | `int` | — *nothing left*: `order` was the only one and it is gone ([D-407](90-decision-log.md)) |
+
+⚠️ **Four keys left this table and none of them was a rename of taste.** *`mandatory` is the
+multiplicity's floor ([D-405](90-decision-log.md)); `hide` is a column on the edge
+([D-467](90-decision-log.md), [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)); `order` is the `position` column
+([D-407](90-decision-log.md)); and `range_min`/`range_max`/`range_step` were shortened to
+`min`/`max`/`step` in schema 11 ([D-466](90-decision-log.md)) — **the `range_` prefix said `range`
+three times and `step` is not part of a range at all.***
 | `OneOfFour`, `ARegisteredName` | **none — a choice, not a value** | `multiplicity`, `renderer`, `converter`, `validator`, `icon` |
 
 ⚠️ **`LikeTheSubject` is the one that answers his question properly.** On `int`, `range_min` **is** an
@@ -474,15 +481,26 @@ the point:
 > *Even though we used it as an example — a **type** cannot be persistent or not. **It can make a
 > default.***
 
-⚠️ **Both are confirmed by the code, which is why they are worth writing down rather than arguing
-about.** `hide` has **two implementations**: the tree filters its rows by it, and the field renderers
-return nothing for it. And `DataEntry::keepsValues(Relation $edge)` takes an **edge** — *the question
-«is this kept» is only ever asked of an attribute, so whatever a type says can only ever be a default
-travelling down the chain.*
+⚠️ **His two nuances turned out to be one mechanism, and the mechanism arrived later than the
+sentence.** *He said it while `hide` was still a setting. It is now **one column on the edge**
+([D-467](90-decision-log.md), owned by [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)) — and his two nuances fall out of it
+exactly, because there are two kinds of edge:*
+
+| His words | Which edge carries it | What stops |
+|---|---|---|
+| *«hide it from the tree view»* | the **inheritance** edge — what puts the node in the tree | the row **and its subtree** |
+| *«the user does not get to see it on input or output»* | an **attribute** edge | that field |
+
+⚠️ *So this row is **no longer a key in the tables below** and is kept here only because the
+distinction he drew is right and worth reading. **Nothing resolves `hide` along the chain any more** —
+that is the whole point of it having left.*
+
+⚠️ **`persistent` is confirmed by the code the same way:** `DataEntry::keepsValues(Relation $edge)`
+takes an **edge** — *the question «is this kept» is only ever asked of an attribute, so whatever a
+type says can only ever be a default travelling down the chain.*
 
 | Key | At a **node** (a type, a constant, a subject area) | At an **attribute** (a attribute) |
 |---|---|---|
-| **`hide`** | **gone from the whole screen** unless *show hidden* is on ([D-396](90-decision-log.md)) — the tree, **and every chooser and selection**. The owner: *`hide` on the node means more — I also do not see it as a choice in selections or the tree chooser.* ⚠️ *Measured: with `hide = true` and the toggle off, «yotta» occurs **0 times** on the page; without it, 3 — the tree row, the move chooser and the attribute-target select* | the person **does not see the field**, on input or on output |
 | **`persistent`** | **a default** for attributes that point here — a type cannot itself be kept or not kept | **whether this field's value is kept** ([D-377](90-decision-log.md)); `keepsValues()` asks only this |
 | **`default`** | the default for **anything** of this type | the default for **this field** |
 | **`renderer`**, `converter`, `validator` | how **anything** of this type is drawn, converted, checked | how **this field** is |
@@ -492,29 +510,27 @@ travelling down the chain.*
 | **`icon`** | the node's **own** icon, in the tree and wherever it is named ([D-390](90-decision-log.md)) | **possible and purposeless — for now.** The owner: *it could be overridden at the attribute but makes no sense, **unless** it is used in the front end or in the renderer for the presentation.* ⚠️ *So it stays offered and undefined on purpose: the meaning arrives with the renderer that wants it, and inventing one before then would be deciding for a caller that does not exist* |
 | **`factor`**, **`offset`** | a **unit's** conversion to its parent's reference unit ([D-274](90-decision-log.md)) — a fact about the node, **and in use**: `Celsius` carries `factor = 1.0`, `offset = -273.15` | ⚠️ **unclear** — nothing says what they would mean on an attribute |
 
-#### The three switches, and why only one of them acts on the node
+#### The two switches, and why neither acts on the node
 
 The owner settled `read_only` the same way he settled `persistent`, and the two answers together make a
 pattern worth stating:
 
 | Switch | At a node it is… | Measured |
 |---|---|---|
-| **`hide`** | **an effect *and* a Vorgabe** — the node is gone from **everywhere it could be picked**, and fields using it are hidden | two implementations, and the first covers three places because they **share one walk** ([D-367](90-decision-log.md)): `withoutHidden()` filters the rows, and the tree, the move chooser and the target select all draw from those same rows |
 | **`read_only`** | **a Vorgabe only** — *it gives what the attribute can additionally set, or revoke again* | all three readers are about drawing a **field**; nothing asks it about a node |
 | **`persistent`** | **a Vorgabe only** | `keepsValues(Relation $edge)` takes an **edge**; the question is never put to a type |
 
-⚠️ **So `hide` is the exception and the other two are the rule**: a switch at a node normally says
-nothing about the node, only about the fields that reach it. *`hide` is different because a node **is**
-visible in its own right — it has a row in the tree — while «editable» and «kept» are things only a
-field can be.*
+⚠️ **The exception left, and the rule got simpler for it.** *`hide` stood in this table as the one
+switch that acted on the **node** — and it is not a switch any more ([D-467](90-decision-log.md),
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)). **What remains is one sentence with no exception in it**: a switch at a node
+says nothing about the node, only about the fields that reach it. «Editable» and «kept» are things
+only a field can be — and «drawn» turned out to be a thing only a **placement** can be.*
 
 ⚠️ **And all three are revocable at the attribute since [D-406](90-decision-log.md).** That is what
 makes «Vorgabe» the right word rather than «rule»: *a Vorgabe that could not be revoked would be a
 bound, and the owner took these two out of bounding for exactly that reason.*
-⚠️ **The pattern in the clear rows is one sentence: at a node the setting is about *the kind of thing*;
-at an attribute it is about *this field*.** *`hide` looks like an exception and is not — a node's «kind
-of thing» includes its place in the tree, which is what a modeller sees; an attribute's is a field,
-which is what a user sees. **Same rule, two audiences.***
+⚠️ **The pattern is one sentence: at a node the setting is about *the kind of thing*; at an attribute
+it is about *this field*.** *And it has no exception left to explain away — see above.*
 
 ⚠️ **Two of the three unclear rows were answered by the owner within the hour**, and the third stands.
 *`read_only` at a node is a Vorgabe the attribute may set or revoke; `icon` at an attribute is possible

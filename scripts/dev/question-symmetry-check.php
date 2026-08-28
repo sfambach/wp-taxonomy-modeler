@@ -59,12 +59,31 @@ $closed  = 0;
 $total   = 0;
 $current = null;
 
+$mute      = [];
+$seenSince = null;
+
 foreach ($questions as $i => $line) {
     if (preg_match('/^## (OQ-\d+)/', $line, $m)) {
-        $current = $m[1];
+        // ⚠️ **A question that says nothing about itself was quieter than one that lied.** *OQ-093
+        // had **no status line at all**, so the loop below skipped it: it appeared in no count,
+        // open or closed, and was found on 2026-08-28 by listing the file by hand. **That is the
+        // fault this whole check was written for, one level down — and it went unmeasured because
+        // the check only ever looked at lines it had already found.***
+        if ($seenSince !== null) {
+            $mute[] = $seenSince;
+        }
+
+        $seenSince = $m[1];
+        $current   = $m[1];
         $total++;
 
         continue;
+    }
+
+    // ⚠️ *Two forms count as saying something, because both are in use: a `*Status:*` line, and a
+    // blockquoted «Closed <date> → D-nnn» as OQ-092 carries. **A third form is a bug, not a style.***
+    if ($seenSince !== null && preg_match('/\*Status:\*|Closed \d{4}-\d\d-\d\d/u', $line)) {
+        $seenSince = null;
     }
 
     if ($current === null || ! preg_match('/\*Status:\*\s*(.+)$/u', $line, $s)) {
@@ -99,6 +118,10 @@ foreach ($questions as $i => $line) {
     $current = null;
 }
 
+if ($seenSince !== null) {
+    $mute[] = $seenSince;
+}
+
 if ($total < 50) {
     echo "Nur {$total} Fragen erkannt — die Datei wurde nicht richtig gelesen.\n";
 
@@ -107,14 +130,32 @@ if ($total < 50) {
 
 printf("Fragen: %d, davon %d beantwortet markiert\n", $total, $closed);
 
+echo "\n== jede Frage sagt etwas ueber ihren Stand ==\n";
+
+if ($mute === []) {
+    printf("  ok   alle %d Fragen tragen eine Statuszeile oder einen Abschluss\n", $total);
+} else {
+    foreach ($mute as $question) {
+        printf("  FEHLT %-7s sagt nichts ueber sich — weder Status noch Abschluss\n", $question);
+    }
+}
+
 echo "\n== jede offene Frage, die eine Entscheidung beansprucht, verweist auf sie ==\n";
 
-if ($silent === []) {
+if ($silent === [] && $mute === []) {
     printf("  ok   %d offene Fragen tragen den Verweis auf ihre Entscheidung\n", $named);
 
     echo "\nall green\n";
 
     exit(0);
+}
+
+if ($silent === []) {
+    printf("  ok   %d offene Fragen tragen den Verweis auf ihre Entscheidung\n", $named);
+
+    printf("\n%d Fragen sagen nichts ueber ihren Stand.\n", count($mute));
+
+    exit(1);
 }
 
 foreach ($silent as $question => $deciders) {

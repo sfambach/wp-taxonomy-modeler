@@ -573,14 +573,15 @@ hold. The real distinction is **who owns the meaning of the key**:
 
 | | Meaning defined by | Example |
 |---|---|---|
-| **engine-owned** | the engine, identically for every node | `hide`, `read_only`, `renderer`, `converter`, `validators` |
+| **engine-owned** | the engine, identically for every node | `read_only`, `renderer`, `converter`, `validators` — ⚠️ *`hide` was in this list and is **not a setting at all** any more: one column on the edge, [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge), [D-467](90-decision-log.md)* |
 | **type-owned** | the type | `min`, `max`, `step` on an integer; something else entirely on a text type |
 
 A spinner renderer reads `min` because it is registered **for that type** and knows what the type
 means by it. The engine does not know what `min` is at all.
 
 That distinction calls for a **reserved namespace** validated at write time, not a structural
-split: an author must not be able to define a setting named `hide` and silently break rendering.
+split: an author must not be able to define a setting named `read_only` and silently break
+rendering.
 A rule about names, and one line of validation.
 
 ### The asymmetry — edge-only settings exist, node-only ones do not
@@ -599,6 +600,7 @@ about a use, because the thing itself has no opinion on them:
 |---|---|
 | `kind` · the attribute's `name` | the edge — fields on `relations` |
 | **multiplicity** | the edge — *how many, here* |
+| **`hide`** | the edge — *drawn from here down, or not.* ⚠️ **A column and not a setting** ([D-467](90-decision-log.md), [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)) — *and it is this table's own argument that makes it belong here: hiding is something only a **use** can be, because a node one refuses to draw at all would not have been created* |
 | everything else | the node, with an override available at the edge |
 
 Which is why settings resolve **node → edge** and never the other way.
@@ -609,9 +611,9 @@ would need inheritance handled specially. [D-014](90-decision-log.md)'s batched 
 with everything else. If profiling later demands it, denormalising is a cache, not a second truth.
 
 **Why the column was a mistake:** its main justification was letting a renderer fetch only what it
-needs. It does not partition that way. A renderer needs `hide` and `read_only` *and* the renderer
-choice; a validator needs `min` and `max` *and* the validator choice. Both consumers want a mix,
-so the split would have bought nothing and cost a distinction to maintain.
+needs. It does not partition that way. A renderer needs `read_only` *and* the renderer choice; a
+validator needs `min` and `max` *and* the validator choice. Both consumers want a mix, so the split
+would have bought nothing and cost a distinction to maintain.
 
 **A note on applicability:** a few keys only make sense on an edge — multiplicity is the clear one,
 since a node has no multiplicity but a use of it does. That is about *where a key applies*, not
