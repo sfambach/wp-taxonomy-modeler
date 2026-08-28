@@ -48,11 +48,11 @@ final class DateTimeRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        return '<input'
-            . $this->createHtmlAttribute('type', $this->controlType($context))
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('value', $this->forControl($context, 'T'))
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'  => $this->controlType($context),
+            'name'  => $context->fieldName,
+            'value' => $this->forControl($context, 'T'),
+        ]);
     }
 
     /**

@@ -178,21 +178,28 @@ final class LabelsRenderer implements Renderer
             return $label . '<span>' . RenderResult::escape($slot->shown) . '</span></label>';
         }
 
+        // ⚠️ **The placeholder is what the chain answers** (D-020), so an empty field reads as
+        // *nothing is stored here and something else answers* rather than as *this has no name*.
+        // *I briefly suppressed it where the chain fell through to the node's own name, on the
+        // theory that a `symbol` greyed with `Condensator` claims a symbol nobody wrote. The owner
+        // had meant the **layout**, and the suppression cost more than it saved: on `form`,
+        // `table` and `select` the node name is exactly the useful answer.*
+        //
+        // ⚠️ **The remark lives in the title and not under the box.** A visible note in one column of
+        // a flex row makes that column taller and tips the whole line out of alignment — which is what
+        // the owner's *almost perfect* was pointing at. *`null` for an empty note, because
+        // {@see RenderResult::htmlTag()} leaves an absent attribute out rather than writing it empty.*
+        //
+        // ⚠️ *This was the fourth place that escaped `name` by hand ([D-463](../../../docs/NewConcept/90-decision-log.md)).*
         return $label
-            . '<input type="text" name="' . RenderResult::escape($slot->fieldName) . '"'
-            . ' value="' . RenderResult::escape($slot->stored ?? '') . '"'
-            // ⚠️ **The placeholder is what the chain answers** (D-020), so an empty field reads as
-            // *nothing is stored here and something else answers* rather than as *this has no name*.
-            // *I briefly suppressed it where the chain fell through to the node's own name, on the
-            // theory that a `symbol` greyed with `Condensator` claims a symbol nobody wrote. The owner
-            // had meant the **layout**, and the suppression cost more than it saved: on `form`,
-            // `table` and `select` the node name is exactly the useful answer.*
-            . ' placeholder="' . RenderResult::escape($slot->shown) . '"'
-            // ⚠️ **The remark lives in the title and not under the box.** A visible note in one
-            // column of a flex row makes that column taller and tips the whole line out of
-            // alignment — which is what the owner's *almost perfect* was pointing at.
-            . ($slot->note === '' ? '' : ' title="' . RenderResult::escape($slot->note) . '"')
-            . ' style="width:100%">'
+            . RenderResult::htmlTag('input', [
+                'type'        => 'text',
+                'name'        => $slot->fieldName,
+                'value'       => $slot->stored ?? '',
+                'placeholder' => $slot->shown,
+                'title'       => $slot->note === '' ? null : $slot->note,
+                'style'       => 'width:100%',
+            ])
             . '</label>';
     }
 

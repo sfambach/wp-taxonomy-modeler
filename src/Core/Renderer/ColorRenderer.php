@@ -52,16 +52,18 @@ final class ColorRenderer extends TypedFieldRenderer
         $outputValue = $this->outputValue($context);
 
         if ($outputValue !== '' && ! $this->pickerCanHold($outputValue)) {
-            return '<input type="text"'
-                . $this->createHtmlAttribute('name', $context->fieldName)
-                . $this->createHtmlAttribute('value', $outputValue)
-                . '>' . $this->patch($outputValue);
+            return RenderResult::htmlTag('input', [
+                'type'  => 'text',
+                'name'  => $context->fieldName,
+                'value' => $outputValue,
+            ]) . $this->patch($outputValue);
         }
 
-        return '<input type="color"'
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('value', $outputValue)
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'  => 'color',
+            'name'  => $context->fieldName,
+            'value' => $outputValue,
+        ]);
     }
 
     private function pickerCanHold(string $outputValue): bool

@@ -66,9 +66,18 @@ final class ToggleRenderer extends TypedFieldRenderer
         // The hidden field is what makes *off* mean false rather than absent. PHP keeps the last of
         // two equal names, so the switch overrides it when it is on.
         return '<label class="taxmod-toggle">'
-            . '<input type="hidden"' . $name . ' value="0">'
-            . '<input type="checkbox" class="taxmod-toggle-input"' . $name . ' value="1"'
-            . ($on ? ' checked' : '') . '>'
+            . RenderResult::htmlTag('input', [
+                'type'  => 'hidden',
+                'name'  => $context->fieldName,
+                'value' => '0',
+            ])
+            . RenderResult::htmlTag('input', [
+                'type'    => 'checkbox',
+                'class'   => 'taxmod-toggle-input',
+                'name'    => $context->fieldName,
+                'value'   => '1',
+                'checked' => $on,
+            ])
             . $this->track($on, true)
             . '</label>';
     }

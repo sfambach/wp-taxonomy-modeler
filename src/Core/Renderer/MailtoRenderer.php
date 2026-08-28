@@ -51,9 +51,10 @@ final class MailtoRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        return '<input type="email"'
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('value', $this->outputValue($context))
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'  => 'email',
+            'name'  => $context->fieldName,
+            'value' => $this->outputValue($context),
+        ]);
     }
 }

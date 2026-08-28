@@ -157,7 +157,11 @@ final class DialogChooserRenderer implements Renderer
             '<span class="taxmod-chooser">'
             // No `name`, so it never submits — a chooser inside a form must not change what the form
             // sends.
-            . '<input type="checkbox" class="taxmod-dialog-switch" id="' . RenderResult::escape($switch) . '">'
+            . RenderResult::htmlTag('input', [
+                'type'  => 'checkbox',
+                'class' => 'taxmod-dialog-switch',
+                'id'    => $switch,
+            ])
             // ⚠️ **The label carries the button classes itself.** A `<span class="button">` inside
             // a label is styled like a button and laid out like a span — the owner saw the move
             // button sitting *«leicht versetzt»* beside the others, and that was why.

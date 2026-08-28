@@ -115,8 +115,11 @@ final class ControlMarkup
         $fields = '';
 
         foreach ($submits->hidden as $name => $value) {
-            $fields .= '<input type="hidden" name="' . RenderResult::escape($name)
-                . '" value="' . RenderResult::escape($value) . '">';
+            $fields .= RenderResult::htmlTag('input', [
+                'type'  => 'hidden',
+                'name'  => $name,
+                'value' => $value,
+            ]);
         }
 
         return $fields;

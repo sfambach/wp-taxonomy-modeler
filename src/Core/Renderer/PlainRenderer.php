@@ -92,9 +92,14 @@ final class PlainRenderer implements Renderer
         }
 
         return RenderResult::of(
-            '<input type="text" class="taxmod-no-renderer"'
-            . ' name="' . RenderResult::escape($context->fieldName) . '"'
-            . ' value="' . RenderResult::escape($shown) . '">'
+            // ⚠️ *Diese Stelle escapte `name` und `value` **von Hand** — eine von vier, die es so
+            // machten. Genau darum gibt es {@see RenderResult::htmlTag()} ([D-463]).*
+            RenderResult::htmlTag('input', [
+                'type'  => 'text',
+                'class' => 'taxmod-no-renderer',
+                'name'  => $context->fieldName,
+                'value' => $shown,
+            ])
         );
     }
     /**

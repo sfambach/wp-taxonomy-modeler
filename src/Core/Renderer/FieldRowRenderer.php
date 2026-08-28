@@ -180,13 +180,17 @@ final class FieldRowRenderer implements Renderer
             );
         }
 
-        $field = '<input type="text" class="taxmod-field-rename"'
-            . ' name="' . RenderResult::escape($context->fieldName) . '"'
-            . ' value="' . RenderResult::escape($subject->name) . '"'
-            // ⚠️ **Required, and the rule is the model's**: an attribute cannot be nameless
-            // (`Relation::renamedTo()` refuses it), so the browser says the same thing the core
-            // says rather than a second, softer rule of its own — the mistake `int` made once.
-            . ' required style="width:100%">';
+        // ⚠️ **Required, and the rule is the model's**: a field cannot be nameless
+        // (`Relation::renamedTo()` refuses it), so the browser says the same thing the core
+        // says rather than a second, softer rule of its own — the mistake `int` made once.
+        $field = RenderResult::htmlTag('input', [
+            'type'     => 'text',
+            'class'    => 'taxmod-field-rename',
+            'name'     => $context->fieldName,
+            'value'    => $subject->name,
+            'required' => true,
+            'style'    => 'width:100%',
+        ]);
 
         return $this->cell($field, 'taxmod-field-name', false, true);
     }
@@ -277,8 +281,11 @@ final class FieldRowRenderer implements Renderer
         $fields = '';
 
         foreach ($surroundings->submits->hidden as $name => $value) {
-            $fields .= '<input type="hidden" name="' . RenderResult::escape($name)
-                . '" value="' . RenderResult::escape($value) . '">';
+            $fields .= RenderResult::htmlTag('input', [
+                'type'  => 'hidden',
+                'name'  => $name,
+                'value' => $value,
+            ]);
         }
 
         $buttons = '';

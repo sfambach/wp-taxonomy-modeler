@@ -94,8 +94,13 @@ final class ChooserCellRenderer implements Renderer
 
         return RenderResult::of(
             '<label class="taxmod-chooser-row">'
-            . '<input type="radio" name="' . RenderResult::escape($context->fieldName) . '"'
-            . ' value="' . (int) $subject->id . '"' . ($chosen ? ' checked' : '') . '> '
+            // ⚠️ *Eine der vier Stellen, die `name` von Hand escapten ([D-463]).*
+            . RenderResult::htmlTag('input', [
+                'type'    => 'radio',
+                'name'    => $context->fieldName,
+                'value'   => (int) $subject->id,
+                'checked' => $chosen,
+            ]) . ' '
             . $name
             . '</label>'
         );

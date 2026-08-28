@@ -36,13 +36,18 @@ final class SpinnerRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        return '<input type="number"'
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('value', $this->outputValue($context))
-            . $this->createHtmlAttribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
-            . $this->createHtmlAttribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->createHtmlAttribute('step', $this->step($context))
-            . '>';
+        // ⚠️ *One call where there were six pieces of string* ([D-463](../../../docs/NewConcept/90-decision-log.md)):
+        // `'<input type="number"'` was written by hand and **went past the escaping**, while the rest
+        // came through the helper. {@see RenderResult::htmlTag()} is now the one place that knows how an
+        // element is spelled.
+        return RenderResult::htmlTag('input', [
+            'type'  => 'number',
+            'name'  => $context->fieldName,
+            'value' => $this->outputValue($context),
+            'min'   => $this->numberSetting($context, SettingKey::RangeMin->value),
+            'max'   => $this->numberSetting($context, SettingKey::RangeMax->value),
+            'step'  => $this->step($context),
+        ]);
     }
 
     /**

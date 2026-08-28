@@ -45,9 +45,13 @@ final class CheckboxRenderer extends TypedFieldRenderer
         }
 
         return $this->createHtmlValueSpan(
-            '<input type="checkbox" disabled'
-            . ($context->value->asBool() ? ' checked' : '')
-            . '>'
+            // ⚠️ *`true` schreibt das Attribut bar, `false` laesst es weg — genau wie `disabled`
+            // und `checked` in HTML gemeint sind ([D-463]).*
+            RenderResult::htmlTag('input', [
+                'type'     => 'checkbox',
+                'disabled' => true,
+                'checked'  => $context->value->asBool(),
+            ])
         );
     }
 
@@ -57,9 +61,15 @@ final class CheckboxRenderer extends TypedFieldRenderer
 
         // The hidden field is what makes *unticked* mean false rather than absent. PHP keeps the
         // last of two equal names, so the box overrides it when it is ticked.
-        return '<input type="hidden"' . $name . ' value="0">'
-            . '<input type="checkbox"' . $name . ' value="1"'
-            . (! $context->value->isNothing() && $context->value->asBool() ? ' checked' : '')
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'  => 'hidden',
+            'name'  => $context->fieldName,
+            'value' => '0',
+        ]) . RenderResult::htmlTag('input', [
+            'type'    => 'checkbox',
+            'name'    => $context->fieldName,
+            'value'   => '1',
+            'checked' => ! $context->value->isNothing() && $context->value->asBool(),
+        ]);
     }
 }

@@ -54,11 +54,12 @@ final class FieldRenderer extends TypedFieldRenderer
      */
     protected function input(RenderContext $context): string
     {
-        return '<input type="text"'
-            . $this->createHtmlAttribute('name', $context->fieldName)
-            . $this->createHtmlAttribute('value', $this->outputValue($context))
-            . $this->createHtmlAttribute('pattern', $context->type?->pattern())
-            . $this->createHtmlAttribute('inputmode', $context->type?->inputMode())
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'      => 'text',
+            'name'      => $context->fieldName,
+            'value'     => $this->outputValue($context),
+            'pattern'   => $context->type?->pattern(),
+            'inputmode' => $context->type?->inputMode(),
+        ]);
     }
 }

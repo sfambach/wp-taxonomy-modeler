@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **464**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **465**, davon **28** ersetzt oder teilweise überholt |
 | Offene Fragen | **118**, davon **28** noch offen |
 
 ## Offene Fragen
@@ -607,3 +607,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-462](90-decision-log.md) | 2026-08-28 | agreed | The three renames are built — and the four collisions they exposed are the content of this entry. |
 | [D-463](90-decision-log.md) | 2026-08-28 | agreed | The renderer design, written down at last — in the owner's words, and it was already built. |
 | [D-464](90-decision-log.md) | 2026-08-28 | agreed | `hide` is built as a column with an abort — schema 10, and the setting key is gone. |
+| [D-465](90-decision-log.md) | 2026-08-28 | agreed | `RenderResult::htmlTag()` — one place knows how an element is spelled. Builds D-463's rule, and the owner's naming convention is what makes it a prom… |
