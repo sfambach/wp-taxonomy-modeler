@@ -18,12 +18,16 @@ agents working in this repo are at [`/CLAUDE.md`](../../CLAUDE.md).
 | 50 | [Persistence](50-wordpress-persistence.md) | `draft` (caught up 2026-08-23) | owner statements P1–P14; the model is the schema; search; typed columns |
 | 60 | [Calculation](60-calculation.md) | `draft` (caught up 2026-08-23) | owner statements K1–K12; calculation vs converter, model vs display, structured expressions |
 | 70 | [Model change and migration](70-migration.md) | `draft` (caught up 2026-08-23) | owner statements M1–M17; rename vs replace, export, the conflict resolver |
-| 90 | [Decision log](90-decision-log.md) | `open` | D-001 … D-297 |
-| 91 | [Open questions](91-open-questions.md) | `open` | OQ-001 … OQ-080 (80 answered or closed, none open) |
+| 90 | [Decision log](90-decision-log.md) | `open` | **die Autorität** (`PR-3`). Wie viele es sind, sagt [99 Index](99-index.md) — hier stand eine handgezählte Spanne, und sie war um **189** zu niedrig |
+| 91 | [Open questions](91-open-questions.md) | `open` | was **nicht** entschieden ist (`PR-4`). Zahl und Stand: [99 Index](99-index.md) — hier stand «keine offen», während es Dutzende waren |
+| 92 | [Veraltete Entscheidungen](92-veraltete-entscheidungen.md) | `agreed` | der **Werdegang, aus dem Weg** — ganz überholte Entscheidungen im Wortlaut; gilt nie, erklärt nur ([D-469](90-decision-log.md)) |
 | 96 | [Scenario check](96-scenario-check.md) | `draft` | six worlds modelled against the concept; five carried |
 | 95 | [Roadmap](95-roadmap.md) | `draft` | Release 2 contents; what waits on an event; the parking lot |
 | 97 | [Implementation plan](97-implementation-plan.md) | `draft` | packages, not sprints; three rules; the first cut of six |
 | 98 | [Documentation style](98-documentation-style.md) | `agreed` | how everything here is written |
+| 99 | [Index](99-index.md) | **erzeugt** | eine Zeile je Entscheidung und je Frage, mit **Stand** und **Sachgebiet** — der Einstieg, wenn man nicht 680 KB lesen will. `php scripts/dev/concept-index.php` |
+
+⚠️ **Hier stehen keine Zählungen mehr, und das ist der Grund.** *Die Tabelle sagte «D-001 … D-297» und «OQ-001 … OQ-080, keine offen» — gemessen am 2026-08-28 sind es **486 Entscheidungen** und **125 Fragen, davon 32 offen**. **Die erste Seite des Konzepts war um 189 Entscheidungen falsch**, und sie ist das, was jemand zuerst liest. Eine Zahl, die von Hand nachgeführt werden muss, ist ein Changelog — genau das, was `CLAUDE.md`s Regelhygiene für Regeln verbietet, hier für die Übersicht. **Wer zählen will, liest den erzeugten [Index](99-index.md).***
 
 **Status vocabulary:** `empty` → `draft` (written, not reviewed) → `agreed` (confirmed by the
 owner) → `locked` (do not re-litigate without a superseding decision entry).

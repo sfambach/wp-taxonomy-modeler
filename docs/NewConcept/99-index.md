@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **486**, davon **31** ersetzt oder teilweise überholt |
+| Entscheidungen | **487**, davon **31** ersetzt oder teilweise überholt |
 | Offene Fragen | **125**, davon **32** noch offen |
 
 ## Offene Fragen
@@ -245,7 +245,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-075](90-decision-log.md) | 2026-08-22 | agreed | 30-renderer | A numeral-system change is a converter |
 | [D-076](90-decision-log.md) | 2026-08-22 | agreed | 30-renderer, 50-wordpress-persistence | Converters divide into invertible and lossy, and only invertible ones may serve input or search. |
 | [D-077](90-decision-log.md) | 2026-08-22 | agreed | 30-renderer | A node may carry several converters; which one applies is a setting. |
-| [D-078](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-084 | ⚠️ **keins** | Überholt durch D-084 |
+| [D-078](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-084 | ⚠️ **keins** | Veraltet, ersetzt durch D-084. |
 | [D-079](90-decision-log.md) | 2026-08-22 | agreed` (confirmed by the owner 2026-08-22) | 50-wordpress-persistence | An installation-wide default is a setting on a reserved installation identity |
 | [D-080](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-436 | 10-domain-core | Überholt durch D-436 |
 | [D-081](90-decision-log.md) | 2026-08-22 | agreed | 10-domain-core | Every object has at least one changelog item — the seed's `1..*` was right. |
@@ -565,7 +565,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-395](90-decision-log.md) | 2026-08-26 | agreed | 30-renderer, 20-interaction | Choosing a node is done in a tree, never in a flat list — the chooser cell is the second cell of the one walker. |
 | [D-396](90-decision-log.md) | 2026-08-26 | agreed | 20-interaction, 01-glossary | `hide` on a node hides it from the tree, and the tree carries a *show hidden* switch that is off by default. |
 | [D-397](90-decision-log.md) | 2026-08-26 | agreed | 20-interaction | The installation gets its own screen, under the modeller — and D-079 already decided which of its facts may live there. |
-| [D-398](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-399 | 30-renderer, 10-domain-core | Überholt durch D-399 |
+| [D-398](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-399 | 30-renderer, 10-domain-core | Veraltet, ersetzt durch D-399. |
 | [D-399](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 30-renderer | `hide` and `read_only` are freely settable on any node, whatever an ancestor says — they leave the bounding category. ~~And `hide` puts the renderer … |
 | [D-400](90-decision-log.md) | 2026-08-26 | agreed | 30-renderer, 10-domain-core | A constant is drawn as a *reference to it*, resolved to the label role the referring edge asks for — and a renderer that cannot serve a purpose is no… |
 | [D-401](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-404 | 10-domain-core, 30-renderer | Überholt durch D-404 |
@@ -654,3 +654,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-484](90-decision-log.md) | 2026-08-28 | agreed | 10-domain-core, 30-renderer | Spezialisierte Knotenklassen im Code — auf sein Wort, und es korrigiert die delegierte Hälfte von D-036. Schliesst OQ-124. |
 | [D-485](90-decision-log.md) | 2026-08-28 | agreed | 10-domain-core, 20-interaction | Ein Datensatz ohne seinen Knoten darf es nicht geben, und der Löschpfad setzt das jetzt durch. C102 gebaut. |
 | [D-486](90-decision-log.md) | 2026-08-28 | agreed | 20-interaction | Die Kästen um die Icons kamen von einem Positionsargument, nicht von einer CSS-Regel — und `--taxmod-icon` war überall tot. |
+| [D-487](90-decision-log.md) | 2026-08-28 | agreed | ⚠️ **keins** | Ein Dachboden für ganz überholte Entscheidungen — 92 Veraltete Entscheidungen. Und ein |

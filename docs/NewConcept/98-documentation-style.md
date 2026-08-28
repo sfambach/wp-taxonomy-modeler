@@ -99,6 +99,8 @@ two copies of one table disagreed because a correction had reached only the near
 duplicated table is the specific thing to look for** — the second copy is where a retired rule
 survives.
 
+⚠️ **Und was ganz überholt ist, zieht in den Dachboden** ([D-487](90-decision-log.md)): [92 Veraltete Entscheidungen](92-veraltete-entscheidungen.md). *Mit **drei** Bedingungen, und alle drei sind gemessen: die Aussage muss **ganz** überholt sein, die Entscheidung **selten zitiert**, und im Log bleibt immer ein **Stummel**. Eine teilweise überholte bleibt, wo sie ist — ihre Warnung steht im ersten Satz, was der billigere und wirksamere Schutz ist.*
+
 ⚠️ *Consolidating is not compressing. Nothing decided is dropped: the corrections are the valuable
 part, because they say which readings were tried and failed. See
 [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) for the worked example.*

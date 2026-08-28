@@ -19,6 +19,14 @@
  * überholte [D-036](../../../docs/NewConcept/90-decision-log.md) auf Deutsch, die Prüfung sah es nicht,
  * und D-036 stand weiter als gültig — **für 15 Ersetzungen war sie blind und sagte es nicht.***
  *
+ * ⚠️ **Eine blinde Stelle, die bleibt, und wer hier schreibt muss sie kennen.** *Eine Entscheidung, die
+ * **über** Ersetzungen redet, wird als eine gelesen, die sie behauptet. **Gemessen am 2026-08-28:
+ * [D-487](../../../docs/NewConcept/90-decision-log.md) schrieb «ein Muster sortierte 7 von 28 als «ganz
+ * überholt» … `D-310` ist nicht tot» — und die Prüfung meldete «D-310 sagt nicht, dass D-487 sie
+ * ersetzt».* **Die Regel für Autoren: hinter «überholt», «ersetzt» oder «supersedes» darf in den
+ * nächsten 110 Zeichen keine Id stehen, die nicht gemeint ist.** *Behoben durch Umformulieren, nicht
+ * durch ein feineres Muster — jedes weitere Sonderzeichen im Muster wäre eine neue Fehlerquelle.*
+ *
  * ⚠️ **Der Blick nach hinten ist das, was es richtig macht, und ein Fehlalarm hat es beigebracht.**
  * *[D-375](../../../docs/NewConcept/90-decision-log.md) sagt «**D-232 supersedes** D-133» — es berichtet
  * die Ersetzung **einer anderen** Entscheidung, was ein naives Muster als «D-375 ersetzt D-133» liest.
