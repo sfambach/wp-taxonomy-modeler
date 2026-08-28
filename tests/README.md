@@ -32,6 +32,7 @@ as the whole net.*
 | `settings-screen` | the installation screen, and that its two sizes reach the stylesheet ([D-397](../docs/NewConcept/90-decision-log.md)) |
 | `preview` | the preview, and that `hide` and `read_only` actually **do** something ([D-160](../docs/NewConcept/90-decision-log.md), [D-399](../docs/NewConcept/90-decision-log.md)) |
 | `path` | `settings.path` — the address, and that a path never falls back to the empty one ([D-413](../docs/NewConcept/90-decision-log.md)) |
+| `labels-page-save` | that the texts travel with the page save — the fields name the page's form, an unchanged one writes nothing, an emptied one loses its row ([D-384](../docs/NewConcept/90-decision-log.md), [D-392](../docs/NewConcept/90-decision-log.md)) |
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
 
 ⚠️ **`references-check` exists because seven decisions were cited in code and never written**, all

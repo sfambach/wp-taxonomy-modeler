@@ -4941,3 +4941,25 @@ Er: *«da versteh ich den Unterschied noch nicht. Das sieht mir erst mal gleich 
 | **nichts umbenennen, nur das Glossar** | — | *am billigsten, und die Falle bleibt gestellt* |
 
 ⚠️ *Was ich **ohne** Rückfrage tue, weil `CD-9` es verlangt und es kein Vokabular von ihm ist: `Surroundings::$refersTo` heisst künftig `targetLabel`. **Es hält ein Label und keinen Zeiger** — der einzige Name der Familie, bei dem das Wort lügt. 10 Dateien, mechanisch, und es wartet, bis der Icon-Lauf im Hintergrund fertig ist, damit wir nicht in derselben Datei kollidieren.*
+
+---
+
+## OQ-126 — Wird eine Labeländerung protokolliert? Heute nicht, und niemand hat es entschieden
+
+**Raised** 2026-08-28, beim Bauen von [D-488](90-decision-log.md) — durch Messung, nicht durch eine Frage.
+
+*Blocks:* [40 I18n](40-i18n.md) · *Status:* open
+
+⚠️ **Gemessen: von **10496** Changelog-Zeilen nennt **keine einzige** ein Label.** *31 verschiedene `what`-Werte, keiner davon betrifft eine Labeländerung. Der Umbenennung eines Knotens folgt eine Zeile, dem Setzen eines Settings auch — dem Übersetzen eines Namens nicht.*
+
+⚠️ **Und das steht gegen eine Entscheidung, die für Settings ausdrücklich getroffen wurde:** [D-403](90-decision-log.md) — *jeder Setting-Schreibvorgang wird journalisiert, gegen seinen Eigentümer*; sie entstand, weil **591 Zeilen keine Geschichte hatten**. *Für Labels wurde dasselbe nie gefragt.*
+
+### Was daran hängt
+
+| | |
+|---|---|
+| **[D-473](90-decision-log.md)s Tor** | «keine unaufgelösten Konflikte aus diesem Zeitraum» — ein Label ist kein Datensatzwert, also berührt es das Tor nicht |
+| **[D-485](90-decision-log.md)** | ein Label geht mit seinem Knoten, es kann also nicht verwaisen |
+| **die Prüfbarkeit** | *ohne Protokoll ist «ein unverändertes Label schreibt nichts» **nicht am Changelog messbar**. Der Grenz-Check zählt deshalb **Schreibabfragen** in einem Kindprozess mit `SAVEQUERIES` — 1 beim geänderten Text, 0 beim unveränderten. **Das ist eine Umgehung, und sie steht hier, damit sie nicht als Entwurf gelesen wird.*** |
+
+⚠️ *Wenn Labels protokolliert werden sollen, ist die einfache Frage, **was in `before`/`after` steht** — Rolle, Locale und Text sind drei Angaben, und [D-473](90-decision-log.md)/[Zeile 47](97-implementation-plan.md#the-working-list) verlangen für Settings ohnehin, dass ein Eintrag **die Adresse mitträgt**. Dieselbe Arbeit, dieselbe Form.*
