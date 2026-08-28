@@ -1059,16 +1059,16 @@ final class RenderingTest extends TestCase
         // ⚠️ `mandatory` was in this list until [D-405]: the multiplicity says it, so the key is gone.
         // ⚠️ *`hide` verliess diese Liste 2026-08-28 — es ist eine Spalte und kein Setting mehr
         // ([D-457]). `read_only` steht dafuer, weil es einer bleibt ([D-461]).*
-        foreach (['range_min', 'range_max', 'range_step', 'default', 'read_only'] as $key) {
+        foreach (['min', 'max', 'step', 'default', 'read_only'] as $key) {
             self::assertArrayHasKey($key, $rows, $key);
             self::assertTrue($rows[$key]->wasDrawn(), $key);
         }
 
         // ⚠️ And an unwritten one says so — *nobody has said* is a third state beside *set here*
         // and *inherited* (D-266), and it is the reason the row exists at all.
-        self::assertSame(0, $rows['range_min']->setting->fromOwnerId);
-        self::assertFalse($rows['range_min']->setting->setHere);
-        self::assertTrue($rows['range_min']->setting->value->isNothing());
+        self::assertSame(0, $rows['min']->setting->fromOwnerId);
+        self::assertFalse($rows['min']->setting->setHere);
+        self::assertTrue($rows['min']->setting->value->isNothing());
     }
 
     #[Test]
@@ -1085,7 +1085,7 @@ final class RenderingTest extends TestCase
         // left out rather than offered as an empty box that could never be filled sensibly.
         $rows = $this->drawnSettings($this->thing('Supplier'));
 
-        self::assertArrayNotHasKey('range_min', $rows);
+        self::assertArrayNotHasKey('min', $rows);
         // ⚠️ A key that applies to **anything** still appears — `hide` stands in for what `mandatory`
         // used to demonstrate here ([D-405]), and it makes the point better: it is a rule about the
         // field, not about its type.
@@ -1100,7 +1100,7 @@ final class RenderingTest extends TestCase
         $int = $this->type('int');
 
         $this->settings->put($this->settings->chainFor($int), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
-        $this->settings->put($this->settings->chainFor($int), SettingKey::RangeMin->value, TypedValue::ofInt(3));
+        $this->settings->put($this->settings->chainFor($int), SettingKey::Min->value, TypedValue::ofInt(3));
 
         $rows = $this->drawnSettings($int);
 
@@ -1109,8 +1109,8 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::ReadOnly->value]->result->markup);
         self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::ReadOnly->value]->rendererName);
 
-        self::assertSame(SimpleType::Int, $rows[SettingKey::RangeMin->value]->type);
-        self::assertStringContainsString('3', $rows[SettingKey::RangeMin->value]->result->markup);
+        self::assertSame(SimpleType::Int, $rows[SettingKey::Min->value]->type);
+        self::assertStringContainsString('3', $rows[SettingKey::Min->value]->result->markup);
     }
 
     #[Test]
@@ -1120,12 +1120,12 @@ final class RenderingTest extends TestCase
         $decimal = $this->type('decimal');
         $text    = $this->type('text');
 
-        $this->settings->put($this->settings->chainFor($decimal), SettingKey::RangeMin->value, TypedValue::ofDecimal('2.50'));
+        $this->settings->put($this->settings->chainFor($decimal), SettingKey::Min->value, TypedValue::ofDecimal('2.50'));
         $this->settings->put($this->settings->chainFor($text), SettingKey::DefaultValue->value, TypedValue::ofText('n/a'));
 
         self::assertSame(
             SimpleType::Decimal,
-            $this->drawnSettings($decimal)[SettingKey::RangeMin->value]->type
+            $this->drawnSettings($decimal)[SettingKey::Min->value]->type
         );
         self::assertSame(
             SimpleType::Text,

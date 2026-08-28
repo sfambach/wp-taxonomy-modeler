@@ -118,7 +118,7 @@ $parent = $editor->createNode('__mat_parent', $root->id);
 $made[] = $parent->id;
 
 // Something unmistakably the parent's own, so a copy cannot be confused with an installation default.
-$settings->put($settings->chainFor($parent), SettingKey::RangeMax->value, TypedValue::ofInt(4711));
+$settings->put($settings->chainFor($parent), SettingKey::Max->value, TypedValue::ofInt(4711));
 $settings->put($settings->chainFor($parent), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
 
 check('the parent holds its own rows', ownRows($parent->id) >= 2, (string) ownRows($parent->id));
@@ -129,7 +129,7 @@ $child  = $editor->createNode('__mat_child', $parent->id);
 $made[] = $child->id;
 
 check('the child has rows of its own', ownRows($child->id) > 0, (string) ownRows($child->id));
-check('  · range_max came along', ownValue($child->id, SettingKey::RangeMax->value) === '4711', ownValue($child->id, SettingKey::RangeMax->value) ?? '—');
+check('  · range_max came along', ownValue($child->id, SettingKey::Max->value) === '4711', ownValue($child->id, SettingKey::Max->value) ?? '—');
 check('  · read_only came along', ownValue($child->id, SettingKey::ReadOnly->value) === '1', ownValue($child->id, SettingKey::ReadOnly->value) ?? '—');
 
 // ⚠️ **The switches the installation declares travel too** (D-401/D-404) — otherwise «every setting
@@ -153,17 +153,17 @@ check(
 
 echo "\n== the child can now be changed without touching the parent ==\n";
 
-$settings->put($settings->chainFor($child), SettingKey::RangeMax->value, TypedValue::ofInt(20));
+$settings->put($settings->chainFor($child), SettingKey::Max->value, TypedValue::ofInt(20));
 
-check('the child says 20', ownValue($child->id, SettingKey::RangeMax->value) === '20', ownValue($child->id, SettingKey::RangeMax->value) ?? '—');
-check('the parent still says 4711', ownValue($parent->id, SettingKey::RangeMax->value) === '4711', ownValue($parent->id, SettingKey::RangeMax->value) ?? '—');
+check('the child says 20', ownValue($child->id, SettingKey::Max->value) === '20', ownValue($child->id, SettingKey::Max->value) ?? '—');
+check('the parent still says 4711', ownValue($parent->id, SettingKey::Max->value) === '4711', ownValue($parent->id, SettingKey::Max->value) ?? '—');
 
 echo "\n== rule 3 · an attribute is furnished from its target ==\n";
 
 $type   = $editor->createNode('__mat_type', $root->id);
 $made[] = $type->id;
 
-$settings->put($settings->chainFor($type), SettingKey::RangeMin->value, TypedValue::ofInt(7));
+$settings->put($settings->chainFor($type), SettingKey::Min->value, TypedValue::ofInt(7));
 
 $holder = $editor->createNode('__mat_holder', $root->id);
 $made[] = $holder->id;
@@ -171,29 +171,29 @@ $made[] = $holder->id;
 $edge = $editor->addField($holder->id, $type->id, 'feld');
 
 check('the attribute has rows of its own', ownRows($edge->id) > 0, (string) ownRows($edge->id));
-check('  · range_min came from the target, not the owner', ownValue($edge->id, SettingKey::RangeMin->value) === '7', ownValue($edge->id, SettingKey::RangeMin->value) ?? '—');
+check('  · range_min came from the target, not the owner', ownValue($edge->id, SettingKey::Min->value) === '7', ownValue($edge->id, SettingKey::Min->value) ?? '—');
 
 // ⚠️ *The owner had `range_max = 4711`; the target did not. If the attribute carried it, the source
 // would be the owner and [D-423](../../docs/NewConcept/90-decision-log.md)'s «from the target» would
 // be wrong in the code however it reads in the log.*
 check(
     '  · and nothing came from the holder',
-    ownValue($edge->id, SettingKey::RangeMax->value) === null || ownValue($edge->id, SettingKey::RangeMax->value) !== '4711',
-    ownValue($edge->id, SettingKey::RangeMax->value) ?? '—'
+    ownValue($edge->id, SettingKey::Max->value) === null || ownValue($edge->id, SettingKey::Max->value) !== '4711',
+    ownValue($edge->id, SettingKey::Max->value) ?? '—'
 );
 
 echo "\n== reset pulls instead of forgetting ==\n";
 
-$settings->put($settings->chainFor($child), SettingKey::RangeMax->value, TypedValue::ofInt(99));
+$settings->put($settings->chainFor($child), SettingKey::Max->value, TypedValue::ofInt(99));
 
-$found = $settings->pull($settings->chainFor($child), SettingKey::RangeMax->value);
+$found = $settings->pull($settings->chainFor($child), SettingKey::Max->value);
 
 check('the pull found something above', $found);
-check('and the child is back to the parent\'s 4711', ownValue($child->id, SettingKey::RangeMax->value) === '4711', ownValue($child->id, SettingKey::RangeMax->value) ?? '—');
+check('and the child is back to the parent\'s 4711', ownValue($child->id, SettingKey::Max->value) === '4711', ownValue($child->id, SettingKey::Max->value) ?? '—');
 
 // ⚠️ **A row still exists afterwards, which is the whole difference from the old `reset`.** *Forgetting
 // it would leave nothing, because a materialised model has no walk left to fall through.*
-check('and the row is still there rather than gone', ownValue($child->id, SettingKey::RangeMax->value) !== null);
+check('and the row is still there rather than gone', ownValue($child->id, SettingKey::Max->value) !== null);
 
 // ⚠️ *Nothing above is an answer* — the owner: *if there is nothing there, then they were its own
 // settings.* A key nobody above ever set must leave the row alone and say so.

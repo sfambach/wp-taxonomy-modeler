@@ -4567,3 +4567,57 @@ the build states rather than hides (`PR-2`).*
 3. **Does hiding an inheritance edge and hiding its child node mean the same thing?** *Measured: every
    node has exactly one inheritance edge and the root has none, so the two are almost interchangeable in
    the tree — «almost», because the root can never be hidden either way, which is correct.*
+---
+
+## OQ-119 — In one table, what tells a setting from a field value?
+
+**Raised** 2026-08-28, by the owner, on [D-458](90-decision-log.md) — and he is right that it was never defined.
+
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), list row 61 · *Status:* open
+
+> *We now have the four fields, since we use the same table for settings and attributes. **How do we
+> actually tell the two apart in the table?** I do not think that was defined at all. I would rather
+> like to store it properly.*
+
+⚠️ **Correct, and it is the first thing [D-458](90-decision-log.md) needs.** *That decision says the two
+share a table and names what merges — `setting_key` becomes `edge_id`, and `locale` arrives. **It does
+not say what distinguishes a row that configures a class from a row that holds an instance's value.***
+
+### What each is today, measured
+
+| | a field value | a setting |
+|---|---|---|
+| whose it is | `record_id` → a **record** | `owner_id` → an **identity** (node, edge, or the installation) |
+| which slot | `edge_id` — an identity | `setting_key` — a **string** |
+| a language | `locale` | none |
+
+*So today they are told apart by **being in different tables**. Merge them and that answer is gone.*
+
+### The candidates
+
+- **The owner column says it.** *A row whose owner is a **record** is a value; a row whose owner is a
+  **node or an edge** is a setting. **No new column at all** — and it follows from what the two already
+  mean. The cost is that reading it requires knowing which table the id came from, which is a join or a
+  kind column.*
+- **A kind column.** *Explicit, one byte, no lookup. The cost is a fact stored twice: the owner already
+  implies it, and `CLAUDE.md` forbids exactly that duplication.*
+- **The slot says it.** *A setting's slot is one of the engine's own attributes; a value's slot is one an
+  author made. **That is the same question as [OQ-107](#oq-107--what-declares-a-free-setting-today-nothing-does)** —
+  where a free key's blueprint hangs — so answering one answers both.*
+
+### And his second point, which is the harder half
+
+> *The settings are practically determined by the system, so you can fix in advance what type they have.
+> … `min`, `max` and `step` are not text, they are int or decimal. It would be good to know which data
+> type is stored. … `default` applies to all simple types, but its **type changes with the data type**.
+> `min`, `max` and `step` only exist for decimal and integer, and there too the type changes.*
+
+⚠️ **That is [`SettingShape::LikeTheSubject`](../../src/Core/Model/SettingShape.php) described from the
+outside, and it is exactly the thing that cannot become an ordinary field** ([D-458](90-decision-log.md)'s
+second reservation): *an ordinary field **names** its type by pointing at a node, and these four must
+**borrow** it from whatever they configure. Naming it is the endless loop he described himself — «`Integer`
+has an attribute `max` of type `Integer`».*
+
+⚠️ *So the merged table has to record a slot whose type is **not** stored but **derived**. Whether that is
+a fifth shape, a null target with a rule, or something else is undecided — and it is the piece that
+decides whether [D-458](90-decision-log.md) is buildable at all.*

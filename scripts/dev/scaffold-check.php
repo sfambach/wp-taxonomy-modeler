@@ -196,7 +196,7 @@ foreach (SettingKey::cases() as $key) {
 $threw = false;
 
 try {
-    SettingKey::RangeMin->defaultSwitch();
+    SettingKey::Min->defaultSwitch();
 } catch (\LogicException) {
     $threw = true;
 }

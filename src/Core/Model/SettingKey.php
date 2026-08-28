@@ -62,10 +62,10 @@ enum SettingKey: string
     case ReadOnly = 'read_only';
 
     /** Smallest permitted value. Narrowing means **higher**. */
-    case RangeMin = 'range_min';
+    case Min = 'min';
 
     /** Largest permitted value. Narrowing means **lower**. */
-    case RangeMax = 'range_max';
+    case Max = 'max';
 
     // Choosing — they pick within the bounds.
 
@@ -86,7 +86,7 @@ enum SettingKey: string
      * granularity says nothing about what is allowed in the first place**, so there is nothing to
      * protect from being reopened.
      */
-    case RangeStep = 'range_step';
+    case Step = 'step';
 
     /** ⚠️ A default is not a bound but a choice inside the permitted set, so it stays free. */
     case DefaultValue = 'default';
@@ -213,8 +213,8 @@ enum SettingKey: string
     {
         return match ($this) {
             self::Multiplicity                          => Narrowing::BySubset,
-            self::RangeMin                              => Narrowing::OnlyUp,
-            self::RangeMax                              => Narrowing::OnlyDown,
+            self::Min                              => Narrowing::OnlyUp,
+            self::Max                              => Narrowing::OnlyDown,
             // ⚠️ **`hide` and `read_only` are free in both directions** ([D-399](../../../docs/NewConcept/90-decision-log.md)),
             // and this line was the half of that decision that never got built. *It still said
             // `OnceOnAlwaysOn`, so a descendant could not reveal what an ancestor hid — which is
@@ -253,8 +253,8 @@ enum SettingKey: string
             self::Validator                            => SettingShape::ARegisteredName,
             // ⚠️ These four borrow their type from whatever is being configured — a default for a
             // text is a text, a minimum for a decimal is a decimal.
-            self::DefaultValue, self::RangeMin,
-            self::RangeMax, self::RangeStep            => SettingShape::LikeTheSubject,
+            self::DefaultValue, self::Min,
+            self::Max, self::Step            => SettingShape::LikeTheSubject,
             // ⚠️ **An icon is chosen from a set, not typed** (D-390): the installation offers a
             // list and a person picks one, so a text box here would ask somebody to know a Dashicon
             // key by heart. *Which icons exist is a boundary fact and arrives with the options.*

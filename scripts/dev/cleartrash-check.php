@@ -99,7 +99,7 @@ $doomed = $editor->createNode('__ct doomed', $root->id);
 $target = $editor->createNode('__ct target', $root->id);
 $edge   = $editor->addField($doomed->id, $target->id, 'feld');
 
-$settings->put($settings->chainFor($doomed), SettingKey::RangeMax->value, TypedValue::ofInt(77));
+$settings->put($settings->chainFor($doomed), SettingKey::Max->value, TypedValue::ofInt(77));
 // ⚠️ *The role is a **seeded node** ([D-196](../../docs/NewConcept/90-decision-log.md)), so `role_id`
 // is a real id and not an enum value. Taking one that exists keeps the foreign key honest — inventing
 // a number here would test the check's imagination rather than the act.*

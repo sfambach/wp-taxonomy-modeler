@@ -64,8 +64,12 @@ final class Schema
      *      chain contains its target node. Measured twice — by experiment on 2026-08-26 and
      *      again on 2026-08-27.* **Both node and edge, because the owner asked for both**:
      *      «edge and node both having an attribute `hide`».
+     * 11 — `range_min`, `range_max` and `range_step` become `min`, `max` and `step` (D-466),
+     *      on the owner: «shorter, we do not need the range». **16 rows, a rename and nothing
+     *      else.** *The new names were free — a collision would have hit the unique key and
+     *      failed loudly, which is the good failure.*
      */
-    public const VERSION = 10;
+    public const VERSION = 11;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -126,7 +130,40 @@ final class Schema
         self::dropRetiredColumns();
         self::widenSettingUniqueKey();
         self::moveHideOutOfSettings();
+        self::shortenRangeKeys();
         self::ensureForeignKeys();
+    }
+
+    /**
+     * `range_min`, `range_max` and `range_step` become `min`, `max` and `step` — schema 11.
+     *
+     * ⚠️ **A rename of stored keys, on the owner's word**: *«min, max and step — shorter, we do not
+     * need the range».* *16 rows carry the old names today.*
+     *
+     * ⚠️ **Safe because the new names were free.** *`min`, `max` and `step` are not among the engine's
+     * other keys and no free key uses them — checked before writing. **A collision would have hit the
+     * unique key `(owner_id, setting_key, path)` and failed loudly**, which is the good failure; the
+     * bad one would be two meanings under one name.*
+     *
+     * ⚠️ *Idempotent by construction: the second run finds no `range_%` rows and updates nothing.*
+     */
+    private static function shortenRangeKeys(): void
+    {
+        global $wpdb;
+
+        $settings = self::table('settings');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $settings)) !== $settings) {
+            return;
+        }
+
+        foreach (['range_min' => 'min', 'range_max' => 'max', 'range_step' => 'step'] as $from => $to) {
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$settings} SET setting_key = %s WHERE setting_key = %s",
+                $to,
+                $from
+            ));
+        }
     }
 
     /**

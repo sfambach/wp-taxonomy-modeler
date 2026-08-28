@@ -44,8 +44,8 @@ final class SpinnerRenderer extends TypedFieldRenderer
             'type'  => 'number',
             'name'  => $context->fieldName,
             'value' => $this->outputValue($context),
-            'min'   => $this->numberSetting($context, SettingKey::RangeMin->value),
-            'max'   => $this->numberSetting($context, SettingKey::RangeMax->value),
+            'min'   => $this->numberSetting($context, SettingKey::Min->value),
+            'max'   => $this->numberSetting($context, SettingKey::Max->value),
             'step'  => $this->step($context),
         ]);
     }
@@ -60,7 +60,7 @@ final class SpinnerRenderer extends TypedFieldRenderer
      */
     private function step(RenderContext $context): string
     {
-        return $this->numberSetting($context, SettingKey::RangeStep->value)
+        return $this->numberSetting($context, SettingKey::Step->value)
             ?? ($context->type === SimpleType::Decimal ? 'any' : '1');
     }
 }

@@ -302,10 +302,10 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::RangeMax->value, TypedValue::ofInt(5));
-        $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::Max->value, TypedValue::ofInt(5));
+        $this->settings->put($chain, SettingKey::Max->value, TypedValue::ofInt(2));
 
-        self::assertSame(2, $this->settings->resolve($chain)[SettingKey::RangeMax->value]->value->int);
+        self::assertSame(2, $this->settings->resolve($chain)[SettingKey::Max->value]->value->int);
     }
 
     #[Test]
@@ -314,11 +314,11 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::RangeMax->value, TypedValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::Max->value, TypedValue::ofInt(2));
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofInt(5));
+        $this->settings->put($chain, SettingKey::Max->value, TypedValue::ofInt(5));
     }
 
     #[Test]
@@ -327,14 +327,14 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::RangeMin->value, TypedValue::ofInt(1));
-        $this->settings->put($chain, SettingKey::RangeMin->value, TypedValue::ofInt(2));
+        $this->settings->put([self::INSTALLATION], SettingKey::Min->value, TypedValue::ofInt(1));
+        $this->settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(2));
 
-        self::assertSame(2, $this->settings->resolve($chain)[SettingKey::RangeMin->value]->value->int);
+        self::assertSame(2, $this->settings->resolve($chain)[SettingKey::Min->value]->value->int);
 
         $this->expectException(CannotWiden::class);
 
-        $this->settings->put($chain, SettingKey::RangeMin->value, TypedValue::ofInt(0));
+        $this->settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(0));
     }
 
     // ------------------------------------------------------ a switch has no empty · D-401, D-429
@@ -521,9 +521,9 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofInt(99));
+        $this->settings->put($chain, SettingKey::Max->value, TypedValue::ofInt(99));
 
-        self::assertSame(99, $this->settings->resolve($chain)[SettingKey::RangeMax->value]->value->int);
+        self::assertSame(99, $this->settings->resolve($chain)[SettingKey::Max->value]->value->int);
     }
 
     #[Test]
@@ -533,10 +533,10 @@ final class SettingsTest extends TestCase
         $type  = $this->type('Text');
         $chain = $this->settings->chainFor($type);
 
-        $this->settings->put([self::INSTALLATION], SettingKey::RangeMax->value, TypedValue::ofDecimal('10'));
-        $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofDecimal('9'));
+        $this->settings->put([self::INSTALLATION], SettingKey::Max->value, TypedValue::ofDecimal('10'));
+        $this->settings->put($chain, SettingKey::Max->value, TypedValue::ofDecimal('9'));
 
-        self::assertSame('9', $this->settings->resolve($chain)[SettingKey::RangeMax->value]->value->decimal);
+        self::assertSame('9', $this->settings->resolve($chain)[SettingKey::Max->value]->value->decimal);
     }
 
     // ------------------------------------------------------- reserved names
@@ -591,7 +591,7 @@ final class SettingsTest extends TestCase
         // ([D-405](../../docs/NewConcept/90-decision-log.md)): the multiplicity says it.*
         self::assertFalse(SettingKey::ReadOnly->isBounding());
         self::assertFalse(SettingKey::ReadOnly->isBounding());
-        self::assertTrue(SettingKey::RangeMax->isBounding());
+        self::assertTrue(SettingKey::Max->isBounding());
         self::assertTrue(SettingKey::Multiplicity->isBounding());
         self::assertTrue(SettingKey::Multiplicity->isEdgeOnly());
         self::assertFalse(SettingKey::DefaultValue->isBounding());

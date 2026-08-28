@@ -196,14 +196,14 @@ $settings->put(
 // there by the owner clicking around — and a bound may only ever be tightened (D-312). A check
 // that assumed an empty chain was testing a clean database rather than the rule.
 $inherited = $settings->resolve($settings->chainForUseSite($count));
-$floor     = (int) ($inherited[SettingKey::RangeMin->value]->value->int ?? 0);
-$ceiling   = (int) ($inherited[SettingKey::RangeMax->value]->value->int ?? $floor + 100);
+$floor     = (int) ($inherited[SettingKey::Min->value]->value->int ?? 0);
+$ceiling   = (int) ($inherited[SettingKey::Max->value]->value->int ?? $floor + 100);
 
 $min = $floor + 1;
 $max = $ceiling - 1;
 
-$settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($min));
-$settings->put($settings->chainForUseSite($count), SettingKey::RangeMax->value, TypedValue::ofInt($max));
+$settings->put($settings->chainForUseSite($count), SettingKey::Min->value, TypedValue::ofInt($min));
+$settings->put($settings->chainForUseSite($count), SettingKey::Max->value, TypedValue::ofInt($max));
 
 $chosen = $rendering->fieldsFor([$count], [], Purpose::Edit, 'taxmod_value')[0];
 check('the spinner was chosen', $chosen->rendererName === SpinnerRenderer::NAME, $chosen->rendererName);
@@ -224,7 +224,7 @@ if ($floor === PHP_INT_MIN) {
     check('the floor is the widest an integer can be, so nothing can widen it', true, (string) $floor);
 } else {
     try {
-        $settings->put($settings->chainForUseSite($count), SettingKey::RangeMin->value, TypedValue::ofInt($floor - 1));
+        $settings->put($settings->chainForUseSite($count), SettingKey::Min->value, TypedValue::ofInt($floor - 1));
         check('a bound may not be widened at a use site (D-312)', false);
     } catch (CannotWiden $e) {
         check('a bound may not be widened at a use site (D-312)', true);
@@ -434,7 +434,7 @@ check('a boolean setting is drawn as a sliding switch',
         && str_contains($rows['read_only']->result->markup, 'taxmod-toggle-track'),
     isset($rows['read_only']) ? ($rows['read_only']->result->markup ?? 'undrawn') : 'missing');
 check('a borrowing key takes the type of the node it sits on',
-    isset($rows['range_step']) ? $rows['range_step']->type === SimpleType::Int : true);
+    isset($rows['step']) ? $rows['step']->type === SimpleType::Int : true);
 // ⚠️ **This check used to assert the opposite, and the old reason was honest at the time:** a
 // choice wanted a chooser and none was built, so a text box would have been the second way to draw
 // a field (R20a). **The chooser exists** (R28-R32 implemented in full), so the assertion is

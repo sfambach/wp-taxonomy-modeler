@@ -43,9 +43,9 @@ final class SettingShapeTest extends TestCase
         // not a property of the key but of the node being configured.
         $borrowing = [
             SettingKey::DefaultValue,
-            SettingKey::RangeMin,
-            SettingKey::RangeMax,
-            SettingKey::RangeStep,
+            SettingKey::Min,
+            SettingKey::Max,
+            SettingKey::Step,
         ];
 
         foreach ($borrowing as $key) {
@@ -63,7 +63,7 @@ final class SettingShapeTest extends TestCase
         // has no shape to be drawn in, and guessing `text` would invite somebody to type a
         // reference as characters.
         self::assertNull(SettingKey::DefaultValue->typeFor(null));
-        self::assertNull(SettingKey::RangeMin->typeFor(null));
+        self::assertNull(SettingKey::Min->typeFor(null));
     }
 
     #[Test]

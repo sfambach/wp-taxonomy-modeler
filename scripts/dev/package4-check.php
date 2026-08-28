@@ -135,11 +135,11 @@ $rows = (int) $wpdb->get_var($wpdb->prepare(
 check('one written setting, one row', $rows === 1, "$rows rows");
 
 echo "\n== 7. Bounding narrows, choosing is free ==\n";
-$settings->put($chainType, SettingKey::RangeMax->value, TypedValue::ofInt(5));
-$settings->put($chainSite, SettingKey::RangeMax->value, TypedValue::ofInt(2));
-check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::RangeMax->value]->value->int === 2);
+$settings->put($chainType, SettingKey::Max->value, TypedValue::ofInt(5));
+$settings->put($chainSite, SettingKey::Max->value, TypedValue::ofInt(2));
+check('a maximum may be lowered', $settings->resolve($chainSite)[SettingKey::Max->value]->value->int === 2);
 
-try { $settings->put($chainSite, SettingKey::RangeMax->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
+try { $settings->put($chainSite, SettingKey::Max->value, TypedValue::ofInt(9)); check('and may not be raised', false); }
 catch (CannotWiden $e) { check('and may not be raised', true); }
 
 // ⚠️ **Same guarantee, one key** ([D-405](../../docs/NewConcept/90-decision-log.md)). `mandatory` is
@@ -220,12 +220,12 @@ $settings->declareFree($chainType, '__p4 mine', TypedValue::ofText('yes'));
 check('a name of its own is allowed', $settings->resolve($chainType)['__p4 mine']->value->text === 'yes');
 
 echo "\n== 9. Typed columns, no stringly value ==\n";
-$settings->put($chainType, SettingKey::RangeMax->value, TypedValue::ofDecimal('2.50'));
+$settings->put($chainType, SettingKey::Max->value, TypedValue::ofDecimal('2.50'));
 $row = $wpdb->get_row($wpdb->prepare(
     'SELECT value_int, value_decimal, value_text FROM ' . Schema::table('settings') . '
-     WHERE owner_id = %d AND setting_key = %s', $text->id, SettingKey::RangeMax->value), ARRAY_A);
+     WHERE owner_id = %d AND setting_key = %s', $text->id, SettingKey::Max->value), ARRAY_A);
 check('a decimal lands in value_decimal', $row['value_decimal'] !== null && $row['value_text'] === null, json_encode($row));
-$back = $settings->resolve($chainType)[SettingKey::RangeMax->value]->value->decimal;
+$back = $settings->resolve($chainType)[SettingKey::Max->value]->value->decimal;
 check('and comes back exact, though not in the notation it was typed in', $back !== null && bccomp($back, '2.50', 10) === 0, var_export($back, true));
 
 echo "\n== 10. The check cleans up after itself ==\n";

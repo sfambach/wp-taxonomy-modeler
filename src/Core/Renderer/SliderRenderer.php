@@ -48,10 +48,10 @@ final class SliderRenderer extends TypedFieldRenderer
             'type'  => 'range',
             'name'  => $context->fieldName,
             'value' => $outputValue,
-            'min'   => $this->numberSetting($context, SettingKey::RangeMin->value),
-            'max'   => $this->numberSetting($context, SettingKey::RangeMax->value),
+            'min'   => $this->numberSetting($context, SettingKey::Min->value),
+            'max'   => $this->numberSetting($context, SettingKey::Max->value),
             // ⚠️ *`any` for a decimal, because a slider with an integer step cannot reach 2.5.*
-            'step'  => $this->numberSetting($context, SettingKey::RangeStep->value)
+            'step'  => $this->numberSetting($context, SettingKey::Step->value)
                 ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
         ])
             . $this->createHtmlValueSpan(RenderResult::escape($outputValue));

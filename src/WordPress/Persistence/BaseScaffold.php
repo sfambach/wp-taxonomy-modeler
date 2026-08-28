@@ -168,16 +168,16 @@ final class BaseScaffold
             // reason the scaffold has a version at all.
             $resolved = $this->settings->resolve($chain);
 
-            if (! isset($resolved[SettingKey::RangeMin->value])) {
-                $this->settings->put($chain, SettingKey::RangeMin->value, TypedValue::ofInt((int) $low));
+            if (! isset($resolved[SettingKey::Min->value])) {
+                $this->settings->put($chain, SettingKey::Min->value, TypedValue::ofInt((int) $low));
             }
 
-            if (! isset($resolved[SettingKey::RangeMax->value])) {
-                $this->settings->put($chain, SettingKey::RangeMax->value, TypedValue::ofInt((int) $high));
+            if (! isset($resolved[SettingKey::Max->value])) {
+                $this->settings->put($chain, SettingKey::Max->value, TypedValue::ofInt((int) $high));
             }
 
-            if (! isset($resolved[SettingKey::RangeStep->value])) {
-                $this->settings->put($chain, SettingKey::RangeStep->value, TypedValue::ofInt((int) $step));
+            if (! isset($resolved[SettingKey::Step->value])) {
+                $this->settings->put($chain, SettingKey::Step->value, TypedValue::ofInt((int) $step));
             }
         }
     }

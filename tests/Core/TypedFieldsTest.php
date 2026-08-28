@@ -268,8 +268,8 @@ final class TypedFieldsTest extends TestCase
         $result = (new SpinnerRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofInt(5), SimpleType::Int, [
-                SettingKey::RangeMin->value => TypedValue::ofInt(1),
-                SettingKey::RangeMax->value => TypedValue::ofInt(10),
+                SettingKey::Min->value => TypedValue::ofInt(1),
+                SettingKey::Max->value => TypedValue::ofInt(10),
             ], 'v[7]')
         );
 
@@ -283,14 +283,14 @@ final class TypedFieldsTest extends TestCase
     {
         // ⚠️ R17 names min, max and step in one breath as settings a numeric **node** has. `step`
         // was briefly a free key here, which made one of three siblings an outsider.
-        self::assertTrue(SettingKey::isReserved('range_step'));
-        self::assertSame(Narrowing::Free, SettingKey::RangeStep->direction());
+        self::assertTrue(SettingKey::isReserved('step'));
+        self::assertSame(Narrowing::Free, SettingKey::Step->direction());
 
         foreach ([new SpinnerRenderer(), new SliderRenderer()] as $renderer) {
             $result = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::ofInt(10), SimpleType::Int, [
-                    SettingKey::RangeStep->value => TypedValue::ofInt(5),
+                    SettingKey::Step->value => TypedValue::ofInt(5),
                 ], 'v[7]')
             );
 

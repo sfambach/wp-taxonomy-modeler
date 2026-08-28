@@ -35,7 +35,7 @@ final class SettingCategoryTest extends TestCase
         // settings for `double` category double.* The category is asked of the key **and the
         // subject**, never of the key alone — `range_min` borrows its type from whatever is being
         // configured, and the borrowing is what makes it belong.
-        foreach ([SettingKey::RangeMin, SettingKey::RangeMax, SettingKey::RangeStep, SettingKey::DefaultValue] as $key) {
+        foreach ([SettingKey::Min, SettingKey::Max, SettingKey::Step, SettingKey::DefaultValue] as $key) {
             self::assertSame(SettingCategory::OfTheType, SettingCategory::of($key, SimpleType::Int), $key->value);
 
             self::assertSame('int', SettingCategory::of($key, SimpleType::Int)->label(SimpleType::Int), $key->value);
@@ -49,7 +49,7 @@ final class SettingCategoryTest extends TestCase
         // ⚠️ Honest rather than convenient: there is no group to name, so it falls to the rules
         // instead of inventing one. *The panel does not draw it either — a borrowing key on a subject
         // with no type has no shape to be drawn in (D-354) — so this is about where it would sit.*
-        self::assertSame(SettingCategory::Rules, SettingCategory::of(SettingKey::RangeMin, null));
+        self::assertSame(SettingCategory::Rules, SettingCategory::of(SettingKey::Min, null));
     }
 
     #[Test]
@@ -81,7 +81,7 @@ final class SettingCategoryTest extends TestCase
         // R17 says *nothing validates it*. The second test is *whose is it* — and a step is the
         // **integer's**, right beside its min and max, which is how R17 names all three in one
         // breath. *The better question wins.*
-        self::assertSame(SettingCategory::OfTheType, SettingCategory::of(SettingKey::RangeStep, SimpleType::Int));
+        self::assertSame(SettingCategory::OfTheType, SettingCategory::of(SettingKey::Step, SimpleType::Int));
     }
 
     #[Test]

@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **465**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **118**, davon **28** noch offen |
+| Entscheidungen | **466**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **119**, davon **29** noch offen |
 
 ## Offene Fragen
 
@@ -135,6 +135,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-116](91-open-questions.md) | **offen** | A renderer declares its event handlers, the field registers, WordPress dispatches. How exactly? |
 | [OQ-117](91-open-questions.md) | **offen** | Should `RenderContext` carry only settings, and the data travel separately? |
 | [OQ-118](91-open-questions.md) | **offen** | «Render no further» — which walk does a node's `hide` stop? |
+| [OQ-119](91-open-questions.md) | **offen** | In one table, what tells a setting from a field value? |
 
 ## Entscheidungen
 
@@ -608,3 +609,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-463](90-decision-log.md) | 2026-08-28 | agreed | The renderer design, written down at last — in the owner's words, and it was already built. |
 | [D-464](90-decision-log.md) | 2026-08-28 | agreed | `hide` is built as a column with an abort — schema 10, and the setting key is gone. |
 | [D-465](90-decision-log.md) | 2026-08-28 | agreed | `RenderResult::htmlTag()` — one place knows how an element is spelled. Builds D-463's rule, and the owner's naming convention is what makes it a prom… |
+| [D-466](90-decision-log.md) | 2026-08-28 | agreed | `range_min`, `range_max` and `range_step` become `min`, `max` and `step` — schema 11. The rename only; what «no value» means is |
