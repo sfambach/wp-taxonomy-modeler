@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **479**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **122**, davon **31** noch offen |
+| Entscheidungen | **482**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **123**, davon **31** noch offen |
 
 ## Offene Fragen
 
@@ -139,6 +139,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-120](91-open-questions.md) | **offen** | Deklariert ein Renderer seine Eigenschaften, und gilt derselbe Schnitt für Konverter und Validatoren? |
 | [OQ-121](91-open-questions.md) | beantwortet | Was umfasst «Update», und wie wird eine Zeile als unlöschbar angesagt? |
 | [OQ-122](91-open-questions.md) | **offen** | Wo wohnen Export und Import: auf der Konfigurationsseite oder auf einer eigenen? |
+| [OQ-123](91-open-questions.md) | beantwortet | Wo wohnt «normaler Knoten» in der Supported-Liste, und wie beansprucht ein Renderer einen *bestimmten* Knoten? |
 
 ## Entscheidungen
 
@@ -626,3 +627,6 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-477](90-decision-log.md) | 2026-08-28 | agreed | Ein Release-Update muss zwei Dinge leisten, und der Eigentümer hat sie benannt: bestehende Daten dürfen nicht kaputtgehen, und neue Knoten aus dem Te… |
 | [D-478](90-decision-log.md) | 2026-08-28 | agreed | Der Baum startet eingeklappt, und die Vorfahren des ausgewählten Knotens sind offen. Gebaut, Zeile 60. |
 | [D-479](90-decision-log.md) | 2026-08-28 | agreed | `Cleanup` ist gebaut — dritte Untermenüseite, die drei Quellen aus D-247, ein Knopf je Zeile. Zeile 65 zur Hälfte. |
+| [D-480](90-decision-log.md) | 2026-08-28 | agreed | Der Faltzustand wird fortgeschrieben: eine frische Seite schreibt ihre Vorgabe in jeden Link, und der ausgewählte Ast bleibt trotzdem offen. Verfeine… |
+| [D-481](90-decision-log.md) | 2026-08-28 | agreed | Zwei Gruppen von Knoten bestimmen, welche Renderer angeboten werden — und die vorhandene «Supported»-Liste des Renderers trägt das, wenn «normaler Kn… |
+| [D-482](90-decision-log.md) | 2026-08-28 | agreed | Ein Renderer ist Code, also muss sein Anspruch auch Code sein: wer einen eigenen Renderer will, wird ein |

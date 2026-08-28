@@ -63,6 +63,12 @@ final class ShippedRenderers
         // with no simple type could honestly be given nothing.
         $registry->add(new FormRenderer());
 
+        // ⚠️ **The second structural renderer, and the one D-245 has been carrying since 2026-08-23**
+        // — *a node with several attributes shown as compactly as possible together*. **Offered**
+        // rather than surface-only, because which of the two container shapes a node wants is exactly
+        // the kind of thing a modeller decides (D-471: one renderer with a switch, not two).
+        $registry->add(new CompactRenderer());
+
         // ⚠️ **A whole node as a page**, and the page renderer is the same renderer (D-256, D-233).
         // Offered like any other structural renderer: naming it on a node means *draw this one as a
         // page*, which is a legitimate thing for an author to want.

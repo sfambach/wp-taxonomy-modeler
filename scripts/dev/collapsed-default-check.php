@@ -126,6 +126,57 @@ foreach (array_keys($wiese) as $name) {
 
 unset($_GET['taxmod_node']);
 
+// ── Der Zustand wird fortgeschrieben ──────────────────────────────────────
+//
+// ⚠️ **Die Bitte des Eigentümers, nachdem das Einklappen gebaut war:** *«ich hätte lieber, dass der
+// Status — welcher Knoten offen ist und welcher nicht — **fortgeschrieben** wird … wenn ich zwischen
+// zwei Knoten arbeite und dauernd die Äste zugehen, das ist ziemlich nervig.»*
+//
+// ⚠️ *Und es war kaputt, obwohl der Zustand «in der URL lag»: eine **frische** Seite trug ihn in
+// keinem einzigen Link, also berechnete der nächste Klick die Vorgabe neu. **Der Zustand lag in der
+// URL und niemand schrieb ihn hinein.** Diese Prüfung sieht genau da hin.*
+echo "\n== der Faltzustand wird in die Links geschrieben, auch auf einer frischen Seite ==\n";
+
+$_GET['taxmod_node'] = (string) $enkel->id;
+
+$markup = $plugin->screen()->render();
+
+$mitZustand = preg_match_all('/taxmod_collapsed=([^&"]*)/', $markup, $treffer);
+
+printf("       %d Links tragen den Faltzustand\n", $mitZustand);
+
+$say($mitZustand > 0, 'die frische Seite schreibt den Zustand in ihre Links');
+
+$menge = array_map('intval', explode(',', urldecode($treffer[1][0] ?? '')));
+
+// ⚠️ *Der Kern der Zusage: die Vorfahren des **anderen** Knotens bleiben in der mitgeführten Menge
+// frei, wenn man auf ihn springt — sonst geht sein Ast zu, was er «ziemlich nervig» nannte.*
+$say(
+    array_intersect($enkel->ancestorIds(), $menge) === [],
+    'die Vorfahren des gewählten Knotens stehen nicht in der mitgeführten Menge'
+);
+
+$_GET['taxmod_collapsed'] = urldecode($treffer[1][0] ?? '');
+$_GET['taxmod_node']      = (string) $ast->id;
+
+$zweiter = $plugin->screen()->render();
+
+preg_match('/taxmod_collapsed=([^&"]*)/', $zweiter, $zweiteMenge);
+
+$menge2 = array_map('intval', explode(',', urldecode($zweiteMenge[1] ?? '')));
+
+$say(
+    array_intersect($enkel->ancestorIds(), $menge2) === [],
+    'nach dem Sprung auf einen anderen Knoten ist der erste Ast NOCH offen — fortgeschrieben'
+);
+
+$say(
+    array_intersect($ast->ancestorIds(), $menge2) === [],
+    'und der Ast des neuen Knotens ist auch offen'
+);
+
+unset($_GET['taxmod_node'], $_GET['taxmod_collapsed']);
+
 // ── Und der Kern sagt dasselbe über sich ──────────────────────────────────
 echo "\n== der Kern: was gefaltet wird, sind die Knoten mit Kindern ==\n";
 

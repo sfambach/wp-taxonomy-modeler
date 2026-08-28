@@ -154,6 +154,7 @@ over them.
 | *Lebensraum* | **Namensraum** — namespace |
 | *Applikation* | **Aggregation** |
 | *Heid* | **hide** |
+| *Rennrad*, *Ränderer*, *Nottreff* | **Renderer**, **Renderer**, **`node_ref`** — *seine eigene Ansage: «Rennrad ist übrigens gleich Renderer immer»* |
 | *Track and Drop* | **drag and drop** |
 | *Andofall* | **Undo-Fall** |
 | *Inumwerte* | **Enum-Werte** |

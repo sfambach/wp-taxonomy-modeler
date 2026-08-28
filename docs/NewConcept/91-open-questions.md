@@ -4781,3 +4781,41 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 ⚠️ *Was für eine eigene Seite spricht, wenn es soweit ist: **Import ist kein Knopf, sondern ein Ablauf** — [M11](70-migration.md) sagt, ein Import muss auflösen, was nicht mehr existiert («entweder auf einen anderen Knoten abbilden oder einen Knoten anlegen und dessen Id binden»). Das ist eine Oberfläche mit Zwischenschritten, wie der Konfliktlöser ([M6](70-migration.md)) — und die passt nicht neben drei Schalter.*
 
 ⚠️ **Also die Linie, die die Frage entscheiden dürfte, ohne sie hier zu entscheiden (`PR-4`):** *der **Export** ist ein Knopf und darf auf die Installationsseite; der **Import** ist ein Ablauf und will vermutlich eine eigene Fläche. Ob man sie trotzdem zusammen hält, weil sie ein Begriffspaar sind, ist die eigentliche Frage.*
+
+---
+
+## OQ-123 — Wo wohnt «normaler Knoten» in der Supported-Liste, und wie beansprucht ein Renderer einen *bestimmten* Knoten?
+
+**Raised** 2026-08-28, aus [D-481](90-decision-log.md). *Der Eigentümer hat den Mechanismus geliefert — «normaler Knoten» wird ein Eintrag in der Liste, die es schon gibt — und dabei seine eigene Fussnote offen gelassen: «vielleicht gibt es auch noch andere Knoten später, die einen eigenen Renderer haben. **Der muss dann natürlich auch angezeigt werden.**»*
+
+*Blocks:* [30 Renderer](30-renderer.md) · *Status:* **geschlossen 2026-08-28 → [D-482](90-decision-log.md), nennt diese Frage** — beide Teile
+
+⚠️ **Teil 1: der Fall kommt in `SimpleType`, und umbenannt wird nichts.** *Er versteht die Sorge nicht, und zu Recht: «ich hätte jetzt schon gesagt, dass ein Knoten simpler Typ ist — ein Knoten einfach, nicht spezialisiert. Und alles andere ist ein Int-Knoten, Double-Knoten und so weiter.» **Gemessen stützt ihn der Bestand:** `NodeRef` und `UserRef` stehen schon im Enum und sind auch keine einfachen Typen. Der Name ist seit zwei Fällen «was für eine Art Sache ist das» — und ein Umbenennen kostet 270 Vorkommen in 57 Dateien.*
+
+⚠️ **Teil 2: die Frage muss nicht gestellt werden.** *Alle drei Kandidaten unten fallen weg, weil er den Anspruch anders verankert: **wer einen eigenen Renderer will, wird ein Typ.** «Ein Renderer ist ja sowieso was Programmiertes — ich kann ja nicht einfach nur einen Namen in die Datenbank klatschen und hoffen, dass es irgendwie gerendert wird.» Der Anspruch hängt damit im Code, neben dem Renderer, der ihn erfüllt.*
+
+⚠️ *Die Tabellen bleiben stehen, weil sie zeigen, was erwogen wurde — und weil die dritte Zeile («am Vorfahren») weiter beschreibt, wie ein **Untertyp** seinen Typ erbt. Das ist gebaut und unverändert.*
+
+### Teil 1 — wo «normaler Knoten» hingehört
+
+`Renderer::handles()` gibt heute `list<SimpleType>` zurück. Ein normaler Knoten ist gerade **kein** einfacher Typ, also ist ein weiterer Fall in `SimpleType` semantisch fremd — aber billig und an genau einer Stelle zu lesen.
+
+| | Kosten |
+|---|---|
+| **ein Fall in `SimpleType`** | *fremd im Namen des Enums, dafür ändert sich keine Signatur und keine Aufrufstelle* |
+| **ein eigenes Enum daneben**, und `handles()` gibt beides | *sauber benannt, dafür wird der Rückgabetyp eine Vereinigung und jede der 24 `handles()`-Methoden liest sich anders* |
+| **`null` als Eintrag** in der Liste | *kein neuer Typ, aber `null` in einer Liste heisst schon «kein Typ» im Abstieg (`typeOf()`), und dieselbe Bedeutung zweimal zu buchstabieren ist der Anfang einer Verwechslung* |
+
+### Teil 2 — der spezialisierte Knoten-Renderer, und das ist das eigentliche Entwurfsproblem
+
+*Spezialisierung hängt heute **allein** am `SimpleType`: `add($renderer, SimpleType::Bool)` sagt «dieser ist für Bool». **Ein Knoten, der kein einfacher Typ ist, kann so nicht beansprucht werden** — und genau solche Knoten verdienen eigene Renderer: `Money` ([C78](10-domain-core.md)), eine Einheit, eine Stückliste.*
+
+| | Wie der Anspruch ausgedrückt würde | Kosten |
+|---|---|---|
+| **am Knoten** | über eine **Bindung** ([C95](10-domain-core.md)), nicht über einen Namen | *eine Bindung ist der vorhandene Weg zu sagen «dieser Code meint jenen Knoten», und `CD` verbietet das Sonderbehandeln nach Namen* |
+| **am Zweig** | der Renderer nennt einen Zweig, alles darunter erbt | *dieselbe Form, die [OQ-093](#oq-093--how-does-a-setting-key-say-which-subjects-it-applies-to) für `factor` und `offset` offen lässt — ein Schlüssel, der zu einem **Zweig** gehört. **Zwei Fragen, eine Antwort*** |
+| **am Vorfahren** | der Renderer nennt einen Knoten, jeder Untertyp erbt ihn | *das tut der einfache Typ heute schon* |
+
+⚠️ **Der dritte ist der billigste, und das ist gemessen und nicht geraten:** *`Rendering::typeOfNode()` läuft die Vorfahren hoch, bis ein `SimpleType` gefunden ist — genau deshalb ist ein Knoten `Description` unter `text` immer noch ein Text (`RenderingTest::a_subtype_of_a_type_is_still_that_type`). **Ein Anspruch, der an einem beliebigen Knoten hängt und nach unten erbt, braucht keinen neuen Lauf, sondern denselben.***
+
+⚠️ *Nicht entschieden (`PR-4`). Und es hängt an [OQ-120](#oq-120--deklariert-ein-renderer-seine-eigenschaften-und-gilt-derselbe-schnitt-für-konverter-und-validatoren): sagt ein Renderer künftig mehr über sich, ist der Anspruch eine weitere Aussage in derselben Reihe.*

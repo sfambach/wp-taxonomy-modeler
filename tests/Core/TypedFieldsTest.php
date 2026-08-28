@@ -12,6 +12,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\ColorRenderer;
+use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
@@ -202,7 +203,7 @@ final class TypedFieldsTest extends TestCase
         );
 
         sort($names);
-        self::assertSame([FormRenderer::NAME, NodeRenderer::NAME], $names);
+        self::assertSame([CompactRenderer::NAME, FormRenderer::NAME, NodeRenderer::NAME], $names);
     }
 
     #[Test]

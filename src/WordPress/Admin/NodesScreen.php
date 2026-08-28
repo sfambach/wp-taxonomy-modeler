@@ -97,6 +97,19 @@ final class NodesScreen
      */
     private const ALL_EXPANDED = 'none';
 
+    /**
+     * Der Faltzustand, wie ihn die Links dieser Seite tragen müssen.
+     *
+     * ⚠️ **Er steht hier, weil eine frische Seite ihn sonst in keinem Link trägt** und der nächste
+     * Klick die Vorgabe neu berechnet — *«wenn ich zwischen zwei Knoten arbeite und dauernd die Äste
+     * zugehen, das ist ziemlich nervig»*. {@see render()} füllt ihn, {@see backTo()} greift darauf
+     * zurück, wenn die Anfrage selbst nichts mitbringt.
+     *
+     * ⚠️ *`null` heisst «`render()` lief nicht» — das ist der POST-Weg, und dort trägt das Formular den
+     * Zustand ({@see submissionFor()}), weshalb er dort auch nicht von hier kommen darf.*
+     */
+    private ?string $foldStateForLinks = null;
+
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
 
@@ -158,7 +171,36 @@ final class NodesScreen
         // ⚠️ *`$selected` is read **before** the walks because the default needs it: the path to the
         // node whose detail is on the right is unfolded, or the page would show a node the tree beside
         // it does not contain.*
-        $collapsed = $this->collapsedFromRequest() ?? $this->tree->collapsedByDefault($selected);
+        // ⚠️ **Der Faltzustand wird fortgeschrieben, nicht bei jedem Klick neu berechnet.** Der
+        // Eigentümer, nachdem das Einklappen gebaut war: *«ich hätte lieber, dass der Status — welcher
+        // Knoten offen ist und welcher nicht — **fortgeschrieben** wird. Sobald ich auf Taxonomie
+        // Modeller klicke, kriege ich den resetteten Baum, und wenn ich dann darin arbeite, dann
+        // bestimme **ich**, welcher Ast eingeklappt oder aufgeklappt ist. Wenn ich zwischen zwei Knoten
+        // arbeite und dauernd die Äste zugehen, das ist ziemlich nervig.»*
+        //
+        // ⚠️ **Und genau das tat es: eine frische Seite trug den Zustand in *keinem* Link.** *Ohne
+        // Parameter gab `circumstance()` `null`, `backTo()` liess den Schlüssel weg, und der nächste
+        // Klick berechnete die Vorgabe neu — **also ging jeder Ast wieder zu, den er eben geöffnet
+        // hatte.** Der Zustand lag in der URL und niemand schrieb ihn hinein.*
+        $carried   = $this->collapsedFromRequest();
+        $collapsed = $carried ?? $this->tree->collapsedByDefault($selected);
+
+        // ⚠️ **Der ausgewählte Ast bleibt offen, auch wenn der mitgeführte Zustand ihn zuklappt.** *Das
+        // ist die zweite Hälfte seiner Bitte — «der aktuelle Ast bleibt offen, das finde ich auch gut»
+        // — und ohne diese Zeile widerspricht sie der ersten: ein fortgeschriebener Zustand enthält den
+        // Vorfahren des **vorher** gewählten Knotens und würde den neuen zuklappen.*
+        //
+        // ⚠️ *`collapsedByDefault()` tut dasselbe für den Fall ohne Parameter, deshalb steht es hier
+        // nur für den mitgeführten.*
+        if ($carried !== null && $selected !== null) {
+            $collapsed = array_values(array_diff($collapsed, $selected->ancestorIds()));
+        }
+
+        // ⚠️ **Ab hier trägt jeder Link den Zustand**, auch der einer frischen Seite — das ist das
+        // «Fortschreiben». *Ein Klick auf den Menüpunkt hat keinen Parameter und setzt damit zurück,
+        // was er ausdrücklich so wollte.*
+        $this->foldStateForLinks = $collapsed === [] ? self::ALL_EXPANDED : implode(',', $collapsed);
+
         $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden);
         $parked    = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
 
@@ -2833,7 +2875,11 @@ final class NodesScreen
                 // query string — so the form carries them instead ({@see submissionFor()}). *Reading
                 // only `$_GET` was my first attempt at this and it fixed nothing, because by the time
                 // the redirect is built there is no `$_GET` left.*
-                'taxmod_collapsed' => $this->circumstance('taxmod_collapsed'),
+                // ⚠️ **Der gemerkte Zustand als Rückfall, und das ist das «Fortschreiben».** *Eine
+                // frische Seite bringt keinen Parameter mit, hat aber eine berechnete Vorgabe — die
+                // muss in die Links, sonst rechnet der nächste Klick neu und klappt zu, was gerade
+                // aufgeklappt wurde. {@see $foldStateForLinks}*
+                'taxmod_collapsed' => $this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks,
                 'taxmod_hidden'    => $this->circumstance('taxmod_hidden'),
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for

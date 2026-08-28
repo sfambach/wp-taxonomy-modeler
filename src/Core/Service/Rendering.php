@@ -945,10 +945,21 @@ final class Rendering
                     href: $targetHrefs[$edge->toId] ?? null,
                     submits: $submits[$edge->id] ?? null,
                     configured: $configured,
-                    // ⚠️ **The same panel as a node's, drawn here and placed there.** A renderer
-                    // cannot call another renderer (D-159), so the panel is drawn at this level and
-                    // handed in as a section — which is what stops the attribute row from growing a
-                    // second settings list of its own.
+                    // ⚠️ **The same panel as a node's, drawn here and placed there** — so the attribute
+                    // row cannot grow a settings list of its own.
+                    //
+                    // ⚠️ **The reason given here used to be «a renderer cannot call another renderer
+                    // (D-159)», and that rule does not exist.** *[D-452](../../../docs/NewConcept/90-decision-log.md)
+                    // withdrew it — [R5](../../../docs/NewConcept/30-renderer.md) says the opposite in
+                    // the owner's own words, *«a renderer may work with trees and **call other
+                    // renderers**»*, and D-159 says only that the descent's inputs are loaded before it
+                    // starts. **The withdrawal reached two docblocks out of three and this was the
+                    // third** — the same shape [D-469](../../../docs/NewConcept/90-decision-log.md)
+                    // measured for documents, in code.*
+                    //
+                    // ⚠️ *The arrangement stands on its own merit and needs no rule: the panel is drawn
+                    // **once** at this level and placed in every row, so there is one place that knows
+                    // what a settings panel looks like. That is `R1`, not a prohibition.*
                     sections: [
                         FieldRowRenderer::SETTINGS => new Section(
                             $settingsTitle,

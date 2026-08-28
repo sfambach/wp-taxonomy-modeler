@@ -142,9 +142,13 @@ final class Tree
             $fold[$edge->fromId] = true;
         }
 
+        // ⚠️ *`ancestorIds()` und nicht die Scheibe aus dem `path` von Hand — dieselbe Tatsache, und
+        // sie hat schon eine Stelle ({@see \Taxmod\Core\Model\Node::ancestorIds()}). Die Handarbeit
+        // stand hier eine Stunde und war die zweite Kopie einer Zerlegung, die genau einmal richtig
+        // sein muss.*
         if ($reveal !== null) {
-            foreach (array_slice(explode('.', $reveal->path), 0, -1) as $ancestor) {
-                unset($fold[(int) $ancestor]);
+            foreach ($reveal->ancestorIds() as $ancestor) {
+                unset($fold[$ancestor]);
             }
         }
 

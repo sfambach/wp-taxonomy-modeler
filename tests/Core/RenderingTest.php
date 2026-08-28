@@ -12,6 +12,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\ChoiceRenderer;
+use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\Surroundings;
@@ -382,10 +383,11 @@ final class RenderingTest extends TestCase
             $this->rendering->choicesForNode($this->thing('Supplier'))
         );
 
-        // ⚠️ Both structural renderers, and both legitimate for a thing: `form` stacks its
-        // attributes (D-098), `node` draws it as a whole page (D-256). A typed one is still refused.
+        // ⚠️ All three structural renderers, and all three legitimate for a thing: `form` stacks its
+        // attributes (D-098), `compact` puts them on one line or in one column (D-471), `node` draws
+        // it as a whole page (D-256). A typed one is still refused.
         sort($names);
-        self::assertSame([FormRenderer::NAME, NodeRenderer::NAME], $names);
+        self::assertSame([CompactRenderer::NAME, FormRenderer::NAME, NodeRenderer::NAME], $names);
     }
 
     #[Test]
