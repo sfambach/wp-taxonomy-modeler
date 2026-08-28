@@ -1297,7 +1297,7 @@ final class Rendering
     ): RenderResult {
         $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable);
 
-        $container = $this->renderers->byName(FormRenderer::NAME);
+        $container = $this->containerFor($node, $purpose);
 
         return $container->render(
             $node,
@@ -1310,6 +1310,48 @@ final class Rendering
                 surroundings: new Surroundings(parts: $parts),
             )
         );
+    }
+
+    /**
+     * Which container lays out a node's members — the chain, then the structural default.
+     *
+     * ⚠️ **This existed as a sentence in {@see nodeAsForm()}'s docblock and not as code.** *That
+     * docblock said «the container is chosen the same way a field's renderer is — the chain, then the
+     * structural default», while the line beneath it read `byName(FormRenderer::NAME)` and asked
+     * nothing. **`form` worked only because it was the only one**, and the moment
+     * {@see CompactRenderer} arrived the owner could choose it and nothing changed on screen.*
+     *
+     * ⚠️ *Same shape as `hide` stored-and-never-read ([D-396](90-decision-log.md)) and `label_role`
+     * storable-and-unreachable — **written, decided, and not built**. It keeps happening at the seam
+     * where a setting is offered before anything consumes it, and the owner keeps being the one who
+     * finds it: «ich kann irgendwie hier noch nichts richtig aufsetzen».*
+     *
+     * ⚠️ **Eligibility is asked, not re-invented** ([D-481](90-decision-log.md)): a name only counts
+     * if `eligibleFor()` would have offered it for this node. *So the read side and the write side
+     * ask one question, and a name that is no longer offerable falls back instead of drawing nothing.*
+     *
+     * ⚠️ *The fallback is {@see FormRenderer} and deliberately **not** the registry's fallback: a
+     * container that cannot lay out its members would drop them, and losing a person's fields is
+     * worse than laying them out plainly. [R14b](30-renderer.md)'s «the fallback marks itself» is
+     * about a **value**, not about a frame.*
+     */
+    private function containerFor(Node $node, Purpose $purpose): Renderer
+    {
+        $chosen = ($this->settings->resolve($this->settings->chainFor($node))[SettingKey::Renderer->value] ?? null)
+            ?->value
+            ->text;
+
+        if ($chosen === null || $chosen === '') {
+            return $this->renderers->byName(FormRenderer::NAME);
+        }
+
+        foreach ($this->renderers->eligibleFor($node, $this->typeOfNode($node), $purpose) as $one) {
+            if ($one->name() === $chosen) {
+                return $one;
+            }
+        }
+
+        return $this->renderers->byName(FormRenderer::NAME);
     }
 
     /**

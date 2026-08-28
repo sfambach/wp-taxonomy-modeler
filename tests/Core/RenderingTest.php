@@ -1352,4 +1352,59 @@ final class RenderingTest extends TestCase
         self::assertStringNotContainsString('taxmod-field-target-link', $markup);
         self::assertStringNotContainsString('<a ', $markup);
     }
+
+    // ------------------------------------------- which container lays out a node
+
+    /**
+     * ⚠️ **`nodeAsForm()`'s own docblock said this and the code did not do it.** *«The container is
+     * chosen the same way a field's renderer is — the chain, then the structural default», while the
+     * line beneath read `byName(FormRenderer::NAME)` and asked nothing. **`form` worked only because
+     * it was the only one**, and the owner found it the moment a second container existed: «ich kann
+     * irgendwie hier noch nichts richtig aufsetzen».*
+     */
+    #[Test]
+    public function a_node_is_laid_out_by_the_container_its_chain_names(): void
+    {
+        $part = $this->thing('Posten');
+        $one  = $this->editor->addField($part->id, $this->type('int')->id, 'menge');
+
+        $before = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('taxmod-form', $before);
+
+        $this->settings->put(
+            $this->settings->chainFor($part),
+            SettingKey::Renderer->value,
+            TypedValue::ofText(CompactRenderer::NAME)
+        );
+
+        $after = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('taxmod-compact', $after);
+        // ⚠️ *Und die Gegenprobe zum Namen: es ist wirklich ein anderer Aufbau und nicht dieselbe
+        // Zeichenkette mit einer zusätzlichen Klasse.*
+        self::assertNotSame($before, $after);
+    }
+
+    #[Test]
+    public function a_container_name_that_cannot_be_offered_falls_back_to_the_form(): void
+    {
+        $part = $this->thing('Posten');
+        $one  = $this->editor->addField($part->id, $this->type('int')->id, 'menge');
+
+        $this->settings->put(
+            $this->settings->chainFor($part),
+            SettingKey::Renderer->value,
+            TypedValue::ofText('gibtsnicht')
+        );
+
+        // ⚠️ **Das Formular und nicht der Auffang der Registry.** *Ein Container, der seine Teile
+        // nicht auslegen kann, verliert sie — und die Felder eines Menschen zu verlieren ist
+        // schlimmer, als sie schlicht auszulegen. [R14b](../../docs/NewConcept/30-renderer.md)s «der
+        // Auffang meldet sich selbst» handelt von einem **Wert**, nicht von einem Rahmen.*
+        $markup = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('taxmod-form', $markup);
+        self::assertStringContainsString('menge', $markup);
+    }
 }

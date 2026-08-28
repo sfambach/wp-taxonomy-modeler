@@ -4729,6 +4729,40 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 
 ⚠️ *Warum das nicht in einem Rutsch geraten wird: es ist genau die Form, die den `hide`-Faden elf Entscheidungen gekostet hat ([D-467](90-decision-log.md)) — **er sagte an zwei Tagen «Attribut» und ich las beide Male «Setting»**. Eine Lesart zu wählen, weil sie plausibel ist, ist billiger als sie zu erfragen und teurer als beides.*
 
+### Teil 4 — sagt ein Renderer, **was er braucht**, um zeichnen zu können?
+
+**Raised** 2026-08-28, vom Eigentümer, während er über die feste Verdrahtung in `nodeAsForm()` nachdachte: *«man könnte das Ganze natürlich auch über **Interfaces** irgendwie regeln, dass die Renderer ein bestimmtes Interface supporten. Und der Knoten, der das Interface implementiert, der hat auch Zugriff auf den Renderer. Das würde vielleicht auch einiges einfacher machen, an die Daten des Knotens zu kommen, weil dann genau bekannt ist über das Interface, **welche Daten verfügbar sein müssen**.»*
+
+⚠️ **Die zweite Hälfte seines Satzes ist eine offene Frage; die erste ist schon beantwortet.** *«Wer darf mich wählen» ist [D-481](90-decision-log.md)s Liste und [D-482](90-decision-log.md)s «wer einen eigenen Renderer will, wird ein Typ» — ein Interface daneben wäre eine **zweite Antwort auf dieselbe Frage**. **«Was brauche ich, um zeichnen zu können» hat dagegen heute gar keine Antwort.***
+
+⚠️ *Und die wörtliche Lesart geht nicht: **ein Knoten kann kein Interface implementieren.** Ein Interface implementiert eine Klasse, und alle Knoten sind dieselbe Klasse {@see \Taxmod\Core\Model\Node} — `Money` ist keine PHP-Klasse, sondern eine Zeile. Was diese Rolle spielt, ist der **Typ** ([D-482](90-decision-log.md)).*
+
+#### Gemessen, 2026-08-28 — dreizehn Felder, und niemand liest mehr als sechs
+
+`Surroundings` bietet dreizehn Felder an: `refersTo`, `parts`, `actions`, `href`, `submits`, `rows`, `sections`, `configured`, `options`, `mayBeNothing`, `refersToARecord`, `hidden`, `formId`.
+
+| Renderer | liest daraus |
+|---|---|
+| `FormRenderer`, `CompactRenderer` | `parts` |
+| `TreeRenderer` | `rows` |
+| `ReferenceRenderer` | `refersTo` |
+| `HeadRenderer`, `NodeRenderer`, `InlineChooserRenderer` | `sections` |
+| `ChoiceRenderer` | `formId`, `mayBeNothing`, `options`, `refersTo` |
+| `FieldRowRenderer` | **sechs** — `actions`, `configured`, `href`, `refersTo`, `sections`, `submits` |
+| `PlainRenderer` | `refersToARecord` |
+
+*Sechzehn Renderer lesen überhaupt etwas daraus, und **nichts davon ist irgendwo ausgesprochen**. Der Abstieg reicht hinein, was er gerade hat; ein Renderer nimmt, was er findet, und schweigt, wenn es fehlt.*
+
+#### Warum das nicht bloss Ordnung wäre
+
+⚠️ **Ein fehlender Eingang wird heute als das falsche Problem gemeldet, und das ist gemessen.** *Der Docblock von {@see \Taxmod\Core\Renderer\Surroundings::$refersToARecord} hält den Fall fest: die Meldung sagte «der hier eingestellte kann keine Referenz zeichnen» und schickte damit jemanden zur Renderer-Auswahl, **wo nichts falsch war** — der Renderer, den es braucht, existierte nicht. **Eine Störung, die die falsche Ursache nennt, kostet mehr als eine, die «nicht gebaut» sagt.***
+
+⚠️ *Mit einer Ansage könnte der Abstieg **prüfen**: verlangt ein Renderer `parts` und bekommt keine, ist das eine benannte Störung an der Stelle, an der sie entsteht — nicht eine leere Zeile weiter unten.*
+
+⚠️ **Was zu entscheiden ist:** *ob die Ansage eine Liste von Feldnamen ist (billig, aber Zeichenketten), ein Enum je Eingang (prüfbar, ein Fall je Feld), oder mehrere kleine Interfaces, die ein Renderer implementiert — `NeedsParts`, `NeedsRows`, `NeedsTarget` — was seiner ursprünglichen Idee am nächsten kommt und die Prüfung zu einem `instanceof` macht. **Die dritte ist die einzige, die der Compiler mitprüft.***
+
+⚠️ *Nicht entschieden (`PR-4`). Und es ist derselbe Faden wie Teil 1: sagt ein Renderer künftig mehr über sich, sind seine Eigenschaften und seine Eingänge zwei Aussagen in derselben Reihe.*
+
 ---
 
 ## OQ-121 — Was umfasst «Update», und wie wird eine Zeile als unlöschbar angesagt?
@@ -4819,3 +4853,27 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 ⚠️ **Der dritte ist der billigste, und das ist gemessen und nicht geraten:** *`Rendering::typeOfNode()` läuft die Vorfahren hoch, bis ein `SimpleType` gefunden ist — genau deshalb ist ein Knoten `Description` unter `text` immer noch ein Text (`RenderingTest::a_subtype_of_a_type_is_still_that_type`). **Ein Anspruch, der an einem beliebigen Knoten hängt und nach unten erbt, braucht keinen neuen Lauf, sondern denselben.***
 
 ⚠️ *Nicht entschieden (`PR-4`). Und es hängt an [OQ-120](#oq-120--deklariert-ein-renderer-seine-eigenschaften-und-gilt-derselbe-schnitt-für-konverter-und-validatoren): sagt ein Renderer künftig mehr über sich, ist der Anspruch eine weitere Aussage in derselben Reihe.*
+
+---
+
+## OQ-124 — Gibt es im Code spezialisierte Knotenklassen? [D-036](90-decision-log.md) hat das delegiert und um Korrektur gebeten
+
+**Raised** 2026-08-28, vom Eigentümer: *«das ist genau der Grund, warum ich dachte, dass wir **spezialisierte Knoten anlegen** — einfach ableiten von Knoten. Und das macht einiges einfacher, auch bei irgendwelchen Berechnungen oder bei den Attributen. Weil da kann ich dann einfach sagen: ein **Int-Knoten** hat ein Max und Min, und ein **Textknoten** hat Spalten und Zeilen — wobei ich mir da noch nicht ganz sicher bin.»*
+
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · **wiederaufgenommen aus [D-036](90-decision-log.md), die es ausdrücklich anbot**
+
+⚠️ **[D-036](90-decision-log.md) hat genau diese Frage an mich delegiert und um Korrektur gebeten — das ist der Moment.** *Sie lautet: «Nodes sind **eine Klasse** mit typspezifischem Verhalten in registrierten Strategien und optionalen typisierten Zugriffen», Status `agreed (delegated)`, mit dem Zusatz: **«Der Eigentümer sagte, die Repräsentation sei ihm gleich. Notiert, damit die Arbeit weitergeht; korrigiere es, falls das nicht die Absicht war.»** Drei Tage später nennt er eine andere Absicht.*
+
+⚠️ **Was [V5](00-vision-and-scope.md) dazu sagt und was nicht, und die Unterscheidung ist der Kern.** *Er hat V5 am 2026-08-23 selbst mit einer Nuance bestätigt: «es gibt Spezialisierungen, aber diese Aussage betraf das **Datenmodell** und **wie Knoten gespeichert werden**.» **Die Speicherfrage ist damit entschieden: eine Gestalt in der Datenbank.** Über die **PHP-Repräsentation** sagt V5 nichts — und genau die meint er hier. *Beides in einen Topf zu werfen wäre derselbe Fehler wie «Attribut» als «Setting» zu lesen ([D-467](90-decision-log.md)).*
+
+### Der gemessene Einwand, und er ist konkret
+
+⚠️ **Unterklassen brauchen bei der Hydrierung einen Unterscheider, und der Unterscheider ist ein *aufgelöster* Typ.** *`WpdbNodeRepository` baut heute aus einer Zeile ein {@see \Taxmod\Core\Model\Node}. Welche Unterklasse es wäre, sagt die Zeile nicht: der Typ eines Knotens ist **kein Feld**, sondern das Ergebnis eines Laufs die Vorfahren hoch (`Rendering::typeOfNode()`, und deshalb ist ein Knoten `Description` unter `text` ein Text). **Also müsste das Repository auflösen, um zu bauen — und auflösen braucht den Rahmen, der auf dem Repository sitzt.** Das ist kein Verbot, aber es ist die Arbeit, die dahinter steckt, und sie war bisher nirgends benannt.*
+
+### Und der Teil, der schon eine eigene Frage hat
+
+⚠️ *«Ein Int-Knoten hat Max und Min, ein Textknoten hat Spalten und Zeilen» ist **[OQ-093](#oq-093--how-does-a-setting-key-say-which-subjects-it-applies-to) von der anderen Seite**: dort «wie sagt ein Schlüssel, für welche Subjekte er gilt», hier «wie sagt ein Knoten, welche Schlüssel für ihn gelten». **Eine Unterklasse ist ein Kandidat für diese Antwort** — heute sagt es niemand, weshalb ein `factor` auf einem Textknoten angeboten wird und nichts widerspricht.*
+
+⚠️ *Und `min`/`max` sind dabei nicht dasselbe wie `Spalten`/`Zeilen`: die ersten beschränken einen **Wert** und gehören ins Modell ([D-468](90-decision-log.md) verbietet dort sogar das Aufweiten), die zweiten beschränken ein **Steuerelement** und sind freie Schlüssel des Textarea-Renderers ([OQ-120](#oq-120--deklariert-ein-renderer-seine-eigenschaften-und-gilt-derselbe-schnitt-für-konverter-und-validatoren)). Seine eigene Unsicherheit — «wobei ich mir da noch nicht ganz sicher bin» — trifft genau diese Naht.*
+
+⚠️ *Nicht entschieden (`PR-4`). Was hier **nicht** offen ist: dass ein Knoten festlegt, welche Renderer er zulässt — das hat er im selben Atemzug verworfen ([D-483](90-decision-log.md)).*
