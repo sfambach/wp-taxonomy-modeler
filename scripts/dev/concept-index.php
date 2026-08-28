@@ -42,6 +42,14 @@ function lead(string $text, int $keep = 150): string
 }
 
 // ── Decisions ──
+require __DIR__ . '/lib/supersessions.php';
+
+// ⚠️ **Dieselbe Stelle wie `supersession-check.php`** (`lib/supersessions.php`). *Vorher hatte
+// jede ihre eigene Erkennung: die Prüfung an den Verben, dieser Index an zwei deutschen
+// Wendungen. **Am 2026-08-28 war die Prüfung grün und hier stand dieselbe Entscheidung als
+// `agreed`** — und der Eigentümer schloss daraus zu Recht, dass er der Datei nicht trauen kann.*
+$overtakenBy = taxmodSupersessions(taxmodDecisionRows($root . '90-decision-log.md'));
+
 $rows = [];
 
 foreach (file($root . '90-decision-log.md') as $line) {
@@ -52,17 +60,12 @@ foreach (file($root . '90-decision-log.md') as $line) {
     $cells  = explode(' | ', rtrim($line, " |\r\n"));
     $status = trim($cells[count($cells) - 3] ?? '?');
 
-    // A back-reference in the text is what says «overtaken», because a status word cannot say «partly».
-    $overtaken = preg_match('/ist ersetzt\*\* durch ([^;.]+)|\*\*Ersetzt\*\* durch ([^;.]+)/u', $line, $s)
-        ? trim(strip_tags($s[1] ?: $s[2]))
-        : '';
-
     $rows[] = [
         'id'     => $m[1],
         'date'   => $m[2],
         'lead'   => lead($cells[2] ?? ''),
         'status' => str_contains($status, 'superseded') ? 'superseded' : trim($status, '`'),
-        'over'   => (string) preg_replace('/\[|\]|\(#\)/', '', $overtaken),
+        'over'   => implode(', ', $overtakenBy[$m[1]] ?? []),
     ];
 }
 
@@ -122,8 +125,10 @@ $md .= "\n## Entscheidungen\n\n⚠️ *Eine überholte Entscheidung steht hier m
     . "| Nr. | Datum | Stand | Worum es geht |\n|---|---|---|---|\n";
 
 foreach ($rows as $r) {
+    // ⚠️ *«Ersetzt durch» und nicht bloss «ersetzt»: wer die Zeile liest, will sofort wissen, wo
+    // die geltende Fassung steht. Ein Statuswort schickt ihn zurück ins 682-KB-Log.*
     $stand = $r['over'] !== ''
-        ? '⚠️ ' . $r['over']
+        ? '⚠️ ersetzt durch ' . $r['over']
         : ($r['status'] === 'superseded' ? '⚠️ ersetzt' : $r['status']);
 
     $md .= sprintf("| [%s](90-decision-log.md) | %s | %s | %s |\n", $r['id'], $r['date'], $stand, $r['lead']);

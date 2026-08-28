@@ -36,13 +36,14 @@ if (! is_readable($file)) {
     exit(1);
 }
 
-$rows = [];
+require __DIR__ . '/lib/supersessions.php';
 
-foreach (file($file) as $line) {
-    if (preg_match('/^\| (D-\d+) \|/', $line, $m)) {
-        $rows[$m[1]] = $line;
-    }
-}
+// ⚠️ **Die Erkennung liegt jetzt an einer Stelle** (`lib/supersessions.php`), weil sie vorher hier
+// **und** in `concept-index.php` stand — in zwei verschiedenen Fassungen. *Ergebnis am 2026-08-28:
+// diese Prüfung war grün, während der Index dieselbe Entscheidung als `agreed` führte. Der Eigentümer
+// las das als «die Datei wird nicht mehr anständig geändert», und er hatte recht: **zwei Kopien einer
+// Regel sind zwei Wahrheiten.***
+$rows = taxmodDecisionRows($file);
 
 if (count($rows) < 100) {
     echo "Nur " . count($rows) . " Entscheidungen erkannt — das Log wurde nicht richtig gelesen.\n";
@@ -55,43 +56,11 @@ printf("Entscheidungen: %d\n", count($rows));
 $unanswered = [];
 $answered   = 0;
 
-foreach ($rows as $killer => $line) {
-    // ⚠️ *Bounded to the same sentence: `[^.|]{0,110}` stops the match running past a full stop or a
-    // cell wall, so «supersedes D-x» cannot pick up a `D-y` mentioned three clauses later.*
-    //
-    // ⚠️ **The look-behind is what makes it right, and a false alarm taught it.** `D-375` says
-    // *«**[D-232](#) supersedes** [D-133](#)»* — reporting **another** decision's supersession, which
-    // the naive pattern read as *D-375 supersedes D-133*. *So a hit only counts when no other decision
-    // is named immediately before the verb: whoever stands there is the subject of the sentence.*
-    // ⚠️ **Auch die deutschen Verben, und dass sie fehlten hat sofort Schaden gemacht.** *Das Log ist
-    // zweisprachig geworden: die älteren Zeilen sagen «supersedes», die neueren «überholt» oder
-    // «ersetzt». **[D-484](../../docs/NewConcept/90-decision-log.md) überholte am 2026-08-28 die
-    // Repräsentationshälfte von [D-036](../../docs/NewConcept/90-decision-log.md) — auf Deutsch —
-    // und diese Prüfung sah es nicht, also bekam D-036 nie seinen Rückverweis und stand weiter als
-    // `agreed` im Index.* **Eine Prüfung, die nur eine Sprache kennt, ist in einer zweisprachigen
-    // Datei blind, und sie sagt es nicht.**
-    if (! preg_match_all('/(?<before>[^.|]{0,40})(?:[Ss]upersedes|überholt|ersetzt)[^.|]{0,110}?(?<victim>D-\d+)/u', $line, $hit, PREG_SET_ORDER)) {
-        continue;
-    }
-
-    $named = [];
-
-    foreach ($hit as $one) {
-        if (preg_match('/D-\d+/', $one['before'])) {
-            continue;
-        }
-
-        $named[$one['victim']] = true;
-    }
-
-    foreach (array_keys($named) as $victim) {
-        if (! isset($rows[$victim]) || $victim === $killer) {
-            continue;
-        }
-
-        // The victim has to name its successor — in its status cell or anywhere in its own row.
+foreach (taxmodSupersessions($rows) as $victim => $killers) {
+    foreach ($killers as $killer) {
+        // Das Opfer muss seinen Nachfolger nennen — in der Statuszelle oder irgendwo in seiner Zeile.
         if (str_contains($rows[$victim], $killer)) {
-            $answered++;
+            ++$answered;
 
             continue;
         }
@@ -99,7 +68,6 @@ foreach ($rows as $killer => $line) {
         $unanswered[$victim][$killer] = true;
     }
 }
-
 echo "\n== jede ersetzte Entscheidung nennt ihren Nachfolger ==\n";
 
 if ($unanswered === []) {

@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **486**, davon **28** ersetzt oder teilweise überholt |
+| Entscheidungen | **486**, davon **31** ersetzt oder teilweise überholt |
 | Offene Fragen | **125**, davon **32** noch offen |
 
 ## Offene Fragen
@@ -169,7 +169,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-017](90-decision-log.md) | 2026-08-22 | agreed`, placement corrected by [D-135](#) | A part used in exactly one place stays an ordinary node |
 | [D-018](90-decision-log.md) | 2026-08-22 | agreed | Renderer split: a completely different presentation is a separate renderer; a parameterisable detail is a renderer setting. |
 | [D-019](90-decision-log.md) | 2026-08-22 | agreed` (owner objected to the single-table draft; reasoning in [40 I18n](40-i18n.md)) | Labels get their own table, separate from settings. |
-| [D-020](90-decision-log.md) | 2026-08-22 | ⚠️ D-209, die Kette dann durch D-386 | Every node carries a locale-neutral base name |
+| [D-020](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-209, D-386 | Every node carries a locale-neutral base name |
 | [D-021](90-decision-log.md) | 2026-08-22 | agreed | Renderers are PHP. |
 | [D-022](90-decision-log.md) | 2026-08-22 | agreed | A node name is required and explicitly not unique. |
 | [D-023](90-decision-log.md) | 2026-08-22 | agreed | `Label` keeps its name; roles lose the prefix. |
@@ -185,7 +185,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-033](90-decision-log.md) | 2026-08-22 | agreed | Orphaned overrides are never cascade-deleted. |
 | [D-034](90-decision-log.md) | 2026-08-22 | agreed | Node selection is one unified interaction |
 | [D-035](90-decision-log.md) | 2026-08-22 | agreed | A chooser takes two nodes: |
-| [D-036](90-decision-log.md) | 2026-08-22 | agreed` (delegated) | ⚠️ Die Repräsentationshälfte ist ersetzt durch D-484: der Eigentümer will |
+| [D-036](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-484 | ⚠️ Die Repräsentationshälfte ist ersetzt durch D-484: der Eigentümer will |
 | [D-037](90-decision-log.md) | 2026-08-22 | agreed | A model change is breaking or not depending on the existing data, not on the kind of change. |
 | [D-038](90-decision-log.md) | 2026-08-22 | agreed | Relation kinds do not belong in the tree. |
 | [D-039](90-decision-log.md) | 2026-08-22 | agreed | A unit value is one notion |
@@ -209,7 +209,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-057](90-decision-log.md) | 2026-08-22 | agreed | Numbers are whole or decimal, never floating point. |
 | [D-058](90-decision-log.md) | 2026-08-22 | agreed | Two exports, kept apart. |
 | [D-059](90-decision-log.md) | 2026-08-22 | agreed | Import resolution is the conflict resolver. |
-| [D-060](90-decision-log.md) | 2026-08-22 | ⚠️ D-210 | The model version is carried by the record, not by `Identity`. |
+| [D-060](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-210 | The model version is carried by the record, not by `Identity`. |
 | [D-061](90-decision-log.md) | 2026-08-22 | agreed | Migration needs the changes, not the snapshots — and the changelog is the migration script. |
 | [D-062](90-decision-log.md) | 2026-08-22 | agreed | The resolver offers: map, map with transformation, bulk fill, fill by hand, delete. |
 | [D-063](90-decision-log.md) | 2026-08-22 | agreed | A change that creates a new version warns at the moment it is made |
@@ -227,12 +227,12 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-075](90-decision-log.md) | 2026-08-22 | agreed | A numeral-system change is a converter |
 | [D-076](90-decision-log.md) | 2026-08-22 | agreed | Converters divide into invertible and lossy, and only invertible ones may serve input or search. |
 | [D-077](90-decision-log.md) | 2026-08-22 | agreed | A node may carry several converters; which one applies is a setting. |
-| [D-078](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | ~~Settings are one construct with two scopes — a `scope` column separating model-scope keys (`min`, `max`, `step`) from system-scope keys (`hide`, `r… |
+| [D-078](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-084 | ~~Settings are one construct with two scopes — a `scope` column separating model-scope keys (`min`, `max`, `step`) from system-scope keys (`hide`, `r… |
 | [D-079](90-decision-log.md) | 2026-08-22 | agreed` (confirmed by the owner 2026-08-22) | An installation-wide default is a setting on a reserved installation identity |
-| [D-080](90-decision-log.md) | 2026-08-22 | ⚠️ D-436 — `name` gehoert dazu, weil Knoten und Kante beide einen tragen und beide ihn uebersetzbar machen (D-410) | `Identity` carries `id` and `version` only. |
+| [D-080](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-436 | `Identity` carries `id` and `version` only. |
 | [D-081](90-decision-log.md) | 2026-08-22 | agreed | Every object has at least one changelog item — the seed's `1..*` was right. |
 | [D-082](90-decision-log.md) | 2026-08-22 | agreed` (proposal) | Every node has exactly four fixed attributes: `id`, `version`, `name`, `path`. |
-| [D-083](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | Seven tables. |
+| [D-083](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-133 | Seven tables. |
 | [D-084](90-decision-log.md) | 2026-08-22 | agreed | Settings are one construct with one mechanism and a reserved namespace. Supersedes D-078. |
 | [D-085](90-decision-log.md) | 2026-08-22 | agreed | The distinction is engine-owned versus type-owned keys, not *does the engine branch on it*. |
 | [D-086](90-decision-log.md) | 2026-08-22 | agreed | Edge-only settings exist; node-only settings do not. |
@@ -244,7 +244,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-092](90-decision-log.md) | 2026-08-22 | agreed | R3 answered: a node renderer renders exactly one node; an edge renderer handles one value or many. |
 | [D-093](90-decision-log.md) | 2026-08-22 | agreed | Every setting resolves on its own key. |
 | [D-094](90-decision-log.md) | 2026-08-22 | agreed | Ground rule: when rendering, honour every attribute — no special arrangements, the same everywhere. |
-| [D-095](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | `read_only` removes the input, not the field |
+| [D-095](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-096 | `read_only` removes the input, not the field |
 | [D-096](90-decision-log.md) | 2026-08-22 | agreed | The preview needs no special arrangement — it calls render twice |
 | [D-097](90-decision-log.md) | 2026-08-22 | **corrected by [D-098](#)** — that invented a special case | at the edge |
 | [D-098](90-decision-log.md) | 2026-08-22 | agreed | A container renderer is chosen like every other renderer. Corrects D-097. |
@@ -256,7 +256,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-104](90-decision-log.md) | 2026-08-22 | agreed | A depth limit is a rendering concern only. Calculations must never be truncated. |
 | [D-105](90-decision-log.md) | 2026-08-22 | agreed | A reference renderer: it draws the target's label and a link, and does not descend. |
 | [D-106](90-decision-log.md) | 2026-08-22 | agreed | Display and input are independent, and the display is not binary. Clarifies D-105. |
-| [D-107](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | A chooser is a renderer |
+| [D-107](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-108 | A chooser is a renderer |
 | [D-108](90-decision-log.md) | 2026-08-22 | agreed | Inline and popup are two separate chooser renderers, not one with a setting. Supersedes that part of D-107. |
 | [D-109](90-decision-log.md) | 2026-08-22 | agreed | List or tree is derived from the branch, not chosen. |
 | [D-110](90-decision-log.md) | 2026-08-22 | agreed | The branch root is excluded from the choice by default, with a setting to include it. |
@@ -271,7 +271,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-119](90-decision-log.md) | 2026-08-22 | agreed | A base scaffold ships and is imported once; afterwards it is ordinary authored content. |
 | [D-120](90-decision-log.md) | 2026-08-22 | agreed | A binding is a named slot in the installation configuration that points at a node — and nothing else. |
 | [D-121](90-decision-log.md) | 2026-08-22 | **corrected by [D-122](#)** | ~~Deletion protection is derived from references, not from a *template* flag.~~ The reference half stands and is kept by D-122; the rejection of a ma… |
-| [D-122](90-decision-log.md) | 2026-08-22 | ⚠️ D-194 | Framework types are marked and undeletable; the reference check stands beside it. Corrects D-121. |
+| [D-122](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-194 | Framework types are marked and undeletable; the reference check stands beside it. Corrects D-121. |
 | [D-123](90-decision-log.md) | 2026-08-22 | agreed | Deletion is two-stage: park, then purge. |
 | [D-124](90-decision-log.md) | 2026-08-22 | agreed | Moving a node is referentially free and semantically a model change. |
 | [D-125](90-decision-log.md) | 2026-08-22 | agreed | Deleting a referenced node parks every edge that points at it, and that is *an attribute was deleted* for each owning node |
@@ -282,7 +282,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-130](90-decision-log.md) | 2026-08-22 | agreed | The expression is a structured tree, built with a picker rather than typed. |
 | [D-131](90-decision-log.md) | 2026-08-22 | agreed | A value reference resolves either to a |
 | [D-132](90-decision-log.md) | 2026-08-22 | agreed`, derivation demoted | Standalone-versus-composed applies only to nodes whose instances are records. |
-| [D-133](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt | Where a value is stored follows from the relation kind and the multiplicity. Supersedes the storage half of D-083. |
+| [D-133](90-decision-log.md) | 2026-08-22 | ⚠️ ersetzt durch D-232 | Where a value is stored follows from the relation kind and the multiplicity. Supersedes the storage half of D-083. |
 | [D-134](90-decision-log.md) | 2026-08-22 | agreed | `record_values` keys on a path, with the last edge kept in `edge_id`. |
 | [D-135](90-decision-log.md) | 2026-08-22 | agreed | Composed-only nodes live under a `Kompositionen` node. Corrects D-017. |
 | [D-136](90-decision-log.md) | 2026-08-22 | agreed | A multi-valued composition creates its node automatically. |
@@ -317,7 +317,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-165](90-decision-log.md) | 2026-08-23 | agreed | Correctness has no limit, speed is promised to about three conditions, and the reporting case gets a flat projection rather than a cleverer query. |
 | [D-166](90-decision-log.md) | 2026-08-23 | agreed` (confirmed by the owner 2026-08-23) | What cannot have been meant is removed by the converter; what might have been meant is questioned by the validator. |
 | [D-167](90-decision-log.md) | 2026-08-23 | agreed | Contains is the default in the quick search, an operator field carries the filter, and there is no wildcard character. |
-| [D-168](90-decision-log.md) | 2026-08-23 | ⚠️ D-217 | Purpose is part of the render context, and searching is the third one. The registry is keyed by type *and* purpose. |
+| [D-168](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-217 | Purpose is part of the render context, and searching is the third one. The registry is keyed by type *and* purpose. |
 | [D-169](90-decision-log.md) | 2026-08-23 | agreed | Yes, a WordPress plugin — and WordPress is used to the full, not held at arm's length. What is borrowed gets written down. |
 | [D-170](90-decision-log.md) | 2026-08-23 | agreed` (confirmed by the owner 2026-08-23) | The namespace is the marker, a ledger catches what the namespace cannot, and a second boundary is the intended shape of a port. |
 | [D-171](90-decision-log.md) | 2026-08-23 | agreed | WordPress is not underneath the core, it is around it, and every arrow points inward. |
@@ -334,7 +334,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-182](90-decision-log.md) | 2026-08-23 | agreed | Branch deletion stops being its own button and becomes the second answer in the delete dialog. |
 | [D-183](90-decision-log.md) | 2026-08-23 | agreed | Having data is read off the branch: `Model` and `Kompositionen` have data, everything else is means to an end. |
 | [D-184](90-decision-log.md) | 2026-08-23 | agreed | Small lists do not get a second storage mechanism; they get a cheaper editor. |
-| [D-185](90-decision-log.md) | 2026-08-23 | ⚠️ D-187 und D-188 | The branch without data is called `Bausteine`. |
+| [D-185](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-187, D-188 | The branch without data is called `Bausteine`. |
 | [D-186](90-decision-log.md) | 2026-08-23 | agreed | V1–V9 are confirmed, and V5 gains a nuance that changes what it forbids. |
 | [D-187](90-decision-log.md) | 2026-08-23 | agreed | English is the standard for every term. German exists as a translation, where one is needed. |
 | [D-188](90-decision-log.md) | 2026-08-23 | agreed | The three branches are `Model`, `Compositions` and `Primitives`. |
@@ -360,13 +360,13 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-208](90-decision-log.md) | 2026-08-23 | agreed | A list block is a node plus a restriction. |
 | [D-209](90-decision-log.md) | 2026-08-23 | agreed | `long` is gone. It was renamed `help`, and the fallback chain ends there. |
 | [D-210](90-decision-log.md) | 2026-08-23 | agreed | A record keeps its version stamp. Resolving touches only what actually conflicted. |
-| [D-211](90-decision-log.md) | 2026-08-23 | ⚠️ D-229 | A medium has two locations on purpose, carries its provenance, and lives in the WordPress media library. |
+| [D-211](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-229 | A medium has two locations on purpose, carries its provenance, and lives in the WordPress media library. |
 | [D-212](90-decision-log.md) | 2026-08-23 | agreed | A project fact sheet is not a new block — it is D-206 under the display purpose. |
 | [D-213](90-decision-log.md) | 2026-08-23 | agreed | An update corrects what the author never touched. D-119 is precised, not overturned. |
 | [D-214](90-decision-log.md) | 2026-08-23 | agreed | Only one composing edge may point at a node — and my objection to that rule rested on my own misuse of a term. |
 | [D-215](90-decision-log.md) | 2026-08-23 | agreed | The term is `Data Pack`, not `Pack`. |
 | [D-216](90-decision-log.md) | 2026-08-23 | agreed | The `number` column holds a plural |
-| [D-217](90-decision-log.md) | 2026-08-23 | ⚠️ D-236 | One node, one renderer. The purpose is passed to it, not keyed on. Supersedes the registry-key half of D-168 and resolves contradiction 1. |
+| [D-217](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-236 | One node, one renderer. The purpose is passed to it, not keyed on. Supersedes the registry-key half of D-168 and resolves contradiction 1. |
 | [D-218](90-decision-log.md) | 2026-08-23 | agreed | Read-only renders under the display purpose — and a read-only field with neither calculation nor default is a model conflict. |
 | [D-219](90-decision-log.md) | 2026-08-23 | agreed | A representation is a converter plus a renderer, and the mapping is model data. The only axis is invertible or not. |
 | [D-220](90-decision-log.md) | 2026-08-23 | agreed | Whether something is one field or several is decided by the model, not by the display. The composed type is the unit of rendering. |
@@ -374,7 +374,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-222](90-decision-log.md) | 2026-08-23 | agreed | A decision is the record of a choice, not a wall. Revising one is normal work. |
 | [D-223](90-decision-log.md) | 2026-08-23 | agreed | Automatic is a default, never a fact. |
 | [D-224](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | A decorator is a renderer, and one layer of decoration is allowed. |
-| [D-225](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | Invertible replaces, non-invertible decorates — and that settles when a second occurrence is needed. |
+| [D-225](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-226 | Invertible replaces, non-invertible decorates — and that settles when a second occurrence is needed. |
 | [D-226](90-decision-log.md) | 2026-08-23 | agreed | Invertibility decides only whether a form can be written into. Replace or decorate is a free choice. Supersedes D-225. |
 | [D-227](90-decision-log.md) | 2026-08-23 | agreed | The rule counts possibilities, not entries. Refines D-198 and resolves its clash with D-056. |
 | [D-228](90-decision-log.md) | 2026-08-23 | agreed | P5 stands untouched; a projection is not storage, and there are few of them by design. |
@@ -412,7 +412,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-260](90-decision-log.md) | 2026-08-23 | agreed | A unit's short form is a label in the `symbol` role. The modelled `symbol` attribute of C44 goes. |
 | [D-261](90-decision-log.md) | 2026-08-23 | agreed | A label carries a *translatable* mark; `symbol` defaults to |
 | [D-262](90-decision-log.md) | 2026-08-23 | agreed | Of two possible defaults, take the one whose failure is noticed. `symbol` therefore defaults to *not translatable*. |
-| [D-263](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | A chooser is told two roles: one for the open list, one for the closed field. |
+| [D-263](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-264 | A chooser is told two roles: one for the open list, one for the closed field. |
 | [D-264](90-decision-log.md) | 2026-08-23 | agreed | A renderer is told a |
 | [D-265](90-decision-log.md) | 2026-08-23 | agreed | A table footer aggregate is a block setting, and it totals what is shown — not what exists. |
 | [D-266](90-decision-log.md) | 2026-08-23 | agreed | An override can be reset to *inherited*, and that is not the same as storing an empty value. |
@@ -447,7 +447,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-295](90-decision-log.md) | 2026-08-23 | agreed | Duplicating an attribute copies the definition, not the data. Copying values is a separate, named operation. |
 | [D-296](90-decision-log.md) | 2026-08-23 | agreed | A machine change is recorded as the machine, never as a person. |
 | [D-297](90-decision-log.md) | 2026-08-23 | agreed | Locale-dependent formatting follows the reader, not the installation. |
-| [D-298](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | A list of tick boxes commits when it is left, not on every tick. |
+| [D-298](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-299 | A list of tick boxes commits when it is left, not on every tick. |
 | [D-299](90-decision-log.md) | 2026-08-23 | agreed | Commit-on-leave was a crutch, not a principle. Supersedes D-298. |
 | [D-300](90-decision-log.md) | 2026-08-23 | agreed | An allow-list is *one* value that happens to be a set. The group argument stands — with a third reason, and this one holds. |
 | [D-301](90-decision-log.md) | 2026-08-23 | agreed | Where the data are must be visible in the product. |
@@ -459,9 +459,9 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-307](90-decision-log.md) | 2026-08-23 | agreed | A pattern book, because the concept can express more than it teaches. Closes OQ-078. |
 | [D-308](90-decision-log.md) | 2026-08-23 | agreed | Where the shape stops fitting, said out loud. Closes OQ-079. |
 | [D-309](90-decision-log.md) | 2026-08-23 | agreed | Reader-supplied parameters are parked; a page per record is Release 2. Closes OQ-076 and OQ-080. |
-| [D-310](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | A use site is an attribute, and it may do everything the node may. D-088 stands; the *never widen* sentence falls. |
-| [D-311](90-decision-log.md) | 2026-08-23 | ⚠️ D-405 | What an ancestor declares mandatory stays mandatory for every descendant. A targeted exception to D-310. |
-| [D-312](90-decision-log.md) | 2026-08-23 | ⚠️ D-411 | Bounding settings may only be tightened downwards; choosing settings are free. Supersedes D-310 and the widening half of D-088. |
+| [D-310](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-312 | A use site is an attribute, and it may do everything the node may. D-088 stands; the *never widen* sentence falls. |
+| [D-311](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-405 | What an ancestor declares mandatory stays mandatory for every descendant. A targeted exception to D-310. |
+| [D-312](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-411 | Bounding settings may only be tightened downwards; choosing settings are free. Supersedes D-310 and the widening half of D-088. |
 | [D-313](90-decision-log.md) | 2026-08-23 | agreed | Implementation proceeds in self-contained packages: thin vertical slices, each ending in something the owner can operate, each followed by a list of … |
 | [D-314](90-decision-log.md) | 2026-08-23 | agreed | The test for `locked` is whether a person can *check* what was built, not whether a person could build from it. And the core fits on one page. |
 | [D-315](90-decision-log.md) | 2026-08-24 | agreed | A boolean is stored as an integer — and a missing row is not `false`. |
@@ -469,7 +469,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-317](90-decision-log.md) | 2026-08-24 | agreed | Data can be translatable too. The gap: we had translation for labels and none for values. |
 | [D-318](90-decision-log.md) | 2026-08-24 | agreed | `textarea` is retired as a type. One `text` type; the differences are a validator and a renderer. |
 | [D-319](90-decision-log.md) | 2026-08-24 | agreed | A type earns its place through storage, rendering or ordering — never through validation alone. |
-| [D-320](90-decision-log.md) | 2026-08-24 | ⚠️ D-328 | Four composed types are added: `range`, `link`, `period`, `address`. |
+| [D-320](90-decision-log.md) | 2026-08-24 | ⚠️ ersetzt durch D-328 | Four composed types are added: `range`, `link`, `period`, `address`. |
 | [D-321](90-decision-log.md) | 2026-08-24 | agreed | `version` is a type, and it earns that through ordering. |
 | [D-322](90-decision-log.md) | 2026-08-24 | agreed | `Medium` becomes `Resource`, the copy is optional, and `url` and `link` are dropped. An email stays its own type with a clickable renderer. |
 | [D-323](90-decision-log.md) | 2026-08-24 | agreed | It is called `Link` — a link with extras. Names D-322. |
@@ -521,20 +521,20 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-369](90-decision-log.md) | 2026-08-25 | agreed | The modelling tree shows a node's own |
 | [D-370](90-decision-log.md) | 2026-08-25 | agreed | A control that cannot be used now is |
 | [D-371](90-decision-log.md) | 2026-08-25 | agreed | An attribute can be removed at last, and what was missing was storage: `relations.parked_by_group_id`. |
-| [D-372](90-decision-log.md) | 2026-08-25 | ⚠️ D-373 und D-377 | Prefixes and base units are seeded under `Constants` — `Gramm` and not `Kilogramm`, and a prefix is stored as a power of ten. |
+| [D-372](90-decision-log.md) | 2026-08-25 | ⚠️ ersetzt durch D-373, D-377 | Prefixes and base units are seeded under `Constants` — `Gramm` and not `Kilogramm`, and a prefix is stored as a power of ten. |
 | [D-373](90-decision-log.md) | 2026-08-25 | ⚠️ ersetzt | A prefix's exponent is an |
 | [D-374](90-decision-log.md) | 2026-08-25 | agreed | A `node_label` data type was proposed, built, and withdrawn within the hour: what a record stores is the |
 | [D-375](90-decision-log.md) | 2026-08-25 | agreed | D-039's composed type exists at last: `Einheitenwert` — `wert` · `prefix` `0..1` · `einheit` — and its preview renders `2.7 kΩ`. Storing one is refus… |
 | [D-376](90-decision-log.md) | 2026-08-25 | agreed | An attribute is a drawn subject like any other: the `attribute` renderer, with the name editable where it is declared. `1..1` reads `1`. And the mult… |
 | [D-377](90-decision-log.md) | 2026-08-25 | agreed | `persistent` — an attribute may declare that its value is |
 | [D-378](90-decision-log.md) | 2026-08-25 | agreed | A prefix's exponent is an attribute of `Prefixes`, declared non-persistent — and the reason it beats a reserved key is the owner's own question. |
-| [D-379](90-decision-log.md) | 2026-08-25 | ⚠️ D-434 — der Standard ist `1` | Multiplicity is never nothing: unset means `0..1`. |
+| [D-379](90-decision-log.md) | 2026-08-25 | ⚠️ ersetzt durch D-434 | Multiplicity is never nothing: unset means `0..1`. |
 | [D-380](90-decision-log.md) | 2026-08-25 | agreed | R28–R32 is implemented, and it is one renderer: the chooser. Its test is outcomes, never rows. |
 | [D-381](90-decision-log.md) | 2026-08-25 | agreed | One settings panel, for a node and for an attribute alike — and it closed a hole rather than only tidying. |
 | [D-382](90-decision-log.md) | 2026-08-25 | agreed | The icon is a mark of a node, not one of its settings — it moves to the head of the Display band. Its |
 | [D-383](90-decision-log.md) | 2026-08-25 | agreed | A renderer is always resolved, and the panel must show *which* one — shown, never written. |
 | [D-384](90-decision-log.md) | 2026-08-26 | agreed | The labels panel goes through a renderer, and it is enterable — locale at the top, the short roles on one line, `help` on its own row. |
-| [D-385](90-decision-log.md) | 2026-08-26 | ⚠️ D-390 | A setting carries a category, and the panel groups by it: display · rules · internal. |
+| [D-385](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-390 | A setting carries a category, and the panel groups by it: display · rules · internal. |
 | [D-386](90-decision-log.md) | 2026-08-26 | agreed | `help` leaves the fallback chain. A role nobody wrote falls back to the |
 | [D-387](90-decision-log.md) | 2026-08-26 | agreed | One locale is declared *the neutral one*; «neutral» stops being something a person picks. |
 | [D-388](90-decision-log.md) | 2026-08-26 | agreed | An explanation lives in a question mark beside its heading, and it is written for somebody who has not read the concept. U31. |
@@ -547,10 +547,10 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-395](90-decision-log.md) | 2026-08-26 | agreed | Choosing a node is done in a tree, never in a flat list — the chooser cell is the second cell of the one walker. |
 | [D-396](90-decision-log.md) | 2026-08-26 | agreed | `hide` on a node hides it from the tree, and the tree carries a *show hidden* switch that is off by default. |
 | [D-397](90-decision-log.md) | 2026-08-26 | agreed | The installation gets its own screen, under the modeller — and D-079 already decided which of its facts may live there. |
-| [D-398](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt | A bounding boolean is a *choice* and not a switch, because a two-state switch cannot express a one-way bound. |
+| [D-398](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-399 | A bounding boolean is a *choice* and not a switch, because a two-state switch cannot express a one-way bound. |
 | [D-399](90-decision-log.md) | 2026-08-26 | agreed | `hide` and `read_only` are freely settable on any node, whatever an ancestor says — they leave the bounding category. ~~And `hide` puts the renderer … |
 | [D-400](90-decision-log.md) | 2026-08-26 | agreed | A constant is drawn as a *reference to it*, resolved to the label role the referring edge asks for — and a renderer that cannot serve a purpose is no… |
-| [D-401](90-decision-log.md) | 2026-08-26 | ⚠️ D-404 — eine Zeile an der Installationsidentität | A `bool` setting has exactly two states, and «not set» is not one of them: the control shows the stored value if there is one, otherwise the key's de… |
+| [D-401](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt durch D-404 | A `bool` setting has exactly two states, and «not set» is not one of them: the control shows the stored value if there is one, otherwise the key's de… |
 | [D-402](90-decision-log.md) | 2026-08-26 | agreed | A subtype has its ancestor's settings until it says otherwise, and «otherwise» is said *per key*, never per node. Stated as fact by the owner; it con… |
 | [D-403](90-decision-log.md) | 2026-08-26 | agreed | Every setting write is journalled, recorded against its |
 | [D-404](90-decision-log.md) | 2026-08-26 | agreed | A setting key's own default is a setting written at the installation identity. Nowhere new, and it supersedes what D-401 asked for. |
@@ -597,8 +597,8 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-445](90-decision-log.md) | 2026-08-27 | agreed | The input is always the class, and what it needs is prepared and handed in beside it — the preview included. It does not fetch. Refines D-444. |
 | [D-446](90-decision-log.md) | 2026-08-27 | agreed | The tree's node renderer may show a record count, because counting what was handed in is not fetching. Answers OQ-108. |
 | [D-447](90-decision-log.md) | 2026-08-27 | agreed | Converters are built, and the four things the concept did not say are settled here. |
-| [D-448](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Superseded the same day by D-449, which puts `hide` on the |
-| [D-449](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Superseded by D-453: the owner — *we never talked about a |
+| [D-448](90-decision-log.md) | 2026-08-27 | ⚠️ ersetzt durch D-449 | ⚠️ Superseded the same day by D-449, which puts `hide` on the |
+| [D-449](90-decision-log.md) | 2026-08-27 | ⚠️ ersetzt durch D-453 | ⚠️ Superseded by D-453: the owner — *we never talked about a |
 | [D-450](90-decision-log.md) | 2026-08-27 | agreed | `hide` on an edge is an abort criterion for the descent: from there down, nothing is rendered. And a renderer that draws nothing is a legitimate thin… |
 | [D-451](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ Its reading is corrected by D-452: the owner — *that has nothing to do with inheritance* — and he is right that the chain is a |
 | [D-452](90-decision-log.md) | 2026-08-27 | agreed | ⚠️ One claim in this row is withdrawn: «a renderer has no registry» is |
