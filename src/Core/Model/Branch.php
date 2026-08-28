@@ -64,7 +64,7 @@ enum Branch: string
             self::Model        => Storage::ExternalReference,
             self::Compositions => Storage::OwnRecords,
             self::DataTypes    => Storage::InsideTheRecord,
-            self::Constants    => Storage::NodeReference,
+            self::Constants    => Storage::NodeRef,
         };
     }
 }

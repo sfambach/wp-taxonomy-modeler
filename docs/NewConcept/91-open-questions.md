@@ -4901,7 +4901,38 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 
 ⚠️ **Warum es nicht harmlos ist:** *beide werden am Zweig `Constants` wahr. **Man muss sie also nie auseinander lesen** — und merkt deshalb nie, dass sie Verschiedenes sagen. Genau so entstand die Verwechslung, die er gerochen hat.*
 
-### Die Kandidaten
+### ⚠️ Nachgemessen 2026-08-28: die Frage war falsch gestellt, und der Eigentümer hat es gesehen
+
+Er: *«da versteh ich den Unterschied noch nicht. Das sieht mir erst mal gleich aus, dass beides auf einen Knoten referenziert. Das eine mit einer ID in der Datenbank und das andere auf ein Objekt oder so.»*
+
+**Er hat recht, und zwar genau an der Stelle, an der er hingeschaut hat.**
+
+| Ziel des Feldes | `SimpleType` sagt | `Storage` sagt |
+|---|---|---|
+| `Constants` | `NodeRef` | `NodeReference` |
+| `Model` | **null** | `ExternalReference` |
+| `Compositions` | **null** | `OwnRecords` |
+| `DataTypes` | der Typ selbst | `InsideTheRecord` |
+
+*In der **ersten** Zeile sagen beide dasselbe: der Wert ist ein Zeiger auf einen Knoten. **Eine Tatsache, zweimal aufgeschrieben.** Der Unterschied lebt allein in der zweiten Zeile — bei einem `Model`-Ziel sagt `Storage` «Zeiger» und `SimpleType` sagt **nichts**, und das sind die 13 von 32 Feldern, die auf den Auffang fallen.*
+
+⚠️ **Und das Entscheidende: `Storage` ist fast tot.** *Gemessen liest die Produktion **einen** der vier Fälle — `DataEntry` fragt dreimal, ob der Zweig `OwnRecords` ist. `NodeReference`, `ExternalReference` und `InsideTheRecord` liest **nichts**; sie stehen nur in `FieldTest`, der die Zuordnung festhält. **Ein Enum, dessen drei Fälle niemand liest, ist Dokumentation in der Form von Code.***
+
+⚠️ *Eine Sache in seiner Vermutung stimmt nicht, und sie ist wichtig: **es sind beide Male Ids.** `value_ref` hält eine Zahl; nirgends wird ein Objekt referenziert. Der Kern hat keine Objektidentität, die er speichern könnte.*
+
+### Die neue Frage, und mein Umbenennungsvorschlag ist zurückgezogen
+
+**Nicht «wie sollen die vier Fälle heissen», sondern: soll `Storage` als Enum bleiben?**
+
+| | Kosten |
+|---|---|
+| **auf einen Bool schrumpfen** — «besitzt das Ziel seine Records» | *dann steht im Code genau, was gelesen wird. **Aber die drei anderen Fälle sind Entscheidungen** ([D-232](90-decision-log.md)) und würden als Wissen verschwinden, wo sie heute als Code stehen* |
+| **bleiben und die drei Fälle endlich lesen** | *`ExternalReference` und `NodeReference` gehören zu dem, was beim `Model`-Ziel fehlt — der Zusammenfassung ([D-106](90-decision-log.md)). **Die Fälle sind nicht falsch, sie sind unbenutzt, weil das Stück fehlt, das sie brauchen würde*** |
+| **bleiben, unverändert** | *am billigsten, und die Verwechslung, die er gerochen hat, bleibt bestehen* |
+
+⚠️ *Mein Vorschlag, `Storage` in `PointsAtANode`/`PointsOutside` umzubenennen, ist damit **zurückgezogen**: er hätte einen Namen poliert, den drei von vier Mal niemand liest. **Die zweite Zeile ist die wahrscheinliche Antwort** — aber sie hängt an der Zusammenfassung, und die ist nicht gebaut.*
+
+### Die alten Kandidaten, als Beleg dessen was erwogen wurde
 
 | | Vorschlag | Kosten |
 |---|---|---|

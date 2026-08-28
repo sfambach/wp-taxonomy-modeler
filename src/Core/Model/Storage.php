@@ -23,5 +23,5 @@ enum Storage: string
     case InsideTheRecord = 'inside-the-record';
 
     /** A fixed value a person may extend, so the value is a reference to a node — `Constants`. */
-    case NodeReference = 'node-reference';
+    case NodeRef = 'node-ref';
 }

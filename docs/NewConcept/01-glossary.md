@@ -163,6 +163,41 @@ Kept so a discarded term cannot quietly return under another name.
 | `Surroundings::$refersTo` | ⚠️ **ein Label, kein Zeiger.** *Hier lügt das Wort, und `CD-9` verlangt umbenennen. Vorschlag: `targetLabel`* |
 | `Surroundings::$refersToARecord` | ein `bool` über die **Art des Ziels** — ein Record statt eines Knotens ([D-445](90-decision-log.md)) |
 
+### Jede Stelle im Schema, die eine Knoten-Id hält — vollständig, gemessen 2026-08-28
+
+**Der Eigentümer hat den Fall gestellt und nach den übrigen gefragt:** *«wir haben eine Knotenreferenz, die sagt: ich bin ein Attribut und ich habe als Datentyp einen Knoten. Und damit muss dieser Knoten … die Id des Knotens haben. Könntest Du diesen Fall mal in sich schliessen und sagen, ob da noch was unklar ist. … Nenn mir doch einfach mal die anderen Fälle, in denen das vorkommt.»*
+
+⚠️ **Eine Knoten-Id spielt drei verschiedene Rollen, und nur die dritte ist die, die «Referenz» heisst.**
+
+| Rolle | Spalten | Fremdschlüssel |
+|---|---|---|
+| **1 · wem es gehört** | `settings.owner_id`, `labels.owner_id`, `changelog.owner_id`, `relations.from_id` | **alle vier** → `identities` |
+| **2 · wie es zusammenhängt** | `relations.to_id` — *worauf die Kante zeigt, also **der Typ des Feldes***; `nodes.path` und `settings.path`/`labels.path` (gepunktete Ketten von Ids) | `to_id` **ja**; die `path`-Spalten sind Text und können keinen haben |
+| **3 · der Wert *ist* eine Knoten-Id** | `settings.value_ref`, `record_values.value_ref`, **`labels.role_id`**, `records.node_id`, `record_values.edge_id` | **keiner. Fünf von fünf ohne.** |
+
+#### Sein Fall ist geschlossen
+
+*«Ein Attribut hat als Datentyp einen Knoten»* ist **Rolle 2**, Spalte `relations.to_id`, und sie ist **abgesichert**: ein Fremdschlüssel auf `identities` verhindert, dass sie ins Leere zeigt. **Da ist nichts unklar.** *Und sie gilt für **jedes** Feld, nicht nur für eines mit einem Konstanten-Ziel — der Typ eines Feldes ist immer ein Knoten ([D-011](90-decision-log.md): ein Attribut ist eine Relation).*
+
+#### Was unklar ist, ist Rolle 3 — und es ist keine Theorie
+
+⚠️ **Fünf Spalten, in denen der Wert selbst eine Knoten-Id ist, und keine einzige ist abgesichert.** *Die Folge ist gemessen: die Cleanup-Seite ([D-479](90-decision-log.md)) findet **7 Werte ohne Kante** auf der laufenden Installation. Genau der Rest, den eine fehlende Absicherung hinterlässt.*
+
+⚠️ **Und eine dieser fünf hat noch niemand eine Knotenreferenz genannt: `labels.role_id`.** *Die Rolle eines Labels **ist** ein Knoten ([D-023](90-decision-log.md), [D-151](90-decision-log.md) sät die Rollen als Knoten). **Dieselbe Tatsache wie `node_ref`, ohne den Begriff und ohne den Mechanismus** — sie geht nicht durch `SimpleType`, hat keinen Renderer und keinen Fremdschlüssel.*
+
+#### Ein Wort, überall
+
+**Seine Regel:** *«immer wenn es eine Knotenreferenz ist, also auf eine Id eines Knotens, dann sollte es auch gleich heissen. Aber nicht dass eines `NodeRef` heisst und das andere `NodeReference`. Das sind auch noch so Sachen, die müssen einheitlich sein.»*
+
+| heisst heute | wird |
+|---|---|
+| `SimpleType::NodeRef` (`node_ref`) | **bleibt** — der Wert steht als Zeichenkette in der Datenbank, ihn zu ändern kostet eine Migration |
+| `Storage::NodeReference` (`node-reference`) | **`NodeRef` / `node-ref`** — 4 Fundstellen, davon 2 Tests |
+
+⚠️ *Das ist Schreibweise und nicht Bedeutung — deshalb ohne Rückfrage (`CD-9`). **Die Bedeutungsfrage bleibt offen** und liegt in [OQ-125](91-open-questions.md): ob `Storage` überhaupt bleibt, wenn die Produktion einen seiner vier Fälle liest.*
+
+---
+
 ### Die zwei Stolperstellen, die bleiben
 
 ⚠️ **`SimpleType::NodeRef` gegen `Storage::NodeReference`.** *Fast dasselbe Wort für «der Wert **ist** ein Zeiger» und «der Wert **liegt** als Zeiger». Beide werden am Zweig `Constants` wahr, weshalb man sie nie auseinander lesen muss und deshalb nie merkt, dass sie Verschiedenes sagen.* **Was zu klären ist:** [OQ-125](91-open-questions.md).

@@ -201,7 +201,7 @@ final class FieldTest extends TestCase
         self::assertSame(Storage::ExternalReference, Branch::Model->storage());
         self::assertSame(Storage::OwnRecords, Branch::Compositions->storage());
         self::assertSame(Storage::InsideTheRecord, Branch::DataTypes->storage());
-        self::assertSame(Storage::NodeReference, Branch::Constants->storage());
+        self::assertSame(Storage::NodeRef, Branch::Constants->storage());
     }
 
     #[Test]
