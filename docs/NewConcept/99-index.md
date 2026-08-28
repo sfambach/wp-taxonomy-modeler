@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **483**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **124**, davon **32** noch offen |
+| Entscheidungen | **484**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **124**, davon **31** noch offen |
 
 ## Offene Fragen
 
@@ -140,7 +140,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-121](91-open-questions.md) | beantwortet | Was umfasst «Update», und wie wird eine Zeile als unlöschbar angesagt? |
 | [OQ-122](91-open-questions.md) | **offen** | Wo wohnen Export und Import: auf der Konfigurationsseite oder auf einer eigenen? |
 | [OQ-123](91-open-questions.md) | beantwortet | Wo wohnt «normaler Knoten» in der Supported-Liste, und wie beansprucht ein Renderer einen *bestimmten* Knoten? |
-| [OQ-124](91-open-questions.md) | **offen** | Gibt es im Code spezialisierte Knotenklassen? D-036 hat das delegiert und um Korrektur gebeten |
+| [OQ-124](91-open-questions.md) | beantwortet | Gibt es im Code spezialisierte Knotenklassen? D-036 hat das delegiert und um Korrektur gebeten |
 
 ## Entscheidungen
 
@@ -632,3 +632,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-481](90-decision-log.md) | 2026-08-28 | agreed | Zwei Gruppen von Knoten bestimmen, welche Renderer angeboten werden — und die vorhandene «Supported»-Liste des Renderers trägt das, wenn «normaler Kn… |
 | [D-482](90-decision-log.md) | 2026-08-28 | agreed | Ein Renderer ist Code, also muss sein Anspruch auch Code sein: wer einen eigenen Renderer will, wird ein |
 | [D-483](90-decision-log.md) | 2026-08-28 | agreed | Der Container eines Knotens kommt aus der Kette — gebaut. Und ein Knoten sagt |
+| [D-484](90-decision-log.md) | 2026-08-28 | agreed | Spezialisierte Knotenklassen im Code — auf sein Wort, und es korrigiert die delegierte Hälfte von D-036. Schliesst OQ-124. |

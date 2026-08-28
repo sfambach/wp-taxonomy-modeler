@@ -4860,7 +4860,13 @@ decides whether [D-458](90-decision-log.md) is buildable at all.*
 
 **Raised** 2026-08-28, vom Eigentümer: *«das ist genau der Grund, warum ich dachte, dass wir **spezialisierte Knoten anlegen** — einfach ableiten von Knoten. Und das macht einiges einfacher, auch bei irgendwelchen Berechnungen oder bei den Attributen. Weil da kann ich dann einfach sagen: ein **Int-Knoten** hat ein Max und Min, und ein **Textknoten** hat Spalten und Zeilen — wobei ich mir da noch nicht ganz sicher bin.»*
 
-*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* open · **wiederaufgenommen aus [D-036](90-decision-log.md), die es ausdrücklich anbot**
+*Blocks:* [10 Domain core](10-domain-core.md), [30 Renderer](30-renderer.md) · *Status:* **geschlossen 2026-08-28 → [D-484](90-decision-log.md), nennt diese Frage**
+
+⚠️ **Er will die Klassen, und sein Grund ist das Inventar:** *«also ich hätte, wie von Anfang an geschrieben, gerne spezialisierte Klassen, weil dann auch klar ist, **wie viele spezialisierten Typen wir haben**.»*
+
+⚠️ **Und die Messung stützt ihn sofort:** *das Enum nennt 11 Typen, gesät sind 11, die Registry bindet einen Renderer an **10** — `user_ref` ist ein Typ ohne Renderer. **Die Antwort auf «wie viele haben wir» steht in drei Stellen, und die stimmen nicht überein.***
+
+⚠️ *Der Einwand unten bleibt stehen, weil er die Arbeit benennt, nicht weil er sie verhindert: die Hydrierung braucht einen Unterscheider. Für einen Knoten, der selbst ein Typ ist, steht er in der Zeile; für einen Untertyp nicht.*
 
 ⚠️ **[D-036](90-decision-log.md) hat genau diese Frage an mich delegiert und um Korrektur gebeten — das ist der Moment.** *Sie lautet: «Nodes sind **eine Klasse** mit typspezifischem Verhalten in registrierten Strategien und optionalen typisierten Zugriffen», Status `agreed (delegated)`, mit dem Zusatz: **«Der Eigentümer sagte, die Repräsentation sei ihm gleich. Notiert, damit die Arbeit weitergeht; korrigiere es, falls das nicht die Absicht war.»** Drei Tage später nennt er eine andere Absicht.*
 
