@@ -83,6 +83,20 @@ final class NodesScreen
     /** Where the labels panel submits its texts, keyed by role. */
     private const LABEL_FIELD = 'taxmod_label';
 
+    /**
+     * What `taxmod_collapsed` says when somebody deliberately unfolded **everything**.
+     *
+     * ⚠️ **A word rather than an empty value, because an empty value cannot be told from an absent
+     * one.** *The tree now starts folded ([list row 60](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
+     * so «no parameter» has to mean «fresh page» — and `add_query_arg` drops an empty string, which
+     * would turn *I opened all of it* back into *I have not touched it* on the very next click.*
+     *
+     * ⚠️ *Not a translated string and not user-visible: it is a token in a URL, so `AR-2` does not
+     * reach it. It is read back through `absint()`, which makes it `0` and drops it — the marker
+     * needs no case of its own.*
+     */
+    private const ALL_EXPANDED = 'none';
+
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
 
@@ -132,11 +146,21 @@ final class NodesScreen
 
         // Two queries for the whole tree, whatever its depth — the traversal is solved once,
         // in Tree, and this screen only draws what comes back (`CD-7`).
-        $collapsed  = $this->collapsedFromRequest();
-        $showHidden = $this->showsHidden();
-        $rows       = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden);
-        $parked     = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
         $selected   = $this->selectedFromRequest();
+        $showHidden = $this->showsHidden();
+
+        // ⚠️ **A fresh page starts folded** ([list row 60](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        // The owner: *«wenn ich die Seite neu aufmach, dann sollte Kolleps sein — das bitte die beste
+        // Übersicht.»* *The mechanism is untouched — the set still lives in the URL and `Tree` still
+        // answers what is drawn; only the **default** moved, which is why {@see collapsedFromRequest()}
+        // now says `null` instead of `[]` for a request that carries nothing.*
+        //
+        // ⚠️ *`$selected` is read **before** the walks because the default needs it: the path to the
+        // node whose detail is on the right is unfolded, or the page would show a node the tree beside
+        // it does not contain.*
+        $collapsed = $this->collapsedFromRequest() ?? $this->tree->collapsedByDefault($selected);
+        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden);
+        $parked    = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
 
         // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
@@ -517,8 +541,12 @@ final class NodesScreen
 
         return add_query_arg(
             array_filter([
-                'page'             => 'taxmod',
-                'taxmod_collapsed' => implode(',', $next),
+                'page' => 'taxmod',
+                // ⚠️ **The marker, and it is why unfolding the last branch is not the same as arriving.**
+                // *`implode(',', [])` is the empty string, which `array_filter` drops and
+                // {@see collapsedFromRequest()} would then read as «no parameter» — the fresh page,
+                // which is now folded. So the empty set says so in a word ({@see self::ALL_EXPANDED}).*
+                'taxmod_collapsed' => $next === [] ? self::ALL_EXPANDED : implode(',', $next),
                 'taxmod_node'      => isset($_GET['taxmod_node']) ? absint($_GET['taxmod_node']) : null,
             ]),
             admin_url('admin.php')
@@ -2047,15 +2075,33 @@ final class NodesScreen
             : $this->selected[$id] = $this->editor->find($id);
     }
 
-    /** @return list<int> */
-    private function collapsedFromRequest(): array
+    /**
+     * The folded set this request carries — **`null` when it carries none**.
+     *
+     * ⚠️ **`null` and `[]` are two different states and the difference is the whole of
+     * [list row 60](../../../docs/NewConcept/97-implementation-plan.md#the-working-list).** *`null` is
+     * «nobody has folded anything on this page yet», which now means **everything folded**
+     * ({@see \Taxmod\Core\Service\Tree::collapsedByDefault()}); `[]` is «somebody unfolded the last
+     * branch», which has to stay unfolded. **Returning `[]` for a missing parameter would make the
+     * two indistinguishable** — a person who deliberately opened the whole tree would find it shut
+     * again on the next click.*
+     *
+     * ⚠️ **That is what {@see self::ALL_EXPANDED} is for.** *An empty list cannot be written into a
+     * query string — `add_query_arg` and `array_filter` both drop an empty value, and one that
+     * survived would still be read back as «absent» here. So the empty set travels as a word.*
+     *
+     * @return list<int>|null
+     */
+    private function collapsedFromRequest(): ?array
     {
         if (! isset($_GET['taxmod_collapsed'])) {
-            return [];
+            return null;
         }
 
         $raw = sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']));
 
+        // `absint()` turns the marker into 0 and `array_filter` drops it, so the deliberate empty
+        // set arrives as an empty list rather than as a missing parameter.
         return array_values(array_filter(array_map('absint', explode(',', $raw))));
     }
 

@@ -60,6 +60,13 @@ $sichtbar = static function (\Taxmod\WordPress\Admin\NodesScreen $screen, array 
 
 $namen = ['__ab Ast' => $ast->id, '__ab Kind' => $kind->id, '__ab Enkel' => $enkel->id];
 
+// ⚠️ **Der Baum startet eingeklappt** ([Zeile 60](../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
+// also muss diese Pruefung ihn ausdruecklich aufklappen — ihr Gegenstand ist `hide` und nicht das
+// Falten. *Und sie waere ohne das nicht bloss rot geworden, sie war **gruen aus dem falschen Grund**:
+// die drei «ist weg»-Zusagen in der Mitte hielten, weil die Knoten eingeklappt waren, nicht weil sie
+// versteckt waren. Der Merker `none` heisst «absichtlich alles offen» und ist genau dafuer da.*
+$_GET['taxmod_collapsed'] = 'none';
+
 echo "== vorher stehen alle drei im Baum ==\n";
 
 $vorher = $sichtbar($screen, $namen);

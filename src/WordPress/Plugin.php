@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Converter\ShippedConverters;
+use Taxmod\Core\Renderer\ResidueRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
@@ -10,10 +11,12 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
+use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
+use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
@@ -64,6 +67,10 @@ final class Plugin
         // ⚠️ **The installation's own screen** (D-397) — three decisions had been deferred to it and
         // each had its own interim: developer mode, the neutral locale, the tree's scale.
         add_action('admin_post_' . SettingsScreen::ACTION, $plugin->handleSettings(...));
+
+        // ⚠️ **The repair surface** (D-247, U24) — decided on 2026-08-23 and never built, while the
+        // three sources it names went on collecting.
+        add_action('admin_post_' . CleanupScreen::ACTION, $plugin->handleCleanup(...));
 
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
@@ -128,6 +135,20 @@ final class Plugin
             self::CAPABILITY,
             'taxmod-settings',
             fn () => print (new SettingsScreen())->render()
+        );
+
+        // ⚠️ **`Cleanup` at last** ([D-247](../../docs/NewConcept/90-decision-log.md), decided
+        // 2026-08-23): *«nodes that have no connections any more, or settings that broke because
+        // something was deleted»*. It is **not a feature but a repair surface**
+        // ([U24](../../docs/NewConcept/20-interaction.md)), which is why it is a page of its own and
+        // not a button on the modelling screen — nothing here happens in passing.
+        add_submenu_page(
+            'taxmod',
+            __('Cleanup', 'taxmod'),
+            __('Cleanup', 'taxmod'),
+            self::CAPABILITY,
+            CleanupScreen::PAGE,
+            fn () => print $this->cleanupScreen()->render()
         );
 
         // ⚠️ **On this screen's own hook**, so the stylesheet is not loaded onto every page in
@@ -234,6 +255,36 @@ final class Plugin
     public function handleNodeAction(): void
     {
         $this->screen()->handlePost();
+    }
+
+    public function handleCleanup(): void
+    {
+        $this->cleanupScreen()->handlePost();
+    }
+
+    /**
+     * The repair surface, wired.
+     *
+     * ⚠️ **Public for the same reason {@see self::screen()} is**: a boundary check has to be able to
+     * render it. *A screen nothing renders in a check is a screen a fatal error reaches before anybody
+     * else does, which is what happened on 2026-08-25.*
+     *
+     * ⚠️ *`Residue` gets **the** changelog and not a new one — the bracket in
+     * {@see CleanupScreen::handlePost()} and the rows `Residue` writes have to be the same act
+     * ([D-470](../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function cleanupScreen(): CleanupScreen
+    {
+        return new CleanupScreen(
+            new Residue(
+                $this->frameworkNodes(),
+                new WpdbSettingRepository(),
+                new WpdbLabelRepository(),
+                $this->changelog()
+            ),
+            new ResidueRenderer(),
+            $this->changelog()
+        );
     }
 
     public function editor(): ModelEditor

@@ -103,6 +103,55 @@ final class Tree
     }
 
     /**
+     * The folded set a surface starts from when nobody has folded anything yet.
+     *
+     * ⚠️ **The owner, 2026-08-28: *«wenn ich die Seite neu aufmach, dann sollte Kolleps sein — das
+     * bitte die beste Übersicht.»*** So *everything folded* is the starting point, and it is a
+     * question about the tree like collapsing itself is — answered here once, not on the screen
+     * ([D-345](../../../docs/NewConcept/90-decision-log.md)). *It is a **surface** question and not
+     * a loading one, which is the split [D-455](../../../docs/NewConcept/90-decision-log.md) makes
+     * explicitly: «his other half — the tree should not start fully expanded — is a change to a
+     * surface and not to loading».*
+     *
+     * ⚠️ **The path to `$reveal` is opened, and that is not a preference but consistency.** *A
+     * surface that shows a selected node beside the tree would otherwise show a node the tree next
+     * to it does not contain. **The node itself stays folded** — its ancestors are what make it
+     * visible, and unfolding it as well would open a branch nobody asked to see.*
+     *
+     * ⚠️ **One query and no walk.** *Who has children is what the inheritance edges say, and the
+     * ancestors are already in the node's own `path` — ids separated by `.`, own id last
+     * ([D-014](../../../docs/NewConcept/90-decision-log.md)). So this costs the edges and nothing
+     * else; a second descent to find the same answer would be the loop `CD-7` forbids.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   E["inheritance edges"] --> P["every node that has children"]
+     *   S["the selected node's path"] --> A["its ancestors"]
+     *   P --> M["fold everything"]
+     *   A -->|"minus"| M
+     * ```
+     *
+     * @return list<int> Ids to fold — for the whole model, so one answer serves every walk in a
+     *                   request, the trash's included.
+     */
+    public function collapsedByDefault(?Node $reveal = null): array
+    {
+        $fold = [];
+
+        foreach ($this->relations->allInheritanceEdges() as $edge) {
+            $fold[$edge->fromId] = true;
+        }
+
+        if ($reveal !== null) {
+            foreach (array_slice(explode('.', $reveal->path), 0, -1) as $ancestor) {
+                unset($fold[(int) $ancestor]);
+            }
+        }
+
+        return array_values(array_keys($fold));
+    }
+
+    /**
      * @param array<int,Node>       $byId
      * @param array<int,list<int>>  $childIdsByParent
      * @param array<int,int>        $skip

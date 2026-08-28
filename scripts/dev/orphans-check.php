@@ -22,6 +22,12 @@
  * ⚠️ *It reads and never writes. `orphans-clean.php` is the one that removes, and it is a separate file
  * for that reason — a check that repairs what it measures cannot fail twice.*
  *
+ * ⚠️ **The queries are not here any more.** *They live in {@see \Taxmod\WordPress\Persistence\Residue},
+ * because the `Cleanup` screen ([D-247](../../docs/NewConcept/90-decision-log.md)) asks the same three
+ * questions — and two copies of one query are the way a correction reaches only one of them
+ * (`CLAUDE.md`: «one place owns each piece of state»). **This file keeps its own counter-check**, which
+ * is the part a shared query cannot supply.*
+ *
  * Usage: php scripts/dev/orphans-check.php
  *
  * @see docs/NewConcept/97-implementation-plan.md
@@ -32,18 +38,24 @@ define('WP_USE_THEMES', false);
 require 'C:/Devel/Wordpress/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$changelog = new WpdbChangelog(new SystemClock());
+$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $changelog);
 
 $installation = $framework->installationId();
+
+$residue = new Residue($framework, new WpdbSettingRepository(), new WpdbLabelRepository(), $changelog);
 
 global $wpdb;
 
@@ -65,37 +77,25 @@ function check(string $what, bool $ok, string $detail = ''): void
     echo "  FAIL {$what}" . ($detail === '' ? '' : " — {$detail}") . "\n";
 }
 
-/** Rows whose owner is neither a node, nor an edge, nor the installation. */
-function orphanRows(string $table, int $installation): int
-{
-    global $wpdb, $p;
-
-    $count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$p}{$table} t
-         WHERE t.owner_id <> %d
-           AND NOT EXISTS (SELECT 1 FROM {$p}nodes n WHERE n.id = t.owner_id)
-           AND NOT EXISTS (SELECT 1 FROM {$p}relations r WHERE r.id = t.owner_id)",
-        $installation
-    ));
-
-    if ($wpdb->last_error !== '') {
-        // ⚠️ *An empty result and a broken query look identical through `$wpdb`, and that mistake was
-        // reported to the owner as a fact about his model on 2026-08-26. Never again silently.*
-        echo "  FEHLER in der Abfrage auf {$table}: ", $wpdb->last_error, "\n";
-
-        exit(1);
-    }
-
-    return $count;
-}
-
 echo "\n== nichts gehoert einem Besitzer, den es nicht gibt ==\n";
 
-$settings = orphanRows('settings', $installation);
-$labels   = orphanRows('labels', $installation);
+// ⚠️ *Dieselbe Abfrage, die die `Cleanup`-Seite stellt — und sie prueft `$wpdb->last_error` selbst
+// nach jeder Anweisung und wirft, statt eine kaputte Abfrage als «kein Rueckstand» zu melden.*
+$settings = array_sum($residue->orphanedSettings());
+$labels   = array_sum($residue->orphanedLabels());
 
 check('keine Waisen-Settings', $settings === 0, "{$settings} Zeilen");
 check('keine Waisen-Labels', $labels === 0, "{$labels} Zeilen");
+
+// ⚠️ **Die anderen zwei Quellen, die [D-247](../../docs/NewConcept/90-decision-log.md) nennt** —
+// gemessen und **nicht** als Fehler gewertet. *Sie sind kein Leck dieses Netzes, sondern der
+// Rueckstand, den bewusstes Nicht-Aufraeumen hinterlaesst: [D-159](../../docs/NewConcept/90-decision-log.md)
+// sagt ausdruecklich, dass Werte einer verschwundenen Kante **stehen bleiben**. Eine Zahl hier, ein
+// Knopf auf der Seite — eine Pruefung, die daran scheitert, wuerde eine Entscheidung ueberstimmen.*
+$werte  = array_sum($residue->valuesWithoutEdge());
+$allein = count($residue->nodesWithoutConnections());
+
+printf("  --   %d Werte ohne Kante, %d Knoten ohne Verbindungen (Cleanup-Seite)\n", $werte, $allein);
 
 // ⚠️ **Die Gegenpruefung, die den zwei oben erst Bedeutung gibt.** *Ohne sie waere eine Abfrage, die
 // versehentlich nichts findet, genauso gruen — und die Installationsidentitaet ist der eine Besitzer,

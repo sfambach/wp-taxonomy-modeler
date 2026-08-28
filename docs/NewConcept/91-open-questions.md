@@ -4629,7 +4629,13 @@ the build states rather than hides (`PR-2`).*
 
 **Raised** 2026-08-28, by the owner, on [D-458](90-decision-log.md) — and he is right that it was never defined.
 
-*Blocks:* [50 Persistence](50-wordpress-persistence.md), list row 61 · *Status:* open
+*Blocks:* [50 Persistence](50-wordpress-persistence.md), list row 61 · *Status:* open — **erste Hälfte geschlossen 2026-08-28 → [D-472](90-decision-log.md), nennt diese Frage**
+
+⚠️ **Der Eigentümer hat den dritten Kandidaten gewählt: eine eigene Spalte** ([D-472](90-decision-log.md)) — *«ich würde einfach eine neue Spalte in die Tabelle einfügen, die dann genau unterscheidet: ist Setting oder ist Attributwert.»*
+
+⚠️ **Und der Einwand, den diese Frage gegen genau diese Spalte notierte, ist widerlegt.** *«Eine Tatsache doppelt» setzt **einen** Id-Raum voraus. Es sind zwei ([D-164](90-decision-log.md)), und sie überlappen: gemessen laufen Identitäten von 1 bis 26453 und Records von 16 bis 879 — **Id 16 ist gleichzeitig eine Relation und ein Record.** Der erste Kandidat («die Eigentümer-Spalte sagt es») fällt damit aus, weil er nicht funktioniert, nicht weil er hässlich ist.*
+
+⚠️ **Offen bleibt die zweite Hälfte unten** — die vier leihenden Schlüssel, deren Typ abgeleitet und nicht gespeichert ist. *Möglicherweise erledigt die Spalte sie mit: steht dort «Setting», weiss der Leser, dass der Typ vom Gegenstand kommt. **Das ist meine Folgerung und nicht sein Wort**, also bleibt es hier stehen.*
 
 > *We now have the four fields, since we use the same table for settings and attributes. **How do we
 > actually tell the two apart in the table?** I do not think that was defined at all. I would rather
@@ -4677,3 +4683,101 @@ has an attribute `max` of type `Integer`».*
 ⚠️ *So the merged table has to record a slot whose type is **not** stored but **derived**. Whether that is
 a fifth shape, a null target with a rule, or something else is undecided — and it is the piece that
 decides whether [D-458](90-decision-log.md) is buildable at all.*
+
+---
+
+## OQ-120 — Deklariert ein Renderer seine Eigenschaften, und gilt derselbe Schnitt für Konverter und Validatoren?
+
+**Raised** 2026-08-28, vom Eigentümer, beim Ausweiten von [Zeile 66](97-implementation-plan.md#the-working-list): *«schau mal, vielleicht haben andere Renderer auch noch Optionen. Also ich könnte mir vorstellen, vielleicht nicht bei Validatoren, aber vielleicht bei Konvertern. Im Grunde könnten wir ja für Konverter und Validatoren ein ähnliches Framework wie für Renderer aufbauen.»*
+
+*Blocks:* [30 Renderer](30-renderer.md), [10 Domain core](10-domain-core.md) · *Status:* open
+
+⚠️ **Was schon entschieden ist und diese Frage nicht mehr betrifft:** die Eigenschaften des Kompaktrenderers selbst ([D-471](90-decision-log.md) — Ausrichtung und Label, mit Vorgaben), und dass ein freier Schlüssel eine **Zeichenanweisung** ist, geschrieben von wem auch immer Renderer schreibt ([D-364](90-decision-log.md)).
+
+⚠️ **Der gemessene Bestand, 2026-08-28 — dieselbe Sache auf zwei Weisen:**
+
+| Renderer | liest | wie |
+|---|---|---|
+| `SpinnerRenderer`, `SliderRenderer` | `min`, `max`, `step` | **reservierte** Schlüssel; die Vorgabe für `step` steht **im Renderer** |
+| `TextareaRenderer` | `cols`, `rows` | **freie** Schlüssel; **niemand deklariert sie** |
+| alle übrigen | — | *einundzwanzig Renderer lesen überhaupt keine Optionen* |
+
+⚠️ **Und der Bestand bei den drei Gerüsten:**
+
+| | ist heute | trägt |
+|---|---|---|
+| `Renderer` | Interface | `name`, `supports`, `handles`, `fits`, `render` |
+| `Converter` | Interface | `name`, `kind`, `isInvertible`, `handles`, `shown`, `written` |
+| Validator | **existiert nicht** | [Zeile 8](97-implementation-plan.md#the-working-list) und [Zeile 5](97-implementation-plan.md#the-working-list), beide offen |
+
+*Der Konverter **ist** schon nach dem Schnitt des Renderers gebaut — dieselben vier Fragen: wie heisst du, wofür bist du zuständig, was kannst du, tu es. **Der Wunsch des Eigentümers kostet also weniger als er klingt**: nicht drei Gerüste bauen, sondern das dritte nach demselben Schnitt.*
+
+### Die drei Teile, die auseinandergehalten werden müssen
+
+| | Frage | Stand |
+|---|---|---|
+| **1** | Deklariert ein Renderer seine Eigenschaften — Name, Typ, Vorgabe — damit der Panel für den **gewählten** Renderer genau die anbietet? | offen. *Es ist [OQ-107](#oq-107--what-declares-a-free-setting-today-nothing-does) von der anderen Seite: dort «was deklariert einen freien Schlüssel», hier «wer nimmt ihn».* |
+| **2** | Wandern `step`, `cols`, `rows` damit aus den Settings heraus, oder bleiben sie Settings und der Renderer stellt nur die Vorgabe? | offen. *`min` und `max` bleiben in jedem Fall im Modell: sie beschränken einen **Wert**, nicht ein Steuerelement ([D-468](90-decision-log.md) verbietet dort sogar das Aufweiten).* |
+| **3** | Bekommen Konverter und Validatoren denselben Schnitt — und **als was**: Interface wie heute, oder Elternklasse? | **offen, und hier ist eine Lesart zu klären.** *Der Eigentümer: «weisst du, [ich mag] Interface nicht so gerne, schau mal.» Seine Vorgeschichte stützt zwei Lesarten und sie führen zu verschiedenem Code — siehe unten.* |
+
+⚠️ **Teil 3 ist nicht geraten worden, und das ist Absicht (`PR-4`).** *Zwei Lesarten, beide durch seine eigenen Worte gestützt:*
+
+| Lesart | Gestützt durch | Was gebaut würde |
+|---|---|---|
+| **kein Sondervertrag pro Begriff** | [D-091](90-decision-log.md) verwarf `IPageRenderer` — *«eine Seite ist ein gerenderter Knoten»* — und [D-233](90-decision-log.md) präzisierte, damit sei **ein Sondervertrag** verworfen, nicht die Sache. *`Renderer` ist ein Interface und ist geblieben.* | Validatoren bekommen **kein eigenes Interface**, sondern fügen sich in eine vorhandene Form |
+| **Elternklasse statt Interface** | [C86](10-domain-core.md): *«eine Elternklasse ist nicht unbedingt nötig — aber es ist **einfacher**, wenn sie alles trägt, was Relationen und Knoten gemeinsam haben»*, und seine Korrektur, als ich sie zum Interface geschrumpft hatte: *«ich würde das nicht als Fehler sehen, so hatte ich es ursprünglich gemeint»* | `Converter` und ein neuer `Validator` werden **abstrakte Elternklassen** mit gemeinsamem Verhalten |
+
+⚠️ *Warum das nicht in einem Rutsch geraten wird: es ist genau die Form, die den `hide`-Faden elf Entscheidungen gekostet hat ([D-467](90-decision-log.md)) — **er sagte an zwei Tagen «Attribut» und ich las beide Male «Setting»**. Eine Lesart zu wählen, weil sie plausibel ist, ist billiger als sie zu erfragen und teurer als beides.*
+
+---
+
+## OQ-121 — Was umfasst «Update», und wie wird eine Zeile als unlöschbar angesagt?
+
+**Raised** 2026-08-28 aus [D-473](90-decision-log.md), **erste Hälfte beantwortet am selben Tag → [D-474](90-decision-log.md), nennt diese Frage**.
+
+*Blocks:* [20 Interaction](20-interaction.md), [Zeile 65](97-implementation-plan.md#the-working-list) · *Status:* **geschlossen 2026-08-28 → [D-476](90-decision-log.md), nennt diese Frage**
+
+⚠️ **Er hat den vagen Halbsatz selbst aufgelöst, und keine der drei Lesarten unten war es ganz.** *Mit «jedes Update, das gefahren wird» meinte er **das Release der Software**, nicht jede Modelländerung: «wenn es ein Update für unser Taxonomie-Modell gibt, dann mache ich ja gewisse Änderungen in der Tabelle». Und dazu der Zuschnitt: «aktuell sind wir noch in der Development-Phase … ich spreche aber von Änderungen, die durch ein neues Release reinkommen.»*
+
+⚠️ **Damit ist die Frage nach der Mechanik auch entschieden, ohne dass sie gestellt werden musste:** *ein Release-Eintrag ist **nicht** aus dem Verb ableitbar — es gibt ihn heute gar nicht, `Schema.php` schreibt keine Zeile. Er wird beim Update geschrieben und trägt seine Unlöschbarkeit von dort. **Keine Spalte, die eine ableitbare Tatsache doppelt** — eine neue Art von Eintrag.*
+
+⚠️ *Und die 1690 Zeilen über gelöschte Schlüssel sind damit **nicht** unlöschbar: sie sind Modelländerungen, keine Releases.*
+
+⚠️ **Beantwortet: die `created`-Zeile bleibt.** *Die Frage lautete, ob das Anlagedatum mit dem alten Changelog verschwinden darf. Er: **nein** — «das Create drinne lassen … und als nicht löschbar deklarieren» ([D-474](90-decision-log.md)). Damit bleibt [D-080](90-decision-log.md) die einzige Heimat des Anlagedatums, ohne eine Spalte daneben.*
+
+⚠️ **Offen ist sein zweiter Halbsatz: *«und nicht nur das Create, sondern jedes Update, das gefahren wird.»*** Drei Lesarten, und sie unterscheiden sich um Grössenordnungen.
+
+### Gemessen, 2026-08-28, an 9210 Zeilen
+
+| | Zeilen |
+|---|---|
+| von einem **Menschen** verursacht (`by_user_id IS NOT NULL`) | **1295 — 14 %** |
+| von der Maschine (Scaffolds, Saat, Materialisieren, Umhängen) | 7915 |
+| über Schlüssel, **die es nicht mehr gibt** — `hide` 1025, `range_*` 661, `mandatory` 4 | **1690** |
+| Verben, die **ausschliesslich** von Menschen kommen | `renamed` 43, `moved` 13, `setting multiplicity set` 5, `setting icon set/cleared` 5, `setting factor/offset set` 2, `setting renderer cleared` 1 |
+
+### Die drei Lesarten
+
+| Lesart | bleibt | geht | Kosten |
+|---|---|---|---|
+| **jede Modelländerung** | fast alles | nur `promoted`, `reordered`, `trash cleared` — ~1600 | **die 1690 Zeilen über gelöschte Schlüssel wären unlöschbar**, obwohl keine Migration sie brauchen kann |
+| **was ein Mensch getan hat** | 1295 | 7915 | **braucht keine neue Spalte** — `by_user_id` sagt es schon ([D-296](90-decision-log.md)) |
+| **ein gefahrenes Schema-/Modell-Update** | die Migrationsschritte | alles andere | ⚠️ *`Schema.php` schreibt heute **gar nichts** in den Changelog. Das wäre etwas Neues und nicht etwas, das bewahrt wird* |
+
+⚠️ **Und die Mechanik der «Ansage» hängt an der Lesart, weshalb sie nicht vorweg entschieden wird:** *sagt die Regel «ein Mensch war es» oder «dieses Verb», dann ist die Ansage **ableitbar** und eine Spalte wäre dieselbe Tatsache zweimal — was `CLAUDE.md` ausdrücklich verbietet. Sagt sie «dies gehörte zu einem gefahrenen Update», ist sie **nicht** ableitbar und muss beim Schreiben gespeichert werden. **Die Lesart entscheidet also, ob es eine Spalte gibt.***
+
+---
+
+## OQ-122 — Wo wohnen Export und Import: auf der Konfigurationsseite oder auf einer eigenen?
+
+**Raised** 2026-08-28, vom Eigentümer, unmittelbar nachdem [D-475](90-decision-log.md) den Export zur Pflicht gemacht hat: *«Export/Import haben wir noch nicht gebaut, aber natürlich brauchen wir das später. Und ich weiss nicht, ob wir dafür die Config-Seite nehmen können oder eine extra Export-/Import-Seite. Das sollten wir gucken — **wie voll die anderen Seiten sind** und ob eine neue Seite logisch ist. Wir könnten das erst mal **andenken auf der Config-Seite**.»*
+
+*Blocks:* [20 Interaction](20-interaction.md), [70 Migration](70-migration.md) · *Status:* open — **mit seiner Neigung: zuerst auf der Konfigurationsseite andenken**
+
+⚠️ **Der Bestand, gemessen 2026-08-28 — es sind jetzt drei Seiten:** *die Modellierseite, «Installation» ([D-397](90-decision-log.md)) und «Cleanup» ([D-479](90-decision-log.md), gebaut heute). Die Installationsseite trägt bisher **drei** Dinge: Entwicklermodus, die neutrale Locale und die Baumgrösse.*
+
+⚠️ **Sein Kriterium ist «wie voll ist es», und das ist heute beantwortbar: die Installationsseite ist nicht voll.** *Drei Einstellungen. Ein Export-Knopf und ein Import-Feld daneben würden sie nicht sprengen — **und ein Backup vor einem Update ist ohnehin ein Vorgang der Installation, nicht des Modells.***
+
+⚠️ *Was für eine eigene Seite spricht, wenn es soweit ist: **Import ist kein Knopf, sondern ein Ablauf** — [M11](70-migration.md) sagt, ein Import muss auflösen, was nicht mehr existiert («entweder auf einen anderen Knoten abbilden oder einen Knoten anlegen und dessen Id binden»). Das ist eine Oberfläche mit Zwischenschritten, wie der Konfliktlöser ([M6](70-migration.md)) — und die passt nicht neben drei Schalter.*
+
+⚠️ **Also die Linie, die die Frage entscheiden dürfte, ohne sie hier zu entscheiden (`PR-4`):** *der **Export** ist ein Knopf und darf auf die Installationsseite; der **Import** ist ein Ablauf und will vermutlich eine eigene Fläche. Ob man sie trotzdem zusammen hält, weil sie ein Begriffspaar sind, ist die eigentliche Frage.*

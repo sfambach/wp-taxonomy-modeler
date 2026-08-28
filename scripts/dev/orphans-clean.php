@@ -34,6 +34,7 @@ define('WP_USE_THEMES', false);
 require 'C:/Devel/Wordpress/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -47,7 +48,8 @@ $go = in_array('--go', $argv, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$changelog = new WpdbChangelog(new SystemClock());
+$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $changelog);
 
 $installation = $framework->installationId();
 
@@ -55,35 +57,20 @@ global $wpdb;
 
 $p = $wpdb->prefix . 'taxmod_';
 
-/** @return list<int> The owners a table names that are neither a node, nor an edge, nor the installation. */
-function orphanOwners(string $table, int $installation): array
-{
-    global $wpdb, $p;
+// ⚠️ **Die Abfrage steht nicht mehr hier.** *Sie gehoert
+// {@see \Taxmod\WordPress\Persistence\Residue}, weil die `Cleanup`-Seite
+// ([D-247](../../docs/NewConcept/90-decision-log.md)) genau dieselbe stellt — und **zwei Kopien einer
+// Abfrage sind der Weg, auf dem eine Korrektur nur eine von beiden erreicht.***
+$residue = new Residue($framework, new WpdbSettingRepository(), new WpdbLabelRepository(), $changelog);
 
-    $ids = $wpdb->get_col($wpdb->prepare(
-        "SELECT DISTINCT t.owner_id FROM {$p}{$table} t
-         WHERE t.owner_id <> %d
-           AND NOT EXISTS (SELECT 1 FROM {$p}nodes n WHERE n.id = t.owner_id)
-           AND NOT EXISTS (SELECT 1 FROM {$p}relations r WHERE r.id = t.owner_id)",
-        $installation
-    ));
+$settings = $residue->orphanedSettings();
+$labels   = $residue->orphanedLabels();
 
-    if ($wpdb->last_error !== '') {
-        throw new RuntimeException("Abfrage auf {$table} fehlgeschlagen: " . $wpdb->last_error);
-    }
+$settingOwners = array_keys($settings);
+$labelOwners   = array_keys($labels);
 
-    return array_map('intval', $ids);
-}
-
-$settingOwners = orphanOwners('settings', $installation);
-$labelOwners   = orphanOwners('labels', $installation);
-
-$settingRows = $settingOwners === [] ? 0 : (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}settings WHERE owner_id IN (" . implode(',', $settingOwners) . ')'
-);
-$labelRows = $labelOwners === [] ? 0 : (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}labels WHERE owner_id IN (" . implode(',', $labelOwners) . ')'
-);
+$settingRows = array_sum($settings);
+$labelRows   = array_sum($labels);
 
 printf(
     "Installationsidentitaet %d — bleibt, mit %d erklaerten Standardwerten.\n\n",
@@ -100,16 +87,25 @@ if (! $go) {
     exit(0);
 }
 
-$settings = new WpdbSettingRepository();
-$labels   = new WpdbLabelRepository();
+// ⚠️ *Besitzer fuer Besitzer und durch dieselbe Methode, die der Knopf auf der `Cleanup`-Seite
+// betaetigt — **sie misst vor jedem Entfernen erneut**, statt einer uebergebenen Liste zu glauben. Das
+// kostet hier eine Abfrage pro Besitzer und ist der Preis dafuer, dass es nur **eine** Stelle gibt, an
+// der ein verwaister Override verschwindet.*
+$goneSettings = 0;
+$goneLabels   = 0;
 
-$goneSettings = $settingOwners === [] ? 0 : $settings->forgetOwners($settingOwners);
-$goneLabels   = $labelOwners === [] ? 0 : $labels->forgetOwners($labelOwners);
+foreach ($settingOwners as $owner) {
+    $goneSettings += $residue->forgetOrphanedSettings((int) $owner);
+}
+
+foreach ($labelOwners as $owner) {
+    $goneLabels += $residue->forgetOrphanedLabels((int) $owner);
+}
 
 printf("\nEntfernt: %d Settings, %d Labels\n", $goneSettings, $goneLabels);
 
 printf(
     "Uebrig: %d Settings, %d Labels ohne Besitzer\n",
-    count(orphanOwners('settings', $installation)),
-    count(orphanOwners('labels', $installation))
+    count($residue->orphanedSettings()),
+    count($residue->orphanedLabels())
 );

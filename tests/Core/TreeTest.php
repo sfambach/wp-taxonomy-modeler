@@ -223,6 +223,54 @@ final class TreeTest extends TestCase
     }
 
     #[Test]
+    public function by_default_every_node_that_has_children_is_folded(): void
+    {
+        // ⚠️ The owner, 2026-08-28: *«wenn ich die Seite neu aufmach, dann sollte Kolleps sein — das
+        // bitte die beste Übersicht.»* So the top level is the whole of a fresh page.
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $board = $this->editor->createNode('Board', $model->id);
+        $this->editor->createNode('Resistor', $board->id);
+        $this->editor->createNode('Primitives', $this->root->id);
+
+        // Without the default this reads ['Trash', 'Model', '-Board', '--Resistor', 'Primitives'] —
+        // which is what the screen showed before, and what makes this assertion worth something.
+        self::assertSame(
+            ['Trash', 'Model', 'Primitives'],
+            $this->drawnWith([], $this->tree->collapsedByDefault())
+        );
+    }
+
+    #[Test]
+    public function the_path_to_the_revealed_node_is_open_and_the_node_itself_stays_folded(): void
+    {
+        // ⚠️ Consistency, not taste: a screen showing this node's detail beside the tree would
+        // otherwise show a node the tree does not contain.
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $board = $this->editor->createNode('Board', $model->id);
+        $chosen = $this->editor->createNode('Resistor', $board->id);
+        $this->editor->createNode('Tolerance', $chosen->id);
+        $this->editor->createNode('Primitives', $this->root->id);
+
+        self::assertSame(
+            ['Trash', 'Model', '-Board', '--Resistor', 'Primitives'],
+            $this->drawnWith([], $this->tree->collapsedByDefault($chosen))
+        );
+    }
+
+    #[Test]
+    public function a_node_with_no_children_is_never_in_the_folded_set(): void
+    {
+        // A fold control on a row that has nothing under it would do nothing (U8).
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $leaf  = $this->editor->createNode('Board', $model->id);
+
+        $folded = $this->tree->collapsedByDefault();
+
+        self::assertContains($model->id, $folded);
+        self::assertNotContains($leaf->id, $folded);
+    }
+
+    #[Test]
     public function a_row_knows_whether_it_is_the_first_or_the_last_of_its_siblings(): void
     {
         // U8: a control that cannot act is absent, not greyed — so the tree has to say which

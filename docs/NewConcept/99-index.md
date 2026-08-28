@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **470**, davon **28** ersetzt oder teilweise überholt |
-| Offene Fragen | **119**, davon **29** noch offen |
+| Entscheidungen | **479**, davon **28** ersetzt oder teilweise überholt |
+| Offene Fragen | **122**, davon **31** noch offen |
 
 ## Offene Fragen
 
@@ -136,6 +136,9 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-117](91-open-questions.md) | **offen** | Should `RenderContext` carry only settings, and the data travel separately? |
 | [OQ-118](91-open-questions.md) | beantwortet | «Render no further» — which walk does a node's `hide` stop? |
 | [OQ-119](91-open-questions.md) | **offen** | In one table, what tells a setting from a field value? |
+| [OQ-120](91-open-questions.md) | **offen** | Deklariert ein Renderer seine Eigenschaften, und gilt derselbe Schnitt für Konverter und Validatoren? |
+| [OQ-121](91-open-questions.md) | beantwortet | Was umfasst «Update», und wie wird eine Zeile als unlöschbar angesagt? |
+| [OQ-122](91-open-questions.md) | **offen** | Wo wohnen Export und Import: auf der Konfigurationsseite oder auf einer eigenen? |
 
 ## Entscheidungen
 
@@ -614,3 +617,12 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-468](90-decision-log.md) | 2026-08-28 | agreed | Widening stays refused for `min` and `max`. The narrowing rule does |
 | [D-469](90-decision-log.md) | 2026-08-28 | agreed | One topic, one owning place — and every other mention points at it. The owner asked for it and the first application shows why. |
 | [D-470](90-decision-log.md) | 2026-08-28 | agreed | An act is bracketed, and the bracket is what gives a change its number. Builds D-348 at last — the column had been there for two days and grouped not… |
+| [D-471](90-decision-log.md) | 2026-08-28 | agreed | Der Kompaktrenderer ist |
+| [D-472](90-decision-log.md) | 2026-08-28 | agreed | Eine eigene Spalte sagt, ob eine Zeile ein Setting oder ein Feldwert ist. Schliesst die erste Hälfte von OQ-119. |
+| [D-473](90-decision-log.md) | 2026-08-28 | agreed | Changelog-Einträge zu löschen ist an eine |
+| [D-474](90-decision-log.md) | 2026-08-28 | agreed | Die Anlage-Zeile bleibt, und Unlöschbarkeit ist etwas, das man einer Zeile |
+| [D-475](90-decision-log.md) | 2026-08-28 | agreed | Vor einem Release-Update ist ein Backup Pflicht, und der Benutzer wird zum Herunterladen gezwungen. Randbedingung, keine Empfehlung. |
+| [D-476](90-decision-log.md) | 2026-08-28 | agreed | Das Update-Log ist minimal — eine Zeile je Installation und je Folge-Update, mit Version und Verweis. Der Rückbau kommt aus dem Backup (D-475), nicht… |
+| [D-477](90-decision-log.md) | 2026-08-28 | agreed | Ein Release-Update muss zwei Dinge leisten, und der Eigentümer hat sie benannt: bestehende Daten dürfen nicht kaputtgehen, und neue Knoten aus dem Te… |
+| [D-478](90-decision-log.md) | 2026-08-28 | agreed | Der Baum startet eingeklappt, und die Vorfahren des ausgewählten Knotens sind offen. Gebaut, Zeile 60. |
+| [D-479](90-decision-log.md) | 2026-08-28 | agreed | `Cleanup` ist gebaut — dritte Untermenüseite, die drei Quellen aus D-247, ein Knopf je Zeile. Zeile 65 zur Hälfte. |
