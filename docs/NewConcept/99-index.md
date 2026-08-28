@@ -8,7 +8,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **490**, davon **31** ersetzt oder teilweise überholt |
+| Entscheidungen | **491**, davon **31** ersetzt oder teilweise überholt |
 | Offene Fragen | **126**, davon **32** noch offen |
 
 ## Offene Fragen
@@ -153,7 +153,7 @@ Eine Entscheidung steht in mehreren Gebieten, wenn sie mehrere betrifft.*
 |---|---|---|
 | [10-domain-core](10-domain-core.md) | **217** | 19 |
 | [30-renderer](30-renderer.md) | **192** | 11 |
-| [20-interaction](20-interaction.md) | **100** | 4 |
+| [20-interaction](20-interaction.md) | **101** | 4 |
 | [50-wordpress-persistence](50-wordpress-persistence.md) | **90** | 4 |
 | [40-i18n](40-i18n.md) | **35** | 2 |
 | [70-migration](70-migration.md) | **35** | 1 |
@@ -659,3 +659,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-488](90-decision-log.md) | 2026-08-28 | agreed | 40-i18n, 20-interaction | Labels gehen mit dem Seitenspeichern mit, und `Surroundings::$formId` adressiert dafür |
 | [D-489](90-decision-log.md) | 2026-08-28 | agreed | 40-i18n, 20-interaction | Eine Labeländerung wird protokolliert, und der eigene Speicherknopf des Labels-Bereichs ist weg. Schliesst OQ-126. |
 | [D-490](90-decision-log.md) | 2026-08-28 | agreed | 10-domain-core, 40-i18n | Der Wächter «schreibt nichts, wenn sich nichts geändert hat» sitzt im |
+| [D-491](90-decision-log.md) | 2026-08-28 | agreed | 20-interaction | Der Chooser-Dialog schliesst auf Escape und hält den Fokus. Zeile 26 gebaut — und ihr eigener Vorbehalt war abgelaufen. |

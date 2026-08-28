@@ -121,3 +121,178 @@
 		watch();
 	} );
 } )();
+
+/**
+ * The chooser dialog closes on Escape and keeps the focus inside while it is open.
+ *
+ * ⚠️ **This is the whole of [list row 26](../docs/NewConcept/97-implementation-plan.md#the-working-list)**,
+ * and the row's own reservation has expired: it said *«this screen has had **no** script at all, so
+ * adding the first line of it is a decision rather than a detail»* — the first line arrived with
+ * D-408 above. So this is an addition to a script that exists, not a new dependency.
+ *
+ * ⚠️ **The dialog stays scriptless in the part that matters.** A nameless checkbox holds the open
+ * state, a `<label>` flips it, the shade closes it on a click — all of that keeps working with
+ * JavaScript switched off. **What script adds is the two things a real `<dialog>` gives and CSS
+ * cannot: Escape, and focus that does not wander out of an open overlay.**
+ *
+ * ⚠️ *The focus goes back to the **checkbox** and not to the opener, because the opener is a
+ * `<label>` and a label is not focusable. The stylesheet already draws the ring on the label when the
+ * checkbox has focus (`.taxmod-dialog-switch:focus-visible + .taxmod-dialog-open`), so returning it
+ * there looks like returning it to the button.*
+ */
+( function () {
+	'use strict';
+
+	var SWITCH = '.taxmod-dialog-switch';
+	var PANEL  = '.taxmod-dialog-panel';
+
+	// ⚠️ *`:not([disabled])` matters: a greyed control is drawn rather than removed (D-370), so an
+	// open dialog can hold buttons that must not receive the focus.*
+	var REACHABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]),'
+		+ ' textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+	/** Every switch that is currently on, in document order. */
+	function open() {
+		return Array.prototype.filter.call(
+			document.querySelectorAll( SWITCH ),
+			function ( one ) {
+				return one.checked;
+			}
+		);
+	}
+
+	/**
+	 * The dialog that Escape should close.
+	 *
+	 * ⚠️ *The one holding the focus first, the last-opened otherwise. **Two dialogs can be open at
+	 * once** — the CSS makes each independent — and closing all of them on one Escape would take away
+	 * a state the person did not ask to lose.*
+	 */
+	function topmost() {
+		var switches = open();
+
+		if ( switches.length === 0 ) {
+			return null;
+		}
+
+		for ( var i = 0; i < switches.length; i++ ) {
+			var panel = panelOf( switches[ i ] );
+
+			if ( panel && panel.contains( document.activeElement ) ) {
+				return switches[ i ];
+			}
+		}
+
+		return switches[ switches.length - 1 ];
+	}
+
+	function panelOf( theSwitch ) {
+		var chooser = theSwitch.closest( '.taxmod-chooser' );
+
+		return chooser ? chooser.querySelector( PANEL ) : null;
+	}
+
+	function reachableIn( panel ) {
+		return Array.prototype.filter.call(
+			panel.querySelectorAll( REACHABLE ),
+			function ( one ) {
+				// ⚠️ *A zero-size element is one CSS is hiding — a collapsed `<details>`, a pane the
+				// layout dropped. Handing the focus to it puts the caret somewhere invisible.*
+				return one.offsetWidth > 0 || one.offsetHeight > 0;
+			}
+		);
+	}
+
+	function close( theSwitch ) {
+		theSwitch.checked = false;
+
+		// ⚠️ *Back to the switch, which is the focusable half of the opener. Without this the focus
+		// stays on a control inside a panel that is now `display:none`, and the browser drops it to
+		// the top of the document — the person loses their place entirely.*
+		theSwitch.focus();
+	}
+
+	document.addEventListener( 'keydown', function ( event ) {
+		if ( event.key === 'Escape' ) {
+			var theSwitch = topmost();
+
+			if ( theSwitch !== null ) {
+				// ⚠️ *Only when a dialog is actually open: Escape belongs to whatever else wants it —
+				// a `<details>`, a native picker — the rest of the time.*
+				event.preventDefault();
+				close( theSwitch );
+			}
+
+			return;
+		}
+
+		if ( event.key !== 'Tab' ) {
+			return;
+		}
+
+		var current = topmost();
+
+		if ( current === null ) {
+			return;
+		}
+
+		var panel = panelOf( current );
+
+		if ( ! panel ) {
+			return;
+		}
+
+		var stops = reachableIn( panel );
+
+		if ( stops.length === 0 ) {
+			return;
+		}
+
+		var first = stops[ 0 ];
+		var last  = stops[ stops.length - 1 ];
+
+		// ⚠️ **The wrap is the trap.** *Tabbing off the last control would otherwise walk into the page
+		// behind the shade, where every click is intercepted — the focus would be somewhere the mouse
+		// cannot reach.*
+		if ( ! panel.contains( document.activeElement ) ) {
+			event.preventDefault();
+			( event.shiftKey ? last : first ).focus();
+
+			return;
+		}
+
+		if ( event.shiftKey && document.activeElement === first ) {
+			event.preventDefault();
+			last.focus();
+
+			return;
+		}
+
+		if ( ! event.shiftKey && document.activeElement === last ) {
+			event.preventDefault();
+			first.focus();
+		}
+	} );
+
+	// ⚠️ **On opening, the focus moves in.** *Otherwise a keyboard user flips the switch and their next
+	// Tab lands on whatever follows the checkbox in the document — outside the dialog they just opened.*
+	document.addEventListener( 'change', function ( event ) {
+		var target = event.target;
+
+		if ( ! target || ! target.matches || ! target.matches( SWITCH ) || ! target.checked ) {
+			return;
+		}
+
+		var panel = panelOf( target );
+
+		if ( ! panel ) {
+			return;
+		}
+
+		var stops = reachableIn( panel );
+
+		if ( stops.length > 0 ) {
+			stops[ 0 ].focus();
+		}
+	} );
+} )();
