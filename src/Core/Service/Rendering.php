@@ -875,6 +875,10 @@ final class Rendering
      * @param  int                             $declaredBy The node whose page this is — an
      *                                                    attribute is editable only on the node that
      *                                                    declares it.
+     * @param  array<int, string>              $targetHrefs Where a target node is reached, keyed by
+     *                                                    **node** id — not by edge id, because two
+     *                                                    attributes pointing at one node share the
+     *                                                    address.
      * @return list<RenderedField>
      */
     public function fieldRowsFor(
@@ -889,6 +893,7 @@ final class Rendering
         array $settingActs = [],
         array $settingSubmits = [],
         string $settingsTitle = 'settings',
+        array $targetHrefs = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -930,6 +935,14 @@ final class Rendering
                 surroundings: new Surroundings(
                     refersTo: $names[$edge->toId] ?? null,
                     actions: $actions[$edge->id] ?? [],
+                    // ⚠️ **The target's address, so the row can be a way *to* it.** The owner,
+                    // 2026-08-26: *should have a jump link to the node.* Reading a model meant
+                    // finding `BOM Position` in the tree by eye.
+                    //
+                    // ⚠️ *Keyed by the **target's** id and handed in, because a URL is a boundary
+                    // fact (`CD-1`) and one lookup per row would be `CD-7`'s loop. The screen
+                    // builds it from the same method the tree rows use.*
+                    href: $targetHrefs[$edge->toId] ?? null,
                     submits: $submits[$edge->id] ?? null,
                     configured: $configured,
                     // ⚠️ **The same panel as a node's, drawn here and placed there.** A renderer

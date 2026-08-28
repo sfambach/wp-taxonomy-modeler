@@ -1295,4 +1295,59 @@ final class RenderingTest extends TestCase
         self::assertNotContains(SpinnerRenderer::NAME, $forText);
         self::assertNotContains(CheckboxRenderer::NAME, $forNumber);
     }
+
+    // ------------------------------------------------- the row points at its target
+
+    /**
+     * ⚠️ **Nothing exercised `fieldRowsFor()` at all** before this, which is why an eleven-parameter
+     * method could gain a twelfth without a single test noticing. *The two cases below are the whole
+     * contract of the new one: an address handed in becomes a link, no address stays text.*
+     */
+    #[Test]
+    public function an_attributes_target_becomes_a_link_when_the_surface_says_where_it_is(): void
+    {
+        $part     = $this->thing('Part');
+        $position = $this->thing('BOM Position');
+        $edge     = $this->editor->addField($part->id, $position->id, 'position');
+
+        $rows = $this->rendering->fieldRowsFor(
+            [$edge],
+            $part->id,
+            [],
+            [],
+            '',
+            '',
+            '',
+            \Taxmod\Core\Renderer\Level::Admin,
+            [],
+            [],
+            'settings',
+            [$position->id => '/wp-admin/admin.php?page=taxmod&taxmod_node=' . $position->id]
+        );
+
+        self::assertCount(1, $rows);
+
+        $markup = $rows[0]->result->markup;
+
+        self::assertStringContainsString('taxmod_node=' . $position->id, $markup);
+        self::assertStringContainsString('class="taxmod-field-target-link"', $markup);
+        // ⚠️ *The `&` of the query string has to arrive escaped — `htmlTag()` does that, and this is
+        // the assertion that would fail if the cell were ever handed the URL as trusted markup.*
+        self::assertStringContainsString('&amp;taxmod_node=', $markup);
+    }
+
+    #[Test]
+    public function a_target_with_no_address_stays_plain_text(): void
+    {
+        $part     = $this->thing('Part');
+        $position = $this->thing('BOM Position');
+        $edge     = $this->editor->addField($part->id, $position->id, 'position');
+
+        $rows = $this->rendering->fieldRowsFor([$edge], $part->id);
+
+        $markup = $rows[0]->result->markup;
+
+        self::assertStringNotContainsString('taxmod-field-target-link', $markup);
+        self::assertStringNotContainsString('<a ', $markup);
+    }
 }

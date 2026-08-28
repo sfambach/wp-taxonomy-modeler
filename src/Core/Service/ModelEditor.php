@@ -252,6 +252,15 @@ final class ModelEditor
         // ⚠️ **Its own declarations only**, which is what `ownAttribute()` already distinguishes: an
         // inherited attribute belongs to an ancestor and the copy inherits it too, by sitting where it
         // sits.
+        //
+        // ⚠️ **The pairs are kept, because a copy gets *new* edges** and everything the original said
+        // *about* one of its attributes is addressed by that attribute's **edge id**
+        // ([D-413](../../../docs/NewConcept/90-decision-log.md)). *Without the map those rows either
+        // vanished or, restored naively, would have addressed the **original's** attributes — which
+        // {@see \Taxmod\Core\Service\Settings::materialise()} names in its own docblock as «different
+        // act, real problem, not this one». This is that act.*
+        $newEdges = [];
+
         foreach ($this->fieldsOf($node->id) as $edge) {
             // ⚠️ **`fromId` is what «own» means** — the same test {@see ownAttribute()} makes. An
             // inherited edge belongs to an ancestor, and the copy inherits it by sitting where it
@@ -260,11 +269,11 @@ final class ModelEditor
                 continue;
             }
 
-            $this->addField($copy->id, $edge->toId, $edge->name);
+            $newEdges[$edge->id] = $this->addField($copy->id, $edge->toId, $edge->name)->id;
         }
 
-        $this->copySettings($node->id, $copy->id);
-        $this->copyLabels($node->id, $copy->id);
+        $this->copySettings($node->id, $copy->id, $newEdges);
+        $this->copyLabels($node->id, $copy->id, $newEdges);
 
         return $copy;
     }
@@ -318,16 +327,53 @@ final class ModelEditor
      * the values were already accepted once at this exact place in the chain, so re-running the
      * bounds checks would refuse nothing and could refuse something — a bound the original was
      * narrowed **to** is not a widening for the copy.*
+     *
+     * ⚠️ **The `path` used to be dropped and that lost everything the original said about its
+     * individual attributes** ([list row 43](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+     * *Found by the owner asking «the path is there via the node edges, isn't it?». The fourth
+     * argument was simply not passed, so a copy kept the node's own values and none of its per-attribute
+     * ones.*
+     *
+     * @param array<int, int> $edgeMap Original edge id ⇒ the copy's own new edge id.
      */
-    private function copySettings(int $fromId, int $toId): void
+    private function copySettings(int $fromId, int $toId, array $edgeMap = []): void
     {
         if ($this->settings === null) {
             return;
         }
 
         foreach ($this->settings->ownedBy($fromId) as $one) {
-            $this->settings->put(new SettingRecord($toId, $one->key, $one->value));
+            $this->settings->put(new SettingRecord($toId, $one->key, $one->value, $this->remapPath($one->path, $edgeMap)));
         }
+    }
+
+    /**
+     * An address on the original, read as the same address on the copy.
+     *
+     * ⚠️ **An unmapped segment is kept rather than dropped, and that is the correct half of it.** *A
+     * path may name an **inherited** edge, and a copy sitting under the same parent inherits **the
+     * same edge** — the same id ([D-405](../../../docs/NewConcept/90-decision-log.md): an inherited
+     * attribute *is* the same edge). So the address is already the copy's own address. Only the
+     * original's **own** declarations get new ids, and only those are in the map.*
+     *
+     * ⚠️ *Split on `.` although nothing writes a multi-segment path today — a `path` is documented as
+     * a **chain** of edge ids and `Node::$path` already spells a chain that way. **One line now, or a
+     * silent half-remap the day the second segment arrives.***
+     *
+     * @param array<int, int> $edgeMap
+     */
+    private function remapPath(string $path, array $edgeMap): string
+    {
+        if ($path === '' || $edgeMap === []) {
+            return $path;
+        }
+
+        $moved = array_map(
+            static fn (string $segment): string => (string) ($edgeMap[(int) $segment] ?? $segment),
+            explode('.', $path)
+        );
+
+        return implode('.', $moved);
     }
 
     /**
@@ -335,15 +381,30 @@ final class ModelEditor
      *
      * ⚠️ *The owner spotted the settings half through the **icon**; labels are the same argument.
      * A copy whose name reads differently in German than its original is not a copy either.*
+     *
+     * ⚠️ **And the `path` fault was here too, one line over, unmentioned by the row that found it.**
+     * *`labels.path` addresses a place the same way `settings.path` does — [D-413](../../../docs/NewConcept/90-decision-log.md)
+     * says it is the same choice — and this method passed `$one->path` straight through. So a label
+     * written **for one attribute** of the original arrived on the copy naming the **original's** edge.
+     * **The same map fixes both, because it is one act.***
+     *
+     * @param array<int, int> $edgeMap Original edge id ⇒ the copy's own new edge id.
      */
-    private function copyLabels(int $fromId, int $toId): void
+    private function copyLabels(int $fromId, int $toId, array $edgeMap = []): void
     {
         if ($this->labels === null) {
             return;
         }
 
         foreach ($this->labels->forOwners([$fromId]) as $one) {
-            $this->labels->put(new Label($toId, $one->path, $one->roleId, $one->number, $one->locale, $one->text));
+            $this->labels->put(new Label(
+                $toId,
+                $this->remapPath($one->path, $edgeMap),
+                $one->roleId,
+                $one->number,
+                $one->locale,
+                $one->text
+            ));
         }
     }
     public function addField(int $ownerId, int $targetId, string $name): Relation

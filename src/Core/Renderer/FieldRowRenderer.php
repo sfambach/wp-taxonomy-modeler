@@ -122,7 +122,7 @@ final class FieldRowRenderer implements Renderer
         $cells = $this->nameCell($subject, $context)
             // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
             // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
-            . $this->cell($context->surroundings->refersTo ?? '—', 'taxmod-field-target')
+            . $this->cell($this->targetCell($context), 'taxmod-field-target', false, true)
             . $this->cell($subject->kind->value, 'taxmod-field-kind', true)
             . $this->origin($context)
             . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
@@ -255,6 +255,33 @@ final class FieldRowRenderer implements Renderer
         }
 
         return RenderResult::escape($key);
+    }
+
+    /**
+     * What the attribute points at — a link where the surface said where the node is.
+     *
+     * ⚠️ **A renderer may build the anchor; it may not invent the URL.** *`$this` is the
+     * {@see FieldRowRenderer}: wrapping what it drew is ordinary markup and keeps the shape of the
+     * row here (`R1`), while the address is a boundary fact handed in through
+     * {@see Surroundings::$href} (`CD-1`) — the same division {@see TreeNodeRenderer} makes for a
+     * tree row.*
+     *
+     * ⚠️ *Spelled through {@see RenderResult::htmlTag()}, which is the one place that knows how an
+     * element is written ([D-465](../../../docs/NewConcept/90-decision-log.md)) — and it escapes the
+     * URL on the way in, so the cell can be handed on as trusted markup.*
+     */
+    private function targetCell(RenderContext $context): string
+    {
+        $name = $context->surroundings->refersTo ?? '—';
+        $href = $context->surroundings->href;
+
+        if ($href === null || $name === '—') {
+            return RenderResult::escape($name);
+        }
+
+        return RenderResult::htmlTag('a', ['href' => $href, 'class' => 'taxmod-field-target-link'])
+            . RenderResult::escape($name)
+            . '</a>';
     }
 
     private function cell(string $inner, string $class, bool $code = false, bool $trusted = false): string

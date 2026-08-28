@@ -1159,6 +1159,20 @@ final class NodesScreen
             $settingSubmits[$edge->id] = $this->settingSubmission($edge->id, $selected->id);
         }
 
+        // ⚠️ **One address per target, built from the same method the tree rows use.** *The owner
+        // asked for a jump link on the attribute's target, and `backTo()` is a pure URL builder — no
+        // query, no id check — so the map costs nothing even when two attributes point at one node.*
+        //
+        // ⚠️ *No `#fragment` on purpose. It was taken off the tree links because it fought the
+        // scroll-restore script — «the browser jumped to the row, then the script moved the tree
+        // back, one visible flicker per click» — and re-adding it here would buy back that fight.
+        // **Selecting the target is the jump; where the tree then sits is the script's business.***
+        $targetHrefs = [];
+
+        foreach ($edges as $edge) {
+            $targetHrefs[$edge->toId] ??= $this->backTo($edge->toId);
+        }
+
         $attributeRows = $this->rendering->fieldRowsFor(
             $edges,
             $selected->id,
@@ -1170,7 +1184,8 @@ final class NodesScreen
             \Taxmod\Core\Renderer\Level::Admin,
             $this->settingActs(),
             $settingSubmits,
-            __('Settings of this use site', 'taxmod')
+            __('Settings of this use site', 'taxmod'),
+            $targetHrefs
         );
 
         foreach ($attributeRows as $row) {
