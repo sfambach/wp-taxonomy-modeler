@@ -31,7 +31,7 @@ final class LabelsRendererTest extends TestCase
                 purpose: $purpose,
                 value: TypedValue::nothing(),
                 surroundings: new Surroundings(
-                    actions: [new Control('do', LabelsRenderer::WRITE, 'save', form: $formId)],
+                    actions: [new Control('do', 'put_setting', 'save', form: $formId)],
                     submits: new Submission('/post.php', ['id' => '7']),
                     rows: $slots,
                     sections: ['locale' => new Section('Locale', '<select name="l"></select>')],
@@ -105,8 +105,13 @@ final class LabelsRendererTest extends TestCase
         $markup = $this->drawn([$this->slot('form'), $this->slot('help', true)]);
 
         // The entry form opens before the first field and closes after the button.
+        //
+        // ⚠️ *Der Akt heisst `put_setting`, seit der eigene Knopf des Bereichs weg ist
+        // ([D-488](../../docs/NewConcept/90-decision-log.md)): die Texte liegen im Seitenformular, also
+        // schickt sie derselbe Akt wie die Einstellungen. **Vorher stand hier `put_labels` — ein Akt,
+        // den danach kein Knopf mehr abschickte.***
         self::assertMatchesRegularExpression(
-            '#<form method="post"[^>]*>.*taxmod_label\[form\].*taxmod_label\[help\].*put_labels.*</form>#s',
+            '#<form method="post"[^>]*>.*taxmod_label\[form\].*taxmod_label\[help\].*put_setting.*</form>#s',
             $markup
         );
     }

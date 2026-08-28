@@ -5,7 +5,9 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\LabelRepository;
 
 /**
@@ -36,6 +38,22 @@ final class Labels
     public function __construct(
         private readonly LabelRepository $labels,
         private readonly FrameworkNodes $framework,
+        // ⚠️ **Damit eine Labeländerung in der Geschichte steht** ([D-489](../../../docs/NewConcept/90-decision-log.md)).
+        // Der Eigentümer: *«Labeländerungen sollten auch dokumentiert werden.»*
+        //
+        // ⚠️ *Gemessen war es vorher **keine einzige** Zeile: von 10496 Changelog-Einträgen nannte
+        // keiner ein Label ([OQ-126](../../../docs/NewConcept/91-open-questions.md)). Für Settings war
+        // das Journalisieren ausdrücklich entschieden ([D-403](../../../docs/NewConcept/90-decision-log.md),
+        // **weil 591 Zeilen keine Geschichte hatten**) — für Labels hatte es nie jemand gefragt.*
+        //
+        // ⚠️ *Optional wie bei {@see Settings}: die Aufrufer, die nur **lesen**, sollen keine
+        // Abhängigkeit erklären müssen, die sie nie benutzen.*
+        private readonly ?Changelog $changelog = null,
+        // ⚠️ *Nur um `node` von `relation` zu unterscheiden — ein Label hängt an beidem
+        // ([D-410](../../../docs/NewConcept/90-decision-log.md)), und die Id allein sagt nicht welches.
+        // **Ohne dieses Repository wäre `owner_kind` geraten**, und `Settings::kindOf()` nennt genau das
+        // eine Lüge, die es dort schon einmal war.*
+        private readonly ?NodeRepository $nodes = null,
     ) {
     }
 
@@ -166,7 +184,11 @@ final class Labels
     /** Write one label. */
     public function put(Label $label): void
     {
+        $was = $this->storedText($label);
+
         $this->labels->put($label);
+
+        $this->note($label, $was, $label->text);
     }
 
     /**
@@ -181,7 +203,81 @@ final class Labels
      */
     public function forget(Label $label): void
     {
+        $was = $this->storedText($label);
+
         $this->labels->forget($label->ownerId, $label->path, $label->roleId, $label->number, $label->locale);
+
+        $this->note($label, $was, null);
+    }
+
+    /**
+     * Was hier gerade gespeichert ist — oder nichts.
+     *
+     * ⚠️ **Das hier Gespeicherte und nicht die Kette** ([D-488](../../../docs/NewConcept/90-decision-log.md)).
+     * *Was im Feld steht, wenn nichts gesetzt ist, ist die **Antwort der Kette** — gegen sie zu
+     * vergleichen würde bei jedem Seitenspeichern den Platzhalter als Änderung protokollieren und ihn
+     * damit festschreiben.*
+     */
+    private function storedText(Label $label): ?string
+    {
+        foreach ($this->labels->forOwners([$label->ownerId]) as $one) {
+            if ($one->path === $label->path
+                && $one->roleId === $label->roleId
+                && $one->number === $label->number
+                && $one->locale === $label->locale
+            ) {
+                return $one->text;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Eine Zeile je geschriebenem oder gelöschtem Label.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   L["ein Label geschrieben"] --> O["verzeichnet gegen seinen EIGENTÜMER"]
+     *   O --> Q["«was ist mit diesem Knoten passiert» kennt jetzt auch seine Namen"]
+     * ```
+     *
+     * ⚠️ **Gegen den Eigentümer und nicht gegen das Label, genau wie bei einem Setting**
+     * ([D-403](../../../docs/NewConcept/90-decision-log.md)): *ein Label hat keine Identität, zu der
+     * jemand hinnavigiert — man sieht einen **Knoten** an und fragt, was sich geändert hat.*
+     *
+     * ⚠️ **Was in der Zeile steht, sind die drei Angaben, die eine Adresse ausmachen** — Rolle, Locale
+     * und, wo einer da ist, der Pfad. *[Zeile 47](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
+     * verlangt für Settings dasselbe: **ein Eintrag ohne Adresse ist nicht abspielbar.** Hier von
+     * Anfang an mit, statt es später nachzurüsten.*
+     *
+     * ⚠️ *Nichts wird verzeichnet, wenn sich nichts geändert hat — ein Textfeld sendet **immer**, und
+     * bei jedem Seitenspeichern ([D-488](../../../docs/NewConcept/90-decision-log.md)). Ein Journal,
+     * das Nicht-Ereignisse aufschreibt, liest niemand.*
+     */
+    private function note(Label $label, ?string $was, ?string $now): void
+    {
+        if ($this->changelog === null || $was === $now) {
+            return;
+        }
+
+        $wo = sprintf(
+            'label role=%d locale=%s%s',
+            $label->roleId,
+            $label->locale === '' ? '(neutral)' : $label->locale,
+            $label->path === '' ? '' : ' path=' . $label->path
+        );
+
+        $this->changelog->record(
+            $label->ownerId,
+            // ⚠️ *Ein Label hängt an einem Knoten **oder** an einer Kante ([D-410](../../../docs/NewConcept/90-decision-log.md)),
+            // und die Id allein sagt nicht welches. Ohne das Repository bliebe nur Raten — und geraten
+            // hat `Settings` diese Spalte schon einmal, was dort als «einfach eine Lüge» steht.*
+            $this->nodes === null || $this->nodes->find($label->ownerId) !== null ? 'node' : 'relation',
+            $now === null ? $wo . ' cleared' : $wo . ' set',
+            $was,
+            $now
+        );
     }
 
     /** @return list<Label> Everything stored for this owner, for a screen that lists them. */

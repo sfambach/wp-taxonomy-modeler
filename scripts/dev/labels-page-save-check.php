@@ -334,7 +334,7 @@ echo "\n== 5. der eigene Knopf des Labels-Bereichs speichert dieselbe Seite ==\n
 // schriebe, würde die Einstellungen daneben lesen und wegwerfen. Und dass beide Knöpfe **etwas** tun,
 // ist genau die Zusage, die niemand prüft, weil man sie sieht statt sie zu messen.*
 $vierte                         = $seite;
-$vierte['do']                   = 'put_labels';
+$vierte['do']                   = 'put_setting';
 $vierte['name']                 = '__lb Knoten neu';
 $vierte['taxmod_label']['form'] = '__lb Über den eigenen Knopf';
 

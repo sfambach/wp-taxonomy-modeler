@@ -4948,7 +4948,11 @@ Er: *«da versteh ich den Unterschied noch nicht. Das sieht mir erst mal gleich 
 
 **Raised** 2026-08-28, beim Bauen von [D-488](90-decision-log.md) — durch Messung, nicht durch eine Frage.
 
-*Blocks:* [40 I18n](40-i18n.md) · *Status:* open
+*Blocks:* [40 I18n](40-i18n.md) · *Status:* **geschlossen 2026-08-28 → [D-489](90-decision-log.md), nennt diese Frage**
+
+⚠️ **Er hat es in einem Satz entschieden:** *«Labeländerungen sollten auch dokumentiert werden.»* Gebaut wie bei einem Setting — gegen den Eigentümer verzeichnet, mit der Adresse in der Zeile (Rolle, Locale, Pfad), und nichts geschrieben, wenn sich nichts geändert hat.
+
+⚠️ *Damit fällt auch die Umgehung weg, die unten steht: «ein unverändertes Label schreibt nichts» ist jetzt **am Changelog messbar** und braucht keinen Kindprozess mit `SAVEQUERIES` mehr. Der Grenz-Check behält die Zählung trotzdem, weil sie eine **andere** Zusage prüft — dass gar keine Schreibabfrage läuft, nicht bloss keine Journalzeile.*
 
 ⚠️ **Gemessen: von **10496** Changelog-Zeilen nennt **keine einzige** ein Label.** *31 verschiedene `what`-Werte, keiner davon betrifft eine Labeländerung. Der Umbenennung eines Knotens folgt eine Zeile, dem Setzen eines Settings auch — dem Übersetzen eines Namens nicht.*
 

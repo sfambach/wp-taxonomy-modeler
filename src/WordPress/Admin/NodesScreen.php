@@ -1674,18 +1674,16 @@ final class NodesScreen
         return $html . $this->rendering->labelsPanelFor(
             $selected,
             $slots,
-            // ⚠️ **The panel's own button stays and now saves the page**, because a field belongs to
-            // exactly one form: with the texts in the page's form, a button submitting anything else
-            // would submit an empty one. *Whether a second button in the same place as the head's is
-            // still wanted is the owner's to say — it is kept rather than quietly removed.*
-            [Control::saving(
-                'do',
-                LabelsRenderer::WRITE,
-                __('Save', 'taxmod'),
-                __('Save this page — every setting and every text for this locale', 'taxmod'),
-                true,
-                $pageForm
-            )],
+            // ⚠️ **Kein eigener Knopf mehr — der Eigentümer hat entschieden.** *Er stand hier eine
+            // Fassung lang und war ein **Duplikat** des Kopf-Knopfes: seit die Texte im Seitenformular
+            // liegen ([D-488](../../../docs/NewConcept/90-decision-log.md)), schickte er dasselbe ab
+            // wie der Kopf. Auf die Frage «soll er weg» — «zu 1: ja».*
+            //
+            // ⚠️ *Warum er nicht einfach «nur Texte» behalten konnte, und das ist HTML und keine
+            // Geschmacksfrage: **ein Feld gehört zu genau einem Formular**, `form="…"` überschreibt die
+            // Verschachtelung. Ein Knopf, der ein anderes Formular abschickt, hätte die Einstellungen
+            // daneben **stillschweigend weggeworfen**.*
+            [],
             new Submission(admin_url('admin-post.php'), ['label_locale' => $locale]),
             ['locale' => new Section(__('Locale', 'taxmod'), $this->localePicker($locale, $selected->id))],
             Purpose::Edit,
@@ -2824,12 +2822,14 @@ final class NodesScreen
                 // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
                 // panel is one form, so there is no single key to write — every changed value is.
                 // ⚠️ **And the labels come with it**, on the owner's word — *labels should be saved
-                // with the page too.* **Two names for one act**, because there are two buttons for it:
-                // the head's diskette and the labels panel's own. *`put_labels` used to write only the
-                // texts; now that the texts sit in the page's form, a labels-only act would have read
-                // every setting the person had just edited and thrown it away.*
-                'put_setting',
-                'put_labels'     => $this->saveNodePage($id, $edge, $name, $labelLocale),
+                // with the page too* ([D-488](../../../docs/NewConcept/90-decision-log.md)).
+                //
+                // ⚠️ **Ein Name, nicht zwei.** *Es standen kurz `put_setting` und `put_labels` hier, weil
+                // es zwei Knöpfe gab. Der eigene Knopf des Labels-Bereichs ist weg — der Eigentümer, auf
+                // die Frage «soll er weg»: «zu 1: ja» — und damit schickte **niemand** mehr `put_labels`.
+                // **Ein Akt, den kein Knopf abschickt, ist toter Code**, und `CLAUDE.md` verbietet ihn
+                // ausdrücklich. Er ist mit seiner Konstante `LabelsRenderer::WRITE` verschwunden.*
+                'put_setting'    => $this->saveNodePage($id, $edge, $name, $labelLocale),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.

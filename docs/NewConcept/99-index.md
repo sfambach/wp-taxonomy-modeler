@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **488**, davon **31** ersetzt oder teilweise überholt |
-| Offene Fragen | **126**, davon **33** noch offen |
+| Entscheidungen | **489**, davon **31** ersetzt oder teilweise überholt |
+| Offene Fragen | **126**, davon **32** noch offen |
 
 ## Offene Fragen
 
@@ -142,7 +142,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-123](91-open-questions.md) | beantwortet | Wo wohnt «normaler Knoten» in der Supported-Liste, und wie beansprucht ein Renderer einen *bestimmten* Knoten? |
 | [OQ-124](91-open-questions.md) | beantwortet | Gibt es im Code spezialisierte Knotenklassen? D-036 hat das delegiert und um Korrektur gebeten |
 | [OQ-125](91-open-questions.md) | **offen** | Heissen «der Wert ist ein Zeiger» und «der Wert liegt als Zeiger» weiter fast gleich? |
-| [OQ-126](91-open-questions.md) | **offen** | Wird eine Labeländerung protokolliert? Heute nicht, und niemand hat es entschieden |
+| [OQ-126](91-open-questions.md) | beantwortet | Wird eine Labeländerung protokolliert? Heute nicht, und niemand hat es entschieden |
 
 ## Entscheidungen nach Sachgebiet
 
@@ -153,10 +153,10 @@ Eine Entscheidung steht in mehreren Gebieten, wenn sie mehrere betrifft.*
 |---|---|---|
 | [10-domain-core](10-domain-core.md) | **216** | 19 |
 | [30-renderer](30-renderer.md) | **192** | 11 |
-| [20-interaction](20-interaction.md) | **99** | 4 |
+| [20-interaction](20-interaction.md) | **100** | 4 |
 | [50-wordpress-persistence](50-wordpress-persistence.md) | **90** | 4 |
 | [70-migration](70-migration.md) | **35** | 1 |
-| [40-i18n](40-i18n.md) | **33** | 2 |
+| [40-i18n](40-i18n.md) | **34** | 2 |
 | [01-glossary](01-glossary.md) | **18** | 1 |
 | [60-calculation](60-calculation.md) | **17** | — |
 | [02-field-and-setting](02-field-and-setting.md) | **12** | — |
@@ -657,3 +657,4 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-486](90-decision-log.md) | 2026-08-28 | agreed | 20-interaction | Die Kästen um die Icons kamen von einem Positionsargument, nicht von einer CSS-Regel — und `--taxmod-icon` war überall tot. |
 | [D-487](90-decision-log.md) | 2026-08-28 | agreed | ⚠️ **keins** | Ein Dachboden für ganz überholte Entscheidungen — 92 Veraltete Entscheidungen. Und ein |
 | [D-488](90-decision-log.md) | 2026-08-28 | agreed | 40-i18n, 20-interaction | Labels gehen mit dem Seitenspeichern mit, und `Surroundings::$formId` adressiert dafür |
+| [D-489](90-decision-log.md) | 2026-08-28 | agreed | 40-i18n, 20-interaction | Eine Labeländerung wird protokolliert, und der eigene Speicherknopf des Labels-Bereichs ist weg. Schliesst OQ-126. |

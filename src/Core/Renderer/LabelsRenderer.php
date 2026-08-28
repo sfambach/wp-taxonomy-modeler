@@ -52,8 +52,11 @@ final class LabelsRenderer implements Renderer
 {
     public const NAME = 'labels';
 
-    /** The act that writes the whole panel at once. */
-    public const WRITE = 'put_labels';
+    // ⚠️ *`WRITE = 'put_labels'` stand hier und ist weg: seit die Texte im Seitenformular liegen
+    // ([D-488](../../../docs/NewConcept/90-decision-log.md)) und der eigene Knopf des Bereichs
+    // entfernt ist, schickte **niemand** diesen Akt mehr ab. **Eine Konstante für einen Akt, den es
+    // nicht gibt, ist toter Code** — und wer den Bereich in ein Formular hängen will, nennt jetzt
+    // dasselbe `put_setting` wie die Einstellungen daneben.*
 
     public function name(): string
     {
