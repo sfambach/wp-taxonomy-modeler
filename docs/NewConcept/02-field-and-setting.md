@@ -808,3 +808,45 @@ record answer it?» sagt weiterhin, ob etwas zur **Modellzeit** oder zur **Benut
 nur ist die Antwort nicht mehr «zwei Mechanismen», sondern «ein Merkmal».*
 
 ---
+
+## Ein Feld trägt zwei Angaben — Stand 2026-08-29
+
+[D-508](90-decision-log.md) schliesst eine Lücke, die [D-506](90-decision-log.md) offen liess. Der
+Eigentümer: *«die Felder, die wir hier definieren, definieren **Daten des Modells** und nicht Daten,
+die durch den Benutzer eingegeben werden — das ist der grosse Unterschied.»*
+
+⚠️ **Die Lücke war meine.** *D-506 sagte «ein Merkmal, nämlich überschreibbar an der Kante» und nahm
+«der Wert liegt in einem Datensatz» als stillschweigenden Normalfall. **Sobald alles ein Feld ist,
+gibt es keinen stillschweigenden Normalfall mehr.***
+
+| Feld | **wo liegt der Wert** | **darf eine Verwendungsstelle überschreiben** |
+|---|---|---|
+| `Adresse . strasse` | im **Datensatz** — der Benutzer schreibt ihn | nein |
+| `Prefixes . exponent` | am **Modell** — der Autor schreibt ihn | — |
+| `int . factor` | am **Modell** | nein |
+| `int . min` | am **Modell** | **ja** |
+| `multiplicity` | am **Modell** | **nur dort** |
+
+**Die beiden Spalten sind unabhängig.** Die zweite ist [D-506](90-decision-log.md); die erste ist
+neu und ersetzt `persistent`.
+
+### `persistent` beantwortet die erste Frage halb und negativ
+
+⚠️ **Gemessen sagen genau zwei Stellen `persistent = 0`, und eine davon ist `Prefixes . exponent`** —
+*ein Feld, dessen Wert nicht in einem Datensatz landet, sondern am Modell steht: `kilo` trägt seine
+3 als `default`. `DataEntry::keepsValues()` verweigert dort das Schreiben. **Der Fall existiert seit
+[D-378](90-decision-log.md)** — er hatte nur keinen Namen.*
+
+⚠️ *`persistent = false` sagt, **wo der Wert nicht liegt**, nicht wo er stattdessen liegt. Heute
+ergibt sich das aus einer **Kombination** — `persistent = false` **plus** ein `default` am Knoten.
+**Zwei Angaben, die übereinstimmen müssen**, und genau das verbietet `CD`.*
+
+⚠️ **Die Angabe gehört an die Felddeklaration, nicht an den Knoten** — *`Prefixes . exponent` ist
+nicht-persistent, während `Adresse . strasse` es ist. Dort sitzt `persistent` auch heute schon, auf
+der Kante.*
+
+⚠️ *Und der Eingabemechanismus existiert bereits: **die Einstellungsseite**. Was sich ändert, ist nur,
+wie sie zu verstehen ist — «hier schreibt der Autor Feldwerte am Modell» statt «hier stehen
+Einstellungen».*
+
+---
