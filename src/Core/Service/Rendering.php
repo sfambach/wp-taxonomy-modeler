@@ -493,50 +493,7 @@ final class Rendering
         ));
     }
 
-    /**
-     * The settings panel's markup for rows that were already drawn.
-     *
-     * ⚠️ **Split out because both callers need it and one of them has already drawn the rows.** The
-     * attribute row resolves its settings for the multiplicity anyway, so drawing them a second time
-     * would be two chains walked for one answer — `CD-7`'s loop wearing a different hat.
-     *
-     * @param array<string, RenderedSetting> $configured
-     * @param list<Control>                  $acts
-     */
-    private function panelBody(
-        array $configured,
-        Renderable $subject,
-        array $acts,
-        ?Submission $submits,
-        string $locale,
-        Level $level,
-    ): string {
-        // ⚠️ **The multiplicity is shown in the row above and kept out of the panel** — one control
-        // in two places is exactly the drift `R20a` warns about, arrived at by being thorough.
-        unset($configured[SettingKey::Multiplicity->value]);
-
-        // ⚠️ **And the icon is not a use-site matter at all** ([D-382](90-decision-log.md)): it is a
-        // mark of a **node**, which is why it moved to the head of the Display band. *That it is
-        // dropped here rather than declared node-only is the honest shape: the only axis a key has
-        // today is `isEdgeOnly()`, and the reverse does not exist — which is the neighbourhood of the
-        // question the owner raised about keys being offered where they mean nothing.*
-        unset($configured[SettingKey::Icon->value]);
-
-        if ($configured === []) {
-            return '';
-        }
-
-        return $this->renderers->byName(SettingsRenderer::NAME)->render(
-            $subject,
-            new RenderContext(
-                purpose: Purpose::Edit,
-                value: TypedValue::nothing(),
-                locale: $locale,
-                level: $level,
-                surroundings: new Surroundings(actions: $acts, submits: $submits, configured: $configured)
-            )
-        )->markup;
-    }
+    
 
     /**
      * What a subject is called, in one locale — the labels panel.
@@ -805,59 +762,7 @@ final class Rendering
         );
     }
 
-    /**
-     * The settings of one subject as **the** panel — a node's or an attribute's, drawn identically.
-     *
-     * ⚠️ **One panel, on the owner's word twice over.** First *the settings under the attribute have
-     * to look exactly like the settings in the node*, then — having compared them — *take the
-     * attribute view, it looks better.* So {@see SettingsRenderer} is the panel and the screen's
-     * hand-built table is gone. `R1` had been broken by the second list existing at all.
-     *
-     * @param  array<string, \Taxmod\Core\Model\ResolvedSetting> $resolved
-     * @param  list<Control>                                    $acts    Set · Nothing · Reset, once;
-     *                                                                   the renderer greys them per row.
-     * @param  Submission|null                                  $submits Where a row's act goes.
-     */
-    public function settingsPanelFor(
-        Renderable $subject,
-        array $resolved,
-        array $acts = [],
-        ?Submission $submits = null,
-        Purpose $purpose = Purpose::Edit,
-        string $fieldPrefix = '',
-        string $locale = '',
-        Level $level = Level::Admin,
-        array $except = [],
-        array $choices = [],
-    ): RenderResult {
-        $configured = [];
-
-        foreach ($this->settingsFor($subject, $resolved, $purpose, $fieldPrefix, $locale, $level, $choices) as $drawn) {
-            // ⚠️ **A key drawn elsewhere is left out here rather than drawn twice.** One control in
-            // two places is the drift `R20a` warns about — the `icon` sits at the head of the Display
-            // band (D-382) and the multiplicity in the attribute row (D-351).
-            if (in_array($drawn->key, $except, true)) {
-                continue;
-            }
-
-            $configured[$drawn->key] = $drawn;
-        }
-
-        return $this->renderers->byName(SettingsRenderer::NAME)->render(
-            $subject,
-            new RenderContext(
-                purpose: $purpose,
-                value: TypedValue::nothing(),
-                locale: $locale,
-                level: $level,
-                surroundings: new Surroundings(
-                    actions: $acts,
-                    submits: $submits,
-                    configured: $configured
-                )
-            )
-        );
-    }
+    
 
     /**
      * Draw a node's attributes as rows — one renderer per attribute, the subject being the **edge**.
@@ -905,9 +810,10 @@ final class Rendering
         string $settingPrefix = '',
         string $locale = '',
         Level $level = Level::Admin,
-        array $settingActs = [],
-        array $settingSubmits = [],
-        string $settingsTitle = 'settings',
+        // ⚠️ *Hier standen `$settingActs`, `$settingSubmits` und `$settingsTitle` — die Zutaten des
+        // Einstellungsblocks je Zeile, der mit [D-520](../../../docs/NewConcept/90-decision-log.md)
+        // entfallen ist. **Sie waren danach reine Mitläufer**: der Aufrufer baute sie, die Methode nahm
+        // sie an, und niemand las sie mehr.*
         array $targetHrefs = [],
     ): array {
         if ($edges === []) {
@@ -975,13 +881,16 @@ final class Rendering
                     // ⚠️ *The arrangement stands on its own merit and needs no rule: the panel is drawn
                     // **once** at this level and placed in every row, so there is one place that knows
                     // what a settings panel looks like. That is `R1`, not a prohibition.*
-                    sections: [
-                        FieldRowRenderer::SETTINGS => new Section(
-                            $settingsTitle,
-                            $this->panelBody($configured, $edge, $settingActs, $settingSubmits[$edge->id] ?? null, $locale, $level),
-                            true
-                        ),
-                    ]
+                    // ⚠️ **Hier stand der Einstellungsblock je Feldzeile, und er ist weg.** *Der
+                    // Eigentümer: «wenn ich Settings unter einem Field aufklappe, habe ich immer noch
+                    // den Settings-Renderer — kannst du den mal auskommentieren?» **Nach
+                    // [D-518](../../../docs/NewConcept/90-decision-log.md) ist er eine Doppelung**:
+                    // dieselben Angaben stehen jetzt als Feldzeilen im Settings-Block, gezeichnet vom
+                    // Feldzeilen-Renderer — und `R1` erlaubt **eine** Art, eine Sache zu zeichnen.*
+                    //
+                    // ⚠️ *Die Mehrfachheit bleibt: sie hängt an `surroundings->configured` und hat ihre
+                    // eigene Spalte in der Zeile, nicht diesen Block.*
+                    sections: []
                 ),
             );
 

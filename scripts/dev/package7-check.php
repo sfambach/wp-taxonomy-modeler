@@ -586,10 +586,14 @@ try {
         // attribute row (D-381). *A fixed id looked right and was wrong: `form="…"` finds the first
         // match, so the head button would have saved whichever panel came earliest in the document.
         // This check found that within a minute of the id being written.*
-        preg_match_all('#id="(taxmod-settings-\d+)"#', $detail, $panels);
-        check('every settings panel has an id of its own',
-            $panels[1] !== [] && count($panels[1]) === count(array_unique($panels[1])),
-            implode(' ', $panels[1]));
+        // ⚠️ **Die Tafel je Feldzeile ist entfallen** ([D-520](../../docs/NewConcept/90-decision-log.md)),
+        // *also gibt es keine Panels mehr, deren Ids sich unterscheiden müssten. **Was von der Zusage
+        // übrig bleibt und weiter gilt**: keine zwei Elemente auf der Seite teilen eine Id — daran
+        // scheiterte damals ein fester Wert, und `form="…"` nimmt den ersten Treffer.*
+        preg_match_all('#\sid="([^"]+)"#', $detail, $alleIds);
+        $doppelt = array_keys(array_filter(array_count_values($alleIds[1]), static fn (int $n): bool => $n > 1));
+
+        check('keine Id kommt zweimal vor', $doppelt === [], implode(', ', $doppelt));
         check('a row is a row and no longer a form', ! str_contains($detail, 'class="taxmod-setting" style'));
         // ⚠️ **Der Knopf im Kopf nennt jetzt das Formular der **Seite**, nicht das eines Blocks**
         // ([D-517](../../docs/NewConcept/90-decision-log.md)). *Bis zum 2026-08-29 lieh sich die Seite
@@ -597,8 +601,11 @@ try {
         // die Abhängigkeit, die diese Zusicherung eigentlich meint**: der Knopf steht ausserhalb seines
         // Formulars und muss es benennen — welches, entscheidet die Seite.*
         check('and a button outside the form names it', (bool) preg_match('#form="taxmod-(?:page|settings)-\d+"#', $detail));
-        // ⚠️ A row act has to say **which** row: with one form a hidden key could say only one.
-        check('a row act names its own key', (bool) preg_match('#name="do\[[a-z_]+\]"#', $detail));
+        // ⚠️ *Die Zeilen-Akte `empty_setting` und `reset_setting` sind mit der Tafel gegangen
+        // ([D-520](../../docs/NewConcept/90-decision-log.md)), also gibt es kein `do[<key>]` mehr auf
+        // der Seite. **Die Form bleibt richtig und der Annahme-Pfad liest sie weiter** — was fehlt,
+        // ist das Steuerelement, und das steht auf [Zeile 82](../../docs/NewConcept/97-implementation-plan.md#the-working-list).*
+        check('kein Zeilen-Akt ohne eigenen Schlüssel', ! (bool) preg_match('#name="do\[\]"#', $detail));
         // ⚠️ **No boxes round the icons, anywhere** — the owner said it twice because the first fix
         // reached only the tree. The renderers mark such a button now, so this counts the mark.
         check('every icon button is marked so no surface has to guess',

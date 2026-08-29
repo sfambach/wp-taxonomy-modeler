@@ -1274,3 +1274,23 @@ ohne ihn liesse sich eine geerbte Antwort nicht zurücknehmen.***
 
 ---
 
+### Die Einstellungstafel je Feldzeile ist weg — Stand 2026-08-29
+
+[D-520](90-decision-log.md), auf seine Bitte. *Sie war nach [D-518](90-decision-log.md) eine
+Doppelung: dieselben Angaben stehen jetzt als Feldzeilen im Settings-Block, und
+[R1](30-renderer.md) erlaubt **eine** Art, eine Sache zu zeichnen.*
+
+⚠️ **Was dabei seine Bedienung verlor, gemessen am Markup:** *`renderer` und `converter` je
+Verwendungsstelle, `read_only`, `factor`, `offset`, und die Zeilen-Akte `empty_setting` und
+`reset_setting` — **0x**. Der Annahme-Pfad liest sie weiter; es fehlt der Knopf. Ersatz auf
+[Zeile 82](97-implementation-plan.md#the-working-list).*
+
+⚠️ *Die **Mehrfachheit** bleibt — sie hängt an `surroundings->configured` und hat ihre eigene Spalte
+in der Zeile, nicht diese Tafel.*
+
+⚠️ **Und der Umbau deckte einen älteren Fehler auf:** *`wp_nonce_field()` macht eine **Id** aus dem
+Namen, und eine Seite trägt vier dieser Formulare — `id="_taxmod_nonce"` stand **viermal** da.
+**Ungültiges HTML, und `form="…"` wie `getElementById` nehmen den ersten Treffer** — derselbe Fehler
+wie bei der festen Panel-Id ([D-381](90-decision-log.md)).*
+
+---

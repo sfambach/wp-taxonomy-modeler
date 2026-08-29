@@ -227,8 +227,22 @@ if ($node === 0) {
 
         $control = $rendererControl($screen, $node);
 
-        check('the renderer control is found at all', $control !== '');
-        check('and it is editable while nothing is hidden', $control !== '' && ! str_contains($control, 'disabled'));
+        // ⚠️ **Es gibt keinen Renderer-Wähler je Verwendungsstelle mehr, und das ist eine
+        // Entscheidung** ([D-520](../../docs/NewConcept/90-decision-log.md)): *er lag in der
+        // Einstellungstafel unter jeder Feldzeile, und die ist entfallen, weil dieselben Angaben nach
+        // [D-518](../../docs/NewConcept/90-decision-log.md) als Feldzeilen im Settings-Block stehen.*
+        //
+        // ⚠️ **Was diese Prüfung darum nicht mehr messen kann, misst sie auch nicht mehr, statt es
+        // wegzulassen und still zu bleiben:** *«der Wähler ist da» und «er ist editierbar» sind
+        // Zusicherungen über ein Steuerelement, das absichtlich weg ist. **Die verbleibende Zusage
+        // ist die, um die es [D-399](../../docs/NewConcept/90-decision-log.md) ging**: `hide` nimmt dem
+        // Zeichnen nichts, und dafür genügt, dass nichts abgeschaltet wird. Der Ersatz — ein Wert am
+        // Feld statt eine Einstellung — steht auf [Zeile 82](../../docs/NewConcept/97-implementation-plan.md#the-working-list).*
+        check(
+            'solange es keinen Wähler gibt, ist auch keiner abgeschaltet',
+            ! str_contains($control, 'disabled'),
+            $control
+        );
 
         $wpdb->query($wpdb->prepare("UPDATE {$prefix}nodes SET hide = 1 WHERE id = %d", $node));
 
@@ -243,7 +257,6 @@ if ($node === 0) {
         // **Knoten im Baum**, und das sagt nichts darueber, wie er gezeichnet wuerde — also bleibt die
         // Wahl editierbar.*
         check('with hide, the renderer control stays editable', ! str_contains($control, 'disabled'));
-        check('and it is still present', $control !== '');
     } finally {
         $wpdb->query($wpdb->prepare("UPDATE {$prefix}nodes SET hide = 0 WHERE id = %d", $node));
     }

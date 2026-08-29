@@ -1069,7 +1069,7 @@ final class NodesScreen
         // Das ist reines HTML und braucht kein Skript.*
         //
         // ⚠️ *`edge` ist `0`, weil ein Knoten keine Verwendungsstelle ist — dieselbe Bedeutung, die
-        // `settingSubmission()` der Null immer gegeben hat.*
+        // das entfallene `settingSubmission` der Null immer gegeben hat.*
         $pageForm = '<form method="post" id="' . esc_attr(self::pageForm($selected)) . '"'
             . ' action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
@@ -1452,11 +1452,6 @@ final class NodesScreen
             );
         }
 
-        $settingSubmits = [];
-
-        foreach ($edges as $edge) {
-            $settingSubmits[$edge->id] = $this->settingSubmission($edge->id, $selected->id);
-        }
 
         // ⚠️ **One address per target, built from the same method the tree rows use.** *The owner
         // asked for a jump link on the attribute's target, and `backTo()` is a pure URL builder — no
@@ -1505,9 +1500,6 @@ final class NodesScreen
                 self::SETTING_FIELD,
                 '',
                 \Taxmod\Core\Renderer\Level::Admin,
-                $this->settingActs(),
-                $settingSubmits,
-                __('Settings of this use site', 'taxmod'),
                 $targetHrefs
             ) as $row) {
                 $body .= $row->result->markup;
@@ -2362,79 +2354,7 @@ final class NodesScreen
         $this->settings->put($chain, SettingKey::Multiplicity->value, TypedValue::ofText($multiplicity));
     }
 
-    /**
-     * The three acts every settings row offers, and the words it needs.
-     *
-     * ⚠️ **Handed in once and greyed per row by the renderer**, which is where that decision belongs:
-     * `Nothing` means nothing for a choice — its empty option already is nothing — and `Reset` only
-     * means something where the value was written here. Both follow from what the drawn row already
-     * carries, so the boundary would have to re-derive them.
-     *
-     * @return list<Control>
-     */
-    private function settingActs(): array
-    {
-        return [
-            // ⚠️ **The write act stays in the list although a row no longer draws it** — the renderer
-            // skips it, and the page-head button submits the same form. *Keeping one list means the
-            // words and the nonce are declared once.*
-            Control::saving('do', SettingsRenderer::WRITE, __('Save', 'taxmod'), __('Save every setting on this page', 'taxmod')),
-            // ⚠️ **The bin again, on the owner's ask** — *the Nothing button could be the bin again.*
-            // It **is** a removal: *deliberately nothing here* stops the chain, so a later change
-            // further up will not arrive. `destroys` paints it red for the same reason.
-            new Control(
-                'do',
-                SettingsRenderer::EMPTY,
-                __('Nothing', 'taxmod'),
-                __('Deliberately nothing here — later changes above will not arrive', 'taxmod'),
-                true,
-                true,
-                'trash'
-            ),
-            new Control(
-                'do',
-                SettingsRenderer::RESET,
-                __('Reset', 'taxmod'),
-                __('Make it inherited again — not the same as setting it to nothing', 'taxmod'),
-                true,
-                false,
-                'undo'
-            ),
-            new Control('word:inherited', '', __('inherited from further up', 'taxmod')),
-            new Control('word:here', '', __('here', 'taxmod')),
-            new Control('word:undefined', '', __('not defined', 'taxmod')),
-            // ⚠️ The category headings (D-385). Words, so they travel like every other word the core
-            // cannot make itself (`AR-2`, OQ-087).
-            // ⚠️ *Back to «Display» on the owner's word. I had renamed it to «How it is handled» because the
-            // group holds the validator and the converter as well as the renderer — true, and he prefers
-            // the shorter one. His screen, his word.*
-            new Control('word:display', '', __('Display', 'taxmod')),
-            new Control('word:rules', '', __('Rules', 'taxmod')),
-            // ⚠️ **One word per simple type**, because a group can be named after the type being
-            // configured (D-390) and the core cannot make a word (`AR-2`, OQ-087). *Generated from
-            // the enum rather than listed, so a twelfth type gets a heading without anybody
-            // remembering — the word is its own name until somebody translates it.*
-            ...array_map(
-                static fn (SimpleType $type): Control => new Control('word:' . $type->value, '', $type->humanName()),
-                SimpleType::cases()
-            ),
-        ];
-    }
-
-    private function settingSubmission(int $ownerId, int $nodeId): Submission
-    {
-        return new Submission(
-            admin_url('admin-post.php'),
-            [
-                'action'        => self::ACTION,
-                'id'            => (string) $nodeId,
-                // ⚠️ Present only for an **edge**, and the handler reads it to know which owner the
-                // setting belongs to. Zero for a node, which is what *no edge* has always meant here.
-                'edge'          => (string) ($ownerId === $nodeId ? 0 : $ownerId),
-                '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $nodeId),
-            ]
-        );
-    }
+    
 
     /**
      * Every label of one node, for one locale, in one act.
@@ -2902,7 +2822,17 @@ final class NodesScreen
     {
         return '<input type="hidden" name="action" value="' . self::ACTION . '">'
             . '<input type="hidden" name="id" value="' . (int) $id . '">'
-            . wp_nonce_field(self::ACTION . '_' . $id, '_taxmod_nonce', true, false);
+            // ⚠️ **Von Hand und nicht über `wp_nonce_field()`, weil das eine **Id** aus dem Namen
+            // macht.** *Eine Seite trägt mehrere dieser Formulare — gemessen vier —, also stand
+            // `id="_taxmod_nonce"` viermal da. **Ungültiges HTML, und `form="…"` sowie
+            // `getElementById` nehmen den ersten Treffer**: derselbe Fehler, an dem eine feste
+            // Panel-Id schon einmal gescheitert ist ([D-381](../../../docs/NewConcept/90-decision-log.md)).
+            // Gefunden von der Zusicherung, die `package7-check` beim Umbau bekam
+            // ([D-520](../../../docs/NewConcept/90-decision-log.md)).*
+            . '<input type="hidden" name="_taxmod_nonce" value="'
+                . esc_attr(wp_create_nonce(self::ACTION . '_' . $id)) . '">'
+            . '<input type="hidden" name="_wp_http_referer" value="'
+                . esc_attr(wp_unslash($_SERVER['REQUEST_URI'] ?? '')) . '">';
     }
 
     /**

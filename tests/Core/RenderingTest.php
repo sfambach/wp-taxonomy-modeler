@@ -1456,9 +1456,6 @@ final class RenderingTest extends TestCase
             '',
             '',
             \Taxmod\Core\Renderer\Level::Admin,
-            [],
-            [],
-            'settings',
             [$position->id => '/wp-admin/admin.php?page=taxmod&taxmod_node=' . $position->id]
         );
 

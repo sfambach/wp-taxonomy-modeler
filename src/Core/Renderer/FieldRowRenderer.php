@@ -71,7 +71,6 @@ final class FieldRowRenderer implements Renderer
      * this class built a list of its own, and the owner caught it immediately: `the settings under
      * the attribute have to look exactly like the settings in the node`.*
      */
-    public const SETTINGS = 'settings';
 
     /**
      * The row's own form id, so a control in another cell can submit through it.
@@ -130,37 +129,10 @@ final class FieldRowRenderer implements Renderer
 
         return RenderResult::of(
             '<tr class="taxmod-field">' . $cells . '</tr>'
-            . $this->settingsRow($context)
         );
     }
 
-    /**
-     * The settings of this use site, one disclosure below the row.
-     *
-     * The owner, looking at the finished table: *what we still do not have are the settings on the
-     * attribute — at least I do not see them … the ones that are not edge ones.* He was right: the
-     * row drew the multiplicity and nothing else, so `persistent`, `renderer`, `read_only`, `default`
-     * and the ranges had no home on an edge at all — and a `persistent` nobody can see is a flag
-     * nobody can use ([D-378](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ **Folded shut, and that is not tidiness.** An attribute has a dozen applying keys and most
-     * are unset; open by default would bury the table the row belongs to. *The same argument
-     * [D-128](../../../docs/NewConcept/90-decision-log.md) made about parked attributes: one click
-     * away, not gone.*
-     */
-    private function settingsRow(RenderContext $context): string
-    {
-        $panel = $context->surroundings->sections[self::SETTINGS] ?? null;
-
-        if ($panel === null || $panel->body === '') {
-            return '';
-        }
-
-        return '<tr class="taxmod-field-settings"><td colspan="6" style="padding:0 0 .6em">'
-            . '<details' . ($panel->collapsed ? '' : ' open') . '><summary style="cursor:pointer">'
-            . RenderResult::escape($panel->title)
-            . '</summary>' . $panel->body . '</details></td></tr>';
-    }
+    
 
     /**
      * The name — a field where it may be changed, text where it may not.
