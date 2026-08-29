@@ -1237,3 +1237,66 @@ dieselbe Lage wie heute bei `settings.owner_id`, wo `Residue` bereits vier Arten
 muss.*
 
 ---
+
+## Wie der Code seine gesäten Knoten findet — Stand 2026-08-29
+
+[D-510](90-decision-log.md), gebaut am selben Tag als [D-512](90-decision-log.md). **Über die Id, nicht über den Namen.**
+
+| Technik | Beispiel | überlebt ein Umbenennen |
+|---|---|---|
+| über den **Namen** | `SimpleType::fromNodeName('Integer')` | **nein** |
+| über eine **Id in einer Option** | `taxmod_branch_model_id = 402` | **ja** |
+
+⚠️ **Dass die Namensbindung bricht, ist gemessen und nicht befürchtet.** *Zwei Fälle an einem Tag:
+eine Prüfung suchte einen Knoten namens `int` — er heisst seit [D-428](90-decision-log.md) `Integer` —
+und lief **nie**. Und `BaseScaffold::boundTheNumbers()` suchte denselben Namen: **auf dieser
+Installation überlebten die Zahlengrenzen nur, weil sie älter als die Umbenennung sind. Eine frisch
+gesäte Installation hätte sie nie bekommen.***
+
+### Die Naht, und warum sie nötig ist
+
+`SimpleType` liegt im **Kern** und darf `get_option()` nicht rufen (`CD-1`). Also fragt sie eine
+Schnittstelle — `TypeNodes` —, die der Rand mit `SeededTypeNodes` erfüllt: **eine Option je Typ**,
+`taxmod_type_<wert>_id`, genau die Technik von `SeededFrameworkNodes`.
+
+⚠️ *Die Schnittstelle wird **verlangt**, nicht optional übergeben. **Eine optionale Bindung mit einem
+Namensrückfall dahinter lässt eine vergessene Verdrahtung genauso aussehen wie eine funktionierende.***
+
+⚠️ **Der Notnagel bleibt, an genau einer Stelle:** *findet die Option nichts, wird über den Namen
+gesucht **und die Option nachgeschrieben**. Ohne ihn wäre ein Update ein Datenverlust — eine
+bestehende Installation hat die Optionen nicht.*
+
+### Und ein zweiter Fehler, den die Umstellung aufdeckte
+
+⚠️ **Die Saat band an den falschen Knoten.** *`import()` schrieb `$taken[$child->name] = $child`, und
+`childrenOf()` liefert nach Position — unter gleichnamigen Knoten **gewann der letzte**. Sechs
+`Integer`-Knoten aus abgestürzten Prüfläufen lagen unter `Data Types`; die Saat band an einen davon,
+notierte dessen Id und legte beim nächsten Lauf einen weiteren an. **Behoben mit `??=` und einer
+Id-zuerst-Suche in der Saat selbst.***
+
+⚠️ *Nebenbefund, der nichts kostet: `Rendering::typesOf()` lädt die Vorfahrenknoten gar nicht mehr —
+es brauchte nur ihre Namen. **Eine Abfrage weniger je Formular.***
+
+---
+
+### Gesät — Stand 2026-08-29
+
+[D-513](90-decision-log.md) baut, was [D-511](90-decision-log.md) entschied:
+
+```text
+Constants
+├── Renderer   → 16 Knoten
+├── Converter  →  2 Knoten (hexadecimal, roman)
+└── Validator  →  leer
+```
+
+⚠️ **Die Saat zählt keine Namen auf, sie fragt** — `RendererRegistry::namesForNodes()` und
+`ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
+ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
+ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
+([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
+der nächste Leser legt ihn woanders an.***
+
+---

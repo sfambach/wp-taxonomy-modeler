@@ -1,4 +1,47 @@
-# Field and setting — two concepts
+# Felder — und die eine Angabe, die früher «Einstellung» hiess
+
+> ⚠️ **Dieses Dokument hiess bis zum 2026-08-29 «Field and setting — two concepts», und der Titel
+> ist falsch geworden.** *[D-506](90-decision-log.md), auf das Wort des Eigentümers: «wir
+> unterscheiden jetzt nur noch anhand eines Merkmals, ist es eine Einstellung oder ist es ein Feld.
+> **Somit ist im Grunde alles ein Feld**, und wir haben nur noch: die Einstellung kann in der Kante
+> überschrieben werden.»*
+>
+> ⚠️ **Alles unterhalb von [«Zwei Konzepte»](#two-concepts-not-two-kinds-of-the-same-thing) bis zu
+> den Abschnitten vom 2026-08-29 beschreibt den Weg dorthin, nicht den Stand.** *Es bleibt stehen,
+> weil die Begründungen dort dreimal an diesem Tag den Fehler gefunden haben — aber **es gilt
+> nicht**. Wer wissen will, was ist, liest die vier Abschnitte am Ende.*
+
+## Was gilt — Stand 2026-08-29
+
+**Es gibt nur Felder.** Ein Feld trägt zwei Angaben, und sie sind unabhängig:
+
+| | Frage | Werte |
+|---|---|---|
+| **1** | wo liegt der Wert? | im **Datensatz** (der Benutzer schreibt ihn) · am **Modell** (der Autor) |
+| **2** | darf eine Verwendungsstelle ihn überschreiben? | nein · ja · **nur dort** |
+
+*Was früher «eine Einstellung» hiess, ist ein Feld mit «am Modell» und «ja».* Die Belege, die
+Messungen und die Gegenrechnungen stehen in den vier Abschnitten am Ende dieses Dokuments:
+[Warum Settings und Feldwerte zusammengehören](#warum-settings-und-feldwerte-zusammengehören--stand-2026-08-29) ·
+[Es gibt nur noch Felder](#es-gibt-nur-noch-felder--stand-2026-08-29) ·
+[Ein Feld trägt zwei Angaben](#ein-feld-trägt-zwei-angaben--stand-2026-08-29)
+
+⚠️ **Und es ist keine Kehrtwende, sondern eine Rückkehr.** *[D-011](90-decision-log.md), 2026-08-22,
+erster Tag, Status `agreed`, **nie überholt**: «**A setting is an attribute.** Not a second
+concept.» Sieben Tage lang ist darauf ein zweites Konzept gewachsen, gegen eine Entscheidung, die
+niemand zurückgenommen hat.*
+
+⚠️ *Der Eigentümer hat am 2026-08-26 das Gegenteil gesagt — «mir fehlt die Unterscheidung zwischen
+Settings und Attributen, wir müssen zeigen, dass das zwei verschiedene Konzepte sind» — und am
+2026-08-29 sich selbst korrigiert. **Beides bleibt zitiert und keines überschrieben**, wie
+[D-434](90-decision-log.md) es vorgemacht hat: «he is correcting himself, and the log argued the
+other way in his own words, which is why it is quoted rather than quietly overwritten».*
+
+---
+
+## Der Weg dorthin — nicht mehr gültig, aber lehrreich
+
+*Ab hier steht der Stand vor dem 2026-08-29.*
 
 > ⚠️ **The word is «field» since 2026-08-28 ([D-459](90-decision-log.md)).** The owner: *maybe we should
 > rename our attribute — it always causes confusion between a class attribute and our definition. Let us
@@ -164,6 +207,12 @@ and should name them instead of picking a mechanism.*
 
 ## Two concepts, not two kinds of the same thing
 
+> ⚠️ **Überholt durch [D-506](90-decision-log.md) am 2026-08-29: es ist **ein** Konzept.**
+> *Der Eigentümer hat die Unterscheidung, die er hier verlangt hatte, drei Tage später selbst
+> zurückgenommen. Was unten steht, ist die Begründung von damals — und sie ist es wert gelesen zu
+> werden, weil aus ihr die bessere Fassung entstand. **Die Überschrift bleibt, damit jeder Verweis
+> darauf heil bleibt.***
+
 The owner, after three rounds of tables: *the distinction between settings and attributes is missing
 for me. We have to show that these are two different concepts.* **He is right that the tables below
 compare them without ever saying what each one is.**
@@ -277,6 +326,11 @@ Four things make them look alike, and all four are true:
 as a spinner»* is one sentence describing **one attribute and three settings** — and nothing in the
 sentence marks where one ends and the others begin. **The tables below are for exactly that sentence.**
 ## Truth table — an attribute is not a setting
+
+> ⚠️ **Der Titel ist falsch seit [D-506](90-decision-log.md): ein «Setting» **ist** ein Feld.**
+> *Die Zeilen der Tabelle bleiben brauchbar — sie messen, worin sich die beiden Fälle verhalten,
+> und genau daraus wurden die zwei Angaben aus [D-508](90-decision-log.md). **Lies sie als
+> Bestandsaufnahme, nicht als Regel.***
 
 Twelve statements, checked against both. **The table says what is true and points at the decision; the
 reasoning lives there, not here** — the owner asked for it that way: *put a reference to a decision, and

@@ -16,6 +16,7 @@ use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
+use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -101,6 +102,7 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
+        $this->renderingScaffold()->importOnce();
     }
 
     public function activate(): void
@@ -112,6 +114,7 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
+        $this->renderingScaffold()->importOnce();
     }
 
     public function registerMenu(): void
@@ -349,6 +352,26 @@ final class Plugin
             $this->frameworkNodes(),
             new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
             $this->typeNodes()
+        );
+    }
+
+    /**
+     * Renderer, Konverter und Validatoren als Knoten unter `Constants` ([D-511](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Nach den anderen Saaten, weil sie unter `Constants` hängen** — und `Constants` ist ein
+     * Zweig, den `frameworkNodes()->seed()` legt. *Die Reihenfolge ist dieselbe Abhängigkeit wie
+     * bei `compositionScaffold()` hinter `unitScaffold()`.*
+     *
+     * ⚠️ *Sie bekommt die **fertigen Registries** und keine eigene Namensliste: was der Code
+     * kennt, ist genau das, was gesät wird.*
+     */
+    public function renderingScaffold(): RenderingScaffold
+    {
+        return new RenderingScaffold(
+            $this->editor(),
+            $this->frameworkNodes(),
+            ShippedRenderers::registry(),
+            ShippedConverters::registry()
         );
     }
 

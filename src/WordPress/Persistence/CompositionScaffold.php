@@ -216,6 +216,21 @@ final class CompositionScaffold
      * ⚠️ **Found by name among the children, never by a remembered id** — an id is meaningless on its
      * own, and storing one per seeded node would be a second place where the tree lives.
      *
+     * ⚠️ **Diese Begründung ist am 2026-08-29 widerlegt worden, an einer Stelle — und sie steht hier
+     * nur noch als Beleg.** *[D-510](docs/NewConcept/90-decision-log.md) und
+     * [D-512](docs/NewConcept/90-decision-log.md): der Code findet gesäte Knoten über eine **Id in
+     * einer Option**, nicht über den Namen. Der Satz «eine Id ist für sich bedeutungslos» stimmt für
+     * eine **nackte** Id — nicht für eine, die unter einem sprechenden Optionsnamen liegt.*
+     *
+     * ⚠️ **Und der Bruch ist hier gemessen, nicht befürchtet:** *`boundTheNumbers()` in dieser
+     * Klassenfamilie suchte einen Knoten namens `int` — er heisst seit
+     * [D-428](docs/NewConcept/90-decision-log.md) `Integer`. **Eine frisch gesäte Installation hätte
+     * ihre Zahlengrenzen nie bekommen.***
+     *
+     * ⚠️ *Diese Methode bindet weiter über den Namen: die Umstellung der ~80 Einheiten- und
+     * Kompositionsknoten ist **nicht beauftragt** und steht auf der Arbeitsliste. **Bis dahin gilt
+     * hier der Namensweg — aber nicht mehr als Regel.***
+     *
      * @param list<string> $created
      */
     private function ensure(Node $parent, string $name, array &$created): Node

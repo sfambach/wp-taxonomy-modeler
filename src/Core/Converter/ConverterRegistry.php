@@ -41,6 +41,25 @@ final class ConverterRegistry
         $this->byName[$converter->name()] = $converter;
     }
 
+    /**
+     * Every registered name — the list the seed plants as nodes.
+     *
+     * ⚠️ *Gegenstück zu `RendererRegistry::namesForNodes()`, aus demselben Grund
+     * ([D-511](docs/NewConcept/90-decision-log.md)): **die Saat soll die Namen nicht ein zweites Mal
+     * aufzählen.** Hier gibt es keine Oberflächen-Ausnahme, weil ein Konverter nie eine Oberfläche
+     * bedient.*
+     *
+     * @return list<string> Sortiert, damit zwei Läufe dieselbe Reihenfolge säen.
+     */
+    public function namesForNodes(): array
+    {
+        $names = array_keys($this->byName);
+
+        sort($names);
+
+        return $names;
+    }
+
     public function knows(string $name): bool
     {
         return isset($this->byName[$name]);

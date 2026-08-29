@@ -83,6 +83,35 @@ final class RendererRegistry
         $this->surfaceOnly[$renderer->name()] = true;
     }
 
+    /**
+     * The names that draw a node's value — everything a surface asked for is left out.
+     *
+     * ⚠️ **Es gibt sie, damit die Saat keine zweite Liste der Renderer wird.**
+     * *[D-511](docs/NewConcept/90-decision-log.md) legt die Renderer als Knoten unter `Constants` ab.
+     * Würde die Saat ihre Namen selbst aufzählen, wäre das eine Doppelung — und die Art, die
+     * **auseinanderläuft, ohne dass etwas rot wird**: ein neuer Renderer im Code, kein Knoten im
+     * Modell, und die Auswahl zeigt ihn nie.*
+     *
+     * ⚠️ *Der Rückfall `plain` **ist dabei**, und das ist kein Versehen: seine Bedeutung ist «hier
+     * zeichnet noch nichts» ([R14b](docs/NewConcept/30-renderer.md)), und das muss wählbar sein.
+     * **Meine erste Zählung liess ihn weg und ergab 15 statt 16** — der Konstruktor registriert ihn,
+     * nicht `ShippedRenderers`, also fiel er beim Zählen der Aufrufe durch.*
+     *
+     * ⚠️ *Die Oberflächen-Renderer bleiben draussen, auf das Wort des Eigentümers: «es geht hier nur um
+     * die Knotenrenderer». `addForSurfaces()` markiert sie schon — **die Trennung wird hier gelesen und
+     * nicht ein zweites Mal getroffen**.*
+     *
+     * @return list<string> Sortiert, damit zwei Läufe dieselbe Reihenfolge säen.
+     */
+    public function namesForNodes(): array
+    {
+        $names = array_keys(array_diff_key($this->byName, $this->surfaceOnly));
+
+        sort($names);
+
+        return $names;
+    }
+
     /** Render time: by name, or the fallback when the name is unknown. */
     public function byName(string $name): Renderer
     {

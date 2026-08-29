@@ -3724,3 +3724,52 @@ obwohl [D-236](90-decision-log.md) seinen Dekorator als Konfigurationsbegriff er
 sich als gültig und liegt jetzt im Dachboden.*
 
 ---
+
+## Wo Renderer, Konverter und Validatoren wohnen — Stand 2026-08-29
+
+[D-511](90-decision-log.md): als Knoten unter **`Constants`** — kein neuer Zweig.
+
+⚠️ **Sie *sind* Konstanten, im genauen Sinn des Codes:** *`Storage::NodeRef` — «a fixed value a person
+may extend, so the value is a **reference to a node**». Das ist die Definition eines
+Renderer-Namens.*
+
+⚠️ *Ein eigener Zweig wäre eine Doppelung: gemessen antwortete er in **jeder** Eigenschaft genau wie
+`Constants` — Aggregation, `NodeRef`, keine Datensätze. **Drei Fälle, die identisch antworten.***
+
+⚠️ **Was sie von `Prefixes` und `Currency` trennt, ist die Urheberschaft — System gegen Anwender — und
+das ist eine Angabe am Knoten, kein Zweig.** *Dieselbe Bewegung wie [D-506](90-decision-log.md): ein
+Mechanismus, unterschieden durch ein Merkmal.*
+
+⚠️ *Die **Oberflächen**-Renderer bleiben draussen, auf sein Wort: «es geht nur um die Knotenrenderer».
+Der Code trennt das schon — **16 Knotenrenderer** gegen **9** über
+`addForSurfaces()`.*
+
+⚠️ **Und ein Systemknoten wird nicht `final`:** *`RendererRegistry::byName()` gibt bei einem unbekannten
+Namen den Rückfall `plain` zurück — «hier zeichnet noch nichts» ([R14b](30-renderer.md)). Ein
+abgeleiteter Renderer markiert sich selbst als nicht gezeichnet; **es gibt nichts abzuwehren**. Eine
+Regel «Systemknoten sind final» bräuchte sofort eine Ausnahme für Datentypen, wo die Ableitung gewollt
+ist.*
+
+---
+
+### Gesät — Stand 2026-08-29
+
+[D-513](90-decision-log.md) baut, was [D-511](90-decision-log.md) entschied:
+
+```text
+Constants
+├── Renderer   → 16 Knoten
+├── Converter  →  2 Knoten (hexadecimal, roman)
+└── Validator  →  leer
+```
+
+⚠️ **Die Saat zählt keine Namen auf, sie fragt** — `RendererRegistry::namesForNodes()` und
+`ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
+ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
+ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
+([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
+der nächste Leser legt ihn woanders an.***
+
+---
