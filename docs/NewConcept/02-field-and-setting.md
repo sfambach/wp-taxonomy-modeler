@@ -1024,3 +1024,31 @@ desselben Zustands — `fromStorage()` liest beide als «nichts gesagt», `WHERE
 nur eine. `$wpdb->update()` schreibt echtes NULL; eine Zusicherung hält es fest.*
 
 ---
+
+### Was ein Datensatz bedeutet, steht nicht an ihm — Stand 2026-08-29
+
+[D-521](90-decision-log.md), sein Einwand: *«ich möchte keine Parallelwelten erzeugen.»*
+
+```text
+ein Datensatz an einem Knoten
+└── Werte, verschlüsselt nach edge_id          ← die Felddeklaration
+
+was ein Wert bedeutet:
+   Ziel ist ein Feld        → Vorgabe
+   Ziel ist eine Einstellung → die Einstellung
+```
+
+⚠️ **Keine zweite Marke am Datensatz.** *Die Sorte des Ziels sagt es schon
+([D-519](90-decision-log.md)) — und eine Spalte daneben wäre wörtlich das erste Verbot des Standards:
+«Duplicating a fact. One place owns each piece of state; everything else derives.»*
+
+⚠️ **Der Speicher trägt es bereits, gemessen:** *`record_values` ist nach `edge_id` verschlüsselt und
+hat `path` und `locale`. Eine Setting-Zeile `(owner_id=kilo, setting_key='default', path='4654',
+value_int=3)` ist Zeichen für Zeichen ein Datensatz an `kilo` mit einem Wert an der
+`exponent`-Kante. **Der Unterschied ist ein Name gegen eine Id** — der Tausch, den
+[D-458](90-decision-log.md) ohnehin verlangt.*
+
+⚠️ *`is_test` bleibt unberührt: [C28](10-domain-core.md) beantwortet eine **andere** Frage als «wem
+gehört diese Zeile», und beides in eine Spalte zu legen wäre dieselbe Doppelung eine Ebene tiefer.*
+
+---
