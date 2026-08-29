@@ -5161,3 +5161,74 @@ und Wörter sind Randsache (`AR-2`, `CD-1`). Auf der Anzeigeseite gibt es die Ma
 
 ⚠️ **[Zeile 22](97-implementation-plan.md#the-working-list) gehört damit umgeschrieben, nicht
 abgehakt:** *ihr Anlassfall — `chooser-inline` auf `Base units` — ist heute kein Fehler mehr.*
+
+## OQ-131 — Sind die vier Zweige in Wahrheit zwei Fragen, und sollen sie es auch im Code sein?
+
+**Raised** 2026-08-29, vom Eigentümer, als **Vorschlag zur Vereinfachung** — nicht als
+Entscheidung.
+
+*Blocks:* [10 Domain core](10-domain-core.md), [50 Persistence](50-wordpress-persistence.md) ·
+*Status:* **offen — und drei seiner vier Teilaussagen sind bereits nachgemessen und wahr**
+
+> *«Eine Konstante ist wie ein Datentyp. Die haben im Grunde erst mal keine Daten — die Daten
+> kommen dann durch das Modell. Aber dadurch, dass ich Felder davor belegen kann, gebäre ich die
+> Daten schon vor, sozusagen.»*
+>
+> *«Das Eigentliche, was wir mit der Komposition ausdrücken wollen, ist: wird mit dem Besitzer
+> gelöscht und kann nur einen Besitzer haben. **Das ist eine Verschärfung der Aggregation.** …
+> Wir können das Modell vereinfachen, indem wir Komposition wie Aggregation behandeln.»*
+
+### Was davon schon gemessen und wahr ist
+
+**1 · Eine Konstante hat keine Daten, sondern ein vorbelegtes Feld.** *Gemessen: **0** Datensätze
+auf Konstanten-Knoten. `kilo` hat keinen. Sein Exponent steht als **Setting** `default int=3` am
+Pfad der Kante `Prefixes . exponent → Integer`, und **20 Präfix-Knoten** belegen dieses Feld so
+vor — yotta 24, zetta 21, exa 18, peta 15, tera 12, giga 9 … **Das ist genau «die Daten
+vorgebären».***
+
+**2 · Eine Konstante ist trotzdem eine Definition mit Feldern, wie ein Modell.** *`Prefixes` ist
+ein Konstanten-Knoten und **hat ein Feld**. Es gibt keinen strukturellen Unterschied zum Modell —
+nur den, **wann** ein Wert entsteht: zur **Modellzeit** als `default`, zur **Benutzungszeit** als
+Datensatz. Gemessen tragen nur Modelle und Kompositionen Datensätze: Einheitenwert 21, Parts List
+1, Condensator 1.*
+
+**3 · Sein Vereinfachungsvorschlag ist bereits gebaut.** *«Der Datensatz liegt unter dem Knoten
+der Komposition, und das Modell verweist nur darauf» — genau das tut `DataEntry::createPart()`:
+es legt einen Datensatz **des Ziels** an und schreibt beim Halter ein `value_ref` darauf. Er
+schlägt vor, was schon der Fall ist.*
+
+**4 · Und `Storage` verdient seine vier Fälle im Code nicht.** *Gemessen: `Storage::` wird an
+**drei** Stellen gelesen, alle drei in `DataEntry`, und **alle drei fragen dasselbe** — «ist es
+`OwnRecords`?». **`ExternalReference`, `InsideTheRecord` und `NodeRef` werden nie abgefragt.**
+Vier Fälle, eine Ja-Nein-Frage.*
+
+### Das Bild, auf das es hinausläuft
+
+```mermaid
+flowchart TD
+  A{"Bekommt die Definition<br/>eigene Instanzen?"}
+  A -->|nein| B{"Steht der Wert selbst da,<br/>oder zeigt er auf den Knoten?"}
+  B -->|steht da| C["Data Types"]
+  B -->|zeigt| D["Constants<br/><i>Felder vorbelegt via default</i>"]
+  A -->|ja, vom Benutzer erzeugt| E{"Wie viele Besitzer?"}
+  E -->|mehrere| F["Aggregation auf ein Modell"]
+  E -->|genau einer| G["Composition<br/><i>Verschaerfung der Aggregation</i>"]
+```
+
+### Was wirklich offen ist
+
+**Die Frage in einem Satz:** *soll aus dieser Einsicht eine Änderung am Code folgen — `Storage`
+auf die eine Frage zusammenziehen, die es beantwortet — oder bleibt sie eine Klarstellung im
+Konzept?*
+
+⚠️ **Was für «nur Konzept» spricht:** *nichts ist kaputt. Die vier Fälle sind Dokumentation, die
+im Typsystem steht statt im Text, und sie kosten nichts ausser einer Verwechslungsgefahr.*
+
+⚠️ **Was für «auch im Code» spricht:** *ein Enum, dessen drei Viertel nie abgefragt werden, ist
+genau die Sorte «gebaut und nie gelesen», die dieses Projekt am 2026-08-28 fünfmal an einem Tag
+gefunden hat — und jedes Mal war es ein Versprechen, das niemand hielt.*
+
+⚠️ *Nicht in dieser Frage enthalten, weil bereits entschieden: **dass Komposition eine
+Verschärfung der Aggregation ist** ([D-498](90-decision-log.md)), und **dass ein Teil seinen
+eigenen Datensatz bekommt statt eingebettet zu werden** ([D-017](90-decision-log.md), «structure
+is never inlined as a second storage form»).*
