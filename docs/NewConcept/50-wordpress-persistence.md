@@ -1286,7 +1286,7 @@ es brauchte nur ihre Namen. **Eine Abfrage weniger je Formular.***
 ```text
 Constants
 ├── Renderer   → 16 Knoten
-├── Converter  →  2 Knoten (hexadecimal, roman)
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
 └── Validator  →  leer
 ```
 
@@ -1294,6 +1294,8 @@ Constants
 `ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
 ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
 ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
 
 ⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
 ([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und

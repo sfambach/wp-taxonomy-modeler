@@ -92,8 +92,13 @@ if ($row === null) {
     $say(false, 'die converter-Zeile wurde ueberhaupt gezeichnet');
 } else {
     $say(! str_contains($row->result->markup, 'disabled'), 'das Steuerelement ist lebendig');
-    $say(str_contains($row->result->markup, 'roman'), 'und bietet «roman» an');
-    $say(str_contains($row->result->markup, 'hexadecimal'), 'und «hexadecimal»');
+
+    // ⚠️ **Alle vier, weil [R34](../../docs/NewConcept/30-renderer.md) alle vier nennt** — *«show a
+    // number as binary, hexadecimal, octal or in Roman numerals»*
+    // ([D-523](../../docs/NewConcept/90-decision-log.md)).
+    foreach (['binary', 'hexadecimal', 'octal', 'roman'] as $angeboten) {
+        $say(str_contains($row->result->markup, $angeboten), "und bietet «{$angeboten}» an");
+    }
 }
 
 echo "\n== ohne Konverter steht der Wert wie gespeichert ==\n";
@@ -133,7 +138,39 @@ $read = $rendering->valuesFrom([$edge], [$edge->id => 'FF']);
 
 $say(($read[$edge->id]->int ?? null) === 255, 'und FF kommt als 255 zurueck');
 
+echo "\n== binary und octal auch, in beide Richtungen ==\n";
+
+// ⚠️ *Am selben Weg gemessen wie `roman` und `hexadecimal` — durch die Einstellung, die Kette und die
+// Zeichenkette auf dem Schirm, nicht durch einen direkten Aufruf des Konverters. **Der Kern prüft die
+// Abbildung; hier steht die Frage, ob sie über Einstellung und Auflösung überhaupt ankommt.***
+foreach ([['binary', 12, '1100'], ['octal', 493, '755']] as [$konverter, $zahl, $zeichen]) {
+    $settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText($konverter));
+
+    $gezeichnet = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt($zahl)], Purpose::Display)[0];
+
+    $say(str_contains($gezeichnet->result->markup, $zeichen), "{$konverter}: {$zahl} steht als {$zeichen} da");
+
+    $zurueck = $rendering->valuesFrom([$edge], [$edge->id => $zeichen]);
+
+    $say(($zurueck[$edge->id]->int ?? null) === $zahl, "und {$zeichen} kommt als {$zahl} zurueck");
+}
+
+echo "\n== eine Ziffer, die es in dieser Basis nicht gibt, wird verweigert ==\n";
+
+// ⚠️ *`bindec('2')` ist `0` und `octdec('9')` ist `0` — dieselbe stille Null, die
+// [D-071](../../docs/NewConcept/90-decision-log.md) verbietet.*
+$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('binary'));
+
+try {
+    $rendering->valuesFrom([$edge], [$edge->id => '2']);
+    $say(false, 'binary lehnt die Ziffer 2 ab');
+} catch (\Taxmod\Core\Exception\NotAValueOfThatType) {
+    $say(true, 'binary lehnt die Ziffer 2 ab');
+}
+
 echo "\n== was nicht lesbar ist, wird verweigert und nicht als 0 gespeichert ==\n";
+
+$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
 
 try {
     $rendering->valuesFrom([$edge], [$edge->id => 'zz']);

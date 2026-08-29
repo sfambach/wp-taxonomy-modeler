@@ -1273,8 +1273,13 @@ final class RenderingTest extends TestCase
         $row = $this->drawnSettings($this->type('int'), Purpose::Edit)[SettingKey::Converter->value];
 
         self::assertStringNotContainsString('disabled', $row->result->markup);
-        self::assertStringContainsString('roman', $row->result->markup);
-        self::assertStringContainsString('hexadecimal', $row->result->markup);
+
+        // ⚠️ **All four, because R34 named all four** — *binary, hexadecimal, octal or in Roman
+        // numerals* ([D-523](../../docs/NewConcept/90-decision-log.md)). *A converter that is
+        // registered but never offered is one nobody can choose, and nothing else would notice.*
+        foreach (['binary', 'hexadecimal', 'octal', 'roman'] as $name) {
+            self::assertStringContainsString($name, $row->result->markup);
+        }
 
         // ⚠️ **And *nothing* stays an outcome, unlike the renderer choice** (R33b): no converter means
         // the value is shown as it is stored, so there is no default to force.

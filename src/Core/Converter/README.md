@@ -13,7 +13,18 @@ R36a — and [D-219](../../../docs/NewConcept/90-decision-log.md), [D-076](../..
 | `Converter` | the contract: `shown()` out, `written()` in |
 | `ConverterKind` | R33a's four forms — lookup · threshold · scale · format |
 | `ConverterRegistry` | which exist, and which a type may be given |
-| `ShippedConverters` | the two that come in the box |
+| `ShippedConverters` | the four that come in the box |
+| `PositionalNotation` | the one place-value walk `binary`, `octal` and `hexadecimal` all take |
+
+**Die vier stehen in [R34](../../../docs/NewConcept/30-renderer.md)s eigener Reihenfolge** —
+*binary, hexadecimal, octal or in Roman numerals* ([D-523](../../../docs/NewConcept/90-decision-log.md)) —
+und die Auswahl bietet sie genau so an, weil `eligibleFor()` in Anmeldereihenfolge antwortet. Alle
+vier sind invertierbar und alle vier gelten für `int`.
+
+⚠️ **Die Basis ist der ganze Unterschied zwischen dreien von ihnen, also liegt der Gang an einer
+Stelle.** *Er rechnet auf der **negativen** Seite, weil der `int` dort eine Zahl weiter reicht:
+`abs(PHP_INT_MIN)` ist ein `float`, und daran stürzte `shown()` ab. Und er verweigert, was kein `int`
+mehr trägt, statt es zu kappen — `written('FFFFFFFFFFFFFFFF')` gab vorher `0` zurück.*
 
 ## What it must not depend on
 

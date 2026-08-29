@@ -4073,7 +4073,7 @@ ist.*
 ```text
 Constants
 ├── Renderer   → 16 Knoten
-├── Converter  →  2 Knoten (hexadecimal, roman)
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
 └── Validator  →  leer
 ```
 
@@ -4081,6 +4081,8 @@ Constants
 `ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
 ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
 ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
 
 ⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
 ([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
@@ -4154,5 +4156,29 @@ Kollision, die dagegen sprach — `Integer` ist Ziel von Autoren- **und** Benutz
 wie bei `DisplayOption`. Die Bedingung «das Ziel liegt unter dem Besitzer» ist bei `addField()`
 prüfbar, **aber als Verbot unbrauchbar**: alles liegt unter der Wurzel. Siehe
 [OQ-133](91-open-questions.md).*
+
+---
+
+### Ein Knoten trägt Datensätze für seine Felder — Stand 2026-08-29
+
+[D-522](90-decision-log.md). *Das Tor fragt nach **Feldern**, nicht nach dem Zweig.*
+
+```text
+kilo (unter Constants)
+└── erbt «exponent» als Kante 4654
+    record_values   edge_id=4654  path='4654'  value_int=3     ← neu
+    settings        owner_id=kilo setting_key='default' … =3   ← dasselbe, heute
+```
+
+⚠️ **[D-183](90-decision-log.md)s Satz «everything under Definition has none» war schon falsch:**
+*gemessen **232 Setting-Zeilen** an Knoten ausserhalb von `Model` und `Compositions`. Die Daten waren
+da — in einer anderen Tabelle und unter einem anderen Namen.*
+
+⚠️ **Additiv:** *Zweig hält Daten **oder** der Knoten hat Felder. Ein Modellknoten ohne Felder ist
+eine Baustelle und darf weiter anlegen — das hat ein Kerntest erzwungen.*
+
+⚠️ **Und die unbequeme Folge, gemessen: von 129 Knoten hat _keiner_ null Felder**, weil die Wurzel
+`renderer` und `validator` erklärt. *Der Datensätze-Bereich zeigt also überall. **Eine Ausnahme für
+Maschinerie nähme die Wurzel mit** — und ein Datensatz an der Wurzel ist der nützliche Fall.*
 
 ---

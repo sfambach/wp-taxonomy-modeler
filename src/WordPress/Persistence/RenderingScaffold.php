@@ -36,7 +36,7 @@ use Taxmod\Core\Service\ModelEditor;
  *     C --> K[Converter]
  *     C --> V[Validator]
  *     R --> R1[plain … 16 Namen]
- *     K --> K1[hexadecimal, roman]
+ *     K --> K1[binary, hexadecimal, octal, roman]
  *     V --> V1[noch keiner]
  * ```
  *
@@ -51,7 +51,12 @@ final class RenderingScaffold
     /** ⚠️ *Eigene Fassung neben den anderen Saaten — sie sind verschiedene Lieferungen ([D-119](../../../docs/NewConcept/90-decision-log.md)).* */
     public const OPTION = 'taxmod_rendering_scaffold';
 
-    public const VERSION = 1;
+    /**
+     * ⚠️ **Sie steigt, wenn der Code Namen dazubekommt** — sonst läuft {@see importOnce()} nie wieder
+     * und die neuen liegen nirgends als Knoten. *2: `binary` und `octal`
+     * ([D-523](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public const VERSION = 2;
 
     public const OPTION_PREFIX = 'taxmod_render_';
 

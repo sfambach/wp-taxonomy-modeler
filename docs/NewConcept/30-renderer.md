@@ -967,6 +967,33 @@ a converter changes the form of one that did.** `XII` and `12` are the same numb
 differently — nothing gained, nothing lost. So a numeral-system converter is a converter, exactly
 as gram-to-kilogram is — recorded as [D-075](90-decision-log.md).
 
+### R34a — die drei Zahlensysteme sind gebaut, und sie sind **ein** Gang
+
+```mermaid
+flowchart LR
+    N["12"] --> B["binary · 1100"]
+    N --> O["octal · 14"]
+    N --> H["hexadecimal · C"]
+    B & O & H -->|written| N
+```
+
+[D-523](90-decision-log.md), auf seine Bitte *«kannst du im hintergrund bauen converter binary,
+converter hex, convert oct für int»* — und [R34](#owner-statement--2026-08-22-seventh-pass-converters-and-how-many)
+hatte alle drei am 2026-08-22 schon genannt. **Alle drei sind invertierbar**, also bedienen sie
+Anzeige, Eingabe und Suche ([R36](#r36--and-this-splits-converters-into-two-kinds)); alle drei sind
+`format` nach [R33a](#r33a--there-are-a-few-kinds-of-converter-parameterised-by-data).
+
+⚠️ **Der Stellenwert-Gang liegt an einer Stelle, nicht an dreien.** *Die Basis ist ihr ganzer
+Unterschied. Drei Abschriften hiessen: jeden Fehler dreimal beheben — und **zwei Fehler waren schon
+da**, in der einen Klasse, die es gab. `shown()` stürzte auf der kleinsten ganzen Zahl ab
+(`abs(PHP_INT_MIN)` ist ein `float`), und eine zu grosse Zahl kam als **`0`** zurück statt als
+Absage. Das ist die stille Null, die [D-071](90-decision-log.md) verbietet, durch die andere Tür.*
+
+⚠️ **Kein Präfix und keine feste Breite, in keiner der drei Basen** — `0x`, `0b`, `0755` und
+`00001100` sind alle **zweite Formen für denselben Wert**, und der Rundgang ist dann keiner mehr.
+*Bei `octal` ist das die einzige echte Falle: `0755` heisst in C, in PHP und in einem Dateirecht
+«oktal», hier heisst es nichts — es ist dieselbe Zahl wie `755`, und geschrieben wird `755`.*
+
 ### R36 — and this splits converters into two kinds
 
 ```mermaid
@@ -3759,7 +3786,7 @@ ist.*
 ```text
 Constants
 ├── Renderer   → 16 Knoten
-├── Converter  →  2 Knoten (hexadecimal, roman)
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
 └── Validator  →  leer
 ```
 
@@ -3767,6 +3794,8 @@ Constants
 `ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
 ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
 ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
 
 ⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
 ([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und

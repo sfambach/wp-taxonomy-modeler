@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Converter;
 
-use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 
@@ -24,11 +23,19 @@ use Taxmod\Core\Model\TypedValue;
  * what a person reads is what a person writes. *A prefix on the way out that is optional on the way in
  * is two forms for one value, and the round trip stops being one.*
  *
+ * ⚠️ **Der Gang liegt seit [D-523](../../../docs/NewConcept/90-decision-log.md) in
+ * {@see PositionalNotation} — und dabei fielen zwei Fehler auf, die vorher nichts gemessen hatte.**
+ * *`shown(PHP_INT_MIN)` warf einen `TypeError` (`abs(PHP_INT_MIN)` ist ein `float`), und
+ * `written('FFFFFFFFFFFFFFFF')` gab **`0`** zurück — die stille Null, gegen die der Kommentar in
+ * {@see self::written()} geschrieben war. Beide sind dort behoben, für alle drei Basen auf einmal.*
+ *
  * @see docs/NewConcept/30-renderer.md
  */
 final class HexadecimalConverter implements Converter
 {
     public const NAME = 'hexadecimal';
+
+    private const BASE = 16;
 
     public function name(): string
     {
@@ -66,25 +73,16 @@ final class HexadecimalConverter implements Converter
      */
     public function shown(TypedValue $value): string
     {
-        $number = $value->int ?? 0;
-
-        return ($number < 0 ? '-' : '') . strtoupper(dechex(abs($number)));
+        return PositionalNotation::digits($value->int ?? 0, self::BASE);
     }
 
+    /**
+     * ⚠️ **Refused rather than coerced** — `hexdec('zz')` is `0`, and a zero that arrived that way is
+     * indistinguishable afterwards from a zero somebody meant. Same call as
+     * [D-071](../../../docs/NewConcept/90-decision-log.md).
+     */
     public function written(string $characters, ?SimpleType $type = null): TypedValue
     {
-        $trimmed  = trim($characters);
-        $negative = str_starts_with($trimmed, '-');
-        $digits   = $negative ? substr($trimmed, 1) : $trimmed;
-
-        // ⚠️ **Refused rather than coerced** — `hexdec('zz')` is `0`, and a zero that arrived that way
-        // is indistinguishable afterwards from a zero somebody meant. Same call as `D-071`.
-        if ($digits === '' || preg_match('/^[0-9a-fA-F]+$/', $digits) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, self::NAME);
-        }
-
-        $number = (int) hexdec($digits);
-
-        return TypedValue::ofInt($negative ? -$number : $number);
+        return PositionalNotation::number($characters, self::BASE, self::NAME);
     }
 }
