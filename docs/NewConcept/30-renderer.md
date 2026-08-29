@@ -3621,3 +3621,40 @@ dieselbe Regel zu zwingen hiesse, Gleichheit über Gleichartigkeit zu stellen.*
 nachstellbar mit `icon-probe.php`, das die Kästen im Browser **misst** statt sie anzusehen.*
 
 ---
+
+## Woraus eine Vorschau zeichnet — Stand 2026-08-29
+
+[D-499](90-decision-log.md) baut die mittlere Sprosse von [D-028](90-decision-log.md). Die
+Reihenfolge steht seit dem 22.08. fest und war bis heute nur zweistufig:
+
+| | Quelle | seit |
+|---|---|---|
+| 1 | **echte Daten** | gebaut |
+| 2 | **als Testdaten markierte Zeilen** | **2026-08-29** — Schema 13 legte die Spalte, [D-499](90-decision-log.md) die Sprosse |
+| 3 | der **Standard des Typs** | gebaut |
+
+⚠️ **Die Sprosse war nicht nur fehlend, sondern umkehrbar, und das ist der Befund.** *Vorher nahm
+`previewSource()` schlicht `records[0]`, und `WpdbRecordRepository::ofNode()` sortiert
+`ORDER BY id ASC`. **Eine markierte Zeile schlug echte Daten allein dadurch, dass sie früher
+angelegt worden war.** Die Prüfung gibt der echten Zeile darum ausdrücklich die **höhere** Id —
+sonst wäre sie durch die Sortierung grün statt durch die Regel.*
+
+⚠️ **Zeichnen einer Vorschau schreibt nichts, und das ist eine geprüfte Zusage.** *26 Datensätze
+vorher, 26 nachher; 43 Werte vorher, 43 nachher. Ein Entwurf, der einen Test-Record anlegen
+müsste, um etwas zu zeigen, schriebe Musterwerte in genau die Daten, über die er berichtet.*
+
+⚠️ **Was fehlt, ist die Geste** ([C65](10-domain-core.md)): *wie jemand eine Zeile markiert, ist
+offen — der Entwurf des Eigentümers war «ein Häkchen: sind Testdaten / ist Vorgabewert». Gemessen
+sind **0 von 26** Datensätzen markiert. **Die Sprosse ist gebaut und im Betrieb nicht
+auslösbar.***
+
+⚠️ *Und weiter reichend: **`Level::FrontEnd` kommt in `src/` an keiner Stelle vor.**
+[D-241](90-decision-log.md) sagt, das Kennzeichen steuere die Sichtbarkeit **vorn** — es gibt kein
+Vorn. Die Vorschau ist heute der einzige Ort, an dem `is_test` etwas tun kann.*
+
+⚠️ *Nicht gebaut und warum: der zweite Renderpfad `valueOfType()` bleibt
+([OQ-129](91-open-questions.md)). Ein Datentyp ist nie das Modell eines Datensatzes, und ein Wert
+wird über eine **Kante** adressiert — ein Test-Record für einen Datentyp hätte keinen Schlüssel
+für seinen Wert.*
+
+---

@@ -1147,3 +1147,33 @@ not parked». **Ein Schirm, der eine verlangte Wahl verschweigt, sieht fertig au
 Eigentümer hätte den fehlenden Knopf für ein Versehen halten müssen statt für eine offene Frage.*
 
 ---
+
+## `Used by` — eine Richtung, und die Bedingung dafür wird gemessen — Stand 2026-08-29
+
+[D-500](90-decision-log.md) baut [D-199](90-decision-log.md): `PageSlot::Relations` ist nicht mehr
+leer und zeigt, **wer diesen Knoten benutzt**.
+
+⚠️ **D-199 hält eine Bedingung fest, und sie wurde erst gemessen, dann gebaut.** Der Eigentümer:
+*«the section may hold one direction only because every outgoing edge is currently visible
+elsewhere; **if an outgoing edge ever appears that is neither an attribute nor inheritance, the
+section has to grow back or it quietly stops being complete**.»*
+
+| gemessen 2026-08-29 | |
+|---|---|
+| Vererbungskanten | **102, alle unbenannt** |
+| Feldkanten (`composition`, `aggregation`) | **34, alle benannt** |
+| dritter Fall | **keiner** |
+
+*Eine benannte Nicht-Vererbungskante ist genau ein Feld. Die Bedingung hält, also ist eine
+Richtung vollständig.*
+
+⚠️ **Und sie wird jetzt bei jedem Lauf gemessen statt einmal geglaubt** — `used-by-check.php` wird
+rot, sobald eine unbenannte Nicht-Vererbungskante erscheint. *Eine Bedingung, die nur im Log
+steht, altert unbemerkt: dieselbe Lehre wie die 370 unerfüllten Zusagen aus
+[D-493](90-decision-log.md).*
+
+⚠️ *Ausdrücklich mitgeprüft ist die **Gegenrichtung**: am benutzenden Knoten erscheint nichts.
+**Sonst wäre der Abschnitt eine zweite Feldtabelle** — dieselbe Tatsache an zwei Stellen, und die
+eine würde irgendwann von der anderen abweichen.*
+
+---

@@ -5087,3 +5087,77 @@ Zustand ist, den [D-485](90-decision-log.md) verbietet.*
 
 ⚠️ *Deshalb sagt die Seite es hin: «Bringing the node back is not offered: it is gone for good,
 not parked.» **Ein Schirm, der eine verlangte Wahl verschweigt, sieht fertig aus.***
+
+## OQ-129 — Wie hält ein Test-Record den Wert eines Datentyp-Knotens?
+
+**Raised** 2026-08-29, beim Bau von [Zeile 54](97-implementation-plan.md#the-working-list) — durch
+Messung.
+
+*Blocks:* [30 Renderer](30-renderer.md), [Zeile 54](97-implementation-plan.md#the-working-list) ·
+*Status:* **offen — und sie kippt die Beschreibung von Zeile 54**
+
+[D-444](90-decision-log.md) und [Zeile 54](97-implementation-plan.md#the-working-list) wollten
+`Rendering::valueOfType()` abschaffen: *«aus dem deklarierten Standard einen Test-Record bauen und
+ihn durch den gewöhnlichen Pfad zeichnen»*. **Gemessen geht das nicht.**
+
+| | |
+|---|---|
+| `valueOfType()` hat **2** Aufrufstellen | beide nur für `Branch::DataTypes` |
+| `DataTypes->holdsData()` | ist **`false`** — ein Datentyp ist nie das Modell eines Datensatzes |
+| in der Datenbank | **kein** Datentyp hat einen Datensatz |
+| ein `NodeRecord` trägt keinen Wert | Werte sind `EdgeRecord`, **adressiert über `edgeId`** |
+
+⚠️ **Ein Test-Record für einen Datentyp hätte also keinen Schlüssel für seinen Wert.** *«Durch den
+gewöhnlichen Pfad zeichnen» verlangte eine erfundene `Relation` — und genau die lehnt der Docblock
+von `DataEntry` wörtlich ab. Was bliebe, wäre ein Datensatz, den **kein Renderer liest**: eine
+Änderung ohne beobachtbare Wirkung, und damit eine, **für die es keine Gegenprobe geben kann**.*
+
+⚠️ *Und ein Satz, den [D-444](90-decision-log.md) als Fehlermeldung des Codes über sich selbst
+gelesen hat, ist danach schlicht **wahr**: «der gezeigte Wert ist der Standard dieses Typs, er
+braucht keinen Record.» **Ein Datentyp *kann* keinen haben.***
+
+**Die Frage in einem Satz:** *soll `record_values` anders adressierbar werden, oder ist
+`valueOfType()` kein zweiter Pfad aus Bequemlichkeit, sondern der einzige, den die Adressierung
+zulässt?*
+
+---
+
+## OQ-130 — Wann ist der Rückfall auf die Typvorgabe eine zu meldende Ersetzung?
+
+**Raised** 2026-08-29, beim Bau von [Zeile 22](97-implementation-plan.md#the-working-list) — durch
+Messung.
+
+*Blocks:* [30 Renderer](30-renderer.md), [Zeile 22](97-implementation-plan.md#the-working-list) ·
+*Status:* **offen — und zwei Behauptungen von Zeile 22 sind gemessen falsch**
+
+[D-400](90-decision-log.md) nennt eine stille Ersetzung: ein Renderer, der einen Zweck nicht
+bedienen kann, ist nicht mehr in Kraft, die Typvorgabe zeichnet, **und niemand sagt es**.
+[Zeile 22](97-implementation-plan.md#the-working-list) wollte das melden.
+
+⚠️ **Behauptung 1 der Zeile — «`eligibleFor()` bietet keine reinen Oberflächen-Renderer an, der
+Name kam auf anderem Weg herein» — ist falsch.** *`chooser-inline` ist mit `add()` registriert,
+nicht mit `addForSurfaces()`. Am echten Knoten `Base units` gemessen bietet das Steuerelement
+genau `chooser-dialog` und `chooser-inline` an: **es hat den Namen selbst hineingesetzt.***
+
+⚠️ **Behauptung 2 — «die Ersetzung ist stumm, also ist sie ein Fehler» — gilt für diesen Fall
+nicht.** *`node_ref` hat seit [D-108](90-decision-log.md) und [D-244](90-decision-log.md) **zwei**
+Vorgaben, eine je Zweck: `reference` für Display, `chooser-dialog` für Edit. **Eine Referenz wird
+absichtlich von zwei Renderern gezeichnet** — «shown by the reference renderer and picked by a
+chooser, deliberately two renderers rather than one with a switch». Dass ein Wähler nur `Edit`
+bedient, ist damit **richtig**, nicht unbrauchbar.*
+
+⚠️ **Die Zählung, die es entscheidet:** *32 gespeicherte `renderer`-Werte. **0** kennt die
+Registry nicht. **19** bedienen nicht beide Zwecke — 18× `chooser-inline`, 1× `chooser-dialog` —
+**und alle 19 sind die Wähler auf `node_ref`**, wo die andere Seite ihre eigene Vorgabe hat.
+**Eine Warnung «geht hier nicht» löste heute 19-mal aus und wäre jedes Mal falsch.***
+
+**Die Frage in einem Satz:** *woran unterscheidet `chosenFor()` [D-400](90-decision-log.md)s stille
+Ersetzung von [D-108](90-decision-log.md)s Arbeitsteilung — im Code sehen beide gleich aus?*
+
+⚠️ *Und davon abhängig eine zweite: **woher bekommt eine markierte Option ihren Satz?**
+[R30](30-renderer.md) sagt die Form («ausgegraut und markiert»), nicht die Herkunft des Textes —
+und Wörter sind Randsache (`AR-2`, `CD-1`). Auf der Anzeigeseite gibt es die Markierung schon
+(`ChoiceRenderer::shown()` → `taxmod-unknown-choice`), auf der Bearbeitungsseite nicht.*
+
+⚠️ **[Zeile 22](97-implementation-plan.md#the-working-list) gehört damit umgeschrieben, nicht
+abgehakt:** *ihr Anlassfall — `chooser-inline` auf `Base units` — ist heute kein Fehler mehr.*
