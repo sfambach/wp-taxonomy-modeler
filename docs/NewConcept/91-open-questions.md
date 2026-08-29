@@ -4203,6 +4203,49 @@ werden.** Beides zugleich geht nur, wenn die Ebene die **Vorgabe** stellt und de
 Ja → [R33b](30-renderer.md)s «keine Symmetrie» fällt, und die Liste bekommt ihren ersten Benutzer.
 Nein → es bleibt bei einem Konverter pro Ort, und die Liste wartet weiter auf die Ampel.
 
+### Nachtrag 2026-08-29, zweiter — die Speicherfrage ist **nachgelagert**, nicht unbeantwortbar
+
+⚠️ **Vier Wege wurden geprüft, drei sind durch eine Entscheidung versperrt und der vierte ist von
+mir zu Recht kassiert worden:**
+
+| Weg | was ihn versperrt |
+|---|---|
+| Position im Schlüssel `(owner, key, path, position)` | **[D-409](90-decision-log.md)**: «a setting has no multiplicity» |
+| `path` als Index benutzen | **[D-409](90-decision-log.md)**: «**an address, not a multiplicity** … `path` says *which place*» |
+| der Eintrag ist eine **Kante** | *mein Vorschlag, und der Eigentümer hat ihn zerlegt:* **eine Kante zeigt auf einen Knoten, und es gibt keinen Knoten je Renderer** — gemessen, keinen einzigen. Es hätte erst Renderer-Knoten erfunden, was [D-482](90-decision-log.md) verwirft: «ich kann ja nicht einfach nur einen Namen in die Datenbank klatschen» |
+| eine Zeile, deren Wert eine Liste ist | nichts formal — aber jetzt eine Liste von **Paaren** in einer Spalte, also Struktur im Wert, und «wer benutzt Renderer X» bleibt unabfragbar |
+
+### Und der Eigentümer hat den Ausweg selbst benannt
+
+> *«Dann bräuchten wir noch einen Knoten, der praktisch wieder zwei Felder hat, nämlich Renderer und
+> Converter. **Aber wir haben die Settings ja gar nicht als Feld definiert** … nicht als
+> Spezialisierung des Feldes generalisiert. Das verursacht einen Knoten in meinem Kopf. Aber hört
+> sich irgendwie auch richtig an.»*
+
+⚠️ **Das ist wörtlich [D-458](90-decision-log.md) / [Zeile 61](97-implementation-plan.md#the-working-list)** —
+*entschieden am 2026-08-27, nicht gebaut*: «Merging turns **`setting_key` into `edge_id`** and the
+second space disappears». Der Grund dort ist derselbe, den er hier benennt: *«`setting_key` ist ein
+varchar, also hat das Attribut hinter einem Setting **keine Identität** — die Engine hat einen
+zweiten Schlüsselraum erfunden.»*
+
+**Damit ist die Speicherfrage nicht unbeantwortbar, sondern nachgelagert:**
+
+| | |
+|---|---|
+| **heute** | ein Setting ist ein Name in einer eigenen Tabelle, ohne Identität und ohne Mehrfachheit ([D-409](90-decision-log.md)) |
+| **nach [Zeile 61](97-implementation-plan.md#the-working-list)** | ein Setting **ist** ein Feldwert, adressiert über eine Kante — und Feldwerte kennen Mehrfachheit längst |
+| **dann ist ein Listeneintrag** | genau das, was er beschreibt: **ein Ding mit zwei Feldern**, `renderer` und `converter` |
+
+⚠️ **Die Reihenfolge ist damit vorgegeben und nicht wählbar:** *jeder Weg, der [OQ-109](#oq-109--one-key-holds-one-answer-so-where-does-an-ordered-list-of-renderers-live)
+**vor** Zeile 61 löst, muss entweder Struktur in eine Spalte legen oder
+[D-409](90-decision-log.md) brechen. **Beides wäre in dem Moment überflüssig, in dem Zeile 61
+gebaut ist.** Und Zeile 61 hat ihrerseits drei benannte Voraussetzungen (Bootstrap, die vier
+leihenden Schlüssel, `record_id` gegen `owner_id`).*
+
+⚠️ *Was **nicht** wartet: die Liste als **Begriff** ist entschieden ([D-236](90-decision-log.md)),
+der Eintrag als **Paar** ist entschieden ([D-502](90-decision-log.md)), und das Zusammensetzen ist
+gebaut (`RenderResult::followedBy()`). **Es fehlt allein das Regal.***
+
 *Der ursprüngliche Stand:* open
 
 ⚠️ **The blocker row 5 named is stale, and the real one is one level down.** *Row 5 said several
