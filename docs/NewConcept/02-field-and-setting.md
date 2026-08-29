@@ -742,6 +742,25 @@ heute, und nichts verweigert sie.** Wie weit die Prüfung läuft, ist [OQ-133](9
 die Antwort dürfte dieselbe sein wie beim Zeichnen ([D-497](90-decision-log.md)): **hochlaufen und
 eine Schleife verweigern, statt eine Tiefe zu raten.**
 
+### Der geliehene Typ kommt vom Vaterknoten, nicht von einer Kante
+
+[D-504](90-decision-log.md), auf sein Wort: *«entscheiden wir uns für den Typ vom Vaterknoten. Ich
+glaub, das ist eindeutiger. **Dann können wir die Regel behalten. Die ist wichtiger.**»*
+
+Die Alternative wäre gewesen, das Feld wirklich auf den Besitzer zeigen zu lassen — `int.min → int`.
+**Das wäre `from_id = to_id`**, also genau die Kante, die [D-503](90-decision-log.md) verbietet: die
+Regel bekäme eine Ausnahme für Settings und wäre keine Regel mehr.
+
+⚠️ **Nicht die Erkennbarkeit gibt den Ausschlag, und das ist eine Richtigstellung.** *Ich hatte
+eingewandt, ein Selbstbezug sei «nur erkennbar». **Der Eigentümer: «wir arbeiten ja nur mit Ids —
+ist Typ-Knoten-Id gleich Besitzer-Knoten-Id, ist das durchaus vergleichbar.»** Er hat recht,
+`from_id === to_id` ist exakt. **Der Grund ist, dass «Typ des Vaterknotens» gar keine Kante erzeugt**
+— es gibt nichts zu erlauben und nichts zu prüfen.*
+
+⚠️ *Und es ist kein neuer Mechanismus: `SettingShape::LikeTheSubject` tut das heute schon, als Zweig
+im Code statt als Typ. Gemessen tragen genau **vier** Schlüssel diese Form — `min`, `max`, `step`,
+`default`.*
+
 ### Was offen bleibt
 
 | | |
