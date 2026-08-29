@@ -683,3 +683,75 @@ Speicherform im sichtbaren Text. Bewacht in `package7-check`: Attribute weg, nur
 `value="1..1"` ist die Speicherform und darf dastehen.*
 
 ---
+
+## Warum Settings und Feldwerte zusammengehören — Stand 2026-08-29
+
+[D-503](90-decision-log.md) legt die Richtung fest. **Nicht «eine Tabelle ist schöner», sondern eine
+gemessene Beobachtung des Eigentümers:** *«wir haben einen ganzen Tag daran gearbeitet, fehlende
+Definitionen für Settings einzufügen und Fehler auszubügeln, **nur weil wir uns nicht an unsere
+Standards gehalten haben** — und haben es immer wieder erweitert.»*
+
+### Das Muster
+
+| | |
+|---|---|
+| Schemaschritte insgesamt | 13 |
+| davon die Settings betreffend | **4** — und jeder gab ihnen zurück, was Feldwerte schon hatten |
+| Schritt 8 | `settings.path` — die **Adresse** |
+| als nächstes fehlend | **Sprache** und **Mehrfachheit** |
+
+*Am 2026-08-28/29 lief dieselbe Wand dreimal an: die Renderer-Liste braucht Mehrfachheit, ein
+`default` kann nicht pro Sprache verschieden sein, und Validator-Nachrichten bekamen ihre
+`path`-Spalte in einer **dritten** Tabelle.*
+
+### Der wirkliche Unterschied ist die Vererbungsregel
+
+| | Feld | Setting |
+|---|---|---|
+| **erbt** | **dieselbe Kante**, geteilt | eine **Kopie**, hineingeschrieben ([D-423](90-decision-log.md)) |
+| **zurücknehmen** | — | `reset` holt vom Elternteil zurück |
+| **Schlüsselraum** | Identität (`edge_id`) | **Name** (varchar) — ein zweiter Raum ([D-458](90-decision-log.md)) |
+| **wer bestimmt die Schlüssel** | der Modellautor | **die Engine** — 15 an einem Knoten, 16 an einem Feld |
+
+⚠️ **Der letzte Punkt macht den Umbau kleiner, als er aussieht:** *es wandern nicht beliebig viele
+Namen in einen Id-Raum, sondern **sechzehn**. Der Autor bestimmt nur die Werte.*
+
+### Der Schwanzbiss, an einem Beispiel
+
+**`hide` musste aus den Settings heraus**, weil es *als Setting an einem Typ jedes Feld dieses Typs
+leerte* — die Kette eines Feldes enthält seinen Zielknoten (Schemaschritt 10, [D-467](90-decision-log.md)).
+`hide` an `Text` gesetzt hätte jedes Textfeld im Modell verschwinden lassen.
+
+⚠️ **Dieselbe Eigenschaft, die das Überschreiben am Feld erlaubt, macht sie für alles falsch, was
+*die Stelle* meint statt *den Typ*.** *Gelöst wurde es mit einer **Ausnahme** — einer Spalte auf der
+Kante — statt mit einer Regel. `multiplicity` ist die zweite Ausnahme derselben Art.*
+
+### Die vier leihenden Schlüssel, und wie sie aufhören ein Sonderfall zu sein
+
+`default`, `min`, `max`, `step` nehmen ihren Typ vom Gegenstand. Heute ist das
+`SettingShape::LikeTheSubject`, ein Zweig im Code, dessen Kommentar den Satz des Eigentümers schon
+wörtlich enthält: *«a default for a text is a text; a minimum for a decimal is a decimal»*.
+
+**Sein Kunstgriff:** daraus einen **Typ** machen — «derselbe wie der Vaterknoten». *Derselbe Zug wie
+[D-482](90-decision-log.md), wo ein Anspruch, der an Daten hing, zu einem Typ wurde. Dann braucht ein
+Setting keinen Sonderfall mehr, um ein Feld zu sein.*
+
+⚠️ **Und die Regel, die er dazu verallgemeinert hat:** *«ein Knoten kann keine Felder haben, die auf
+den eigenen Knoten zeigen»* — nicht nur für einfache Typen, für alle. **Gemessen: 0 solche Kanten
+heute, und nichts verweigert sie.** Wie weit die Prüfung läuft, ist [OQ-133](91-open-questions.md);
+die Antwort dürfte dieselbe sein wie beim Zeichnen ([D-497](90-decision-log.md)): **hochlaufen und
+eine Schleife verweigern, statt eine Tiefe zu raten.**
+
+### Was offen bleibt
+
+| | |
+|---|---|
+| **[OQ-132](91-open-questions.md)** | ist «Kopie beim Erben» eine Beziehungs**art** oder eine **Eigenschaft**? |
+| **[OQ-133](91-open-questions.md)** | wie weit läuft die Selbstbezugs-Prüfung? |
+| **der Bootstrap** | die Engine liest ihre Konfiguration durch dieselbe Maschine wie Benutzerdaten |
+| **`record_id` gegen `owner_id`** | einer der beiden Umwege verschwindet, und welcher ist offen |
+
+⚠️ *Die Oberfläche ändert sich dabei **nicht**: weiterhin ein eigener Bereich, weiterhin
+«Einstellungen» — nur mit demselben Motor darunter. Das ist ausdrücklich sein Wunsch.*
+
+---

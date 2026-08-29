@@ -5335,3 +5335,59 @@ gefunden hat — und jedes Mal war es ein Versprechen, das niemand hielt.*
 Verschärfung der Aggregation ist** ([D-498](90-decision-log.md)), und **dass ein Teil seinen
 eigenen Datensatz bekommt statt eingebettet zu werden** ([D-017](90-decision-log.md), «structure
 is never inlined as a second storage form»).*
+
+## OQ-132 — Ist «Kopie beim Erben» eine Beziehungs**art** oder eine **Eigenschaft** der Beziehung?
+
+**Raised** 2026-08-29, vom Eigentümer, beim Festlegen der Richtung ([D-503](90-decision-log.md)).
+
+*Blocks:* [Zeile 61](97-implementation-plan.md#the-working-list) · *Status:* **offen — und der
+Unterschied ist nicht kosmetisch**
+
+Er: *«Felder sind hierarchisch vererbt, können nur eingeschränkt werden. Und Settings haben diese
+Restriktionen nicht — die haben praktisch einen **Kopiermechanismus, der aber zurückgesetzt werden
+kann**. Damit wäre das für mich vielleicht ein **eigener Relationstyp**.»*
+
+⚠️ **Gemessen sind es wirklich zwei Semantiken:**
+
+| | Feld | Setting |
+|---|---|---|
+| erbt | **dieselbe Kante**, geteilt — *«a descendant inherits the very same edge, not a copy»* | eine **Kopie**, hineingeschrieben ([D-423](90-decision-log.md)) |
+| zurücknehmen | — | `reset` **holt vom Elternteil zurück** |
+
+**Die Frage in einem Satz:** *ist «Kopie beim Erben, zurückholbar» eine vierte `RelationKind` neben
+Vererbung, Komposition und Aggregation — oder eine Eigenschaft, die eine Kante zusätzlich trägt?*
+
+⚠️ **Warum das nicht Geschmack ist:** *eine **Art** ist geschlossen — heute drei, dann vier, und der
+Zweig bestimmt sie ([D-497](90-decision-log.md)), nicht der Autor. Eine **Eigenschaft** ist
+kombinierbar: es gäbe dann kopierende Kompositionen und teilende Settings, und jemand müsste
+entscheiden, was das bedeutet.*
+
+⚠️ *Und die Frage darunter, die der Eigentümer aufwirft, ohne sie zu stellen: **wenn beide
+Vererbungsarten legitim sind — sollte die Wahl dann nicht dem Modellautor gehören?** Heute trifft
+sie das System, einmal, für alle.*
+
+---
+
+## OQ-133 — Wie weit läuft die Prüfung «ein Knoten zeigt nicht auf sich selbst»?
+
+**Raised** 2026-08-29, vom Eigentümer, als er die Regel selbst verallgemeinerte.
+
+*Blocks:* [Zeile 61](97-implementation-plan.md#the-working-list) · *Status:* **offen — mit seiner
+eigenen Antwort als Ausgangspunkt**
+
+Er: *«einfache Datentypen dürfen einfach keine einfachen Datentypen als Setting haben. Oder
+eigentlich nur **sich selbst** nicht. … Das ist aber auch eine Regel, die vielleicht wieder
+verallgemeinert werden kann: **ein Knoten kann keine Felder haben, die auf den eigenen Knoten
+zeigen.** Die Frage hier ist, **wo hören wir mit der Prüfung auf?**»*
+
+⚠️ *Gemessen: **0** solche Kanten heute, und `NotAPossibleTarget` hat fünf Verweigerungen, von denen
+keine diese betrifft.*
+
+⚠️ **Und eine Antwort auf sein «wo hören wir auf» haben wir am selben Tag schon einmal gegeben:**
+*[D-497](90-decision-log.md) — **die Auflösung läuft hoch und verweigert eine Schleife**, statt eine
+Tiefe zu raten. Dort ging es ums Zeichnen, hier um die Typauflösung; der Wächter ist derselbe.*
+
+⚠️ *Der Fall, der es überhaupt aufwirft: die vier leihenden Schlüssel `default`, `min`, `max`,
+`step`. Werden sie Felder, brauchen sie einen Typ — und sein Kunstgriff gibt ihnen «derselbe wie der
+Vaterknoten» ([D-503](90-decision-log.md)). **Erst damit entsteht überhaupt die Möglichkeit einer
+Schleife**, denn ein Typ, der auf sich selbst zeigt, kennt seinen Typ nie.*
