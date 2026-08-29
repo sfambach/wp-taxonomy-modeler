@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeKind;
 
 /**
  * Storage for nodes, stated as the core needs it rather than as a database offers it.
@@ -67,4 +68,23 @@ interface NodeRepository
 
     /** Remove a node and everything under it, for good. The irreversible half of D-123. */
     public function purgeSubtree(Node $node): void;
+
+    /**
+     * Die aufgelöste Sorte je Knoten — die eigene, sonst die des nächsten Vorfahren, der eine hat.
+     *
+     * ⚠️ **Der Vorfahrenlauf, den [D-518](../../../docs/NewConcept/90-decision-log.md) verlangt und
+     * den [D-516](../../../docs/NewConcept/90-decision-log.md) für den **Typ** schon gemessen hat.**
+     * *`null` in der Spalte heisst «frag meine Vorfahren», nicht «unbekannt» — **eine Spalte plus
+     * Vorfahrenlauf gibt Vererbung ohne die Settings-Maschinerie**, und das ist der Grund, dass diese
+     * Angabe eine Spalte sein darf, wo `multiplicity` eine Setting-Zeile bleiben musste.*
+     *
+     * ⚠️ **In einer festen Zahl von Abfragen, nicht einer je Ebene** (`CD-7`). *Der Pfad ist
+     * materialisiert, also stehen alle Vorfahren-Ids schon da; es braucht keinen Aufstieg mit einer
+     * Abfrage je Stufe.*
+     *
+     * @param  list<int>              $ids
+     * @return array<int, NodeKind>   Je angefragte Id genau ein Eintrag — nie `null`, weil
+     *                                {@see NodeKind::standard()} das Ende des Laufs beantwortet.
+     */
+    public function resolvedKinds(array $ids): array;
 }

@@ -1253,3 +1253,24 @@ Verwendungsstelle (`SettingKey::isEdgeOnly()`). **Ein `bool` hätte am ersten Ta
 gebraucht.***
 
 ---
+
+### Der Wähler für die Sorte — Stand 2026-08-29
+
+[D-519](90-decision-log.md): neben dem Namen im Seitenkopf, **drei Einträge**.
+
+| Eintrag | heisst |
+|---|---|
+| **erbt — field** | nichts eigenes gesagt; die Antwort kommt vom nächsten Vorfahren, der eine hat |
+| **field** | ein Mensch trägt den Wert ein |
+| **setting** | der Wert gehört zum Modell |
+
+⚠️ *Er steht **neben dem Namen**, weil er dasselbe ist wie ein Name: eine Aussage über **diesen
+Knoten** und nicht über eine seiner Verwendungsstellen. Und er nennt das Formular der Seite
+([D-517](90-decision-log.md)), nicht das eines Blocks darin.*
+
+⚠️ **Der erste Eintrag nennt, was dabei herauskäme** — *«erbt» allein wäre eine Wahl, die nichts
+sagt ([R14b](30-renderer.md): «nichts» muss eine Entscheidung sein und kein stiller Boden). **Und
+ohne ihn liesse sich eine geerbte Antwort nicht zurücknehmen.***
+
+---
+

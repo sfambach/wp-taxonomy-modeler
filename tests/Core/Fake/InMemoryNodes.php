@@ -5,6 +5,7 @@ namespace Taxmod\Tests\Core\Fake;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Repository\NodeRepository;
 
 /**
@@ -132,6 +133,33 @@ final class InMemoryNodes implements NodeRepository
                 unset($this->rows[$id]);
             }
         }
+    }
+
+    /** Derselbe Lauf, ohne Abfragen — der Pfad steht im Knoten. */
+    public function resolvedKinds(array $ids): array
+    {
+        $aufgeloest = [];
+
+        foreach ($ids as $id) {
+            $node = $this->rows[(int) $id] ?? null;
+            $sorte = NodeKind::standard();
+
+            if ($node !== null) {
+                foreach (array_reverse(explode('.', $node->path)) as $stufe) {
+                    $vorfahr = $this->rows[(int) $stufe] ?? null;
+
+                    if ($vorfahr?->kind !== null) {
+                        $sorte = $vorfahr->kind;
+
+                        break;
+                    }
+                }
+            }
+
+            $aufgeloest[(int) $id] = $sorte;
+        }
+
+        return $aufgeloest;
     }
 
     public function count(): int

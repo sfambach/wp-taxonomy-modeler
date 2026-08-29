@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\NodeRepository;
 
@@ -29,7 +30,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
+            $wpdb->prepare('SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
             ARRAY_A
         );
 
@@ -52,7 +53,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                'SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
                 ...array_map(intval(...), $ids)
             ),
             ARRAY_A
@@ -78,8 +79,9 @@ final class WpdbNodeRepository implements NodeRepository
                 'version' => $node->version,
                 'name'    => $node->name,
                 'path'    => $node->path,
+                'kind'    => $node->kind?->value,
             ],
-            ['%d', '%d', '%s', '%s']
+            ['%d', '%d', '%s', '%s', '%s']
         );
     }
 
@@ -89,15 +91,32 @@ final class WpdbNodeRepository implements NodeRepository
 
         // The WHERE carries the expected version, so the guard is the write itself rather than
         // a read followed by a hopeful update (P4c).
-        $written = $wpdb->query(
-            $wpdb->prepare(
-                'UPDATE ' . Schema::table('nodes') . ' SET version = %d, name = %s, path = %s WHERE id = %d AND version = %d',
-                $node->version,
-                $node->name,
-                $node->path,
-                $node->id,
-                $expectedVersion
-            )
+        // ⚠️ *`kind` fährt mit, sonst hätte ein Umbenennen die Sorte gelöscht — dieselbe Falle, die
+        // `path` hier schon hat.*
+        //
+        // ⚠️ **`update()` und nicht `query(prepare(...))`, und der Grund ist gemessen:
+        // `$wpdb->prepare('kind = %s', null)` ergibt `kind = ''` — eine leere Zeichenkette, nicht
+        // NULL.** *Das hat am 2026-08-29 eine Zeile mit `kind = ''` hinterlassen, und damit **zwei
+        // Darstellungen desselben Zustands**: `fromStorage()` liest beide als «niemand hat etwas
+        // gesagt», aber `WHERE kind IS NOT NULL` findet nur eine. `$wpdb->update()` schreibt für
+        // `null` ein echtes NULL — gemessen, nicht erinnert.*
+        //
+        // ⚠️ *Der Fassungswächter bleibt derselbe: er steht im `WHERE` und ist damit der Schreibvorgang
+        // selbst statt eines Lesens mit Hoffnung (P4c).*
+        $written = $wpdb->update(
+            Schema::table('nodes'),
+            [
+                'version' => $node->version,
+                'name'    => $node->name,
+                'path'    => $node->path,
+                'kind'    => $node->kind?->value,
+            ],
+            [
+                'id'      => $node->id,
+                'version' => $expectedVersion,
+            ],
+            ['%d', '%s', '%s', '%s'],
+            ['%d', '%d']
         );
 
         if ($written === 1) {
@@ -127,7 +146,7 @@ final class WpdbNodeRepository implements NodeRepository
         // and first under the other. One statement, one join, no walking (`CD-7`).
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT n.id, n.version, n.name, n.path
+                'SELECT n.id, n.version, n.name, n.path, n.kind
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.from_id = %d AND r.kind = %s
@@ -149,7 +168,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . '
+                'SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . '
                  WHERE path LIKE %s
                  ORDER BY path ASC',
                 $wpdb->esc_like($root->path . '.') . '%'
@@ -207,6 +226,92 @@ final class WpdbNodeRepository implements NodeRepository
         ));
     }
 
+    /**
+     * Zwei Abfragen für beliebig viele Knoten und beliebige Tiefe.
+     *
+     * ⚠️ *Erst die angefragten Knoten mit ihrem Pfad, dann **alle** darin genannten Vorfahren, die
+     * überhaupt eine Sorte tragen — eine Abfrage, nicht eine je Stufe (`CD-7`). Danach läuft die
+     * Auflösung in PHP über den Pfad von hinten nach vorn.*
+     */
+    public function resolvedKinds(array $ids): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, path, kind FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                ...$ids
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        // Jede Id, die in irgendeinem Pfad vorkommt — das sind die Kandidaten für den Lauf.
+        $entlang = [];
+
+        foreach ($rows as $row) {
+            foreach (explode('.', (string) $row['path']) as $stufe) {
+                $entlang[(int) $stufe] = true;
+            }
+        }
+
+        $sorten = [];
+
+        if ($entlang !== []) {
+            $wo    = array_keys($entlang);
+            $slots = implode(',', array_fill(0, count($wo), '%d'));
+
+            foreach (
+                $wpdb->get_results(
+                    $wpdb->prepare(
+                        'SELECT id, kind FROM ' . Schema::table('nodes')
+                            . " WHERE id IN ($slots) AND kind IS NOT NULL",
+                        ...$wo
+                    ),
+                    ARRAY_A
+                ) ?: [] as $row
+            ) {
+                $sorte = NodeKind::fromStorage((string) $row['kind']);
+
+                if ($sorte !== null) {
+                    $sorten[(int) $row['id']] = $sorte;
+                }
+            }
+        }
+
+        $aufgeloest = [];
+
+        foreach ($rows as $row) {
+            $stufen = array_reverse(explode('.', (string) $row['path']));
+            $gefunden = NodeKind::standard();
+
+            foreach ($stufen as $stufe) {
+                if (isset($sorten[(int) $stufe])) {
+                    $gefunden = $sorten[(int) $stufe];
+
+                    break;
+                }
+            }
+
+            $aufgeloest[(int) $row['id']] = $gefunden;
+        }
+
+        // ⚠️ *Eine Id, die es nicht gibt, bekommt trotzdem eine Antwort — der Aufrufer soll nicht
+        // zwischen «kein Knoten» und «keine Sorte» unterscheiden müssen, um eine Zeile einzuordnen.*
+        foreach ($ids as $id) {
+            $aufgeloest[$id] ??= NodeKind::standard();
+        }
+
+        return $aufgeloest;
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): Node
     {
@@ -215,6 +320,9 @@ final class WpdbNodeRepository implements NodeRepository
             (int) $row['version'],
             (string) $row['name'],
             (string) $row['path'],
+            // ⚠️ *`??` und nicht `[...]`: eine Abfrage, die nur `id` und `path` holt, hat die Spalte
+            // nicht dabei, und das ist kein Fehler — sie soll dann «niemand hat etwas gesagt» heissen.*
+            NodeKind::fromStorage(isset($row['kind']) ? (string) $row['kind'] : null),
         );
     }
 }

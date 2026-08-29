@@ -8,6 +8,7 @@ use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -153,6 +154,46 @@ final class ModelEditor
         $this->changelog->record($id, 'node', 'renamed', $this->state($node), $this->state($renamed));
 
         return $renamed;
+    }
+
+    /**
+     * Sagen, was Felder halten, die auf diesen Knoten zeigen — oder es wieder offenlassen.
+     *
+     * ⚠️ **[D-518](../../../docs/NewConcept/90-decision-log.md), seine Frage:** *«eine Option
+     * erfinden, die sagt: ist Field oder ist Setting?»* — und **`null` ist der dritte Zustand**, nicht
+     * das Fehlen einer Antwort: *«frag meine Vorfahren»*, derselbe Vorfahrenlauf, den
+     * [D-516](../../../docs/NewConcept/90-decision-log.md) für den Typ gemessen hat.
+     *
+     * ⚠️ *Journalisiert wie ein Umbenennen, weil es eine Modelländerung ist: sie überlebt eine
+     * Wanderung ([D-061](../../../docs/NewConcept/90-decision-log.md)) und jeder Bearbeiter sieht sie.
+     * Ein Setzen, das nichts ändert, schreibt nichts und hebt keine Fassung
+     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Kein Wächter darüber, welcher Knoten das sein darf, und das ist Absicht.** *Die Frage «darf
+     * ein Zweigwurzel eine Einstellung sein» ist nicht entschieden, und `PR-4` verbietet, sie hier
+     * beiläufig zu beantworten. **Was gemessen schon feststeht: der Wert an einem Knoten trifft keine
+     * andere Kante**, weil [D-516](../../../docs/NewConcept/90-decision-log.md) jeder Angabe ihren
+     * eigenen Knoten gibt.*
+     */
+    public function setKind(int $id, ?NodeKind $kind): Node
+    {
+        $node   = $this->nodes->byId($id);
+        $marked = $node->withKind($kind);
+
+        if ($marked === $node) {
+            return $node;
+        }
+
+        $this->nodes->save($marked, $node->version);
+        $this->changelog->record(
+            $id,
+            'node',
+            'kind set',
+            $node->kind?->value,
+            $marked->kind?->value
+        );
+
+        return $marked;
     }
 
     /**
@@ -1056,6 +1097,45 @@ final class ModelEditor
         $this->relations->save($renamed, $edge->version);
 
         return $renamed;
+    }
+
+    /**
+     * Die aufgelöste Sorte des **Ziels** je Kante — womit ein Feld in seinen Block gehört.
+     *
+     * ⚠️ *Am Ziel und nicht an der Kante, auf sein Wort ([D-518](../../../docs/NewConcept/90-decision-log.md)):
+     * «der Knoten bekommt eine zusätzliche Spalte». **Ein Feld ist eine Einstellung, weil das, worauf es
+     * zeigt, eine ist** — und seit [D-516](../../../docs/NewConcept/90-decision-log.md) hat jede Angabe
+     * ihren eigenen Zielknoten, also trifft die Markierung nichts anderes mit.*
+     *
+     * @param  list<Relation>          $edges
+     * @return array<int, NodeKind>    Je Kanten-Id genau ein Eintrag.
+     */
+    /**
+     * Die aufgelöste Sorte je Knoten — für den Wähler, der zeigen muss, **was geerbt würde**.
+     *
+     * @param  list<int>            $ids
+     * @return array<int, NodeKind>
+     */
+    public function kindsOfNodes(array $ids): array
+    {
+        return $this->nodes->resolvedKinds($ids);
+    }
+
+    public function kindsOfTargets(array $edges): array
+    {
+        if ($edges === []) {
+            return [];
+        }
+
+        $sorten = $this->nodes->resolvedKinds(array_map(static fn (Relation $e): int => $e->toId, $edges));
+
+        $je = [];
+
+        foreach ($edges as $edge) {
+            $je[$edge->id] = $sorten[$edge->toId] ?? NodeKind::standard();
+        }
+
+        return $je;
     }
 
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */

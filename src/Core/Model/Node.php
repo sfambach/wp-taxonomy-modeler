@@ -30,6 +30,15 @@ final class Node extends Identity implements Renderable
         int $version,
         string $name,
         public readonly string $path,
+        /**
+         * Was Felder halten, die hierauf zeigen ([D-518](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ **`null` heisst «frag meine Vorfahren», nicht «unbekannt».** *Die Auflösung ist derselbe
+         * Vorfahrenlauf, den {@see \Taxmod\Core\Service\Rendering} für den Typ schon fährt und den
+         * [D-516](../../../docs/NewConcept/90-decision-log.md) gemessen hat — **eine Spalte plus
+         * Vorfahrenlauf gibt Vererbung ohne die Settings-Maschinerie.***
+         */
+        public readonly ?NodeKind $kind = null,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
@@ -40,9 +49,14 @@ final class Node extends Identity implements Renderable
      * Rebuild a node from what storage holds. No validation beyond the name — storage is
      * trusted, input is not.
      */
-    public static function fromStorage(int $id, int $version, string $name, string $path): self
-    {
-        return new self($id, $version, $name, $path);
+    public static function fromStorage(
+        int $id,
+        int $version,
+        string $name,
+        string $path,
+        ?NodeKind $kind = null,
+    ): self {
+        return new self($id, $version, $name, $path, $kind);
     }
 
     /**
@@ -76,7 +90,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path);
+        return new self($this->id, $this->version + 1, $name, $this->path, $this->kind);
     }
 
     /**
@@ -93,7 +107,23 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path);
+        return new self($this->id, $this->version + 1, $this->name, $path, $this->kind);
+    }
+
+    /**
+     * Dieselbe Sorte anders gesagt, eine Fassung weiter.
+     *
+     * ⚠️ *Gibt **dasselbe** Exemplar zurück, wenn sich nichts ändert — [D-282](../../../docs/NewConcept/90-decision-log.md):
+     * ein Speichern, das nichts ändert, darf die Fassung nicht heben. Dieselbe Form wie
+     * {@see renamedTo()}.*
+     */
+    public function withKind(?NodeKind $kind): self
+    {
+        if ($kind === $this->kind) {
+            return $this;
+        }
+
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $kind);
     }
 
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone

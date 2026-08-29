@@ -82,7 +82,21 @@ final class Schema
      *      vorhandene Datensatz **echte Daten** bleibt. *Ein Index darauf, weil die Vorschau
      *      genau danach filtert und sonst über alle Datensätze eines Knotens liefe.*
      */
-    public const VERSION = 13;
+    /**
+     * Schema 14: `nodes.kind` — was Felder halten, die auf einen Knoten zeigen
+     * ([D-518](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Kein Wanderungsschritt, und das ist kein Versehen.** *Die Spalte ist nullbar, `dbDelta`
+     * fügt sie selbst hinzu, und `null` heisst «frag meine Vorfahren» — **für alle 124 bestehenden
+     * Knoten ist das die richtige Antwort**, weil keiner heute eine Einstellung ist. Eine Vorgabe, die
+     * für alles Bestehende stimmt, braucht nichts zu wandern.*
+     *
+     * ⚠️ *`nodes` hatte schon einmal eine solche Spalte — `hide`, in Schema 12 wieder entfernt
+     * ([D-467](../../../docs/NewConcept/90-decision-log.md)), weil Verbergen **eine Stelle** meint und
+     * keinen Knoten. **Hier ist es umgekehrt**: was ein Wert ist, hängt am Knoten und nicht daran, wo
+     * er gerade benutzt wird.*
+     */
+    public const VERSION = 14;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -584,6 +598,7 @@ final class Schema
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
+                kind varchar(20) DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY path (path),
                 KEY name (name)

@@ -1001,3 +1001,26 @@ eigentlich Records im Modell an, tun aber so, als wären es Defaults»** — gem
 **14 davon die Exponenten der Präfixe**.*
 
 ---
+
+### Gebaut — Stand 2026-08-29
+
+[D-519](90-decision-log.md). `nodes.kind`, Schema 14, nullbar.
+
+```text
+Integer          Fields 0 «None yet»   Settings 4  (renderer, validator, min, max)
+Parts List       Fields 2              Settings 2  (renderer, validator — geerbt)
+Root             Fields 0 «None yet»   Settings 2  (renderer, validator — eigen)
+```
+
+⚠️ **Der Vorfahrenlauf kostet zwei Abfragen, unabhängig von Anzahl und Tiefe.** *Der Pfad ist
+materialisiert, also stehen alle Vorfahren-Ids schon da — kein Aufstieg je Stufe (`CD-7`).*
+
+⚠️ **Drei Zustände am Wähler:** *«erbt — field», «field», «setting». **«Erbt» nennt, was dabei
+herauskäme** ([R14b](30-renderer.md): «nichts» muss eine Entscheidung sein), und ohne diesen Eintrag
+liesse sich eine geerbte Antwort nicht zurücknehmen.*
+
+⚠️ **`$wpdb->prepare('%s', null)` schreibt `''` und nicht NULL.** *Das erzeugte zwei Darstellungen
+desselben Zustands — `fromStorage()` liest beide als «nichts gesagt», `WHERE kind IS NOT NULL` findet
+nur eine. `$wpdb->update()` schreibt echtes NULL; eine Zusicherung hält es fest.*
+
+---

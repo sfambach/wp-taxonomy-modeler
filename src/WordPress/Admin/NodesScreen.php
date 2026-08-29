@@ -8,6 +8,8 @@ use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
@@ -1080,8 +1082,34 @@ final class NodesScreen
         // after seeing it: *name into the first row, actions not their own row but behind the name
         // field.* It names the settings form with `form="…"`, so the page save writes it
         // ([D-392](../../../docs/NewConcept/90-decision-log.md)) and `Rename` is gone.
+        // ⚠️ **Der Wähler für die Sorte** ([D-518](../../../docs/NewConcept/90-decision-log.md)),
+        // neben dem Namen, weil er dasselbe ist wie ein Name: eine Aussage über **diesen Knoten** und
+        // nicht über eine seiner Verwendungsstellen.
+        //
+        // ⚠️ **Drei Einträge, nicht zwei — «erbt» ist ein eigener Zustand und nicht das Fehlen einer
+        // Antwort.** *`null` heisst «frag meine Vorfahren», und was dabei herauskommt, steht im
+        // Eintrag: ein Kind von `Integer › min` erbt «Einstellung», ohne dass jemand es nochmal sagt.
+        // **Ohne diesen dritten Eintrag könnte man eine geerbte Antwort nicht zurücknehmen.***
+        $sorte  = $selected->kind;
+        $erbt   = $this->editor->kindsOfNodes([$selected->id])[$selected->id] ?? NodeKind::standard();
+        $wahl   = '<select name="node_kind" form="' . esc_attr(self::pageForm($selected)) . '"'
+            . ' class="taxmod-choice" title="' . esc_attr__('What values of fields pointing at this node are', 'taxmod') . '">'
+            . '<option value=""' . ($sorte === null ? ' selected' : '') . '>'
+            . esc_html(sprintf(
+                /* translators: %s is the inherited answer, «field» or «setting». */
+                __('inherited — %s', 'taxmod'),
+                $erbt === NodeKind::Setting ? __('setting', 'taxmod') : __('field', 'taxmod')
+            ))
+            . '</option>'
+            . '<option value="field"' . ($sorte === NodeKind::Field ? ' selected' : '') . '>'
+            . esc_html__('field — a person enters it', 'taxmod') . '</option>'
+            . '<option value="setting"' . ($sorte === NodeKind::Setting ? ' selected' : '') . '>'
+            . esc_html__('setting — it belongs to the model', 'taxmod') . '</option>'
+            . '</select>';
+
         $node = $pageForm . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
             . ' form="' . esc_attr(self::pageForm($selected)) . '">'
+            . $wahl
             . $this->form(
                 $selected->id,
                 [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
@@ -1444,42 +1472,90 @@ final class NodesScreen
             $targetHrefs[$edge->toId] ??= $this->backTo($edge->toId);
         }
 
-        $attributeRows = $this->rendering->fieldRowsFor(
-            $edges,
-            $selected->id,
-            $actions,
-            $submits,
-            self::NAME_FIELD,
-            self::SETTING_FIELD,
-            '',
-            \Taxmod\Core\Renderer\Level::Admin,
-            $this->settingActs(),
-            $settingSubmits,
-            __('Settings of this use site', 'taxmod'),
-            $targetHrefs
-        );
+        // ⚠️ **Zwei Blöcke, ein Renderer** ([D-518](../../../docs/NewConcept/90-decision-log.md)). Der
+        // Eigentümer: *«dass wir praktisch den Renderer zweimal aufrufen, einmal für Fields und einmal
+        // für Settings, und dann jeweils eine andere Überschrift setzen.»*
+        //
+        // ⚠️ **Damit ist [D-506](../../../docs/NewConcept/90-decision-log.md) zum ersten Mal auch auf
+        // dem Schirm wahr** — *«somit ist im Grunde alles ein Feld». Ein eigener Einstellungs-Renderer
+        // wäre die zweite Art, dasselbe zu zeichnen, die `R1` verbietet; **dieselbe Tabelle, anders
+        // gefiltert**, ist keine.*
+        //
+        // ⚠️ *Die Sorte kommt vom **Zielknoten** und wird in zwei Abfragen für alle Zeilen aufgelöst,
+        // samt Vorfahrenlauf ({@see \Taxmod\Core\Repository\NodeRepository::resolvedKinds()}) — kein
+        // Aufstieg je Zeile (`CD-7`).*
+        $sorten = $this->editor->kindsOfTargets($edges);
 
-        foreach ($attributeRows as $row) {
-            $body .= $row->result->markup;
+        $html = '';
+
+        foreach ([NodeKind::Field, NodeKind::Setting] as $sorte) {
+            $dieser = array_values(array_filter(
+                $edges,
+                static fn (Relation $edge): bool => ($sorten[$edge->id] ?? NodeKind::standard()) === $sorte
+            ));
+
+            $body = '';
+
+            foreach ($this->rendering->fieldRowsFor(
+                $dieser,
+                $selected->id,
+                $actions,
+                $submits,
+                self::NAME_FIELD,
+                self::SETTING_FIELD,
+                '',
+                \Taxmod\Core\Renderer\Level::Admin,
+                $this->settingActs(),
+                $settingSubmits,
+                __('Settings of this use site', 'taxmod'),
+                $targetHrefs
+            ) as $row) {
+                $body .= $row->result->markup;
+            }
+
+            $html .= $this->heading(...$this->fieldBlockHeading($sorte));
+
+            $html .= $body === ''
+                ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
+                : '<table class="wp-list-table widefat striped"><thead><tr>'
+                    . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
+                    . '<th>' . esc_html__('Points at', 'taxmod') . '</th>'
+                    . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
+                    . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
+                    . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
+                    . '<th style="width:3em"></th>'
+                    . '</tr></thead><tbody>' . $body . '</tbody></table>';
         }
 
-        $html = $this->heading(
-            __('Fields', 'taxmod'),
-            __('What this node has. «Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod')
-        );
-
-        $html .= $body === ''
-            ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
-            : '<table class="wp-list-table widefat striped"><thead><tr>'
-                . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
-                . '<th>' . esc_html__('Points at', 'taxmod') . '</th>'
-                . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
-                . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
-                . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
-                . '<th style="width:3em"></th>'
-                . '</tr></thead><tbody>' . $body . '</tbody></table>';
-
         return $html . $this->removedFields($selected) . $this->fieldForm($selected);
+    }
+
+    /**
+     * Überschrift und Hinweis eines der zwei Blöcke.
+     *
+     * ⚠️ *An **einer** Stelle, weil die zwei Aufrufe sonst zwei Orte wären, an denen dasselbe über
+     * dieselbe Tabelle gesagt wird — und der eine würde beim Ändern vergessen.*
+     *
+     * @return array{0:string,1:string}
+     */
+    private function fieldBlockHeading(NodeKind $kind): array
+    {
+        // ⚠️ *Der Satz über «Kind» und «own/inherited» gilt für beide Blöcke — es ist dieselbe Tabelle.*
+        $gemeinsam = __('«Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod');
+
+        return match ($kind) {
+            NodeKind::Field => [
+                __('Fields', 'taxmod'),
+                __('What this node has, and what a person enters.', 'taxmod') . ' ' . $gemeinsam,
+            ],
+            NodeKind::Setting => [
+                __('Settings', 'taxmod'),
+                // ⚠️ *«der Autor» und nicht «hier stehen Einstellungen»: nach
+                // [D-508](../../../docs/NewConcept/90-decision-log.md) ist der Unterschied genau, **wo
+                // der Wert liegt** — im Datensatz oder am Modell.*
+                __('The same thing, for values that belong to the model rather than to an entry — what used to be called settings.', 'taxmod') . ' ' . $gemeinsam,
+            ],
+        };
     }
 
     /**
@@ -2503,6 +2579,29 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $edgeId, $name);
         $this->saveLabels($nodeId, $locale);
+        $this->saveKind($nodeId, $edgeId);
+    }
+
+    /**
+     * Die Sorte des Knotens, wie der Wähler sie gesendet hat.
+     *
+     * ⚠️ **Nur wenn das Feld überhaupt dabei ist**, und das ist dieselbe Regel, die
+     * {@see saveSettings()} für die Einstellungen hat: *ein abwesendes Feld ist nicht ein leeres.* Der
+     * Wähler steht nur auf der Knotenseite; ein Speichern von einer Verwendungsstelle darf die Sorte
+     * des Knotens nicht anfassen.
+     *
+     * ⚠️ *Ein leerer Wert ist hier **kein** «nicht gesendet», sondern die dritte Wahl: «erbt». Darum
+     * `array_key_exists` und nicht `!== ''`.*
+     */
+    private function saveKind(int $nodeId, int $edgeId): void
+    {
+        if ($edgeId !== 0 || ! array_key_exists('node_kind', $_POST)) {
+            return;
+        }
+
+        $sent = sanitize_text_field(wp_unslash((string) $_POST['node_kind']));
+
+        $this->editor->setKind($nodeId, $sent === '' ? null : NodeKind::tryFrom($sent));
     }
 
     /**
