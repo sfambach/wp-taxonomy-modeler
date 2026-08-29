@@ -2062,16 +2062,28 @@ final class NodesScreen
      */
     private function recordsPanel(Node $selected): string
     {
+        $attributes = $this->editor->fieldsOf($selected->id);
+
+        // ⚠️ **Die Frage ist «hat er Felder», nicht «in welchem Zweig liegt er»**
+        // ([D-522](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «so ein Record, den
+        // ich hier im Modell eingebe, ist auch einfach nur ein Record zur Kante — gehört er zu Field,
+        // ist es ein Default-Wert; gehört er zu Settings, ist es eine Einstellung.»*
+        //
+        // ⚠️ **[D-183](../../../docs/NewConcept/90-decision-log.md) sagte das Gegenteil und war schon
+        // falsch, bevor jemand daran rührte:** *gemessen hängen **232 Setting-Zeilen** an Knoten
+        // ausserhalb von `Model` und `Compositions`, darunter `kilo`s Exponent 3. **Die Daten waren da
+        // — sie lagen in einer anderen Tabelle und hiessen anders.***
+        //
+        // ⚠️ *Ein Knoten ohne Felder hat nichts aufzuzeichnen. Das schliesst aus, was auch vorher
+        // nichts konnte — aber aus einem Grund, der am Knoten steht statt an seinem Zweig.*
         $branch = $this->framework->branchOf($selected);
 
-        if ($branch === null || ! $branch->holdsData()) {
+        if ($attributes === [] && ($branch === null || ! $branch->holdsData())) {
             return $this->heading(
                 __('Records', 'taxmod'),
-                __('Nothing can be entered here. Only nodes under Model and Compositions hold records; a data type or a constant describes something rather than being one.', 'taxmod')
+                __('Nothing can be entered here, because this node has no fields. A node records values for its fields — under «Fields» that is what a person enters, under «Settings» what the author set.', 'taxmod')
             );
         }
-
-        $attributes = $this->editor->fieldsOf($selected->id);
         $records    = $this->data->recordsOf($selected->id);
 
         $html = $this->heading(

@@ -94,10 +94,30 @@ final class DataEntry
      */
     public function create(int $nodeId): NodeRecord
     {
-        $model  = $this->nodes->byId($nodeId);
-        $branch = $this->framework->branchOf($model);
+        $model = $this->nodes->byId($nodeId);
 
-        if ($branch === null || ! $branch->holdsData()) {
+        // ⚠️ **Nicht mehr «welcher Zweig», sondern «hat er überhaupt Felder»**
+        // ([D-522](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «so ein Record, den
+        // ich hier im Modell eingebe, ist auch einfach nur ein Record zur Kante — gehört er zu Field,
+        // ist es ein Default-Wert; gehört er zu Settings, ist es eine Einstellung.»*
+        //
+        // ⚠️ **[D-183](../../../docs/NewConcept/90-decision-log.md) sagte das Gegenteil — «everything
+        // under Definition has none, it is only a means to an end» — und war schon falsch, bevor
+        // jemand daran rührte.** *Gemessen: **232 Setting-Zeilen** hängen an Knoten ausserhalb von
+        // `Model` und `Compositions`, darunter `kilo`s Exponent 3. **Die Daten waren da; sie lagen nur
+        // in einer anderen Tabelle und hiessen anders.***
+        //
+        // ⚠️ *Die neue Bedingung ist die, die etwas bedeutet: **ein Knoten ohne Felder hat nichts
+        // aufzuzeichnen.** Sie schliesst dieselben Knoten aus, die auch vorher nichts konnten — nur
+        // aus einem Grund, der am Knoten steht statt an seinem Zweig.*
+        // ⚠️ **Additiv, nicht ersetzend, und das hat ein Test gezeigt.** *Meine erste Fassung fragte
+        // **nur** nach Feldern — und nahm damit einem Modellknoten **ohne** Felder das Anlegen weg, das
+        // er vorher konnte. Ein Modell, an dem noch nichts erklärt ist, ist eine Baustelle und kein
+        // Fehler.*
+        $branch = $this->framework->branchOf($model);
+        $hatFelder = $this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]) !== [];
+
+        if (($branch === null || ! $branch->holdsData()) && ! $hatFelder) {
             throw NotYetStorable::thatBranchHasNoRecords($model->name);
         }
 

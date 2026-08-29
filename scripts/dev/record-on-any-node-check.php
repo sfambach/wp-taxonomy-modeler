@@ -1,0 +1,227 @@
+<?php declare(strict_types=1);
+/**
+ * Ein Knoten trägt Datensätze für seine Felder — gleich wo er hängt.
+ *
+ *     php scripts/dev/record-on-any-node-check.php [path/to/wordpress]
+ *
+ * ⚠️ **[D-522](../../docs/NewConcept/90-decision-log.md), sein Entwurf:** *«so ein Record, den ich hier
+ * im Modell eingebe, ist auch einfach nur ein Record zur Kante — gehört er zu Field, ist es ein
+ * Default-Wert; gehört er zu Settings, ist es eine Einstellung.»*
+ *
+ * ⚠️ **Die Zusage, die diese Prüfung trägt, ist die eine, die vorher unmöglich war:** *ein Knoten
+ * ausserhalb von `Model` und `Compositions` — `kilo`, eine Konstante — nimmt einen Datensatz an, und
+ * der Wert landet unter der **Kanten-Id** des Feldes. **Fällt das, ist der ganze Umbau von `default`
+ * zurück auf Anfang.***
+ *
+ * ⚠️ *Sie legt **keinen Knoten** an und nimmt jeden Datensatz wieder weg, den sie anlegt — über die
+ * Ids ihres eigenen Laufs, samt `register_shutdown_function`, damit auch ein Absturz aufräumt
+ * ([Zeile 81](../../docs/NewConcept/97-implementation-plan.md#the-working-list)).*
+ *
+ * @see docs/NewConcept/02-field-and-setting.md
+ */
+
+$root = $argv[1] ?? getenv('WP_ROOT') ?: null;
+
+if ($root === null) {
+    $dir = getcwd();
+    while ($dir !== '' && ! is_readable($dir . '/wp-load.php')) {
+        $up  = dirname($dir);
+        $dir = $up === $dir ? '' : $up;
+    }
+    $root = $dir;
+}
+
+if ($root === '' || ! is_readable($root . '/wp-load.php')) {
+    fwrite(STDERR, "Cannot find wp-load.php. Pass the WordPress folder as the first argument.\n");
+    exit(2);
+}
+
+define('WP_USE_THEMES', false);
+require $root . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+use Taxmod\Core\Exception\NotYetStorable;
+use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Service\DataEntry;
+use Taxmod\Core\Service\ModelEditor;
+use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\TableIdentityAllocator;
+use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\SystemClock;
+
+global $wpdb;
+$ok  = 0;
+$bad = 0;
+
+function check(string $what, bool $passed, string $detail = ''): void
+{
+    global $ok, $bad;
+
+    if ($passed) {
+        $ok++;
+        echo "  OK   $what\n";
+
+        return;
+    }
+
+    $bad++;
+    echo "  FAIL $what" . ($detail !== '' ? " — $detail" : '') . "\n";
+}
+
+$nodes     = new WpdbNodeRepository();
+$edges     = new WpdbRelationRepository();
+$log       = new WpdbChangelog(new SystemClock());
+$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
+$editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+$data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+
+/** @var list<int> Alles, was dieser Lauf angelegt hat. */
+$meine = [];
+
+register_shutdown_function(static function () use (&$meine): void {
+    global $wpdb;
+
+    foreach ($meine as $id) {
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+    }
+});
+
+echo "\n== 1. Eine Konstante nimmt einen Datensatz an ==\n";
+
+// ⚠️ *`kilo` über den Namen unter `Prefixes` gesucht — es gibt keine Option dafür, und der Knoten
+// gehört der Saat, nicht dem Rahmenwerk. Findet sie ihn nicht, sagt die Prüfung das, statt still
+// durchzulaufen.*
+$prefixes = null;
+
+foreach ($nodes->childrenOf($framework->rootOf(Branch::Constants)) as $child) {
+    if ($child->name === 'Prefixes') {
+        $prefixes = $child;
+    }
+}
+
+$kilo = null;
+
+if ($prefixes !== null) {
+    foreach ($nodes->childrenOf($prefixes) as $child) {
+        if ($child->name === 'kilo') {
+            $kilo = $child;
+        }
+    }
+}
+
+if ($kilo === null) {
+    check('ein Knoten kilo unter Constants › Prefixes', false);
+} else {
+    check('kilo liegt unter Constants', $framework->branchOf($kilo) === Branch::Constants);
+    check(
+        'und sein Zweig sagt weiterhin «keine Daten»',
+        $framework->branchOf($kilo)?->holdsData() === false,
+        'holdsData() darf sich nicht geändert haben'
+    );
+
+    $exponent = null;
+
+    foreach ($editor->fieldsOf($kilo->id) as $edge) {
+        if ($edge->name === 'exponent') {
+            $exponent = $edge;
+        }
+    }
+
+    if ($exponent === null) {
+        check('kilo erbt ein Feld «exponent»', false);
+    } else {
+        // ⚠️ **Gefangen und nicht durchgelassen.** *Ohne das stürzt die Prüfung ab, sobald das Tor
+        // wieder nach dem Zweig fragt — und **eine abstürzende Prüfung überspringt ihre restlichen
+        // Zusicherungen**, was genau die Sorte «grün aus dem falschen Grund» ist, die dieses Projekt
+        // schon zweimal erwischt hat.*
+        $record = null;
+
+        try {
+            $record  = $data->create($kilo->id);
+            $meine[] = $record->id;
+        } catch (NotYetStorable $e) {
+            check('ein Datensatz an kilo lässt sich anlegen', false, $e->getMessage());
+        }
+
+        if ($record !== null) {
+            check('ein Datensatz an kilo lässt sich anlegen', $record->id > 0, (string) $record->id);
+
+            $data->put($record->id, $exponent->id, TypedValue::ofInt(3));
+        }
+
+        $roh = $record === null ? null : $wpdb->get_row($wpdb->prepare(
+            'SELECT edge_id, path, value_int FROM ' . Schema::table('record_values') . ' WHERE record_id = %d',
+            $record->id
+        ), ARRAY_A);
+
+        // ⚠️ **Das ist die Zusage, um die es geht:** *der Wert steht unter der **Kanten-Id** des
+        // Feldes — nicht unter einem Namen wie `default`. **Damit ist eine Einstellung und ein
+        // Datensatzwert dieselbe Zeile in zwei Tabellen**, und eine davon kann fallen.*
+        check(
+            'und der Wert steht unter der Kanten-Id des Feldes',
+            $roh !== null && (int) $roh['edge_id'] === $exponent->id && (int) $roh['value_int'] === 3,
+            json_encode($roh)
+        );
+    }
+}
+
+echo "\n== 2. Der alte Weg bleibt, wo er war ==\n";
+
+// ⚠️ **Additiv und nicht ersetzend, und das hat ein Kerntest erzwungen:** *meine erste Fassung fragte
+// **nur** nach Feldern und nahm damit einem Modellknoten **ohne** Felder das Anlegen weg, das er
+// vorher konnte. Ein Modell, an dem noch nichts erklärt ist, ist eine Baustelle und kein Fehler.*
+$model = $framework->rootOf(Branch::Model);
+
+check(
+    'der Model-Zweig hält weiterhin Daten',
+    $framework->branchOf($model)?->holdsData() === true
+);
+
+echo "\n== 3. Was der Umbau kostet, wird gemessen und nicht geschätzt ==\n";
+
+$alle  = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes'));
+$ohne  = 0;
+
+foreach ($alle as $id) {
+    if ($editor->fieldsOf((int) $id) === []) {
+        $ohne++;
+    }
+}
+
+// ⚠️ **Solange die Wurzel Felder erklärt, hat **jeder** Knoten Felder** — gemessen 0 von 129 ohne.
+// *Also zeigt der Datensätze-Bereich überall, auch am Müll und an den Zweigwurzeln. **Das ist Lärm,
+// und es ist zugleich der Fall, den der Eigentümer will**: ein Datensatz an der Wurzel ist der
+// Renderer, den alles erbt. Eine Ausnahme für «Maschinerie» nähme die Wurzel mit, darum gibt es
+// keine — aber die Zahl steht hier, damit die Folge sichtbar bleibt statt vergessen zu werden.*
+check(
+    'jeder Knoten hat Felder, solange die Wurzel welche erklärt',
+    $ohne === 0,
+    $ohne . ' von ' . count($alle) . ' ohne Feld'
+);
+
+echo "\n== 4. Die Prüfung lässt nichts liegen ==\n";
+
+$vorher = count($meine);
+
+foreach ($meine as $id) {
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+}
+
+$uebrig = $meine === [] ? 0 : (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE id IN (' . implode(',', array_map('intval', $meine)) . ')'
+);
+
+$meine = [];
+
+check('die ' . $vorher . ' angelegten Datensätze sind wieder weg', $uebrig === 0, (string) $uebrig);
+
+echo "\n" . ($bad === 0 ? "Alles grün: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
+
+exit($bad === 0 ? 0 : 1);

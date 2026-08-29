@@ -1052,3 +1052,27 @@ value_int=3)` ist Zeichen für Zeichen ein Datensatz an `kilo` mit einem Wert an
 gehört diese Zeile», und beides in eine Spalte zu legen wäre dieselbe Doppelung eine Ebene tiefer.*
 
 ---
+
+### Ein Knoten trägt Datensätze für seine Felder — Stand 2026-08-29
+
+[D-522](90-decision-log.md). *Das Tor fragt nach **Feldern**, nicht nach dem Zweig.*
+
+```text
+kilo (unter Constants)
+└── erbt «exponent» als Kante 4654
+    record_values   edge_id=4654  path='4654'  value_int=3     ← neu
+    settings        owner_id=kilo setting_key='default' … =3   ← dasselbe, heute
+```
+
+⚠️ **[D-183](90-decision-log.md)s Satz «everything under Definition has none» war schon falsch:**
+*gemessen **232 Setting-Zeilen** an Knoten ausserhalb von `Model` und `Compositions`. Die Daten waren
+da — in einer anderen Tabelle und unter einem anderen Namen.*
+
+⚠️ **Additiv:** *Zweig hält Daten **oder** der Knoten hat Felder. Ein Modellknoten ohne Felder ist
+eine Baustelle und darf weiter anlegen — das hat ein Kerntest erzwungen.*
+
+⚠️ **Und die unbequeme Folge, gemessen: von 129 Knoten hat _keiner_ null Felder**, weil die Wurzel
+`renderer` und `validator` erklärt. *Der Datensätze-Bereich zeigt also überall. **Eine Ausnahme für
+Maschinerie nähme die Wurzel mit** — und ein Datensatz an der Wurzel ist der nützliche Fall.*
+
+---

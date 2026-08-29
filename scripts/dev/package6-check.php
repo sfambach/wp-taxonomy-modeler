@@ -78,8 +78,18 @@ check('it is stored', $record->id > 0);
 check('against the right model', $record->nodeId === $part->id);
 check('and it keeps the version it was written against', $record->nodeVersion === $nodes->byId($part->id)->version);
 
-try { $data->create($text->id); check('a data type has no records of its own', false); }
-catch (NotYetStorable $e) { check('a data type has no records of its own', true); }
+// ⚠️ **Hier stand «a data type has no records of its own», und das gilt seit
+// [D-522](../../docs/NewConcept/90-decision-log.md) nicht mehr.** *Der Eigentümer: «so ein Record, den
+// ich hier im Modell eingebe, ist auch einfach nur ein Record zur Kante.» **Das Tor fragt jetzt, ob
+// der Knoten Felder hat, nicht in welchem Zweig er liegt** — und [D-183](../../docs/NewConcept/90-decision-log.md)s
+// Satz war ohnehin schon falsch: gemessen hingen **232 Setting-Zeilen** an Knoten ausserhalb von
+// `Model` und `Compositions`.*
+//
+// ⚠️ **Statt die Zusage zu streichen, misst sie jetzt ihre zwei Hälften** — *der Zweig sagt weiterhin
+// «keine Daten», **und** der Typ erbt trotzdem Felder. **Beides zusammen ist der Grund, warum er
+// Datensätze tragen darf**, und wenn eine der beiden Hälften kippt, will man es wissen.*
+check('der Zweig eines Datentyps sagt weiterhin «keine Daten»', $framework->branchOf($text)?->holdsData() === false);
+check('und er erbt trotzdem Felder — darum darf er Datensätze tragen', $editor->fieldsOf($text->id) !== []);
 
 echo "\n== 2. A value goes in and comes back ==\n";
 $data->put($record->id, $description->id, TypedValue::ofText('__p6 a resistor'));
