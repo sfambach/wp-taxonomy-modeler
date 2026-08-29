@@ -212,6 +212,44 @@ final class ModelEditor
      * ⚠️ *Logged like a rename, because it is a model change: it survives a migration and every editor
      * sees it. An unchanged switch writes nothing and raises no version ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      */
+    /**
+     * Ein **Feld** verstecken oder wieder zeigen — an der Deklaration, wo es erklärt wurde.
+     *
+     * ⚠️ **[D-467](../../../docs/NewConcept/90-decision-log.md) hatte genau diesen Fall als Grund**,
+     * und er war der einzige, den der Eigentümer selbst genannt hat: *«wo ich es sagen würde, ist an
+     * den **Feldern** eines Modellknotens, wenn ich etwas nur im Hintergrund haben will, um damit zu
+     * rechnen.»* **Die Spalte trägt es seit Schema 12, der Akt fehlte.**
+     *
+     * ⚠️ *Gemessen am 2026-08-30: von sieben versteckten Kanten sind **sieben Vererbungskanten** —
+     * kein einziges Feld. Nicht weil niemand wollte, sondern weil es keinen Knopf gab.*
+     *
+     * ⚠️ **Nur an der eigenen Deklaration** ({@see ownAttribute()}): ein geerbtes Feld ist dieselbe
+     * Kante, und sie hier zu verstecken hiesse, sie **überall** zu verstecken. *Das mag man wollen —
+     * aber dann sagt man es dort, wo sie erklärt ist, und sieht dabei, wen es trifft.*
+     */
+    public function hideField(int $ownerId, int $edgeId, ?bool $hide = null): Relation
+    {
+        $edge   = $this->ownAttribute($ownerId, $edgeId);
+        $wanted = $hide ?? ! $edge->hide;
+        $hidden = $edge->withHide($wanted);
+
+        if ($hidden === $edge) {
+            return $edge;
+        }
+
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            $wanted ? 'field hidden' : 'field shown',
+            $this->edgeState($edge),
+            $this->edgeState($hidden)
+        );
+
+        $this->relations->save($hidden, $edge->version);
+
+        return $hidden;
+    }
+
     public function hidePlacement(int $nodeId, ?bool $hide = null): ?Relation
     {
         $edge = $this->relations->inheritanceEdgeTo($nodeId);

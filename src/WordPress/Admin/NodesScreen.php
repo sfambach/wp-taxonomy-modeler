@@ -1374,6 +1374,27 @@ final class NodesScreen
                 // here** — the owner: *icons are boxes again and the wrong alignment*. Measured on this
                 // very row: `<button class="button">💾</button>`, 49×41 next to 24×17 neighbours, and
                 // the whole icon group crooked because of it.
+                // ⚠️ **Der Verstecken-Schalter am Feld** — der Fall, den
+                // [D-467](../../../docs/NewConcept/90-decision-log.md) als Grund nannte und für den es
+                // nie einen Knopf gab. *Gemessen am 2026-08-30: sieben versteckte Kanten, alle sieben
+                // Vererbungskanten, kein einziges Feld.*
+                //
+                // ⚠️ *Das Auge sagt, was der **Klick** tut, nicht was der Zustand ist — dieselbe Regel
+                // wie in der Baumzeile, damit nicht jedes Auge im Schirm eine Rückfrage ist.*
+                //
+                // ⚠️ **Nur an der eigenen Deklaration.** *Ein geerbtes Feld ist dieselbe Kante; es hier
+                // zu verstecken hiesse, es überall zu verstecken. Wer das will, sagt es dort, wo das
+                // Feld erklärt ist.*
+                new Control(
+                    'do',
+                    'toggle_field_hide',
+                    $edge->hide ? __('Show', 'taxmod') : __('Hide', 'taxmod'),
+                    $edge->hide
+                        ? __('Show this field again — it is hidden from forms and from the preview', 'taxmod')
+                        : __('Hide this field — it stays in the model and is not drawn', 'taxmod'),
+                    $own,
+                    icon: $edge->hide ? 'visibility' : 'hidden'
+                ),
                 Control::saving(
                     'do',
                     'save_field',
@@ -2945,6 +2966,7 @@ final class NodesScreen
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
+                'toggle_field_hide' => $this->editor->hideField($id, $edge),
                 'save_field'    => $this->saveField($id, $edge, $attributeName, $settingValue),
                 // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an edge
                 // with the same name, and inventing a suffix is writing user-visible text — which
