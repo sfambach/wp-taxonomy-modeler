@@ -1525,9 +1525,23 @@ final class NodesScreen
                     . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
                     . '<th style="width:3em"></th>'
                     . '</tr></thead><tbody>' . $body . '</tbody></table>';
+
+            // ⚠️ **Das Formular «Feld anlegen» und die geparkten Felder gehören unter die Felder, nicht
+            // hinter beide Blöcke.** *Der Eigentümer: «aktuell ist das Feld, um ein Field hinzuzufügen,
+            // unter Settings — dort ist es falsch, müsste unter Fields sein.» Er hat recht, und der
+            // Fehler war meiner: die zwei Blöcke wurden eine Schleife, und was danach stand, fiel
+            // hinter den **letzten**.*
+            //
+            // ⚠️ *Unter «Fields» und nicht doppelt, weil es der **allgemeine** Akt ist: nach
+            // [D-506](../../../docs/NewConcept/90-decision-log.md) ist alles ein Feld. **Was daraus
+            // wird, entscheidet das Ziel** — zeigt das neue Feld auf einen Knoten, der eine Einstellung
+            // ist, erscheint die Zeile danach im Settings-Block.*
+            if ($sorte === NodeKind::Field) {
+                $html .= $this->removedFields($selected) . $this->fieldForm($selected);
+            }
         }
 
-        return $html . $this->removedFields($selected) . $this->fieldForm($selected);
+        return $html;
     }
 
     /**

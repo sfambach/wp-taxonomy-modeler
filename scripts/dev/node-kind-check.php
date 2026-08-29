@@ -250,6 +250,24 @@ if (count($treffer[0]) === 2) {
     );
 }
 
+// ⚠️ **Das Formular «Feld anlegen» steht unter den Feldern, nicht hinter beiden Blöcken.** *Der
+// Eigentümer hat es gemeldet: «aktuell ist das Feld, um ein Field hinzuzufügen, unter Settings — dort
+// ist es falsch». **Der Fehler entstand beim Bau der zwei Blöcke**: was hinter der Schleife stand,
+// fiel hinter den letzten Block. Eine Stellungsfrage lässt sich nur an der Reihenfolge im Markup
+// messen, nicht am Code.*
+$stelleFormular = strpos($markup, 'value="add_field"');
+$stelleSettings = $treffer[0][1][1] ?? null;
+$stelleFields   = $treffer[0][0][1] ?? null;
+
+check(
+    'das Formular «Feld anlegen» steht zwischen Fields und Settings',
+    $stelleFormular !== false && $stelleFields !== null && $stelleSettings !== null
+        && $stelleFormular > $stelleFields && $stelleFormular < $stelleSettings,
+    'Formular bei ' . var_export($stelleFormular, true)
+        . ', Fields bei ' . var_export($stelleFields, true)
+        . ', Settings bei ' . var_export($stelleSettings, true)
+);
+
 echo "\n== 6. Der Wähler zeigt drei Zustände, und «erbt» nennt die Antwort ==\n";
 
 check('der Wähler steht auf der Seite', (bool) preg_match('#<select name="node_kind"#', $markup));
