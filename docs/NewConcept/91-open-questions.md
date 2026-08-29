@@ -4974,8 +4974,36 @@ Er: *«da versteh ich den Unterschied noch nicht. Das sieht mir erst mal gleich 
 Messung, nicht durch eine Frage.
 
 *Blocks:* [02 Field and setting](02-field-and-setting.md) · [30 Renderer](30-renderer.md) ·
-*Status:* **offen — und sie blockiert [Zeile 31](97-implementation-plan.md#the-working-list) ganz,
-weil beide Antworten billig zu bauen sind und sich um 25 Felder unterscheiden**
+*Status:* **geschlossen 2026-08-29 → [D-434](90-decision-log.md), das sie am 2026-08-26 schon
+beantwortet hatte. Diese Frage hätte nie gestellt werden dürfen.**
+
+⚠️ **Der Eigentümer hat sie zurückgewiesen, und er hatte recht:** *«wir hatten eine Entscheidung
+getroffen, dass Standard genau eins ist, weil das das Häufigste ist.»* **[D-434](90-decision-log.md)
+sagt genau das**, in seinen Worten: *«the standard multiplicity should be `1`»* — und auf das Warum:
+*«because that is the standard when entering.»*
+
+⚠️ **Und D-434 sagt die ganze Folge selbst voraus**, die unten als neuer Befund steht: *«this makes
+every new attribute mandatory by default. That is the whole content of the decision, stated plainly
+rather than discovered later … Measured before changing it: 23 of 32 attribute edges carry no
+multiplicity row, so their meaning flips from optional to required.»* **Die Zahl ist inzwischen 25
+von 34 — dieselbe Messung, drei Tage später.**
+
+⚠️ *Auch die zweite Hälfte stand schon: [D-379](90-decision-log.md), von D-434 ausdrücklich
+behalten — **«eine Multiplizität ist nie nichts»**. Der Eigentümer hat sie wörtlich wiederholt:
+«nicht gesetzt gibt's eigentlich nicht, das heisst Multiplizität muss da sein».*
+
+⚠️ **Warum sie trotzdem entstand, weil das die brauchbare Lehre ist:** *ich habe die Vorgabe im
+**Code** gemessen (`Multiplicity::standard()`), die Folge ausgerechnet und daraus eine Frage
+gemacht — ohne im Log nachzusehen, ob sie beantwortet ist. **Eine Messung sagt, was der Fall ist;
+sie sagt nie, ob es entschieden wurde.** `PR-10` verlangt das Nachschlagen für Antworten; es gilt
+genauso für **Fragen**.*
+
+⚠️ **Und ein zweiter Fehler steckte darin, gemessen und widerlegt:** *ich schrieb, der Schirm zeige
+für die stummen Felder einen **Gedankenstrich**. **Er zeigt `1`.** Nachgemessen am echten Markup
+des Knotens «Adresse»: fünf Multiplizitäts-Zellen, in jeder ist `1` ausgewählt. Ich hatte den
+`null`-Zweig von `FieldRowRenderer::multiplicity()` gelesen und angenommen, er werde erreicht —
+`Rendering::settingsFor()` zeichnet aber **jeden Schlüssel, der zutrifft, nicht nur die
+geschriebenen**.*
 
 [D-405](90-decision-log.md) sagt: *«eine Untergrenze von eins **ist** Pflicht»*, und
 [D-351](90-decision-log.md) gibt vier Konstanten. Was **keine** Entscheidung sagt, ist, welche

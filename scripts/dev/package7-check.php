@@ -595,6 +595,18 @@ try {
         // ⚠️ *not defined* stood on almost every row and said what an empty control already says.
         check('nothing is said where nothing was said', ! str_contains($detail, 'not defined'));
         // ⚠️ **`1..1` reads `1`** — shown, never stored: the option's value keeps the stored form.
+        //
+        // ⚠️ **Und die Zusage gilt für den **ganzen sichtbaren Text**, nicht nur für diese eine
+        // Option** ([D-496](../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer hat am
+        // 2026-08-29 gefragt, warum `1..1` «immer wieder auftaucht». Nachgemessen: **im Produkt
+        // nirgends** — es stand in meinen Berichten. **Damit das eine Messung bleibt und nicht eine
+        // Erinnerung wird, prüft es diese Zeile:** Attribute weg, nur der Text zählt, denn
+        // `value="1..1"` ist die Speicherform und darf dastehen.*
+        check(
+            'die Speicherform 1..1 steht nirgends im sichtbaren Text',
+            ! str_contains(strip_tags($detail), '1..1'),
+            'D-376: ein Mensch liest 1'
+        );
         check('exactly one reads as 1 while storing 1..1', str_contains($detail, 'value="1..1">1<'));
         // The owner's ask: the settings half scrolls on its own so the tree stays put.
         check('the detail half has its own scrollbar', str_contains($detail, 'taxmod-detail-pane'));

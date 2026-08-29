@@ -31,11 +31,11 @@ require __DIR__ . '/lib/supersessions.php';
 /**
  * Wie viele Lücken hingenommen werden.
  *
- * ⚠️ **Diese Zahl darf nur nach unten.** *Stand 2026-08-28 nach dem ersten Durchgang: **370 zu Beginn, 316 danach** — 54 geschlossen, davon 52 vom selben Tag. Sie steht hier
+ * ⚠️ **Diese Zahl darf nur nach unten.** *Stand 2026-08-28 nach dem ersten Durchgang: **370 zu Beginn, 316 danach** — 54 geschlossen, davon 52 vom selben Tag. Auf **315** am selben Tag mit [D-496](../../docs/NewConcept/90-decision-log.md). Sie steht hier
  * und nicht in einer Datei daneben, damit ihre Änderung im Diff einer Entscheidung auftaucht — eine
  * stillschweigend erhöhte Obergrenze wäre genau die Sorte Nachgeben, die eine Ratsche verhindern soll.*
  */
-const HINGENOMMEN = 316;
+const HINGENOMMEN = 315;
 
 $root = __DIR__ . '/../../docs/NewConcept/';
 $rows = taxmodDecisionRows($root . '90-decision-log.md');

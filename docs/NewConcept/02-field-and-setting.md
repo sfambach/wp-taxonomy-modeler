@@ -633,3 +633,53 @@ and each time differently: `hide` argued as *inheritance* when it travels the *c
 *bounding* because a table said so; a switch drawn *off* for a key whose default is `true`; and
 `label_role` reported as *built* when it was storable, resolvable and unreachable. *A rule recalled is
 not a rule read (`PR-10`).*
+
+## Die Vorgabe der Multiplizität, und was daran nicht mehr gefragt wird — Stand 2026-08-29
+
+⚠️ **Diese Stelle besitzt den Faden**, damit die Frage nicht ein drittes Mal gestellt wird
+([D-469](90-decision-log.md), [D-496](90-decision-log.md)).
+
+| | |
+|---|---|
+| Die Vorgabe ist **`1`** | [D-434](90-decision-log.md) — der Eigentümer: *«weil das der Standard beim Eingeben ist»* |
+| Eine Multiplizität ist **nie nichts** | [D-379](90-decision-log.md), von D-434 ausdrücklich behalten |
+| Sie wird **nicht** auf jede Kante geschrieben | [D-379](90-decision-log.md) über [D-015](90-decision-log.md) — Settings sind dünn besetzt, eine fehlende Zeile **bedeutet** die Vorgabe |
+| Ein Mensch liest **`1`**, gespeichert wird `1..1` | [D-376](90-decision-log.md) |
+| Eine Untergrenze von eins **ist** Pflicht | [D-405](90-decision-log.md) |
+
+⚠️ **Die drei Sätze zusammen ergeben etwas, das leicht überrascht, und D-434 sagt es selbst hin:**
+*«this makes every new attribute mandatory by default. **That is the whole content of the
+decision, stated plainly rather than discovered later.**»* Wer die Zahl später misst, misst eine
+**bekannte** Folge, keinen Fund.
+
+⚠️ *Gemessen am 2026-08-26: **23 von 32** Feldkanten ohne eigene Angabe. Am 2026-08-29: **25 von
+34**, davon 5 Testmüll — also **20 echte**. Dieselbe Messung, drei Tage später.*
+
+### Was durchgesetzt wird und was noch nicht
+
+Heute **nichts**: `Multiplicity::requiresOne()` hat keinen Aufrufer, der eine leere Antwort
+verweigert, und kein Steuerelement sagt `required`
+([Zeile 31](97-implementation-plan.md#the-working-list)).
+
+⚠️ **Das ist kein Versäumnis, sondern die Reihenfolge, die D-434 festlegt:** *«when the validators
+of S6 arrive, those 23 attributes begin refusing empty saves. **Which is the right order — the
+rule first, the enforcement second — but only if the rule is known before the enforcement
+lands.**»* Zeile 31 wartet damit auf [Zeile 8](97-implementation-plan.md#the-working-list).
+
+⚠️ *Drei Felder sehen beim Bau der Durchsetzung nach Kann-Feldern aus und wären dann anzufassen:
+`Adresse · hausnummer`, `Adresse · land`, `Passiv · Präfix` — beim Einheitenwert steht `prefix`
+bereits ausdrücklich auf «keins oder eins», derselbe Gedanke am anderen Knoten.*
+
+### Zwei gemessene Richtigstellungen
+
+⚠️ **Der Schirm zeigt für ein stummes Feld `1`, keinen Gedankenstrich.** *Am echten Markup des
+Knotens «Adresse» nachgemessen: fünf Multiplizitäts-Zellen gezeichnet, in jeder `1` gewählt.
+`Rendering::settingsFor()` zeichnet **jeden Schlüssel, der zutrifft, nicht nur die
+geschriebenen** — der `null`-Zweig von `FieldRowRenderer::multiplicity()` wird für ein Feld gar
+nicht erreicht.*
+
+⚠️ **Und `1..1` erreicht keinen Leser.** *14 Knoten mit Feldern gezeichnet, in keinem steht die
+Speicherform im sichtbaren Text. Bewacht in `package7-check`: Attribute weg, nur der Text zählt —
+`value="1..1"` ist die Speicherform und darf dastehen.*
+
+---
