@@ -96,11 +96,38 @@ if ($unitValue === null) {
     exit(1);
 }
 
+// ⚠️ **Was die Wurzel erklärt, gehört keinem Knoten weiter unten** — und diese Zeile gibt es, weil
+// diese Prüfung am 2026-08-29 rot wurde, ohne dass jemand sie oder ihr Versprechen angefasst hat.
+// *Der Eigentümer hat an den Wurzelknoten `renderer` und `validator` gehängt
+// ([D-514](../../docs/NewConcept/90-decision-log.md)). `ModelEditor::fieldsOf()` sammelt
+// `[...ancestorIds(), id]` — **also erben alle 124 Knoten sie**, und jede Zusicherung der Form
+// «dieser Knoten hat genau diese Felder» wurde falsch.*
+//
+// ⚠️ **Abgezogen, nicht abgeschwächt.** *«Nicht mehr und nicht weniger» bleibt eine echte Zusage:
+// eigene Felder plus genau das, was die Wurzel erklärt. Ein Feld, das von irgendwo sonst kommt,
+// lässt die Prüfung weiter fallen. **Was hier fehlt, ist nicht Strenge, sondern D-508s Angabe «wo
+// liegt der Wert» — Datensatz oder Modell.** Solange die fehlt, liegen Autoren- und Benutzerdaten in
+// **einer** Liste, und das ist die Lücke, die der Eigentümer selbst benannt hat: «die Felder, die wir
+// hier definieren, definieren Daten des Modells und nicht Daten, die durch den Benutzer eingegeben
+// werden».*
+$vonDerWurzel = [];
+
+foreach ($editor->fieldsOf($framework->root()->id) as $edge) {
+    $vonDerWurzel[$edge->name] = true;
+}
+
 $members = [];
 
 foreach ($editor->fieldsOf($unitValue->id) as $edge) {
+    if (isset($vonDerWurzel[$edge->name])) {
+        continue;
+    }
+
     $members[$edge->name] = $edge;
 }
+
+echo '  (von der Wurzel geerbt und darum nicht gezählt: '
+    . (implode(', ', array_keys($vonDerWurzel)) ?: 'nichts') . ")\n";
 
 // D-039: a unit value is value + optional prefix + unit. Three members, no more and no fewer.
 check('it has exactly the three members of D-039', count($members) === 3, implode(', ', array_keys($members)));

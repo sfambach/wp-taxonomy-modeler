@@ -105,10 +105,38 @@ $part    = $editor->createNode('__p3 Part', $order->id);
 $deeper  = $editor->createNode('__p3 Deeper', $part->id);
 $ownEdge = $editor->addField($part->id, $text->id, 'part number');
 
-$names = static fn (int $id): array => array_map(
+// ⚠️ **Was die Wurzel erklärt, gehört keinem Knoten weiter unten** — und diese Zeile gibt es, weil
+// diese Prüfung am 2026-08-29 rot wurde, ohne dass jemand sie oder ihr Versprechen angefasst hat.
+// *Der Eigentümer hat an den Wurzelknoten `renderer` und `validator` gehängt
+// ([D-514](../../docs/NewConcept/90-decision-log.md)). `ModelEditor::fieldsOf()` sammelt
+// `[...ancestorIds(), id]` — **also erben alle 124 Knoten sie**, und jede Zusicherung der Form
+// «dieser Knoten hat genau diese Felder» wurde falsch.*
+//
+// ⚠️ **Abgezogen, nicht abgeschwächt.** *«Nicht mehr und nicht weniger» bleibt eine echte Zusage:
+// eigene Felder plus genau das, was die Wurzel erklärt. Ein Feld, das von irgendwo sonst kommt,
+// lässt die Prüfung weiter fallen. **Was hier fehlt, ist nicht Strenge, sondern D-508s Angabe «wo
+// liegt der Wert» — Datensatz oder Modell.** Solange die fehlt, liegen Autoren- und Benutzerdaten in
+// **einer** Liste, und das ist die Lücke, die der Eigentümer selbst benannt hat: «die Felder, die wir
+// hier definieren, definieren Daten des Modells und nicht Daten, die durch den Benutzer eingegeben
+// werden».*
+$vonDerWurzel = array_map(
     static fn (Relation $r): string => $r->name,
-    $editor->fieldsOf($id)
+    $editor->fieldsOf($framework->root()->id)
 );
+
+echo '  (von der Wurzel geerbt und darum nicht gezählt: '
+    . (implode(', ', $vonDerWurzel) ?: 'nichts') . ")\n";
+
+$names = static fn (int $id): array => array_values(array_diff(
+    array_map(
+        static fn (Relation $r): string => $r->name,
+        $editor->fieldsOf($id)
+    ),
+    $vonDerWurzel
+));
+
+// ⚠️ *Dieselbe Rechnung als Zahl, für die Zusicherungen, die zählen statt zu benennen.*
+$eigene = static fn (int $id): int => count($names($id));
 
 check('the child sees what the parent declares', in_array('supplied by', $names($part->id), true), implode(', ', $names($part->id)));
 check('and its own alongside', in_array('part number', $names($part->id), true));
@@ -155,12 +183,12 @@ $onIt       = $editor->addField($removable->id, $doomedType->id, '__p3 doomed');
 $gone = $editor->removeField($removable->id, $onIt->id);
 check('it is parked, not purged', $gone->isParked());
 check('and it names the act that removed it (D-128)', $gone->parkedByGroup > 0, (string) $gone->parkedByGroup);
-check('hidden by default in its owning node', $editor->fieldsOf($removable->id) === []);
+check('hidden by default in its owning node', $eigene($removable->id) === 0);
 check('and findable behind «show deleted»', count($editor->removedFieldsOf($removable->id)) === 1);
 
 $back = $editor->restoreField($removable->id, $onIt->id);
 check('it comes back whole', ! $back->isParked() && $back->name === '__p3 doomed');
-check('and is live again', count($editor->fieldsOf($removable->id)) === 1);
+check('and is live again', $eigene($removable->id) === 1);
 
 foreach ([$removable->id, $doomedType->id] as $scratchId) {
     $edges->purgeEdgesTouching($scratchId);

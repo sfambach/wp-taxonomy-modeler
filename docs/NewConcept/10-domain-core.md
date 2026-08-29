@@ -4087,3 +4087,39 @@ ihn nie. Die Prüfung misst **beide** Richtungen.*
 der nächste Leser legt ihn woanders an.***
 
 ---
+
+### Der Wurzelknoten trägt Felder — Stand 2026-08-29
+
+[D-514](90-decision-log.md) und [D-515](90-decision-log.md), auf seinen Bauauftrag:
+
+```text
+Root
+├── renderer  → Compositions › DisplayOption   (1..*, Komposition)
+└── validator → Constants › Validator          (Aggregation)
+
+Compositions › DisplayOption
+├── render    → Constants › Renderer
+└── converter → Constants › Converter
+
+Data Types › Same as owner        ← D-504s Kunstgriff, jetzt ein Knoten
+Data Types › Integer
+├── min → Same as owner
+└── max → Same as owner
+```
+
+⚠️ **Der Zweig entscheidet die Art, und die zwei Wurzelfelder fallen darum verschieden aus**
+([D-497](90-decision-log.md)): *`renderer` ist eine **Komposition** — jeder Knoten bekommt seine
+eigene DisplayOption. `validator` ist eine **Aggregation** — ein Verweis auf einen geteilten Knoten.
+**Niemand hat das gewählt; es folgt daraus, wo das Ziel liegt.***
+
+⚠️ **Ein Feld an der Wurzel erbt jeder: gemessen alle 124 lebenden Knoten.** *Und `DisplayOption` erbt
+`renderer` **mit sich selbst als Ziel** — die Lage, die [D-503](90-decision-log.md) verbietet, ohne
+die Kante, an der [D-504](90-decision-log.md) sie erkennen wollte. Siehe
+[OQ-133](91-open-questions.md).*
+
+⚠️ **Und was noch fehlt, ist [D-508](90-decision-log.md)s erste Angabe — «wo liegt der Wert».**
+*Solange die fehlt, stehen `wert`, `prefix`, `einheit` (Daten des Benutzers) und `renderer`,
+`validator` (Daten des Autors) in **einer** Liste. Zwei Prüfungen sind daran rot geworden und rechnen
+die Wurzelfelder jetzt heraus — **das ist ein Abzug, kein Ersatz für die Angabe**.*
+
+---

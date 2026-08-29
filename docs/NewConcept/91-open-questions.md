@@ -5432,3 +5432,47 @@ Tiefe zu raten. Dort ging es ums Zeichnen, hier um die Typauflösung; der Wächt
 `step`. Werden sie Felder, brauchen sie einen Typ — und sein Kunstgriff gibt ihnen «derselbe wie der
 Vaterknoten» ([D-503](90-decision-log.md)). **Erst damit entsteht überhaupt die Möglichkeit einer
 Schleife**, denn ein Typ, der auf sich selbst zeigt, kennt seinen Typ nie.*
+
+### Nachtrag 2026-08-29 — der Fall, den die Frage nicht hatte: der Selbstbezug entsteht **von allein**
+
+Der Eigentümer, als die Renderer-Knoten standen: *«wenn ich jetzt an den Hauptknoten den Renderer
+dranhänge, also sage Feldrenderer und auf die Renderer verweise, dann hätte auch Renderer das als
+Feld.»*
+
+⚠️ **Er hat recht, und es ist gemessen.** *`ModelEditor::fieldsOf()` sammelt
+`fieldEdgesOf([...$node->ancestorIds(), $node->id])` — **die Vorfahren mitsamt dem Knoten selbst**.
+Ein Feld an der Wurzel erscheint damit an **allen 124 lebenden Knoten**. Und `Renderer` liegt bei
+`1.406.410.43495`, also unterhalb der Wurzel: **das Ziel des Feldes ist selbst einer seiner
+Träger.***
+
+⚠️ **Das ist die Verschärfung, und sie trifft den Wächter, nicht das Modell:** *`addField()` prüft
+**nur das Ziel** — im Zweig, nicht Zweigwurzel, nicht im Müll (fünf Verweigerungen in
+`NotAPossibleTarget`, keine über den Besitzer). **Ein geerbtes Feld ist aber kein Schreibakt.** Kein
+Wächter am Schreibweg kann diesen Selbstbezug je sehen, weil niemand ihn erklärt — er entsteht aus
+der Vererbung. **Die Frage «wo hören wir mit der Prüfung auf» hat damit eine zweite Hälfte: wo
+*fängt* sie an, wenn der Schreibweg blind ist?***
+
+⚠️ *Was **nicht** passiert: eine Schleife. [D-497](90-decision-log.md) — ein Feld an einem Modell ist
+eine Aggregation, die **verweist statt abzusteigen**. Es terminiert; was leidet, ist der Sinn.*
+
+⚠️ **Und der unangenehmste Teil sind die Maschinenknoten.** *Erben alle, dann erben auch `Model`,
+`Compositions`, `Constants`, `Data Types` einen «Feldrenderer» — Knoten, die keinen Wert zeichnen.
+`addField()` verweigert eine Zweigwurzel als **Ziel**; als **Träger** ist sie nicht geschützt.*
+
+#### Vier Wege, keiner entschieden
+
+| | Weg | Was er kostet |
+|---|---|---|
+| **A** | Nicht an der Wurzel deklarieren, sondern **je Zweig** | Vier Erklärungen statt einer — die Doppelung, die dieses Projekt sonst verbietet |
+| **B** | Ein **Merkmal am Knoten**: System gegen Anwender, und Wurzelfelder greifen an Systemknoten nicht | Ein neues Merkmal — *das [D-511](90-decision-log.md) ohnehin schon verlangt: «Urheberschaft — System gegen Anwender — und das ist eine Angabe am Knoten»* |
+| **C** | Die **Auflösung** überspringt ein Feld, dessen Ziel ein Vorfahre-oder-selbst des Trägers ist | Eine Regel im Leseweg — *der einzige Ort, der den geerbten Fall überhaupt sehen kann* |
+| **D** | Die Erklärung wandert von der Wurzel auf einen **eigenen Knoten**, und Knoten **zeigen** darauf statt zu erben | Kehrt die Richtung um; die Vererbung, die er gerade nutzen will, entfällt |
+
+⚠️ **Wenn C, dann sichtbar und nicht still.** *[R14b](30-renderer.md) verlangt, dass «kein Renderer»
+eine Entscheidung ist, die jemand getroffen hat, und kein stiller Boden. **Ein Feld, das an diesem
+Knoten nicht gilt, muss das sagen** — genau wie die Vorschau eine verborgene Zeile entfernt **und
+unten benennt**.*
+
+⚠️ *C ist derselbe Wächter, den er bei [D-497](90-decision-log.md) schon gutgeheissen hat: **die
+Auflösung läuft hoch und verweigert eine Schleife, statt eine Tiefe zu raten.** Nur läuft sie hier am
+Leseweg statt am Schreibweg.*
