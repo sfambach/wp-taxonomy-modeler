@@ -3850,3 +3850,89 @@ Worked through **after** the concept is written from the statements of the owner
 | [`../legacy/plans/data-structure.md`](../legacy/plans/data-structure.md) | 1589 lines: node, root, hierarchy vs relation, invariants, worked examples. Largest quarry — expect to drop most of it. |
 | [`../legacy/plans/part-identity-layers.md`](../legacy/plans/part-identity-layers.md) | kind / package / catalog part / BOM usage — a hard test case for any core model. |
 | [`../legacy/plans/project-plan.md`](../legacy/plans/project-plan.md) | Section *Settings cascade → paint*. |
+
+## Warum hier keine Zyklen entstehen — Stand 2026-08-29
+
+⚠️ **Diese Stelle besitzt das Thema** ([D-469](90-decision-log.md)). [D-497](90-decision-log.md)
+fasst [D-100](90-decision-log.md), [D-104](90-decision-log.md) und [D-105](90-decision-log.md)
+zusammen; jede weitere Nennung ist ein Zeiger hierher.
+
+Der Eigentümer, 2026-08-29: *«bei uns würden meist gar keine Zyklen entstehen … wenn in dem
+Modell wieder auf das erste Modell verwiesen wird, dann ist es auch nur eine Referenz. **Somit
+haben wir durch die Referenz keine Zyklen wirklich.**»* **Gegengeprüft: seine Kette trägt.**
+
+### Der Zweig entscheidet die Kantenart, nicht der Autor
+
+Gemessen an `Branch::relationKind()` und `Branch::storage()`:
+
+| Ziel im Zweig | Kantenart | Speicherung | steigt ab |
+|---|---|---|---|
+| **Model** | **Aggregation** | externe Referenz | **nein** |
+| **Constants** | **Aggregation** | Knoten-Referenz | **nein** |
+| **Data Types** | Komposition | im Datensatz | nein — ein einfacher Typ hält keine Felder |
+| **Compositions** | Komposition | eigene Datensätze | **ja** |
+
+⚠️ **Das ist der ganze Grund, und er ist strukturell statt bewacht.** *Ein Feld, das auf ein
+**Modell** zeigt, kann gar keine Kompositionskante werden — der Zweig bestimmt die Kantenart.
+Und [D-105](90-decision-log.md) macht die Aggregation zum Referenz-Renderer: «composition
+expands by default, aggregation references by default».*
+
+```mermaid
+flowchart LR
+  H["Hardware"] -->|Feld → Model| T["Treiber"]
+  T -->|Feld → Model| O["OS"]
+  O -->|Feld → Model| H
+  H -.->|jede dieser Kanten ist eine<br/>Aggregation und verweist nur| R["kein Abstieg,<br/>kein Kreis"]
+```
+
+*Sein eigenes Beispiel hört beim ersten Verweis auf und erreicht den Kreis nie.*
+
+### Die drei Wege, auf denen ein Kreis entstehen müsste
+
+| Weg | was ihn versperrt |
+|---|---|
+| **Vererbung** | im Code verweigert: `ImpossibleMove::intoItsOwnDescendant`. *«Streng
+hierarchisch» ist nicht nur gesagt, sondern gebaut.* |
+| **Feld auf ein Modell** | kann keine absteigende Kante sein — siehe Tabelle oben |
+| **Feld auf eine Komposition** | **nichts** |
+
+⚠️ **Die eine Stelle, gemessen 2026-08-29: 7 Kompositionskanten verlaufen innerhalb des Zweigs
+`Compositions`.** *Ein zusammengesetzter Teil, der einen enthält, der den ersten enthält, würde
+absteigen und nicht zurückkommen. **Heute sind es 0 Kreise**, und `NotAPossibleTarget` hat fünf
+Verweigerungen, von denen keine einen Kreis betrifft.*
+
+### Warum trotzdem kein Wächter gebaut wird
+
+⚠️ **Es steigt heute nichts in eine Komposition hinein** — der generische Composite-Renderer
+existiert nicht ([Zeile 36](97-implementation-plan.md#the-working-list)). *Ein Wächter ohne
+einen Lauf, den er bewachen könnte, wäre Code, den nichts erreicht — und genau die Sorte
+«geschrieben und nie gelesen», die dieses Projekt an anderer Stelle fünfmal an einem Tag
+gefunden hat.*
+
+**Die Gefahr und ihr Wächter kommen im selben Augenblick zur Welt.** Die Prüfung gehört zu
+[Zeile 36](97-implementation-plan.md#the-working-list) — nicht davor und nicht danach.
+
+### Was gilt, wenn jener Tag kommt
+
+[D-100](90-decision-log.md) bleibt unverändert der Bauplan, und seine Unterscheidung ist die
+wichtige Hälfte:
+
+| Abbruch | was er bedeutet | was gezeichnet wird |
+|---|---|---|
+| **Zyklus** | *du hast das schon gesehen* — **nichts fehlt** | ein Verweis, und das ist
+vollständige Information |
+| **Tiefengrenze** | *hier ist mehr, und ich habe aufgehört* — **etwas wird vorenthalten** | ein
+Verweis **und** eine Warnung |
+
+⚠️ *Und [D-104](90-decision-log.md) daneben: der **Rechenlauf** braucht den Zyklus-Wächter und
+**keine** Tiefengrenze. «A truncated rendering shows less than the truth and says so; a
+truncated sum **states an untruth**, in the same typeface as a correct number.» Ein Ergebnis,
+das nicht fertig gerechnet werden kann, ist **keine Zahl**, sondern «nicht berechenbar».*
+
+⚠️ **Eine Hälfte von [D-100](90-decision-log.md) war nie eine Entscheidung des Eigentümers:**
+*«forbidden only for inheritance and composition» trägt dort den Vermerk «my call». Für
+**Vererbung** ist es gebaut und dadurch bestätigt; für **Komposition** ist es mit
+[D-497](90-decision-log.md) fallengelassen — unmöglich gemacht, wo es geht, und bewacht, wo es
+nicht geht.*
+
+---
