@@ -82,14 +82,42 @@ check('both sides are drawn', substr_count($band, 'taxmod-preview-side') === 2, 
 // proof that the model holds real ones, which is the opposite of what a preview is for.
 check('it says where the values came from', str_contains($band, 'Filled from'));
 
-// A data type describes something rather than being one, so it has nothing to preview.
-$dataType = (int) $wpdb->get_var("SELECT id FROM {$prefix}nodes WHERE name = 'int' LIMIT 1");
+// ⚠️ **Diese Zusage war zweifach kaputt und ist es beides nicht mehr — 2026-08-29 gemessen.**
+//
+// *Erstens hat sie **nie gelaufen**: sie suchte einen Knoten namens `int`, und der heisst in diesem
+// Modell `Integer`. `$dataType > 0` war immer falsch, also stand die Zeile da und prüfte nichts —
+// eine Prüfung, die still übersprungen wird, ist schlechter als keine, weil sie im Bericht als
+// Deckung mitgelesen wird.*
+//
+// *Zweitens behauptete sie das Gegenteil des Gebauten: «einem Datentyp wird gesagt, es gebe nichts
+// zu zeigen». [D-430](../../docs/NewConcept/90-decision-log.md) hat genau das abgeschafft — der
+// Eigentümer: «warum keine Vorschau auf den einfachen Datentypen?» — und ein Datentyp **zeichnet
+// sich seither selbst als Feld**. Die tote Suche hat verhindert, dass der Widerspruch auffiel.*
+//
+// ⚠️ *Der Knoten wird jetzt über seinen **Ast** gesucht und nicht über einen Namen: ein Name ist
+// Modellinhalt und darf sich ändern, ein Ast ist Gerüst.*
+$dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT id FROM {$prefix}nodes WHERE name = %s LIMIT 1",
+    'Data Types'
+));
+
+$dataType = $dataTypeRoot === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT to_id FROM {$prefix}relations WHERE from_id = %d AND kind = %s ORDER BY position ASC LIMIT 1",
+    $dataTypeRoot,
+    'inheritance'
+));
+
+check('a data type was found to test against', $dataType > 0, (string) $dataType);
 
 if ($dataType > 0) {
     $_GET['taxmod_node'] = $dataType;
     $whole = $screen->render();
 
-    check('a data type is told there is nothing to preview', str_contains($whole, 'Nothing to preview here'));
+    // ⚠️ **D-430: ein einfacher Typ ist kein Ding, das Datensätze hält — er *ist* ein Feld.** *Die
+    // beiden Seiten sind der ganze Punkt: `read_only` ist die Einstellung, deren gesamte Bedeutung
+    // darin besteht, dass Anzeige und Bearbeitung auseinandergehen.*
+    check('a data type previews itself as a field', substr_count($whole, 'taxmod-preview-side') === 2, (string) substr_count($whole, 'taxmod-preview-side'));
+    check('and it is not told there is nothing to preview', ! str_contains($whole, 'Nothing to preview here'));
 }
 
 // ── The flags, which is the point ────────────────────────────────────────────────────────────────
