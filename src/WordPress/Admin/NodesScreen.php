@@ -9,6 +9,7 @@ use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
@@ -945,7 +946,7 @@ final class NodesScreen
             // the fault this sentence exists to prevent — and
             // [D-241](../../../docs/NewConcept/90-decision-log.md) says the mark governs what is
             // shown, so a surface that has it and stays silent about it is throwing it away.*
-            'says' => $chosen->isTest
+            'says' => $chosen->kind === RecordKind::Example
                 ? sprintf(
                     /* translators: %d: the record's id. */
                     __('Filled from record #%d, which is marked as test data — no real data has been entered here yet.', 'taxmod'),

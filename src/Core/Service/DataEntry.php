@@ -5,6 +5,7 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\EdgeRecord;
@@ -92,7 +93,11 @@ final class DataEntry
      * ⚠️ **Only a branch that has instances can have one** (D-183). A data type has no
      * instances of its own — a `Text` node is not a thing somebody owns three of.
      */
-    public function create(int $nodeId): NodeRecord
+    /**
+     * @param RecordKind $kind Wer die Zeile schreibt — ein Mensch, der Autor, oder das Bauen
+     *                         ([C65](../../../docs/NewConcept/10-domain-core.md)).
+     */
+    public function create(int $nodeId, RecordKind $kind = RecordKind::User): NodeRecord
     {
         $model = $this->nodes->byId($nodeId);
 
@@ -125,12 +130,16 @@ final class DataEntry
             0,
             $model->id,
             $model->version,
-            $this->clock->now()->format('Y-m-d H:i:s')
+            $this->clock->now()->format('Y-m-d H:i:s'),
+            $kind
         );
 
         $id = $this->records->add($record);
 
-        return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
+        // ⚠️ *Die Marke faehrt mit, sonst gibt die Methode etwas zurueck, das anders aussieht als das,
+        // was sie geschrieben hat. **Gemessen war genau das der Fall**: die Spalte trug `default`, das
+        // zurueckgegebene Exemplar sagte `user`.*
+        return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->kind);
     }
 
     /**

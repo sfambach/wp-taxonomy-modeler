@@ -10,6 +10,7 @@ use Taxmod\Core\Renderer\Renderable;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SeededRole;
@@ -1139,7 +1140,11 @@ final class Rendering
         $marked = null;
 
         foreach ($records as $record) {
-            if (! $record->isTest) {
+            // ⚠️ *Die Reihenfolge ist **unverändert**: was nicht als Testdaten markiert ist, geht vor.
+            // **Wo ein Autoren-Datensatz einzuordnen ist, ist nicht entschieden**
+            // ([D-521](../../../docs/NewConcept/90-decision-log.md)) — er zählt darum vorerst wie eine
+            // gewöhnliche Eingabe, was genau das ist, was `is_test = 0` bisher tat.*
+            if ($record->kind !== RecordKind::Example) {
                 return $record;
             }
 

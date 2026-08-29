@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
@@ -29,11 +30,12 @@ final class WpdbRecordRepository implements RecordRepository
                 'node_id'      => $record->nodeId,
                 'node_version' => $record->nodeVersion,
                 'created_at'   => $record->createdAt,
-                // ⚠️ *Als `%d` und nicht als `%s`: die Spalte ist `tinyint`, und `wpdb` schreibt
-                // einen `bool` sonst als leere Zeichenkette in eine Zahlenspalte.*
-                'is_test'      => $record->isTest ? 1 : 0,
+                // ⚠️ *Die Spalte ist `NOT NULL` mit Vorgabe, also gibt es hier keine Null-Falle —
+                // anders als bei `nodes.kind`, wo `$wpdb->prepare('%s', null)` eine leere
+                // Zeichenkette schrieb ([D-519](../../../docs/NewConcept/90-decision-log.md)).*
+                'kind'         => $record->kind->value,
             ],
-            ['%d', '%d', '%s', '%d']
+            ['%d', '%d', '%s', '%s']
         );
 
         return (int) $wpdb->insert_id;
@@ -45,7 +47,7 @@ final class WpdbRecordRepository implements RecordRepository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at, is_test FROM ' . Schema::table('records')
+                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records')
                     . ' WHERE id = %d',
                 $id
             ),
@@ -61,7 +63,7 @@ final class WpdbRecordRepository implements RecordRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at, is_test FROM ' . Schema::table('records') . '
+                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
                  WHERE node_id = %d ORDER BY id ASC',
                 $nodeId
             ),
@@ -170,10 +172,11 @@ final class WpdbRecordRepository implements RecordRepository
             (int) $row['node_id'],
             (int) $row['node_version'],
             (string) $row['created_at'],
-            // ⚠️ *`?? 0` und nicht `$row['is_test']` allein: `hydrate()` bekommt auch Zeilen aus
+            // ⚠️ *`?? null` und nicht `$row['kind']` allein: `hydrate()` bekommt auch Zeilen aus
             // Abfragen, die die Spalte nicht auswaehlen — ein fehlender Schluessel waere eine Warnung
-            // und danach stillschweigend `false`, hier zufaellig richtig und beim naechsten Feld nicht.*
-            (bool) ($row['is_test'] ?? 0),
+            // und danach stillschweigend die Vorgabe. **So ist es dieselbe Vorgabe, aber ausgesprochen.**
+            // *
+            RecordKind::fromStorage(isset($row['kind']) ? (string) $row['kind'] : null),
         );
     }
 

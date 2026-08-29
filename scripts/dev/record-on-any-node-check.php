@@ -42,6 +42,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
@@ -204,6 +205,43 @@ check(
     $ohne === 0,
     $ohne . ' von ' . count($alle) . ' ohne Feld'
 );
+
+echo "\n== 3b. Die Marke am Datensatz — drei Zustände, nicht zwei ==\n";
+
+// ⚠️ **[C65](../../docs/NewConcept/10-domain-core.md) hatte es seit dem 2026-08-23:** *«a checkbox
+// «is test data» / «is default value» would do it»* — **drei Zustände**, und `is_test` konnte zwei.
+$spalten = array_column($wpdb->get_results('SHOW COLUMNS FROM ' . Schema::table('records'), ARRAY_A), 'Field');
+
+check('records hat die Spalte kind', in_array('kind', $spalten, true), implode(', ', $spalten));
+check('und is_test ist weg — nicht danebengestellt', ! in_array('is_test', $spalten, true));
+
+$fremd = array_values(array_filter(
+    $wpdb->get_col('SELECT DISTINCT kind FROM ' . Schema::table('records')),
+    static fn ($v): bool => RecordKind::tryFrom((string) $v) === null
+));
+
+check('keine Marke, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));
+
+// ⚠️ **Die Zusage, die die Marke überhaupt rechtfertigt:** *ein Autorenwert und eine Benutzerzeile
+// hängen am **selben** Knoten und müssen sich trotzdem unterscheiden lassen — sonst erscheint die
+// Vorgabe von `Parts List.Name` als vierte Stückliste.*
+if ($kilo !== null) {
+    $alsAutor  = $data->create($kilo->id, RecordKind::Default);
+    $meine[]   = $alsAutor->id;
+
+    check('ein Datensatz lässt sich als Autorenwert anlegen', $alsAutor->kind === RecordKind::Default, $alsAutor->kind->value);
+
+    $zurueck = $data->find($alsAutor->id);
+
+    check('und die Marke liest sich zurück', $zurueck?->kind === RecordKind::Default, $zurueck?->kind->value ?? 'null');
+
+    $roh = $wpdb->get_var($wpdb->prepare(
+        'SELECT kind FROM ' . Schema::table('records') . ' WHERE id = %d',
+        $alsAutor->id
+    ));
+
+    check('auch roh aus der Spalte', $roh === 'default', var_export($roh, true));
+}
 
 echo "\n== 4. Die Prüfung lässt nichts liegen ==\n";
 

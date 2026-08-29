@@ -96,7 +96,20 @@ final class Schema
      * keinen Knoten. **Hier ist es umgekehrt**: was ein Wert ist, hängt am Knoten und nicht daran, wo
      * er gerade benutzt wird.*
      */
-    public const VERSION = 14;
+    /**
+     * Schema 15: `records.kind` löst `records.is_test` ab
+     * ([D-521](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Ersetzen und nicht danebenstellen**, auf sein Wort. *Zwei Spalten, die beide «diese Zeile
+     * ist besonders» sagen, laufen auseinander — und `is_test` war schon die richtige Form am zu
+     * kleinen Platz: **ein `bool` hält drei Zustände nicht.***
+     *
+     * ⚠️ *Die Wanderung ist eine reine Umschrift: gemessen tragen **29 von 29** Zeilen `is_test = 0`,
+     * werden also `user`. **Es gibt nichts zu verlieren, und der Schritt schreibt trotzdem
+     * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
+     * nächsten Installation falsch ist.*
+     */
+    public const VERSION = 15;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -159,6 +172,7 @@ final class Schema
         self::moveHideOutOfSettings();
         self::shortenRangeKeys();
         self::moveHideOntoTheEdge();
+        self::moveTestFlagIntoKind();
         self::ensureForeignKeys();
     }
 
@@ -483,6 +497,42 @@ final class Schema
      * `settings.key` never shipped with data in it — version 1 created the table and nothing
      * ever wrote a row. **A future retirement that holds data must copy first and drop after.**
      */
+    /**
+     * `records.is_test` wird `records.kind` — Schema 15.
+     *
+     * ⚠️ **Nach `dbDelta`, weil die neue Spalte erst da sein muss, bevor etwas hineingeschrieben
+     * wird** — dieselbe Reihenfolge, die {@see moveHideOntoTheEdge()} braucht. *`dbDelta` kennt kein
+     * Umbenennen; es fügt hinzu, und dieser Schritt trägt den Inhalt hinüber.*
+     *
+     * ⚠️ **Und er ist zweimal ausführbar.** *Er läuft nur, solange die alte Spalte da ist, und die
+     * fällt am Ende — also tut ein zweiter Lauf nichts. Das ist nötig, weil `install()` bei jeder
+     * Aktivierung läuft.*
+     */
+    private static function moveTestFlagIntoKind(): void
+    {
+        global $wpdb;
+
+        $records = self::table('records');
+
+        $hatAlt = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+            $records,
+            'is_test'
+        ));
+
+        if ($hatAlt !== 1) {
+            return;
+        }
+
+        // ⚠️ *Nur die markierten Zeilen wandern; alle anderen tragen die Vorgabe `user` schon aus
+        // der Spaltendefinition. **Gemessen waren das 29 von 29** — die Umschrift kostet hier nichts
+        // und ist auf einer Installation mit Testdaten trotzdem richtig.*
+        $wpdb->query("UPDATE {$records} SET kind = 'example' WHERE is_test = 1");
+
+        $wpdb->query("ALTER TABLE {$records} DROP COLUMN is_test");
+    }
+
     private static function dropRetiredColumns(): void
     {
         global $wpdb;
@@ -698,10 +748,10 @@ final class Schema
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
-                is_test tinyint(1) unsigned NOT NULL DEFAULT 0,
+                kind varchar(20) NOT NULL DEFAULT 'user',
                 PRIMARY KEY  (id),
                 KEY node_id (node_id),
-                KEY is_test (is_test)
+                KEY kind (kind)
             ) {$charset};",
 
             // Keyed on a path with the last edge repeated in edge_id, so that

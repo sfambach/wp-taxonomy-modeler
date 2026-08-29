@@ -8,6 +8,7 @@ use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
@@ -1555,8 +1556,8 @@ final class RenderingTest extends TestCase
     #[Test]
     public function real_data_outranks_a_row_marked_as_test_data(): void
     {
-        $marked = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', true);
-        $real   = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', false);
+        $marked = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', RecordKind::Example);
+        $real   = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', RecordKind::User);
 
         // Die markierte Zeile steht **vorn**, also entscheidet die Regel und nicht die Reihenfolge.
         self::assertSame($real, $this->rendering->previewRecordAmong([$marked, $real]));
@@ -1565,8 +1566,8 @@ final class RenderingTest extends TestCase
     #[Test]
     public function a_row_marked_as_test_data_draws_where_there_is_no_real_one(): void
     {
-        $first  = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', true);
-        $second = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', true);
+        $first  = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', RecordKind::Example);
+        $second = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', RecordKind::Example);
 
         // ⚠️ *Testdaten sind besser als gar nichts: die dritte Sprosse sind die Vorgaben, nicht
         // die zweite.*
@@ -1576,8 +1577,8 @@ final class RenderingTest extends TestCase
     #[Test]
     public function within_one_rung_the_first_record_still_wins(): void
     {
-        $first  = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', false);
-        $second = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', false);
+        $first  = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', RecordKind::User);
+        $second = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', RecordKind::User);
 
         self::assertSame($first, $this->rendering->previewRecordAmong([$first, $second]));
         self::assertNull($this->rendering->previewRecordAmong([]));

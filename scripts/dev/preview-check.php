@@ -290,9 +290,12 @@ $record = static function (int $node, bool $isTest) use ($wpdb, $prefix): int {
             'node_id'      => $node,
             'node_version' => (int) $wpdb->get_var($wpdb->prepare("SELECT version FROM {$prefix}nodes WHERE id = %d", $node)),
             'created_at'   => gmdate('Y-m-d H:i:s'),
-            'is_test'      => $isTest ? 1 : 0,
+            // ⚠️ *Seit Schema 15 eine Aufzählung statt eines Schalters ([C65](../../docs/NewConcept/10-domain-core.md)):
+            // `user`, `default`, `example`. **Hier wird weiter nur der Testdatenfall gebraucht**, denn
+            // das ist die Sprosse, um die es dieser Prüfung geht.*
+            'kind'         => $isTest ? 'example' : 'user',
         ],
-        ['%d', '%d', '%s', '%d']
+        ['%d', '%d', '%s', '%s']
     );
 
     return (int) $wpdb->insert_id;

@@ -24,18 +24,22 @@ final class NodeRecord
         public readonly int $nodeVersion,
         public readonly string $createdAt,
         /**
-         * Ob diese Zeile **Testdaten** trägt.
+         * Wem diese Zeile gehört — einer Eingabe, dem Modell, oder dem Bauen.
          *
          * ⚠️ **Ein Kennzeichen und kein eigener Speicher** ([D-028](../../../docs/NewConcept/90-decision-log.md)):
-         * *«Testdaten sind gewöhnliche Daten, gekennzeichnet … kein eigener Testdaten-Speicher
-         * und keine dritte Art von Ding.»* Es steuert die **Sichtbarkeit vorn** und sonst
-         * nichts — die Vorschau zeichnet über solchen Zeilen, echte Daten gehen vor.
+         * *«Testdaten sind gewöhnliche Daten, gekennzeichnet … kein eigener Testdaten-Speicher und
+         * keine dritte Art von Ding.»* **Dieselbe Regel trägt jetzt einen Fall mehr**
+         * ([D-521](../../../docs/NewConcept/90-decision-log.md)): eine Zeile, die der **Autor**
+         * geschrieben hat, ist auch nur gewöhnliche Daten, gekennzeichnet.
+         *
+         * ⚠️ *Es hiess bis Schema 15 `isTest` und war ein `bool` — **und ein `bool` hält drei Zustände
+         * nicht**. Was es steuert, bleibt: die Sichtbarkeit vorn und sonst nichts.*
          *
          * ⚠️ *Zuletzt in der Aufzählung und mit Vorgabe, damit jede vorhandene Aufrufstelle
-         * weiterläuft und **echte Daten** meint — dasselbe, was `DEFAULT 0` in der Tabelle für
-         * die vorhandenen Zeilen tut.*
+         * weiterläuft und **eine gewöhnliche Eingabe** meint — dasselbe, was `DEFAULT 'user'` in
+         * der Tabelle für die vorhandenen Zeilen tut.*
          */
-        public readonly bool $isTest = false,
+        public readonly RecordKind $kind = RecordKind::User,
     ) {
     }
 }

@@ -1076,3 +1076,26 @@ eine Baustelle und darf weiter anlegen — das hat ein Kerntest erzwungen.*
 Maschinerie nähme die Wurzel mit** — und ein Datensatz an der Wurzel ist der nützliche Fall.*
 
 ---
+
+### Die Marke am Datensatz — Stand 2026-08-29
+
+[D-524](90-decision-log.md), Schema 15. *`records.is_test` wird `records.kind`.*
+
+| Wert | heisst |
+|---|---|
+| `user` | ein Mensch hat es eingegeben |
+| `default` | der Wert des Autors — **unter *Fields* die Vorgabe, unter *Settings* die Einstellung** |
+| `example` | Beispieldaten, die Vorschau greift darauf zurück |
+
+⚠️ **[C65](10-domain-core.md) hatte es seit dem 2026-08-23:** *«a checkbox «is test data» / «is
+default value» would do it»* — **drei Zustände, und ein `bool` konnte zwei.**
+
+⚠️ **Der Unterschied zwischen Vorgabe und Einstellung steht absichtlich *nicht* in der Marke.** *Er
+kommt aus dem Block, in dem das Feld steht — derselbe Wert liest sich zweimal verschieden. Ihn hier
+zu wiederholen wäre die Doppelung aus [D-521](90-decision-log.md).*
+
+⚠️ *Und sie löst den Fall, der ohne sie unlösbar war: bekommt `Parts List.Name` eine Vorgabe, entsteht
+**genau ein** neuer Datensatz — **die Marke weist ihn aus, sonst sähe er aus wie eine vierte
+Stückliste.***
+
+---
