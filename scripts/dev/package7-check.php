@@ -591,7 +591,12 @@ try {
             $panels[1] !== [] && count($panels[1]) === count(array_unique($panels[1])),
             implode(' ', $panels[1]));
         check('a row is a row and no longer a form', ! str_contains($detail, 'class="taxmod-setting" style'));
-        check('and a button outside the form names it', (bool) preg_match('#form="taxmod-settings-\d+"#', $detail));
+        // ⚠️ **Der Knopf im Kopf nennt jetzt das Formular der **Seite**, nicht das eines Blocks**
+        // ([D-517](../../docs/NewConcept/90-decision-log.md)). *Bis zum 2026-08-29 lieh sich die Seite
+        // das `<form>` des Einstellungsblocks; als der Block ging, zeigte der Knopf ins Leere. **Das ist
+        // die Abhängigkeit, die diese Zusicherung eigentlich meint**: der Knopf steht ausserhalb seines
+        // Formulars und muss es benennen — welches, entscheidet die Seite.*
+        check('and a button outside the form names it', (bool) preg_match('#form="taxmod-(?:page|settings)-\d+"#', $detail));
         // ⚠️ A row act has to say **which** row: with one form a hidden key could say only one.
         check('a row act names its own key', (bool) preg_match('#name="do\[[a-z_]+\]"#', $detail));
         // ⚠️ **No boxes round the icons, anywhere** — the owner said it twice because the first fix

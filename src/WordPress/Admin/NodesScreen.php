@@ -665,7 +665,7 @@ final class NodesScreen
                 // out of the panel because a form cannot sit inside a form, which I had dismissed as
                 // an HTML limitation. `PageSlot::Display`'s own docblock places labels here because *a
                 // label is what a thing is called*; an icon is how it is **marked**, the same band.
-                $this->labelsPanel($selected) . $this->settingsPanel($selected)
+                $this->labelsPanel($selected)
             ),
 
             // ⚠️ **No band heading, because the panel carries its own** — with the `?` on it. Two
@@ -1041,14 +1041,47 @@ final class NodesScreen
      * saved is the page, not the single value.* The name field names the settings form with
      * `form="…"`, so the page save writes it.
      */
+    /**
+     * Die Id des Formulars, das **die Seite** abschickt — nicht die eines Blocks darin.
+     *
+     * ⚠️ **Es gab sie nicht, und das ist am 2026-08-29 aufgefallen, als der Einstellungsblock ging.**
+     * *Bis dahin lieh sich die Seite `SettingsRenderer::formFor()` — das Formular **des Panels**. Als
+     * das Panel entfiel ([D-517](../../../docs/NewConcept/90-decision-log.md)), zeigten die fünf
+     * Labelfelder und der Speicherknopf im Kopf auf ein `<form>`, **das es nicht mehr gab**. `form="…"`
+     * findet dann nichts und schickt lautlos nichts — genau der Fehler, vor dem
+     * `labels-page-save-check` warnt, und **die Prüfung hat ihn gefangen**.*
+     *
+     * ⚠️ *Der Grund, dass es überhaupt so war: [D-392](../../../docs/NewConcept/90-decision-log.md)
+     * machte das Seitenspeichern zum einen Akt, und das Panel war damals der einzige Block mit einem
+     * `<form>`. **Ein Block, an dem die Seite hängt, ist eine Abhängigkeit in die falsche Richtung.***
+     */
+    private static function pageForm(Node $selected): string
+    {
+        return 'taxmod-page-' . $selected->id;
+    }
+
     private function head(Node $selected, array $rows, Node $root): string
     {
+        // ⚠️ **Das Formular der Seite, mit nichts als seinen versteckten Feldern.** *Alles, was dazu
+        // gehört — Name, Labels, der Speicherknopf — nennt es über `form="…"` und steht ausserhalb.
+        // Das ist reines HTML und braucht kein Skript.*
+        //
+        // ⚠️ *`edge` ist `0`, weil ein Knoten keine Verwendungsstelle ist — dieselbe Bedeutung, die
+        // `settingSubmission()` der Null immer gegeben hat.*
+        $pageForm = '<form method="post" id="' . esc_attr(self::pageForm($selected)) . '"'
+            . ' action="' . esc_url(admin_url('admin-post.php')) . '">'
+            . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
+            . '<input type="hidden" name="id" value="' . esc_attr((string) $selected->id) . '">'
+            . '<input type="hidden" name="edge" value="0">'
+            . '<input type="hidden" name="_taxmod_nonce" value="'
+            . esc_attr(wp_create_nonce(self::ACTION . '_' . $selected->id)) . '">'
+            . '</form>';
         // ⚠️ **The name field first, and the acts behind it** — the owner, correcting his own sketch
         // after seeing it: *name into the first row, actions not their own row but behind the name
         // field.* It names the settings form with `form="…"`, so the page save writes it
         // ([D-392](../../../docs/NewConcept/90-decision-log.md)) and `Rename` is gone.
-        $node = '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
-            . ' form="' . esc_attr(SettingsRenderer::formFor($selected)) . '">'
+        $node = $pageForm . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
+            . ' form="' . esc_attr(self::pageForm($selected)) . '">'
             . $this->form(
                 $selected->id,
                 [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
@@ -1076,7 +1109,7 @@ final class NodesScreen
                 __('Save', 'taxmod'),
                 __('Save every setting on this page', 'taxmod'),
                 true,
-                SettingsRenderer::formFor($selected),
+                self::pageForm($selected),
             ))
             . $this->form(
                 $selected->id,
@@ -1588,91 +1621,10 @@ final class NodesScreen
     }
 
 
-    /**
-     * The node's settings — **the same panel the attribute row shows**.
-     *
-     * ⚠️ **One panel, and the owner said it twice.** First *the settings under the attribute have to
-     * look exactly like the settings in the node*, then, having compared them: *take the attribute
-     * view, it looks better.* So the hand-built table that stood here is gone and
-     * {@see \Taxmod\Core\Renderer\SettingsRenderer} draws both. **What was wrong was not the look but
-     * that there were two of them** — `R1` allows one way to draw a thing, and the last time two
-     * existed the multiplicity control quietly posted to a field nobody read ([D-376](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ *The icon row keeps its own control, because every tile has to submit the icon it stands
-     * for and a form may not sit inside another form. It is placed **after** the panel rather than
-     * inside it — one exception, visible, instead of a special case threaded through the renderer.*
-     */
-    private function settingsPanel(Node $selected): string
-    {
-        $resolved = $this->settings->resolve($this->settings->chainFor($selected));
-
-        ksort($resolved);
-
-        $panel = $this->rendering->settingsPanelFor(
-            $selected,
-            $resolved,
-            $this->settingActs(),
-            $this->settingSubmission($selected->id, $selected->id),
-            Purpose::Edit,
-            self::SETTING_FIELD,
-            '',
-            \Taxmod\Core\Renderer\Level::Admin,
-            [],
-            // ⚠️ **Which icons exist is a boundary fact** (`CD-1`) — the core cannot list Dashicons —
-            // so the set is handed in and the chooser places it (D-390). *The owner: `with the
-            // settings simply do a group by category and write it above`; the icon then needs no row
-            // of its own at all, which is what it had been given as a workaround.*
-            [SettingKey::Icon->value => $this->iconChoices()]
-        );
-
-        $html = $this->heading(
-            __('Settings', 'taxmod'),
-            __('Everything that can be set here, whether or not anybody has. A value not set here is inherited from further up — the column on the right says where it came from.', 'taxmod')
-        );
-
-        $html .= $panel->markup === ''
-            ? '<p><em>' . esc_html__('Nothing set anywhere along the chain.', 'taxmod') . '</em></p>'
-            : $panel->markup;
-
-        return $html;
-    }
+    
 
 
-    /**
-     * Every Dashicon key with its glyph, read out of the stylesheet WordPress ships.
-     *
-     * ⚠️ **Read, not listed.** The file states `.dashicons-marker:before { content: "\f159" }` for
-     * each one; parsing it means the glyphs are always the installed version's, and an icon that
-     * moves cannot leave a stale copy behind. **If the file is unreadable the map is empty** and the
-     * list shows names only — a missing picture rather than a wrong one.
-     *
-     * @return array<string, string> Key without the `dashicons-` prefix, to the character.
-     */
-    private function dashiconGlyphs(): array
-    {
-        $file = ABSPATH . WPINC . '/css/dashicons.css';
-
-        if (! is_readable($file)) {
-            return [];
-        }
-
-        $css = (string) file_get_contents($file);
-
-        preg_match_all(
-            '/\.dashicons-([a-z0-9-]+):before\s*\{\s*content:\s*"\\\\([0-9a-f]{4})"/i',
-            $css,
-            $found,
-            PREG_SET_ORDER
-        );
-
-        $glyphs = [];
-
-        foreach ($found as $one) {
-            $glyphs[$one[1]] = mb_chr((int) hexdec($one[2]), 'UTF-8');
-        }
-
-        return $glyphs;
-    }
+    
 
     /**
      * The renderer, **chosen** — never typed.
@@ -1751,7 +1703,7 @@ final class NodesScreen
     private function labelsPanel(Node $selected): string
     {
         $locale   = $this->localeFromRequest();
-        $pageForm = SettingsRenderer::formFor($selected);
+        $pageForm = self::pageForm($selected);
         $stored = [];
 
         foreach ($this->labels->storedFor($selected->id) as $label) {
@@ -2490,31 +2442,7 @@ final class NodesScreen
             . '</' . $level . '>';
     }
 
-    /**
-     * The icons an installation offers — **the glyph beside its key**, so a person sees what they pick.
-     *
-     * ⚠️ **Which icons exist is a boundary fact** (`CD-1`): the core cannot list Dashicons, so the
-     * set is handed to the chooser and the chooser places it ([D-390](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ **The glyph is a *character*, which is what makes this a plain `<select>` at all.** Dashicons
-     * is a **font**, so the icon renders inside an `<option>` once the control asks for that font —
-     * something I had claimed was impossible until the owner said flatly *Cursor could do that*.
-     *
-     * @return array<string, string> Dashicon key ⇒ what a person reads.
-     */
-    private function iconChoices(): array
-    {
-        $glyphs  = $this->dashiconGlyphs();
-        $offered = [];
-
-        foreach (self::ICONS as $key) {
-            $glyph = $glyphs[$key] ?? '';
-
-            $offered[$key] = ($glyph === '' ? '' : $glyph . '  ') . $key;
-        }
-
-        return $offered;
-    }
+    
 
     /**
      * Which act was clicked, whether it named a key or not.

@@ -145,7 +145,11 @@ $rolle  = $fw->roleId(SeededRole::Form);
 // eine leere Zeile ist derselbe Vergleich und beweist nichts.*
 $labels->put(new Label($knoten->id, '', $rolle, Label::BASE_NUMBER, '', '__lb Stückliste'));
 
-$form = SettingsRenderer::formFor($knoten);
+// ⚠️ **Das Formular der Seite, nicht das eines Blocks darin** ([D-517](../../docs/NewConcept/90-decision-log.md)).
+// *Bis zum 2026-08-29 stand hier `SettingsRenderer::formFor()`, und als der Einstellungsblock ging,
+// zeigten die Labelfelder auf ein Formular, das es nicht mehr gab. **Diese Prüfung hat es gefangen** —
+// die einzige, die es konnte, weil sie das Markup liest statt den Code.*
+$form = 'taxmod-page-' . $knoten->id;
 
 // ⚠️ *Der Kindprozess bekommt seine Nutzlast über eine Datei und nicht über die Kommandozeile —
 // verschachtelte Felder als JSON durch eine Windows-Shell zu bringen ist eine Quelle von Fehlern,

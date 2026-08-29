@@ -1216,3 +1216,40 @@ Knoten. **Die Installation ist kein Knoten** und kann keine Felddeklaration trag
 die jeder Zweig erbt.*
 
 ---
+
+### Die Seite hat ihr eigenes Formular — Stand 2026-08-29
+
+[D-517](90-decision-log.md). *Vorher lieh sie sich das `<form>` des Einstellungsblocks.*
+
+```text
+<form id="taxmod-page-<id>">   ← nur versteckte Felder
+Name        form="taxmod-page-<id>"
+Labels      form="taxmod-page-<id>"   (fünf Rollen)
+Speichern   form="taxmod-page-<id>"
+```
+
+⚠️ **Warum es das nicht gab:** *[D-392](90-decision-log.md) machte das Seitenspeichern zu **einem**
+Akt, und das Panel war damals der einzige Block mit einem `<form>`. **Die Seite hing an einem Block
+statt umgekehrt** — und als der Block ging, zeigten fünf Labelfelder und der Speicherknopf auf ein
+Formular, das es nicht mehr gab.*
+
+⚠️ **`form="…"` findet dann nichts und schickt lautlos nichts.** *Gefangen hat es
+`labels-page-save-check`, weil sie das **Markup** liest statt den Code — und ihr eigener Kommentar
+hatte den Fall wörtlich vorhergesagt.*
+
+---
+
+### Felder und Einstellungen sind eine Tabelle, zweimal gezeichnet — geplant 2026-08-29
+
+[D-518](90-decision-log.md), sein Entwurf: *derselbe Renderer, zweimal gerufen, zwei Überschriften.*
+
+⚠️ **Damit ist [D-506](90-decision-log.md) zum ersten Mal auch auf dem Schirm wahr** — *«somit ist im
+Grunde alles ein Feld». Ein eigener Einstellungs-Renderer wäre die zweite Art, dasselbe zu zeichnen,
+die [R1](30-renderer.md) verbietet.*
+
+⚠️ **Ein Wert mit Platz für mehr, kein Schalter** — *und das ist gemessen nötig: von den fünf Belegen
+in [D-508](90-decision-log.md) ist einer schon ein dritter Fall. `multiplicity` gilt **nur** an der
+Verwendungsstelle (`SettingKey::isEdgeOnly()`). **Ein `bool` hätte am ersten Tag eine Ausnahme
+gebraucht.***
+
+---

@@ -973,3 +973,31 @@ prüfbar, **aber als Verbot unbrauchbar**: alles liegt unter der Wurzel. Siehe
 [OQ-133](91-open-questions.md).*
 
 ---
+
+### Wo die Angabe «Feld oder Einstellung» sitzt — geplant 2026-08-29
+
+[D-518](90-decision-log.md): **eine Spalte am Knoten**, auf sein Wort — *«der Knoten bekommt eine
+zusätzliche Spalte, wie es die Kante auch hat»*.
+
+| | gehört wohin | Grund |
+|---|---|---|
+| `multiplicity` | Setting-Zeile | **erbt** und ist einschränkbar — die Auflösungskette macht das gratis |
+| `hide` | Spalte an der Kante | darf **nicht** erben; sie meint *diese eine Stelle* |
+| **die neue Angabe** | **Spalte am Knoten** | erbt — aber über den **Vorfahrenlauf**, nicht über die Settings-Kette |
+
+⚠️ **Seine Analogie stimmt, nur mit einem anderen Vorbild als genannt:** *gemessen hat `relations`
+**keine** Multiplizitäts-Spalte — Multiplizität liegt in `settings`. Was sie als Spalte hat, ist
+`hide`, und der Grund steht in [50 Persistence](50-wordpress-persistence.md): «multiplicity stays a
+setting rather than a column because it inherits and can be narrowed».*
+
+⚠️ **Der Wert besteht dieses Kriterium trotzdem, über einen dritten Mechanismus:**
+*`Rendering::typeOf()` löst den Typ über den **Vorfahrenlauf** auf — genau das, was
+[D-516](90-decision-log.md) gemessen hat. **Eine Spalte plus Vorfahrenlauf gibt Vererbung ohne die
+Settings-Maschinerie.***
+
+⚠️ *Offen: wie der Wert heisst, ob eine Verwendungsstelle ihn überschreiben darf, und woher die 375
+bestehenden Setting-Zeilen ihren bekommen. Dazu sein Einwand, der hierhin gehört: **«wir legen
+eigentlich Records im Modell an, tun aber so, als wären es Defaults»** — gemessen 21 `default`-Zeilen,
+**14 davon die Exponenten der Präfixe**.*
+
+---
