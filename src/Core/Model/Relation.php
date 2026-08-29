@@ -209,6 +209,35 @@ final class Relation extends Identity implements Renderable
      * gäbe eine neue Id und liesse sie verwaist zurück. **Ein Feld umzuhängen ist keine Neuanlage,
      * sondern eine Änderung** ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      */
+    /**
+     * Dieselbe Kante mit einer anderen Art, eine Fassung weiter.
+     *
+     * ⚠️ **Es gibt sie, weil `Setting` die einzige Art ist, die *nicht* vom Ast abgelesen wird**
+     * ([D-526](../../../docs/NewConcept/90-decision-log.md)). *Die anderen stehen beim Anlegen fest;
+     * diese eine sagt jemand — und kann sie zurücknehmen.*
+     *
+     * ⚠️ *Gibt **dasselbe** Exemplar zurück, wenn sich nichts ändert
+     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function withKind(RelationKind $kind): self
+    {
+        if ($kind === $this->kind) {
+            return $this;
+        }
+
+        return new self(
+            $this->id,
+            $this->version + 1,
+            $this->fromId,
+            $this->toId,
+            $kind,
+            $this->name,
+            $this->position,
+            $this->parkedByGroup,
+            $this->hide
+        );
+    }
+
     public function retargetedTo(int $targetId, RelationKind $kind): self
     {
         if ($targetId === $this->toId && $kind === $this->kind) {

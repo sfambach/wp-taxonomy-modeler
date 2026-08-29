@@ -1133,6 +1133,51 @@ final class ModelEditor
      * der Zweig sie bestimmt ([D-497](../../../docs/NewConcept/90-decision-log.md)) — ein Ziel in
      * einem anderen Zweig macht aus einer Aggregation eine Komposition.*
      */
+    /**
+     * Sagen, ob dieses Feld eine **Einstellung** erklärt — oder es wieder zurücknehmen.
+     *
+     * ⚠️ **[D-526](../../../docs/NewConcept/90-decision-log.md).** *Die Marke sass vorher am
+     * Zielknoten und zwang damit zu Typknoten, deren einziger Zweck es war, sie tragen zu können.
+     * **An der Kante genügt eine Angabe je Deklaration — und weil ein geerbtes Feld dieselbe Kante
+     * ist, gilt sie sofort für alle Erben**, ohne Vorfahrenlauf.*
+     *
+     * ⚠️ **Beim Zurücknehmen fragt der Ast wieder, was er immer gesagt hätte.** *`Setting` ist die
+     * einzige Art, die nicht vom Ort abgelesen wird — also muss das Zurücknehmen sie neu ablesen und
+     * darf nicht raten, welche es vorher war.*
+     */
+    public function markAsSetting(int $ownerId, int $edgeId, bool $isSetting): Relation
+    {
+        $edge = $this->ownAttribute($ownerId, $edgeId);
+
+        if ($isSetting) {
+            $art = RelationKind::Setting;
+        } else {
+            $target = $this->nodes->byId($edge->toId);
+            $branch = $this->framework->branchOf($target)
+                ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
+
+            $art = $branch->relationKind();
+        }
+
+        $marked = $edge->withKind($art);
+
+        if ($marked === $edge) {
+            return $edge;
+        }
+
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            $isSetting ? 'field became a setting' : 'setting became a field',
+            $this->edgeState($edge),
+            $this->edgeState($marked)
+        );
+
+        $this->relations->save($marked, $edge->version);
+
+        return $marked;
+    }
+
     public function retargetField(int $ownerId, int $edgeId, int $targetId): Relation
     {
         $edge   = $this->ownAttribute($ownerId, $edgeId);

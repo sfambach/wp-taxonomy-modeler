@@ -4182,3 +4182,29 @@ eine Baustelle und darf weiter anlegen — das hat ein Kerntest erzwungen.*
 Maschinerie nähme die Wurzel mit** — und ein Datensatz an der Wurzel ist der nützliche Fall.*
 
 ---
+
+### Die vierte Relationsart — Stand 2026-08-30
+
+[D-526](90-decision-log.md). *`setting`, und sie ist eine Komposition.*
+
+| Art | wer vergibt sie |
+|---|---|
+| `inheritance` | der Baum |
+| `composition`, `aggregation` | **der Ast des Ziels** ([D-161](90-decision-log.md)) |
+| **`setting`** | **jemand** — die einzige, die kein Ast zurückgibt |
+
+⚠️ **Warum nicht `setting_composition` und `setting_aggregation`:** *sein Satz «eine Einstellung ist
+immer eine Komposition». Vorher war `Root.validator` eine Aggregation und eine Einstellung — **und
+diese Aggregation war falsch**, weil «welchen Validator benutze ich» dem Knoten gehört.*
+
+⚠️ **Warum nicht am Zielknoten:** *gemessen zeigen `Prefixes.exponent` (Autor), `Passiv.Tolerance` und
+`Part List Item.Quantity` (Benutzer) alle auf `Integer`. **Ein Knoten kann das nicht
+auseinanderhalten, eine Kante schon.***
+
+⚠️ *Und die Vererbung kostet nichts: ein geerbtes Feld ist **dieselbe Kante** — fünf Knoten sehen die
+Kante `44093` als ihr `renderer`-Feld. Einmal markiert, überall gültig.*
+
+⚠️ **Offen und absichtlich nicht gebaut: wie eine Einstellungskante entsteht.** *Zweites Eingabefeld,
+`Settings`-Ast oder Umschalter — seine Entscheidung.*
+
+---

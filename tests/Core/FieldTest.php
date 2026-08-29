@@ -196,6 +196,37 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
+    /**
+     * ⚠️ **Eine Einstellung ist eine Komposition** ([D-526](../../../docs/NewConcept/90-decision-log.md)),
+     * *und das ist die einzige Zusage, die diese Art überhaupt trägt: «welchen Renderer benutze ich»
+     * gehört dem Knoten. **Fällt sie, ist `Setting` nur ein vierter Name ohne Bedeutung.***
+     */
+    public function a_setting_is_a_composition(): void
+    {
+        self::assertTrue(RelationKind::Setting->isComposition());
+        self::assertTrue(RelationKind::Composition->isComposition());
+        self::assertFalse(RelationKind::Aggregation->isComposition());
+        self::assertFalse(RelationKind::Inheritance->isComposition());
+    }
+
+    /**
+     * ⚠️ *Und sie ist die **einzige**, die nicht aus einem Ast folgt — kein Zweig gibt sie zurück,
+     * jemand setzt sie. Fiele das um, entschiede wieder der Ort, was eine Einstellung ist, und die
+     * eine Kollision käme zurück: `Prefixes.exponent` und `Passiv.Tolerance` zeigen beide auf
+     * `Integer`.*
+     */
+    #[Test]
+    public function no_branch_hands_out_the_setting_kind(): void
+    {
+        foreach (Branch::cases() as $branch) {
+            self::assertNotSame(RelationKind::Setting, $branch->relationKind(), $branch->value);
+        }
+
+        self::assertTrue(RelationKind::Setting->isSetting());
+        self::assertFalse(RelationKind::Composition->isSetting());
+    }
+
+    #[Test]
     public function the_branch_decides_where_a_value_would_be_stored(): void
     {
         self::assertSame(Storage::ExternalReference, Branch::Model->storage());
