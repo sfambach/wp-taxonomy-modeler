@@ -1205,3 +1205,35 @@ and must not drag each other along. The two duties of a release are
 | [`../legacy/ARCHITECTURE.md`](../legacy/ARCHITECTURE.md) | How the old round intended to build it. |
 | [`../legacy/plans/case-study.md`](../legacy/plans/case-study.md) | The `wtt_fs` Fallstudie scaffold that actually ran. |
 | [`../../AGENTS.md`](../../AGENTS.md) | Dev environment: Laragon on Windows, SQLite on the cloud VM. Current, not legacy. |
+
+## Die zusammengelegte Zeile — Stand 2026-08-29
+
+[D-507](90-decision-log.md) gibt der Zeile ihre Gestalt, nachdem [D-506](90-decision-log.md) die
+Kategorie «Einstellung» aufgelöst hat:
+
+```
+(owner_id, edge_id, path, locale, value_int|value_decimal|value_text|value_date|value_ref)
+```
+
+| Feld | sagt |
+|---|---|
+| `owner_id` | **wem** der Wert gehört — Knoten, Kante, Datensatz oder Installation |
+| `edge_id` | **welches Feld** — die Deklaration, statt eines Namens |
+| `path` | **welche Stelle** ([D-413](90-decision-log.md)) |
+| `locale` | **welche Sprache** — heute nur Feldwerte, danach auch Vorgaben |
+
+⚠️ **`setting_key` fällt mit [D-506](90-decision-log.md), `record_id` mit
+[D-507](90-decision-log.md).** *Gemessen sprach die Zahl deutlich: `owner_id` steht an **186**
+Stellen in `src/` und trägt **326** Zeilen, `record_id` an **40** und trägt **43**.*
+
+⚠️ **Und `owner_id` löst die Stelle, an der der Umbau sonst hängengeblieben wäre:** *die
+Installations-Identität ist **weder Knoten noch Kante** ([D-079](90-decision-log.md)) und trägt
+trotzdem zwei Angaben. Ein Datensatz braucht ein `node_id` — die Installation hat keins. **Mit
+`owner_id` braucht sie auch keins.***
+
+⚠️ *Der Preis, benannt statt entdeckt: ein Datensatz wird ein Besitzer wie jeder andere, und «gehört
+dieser Wert zu einem Datensatz oder zu einem Knoten» ist nicht mehr an der Spalte ablesbar. Das ist
+dieselbe Lage wie heute bei `settings.owner_id`, wo `Residue` bereits vier Arten unterscheiden
+muss.*
+
+---
