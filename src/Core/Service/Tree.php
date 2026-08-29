@@ -56,7 +56,28 @@ final class Tree
      *
      * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}>
      */
-    public function rowsUnder(Node $root, array $skip = [], array $collapsed = [], bool $showHidden = false): array
+    public function rowsUnder(
+        Node $root,
+        array $skip = [],
+        array $collapsed = [],
+        bool $showHidden = false,
+        /**
+         * Ob die Wurzel **selbst** eine Zeile bekommt.
+         *
+         * ⚠️ **Sie ist es sonst nie**, und das ist keine Einstellung, sondern der Bau:
+         * {@see self::collect()} gibt ab `$rows[]` nur **Kinder** aus. Es gab also nichts
+         * umzuschalten — der Schalter musste hier entstehen, nicht am Schirm.
+         *
+         * ⚠️ *Der Eigentümer braucht sie, um ihr **Felder zu geben**: die Auflösungskette
+         * lautet Installation → Wurzel → Vorfahren → Knoten, und die Installation ist kein
+         * Knoten — sie kann keine Felddeklaration tragen. **Die Wurzel ist der einzige Ort,
+         * an dem ein Feld hängen kann, das jeder Zweig erbt.***
+         *
+         * ⚠️ *Und der Vorgänger hatte den Schalter; [D-273](../../../docs/NewConcept/90-decision-log.md)
+         * nennt ihn ausdrücklich «already the right answer».*
+         */
+        bool $withRoot = false,
+    ): array
     {
         $byId = [];
 
@@ -96,8 +117,34 @@ final class Tree
 
         $this->hiddenTargets = $hidden;
 
-        $rows = [];
-        $this->collect($root->id, 0, $byId, $childIdsByParent, array_flip($skip), array_flip($collapsed), $rows);
+        $rows       = [];
+        $uebersprungen = array_flip($skip);
+        $gefaltet   = array_flip($collapsed);
+
+        // ⚠️ *Die Wurzel steht **vor** dem Lauf und die Kinder rücken eine Stufe ein — sie ist
+        // dann eine gewöhnliche Zeile, und jeder Leser der Zeilen muss nichts Neues wissen.*
+        if ($withRoot) {
+            $rows[] = [
+                'node'  => $root,
+                'depth' => 0,
+                'hasChildren' => $this->visibleChildrenOf($root->id, $byId, $childIdsByParent, $uebersprungen) !== [],
+                'collapsed'   => isset($gefaltet[$root->id]),
+                // ⚠️ *Allein auf ihrer Ebene, also beides — und damit bietet die Zeile keine
+                // Pfeile an, was richtig ist: die Wurzel hat keine Geschwister, mit denen sie
+                // tauschen könnte.*
+                'isFirst'     => true,
+                'isLast'      => true,
+                // ⚠️ *Nie versteckt: `hide` sitzt auf der **Vererbungskante**, und auf die Wurzel
+                // zeigt keine — gemessen 0.*
+                'hidden'      => false,
+            ];
+
+            if (isset($gefaltet[$root->id])) {
+                return $rows;
+            }
+        }
+
+        $this->collect($root->id, $withRoot ? 1 : 0, $byId, $childIdsByParent, $uebersprungen, $gefaltet, $rows);
 
         return $rows;
     }

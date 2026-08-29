@@ -35,7 +35,7 @@ require __DIR__ . '/lib/supersessions.php';
  * und nicht in einer Datei daneben, damit ihre Änderung im Diff einer Entscheidung auftaucht — eine
  * stillschweigend erhöhte Obergrenze wäre genau die Sorte Nachgeben, die eine Ratsche verhindern soll.*
  */
-const HINGENOMMEN = 308;
+const HINGENOMMEN = 307;
 
 $root = __DIR__ . '/../../docs/NewConcept/';
 $rows = taxmodDecisionRows($root . '90-decision-log.md');

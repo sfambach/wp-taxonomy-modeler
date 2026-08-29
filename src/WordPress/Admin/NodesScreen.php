@@ -202,7 +202,7 @@ final class NodesScreen
         // was er ausdrücklich so wollte.*
         $this->foldStateForLinks = $collapsed === [] ? self::ALL_EXPANDED : implode(',', $collapsed);
 
-        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden);
+        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $this->showsRoot());
         $parked    = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
 
         // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
@@ -226,6 +226,9 @@ final class NodesScreen
             'h2'
         );
         $left .= $this->hiddenToggle($showHidden);
+        // ⚠️ *Neben seinem Geschwister, weil es dieselbe Art Schalter ist: eine Ansicht, kein
+        // gespeicherter Vorzug. Der Eigentuemer braucht die Wurzel, um ihr Felder zu geben.*
+        $left .= ' ' . $this->rootToggle($this->showsRoot());
 
         // ⚠️ **Under Model, not under the root.** A node hung directly on the root sits in no
         // branch at all: it can hold no records and no attribute may point at it — a dead end
@@ -2698,6 +2701,41 @@ final class NodesScreen
     private function showsHidden(): bool
     {
         return isset($_GET['taxmod_hidden']) && $_GET['taxmod_hidden'] === '1';
+    }
+
+    /**
+     * Ob die Wurzel selbst als Zeile im Baum steht.
+     *
+     * ⚠️ **Der Eigentümer braucht sie, um ihr Felder zu geben** — und sie war bisher nicht
+     * erreichbar: `Tree::collect()` gibt nur Kinder aus, also stand sie in keiner Zeile und
+     * kein Link führte hin. *Fachlich ging ein Feld an ihr schon immer; `addField()` prüft nur
+     * das **Ziel**, nie den Besitzer.*
+     *
+     * ⚠️ **Und es ist kein neuer Gedanke:** *der Vorgänger hatte den Schalter, mit Vorgabe
+     * «verborgen», und [D-273](../../../docs/NewConcept/90-decision-log.md) nennt ihn
+     * ausdrücklich «already the right answer». **Gefehlt hat er, nicht die Entscheidung.***
+     *
+     * ⚠️ *Ein Ansichts-Schalter und kein gespeicherter Vorzug — sein Wort: «wenn ich dem
+     * Wurzelknoten Felder geben möchte, muss ich ihn **kurzzeitig** sehen können.» Damit gehört
+     * er neben {@see self::showsHidden()} und nicht auf die Einstellungsseite.*
+     */
+    private function showsRoot(): bool
+    {
+        return isset($_GET['taxmod_root']) && $_GET['taxmod_root'] === '1';
+    }
+
+    /** Der Umschalter dafür, gebaut wie {@see self::hiddenToggle()}. */
+    private function rootToggle(bool $showing): string
+    {
+        $to = $this->backTo(
+            $this->selectedFromRequest()?->id,
+            ['taxmod_root' => $showing ? null : '1']
+        );
+
+        return '<a class="taxmod-show-hidden" href="' . esc_url($to) . '">'
+            . IconMarkup::dashicon($showing ? 'admin-home' : 'admin-home') . ' '
+            . esc_html($showing ? __('hiding the root again', 'taxmod') : __('show the root', 'taxmod'))
+            . '</a>';
     }
 
     /**

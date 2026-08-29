@@ -187,6 +187,55 @@ final class TreeTest extends TestCase
         self::assertFalse($has['Primitives']);
     }
 
+    /**
+     * ⚠️ **Die Wurzel steht sonst in keiner Zeile, und das ist der Bau, keine Einstellung:**
+     * `collect()` gibt ab `$rows[]` nur **Kinder** aus. Es gab also nichts umzuschalten — der Schalter
+     * musste im Lauf entstehen.
+     *
+     * ⚠️ *Der Eigentümer braucht sie, um ihr **Felder zu geben**: die Auflösungskette lautet
+     * Installation → Wurzel → Vorfahren → Knoten, und die Installation ist kein Knoten. Der Vorgänger
+     * hatte den Schalter, und D-273 nennt ihn «already the right answer».*
+     */
+    #[Test]
+    public function the_root_is_no_row_until_it_is_asked_for(): void
+    {
+        $this->editor->createNode('Model', $this->root->id);
+
+        $ohne = $this->tree->rowsUnder($this->root, [$this->trash->id]);
+        $mit  = $this->tree->rowsUnder($this->root, [$this->trash->id], [], false, true);
+
+        $namen = static fn (array $rows): array => array_map(
+            static fn (array $r): string => $r['node']->name,
+            $rows
+        );
+
+        self::assertNotContains('Root', $namen($ohne), 'ohne Bitte steht die Wurzel in keiner Zeile');
+        self::assertSame('Root', $namen($mit)[0] ?? null, 'mit Bitte steht sie vorn');
+        self::assertCount(count($ohne) + 1, $mit, 'und sie ist genau eine Zeile mehr');
+    }
+
+    /**
+     * ⚠️ *Die Kinder rücken eine Stufe ein, sonst stünde die Wurzel **neben** ihnen statt über ihnen —
+     * und jeder Leser der Zeilen müsste einen Sonderfall kennen.*
+     */
+    #[Test]
+    public function asking_for_the_root_pushes_its_children_one_level_in(): void
+    {
+        $this->editor->createNode('Model', $this->root->id);
+
+        $mit = $this->tree->rowsUnder($this->root, [$this->trash->id], [], false, true);
+
+        self::assertSame(0, $mit[0]['depth'], 'die Wurzel steht auf null');
+        self::assertSame('Model', $mit[1]['node']->name);
+        self::assertSame(1, $mit[1]['depth'], 'und ihr Kind eine Stufe tiefer');
+
+        // ⚠️ *Allein auf ihrer Ebene, also erste **und** letzte — damit bietet die Zeile keine Pfeile
+        // an, was richtig ist: die Wurzel hat keine Geschwister zum Tauschen.*
+        self::assertTrue($mit[0]['isFirst']);
+        self::assertTrue($mit[0]['isLast']);
+        self::assertFalse($mit[0]['hidden'], 'nie versteckt: auf die Wurzel zeigt keine Vererbungskante');
+    }
+
     #[Test]
     public function a_node_whose_only_children_are_skipped_counts_as_having_none(): void
     {

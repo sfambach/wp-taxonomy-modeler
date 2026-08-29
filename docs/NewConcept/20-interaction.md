@@ -1177,3 +1177,42 @@ steht, altert unbemerkt: dieselbe Lehre wie die 370 unerfüllten Zusagen aus
 eine würde irgendwann von der anderen abweichen.*
 
 ---
+
+## Die Wurzel im Baum — Stand 2026-08-29
+
+[D-509](90-decision-log.md). Der Eigentümer: *«wir haben doch im Baum einen Wurzelknoten, unter dem
+alles hängt — den würde ich gerne in der Baumansicht sehen»*, und der Grund: *«ich möchte per Knoten
+aufbauen, was wir jetzt in den Settings haben, und am besten sieht man das am Beispiel.»*
+
+⚠️ **Sie war nie eine Zeile, und das war der Bau, keine Einstellung:** *`Tree::collect()` gibt ab
+`$rows[]` nur **Kinder** aus. Es gab nichts umzuschalten — der Schalter musste im **Lauf** entstehen.
+Fachlich ging ein Feld an ihr schon immer (`addField()` prüft nur das Ziel), **es führte nur kein Link
+hin.***
+
+| | |
+|---|---|
+| Schalter | `taxmod_root`, neben `taxmod_hidden` — **dieselbe Form, dieselbe Stelle** |
+| Art | ein **Ansichts**-Schalter, kein gespeicherter Vorzug — sein Wort: «ich muss ihn **kurzzeitig** sehen können» |
+| die Zeile | eine **gewöhnliche**: Kinder rücken eine Stufe ein, erste **und** letzte ihrer Ebene, nie versteckt |
+
+⚠️ *Erste und letzte heisst: **keine Pfeile**, und das ist richtig — die Wurzel hat keine Geschwister,
+mit denen sie tauschen könnte. «Nie versteckt» ebenso: `hide` sitzt auf der Vererbungskante, und auf
+die Wurzel zeigt keine (gemessen 0).*
+
+### Woher der Schalter kommt, und warum er fehlte
+
+⚠️ **[D-273](90-decision-log.md) heisst ihn ausdrücklich gut:** *«that switch was already **the right
+answer**; the question was missing beside it».* Gefehlt hat die **Frage** daneben — wie Sachgebiete
+nebeneinander existieren —, nicht der Schalter.
+
+⚠️ *Der Vorgänger hatte ihn zweifach, Werkzeugleiste **und** Einstellungsseite, mit Vorgabe
+«verborgen». Im Erntebogen steht er in [`_harvest/02-settings-page.md`](_harvest/02-settings-page.md)
+— **und dieses Blatt hat keine Verdikt-Spalte** («nothing here is decided»). **Er war inventarisiert
+und nie nach `PR-1b` einsortiert.** Die Lücke lag im Ernteverfahren.*
+
+⚠️ **Und warum es jetzt zählt:** *die Auflösungskette lautet Installation → Wurzel → Vorfahren →
+Knoten. **Die Installation ist kein Knoten** und kann keine Felddeklaration tragen. Sobald mit
+[D-506](90-decision-log.md) alles ein Feld ist, ist die Wurzel der einzige Ort für eine Deklaration,
+die jeder Zweig erbt.*
+
+---
