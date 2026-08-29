@@ -3892,6 +3892,51 @@ der Datensatz gehört**, nicht wie er erreicht wird.* **Die einzige wirklich and
 zeigen 18 auf einen Knoten und 1 auf einen Datensatz.* Genau diese Doppelbedeutung des Wortes
 «Referenz» notiert [OQ-125](91-open-questions.md).
 
+#### Jeder Wert endet an einem Knoten — die Frage ist, ob eine Instanz dazwischenliegt
+
+⚠️ **Der Eigentümer, 2026-08-29, im nächsten Zug:** *«der Datensatz hat ja dann wieder einen
+Verweis auf einen Knoten, weil die Struktur muss ja irgendwo definiert sein. In der Hinsicht ist
+das natürlich auch ein Unterschied der Komposition.»* **Richtig, und es macht die Unterscheidung
+einfacher statt komplizierter.**
+
+Gemessen an zwei echten Werten:
+
+```
+Komposition:  Halter-Datensatz 485 → Datensatz 486 → Knoten «Einheitenwert», Version 1
+Konstante:    Halter-Datensatz 247 → Knoten «kilo»
+```
+
+| Zweig | Weg vom Wert zu seiner Definition | Instanz dazwischen |
+|---|---|---|
+| **Data Types** | keiner — der Wert steht im Datensatz des Halters | nein |
+| **Constants** | **ein Schritt**: Wert → Knoten. *Der Knoten **ist** der Wert.* | **nein** |
+| **Model** | **zwei Schritte**: Wert → Datensatz → Knoten samt Version | **ja** |
+| **Compositions** | **zwei Schritte**: Wert → Datensatz → Knoten samt Version | **ja** |
+
+⚠️ **`Model` und `Compositions` sind in dieser Tabelle gleich, und das ist kein Versehen.** *Sie
+**sind** dieselbe Form — genau das, was der Eigentümer mit «im Grunde ist eine Komposition ja
+auch eine Aggregation» meinte. Was sie trennt, steht nicht in der Form, sondern in der Anzahl
+der Besitzer ([D-498](90-decision-log.md)).*
+
+**Damit fällt die ganze Unterscheidung auf zwei Fragen zusammen:**
+
+```mermaid
+flowchart TD
+  A{"Liegt eine Instanz<br/>zwischen Wert und Definition?"}
+  A -->|nein| B{"Steht der Wert selbst da,<br/>oder zeigt er auf einen Knoten?"}
+  B -->|steht da| C["Data Types"]
+  B -->|zeigt| D["Constants"]
+  A -->|ja| E{"Wie viele Besitzer<br/>hat die Instanz?"}
+  E -->|genau einer| F["Composition"]
+  E -->|mehrere moeglich| G["Aggregation auf ein Modell"]
+```
+
+⚠️ *Und der Datensatz trägt nicht nur seinen Knoten, sondern dessen **Version** — gemessen: 26
+von 26 Datensätzen haben `node_id` **und** `node_version`. Das ist [D-060](90-decision-log.md),
+und es ist der Grund, warum eine Modelländerung alte Daten nicht stillschweigend umdeutet:
+[D-054](90-decision-log.md)s Konfliktlöser kann fragen, gegen **welche** Fassung ein Datensatz
+geschrieben wurde.*
+
 ⚠️ **Das ist der ganze Grund, und er ist strukturell statt bewacht.** *Ein Feld, das auf ein
 **Modell** zeigt, kann gar keine Kompositionskante werden — der Zweig bestimmt die Kantenart.
 Und [D-105](90-decision-log.md) macht die Aggregation zum Referenz-Renderer: «composition
