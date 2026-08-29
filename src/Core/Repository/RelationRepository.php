@@ -96,6 +96,26 @@ interface RelationRepository
     public function parkedFieldEdgesOf(array $ownerIds): array;
 
     /**
+     * The mirror of {@see self::fieldEdgesOf()} — every attribute **pointing at** these nodes.
+     *
+     * ⚠️ **This is the one direction that appears nowhere else** ([D-199](../../../docs/NewConcept/90-decision-log.md)):
+     * *«everything going out of the current node is in the attributes»* — outgoing non-inheritance
+     * edges **are** the attributes table, the parent edge is a chip in the head and the children are
+     * the tree. **Incoming is what was left, and it had no query.**
+     *
+     * ⚠️ *Inheritance is excluded here for the same reason it is excluded there: an incoming
+     * inheritance edge is a **child**, and the tree already draws every one of them.*
+     *
+     * ⚠️ **Parked attributes are left out**, as in {@see self::fieldEdgesOf()} — a parked attribute
+     * is hidden in its owning node ([D-128](../../../docs/NewConcept/90-decision-log.md)), so listing
+     * it as a *use* of this node would show a dependency its own node does not show.
+     *
+     * @param  list<int>      $targetIds
+     * @return list<Relation>
+     */
+    public function fieldEdgesTo(array $targetIds): array;
+
+    /**
      * Every edge with one end on any of these nodes — **both** ends, and every kind.
      *
      * ⚠️ **Both ends and every kind, because a purge has to reach what hangs off an edge.** An edge is

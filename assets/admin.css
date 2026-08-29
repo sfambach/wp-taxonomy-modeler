@@ -748,6 +748,20 @@ details.taxmod-page-block > summary {
     font-style: italic;
 }
 
+/* ── Used by (D-199) ────────────────────────────────────────────────────────
+ * The one direction that appears nowhere else on the page. A list rather than a
+ * table because each row is two words — the attribute and the node that owns it
+ * — and a table of two words per row is a table pretending to be a grid. */
+.taxmod-used-by {
+    margin: .3em 0 0;
+    list-style: disc;
+    padding-left: 1.4em;
+}
+
+.taxmod-used-by li {
+    margin: 0 0 .2em;
+}
+
 /* ── The detail head ────────────────────────────────────────────────────────
  * The owner's own sketch: a table, 3 rows, 2 columns — Action, System, Name on
  * the left, the buttons, the constants and the name field on the right. */

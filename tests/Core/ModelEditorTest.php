@@ -32,12 +32,15 @@ final class ModelEditorTest extends TestCase
     private Node $root;
     private Node $trash;
 
+    /** Kept so a test can build a second editor over the same repositories without reissuing ids. */
+    private CountingIdentities $identities;
+
     protected function setUp(): void
     {
         $this->edges   = new InMemoryRelations();
         $this->nodes   = new InMemoryNodes($this->edges);
         $this->changes = new RecordedChanges();
-        $identities    = new CountingIdentities();
+        $identities    = $this->identities = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
         $this->trash = Node::create($identities->next(), 'Trash', $this->root->path);
@@ -736,5 +739,81 @@ final class ModelEditorTest extends TestCase
 
         self::assertGreaterThan($atStart, $afterPromotion, 'promotion moves it');
         self::assertGreaterThan($afterPromotion, $afterRestore, 'and so does coming back');
+    }
+
+    /**
+     * `Used by` — [D-199](../../docs/NewConcept/90-decision-log.md)'s one direction.
+     *
+     * ⚠️ *Die Gegenrichtung ist die Probe, die zählt: `usedBy()` darf **nicht** aufzählen, was der
+     * Knoten selbst benutzt — sonst wäre der Abschnitt eine zweite Attributtabelle.*
+     */
+    /**
+     * An editor that knows a `Model` branch, so `addField()` can read a relation kind off a target.
+     *
+     * ⚠️ *Derselbe Identitätszähler wie in {@see setUp()}, denn ein zweiter finge wieder bei 1 an und
+     * gäbe eine Id zweimal aus — genau das, was ein Allokator nie tut.*
+     */
+    private function withModelBranch(): Node
+    {
+        $model = $this->editor->createNode('Model', $this->root->id);
+
+        $this->editor = new ModelEditor(
+            $this->nodes,
+            $this->edges,
+            $this->identities,
+            new FixedFramework($this->root, $this->trash, [\Taxmod\Core\Model\Branch::Model->value => $model]),
+            $this->changes
+        );
+
+        return $model;
+    }
+
+    #[Test]
+    public function used_by_lists_the_attributes_of_other_nodes_typed_by_this_one(): void
+    {
+        $model  = $this->withModelBranch();
+        $unit   = $this->editor->createNode('Einheit', $model->id);
+        $part   = $this->editor->createNode('Teil', $model->id);
+        $recipe = $this->editor->createNode('Rezept', $model->id);
+
+        $this->editor->addField($part->id, $unit->id, 'einheit');
+        $this->editor->addField($recipe->id, $unit->id, 'menge_einheit');
+
+        // Was der Knoten selbst benutzt — die andere Richtung, und sie gehört nicht hierher.
+        $this->editor->addField($unit->id, $part->id, 'beispielteil');
+
+        $used = $this->editor->usedBy($unit->id);
+
+        self::assertSame(
+            ['einheit', 'menge_einheit'],
+            array_map(static fn (Relation $edge): string => $edge->name, $used)
+        );
+
+        self::assertSame(
+            [$part->id, $recipe->id],
+            array_map(static fn (Relation $edge): int => $edge->fromId, $used)
+        );
+
+        // ⚠️ *Eine Vererbungskante ist ein **Kind**, und das zeichnet der Baum. Der Knoten `Einheit`
+        // hat `Model` als Elternteil und `Model` hat drei Kinder — keines davon steht hier.*
+        self::assertSame([], $this->editor->usedBy($model->id));
+    }
+
+    #[Test]
+    public function a_parked_attribute_is_not_a_use(): void
+    {
+        $model = $this->withModelBranch();
+        $unit  = $this->editor->createNode('Einheit', $model->id);
+        $part  = $this->editor->createNode('Teil', $model->id);
+
+        $edge = $this->editor->addField($part->id, $unit->id, 'einheit');
+
+        self::assertCount(1, $this->editor->usedBy($unit->id));
+
+        $this->editor->removeField($part->id, $edge->id);
+
+        // ⚠️ *D-128: eine geparkte Kante ist in ihrem eigenen Knoten versteckt. Sie hier zu zeigen
+        // hiesse, eine Abhängigkeit zu melden, die ihr eigener Knoten nicht zeigt.*
+        self::assertSame([], $this->editor->usedBy($unit->id));
     }
 }

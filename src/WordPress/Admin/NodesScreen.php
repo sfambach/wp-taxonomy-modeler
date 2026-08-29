@@ -681,6 +681,15 @@ final class NodesScreen
                 '',
                 $this->previewPanel($selected)
             ),
+
+            // ⚠️ **Der Abschnitt hält **eine** Richtung, und das ist [D-199](../../../docs/NewConcept/90-decision-log.md)s
+            // Entscheidung samt der Bedingung, unter der sie gilt.** *Die ausgehende Richtung steht
+            // schon dreimal auf dieser Seite — Attribute, Elternteil im Kopf, Kinder im Baum. Der
+            // Platz war seit Paket 4 leer, weil die eingehende Richtung nirgends abgefragt wurde.*
+            PageSlot::Relations->value => new Section(
+                '',
+                $this->usedByPanel($selected)
+            ),
         ];
 
         // ⚠️ **Records are outside the frame, deliberately.** R20a's order is about the **model** —
@@ -944,6 +953,75 @@ final class NodesScreen
                 ),
         ];
     }
+    /**
+     * `Used by` — the attributes of other nodes that are typed by this one.
+     *
+     * ⚠️ **One direction, and [D-199](../../../docs/NewConcept/90-decision-log.md) says why.** The
+     * owner: *«everything going out of the current node is in the attributes. As long as that stays
+     * so, we do not need to show them in the relations.»* *Outgoing non-inheritance edges **are** the
+     * attributes table, the parent edge is a chip in the head, the children are the tree.* **The
+     * incoming direction appeared nowhere, which is what left this slot empty since Package 4.**
+     *
+     * ```mermaid
+     * flowchart LR
+     *   O["another node"] -->|its attribute| S["this node"]
+     *   S -->|its attributes| T["their targets · the attributes table"]
+     *   S -.->|children · the tree| C["…"]
+     * ```
+     *
+     * ⚠️ **His condition is checked and not assumed.** *The section may hold one direction only
+     * because every outgoing edge is visible elsewhere — «if an outgoing edge ever appears that is
+     * neither an attribute nor inheritance, the section has to grow back or it quietly stops being
+     * complete.» Measured on the model before building: 102 inheritance edges, 29 composition, 5
+     * aggregation, and **every** composition and aggregation edge carries a name. There is no third
+     * case, so the condition still holds.*
+     *
+     * ⚠️ **An impact estimate rather than a listing** ([D-199](../../../docs/NewConcept/90-decision-log.md)):
+     * it is the same list a conflict resolver would pull — *who breaks on delete* — but voluntarily
+     * and beforehand. **Model only.** *Which records point at a record is a different question and
+     * belongs to a record's own screen; the same decision draws that line.*
+     */
+    private function usedByPanel(Node $selected): string
+    {
+        $edges = $this->editor->usedBy($selected->id);
+
+        $html = $this->heading(
+            __('Used by', 'taxmod'),
+            __('Which attributes of other nodes are typed by this one. Everything going out of this node is in the attributes above; this is the direction that appears nowhere else, and it is what would break if this node were deleted.', 'taxmod')
+        );
+
+        if ($edges === []) {
+            // ⚠️ *Gesagt statt weggelassen: «nichts verweist hierher» und «ich habe nicht
+            // nachgesehen» sehen in einem leeren Kasten gleich aus, und nur das erste ist eine
+            // Antwort auf «was bricht, wenn ich das lösche».*
+            return $html . '<p><em>' . esc_html__('Nothing points at this node.', 'taxmod') . '</em></p>';
+        }
+
+        // ⚠️ **Die Besitzer in **einer** Abfrage** (`CD-7`) — pro Kante nachzuschlagen wäre genau die
+        // Schleife, die der Kodierstandard verbietet.
+        $owners = $this->editor->ownersOf($edges);
+
+        $html .= '<ul class="taxmod-used-by">';
+
+        foreach ($edges as $edge) {
+            $owner = $owners[$edge->fromId] ?? null;
+
+            $html .= '<li>'
+                . '<code>' . esc_html($edge->name) . '</code> '
+                . esc_html__('on', 'taxmod') . ' '
+                . ($owner === null
+                    // ⚠️ *Ein Besitzer, den es nicht mehr gibt, wird **benannt** und nicht
+                    // verschwiegen — eine Kante ohne ihren Knoten ist ein Befund
+                    // ([D-485](../../../docs/NewConcept/90-decision-log.md)) und keine leere Zeile.*
+                    ? '<span class="taxmod-nothing">#' . (int) $edge->fromId . '</span>'
+                    : '<a href="' . esc_url($this->backTo($owner->id)) . '" class="taxmod-used-by-link">'
+                        . esc_html($owner->name) . '</a>')
+                . '</li>';
+        }
+
+        return $html . '</ul>';
+    }
+
     /**
      * The detail head, as the owner drew it: three labelled rows, two columns.
      *

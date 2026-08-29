@@ -544,6 +544,34 @@ final class ModelEditor
     }
 
     /**
+     * Who uses this node — the attributes of **other** nodes that are typed by it.
+     *
+     * ⚠️ **[D-199](../../../docs/NewConcept/90-decision-log.md), and it is one direction on purpose.**
+     * The owner: *«everything going out of the current node is in the attributes. As long as that
+     * stays so, we do not need to show them in the relations.»* **His condition is recorded with the
+     * decision** — the section may hold one direction only *because every outgoing edge is currently
+     * visible elsewhere*, and if an outgoing edge appears that is neither an attribute nor
+     * inheritance, the section has to grow back. *Measured before building: the model holds three
+     * kinds — 102 inheritance, 29 composition, 5 aggregation — and every composition and aggregation
+     * edge carries a name, which is what makes it an attribute. The condition still holds.*
+     *
+     * ⚠️ **Direct incoming edges and not the descendants of this node.** *An attribute typed by an
+     * **ancestor** accepts this node too, but deleting this node does not break it — and the section
+     * is an impact estimate ([D-122](../../../docs/NewConcept/90-decision-log.md)). Widening it to
+     * the ancestors would answer a question nobody asked.*
+     *
+     * ⚠️ *No ancestors on the way in either, so this is not the mirror of {@see fieldsOf()} in that
+     * respect: **inherited** attributes are not repeated per descendant here, because the edge is
+     * owned once and that one owner is what a person has to go and look at.*
+     *
+     * @return list<Relation>
+     */
+    public function usedBy(int $nodeId): array
+    {
+        return $this->relations->fieldEdgesTo([$nodeId]);
+    }
+
+    /**
      * Empty the trash for good — the act [row 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
      * asks for, and the owner: *build a button behind the Trash label, «clear», so we can tidy up.*
      *
@@ -889,6 +917,20 @@ final class ModelEditor
     public function targetsOf(array $edges): array
     {
         return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->toId, $edges));
+    }
+
+    /**
+     * The other end — the nodes these edges come **from**, in one query (`CD-7`).
+     *
+     * ⚠️ *What {@see usedBy()} needs to be readable: an incoming attribute means nothing without the
+     * node that owns it, and asking per edge would be the loop the code standard forbids.*
+     *
+     * @param  list<Relation>   $edges
+     * @return array<int, Node> Keyed by id.
+     */
+    public function ownersOf(array $edges): array
+    {
+        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->fromId, $edges));
     }
 
     /**

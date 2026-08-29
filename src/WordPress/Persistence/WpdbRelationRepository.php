@@ -224,6 +224,33 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+    public function fieldEdgesTo(array $targetIds): array
+    {
+        global $wpdb;
+
+        if ($targetIds === []) {
+            return [];
+        }
+
+        $places = implode(',', array_fill(0, count($targetIds), '%d'));
+
+        // ⚠️ **`to_id` and not `from_id` — that one word is the whole method** ([D-199]). *Ordered by
+        // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
+        // edge ids.*
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide
+                 FROM ' . Schema::table('relations') . "
+                 WHERE to_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+                 ORDER BY from_id ASC, position ASC, id ASC",
+                [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
+            ),
+            ARRAY_A
+        );
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
     /** @return list<Relation> The removed ones, for D-128's *show deleted*. */
     public function parkedFieldEdgesOf(array $ownerIds): array
     {

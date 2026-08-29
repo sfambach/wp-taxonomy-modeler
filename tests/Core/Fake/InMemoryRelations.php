@@ -109,6 +109,25 @@ final class InMemoryRelations implements RelationRepository
         return $this->fieldsOf($ownerIds, true);
     }
 
+    public function fieldEdgesTo(array $targetIds): array
+    {
+        $edges = [];
+
+        foreach ($this->rows as $edge) {
+            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->toId, $targetIds, true)) {
+                continue;
+            }
+
+            if (! $edge->isParked()) {
+                $edges[] = $edge;
+            }
+        }
+
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromId, $a->position, $a->id] <=> [$b->fromId, $b->position, $b->id]);
+
+        return $edges;
+    }
+
     /**
      * @param  list<int>      $ownerIds
      * @return list<Relation>
