@@ -3685,6 +3685,36 @@ wird **ausschliesslich von seinem eigenen Test** aufgerufen. **Es existiert kein
 einen Wert gehört** — weder die Ampel aus [D-236](90-decision-log.md) noch der Barcode aus
 [D-332](90-decision-log.md).*
 
+⚠️ **Richtiggestellt am selben Tag durch [D-502](90-decision-log.md): den Benutzer gibt es, und er
+steht seit dem 23.08. im Konzept — der Widerstand.** *Die Messung oben war richtig (der **Code** hat
+keinen), der Schluss war zu weit (das **Konzept** hat einen). [D-226](90-decision-log.md): «value,
+plus colour rings is **one setting in one place**».*
+
+### Ein Eintrag der Liste ist ein Paar
+
+[D-502](90-decision-log.md), auf sein Wort: *«beide sind Display — und **ein Renderer hat einen
+Konverter**».*
+
+⚠️ **Das ändert [R33b](#r33b--several-are-eligible-exactly-one-is-in-effect) nicht, es liest es
+wörtlich:** *dort steht «exactly one is in effect **per rendering**» — **nicht pro Knoten**. Ein
+Listeneintrag **ist** eine Zeichnung; zwei Einträge sind zwei Zeichnungen, also zwei Konverter, je
+einer.*
+
+| | |
+|---|---|
+| **Knoten** | trägt eine geordnete Liste, einer davon pflichtig ([D-236](90-decision-log.md)) |
+| **Eintrag** | ein Renderer **und** ein Konverter |
+| **Konverter** | genau einer je Eintrag ([R33b](#r33b--several-are-eligible-exactly-one-is-in-effect), [V8](00-vision-and-scope.md)) |
+
+⚠️ *Damit löst sich eine Spannung, die beim Durchgehen auffiel: **die Ampel wird als Grund für die
+Liste genannt ([D-236](90-decision-log.md)) und zugleich als nicht-invertierbarer Konverter
+([D-076](90-decision-log.md)).** Beides stimmt, sobald ein Eintrag ein Paar ist: ein zweiter
+Renderer mit einem Ampel-Konverter.*
+
+⚠️ *Offen bleibt allein die **Speicherform** ([OQ-109](91-open-questions.md)) — und die Frage wird
+dadurch schärfer, nicht grösser: ein Eintrag trägt zwei Angaben statt einer, und **eine Kante trüge
+beide von selbst**.*
+
 **Die Liste bleibt entschieden und wird gebaut, wenn ihr erster Benutzer existiert.** *Eine
 Speicherfrage ohne Daten ist billiger richtig zu beantworten als eine mit — und bis dahin hält sie
 keine Zeile mehr auf.*
