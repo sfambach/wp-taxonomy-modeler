@@ -221,10 +221,105 @@ if ($node === 0) {
     }
 }
 
-echo "\n== what is honestly not there yet ==\n";
-echo "  The middle rung of D-160's fallback is missing: real data → *rows marked as test data* →\n";
-echo "  the type's sample value. `taxmod_records` has no flag column (C28, list row 17), so this\n";
-echo "  preview uses the first record or the defaults and says which.\n";
+// ── The middle rung: rows marked as test data (D-028, list rows 75 and 17) ───────────────────────
+
+echo "\n== real data → rows marked as test data → the defaults ==\n";
+
+/**
+ * A node that can hold records, has attributes and holds **nothing** yet.
+ *
+ * ⚠️ *A clean node rather than the busy one above, because the point is which record the preview
+ * chooses and a node with 21 real rows can never show the marked rung at all.*
+ */
+$clean = (int) $wpdb->get_var(
+    "SELECT n.id
+       FROM {$prefix}nodes n
+       JOIN {$prefix}relations r ON r.from_id = n.id AND r.name <> ''
+      WHERE n.id NOT IN (SELECT node_id FROM {$prefix}records)
+      GROUP BY n.id
+      ORDER BY COUNT(r.id) DESC
+      LIMIT 1"
+);
+
+/** Writes one record against a node and hands back its id, so the cleanup has something to name. */
+$record = static function (int $node, bool $isTest) use ($wpdb, $prefix): int {
+    $wpdb->insert(
+        $prefix . 'records',
+        [
+            'node_id'      => $node,
+            'node_version' => (int) $wpdb->get_var($wpdb->prepare("SELECT version FROM {$prefix}nodes WHERE id = %d", $node)),
+            'created_at'   => gmdate('Y-m-d H:i:s'),
+            'is_test'      => $isTest ? 1 : 0,
+        ],
+        ['%d', '%d', '%s', '%d']
+    );
+
+    return (int) $wpdb->insert_id;
+};
+
+$written = [];
+
+try {
+    $empty = previewOf($screen, $clean);
+
+    check('a node with attributes and no records was found', $clean > 0, (string) $clean);
+    check('with nothing entered, the defaults are named', str_contains($empty, 'Filled from the defaults'));
+
+    // ── only a marked row ────────────────────────────────────────────────────────────────────────
+    $written[] = $marked = $record($clean, true);
+
+    $onlyTest = previewOf($screen, $clean);
+
+    // ⚠️ **Testdaten sind besser als gar nichts** — die dritte Sprosse sind die Vorgaben, nicht die
+    // zweite. *Vor Schema 13 gab es die Spalte nicht; die Vorschau nahm `records[0]` und hätte hier
+    // dasselbe gezeichnet, ohne es zu sagen.*
+    check('a marked row draws where there is no real one', str_contains($onlyTest, 'record #' . $marked));
+
+    // ⚠️ **Und sie sagt, dass es Testdaten sind.** *Eine aus Testdaten gefüllte Vorschau, die sich
+    // wie eine aus echten Daten liest, ist genau der Fehler, für den es diese Zeile gibt
+    // ([D-241]: das Kennzeichen steuert, was gezeigt wird).*
+    check('and it says the row is marked as test data', str_contains($onlyTest, 'marked as test data'));
+
+    // ── a real row beside it, and it must win ────────────────────────────────────────────────────
+    // ⚠️ **Die echte Zeile bekommt die *höhere* Id.** *Sonst gewönne sie durch `ORDER BY id` und
+    // die Prüfung wäre aus dem falschen Grund grün — genau der Fall, den `records[0]` still traf.*
+    $written[] = $real = $record($clean, false);
+
+    $both = previewOf($screen, $clean);
+
+    check('real data outranks the marked row', str_contains($both, 'record #' . $real));
+    check('and the marked row is no longer named', ! str_contains($both, 'record #' . $marked));
+    check('nor is the preview still calling itself test data', ! str_contains($both, 'marked as test data'));
+
+    // ── a preview draws; it never writes ─────────────────────────────────────────────────────────
+    echo "\n== drawing a preview writes nothing ==\n";
+
+    $before = [
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values"),
+    ];
+
+    previewOf($screen, $clean);
+    previewOf($screen, $model);
+
+    $after = [
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values"),
+    ];
+
+    // ⚠️ **Die Vorschau zeichnet über *markierten* Zeilen, sie legt keine an.** *Ein Entwurf, der
+    // einen Test-Record anlegen müsste, um etwas zu zeigen, schriebe Musterwerte in genau die
+    // Daten, über die er berichten soll.*
+    check('no record was created by drawing', $before[0] === $after[0], "{$before[0]} → {$after[0]}");
+    check('and no value either', $before[1] === $after[1], "{$before[1]} → {$after[1]}");
+} finally {
+    // ⚠️ Läuft auch nach einer gefallenen Zusage: eine Prüfung, die Datensätze liegen lässt,
+    // verändert, was der nächste Lauf misst.
+    foreach ($written as $id) {
+        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}records WHERE id = %d", $id));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}record_values WHERE record_id = %d", $id));
+    }
+}
 
 echo "\n", $failed === 0 ? "all green\n" : "{$failed} failed\n";
 

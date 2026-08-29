@@ -896,32 +896,52 @@ final class NodesScreen
      */
     private function previewSource(Node $selected): array
     {
+        // ⚠️ **Reading only.** *A preview draws; it does not enter data.* The test record
+        // [D-028](../../../docs/NewConcept/90-decision-log.md) speaks of is a **row somebody
+        // marked**, not one this method would create — a preview that wrote a record in order to
+        // have something to draw would put sample values into the data it is supposed to report on.
         $records = $this->data->recordsOf($selected->id);
 
-        if ($records === []) {
+        // ⚠️ **The rung between real data and the defaults, and the core owns the rule**
+        // ({@see Rendering::previewRecordAmong()}): *real data → rows marked as test data → the
+        // type's sample.* Before schema 13 there was no column to ask, so this took `records[0]`
+        // and a marked row could outrank real data purely by having the lower id.
+        $chosen = $this->rendering->previewRecordAmong($records);
+
+        if ($chosen === null) {
             return [
                 'held' => [],
                 'says' => __('Filled from the defaults — nothing has been entered against this node yet.', 'taxmod'),
             ];
         }
 
-        // ⚠️ **The first record and not a chosen one.** Which record to preview is a question nobody
-        // has asked yet, and inventing an answer would be `PR-4`'s failure — so it takes the first
-        // and says which.
-        $first = $records[0];
-        $held  = [];
+        // ⚠️ **Which record within a rung is still the first and not a chosen one.** *Which of
+        // several real records to preview is a question nobody has asked yet, and inventing an
+        // answer would be `PR-4`'s failure — so it takes the first and says which.*
+        $held = [];
 
-        foreach ($this->data->valuesOf($first->id) as $value) {
+        foreach ($this->data->valuesOf($chosen->id) as $value) {
             $held[$value->edgeId] = $value->value;
         }
 
         return [
             'held' => $held,
-            'says' => sprintf(
-                /* translators: %d: the record's id. */
-                __('Filled from record #%d, with the defaults where it says nothing.', 'taxmod'),
-                $first->id
-            ),
+            // ⚠️ **The mark is named, because that is the whole point of a provenance line.** *A
+            // preview filled from test data that reads exactly like one filled from real data is
+            // the fault this sentence exists to prevent — and
+            // [D-241](../../../docs/NewConcept/90-decision-log.md) says the mark governs what is
+            // shown, so a surface that has it and stays silent about it is throwing it away.*
+            'says' => $chosen->isTest
+                ? sprintf(
+                    /* translators: %d: the record's id. */
+                    __('Filled from record #%d, which is marked as test data — no real data has been entered here yet.', 'taxmod'),
+                    $chosen->id
+                )
+                : sprintf(
+                    /* translators: %d: the record's id. */
+                    __('Filled from record #%d, with the defaults where it says nothing.', 'taxmod'),
+                    $chosen->id
+                ),
         ];
     }
     /**

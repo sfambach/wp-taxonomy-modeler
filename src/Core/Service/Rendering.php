@@ -9,6 +9,7 @@ use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Renderer\Renderable;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SeededRole;
@@ -1187,14 +1188,58 @@ final class Rendering
         return $default === null || $default->value->isNothing() ? null : $default->value;
     }
 
+    /**
+     * Which of a node's records a preview draws from — **real data before a row marked as test data**.
+     *
+     * ⚠️ **The middle rung of the decided order, and it was missing rather than deferred.**
+     * [D-028](90-decision-log.md): *«Testdaten sind gewöhnliche Daten, gekennzeichnet. Zeilen können
+     * als Testdaten markiert werden; die Vorschau zeichnet den Knoten in der Datenansicht über diesen
+     * Zeilen und fällt auf die Vorgaben zurück, wo keine da sind.»* The order is
+     * **real data → rows marked as test data → the type's sample**, and until schema 13 the column
+     * did not exist, so the surface took whichever record came first by id.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["records of the node"] --> R{"any not marked?"}
+     *   R -- yes --> N["the first unmarked one"]
+     *   R -- no --> T["the first marked one"]
+     *   R -- none at all --> D["null · the defaults draw"]
+     * ```
+     *
+     * ⚠️ **It chooses a record, it does not blend two.** *Taking the real values and topping them up
+     * from a test row would answer «which record does a preview show» twice in one preview, and that
+     * question is still nobody's — {@see previewValuesFor()} tops up from the **defaults**, which are
+     * a fact about the type rather than about a second row.*
+     *
+     * ⚠️ **Order within a rung is left as it arrives**, so *which* real record is still the caller's
+     * first — the unanswered half of the same question, and this method does not pretend to close it.
+     *
+     * @param  list<NodeRecord> $records
+     */
+    public function previewRecordAmong(array $records): ?NodeRecord
+    {
+        $marked = null;
+
+        foreach ($records as $record) {
+            if (! $record->isTest) {
+                return $record;
+            }
+
+            $marked ??= $record;
+        }
+
+        return $marked;
+    }
+
     public function previewValuesFor(array $edges, array $resolved, array $held = []): array
     {
         $values = [];
 
         foreach ($edges as $edge) {
-            // ⚠️ **Real data wins.** The order is decided — *real data → rows marked as test data →
-            // the type's sample value* — and the middle rung does not exist yet
-            // ([C28](10-domain-core.md) has no column), so this is the first and the third.
+            // ⚠️ **Real data wins, and the rung between it and the defaults is
+            // {@see previewRecordAmong()}** — the caller has already chosen *which* record the
+            // values came from, so what is left here is the decided *«fällt auf die Vorgaben
+            // zurück, wo keine da sind»* of [D-028](90-decision-log.md).
             if (isset($held[$edge->id]) && ! $held[$edge->id]->isNothing()) {
                 $values[$edge->id] = $held[$edge->id];
 
