@@ -14,7 +14,7 @@
 
 ⚠️ **Und ein Stummel bleibt immer im Log.** *Code und Doku zitieren die Ids; `references-check.php` existiert, weil einmal sieben Entscheidungen in Docblocks sassen, die es im Log nicht gab. Eine Zeile ersatzlos zu entfernen wäre dieser Fehler, absichtlich begangen.*
 
-## Warum es nur zwei sind
+## Warum es nur drei sind
 
 **Gemessen 2026-08-28: 28 Entscheidungen sind überholt, 31 Ersetzungen insgesamt.** Ein Muster sortierte davon 7 als «ganz» und 35 als «teilweise» — *und das Muster war falsch.* Beim Lesen blieben **drei** Kandidaten, und einer fiel wieder heraus:
 
@@ -55,3 +55,23 @@
 | Beziehungen | applies [D-312](#), [D-311](#), [R28](30-renderer.md), [R30](30-renderer.md) |
 
 ---
+
+## D-224 — der Dekorator als Konfigurationsbegriff
+
+**Überholt durch [D-236](90-decision-log.md)**, das den Dekorator durch die geordnete Renderer-Liste
+ersetzt. ⚠️ **Es trug bis 2026-08-29 gar keinen Vermerk und las sich als gültig** — gefunden, als der
+Eigentümer fragte, wozu es die Liste überhaupt gibt ([D-501](90-decision-log.md)).
+
+⚠️ *Was davon **weiterlebt**, steht in D-236 selbst und nicht hier: «a decorator remains available as
+an **implementation** pattern — a renderer wrapping another is still just a renderer — but it is no
+longer something a user configures.»*
+
+Der ursprüngliche Wortlaut:
+
+> **A decorator is a renderer, and one layer of decoration is allowed.** Raised by the owner as a *maybe*: the decorator pattern, and *I could allow a renderer combination — if I would like a colour renderer in addition here, just add it*.
+> ⚠️ **It breaks nothing**, which was his worry: a decorator **is** a renderer, so [D-217](#)'s *one node, one renderer* stands untouched — the chosen renderer simply wraps another.
+> And the concept already delegates in exactly this shape, as the owner noticed himself: the composite renderer and the table renderer set an outer form and hand each member down to the member's own renderer.
+> **The performance worry does not apply here:** what costs is queries, and decoration adds none — the data is fully loaded before the descent begins ([D-159](#)).
+> Building a string twice is nothing.
+> ⚠️ **The limit: one layer, not an arbitrary stack.** Stackable decorators are a small programming language living in the configuration — order, nesting, and failures nobody reads.
+> One layer covers every case named: a value with a colour dot, with a traffic light, with stars.

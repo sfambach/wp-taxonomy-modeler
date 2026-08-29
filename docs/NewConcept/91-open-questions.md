@@ -4143,7 +4143,27 @@ fetch ([D-159](90-decision-log.md) — a renderer reads no repository).*
 
 **Raised** 2026-08-27, by measurement, on picking up [row 5](97-implementation-plan.md#the-working-list).
 
-*Blocks:* [30 Renderer](30-renderer.md), list rows 5 and 8 · *Status:* open
+*Blocks:* **nichts mehr** · *Status:* **eingeschränkt 2026-08-29 →
+[D-501](90-decision-log.md): sie betrifft nur noch den Renderer und hält keine Zeile mehr auf**
+
+⚠️ **Der Eigentümer hat die Prämisse angegriffen — «wozu brauchen wir diese geordnete Liste?» —
+und das Durchgehen des Konzepts hat zwei der drei Fälle herausgenommen:**
+
+| Fall | braucht | Zuhause | Stand |
+|---|---|---|---|
+| **Validatoren** ([D-158](90-decision-log.md)) | mehrere, **keine Reihenfolge** — alle müssen laufen | `labels.path`, `owner_id` = die Kante, `path` = der Validator | **gebaut** |
+| **mehrere Defaults** ([D-030](90-decision-log.md)) | mehrere Zeilen, adressiert über den Index | `settings.path` | **gebaut**, 21 Zeilen in Benutzung |
+| **Renderer** ([D-236](90-decision-log.md)) | mehrere **in Reihenfolge** | — | **offen, und ohne Benutzer** |
+
+⚠️ **Und der eine verbleibende Fall hat keinen Benutzer, gemessen:** *`RenderResult::followedBy()`
+wird **ausschliesslich von seinem eigenen Test** aufgerufen; kein Produktionscode setzt zwei
+Renderer zusammen. **Es gibt keinen Renderer, der neben einen Wert gehört** — weder die Ampel aus
+[D-236](90-decision-log.md) noch der Barcode aus [D-332](90-decision-log.md) existiert.*
+
+⚠️ *Damit wird sie beantwortet, **wenn der erste zweite Renderer existiert**, und nicht vorher:
+eine Speicherfrage ohne Daten ist billiger richtig zu beantworten als eine mit.*
+
+*Der ursprüngliche Stand:* open
 
 ⚠️ **The blocker row 5 named is stale, and the real one is one level down.** *Row 5 said several
 renderers wait on `settings.path` — but `path` is **built** ([D-413](90-decision-log.md), schema 8), and

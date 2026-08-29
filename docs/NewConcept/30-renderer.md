@@ -3658,3 +3658,39 @@ wird über eine **Kante** adressiert — ein Test-Record für einen Datentyp hä
 für seinen Wert.*
 
 ---
+
+## Wozu die Renderer-Liste da ist — und wozu nicht — Stand 2026-08-29
+
+⚠️ **Der Eigentümer hat die Prämisse angegriffen** ([D-501](90-decision-log.md)): *«warum sollte es
+die geben? Ein Renderer startet, hat einen Knoten, der hat Felder, die zeigen wieder auf Knoten, der
+Knoten hat einen Renderer. Wozu brauchen wir diese geordnete Liste?»*
+
+**Seine Kette deckt genau das ab, wofür die Liste nicht da ist.** Die Hierarchie komponiert
+**Struktur**. Die Liste ist für **einen Wert, mehrfach gezeichnet** — [R15a](#r15a--the-renderer-list-is-a-third-axis-and-it-multiplies-nothing):
+*«a traffic light beside an integer is not a new integer renderer and not an option of the spinner —
+it is a second entry in the node's list».* Dort gibt es **einen** Knoten und **ein** Feld; die
+Hierarchie hat nichts zu komponieren.
+
+⚠️ **Trotzdem war die Frage berechtigt, und zwar für die anderen zwei Fälle.** *[OQ-109](91-open-questions.md)
+behandelte Renderer, Validatoren und mehrere Defaults als ein Problem. Sie sind drei:*
+
+| Fall | braucht | Zuhause |
+|---|---|---|
+| **Validatoren** ([D-158](90-decision-log.md)) | mehrere, **keine Reihenfolge** — alle müssen laufen | `labels.path`, **gebaut** |
+| **mehrere Defaults** ([D-030](90-decision-log.md)) | mehrere Zeilen über den Index | `settings.path`, **gebaut** |
+| **Renderer** ([D-236](90-decision-log.md)) | mehrere **in Reihenfolge** | offen |
+
+⚠️ **Und der verbleibende Fall hat keinen Benutzer, gemessen 2026-08-29:** *`RenderResult::followedBy()`
+wird **ausschliesslich von seinem eigenen Test** aufgerufen. **Es existiert kein Renderer, der neben
+einen Wert gehört** — weder die Ampel aus [D-236](90-decision-log.md) noch der Barcode aus
+[D-332](90-decision-log.md).*
+
+**Die Liste bleibt entschieden und wird gebaut, wenn ihr erster Benutzer existiert.** *Eine
+Speicherfrage ohne Daten ist billiger richtig zu beantworten als eine mit — und bis dahin hält sie
+keine Zeile mehr auf.*
+
+⚠️ *Aufgeräumt dabei: [D-224](92-veraltete-entscheidungen.md) trug **keinen** Überholt-Vermerk,
+obwohl [D-236](90-decision-log.md) seinen Dekorator als Konfigurationsbegriff ersetzt hat. Es las
+sich als gültig und liegt jetzt im Dachboden.*
+
+---
