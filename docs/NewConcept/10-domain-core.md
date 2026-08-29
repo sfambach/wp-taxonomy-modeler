@@ -4001,3 +4001,40 @@ das nicht fertig gerechnet werden kann, ist **keine Zahl**, sondern «nicht bere
 nicht geht.*
 
 ---
+
+## Es gibt nur noch Felder — Stand 2026-08-29
+
+⚠️ *Die besitzende Stelle ist
+[02 Field and setting](02-field-and-setting.md); hier steht nur, was den Domänenkern betrifft.*
+
+[D-505](90-decision-log.md), auf sein Wort: *«wir unterscheiden jetzt eigentlich nur noch anhand
+eines Merkmals, ist es eine Einstellung oder ist es ein Feld. **Somit ist im Grunde alles ein Feld**,
+und wir haben nur noch: die Einstellung kann in der Kante überschrieben werden.»*
+
+**Das ist das Ende des Settings-Konzepts als zweiter Mechanismus.** Kein zweiter Schlüsselraum, kein
+zweiter Speicher, keine zweite Vererbungsregel.
+
+### Das Merkmal hat drei Stufen, und sie decken alles ab
+
+| Stufe | Beispiel | heute ein Sonderfall namens |
+|---|---|---|
+| nur am Knoten | `factor`, `offset` | — |
+| am Knoten, **überschreibbar an der Kante** | `min`, `default`, `renderer` | «Setting» |
+| **nur** an der Kante | `multiplicity` | `SettingKey::isEdgeOnly()` |
+
+### Vererbung statt Kopie
+
+⚠️ **Gemessen, was die Kopie kostet: von 326 Settings-Zeilen sind 191 reine Kopien des
+Elternwerts.** *Nach [D-266](90-decision-log.md)s eigener Regel — «ein Schlüssel, der da ist, hält
+Änderungen von oben ab» — behaupten diese 191 Zeilen eine Entscheidung, die niemand getroffen hat.
+**Mit der Vererbung verschwinden sie, und D-266 bekommt seinen Träger zurück.***
+
+⚠️ **Was dafür fällt, und es ist benannt statt entdeckt:** *[D-423](90-decision-log.md)s
+Materialisierung und mit ihr das **Nachfragen beim Ändern**, das der Eigentümer damals wollte. Eine
+Änderung oben erreicht jetzt jeden darunter, es sei denn, jemand hat unten etwas gesagt.*
+
+⚠️ *Und [D-364](90-decision-log.md)s Test überlebt als **Kriterium**, nicht als Trennung: «does a
+record answer it?» sagt weiterhin, ob etwas zur **Modellzeit** oder zur **Benutzungszeit** entsteht —
+nur ist die Antwort nicht mehr «zwei Mechanismen», sondern «ein Merkmal».*
+
+---
