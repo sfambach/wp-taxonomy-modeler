@@ -1119,6 +1119,55 @@ final class ModelEditor
      * declared it, so renaming it from a descendant would rename it for every other user too —
      * silently. {@see ownAttribute()} refuses that, which is the same guard removal uses.
      */
+    /**
+     * Ein Feld auf ein anderes Ziel zeigen lassen — **ohne seine Werte zu verlieren**.
+     *
+     * ⚠️ **Es gab das nicht, und der Fall, der es verlangt, ist seiner:** *«ich möchte dennoch
+     * exponent als Setting umwandeln.»* Dafür muss `Prefixes.exponent` von `Integer` auf einen
+     * spezialisierten Typ zeigen — und **an der Kanten-Id hängen 20 gespeicherte Exponenten**
+     * (`settings.path = 4654`). Entfernen und neu anlegen gäbe eine neue Id und liesse sie hinter
+     * sich.
+     *
+     * ⚠️ *Dieselben Wächter wie beim Anlegen ({@see addField()}): das Ziel muss in einem Zweig
+     * liegen, darf keine Zweigwurzel und nicht im Müll sein. **Und die Art wird neu abgelesen**, weil
+     * der Zweig sie bestimmt ([D-497](../../../docs/NewConcept/90-decision-log.md)) — ein Ziel in
+     * einem anderen Zweig macht aus einer Aggregation eine Komposition.*
+     */
+    public function retargetField(int $ownerId, int $edgeId, int $targetId): Relation
+    {
+        $edge   = $this->ownAttribute($ownerId, $edgeId);
+        $target = $this->nodes->byId($targetId);
+
+        $branch = $this->framework->branchOf($target)
+            ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
+
+        if ($target->id === $this->framework->rootOf($branch)->id) {
+            throw NotAPossibleTarget::itIsABranchRoot($target->name);
+        }
+
+        if ($target->isDescendantOf($this->framework->trash())) {
+            throw NotAPossibleTarget::itIsInTheTrash($target->name);
+        }
+
+        $moved = $edge->retargetedTo($targetId, $branch->relationKind());
+
+        if ($moved === $edge) {
+            return $edge;
+        }
+
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            'field retargeted',
+            $this->edgeState($edge),
+            $this->edgeState($moved)
+        );
+
+        $this->relations->save($moved, $edge->version);
+
+        return $moved;
+    }
+
     public function renameField(int $ownerId, int $edgeId, string $name): Relation
     {
         $edge    = $this->ownAttribute($ownerId, $edgeId);

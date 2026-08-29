@@ -201,6 +201,33 @@ final class Relation extends Identity implements Renderable
      * «edge and node both having an attribute `hide`» ([D-457](../../../docs/NewConcept/90-decision-log.md)).
      * A node hides itself; a **placement** hides what hangs there.*
      */
+    /**
+     * Dieselbe Kante auf ein anderes Ziel, eine Fassung weiter.
+     *
+     * ⚠️ **Die Id bleibt, und das ist der ganze Zweck.** *An ihr hängen die Werte: gemessen tragen
+     * **20 Setting-Zeilen** `path = 4654` — die Exponenten aller Präfixe. Löschen und neu anlegen
+     * gäbe eine neue Id und liesse sie verwaist zurück. **Ein Feld umzuhängen ist keine Neuanlage,
+     * sondern eine Änderung** ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function retargetedTo(int $targetId, RelationKind $kind): self
+    {
+        if ($targetId === $this->toId && $kind === $this->kind) {
+            return $this;
+        }
+
+        return new self(
+            $this->id,
+            $this->version + 1,
+            $this->fromId,
+            $targetId,
+            $kind,
+            $this->name,
+            $this->position,
+            $this->parkedByGroup,
+            $this->hide
+        );
+    }
+
     public function withHide(bool $hide): self
     {
         if ($hide === $this->hide) {
