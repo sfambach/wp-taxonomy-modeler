@@ -940,3 +940,36 @@ die Kante, an der [D-504](90-decision-log.md) sie erkennen wollte. Siehe
 die Wurzelfelder jetzt heraus — **das ist ein Abzug, kein Ersatz für die Angabe**.*
 
 ---
+
+### Eine Angabe wird ein Kindknoten ihres Typs — Stand 2026-08-29
+
+[D-516](90-decision-log.md), seine Idee, gemessen bestätigt:
+
+```text
+Data Types › Integer
+├── min   ← Spezialisierung, löst zu int auf
+└── max   ← Spezialisierung, löst zu int auf
+
+Integer.min → Integer › min      (Typ = int)
+Integer.max → Integer › max      (Typ = int)
+```
+
+⚠️ **Warum das den erfundenen Typ ersetzt:** *`Rendering::typeOf()` läuft die Vorfahren hoch, also
+**erbt eine Spezialisierung den Typ ihres Elternknotens**. `Integer › min` löst zu `int` auf; ein
+Knoten `Same as owner` direkt unter `Data Types` löst zu **nichts** auf, weil kein Vorfahre ein Typ
+ist. **Keine Zeile neuen Code gegen eine Auflösung, die es nicht gibt.***
+
+⚠️ *Und es gilt allgemein: `Decimal › min` wäre decimal, `Text › default` wäre text. **Der Satz «ein
+Standardwert für einen Text ist ein Text» fällt aus der Vererbung heraus**, statt als Regel irgendwo
+zu stehen.*
+
+⚠️ **Ein eigener Knoten je Angabe ist auch, was eine Markierung am Knoten möglich macht.** *Die
+Kollision, die dagegen sprach — `Integer` ist Ziel von Autoren- **und** Benutzerdaten — trifft
+`Integer › min` nicht, weil das ein anderer Knoten ist.*
+
+⚠️ *Der Selbstbezug bleibt: **`Integer › min` erbt `min` mit sich selbst als Ziel** — dieselbe Form
+wie bei `DisplayOption`. Die Bedingung «das Ziel liegt unter dem Besitzer» ist bei `addField()`
+prüfbar, **aber als Verbot unbrauchbar**: alles liegt unter der Wurzel. Siehe
+[OQ-133](91-open-questions.md).*
+
+---
