@@ -4967,3 +4967,88 @@ Er: *«da versteh ich den Unterschied noch nicht. Das sieht mir erst mal gleich 
 | **die Prüfbarkeit** | *ohne Protokoll ist «ein unverändertes Label schreibt nichts» **nicht am Changelog messbar**. Der Grenz-Check zählt deshalb **Schreibabfragen** in einem Kindprozess mit `SAVEQUERIES` — 1 beim geänderten Text, 0 beim unveränderten. **Das ist eine Umgehung, und sie steht hier, damit sie nicht als Entwurf gelesen wird.*** |
 
 ⚠️ *Wenn Labels protokolliert werden sollen, ist die einfache Frage, **was in `before`/`after` steht** — Rolle, Locale und Text sind drei Angaben, und [D-473](90-decision-log.md)/[Zeile 47](97-implementation-plan.md#the-working-list) verlangen für Settings ohnehin, dass ein Eintrag **die Adresse mitträgt**. Dieselbe Arbeit, dieselbe Form.*
+
+## OQ-127 · Ist ein Feld ohne eigene Angabe wirklich Pflicht?
+
+**Raised** 2026-08-29, beim Bau von [Zeile 31](97-implementation-plan.md#the-working-list) — durch
+Messung, nicht durch eine Frage.
+
+*Blocks:* [02 Field and setting](02-field-and-setting.md) · [30 Renderer](30-renderer.md) ·
+*Status:* **offen — und sie blockiert [Zeile 31](97-implementation-plan.md#the-working-list) ganz,
+weil beide Antworten billig zu bauen sind und sich um 25 Felder unterscheiden**
+
+[D-405](90-decision-log.md) sagt: *«eine Untergrenze von eins **ist** Pflicht»*, und
+[D-351](90-decision-log.md) gibt vier Konstanten. Was **keine** Entscheidung sagt, ist, welche
+davon gilt, wenn niemand eine gewählt hat. Im Code ist es `Multiplicity::standard()` und das
+ist `ExactlyOne` — **also Pflicht**.
+
+⚠️ **Gemessen, was das heisst:**
+
+| | |
+|---|---|
+| Feldkanten insgesamt | **34** |
+| mit eigener `multiplicity` | 9 — davon **6** mit Untergrenze eins, **3** ausdrücklich frei |
+| ohne jede Angabe | **25** |
+| bekämen `required` | **31 von 34**, davon **25 allein durch die Vorgabe** |
+
+⚠️ **Und der Schirm sagt es heute nicht.** *`FieldRowRenderer::multiplicity()` zeichnet für ein
+Feld ohne eigene Angabe einen **Gedankenstrich** — «nichts ist nichts». Diese 25 Felder sehen
+also aus wie «keine Angabe» und wären ab dem ersten `required` gesperrt. **`required` im Browser
+verhindert das Absenden**, das ist keine Verzierung.*
+
+⚠️ *Deshalb nicht gebaut und nicht geraten: **beide Antworten sind billig zu bauen und sie
+unterscheiden sich um 25 Felder.** Eine falsch geratene Vorgabe merkt man erst, wenn ein
+Formular sich nicht mehr speichern lässt.*
+
+**Die Frage in einem Satz:** *soll ein Feld, an dem niemand etwas gesagt hat, `1..1` (Pflicht)
+oder `0..1` (frei) sein?*
+
+⚠️ *Eine dritte Möglichkeit gibt es auch: die Vorgabe bleibt `1..1`, aber die 25 stummen Felder
+bekommen ihre Angabe **einmalig ausdrücklich geschrieben**, damit «Pflicht» überall dort steht,
+wo sie gilt, statt aus einer Zeile Code zu folgen. Das ist ein Schemaschritt und nach
+[D-476](90-decision-log.md) sagbar — er weiss genau, was er ändert.*
+
+⚠️ *Was ohne die Antwort **nicht** entschieden werden muss: eine Meldung **direkt am Feld**
+wartet ohnehin auf die Nachrichtenform aus [D-158](90-decision-log.md)
+([Zeile 8](97-implementation-plan.md#the-working-list)). Der Rand kann heute nur eine Meldung
+für die ganze Seite zeigen — `NodesScreen::notice()`, gespeist aus dem gefangenen `DomainError`.*
+
+## OQ-128 · Lässt sich ein endgültig gelöschter Knoten aus dem Changelog zurückbauen?
+
+**Raised** 2026-08-29, beim Bau von [Zeile 73](97-implementation-plan.md#the-working-list) —
+[D-494](90-decision-log.md) nennt diese Frage.
+
+*Blocks:* [20 Interaction](20-interaction.md) · *Status:* **offen — die andere Hälfte von
+[Zeile 73](97-implementation-plan.md#the-working-list) ist gebaut, und die Seite sagt hin, dass
+dieser Weg nicht angeboten wird**
+
+Der Eigentümer wollte auf der Cleanup-Seite **zwei** Wege: *«entweder Daten löschen oder Knoten
+wiederherstellen»*. Gebaut ist einer.
+
+⚠️ **Der Grund ist nicht Aufwand, sondern dass die zweite Wahl in diesem Fall gar nicht
+auftreten kann, wie sie gedacht war.** *Ein **geparkter** Knoten steht noch in `nodes` — seine
+Datensätze sind dann kein Rückstand, und das Zurückholen ist der vorhandene `restore()`. Wer in
+dieser Liste auftaucht, hat **keine Zeile in `nodes` mehr**: er ist endgültig weg.*
+
+**Die Frage in einem Satz:** *kann aus dem Changelog ein Knoten zurückgebaut werden, und soll er
+das?*
+
+⚠️ *Die Bausteine liegen da, und das ist der verführerische Teil:*
+
+| | |
+|---|---|
+| die Geschichte überlebt den Knoten | [D-065](90-decision-log.md) |
+| die Identität wird nie neu vergeben | [D-340](90-decision-log.md) |
+| der Name stand in der `created`-Zeile | |
+| der Pfad stand in der `parked`-Zeile | |
+
+⚠️ **Und trotzdem ist es nicht dasselbe wie «es geht».** *Niemand hat je etwas aus dem Changelog
+zurückgebaut — es gibt keinen Abspieler ([Zeile 47](97-implementation-plan.md#the-working-list)
+macht die Einträge abspielbar, sie baut keinen). Und die 5 773 Setting-Zeilen von vor
+[D-492](90-decision-log.md) tragen **keinen Pfad**; was an so einem Knoten gesetzt war, ist aus
+ihnen nicht wiederherstellbar. **Ein Knoten mit Namen, aber ohne seine Settings ist nicht der
+Knoten, den die Daten meinten** — und dann bedeuten die Werte immer noch nichts, was genau der
+Zustand ist, den [D-485](90-decision-log.md) verbietet.*
+
+⚠️ *Deshalb sagt die Seite es hin: «Bringing the node back is not offered: it is gone for good,
+not parked.» **Ein Schirm, der eine verlangte Wahl verschweigt, sieht fertig aus.***

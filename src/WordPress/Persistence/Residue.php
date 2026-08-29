@@ -6,16 +6,23 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\LabelRepository;
+use Taxmod\Core\Repository\RecordRepository;
 use Taxmod\Core\Repository\SettingRepository;
 
 /**
  * What deliberate non-tidying left behind — **measured in one place, removed in the same place**.
  *
- * [D-247](../../../docs/NewConcept/90-decision-log.md) names three sources and no more:
+ * [D-247](../../../docs/NewConcept/90-decision-log.md) names three sources:
  * [D-156](../../../docs/NewConcept/90-decision-log.md)'s **orphaned overrides**,
  * [D-159](../../../docs/NewConcept/90-decision-log.md)'s **values whose edge is gone**, and **nodes
  * with no connections any more**. *Each of the three was decided as «leave it alone rather than tidy
  * it silently», which is right at the moment of the change and leaves residue over years.*
+ *
+ * ⚠️ **Eine vierte kam 2026-08-28 vom Eigentümer dazu** — {@see self::recordsWithoutNode()}: *ein
+ * Datensatz, dessen Knoten es nicht mehr gibt.* **Sie ist nicht «auch noch so ein Fall», sondern
+ * die einzige, die einen ausdrücklich verbotenen Zustand misst:** *«ein Record ohne Knoten darf es
+ * nicht geben.» Ein Verbot beseitigt keinen Rückstand, und ohne diese Messung wäre es ein Satz
+ * ohne Prüfung.*
  *
  * ```mermaid
  * flowchart LR
@@ -62,6 +69,9 @@ final class Residue
         private readonly SettingRepository $settings,
         private readonly LabelRepository $labels,
         private readonly Changelog $changelog,
+        // ⚠️ *Optional, damit die vorhandene Verdrahtung weiterläuft — ohne ihn meldet die
+        // vierte Quelle nichts, statt zu behaupten, es gebe nichts.*
+        private readonly ?RecordRepository $records = null,
     ) {
     }
 
@@ -255,6 +265,83 @@ final class Residue
         return $gone;
     }
 
+    /**
+     * Datensätze, deren Knoten es nicht mehr gibt — die **vierte** Quelle.
+     *
+     * ⚠️ **Der Eigentümer hat sie benannt und zugleich verboten** (2026-08-28): *«ein Record ohne
+     * Knoten wäre undenkbar … sonst weiss man ja auch gar nicht, wie dieser Record interpretiert
+     * werden soll. Wir haben ein einziges Datum, einen Text oder eine Zahl — was soll ich denn damit
+     * machen?»* **Ein Verbot beseitigt keinen Rückstand**, und darum steht die Messung hier.
+     *
+     * ⚠️ *Über die Anwendung entsteht der Fall seit
+     * [D-485](../../../docs/NewConcept/90-decision-log.md) nicht mehr neu — `clearTrash()` nimmt die
+     * Datensätze eines Knotens mit. Was bleibt, ist das, was vorher liegen blieb.*
+     *
+     * ⚠️ **Gruppiert nach dem verschwundenen Knoten und nicht nach dem Datensatz**, wie die drei
+     * anderen Quellen nach ihrem Eigentümer gruppieren — *und weil das Entfernen ohnehin
+     * {@see RecordRepository::forgetNodes()} ist, dieselbe Methode, die `clearTrash()` benutzt. Eine
+     * zweite Löschung daneben wäre die dritte Kopie derselben Regel.*
+     *
+     * @return array<int,array{records:int,values:int}> Knoten-Id ⇒ was noch an ihr hängt
+     */
+    public function recordsWithoutNode(): array
+    {
+        $rows = $this->rows(
+            'SELECT r.node_id AS owner,
+                    COUNT(DISTINCT r.id) AS records_held,
+                    COUNT(v.record_id)   AS values_held
+               FROM ' . Schema::table('records') . ' r
+               LEFT JOIN ' . Schema::table('record_values') . ' v ON v.record_id = r.id
+              WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = r.node_id)
+           GROUP BY r.node_id
+           ORDER BY r.node_id ASC'
+        );
+
+        $held = [];
+
+        foreach ($rows as $row) {
+            $held[(int) $row->owner] = [
+                'records' => (int) $row->records_held,
+                'values'  => (int) $row->values_held,
+            ];
+        }
+
+        return $held;
+    }
+
+    /**
+     * Die Datensätze eines verschwundenen Knotens entfernen, und sagen wie viel ging.
+     *
+     * ⚠️ **Der Eigentümer wollte zwei Wege — «entweder Daten löschen oder Knoten wiederherstellen».
+     * Gebaut ist einer, und der andere ist nicht vergessen, sondern unentschieden**
+     * ([OQ-128](../../../docs/NewConcept/91-open-questions.md)): *ein **geparkter** Knoten steht noch
+     * in `nodes`, seine Datensätze sind also gar kein Rückstand. Wer hier auftaucht, ist **endgültig
+     * weg** — zurückzuholen wäre er nur aus dem Changelog, und ob das geht, hat niemand entschieden.*
+     *
+     * @return array{records:int,values:int}|null Null, wenn dieser Knoten kein solcher Fall ist —
+     *         **was nicht dasselbe ist wie «er hatte nichts»**, genau wie bei
+     *         {@see self::purgeNodeWithoutConnections()}.
+     */
+    public function forgetRecordsOfGoneNode(int $nodeId): ?array
+    {
+        if ($this->records === null || ! array_key_exists($nodeId, $this->recordsWithoutNode())) {
+            return null;
+        }
+
+        $gone = $this->records->forgetNodes([$nodeId]);
+
+        // ⚠️ *`node` und nicht {@see self::KIND_GONE}: die Id kam aus `records.node_id`, es ist also
+        // bekannt, **was** sie war — nur die Zeile, die sie nannte, gibt es nicht mehr.*
+        $this->changelog->record(
+            $nodeId,
+            'node',
+            'records removed',
+            sprintf('%d records, %d values', $gone['records'], $gone['values']),
+            null
+        );
+
+        return $gone;
+    }
     /**
      * Owners a table names that are neither a node, nor an edge, nor the installation.
      *

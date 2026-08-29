@@ -63,6 +63,7 @@ final class CleanupScreen
     private const FORGET_SETTINGS = 'forget_settings';
     private const FORGET_VALUES   = 'forget_values';
     private const PURGE_NODE      = 'purge_node';
+    private const FORGET_RECORDS  = 'forget_records';
 
     public function __construct(
         private readonly Residue $residue,
@@ -89,6 +90,7 @@ final class CleanupScreen
                 $this->orphanedSettings(),
                 $this->valuesWithoutEdge(),
                 $this->nodesWithoutConnections(),
+                $this->recordsWithoutNode(),
             ])
             . '</div>';
     }
@@ -176,6 +178,48 @@ final class CleanupScreen
         );
     }
 
+    /**
+     * Die vierte Quelle: ein Datensatz, dessen Knoten es nicht mehr gibt.
+     *
+     * ⚠️ **Der Eigentümer wollte hier zwei Knöpfe** — *«entweder Daten löschen oder Knoten
+     * wiederherstellen»* — **und es steht einer da.** *Der zweite ist nicht vergessen: wer hier
+     * auftaucht, ist **endgültig** gelöscht, denn ein geparkter Knoten steht noch in `nodes` und seine
+     * Datensätze sind dann gar kein Rückstand. Zurückholen ginge nur aus dem Changelog, und ob das
+     * geht, ist [OQ-128](../../../docs/NewConcept/91-open-questions.md).*
+     *
+     * ⚠️ *Darum sagt die Beschreibung, was **nicht** angeboten wird. Ein Schirm, der eine Wahl
+     * verschweigt, die der Eigentümer verlangt hat, sieht fertig aus.*
+     */
+    private function recordsWithoutNode(): ResidueGroup
+    {
+        $entries = [];
+
+        foreach ($this->residue->recordsWithoutNode() as $node => $held) {
+            $entries[] = new ResidueEntry(
+                sprintf(
+                    /* translators: 1: node id, 2: how many records, 3: how many values in them. */
+                    _n(
+                        'Node %1$d is gone and %2$d record with %3$d values still names it.',
+                        'Node %1$d is gone and %2$d records with %3$d values still name it.',
+                        $held['records'],
+                        'taxmod'
+                    ),
+                    $node,
+                    $held['records'],
+                    $held['values']
+                ),
+                $this->act(self::FORGET_RECORDS, __('Remove this data for good — the node cannot be brought back', 'taxmod')),
+                $this->submits(self::FORGET_RECORDS, $node)
+            );
+        }
+
+        return new ResidueGroup(
+            __('Data whose node is gone', 'taxmod'),
+            __('A record says which node it is a record of, and that node no longer exists — so nothing can say what the values in it mean. This must not happen and is forbidden; what is listed here is what was left behind before the rule was enforced. Bringing the node back is not offered: it is gone for good, not parked.', 'taxmod'),
+            __('Nothing to tidy up here.', 'taxmod'),
+            $entries
+        );
+    }
     /**
      * ⚠️ **The name is shown beside the id and never instead of it.** *A node's name is deliberately
      * not unique ([D-022](../../../docs/NewConcept/90-decision-log.md)), so a page that offers to
@@ -282,6 +326,7 @@ final class CleanupScreen
             self::FORGET_SETTINGS => $this->removed($this->residue->forgetOrphanedSettings($target)),
             self::FORGET_VALUES   => $this->removed($this->residue->forgetValuesOfEdge($target)),
             self::PURGE_NODE      => $this->purged($target),
+            self::FORGET_RECORDS  => $this->forgotRecords($target),
             default              => __('That is not something this page can do.', 'taxmod'),
         };
     }
@@ -317,6 +362,26 @@ final class CleanupScreen
         );
     }
 
+    /**
+     * ⚠️ *Getrennt von {@see self::removed()}, weil hier **zwei** Zahlen berichtet werden — und
+     * getrennt von {@see self::purged()}, weil dort ein Knoten verschwindet und hier keiner mehr da
+     * war, der verschwinden könnte.*
+     */
+    private function forgotRecords(int $nodeId): string
+    {
+        $gone = $this->residue->forgetRecordsOfGoneNode($nodeId);
+
+        if ($gone === null) {
+            return __('That node still exists, so its data is not left over and nothing was removed.', 'taxmod');
+        }
+
+        return sprintf(
+            /* translators: 1: how many records, 2: how many values. */
+            __('%1$d records with %2$d values removed for good. The node was already gone; its changelog entries stay.', 'taxmod'),
+            $gone['records'],
+            $gone['values']
+        );
+    }
     private function notice(): string
     {
         if (! isset($_GET['taxmod_message'])) {

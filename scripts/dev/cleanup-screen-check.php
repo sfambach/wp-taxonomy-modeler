@@ -52,7 +52,7 @@ $editor   = new ModelEditor($nodes, $edges, $ids, $fw, $log);
 $data     = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $fw, new SystemClock());
 $settings = new WpdbSettingRepository();
 
-$residue = new Residue($fw, $settings, new WpdbLabelRepository(), $log);
+$residue = new Residue($fw, $settings, new WpdbLabelRepository(), $log, new WpdbRecordRepository());
 
 $failed = 0;
 
@@ -83,8 +83,15 @@ $roh = static function (string $sql) use ($wpdb): void {
 $vorherWerte  = array_sum($residue->valuesWithoutEdge());
 $vorherWaisen = array_sum($residue->orphanedSettings());
 $vorherAllein = count($residue->nodesWithoutConnections());
+$vorherDaten  = count($residue->recordsWithoutNode());
 
-printf("\nvorhanden vor dem Lauf: %d Werte ohne Kante, %d verwaiste Settings, %d Knoten ohne Verbindung\n", $vorherWerte, $vorherWaisen, $vorherAllein);
+printf(
+    "\nvorhanden vor dem Lauf: %d Werte ohne Kante, %d verwaiste Settings, %d Knoten ohne Verbindung, %d Knoten mit zurueckgelassenen Daten\n",
+    $vorherWerte,
+    $vorherWaisen,
+    $vorherAllein,
+    $vorherDaten
+);
 
 // ── Die Wiese: dreimal Rückstand, jede Quelle auf ihrem eigenen Weg ────────
 $modell = $editor->createNode('__cl Modell', $fw->rootOf(Branch::Model)->id);
@@ -107,6 +114,21 @@ $allein = $editor->createNode('__cl Alleinstehend', $fw->rootOf(Branch::Model)->
 $settings->put(new SettingRecord($allein->id, 'hide', TypedValue::ofText('no')));
 $roh("DELETE FROM {$p}relations WHERE to_id = {$allein->id} OR from_id = {$allein->id}");
 
+// ⚠️ *Quelle 4: ein Datensatz, dessen **Knoten** verschwindet. Seine Settings gehen mit, damit
+// diese Wiese **nur** die vierte Quelle füttert und nicht nebenbei die erste — sonst misst der
+// Vergleich «der fremde Rückstand ist unverändert» am Ende die eigene Unordnung mit.*
+$leiche     = $editor->createNode('__cl Datenleiche', $fw->rootOf(Branch::Model)->id);
+$leichfeld  = $editor->addField($leiche->id, $typ->id, '__cl zahl');
+$leichsatz  = $data->create($leiche->id);
+$data->put($leichsatz->id, $leichfeld->id, TypedValue::ofText('__cl ohne Knoten'));
+$leichkanten = array_map('intval', $wpdb->get_col(
+    "SELECT id FROM {$p}relations WHERE from_id = {$leiche->id} OR to_id = {$leiche->id}"
+));
+$leichbesitz = implode(',', array_merge([$leiche->id], $leichkanten));
+$roh("DELETE FROM {$p}settings WHERE owner_id IN ({$leichbesitz})");
+$roh("DELETE FROM {$p}relations WHERE from_id = {$leiche->id} OR to_id = {$leiche->id}");
+$roh("DELETE FROM {$p}nodes WHERE id = {$leiche->id}");
+
 echo "\n== 1. gemessen: alle drei Quellen sehen ihren eigenen Rückstand ==\n";
 
 $werte  = $residue->valuesWithoutEdge();
@@ -117,11 +139,25 @@ $say(array_key_exists($feld->id, $werte), sprintf('der Wert an der verschwundene
 $say(array_key_exists($verwaist->id, $waisen), sprintf('der Override des verschwundenen Besitzers %d liegt da', $verwaist->id));
 $say(in_array($allein->id, $einzel, true), sprintf('der Knoten %d hängt an nichts mehr', $allein->id));
 
+// ⚠️ **Die vierte Quelle misst einen ausdrücklich verbotenen Zustand** — der Eigentümer, 2026-08-28:
+// *«ein Record ohne Knoten wäre undenkbar … was soll ich denn damit machen?»* Ein Verbot beseitigt
+// keinen Rückstand, und ohne diese Messung wäre der Satz eine Behauptung ohne Prüfung.
+$daten = $residue->recordsWithoutNode();
+$say(
+    array_key_exists($leiche->id, $daten),
+    sprintf('der Datensatz zum verschwundenen Knoten %d liegt da', $leiche->id)
+);
+$say(
+    ($daten[$leiche->id]['records'] ?? 0) === 1 && ($daten[$leiche->id]['values'] ?? 0) === 1,
+    sprintf('mit einem Datensatz und einem Wert gezaehlt (%s)', json_encode($daten[$leiche->id] ?? []))
+);
+
 // ⚠️ *Die Gegenprobe. `__cl Modell` steht im Baum und hat ein Setting — er darf in keiner der drei
 // Listen auftauchen, sonst misst die Abfrage nicht, was sie behauptet.*
 $say(! in_array($modell->id, $einzel, true), 'der Knoten, der im Baum hängt, ist kein Rückstand');
 $say(! array_key_exists($modell->id, $waisen), 'ein Setting mit lebendem Besitzer ist kein Waise');
 $say(! array_key_exists($fw->installationId(), $waisen), 'die Installationsidentitaet ist kein Waise (D-079)');
+$say(! array_key_exists($modell->id, $daten), 'die Daten eines lebenden Knotens sind kein Rückstand');
 
 echo "\n== 2. die Seite zeigt genau das, mit einem Knopf je Zeile ==\n";
 
@@ -138,7 +174,12 @@ $say(str_contains($markup, 'value="' . $allein->id . '"'), 'der alleinstehende K
 $say(str_contains($markup, 'value="forget_settings"'), 'ein Knopf für die Overrides');
 $say(str_contains($markup, 'value="forget_values"'), 'ein Knopf für die Werte');
 $say(str_contains($markup, 'value="purge_node"'), 'ein Knopf für den Knoten');
-$say(substr_count($markup, 'name="_taxmod_nonce"') >= 3, sprintf('jede Zeile trägt ihre eigene Nonce (%d gefunden)', substr_count($markup, 'name="_taxmod_nonce"')));
+$say(str_contains($markup, 'value="forget_records"'), 'ein Knopf für die Daten ohne Knoten');
+$say(
+    str_contains($markup, 'value="' . $leiche->id . '"'),
+    'der verschwundene Knoten steht mit seiner Id auf der Seite'
+);
+$say(substr_count($markup, 'name="_taxmod_nonce"') >= 4, sprintf('jede Zeile trägt ihre eigene Nonce (%d gefunden)', substr_count($markup, 'name="_taxmod_nonce"')));
 // ⚠️ **Und nichts sonst.** *Die Log-Aufräumung ist inzwischen entschieden
 // ([D-473](../../docs/NewConcept/90-decision-log.md)) — **und sie hat ein Tor, das es noch nicht gibt**:
 // «keine unaufgelösten Konflikte aus diesem Zeitraum», gemessen am Konfliktlöser, der eine eigene Seite
@@ -151,7 +192,10 @@ preg_match_all('/name="do" value="([a-z_]+)"/', $markup, $akte);
 $angeboten = array_values(array_unique($akte[1]));
 sort($angeboten);
 
-$say($angeboten === ['forget_settings', 'forget_values', 'purge_node'], 'genau drei Akte, kein vierter für das Log (' . implode(', ', $angeboten) . ')');
+$say(
+    $angeboten === ['forget_records', 'forget_settings', 'forget_values', 'purge_node'],
+    'genau vier Akte, kein fünfter für das Log (' . implode(', ', $angeboten) . ')'
+);
 
 // ⚠️ **Die Nonce der Seite muss die sein, die `handlePost()` verlangt.** *`handlePost()` selbst laesst
 // sich hier nicht aufrufen — es endet in `wp_safe_redirect()` und `exit`. **Was daran schiefgehen kann,
@@ -178,14 +222,20 @@ if ($wpdb->last_error !== '') {
 $goneWerte  = $residue->forgetValuesOfEdge($feld->id);
 $goneWaisen = $residue->forgetOrphanedSettings($verwaist->id);
 $goneKnoten = $residue->purgeNodeWithoutConnections($allein->id);
+$goneDaten  = $residue->forgetRecordsOfGoneNode($leiche->id);
 
 $say($goneWerte === 1, sprintf('ein Wert entfernt (%d)', $goneWerte));
 $say($goneWaisen === 1, sprintf('ein Override entfernt (%d)', $goneWaisen));
 $say($goneKnoten !== null && $goneKnoten['settings'] === 1, sprintf('der Knoten ging mit seinem Setting (%s)', json_encode($goneKnoten)));
 
+$say(
+    $goneDaten !== null && $goneDaten['records'] === 1 && $goneDaten['values'] === 1,
+    sprintf('der Datensatz ohne Knoten ging mit seinem Wert (%s)', json_encode($goneDaten))
+);
+
 $neu = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}changelog WHERE id > {$marke}");
 
-$say($neu >= 3, sprintf('drei Akte, drei Zeilen im Log — die Geschichte bleibt (%d)', $neu));
+$say($neu >= 4, sprintf('vier Akte, vier Zeilen im Log — die Geschichte bleibt (%d)', $neu));
 
 echo "\n== 4. danach ist es weg, und was nie Rückstand war, ist unberührt ==\n";
 
@@ -193,18 +243,28 @@ $say(! array_key_exists($feld->id, $residue->valuesWithoutEdge()), 'der Wert ist
 $say(! array_key_exists($verwaist->id, $residue->orphanedSettings()), 'der Override ist weg');
 $say(! in_array($allein->id, array_map(static fn (object $n): int => $n->id, $residue->nodesWithoutConnections()), true), 'der Knoten ist weg');
 $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$allein->id}") === 0, 'seine Zeile in nodes auch');
+$say(! array_key_exists($leiche->id, $residue->recordsWithoutNode()), 'die Daten ohne Knoten sind weg');
+$say(
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}record_values WHERE record_id = {$leichsatz->id}") === 0,
+    'und ihre Werte mit ihnen — kein Wert ohne Datensatz zurückgelassen'
+);
 
 // ⚠️ **Der Rückstand des Eigentümers muss noch genauso daliegen.** *Eine Reparaturfläche, die beim
 // Aufräumen der eigenen Wiese fremde Zeilen mitnimmt, wäre genau das automatische Aufräumen, das
 // [D-247](../../docs/NewConcept/90-decision-log.md) verbietet.*
 $say(array_sum($residue->valuesWithoutEdge()) === $vorherWerte, sprintf('die %d vorher vorhandenen Werte ohne Kante liegen unberührt da', $vorherWerte));
 $say(array_sum($residue->orphanedSettings()) === $vorherWaisen, 'und die verwaisten Settings von vorher ebenso');
+$say(
+    count($residue->recordsWithoutNode()) === $vorherDaten,
+    sprintf('und die %d fremden Datenleichen liegen noch', $vorherDaten)
+);
 
 echo "\n== 5. der Wächter: eine Id, die kein Rückstand ist, wird nicht entfernt ==\n";
 
 $say($residue->forgetOrphanedSettings($modell->id) === 0, 'ein Setting mit lebendem Besitzer bleibt stehen');
 $say($residue->forgetValuesOfEdge($modell->id) === 0, 'eine Id, die keine verschwundene Kante ist, entfernt nichts');
 $say($residue->purgeNodeWithoutConnections($modell->id) === null, 'ein Knoten im Baum wird nicht entfernt — und es wird nicht als Akt gemeldet');
+$say($residue->forgetRecordsOfGoneNode($modell->id) === null, 'die Daten eines lebenden Knotens werden nicht entfernt');
 $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$modell->id}") === 1, 'er steht noch');
 
 // aufraeumen
@@ -229,7 +289,7 @@ foreach ([$modell->id, $typ->id] as $id) {
 }
 
 // die Log-Zeilen der drei entfernten Sachen — sie gehören zur Wiese und nicht zur Geschichte
-foreach ([$feld->id, $verwaist->id, $allein->id] as $id) {
+foreach ([$feld->id, $verwaist->id, $allein->id, $leiche->id, $leichfeld->id] as $id) {
     $roh("DELETE FROM {$p}changelog WHERE owner_id = {$id}");
     $roh("DELETE FROM {$p}settings WHERE owner_id = {$id}");
 }

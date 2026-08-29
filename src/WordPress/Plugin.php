@@ -280,7 +280,10 @@ final class Plugin
                 $this->frameworkNodes(),
                 new WpdbSettingRepository(),
                 new WpdbLabelRepository(),
-                $this->changelog()
+                $this->changelog(),
+                // ⚠️ *Die vierte Quelle misst Datensätze, deren Knoten fort ist, und entfernt sie
+                // über dieselbe Methode wie `clearTrash()` — nicht über ein eigenes `DELETE`.*
+                new WpdbRecordRepository()
             ),
             new ResidueRenderer(),
             $this->changelog()

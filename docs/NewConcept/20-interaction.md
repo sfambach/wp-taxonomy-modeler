@@ -1122,3 +1122,28 @@ and reads as a hairline beside a 17px glyph.
 ⚠️ *This is not `R1` being bent. A heading and its hint are **software strings** belonging to the
 boundary ([AR-2](../../CLAUDE.md)) — the same class of thing as the word on a button — and no model
 data passes through them.*
+
+## Die vierte Rückstandsquelle — Stand 2026-08-29
+
+Gehört zu **U24**, das die Cleanup-Fläche besitzt; hier steht nur, was 2026-08-29 dazukam.
+
+[D-494](90-decision-log.md): **ein Datensatz, dessen Knoten es nicht mehr gibt.** Der Eigentümer,
+2026-08-28: *«das wäre genau das, was auf der Cleanup-Seite auch auftauchen müsste … da ist ein
+Record, der hat keinen angehörigen Knoten mehr. Und dann muss der Benutzer sagen: **entweder Daten
+löschen oder Knoten wiederherstellen**.»*
+
+⚠️ **Sie ist nicht «auch noch so ein Fall».** *Sie ist die einzige der vier, die einen ausdrücklich
+**verbotenen** Zustand misst — [D-485](90-decision-log.md): «ein Record ohne Knoten wäre
+undenkbar». **Ein Verbot beseitigt keinen Rückstand**, und ohne diese Messung wäre der Satz eine
+Behauptung ohne Prüfung. Gemessen auf der Installation des Eigentümers: **genau ein Fall.***
+
+⚠️ **Der zweite Knopf fehlt, und die Seite sagt das hin.** *«Knoten wiederherstellen» wäre der
+vorhandene `restore()` — **solange der Knoten geparkt ist**. Dann steht er aber noch in `nodes` und
+seine Datensätze sind gar kein Rückstand. **Wer in dieser Liste steht, ist endgültig weg**, und ob
+er sich aus dem Changelog zurückbauen lässt, ist [OQ-128](91-open-questions.md).*
+
+⚠️ *Darum trägt die Gruppe den Satz «bringing the node back is not offered: it is gone for good,
+not parked». **Ein Schirm, der eine verlangte Wahl verschweigt, sieht fertig aus** — und der
+Eigentümer hätte den fehlenden Knopf für ein Versehen halten müssen statt für eine offene Frage.*
+
+---
