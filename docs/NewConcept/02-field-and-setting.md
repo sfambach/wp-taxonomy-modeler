@@ -73,7 +73,7 @@ repeating it.
 | [D-408](90-decision-log.md) | **the screen gets its first script** — eight lines, one number | a `#fragment` can place a row and cannot preserve an offset |
 | [D-409](90-decision-log.md) | **a setting has no multiplicity** | one key, one answer, per place |
 | [D-410](90-decision-log.md) | **an attribute has a name in every language** | it carries labels, like a node — closes [OQ-095](91-open-questions.md) |
-| [D-411](90-decision-log.md) | **the narrowing rule is gone** | an attribute may reopen anything a node said |
+| [D-411](90-decision-log.md) | **the narrowing rule is gone** | an attribute may reopen anything a node said. ⚠️ *Narrowed back on 2026-08-28 for exactly two keys — `min` and `max` still refuse a widening ([D-468](90-decision-log.md)): [Row 8 in full](#row-8-in-full--what-a-field-may-set-anew-and-the-two-keys-that-refuse)* |
 | [D-412](90-decision-log.md) | **a `bool` may not have a floor of zero** | two states means it is always answered |
 
 ### Open — and what each one is actually asking
@@ -291,7 +291,7 @@ if the reader wants to know more they can go to it.*
 | **5** | exists as a row when nobody set it | **yes** | **open** | [OQ-097](91-open-questions.md) |
 | **6** | may be left unsaid | **no** | **open** | [OQ-097](91-open-questions.md) |
 | **7** | holds a value in a record | **yes** — several where the multiplicity allows | **no** | [D-026](90-decision-log.md) |
-| **8** | may only ever become stricter | **no** | **no — an attribute may reopen anything** | [D-399](90-decision-log.md) · [D-411](90-decision-log.md) |
+| **8** | may only ever become stricter | **no** | **no — a field sets anew, except `min` and `max`** | [D-399](90-decision-log.md) · [D-411](90-decision-log.md) · [D-468](90-decision-log.md) |
 | **9** | sits on a node **and** on an attribute | it **is** the attribute | **yes, both** | [D-381](90-decision-log.md) |
 | **10** | a renderer draws it | **yes** | **yes** | [D-098](90-decision-log.md) · `R1` |
 | **11** | is recorded in the changelog | **yes** | **yes** | [D-403](90-decision-log.md) |
@@ -304,15 +304,52 @@ inheriting node rather than looked up ([OQ-097](91-open-questions.md)), then eve
 none may be left unsaid. *Until that is settled, the built behaviour is the opposite of what row 1 now
 says — the code still looks a setting up rather than copying it.*
 
-⚠️ **Row 8 changed today and it is worth a sentence.** Settings used to be split into *bounding* — only
-ever stricter — and *choosing*. The owner ended it: *I can simply set the setting on the attribute and
-override it. If something is hidden I can make it visible elsewhere; if it is read-only here I can make
-it editable there.* So **an attribute may reopen anything a node said** ([D-411](90-decision-log.md)),
-and the narrowing rule is gone.
+⚠️ **Row 8 is a thread rather than a fact, and it did not stop moving.** The short form — *a field
+sets anew what a node said* — is right for every key but two, and the whole history sits in
+[Row 8 in full](#row-8-in-full--what-a-field-may-set-anew-and-the-two-keys-that-refuse) below.
 
 ⚠️ **Row 12 has a second half.** A `bool` has two states, so it is always answered — which means **a
 `bool` attribute may not have a floor of zero** ([D-412](90-decision-log.md)). *`0..1` on a `bool` says
 «maybe true, maybe false, maybe neither», and there is no neither.*
+
+#### Row 8 in full — what a field may set anew, and the two keys that refuse
+
+**This is the owning place of the thread.** The worked example below measures it; the tables above and
+the summary list at the top only point here.
+
+| When | What was said | What is left of it |
+|---|---|---|
+| 2026-08-26 | settings are split into **bounding** — only ever stricter — and **choosing**, which is free in either direction ([D-312](90-decision-log.md)) | the split survives, and it now covers **two keys** |
+| 2026-08-26 | `hide` and `read_only` leave the bounding category ([D-399](90-decision-log.md)) | stands |
+| 2026-08-26 | **the narrowing rule is gone** — *I can simply set the setting on the attribute and override it. If something is hidden I can make it visible elsewhere; **if it is read-only here I can make it editable there*** ([D-411](90-decision-log.md)) | stands, and this sentence of his is what decided the two rows below |
+| 2026-08-28 | `read_only` **stays a setting** and is freely settable at the field, in **both** directions ([D-461](90-decision-log.md)) | ⚠️ *He had floated bringing the tightening rule back for it, and withdrew it on being shown that it would reverse his own sentence above: **«no, forget the tightening. You laid that out nicely. We set it anew and we leave it in the settings.»*** |
+| 2026-08-28 | **a widening stays refused for `min` and `max`** ([D-468](90-decision-log.md)) | *now the question with min and max, whether a widening is possible. The node says minus ten to ten and we say minus twenty to twenty. **Not nice.** It would rather contradict the contract I gave earlier at the node … but those two, min and max, we can forbid a widening* |
+
+⚠️ **The last two are not in conflict, and what separates them is what a key promises.**
+*[D-411](90-decision-log.md) argued that a range on a node is a **default** for its fields and not a
+promise about a group. For these two the owner now says the opposite — **a range is a promise**. What
+changed is not the argument but which keys it covers: `hide` has left the settings altogether
+([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)), `read_only` and
+`persistent` are free in both directions ([D-460](90-decision-log.md), [D-461](90-decision-log.md)),
+and what is left bounded is exactly the two keys that state a range ([D-468](90-decision-log.md)).*
+
+⚠️ **This closed a contradiction that stood inside this document.** *Where the pointer above now
+stands, it used to say «the narrowing rule is gone», full stop — while
+[the worked example](#the-worked-example--my_int-under-int) just below measured a refusal and reported
+it as its finding. **No code ever changed**: `min` refuses downwards, `max` upwards, and five
+core tests drove the refusal and it fired. The measurement was right and what was missing was the
+decision it was waiting for ([D-468](90-decision-log.md)).*
+
+⚠️ **`multiplicity` is explicitly not part of this ruling** ([D-468](90-decision-log.md)). *The owner:
+«multiplicity, as I said, is something else. That hangs on the edge.» Its own refusal is untouched, and
+whether it is redundant — because an inherited attribute **is** the same edge — is not decided here.*
+
+⚠️ **The word is «set anew», not «override», and the difference is not cosmetic**
+([D-461](90-decision-log.md)). The owner: *that is, we do not override, we **set it anew**.*
+*«Override» says the node's value is still there, being masked; «set anew» says the field states its
+own value, and that is simply what applies — which is also why a reset is a **pull** from above and not
+the removal of a mask.* **Where this document still says «override» of a setting below, it is quoting
+testimony from before this decision.**
 
 ### The worked example — `my_int` under `int`
 
@@ -328,7 +365,7 @@ create it to verify everything.* `int` carries three own settings — `default =
 |---|---|---|
 | **nothing** | `default 300`, `range_min 3333`, `renderer field` — all `← von 1171` | ✔ **exactly as he stated** |
 | sets **`range_min = 0`** | **refused** — `CannotWiden`: *«range_min» is inherited as 3333 and may only be narrowed, not set to 0* | ⚠️ **the exception his sentence did not mention** |
-| sets **`range_min = 5000`** | `range_min 5000` here, `default` and `renderer` still `← von 1171` | ✔ overriding is **per key** |
+| sets **`range_min = 5000`** | `range_min 5000` here, `default` and `renderer` still `← von 1171` | ✔ setting anew is **per key** |
 | sets **`renderer = spinner`** | `renderer spinner` here | ✔ a **choosing** setting is free in either direction |
 | then `int`'s `default` changes to `1` | `default 1 ← von 1171`, reaching `my_int` at once | ✔ nothing was copied |
 
@@ -337,6 +374,13 @@ settings without qualification, and for **bounding** settings **only in the narr
 ([D-312](90-decision-log.md)). `range_min` is bounding, so `3333 → 0` is not an override but a
 widening, and the core stops it. **The same split that [D-399](90-decision-log.md) had just taken
 `hide` and `read_only` out of** — which is why it is worth measuring rather than reasoning about.
+
+⚠️ **And this row outlived a decision that looked as though it had killed it.**
+*[D-411](90-decision-log.md) removed the narrowing rule the same day, which would have made the
+refusal above simply wrong; [D-468](90-decision-log.md) narrowed that back for exactly `min` and
+`max`, so **the measurement stands unchanged**. The thread is in
+[Row 8 in full](#row-8-in-full--what-a-field-may-set-anew-and-the-two-keys-that-refuse). The key is
+called `min` today ([D-466](90-decision-log.md)); the example was measured under the older name.*
 
 ⚠️ **Why the third row is the argument for the whole mechanism.** If a subtype took a **copy** of its
 ancestor's settings and edited that, changing `int` later would stop reaching `my_int` — and a
@@ -526,9 +570,24 @@ switch that acted on the **node** — and it is not a switch any more ([D-467](9
 says nothing about the node, only about the fields that reach it. «Editable» and «kept» are things
 only a field can be — and «drawn» turned out to be a thing only a **placement** can be.*
 
-⚠️ **And all three are revocable at the attribute since [D-406](90-decision-log.md).** That is what
-makes «Vorgabe» the right word rather than «rule»: *a Vorgabe that could not be revoked would be a
-bound, and the owner took these two out of bounding for exactly that reason.*
+⚠️ **And both are revocable at the field since [D-406](90-decision-log.md) — in both directions, and
+that is now decided rather than inherited from an argument** ([D-460](90-decision-log.md) for
+`persistent`, [D-461](90-decision-log.md) for `read_only`). That is what makes «Vorgabe» the right
+word rather than «rule»: *a Vorgabe that could not be revoked would be a bound, and the owner took
+these two out of bounding for exactly that reason.*
+
+⚠️ **Corrected: this used to say «all three» and counted `hide` among them.** *`hide` is not a
+setting any more, so there is nothing to revoke at a field
+([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)) — and with it gone,
+[OQ-114](91-open-questions.md) closes with one sentence: **only `hide` leaves the settings**
+([D-461](90-decision-log.md)).*
+
+⚠️ **`read_only` is the one he nearly took back, and his reason for floating it is worth keeping.**
+*«The node has `read_only`, so the node can only be displayed» — a **guarantee about the thing**
+rather than a Vorgabe for its uses, which is precisely the bounding argument the row above rejected.
+**What decided it was that he did not want the guarantee**, not that the argument was bad
+([D-461](90-decision-log.md)); the full thread is in
+[Row 8 in full](#row-8-in-full--what-a-field-may-set-anew-and-the-two-keys-that-refuse).*
 ⚠️ **The pattern is one sentence: at a node the setting is about *the kind of thing*; at an attribute
 it is about *this field*.** *And it has no exception left to explain away — see above.*
 
@@ -567,7 +626,7 @@ values become **attributes of the unit** and the two keys go the way `mandatory`
 |---|---|---|
 | **Inheritance** | what a node **has** | a setting — say *the chain* |
 | **Resolution chain** | what a **key** answers *here* | an attribute — say *inheritance* |
-| **Bounding** | which **direction** a setting may move | a whole category — [D-399](90-decision-log.md) took two keys out of it |
+| **Bounding** | which **direction** a setting may move | a whole category — [D-399](90-decision-log.md) took two keys out of it, and since [D-468](90-decision-log.md) it is **two keys wide**: [Row 8 in full](#row-8-in-full--what-a-field-may-set-anew-and-the-two-keys-that-refuse) |
 
 ⚠️ **Why this section exists at all.** The two got confused **four times in one day**, each time by me
 and each time differently: `hide` argued as *inheritance* when it travels the *chain*; `hide` filed as

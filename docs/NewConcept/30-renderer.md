@@ -3194,6 +3194,128 @@ circumstance of a renderer ([D-018](90-decision-log.md)), so the mechanism exist
 ⚠️ *Who may, what is checked, how abuse is prevented are deliberately **not** decided with it; those
 belong to the first real use case.*
 
+## Wie ein Renderer gewählt wird und was er baut — Stand 2026-08-28
+
+⚠️ **Diese Stelle besitzt vier Fragen, die vorher nur im Log standen** ([D-469](90-decision-log.md)):
+*wer darf gewählt werden, wer wählt aus, wer baut das Markup, und was ist ein Renderer überhaupt.*
+Alles darunter ist am selben Tag entschieden und gebaut worden.
+
+### Der Entwurf, in seinen Worten
+
+[D-463](90-decision-log.md) hält fest, was gebaut war und nirgends stand. Der Eigentümer:
+
+> *Hier, die Klasse Renderer hat eine Funktion `render()`. Der bekommt das Renderbare übergeben plus
+> einen Kontext. Und jeder Renderer baut sein HTML selbst. Gemeinsamkeiten regelt man über CSS.
+> Generische Lösungen kommen in die Elternklasse.*
+
+⚠️ *Vier Sätze, vier Regeln — und die vierte ist die, die den Rest zusammenhält: **was mehrere
+Renderer gleich tun, tut die Elternklasse einmal**. Genau daraus folgt die nächste Stelle.*
+
+### Ein Element wird an einer Stelle geschrieben
+
+[D-465](90-decision-log.md) baut die vierte Regel: `RenderResult::htmlTag()` ist die eine Stelle, die
+weiss, wie ein HTML-Element geschrieben wird — Name, Attribute, Escaping, weggelassene Leerwerte.
+
+⚠️ **Gemessen, warum es nötig war:** *achtzehn Stellen schrieben `<input` von Hand, **vier davon
+escapten selbst** und **eine** benutzte den vorhandenen Helfer. Nach dem Umbau steht in `src/Core`
+**kein einziges** handgeschriebenes `<input` mehr.* **Der Wert ist nicht Kürze, sondern dass Escaping
+nicht mehr die Aufmerksamkeit eines Autors braucht.**
+
+### Wer angeboten wird: zwei Gruppen von Knoten
+
+[D-481](90-decision-log.md), auf das Wort des Eigentümers:
+
+> *Der Kompaktrenderer sollte praktisch an **allen** Knoten möglich sein, **ausser an den simplen
+> Datentypen**. Das gleiche gilt für Tabelle und Formular … Damit haben wir praktisch **zwei
+> Gruppen**.*
+
+⚠️ **Und die Trennung stand schon als eine Bedingung im Code, nur nie als Regel benannt** —
+`RendererRegistry::eligibleFor()`:
+
+| Gegenstand | angeboten wird |
+|---|---|
+| hat einen **einfachen Typ** | nur Renderer, die diesen Typ nennen — *«sein eigener oder spezialisierter»* |
+| hat **keinen** | nur strukturelle Renderer — *«die allgemeinen»* |
+
+⚠️ **Der Mechanismus ist seiner, nicht meiner, und er ist der bessere.** *Ich hatte eine **dritte
+Frage** im Vertrag vorgeschlagen — «darf ich der Renderer eines Knotens sein». Er: «wir haben ja
+aktuell in Renderern eine **Supported-Liste** … das sollte eigentlich schon ausreichen, oder?»
+**Ein neuer Eintrag in der vorhandenen Liste statt einer neuen Achse** — und die Bedingung wird
+dadurch **kürzer**: der Sonderfall «kein Typ → nur leere Listen» verschwindet.*
+
+⚠️ *Genau dieser Sonderfall ist auch der Grund, warum ein Chooser heute nicht beides sein kann:
+`InlineChooserRenderer` und `DialogChooserRenderer` antworten `handles(): [SimpleType::NodeRef]` und
+sind damit **Wert**-Renderer — sie könnten einen Knoten zeichnen und werden nie dafür angeboten.
+**Gemessen: sieben Renderer nehmen ausdrücklich einen Knoten an, genau zwei werden für einen
+angeboten.***
+
+### Wer einen eigenen Renderer will, wird ein Typ
+
+[D-482](90-decision-log.md), und die Begründung ist besser als der Mechanismus. Der Eigentümer:
+
+> *Wenn ich wirklich für Money einen eigenen Renderer haben will, dann muss Money ein **Typ** sein.
+> Und ein Renderer ist ja sowieso was **Programmiertes** — ich kann ja nicht einfach nur einen Namen
+> in die Datenbank klatschen und hoffen, dass es irgendwie gerendert wird.*
+
+⚠️ **Das ist `CD`s Verbot von der anderen Seite gesagt** — nicht *«behandle keinen Knoten nach Namen
+sonder»*, sondern *«dann mach ihn zu einem Typ»*. **Ein Anspruch, der an Daten hängt, ist ein
+Versprechen, das kein Code hält.** *Und «ein Typ werden» heisst konkret ein Paar: ein Fall im Enum
+**und** ein gesäter Knoten unter `Data Types`, verbunden über `SimpleType::fromNodeName()`
+([D-428](90-decision-log.md)).*
+
+⚠️ *Und ein Knoten sagt ausdrücklich **nicht**, welche Renderer er zulässt. Der Eigentümer hat es
+erwogen und selbst verworfen ([D-483](90-decision-log.md)): «wenn ich dann einen neuen Renderer
+hinzufüge, dann weiss der Knoten das gar nicht, obwohl er vielleicht damit gerendert werden könnte.
+Das wäre ein schlechtes Konzept.» **Offen/geschlossen in seinen eigenen Worten.***
+
+### Der Container eines Knotens kommt aus der Kette
+
+[D-483](90-decision-log.md). ⚠️ **Und das war «geschrieben und nicht gebaut».** *Der Docblock von
+`Rendering::nodeAsForm()` sagte seit dem Anfang «der Container wird genauso gewählt wie der Renderer
+eines Feldes — die Kette, dann die strukturelle Vorgabe», und die Zeile darunter hiess
+`byName(FormRenderer::NAME)` und fragte nichts.* **`form` wirkte allein deshalb, weil er der einzige
+war** — und in der Sekunde, in der ein zweiter Container existierte, konnte der Eigentümer ihn wählen
+und auf dem Schirm änderte sich nichts. Sein Befund: *«ich kann irgendwie hier noch nichts richtig
+aufsetzen.»*
+
+⚠️ *Die Zulässigkeit wird dabei **gefragt und nicht neu erfunden**: ein Name zählt nur, wenn
+`eligibleFor()` ihn für diesen Knoten angeboten hätte. So stellen Lese- und Schreibseite **eine**
+Frage. Der Rückfall ist das Formular und ausdrücklich nicht der Auffang der Registry — ein Container,
+der seine Teile nicht auslegen kann, verliert sie.*
+
+### Der kompakte Renderer ist einer, nicht zwei
+
+[D-471](90-decision-log.md) verengt [D-245](90-decision-log.md): dort sprach der Eigentümer noch von
+*«den compact horizontal und compact vertical Renderern»*, heute von **einem** mit zwei Eigenschaften
+— Ausrichtung (Vorgabe **horizontal**) und Label (Vorgabe **an**).
+
+⚠️ *Zwei Renderer, die sich in einer Achse unterscheiden, sind zwei Registrierungen, zwei Namen im
+`renderer`-Schlüssel und zwei Stellen, an denen dieselbe Kompaktheit gepflegt wird.*
+
+⚠️ **Wo die Eigenschaften wohnen, ist offen** — [OQ-120](91-open-questions.md). *Gemessen lesen heute
+drei Renderer überhaupt Optionen, und sie tun es auf **zwei verschiedene Weisen**: `min`/`max`/`step`
+als reservierte Schlüssel, `cols`/`rows` als freie, die niemand deklariert.*
+
+### Was sich im Vokabular geändert hat
+
+| | |
+|---|---|
+| *Attribut* heisst **Feld** | [D-462](90-decision-log.md) — der Eigentümer: «das gibt immer Verwirrung zwischen Klassenattribut und unserer Definition; lass es uns **Felder** nennen, weil was wir machen sind Felder in einem Datensatz» |
+| `range_min`/`range_max`/`range_step` heissen **`min`/`max`/`step`** | [D-466](90-decision-log.md), Schema 11 — *der `range_`-Präfix sagte «range» dreimal, und `step` ist gar kein Teil eines Bereichs* |
+| `hide` ist **kein Setting mehr** | [D-464](90-decision-log.md), [D-467](90-decision-log.md) — eine Spalte auf der **Kante**. Die ganze Mechanik an einer Stelle: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) |
+
+⚠️ *Die Umbenennung auf «Feld» ist in der Prosa dieses Dokuments **noch nicht durchgezogen** — das ist
+[Zeile 62](97-implementation-plan.md#the-working-list), ausdrücklich Satz für Satz und nicht als
+Sweep, weil «attribute» hier auch **HTML-Attribut** heisst.*
+
+### Und die spezialisierten Knotenklassen
+
+[D-484](90-decision-log.md) — der Eigentümer will Klassen je Typ, *«weil dann auch klar ist, wie viele
+spezialisierten Typen wir haben»*. **Das gehört in den Domänenkern und steht dort**; für den Renderer
+zählt nur die Folge: der Anspruch eines spezialisierten Renderers hängt dann an einem **Typ**, und ein
+Typ ist Code.
+
+---
 ## What belongs here
 
 - The renderer interface and its contract.

@@ -136,3 +136,25 @@ Adding is comparatively safe: a new term sits beside the others and nothing yet 
 Removing and merging are the operations that reach backwards into text already written, and they
 are the ones this project keeps paying for. `grep` costs seconds; a contradiction discovered three
 weeks later costs an argument about what was meant.
+
+## Erreicht eine Entscheidung ihr Dokument? — Stand 2026-08-29
+
+[D-493](90-decision-log.md). Jede Zeile im Entscheidungslog nennt in der vorletzten Spalte die
+Dokumente, die sie betrifft. `scripts/dev/doc-reach-check.php` prüft, ob das Dokument die Id
+wirklich nennt.
+
+⚠️ **Die Spalte heisst «dieses Dokument muss die Entscheidung nennen» und nicht «dieses Dokument
+wurde angefasst».** *D-493 selbst hat den Unterschied vorgeführt: es trug die sechs Dokumente ein,
+die es überarbeitet hatte, und riss damit sechs Lücken auf. **Eine Regel über das Schreiben von
+Dokumenten gehört hierher, nicht in jedes Fachdokument.**
+
+⚠️ **Die Zahl ist eine Ratsche und keine Ampel.** *Bei 370 offenen Lücken rot zu sein hiesse, ab dem
+ersten Tag ignoriert zu werden. Die Obergrenze steht **in der Prüfdatei**, damit ihre Anhebung im
+Diff einer Entscheidung auftaucht — eine stillschweigend erhöhte Grenze wäre genau das Nachgeben,
+das eine Ratsche verhindern soll.*
+
+⚠️ *Was sie **nicht** kann: sie sucht die Id, nicht den Inhalt. Ein Dokument kann eine Regel
+vollständig beschreiben, ohne sie zu zitieren. **Obergrenze für echte Lücken, Untergrenze für
+fehlende Verweise** — sie ersetzt kein Lesen.*
+
+---

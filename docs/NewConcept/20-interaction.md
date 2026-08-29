@@ -43,6 +43,48 @@ Two things follow that are easy to get wrong separately:
   setting on the resolution chain. ⚠️ *This concerns the chooser only — what is drawn **after** a
   node has been chosen is the chosen node's own renderer, which is a separate matter.*
 
+### U32 · The dialog closes on Escape and keeps the focus
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    L["label · opens"] --> C["checkbox holds the open state"]
+    C --> P["panel · the focus moves in and stays"]
+    P -->|Escape| C
+```
+
+**The dialog of U0 stays scriptless in the part that counts.** A nameless checkbox holds the open
+state, a `<label>` toggles it and the shadow closes it on a click — *all of that keeps working with
+JavaScript switched off*. Script adds the two things a real `<dialog>` element would give and CSS
+cannot ([D-491](90-decision-log.md)): **Escape, and a focus that does not wander out of an open
+overlay.**
+
+| | |
+|---|---|
+| **Escape** closes | the **topmost** dialog — the one holding the focus, else the last opened. *Two may be open at once, because the styling makes each independent, and closing all of them on one keypress would take away a state nobody gave up* |
+| **the focus returns to** | the **checkbox**, not the opener: the opener is a `<label>` and a label cannot take focus. The ring is drawn on the label when the checkbox has the focus, so it *looks* like the button |
+| **a stop of size zero** | is skipped: it is hidden by the styling, and putting the caret at an invisible place is worse than passing it by |
+
+⚠️ **The check written with it does not test the behaviour, and says so in its own text.** *It asserts
+that **script and markup speak the same class names**, both ways — because the fallback that really
+happens is a renamed class, and then the script **silently** stops biting: no error, no red check,
+just a dialog that ignores Escape again ([D-491](90-decision-log.md)). It also asserts that the toggle
+is not `display:none`: without a keyboard route **into** the dialog, a focus trap would be the
+solution to a problem nobody can reach.*
+
+⚠️ *This leaves [D-244](90-decision-log.md) untouched — it is the same two chooser renderers, with the
+dialog behaving as a dialog.*
+
 ### U0b · A control's state follows from what is actually choosable
 
 The owner's example: a select with **one** entry is **greyed out** — there is nothing to choose.
@@ -309,6 +351,102 @@ everything else along the chain.
 label **role** ([D-196](90-decision-log.md)). The legacy detail screen put them side by side in one
 panel, which is how they came to be confused once already.
 
+### U33 · The eye hides a placement, and the branch goes with it
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    E["the eye on the row"] --> P["the inheritance edge · the placement"]
+    P --> S["row and subtree never entered"]
+    R["the root · no such edge"] -.-> N["cannot be hidden"]
+```
+
+**The mechanism and its whole history are owned by
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge).** What belongs here is
+what a person does and sees: the control writes on **the edge that puts the node into the tree**, so
+a hidden row **takes its branch with it** — not by a filter afterwards but because the descent never
+enters it ([D-467](90-decision-log.md)).
+
+⚠️ **What changed, and why U1's list of seven stays true.** *The legacy row's `hide` sat on the
+**node**, and this document never said otherwise. A node does not carry it any more
+([D-467](90-decision-log.md)), so the `hide` counted there is a fact about the legacy row and not a
+description of ours. The owner's reason is better than the mechanism: «I do not simply create a model
+node and then say I will not draw it — that would be nonsense. Where I would say it is on the
+**fields** of a model node, when I only want something in the background, to calculate with.»*
+
+⚠️ **Not to be confused with the legacy `eye` of U7, although the glyph is the same.** *That one was
+aimed at **selectability** and its finding was that selectability belongs to the use site
+([D-238](90-decision-log.md)). This one is about **drawing a row**, and neither of the two is the
+node-level flag that has now gone ([D-467](90-decision-log.md)).*
+
+⚠️ *The root has no inheritance edge and therefore **cannot** be hidden. That is correct rather than a
+gap, and the action answers with nothing instead of failing ([D-467](90-decision-log.md)).*
+
+### U34 · The tree opens collapsed, and the fold state is carried forward
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    F["fresh page · no parameter"] --> C["everything with children closed"]
+    C --> A["minus the ancestors of the selected node"]
+    A --> L["and every link carries the state on"]
+```
+
+*When I open the page afresh it should be collapsed — that gives the best overview*
+([D-478](90-decision-log.md)). And once that was built: *the current branch staying open is right too,
+**but I would rather the state were carried forward**. As soon as I click on Taxonomy Modeller I get
+the reset tree, and when I then work in it, **I** decide which branch is open or closed. Working
+between two nodes with the branches closing all the time is rather annoying*
+([D-480](90-decision-log.md)).
+
+| | |
+|---|---|
+| a fresh page | **no parameter at all**, and it shows only the branches — a node directly under the model root is closed as well ([D-478](90-decision-log.md)) |
+| the selected node's ancestors | **open, always** — otherwise the detail on the right shows a node the tree beside it does not contain |
+| the selected node itself | stays closed. *That is a choice, not a consequence of the one above* ([D-478](90-decision-log.md)) |
+| every link on the page | carries the current state on, so the next click does not recompute the default ([D-480](90-decision-log.md)) |
+| the menu item | leads to a URL without parameters, and that **is** the reset ([D-480](90-decision-log.md)) |
+
+⚠️ **The second half is needed because the first would otherwise contradict it.** *A carried-forward
+state holds the ancestors of the **previously** chosen node and would close the new one — so the
+selected node's ancestors are subtracted on every build. **Both wishes hold at the same time**, and
+neither is a special case of the other ([D-480](90-decision-log.md)).*
+
+⚠️ **It was broken although the state «lay in the URL».** *Measured: a fresh page carried it in
+**zero** links — without a parameter the default was simply recomputed on the next click, so every
+branch a person had just opened closed again. The state lay in the URL and nobody wrote it there; it
+now travels in **22** links of the same page ([D-480](90-decision-log.md)).*
+
+⚠️ **And the hoped-for saving is measured and is not there: a collapsed page costs one query *more***
+— 11 against 10 ([D-478](90-decision-log.md)). *The subtree is loaded whole either way, and loading
+less would be the loading question, which is a separate one. The promise was «less disturbance and
+less work»; it delivers the first.*
+
+⚠️ *The empty set travels as the word `none`, because an empty URL value cannot be told from a missing
+one ([D-478](90-decision-log.md)) — and a missing one is what makes a page fresh. Whether the
+**selection** itself survives a reload is a different question and still
+[OQ-082](91-open-questions.md).*
+
 ---
 
 
@@ -383,7 +521,7 @@ They arrived with decisions taken after that screen was built:
 |---|---|---|
 | **Conflicts** | [D-054](90-decision-log.md) reports rather than blocks — but a report nobody sees is a block with extra steps. If this node has an unresolved conflict it belongs at the **top**, because it is actionable. | above the name |
 | **Provenance** | Which pack a node came from and whether it has been changed since ([D-174](90-decision-log.md), [D-175](90-decision-log.md)) — it decides whether an update will touch it. | in the fixed band, as chips |
-| **History** | Every change with before and after ([D-061](90-decision-log.md)); this is where taking something back lives ([D-172](90-decision-log.md)). *Last modified by* is already there and is one line of it. | bottom, collapsed, beside relations |
+| **History** | Every change with before and after ([D-061](90-decision-log.md)); this is where taking something back lives ([D-172](90-decision-log.md)). *Last modified by* is already there and is one line of it. ⚠️ *What may ever be deleted from it — and the rows that never may — is [U36](#u36--a-changelog-entry-goes-only-where-nothing-hangs-on-it-any-more)* | bottom, collapsed, beside relations |
 
 A parked node ([D-123](90-decision-log.md)) must say so too — but that is a state of the whole
 screen, not a section of it.
@@ -443,6 +581,55 @@ Following the outline downwards is how the node is found without searching for i
 red is deletion and conflict, and a pending review is neither wrong nor destructive, only
 unfinished. And distinct from the `Counts` badge ([D-189](90-decision-log.md)), which answers a
 different question in the same corner of the row.
+
+### U35 · The node page saves as a whole — settings and texts in one act
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TB
+    S["settings fields"] --> F["one form · one save button in the page head"]
+    L["label fields · they name that form"] --> F
+    F --> G["one change group in the log"]
+```
+
+*Labels should be saved **with the page** as well* ([D-488](90-decision-log.md)). So the labels area
+draws no form of its own any more: its fields name the page's form, and the area's own save button is
+gone with them — the owner, asked whether it should go: *yes* ([D-489](90-decision-log.md)).
+
+⚠️ **The texts had to move, and the reason is HTML rather than tidiness.** *A field belongs to exactly
+one form and a named form beats the nesting. Keeping the texts in their own form while the page saved
+the settings would have thrown the settings beside them **silently** away
+([D-488](90-decision-log.md)).*
+
+| | |
+|---|---|
+| an **empty** field | means *forget the row*, never *store an empty text* — a stored empty string would **end** the fallback chain. Written down long before and only now built ([D-488](90-decision-log.md)) |
+| what a text is compared against | **what is stored here**, never the fallback chain: what stands in the field when nothing is set **is** the chain's answer, so comparing against it would write the placeholder down as though a person had typed it ([D-488](90-decision-log.md), [D-489](90-decision-log.md)) |
+| the order | settings first, then texts — a refused bound aborts **before** any text is written ([D-488](90-decision-log.md)) |
+| the log | a label change is journalled against its owner, exactly as a setting is, and the entry carries the **address** — role and locale, plus the path where there is one. *An entry without an address is not replayable* ([D-489](90-decision-log.md)) |
+| one save, one group | a rename, a setting and a text sent together become **one** change group ([D-470](90-decision-log.md)), not three ([D-488](90-decision-log.md)) |
+
+⚠️ **Before this there was not one such line: of 10496 changelog entries, none named a label**
+([D-489](90-decision-log.md)). *Journalling had been decided for settings — because 591 rows had no
+history at all — and for labels nobody had ever asked, although it is the same kind of row in the same
+kind of table.*
+
+⚠️ *A text field **always** submits, and now on every page save. That is why the comparison in the
+second row above is the load-bearing part and not a detail ([D-488](90-decision-log.md)).*
+
+⚠️ *Not built with it: a hardening against a **missing** page form — an empty panel emits none, which
+would be silent non-saving. Measured: 91 nodes, the poorest resolving 2 keys, **0 empty panels** — the
+case does not arise today and stays structurally possible ([D-488](90-decision-log.md)).*
 
 ---
 
@@ -522,6 +709,33 @@ Each of the three sources above was decided as *leave it alone rather than tidy 
 is the right call at the moment of the change and leaves residue over years. **Cleanup is where the
 residue is shown and removed deliberately** — never automatically.
 
+**Built on 2026-08-28 as the third submenu page**, with the three sources above and one button per
+row ([D-479](90-decision-log.md)). *It had been decided five days earlier and stood unbuilt while the
+three sources went on collecting, until the owner pointed back at his own decision.* **One place
+measures and removes, and the command line now uses the same one** — two copies of a query are the
+road along which a correction reaches only one of them.
+
+Measured on the running installation the day it was built: **0 orphaned settings, 0 orphaned labels,
+7 values whose edge is gone, 0 nodes without connections** ([D-479](90-decision-log.md)). *The seven
+are real residue, and they are **shown and not removed** — which is what «deliberately» means.
+Orphaned labels are measured but not offered for removal, because [D-247](90-decision-log.md) does not
+name them.*
+
+⚠️ **One source has stopped producing since, and it was a fault rather than a policy.** *A record
+without its node must not exist, and the final deletion now enforces it: it takes the records and
+their values with it ([D-485](90-decision-log.md)), which it never had although its own docblock had
+promised exactly that from the beginning. The owner, when a find turned into a rule: «that is exactly
+the reference we know and laid down. We said: **as long as a reference is still there, a node cannot
+be finally deleted.** So a record without a node would be unthinkable. And if one wants to delete it
+and takes the risk, then the data must be deleted **with** it … otherwise nobody knows how that
+record is to be read at all.» The **history** deliberately does not go with it: what disappears is
+data, not the message that it existed ([D-485](90-decision-log.md)).*
+
+⚠️ *Not built: the tidying of the log itself. Its gate needs the conflict resolver, which is a surface
+of its own ([M6](70-migration.md)) and does not exist —
+[U36](#u36--a-changelog-entry-goes-only-where-nothing-hangs-on-it-any-more)
+([D-479](90-decision-log.md)).*
+
 ### U25 · Two legacy constructs retired, with nothing to put in their place
 
 | Retired | Why, and what took over |
@@ -532,6 +746,111 @@ residue is shown and removed deliberately** — never automatically.
 Both by [D-250](90-decision-log.md). ⚠️ *A construct nobody can any longer say what it was for is
 exactly what should not survive a restart* ([PR-1](../../CLAUDE.md)): legacy is quoted, never
 inherited. If a need turns up later it will arrive with a reason attached.
+
+### U36 · A changelog entry goes only where nothing hangs on it any more
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    D["a cut-off date"] --> F["the filter · which rows are in scope"]
+    F --> G["the gate · an unresolved conflict from that period?"]
+    G -->|yes| K["the entries stay"]
+    G -->|no| X["they may go"]
+```
+
+*As long as I have conflicts I may not delete those sentences. **That is a dependency and we have to
+obey it.** Otherwise we have a problem there. And only when the old data are on the new version may
+the history data be deleted as well … once the conflict is resolved the changelog may go too —
+**because then it is not sensitive any more*** ([D-473](90-decision-log.md)).
+
+**So the date is the filter and the dependency is the gate.** Resolving old data against a changed
+model needs *the changes*, which is what the log holds — three decisions that had never been put
+together as one dependency ([D-473](90-decision-log.md)). And the gate is computable today: on the
+running installation **one record of 25** stood on an older version than its node, so for that period
+the log may **not** go. *Not a thought experiment.*
+
+| | |
+|---|---|
+| a whole group | goes only if **every** one of its rows lies at the cut-off date or before it — the owner's own rule, and the only correct shape technically, because a group is read as a whole and half a group would be worse than a deleted one ([D-473](90-decision-log.md)) |
+| a **created** row | **stays, permanently.** *I would leave the create in — and not only the create but every update that is run — and **declare it undeletable*** ([D-474](90-decision-log.md)) |
+| the same shape elsewhere | a parked node needs its `parked` row or it cannot be fetched back at all ([D-123](90-decision-log.md)). *Measured: 2 rows of 9041.* **A row may go when nothing hangs on it any more** is the general rule that follows from his special one ([D-473](90-decision-log.md)) |
+
+⚠️ **Undeletability is *declared at the row*, not computed when something is deleted, and that is the
+load-bearing half** ([D-474](90-decision-log.md)). *A delete condition has to be formed correctly by
+every caller; a declaration sits on the row and holds for everyone who reads it. It is the same shape
+as the gate above — there the dependency, here the announcement.* **What it buys on the node page:**
+the creation date is derived from the first changelog row ([D-080](90-decision-log.md)), so without
+this it would one day quietly stop being shown.
+
+⚠️ *What «every update that is run» covers was left open for an hour and then resolved by the owner
+himself: he meant the **software's release**, not every model change a person makes
+([D-476](90-decision-log.md)). So the 1690 rows about keys that no longer exist are model changes and
+are **not** undeletable — and a release entry does not exist yet at all, since the schema steps write
+nothing into the log.*
+
+⚠️ *The conflict resolver this gate waits for is a surface of its own ([M6](70-migration.md)) and is
+not built, which is why the log tidying is the half of
+[U24](#u24--cleanup-is-the-repair-surface-for-what-deliberate-non-tidying-leaves-behind) that is
+missing.*
+
+### U37 · Before a release update a backup is compulsory and it is downloaded
+
+*As a boundary condition and rule I would still like: before an update a backup must always be made.
+**That is compulsory.** The user is forced to download it* ([D-475](90-decision-log.md)).
+
+**A boundary condition, not a recommendation**, and the owner drew its scope himself: it is about
+*changes that come in with a new release*, not about the schema steps of our own development phase,
+which are tests and concept work ([D-475](90-decision-log.md)).
+
+| | |
+|---|---|
+| **downloaded**, not «put on the server» | a backup on the same installation helps against a failed schema step, not against what people really meet — an installation that no longer starts |
+| **forced** | the update does not begin before the file is with the user |
+| what it replaces | rolling back means *play the backup back in*, never *play the log backwards* ([D-475](90-decision-log.md)) — and a backwards run is impossible anyway, because our own steps destroy what they change |
+
+⚠️ **And it hangs on something that does not exist: there is no export function at all**, measured
+([D-475](90-decision-log.md)). *So the export is the **precondition** of every update path, and this
+is the first decision that forces it instead of wishing for it. Where export and import live is
+[OQ-122](91-open-questions.md), with the owner's own leaning: think about it on the configuration page
+first.*
+
+### U38 · An icon button wears a glyph, and a glyph in the name slot is a word
+
+*Icons boxed again and misaligned. Besides, the icons on the settings page could be a little bigger*
+([D-486](90-decision-log.md)).
+
+⚠️ **Measured first, and the obvious cause was not the cause.** *Buttons are produced in **one** place
+and **0 of 83** icon buttons carried a border, a background or a shadow. The docblock held and the
+stylesheet held — there were no new copies, although a new copy was exactly the cause the previous
+time ([D-486](90-decision-log.md)).*
+
+**The two boxes belonged to buttons that were not icon buttons.** Five save buttons handed in a
+diskette glyph, **four of them in the label slot** rather than the glyph slot — and a glyph in the
+label slot is a **word**: drawn as text, rightly without the borderless class, and it made the
+accessible name of those buttons the diskette itself. *Repaired structurally rather than by
+attention: a named constructor for saving, so the mistake cannot be typed again*
+([D-486](90-decision-log.md)).
+
+| | |
+|---|---|
+| the size | **one place** computes it, and the detail area adds **3px** — an addition and not a factor, so whole pixels come out. The tree stays as it was ([D-486](90-decision-log.md)) |
+| the custom property for it | was **dead everywhere**: a hard-wired size with the same weight won, so a control the owner tried out himself moved no glyph at all ([D-486](90-decision-log.md)) |
+| the installation page | **has no icons** and does not load the stylesheet. *Its help text about «the glyphs in the tree and on its buttons» was untrue for the buttons until that day* ([D-486](90-decision-log.md)) |
+
+⚠️ *And its check was green in its first version against precisely the places it was written for: the
+markup was read in the wrong encoding, so the four bytes of the glyph came back as six letters and
+«contains a letter» was the criterion. Corrected, it found **31 boxes and 31 nameless buttons**
+against the old state ([D-486](90-decision-log.md)).*
 
 ---
 
@@ -695,6 +1014,14 @@ of block, the owner said it is **the standard**: *basically we have only one blo
 a node, and how it is displayed follows from the contents* ([D-255](90-decision-log.md)). Simple
 rules: fixed data give a form; a multiplicity gives a table beneath it; small fields go compactly on
 one line, the same compact renderer as on the settings screen ([D-245](90-decision-log.md)).
+
+⚠️ **There is exactly *one* compact renderer, and «the same» above is now literal.**
+[D-245](90-decision-log.md) had named two — *compact horizontal* and *compact vertical* — and they are
+one renderer with two properties: a horizontal/vertical switch and labels that can be turned off, with
+**label on** and **horizontal** as the defaults ([D-471](90-decision-log.md)). *Two renderers differing
+in one axis are two registrations, two names in the `renderer` key and two places where the same
+compactness is maintained.* The renderer and its properties are owned by
+[30 Renderer](30-renderer.md); what belongs here is only that a block naming it names **one** thing.
 
 ⚠️ **That is a rule of the node renderer, not of the block.** [D-234](90-decision-log.md) stands —
 the block selects, the renderer draws — and [D-256](90-decision-log.md) corrected the placement

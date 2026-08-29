@@ -444,9 +444,9 @@ the confusion the suffix prevents.
 |---|---|---|
 | **nodes** | `id` · `version` · `name` · `path` | `id` from the shared identity space ([C11](10-domain-core.md)). `name` required, **not unique** ([D-022](90-decision-log.md)). `path` is the materialised ancestor path ([D-014](90-decision-log.md)) — **derived**, rebuildable, never a second truth. |
 | **relations** | `id` · `version` · `from_id` · `to_id` · `kind` · `name` · `position` | `kind` an enum ([D-036](90-decision-log.md)). `name` empty for inheritance edges. `position` orders siblings — it belongs to the **edge**, because order is per parent, not per node. |
-| **settings** | `owner_id` · `key` · typed value columns | `owner_id` a single real foreign key into the identity space ([OQ-022](91-open-questions.md) option 3) — it holds the `id` of the node **or** relation the row belongs to. Engine-owned keys are a reserved namespace, not a column ([D-084](90-decision-log.md)). |
-| **labels** | `owner_id` · `role` · `locale` · `text` | [D-019](90-decision-log.md), roles plain ([D-023](90-decision-log.md)). |
-| **changelog** | `owner_id` · `at` · `by_user_id` · `what` | The migration script ([D-061](90-decision-log.md)). |
+| **settings** | `owner_id` · `setting_key` · `path` · typed value columns | `owner_id` a single real foreign key into the identity space ([OQ-022](91-open-questions.md) option 3) — it holds the `id` of the node **or** relation the row belongs to. Engine-owned keys are a reserved namespace, not a column ([D-084](90-decision-log.md)). ⚠️ *`key` is reserved in MySQL, so the column is `setting_key` — the rename is assumption 4 of package 1 in [the implementation plan](97-implementation-plan.md), and it is more than cosmetic: backticked, `key` broke `dbDelta`'s index parser without saying so.* A further column is decided and not yet built — [P15](#p15--one-table-two-kinds-of-row-and-a-column-that-says-which). |
+| **labels** | `owner_id` · `role` · `locale` · `text` | [D-019](90-decision-log.md), roles plain ([D-023](90-decision-log.md)). The full row, with the columns added since, is [I9a](40-i18n.md#i9a--what-a-label-row-carries) — this line is the summary, that one is the owner. |
+| **changelog** | `change_group_id` · `owner_id` · `owner_kind` · `at` · `by_user_id` · `what` · `before_state` · `after_state` | The migration script ([D-061](90-decision-log.md)) — what those last three columns carry is [P4e](#p4e--the-changelog-row-one-act-one-group-one-address). |
 
 **Why the column is called `owner_id` and not `node_id`:** it also holds relation ids. One number
 space ([C11](10-domain-core.md)) means one column and a foreign key the database can actually
@@ -537,6 +537,61 @@ purpose: no change is ever silently lost. WordPress offers no optimistic locking
 comparison is entirely ours; its Heartbeat API is usable for the lease, `wp_set_post_lock()` is not
 ([D-007](90-decision-log.md)).
 
+### P4e — the changelog row: one act, one group, one address
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    P["one POST · one thing a person did"] --> B["bracket opened"]
+    B --> R1["node renamed"] --> G[("change_group_id<br/>= id of the first row")]
+    B --> R2["edge reordered"] --> G
+    B --> R3["setting written"] --> G
+```
+
+**An act is bracketed, and the bracket is what gives a change its number**
+([D-470](90-decision-log.md)). The owner: *«I think we need a unique change number — whatever was
+changed in one change, edge, node, setting, if they were changed together they should have one
+change number.»*
+
+⚠️ **Before it the column existed and grouped nothing, measured:** *2282 rows across **1945**
+groups, 1609 of them holding a single row, and **0 of 1945** spanning more than one kind of owner.
+The number was handed out per **write**, so a node renamed, its edge reordered and its setting
+written in one act produced three groups — the opposite of what the column means.*
+
+**No second counter was introduced.** The group is still *the id of the act's first row*; the
+bracket only says **which rows belong to that first one**. An act is opened where one POST is
+handled — *one POST is one thing a person did* — and closed in a `finally`, so a refusal still
+closes it; an act left open would swallow the **next** person's.
+
+⚠️ **The obstacle was the wiring, not the design**, and it is a persistence lesson: *the changelog
+collaborator had been constructed **seven** times. Opening a bracket on one of them would have said
+nothing to the other six. **Seven copies of a stateless object are merely wasteful; seven copies of
+one that carries state are wrong** — worth asking of the next collaborator that grows state.*
+
+**Creating a node is one change, not three.** Writing the node plus the settings it materialises is
+one act, because *nobody performs «materialise `read_only`» as an act* — so the compound service
+methods bracket themselves, and a caller that is not a screen (activation, a scaffold, the command
+line) also gets one group per node.
+
+⚠️ **`by_user_id` is null for a machine change, and a cast had been undoing that.** *`(int)` turns
+`NULL` into `0`, and with **7696 machine rows against 1262 human ones** almost the whole history
+was being reported as «user 0». [D-296](90-decision-log.md) keeps a machine change null because
+**a wrong name in the history is worse than no name**.*
+
+**What `before_state` and `after_state` hold** — `key=… path=… type=… value=…` — is
+[M13b](70-migration.md#m13b--a-journal-entry-carries-its-address), where the changelog is read as
+the migration script.
+
 ### OQ-016 answered — one construct, one mechanism, a reserved namespace
 
 > A first version of this answer split settings into a *model scope* and a *system scope* with a
@@ -605,6 +660,15 @@ about a use, because the thing itself has no opinion on them:
 
 Which is why settings resolve **node → edge** and never the other way.
 
+⚠️ **What moving `hide` out of the settings table cost in storage** ([D-464](90-decision-log.md)):
+*110 setting rows were migrated and nothing was lost — **7** rows saying *hidden* travelled into the
+column, **103** saying *not hidden* were not copied because the column already defaults to that, and
+all 110 were then deleted. The key is gone from the reserved namespace as well, so it can no longer
+be resolved.* **`dbDelta` cannot rename**, which decided the order: this step runs **after** it,
+because it needs the column to exist before it can write into it. *The rule itself is owned by
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge); what stands here is
+only what it did to these tables.*
+
 **Multiplicity stays a setting rather than a column**, despite being read constantly, because it
 inherits and can be narrowed — and a setting gets the resolution walk for free while a column
 would need inheritance handled specially. [D-014](90-decision-log.md)'s batched load fetches it
@@ -624,6 +688,106 @@ narrow `0..1` to `1`.
 decides storage **dissolved** — [D-232](90-decision-log.md) takes multiplicity out of the storage
 rule entirely and lets the **branch** decide (see [P13d](#p13d--the-branch-decides-storage-not-the-multiplicity)).
 Multiplicity still inherits and is still overridable; it simply no longer moves anything.
+
+### P15 — one table, two kinds of row, and a column that says which
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    R["a row"] --> K{"which kind"}
+    K -->|setting| S["owner is an identity"]
+    K -->|field value| V["owner is a record"]
+    O["the owner id alone"] -.->|cannot say which| K
+```
+
+Settings and field values are to share one table, and **a column of its own says which kind of row
+it is** ([D-472](90-decision-log.md)). The owner: *«ich würde einfach eine neue Spalte in die
+Tabelle einfügen, die dann genau unterscheidet: ist Setting oder ist Attributwert»* — and, before
+that, why the question exists at all: *«es geht darauf hinaus, wie wir Daten speichern und dass wir
+keine **Rückkoppelung** bekommen, und da haben Settings praktisch den gleichen Standfuss wie
+Attribute.»*
+
+**His word *Rückkoppelung* is the better one** for what had been called a bootstrap problem: not the
+loading file, but the **self-reference** — with settings and field values in one table, the engine
+reads its own configuration through the very machine that needs configuration in order to read.
+
+⚠️ **The objection recorded against exactly this column is refuted, and by measurement.** *It ran:
+«a fact stored twice, and the code standard forbids that duplication». **It assumes there is one id
+space. There are two** ([D-164](90-decision-log.md), [P4a](#p4a--two-identity-spaces-one-for-the-model-one-for-the-records)):
+identities run from 1 to 26 453, records have their own `AUTO_INCREMENT` and run from 16 to 879.
+**They overlap — id 16 is at once a relation and a record.** An owner id alone therefore does not
+say which space it came from, and without the column the row is simply unreadable. **The column
+carries; it does not duplicate.*** That also disposes of the other candidate — *the owner column
+says it* — not as a matter of taste but because it does not work.
+
+**Left open on purpose** ([PR-4](../../CLAUDE.md)): the harder half of
+[OQ-119](91-open-questions.md) — the four borrowing keys `default`, `min`, `max` and `step`, whose
+type is **that of the subject** and is never stored. *It is quite possible that his column settles
+them too, since «setting» would tell a reader the type is derived rather than looked up. That is an
+inference and not his statement, so it stays a question.*
+
+⚠️ *Decided, **not built**: measured in the schema, `settings` and `record_values` still stand
+apart, and `settings` carries no such column yet.*
+
+### P16 — `persistent` is an instruction to the saving mechanism
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    N["node · persistent?"] -->|inherited| F["field · may say the opposite"]
+    F --> W["the saving mechanism"]
+```
+
+`persistent` **stays a setting**, and the use site overrides the node **in both directions**
+([D-460](90-decision-log.md)). The owner, reasoning it out: *a node is not persistent — say all base
+types are not, because they cannot be stored as such. Then I hang that node on with a relation and
+say `persistent` **in the relation**. In that case the `persistent` on the relation beats the `not
+persistent` on the node. The reverse case: the node says persistent and I say **not** persistent on
+the field — then it simply is not saved along. So `persistent` is an instruction for the saving
+mechanism.* ⚠️ *Measured, and it already behaves exactly like that.*
+
+| | on the node | on the field | resolved at the field |
+|---|---|---|---|
+| case 1 | `false` | `true` | **`true`** |
+| case 2 | `true` | `false` | **`false`** |
+
+**So it does not follow `hide` out of the settings table.** *`hide` left because the chain gave it a
+**second meaning nobody asked for** — hiding a type blanked every field of that type
+([D-464](90-decision-log.md)). `persistent` has no second meaning: inheriting down a type is the
+whole point, since a type declares itself non-persistent once and every field using it inherits
+that.*
+
+⚠️ **And the sharper half is the last sentence of his, because it names a different subsystem:**
+*`persistent` instructs the **saving** mechanism, `hide` instructs the **drawing** walk. Two
+subsystems — which, rather than any measurement, is why the two keys part company.*
+
+⚠️ **One divergence between his sentence and the built behaviour, and it is not cosmetic.** *He:
+«then it simply is **not saved along**». The code **refuses the write**, arguing that dropping it
+silently would let a form appear to save and lose the value, which is worse than either storing it
+or saying no. **Skip and refuse are different promises to whoever is typing**, and which one he
+means is [OQ-115](91-open-questions.md).*
+
+⚠️ *`read_only` is **not** answered here; [OQ-114](91-open-questions.md) stays open for it.*
 
 ### OQ-039 answered — the installation is the root of the walk
 
@@ -646,15 +810,31 @@ boundary; they are not model settings and do not belong in this walk.
 
 | Table | Columns |
 |---|---|
-| **records** | `id` · `model_id` · `model_version` · `is_test` |
+| **records** | `id` · `node_id` · `node_version` · `is_test` |
 | **record_values** | `record_id` · `edge_id` · `value_int` · `value_decimal` · `value_text` · `value_ref` · `value_date` |
+
+⚠️ **Corrected: this table used to read `model_id` and `model_version`** ([D-462](90-decision-log.md)).
+*The word «model» had to go for a measured reason rather than a stylistic one: `model_id` pointed
+into `Compositions` for 21 of 24 records and into `Model` for 3 — while `Model` is at the same time
+the name of a branch in the tree, so a reader who knew the tree read the column wrongly four times
+out of five. The rename was one schema step and moved no row: 24 records before and after. It came
+with the class names — `Record` → `NodeRecord`, `RecordValue` → `EdgeRecord`, `Setting` →
+`SettingRecord` — and with «attribute» → «field» throughout the code
+([D-459](90-decision-log.md)).* ⚠️ *This document still says **attribute** almost everywhere; that
+sweep is [list row 62](97-implementation-plan.md#the-working-list) and is sentence by sentence, not
+a search and replace — the decision log keeps «attribute» deliberately, because renaming inside
+testimony would falsify it.*
+
+⚠️ *Measured against the built schema, and not resolved here: `records` carries `id`, `node_id`,
+`node_version` and `created_at`. **`is_test` is not built** — [D-028](90-decision-log.md)'s flag is
+in the concept and not in the table. Recorded rather than quietly dropped ([PR-4](../../CLAUDE.md)).*
 
 - Five model tables and two data tables — seven in all ([D-083](90-decision-log.md), whose storage
   rule is superseded below by [D-133](90-decision-log.md)).
 - `id` comes from the **record** identity space, not the model's
   ([D-164](90-decision-log.md), [P4a](#p4a--two-identity-spaces-one-for-the-model-one-for-the-records)) — a
   per-table `AUTO_INCREMENT`.
-- `model_version` sits on the **record** ([D-060](90-decision-log.md)) — and the record **keeps**
+- `node_version` sits on the **record** ([D-060](90-decision-log.md)) — and the record **keeps**
   that stamp. There is no mass re-stamping: a migration walks the records a change actually broke
   and leaves the rest alone, so records at several versions are a normal steady state, and the stamp
   means *written against* rather than *checked against* ([D-210](90-decision-log.md)).
@@ -948,6 +1128,63 @@ Two meanings of *shown* had been conflated ([D-237](90-decision-log.md)):
 
 The first is a statement about *how do I recognise a part*, which does not change because some table
 shows two columns fewer — so it is available at save time, which is what the search column needs.
+
+## Residue — what is left over, and the one place that measures it
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    Q["one class · the queries"] --> S["the cleanup screen"]
+    Q --> C["the command line"]
+    S --> D["removal · deliberate, never automatic"]
+```
+
+Rows can outlive their owner — a setting or a label whose identity is gone, a value whose edge is
+gone, a node with no connection at all. **One class owns those queries**
+([D-479](90-decision-log.md)), and the command-line scripts now use it instead of their own copies.
+*Two copies of a query are the road on which a correction reaches only one of them —
+[D-469](90-decision-log.md) measured that for documents; here it holds for code.*
+
+⚠️ **Measured on the running installation: 0 orphaned settings, 0 orphaned labels, **7 values
+without an edge**, 0 nodes without connections.** *The seven are real backlog. They are **shown and
+not removed**, because removal is deliberate and never automatic ([D-247](90-decision-log.md)).*
+
+Two of its assumptions touch storage and are stated rather than hidden: **`owner_kind` gains a
+fourth value for an owner that no longer exists** — neither *node* nor *relation* is true of one —
+and **every removal writes a changelog row against that vanished owner**. Orphaned **labels** are
+measured but not offered for removal, because the deciding row does not name them.
+
+⚠️ *Not built: cleaning the changelog itself. Its gate is a dependency and not a date, and it needs
+the conflict resolver — see
+[M21 and M22](70-migration.md#m21-and-m22--history-may-go-when-nothing-hangs-from-it).*
+
+## Release updates and these tables
+
+**The rule for a release update is owned by [70 Migration](70-migration.md).** What belongs here is
+only what it says about storage.
+
+**The update log stays minimal because our schema steps are not reversible**
+([D-476](90-decision-log.md)) — a dropped column and deleted setting rows do not remember what they
+held, so no roll-back can be promised from the log; the backup restores instead. Today the schema
+writes **no** changelog line at all, so installation and update are logged nowhere. The whole
+argument is
+[M18 and M19](70-migration.md#m18-and-m19--the-backup-restores-the-log-only-narrates).
+
+**New nodes arrive additively, and the version that governs that is not the schema version**
+([D-477](90-decision-log.md)): each scaffold keeps **its own** version in an option of its own,
+because a scaffold is **content** and the schema is **machinery** — they move for different reasons
+and must not drag each other along. The two duties of a release are
+[M20](70-migration.md#m20--a-release-update-owes-two-things).
 
 ## What belongs here
 

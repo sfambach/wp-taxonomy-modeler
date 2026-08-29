@@ -3605,6 +3605,152 @@ chosen but read off the target's branch ([D-161](90-decision-log.md)); `Identity
 **What is still deliberately not drawn:** the record side. Records live in their own tables and
 their own id space ([D-164](90-decision-log.md)), and mixing them into a model diagram is what
 makes people build the two layers into one.
+## Was eine Änderung ist, und was mit ihr passiert — Stand 2026-08-28
+
+⚠️ **Diese Stelle besitzt einen Faden, der vorher nur im Log stand** ([D-469](90-decision-log.md)):
+*eine Änderung hat eine Nummer, sie trägt ihre Adresse, sie wird nur geschrieben wenn sie eine ist,
+und sie darf erst verschwinden wenn nichts mehr von ihr hängt.* Vier Entscheidungen, ein Gegenstand.
+
+### Eine Änderung hat eine Nummer, und die Klammer gibt sie ihr
+
+[D-470](90-decision-log.md), auf seine Bitte: *«was in einer Änderung geändert wurde — Kante, Knoten,
+Setting — wenn sie zusammen geändert wurden, sollten sie **eine Änderungsnummer** haben.»*
+
+⚠️ **Die Spalte war seit [D-348](90-decision-log.md) da und gruppierte nichts.** *Gemessen: **2282
+Zeilen in 1945 Gruppen**, davon **1609 mit einer einzigen Zeile**, und **0 von 1945** über mehr als
+eine Art Eigentümer. Eine Nummer wurde **pro Schreibvorgang** vergeben statt pro Änderung.*
+
+**`beginAct()` / `endAct()`, nach Tiefe gezählt, ohne neuen Zähler** — die Nummer bleibt die Id der
+ersten Zeile des Akts, die Klammer sagt nur, welche Zeilen dazugehören. Ein Akt beginnt am Rand, wo
+eine Person etwas tut.
+
+⚠️ *Und eine Festlegung steckt darin: **einen Knoten anlegen ist eine Änderung, nicht drei.**
+`createNode()` schreibt `created` plus die zwei Settings, die es materialisiert — **niemand führt
+«materialisiere `read_only`» als Akt aus**.*
+
+⚠️ **Das Hindernis war nicht der Entwurf, sondern die Verdrahtung:** *`new WpdbChangelog(…)` stand
+**siebenmal** im Rand. Die Klammer auf einem Exemplar hätte den anderen sechs nichts gesagt.
+**Sieben Kopien eines zustandslosen Objekts sind Verschwendung; sieben Kopien von einem mit Zustand
+sind falsch** — eine Frage, die beim nächsten Mitarbeiter mit Zustand wieder zu stellen ist.*
+
+### Ein Eintrag trägt seine Adresse
+
+[D-492](90-decision-log.md) baut, was [D-427](90-decision-log.md) verlangt hatte: `before_state` und
+`after_state` hören auf, Prosa zu sein.
+
+⚠️ **Gemessen, wie schlecht es stand: 10 745 Zeilen, davon 5 773 über Settings — und *keine einzige*
+nannte einen `path`.** *Ein Eintrag sagte «etwas hat `min` auf 10 gesetzt» und nicht **für welche
+Stelle** ([D-413](90-decision-log.md)). Damit war [D-061](90-decision-log.md)s «der Changelog **ist**
+das Migrationsskript» gegen den Pfad schlicht falsch.*
+
+Das Format: `key=min path=4654 type=int value=10`, gebaut und gelesen von **einer** Klasse. *Vorher
+standen vier Schreibweisen nebeneinander, und der Pfad wurde an **zwei** Stellen mit einer
+Zeichensuche herausgegraben.*
+
+⚠️ **Die Adresse steht in den Zustandsspalten und nicht im `what`, und das ist gemessen:** *`what`
+wird auf **Gleichheit** abgefragt, **roh angezeigt**, und **19 von 31** Werten sind schon
+Schlüsselnamen statt Verben.*
+
+⚠️ *Der Vertrag ist eng, damit die alten Zeilen lesbar bleiben: **nur das letzte Feld darf Leerraum
+enthalten**, und eine Zeile, die nicht mit `key=` beginnt, ist ein nackter Wert. **844 Zeilen haben
+ein Leerzeichen im Namen und überleben es.** Kein Schemaschritt, keine Zeile umgeschrieben — der
+fehlende Pfad ist nicht rekonstruierbar, und [D-476](90-decision-log.md) verlangt, dass ein
+zerstörender Schritt sagen kann, was er zerstört.*
+
+### Nichts wird geschrieben, wenn sich nichts geändert hat
+
+[D-490](90-decision-log.md), aus seiner Frage entstanden: *«wie merkst Du Dir aktuell Änderungen auf
+der Einstellungsseite, oder schreibst Du immer alle?»*
+
+⚠️ **Die Antwort war zweigeteilt, und das hatte niemand benannt:** *die **Seite** verglich und
+übersprang, der **Kern-Dienst** schrieb **immer**. Derselbe Wert zweimal gesetzt ergab zwei
+Schreibabfragen. **Für die Oberfläche war es gelöst, für ein Scaffold oder einen Import nicht.***
+
+⚠️ **Verglichen wird gegen das *hier* Gespeicherte und nicht gegen die Kette, und das ist der ganze
+Unterschied.** *«Hier gesetzt» und «von oben geerbt» sind zwei verschiedene Zustände
+([D-266](90-decision-log.md)) — löst die Kette `X` auf und schreibt jemand `X` ausdrücklich **hier**
+hin, ist das eine echte Änderung.*
+
+### Löschen ist an eine Abhängigkeit gebunden, nicht an ein Datum
+
+[D-473](90-decision-log.md), auf sein Wort: *«solange ich Konflikte habe, darf ich die Sätze nicht
+löschen. **Das ist eine Abhängigkeit, und die müssen wir befolgen.**»*
+
+⚠️ **Damit ist [D-061](90-decision-log.md) keine Behauptung mehr, sondern eine Regel mit einem Tor** —
+und die Kette dafür stand längst da, nur nie zusammengesetzt: [D-054](90-decision-log.md) der
+Konfliktlöser, [D-060](90-decision-log.md) der Datensatz trägt seine Version,
+[D-061](90-decision-log.md) die Auflösung braucht die Änderungen.
+
+⚠️ *Das Tor ist berechenbar: `records.node_version < nodes.version`. **Gemessen 1 von 25 offen.** Und
+eine Gruppe geht nur, wenn **jede** ihrer Zeilen am Stichtag oder davor liegt — sein Wort, und
+technisch die einzige richtige Form, weil eine Gruppe als Ganzes gelesen wird.*
+
+⚠️ **Die Anlage-Zeile bleibt dauerhaft** ([D-474](90-decision-log.md)), und *Unlöschbarkeit ist etwas,
+das man einer Zeile **ansagt**, kein Nebenprodukt der Löschbedingung.*
+
+### Ein Datensatz ohne seinen Knoten darf es nicht geben
+
+[D-485](90-decision-log.md) baut [C102](#owner-statement--2026-08-22-twenty-third-pass-deleting-a-referenced-node)
+endlich. Der Eigentümer: *«ein Record ohne Knoten wäre undenkbar … sonst weiss man ja auch gar nicht,
+wie dieser Record interpretiert werden soll. Wir haben ein einziges Datum, einen Text oder eine Zahl —
+was soll ich denn damit machen?»*
+
+⚠️ **Es war «geschrieben und nicht gebaut», und der Docblock war der Belastungszeuge:** *`clearTrash()`
+sagte «und es nimmt mit, was zu einem Knoten gehört: settings, labels, **records** und edges», und das
+Diagramm zeichnete «records · values». **Gelöscht wurden vier von sechs.***
+
+⚠️ *Der Changelog geht ausdrücklich **nicht** mit ([D-065](90-decision-log.md)): was verschwindet, sind
+**Daten**, nicht die Nachricht, dass es sie gab.*
+
+### Spezialisierte Klassen, und wer einen eigenen Renderer will
+
+[D-484](90-decision-log.md) korrigiert die **delegierte Hälfte** von [D-036](90-decision-log.md) — und
+diese Entscheidung hatte ausdrücklich darum gebeten: *«die Repräsentation sei ihm gleich; korrigiere
+es, falls das nicht die Absicht war.»* Sie war es nicht.
+
+> *Ich hätte, wie von Anfang an geschrieben, gerne **spezialisierte Klassen**, weil dann auch klar ist,
+> **wie viele spezialisierten Typen wir haben**.*
+
+⚠️ **Sein Grund ist das Inventar, und die Messung stützt ihn sofort:** *das Enum nennt **11** Typen,
+gesät sind **11**, die Registry bindet einen Renderer an **10**. **`user_ref` ist ein Typ ohne
+Renderer** — die Antwort auf «wie viele haben wir» steht an drei Stellen, und die stimmen nicht
+überein.*
+
+⚠️ **[V5](00-vision-and-scope.md) bleibt unberührt, und das ist wichtig, weil es anders klingt.** *Er
+hat V5 selbst mit der Nuance bestätigt: «diese Aussage betraf das **Datenmodell** und **wie Knoten
+gespeichert werden**». **Eine Gestalt in der Datenbank, mehrere Klassen darüber** — das widerspricht
+sich nicht.*
+
+⚠️ *Der Preis ist benannt: die **Hydrierung braucht einen Unterscheider**. Für einen Knoten, der selbst
+ein Typ ist, steht er in der Zeile; für einen **Untertyp** ergibt ihn erst der Lauf die Vorfahren
+hoch.*
+
+Dazu [D-482](90-decision-log.md): **wer einen eigenen Renderer will, wird ein Typ** — *«ein Renderer
+ist ja sowieso was Programmiertes; ich kann ja nicht einfach nur einen Namen in die Datenbank
+klatschen und hoffen, dass es irgendwie gerendert wird.»*
+
+### Settings und Feldwerte in einer Tabelle: was sie unterscheidet
+
+[D-472](90-decision-log.md), auf sein Wort: *«ich würde einfach eine neue Spalte in die Tabelle
+einfügen, die dann genau unterscheidet: ist Setting oder ist Attributwert.»*
+
+⚠️ **Der Einwand, den [OQ-119](91-open-questions.md) dagegen notiert hatte, ist widerlegt — gemessen.**
+*Er lautete «eine Tatsache doppelt, der Eigentümer impliziert sie schon». **Das setzt einen Id-Raum
+voraus. Es sind zwei** ([D-164](90-decision-log.md)), und sie überlappen: Identitäten laufen von 1 bis
+26453, Records haben `AUTO_INCREMENT` und laufen von 16 bis 879 — **Id 16 ist gleichzeitig eine
+Relation und ein Record.** Eine Eigentümer-Id allein sagt nicht, aus welchem Raum sie kommt.*
+
+⚠️ *Offen bleibt die härtere Hälfte: die vier leihenden Schlüssel `default`, `min`, `max`, `step`,
+deren Typ **der des Gegenstands** ist und nirgends steht.*
+
+### Was sich im Vokabular geändert hat
+
+| | |
+|---|---|
+| *Attribut* heisst **Feld** | [D-462](90-decision-log.md) — «was wir machen, sind **Felder** in einem Datensatz» |
+| `range_min`/`range_max`/`range_step` heissen **`min`/`max`/`step`** | [D-466](90-decision-log.md), Schema 11 |
+
+---
 ## What belongs here
 
 **Objects and their shape**
