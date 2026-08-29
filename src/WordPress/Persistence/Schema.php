@@ -73,8 +73,16 @@ final class Schema
      *      need it on the edge». **Hiding is about a placement**, and a node-level flag had no
      *      use case behind it — «I do not simply create a model node and then say I will not
      *      draw it, that would be nonsense».* All 7 values travel to their inheritance edge.
+     * 13 — `records.is_test`, das Kennzeichen für Testdaten (D-028). ⚠️ **Es stand seit dem
+     *      22.08. im Konzept und war nie gebaut**: «Testdaten sind gewöhnliche Daten,
+     *      gekennzeichnet … kein eigener Testdaten-Speicher und keine dritte Art von Ding».
+     *      *Die Tabelle hatte vier Spalten, die fünfte stand nur im Text — gefunden beim
+     *      Nachziehen der Doku, nicht durch einen Test.* **Ein Zusatz und keine Wanderung:**
+     *      `dbDelta` legt eine fehlende Spalte selbst an, und `DEFAULT 0` heisst, dass jeder
+     *      vorhandene Datensatz **echte Daten** bleibt. *Ein Index darauf, weil die Vorschau
+     *      genau danach filtert und sonst über alle Datensätze eines Knotens liefe.*
      */
-    public const VERSION = 12;
+    public const VERSION = 13;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -675,8 +683,10 @@ final class Schema
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
+                is_test tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
-                KEY node_id (node_id)
+                KEY node_id (node_id),
+                KEY is_test (is_test)
             ) {$charset};",
 
             // Keyed on a path with the last edge repeated in edge_id, so that

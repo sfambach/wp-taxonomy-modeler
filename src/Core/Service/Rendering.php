@@ -1585,6 +1585,24 @@ final class Rendering
             );
 
             foreach (Multiplicity::cases() as $one) {
+                // ⚠️ **Ein `bool` bekommt keine Untergrenze null angeboten** ([D-412](../../../docs/NewConcept/90-decision-log.md)),
+                // auf sein Wort: *«ein `bool` hat genau zwei Zustände … und ein `bool` darf keine
+                // Multiplizität von null haben.»* `0..1` hiesse «vielleicht wahr, vielleicht falsch,
+                // vielleicht keins» — und ein Drittes gibt es nicht.
+                //
+                // ⚠️ *Gefragt wird {@see Multiplicity::requiresOne()} und **nicht** eine Liste der
+                // beiden Werte: die Frage «verlangt das eine Antwort» ist genau die, die hier
+                // gestellt wird, und sie hat schon eine Stelle. Eine zweite Aufzählung daneben wäre
+                // dieselbe Tatsache doppelt.*
+                //
+                // ⚠️ *Das ist `R28` — **ein Steuerelement bietet nur echte Wahlen an**. Die
+                // Speicherseite kannte die Regel längst: der Schalter schreibt eine verborgene `0`
+                // neben die Ankreuzbox ([D-370](../../../docs/NewConcept/90-decision-log.md)), damit
+                // ein leeres Kästchen `false` sendet statt nichts. **Nur der Wähler log noch.***
+                if ($subjectType === SimpleType::Bool && ! $one->requiresOne()) {
+                    continue;
+                }
+
                 // ⚠️ The **notation**, deliberately not translated — `0..1` is not English and
                 // survives a locale change without a label.
                 $options[$one->value] = $one->notation();

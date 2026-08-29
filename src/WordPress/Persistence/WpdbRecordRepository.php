@@ -28,9 +28,12 @@ final class WpdbRecordRepository implements RecordRepository
             [
                 'node_id'      => $record->nodeId,
                 'node_version' => $record->nodeVersion,
-                'created_at'    => $record->createdAt,
+                'created_at'   => $record->createdAt,
+                // ⚠️ *Als `%d` und nicht als `%s`: die Spalte ist `tinyint`, und `wpdb` schreibt
+                // einen `bool` sonst als leere Zeichenkette in eine Zahlenspalte.*
+                'is_test'      => $record->isTest ? 1 : 0,
             ],
-            ['%d', '%d', '%s']
+            ['%d', '%d', '%s', '%d']
         );
 
         return (int) $wpdb->insert_id;
@@ -42,7 +45,8 @@ final class WpdbRecordRepository implements RecordRepository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at FROM ' . Schema::table('records') . ' WHERE id = %d',
+                'SELECT id, node_id, node_version, created_at, is_test FROM ' . Schema::table('records')
+                    . ' WHERE id = %d',
                 $id
             ),
             ARRAY_A
@@ -57,7 +61,7 @@ final class WpdbRecordRepository implements RecordRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at FROM ' . Schema::table('records') . '
+                'SELECT id, node_id, node_version, created_at, is_test FROM ' . Schema::table('records') . '
                  WHERE node_id = %d ORDER BY id ASC',
                 $nodeId
             ),
@@ -166,6 +170,10 @@ final class WpdbRecordRepository implements RecordRepository
             (int) $row['node_id'],
             (int) $row['node_version'],
             (string) $row['created_at'],
+            // ⚠️ *`?? 0` und nicht `$row['is_test']` allein: `hydrate()` bekommt auch Zeilen aus
+            // Abfragen, die die Spalte nicht auswaehlen — ein fehlender Schluessel waere eine Warnung
+            // und danach stillschweigend `false`, hier zufaellig richtig und beim naechsten Feld nicht.*
+            (bool) ($row['is_test'] ?? 0),
         );
     }
 

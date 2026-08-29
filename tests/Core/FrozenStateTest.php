@@ -327,6 +327,63 @@ final class FrozenStateTest extends TestCase
     }
 
     /**
+     * ⚠️ **`reset()` schrieb gar keine Journalzeile** — gemessen beim Bau von Zeile 47, gebaut als
+     * Zeile 74. *`put()` verzeichnete jede Änderung (D-403), `reset()` entfernte eine Zeile und sagte
+     * nichts. Damit war «hier war etwas gesetzt und jemand hat es auf geerbt zurückgestellt» im
+     * Journal nicht von «hier war nie etwas» zu unterscheiden — und genau diese zwei Zustände hält
+     * D-266 auseinander.*
+     */
+    #[Test]
+    public function resetting_a_setting_says_so_and_says_what_it_took_back(): void
+    {
+        [$settings, $changes, $node] = $this->aNodeWithSettings();
+
+        $chain = $settings->chainFor($node);
+
+        $settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
+        $settings->reset($node->id, SettingKey::Min->value);
+
+        $written = array_values(array_filter(
+            $changes->entries,
+            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
+        ));
+
+        self::assertCount(2, $written, 'setzen und zuruecksetzen sind zwei Eintraege');
+        self::assertSame('setting min set', $written[0][2]);
+        self::assertSame('setting min cleared', $written[1][2]);
+
+        // ⚠️ *Der Eintrag muss sagen, **was** zurückgenommen wurde — sonst ist er nicht abspielbar
+        // (D-492). Der alte Wert wird dafür gelesen, bevor er verschwindet.*
+        $before = FrozenState::parse((string) $written[1][3]);
+
+        self::assertNotNull($before);
+        self::assertSame(SettingKey::Min->value, $before->field('key'));
+        self::assertSame('10', $before->field('value'));
+
+        // ⚠️ **`null` und nicht «nichts»**: die Zeile ist fort, sie hält nicht absichtlich nichts.
+        self::assertNull($written[1][4]);
+    }
+
+    /**
+     * ⚠️ *Die Gegenrichtung, und sie kommt ohne eigenen Wächter aus: {@see Settings::note()} vergleicht
+     * beide Zustände und schreibt nichts, wenn sie gleich sind. **Ein zweiter Wächter in `reset()` wäre
+     * eine zweite Stelle, die dieselbe Frage beantwortet.***
+     */
+    #[Test]
+    public function resetting_what_was_never_set_writes_nothing(): void
+    {
+        [$settings, $changes, $node] = $this->aNodeWithSettings();
+
+        $settings->reset($node->id, SettingKey::Min->value);
+
+        $written = array_filter(
+            $changes->entries,
+            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
+        );
+
+        self::assertSame([], $written, 'nichts gesetzt, nichts zurueckgenommen, nichts verzeichnet');
+    }
+    /**
      * A node, its chain, and a changelog that keeps what was written.
      *
      * @return array{Settings, RecordedChanges, Node}

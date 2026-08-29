@@ -1258,6 +1258,53 @@ final class RenderingTest extends TestCase
         self::assertTrue($row->isEngineOwned());
     }
 
+    /**
+     * ⚠️ **Ein `bool` bekommt keine Untergrenze null angeboten** (D-412). Der Eigentümer: *«ein `bool`
+     * hat genau zwei Zustände … und ein `bool` darf keine Multiplizität von null haben.»* `0..1` hiesse
+     * «vielleicht wahr, vielleicht falsch, vielleicht keins», und ein Drittes gibt es nicht.
+     *
+     * ⚠️ *Geprüft wird am **Markup** und nicht an einer Liste im Inneren: was angeboten wird, ist das,
+     * was ein Mensch anklicken kann. Und die Gegenprobe steht daneben — an einem `int` bleiben alle
+     * vier stehen, sonst hielte die Zusage auch, wenn der Wähler überhaupt nichts mehr anböte.*
+     */
+    #[Test]
+    public function a_bool_is_not_offered_a_floor_of_zero(): void
+    {
+        $part  = $this->thing('Part');
+        $flag  = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
+        $count = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+
+        $fuerBool = $this->multiplicityMarkup($flag);
+        $fuerInt  = $this->multiplicityMarkup($count);
+
+        self::assertStringNotContainsString('value="0..1"', $fuerBool);
+        self::assertStringNotContainsString('value="0..*"', $fuerBool);
+        self::assertStringContainsString('value="1..1"', $fuerBool);
+        self::assertStringContainsString('value="1..*"', $fuerBool);
+
+        // Die Gegenprobe: an einem `int` steht die ganze Vier weiterhin zur Wahl.
+        self::assertStringContainsString('value="0..1"', $fuerInt);
+        self::assertStringContainsString('value="0..*"', $fuerInt);
+    }
+
+    /** Das gezeichnete Multiplizitäts-Steuerelement einer Feldkante. */
+    private function multiplicityMarkup(\Taxmod\Core\Model\Relation $edge): string
+    {
+        $drawn = $this->rendering->settingsFor(
+            $edge,
+            $this->settings->resolve($this->settings->chainForUseSite($edge)),
+            Purpose::Edit
+        );
+
+        foreach ($drawn as $row) {
+            if ($row->key === SettingKey::Multiplicity->value) {
+                return $row->result?->markup ?? '';
+            }
+        }
+
+        self::fail('Die Multiplizitaet wurde fuer diese Kante gar nicht gezeichnet.');
+    }
+
     /** @return array<string, \Taxmod\Core\Renderer\RenderedSetting> */
     private function drawnSettings(Node $node, Purpose $purpose = Purpose::Display): array
     {

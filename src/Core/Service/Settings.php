@@ -307,7 +307,21 @@ final class Settings
     {
         // ⚠️ *`path` says **which** place is forgotten. Without it, resetting a node's own default
         // would also throw away what it says about each of its attributes.*
+        // ⚠️ **Der alte Wert wird gelesen, bevor er verschwindet** — sonst kann die Journalzeile
+        // nicht sagen, was zurückgenommen wurde ([Zeile 74](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+        //
+        // ⚠️ *`put()` verzeichnete jede Änderung ([D-403](../../../docs/NewConcept/90-decision-log.md)) und
+        // `reset()` sagte gar nichts. Damit war «hier war etwas gesetzt und jemand hat es auf geerbt
+        // zurückgestellt» im Journal nicht von «hier war nie etwas» zu unterscheiden — und genau diese
+        // zwei Zustände hält [D-266](../../../docs/NewConcept/90-decision-log.md) auseinander.*
+        $was = $this->valueAt($ownerId, $key, $path);
+
         $this->settings->forget($ownerId, $key, $path);
+
+        // ⚠️ *Kein eigener Wächter für «war ohnehin nichts gesetzt»: {@see self::note()} vergleicht
+        // beide Zustände und schreibt nichts, wenn sie gleich sind. **Ein zweiter Wächter daneben wäre
+        // eine zweite Stelle, die dieselbe Frage beantwortet.***
+        $this->note($ownerId, $key, $path, $was, null);
     }
 
     /**
