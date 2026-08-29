@@ -43,6 +43,7 @@ use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
@@ -79,9 +80,10 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework, $log);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $labels);
+$types     = new SeededTypeNodes($nodes, $framework);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types, $labels);
 
-$scaffold = new CompositionScaffold($editor, $framework, $settings);
+$scaffold = new CompositionScaffold($editor, $framework, $settings, $types);
 
 /** @return array<string, \Taxmod\Core\Model\Relation> The node's own attributes, by name. */
 function membersOf(ModelEditor $editor, \Taxmod\Core\Model\Node $node): array

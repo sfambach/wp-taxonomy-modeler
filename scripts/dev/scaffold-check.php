@@ -39,6 +39,7 @@ use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -68,7 +69,8 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
 $editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, new WpdbChangelog(new SystemClock()));
-$scaffold  = new BaseScaffold($editor, $framework);
+$types     = new SeededTypeNodes($nodes, $framework);
+$scaffold  = new BaseScaffold($editor, $framework, $types);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
@@ -78,15 +80,22 @@ $scaffold->import();
 
 $present = [];
 
-// ⚠️ **Keyed by the type's **identifier**, not by the node's name** ([D-428](../../docs/NewConcept/90-decision-log.md)).
-// The seeded nodes are called `Integer` and `Text` now; the enum value stayed `int` and `text` because
-// it is what recognises a type. *Keying by identifier is what keeps every `$present['int']` below
-// meaning what it always meant — and it says out loud which of the two words is the key.*
-foreach ($editor->childrenOf($dataTypes->id) as $child) {
-    $type = SimpleType::fromNodeName($child->name);
+// ⚠️ **Found by the id the seed wrote down, not by the node's name** ([D-510](../../docs/NewConcept/90-decision-log.md)).
+// *This is the line that has to change, not only the code under test: keying by name here would leave
+// the check green whatever the binding did — and a check that is green for the wrong reason is worse
+// than none. The nodes are called `Integer` and `Text`; the enum value stayed `int` and `text`, so
+// every `$present['int']` below keeps meaning what it always meant.*
+$byId = [];
 
-    if ($type !== null) {
-        $present[$type->value] = $child;
+foreach ($editor->childrenOf($dataTypes->id) as $child) {
+    $byId[$child->id] = $child;
+}
+
+foreach (SimpleType::cases() as $type) {
+    $id = $types->nodeId($type);
+
+    if ($id !== null && isset($byId[$id])) {
+        $present[$type->value] = $byId[$id];
     }
 }
 

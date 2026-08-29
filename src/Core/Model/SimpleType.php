@@ -141,6 +141,10 @@ enum SimpleType: string
      * checks and tests — for a change that is about a word on a screen.* **The identifier stays
      * short and machine-shaped; the name becomes the word.**
      *
+     * ⚠️ **The second job is gone** ([D-510](../../../docs/NewConcept/90-decision-log.md)): the
+     * binding is the node's **id**, written down by the seed. *So this returns the word a person
+     * reads and nothing depends on it any more — which is what a name should have been all along.*
+     *
      * ⚠️ *Two choices in here are mine and are flagged rather than smuggled: `Decimal` rather than
      * {@see self::humanName()}'s **double** — he asked for consistent spelling, not a different word
      * — and `Boolean` rather than **yes or no**, which is a phrase for a heading and not a name a
@@ -164,12 +168,22 @@ enum SimpleType: string
     }
 
     /**
-     * The type a node of this name stands for — by its **name**, which is the only link there is.
+     * The type a node of this name stands for — **the Notnagel, and no longer the link.**
+     *
+     * ⚠️ **The binding is the node's id** ([D-510](../../../docs/NewConcept/90-decision-log.md)),
+     * written down by the seed and read through {@see \Taxmod\Core\Repository\TypeNodes}. *This method
+     * used to say «its name, which is the only link there is», and that sentence is what the decision
+     * removed: a check looked for a node called `int` — it is called `Integer` — **so it never ran and
+     * preserved a contradiction for three days.** And [D-022](../../../docs/NewConcept/90-decision-log.md)
+     * says node names are deliberately not unique, so a name could never have been a key.*
+     *
+     * ⚠️ **What it is still for: the installation that has no ids written down yet.** *An upgrade must
+     * not be a loss, so a lookup that finds nothing falls back to here **once** and then writes the id
+     * down. Nothing in the drawing path reaches this method any more.*
      *
      * ⚠️ **Both spellings answer, and that is not indecision.** A tree that has not been migrated yet
-     * still holds a node called `int`, and a renderer asking *what type is this* must not go blank in
-     * between. *The old value is accepted for as long as an installation can still carry it; the new
-     * name is what gets written.*
+     * still holds a node called `int`, and the fallback must recognise it. *The old value is accepted
+     * for as long as an installation can still carry it; the new name is what gets written.*
      */
     public static function fromNodeName(string $name): ?self
     {

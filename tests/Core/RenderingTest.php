@@ -43,6 +43,7 @@ use Taxmod\Tests\Core\Fake\InMemoryNodes;
 use Taxmod\Tests\Core\Fake\InMemoryRelations;
 use Taxmod\Tests\Core\Fake\InMemorySettings;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
+use Taxmod\Tests\Core\Fake\RememberedTypeNodes;
 
 /**
  * The descent: attribute → target → simple type → renderer → markup.
@@ -59,6 +60,7 @@ final class RenderingTest extends TestCase
     private Settings $settings;
     private ModelEditor $editor;
     private Rendering $rendering;
+    private RememberedTypeNodes $typeNodes;
     private InMemoryLabels $labelStore;
     /** @var array<string,Node> */
     private array $branchRoot = [];
@@ -112,17 +114,40 @@ final class RenderingTest extends TestCase
 
         $this->editor    = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
         $this->settings  = new Settings($this->stored, $this->nodes, $framework);
+        $this->typeNodes = new RememberedTypeNodes();
         $this->rendering = new Rendering(
             $this->nodes,
             $framework,
             $this->settings,
             ShippedRenderers::registry(),
+            $this->typeNodes,
             new Labels($this->labelStore, $framework),
             ShippedConverters::registry()
         );
     }
 
+    /**
+     * A data type node, **and the id written down** the way the seed writes it
+     * ([D-510](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *The remembering is here and not inside `createNode()`, because those are two different
+     * acts: making a node, and declaring that this node **is** the type. {@see lookalike()} is the
+     * first act without the second, which is the case the decision exists for.*
+     */
     private function type(string $name, ?Node $under = null): Node
+    {
+        $node = $this->editor->createNode($name, ($under ?? $this->branchRoot['data-types'])->id);
+        $type = SimpleType::fromNodeName($name);
+
+        if ($type !== null && $under === null) {
+            $this->typeNodes->remember($type, $node->id);
+        }
+
+        return $node;
+    }
+
+    /** A node in `Data Types` that merely **bears** a type's name — nobody seeded it. */
+    private function lookalike(string $name, ?Node $under = null): Node
     {
         return $this->editor->createNode($name, ($under ?? $this->branchRoot['data-types'])->id);
     }
@@ -173,6 +198,68 @@ final class RenderingTest extends TestCase
         // ⚠️ Reading a type off a name found anywhere would be the special-casing-by-name the
         // code standard forbids — a supplier called `text` under `Model` is somebody's thing.
         $impostor = $this->editor->createNode('text', $this->branchRoot['model']->id);
+
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $impostor->id, 'supplier');
+
+        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+
+        self::assertNull($fields[0]->type);
+        self::assertTrue($fields[0]->hasNoRenderer());
+    }
+
+    // --------------------------------------------- the binding is the id (D-510)
+
+    #[Test]
+    public function a_type_node_that_is_renamed_is_still_that_type(): void
+    {
+        // ⚠️ **This is the fault D-510 was written for, made small.** *A check looked for a node
+        // called `int`; it is called `Integer` since D-428, so the check never ran and preserved a
+        // contradiction for three days. A name is a beschriftung and may change — and D-022 makes
+        // node names deliberately non-unique, so a name could never have been a key.*
+        $int  = $this->type('int');
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $int->id, 'count');
+
+        $this->editor->rename($int->id, 'Ganzzahl');
+
+        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+
+        self::assertSame(SimpleType::Int, $fields[0]->type);
+        self::assertFalse($fields[0]->hasNoRenderer());
+    }
+
+    #[Test]
+    public function a_subtype_keeps_its_type_when_the_type_above_it_is_renamed(): void
+    {
+        // ⚠️ *The walk upwards used to compare **ancestor names**; it compares ids now, so a rename
+        // one level up no longer silently turns every authored subtype into «no renderer».*
+        $text        = $this->type('text');
+        $description = $this->type('Description', $text);
+
+        $this->editor->rename($text->id, 'Freitext');
+
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $description->id, 'notes');
+
+        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+
+        self::assertSame(SimpleType::Text, $fields[0]->type);
+        self::assertSame(FieldRenderer::NAME, $fields[0]->rendererName);
+    }
+
+    #[Test]
+    public function a_node_that_merely_bears_a_types_name_inside_data_types_is_not_that_type(): void
+    {
+        // ⚠️ **The other half of the same decision, and the sharper half.** *The existing test above
+        // puts the impostor under `Model`, where the **branch** already refuses it. This one is
+        // inside `Data Types` — the branch says yes and only the id says no. Under a name binding
+        // this node answered `text`, which is D-022 walking straight through the front door.*
+        $seeded   = $this->type('text');
+        $impostor = $this->lookalike('text');
+
+        self::assertSame(SimpleType::Text, $this->rendering->typeOfNode($seeded));
+        self::assertNull($this->rendering->typeOfNode($impostor));
 
         $part = $this->thing('Part');
         $edge = $this->editor->addField($part->id, $impostor->id, 'supplier');

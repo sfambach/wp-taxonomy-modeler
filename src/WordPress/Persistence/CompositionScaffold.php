@@ -10,6 +10,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 
@@ -71,7 +72,9 @@ final class CompositionScaffold
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
-        private readonly Settings $settings
+        private readonly Settings $settings,
+        /** ⚠️ *So a member's type is found by id and not by the node's name ([D-510](../../../docs/NewConcept/90-decision-log.md)).* */
+        private readonly TypeNodes $typeNodes,
     ) {
     }
 
@@ -252,15 +255,16 @@ final class CompositionScaffold
             }
         }
 
-        // ⚠️ **Matched through {@see SimpleType::fromNodeName()}, not by the literal string**
-        // ([D-428](../../../docs/NewConcept/90-decision-log.md)). The seeded types are now called
-        // `Integer` and `Decimal` rather than `int` and `decimal` — *and resolving both spellings to
-        // the same case means every caller that still says `'decimal'` keeps working, instead of a
-        // rename on a screen turning into a sweep of string literals across scaffolds and checks.*
+        // ⚠️ **The literal above is read as a type, the node is then found by its id**
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)). *`$typeName` is a string in this
+        // file's own source and may be read as one; the **node's** name is a beschriftung and may
+        // not — [D-022](../../../docs/NewConcept/90-decision-log.md) makes node names deliberately
+        // non-unique, so a second node called `Text` would have answered here.*
         $wanted = SimpleType::fromNodeName($typeName);
+        $id     = $wanted === null ? null : $this->typeNodes->nodeId($wanted);
 
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
-            if ($wanted !== null && SimpleType::fromNodeName($child->name) === $wanted) {
+            if ($id !== null && $child->id === $id) {
                 return $this->editor->addField($owner->id, $child->id, $name);
             }
         }

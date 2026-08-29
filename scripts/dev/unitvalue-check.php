@@ -43,6 +43,7 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\SystemClock;
 
 $passed = 0;
@@ -74,7 +75,7 @@ $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock(), $settings);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $labels);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels);
 
 echo "\n== the type is in the tree ==\n";
 

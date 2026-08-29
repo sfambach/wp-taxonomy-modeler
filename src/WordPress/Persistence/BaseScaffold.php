@@ -9,6 +9,7 @@ use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 
@@ -41,6 +42,12 @@ final class BaseScaffold
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
+        /**
+         * ⚠️ **Required, because remembering the id is part of seeding** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
+         * *A scaffold that creates the node and writes nothing down leaves the next reader with only
+         * the name to go on — which is the fault this replaces.*
+         */
+        private readonly TypeNodes $typeNodes,
         // ⚠️ **New here, and only for the bounds.** A scaffold that creates the type but not what
         // the type *permits* leaves the most useful fact about `int` unsaid.
         private readonly ?Settings $settings = null,
@@ -77,9 +84,17 @@ final class BaseScaffold
         $dataTypes = $this->framework->rootOf(Branch::DataTypes);
 
         $taken = [];
+        $byId  = [];
 
         foreach ($this->editor->childrenOf($dataTypes->id) as $child) {
-            $taken[$child->name] = $child;
+            // ⚠️ **`??=` und nicht `=`: der erste Treffer gewinnt, nicht der letzte.** *Gemessen am
+            // 2026-08-29: `childrenOf()` liefert nach Position, und ein zweiter Knoten namens
+            // `Integer` stand hinter dem gesäten — also band die Saat sich an den **Doppelgänger** und
+            // legte beim nächsten Lauf einen dritten `Integer` an. [D-022](../../../docs/NewConcept/90-decision-log.md)
+            // sagt, dass Knotennamen absichtlich nicht eindeutig sind; «der letzte gewinnt» ist dazu
+            // keine Regel, sondern ein Zufall.*
+            $taken[$child->name] ??= $child;
+            $byId[$child->id]      = $child;
         }
 
         $created = [];
@@ -107,13 +122,28 @@ final class BaseScaffold
             unset($taken[$type->value]);
         }
 
+        // ⚠️ **Die Saat schlägt selbst Id zuerst nach und schreibt die Id danach fest**
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)) — dieselbe Reihenfolge wie überall
+        // sonst. *Ohne das Nachschlagen könnte ein Doppelgänger die Bindung übernehmen, obwohl längst
+        // notiert ist, welcher Knoten der Typ ist. Der notierte Knoten zählt nur, solange er noch unter
+        // `Data Types` hängt: ein Typ, den der Eigentümer weggeworfen hat, ist weg
+        // ([D-119](../../../docs/NewConcept/90-decision-log.md)).*
+        //
+        // ⚠️ *Und festgeschrieben wird auch, was schon dastand — nicht nur, was dieser Lauf angelegt
+        // hat. Sonst bliebe jede vor der Entscheidung gesäte Installation für immer über den Notnagel
+        // in {@see SeededTypeNodes} gebunden, also über einen Rückfall, der die Arbeit der Saat tut.*
         foreach (SimpleType::cases() as $type) {
-            if (isset($taken[$type->nodeName()])) {
-                continue;
+            $known = $this->typeNodes->nodeId($type);
+            $node  = ($known === null ? null : ($byId[$known] ?? null))
+                ?? $taken[$type->nodeName()]
+                ?? null;
+
+            if ($node === null) {
+                $node      = $this->editor->createNode($type->nodeName(), $dataTypes->id);
+                $created[] = $type->nodeName();
             }
 
-            $this->editor->createNode($type->nodeName(), $dataTypes->id);
-            $created[] = $type->nodeName();
+            $this->typeNodes->remember($type, $node->id);
         }
 
         return $created;
@@ -149,13 +179,20 @@ final class BaseScaffold
         // ⚠️ **`step` belongs here too** — the owner: *step still on default 1*. For a whole number it
         // is the only honest step: `int` with `step = 0.5` is not an `int`. *A descendant may widen the
         // step to 5 or 10; `step` is a **choosing** setting, not a bound.*
+        //
+        // ⚠️ **Keyed by the type and no longer by a node name, and that was not cosmetic.** *This
+        // read `'int'` while the node has been called `Integer` since
+        // [D-428](../../../docs/NewConcept/90-decision-log.md) — so on any installation seeded after
+        // that rename `typeNamed('int')` answered null and **the bounds were never written at all**.
+        // The same illness as the check that looked for `int`, in production code
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)).*
         $bounds = [
             // bigint, signed.
-            'int' => ['-9223372036854775808', '9223372036854775807', '1'],
+            [SimpleType::Int, '-9223372036854775808', '9223372036854775807', '1'],
         ];
 
-        foreach ($bounds as $name => [$low, $high, $step]) {
-            $node = $this->typeNamed($name);
+        foreach ($bounds as [$type, $low, $high, $step]) {
+            $node = $this->seededNode($type);
 
             if ($node === null) {
                 continue;
@@ -182,11 +219,25 @@ final class BaseScaffold
         }
     }
 
-    /** The seeded data type with this name — the same lookup `importOnce()` already does. */
-    private function typeNamed(string $name): ?Node
+    /**
+     * The node this type was seeded as — by the id, and only if it is still where it belongs.
+     *
+     * ⚠️ *Matched against the children of `Data Types` rather than read by id, because a data type
+     * is ordinary content and may have been thrown away
+     * ([D-119](../../../docs/NewConcept/90-decision-log.md)). A node that is in the trash must not
+     * get bounds written onto it — and null here means exactly «not there», which the caller already
+     * knows how to skip.*
+     */
+    private function seededNode(SimpleType $type): ?Node
     {
+        $id = $this->typeNodes->nodeId($type);
+
+        if ($id === null) {
+            return null;
+        }
+
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
-            if ($child->name === $name) {
+            if ($child->id === $id) {
                 return $child;
             }
         }

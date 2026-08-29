@@ -10,10 +10,11 @@ require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\{Purpose, ShippedRenderers};
 use Taxmod\Core\Service\{Labels, ModelEditor, Rendering, Settings};
-use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, TableIdentityAllocator, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository, WpdbSettingRepository};
+use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, TableIdentityAllocator, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository, WpdbSettingRepository};
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
@@ -29,6 +30,7 @@ $rendering = new Rendering(
     $fw,
     $settings,
     ShippedRenderers::registry(),
+    new SeededTypeNodes($nodes, $fw),
     new Labels(new WpdbLabelRepository(), $fw),
     ShippedConverters::registry()
 );
@@ -48,9 +50,22 @@ $holder  = $editor->createNode('__cv Messwert', $fw->rootOf(Branch::Model)->id);
 
 global $wpdb;
 
-$p         = $wpdb->prefix . 'taxmod_';
-$integerId = (int) $wpdb->get_var("SELECT id FROM {$p}nodes WHERE name = 'Integer' LIMIT 1");
-$edge      = $editor->addField($holder->id, $integerId, 'zaehler');
+$p = $wpdb->prefix . 'taxmod_';
+
+// ⚠️ **Über die notierte Id** ([D-510](../../docs/NewConcept/90-decision-log.md)). *Hier stand
+// `WHERE name = 'Integer' LIMIT 1` — ohne Zweig, ohne Reihenfolge, über den ganzen Baum. Ein
+// beliebiger Knoten namens `Integer` irgendwo im Modell hätte geantwortet, und
+// [D-022](../../docs/NewConcept/90-decision-log.md) sagt, dass es solche geben darf. **Gemessen:
+// genau das ist am 2026-08-29 passiert**, als sechs Leichen dieses Namens unter `Data Types`
+// lagen.*
+$integerId = (new SeededTypeNodes($nodes, $fw))->nodeId(SimpleType::Int);
+
+if ($integerId === null) {
+    fwrite(STDERR, "Der Datentyp «int» ist nicht gesät — erst scripts/dev/scaffold-check.php laufen lassen.\n");
+    exit(2);
+}
+
+$edge = $editor->addField($holder->id, $integerId, 'zaehler');
 
 echo "== der Schluessel war ein totes Steuerelement, jetzt nicht mehr ==\n";
 

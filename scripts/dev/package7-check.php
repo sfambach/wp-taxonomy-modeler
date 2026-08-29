@@ -49,6 +49,7 @@ use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
@@ -84,20 +85,30 @@ $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $registry  = ShippedRenderers::registry();
-$rendering = new Rendering($nodes, $framework, $settings, $registry, $labels);
+$types     = new SeededTypeNodes($nodes, $framework);
+$rendering = new Rendering($nodes, $framework, $settings, $registry, $types, $labels);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes)->id;
 
-// ⚠️ The seeded simple types are found by name rather than made again — they are content that
-// ships once (D-119), and a second `int` beside the real one would be a different node.
-// ⚠️ **Keyed by the type's identifier, not by the node's name** ([D-428](../../docs/NewConcept/90-decision-log.md)):
-// the nodes are called `Integer` and `Decimal` now, while the enum value stayed `int` and `decimal`
-// because that is what recognises a type. *So every `$seeded['int']` below keeps meaning what it meant,
-// and the key says which of the two words it is.*
-$seeded = [];
+// ⚠️ The seeded simple types are found rather than made again — they are content that ships once
+// (D-119), and a second `int` beside the real one would be a different node.
+//
+// ⚠️ **Über die Id, die die Saat notiert hat** ([D-510](../../docs/NewConcept/90-decision-log.md)),
+// nicht über den Namen. *Das war bis 2026-08-29 ein `fromNodeName($child->name)` mit «der letzte
+// Treffer gewinnt» — und **es ist genau daran umgefallen**: sechs Knoten namens `Integer` aus einem
+// abgestürzten Prüflauf lagen unter `Data Types`, und `$seeded['int']` zeigte auf den letzten davon.
+// Vier Zusagen wurden rot und eine fünfte starb mit einem `valueFrom() on null`. **Die Bindung war
+// der Fehler, nicht der Müll:** [D-022](../../docs/NewConcept/90-decision-log.md) sagt, dass
+// Knotennamen absichtlich nicht eindeutig sind.*
+$byId = [];
 foreach ($nodes->childrenOf($framework->rootOf(Branch::DataTypes)) as $child) {
-    $type = SimpleType::fromNodeName($child->name);
-    if ($type !== null) { $seeded[$type->value] = $child; }
+    $byId[$child->id] = $child;
+}
+
+$seeded = [];
+foreach (SimpleType::cases() as $type) {
+    $id = $types->nodeId($type);
+    if ($id !== null && isset($byId[$id])) { $seeded[$type->value] = $byId[$id]; }
 }
 
 $part = $editor->createNode('__p7 Part', $framework->rootOf(Branch::Model)->id);

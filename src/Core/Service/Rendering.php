@@ -45,6 +45,7 @@ use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\TypeNodes;
 
 /**
  * The descent, for the attributes of one node.
@@ -75,6 +76,14 @@ final class Rendering
         private readonly FrameworkNodes $framework,
         private readonly Settings $settings,
         private readonly RendererRegistry $renderers,
+        /**
+         * ⚠️ **Required, and that is the decision rather than an oversight** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
+         * *An optional binding with a name fallback behind it would mean a wiring nobody did looks
+         * exactly like a wiring that worked — which is how the whole fault being fixed here survived
+         * three days. The Notnagel lives in **one** place, in the implementation, where it can write
+         * the id down.*
+         */
+        private readonly TypeNodes $typeNodes,
         private readonly ?Labels $labels = null,
         /**
          * ⚠️ **Optional, so every existing caller keeps working with no converter in effect** — which
@@ -1802,15 +1811,16 @@ final class Rendering
         return $this->renderers->knows($name);
     }
 
-    /** The simple type a node **is**, rather than the one an attribute points at. */
+    /**
+     * The simple type a node **is**, rather than the one an attribute points at.
+     *
+     * ⚠️ *It used to load every ancestor to read their names. Since the binding is by id
+     * ([D-510](../../../docs/NewConcept/90-decision-log.md)) the ids off the node's own path are
+     * enough, and the query is gone with the names.*
+     */
     public function typeOfNode(Node $node): ?SimpleType
     {
-        $ancestorIds = $node->ancestorIds();
-
-        return $this->typeOf(
-            $node,
-            $ancestorIds === [] ? [] : $this->nodes->byIds($ancestorIds)
-        );
+        return $this->typeOf($node);
     }
 
     /**
@@ -1825,6 +1835,10 @@ final class Rendering
      * own thing that happens to share a word, and reading a type off its name would be exactly
      * the special-casing-by-name the code standard forbids.
      *
+     * ⚠️ *The ancestors are no longer read. They were loaded only to have names to compare, and
+     * since the binding is by id ([D-510](../../../docs/NewConcept/90-decision-log.md)) the ids a
+     * node's path already carries answer the same question with one query fewer.*
+     *
      * @param  list<Relation> $edges
      * @return array<int, SimpleType|null>
      */
@@ -1832,28 +1846,17 @@ final class Rendering
     {
         $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
 
-        $ancestorIds = [];
-
-        foreach ($targets as $target) {
-            $ancestorIds = [...$ancestorIds, ...$target->ancestorIds()];
-        }
-
-        $ancestors = $ancestorIds === []
-            ? []
-            : $this->nodes->byIds(array_values(array_unique($ancestorIds)));
-
         $types = [];
 
         foreach ($edges as $edge) {
             $target           = $targets[$edge->toId] ?? null;
-            $types[$edge->id] = $target === null ? null : $this->typeOf($target, $ancestors);
+            $types[$edge->id] = $target === null ? null : $this->typeOf($target);
         }
 
         return $types;
     }
 
-    /** @param array<int, Node> $ancestors */
-    private function typeOf(Node $target, array $ancestors): ?SimpleType
+    private function typeOf(Node $target): ?SimpleType
     {
         $branch = $this->framework->branchOf($target);
 
@@ -1873,14 +1876,18 @@ final class Rendering
             return null;
         }
 
-        $own = SimpleType::fromNodeName($target->name);
+        // ⚠️ **By the id the seed wrote down, never by the node's name** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
+        // *A name is a beschriftung and may change; [D-022](../../../docs/NewConcept/90-decision-log.md)
+        // says node names are deliberately not unique, so a name could never have been a key. The
+        // Notnagel — and the writing-back of the id — sits in {@see TypeNodes}, in one place.*
+        $own = $this->typeNodes->typeOf($target->id);
 
         if ($own !== null) {
             return $own;
         }
 
         foreach (array_reverse($target->ancestorIds()) as $id) {
-            $found = isset($ancestors[$id]) ? SimpleType::fromNodeName($ancestors[$id]->name) : null;
+            $found = $this->typeNodes->typeOf($id);
 
             if ($found !== null) {
                 return $found;

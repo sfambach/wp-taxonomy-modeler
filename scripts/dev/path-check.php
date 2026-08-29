@@ -45,6 +45,7 @@ use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
@@ -179,6 +180,7 @@ $rendering = new Rendering(
     $framework,
     $settings,
     ShippedRenderers::registry(),
+    new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework)
 );
 

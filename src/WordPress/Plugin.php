@@ -19,6 +19,7 @@ use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\UnitScaffold;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -329,7 +330,8 @@ final class Plugin
             new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
             // ⚠️ *Mit Changelog und Knoten-Repository, damit eine Labelaenderung in der Geschichte
             // steht ([D-489]) und `owner_kind` nicht geraten wird.*
-            new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository())
+            new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository()),
+            $this->typeNodes()
         );
     }
 
@@ -345,7 +347,8 @@ final class Plugin
         return new CompositionScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
+            $this->typeNodes()
         );
     }
 
@@ -354,6 +357,9 @@ final class Plugin
         return new BaseScaffold(
             $this->editor(),
             $this->frameworkNodes(),
+            // ⚠️ **The seed writes down which node each type became** ([D-510](../../docs/NewConcept/90-decision-log.md)),
+            // and everything afterwards reads that id instead of a name.
+            $this->typeNodes(),
             // ⚠️ **Handed in so the scaffold can say what a number type permits.** The owner:
             // *`range_min` and `range_max` on `int` should be int's min and max.* The bounds come
             // from the column it is stored in, because storage is what refuses.
@@ -398,6 +404,21 @@ final class Plugin
     private function changelog(): WpdbChangelog
     {
         return $this->changelog ??= new WpdbChangelog(new SystemClock());
+    }
+
+    /**
+     * The type bindings, one object for the same reason the framework nodes are one.
+     *
+     * ⚠️ *It caches the eleven option reads for the life of the request
+     * ([D-510](../../docs/NewConcept/90-decision-log.md)), and the ancestor walk in
+     * {@see Rendering} asks it once per level of every field on the page. **Several copies would
+     * mean several empty caches**, which is exactly the fault `frameworkNodes()` was memoised for.*
+     */
+    private ?SeededTypeNodes $typeNodes = null;
+
+    private function typeNodes(): SeededTypeNodes
+    {
+        return $this->typeNodes ??= new SeededTypeNodes(new WpdbNodeRepository(), $this->frameworkNodes());
     }
 
     private ?SeededFrameworkNodes $frameworkNodes = null;
@@ -446,6 +467,9 @@ final class Plugin
                 $this->frameworkNodes(),
                 $settings,
                 ShippedRenderers::registry(),
+                // ⚠️ **Which node is which type, by id** ([D-510](../../docs/NewConcept/90-decision-log.md)).
+                // *The same instance as the scaffolds', so the eleven options are read once a request.*
+                $this->typeNodes(),
                 // ⚠️ Without this a reference has no name to draw, and every constant on the
                 // screen falls back to its id (D-105, D-159).
                 $labels,

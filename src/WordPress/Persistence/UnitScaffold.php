@@ -12,6 +12,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
@@ -139,6 +140,8 @@ final class UnitScaffold
         private readonly FrameworkNodes $framework,
         private readonly Settings $settings,
         private readonly Labels $labels,
+        /** ⚠️ *So a member's type is found by id and not by the node's name ([D-510](../../../docs/NewConcept/90-decision-log.md)).* */
+        private readonly TypeNodes $typeNodes,
     ) {
     }
 
@@ -271,13 +274,15 @@ final class UnitScaffold
 
         $type = null;
 
-        // ⚠️ **Matched through {@see SimpleType::fromNodeName()}** ([D-428](../../../docs/NewConcept/90-decision-log.md)):
-        // the seeded types are called `Integer` and `Decimal` now, and resolving both spellings keeps
-        // every caller that still says `'decimal'` working.
+        // ⚠️ **The literal above is read as a type, the node is then found by its id**
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)). *`$typeName` is a string in this
+        // file's own source and may be read as one; the **node's** name is a beschriftung and may
+        // not. Before this, a renamed `Decimal` would have made the scaffold refuse to run.*
         $wanted = SimpleType::fromNodeName($typeName);
+        $id     = $wanted === null ? null : $this->typeNodes->nodeId($wanted);
 
         foreach ($this->editor->childrenOf($this->framework->rootOf(Branch::DataTypes)->id) as $child) {
-            if ($wanted !== null && SimpleType::fromNodeName($child->name) === $wanted) {
+            if ($id !== null && $child->id === $id) {
                 $type = $child;
             }
         }
