@@ -587,7 +587,11 @@ try {
         // reached only the tree. The renderers mark such a button now, so this counts the mark.
         check('every icon button is marked so no surface has to guess',
             substr_count($detail, 'taxmod-icon-button') > 0
-                && substr_count($detail, '<span class="dashicons') >= substr_count($detail, 'taxmod-icon-button'));
+                // ⚠️ *Gezählt wird seit [D-495](../../docs/NewConcept/90-decision-log.md) **unsere**
+                // Klasse und nicht mehr `dashicons`. Das ist die bessere Zusage: `dashicons` ist
+                // die Zeichentabelle von WordPress, `taxmod-icon` ist die Stelle, die den Kasten
+                // setzt — und ein Icon, das sie nicht trägt, ist genau das, was schiefgeht.*
+                && substr_count($detail, '<span class="taxmod-icon') >= substr_count($detail, 'taxmod-icon-button'));
         // ⚠️ *not defined* stood on almost every row and said what an empty control already says.
         check('nothing is said where nothing was said', ! str_contains($detail, 'not defined'));
         // ⚠️ **`1..1` reads `1`** — shown, never stored: the option's value keeps the stored form.

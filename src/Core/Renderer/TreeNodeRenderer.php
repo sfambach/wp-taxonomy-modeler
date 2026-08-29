@@ -86,7 +86,7 @@ final class TreeNodeRenderer implements Renderer
         // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing
         // it is two **class names**, which the core may write: a class is a string, not a call into
         // WordPress (`CD-1`). And it goes **before** the name, as it did there.
-        $named = ($icon === '' ? '' : '<span class="dashicons dashicons-' . RenderResult::escape($icon) . '"></span> ')
+        $named = ($icon === '' ? '' : IconMarkup::dashicon($icon) . ' ')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
         // ⚠️ **The link is put around what was drawn, not handed back to be wrapped.** A URL comes

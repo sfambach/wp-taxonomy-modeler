@@ -18,6 +18,7 @@ use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
+use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
@@ -1122,7 +1123,7 @@ final class NodesScreen
         // class="button">` is styled like a button and laid out like a span, which is why the owner saw
         // the move button *«leicht versetzt»* beside the others. *The label is the control; nesting a
         // fake one inside it gave the box model two owners.*
-        $trigger = '<span class="dashicons dashicons-move" aria-hidden="true"></span>'
+        $trigger = IconMarkup::dashicon('move')
             . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>';
 
         $confirm = ControlMarkup::button(new Control(
@@ -1441,7 +1442,7 @@ final class NodesScreen
             $this->localeFromRequest(),
             Level::Admin,
             '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this field points at', 'taxmod') . '">'
-            . '<span class="dashicons dashicons-networking" aria-hidden="true"></span>'
+            . IconMarkup::dashicon('networking')
             . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
             . '</span>',
             ControlMarkup::button(new Control(
@@ -2362,9 +2363,14 @@ final class NodesScreen
     {
         return '<' . $level . ' style="display:flex;align-items:center;gap:.3em">'
             . esc_html($text)
-            . '<span class="dashicons dashicons-editor-help" title="' . esc_attr($hint) . '"'
-            . ' style="font-size:17px;width:17px;height:17px;line-height:1;opacity:.5;cursor:help"'
-            . ' aria-label="' . esc_attr($hint) . '"></span>'
+            // ⚠️ *Hier stand die Grösse als **Inline-Style** und schlug damit jede Regel im
+            // Stylesheet. Was übrig bleibt, ist das wirklich Zusammenhangsabhängige —
+            // durchscheinend, mit Fragezeichen-Zeiger und einem Tooltip — und das trägt jetzt
+            // ein Umschlag statt des Icons selbst. **Das Icon soll nichts über seinen Ort
+            // wissen müssen**, sonst ist die eine Stelle wieder sechs.*
+            . '<span class="taxmod-hint-icon" title="' . esc_attr($hint) . '">'
+            . IconMarkup::dashicon('editor-help', $hint)
+            . '</span>'
             . '</' . $level . '>';
     }
 
@@ -2695,7 +2701,7 @@ final class NodesScreen
         );
 
         return '<a class="taxmod-show-hidden" href="' . esc_url($to) . '">'
-            . '<span class="dashicons dashicons-' . ($showing ? 'visibility' : 'hidden') . '"></span> '
+            . IconMarkup::dashicon($showing ? 'visibility' : 'hidden') . ' '
             . esc_html($showing ? __('hiding hidden nodes again', 'taxmod') : __('show hidden nodes', 'taxmod'))
             . '</a>';
     }

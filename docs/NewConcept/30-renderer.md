@@ -3570,3 +3570,54 @@ quietly returns as a renderer later.
 | A **binding** | a named slot carrying a pointer and nothing else — explicitly **no renderer** | [D-120](90-decision-log.md) |
 | A **data pack** | data, never behaviour; a pack needing a renderer **declares a dependency** on it | [D-175](90-decision-log.md), [D-215](90-decision-log.md) |
 | A **view** | a named calculation belonging to no node — the calculation side, deferred | [D-201](90-decision-log.md), [D-203](90-decision-log.md) |
+
+## Ein Icon wird an einer Stelle geschrieben — Stand 2026-08-29
+
+[D-495](90-decision-log.md), auf die dritte Meldung desselben Fehlers. Der Eigentümer:
+*«ich habe **mehrfach** bemängelt, dass Icons nicht richtig aligned sind … kannst Du nicht mal
+einen Icon-Renderer machen, der sich darum kümmert, dass das überall gleich aussieht?»*
+
+⚠️ **«Mehrfach» ist der Befund, nicht die Beschwerde.** *Ein Fehler, der wiederkommt, nachdem er
+einzeln behoben wurde, ist kein Serienfehler, sondern ein **fehlender Ort** — dieselbe Diagnose,
+aus der [D-465](90-decision-log.md) `RenderResult::htmlTag()` gemacht hat.*
+
+### Was gemessen wurde, bevor etwas gebaut wurde
+
+| | |
+|---|---|
+| SVG-Dateien, Bilddateien, `viewBox` | **0** — seine Vermutung konnte die Ursache nicht sein |
+| Techniken nebeneinander | **4** (Icon-Schrift, Emoji, rohes Font-Zeichen, HTML-Entity) |
+| Stellen, die ein Symbol von Hand schreiben | **6** |
+| konkurrierende Grössenregeln | **5** — zweimal hart `16px`, einmal `17px` als Inline-Style, einmal die Variable, einmal **gar keine** (also `20px` von WordPress) |
+| Ausrichtungsmechanismen | **3** |
+
+⚠️ **Ein Set zu tauschen hätte kein einziges Symptom berührt** — und das war der erste Vorschlag.
+*Deshalb wird hier gemessen, bevor getauscht wird: eine Ursache, die man nicht gemessen hat,
+tauscht man nur gegen eine andere.*
+
+### Die Umkehrung, die den Wiederholungsfehler erklärt
+
+⚠️ **`vertical-align: middle` war einmal da, wurde als Ursache benannt und entfernt — und war die
+Lösung.** *Gemessen im Browser gegen die **optische Mitte des Textes** (Grundlinie minus halbe
+x-Höhe, aus `measureText()`) stand ein Icon im Textfluss **3,5 px zu hoch**. Genau das heisst
+`vertical-align: middle` in CSS. Danach: **0,25 px, und für jeden Fall dieselben.***
+
+⚠️ *Die frühere Korrektur war nicht falsch, sondern am falschen Element: sie entfernte die Regel
+vom `inline-block` **im Knopf**, wo die Bezugsgrundlinie die des Icons selbst ist. **Auf einen
+Knopf wirkt sie ohnehin nicht — ein Flex-Element ignoriert `vertical-align`**, nachgemessen 0,00 px
+Bewegung. Der Fehler wurde am Kind behoben und am Elternteil stehengelassen.*
+
+⚠️ **Nicht der kleinste Wert gewinnt, sondern der gleichmässige.** *`baseline` −3,5/−3,5/−2,
+`text-bottom` −0,5/−0,5/−2, `-0.3em` 0,59/0,59/0,09, `middle` 0,25/0,25/0,25. «Überall gleich»
+war die Bitte, nicht «möglichst nah».*
+
+### Was nicht vereinheitlicht wurde
+
+Das `×` im Dialog und die Icon-Auswahlliste sind **Text**, kein gezeichnetes Icon — eines ist ein
+Schliessen-Zeichen im Fluss, das andere schaltet für ein `<select>` die Schrift um. *Sie in
+dieselbe Regel zu zwingen hiesse, Gleichheit über Gleichartigkeit zu stellen.*
+
+⚠️ *Bewacht von `icon-markup-check.php` (nur eine Stelle schreibt, nur eine Regel bemasst) und
+nachstellbar mit `icon-probe.php`, das die Kästen im Browser **misst** statt sie anzusehen.*
+
+---

@@ -101,15 +101,15 @@ final class ControlMarkup
      */
     private static function face(Control $control, bool $icon): string
     {
+        // ⚠️ *Beide Zweige schrieben ihr Symbol selbst hin, in **zwei verschiedenen Techniken**,
+        // innerhalb derselben Methode. Jetzt fragen sie {@see IconMarkup} — dieselbe Stelle, die
+        // auch die sechs übrigen Fundorte benutzen.*
         if ($icon) {
-            return '<span class="dashicons dashicons-' . RenderResult::escape($control->icon) . '"'
-                . ' aria-label="' . RenderResult::escape($control->label) . '"></span>';
+            return IconMarkup::dashicon($control->icon, $control->label);
         }
 
         if ($control->glyph !== '') {
-            return '<span class="' . self::GLYPH_FACE . '"'
-                . ' aria-label="' . RenderResult::escape($control->label) . '">'
-                . RenderResult::escape($control->glyph) . '</span>';
+            return IconMarkup::glyph($control->glyph, $control->label);
         }
 
         return RenderResult::escape($control->label);

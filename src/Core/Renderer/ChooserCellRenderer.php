@@ -78,9 +78,9 @@ final class ChooserCellRenderer implements Renderer
         }
 
         $icon = $context->setting(SettingKey::Icon->value)?->text ?? '';
-        $glyph = $icon === ''
-            ? ''
-            : '<span class="dashicons dashicons-' . RenderResult::escape($icon) . '"></span> ';
+        // ⚠️ *Diese Stelle war die auffälligste: sie trug **gar keine** eigene CSS-Regel und zeichnete
+        // darum in der 20px-Vorgabe von WordPress, neben Nachbarn mit 17.*
+        $glyph = $icon === '' ? '' : IconMarkup::dashicon($icon) . ' ';
 
         $name = $glyph . '<span class="taxmod-chooser-name">' . RenderResult::escape($subject->name) . '</span>';
 

@@ -297,20 +297,33 @@ $bodyOf = static function (string $css, string $selector): string {
     return $open === false || $shut === false ? '' : substr($css, $open + 1, $shut - $open - 1);
 };
 
-foreach (['.taxmod-icon-button .dashicons', '.taxmod-icon-button .' . ControlMarkup::GLYPH_FACE] as $selector) {
-    $rule = $bodyOf($css, $selector);
+// ⚠️ **Bis 2026-08-29 standen hier zwei Selektoren, einer je Technik am Knopf.** *Sie sind zu
+// **einem** geworden, der für jedes Icon gilt — nicht nur für die auf Knöpfen. Der Grund war
+// eine Messung: fünf konkurrierende Grössenregeln, zweimal hart `16px`, einmal `17px` als
+// Inline-Style und einmal **gar keine**, also die 20px von WordPress
+// ([D-495](../../docs/NewConcept/90-decision-log.md)). Die Zusage wird dadurch **stärker**:
+// sie galt für zwei Stellen und gilt jetzt für alle.*
+$selector = '.taxmod-icon';
+// ⚠️ *Die Regel traegt eine Selektorliste, und `$bodyOf()` sucht «Selektor {». Uebergeben wird darum das **letzte** Glied — das, das schwerer wiegt als `.dashicons` von WordPress.*
+$rule     = $bodyOf($css, '.dashicons' . $selector);
 
-    check("«{$selector}» has a rule", $rule !== '');
-    check(
-        "«{$selector}» takes its size from --taxmod-icon",
-        $rule !== '' && str_contains($rule, 'var(--taxmod-icon'),
-        trim(preg_replace('/\s+/', ' ', $rule) ?? '')
-    );
-    check(
-        "«{$selector}» states no font-size of its own in pixels",
-        $rule !== '' && preg_match('/font-size:\s*\d/', $rule) !== 1
-    );
-}
+check("«{$selector}» has a rule", $rule !== '');
+check(
+    "«{$selector}» takes its size from --taxmod-icon",
+    $rule !== '' && str_contains($rule, 'var(--taxmod-icon'),
+    trim(preg_replace('/\s+/', ' ', $rule) ?? '')
+);
+check(
+    "«{$selector}» states no font-size of its own in pixels",
+    $rule !== '' && preg_match('/font-size:\s*\d/', $rule) !== 1
+);
+
+// ⚠️ *Und der Glyph trägt keine eigene Grösse mehr — er war das einzige Icon ohne festen
+// Kasten, was der Eigentümer als «das Speichern-Symbol ist nach oben verschoben» sah.*
+check(
+    'the glyph no longer sizes itself',
+    preg_match('/\.' . ControlMarkup::GLYPH_FACE . '\s*\{[^}]*font-size/', $css) !== 1
+);
 
 // ⚠️ *And the sum itself: **one** place computes how big a drawn icon is, so a region can add to it
 // without a second number per panel. Counted rather than found, because two places computing it is the
