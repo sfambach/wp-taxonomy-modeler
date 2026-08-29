@@ -4163,6 +4163,46 @@ Renderer zusammen. **Es gibt keinen Renderer, der neben einen Wert gehört** —
 ⚠️ *Damit wird sie beantwortet, **wenn der erste zweite Renderer existiert**, und nicht vorher:
 eine Speicherfrage ohne Daten ist billiger richtig zu beantworten als eine mit.*
 
+### Nachtrag 2026-08-29 — der Eigentümer findet den ersten Benutzer, und er ist nicht die Ampel
+
+> *«Der Renderer ist eine Funktion des Zeichnens, und der Konverter auch. Die Frage ist nun: ist der
+> Konverter **abhängig oder unabhängig** vom Renderer? … Wenn ich ein `int`-Feld habe, dann kann ich
+> einen Renderer daransetzen und sagen: **konvertier mir das in römische Zahlen**. Und parallel
+> könnte ich sagen: **pack mir einen zweiten Renderer dazu und konvertier mir in hexadezimal**.»*
+
+⚠️ **Seine Gegenprüfung stimmt, und sie ist seine eigene Entscheidung:** *[R33b](30-renderer.md)
+auf [D-219](90-decision-log.md) — «several may be **eligible**; exactly one is **in effect** per
+rendering», und dort steht sein Satz von damals: «we currently allow only one converter, not
+several». Gemessen: der Konverter hängt an **einem** `SettingKey::Converter` **pro Ort**.*
+
+⚠️ **Und R33b sagt ausdrücklich, dass die Symmetrie nicht gilt:** *«This is the one place where the
+converter and the renderer list do **not** run parallel. [D-236](90-decision-log.md) lets a node
+draw with several renderers at once; **nothing extends that to converters, and nothing should be
+assumed from the symmetry**.»* **Sein Vorschlag ändert genau diesen Satz.**
+
+⚠️ **Was ihn stark macht: er gibt der Renderer-Liste ihren ersten wirklichen Benutzer.**
+*[D-501](90-decision-log.md) hatte gemessen, dass sie keinen hat — die Ampel aus
+[D-236](90-decision-log.md) und der Barcode aus [D-332](90-decision-log.md) existieren beide nicht.
+**Sein Beispiel existiert schon zur Hälfte:** `RomanNumeralConverter` und `HexadecimalConverter`
+sind gebaut, und **beide bedienen `SimpleType::Int`**. Was fehlt, ist allein, dass jeder
+Listeneintrag seinen eigenen Konverter tragen darf.*
+
+⚠️ **Und daraus folgt eine Antwort auf die Speicherfrage, die vorher nicht auf dem Tisch lag:**
+*wenn ein Listeneintrag eine **Kante** wäre, trüge er seine Einstellungen **von selbst** — gemessen
+hängen heute **78 Settings an Kanten**. «Zweiter Renderer, Konverter römisch» wäre dann keine neue
+Struktur, sondern eine Kante mit zwei gewöhnlichen Settings. **Der dritte Kandidat unten hört damit
+auf, nur die `position` wiederzuverwenden, und verwendet auch die Settings wieder.***
+
+⚠️ *Die Gegenrechnung, damit sie nicht untergeht: [R33b](30-renderer.md) sagt, ein Konverter hängt
+**an der Ebene, deren Wert er kodiert** — `2k7` kodiert Zahl und Präfix, also hängt es an
+`quantity`. **Hinge der Konverter am Listeneintrag, müsste `2k7` an jedem Eintrag wiederholt
+werden.** Beides zugleich geht nur, wenn die Ebene die **Vorgabe** stellt und der Eintrag sie
+überschreiben darf — was genau die Form der Kette ist, die es schon gibt.*
+
+**Was er entscheiden muss:** *darf ein Eintrag der Renderer-Liste seinen eigenen Konverter tragen?*
+Ja → [R33b](30-renderer.md)s «keine Symmetrie» fällt, und die Liste bekommt ihren ersten Benutzer.
+Nein → es bleibt bei einem Konverter pro Ort, und die Liste wartet weiter auf die Ampel.
+
 *Der ursprüngliche Stand:* open
 
 ⚠️ **The blocker row 5 named is stale, and the real one is one level down.** *Row 5 said several
