@@ -1446,7 +1446,7 @@ final class NodesScreen
                 . '<th style="width:3em"></th>'
                 . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
-        return $html . $this->removedFields($selected) . $this->fieldForm($selected, $rows);
+        return $html . $this->removedFields($selected) . $this->fieldForm($selected);
     }
 
     /**
@@ -1495,8 +1495,23 @@ final class NodesScreen
             . '</summary>' . $rows . '</details>';
     }
 
-    private function fieldForm(Node $selected, array $rows): string
+    private function fieldForm(Node $selected): string
     {
+        // ⚠️ **Der Zielbaum ist nicht die Ansicht, und das war ein Fehler.** *Diese Methode bekam
+        // die Zeilen des Schirms — samt seinem **Faltzustand** — und baute daraus beides: die
+        // Sperrliste und den Wähler. **Wer den Baum zuklappte, konnte kein Feld mehr anlegen**,
+        // weil dann nur noch Zweigwurzeln und zweiglose Knoten sichtbar waren und die Bedingung
+        // «alle gesperrt» zutraf. Der Eigentümer hat es gemeldet: «nach dem Speichern kann ich
+        // keine Felder mehr eingeben, bis ich auf einem Knoten war, der schon Felder hatte» —
+        // ein solcher Knoten klappt seinen Ast auf, und damit kam der Wähler zurück.*
+        //
+        // ⚠️ *Gemessen war es eindeutig: eingeklappt **8 Zeilen, 8 gesperrt**; aufgeklappt
+        // **94 Zeilen, 16 gesperrt**. Was wählbar ist, ist eine Tatsache über das Modell und
+        // nicht darüber, was jemand gerade aufgeklappt hat.*
+        //
+        // ⚠️ *Versteckte bleiben draussen — ein verstecktes Vorkommen ist kein Ziel — und die
+        // Wurzel ebenso, denn sie ist ohnehin gesperrt.*
+        $rows = $this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]);
         // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
         // same eighty entries with middle dots that the parent chooser had before — and worse here,
