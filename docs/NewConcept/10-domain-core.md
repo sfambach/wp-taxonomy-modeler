@@ -1245,6 +1245,17 @@ This answers [OQ-021](91-open-questions.md). The distinction is the UML one, and
 | **Aggregation** | always | the target is independent and survives the whole |
 | **Composition** | yes | the target belongs to the whole and **is deleted with it** |
 
+⚠️ **Geschärft am 2026-08-29 durch [D-498](90-decision-log.md), und die Reihenfolge dreht sich
+um.** *Der Eigentümer: «eine Komposition hat nur **einen Besitzer**. Sobald sie mehrere Besitzer
+hat, ist sie wieder eine Aggregation.» **Die Anzahl der Besitzer ist die Ursache, die Lebensdauer
+die Folge** — bei einem Besitzer ist «stirbt mit ihm» überhaupt erst wohldefiniert. Die Tabelle
+oben nennt die Folge und bleibt richtig; sie nennt nur nicht den Grund.*
+
+⚠️ *Und «points at another node» meint die **Kante**, nicht den **Wert**: gespeichert wird bei
+einer Aggregation auf ein Modell und bei einer Komposition gleichermassen eine Referenz auf
+einen **Datensatz**; nur bei `Constants` ist es eine Referenz auf einen **Knoten**. Siehe
+[Warum hier keine Zyklen entstehen](#warum-hier-keine-zyklen-entstehen--stand-2026-08-29).*
+
 The worked example the owner raised — a parts list made of positions, where a position is used
 nowhere else — is the case where composition earns its keep. It is discussed under
 [OQ-026](91-open-questions.md), because the tempting answer (store the position inline instead
@@ -3865,12 +3876,21 @@ haben wir durch die Referenz keine Zyklen wirklich.**»* **Gegengeprüft: seine 
 
 Gemessen an `Branch::relationKind()` und `Branch::storage()`:
 
-| Ziel im Zweig | Kantenart | Speicherung | steigt ab |
+| Ziel im Zweig | Kantenart | was gespeichert wird | steigt ab |
 |---|---|---|---|
-| **Model** | **Aggregation** | externe Referenz | **nein** |
-| **Constants** | **Aggregation** | Knoten-Referenz | **nein** |
-| **Data Types** | Komposition | im Datensatz | nein — ein einfacher Typ hält keine Felder |
-| **Compositions** | Komposition | eigene Datensätze | **ja** |
+| **Model** | **Aggregation** | Referenz auf einen **Datensatz** | **nein** |
+| **Constants** | **Aggregation** | Referenz auf einen **Knoten** | **nein** |
+| **Data Types** | Komposition | der Wert selbst, im Datensatz des Halters | nein — ein einfacher Typ hält keine Felder |
+| **Compositions** | Komposition | Referenz auf einen **Datensatz**, der dem Halter gehört | **ja** |
+
+⚠️ **Die Spalte hiess einmal «Speicherung» und stellte «externe Referenz» gegen «eigene
+Datensätze», als wären das zwei Formen. Der Eigentümer hat das bemängelt und hatte recht**
+([D-498](90-decision-log.md)): *bei einer Aggregation auf ein Modell **und** bei einer
+Komposition wird dasselbe abgelegt — eine Referenz auf einen Datensatz. Verschieden ist, **wem
+der Datensatz gehört**, nicht wie er erreicht wird.* **Die einzige wirklich andere Form ist
+`Constants`: dort zeigt der Wert auf einen Knoten.** *Gemessen: von 19 Werten mit `value_ref`
+zeigen 18 auf einen Knoten und 1 auf einen Datensatz.* Genau diese Doppelbedeutung des Wortes
+«Referenz» notiert [OQ-125](91-open-questions.md).
 
 ⚠️ **Das ist der ganze Grund, und er ist strukturell statt bewacht.** *Ein Feld, das auf ein
 **Modell** zeigt, kann gar keine Kompositionskante werden — der Zweig bestimmt die Kantenart.

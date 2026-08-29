@@ -656,7 +656,14 @@ node or a loaded graph, which is the same question as R3.
 
 The original text:
 
-*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* open · *Raised by* [C10](10-domain-core.md)
+*Blocks:* [10 Domain core](10-domain-core.md) · *Status:* **geschlossen 2026-08-29 →
+[D-498](90-decision-log.md)** · *Raised by* [C10](10-domain-core.md)
+
+⚠️ **Der Eigentümer hat sie beantwortet, und zwar schärfer als das Dokument:** *«eine Komposition
+hat nur einen Besitzer. Sobald sie mehrere Besitzer hat, ist sie wieder eine Aggregation.»*
+**Die Anzahl der Besitzer ist die Ursache, das Mitsterben die Folge** — bei einem Besitzer ist
+«stirbt mit ihm» überhaupt erst wohldefiniert, bei mehreren gibt es keinen, mit dem es sterben
+könnte. *Die Frage unten hatte genau danach gefragt und sieben Tage lang keine Antwort bekommen.*
 
 C10 names three edge kinds: inheritance, composition, aggregation. In UML the distinction is
 lifecycle — a composed part dies with its whole, an aggregated part outlives it and can be
