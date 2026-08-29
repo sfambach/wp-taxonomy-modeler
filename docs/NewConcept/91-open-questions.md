@@ -5357,6 +5357,47 @@ kann**. Damit wäre das für mich vielleicht ein **eigener Relationstyp**.»*
 **Die Frage in einem Satz:** *ist «Kopie beim Erben, zurückholbar» eine vierte `RelationKind` neben
 Vererbung, Komposition und Aggregation — oder eine Eigenschaft, die eine Kante zusätzlich trägt?*
 
+### Nachtrag 2026-08-29 — gemessen, und die Kopie kostet mehr als sie aussieht
+
+**Der Eigentümer hat die Antwort auf den *Unterschied* gegeben:** *«wenn wir hier annehmen setting =
+field bis auf die Kantenüberschreibung, dann ist die Antwort ja: **an der Kante selbst haben wir
+keine Vererbung vom Knoten**, hier können wir nur die Einstellungen überschreiben. Das ist der
+Unterschied.»*
+
+⚠️ *Also: **der Knotenbaum vererbt, die Kante überschreibt nur.** Damit ist die Kante keine Stufe
+der Vererbung, sondern eine Überschreibungsschicht darüber.*
+
+### Und ein Widerspruch, den die Messung sichtbar macht
+
+| von 326 Settings-Zeilen | |
+|---|---|
+| an einem Knoten ohne Elternteil, oder an einer Kante | 80 |
+| **gleich wie beim Elternteil — reine Kopie** | **191** |
+| verschieden oder neu — eine echte Aussage | 55 |
+
+⚠️ **[D-266](90-decision-log.md) hängt daran, dass ein Schlüssel *da* oder *weg* ist:** *«**reset**
+makes the key **disappear**, so the value is inherited again **and future changes at the origin
+reach here once more**; **set to empty** leaves the key in place … **and changes at the origin do
+not reach it**.»* Und weiter: *«losing that distinction loses the ability to say «here there should
+deliberately be nothing».»*
+
+⚠️ **[D-423](90-decision-log.md)s Materialisierung schreibt den Schlüssel überall hin.** *Damit
+sagen **191 Zeilen** nach D-266s eigener Regel «hier ist es ausdrücklich so, von oben kommt nichts
+mehr an» — obwohl niemand sie je gesetzt hat. **«Geerbt» und «hier auf denselben Wert gesetzt» sind
+nicht mehr auseinanderzuhalten.***
+
+⚠️ *Kein Bruch: D-423 ersetzt die automatische Weitergabe durch das **Nachfragen** beim Ändern —
+«beide angehakt per Vorgabe». **Aber D-266s Träger ist weg**, und 59 % der Tabelle sind Zeilen, die
+wie Entscheidungen aussehen und keine sind.*
+
+⚠️ **Das ist ein gemessenes Argument für die Auflösung statt der Kopie:** *erbt eine Einstellung wie
+eine Felddeklaration — über dieselbe Kante — dann bedeutet eine vorhandene Zeile wieder **eine
+Aussage**, die 191 verschwinden, und [D-266](90-decision-log.md) bekommt seinen Träger zurück.*
+
+⚠️ *Was dagegen steht und nicht weggeredet werden soll: D-423 wurde **auf seinen Wunsch** so
+entschieden, und das Nachfragen beim Ändern ist eine Eigenschaft, die die Auflösung nicht hat —
+dort erreicht eine Änderung oben stillschweigend jeden darunter.*
+
 ⚠️ **Warum das nicht Geschmack ist:** *eine **Art** ist geschlossen — heute drei, dann vier, und der
 Zweig bestimmt sie ([D-497](90-decision-log.md)), nicht der Autor. Eine **Eigenschaft** ist
 kombinierbar: es gäbe dann kopierende Kompositionen und teilende Settings, und jemand müsste
