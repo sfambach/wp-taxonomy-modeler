@@ -54,6 +54,16 @@ body { font: 13px -apple-system, "Segoe UI", sans-serif; background: #f0f0f1; ma
 </style>
 
 <h1 style="font-size:16px">Sitzen die Icons auf einer Linie?</h1>
+<p style="background:#fcf9e8;border-left:4px solid #dba617;padding:.6em .8em">
+<strong>Die Abschnitte 1 bis 5 sind nachgebaut, Abschnitt 6 ist echt.</strong>
+Am 2026-08-29 hat das genau einmal in die Irre gefuehrt: in Abschnitt 2 steht der Knopf
+<em>direkt neben</em> dem Text und das Knoten-Icon sass sichtbar 1,88&nbsp;px tiefer als er.
+Im echten Baum steht die Knopfgruppe in <code>.taxmod-tree-tail</code> mit
+<code>margin-left:auto</code>, also <strong>ganz rechts am Zeilenende</strong> — derselbe
+Unterschied, aber ueber mehrere Zentimeter hinweg und damit nicht sichtbar.
+<strong>Eine Probe, die ihren Gegenstand falsch nachstellt, ist schlechter als keine:</strong>
+was hier gemessen wird, gilt erst, wenn Abschnitt 6 es bestaetigt.
+</p>
 <p>Die rote Linie liegt in der Mitte der Zeile. Jedes Icon soll sie in seiner eigenen Mitte schneiden.</p>
 
 <div class="probe">
@@ -94,6 +104,25 @@ body { font: 13px -apple-system, "Segoe UI", sans-serif; background: #f0f0f1; ma
         <?php echo IconMarkup::dashicon('category'); ?>
         <?php echo ControlMarkup::button(Control::saving('do', 'save', 'Speichern', 'Speichern')); ?>
     </div>
+</div>
+
+<div class="probe">
+    <h2>6 · Der <strong>echte</strong> Baum — nicht nachgebaut, sondern gerendert</h2>
+    <?php
+    // ⚠️ *Die Zeilen oben sind von mir gebaut. Ob eine Abweichung dort auch im Erzeugnis steckt,
+    // sagt nur das echte Markup — sonst misst man die eigene Probe.*
+    $r = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+    $plugin = $r->newInstanceWithoutConstructor();
+    $r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+    wp_set_current_user(1);
+    global $wpdb;
+    $p = $wpdb->prefix . 'taxmod_';
+    $_GET['taxmod_node'] = (string) (int) $wpdb->get_var("SELECT id FROM {$p}nodes WHERE name = 'Adresse' LIMIT 1");
+    $echt = $plugin->screen()->render();
+    // ⚠️ *Ganz ausgeben statt einen Teil herausschneiden — verschachteltes Markup mit einem
+    // regulaeren Ausdruck zu zerlegen misst am Ende den Ausdruck und nicht die Seite.*
+    echo '<div id="echterschirm">', $echt, '</div>';
+    ?>
 </div>
 
 <div class="probe">
