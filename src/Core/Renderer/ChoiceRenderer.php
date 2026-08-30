@@ -76,7 +76,14 @@ final class ChoiceRenderer implements Renderer
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $offered = $context->surroundings->options;
-        $now     = $context->value->text;
+
+        // ⚠️ **Ein gewählter Knoten steht als Verweis da, nicht als Text.** *Bis [D-540](../../../docs/NewConcept/90-decision-log.md)
+        // war jede Auswahl eine Menge von Wörtern — `wie oft` ist `0..1` — und `text` war die ganze
+        // Wahrheit. Eine Auswahl aus **Kindern** trägt eine Knoten-Id, und ohne diese Zeile stünde die
+        // Liste richtig da und **nichts wäre vorausgewählt**: der gespeicherte Wert sähe wie keiner aus,
+        // und das nächste Speichern hätte ihn gelöscht.*
+        $now = $context->value->text
+            ?? ($context->value->reference === null ? null : (string) $context->value->reference);
 
         // ⚠️ **R31b's count.** *Nothing* is an outcome exactly where it is an allowed answer — R29
         // reads that off the multiplicity: `0..1` and `0..*` may be empty, `1` and `1..*` may not.

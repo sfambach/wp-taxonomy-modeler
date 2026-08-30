@@ -141,6 +141,48 @@ final class WpdbNodeRepository implements NodeRepository
         }
     }
 
+    /**
+     * ⚠️ *Eine Abfrage für alle Eltern zusammen — `GROUP BY` statt einer Runde je Zeile (`CD-7`).*
+     *
+     * @param  list<int>              $parentIds
+     * @return array<int, list<Node>>
+     */
+    public function visibleChildrenOf(array $parentIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $parentIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ *Jede angefragte Id bekommt einen Eintrag, auch die ohne Kinder — sonst müsste jeder
+        // Aufrufer denselben `?? []` schreiben, und einer würde ihn vergessen.*
+        $kinder = array_fill_keys($ids, []);
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.kind
+                 FROM ' . Schema::table('relations') . ' r
+                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
+                 WHERE r.kind = %s AND r.hide = 0 AND r.from_id IN (' . $platzhalter . ')
+                 ORDER BY r.from_id ASC, r.position ASC, r.id ASC',
+                RelationKind::Inheritance->value,
+                ...$ids
+            ),
+            ARRAY_A
+        );
+
+        foreach ($rows ?: [] as $row) {
+            $kinder[(int) $row['from_id']][] = $this->hydrate($row);
+        }
+
+        return $kinder;
+    }
+
     public function childrenOf(Node $parent): array
     {
         global $wpdb;

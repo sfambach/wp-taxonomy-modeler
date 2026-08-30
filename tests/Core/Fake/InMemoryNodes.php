@@ -64,6 +64,33 @@ final class InMemoryNodes implements NodeRepository
         $this->rows[$node->id] = $node;
     }
 
+    /**
+     * @param  list<int>              $parentIds
+     * @return array<int, list<Node>>
+     */
+    public function visibleChildrenOf(array $parentIds): array
+    {
+        $kinder = [];
+
+        foreach ($parentIds as $id) {
+            $kinder[$id] = [];
+
+            if ($this->relations === null) {
+                continue;
+            }
+
+            foreach ($this->relations->childEdgesOf($id) as $edge) {
+                $child = $edge->hide ? null : $this->find($edge->toId);
+
+                if ($child !== null) {
+                    $kinder[$id][] = $child;
+                }
+            }
+        }
+
+        return $kinder;
+    }
+
     public function childrenOf(Node $parent): array
     {
         // Order lives on the edge (position), because it is per parent. Without edges — a

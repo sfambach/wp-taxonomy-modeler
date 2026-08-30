@@ -87,4 +87,29 @@ interface NodeRepository
      *                                {@see NodeKind::standard()} das Ende des Laufs beantwortet.
      */
     public function resolvedKinds(array $ids): array;
+
+    /**
+     * Wie viele Kinder ein Knoten zu zeigen hat.
+     *
+     * ⚠️ **Das ist die Frage, an der [D-540](../../../docs/NewConcept/90-decision-log.md) hängt.** *Seine
+     * Regel: ein Feld ist eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat — sonst
+     * eine Eingabe. Nicht der Zweig entscheidet das und nicht der Name des Ziels, sondern was unter dem
+     * Ziel steht.*
+     *
+     * ⚠️ **Gebündelt, weil sonst jede Zeile einer Feldtabelle eine Abfrage kostet** (`CD-7`). *Eine
+     * Tabelle mit dreissig Feldern ist dreissig Ziele, und die Antwort wird für alle in einem Zug
+     * gebraucht.*
+     *
+     * ⚠️ *Versteckt zählt nicht mit: eine ausgeblendete Kante wird nicht gezeichnet, also steht sie
+     * auch nicht zur Wahl. **Eine Auswahl mit null Möglichkeiten wäre schlechter als ein Textfeld.***
+     *
+     * ⚠️ **Die Kinder selbst und nicht ihre Zahl**, weil derselbe Lauf beides braucht: *ob* es eine
+     * Auswahl ist, und *woraus* sie besteht. *Zwei Leser für eine Frage wären zwei Gelegenheiten,
+     * verschieden zu antworten.*
+     *
+     * @param  list<int>                $parentIds
+     * @return array<int, list<Node>>   Je angefragte Id genau ein Eintrag, notfalls leer, in der
+     *                                  Reihenfolge des Modells.
+     */
+    public function visibleChildrenOf(array $parentIds): array;
 }

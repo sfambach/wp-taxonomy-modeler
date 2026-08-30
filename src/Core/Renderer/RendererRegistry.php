@@ -263,6 +263,15 @@ final class RendererRegistry
         $chosen = $settings[SettingKey::Renderer->value]->value->text ?? null;
 
         if ($chosen === null || $chosen === '') {
+            // ⚠️ **Ohne den Zweck, und das ist Absicht.** *Für einen Augenblick stand hier
+            // `defaultFor($type, $purpose)` — dann kam für `node_ref` beim Bearbeiten der
+            // Auswahldialog heraus, **auch wenn es nichts zu wählen gab**, und er zeichnete eine
+            // leere Hülle. Ein Verweis ohne Möglichkeiten soll sich als «kein Renderer» zeigen und
+            // nicht als Bedienung, die keine ist — ein Test hielt genau das fest und wurde rot.*
+            //
+            // ⚠️ *Woraus eine Auswahl besteht, weiss die Registratur nicht: das steht im Modell, unter
+            // dem Ziel der Kante. Deshalb entscheidet der Abstieg das
+            // ({@see \Taxmod\Core\Service\Rendering::optionsFor()}) und nicht diese Tabelle.*
             $renderer = $this->defaultFor($type);
 
             return in_array($purpose, $renderer->supports(), true) ? $renderer : null;

@@ -402,12 +402,35 @@ final class Rendering
         $types    = $this->typesOf($edges);
         $resolved = $this->settings->resolveForUseSites($edges);
         $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);
+        $wahl     = $this->optionsFor($edges);
         $fields   = [];
 
         foreach ($edges as $edge) {
             $type     = $types[$edge->id] ?? null;
             $settings = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
             $renderer = $this->renderers->chosenFor($edge, $settings, $purpose, $type);
+
+            // ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md), und die Regel ist seine:**
+            // *«ein Feld ist eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat».*
+            //
+            // ⚠️ **Nur wenn niemand einen Renderer genannt hat.** *Eine gesetzte Einstellung ist eine
+            // Aussage einer Person und schlägt eine Regel; sonst wäre die Einstellung eine Anzeige
+            // ohne Wirkung.*
+            //
+            // ⚠️ **Und nur beim Bearbeiten.** *Beim Anzeigen ist eine Auswahl ein Wort, und das kann
+            // der Verweis-Renderer besser — ein ausgegrautes `<select>` wäre eine Bedienung, die
+            // keine ist.*
+            //
+            // ⚠️ *Gemessen, wie es vorher aussah: `label_role` und `orientation` standen als nacktes
+            // Textfeld mit `taxmod-no-renderer` da, obwohl ihre fünf beziehungsweise zwei
+            // Möglichkeiten längst als Kinder im Modell stehen.*
+            $angebot = ($purpose === Purpose::Edit && $type === SimpleType::NodeRef)
+                ? ($wahl[$edge->id] ?? [])
+                : [];
+
+            if ($angebot !== [] && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
+                $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
+            }
 
             if ($renderer === null) {
                 if ($purpose === Purpose::Search) {
@@ -438,6 +461,7 @@ final class Rendering
                     // here is the composed case — *and it is the summary renderer (D-106) that is
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
+                    options: $angebot,
                 ),
                 shown: $this->convertedCharacters($value, $settings, $type),
             );
@@ -1836,13 +1860,87 @@ final class Rendering
         $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
 
         $types = [];
+        $offen = [];
 
         foreach ($edges as $edge) {
             $target           = $targets[$edge->toId] ?? null;
             $types[$edge->id] = $target === null ? null : $this->typeOf($target);
+
+            if ($target !== null && $types[$edge->id] === null) {
+                $offen[$edge->id] = $target->id;
+            }
+        }
+
+        // ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md), und die Regel ist seine:** *ein
+        // Feld ist eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat — sonst eine
+        // Eingabe. **Der Zweig entscheidet das nicht.***
+        //
+        // ⚠️ **Erst der Typ, dann die Kinder, und die Reihenfolge trägt Gewicht.** *Gemessen: `Boolean`
+        // hat ein Kind. Fragte man zuerst nach Kindern, würde jede `Boolean`-Einstellung zur Auswahl
+        // zwischen einem einzigen Eintrag statt zum Schalter, den sie ist. **Ein Ziel mit eigenem Typ
+        // ist fertig beantwortet; die Kinderfrage gilt nur für die, die keinen haben.***
+        //
+        // ⚠️ *In einer Abfrage für alle offenen Ziele zusammen (`CD-7`), nicht einer je Zeile.*
+        if ($offen !== []) {
+            $kinder = $this->nodes->visibleChildrenOf(array_values(array_unique($offen)));
+
+            foreach ($offen as $edgeId => $targetId) {
+                if (($kinder[$targetId] ?? []) !== []) {
+                    $types[$edgeId] = SimpleType::NodeRef;
+                }
+            }
         }
 
         return $types;
+    }
+
+    /**
+     * Woraus eine Auswahl besteht — je Kante die Kinder ihres Ziels.
+     *
+     * ⚠️ **Dieselbe Frage wie in {@see typesOf()}, mit derselben Antwort.** *[D-540](../../../docs/NewConcept/90-decision-log.md)
+     * sagt beides in einem Satz: dass es eine Auswahl **ist** und woraus sie **besteht**, hängt an den
+     * sichtbaren Kindern des Ziels. Deshalb ein Leser für beides.*
+     *
+     * ⚠️ **Auch für ein Ziel mit eigenem Typ, wenn es Kinder hat** — *und das ist nicht dasselbe wie
+     * oben: `Boolean` bekommt seinen Schalter, weil der **Typ** zuerst gefragt wird; hier zählt nur,
+     * ob es etwas zu wählen gibt. Die Zeile bekommt am Ende genau eines von beidem, und diese Methode
+     * entscheidet es nicht.*
+     *
+     * ⚠️ *Nicht `choicesFor()` — den Namen trägt schon eine andere Frage: **welche Renderer** an einer
+     * Verwendungsstelle wählbar sind (`R14a`). Zwei Fragen, ein Wort, und beim Lesen fällt es nicht
+     * auf; deshalb heisst diese nach dem, was sie füllt ({@see Surroundings::$options}).*
+     *
+     * @param  list<Relation>                 $edges
+     * @return array<int, array<int, string>> Kanten-Id => (Knoten-Id => Name)
+     */
+    private function optionsFor(array $edges): array
+    {
+        $ziele = [];
+
+        foreach ($edges as $edge) {
+            $ziele[$edge->id] = $edge->toId;
+        }
+
+        if ($ziele === []) {
+            return [];
+        }
+
+        $kinder = $this->nodes->visibleChildrenOf(array_values(array_unique($ziele)));
+        $wahl   = [];
+
+        foreach ($ziele as $edgeId => $targetId) {
+            $angebot = [];
+
+            foreach ($kinder[$targetId] ?? [] as $kind) {
+                $angebot[$kind->id] = $kind->name;
+            }
+
+            if ($angebot !== []) {
+                $wahl[$edgeId] = $angebot;
+            }
+        }
+
+        return $wahl;
     }
 
     private function typeOf(Node $target): ?SimpleType

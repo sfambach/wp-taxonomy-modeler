@@ -5672,3 +5672,52 @@ Umzug hätte die Lücke verdeckt statt sie zu schliessen.***
 
 ⚠️ *C ist die sauberste und die teuerste. **A ist heute richtig und morgen wieder die gleiche Frage.**
 Nicht geraten — es ist seine Entscheidung.*
+---
+
+## OQ-140 — Woran erkennt der Code eine **Einstellungskante**, wenn nicht am Namen?
+
+**Raised** 2026-08-30, gemessen, nachdem der Eigentümer eine Kante umbenannt hat und still alles
+schlechter wurde.
+
+*Blocks:* jede Umbenennung einer Einstellung · *Status:* **open**
+
+⚠️ **Was passiert ist, in dieser Reihenfolge.** *Er meldete: «Änderungen in Namen, zum Beispiel bei
+Fields und bei Settings, werden nicht mehr übernommen.» Der Fehler lag im Formular und wurde behoben.
+**Dann hat er die Behebung ausprobiert** und die Kante `renderer` der Wurzel in «Display Options»
+umbenannt — was sein Recht ist, denn ein Name ist eine Beschriftung.*
+
+⚠️ **Und damit fiel die Renderer-Auflösung im ganzen Schirm aus.** *Gemessen: `Base units`, `Passiv`,
+`Integer`, `Dimension`, `Prefixes`, `Parts List` — **alle** zeichneten mit `plain` statt mit
+`chooser-inline`, `form`, `spinner`, `node`, `chooser-dialog`, `form`. Weil
+{@see \Taxmod\Core\Service\ModelValues} die Kante so sucht:*
+
+```php
+// SKETCH
+if ($edge->name === 'renderer') {
+```
+
+⚠️ **Das ist das Muster, das `CD` unter «Prohibited» verbietet** — *nach Anzeigenamen unterscheiden —
+und es steht in Code, den ich am 2026-08-29 selbst geschrieben habe. Der Docblock daneben behauptet
+sogar, es sei in Ordnung: «ein Feldname ist die Angabe selbst». **Die Messung hat das widerlegt.***
+
+⚠️ **Schlimmer als der Ausfall war, dass er still war.** *Derselbe Docblock nennt den Grund und hält
+ihn für eine Tugend: «Fehlt eine der beiden Kanten, antwortet diese Klasse ‹nichts› und der alte Weg
+trägt weiter — kein Absturz, solange der Umzug läuft.» Der Umzug ist vorbei; jetzt ist «nichts» keine
+Nachsicht mehr, sondern ein verschwiegener Totalausfall. **Gefunden hat ihn nicht die Software,
+sondern eine Randprüfung** — `renderer-choice-check.php`, geschrieben am 2026-08-30 genau für diesen
+Fall, alle zehn Zusagen rot.*
+
+### Die drei Wege
+
+| | | Preis |
+|---|---|---|
+| **A** — die Saat schreibt die **Id** der Kante auf, wie [D-510](90-decision-log.md) es für Typknoten tut | derselbe Notnagel, der dort seit Wochen trägt; Umbenennen wird frei | ein Verzeichnis im Kern mit einer WordPress-Umsetzung, wie `TypeNodes` |
+| **B** — eine Einstellungskante ist **geschützt** und lässt sich nicht umbenennen | eine Zeile Wächter, und der Bruch ist unmöglich statt still | der Name bleibt ein Schlüssel, und das widerspricht `AR-2` und [D-022](90-decision-log.md) |
+| **C** — die Kante wird über ihr **Ziel** erkannt | das Ziel ist ein Rahmenwerksknoten und wird nicht umbenannt | Zielknoten werden heute auch nur über Namen gefunden — die Frage wandert eine Stufe weiter |
+
+⚠️ **A ist der Weg, den das Projekt für Typknoten schon gegangen ist**, und deshalb der
+naheliegende — *aber er ist Arbeit, und `B` ist heute Abend fertig.* **Nicht geraten.**
+
+⚠️ *Zwischenstand: die Kante wurde auf `renderer` zurückbenannt, damit der Schirm wieder arbeitet. **Das
+ist keine Antwort, sondern ein zurückgedrehter Nebeneffekt** — und es heisst, dass Umbenennen einer
+Einstellung bis zur Entscheidung ein brechender Akt bleibt.*

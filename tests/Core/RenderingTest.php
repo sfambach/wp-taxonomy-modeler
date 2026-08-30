@@ -599,6 +599,74 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('kilo', $field->result->markup);
     }
 
+    /**
+     * ⚠️ **[D-540](../../docs/NewConcept/90-decision-log.md), und die Regel ist seine:** *ein Feld ist
+     * eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat — sonst eine Eingabe. Und der
+     * Zweig entscheidet das nicht.*
+     */
+    #[Test]
+    public function a_target_with_children_becomes_a_choice_of_those_children(): void
+    {
+        $rollen = $this->editor->createNode('Label roles', $this->branchRoot['compositions']->id);
+        $this->editor->createNode('form', $rollen->id);
+        $this->editor->createNode('table', $rollen->id);
+
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $rollen->id, 'label_role');
+
+        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+
+        self::assertSame(ChoiceRenderer::NAME, $field->rendererName);
+        self::assertStringContainsString('>form<', $field->result->markup);
+        self::assertStringContainsString('>table<', $field->result->markup);
+        self::assertStringNotContainsString('taxmod-unsatisfiable', $field->result->markup);
+    }
+
+    /**
+     * ⚠️ **Der Gegenfall, und er trägt die ganze Reihenfolge.** *Gemessen an den echten Daten: `Boolean`
+     * **hat** ein Kind. Fragte der Abstieg zuerst nach Kindern, würde jede Boolean-Einstellung zur
+     * Auswahl zwischen einem einzigen Eintrag statt zum Schalter, der sie ist. **Erst der Typ, dann die
+     * Kinder** — ohne diesen Test ist das eine Reihenfolge, die niemand festhält.*
+     */
+    #[Test]
+    public function a_target_with_its_own_type_keeps_its_control_even_with_children(): void
+    {
+        $bool = $this->type('Boolean');
+        $this->editor->createNode('read_only', $bool->id);
+
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $bool->id, 'with_label');
+
+        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+
+        self::assertNotSame(ChoiceRenderer::NAME, $field->rendererName);
+        self::assertSame(SimpleType::Bool, $field->type);
+    }
+
+    /**
+     * ⚠️ *Eine gesetzte Einstellung ist die Aussage einer Person und schlägt eine Regel — sonst wäre
+     * die Renderer-Wahl eine Anzeige ohne Wirkung.*
+     */
+    #[Test]
+    public function a_named_renderer_beats_the_choice_rule(): void
+    {
+        $rollen = $this->editor->createNode('Label roles', $this->branchRoot['compositions']->id);
+        $this->editor->createNode('form', $rollen->id);
+
+        $part = $this->thing('Part');
+        $edge = $this->editor->addField($part->id, $rollen->id, 'label_role');
+
+        $this->settings->put(
+            $this->settings->chainForUseSite($edge),
+            SettingKey::Renderer->value,
+            TypedValue::ofText(PlainRenderer::NAME)
+        );
+
+        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+
+        self::assertSame(PlainRenderer::NAME, $field->rendererName);
+    }
+
     #[Test]
     public function a_reference_declines_the_edit_purpose_so_the_chooser_gap_stays_visible(): void
     {
