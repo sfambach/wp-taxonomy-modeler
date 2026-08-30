@@ -40,7 +40,11 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 global $wpdb;
 $ok  = 0;
@@ -171,6 +175,99 @@ foreach (Schema::LIVE_TABLES as $i => $lebend) {
         schluessel(Schema::table($schatten)) === ['id', 'version'],
         implode(',', schluessel(Schema::table($schatten)))
     );
+}
+
+echo "\n== Und er schreibt wirklich ==\n";
+
+// ⚠️ **Die Zusage, die gefehlt hat, und sie hat sofort etwas gefunden.** *Die Form stimmte, die
+// Schlüssel stimmten, **und der Schatten blieb leer**: `Shadow::keep()` baute
+// `VALUES(spalte)` statt `spalte = VALUES(spalte)`, MySQL wies die Abfrage ab, `$wpdb->query()` gab
+// `false`, und das wurde als «null Zeilen» gelesen. **Eine Prüfung, die nur die Form vergleicht, ist
+// mit einem leeren Schatten zufrieden.**
+$vorlage = $wpdb->get_row(
+    'SELECT record_id, edge_id, locale FROM ' . Schema::table('record_values') . ' LIMIT 1'
+);
+
+if ($vorlage === null) {
+    check('eine Wertzeile als Vorlage gefunden', false, 'record_values ist leer');
+} else {
+    check('eine Wertzeile als Vorlage gefunden', true);
+
+    $knotenId = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT node_id FROM ' . Schema::table('records') . ' WHERE id = %d',
+        (int) $vorlage->record_id
+    ));
+
+    $records = new WpdbRecordRepository();
+    $satzId  = $records->add(new NodeRecord(0, $knotenId, 1, '2026-08-30 00:00:00'));
+
+    // ⚠️ *Räumt auch bei einem Absturz auf — samt der Geschichte, die dieser Lauf erzeugt hat.*
+    register_shutdown_function(static function () use ($satzId): void {
+        global $wpdb;
+
+        foreach (['record_values', 'records'] as $t) {
+            $spalte = $t === 'records' ? 'id' : 'record_id';
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table($t) . " WHERE {$spalte} = %d", $satzId));
+            $wpdb->query($wpdb->prepare(
+                'DELETE FROM ' . Schema::table($t . '_history') . " WHERE {$spalte} = %d",
+                $satzId
+            ));
+        }
+    });
+
+    $records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->edge_id, TypedValue::ofText('erster Stand')));
+
+    $geschrieben = $records->valuesOf($satzId);
+
+    check('der erste Wert steht lebend', count($geschrieben) === 1, 'es sind ' . count($geschrieben));
+
+    $imSchatten = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('record_values_history') . ' WHERE record_id = %d',
+        $satzId
+    ));
+
+    // ⚠️ *Ein **Anlegen** hebt nichts auf — es gibt keinen Vorgänger. Stünde hier eine Zeile, hielte
+    // der Schatten den neuen Wert und nicht den alten.*
+    check('ein Anlegen hebt nichts auf', $imSchatten === 0, "{$imSchatten} Zeilen");
+
+    $records->putValue(new EdgeRecord(
+        $satzId,
+        $geschrieben[0]->path,
+        (int) $vorlage->edge_id,
+        '',
+        TypedValue::ofText('zweiter Stand'),
+        $geschrieben[0]->id,
+        $geschrieben[0]->position
+    ));
+
+    $jetzt = $records->valuesOf($satzId);
+
+    check('lebend steht der neue Wert', ($jetzt[0]->value->text ?? null) === 'zweiter Stand');
+    check('und die Version ist hochgezählt', count($jetzt) === 1, 'es sind ' . count($jetzt));
+
+    $alt = $wpdb->get_row($wpdb->prepare(
+        'SELECT value_text, version, deleted FROM ' . Schema::table('record_values_history') . '
+         WHERE record_id = %d ORDER BY version ASC',
+        $satzId
+    ));
+
+    check('der Schatten hält den alten Wert', ($alt->value_text ?? null) === 'erster Stand', $alt->value_text ?? 'nichts');
+    check('und er ist nicht als gelöscht vermerkt', ((int) ($alt->deleted ?? 1)) === 0);
+
+    $records->forgetValueById((int) $jetzt[0]->id);
+
+    check(
+        'nach dem Entfernen ist lebend nichts mehr',
+        $records->valuesOf($satzId) === []
+    );
+
+    $geloescht = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('record_values_history') . '
+         WHERE record_id = %d AND deleted = 1',
+        $satzId
+    ));
+
+    check('und der Schatten hat eine gelöschte Version', $geloescht === 1, "{$geloescht} gefunden");
 }
 
 echo "\n== Kein Fremdschlüssel hängt an der Geschichte ==\n";

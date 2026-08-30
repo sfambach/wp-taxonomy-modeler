@@ -103,6 +103,11 @@ final class WpdbNodeRepository implements NodeRepository
         //
         // ⚠️ *Der Fassungswächter bleibt derselbe: er steht im `WHERE` und ist damit der Schreibvorgang
         // selbst statt eines Lesens mit Hoffnung (P4c).*
+        // ⚠️ *Vor dem Schreiben in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // Die Version zählt der Kern hoch, nicht dieser Weg — ein Knoten weiss, in welcher Version er
+        // ist.*
+        Shadow::keepOne('nodes', $node->id);
+
         $written = $wpdb->update(
             Schema::table('nodes'),
             [
@@ -189,6 +194,11 @@ final class WpdbNodeRepository implements NodeRepository
         // writes name and path together, so without it a stale form could rename a node and
         // write its old path back, silently undoing somebody else's move. Five hundred
         // descendants cost no extra statement for it.
+        // ⚠️ *Auch eine Massenänderung hebt auf ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // **Sie zählt `version` selbst hoch** — also muss der alte Stand vorher hinüber, sonst fehlt
+        // genau die Version, auf die ein Zurückspringen zielt.*
+        Shadow::keep('nodes', 'path LIKE %s', [$wpdb->esc_like($oldPath . '.') . '%']);
+
         $wpdb->query(
             $wpdb->prepare(
                 'UPDATE ' . Schema::table('nodes') . '
@@ -208,6 +218,22 @@ final class WpdbNodeRepository implements NodeRepository
         $nodes     = Schema::table('nodes');
         $relations = Schema::table('relations');
         $under     = $wpdb->esc_like($node->path . '.') . '%';
+
+        // ⚠️ **Erst in den Schatten, dann weg** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **Hier ist
+        // es endgültig für die lebende Tabelle und nicht endgültig für die Geschichte** — und der
+        // Anlass steht in den Daten: gemessen am 2026-08-30 gab es **8 Datensätze, deren Knoten es
+        // nicht mehr gab**, und niemand konnte mehr sagen, was sie bedeuteten.
+        Shadow::keep(
+            'relations',
+            "id IN (SELECT x.id FROM {$relations} x
+                    INNER JOIN {$nodes} n ON n.id = x.to_id OR n.id = x.from_id
+                    WHERE n.id = %d OR n.path LIKE %s)",
+            [$node->id, $under],
+            true
+        );
+
+        Shadow::keep('nodes', 'id = %d OR path LIKE %s', [$node->id, $under], true);
 
         // The edges go first, because a relation row whose node is gone is the dangling
         // reference the whole two-stage deletion exists to avoid. Both are one statement.

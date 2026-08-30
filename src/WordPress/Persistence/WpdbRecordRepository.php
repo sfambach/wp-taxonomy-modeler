@@ -148,7 +148,26 @@ final class WpdbRecordRepository implements RecordRepository
             return;
         }
 
-        $wpdb->update(Schema::table('record_values'), $spalten, ['id' => $value->id], $formate, ['%d']);
+        // ⚠️ **Zuerst die alte Zeile in den Schatten, dann schreiben** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // *Umgekehrt hielte der Schatten zweimal den neuen Wert.*
+        Shadow::keepOne('record_values', $value->id);
+
+        // ⚠️ *Die Version wird hier gezählt und nicht im Kern: **`EdgeRecord` trägt sie nicht**, weil
+        // eine Version eine Aussage über die Zeile im Speicher ist und nicht über den Wert. Ohne das
+        // Hochzählen träfe jedes Aufheben denselben Schlüssel `(id, 1)` und der Schatten hielte nur
+        // den ersten Zustand.*
+        $spalten['version'] = 1 + (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT version FROM ' . Schema::table('record_values') . ' WHERE id = %d',
+            $value->id
+        ));
+
+        $wpdb->update(
+            Schema::table('record_values'),
+            $spalten,
+            ['id' => $value->id],
+            [...$formate, '%d'],
+            ['%d']
+        );
     }
 
     /**
@@ -161,12 +180,20 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        Shadow::keepOne('record_values', $id, true);
+
         $wpdb->delete(Schema::table('record_values'), ['id' => $id], ['%d']);
     }
 
     public function forgetValue(int $recordId, string $path, string $locale): void
     {
         global $wpdb;
+
+        // ⚠️ **Sie verschwindet aus der lebenden Tabelle und bleibt im Schatten**
+        // ([D-536](../../../docs/NewConcept/90-decision-log.md), [D-537](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **In der
+        // lebenden Tabelle gibt es kein Kennzeichen** — ein Wert ist da oder er ist nicht da.*
+        Shadow::keep('record_values', 'record_id = %d AND path = %s AND locale = %s', [$recordId, $path, $locale], true);
 
         // ⚠️ The row disappears, and the attribute is **unanswered** — which is a third state
         // beside a value and an explicit nothing, and collapsing it would lose it for good.
@@ -239,6 +266,19 @@ final class WpdbRecordRepository implements RecordRepository
         $places  = implode(',', array_fill(0, count($ids), '%d'));
         $records = Schema::table('records');
         $values  = Schema::table('record_values');
+
+        // ⚠️ **Auch die Massenlöschung hebt auf** ([D-535](../../../docs/NewConcept/90-decision-log.md)).
+        // *Gemessen am 2026-08-30, bevor es das gab: **8 Datensätze hatten einen Knoten, den es nicht
+        // mehr gibt**, und niemand konnte mehr sagen, was sie bedeuteten — genau sein Argument
+        // («sonst weiss man ja auch gar nicht, wie dieser Record interpretiert werden soll»).*
+        Shadow::keep(
+            'record_values',
+            "record_id IN (SELECT id FROM {$records} WHERE node_id IN ({$places}))",
+            $ids,
+            true
+        );
+
+        Shadow::keep('records', "node_id IN ({$places})", $ids, true);
 
         $goneValues = (int) $wpdb->query($wpdb->prepare(
             "DELETE v FROM {$values} v

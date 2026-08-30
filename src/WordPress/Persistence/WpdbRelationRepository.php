@@ -69,6 +69,9 @@ final class WpdbRelationRepository implements RelationRepository
 
         // The expected version rides in the WHERE, so the guard is the write itself rather
         // than a read followed by a hopeful update (P4c).
+        // ⚠️ *Vor dem Schreiben in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md)).*
+        Shadow::keepOne('relations', $relation->id);
+
         $written = $wpdb->query(
             $wpdb->prepare(
                 // ⚠️ **A literal `NULL`, not a placeholder.** `$wpdb->prepare()` turns a null into
@@ -315,6 +318,10 @@ final class WpdbRelationRepository implements RelationRepository
     public function purgeEdgesTouching(int $nodeId): void
     {
         global $wpdb;
+
+        // ⚠️ *Erst in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md)): eine Kante,
+        // die verschwindet, nimmt sonst mit, **warum** sie da war.*
+        Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$nodeId, $nodeId], true);
 
         $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
