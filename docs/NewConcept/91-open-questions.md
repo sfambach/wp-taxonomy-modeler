@@ -5646,7 +5646,7 @@ still.*
 **Raised** 2026-08-30, aus [D-540](90-decision-log.md) — nachdem der Eigentümer nach meiner Begründung
 fragte und sie einen Sprung enthielt.
 
-*Blocks:* ein Feld auf `Label roles` und damit [D-539](90-decision-log.md) · *Status:* **offen**
+*Blocks:* ein Feld auf `Label roles` und damit [D-539](90-decision-log.md) · *Status:* **gegenstandslos durch [D-541](90-decision-log.md)** — `Label roles` liegt jetzt im `Settings`-Zweig, und es gibt keinen Knoten neben den Ästen mehr. Die Frage bleibt hier stehen, weil ihre **Diagnose** richtig war: die Speicherart kam aus dem Ast, und für einen Knoten ohne Ast gab es keine.
 
 ⚠️ **Der Befund, gemessen:** *`Storage` wird aus dem **Ast** abgeleitet — `Model` →
 `ExternalReference`, `Compositions` → `OwnRecords`, `DataTypes` → `InsideTheRecord`, `Constants` →

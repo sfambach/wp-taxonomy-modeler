@@ -4,6 +4,7 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
@@ -360,6 +361,54 @@ final class DataEntry
      * ⚠️ *Herausgezogen, als {@see putAt()} dieselben Prüfungen brauchte. Zwei Kopien einer Prüfung
      * sind zwei Orte, an denen die nächste Regel vergessen wird.*
      */
+    /**
+     * Braucht der Wert dieses Feldes einen **eigenen Datensatz**, oder ist er ein Verweis?
+     *
+     * ⚠️ **Für eine Einstellung sagt es das Ziel, nicht der Zweig.** *Der Eigentümer, dreimal und
+     * zuletzt deutlich: «im Grunde sind alle Einstellungen Kompositionen … mit «sie halten keine
+     * Daten» meinst du, **sie werden im verwendenden Modell gespeichert** — genau das sagt Komposition
+     * aus, und Settings ist davon abgeleitet.»*
+     *
+     * ⚠️ **Ich hatte daraus einen Konflikt gebaut, den es nicht gibt.** *Eine Wertzeile im
+     * verwendenden Datensatz trägt entweder eine Zahl, einen Knotenverweis oder einen Verweis auf
+     * einen eigenen Teil — **alles drei liegt im verwendenden Datensatz**. Was der Verweis meint,
+     * sagt das Ziel ([D-540](../../../docs/NewConcept/90-decision-log.md)): hat es **eigene Felder**,
+     * müssen deren Werte irgendwo stehen, also in einem Teil; hat es nur **Kinder**, wählt man eines
+     * davon aus.*
+     *
+     * ⚠️ *Für alles, was **keine** Einstellung ist, antwortet weiter der Zweig — dort trennt er
+     * `Model` von `Compositions`, und das ist eine Frage des **Besitzes**, die dieses Ziel nicht
+     * beantworten kann ([D-133](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function ownsItsRecord(Relation $edge, Node $target): bool
+    {
+        if ($edge->kind->isSetting()) {
+            return $this->hasOwnFields($target);
+        }
+
+        $branch = $this->framework->branchOf($target);
+
+        return $branch !== null && $branch->storage() === Storage::OwnRecords;
+    }
+
+    /**
+     * Hat dieser Knoten Felder, die **er selbst** erklärt hat?
+     *
+     * ⚠️ **Nicht die geerbten, und das ist der ganze Trick.** *Ein Feld an der Wurzel erscheint an
+     * **allen** Knoten ([OQ-133](../../../docs/NewConcept/91-open-questions.md) hat es gemessen: 124),
+     * also hätte «hat Felder» für jeden Knoten `true` gesagt und die Unterscheidung wäre keine.*
+     */
+    private function hasOwnFields(Node $target): bool
+    {
+        foreach ($this->relations->fieldEdgesOf([$target->id]) as $edge) {
+            if ($edge->fromId === $target->id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function refuseUnwritable(Relation $edge, RecordKind $kind = RecordKind::User): void
     {
         $target = $this->nodes->byId($edge->toId);
@@ -386,7 +435,7 @@ final class DataEntry
         // ⚠️ Refused rather than guessed: a composed part is a record of its own, and nothing
         // here creates one yet. Storing it inline would put the value in the wrong place and
         // look right until somebody tried to share it.
-        if ($branch->storage() === Storage::OwnRecords) {
+        if ($this->ownsItsRecord($edge, $target)) {
             throw NotYetStorable::compositionsNeedTheirOwnRecords($edge->name);
         }
     }
@@ -449,7 +498,7 @@ final class DataEntry
         // ⚠️ Refused rather than accommodated: a part is only a part where the branch says the value
         // has records of its own. Anywhere else the value belongs *in* the holder's record and a part
         // would be a second home for it.
-        if ($branch === null || $branch->storage() !== Storage::OwnRecords) {
+        if (! $this->ownsItsRecord($edge, $target)) {
             throw NotYetStorable::thatIsNotAComposedPart($edge->name);
         }
 
@@ -491,7 +540,7 @@ final class DataEntry
             $target = $this->nodes->byId($edge->toId);
             $branch = $this->framework->branchOf($target);
 
-            if ($branch !== null && $branch->storage() === Storage::OwnRecords) {
+            if ($this->ownsItsRecord($edge, $target)) {
                 $owned[$edge->id] = true;
             }
         }
