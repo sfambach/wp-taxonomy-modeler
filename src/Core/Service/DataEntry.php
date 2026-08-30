@@ -610,6 +610,22 @@ final class DataEntry
     }
 
     /**
+     * Einen weiteren Teil an dieser Kante anlegen — die Zeile, die `1..*` möglich macht.
+     *
+     * ⚠️ **Auf sein Bestehen:** *«somit muss ich Zeilen hinzufügen können»* — und der Grund steht in
+     * [D-548](../../../docs/NewConcept/90-decision-log.md): mehrere `DisplayOption`s sind mehrere
+     * Renderer, für das Farbschema.
+     *
+     * ⚠️ *Der `default`-Satz wird angelegt, falls es noch keinen gibt — sonst hinge der neue Teil an
+     * nichts. Ob am Ziel überhaupt ein Teil entstehen darf, sagt {@see self::createPart()}: dort sitzt
+     * [D-541](../../../docs/NewConcept/90-decision-log.md)s Regel, und sie wird hier nicht kopiert.*
+     */
+    public function addSettingPart(int $nodeId, int $carrierEdgeId): NodeRecord
+    {
+        return $this->createPart($this->defaultRecordOf($nodeId), $carrierEdgeId);
+    }
+
+    /**
      * Die **Teile** einer Einstellung samt ihren Werten — je Trägerkante eine Liste.
      *
      * ⚠️ **Das fehlende Stück, und er hat es gefunden, bevor ich es zugab.** *Der Eigentümer, nachdem

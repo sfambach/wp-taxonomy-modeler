@@ -549,6 +549,20 @@ final class Rendering
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
                     options: $angebot,
+                    // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
+                    //
+                    // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
+                    // Möglichkeit haben, keinen Wert einzugeben — also ist es ja nicht `0..1`. Ist eine
+                    // Regel, die wir für Auswahllisten festgelegt hatten.» **Die Regel steht wörtlich**
+                    // ([D-380](../../../docs/NewConcept/90-decision-log.md), [R28–R32](../../../docs/NewConcept/30-renderer.md)):
+                    // die Zahl der Ausgänge ist `Möglichkeiten + (nichts ist eine Antwort ? 1 : 0)`, und
+                    // «`mayBeNothing` ist eine eigene Angabe und **nicht aus der Liste ableitbar**».*
+                    //
+                    // ⚠️ **Sie war nirgends abgeleitet, also stand überall ein Leereintrag.** *Der
+                    // Listen-Renderer setzt die Regel längst um — gesperrt bei null Ausgängen,
+                    // ausgegraut bei genau einem, echte Bedienung darüber. **Ihm fehlte nur die
+                    // Angabe.***
+                    mayBeNothing: ! $edge->multiplicity->requiresOne(),
                     formId: $formId,
                 ),
                 shown: $this->convertedCharacters($value, $settings, $type),

@@ -1390,6 +1390,14 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ *Einmal für die ganze Tabelle, nicht je Zeile (`CD-7`) — die Werte der Teile werden weiter
+        // unten noch einmal gebraucht, und der Knopf «Zeile hinzufügen» will vorher wissen, ob es
+        // überhaupt Teile gibt.*
+        $teile = $this->data->settingPartsOf(
+            $selected->id,
+            array_map(static fn (Relation $edge): int => $edge->id, $edges)
+        );
+
         $firstOwn = $ownOrder[0] ?? 0;
         $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
 
@@ -1437,6 +1445,24 @@ final class NodesScreen
                     __('Save', 'taxmod'),
                     __('Save this field — its name and how often it may occur', 'taxmod'),
                     $own
+                ),
+                // ⚠️ **Eine Zeile mehr, wo die Multiplizität mehrere zulässt.** *Der Eigentümer bestand
+                // darauf, dass `Display Option` `1..*` ist und nicht `0..*`: «somit muss ich Zeilen
+                // hinzufügen können». Und der Grund ist seiner —
+                // [D-548](../../../docs/NewConcept/90-decision-log.md): mehrere Renderer entstehen über
+                // mehrere `DisplayOption`s, für das Farbschema.*
+                //
+                // ⚠️ **Angeboten nur, wo wirklich ein Teil entstehen kann.** *`allowsMany()` allein
+                // genügt nicht: zeigt die Kante auf ein Ziel ohne eigene Felder, gibt es keinen Teil, und
+                // der Kern verweigert. **Ein Knopf, der verlässlich absagt, ist schlimmer als keiner** —
+                // also wird gefragt, ob diese Kante heute schon Teile hat.*
+                new Control(
+                    'do',
+                    'add_part',
+                    __('Add row', 'taxmod'),
+                    __('Add another one of these — the model allows several', 'taxmod'),
+                    $edge->multiplicity->allowsMany() && isset($teile[$edge->id]),
+                    icon: 'plus-alt2'
                 ),
                 // ⚠️ **Up and down, the same two the tree row has** — the owner: *the attribute row
                 // should have up and down buttons like the nodes in the tree; `position` is part of node
@@ -1588,10 +1614,9 @@ final class NodesScreen
                 // gefunden: «auch bezweifle ich, dass dies Datensätze sind, die wir hier sehen». Bei
                 // `1..*` sind es mehrere, und jeder wird eine Zeile
                 // ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
-                $this->data->settingPartsOf(
-                    $selected->id,
-                    array_map(static fn (Relation $edge): int => $edge->id, $dieser)
-                )
+                // ⚠️ *Einmal oben geholt und hier nur benutzt — zwei Abfragen für dieselbe Auskunft
+                // wären zwei Gelegenheiten, verschieden zu antworten.*
+                $teile
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -2591,6 +2616,38 @@ final class NodesScreen
      * dieser Knoten wirklich hat, und darin nur eine Kante, die dem Knoten des Teils gehört. Sonst
      * könnte ein verändertes Formular in einen fremden Datensatz schreiben.*
      */
+    /**
+     * Einen weiteren Teil an dieser Kante anlegen — eine Zeile mehr.
+     *
+     * ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich
+     * Zeilen hinzufügen können».*
+     *
+     * ⚠️ *Ein Teil ist eine Zeile ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere
+     * Teile sind mehrere Renderer — der Grund ist seiner
+     * ([D-548](../../../docs/NewConcept/90-decision-log.md)): «hatten wir definiert für Farbschema».*
+     *
+     * ⚠️ **Die Kante wird geprüft und nicht geglaubt** (`CD-5`): *nur eine, die dieser Knoten wirklich
+     * trägt, und nur eine, deren Multiplizität mehrere zulässt. Ob am Ziel überhaupt ein Teil entstehen
+     * kann, entscheidet der Kern ({@see \Taxmod\Core\Service\DataEntry::createPart()}) — dort sitzt die
+     * Regel aus [D-541](../../../docs/NewConcept/90-decision-log.md), und hier wird sie nicht kopiert.*
+     */
+    private function addPart(int $nodeId, int $edgeId): void
+    {
+        $kante = null;
+
+        foreach ($this->editor->fieldsOf($nodeId) as $eine) {
+            if ($eine->id === $edgeId) {
+                $kante = $eine;
+            }
+        }
+
+        if ($kante === null || ! $kante->multiplicity->allowsMany()) {
+            return;
+        }
+
+        $this->data->addSettingPart($nodeId, $kante->id);
+    }
+
     private function savePartValues(int $nodeId): void
     {
         $eingereicht = isset($_POST[Rendering::PART_FIELD]) && is_array($_POST[Rendering::PART_FIELD])
@@ -3188,6 +3245,11 @@ final class NodesScreen
                 // descendant would rename it for every other user, silently.
                 'toggle_field_hide' => $this->editor->hideField($id, $edge),
                 'save_field'    => $this->saveField($id, $edge, $attributeName, $settingValue),
+                // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
+                // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
+                // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere
+                // Renderer, für das Farbschema ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
+                'add_part'      => $this->addPart($id, $edge),
                 // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an edge
                 // with the same name, and inventing a suffix is writing user-visible text — which
                 // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.

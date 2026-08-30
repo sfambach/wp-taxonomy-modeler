@@ -110,6 +110,15 @@ register_shutdown_function(static function () use (&$meineKnoten, &$meineSaetze)
         // ⚠️ *Auch die Datensätze, die der Lauf nicht selbst notiert hat — ein Teil entsteht innen
         // drin, und ein Teil ohne Besitzer wäre genau der Müll, den diese Prüfung nicht machen darf.*
         foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $id)) ?: [] as $satzId) {
+            // ⚠️ **Und die Teile mit, denn sie gehören einem **anderen** Knoten.** *Gemessen: nach den
+            // Läufen dieses Abends standen **36** Teil-Sätze von `DisplayOption` ohne Besitzer da. Der
+            // Aufräumer löschte nur, was `node_id = <mein Knoten>` trug — ein Teil trägt aber die Id
+            // des Zielknotens. **Der Verweis verschwand, der Satz blieb.***
+            foreach ($wpdb->get_col($wpdb->prepare('SELECT value_ref FROM ' . Schema::table('record_values') . ' WHERE record_id = %d AND value_ref IS NOT NULL', (int) $satzId)) ?: [] as $teilId) {
+                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $teilId));
+                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $teilId));
+            }
+
             $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
             $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
         }
@@ -387,6 +396,69 @@ if ($verwalter === []) {
     // ⚠️ *Der Gegenfall: es gibt überhaupt gespeicherte Renderer.*
     check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 }
+
+echo "\n== Eine Zeile hinzufuegen legt einen zweiten Teil an ==\n";
+
+// ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich Zeilen
+// hinzufügen können».* *Und der Grund ist seiner ([D-548](../../docs/NewConcept/90-decision-log.md)):
+// mehrere `DisplayOption`s sind mehrere Renderer, für das Farbschema.*
+//
+// ⚠️ *Am eigenen Knoten dieses Laufs, nicht an einem echten — der Teil bliebe sonst stehen.*
+$vorher = count($data->settingPartsOf($knotenId, [$aussen])[$aussen] ?? []);
+
+check('der Pruefknoten hat einen Teil', $vorher === 1, (string) $vorher);
+
+$_POST = [
+    'action'        => 'taxmod_node',
+    'id'            => (string) $knotenId,
+    'do'            => 'add_part',
+    'edge'          => (string) $aussen,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
+];
+$_REQUEST = $_POST;
+
+$meldung = '';
+
+try {
+    $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+    $plugin = $bau->newInstanceWithoutConstructor();
+    $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+    $plugin->screen()->handlePost();
+} catch (RuntimeException $e) {
+    $meldung = str_starts_with($e->getMessage(), '__weitergeleitet__')
+        ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
+        : $e->getMessage();
+}
+
+check('der Akt laeuft durch', $meldung === 'ok', $meldung);
+
+$nachher = $data->settingPartsOf($knotenId, [$aussen])[$aussen] ?? [];
+
+check('jetzt sind es zwei Teile', count($nachher) === 2, (string) count($nachher));
+
+// ⚠️ **Und zwei Teile sind zwei Zeilen** ([D-546](../../docs/NewConcept/90-decision-log.md)). *Ohne
+// diese Zusage wäre der zweite Teil da und unsichtbar — genau der Zustand, den er vorher gefunden hat.*
+$_POST    = [];
+$_REQUEST = [];
+$_GET['taxmod_node'] = (string) $knotenId;
+$_GET['page']        = 'taxmod-nodes';
+
+$bau2    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+$plugin2 = $bau2->newInstanceWithoutConstructor();
+$bau2->getProperty('file')->setValue($plugin2, 'taxmod.php');
+$seite = (string) $plugin2->screen()->render();
+
+$saetze = [];
+
+if (preg_match_all('/name="' . Rendering::PART_FIELD . '\[(\d+)\]\[\d+\]"/', $seite, $treffer)) {
+    $saetze = array_values(array_unique($treffer[1]));
+}
+
+check(
+    'und die Tabelle zeigt beide',
+    count($saetze) === 2,
+    count($saetze) . ': ' . implode(', ', $saetze)
+);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
