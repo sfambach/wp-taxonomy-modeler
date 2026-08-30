@@ -46,6 +46,12 @@ use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
+use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Service\Rendering;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -202,6 +208,73 @@ if ($exponent !== null) {
 }
 
 check('«kilo» traegt seinen Exponenten 3 als Vorgabe', $kiloExponent === 3, (string) ($kiloExponent ?? 'nichts'));
+
+echo "\n== Die Vorschau zeigt keine Einstellungen ==\n";
+
+// ⚠️ **Der Eigentümer hat es am Knoten `Kontakt` gesehen, und ich hatte es zweimal übersehen.**
+// *Dort stand «Fields: None yet» und die Vorschau zeigte trotzdem drei Zeilen — die geerbten
+// Einstellungskanten der Wurzel, zwei davon als nacktes Textfeld mit `taxmod-no-renderer`, über der
+// Zeile «nothing has been entered against this node yet».*
+//
+// ⚠️ **Seine Diagnose war die richtige:** *«du renderst die Settings, und dort solltest du eigentlich
+// die Settings nicht rendern — also haben wir das im Grunde schon, es ist nur fehlgeleitet.»*
+$rendering = new Rendering(
+    $nodes,
+    $framework,
+    $settings,
+    ShippedRenderers::registry(),
+    new SeededTypeNodes($nodes, $framework),
+    new Labels(new WpdbLabelRepository(), $framework),
+    null,
+    new ModelValues($records, $edges, $nodes, $framework)
+);
+
+foreach (['Passiv', 'Dimension', 'Integer'] as $name) {
+    $id = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
+        $name
+    ));
+
+    if ($id === 0) {
+        check("«{$name}» steht im Modell", false);
+
+        continue;
+    }
+
+    $knoten = $nodes->byId($id);
+    $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+    $sicht  = $rendering->previewVisibilityFor($kanten, $settings->resolveForUseSites($kanten));
+
+    $einstellungen = 0;
+
+    foreach ($sicht['shown'] as $kante) {
+        if ($kante->kind->isSetting()) {
+            ++$einstellungen;
+        }
+    }
+
+    check(
+        "«{$name}»: keine Einstellungskante in der Vorschau",
+        $einstellungen === 0,
+        "{$einstellungen} von " . count($sicht['shown'])
+    );
+
+    // ⚠️ *Und der Gegenfall: **echte Felder bleiben.** Eine Prüfung, die nur wegnimmt, wäre auch dann
+    // grün, wenn die Vorschau gar nichts mehr zeigte.*
+    $eigene = 0;
+
+    foreach ($kanten as $kante) {
+        if (! $kante->kind->isSetting() && ! $kante->hide) {
+            ++$eigene;
+        }
+    }
+
+    check(
+        "«{$name}»: seine {$eigene} echten Felder stehen noch da",
+        count($sicht['shown']) === $eigene,
+        count($sicht['shown']) . ' statt ' . $eigene
+    );
+}
 
 echo "\n== Woher die Auskunft kommt ==\n";
 

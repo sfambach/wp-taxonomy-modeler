@@ -1253,6 +1253,25 @@ final class Rendering
                 continue;
             }
 
+            // ⚠️ **Eine Einstellung ist keine Daten, also gehört sie nicht in die Vorschau.**
+            // *Der Eigentümer hat es am Knoten `Kontakt` gesehen: dort stand «Fields: None yet» und
+            // die Vorschau zeigte trotzdem drei Zeilen — `renderer`, `validator`, `read_only`, die
+            // **geerbten Einstellungskanten der Wurzel**. Zwei davon als nacktes Textfeld mit
+            // `taxmod-no-renderer`, über der Zeile «nothing has been entered against this node yet».*
+            //
+            // ⚠️ **Und er hat die Diagnose gestellt, die ich nicht hatte:** *«du renderst die Settings,
+            // und dort solltest du eigentlich die Settings nicht rendern — also haben wir das im
+            // Grunde schon, es ist nur fehlgeleitet.» **Die Fähigkeit fehlte nie, sie stand am
+            // falschen Ort.***
+            //
+            // ⚠️ *Sie zählen als **versteckt** und nicht als weggelassen, damit die Zählung stimmt,
+            // die der Schirm über der Vorschau zeigt.*
+            if ($edge->kind->isSetting()) {
+                $hidden[] = $edge;
+
+                continue;
+            }
+
             $shown[] = $edge;
 
             if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? SettingKey::ReadOnly->defaultSwitch()) === true) {
