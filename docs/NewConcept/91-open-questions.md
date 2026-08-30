@@ -5638,3 +5638,37 @@ enthält genau eine Zeile je Identität, wie heute. Die Kosten wandern in **eine
 auseinander, sobald eine Spalte hinzukommt — dieselbe Krankheit, die `is_test` neben `kind` hatte.
 Ein Schemaschritt müsste beide anfassen, und ein Bau, der es einmal vergisst, verliert Geschichte
 still.*
+
+---
+
+## OQ-139 — Welche Speicherart hat ein Knoten **ausserhalb** der vier Äste?
+
+**Raised** 2026-08-30, aus [D-540](90-decision-log.md) — nachdem der Eigentümer nach meiner Begründung
+fragte und sie einen Sprung enthielt.
+
+*Blocks:* ein Feld auf `Label roles` und damit [D-539](90-decision-log.md) · *Status:* **offen**
+
+⚠️ **Der Befund, gemessen:** *`Storage` wird aus dem **Ast** abgeleitet — `Model` →
+`ExternalReference`, `Compositions` → `OwnRecords`, `DataTypes` → `InsideTheRecord`, `Constants` →
+`NodeRef`. **Ein Knoten, der unter keinem der vier liegt, hat keine Speicherart**, und der
+Schreibwächter verweigert mit «kein Ast hält Datensätze».*
+
+⚠️ **Betroffen ist heute genau einer, und er wird gebraucht:** *`Label roles` liegt bei `1.731`, oben
+neben den Ästen. `label_role` soll ein Feld darauf werden ([D-539](90-decision-log.md)) — und kann es
+nicht, solange die Frage offen ist.*
+
+⚠️ **Was ich zuerst vorschlug und was daran falsch war:** *«dann muss `Label roles` unter `Constants`
+ziehen». Der Eigentümer: **«sie muss nicht nach Constants, um sie auswählen zu können»** — und er hat
+recht, denn [D-540](90-decision-log.md) macht die Wählbarkeit am Ziel fest und nicht am Ast. **Der
+Umzug hätte die Lücke verdeckt statt sie zu schliessen.***
+
+### Die drei Wege
+
+| | | Preis |
+|---|---|---|
+| **A** — `Label roles` unter `Constants` ziehen | der Umzug ist billig: keine Feldkante zeigt darauf, die 46 Labels verweisen über `role_id` | die Lücke bleibt offen für den nächsten Knoten aussen |
+| **B** — «aussen» heisst `NodeRef` | ein Rahmenwerksverzeichnis ist von Natur aus eine Menge fester Knoten | eine Regel für einen Fall, und «aussen» ist kein Ort, sondern das Fehlen eines Ortes |
+| **C** — die Speicherart aus dem **Ziel** ableiten statt aus dem Ast | dieselbe Bewegung, die [D-540](90-decision-log.md) für die Wählbarkeit gemacht hat: das Ziel weiss es | greift in [D-131](90-decision-log.md) und [D-164](90-decision-log.md) ein, und die sind seit dem ersten Tag tragend |
+
+⚠️ *C ist die sauberste und die teuerste. **A ist heute richtig und morgen wieder die gleiche Frage.**
+Nicht geraten — es ist seine Entscheidung.*
