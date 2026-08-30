@@ -7,6 +7,7 @@ use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RecordRepository;
@@ -40,7 +41,18 @@ use Taxmod\Core\Repository\RelationRepository;
  */
 final class ModelValues
 {
-    /** Die zwei Kanten, über die ein Renderer gefunden wird — einmal gesucht, dann gemerkt. */
+    /**
+     * Die Zielknoten der zwei Kanten — **nur** für den ersten Lauf.
+     *
+     * ⚠️ **Sie sind kein Schlüssel mehr** ([D-543](../../../docs/NewConcept/90-decision-log.md)), auf sein
+     * Wort: *«ja, Id — Name war nie erlaubt.»* *Hier stehen sie, damit der Notnagel überhaupt etwas zu
+     * suchen hat, wenn noch keine Id aufgeschrieben ist. **Sobald sie dasteht, sieht niemand mehr auf
+     * einen Namen**, und eine Umbenennung ist wieder das, was sie sein soll: eine Beschriftung.*
+     */
+    private const CARRIER_NODE = 'DisplayOption';
+
+    private const VALUE_NODE = 'Renderer';
+
     private ?int $rendererEdge = null;
 
     private ?int $renderEdge = null;
@@ -218,30 +230,88 @@ final class ModelValues
 
         $this->gesucht = true;
 
-        $wurzel = $this->framework->root();
-        $ziel   = null;
+        // ⚠️ **Zuerst die aufgeschriebenen Ids** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+        // *Stehen sie da, wird kein Name mehr angesehen, und Umbenennen ist frei.*
+        $aussen = $this->framework->settingEdgeId(SettingKey::Renderer);
+        $innen  = $this->framework->settingValueEdgeId(SettingKey::Renderer);
 
-        foreach ($this->relations->fieldEdgesOf([$wurzel->id]) as $edge) {
-            if ($edge->name === 'renderer') {
-                $this->rendererEdge = $edge->id;
-                $ziel               = $edge->toId;
-            }
-        }
+        if ($aussen !== 0 && $innen !== 0) {
+            $this->rendererEdge = $aussen;
+            $this->renderEdge   = $innen;
 
-        if ($ziel === null) {
             return;
         }
 
-        $traeger = $this->nodes->find($ziel);
+        $wurzel = $this->framework->root();
+        $kanten = $this->relations->fieldEdgesOf([$wurzel->id]);
+
+        // ⚠️ **Der Notnagel, und er läuft genau einmal** — dieselbe Form wie
+        // {@see \Taxmod\Core\Repository\TypeNodes::remember()}. *Danach steht die Id da und dieser
+        // Block wird nie wieder betreten.*
+        //
+        // ⚠️ **Am **Zielknoten** und nicht am Kantennamen, und das ist gemessen und nicht überlegt.**
+        // *Zuerst stand hier der Kantenname — und als diese Behebung gebaut wurde, hatte der
+        // Eigentümer die Kante schon zum zweiten Mal umbenannt. **Ein Notnagel, der genau das nicht
+        // überlebt, wofür er gebaut wird, ist keiner.** Der Zielknoten dagegen ist ein
+        // Rahmenwerksknoten und geschützt ({@see \Taxmod\Core\Repository\FrameworkNodes::isProtected()}),
+        // und Knoten so zu finden ist der Weg, den die Saat an rund achtzig Stellen ohnehin geht
+        // ([Zeile 80](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) — also keine
+        // neue Art von Brüchigkeit, sondern die vorhandene, einmal.*
+        $traeger = $this->carrierAmong($kanten, self::CARRIER_NODE);
 
         if ($traeger === null) {
             return;
         }
 
-        foreach ($this->relations->fieldEdgesOf([...$traeger->ancestorIds(), $traeger->id]) as $edge) {
-            if ($edge->name === 'render') {
-                $this->renderEdge = $edge->id;
+        [$this->rendererEdge, $ziel] = $traeger;
+
+        $tragender = $this->nodes->find($ziel);
+
+        if ($tragender === null) {
+            return;
+        }
+
+        $innen = $this->carrierAmong(
+            $this->relations->fieldEdgesOf([...$tragender->ancestorIds(), $tragender->id]),
+            self::VALUE_NODE
+        );
+
+        if ($innen !== null) {
+            $this->renderEdge = $innen[0];
+        }
+
+        if ($this->rendererEdge !== null && $this->renderEdge !== null) {
+            $this->framework->rememberSettingEdges(
+                SettingKey::Renderer,
+                $this->rendererEdge,
+                $this->renderEdge
+            );
+        }
+    }
+
+    /**
+     * Die Kante aus dieser Liste, die auf einen Knoten dieses Namens zeigt.
+     *
+     * ⚠️ *Ein Zug für alle Ziele zusammen (`CD-7`) — die Liste ist kurz, aber ein Nachschlag je Kante
+     * wäre eine Abfrage je Zeile, und diese Klasse ist genau deswegen einmal umgebaut worden.*
+     *
+     * @param  list<Relation>       $kanten
+     * @return array{int, int}|null Kanten-Id und Ziel-Id, oder nichts.
+     */
+    private function carrierAmong(array $kanten, string $zielName): ?array
+    {
+        if ($kanten === []) {
+            return null;
+        }
+
+        $ziele = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $kanten));
+
+        foreach ($kanten as $kante) {
+            if (($ziele[$kante->toId] ?? null)?->name === $zielName) {
+                return [$kante->id, $kante->toId];
             }
         }
+
+        return null;
     }
 }

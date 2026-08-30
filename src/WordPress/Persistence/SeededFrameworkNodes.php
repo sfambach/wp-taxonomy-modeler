@@ -6,6 +6,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;
@@ -42,6 +43,16 @@ final class SeededFrameworkNodes implements FrameworkNodes
     /** Label roles are nodes (D-151) and live in their own container, not in a data branch. */
     private const ROLES_OPTION        = 'taxmod_roles_id';
     private const ROLE_OPTION_PREFIX  = 'taxmod_role_';
+
+    /**
+     * Wo die Ids der Einstellungskanten stehen ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Dasselbe Muster wie {@see self::ROLE_OPTION_PREFIX} — **kein zweiter Mechanismus**, auf seine
+     * Korrektur: «ich verstehe auch nicht, warum wir hier was Neues erfinden.»*
+     */
+    private const SETTING_EDGE_PREFIX = 'taxmod_setting_edge_';
+
+    private const SETTING_VALUE_EDGE_PREFIX = 'taxmod_setting_value_edge_';
 
     /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
@@ -178,6 +189,26 @@ final class SeededFrameworkNodes implements FrameworkNodes
     public function roleId(SeededRole $role): int
     {
         return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
+    }
+
+    public function settingEdgeId(SettingKey $key): int
+    {
+        return (int) get_option(self::SETTING_EDGE_PREFIX . $key->value, 0);
+    }
+
+    public function settingValueEdgeId(SettingKey $key): int
+    {
+        return (int) get_option(self::SETTING_VALUE_EDGE_PREFIX . $key->value, 0);
+    }
+
+    /**
+     * ⚠️ *`autoload` an, wie bei den Rollen: die Angabe wird auf **jeder** gezeichneten Seite
+     * gebraucht, und ein Nachschlag je Aufruf wäre eine Abfrage, die niemand sieht.*
+     */
+    public function rememberSettingEdges(SettingKey $key, int $edgeId, int $valueEdgeId): void
+    {
+        update_option(self::SETTING_EDGE_PREFIX . $key->value, $edgeId, true);
+        update_option(self::SETTING_VALUE_EDGE_PREFIX . $key->value, $valueEdgeId, true);
     }
 
     public function isProtected(Node $node): bool

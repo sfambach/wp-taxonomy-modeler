@@ -87,7 +87,6 @@ $erwartet = [
     ['Einheitenwert', 'prefix', '0..1'],
     ['Part List Item', 'Bauteil Ref.', '1..*'],
     ['Parts List', 'Position', '0..*'],
-    ['Root', 'renderer', '1..*'],
 ];
 
 echo "\n== Die Kante traegt ihre Multiplizitaet ==\n";
@@ -224,6 +223,39 @@ if ($gefunden !== []) {
         $abweichung === [],
         implode(' · ', $abweichung)
     );
+}
+
+echo "\n== Und die Einstellungskante der Wurzel, gefunden an ihrer Id ==\n";
+
+// ⚠️ **Hier stand `['Root', 'renderer', '1..*']`, und die Zeile ist zu Recht rot geworden.** *Der
+// Eigentümer hat die Kante umbenannt — sein Recht — und diese Prüfung suchte sie am Namen. **Das ist
+// dasselbe Muster, das [D-543](../../docs/NewConcept/90-decision-log.md) gerade im Code verboten hat**,
+// und eine Prüfung, die es weiter tut, ist eine Prüfung, die einen erlaubten Akt als Fehler meldet.*
+$kanteId = $framework->settingEdgeId(SettingKey::Renderer);
+
+if ($kanteId === 0) {
+    check('die Id der Traegerkante steht aufgeschrieben', false, 'noch nichts gemerkt');
+} else {
+    check('die Id der Traegerkante steht aufgeschrieben', true);
+
+    $wurzel = $framework->root();
+    $kante  = null;
+
+    foreach ($edges->fieldEdgesOf([$wurzel->id]) as $eine) {
+        if ($eine->id === $kanteId) {
+            $kante = $eine;
+        }
+    }
+
+    check('und sie steht an der Wurzel', $kante !== null, 'nicht unter den Feldkanten');
+
+    if ($kante !== null) {
+        check(
+            'sie traegt «1..*» an der Kante',
+            $kante->multiplicity->value === '1..*',
+            $kante->multiplicity->value
+        );
+    }
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

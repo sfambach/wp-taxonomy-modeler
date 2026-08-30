@@ -5679,7 +5679,7 @@ Nicht geraten — es ist seine Entscheidung.*
 **Raised** 2026-08-30, gemessen, nachdem der Eigentümer eine Kante umbenannt hat und still alles
 schlechter wurde.
 
-*Blocks:* jede Umbenennung einer Einstellung · *Status:* **open**
+*Blocks:* jede Umbenennung einer Einstellung · *Status:* **geschlossen durch [D-543](90-decision-log.md)** — Weg **A**, auf sein Wort: «ja id name war nie erlaubt»
 
 ⚠️ **Was passiert ist, in dieser Reihenfolge.** *Er meldete: «Änderungen in Namen, zum Beispiel bei
 Fields und bei Settings, werden nicht mehr übernommen.» Der Fehler lag im Formular und wurde behoben.
