@@ -2378,14 +2378,19 @@ final class NodesScreen
             return;
         }
 
-        $chain  = $this->settings->chainForUseSite($existing);
-        $before = $this->settings->resolve($chain)[SettingKey::Multiplicity->value] ?? null;
+        // ⚠️ **An die Kante geschrieben, nicht in die Settings-Tabelle** ([D-528](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Vergleich davor braucht keine Auflösung mehr: die Kante trägt ihren Wert selbst, und es
+        // gibt keine Kette, aus der er kommen könnte.*
+        $gewuenscht = Multiplicity::tryFrom($multiplicity);
 
-        if ($before?->value->text === $multiplicity) {
+        // ⚠️ *Ein unbekannter Wert wird still verworfen und nicht geraten — die vier Konstanten sind
+        // die ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)), und ein fünfter
+        // Wert kommt nur aus einem manipulierten Formular.*
+        if ($gewuenscht === null || $existing->multiplicity === $gewuenscht) {
             return;
         }
 
-        $this->settings->put($chain, SettingKey::Multiplicity->value, TypedValue::ofText($multiplicity));
+        $this->editor->setMultiplicity($id, $edge, $gewuenscht);
     }
 
     
@@ -3009,10 +3014,14 @@ final class NodesScreen
                 // dropping the row would leave **nothing** instead of the inherited value. *The chain
                 // is what says where «above» is, which is why it is handed in rather than an id.*
                 'reset_setting'  => $this->settings->pull($this->settingChain($id, $edge), $this->keyOfRowAct()),
-                'put_multiplicity' => $this->settings->put(
-                    $this->settings->chainForUseSite($this->editor->ownAttribute($id, $edge)),
-                    SettingKey::Multiplicity->value,
-                    TypedValue::ofText($settingValue)
+                // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein
+                // unbekannter Wert wird verworfen und nicht geraten — die vier Konstanten sind die
+                // ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)).*
+                'put_multiplicity' => $this->editor->setMultiplicity(
+                    $id,
+                    $edge,
+                    Multiplicity::tryFrom($settingValue)
+                        ?? throw new \InvalidArgumentException('Keine solche Multiplizitaet.')
                 ),
                 'add_record'     => $this->data->create($id),
                 'save_record'    => $this->saveRecord($id),

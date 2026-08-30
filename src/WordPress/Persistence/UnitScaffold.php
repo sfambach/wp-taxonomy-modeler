@@ -361,11 +361,9 @@ final class UnitScaffold
         $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes);
         $unit   = $this->fieldTo($unitValue, 'einheit', $baseUnits);
 
-        $this->settings->put(
-            $this->settings->chainForUseSite($prefix),
-            SettingKey::Multiplicity->value,
-            TypedValue::ofText(Multiplicity::ZeroToOne->value)
-        );
+        // ⚠️ *Die Multiplizität liegt an der Kante ([D-528](../../../docs/NewConcept/90-decision-log.md)).
+        // Der Präfix ist optional, weil «10 Ohm» keinen hat.*
+        $this->editor->setMultiplicity($prefix->fromId, $prefix->id, Multiplicity::ZeroToOne);
 
         foreach ([$prefix, $unit] as $edge) {
             $this->settings->put(

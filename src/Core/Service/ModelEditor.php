@@ -7,6 +7,7 @@ use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Model\Relation;
@@ -227,6 +228,41 @@ final class ModelEditor
      * Kante, und sie hier zu verstecken hiesse, sie **überall** zu verstecken. *Das mag man wollen —
      * aber dann sagt man es dort, wo sie erklärt ist, und sieht dabei, wen es trifft.*
      */
+    /**
+     * Die Multiplizität eines Feldes setzen — **an der Kante**, seit [D-528](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * ⚠️ **Kein Einschränken mehr und kein Vergleich mit einem Elternwert.** *Der Eigentümer:
+     * «Multiplizität hängen wir als Spalte an die Kante, **sie kann in Zukunft nicht mehr überschrieben
+     * werden**.» Damit gibt es keine Kette, gegen die etwas geprüft werden müsste — wer sie ändert,
+     * ändert sie.*
+     *
+     * ⚠️ *Derselbe Akt-Rahmen wie {@see hideField()}: ein Journaleintrag mit Vorher und Nachher, und
+     * ein Schreiben, das an der Version scheitert, wenn jemand dazwischenkam.*
+     */
+    public function setMultiplicity(int $ownerId, int $edgeId, Multiplicity $multiplicity): Relation
+    {
+        $edge     = $this->ownAttribute($ownerId, $edgeId);
+        $geaendert = $edge->withMultiplicity($multiplicity);
+
+        if ($geaendert === $edge) {
+            return $edge;
+        }
+
+        $this->changelog->record(
+            $edge->id,
+            'relation',
+            'multiplicity set',
+            $this->edgeState($edge),
+            $this->edgeState($geaendert),
+            null,
+            $geaendert->version
+        );
+
+        $this->relations->save($geaendert, $edge->version);
+
+        return $geaendert;
+    }
+
     public function hideField(int $ownerId, int $edgeId, ?bool $hide = null): Relation
     {
         $edge   = $this->ownAttribute($ownerId, $edgeId);

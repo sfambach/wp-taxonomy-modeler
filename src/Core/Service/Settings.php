@@ -143,6 +143,43 @@ final class Settings
      * @param  list<Relation>                            $edges
      * @return array<int, array<string, ResolvedSetting>> Keyed by edge id.
      */
+    /**
+     * Die Angaben, die seit [D-528](../../../docs/NewConcept/90-decision-log.md) **an der Kante**
+     * stehen, über das gelegt, was die Kette sagt.
+     *
+     * ⚠️ **Eingespeist statt jeden Leser umgebaut, und das ist Absicht.** *Die Multiplizität wird an
+     * neun Stellen gelesen — Formularfeld, Zeichnung, Speichern, zwei Gerüste. **Sie alle
+     * umzuschreiben hiesse neun Gelegenheiten, eine zu vergessen**; hier ist es eine Stelle, und die
+     * Prüfung `multiplicity-check.php` bewacht sie.*
+     *
+     * ⚠️ **Der Eigentümer hat den halben Umzug gerochen:** *«warum liest ihn niemand? Entweder hast Du
+     * beim Umstellen was falsch gemacht oder da fehlt noch was, **weil die Multiplizität ja genau
+     * darüber entscheidet, ob der Benutzer was eingeben muss**.»* *Er hatte recht: die Spalte war
+     * gefüllt und niemand las sie.*
+     *
+     * ⚠️ *Sie **gewinnt** gegen die Kette, denn sonst hätte der Umzug nichts bewegt. Und weil sie
+     * `NOT NULL DEFAULT '1..1'` ist, gibt es kein «sagt nichts» mehr — was die Kette früher als
+     * fehlende Zeile ausdrückte, ist jetzt die Vorgabe in der Spalte.*
+     *
+     * @param  array<string,ResolvedSetting> $resolved
+     * @return array<string,ResolvedSetting>
+     */
+    private function fromTheEdge(array $resolved, ?Relation $edge): array
+    {
+        if ($edge === null) {
+            return $resolved;
+        }
+
+        $resolved[SettingKey::Multiplicity->value] = new ResolvedSetting(
+            SettingKey::Multiplicity->value,
+            TypedValue::ofText($edge->multiplicity->value),
+            $edge->id,
+            true
+        );
+
+        return $resolved;
+    }
+
     public function resolveForUseSites(array $edges): array
     {
         if ($edges === []) {
@@ -165,8 +202,17 @@ final class Settings
 
         $resolved = [];
 
+        $ueberKante = [];
+
+        foreach ($edges as $edge) {
+            $ueberKante[$edge->id] = $edge;
+        }
+
         foreach ($chains as $edgeId => $chain) {
-            $resolved[$edgeId] = $this->walk($chain, $settings);
+            $resolved[$edgeId] = $this->fromTheEdge(
+                $this->walk($chain, $settings),
+                $ueberKante[$edgeId] ?? null
+            );
         }
 
         return $resolved;

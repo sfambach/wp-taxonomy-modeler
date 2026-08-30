@@ -195,19 +195,17 @@ final class CompositionScaffold
     }
 
     /**
-     * Say a member's multiplicity, which is a setting at the **use site**.
+     * Die Multiplizität eines Mitglieds sagen — **eine Spalte an der Kante**.
      *
-     * ⚠️ *At the edge and not at the type, because `Einheitenwert` is `0..1` in one place and `1..*`
-     * in another — [D-093](../../../docs/NewConcept/90-decision-log.md)'s chain is walked key by key
-     * for exactly this.*
+     * ⚠️ *An der Kante und nicht am Typ, weil `Einheitenwert` an einer Stelle `0..1` und an einer
+     * anderen `1..*` ist. **Das war schon der Grund, als es eine Setting-Zeile war**
+     * ([D-093](../../../docs/NewConcept/90-decision-log.md)) — seit
+     * [D-528](../../../docs/NewConcept/90-decision-log.md) ist es dieselbe Aussage an derselben
+     * Stelle, nur ohne Kette.*
      */
     private function widen(Relation $edge, Multiplicity $multiplicity): void
     {
-        $this->settings->put(
-            $this->settings->chainForUseSite($edge),
-            SettingKey::Multiplicity->value,
-            TypedValue::ofText($multiplicity->value)
-        );
+        $this->editor->setMultiplicity($edge->fromId, $edge->id, $multiplicity);
     }
 
     /**
