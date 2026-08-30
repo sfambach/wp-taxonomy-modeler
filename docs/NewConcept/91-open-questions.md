@@ -5509,7 +5509,7 @@ ist keine kleine Frage.*
 
 **Raised** 2026-08-30, beim Durchspielen von [D-531](90-decision-log.md).
 
-*Blocks:* [Zeile 86](97-implementation-plan.md#the-working-list) · *Status:* **offen**
+*Blocks:* [Zeile 86](97-implementation-plan.md#the-working-list) · *Status:* **beantwortet durch [D-532](90-decision-log.md)** — der Eigentümer hat die **dritte** Lesart genommen, die unten nicht steht: *jeder Default bekommt eine eigene Zeile mit einem Verweis*, also weder 1 noch 4, sondern 3 löschbare.
 
 ⚠️ **Für ein Feld mit einem Wert ist es entschieden und einfach:** *keine Zeile ⇒ der Default gilt;
 eine Zeile ⇒ sie gilt. **Bei `0..*` zerfällt «eine Zeile» in zwei Lesarten.***
