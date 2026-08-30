@@ -408,6 +408,27 @@ final class DataEntry
      * @param string $path Where under the holder it sits. Empty for a direct attribute, so the edge
      *                     id is the whole path; an index like `2` for the third of several.
      */
+    /**
+     * Einen zusammengesetzten Teil **an einer Verwendungsstelle** anlegen.
+     *
+     * ⚠️ **Derselbe Akt wie {@see createPart()}, nur mit geprüfter Adresse.** *Jener nimmt einen Pfad
+     * als **Zeichenkette** entgegen und schreibt ihn ungeprüft — solange nur eine Stufe darin stand,
+     * fiel das nicht auf. **Sobald echte Daten an mehrstufige Adressen wandern, ist eine ungeprüfte
+     * Adresse eine, die auf nichts zeigt**, und man merkt es erst beim Suchen.*
+     *
+     * @param list<int> $edgeIds Von aussen nach innen; die **letzte** ist die zusammengesetzte Kante.
+     */
+    public function createPartAt(int $recordId, array $edgeIds): NodeRecord
+    {
+        $kette = $this->walkedEdges($recordId, $edgeIds);
+
+        return $this->createPart(
+            $recordId,
+            $kette[array_key_last($kette)]->id,
+            implode('.', $edgeIds)
+        );
+    }
+
     public function createPart(int $recordId, int $edgeId, string $path = ''): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
