@@ -274,3 +274,34 @@ made.**
 
 **The one line worth keeping here:** *an attribute is a question the model asks its users; a setting is
 a decision the modeller makes about a question.*
+
+---
+
+## Wörter, die am 2026-08-30 aneinander vorbeigingen
+
+⚠️ **Der Eigentümer hat den Grund benannt, und er ist keine Kleinigkeit:** *«manche Probleme treten
+aus unterschiedlichem Modelldenken hervor — **du hast ein anderes Modell als ich im Kopf**, und wenn
+ich was sage, interpretierst du das anders. Ich glaube, wir müssen beide noch an unserer Sprache
+arbeiten, denn manchmal verstehe auch ich dich nicht.»*
+
+*Diese Tabelle steht hier, damit dieselben Wörter nicht ein zweites Mal einen halben Tag kosten.*
+
+| Wort | was er meinte | was ich daraus machte | was gilt |
+|---|---|---|---|
+| **«Datensatz an der Kante»** | ein Wert, der **die Kante adressiert** | ein Datensatz, der **an** einer Kante hängt — ein neuer Behälter | ein Wert im Datensatz des **besitzenden Knotens**, an dem Pfad, der die Kante nennt. **Es gibt keinen Behälter an einer Kante** |
+| **«der oberste»** | der dem **konkreten Datensatz nächste** — `Giga` schlägt `Kilo` | hätte auch «der wurzelnächste» heissen können | die Auflösung läuft Wurzel → Knoten, **der spätere gewinnt** ([D-531](90-decision-log.md)) |
+| **«Records»** (drei für `4 GB`) | drei **Wertzeilen** | drei Zeilen in `records` | **ein** Datensatz mit **drei Wertzeilen**. Wären es drei Datensätze, bände nichts sie zu «4 GB» zusammen |
+| **«Settings»** | je nach Satz: die alte Tabelle · das alte Konzept · der Bereich in der Oberfläche | einmal das eine, einmal das andere — und einmal aus einer überholten Stelle zitiert | im **Modell** gibt es nur Felder und eine Relationsart ([D-506](90-decision-log.md), [D-526](90-decision-log.md)). Der **Bereich** darf weiter so heissen |
+| **«Pfad»** | die Adresse einer Stelle | zeitweise auch eine laufende Nummer ([D-527](90-decision-log.md)) | in allen drei Tabellen dasselbe: **Kanten-Ids, mit Punkten**, von aussen nach innen ([D-530](90-decision-log.md)) |
+| **«Multiplizität»** | wie **viele** Werte | ich zog «welche Werte erlaubt sind» hinein (SCSI-ID 0..7) | Multiplizität sind **vier** Werte ([D-351](90-decision-log.md)). Welche Werte erlaubt sind, sind Daten oder `min`/`max` |
+| **«nicht persistent»** | **das ist eine Einstellung** | ein eigener Schlüssel neben der Relationsart | dasselbe, und der Schlüssel fällt ([D-538](90-decision-log.md)) |
+| **«Version»** | die Version der **Zeile** | zeitweise auch die Modellversion am Datensatz | die Zeilenversion ([D-536](90-decision-log.md)); die Modellversion heisst am Datensatz `node_version` |
+
+⚠️ **Zwei Regeln, die daraus folgen und für mich gelten:**
+
+1. *Wenn ein Satz von ihm ein **neues Ding** zu verlangen scheint, erst prüfen, ob er eine **neue
+   Adresse auf ein vorhandenes Ding** meint.* **«Datensatz an der Kante» war genau das**, und ich habe
+   daraus eine Bauaufgabe gemacht, die es nicht gab.
+2. *Wenn zwei Angaben nie widersprechen können, sind es keine zwei.* [D-405](90-decision-log.md) hat
+   so `mandatory` abgeschafft, [D-538](90-decision-log.md) so `persistent` — **beide Male hat er es
+   gesehen, nicht ich.**

@@ -1167,3 +1167,26 @@ altes Zeug behauptet, das wir gestern überholt haben». **Ein entschiedener, ni
 nicht neutral: er liegt als Beleg herum.***
 
 ---
+
+### `persistent` fällt — Stand 2026-08-30
+
+[D-538](90-decision-log.md), seine Herleitung: *«wenn der Benutzer was eingibt in einen Knoten, der
+Settings und Felder hat, dann werden für den Benutzer ja nur die **Felder** gespeichert und nicht die
+Settings, weil die Settings ja Eigenschaften des Modells sind.»*
+
+| | landet im Benutzerdatensatz | darf der Benutzer ändern |
+|---|---|---|
+| **Feld** | ja | ja |
+| **Feld, schreibgeschützt** | **ja** | nein |
+| **Einstellung** | **nein** | — sie steht am Modell |
+
+⚠️ **Die mittlere Zeile ist der Grund, warum `read_only` bleibt und `persistent` geht.** *Ein
+schreibgeschützter Wert ist im Datensatz und nur unveränderlich; eine Einstellung ist gar nicht erst
+dort. `persistent` sagte nichts, was die Relationsart ([D-526](90-decision-log.md)) nicht schon sagt —
+`read_only` sagt etwas Eigenes.*
+
+⚠️ *Gemessen vor dem Streichen: **146 von 148** `persistent`-Zeilen wiederholten die Vorgabe, eine
+erreichte nichts, und **die einzige wirksame war `Prefixes.exponent`** — der eine Einstellung werden
+soll. Der einzige echte Fall des Schlüssels ist genau der, den die Art übernimmt.*
+
+---
