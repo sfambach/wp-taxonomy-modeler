@@ -5413,8 +5413,12 @@ sie das System, einmal, für alle.*
 
 **Raised** 2026-08-29, vom Eigentümer, als er die Regel selbst verallgemeinerte.
 
-*Blocks:* [Zeile 61](97-implementation-plan.md#the-working-list) · *Status:* **offen — mit seiner
-eigenen Antwort als Ausgangspunkt**
+*Blocks:* [Zeile 61](97-implementation-plan.md#the-working-list) · *Status:* **geschlossen durch
+[D-545](90-decision-log.md)** — auf sein Wort: «nichts in Settings erbt von Root, das wird im Settings
+schon geblockt». *Die Selbstbezüglichkeit ist damit nicht bewacht, sondern **strukturell weg**: der
+Settings-Ast erbt die Einstellungskanten der Wurzel nicht mehr, also kann kein Einstellungsknoten mehr
+auf sich selbst zeigen. Ein Wächter für einen Fall, den es nicht mehr gibt, wäre die schlechtere
+Antwort gewesen.*
 
 Er: *«einfache Datentypen dürfen einfach keine einfachen Datentypen als Setting haben. Oder
 eigentlich nur **sich selbst** nicht. … Das ist aber auch eine Regel, die vielleicht wieder

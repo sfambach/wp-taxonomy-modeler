@@ -243,6 +243,24 @@ foreach ([$one, $two, $third] as $edge) {
 $editor->moveToTrash($thing->id);
 $editor->moveToTrash($text->id);
 
+// ⚠️ **Und aus dem Papierkorb heraus, sonst wächst er mit jedem Lauf.** *Gemessen am 2026-08-31 lagen
+// dort **26** Knoten dieser Prüfung — dreizehn Läufe, je zwei. Der Eigentümer hat sie in seinem Baum
+// gesehen; **eine Prüfung, die ihren Müll parkt statt ihn wegzuräumen, ist eine Prüfung mit einem
+// Nebenwirkungsvorrat.***
+//
+// ⚠️ **Nur die eigenen zwei, nicht der Papierkorb.** *`ModelEditor::clearTrash()` leert **alles** —
+// auch, was ein Mensch dort geparkt hat und zurückholen wollte. **Eine Prüfung, die fremde Arbeit
+// wegräumt, ist schlimmer als eine, die ihre eigene liegen lässt.***
+foreach ([$thing->id, $text->id] as $meinerId) {
+    foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $meinerId)) ?: [] as $satzId) {
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+    }
+
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $meinerId, $meinerId));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $meinerId));
+}
+
 check(
     'the scratch settings are gone',
     (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE owner_id = %d", $thing->id)) === 0

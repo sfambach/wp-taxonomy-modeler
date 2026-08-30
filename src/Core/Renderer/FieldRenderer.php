@@ -69,7 +69,7 @@ final class FieldRenderer extends TypedFieldRenderer
             //
             // ⚠️ *`mayBeNothing` trägt die Angabe schon: sie kommt aus der Multiplizität der Kante. Die
             // Vorgabe ist `true`, also bleibt jede Zeichnung ohne diese Angabe unverändert.*
-            'required'  => ! $context->surroundings->mayBeNothing,
+            'aria-required'  => $context->surroundings->mayBeNothing ? null : 'true',
             'value'     => $this->outputValue($context),
             'pattern'   => $context->type?->pattern(),
             'inputmode' => $context->type?->inputMode(),

@@ -102,7 +102,7 @@ final class PlainRenderer implements Renderer
                 'form'  => $context->surroundings->formId,
                 // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
                 // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-                'required' => ! $context->surroundings->mayBeNothing,
+                'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
                 'value' => $shown,
             ])
         );

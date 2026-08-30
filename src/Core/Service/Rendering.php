@@ -451,6 +451,12 @@ final class Rendering
          * @var array<int, list<array{id: int, werte: array<int, TypedValue>}>>
          */
         array $parts = [],
+        /**
+         * ⚠️ *Der Knoten, dessen Angaben hier gezeichnet werden — gebraucht für **eine** Frage: welche
+         * Renderer er verträgt ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+         * `0` heisst «unbekannt», und dann wird nichts eingeschränkt.*
+         */
+        int $forNode = 0,
     ): array {
         if ($edges === []) {
             return [];
@@ -515,6 +521,22 @@ final class Rendering
                 ? ($wahl[$edge->id] ?? [])
                 : [];
 
+            // ⚠️ **Ein Renderer wird nur angeboten, wenn er das hier auch zeichnen kann**
+            // ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
+            //
+            // ⚠️ *Der Eigentümer an `Integer`: «Integer sieht jetzt alle Renderer, wobei nur
+            // int-Renderer ok wären» — und die Präzisierung: «allgemeiner `field` wäre auch noch ok».
+            // **Genau das sagt die Registratur schon**: `eligibleFor()` antwortet für `Integer` mit
+            // `field, spinner, slider`, für `Boolean` mit `toggle, checkbox`. [D-540](../../../docs/NewConcept/90-decision-log.md)
+            // liefert die Möglichkeiten aus dem Modell, `R14a` verengt sie auf die brauchbaren.*
+            //
+            // ⚠️ **Ein Angebot, kein Zaun** ([D-360](../../../docs/NewConcept/90-decision-log.md)): *was
+            // schon gespeichert ist, bleibt stehen, auch wenn es heute nicht mehr angeboten würde —
+            // sonst verschwände eine Wahl, die jemand bewusst getroffen hat.*
+            if ($angebot !== [] && $forNode !== 0 && $edge->id === $this->framework->settingValueEdgeId(SettingKey::Renderer)) {
+                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $values[$edge->id] ?? null);
+            }
+
             if ($angebot !== [] && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
                 $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
             }
@@ -573,7 +595,7 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? []);
+            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? [], $forNode);
 
             $fields[] = new RenderedField(
                 $edge,
@@ -1060,7 +1082,10 @@ final class Rendering
                 // ⚠️ *Der Knoten dieser Seite gilt als «schon besucht» — sonst klappt eine Einstellung,
                 // die auf ihn selbst zeigt, ihn ein zweites Mal auf ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
                 [$declaredBy => true],
-                $parts
+                $parts,
+                // ⚠️ *Wessen Angaben hier stehen — damit die Renderer-Auswahl auf das eingeschränkt
+                // werden kann, was **dieser** Knoten verträgt ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).*
+                $declaredBy
             );
 
             $context = new RenderContext(
@@ -2270,6 +2295,7 @@ final class Rendering
         array $values,
         array $gesehen = [],
         array $teile = [],
+        int $forNode = 0,
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
@@ -2340,7 +2366,9 @@ final class Rendering
                 $formId,
                 $tiefe + 1,
                 $unterbau,
-                [...$gesehen, $edge->toId => true]
+                [...$gesehen, $edge->toId => true],
+                [],
+                $forNode
             );
         }
 
@@ -2436,6 +2464,47 @@ final class Rendering
      * @param  list<int>                       $parentIds
      * @return array<int, array<int, string>>  Eltern-Id => (Knoten-Id => Name)
      */
+    /**
+     * Von den angebotenen Renderern die, die diesen Knoten zeichnen können.
+     *
+     * ⚠️ **Die Antwort kommt aus der Registratur und wird hier nicht nachgebaut** (`R14a`): *sie kennt,
+     * welcher Renderer welchen Typ anfasst, und der Eigentümer hat den Fall genannt — «Integer sieht
+     * jetzt alle Renderer, wobei nur int-Renderer ok wären», dazu «allgemeiner `field` wäre auch noch
+     * ok». **Gemessen sagt `eligibleFor()` für `Integer` genau `field, spinner, slider`.***
+     *
+     * ⚠️ **Das Gespeicherte bleibt stehen, auch wenn es nicht mehr angeboten würde**
+     * ([D-360](../../../docs/NewConcept/90-decision-log.md)): *die zulässige Menge ist ein Angebot und
+     * kein Zaun. Fiele der gesetzte Wert aus der Liste, zeigte die Auswahl ihn nicht mehr — und das
+     * nächste Speichern hätte ihn stillschweigend ersetzt.*
+     *
+     * @param  array<int, string> $angebot Knoten-Id => Name
+     * @return array<int, string>
+     */
+    private function onlyUsableRenderers(array $angebot, int $forNode, ?TypedValue $gesetzt): array
+    {
+        $knoten = $this->nodes->find($forNode);
+
+        if ($knoten === null) {
+            return $angebot;
+        }
+
+        $erlaubt = [];
+
+        foreach ($this->renderers->eligibleFor($knoten, $this->typeOfNode($knoten), Purpose::Edit) as $einer) {
+            $erlaubt[$einer->name()] = true;
+        }
+
+        if ($erlaubt === []) {
+            return $angebot;
+        }
+
+        return array_filter(
+            $angebot,
+            static fn (string $name, int $id): bool => isset($erlaubt[$name]) || $gesetzt?->reference === $id,
+            ARRAY_FILTER_USE_BOTH
+        );
+    }
+
     private function offeredUnder(array $parentIds): array
     {
         $angebot = array_fill_keys($parentIds, []);

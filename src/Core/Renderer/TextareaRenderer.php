@@ -52,7 +52,7 @@ final class TextareaRenderer extends TypedFieldRenderer
             . $this->createHtmlAttribute('form', $context->surroundings->formId)
             // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            . ($context->surroundings->mayBeNothing ? '' : ' required')
+            . ($context->surroundings->mayBeNothing ? '' : ' aria-required="true"')
             . $this->createHtmlAttribute('cols', $this->numberSetting($context, 'cols'))
             . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
             . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';

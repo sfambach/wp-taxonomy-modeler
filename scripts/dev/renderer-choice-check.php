@@ -288,6 +288,65 @@ check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [
 // wenn kein einziger Knoten einen Renderer trägt.*
 check('und es wurden Knoten geprueft', $geprueft >= 3, (string) $geprueft);
 
+echo "\n== Die Auswahl bietet nur, was der Knoten vertraegt ==\n";
+
+// ⚠️ **Sein Befund an `Integer`:** *«Integer sieht jetzt alle Renderer, wobei nur int-Renderer ok
+// wären»* — und die Präzisierung: *«allgemeiner `field` wäre auch noch ok».* *[D-540](../../docs/NewConcept/90-decision-log.md)
+// liefert die Möglichkeiten aus dem **Modell** (alle Blätter unter `Renderer`), `R14a` verengt sie auf
+// die **brauchbaren**. Vorher waren es 17.*
+//
+// ⚠️ *Die Erwartung kommt aus der Registratur, nicht aus einer Liste in dieser Datei — sonst würde die
+// Zusage rot, sobald ein Renderer dazukommt.*
+$admin = get_users(['role' => 'administrator', 'number' => 1]);
+
+if ($admin === []) {
+    check('ein Administrator ist da', false);
+} else {
+    wp_set_current_user($admin[0]->ID);
+
+    $wertKante = $framework->settingValueEdgeId(\Taxmod\Core\Model\SettingKey::Renderer);
+
+    foreach (['Integer', 'Boolean'] as $name) {
+        $node = knoten($name);
+
+        if ($node === null || $wertKante === 0) {
+            check("«{$name}» steht im Modell", false);
+
+            continue;
+        }
+
+        $soll = [];
+
+        foreach ($rendering->choicesForNode($node, Purpose::Edit) as $einer) {
+            $soll[] = $einer->name();
+        }
+
+        $_GET['taxmod_node'] = (string) $node->id;
+        $_GET['page']        = 'taxmod-nodes';
+
+        $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+        $plugin = $bau->newInstanceWithoutConstructor();
+        $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+        $html = (string) preg_replace('/<dialog\b.*?<\/dialog>/s', '', $plugin->screen()->render());
+
+        $gezeigt = [];
+
+        if (preg_match('/<select[^>]*name="taxmod_part\[\d+\]\[' . $wertKante . '\]"[^>]*>(.*?)<\/select>/s', $html, $treffer)) {
+            preg_match_all('/<option[^>]*>([^<]*)<\/option>/', $treffer[1], $o);
+            $gezeigt = array_map('trim', $o[1]);
+        }
+
+        sort($soll);
+        sort($gezeigt);
+
+        check(
+            "«{$name}»: die Auswahl ist genau die zulaessige Menge",
+            $gezeigt === $soll,
+            'gezeigt: ' . implode(', ', $gezeigt) . ' — zulaessig: ' . implode(', ', $soll)
+        );
+    }
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

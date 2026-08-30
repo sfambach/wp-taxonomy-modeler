@@ -47,7 +47,7 @@ final class SpinnerRenderer extends TypedFieldRenderer
             'form'  => $context->surroundings->formId,
             // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
-            'required' => ! $context->surroundings->mayBeNothing,
+            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
             'value' => $this->outputValue($context),
             'min'   => $this->numberSetting($context, SettingKey::Min->value),
             'max'   => $this->numberSetting($context, SettingKey::Max->value),

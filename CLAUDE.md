@@ -3,11 +3,11 @@
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
 
-## Where things stand (2026-08-28)
+## Where things stand (2026-08-31)
 
 The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
 since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
-for: **459 decisions, 25 open questions.** *The second number fell from 102 to 25 on 2026-08-27 without a single question being answered: **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`.** That is what a count in a rules file is worth — and why the check below matters more than the number.* The previous planning round is frozen under
+for: **548 decisions, 140 questions of which 6 still say `open`.** *This line has been wrong twice. On 2026-08-27 it claimed 25 open questions and none had been answered — **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`**. On 2026-08-31 it still said 459 decisions; there were 548, and a whole evening of them had gone unrecorded here. **That is what a count in a rules file is worth** — and why the check below matters more than the number.* The previous planning round is frozen under
 [`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
 [`docs/NewConcept/`](docs/NewConcept/README.md).
 
@@ -42,6 +42,7 @@ somebody had.*
 
 | **PR-10** | **Look it up before you say it. No claim about the concept without a quotation from it.** Whenever an answer turns on *what was decided* — a mechanism, a rule, where something belongs — read the source and **quote the sentence**, with its `D-<nnn>`. Recalling it is not reading it. ⚠️ *This rule exists because 2026-08-25 measured the difference: every answer given from memory that day was wrong — «a constant has no records» cited the data layer against a model-level question, «`default` is one key per owner» was reported as a rule when it is a consequence of a unique key, and a `node_label` type was designed for a value that is never stored. Every answer given after a `grep` held — and twice it showed the **owner** his own error, which memory never does.* Also **orient before starting**: the tail of [`90-decision-log.md`](docs/NewConcept/90-decision-log.md), [`91-open-questions.md`](docs/NewConcept/91-open-questions.md) and the current package in [`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md). A conversation summary is a reminder of what happened, never a substitute for the documents. |
 | **PR-11** | **Never write the result of a text transformation back to a file unguarded.** Check that a replacement actually matched before saving, and prefer the editing tools over regular expressions on source. ⚠️ *`preg_replace` returned `null` on a bad pattern and `null` was written straight to disk — a file emptied to zero bytes, and it was not yet in git. `sed` eats the backslashes out of PHP namespaces the same way.* |
+| **PR-12** | **When data moves, the reader moves first — and a check must exist that would go red if only one of them did.** The order is **guard, reader, data**. ⚠️ *This rule was earned six times in one evening (2026-08-30). Renderer settings moved into records, and six separate readers were left asking the old table: `containerFor()`, `valueOfType()`, the boundary that wrote the choice, and three more. **Each time the screen kept working and quietly showed the wrong thing** — a node drew with `plain` instead of its renderer, a picker saved into a table nothing read, a preview ignored a change the owner had just made. Not one of the 305 checks noticed, because none of them guarded the resolution. The first fix of the day was rolled back for exactly this reason: the data had moved before the reader, and everything stayed green.* |
 
 Dev environment (Laragon on Windows, SQLite on the cloud VM): [`AGENTS.md`](AGENTS.md).
 
