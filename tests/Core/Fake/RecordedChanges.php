@@ -9,7 +9,7 @@ use Taxmod\Core\Repository\Changelog;
 /** Keeps what was logged so a test can assert that an unchanged save wrote nothing. */
 final class RecordedChanges implements Changelog
 {
-    /** @var list<array{int,string,string,?string,?string,int}> */
+    /** @var list<array{int,string,string,?string,?string,int,?int}> owner, kind, verb, before, after, group, version */
     public array $entries = [];
 
     private int $lastRow = 0;
@@ -47,6 +47,12 @@ final class RecordedChanges implements Changelog
         ?string $before,
         ?string $after,
         ?int $changeGroupId = null,
+        /**
+         * ⚠️ *Der Doppelgänger nimmt sie entgegen und **behält sie**, statt sie zu schlucken: sonst
+         * könnte ein Kerntest nicht zeigen, dass ein Schreibweg sie überhaupt mitgibt
+         * ([D-536](../../../docs/NewConcept/90-decision-log.md)).*
+         */
+        ?int $version = null,
     ): int {
         $changeGroupId ??= $this->openAct;
 
@@ -58,7 +64,9 @@ final class RecordedChanges implements Changelog
             $this->openAct ??= $group;
         }
 
-        $this->entries[] = [$ownerId, $ownerKind, $what, $before, $after, $group];
+        // ⚠️ *Die Version hinten angehängt, damit die Stellen 0 bis 5 bleiben, wo sie waren — Tests
+        // greifen positionsweise zu.*
+        $this->entries[] = [$ownerId, $ownerKind, $what, $before, $after, $group, $version];
 
         return $group;
     }
@@ -75,7 +83,8 @@ final class RecordedChanges implements Changelog
                 $row['what'],
                 $row['before'],
                 $row['after'],
-                $group
+                $group,
+                $row['version'] ?? null
             );
         }
 

@@ -109,7 +109,7 @@ final class Schema
      * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
      * nächsten Installation falsch ist.*
      */
-    public const VERSION = 17;
+    public const VERSION = 18;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -823,6 +823,7 @@ final class Schema
                 at datetime NOT NULL,
                 by_user_id bigint(20) unsigned DEFAULT NULL,
                 what varchar(40) NOT NULL,
+                version int(10) unsigned DEFAULT NULL,
                 before_state mediumtext DEFAULT NULL,
                 after_state mediumtext DEFAULT NULL,
                 PRIMARY KEY  (id),

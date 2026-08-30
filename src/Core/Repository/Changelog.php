@@ -70,6 +70,8 @@ interface Changelog
         ?string $before,
         ?string $after,
         ?int $changeGroupId = null,
+        /** Die Version, die diese Änderung erzeugt hat — der Wächter für «seither» ([D-536](../../../docs/NewConcept/90-decision-log.md)). */
+        ?int $version = null,
     ): int;
 
     /**

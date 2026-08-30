@@ -62,6 +62,18 @@ final class WpdbChangelog implements Changelog
         ?string $before,
         ?string $after,
         ?int $changeGroupId = null,
+        /**
+         * Die Version, die diese Änderung **erzeugt** hat — nullbar, weil sie erst
+         * [Schema 18](Schema.php) gibt und die bestehenden 19 968 Zeilen keine haben.
+         *
+         * ⚠️ **Sie ist kein Schlüssel zum Zurücksetzen, sondern ein Wächter**
+         * ([D-536](../../../docs/NewConcept/90-decision-log.md)): *{@see Restore::previous()} findet
+         * den Vorgänger selbst, dafür braucht es sie nicht. **Gebraucht wird sie für die Frage
+         * «seither»** — hat jemand anders die Zeile nach dieser Änderung angefasst, dann setzt ein
+         * Gruppen-Rückgängig **dessen** Arbeit zurück und nicht die eigene. Genau diese Frage hatte in
+         * [OQ-137](../../../docs/NewConcept/91-open-questions.md) keine Antwort.*
+         */
+        ?int $version = null,
     ): int {
         global $wpdb;
 
@@ -81,10 +93,11 @@ final class WpdbChangelog implements Changelog
                 'at'              => $this->clock->now()->format('Y-m-d H:i:s'),
                 'by_user_id'      => $this->human(),
                 'what'            => $what,
+                'version'         => $version,
                 'before_state'    => $before,
                 'after_state'     => $after,
             ],
-            ['%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s']
+            ['%d', '%d', '%s', '%s', '%d', '%s', '%d', '%s', '%s']
         );
 
         if ($changeGroupId !== null) {
