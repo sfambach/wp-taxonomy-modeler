@@ -197,9 +197,13 @@ foreach ($settings as $zeile) {
     }
 }
 
+// ⚠️ *Hier stand `>= 3` — die drei Einstellungen der **Wurzel**. Seit
+// [D-545](../../docs/NewConcept/90-decision-log.md) erbt nichts im Settings-Ast mehr von `Root`, und
+// `form` liegt darin: es zeigt jetzt seine zwei eigenen, `label_role` und `with_label`. **Die Zusage
+// wollte nie eine Zahl, sondern «die Einstellungen dieses Knotens stehen unter Settings».***
 check(
     '«form» zeigt seine Einstellungen unter Settings',
-    count($gesehen) >= 3,
+    count($gesehen) >= 2,
     count($gesehen) . ': ' . implode(', ', $gesehen)
 );
 
@@ -235,7 +239,10 @@ echo "\n== «How many» ist an einer geerbten Kante gesperrt ==\n";
 //
 // ⚠️ *[D-376](../../docs/NewConcept/90-decision-log.md): eine geerbte Kante gehört dem Vorfahren, und
 // sie **hier** zu ändern hiesse, sie für alle zu ändern — still.*
-$id   = knotenId('render with label');
+// ⚠️ *Hier stand «render with label» — der liegt im Settings-Ast und erbt seit
+// [D-545](../../docs/NewConcept/90-decision-log.md) nichts mehr von der Wurzel, hat also keine
+// geerbte Zeile mehr. **Gefragt ist ein Knoten, der wirklich erbt.***
+$id   = knotenId('Kontact');
 $html = $id === 0 ? '' : seiteVon($id);
 
 if ($html === '') {

@@ -60,6 +60,26 @@ final class FixedFramework implements FrameworkNodes
     /** @var array<string, array{int, int}> */
     private array $settingEdges = [];
 
+    /**
+     * ⚠️ *Ohne einen Settings-Ast im Doppel gilt die alte Kette — die Regel greift nur, wo der Ast
+     * existiert ([D-545](../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @return list<int>
+     */
+    public function inheritanceOwnersOf(Node $node): array
+    {
+        $kette = [...$node->ancestorIds(), $node->id];
+        $ast   = $this->branchRoots[Branch::Settings->value] ?? null;
+
+        if ($ast === null) {
+            return $kette;
+        }
+
+        $wo = array_search($ast->id, $kette, true);
+
+        return $wo === false ? $kette : array_values(array_slice($kette, (int) $wo));
+    }
+
     public function settingEdgeId(SettingKey $key): int
     {
         return $this->settingEdges[$key->value][0] ?? 0;

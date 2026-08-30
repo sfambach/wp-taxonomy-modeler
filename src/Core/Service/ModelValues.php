@@ -273,7 +273,7 @@ final class ModelValues
         }
 
         $innen = $this->carrierAmong(
-            $this->relations->fieldEdgesOf([...$tragender->ancestorIds(), $tragender->id]),
+            $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($tragender)),
             self::VALUE_NODE
         );
 

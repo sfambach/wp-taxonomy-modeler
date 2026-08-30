@@ -656,7 +656,7 @@ final class ModelEditor
     {
         $node = $this->nodes->byId($nodeId);
 
-        return $this->relations->fieldEdgesOf([...$node->ancestorIds(), $node->id]);
+        return $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($node));
     }
 
     /**

@@ -2212,11 +2212,21 @@ final class Rendering
 
         $innen = $unterbau[$edge->toId] ?? [];
 
-        // ⚠️ *Einstellungen des Teils gehören nicht in seine Maske — dieselbe Trennung, die die Vorschau
-        // seit heute macht.*
+        // ⚠️ **Was aus einem Teil gezeichnet wird, hängt daran, was der Teil ist.**
+        //
+        // ⚠️ *Ist die tragende Kante ein **Feld**, gehören die Einstellungen des Teils nicht in die
+        // Maske — dieselbe Trennung, die die Vorschau macht: niemand füllt beim Erfassen einer Adresse
+        // deren Renderer aus.*
+        //
+        // ⚠️ *Ist sie eine **Einstellung**, sind ihre Einstellungen der ganze Inhalt. **Gemessen, als
+        // `render` und `converter` auf sein Wort zu Einstellungskanten wurden — «warum sehe ich hier
+        // wieder die Einstellungen als Fields, nur damit du rendern kannst, das ist falsch»: die Zelle
+        // von `Display Option` wurde im selben Zug leer, weil dieser Filter sie wegnahm.***
+        $nurEchte = ! $edge->kind->isSetting();
+
         $innen = array_values(array_filter(
             $innen,
-            static fn (Relation $e): bool => ! $e->kind->isSetting() && ! $e->hide
+            static fn (Relation $e): bool => ! $e->hide && ($nurEchte === false || ! $e->kind->isSetting())
         ));
 
         if ($innen === []) {

@@ -123,7 +123,7 @@ final class DataEntry
         // er vorher konnte. Ein Modell, an dem noch nichts erklärt ist, ist eine Baustelle und kein
         // Fehler.*
         $branch = $this->framework->branchOf($model);
-        $hatFelder = $this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]) !== [];
+        $hatFelder = $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) !== [];
 
         if (($branch === null || ! $branch->holdsData()) && ! $hatFelder) {
             throw NotYetStorable::thatBranchHasNoRecords($model->name);
@@ -241,7 +241,7 @@ final class DataEntry
         foreach ($edgeIds as $edgeId) {
             $gefunden = null;
 
-            foreach ($this->relations->fieldEdgesOf([...$besitzer->ancestorIds(), $besitzer->id]) as $kante) {
+            foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
                 if ($kante->id === $edgeId) {
                     $gefunden = $kante;
                 }
@@ -641,7 +641,16 @@ final class DataEntry
             throw NotYetStorable::thatIsNotAComposedPart($edge->name);
         }
 
-        $part = $this->create($target->id);
+        // ⚠️ **Ein Teil erbt die Art seines Besitzers.** *Ein Teil eines `default`-Satzes ist selbst
+        // eine Vorgabe, kein Benutzerwert — [D-026](../../../docs/NewConcept/90-decision-log.md): «at
+        // model level there are no values, only defaults».*
+        //
+        // ⚠️ **Ohne das lässt sich eine Einstellung mit eigenen Feldern nicht als Einstellung markieren.**
+        // *Gemessen am 2026-08-30: die 51 Teile von `DisplayOption` waren Art `user`, und
+        // {@see self::refuseUnwritable()} verweigert eine Einstellungskante in einem Benutzersatz. Der
+        // Eigentümer hatte gerade gefragt, warum `render` und `converter` als **Felder** erscheinen —
+        // «nur damit du rendern kannst, das ist falsch» —, und die Antwort hing an dieser Zeile.*
+        $part = $this->create($target->id, $record->kind);
 
         // The holder points at it, which is the whole of the relationship.
         $this->records->putValue(new EdgeRecord(
@@ -675,7 +684,7 @@ final class DataEntry
         $model = $this->nodes->byId($record->nodeId);
         $owned = [];
 
-        foreach ($this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]) as $edge) {
+        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
             $target = $this->nodes->byId($edge->toId);
             $branch = $this->framework->branchOf($target);
 
@@ -760,7 +769,7 @@ final class DataEntry
     private function edgeOf(NodeRecord $record, int $edgeId): \Taxmod\Core\Model\Relation
     {
         $model = $this->nodes->byId($record->nodeId);
-        $owned = $this->relations->fieldEdgesOf([...$model->ancestorIds(), $model->id]);
+        $owned = $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model));
 
         foreach ($owned as $edge) {
             if ($edge->id === $edgeId) {

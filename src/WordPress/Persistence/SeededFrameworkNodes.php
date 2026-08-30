@@ -191,6 +191,28 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
     }
 
+    /**
+     * ⚠️ *Der Schnitt liegt an der Wurzel des Settings-Astes ([D-545](../../../docs/NewConcept/90-decision-log.md)).
+     * Kein Aufstieg mit einer Abfrage je Stufe: der Pfad ist materialisiert, die Vorfahren-Ids stehen
+     * schon da (`CD-7`).*
+     *
+     * @return list<int>
+     */
+    public function inheritanceOwnersOf(Node $node): array
+    {
+        $kette = [...$node->ancestorIds(), $node->id];
+        $ast   = $this->rootOf(Branch::Settings);
+
+        $wo = array_search($ast->id, $kette, true);
+
+        // ⚠️ *Ein Knoten ausserhalb des Astes erbt wie immer — die Regel gilt nur drinnen.*
+        if ($wo === false) {
+            return $kette;
+        }
+
+        return array_values(array_slice($kette, (int) $wo));
+    }
+
     public function settingEdgeId(SettingKey $key): int
     {
         return (int) get_option(self::SETTING_EDGE_PREFIX . $key->value, 0);
