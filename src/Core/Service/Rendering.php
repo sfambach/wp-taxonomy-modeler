@@ -93,6 +93,15 @@ final class Rendering
          * same reason.
          */
         private readonly ?ConverterRegistry $converters = null,
+        /**
+         * Die Angaben, die schon an ihrer neuen Stelle liegen — im Modell, als Datensätze.
+         *
+         * ⚠️ **Die Brücke für [D-529](../../../docs/NewConcept/90-decision-log.md), und sie ist
+         * absichtlich optional:** *solange eine Angabe noch in der Settings-Tabelle steht, antwortet
+         * diese Quelle «nichts» und der alte Weg trägt weiter. **Erst wenn eine Angabe umgezogen ist,
+         * gewinnt die neue Stelle** — sonst hätte der Umzug keine Wirkung.*
+         */
+        private readonly ?ModelValues $model = null,
     ) {
     }
 
@@ -382,7 +391,7 @@ final class Rendering
 
         foreach ($edges as $edge) {
             $type     = $types[$edge->id] ?? null;
-            $settings = $resolved[$edge->id] ?? [];
+            $settings = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
             $renderer = $this->renderers->chosenFor($edge, $settings, $purpose, $type);
 
             if ($renderer === null) {
@@ -834,7 +843,7 @@ final class Rendering
         $rows = [];
 
         foreach ($edges as $edge) {
-            $settings = $resolved[$edge->id] ?? [];
+            $settings = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
 
             // The multiplicity, drawn once by the settings side and handed to the row.
             $configured = [];
@@ -1308,6 +1317,29 @@ final class Rendering
      * worse than laying them out plainly. [R14b](30-renderer.md)'s «the fallback marks itself» is
      * about a **value**, not about a frame.*
      */
+    /**
+     * Die aufgelösten Angaben, ergänzt um das, was schon im Modell steht.
+     *
+     * ⚠️ **Die neue Stelle gewinnt, und das ist der ganze Sinn** ([D-529](../../../docs/NewConcept/90-decision-log.md)):
+     * *ein Umzug, nach dem der alte Wert weiter gilt, hat nichts bewegt. Umgekehrt darf die neue Quelle
+     * nichts überschreiben, wozu sie nichts sagt — **darum wird ergänzt und nicht ersetzt**.*
+     *
+     * @param  array<string,\Taxmod\Core\Model\ResolvedSetting> $resolved
+     * @return array<string,\Taxmod\Core\Model\ResolvedSetting>
+     */
+    private function withModelValues(array $resolved, Node|Relation $subject): array
+    {
+        if ($this->model === null) {
+            return $resolved;
+        }
+
+        $ausDemModell = $subject instanceof Node
+            ? $this->model->forNode($subject)
+            : $this->model->forUseSite($subject);
+
+        return [...$resolved, ...$ausDemModell];
+    }
+
     private function containerFor(Node $node, Purpose $purpose): Renderer
     {
         $chosen = ($this->settings->resolve($this->settings->chainFor($node))[SettingKey::Renderer->value] ?? null)

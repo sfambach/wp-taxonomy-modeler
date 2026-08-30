@@ -267,16 +267,43 @@ check('umbenennen traegt die Multiplizitaet mit', $umbenannt->multiplicity === $
 check('umbenennen traegt hide mit', $umbenannt->hide === $kante->hide);
 check('wiederherstellen traegt hide mit', $kante->parkedBy(1)->revived()->hide === $kante->hide);
 
-echo "\n== 7. Kein Pfad traegt eine laufende Nummer ==\n";
+echo "\n== 7. Jedes Stueck eines Pfades ist eine Kanten-Id ==\n";
 
-// ⚠️ *D-527s Form schriebe `4654.2`. `ModelEditor::remapPath()` schickt **jedes** Segment durch die
-// Kantenabbildung — eine laufende Nummer dort wäre eine Kanten-Id, die niemand gemeint hat.*
+// ⚠️ **Diese Zusage hiess bis zum Umzug «kein Pfad hat einen Punkt», und das war zu grob.** *Damals
+// bedeutete ein Punkt eine laufende Nummer ([D-527](../../docs/NewConcept/90-decision-log.md)); **seit
+// die Renderer an ihren Verwendungsstellen liegen, ist ein Punkt die richtige Form** — «Feld A, darin
+// Feld B». Der Umzug hat die alte Zusage rot gemacht, und das war sie auch: sie verbot die Form,
+// statt die Bedeutung zu prüfen.*
+//
+// ⚠️ **Was wirklich gilt** ([D-530](../../docs/NewConcept/90-decision-log.md)): *jedes Stück zwischen
+// zwei Punkten ist eine **Kanten-Id**. `ModelEditor::remapPath()` verlässt sich darauf — es schickt
+// jedes Segment durch die Kantenabbildung, und eine laufende Nummer dort wäre eine Kante, die niemand
+// gemeint hat.*
 foreach (['record_values', 'settings', 'labels'] as $tabelle) {
-    $mitPunkt = (int) $wpdb->get_var(
-        'SELECT COUNT(*) FROM ' . Schema::table($tabelle) . " WHERE path LIKE '%.%'"
-    );
+    $pfade = $wpdb->get_col(
+        'SELECT DISTINCT path FROM ' . Schema::table($tabelle) . " WHERE path <> ''"
+    ) ?: [];
 
-    check("kein Pfad mit Punkt in {$tabelle}", $mitPunkt === 0, "{$mitPunkt} Zeilen");
+    $fremd = [];
+
+    foreach ($pfade as $pfad) {
+        foreach (explode('.', (string) $pfad) as $stueck) {
+            $ist = (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d',
+                (int) $stueck
+            ));
+
+            if ($ist === 0) {
+                $fremd[] = "{$pfad} (Stück «{$stueck}»)";
+            }
+        }
+    }
+
+    check(
+        "jedes Stueck in {$tabelle} ist eine Kante",
+        $fremd === [],
+        implode(' · ', array_slice($fremd, 0, 4))
+    );
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

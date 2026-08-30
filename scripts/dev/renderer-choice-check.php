@@ -42,12 +42,14 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
@@ -77,6 +79,22 @@ $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $registry  = ShippedRenderers::registry();
+
+// ⚠️ **Die Prüfung geht denselben Weg wie die Anwendung, und das ist der Punkt.** *Sie fragt beide
+// Quellen und lässt die neue gewinnen — genau wie {@see \Taxmod\Core\Service\Rendering}. **Fragte sie
+// nur die alte, würde sie nach dem Umzug rot, obwohl die Oberfläche stimmt** — und wäre damit
+// wertlos für das, wofür sie gebaut wurde.*
+$model = new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $framework);
+
+/** @return array<string,\Taxmod\Core\Model\ResolvedSetting> */
+function beideQuellen(\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $subject): array
+{
+    global $settings, $model;
+
+    return $subject instanceof \Taxmod\Core\Model\Node
+        ? [...$settings->resolve($settings->chainFor($subject)), ...$model->forNode($subject)]
+        : [...$settings->resolve($settings->chainForUseSite($subject)), ...$model->forUseSite($subject)];
+}
 
 /** Der Knoten mit diesem Namen, oder null. */
 function knoten(string $name): ?\Taxmod\Core\Model\Node
@@ -115,7 +133,7 @@ foreach ($erwartet as $name => $soll) {
 
     $gewaehlt = $registry->chosenFor(
         $node,
-        $settings->resolve($settings->chainFor($node)),
+        beideQuellen($node),
         Purpose::Edit
     );
 
@@ -126,44 +144,45 @@ echo "\n== Und an einer Verwendungsstelle ==\n";
 
 // ⚠️ **Die vier Angaben an Kanten sind der eigentliche Grund für den zweistufigen Pfad.** *Ohne sie
 // hätte man «der Renderer **dieses Feldes**» nicht ausdrücken können, ohne einen Behälter zu erfinden.*
-$anKanten = $wpdb->get_results(
-    "SELECT s.owner_id, s.value_text, rel.name AS feld, von.name AS von
-     FROM " . Schema::table('settings') . " s
-     JOIN " . Schema::table('relations') . " rel ON rel.id = s.owner_id
-     JOIN " . Schema::table('nodes') . " von ON von.id = rel.from_id
-     WHERE s.setting_key = 'renderer'",
-    ARRAY_A
-) ?: [];
+// ⚠️ **Fest hingeschrieben und nicht aus der Tabelle gesucht — der Unterschied ist der ganze Wert.**
+// *Mein erster Entwurf holte die Fälle aus `settings`. **Nach dem Umzug steht dort nichts mehr**, die
+// Schleife wäre leer, und die Prüfung hätte gemeldet «keine gefunden» statt «der Renderer stimmt» —
+// wieder grün beziehungsweise rot aus dem falschen Grund.*
+$stellen = [
+    ['Prefixes', 'exponent', 'field'],
+    ['Einheitenwert', 'einheit', 'chooser-inline'],
+    ['Part List Item', 'Qunatity', 'field'],
+    ['Passiv', 'Tolerance', 'field'],
+];
 
-check('es gibt Renderer an Verwendungsstellen', $anKanten !== [], 'keine gefunden');
+foreach ($stellen as [$vonName, $feldName, $soll]) {
+    $von = knoten($vonName);
 
-foreach ($anKanten as $z) {
+    if ($von === null) {
+        check("«{$vonName}» steht im Modell", false, 'kein Knoten dieses Namens');
+
+        continue;
+    }
+
     $kante = null;
 
-    foreach ($edges->fieldEdgesOf([(int) $wpdb->get_var($wpdb->prepare(
-        'SELECT from_id FROM ' . Schema::table('relations') . ' WHERE id = %d',
-        (int) $z['owner_id']
-    ))]) as $eine) {
-        if ($eine->id === (int) $z['owner_id']) {
+    foreach ($edges->fieldEdgesOf([...$von->ancestorIds(), $von->id]) as $eine) {
+        if ($eine->name === $feldName) {
             $kante = $eine;
         }
     }
 
     if ($kante === null) {
-        check("die Kante «{$z['von']}.{$z['feld']}» ist auffindbar", false);
+        check("«{$vonName}» hat ein Feld «{$feldName}»", false, 'nicht gefunden');
 
         continue;
     }
 
-    $gewaehlt = $registry->chosenFor(
-        $kante,
-        $settings->resolve($settings->chainForUseSite($kante)),
-        Purpose::Edit
-    );
+    $gewaehlt = $registry->chosenFor($kante, beideQuellen($kante), Purpose::Edit);
 
     check(
-        "«{$z['von']}.{$z['feld']}» zeichnet mit «{$z['value_text']}»",
-        ($gewaehlt?->name() ?? null) === $z['value_text'],
+        "«{$vonName}.{$feldName}» zeichnet mit «{$soll}»",
+        ($gewaehlt?->name() ?? null) === $soll,
         $gewaehlt?->name() ?? 'nichts'
     );
 }

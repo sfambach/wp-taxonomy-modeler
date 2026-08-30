@@ -8,6 +8,7 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
@@ -500,7 +501,11 @@ final class Plugin
                 // would mean two answers to «which mappings may this type be given» — and the
                 // `converter` setting drew as a **dead** control until there was one to ask
                 // (D-219, list row 7).*
-                ShippedConverters::registry()
+                ShippedConverters::registry(),
+                // ⚠️ **Die Brücke waehrend des Umzugs** ([D-529](../../docs/NewConcept/90-decision-log.md)):
+                // *was schon als Datensatz im Modell steht, gewinnt; was noch in der Settings-Tabelle
+                // liegt, traegt der alte Weg weiter.*
+                new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
             ),
             // ⚠️ *The same object the editor and the settings hold — that is the whole point of it
             // being memoised. A second one would open a bracket nobody writes into.*
