@@ -162,6 +162,12 @@ final class FieldRowRenderer implements Renderer
             'value'    => $subject->name,
             'required' => true,
             'style'    => 'width:100%',
+            // ⚠️ **Ohne dies schickt das Feld nichts** — derselbe Fehler, den {@see self::formFor()}
+            // für den Auswahlkasten beschreibt, eine Zelle weiter und ungeheilt geblieben. *Der
+            // Eigentümer hat ihn zum zweiten Mal gefunden: «Änderungen in Namen … werden nicht mehr
+            // übernommen.» **Gemessen: `attribute renamed` stand 0 mal im ganzen Changelog**, während
+            // «wie oft» längst ankam — die Umbenennung hat nie gegriffen, nicht seit heute.*
+            'form'     => self::formFor($subject),
         ]);
 
         return $this->cell($field, 'taxmod-field-name', false, true);
