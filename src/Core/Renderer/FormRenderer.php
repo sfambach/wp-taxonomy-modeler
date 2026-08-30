@@ -126,6 +126,19 @@ final class FormRenderer implements Renderer
     private function groupOf(RenderedField $part): int
     {
         return match (true) {
+            // ⚠️ **Einstellungen zuletzt, auf sein Wort:** *«das verstehe ich auch nicht, aber bitte
+            // hinten anhängen».* *Er hat es im Datensatzblock von `Adresse` gesehen: dort stand
+            // `Street`, dann `Display Option`, dann `No.`, dann `validator` — **zwischen** den Feldern,
+            // weil sie von der Wurzel geerbt sind und deren Kanten die kleineren Positionen haben.*
+            //
+            // ⚠️ *Die vierte Gruppe war angelegt und leer. **Und die Prüfung steht zuerst**, weil ein
+            // `read_only` sonst in Gruppe 1 landet und ein `validator` in Gruppe 2 — die Einstellungen
+            // wären über drei Gruppen verstreut statt hinten.*
+            //
+            // ⚠️ *`position` ordnet weiterhin **innerhalb** der Gruppe
+            // ([D-407](../../../docs/NewConcept/90-decision-log.md)) — sie sagt die Reihenfolge unter
+            // Geschwistern, nicht den Rang zwischen Feld und Einstellung.*
+            $part->edge->kind->isSetting()       => 4,
             $part->readOnly                      => 1,
             $part->type === SimpleType::Bool     => 3,
             default                              => 2,

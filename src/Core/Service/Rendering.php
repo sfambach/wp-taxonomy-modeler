@@ -460,6 +460,11 @@ final class Rendering
             return [];
         }
 
+        // ⚠️ *Hier stand für einen Augenblick eine Sortierung «Einstellungen hinten» — und sie war an
+        // der falschen Stelle: der **Behälter** legt aus, nicht der Zeichenlauf
+        // ([D-366](../../../docs/NewConcept/90-decision-log.md)), und {@see FormRenderer::groupOf()} hat
+        // die Gruppen dafür. **Gemessen: der Form-Renderer sortierte danach wieder nach `position` und
+        // machte sie zunichte** — zwei Stellen für eine Reihenfolge, und die zweite gewann.*
         $types    = $this->typesOf($edges);
         $resolved = $this->settings->resolveForUseSites($edges);
         $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);

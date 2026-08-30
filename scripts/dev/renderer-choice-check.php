@@ -148,12 +148,35 @@ echo "\n== Und an einer Verwendungsstelle ==\n";
 // *Mein erster Entwurf holte die Fälle aus `settings`. **Nach dem Umzug steht dort nichts mehr**, die
 // Schleife wäre leer, und die Prüfung hätte gemeldet «keine gefunden» statt «der Renderer stimmt» —
 // wieder grün beziehungsweise rot aus dem falschen Grund.*
-$stellen = [
-    ['Prefixes', 'exponent', 'field'],
-    ['Einheitenwert', 'einheit', 'chooser-inline'],
-    ['Part List Item', 'Qunatity', 'field'],
-    ['Passiv', 'Tolerance', 'field'],
-];
+// ⚠️ **Diese vier Fälle sind auf sein Wort entfernt, und die Prüfung sagt jetzt das Gegenteil.**
+//
+// ⚠️ *Sie standen hier als Beleg, dass ein Renderer **an einer Kante** wirkt. Der Eigentümer hat
+// widersprochen, als ich sie «überschrieben» nannte: «du sagst überschrieben, ich sehe aber nichts —
+// das ist wahrscheinlich ein alter Datensatz, weil so weit, dass wir an Kanten überschreiben, sind wir
+// ja noch nicht.» **Gemessen hatte er recht:** alle 31 Teile entstanden in derselben Sekunde,
+// `2026-08-30 13:15:17`, in einem Umzugslauf von mir; die alte `settings`-Tabelle konnte als Besitzer
+// auch eine Kante kennen, und `migrate-renderer-settings.php` hat das wörtlich übernommen.*
+//
+// ⚠️ **Warum das schlimmer war als keine Angabe:** *sie wirkte. `Passiv.Tolerance` zeichnete mit
+// `field`, während sein Zielknoten `Integer` `spinner` sagt — eingestellt hatte es niemand. Sein
+// Auftrag: «entferne mal die Altlasten.»*
+//
+// ⚠️ *Also hält diese Zusage jetzt fest, **dass keine da sind** — und mit ihr, dass die zweistufige
+// Notation im Bestand unbenutzt ist. Kommt eine Verwendungsstelle wieder, weil jemand sie einstellt,
+// wird sie rot und verlangt eine Entscheidung.*
+$mitPunkt = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('record_values') . " WHERE path LIKE '%.%'"
+);
+
+check('kein Kanten-Datensatz mit zweistufigem Pfad', $mitPunkt === 0, (string) $mitPunkt);
+
+// ⚠️ *Der Gegenfall: es gibt überhaupt Kanten-Datensätze. Sonst wäre «keine zweistufigen» auch dann
+// grün, wenn die Tabelle leer wäre.*
+$alle = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('record_values'));
+
+check('und es gibt Kanten-Datensaetze', $alle > 50, (string) $alle);
+
+$stellen = [];
 
 foreach ($stellen as [$vonName, $feldName, $soll]) {
     $von = knoten($vonName);
