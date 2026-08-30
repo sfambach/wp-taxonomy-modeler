@@ -68,23 +68,25 @@ final class DataEntry
      */
     public function keepsValues(Relation $edge): bool
     {
-        if ($this->settings === null) {
-            return true;
+        // ⚠️ **Die Art der Kante sagt es** ([D-538](../../../docs/NewConcept/90-decision-log.md)).
+        // *Seine Herleitung: «für den Benutzer werden ja nur die **Felder** gespeichert, nicht die
+        // Settings, weil die Settings Eigenschaften des Modells sind.» **Damit können «nicht
+        // speichernd» und «ist eine Einstellung» nie auseinanderfallen** — und zwei Angaben, die nie
+        // widersprechen können, sind eine.*
+        if ($edge->kind->isSetting()) {
+            return false;
         }
 
-        $resolved = $this->settings->resolve($this->settings->chainForUseSite($edge));
-
-        // ⚠️ **`??` before `?->`, because a missing array key is not a null object.** The two look
-        // alike and are not: `$a['x']?->y` on an absent key raises a warning and then yields null, so
-        // it *appears* to work. **`RenderContext::setting()` carries this exact warning in its own
-        // docblock and I wrote the bug two files away** — found by storing a real value, because
-        // `persistent` is unset on almost every attribute.
-        return ($resolved[SettingKey::Persistent->value] ?? null)?->value->asBool()
-            // ⚠️ **The key answers, not this line** ([D-401](../../../docs/NewConcept/90-decision-log.md)).
-            // *This `?? true` is the one the owner caught twice: it made the data layer read
-            // `persistent` as on while the switch drew it off, so the control stated the opposite of
-            // what was in force.*
-            ?? SettingKey::Persistent->defaultSwitch();
+        // ⚠️ **Hier stand bis zum 2026-08-30 ein Lauf durch die Auflösungskette, und er ist
+        // ersatzlos weg.** *Er las den Schlüssel `persistent`, dessen 148 Zeilen mit
+        // [D-538](../../../docs/NewConcept/90-decision-log.md) gefallen sind. **Von diesen 148 sagten
+        // 146 nur die Vorgabe, eine erreichte nichts, und die einzige wirksame war
+        // `Prefixes.exponent`** — die jetzt eine Einstellungskante ist und oben beantwortet wird.*
+        //
+        // ⚠️ *Zwei Warnungen, die hier standen, gehen mit: die über `??` vor `?->` und die über das
+        // `?? true`, das der Eigentümer zweimal gefangen hat. **Sie waren richtig, solange es eine
+        // Kette gab; jetzt gibt es keine.***
+        return true;
     }
 
     /**

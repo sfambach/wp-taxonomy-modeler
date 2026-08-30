@@ -221,8 +221,11 @@ if (isset($underConstants['Prefixes'])) {
 
     $notKept = [];
     foreach ($declaredEdges as $edge) {
-        $onEdge = $prefixSettings->resolve($prefixSettings->chainForUseSite($edge));
-        $notKept[$edge->name] = ($onEdge[SettingKey::Persistent->value]->value->asBool() ?? true) === false;
+        // ⚠️ **Seit [D-538](../../docs/NewConcept/90-decision-log.md) sagt es die Art der Kante.**
+        // *Diese Zusage las den Schluessel `persistent` und stuerzte, als seine 148 Zeilen fielen — zu
+        // Recht: **sie ist der Waechter dafuer, dass die Auskunft nicht verlorengeht**, nur nicht dafuer,
+        // woher sie kommt.*
+        $notKept[$edge->name] = $edge->kind->isSetting();
     }
 
     check('and declares it non-persistent, so nothing tries to store it', ($notKept['exponent'] ?? false) === true);

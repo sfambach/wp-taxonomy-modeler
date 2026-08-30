@@ -11,6 +11,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\IdentityAllocator;

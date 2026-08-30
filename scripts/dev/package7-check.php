@@ -217,6 +217,20 @@ $typNode = $nodes->byId($count->toId);
 $settings->put($settings->chainFor($typNode), SettingKey::Min->value, TypedValue::ofInt(-1000));
 $settings->put($settings->chainFor($typNode), SettingKey::Max->value, TypedValue::ofInt(1000));
 
+// ⚠️ **Und wieder weg, auch wenn der Lauf abstürzt.** *Meine erste Fassung dieser Vorbereitung liess
+// die zwei Zeilen stehen — **eine Prüfung, die Müll hinterlässt, ist der Grund, warum die Datenbank
+// aussieht, wie sie aussieht.** `register_shutdown_function` läuft auch nach einem Fehler; die
+// älteren Prüfungen tun das nicht, und genau daher kamen die 27 `__`-Knoten.*
+register_shutdown_function(static function () use ($typNode): void {
+    global $wpdb;
+
+    $wpdb->query($wpdb->prepare(
+        'DELETE FROM ' . Schema::table('settings') . "
+         WHERE owner_id = %d AND setting_key IN ('min', 'max')",
+        $typNode->id
+    ));
+});
+
 $inherited = $settings->resolve($settings->chainForUseSite($count));
 $floor     = (int) ($inherited[SettingKey::Min->value]->value->int ?? 0);
 $ceiling   = (int) ($inherited[SettingKey::Max->value]->value->int ?? $floor + 100);
