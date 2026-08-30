@@ -2146,7 +2146,22 @@ final class NodesScreen
                     ]
                 ),
                 self::VALUE_FIELD,
-                $this->drawnBy($this->rendering->fieldsFor($attributes, $held, Purpose::Edit)),
+                // ⚠️ *Der Knoten selbst gilt als «schon besucht»: `DisplayOption` erbt eine
+                // Einstellung, die auf **ihn** zeigt ([OQ-133](../../../docs/NewConcept/91-open-questions.md)),
+                // und ohne das stand `render` in jedem seiner Datensätze doppelt.*
+                $this->drawnBy($this->rendering->fieldsFor(
+                    $attributes,
+                    $held,
+                    Purpose::Edit,
+                    self::VALUE_FIELD,
+                    '',
+                    \Taxmod\Core\Renderer\Level::Admin,
+                    true,
+                    '',
+                    0,
+                    [],
+                    [$selected->id => true]
+                )),
                 $this->inDeveloperMode()
             )->markup;
         }

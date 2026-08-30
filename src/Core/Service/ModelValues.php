@@ -67,40 +67,6 @@ final class ModelValues
     ) {
     }
 
-    /**
-     * Der Knoten, der für diesen Renderer steht — die Umkehrung von
-     * [D-511](../../../docs/NewConcept/90-decision-log.md).
-     *
-     * ⚠️ **Dieselbe Abmachung, andere Richtung.** *{@see self::rendererNameAt()} liest den Namen eines
-     * Knotens und gibt ihn als Renderer zurück — «sein Name ist der Renderer». Zum **Schreiben** braucht
-     * es den Weg zurück, und er darf nicht woanders wohnen: eine zweite Stelle, die dieselbe Abmachung
-     * kennt, ist eine Stelle, die sie eines Tages anders kennt.*
-     *
-     * ⚠️ *Der Wert einer Renderer-Angabe ist ein **Verweis auf einen Knoten**, nicht ein Text — deshalb
-     * gibt diese Methode eine Id.*
-     */
-    public function nodeForRendererNamed(string $name): ?int
-    {
-        $this->findEdges();
-
-        if ($this->renderEdge === null) {
-            return null;
-        }
-
-        $kante = $this->relations->byId($this->renderEdge);
-
-        if ($kante === null) {
-            return null;
-        }
-
-        foreach ($this->nodes->visibleChildrenOf([$kante->toId])[$kante->toId] ?? [] as $kind) {
-            if ($kind->name === $name) {
-                return $kind->id;
-            }
-        }
-
-        return null;
-    }
 
     /**
      * Die Angaben, die dieser **Knoten** am Modell trägt.

@@ -69,9 +69,21 @@ enum Branch: string
     /** Whether nodes in this branch have records of their own (D-183). */
     public function holdsData(): bool
     {
+        // ⚠️ **`Settings` stand hier auf `false`, und 48 Datensätze sagten das Gegenteil.**
+        //
+        // ⚠️ *Der Eigentümer fragte, warum die Vorschau von `DisplayOption` «Nothing to preview here»
+        // sagt, und vermutete: «weil es Settings sind». **Fast** — es lag nicht an den
+        // Einstellungskanten, sondern an dieser Zeile. Gemessen im selben Zug: `SELECT COUNT(*) …
+        // node_id = DisplayOption` ergibt **48**, und der Datensatzblock auf derselben Seite listet sie.*
+        //
+        // ⚠️ **Ein Ast, der «ich halte keine Datensätze» sagt, während 48 an ihm hängen, ist eine
+        // Angabe, die ihre eigene Tabelle nicht kennt.** *Sie ist aus der Zeit vor
+        // [D-541](../../../docs/NewConcept/90-decision-log.md): dort hat der Eigentümer entschieden, dass
+        // eine Einstellung mit **eigenen Feldern** einen eigenen Teil braucht — und ein Teil ist ein
+        // Datensatz.*
         return match ($this) {
-            self::Model, self::Compositions                 => true,
-            self::DataTypes, self::Constants, self::Settings => false,
+            self::Model, self::Compositions, self::Settings => true,
+            self::DataTypes, self::Constants               => false,
         };
     }
 

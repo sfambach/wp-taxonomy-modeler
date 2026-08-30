@@ -350,6 +350,52 @@ if ($zusammengesetzt === null) {
     );
 }
 
+echo "\n== Die Auswahl sieht durch einen markierten Zwischenknoten hindurch ==\n";
+
+// ⚠️ **Auf sein Wort: «table, form, compact muss wählbar bleiben, warum auch nicht?»** *Sie waren es
+// nicht mehr: er hatte «render label roles» und «render with label» zu einem zusammengelegt und die
+// Renderer darunter geschoben, und damit sind sie **Enkel** von `Renderer`.
+// [D-540](../../docs/NewConcept/90-decision-log.md) spricht von **Kindern** — den Zwischenknoten kannte
+// die Entscheidung noch nicht.*
+//
+// ⚠️ *Die Erweiterung folgt aus ihren eigenen Worten: «unmarkiert» ist dort die Bedingung, also heisst
+// **markiert** «kein Wert, nur Struktur» — und die Auswahl steigt hindurch. Gemessen vorher: die Liste
+// bot «render with label» an und weder `form` noch `table` noch `compact`.*
+$id   = knotenId('Kontact');
+$html = $id === 0 ? '' : seiteVon($id);
+
+if ($html === '') {
+    check('ein Knoten mit geerbter Renderer-Einstellung', false);
+} else {
+    $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
+
+    // Die Zelle, in der die Einstellung ihren Wert zeigt.
+    preg_match_all('/<td class="taxmod-field-value[^"]*"[^>]*>(.*?)<\/td>/s', $html, $zellen);
+
+    $angebot = [];
+
+    foreach ($zellen[1] as $zelle) {
+        if (! str_contains($zelle, 'render')) {
+            continue;
+        }
+
+        preg_match_all('/<option value="[^"]*"[^>]*>([^<]*)<\/option>/', $zelle, $treffer);
+        $angebot = [...$angebot, ...$treffer[1]];
+    }
+
+    foreach (['form', 'table', 'compact'] as $wunsch) {
+        check("«{$wunsch}» steht zur Wahl", in_array($wunsch, $angebot, true), implode(', ', array_slice($angebot, 0, 20)));
+    }
+
+    // ⚠️ **Der Gegenfall: der Zwischenknoten selbst ist keine Möglichkeit.** *Ohne ihn wäre «alles
+    // anbieten» ebenfalls grün — und «render with label» ist kein Renderer.*
+    check(
+        'und der Zwischenknoten selbst nicht',
+        ! in_array('render with label', $angebot, true),
+        implode(', ', $angebot)
+    );
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

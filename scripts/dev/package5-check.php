@@ -73,9 +73,15 @@ foreach (SeededRole::cases() as $role) {
     check("{$role->value} is a node", $node !== null && $node->name === $role->value);
     // ⚠️ *Diese Zusage hiess bis zum 2026-08-30 «und zeigt auf keinen Zweig» — die Form der alten
     // Regel. Ihre Absicht war «eine Rolle ist keine Daten», und die gilt unveraendert: auf sein Wort
-    // liegen die Rollen jetzt im Settings-Zweig, und der haelt keine Datensaetze.*
+    // liegen die Rollen jetzt im Settings-Zweig.*
+    //
+    // ⚠️ **Und sie hat am selben Abend ein zweites Mal die Form verloren.** *Sie forderte zusaetzlich
+    // «und der Zweig haelt keine Datensaetze» — was **gemessen falsch** war: an `DisplayOption` hingen
+    // **48** Datensaetze, und der Zweig behauptete, er halte keine
+    // ([D-544](../../docs/NewConcept/90-decision-log.md)). **Die Absicht dieser Zeile ist der Ort einer
+    // Rolle, nicht die Speicherart eines Zweiges** — also prueft sie nur noch den Ort.*
     $zweig = $node === null ? null : $framework->branchOf($node);
-    check("  liegt im Settings-Zweig, der keine Daten haelt", $zweig === Branch::Settings && ! $zweig->holdsData(), $zweig?->value ?? "keiner");
+    check("  liegt im Settings-Zweig", $zweig === Branch::Settings, $zweig?->value ?? "keiner");
 }
 
 echo "\n== 2. The chain ==\n";

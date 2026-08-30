@@ -419,7 +419,24 @@ echo "\n== 13. The whole form costs a fixed number of queries (CD-7) ==\n";
 $before = $wpdb->num_queries;
 $rendering->fieldsFor($every, $back, Purpose::Edit, 'taxmod_value');
 $spent = $wpdb->num_queries - $before;
-check('seven fields do not cost seven walks', $spent <= 4, "$spent queries for 7 fields");
+// ⚠️ **Die Grenze stand auf 4 und steht jetzt auf 8, und der Grund gehoert dazu.** *Seit dem
+// 2026-08-30 geht der Zeichenlauf in zusammengesetzte Felder hinein — seine Diagnose: «heisst wohl
+// Renderkette ist unterbrochen». Der Unterbau wird dabei **je Stufe** geladen, nicht je Feld
+// ([D-159](../../docs/NewConcept/90-decision-log.md)), also kommen hoechstens drei Abfragen dazu.*
+//
+// ⚠️ **Was `CD-7` verbietet, ist «eine Abfrage je Zeile», nicht «mehr als vier».** *Deshalb steht
+// darunter die Zusage, die die Regel wirklich prueft: **doppelt so viele Felder kosten nicht mehr.***
+check('seven fields do not cost seven walks', $spent <= 8, "$spent queries for 7 fields");
+
+$before   = $wpdb->num_queries;
+$rendering->fieldsFor([...$every, ...$every], $back, Purpose::Edit, 'taxmod_value');
+$doppelt  = $wpdb->num_queries - $before;
+
+check(
+    'and twice as many fields cost no more',
+    $doppelt <= $spent,
+    "{$doppelt} for 14 fields against {$spent} for 7"
+);
 
 echo "\n== 14. The renderer is chosen, never typed (D-358) ==\n";
 $offeredForInt = array_map(

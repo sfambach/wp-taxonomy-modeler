@@ -45,6 +45,7 @@ use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Model\NodeKind;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
@@ -418,6 +419,22 @@ final class Rendering
          * @var array<int, list<Relation>> Knoten-Id => seine Feldkanten.
          */
         array $unterbau = [],
+        /**
+         * ⚠️ **Wo der Abstieg schon war — gegen die Selbstbezüglichkeit.**
+         *
+         * ⚠️ *Der Eigentümer hat es auf der Seite von `DisplayOption` gesehen: `render` und `converter`
+         * standen **doppelt** in jedem Datensatz. Der Grund steht schon im Konzept — `DisplayOption`
+         * erbt `Display Option` **mit sich selbst als Ziel**, die Lage, die
+         * [D-503](../../../docs/NewConcept/90-decision-log.md) verbietet und
+         * [OQ-133](../../../docs/NewConcept/91-open-questions.md) verfolgt. **Der Abstieg hat sie nicht
+         * verursacht, er hat sie sichtbar gemacht.***
+         *
+         * ⚠️ *Die Tiefenbremse allein reicht nicht: sie hätte dreimal dasselbe gezeigt statt endlos.
+         * **Ein Ziel, in dem der Lauf schon war, wird nicht wieder aufgeklappt.***
+         *
+         * @var array<int, true> Knoten-Ids, die auf diesem Weg schon besucht wurden.
+         */
+        array $gesehen = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -521,7 +538,7 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values);
+            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen);
 
             $fields[] = new RenderedField(
                 $edge,
@@ -987,7 +1004,12 @@ final class Rendering
                 $locale,
                 $level,
                 true,
-                $pageForm
+                $pageForm,
+                0,
+                [],
+                // ⚠️ *Der Knoten dieser Seite gilt als «schon besucht» — sonst klappt eine Einstellung,
+                // die auf ihn selbst zeigt, ihn ein zweites Mal auf ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
+                [$declaredBy => true]
             );
 
             $context = new RenderContext(
@@ -1454,7 +1476,9 @@ final class Rendering
         Level $level = Level::Admin,
         bool $editable = true,
     ): RenderResult {
-        $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable);
+        // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
+        // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
+        $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true]);
 
         $container = $this->containerFor($node, $purpose);
 
@@ -1945,17 +1969,6 @@ final class Rendering
         return $this->renderers->knows($name);
     }
 
-    /**
-     * Der Knoten, der für diesen Renderer steht — zum **Schreiben** einer Renderer-Angabe.
-     *
-     * ⚠️ *Eine Durchreiche und keine zweite Auskunft: die Abmachung «sein Name ist der Renderer»
-     * ([D-511](../../../docs/NewConcept/90-decision-log.md)) wohnt in {@see ModelValues}, und der Schirm
-     * fragt Renderer-Dinge über diese Klasse. **Wo die Angabe herkommt, ist nicht seine Sache.***
-     */
-    public function nodeForRendererNamed(string $name): ?int
-    {
-        return $this->model?->nodeForRendererNamed($name);
-    }
 
     /**
      * Welcher Renderer an diesem Knoten **jetzt** gilt.
@@ -2182,10 +2195,18 @@ final class Rendering
         int $tiefe,
         array $unterbau,
         array $values,
+        array $gesehen = [],
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
         if ($type !== null || $tiefe >= self::TIEFSTENS) {
+            return null;
+        }
+
+        // ⚠️ **Ein Ziel, in dem der Lauf schon war, wird nicht wieder aufgeklappt.** *`DisplayOption`
+        // erbt `Display Option` mit **sich selbst** als Ziel ([OQ-133](../../../docs/NewConcept/91-open-questions.md)),
+        // und ohne diese Zeile stand `render` in jedem seiner Datensätze doppelt.*
+        if (isset($gesehen[$edge->toId])) {
             return null;
         }
 
@@ -2220,7 +2241,8 @@ final class Rendering
             $editable,
             $formId,
             $tiefe + 1,
-            $unterbau
+            $unterbau,
+            [...$gesehen, $edge->toId => true]
         );
 
         $behaelter = $this->containerFor($ziel, $purpose);
@@ -2253,15 +2275,11 @@ final class Rendering
             return [];
         }
 
-        $kinder = $this->nodes->visibleChildrenOf(array_values(array_unique($ziele)));
-        $wahl   = [];
+        $unter = $this->offeredUnder(array_values(array_unique($ziele)));
+        $wahl  = [];
 
         foreach ($ziele as $edgeId => $targetId) {
-            $angebot = [];
-
-            foreach ($kinder[$targetId] ?? [] as $kind) {
-                $angebot[$kind->id] = $kind->name;
-            }
+            $angebot = $unter[$targetId] ?? [];
 
             if ($angebot !== []) {
                 $wahl[$edgeId] = $angebot;
@@ -2269,6 +2287,73 @@ final class Rendering
         }
 
         return $wahl;
+    }
+
+    /**
+     * Woraus unter diesen Knoten gewählt werden kann — **durch markierte Knoten hindurch**.
+     *
+     * ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md) sagt «sichtbare, unmarkierte Kinder»,
+     * und «unmarkiert» ist dort ausdrücklich die Bedingung:** *«nur weil sie markiert waren, war
+     * `Integer` keine Auswahl aus seinen eigenen Einstellungen».*
+     *
+     * ⚠️ **Was die Entscheidung noch nicht kannte, ist der Zwischenknoten.** *Der Eigentümer hat am
+     * 2026-08-30 «render label roles» und «render with label» zu einem zusammengelegt und die Renderer
+     * darunter geschoben — danach sind `form`, `table`, `compact` **Enkel** von `Renderer`. Auf die
+     * Kinderreihe allein war «render with label» wählbar und `table` nicht; er: **«table, form, compact
+     * muss wählbar bleiben, warum auch nicht?»***
+     *
+     * ⚠️ **Die Erweiterung folgt aus den eigenen Worten der Regel:** *markiert heisst «kein Wert, nur
+     * Struktur» — also ist ein markierter Knoten **keine** Möglichkeit und die Auswahl sieht durch ihn
+     * hindurch. Ein unmarkierter ist eine Möglichkeit und wird nicht weiter aufgeklappt.*
+     *
+     * ⚠️ **Die **eigene** Sorte entscheidet, nicht die aufgelöste.** *`resolvedKinds()` erbt nach unten:
+     * wäre sie gefragt, gälten `form`, `table`, `compact` als markiert, weil ihr Elternteil es ist —
+     * und die Auswahl wäre leer statt vollständig.*
+     *
+     * ⚠️ *Eine Abfrage je Stufe, drei Stufen (`CD-7`).*
+     *
+     * @param  list<int>                       $parentIds
+     * @return array<int, array<int, string>>  Eltern-Id => (Knoten-Id => Name)
+     */
+    private function offeredUnder(array $parentIds): array
+    {
+        $angebot = array_fill_keys($parentIds, []);
+        $offen   = [];
+
+        foreach ($parentIds as $id) {
+            $offen[$id] = [$id];
+        }
+
+        for ($stufe = 0; $stufe < self::TIEFSTENS && $offen !== []; $stufe++) {
+            $alle = [];
+
+            foreach ($offen as $ids) {
+                foreach ($ids as $id) {
+                    $alle[$id] = true;
+                }
+            }
+
+            $kinder = $this->nodes->visibleChildrenOf(array_keys($alle));
+            $weiter = [];
+
+            foreach ($offen as $wurzel => $ids) {
+                foreach ($ids as $id) {
+                    foreach ($kinder[$id] ?? [] as $kind) {
+                        if ($kind->kind === NodeKind::Setting) {
+                            $weiter[$wurzel][] = $kind->id;
+
+                            continue;
+                        }
+
+                        $angebot[$wurzel][$kind->id] = $kind->name;
+                    }
+                }
+            }
+
+            $offen = $weiter;
+        }
+
+        return $angebot;
     }
 
     private function typeOf(Node $target): ?SimpleType
