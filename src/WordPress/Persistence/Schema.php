@@ -109,7 +109,7 @@ final class Schema
      * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
      * nächsten Installation falsch ist.*
      */
-    public const VERSION = 16;
+    public const VERSION = 17;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -127,10 +127,26 @@ final class Schema
         ['changelog', 'owner_id'],
     ];
 
+    /**
+     * Die Tabellen, deren Geschichte aufgehoben wird — und der Name ihres Schattens.
+     *
+     * ⚠️ **Eine Liste und nicht acht verstreute Namen** ([D-537](../../../docs/NewConcept/90-decision-log.md)):
+     * *`scripts/dev/shadow-shape-check.php` läuft genau über sie und vergleicht die Spalten. **Wer eine
+     * Spalte an einer lebenden Tabelle hinzufügt und den Schatten vergisst, wird beim nächsten Prüflauf
+     * rot** — das war der Preis, den zwei Tabellen derselben Form kosten, und das ist sein Wächter.*
+     */
+    public const LIVE_TABLES = ['nodes', 'relations', 'records', 'record_values'];
+
+    /** Ihre Schatten, **in derselben Reihenfolge** — darauf verlässt sich die Prüfung. */
+    public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'records_history', 'record_values_history'];
+
+    /** Spalten, die **nur** der Schatten hat und die die Prüfung deshalb übergeht. */
+    public const SHADOW_ONLY = ['deleted', 'archived_at'];
+
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['identities', 'nodes', 'relations', 'settings', 'labels', 'changelog', 'records', 'record_values'];
+        return ['identities', 'settings', 'labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
     }
 
     public static function table(string $name): string
@@ -820,6 +836,7 @@ final class Schema
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL DEFAULT 1,
                 created_at datetime NOT NULL,
                 kind varchar(20) NOT NULL DEFAULT 'user',
                 PRIMARY KEY  (id),
@@ -837,6 +854,7 @@ final class Schema
                 path varchar(255) NOT NULL,
                 locale varchar(20) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
+                version int(10) unsigned NOT NULL DEFAULT 1,
                 value_int bigint(20) DEFAULT NULL,
                 value_decimal decimal(30,10) DEFAULT NULL,
                 value_text mediumtext DEFAULT NULL,
@@ -846,6 +864,81 @@ final class Schema
                 KEY of_field (record_id,edge_id,locale),
                 KEY edge_id (edge_id),
                 KEY value_ref (value_ref)
+            ) {$charset};",
+
+            // ⚠️ **Die Geschichte, in eigenen Tabellen** ([D-536](../../../docs/NewConcept/90-decision-log.md),
+            // [D-537](../../../docs/NewConcept/90-decision-log.md)). *Dieselben Spalten wie die lebende
+            // Tabelle, dazu `deleted` und `archived_at`, und der Schlüssel ist `(id, version)` — dort
+            // **darf** eine Id mehrfach vorkommen, in der lebenden nicht. Der Eigentümer: «ich habe
+            // einfach den Datensatz oder ich habe ihn nicht».*
+            //
+            // ⚠️ **Kein Fremdschlüssel auf `identities`, und das ist Absicht.** *Eine alte Zeile führt
+            // ihre Verweise als **Datum** mit, nicht als Zwang — sonst hielte die Geschichte eine
+            // Identität am Leben, die längst weggeräumt wurde, und `ON DELETE RESTRICT` machte das
+            // Aufräumen unmöglich.*
+            //
+            // ⚠️ *`id` ist hier **nie** `AUTO_INCREMENT`: die Nummer kommt von der Zeile, die
+            // hinüberwandert, und darf sich dabei nicht ändern.*
+            "CREATE TABLE {$t('nodes_history')} (
+                id bigint(20) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
+                name varchar(191) NOT NULL,
+                path varchar(255) NOT NULL,
+                kind varchar(20) DEFAULT NULL,
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at)
+            ) {$charset};",
+
+            "CREATE TABLE {$t('relations_history')} (
+                id bigint(20) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
+                from_id bigint(20) unsigned NOT NULL,
+                to_id bigint(20) unsigned NOT NULL,
+                kind varchar(20) NOT NULL,
+                name varchar(191) NOT NULL DEFAULT '',
+                position int(10) unsigned NOT NULL DEFAULT 0,
+                multiplicity varchar(10) NOT NULL DEFAULT '1..1',
+                parked_by_group_id bigint(20) unsigned DEFAULT NULL,
+                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at)
+            ) {$charset};",
+
+            "CREATE TABLE {$t('records_history')} (
+                id bigint(20) unsigned NOT NULL,
+                node_id bigint(20) unsigned NOT NULL,
+                node_version int(10) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
+                created_at datetime NOT NULL,
+                kind varchar(20) NOT NULL DEFAULT 'user',
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at)
+            ) {$charset};",
+
+            "CREATE TABLE {$t('record_values_history')} (
+                id bigint(20) unsigned NOT NULL,
+                record_id bigint(20) unsigned NOT NULL,
+                edge_id bigint(20) unsigned NOT NULL,
+                path varchar(255) NOT NULL,
+                locale varchar(20) NOT NULL DEFAULT '',
+                position int(10) unsigned NOT NULL DEFAULT 0,
+                version int(10) unsigned NOT NULL,
+                value_int bigint(20) DEFAULT NULL,
+                value_decimal decimal(30,10) DEFAULT NULL,
+                value_text mediumtext DEFAULT NULL,
+                value_date datetime DEFAULT NULL,
+                value_ref bigint(20) unsigned DEFAULT NULL,
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at),
+                KEY of_record (record_id)
             ) {$charset};",
         ];
     }

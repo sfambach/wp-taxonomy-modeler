@@ -5618,8 +5618,7 @@ weil Datensätze keine Version tragen.*
 
 **Raised** 2026-08-30, zu [D-536](90-decision-log.md).
 
-*Blocks:* den Bau, nicht die Entscheidung · *Status:* **offen — mit einem Einwand gegen seine eigene
-Reihenfolge**
+*Blocks:* den Bau, nicht die Entscheidung · *Status:* **beantwortet durch [D-537](90-decision-log.md)** — zuerst, und in eigenen Tabellen. Er stimmte zu: *«ich wollte einfach nur nicht zu viele neue Konzepte auf einmal einfügen»*.
 
 Der Eigentümer nannte sie als *«zweite Ausbaustufe … das würde die Frontend-Datenbank klein halten,
 die Tabellen und Selektionen einfacher machen, weil ich nicht erst auf die Version gucken müsste
