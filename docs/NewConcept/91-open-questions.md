@@ -5535,7 +5535,7 @@ hat Frage 1 beantwortet und diese ausdrücklich offen gelassen.*
 
 **Raised** 2026-08-30, aus [D-533](90-decision-log.md).
 
-*Blocks:* den Nachfrage-Akt, nicht die Kopie beim Anlegen · *Status:* **offen**
+*Blocks:* den Nachfrage-Akt, nicht die Kopie beim Anlegen · *Status:* **beantwortet durch [D-534](90-decision-log.md)** — beide Male wird gefragt, und die zweite Frage trifft über den **Wert** statt über die Herkunft, womit die Herkunftsspalte gegenstandslos wird.
 
 ⚠️ **Zwei Fragen, und die erste ist ein Datenverlust, wenn man sie falsch beantwortet.**
 
