@@ -5502,3 +5502,29 @@ Wert hat.*
 
 ⚠️ *Nicht nebenbei entscheiden. Drei Zeilen sind ein kleiner Umzug; «gibt es noch freie Schlüssel»
 ist keine kleine Frage.*
+
+---
+
+## OQ-135 — Ein Feld mit `0..*` und mehreren Defaults: was gilt, sobald der Benutzer **einen** Wert einträgt?
+
+**Raised** 2026-08-30, beim Durchspielen von [D-531](90-decision-log.md).
+
+*Blocks:* [Zeile 86](97-implementation-plan.md#the-working-list) · *Status:* **offen**
+
+⚠️ **Für ein Feld mit einem Wert ist es entschieden und einfach:** *keine Zeile ⇒ der Default gilt;
+eine Zeile ⇒ sie gilt. **Bei `0..*` zerfällt «eine Zeile» in zwei Lesarten.***
+
+Der Default hält drei Werte, der Benutzer trägt einen eigenen ein:
+
+| Lesart | Ergebnis | wogegen sie spricht |
+|---|---|---|
+| **Das Feld ist beantwortet** | **1** — die Defaults gelten für dieses Feld nicht mehr | wer einen vierten hinzufügen wollte, verliert drei, ohne es zu sagen |
+| **Die Werte treten hinzu** | **4** | einen Default *loszuwerden* wird unmöglich — es gibt keine Zeile, die man entfernen könnte |
+
+⚠️ *Die erste Lesart ist die Fortsetzung von [D-531](90-decision-log.md)s Regel — «Zeile vorhanden ⇒
+kein Rückgriff» — nur auf Feldebene statt auf Zeilenebene. **Sie ist die einfachere und die
+sagbarere:** wer die Defaults behalten und ergänzen will, kann sie beim ersten Bearbeiten übernehmen
+lassen und dann anhängen. Das wäre eine Kopie, und zwar genau dort, wo der Benutzer sie sieht.*
+
+⚠️ **Nicht geraten, weil es ein Datenverlust wäre, den man erst an den Daten merkt.** *Der Eigentümer
+hat Frage 1 beantwortet und diese ausdrücklich offen gelassen.*
