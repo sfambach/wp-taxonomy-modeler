@@ -149,6 +149,74 @@ final class DataEntry
      */
     public function put(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): void
     {
+        $this->records->putValue(EdgeRecord::direct($recordId, $this->writableEdge($recordId, $edgeId)->id, $value, $locale));
+    }
+
+    /**
+     * Einen **weiteren** Wert an ein Feld hängen — die Mehrfachheit von der Werteseite.
+     *
+     * ⚠️ **Mehrere Werte sind mehrere Pfade, keine mehreren Kanten** — *`DataEntry`s eigener Docblock
+     * sagt das seit langem («five integers are five **paths** in one record»), und der eindeutige
+     * Schlüssel `(record_id, path, locale)` sah es immer vor. **Gemessen am 2026-08-30 hatte es
+     * niemand je benutzt:** alle 43 Wertzeilen trugen einen Pfad, der schlicht die Kanten-Id war.*
+     *
+     * ⚠️ **Die laufende Nummer wird nicht nachgerückt.** *Sie ist ein Name, kein Index: verschwindet
+     * der zweite von dreien, bleiben `.1` und `.3`. **Nachrücken änderte die Pfade der übrigen**, und
+     * an Pfaden hängen verschachtelte Teile — ein Nachrücken zöge sie mit oder liesse sie zurück.*
+     *
+     * ⚠️ *Ob ein Feld überhaupt mehrere tragen darf, sagt seine Mehrfachheit
+     * ({@see \Taxmod\Core\Model\Multiplicity::allowsMany()}) — **hier wird es nicht geprüft**, weil
+     * die Mehrfachheit an der Verwendungsstelle aufgelöst wird und dieser Dienst die Kette nicht
+     * kennt. Der Rand fragt, bevor er den Knopf zeichnet.*
+     *
+     * @return string Der Pfad, unter dem der neue Wert steht.
+     */
+    public function appendValue(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): string
+    {
+        $edge = $this->writableEdge($recordId, $edgeId);
+
+        $genommen = [];
+
+        foreach ($this->records->valuesOf($recordId) as $vorhanden) {
+            if ($vorhanden->edgeId === $edge->id) {
+                $genommen[] = EdgeRecord::ordinalIn($vorhanden->path) ?? 0;
+            }
+        }
+
+        $naechste = $genommen === [] ? 1 : max($genommen) + 1;
+
+        $this->records->putValue(EdgeRecord::nth($recordId, $edge->id, $naechste, $value, $locale));
+
+        return EdgeRecord::pathFor($edge->id, $naechste);
+    }
+
+    /**
+     * Wie viele Werte ein Feld in diesem Datensatz trägt.
+     *
+     * ⚠️ *Über die **Kanten-Id** gezählt und nicht über den Pfad, damit der einzige Wert (`path` =
+     * Kanten-Id) und die nummerierten (`4654.1`, `4654.2`) zusammen gezählt werden.*
+     */
+    public function countValues(int $recordId, int $edgeId): int
+    {
+        $n = 0;
+
+        foreach ($this->records->valuesOf($recordId) as $value) {
+            if ($value->edgeId === $edgeId) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    /**
+     * Die Kante, in die geschrieben werden darf — mit allen Wächtern, an einer Stelle.
+     *
+     * ⚠️ **Herausgezogen, damit `put()` und {@see appendValue()} nicht zwei Sätze Wächter haben.**
+     * *Zwei Kopien einer Prüfung sind zwei Orte, an denen die nächste Regel vergessen wird.*
+     */
+    private function writableEdge(int $recordId, int $edgeId): Relation
+    {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
         $target = $this->nodes->byId($edge->toId);
@@ -172,7 +240,7 @@ final class DataEntry
             throw NotYetStorable::compositionsNeedTheirOwnRecords($edge->name);
         }
 
-        $this->records->putValue(EdgeRecord::direct($recordId, $edgeId, $value, $locale));
+        return $edge;
     }
 
     /**

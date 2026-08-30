@@ -111,6 +111,11 @@ final class ShippedRenderers
         // asked for by a panel, never named as a node's `renderer`, because it draws a subject's
         // **configuration** and not its value.
         $registry->addForSurfaces(new SettingsRenderer());
+        // ⚠️ *Als Oberflaeche und nicht als Wahl: ein Behaelter ist nichts, was jemand fuer einen
+        // Wert **aussucht** — der Rand nimmt ihn, wenn ein Feld mehrere Werte tragen darf
+        // ([D-527](../../../docs/NewConcept/90-decision-log.md)). Damit bleibt er auch aus der
+        // Saat heraus, die nur `namesForNodes()` saet.*
+        $registry->addForSurfaces(new RepeatableRenderer());
 
         // ⚠️ **One answer out of a set, and the only implementation of R28–R32.** Surface-only
         // because it is chosen for a **shape** rather than for a type: nothing about a node says

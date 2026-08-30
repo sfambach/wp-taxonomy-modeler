@@ -1348,3 +1348,26 @@ zu wiederholen wäre die Doppelung aus [D-521](90-decision-log.md).*
 Stückliste.***
 
 ---
+
+### Mehrere Werte je Feld — Stand 2026-08-30
+
+[D-527](90-decision-log.md). *Der Speicher sah es immer vor; gemessen hatte es nie jemand benutzt.*
+
+```text
+ein Wert        path = 4654
+der zweite      path = 4654.2
+darin ein Feld  path = 4654.2.7788
+```
+
+⚠️ **Die Nummer rückt nicht nach.** *Sie ist ein Name, kein Index: `.1, .2, .3` minus `.2` ergibt
+`.1, .3`, und der nächste ist `.4`. **Nachrücken änderte die Pfade der übrigen**, und an Pfaden
+hängen verschachtelte Teile.*
+
+⚠️ *Daraus folgt, wie das Gerüst zuordnet: **jeder Eintrag findet sein «entfernen» über seinen Pfad**,
+nie über seine Stellung — bei `.1, .3` bekäme der zweite sonst den Knopf für `.2`.*
+
+⚠️ **`repeatable` zeichnet nichts selbst.** *Die Einträge kommen fertig gezeichnet in
+`Surroundings::$parts`, wie bei jedem Behälter ([D-366](90-decision-log.md)); es meldet keinen Typ und
+kennt die Mehrfachheit nicht. **Darum gilt es für Zahlen, Texte, Verweise und Teile gleichermassen.***
+
+---

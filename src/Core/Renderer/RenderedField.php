@@ -29,6 +29,17 @@ final class RenderedField
         public readonly string $rendererName,
         public readonly RenderResult $result,
         public readonly bool $readOnly = false,
+        /**
+         * Wo dieser Wert unter seinem Feld sitzt — leer für den einzigen.
+         *
+         * ⚠️ **Es gibt ihn, weil mehrere Werte mehrere Pfade sind**
+         * ([D-527](../../../docs/NewConcept/90-decision-log.md)): drei Werte eines Feldes teilen sich
+         * **eine** Kante, also kann `edge` sie nicht auseinanderhalten. *Und
+         * {@see RepeatableRenderer} ordnet jedem Eintrag sein «entfernen» darüber zu — **nicht über
+         * die Stellung in der Liste**, denn die verschiebt sich beim Entfernen und der nächste Klick
+         * träfe den falschen.*
+         */
+        public readonly string $path = '',
     ) {
     }
 
