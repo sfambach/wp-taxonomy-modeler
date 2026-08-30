@@ -333,6 +333,21 @@ final class Rendering
      *
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings
      */
+    /**
+     * Welche Namensrolle diese Verwendungsstelle zeichnet.
+     *
+     * ⚠️ **Von aussen fragbar, damit eine Randpruefung das Verhalten festnageln kann** — *und es ist
+     * eine echte Frage, die auch ein Schirm stellen darf: «welchen der Namen zeigt dieses Feld».*
+     *
+     * ⚠️ *Sie geht denselben Weg wie das Zeichnen, einschliesslich der neuen Quelle
+     * ([D-529](../../../docs/NewConcept/90-decision-log.md)) — eine Pruefung, die einen kuerzeren Weg
+     * nimmt, prueft etwas anderes als das, was der Benutzer sieht.*
+     */
+    public function labelRoleFor(Relation $edge): SeededRole
+    {
+        return $this->roleOf($this->settings->resolveForUseSites([$edge])[$edge->id] ?? []);
+    }
+
     private function roleOf(array $settings): SeededRole
     {
         $asked = ($settings[self::LABEL_ROLE] ?? null)?->value->text;

@@ -5483,8 +5483,7 @@ Leseweg statt am Schreibweg.*
 
 **Raised** 2026-08-30, beim Aufräumen nach [D-529](90-decision-log.md).
 
-*Blocks:* den letzten Schritt von [D-529](90-decision-log.md) — die Tabelle kann nicht fallen,
-solange drei Zeilen keinen Ort haben · *Status:* **offen**
+*Blocks:* den letzten Schritt von [D-529](90-decision-log.md) · *Status:* **beantwortet durch [D-539](90-decision-log.md)** — ein Feld von `DisplayOption`, nicht am Knoten, weil es eine Angabe der **Darstellung** ist. Und die Nebenfrage «soll es freie Schlüssel weiter geben» beantwortet sich mit **nein**: `label_role` war der letzte.
 
 ⚠️ **Es ist der einzige der elf Schlüssel ohne Ziel.** *Zehn haben eines aus [D-505](90-decision-log.md),
 [D-511](90-decision-log.md), [D-516](90-decision-log.md), [D-524](90-decision-log.md) und
