@@ -28,6 +28,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\Branch;
@@ -86,7 +87,9 @@ $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framewor
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $registry  = ShippedRenderers::registry();
 $types     = new SeededTypeNodes($nodes, $framework);
-$rendering = new Rendering($nodes, $framework, $settings, $registry, $types, $labels);
+$rendering = new Rendering($nodes, $framework, $settings, $registry, $types, $labels,
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
+);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes)->id;
 
@@ -206,6 +209,14 @@ $settings->put(
 // numbers.** A real installation may carry a `range_min` on the seeded `int` — this one did, put
 // there by the owner clicking around — and a bound may only ever be tightened (D-312). A check
 // that assumed an empty chain was testing a clean database rather than the rule.
+// ⚠️ **Die geerbte Grenze wird hier gesetzt und nicht vorausgesetzt.** *Bis zum 2026-08-30 trug
+// `Integer` sie aus der Saat — und weil das `PHP_INT_MIN` war, lief diese Zusage immer im trivialen
+// Zweig. **Nach dem Wegraeumen lief sie zum ersten Mal wirklich und fiel um**, weil es nichts mehr
+// gab, wovon man haette weiten koennen. Eine Zusage ueber eine Regel darf nicht an Saatdaten haengen.*
+$typNode = $nodes->byId($count->toId);
+$settings->put($settings->chainFor($typNode), SettingKey::Min->value, TypedValue::ofInt(-1000));
+$settings->put($settings->chainFor($typNode), SettingKey::Max->value, TypedValue::ofInt(1000));
+
 $inherited = $settings->resolve($settings->chainForUseSite($count));
 $floor     = (int) ($inherited[SettingKey::Min->value]->value->int ?? 0);
 $ceiling   = (int) ($inherited[SettingKey::Max->value]->value->int ?? $floor + 100);

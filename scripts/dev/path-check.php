@@ -35,6 +35,8 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
@@ -181,7 +183,8 @@ $rendering = new Rendering(
     $settings,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
-    new Labels(new WpdbLabelRepository(), $framework)
+    new Labels(new WpdbLabelRepository(), $framework),
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
 $nodeNamed = static function (string $name) use ($wpdb, $nodes) {

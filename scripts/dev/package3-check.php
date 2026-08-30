@@ -205,6 +205,7 @@ check('Base units is there', isset($underConstants['Base units']));
 
 if (isset($underConstants['Prefixes'])) {
     $prefixSettings = new Settings(new WpdbSettingRepository(), $nodes, $framework);
+    $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
     check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
@@ -244,11 +245,12 @@ if (isset($underConstants['Prefixes'])) {
     $exponents = [];
 
     foreach ($prefixNodes as $prefixNode) {
-        $resolved = $exponentEdge === null
-            ? []
-            : $prefixSettings->resolve($prefixSettings->chainFor($prefixNode), (string) $exponentEdge->id);
-
-        $exponents[$prefixNode->id] = $resolved[SettingKey::DefaultValue->value]->value->int ?? null;
+        // ⚠️ **Seit dem Umzug steht die Vorgabe im Modell und nicht mehr in der Settings-Tabelle**
+        // ([D-529](../../docs/NewConcept/90-decision-log.md)). *Diese Zusage las die alte Stelle und
+        // wurde beim Umzug rot — **zu Recht**, sie ist der Waechter dafuer. Jetzt fragt sie die neue.*
+        $exponents[$prefixNode->id] = $exponentEdge === null
+            ? null
+            : $prefixModel->defaultFor($prefixNode, $exponentEdge)?->int;
     }
 
     check(

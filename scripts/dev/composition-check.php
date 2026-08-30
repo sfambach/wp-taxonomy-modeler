@@ -30,6 +30,8 @@ define('WP_USE_THEMES', false);
 require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SettingKey;
@@ -81,7 +83,9 @@ $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework, $log)
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types, $labels);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types, $labels,
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
+);
 
 $scaffold = new CompositionScaffold($editor, $framework, $settings, $types);
 

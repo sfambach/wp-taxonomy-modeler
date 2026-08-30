@@ -24,6 +24,8 @@ define('WP_USE_THEMES', false);
 require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
@@ -75,7 +77,9 @@ $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock(), $settings);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels,
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
+);
 
 echo "\n== the type is in the tree ==\n";
 

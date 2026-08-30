@@ -103,14 +103,14 @@ final class ModelValues
         $pfad = implode('.', [...$vorlauf, $this->rendererEdge]);
 
         foreach ($recordIds as $recordId) {
-            foreach ($this->records->valuesOf($recordId) as $wert) {
+            foreach ($this->valuesOf($recordId) as $wert) {
                 if ($wert->path !== $pfad || $wert->value->reference === null) {
                     continue;
                 }
 
                 // ⚠️ *Eine Stufe tiefer: der Teil trägt das Feld `render`, und dessen Verweis ist ein
                 // **Knoten** unter `Renderer` — sein Name ist der Renderer ([D-511](../../../docs/NewConcept/90-decision-log.md)).*
-                foreach ($this->records->valuesOf($wert->value->reference) as $imTeil) {
+                foreach ($this->valuesOf($wert->value->reference) as $imTeil) {
                     if ($imTeil->edgeId !== $this->renderEdge || $imTeil->value->reference === null) {
                         continue;
                     }
@@ -143,12 +143,14 @@ final class ModelValues
     {
         $pfad = (string) $edge->id;
 
-        foreach ($this->records->ofNode($node->id) as $record) {
+        // ⚠️ *Auch hier über das Gedächtnis: `nonPersistentValue()` wird je Feld gefragt, und ohne
+        // das wäre es dasselbe N+1, das `package7-check.php` eben gemeldet hat.*
+        foreach ($this->saetzeVon($node->id) as $record) {
             if ($record->kind !== RecordKind::Default) {
                 continue;
             }
 
-            foreach ($this->records->valuesOf($record->id) as $wert) {
+            foreach ($this->valuesOf($record->id) as $wert) {
                 if ($wert->path === $pfad && ! $wert->value->isNothing()) {
                     return $wert->value;
                 }
@@ -158,16 +160,41 @@ final class ModelValues
         return null;
     }
 
+    /**
+     * @var array<int,list<\Taxmod\Core\Model\NodeRecord>> Knoten-Id => seine Datensätze
+     *
+     * ⚠️ **Ohne dieses Gedächtnis ist diese Klasse ein N+1, und `CD-7` verbietet das.** *Gemessen von
+     * `package7-check.php`, das genau dafür da ist: **«sieben Felder kosten keine sieben Läufe» —
+     * 15 Abfragen für 7 Felder**, sobald die Quelle je Feld einzeln nachsah. Ein Formular fragt alle
+     * seine Felder nacheinander, und alle gehören **einem** Knoten: einmal laden reicht.*
+     */
+    private array $satzGedaechtnis = [];
+
+    /** @var array<int,list<\Taxmod\Core\Model\EdgeRecord>> Datensatz-Id => seine Wertzeilen */
+    private array $wertGedaechtnis = [];
+
+    /** Die Datensätze eines Knotens — einmal geholt. @return list<\Taxmod\Core\Model\NodeRecord> */
+    private function saetzeVon(int $nodeId): array
+    {
+        return $this->satzGedaechtnis[$nodeId] ??= $this->records->ofNode($nodeId);
+    }
+
     /** @return list<int> */
     private function recordsOf(int $nodeId): array
     {
         $ids = [];
 
-        foreach ($this->records->ofNode($nodeId) as $record) {
+        foreach ($this->saetzeVon($nodeId) as $record) {
             $ids[] = $record->id;
         }
 
         return $ids;
+    }
+
+    /** @return list<\Taxmod\Core\Model\EdgeRecord> */
+    private function valuesOf(int $recordId): array
+    {
+        return $this->wertGedaechtnis[$recordId] ??= $this->records->valuesOf($recordId);
     }
 
     /**

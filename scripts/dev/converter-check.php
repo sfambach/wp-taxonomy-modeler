@@ -7,6 +7,8 @@ define('WP_USE_THEMES', false);
 require 'C:/Devel/Wordpress/wp-load.php';
 require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SettingKey;
@@ -32,7 +34,8 @@ $rendering = new Rendering(
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $fw),
     new Labels(new WpdbLabelRepository(), $fw),
-    ShippedConverters::registry()
+    ShippedConverters::registry(),
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $fw)
 );
 
 $failed = 0;

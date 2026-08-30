@@ -42,6 +42,8 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -85,7 +87,9 @@ $framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator
 $editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $types     = new SeededTypeNodes($nodes, $framework);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types);
+$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types,
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
+);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes);
 
