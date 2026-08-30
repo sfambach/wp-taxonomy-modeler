@@ -1106,6 +1106,15 @@ final class Rendering
      */
     public function nonPersistentValue(Node $node, Relation $edge): ?TypedValue
     {
+        // ⚠️ **Zuerst die neue Stelle** ([D-529](../../../docs/NewConcept/90-decision-log.md)): *steht
+        // die Vorgabe schon als Datensatz im Modell, gilt sie; sonst trägt die Settings-Tabelle weiter.
+        // **Ein Umzug, nach dem der alte Wert weiter gewinnt, hat nichts bewegt.***
+        $ausDemModell = $this->model?->defaultFor($node, $edge);
+
+        if ($ausDemModell !== null) {
+            return $ausDemModell;
+        }
+
         $resolved = $this->settings->resolve(
             $this->settings->chainFor($node),
             (string) $edge->id

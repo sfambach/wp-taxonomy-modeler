@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
@@ -119,6 +120,37 @@ final class ModelValues
                     if ($knoten !== null) {
                         return $knoten->name;
                     }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Der **Vorgabewert**, den das Modell für dieses Feld an diesem Knoten nennt.
+     *
+     * ⚠️ **Nur aus Datensätzen der Art `default`** ([D-524](../../../docs/NewConcept/90-decision-log.md)).
+     * *Ein Benutzerdatensatz an derselben Adresse wäre ein Wert und keine Vorgabe — und
+     * [D-026](../../../docs/NewConcept/90-decision-log.md) sagt es scharf: «at model level there are
+     * no values, only defaults».*
+     *
+     * ⚠️ *Die Adresse ist der Pfad der Kante am Datensatz des **Knotens** — genau die Form, die
+     * `settings.path` schon benutzte: 20 Exponenten lagen dort unter der Id des Feldes
+     * `Prefixes.exponent`.*
+     */
+    public function defaultFor(Node $node, Relation $edge): ?TypedValue
+    {
+        $pfad = (string) $edge->id;
+
+        foreach ($this->records->ofNode($node->id) as $record) {
+            if ($record->kind !== RecordKind::Default) {
+                continue;
+            }
+
+            foreach ($this->records->valuesOf($record->id) as $wert) {
+                if ($wert->path === $pfad && ! $wert->value->isNothing()) {
+                    return $wert->value;
                 }
             }
         }

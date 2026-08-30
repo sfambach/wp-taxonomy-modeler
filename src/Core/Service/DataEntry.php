@@ -181,10 +181,11 @@ final class DataEntry
      */
     public function putAt(int $recordId, array $edgeIds, TypedValue $value, string $locale = ''): void
     {
-        $kette = $this->walkedEdges($recordId, $edgeIds);
+        $kette  = $this->walkedEdges($recordId, $edgeIds);
         $letzte = $kette[array_key_last($kette)];
+        $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
 
-        $this->refuseUnwritable($letzte);
+        $this->refuseUnwritable($letzte, $satz->kind);
 
         $pfad      = implode('.', $edgeIds);
         $vorhanden = $this->valuesAtPath($recordId, $pfad, $locale);
@@ -346,7 +347,7 @@ final class DataEntry
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
 
-        $this->refuseUnwritable($edge);
+        $this->refuseUnwritable($edge, $record->kind);
 
         return $edge;
     }
@@ -357,7 +358,7 @@ final class DataEntry
      * ⚠️ *Herausgezogen, als {@see putAt()} dieselben Prüfungen brauchte. Zwei Kopien einer Prüfung
      * sind zwei Orte, an denen die nächste Regel vergessen wird.*
      */
-    private function refuseUnwritable(Relation $edge): void
+    private function refuseUnwritable(Relation $edge, RecordKind $kind = RecordKind::User): void
     {
         $target = $this->nodes->byId($edge->toId);
         $branch = $this->framework->branchOf($target);
@@ -369,7 +370,14 @@ final class DataEntry
         // ⚠️ **A non-persistent attribute has no place to put a value** (D-378) — it exists to be
         // read by a calculation, and its model-level value is its `default` (D-026). Refused rather
         // than dropped: a silent drop lets a form look as though it saved.
-        if (! $this->keepsValues($edge)) {
+        // ⚠️ **«Nicht speichernd» heisst «landet nicht im Benutzerdatensatz» — nicht «hat keinen
+        // Wert»** ([D-538](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «für den
+        // Benutzer werden ja nur die Felder gespeichert, nicht die Settings, weil die Settings
+        // Eigenschaften des Modells sind.» **Ein Vorgabewert ist genau so eine Eigenschaft**, und
+        // [D-026](../../../docs/NewConcept/90-decision-log.md) sagt, wo er lebt: «at model level there
+        // are no values, only defaults». Ohne diese Ausnahme liesse sich der Exponent von `kilo` nicht
+        // hinschreiben — der einzige echte nicht-speichernde Fall im ganzen Modell.*
+        if ($kind === RecordKind::User && ! $this->keepsValues($edge)) {
             throw NotYetStorable::thatFieldKeepsNothing($edge->name);
         }
 
