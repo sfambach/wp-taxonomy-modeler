@@ -135,6 +135,23 @@ final class CompositionScaffold
     {
         $address = $this->ensure($compositions, 'Adresse', $created);
 
+        // ⚠️ **Die Saat legt keine Felder an einem Knoten an, den jemand schon geformt hat.**
+        //
+        // ⚠️ *Gemessen am 2026-08-30, und der Eigentümer hat es an seiner Seite gesehen: `Adresse` hatte
+        // **zehn** Felder — seine fünf (`Street`, `No.`, `Post Code`, `City`, `Country`, angelegt am
+        // 26. August aus dem Browser) und fünf weitere, die ein Prüflauf am selben Abend um 21:01 dazu
+        // gelegt hat. **Er hielt es für eine Folge seiner Umbenennung** und fragte, ob die
+        // Schattentabelle nicht arbeite — beides war es nicht: `field()` sucht am **Namen**, fand keinen
+        // eigenen und legte an.*
+        //
+        // ⚠️ **Dieselbe Klasse wie [D-543](../../../docs/NewConcept/90-decision-log.md)**, eine Stufe
+        // weiter: *wer am Namen sucht, verdoppelt die Arbeit eines Menschen, der anders benennt. Die
+        // Saat kann das nicht über Ids heilen — sie legt die Knoten ja erst an. **Also legt sie nur an,
+        // wo noch nichts ist.***
+        if (! in_array('Adresse', $created, true) && $this->editor->fieldsOf($address->id) !== []) {
+            return;
+        }
+
         foreach (['strasse', 'hausnummer', 'plz', 'ort', 'land'] as $member) {
             $this->field($address, $member, 'text');
         }

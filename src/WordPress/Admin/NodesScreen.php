@@ -668,7 +668,14 @@ final class NodesScreen
                 // out of the panel because a form cannot sit inside a form, which I had dismissed as
                 // an HTML limitation. `PageSlot::Display`'s own docblock places labels here because *a
                 // label is what a thing is called*; an icon is how it is **marked**, the same band.
-                $this->labelsPanel($selected)
+                // ⚠️ **Die Renderer-Wahl stand im Code und wurde nirgends platziert.** *Der Eigentümer:
+                // «ich kann Renderer nicht auswählen» — und gemessen hatte {@see self::rendererChoice()}
+                // **keinen einzigen Aufruf**. Gebaut und nicht angeschlossen; das Muster dieses Abends.*
+                //
+                // ⚠️ *Sie steht bei «Display», weil sie genau das sagt: wie dieser Knoten gezeichnet
+                // wird. Kein eigener Block — ein zweiter Kasten für ein Auswahlfeld wäre mehr Rahmen
+                // als Inhalt.*
+                $this->labelsPanel($selected) . $this->rendererChoice($selected)
             ),
 
             // ⚠️ **No band heading, because the panel carries its own** — with the `?` on it. Two
@@ -1770,10 +1777,15 @@ final class NodesScreen
                 . '</p>';
         }
 
+        // ⚠️ **Mit Vorauswahl, und ohne sie wäre die Liste eine Falle.** *Sie zeigte immer den ersten
+        // Eintrag, und der nächste Klick schriebe ihn — **auch wenn niemand ihn wollte**. Dieselbe
+        // Überlegung wie beim Auswahlkasten für einen Verweis.*
+        $jetzt   = $this->rendering->rendererNameFor($selected);
         $options = '';
 
         foreach ($eligible as $renderer) {
-            $options .= '<option value="' . esc_attr($renderer->name()) . '">'
+            $options .= '<option value="' . esc_attr($renderer->name()) . '"'
+                . ($renderer->name() === $jetzt ? ' selected' : '') . '>'
                 . esc_html($renderer->name())
                 . '</option>';
         }

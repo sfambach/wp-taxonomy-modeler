@@ -526,8 +526,25 @@ final class DataEntry
             throw NotYetStorable::thatSettingHasNoEdgeYet($key->value);
         }
 
+        $this->putSettingAt($nodeId, $aussen, $this->framework->settingValueEdgeId($key), $value, $locale);
+    }
+
+    /**
+     * Dieselbe Sache, an einer Kante, die die Saat nicht aufgeschrieben hat.
+     *
+     * ⚠️ **Der allgemeine Fall, und {@see self::putSettingValue()} ist jetzt sein Sonderfall.** *Der
+     * Eigentümer: «gut, ich sehe die Settings, kann sie aber nicht einstellen.» Und die Angaben, die er
+     * einstellen will — `with_label`, `label_role`, `read_only` — sind gewöhnliche Einstellungskanten
+     * ohne Eintrag im Verzeichnis. **Ein Schreiber, der nur die drei aufgeschriebenen kennt, hilft ihm
+     * nicht.***
+     *
+     * ⚠️ *`$innen === 0` heisst «der Wert liegt direkt an der Kante». Zeigt die Kante trotzdem auf ein
+     * Ziel mit eigenen Feldern, sagt {@see self::refuseUnwritable()} Nein — **die Entscheidung fällt
+     * dort und wird hier nicht geraten.***
+     */
+    public function putSettingAt(int $nodeId, int $aussen, int $innen, TypedValue $value, string $locale = ''): void
+    {
         $satzId = $this->defaultRecordOf($nodeId);
-        $innen  = $this->framework->settingValueEdgeId($key);
 
         // ⚠️ *Keine eigene Wertkante heisst: die Angabe **ist** der Verweis, und sie steht direkt an der
         // Trägerkante. `refuseUnwritable()` sagt Nein, wenn das Ziel doch einen eigenen Satz braucht —
@@ -546,6 +563,50 @@ final class DataEntry
         }
 
         $this->put($teilId, $innen, $value, $locale);
+    }
+
+    /**
+     * Was an den Einstellungskanten dieses Knotens steht — je Kante ihr Wert.
+     *
+     * ⚠️ **Damit eine Bedienung zeigen kann, was gesetzt ist.** *Ein Schalter ohne gelesenen Zustand
+     * steht immer auf «aus», und das nächste Speichern schreibt «aus» — **auch wenn niemand das
+     * wollte**. Dieselbe Falle wie bei einer Auswahlliste ohne Vorauswahl.*
+     *
+     * ⚠️ *Nur aus dem `default`-Satz ([D-026](../../../docs/NewConcept/90-decision-log.md): «at model
+     * level there are no values, only defaults») und in **einem** Zug für alle Kanten (`CD-7`).*
+     *
+     * @param  list<int>              $edgeIds
+     * @return array<int, TypedValue> Kanten-Id => Wert; fehlt einer, fehlt der Eintrag.
+     */
+    public function settingValuesOf(int $nodeId, array $edgeIds): array
+    {
+        if ($edgeIds === []) {
+            return [];
+        }
+
+        $gesucht = [];
+
+        foreach ($edgeIds as $id) {
+            $gesucht[(string) $id] = $id;
+        }
+
+        $werte = [];
+
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->kind !== RecordKind::Default) {
+                continue;
+            }
+
+            foreach ($this->records->valuesOf($satz->id) as $wert) {
+                $kante = $gesucht[$wert->path] ?? null;
+
+                if ($kante !== null && ! $wert->value->isNothing()) {
+                    $werte[$kante] = $wert->value;
+                }
+            }
+        }
+
+        return $werte;
     }
 
     /**

@@ -287,6 +287,69 @@ if ($html === '') {
     check('und die duerfen es weiterhin', $gesperrteEigene === 0, "{$gesperrteEigene} gesperrt");
 }
 
+echo "\n== Die Renderkette geht durch ein zusammengesetztes Feld ==\n";
+
+// ⚠️ **Seine Beobachtung, und dann seine Diagnose:** *«Renderer ist form, Adressfeld hat mindestens 4
+// Felder, gezeigt wird aber nur eines»* — *«heisst wohl Renderkette ist unterbrochen»*. **Sie war
+// unterbrochen.** *Gemessen: das Feld `Address` bekam Typ «keiner» und `plain`, während `Adresse` fünf
+// eigene Felder trägt. Vier von fünf waren nie zu sehen.*
+//
+// ⚠️ *Der Knoten wird über **die Kante** gesucht, nicht über seinen Namen: er heisst «Kontact» und
+// nicht «Kontakt», und eine Prüfung, die den Namen rät, ist morgen rot, weil jemand ihn korrigiert.*
+$zusammengesetzt = $wpdb->get_row(
+    'SELECT v.id AS besitzer, z.id AS ziel, rel.name AS feld
+     FROM ' . Schema::table('relations') . ' rel
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = rel.from_id
+     INNER JOIN ' . Schema::table('nodes') . " z ON z.id = rel.to_id
+     WHERE z.name = 'Adresse' AND rel.kind <> 'inheritance' LIMIT 1",
+    ARRAY_A
+);
+
+if ($zusammengesetzt === null) {
+    check('ein Feld zeigt auf «Adresse»', false, 'keines gefunden');
+} else {
+    check('ein Feld zeigt auf «Adresse»', true);
+
+    $innen = $wpdb->get_col($wpdb->prepare(
+        'SELECT rel.name FROM ' . Schema::table('relations') . " rel
+         WHERE rel.from_id = %d AND rel.kind <> 'inheritance' AND rel.hide = 0 AND rel.kind <> 'setting'",
+        (int) $zusammengesetzt['ziel']
+    )) ?: [];
+
+    check('«Adresse» hat mehrere eigene Felder', count($innen) >= 4, count($innen) . ': ' . implode(', ', $innen));
+
+    $html = seiteVon((int) $zusammengesetzt['besitzer']);
+    $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
+
+    $von  = strpos($html, '>Preview<');
+    $bis  = $von === false ? false : strpos($html, '>Used by<', $von);
+    $teil = $von === false ? '' : substr($html, $von, ($bis === false ? strlen($html) : $bis) - $von);
+
+    $fehlen = [];
+
+    foreach ($innen as $feld) {
+        if (! str_contains($teil, (string) $feld)) {
+            $fehlen[] = (string) $feld;
+        }
+    }
+
+    check(
+        'und die Vorschau nennt sie alle',
+        $fehlen === [],
+        'fehlt: ' . implode(', ', $fehlen)
+    );
+
+    // ⚠️ **Der Gegenfall: nicht nur Wörter, sondern Bedienelemente.** *Ein Behälter, der die Namen
+    // ausgibt und keine Eingabe zeichnet, wäre oben grün — und wäre genau das, was vorher war.*
+    preg_match_all('/<(?:input|select|textarea)\b[^>]*>/', $teil, $bedienung);
+
+    check(
+        'und zeichnet je Feld eine Bedienung',
+        count($bedienung[0]) >= count($innen),
+        count($bedienung[0]) . ' fuer ' . count($innen) . ' Felder'
+    );
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

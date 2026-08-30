@@ -46,6 +46,7 @@ use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
 
 /**
@@ -102,6 +103,22 @@ final class Rendering
          * gewinnt die neue Stelle** — sonst hätte der Umzug keine Wirkung.*
          */
         private readonly ?ModelValues $model = null,
+        /**
+         * ⚠️ **Damit der Abstieg durch die Knoten gehen kann.** *Der Eigentümer hat es diagnostiziert:
+         * «heisst wohl Renderkette ist unterbrochen» — und: «Form-Render sollte ja die Knoten
+         * durchgehen». **Durchgehen ja, nachladen nein:** ein Renderer darf nichts holen
+         * ([D-159](../../../docs/NewConcept/90-decision-log.md)), und {@see FormRenderer} legt nur aus,
+         * was ihm gegeben wurde ([D-366](../../../docs/NewConcept/90-decision-log.md)). Also gehört der
+         * Gang hierher — und hier fehlten die Kanten.*
+         *
+         * ⚠️ *Gemessen an `Kontakt`: das Feld `Address` bekam Typ «keiner» und `plain`, während `Adresse`
+         * fünf eigene Felder trägt — strasse, hausnummer, plz, ort, land. **Vier von fünf waren nie zu
+         * sehen.***
+         *
+         * ⚠️ *Nachträglich und mit `null` als Vorgabe, damit die bestehenden Aufrufstellen unverändert
+         * bleiben — dieselbe Form, in der `$model` dazukam.*
+         */
+        private readonly ?RelationRepository $relations = null,
     ) {
     }
 
@@ -375,6 +392,32 @@ final class Rendering
         string $locale = '',
         Level $level = Level::Admin,
         bool $editable = true,
+        /**
+         * ⚠️ *Das Formular, in das die Bedienung gehört, wenn sie **ausserhalb** von ihm steht. Eine
+         * Tabellenzeile ist ein `<tr>`, und ein Formular darf keine Zellen umschliessen — dieselbe
+         * Regel, die {@see FieldRowRenderer::formFor()} beschreibt und die zweimal Bedienelemente
+         * stumm gemacht hat.*
+         */
+        string $formId = '',
+        /**
+         * ⚠️ **Die Bremse des Abstiegs.** *Ein Feld kann auf einen Knoten zeigen, dessen Feld wieder
+         * hierher zeigt — dann liefe der Gang endlos. **Drei Stufen**, weil `Kontakt → Adresse → Text`
+         * zwei braucht und die dritte Luft ist; tiefer wird nicht gezeichnet, sondern der gewöhnliche
+         * Renderer genommen, damit sichtbar bleibt, dass dort etwas ist.*
+         */
+        int $tiefe = 0,
+        /**
+         * ⚠️ **Der Unterbau, **vor** dem Abstieg geladen** ([D-159](../../../docs/NewConcept/90-decision-log.md):
+         * *«the descent has two inputs, both loaded before it starts»*).
+         *
+         * ⚠️ **Und das ist keine Formalie: mein erster Entwurf hat es falsch gemacht.** *Er hätte je
+         * zusammengesetztem Feld die Kanten des Ziels nachgeladen — «a descent that fetches per edge is
+         * N+1 by construction», sagt dieselbe Entscheidung. **Jetzt eine Abfrage je Stufe**, nicht eine
+         * je Feld: drei Stufen sind drei Abfragen, egal wie breit das Modell ist.*
+         *
+         * @var array<int, list<Relation>> Knoten-Id => seine Feldkanten.
+         */
+        array $unterbau = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -404,6 +447,12 @@ final class Rendering
         $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);
         $wahl     = $this->optionsFor($edges);
         $fields   = [];
+
+        // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
+        // Datenbank nicht mehr an.*
+        if ($tiefe === 0 && $unterbau === []) {
+            $unterbau = $this->subgraph($edges, self::TIEFSTENS);
+        }
 
         foreach ($edges as $edge) {
             $type     = $types[$edge->id] ?? null;
@@ -462,15 +511,23 @@ final class Rendering
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
                     options: $angebot,
+                    formId: $formId,
                 ),
                 shown: $this->convertedCharacters($value, $settings, $type),
             );
 
+            // ⚠️ **Hier war die Kette unterbrochen**, und die Diagnose ist seine: *«heisst wohl
+            // Renderkette ist unterbrochen»*, *«Form-Render sollte ja die Knoten durchgehen»*. *Zeigt ein
+            // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
+            // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
+            // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
+            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values);
+
             $fields[] = new RenderedField(
                 $edge,
                 $type,
-                $renderer->name(),
-                $renderer->render($edge, $context),
+                $tiefer === null ? $renderer->name() : $tiefer['renderer'],
+                $tiefer === null ? $renderer->render($edge, $context) : $tiefer['result'],
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
                 $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch()
@@ -1418,7 +1475,12 @@ final class Rendering
 
     private function containerFor(Node $node, Purpose $purpose): Renderer
     {
-        $chosen = ($this->settings->resolve($this->settings->chainFor($node))[SettingKey::Renderer->value] ?? null)
+        // ⚠️ **Auch aus den Datensätzen, und ohne dies war die Wahl wirkungslos** ([D-529](../../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand nur die Auflösung über die `settings`-Tabelle. Der Renderer liegt seit dem Umzug
+        // im Datensatz — also hätte der Eigentümer `table` wählen können und weiter ein Formular
+        // gesehen. **Fünfter Fall derselben Sache an einem Tag:** Daten umgezogen, ein Leser
+        // stehengeblieben.*
+        $chosen = ($this->withModelValues($this->settings->resolve($this->settings->chainFor($node)), $node)[SettingKey::Renderer->value] ?? null)
             ?->value
             ->text;
 
@@ -1961,6 +2023,166 @@ final class Rendering
      * @param  list<Relation>                 $edges
      * @return array<int, array<int, string>> Kanten-Id => (Knoten-Id => Name)
      */
+    /**
+     * Wie tief der Abstieg geht.
+     *
+     * ⚠️ *`Kontakt → Adresse → Text` braucht zwei Stufen; die dritte ist Luft. **Eine Bremse muss es
+     * geben**: ein Feld kann auf einen Knoten zeigen, dessen Feld wieder hierher zeigt, und dann liefe
+     * der Gang endlos. Tiefer wird nicht abgebrochen, sondern der gewöhnliche Renderer genommen — dann
+     * bleibt sichtbar, dass dort etwas ist.*
+     */
+    private const TIEFSTENS = 3;
+
+    /**
+     * Alle Feldkanten, die der Abstieg brauchen wird — **eine Abfrage je Stufe**.
+     *
+     * ⚠️ **[D-159](../../../docs/NewConcept/90-decision-log.md), und der Satz gilt wörtlich:** *«the
+     * descent has two inputs, both loaded before it starts … a descent that fetches per edge is N+1 by
+     * construction».*
+     *
+     * ⚠️ *Deshalb wird je **Stufe** geladen und nicht je Feld: `fieldEdgesOf()` nimmt eine Liste von
+     * Besitzern, also kostet eine Ebene eine Abfrage, gleich wie breit sie ist. Drei Stufen sind drei
+     * Abfragen.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["Kanten der Stufe 0"] --> B["ihre Ziele"]
+     *   B --> C["eine Abfrage: Feldkanten aller Ziele"]
+     *   C --> D["deren Ziele … bis TIEFSTENS"]
+     * ```
+     *
+     * @param  list<Relation>            $edges
+     * @return array<int, list<Relation>> Knoten-Id => seine Feldkanten
+     */
+    private function subgraph(array $edges, int $tiefstens): array
+    {
+        if ($this->relations === null) {
+            return [];
+        }
+
+        $unterbau = [];
+        $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toId, $edges)));
+
+        for ($stufe = 0; $stufe < $tiefstens && $offen !== []; $stufe++) {
+            // ⚠️ *Nur Ziele, die überhaupt einen eigenen Satz haben könnten — ein `Text` hat keine
+            // Felder, und ihn zu fragen wäre eine Abfrage für eine Antwort, die schon feststeht.*
+            $knoten = $this->nodes->byIds($offen);
+            $fragen = [];
+
+            foreach ($offen as $id) {
+                $ziel = $knoten[$id] ?? null;
+
+                if ($ziel !== null && ! isset($unterbau[$id]) && $this->framework->branchOf($ziel) === Branch::Compositions) {
+                    $fragen[] = $id;
+                }
+            }
+
+            if ($fragen === []) {
+                break;
+            }
+
+            $weiter = [];
+
+            foreach ($this->relations->fieldEdgesOf($fragen) as $kante) {
+                $unterbau[$kante->fromId][] = $kante;
+                $weiter[]                   = $kante->toId;
+            }
+
+            // ⚠️ *Ein Besitzer ohne Kanten bekommt einen leeren Eintrag — sonst würde die nächste Runde
+            // ihn wieder fragen, und das wäre die Abfrage je Feld, die vermieden werden soll.*
+            foreach ($fragen as $id) {
+                $unterbau[$id] ??= [];
+            }
+
+            $offen = array_values(array_unique($weiter));
+        }
+
+        return $unterbau;
+    }
+
+    /**
+     * Der Teil unter einem zusammengesetzten Feld, gezeichnet wie ein Knoten.
+     *
+     * ⚠️ **Seine Diagnose:** *«heisst wohl Renderkette ist unterbrochen»* — *und «Form-Render sollte ja
+     * die Knoten durchgehen». Durchgehen tut der **Abstieg**; der Behälter legt aus, was er bekommt
+     * ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Gemessen an `Kontakt`: `Address` bekam Typ «keiner» und `plain`, während `Adresse` fünf eigene
+     * Felder trägt. **Vier von fünf waren nie zu sehen.***
+     *
+     * @return array{renderer: string, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
+     */
+    private function partBelow(
+        Relation $edge,
+        ?SimpleType $type,
+        Purpose $purpose,
+        string $fieldPrefix,
+        string $locale,
+        Level $level,
+        bool $editable,
+        string $formId,
+        int $tiefe,
+        array $unterbau,
+        array $values,
+    ): ?array {
+        // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
+        // hat dort nichts zu suchen.*
+        if ($type !== null || $tiefe >= self::TIEFSTENS) {
+            return null;
+        }
+
+        $innen = $unterbau[$edge->toId] ?? [];
+
+        // ⚠️ *Einstellungen des Teils gehören nicht in seine Maske — dieselbe Trennung, die die Vorschau
+        // seit heute macht.*
+        $innen = array_values(array_filter(
+            $innen,
+            static fn (Relation $e): bool => ! $e->kind->isSetting() && ! $e->hide
+        ));
+
+        if ($innen === []) {
+            return null;
+        }
+
+        $ziel = $this->nodes->find($edge->toId);
+
+        if ($ziel === null) {
+            return null;
+        }
+
+        // ⚠️ *Der Name des Feldes trägt den Weg: `v[<aussen>][<innen>]`. Damit ist die Adresse im
+        // Formular dieselbe Kette von Kanten-Ids, die auch der Pfad im Datensatz ist.*
+        $teile = $this->fieldsFor(
+            $innen,
+            $values,
+            $purpose,
+            $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
+            $locale,
+            $level,
+            $editable,
+            $formId,
+            $tiefe + 1,
+            $unterbau
+        );
+
+        $behaelter = $this->containerFor($ziel, $purpose);
+
+        return [
+            'renderer' => $behaelter->name(),
+            'result'   => $behaelter->render(
+                $ziel,
+                new RenderContext(
+                    purpose: $purpose,
+                    value: TypedValue::nothing(),
+                    locale: $locale,
+                    level: $level,
+                    editable: $editable,
+                    surroundings: new Surroundings(parts: $teile, formId: $formId),
+                )
+            ),
+        ];
+    }
+
     private function optionsFor(array $edges): array
     {
         $ziele = [];

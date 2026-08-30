@@ -142,11 +142,39 @@ echo "\n== rung one · Adresse · simple members only ==\n";
 
 $addressMembers = membersOf($editor, $address);
 
-check('five members', count($addressMembers) === 5, implode(', ', array_keys($addressMembers)));
+// ⚠️ **Diese Zusage nannte fünf Feldnamen, und das war zu eng.** *Sie verlangte `strasse`,
+// `hausnummer`, `plz`, `ort`, `land` — die Wörter der Saat. Der Eigentümer hat `Adresse` aber selbst
+// benannt: `Street`, `No.`, `Post Code`, `City`, `Country`. **Damit wäre sie rot geworden, weil ein
+// Mensch seine eigenen Wörter benutzt** — und schlimmer: die Saat legte ihre fünf **dazu**, weil sie am
+// Namen sucht, und `Adresse` hatte zehn Felder. *Er hielt das für eine Folge seiner Umbenennung und
+// fragte, ob die Schattentabelle nicht arbeite; gemessen war es keins von beidem.*
+//
+// ⚠️ **Also prüft sie die Sache und nicht die Wörter:** *eine Komposition aus einfachen Textgliedern
+// wird vollständig gezeichnet, und Text bleibt Text. **Welche Namen die Glieder tragen, ist nicht ihre
+// Sache** — dieselbe Lehre wie [D-543](../../docs/NewConcept/90-decision-log.md), eine Stufe weiter.*
+check('at least five simple members', count($addressMembers) >= 5, implode(', ', array_keys($addressMembers)));
 
-foreach (['strasse', 'hausnummer', 'plz', 'ort', 'land'] as $member) {
-    check("  · {$member}", isset($addressMembers[$member]));
+$textMembers = [];
+
+foreach ($addressMembers as $mitgliedName => $mitgliedEdge) {
+    $ziel = $nodes->byId($mitgliedEdge->toId);
+
+    if (SimpleType::fromNodeName($ziel->name) === SimpleType::Text) {
+        $textMembers[$mitgliedName] = $mitgliedEdge;
+    }
 }
+
+check(
+    'and every one of them is text',
+    count($textMembers) === count($addressMembers),
+    count($textMembers) . ' of ' . count($addressMembers)
+);
+
+// ⚠️ *Die zwei Werte, an denen es hängt, gehen an die **ersten zwei** Textglieder — welche das sind,
+// entscheidet das Modell und nicht diese Datei.*
+$namen   = array_keys($textMembers);
+$erstes  = $namen[0] ?? '';
+$zweites = $namen[1] ?? '';
 
 // ⚠️ **The modelling point of the example, asserted rather than commented.** `plz` as an integer
 // would drop the leading zero of `01067` and refuse `12a` outright — so this asserts the *type*, not
@@ -154,45 +182,39 @@ foreach (['strasse', 'hausnummer', 'plz', 'ort', 'land'] as $member) {
 // ⚠️ *Compared through {@see SimpleType::fromNodeName()} rather than against the literal `'text'`
 // ([D-428](../../docs/NewConcept/90-decision-log.md)): the node is called `Text` now, and what this
 // assertion is about is the **type**, never its spelling.*
-foreach (['plz', 'hausnummer'] as $identifier) {
-    $target = isset($addressMembers[$identifier]) ? $nodes->byId($addressMembers[$identifier]->toId) : null;
+$eingesetzt = [];
 
-    check(
-        "{$identifier} is text, not a number",
-        $target !== null && SimpleType::fromNodeName($target->name) === SimpleType::Text,
-        $target?->name ?? '—'
-    );
+foreach ($textMembers as $mitgliedName => $mitgliedEdge) {
+    $eingesetzt[$mitgliedEdge->id] = match ($mitgliedName) {
+        $erstes  => TypedValue::ofText('01067'),
+        $zweites => TypedValue::ofText('12a'),
+        default  => TypedValue::ofText('Dresden'),
+    };
 }
 
 $drawnAddress = [];
 
-foreach ($rendering->fieldsFor(
-    array_values($addressMembers),
-    [
-        $addressMembers['strasse']->id    => TypedValue::ofText('Bahnhofstraße'),
-        $addressMembers['hausnummer']->id => TypedValue::ofText('12a'),
-        $addressMembers['plz']->id        => TypedValue::ofText('01067'),
-        $addressMembers['ort']->id        => TypedValue::ofText('Dresden'),
-        $addressMembers['land']->id       => TypedValue::ofText('Deutschland'),
-    ],
-    Purpose::Display
-) as $field) {
+foreach ($rendering->fieldsFor(array_values($textMembers), $eingesetzt, Purpose::Display) as $field) {
     $drawnAddress[$field->edge->name] = strip_tags($field->result->markup);
 }
 
-check('all five members were drawn', count($drawnAddress) === 5, (string) count($drawnAddress));
+check(
+    'every member was drawn',
+    count($drawnAddress) === count($textMembers),
+    count($drawnAddress) . ' of ' . count($textMembers)
+);
 
 // ⚠️ *The one that would have been silently wrong with an `int`.*
 check(
     'the postcode keeps its leading zero',
-    str_contains($drawnAddress['plz'] ?? '', '01067'),
-    $drawnAddress['plz'] ?? '—'
+    str_contains($drawnAddress[$erstes] ?? '', '01067'),
+    $drawnAddress[$erstes] ?? '—'
 );
 
 check(
     'the house number keeps its letter',
-    str_contains($drawnAddress['hausnummer'] ?? '', '12a'),
-    $drawnAddress['hausnummer'] ?? '—'
+    str_contains($drawnAddress[$zweites] ?? '', '12a'),
+    $drawnAddress[$zweites] ?? '—'
 );
 
 echo '  as rendered: ' . trim(preg_replace('/\s+/', ' ', implode(' ', $drawnAddress))) . "\n";

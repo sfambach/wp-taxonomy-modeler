@@ -505,7 +505,12 @@ final class Plugin
                 // ⚠️ **Die Brücke waehrend des Umzugs** ([D-529](../../docs/NewConcept/90-decision-log.md)):
                 // *was schon als Datensatz im Modell steht, gewinnt; was noch in der Settings-Tabelle
                 // liegt, traegt der alte Weg weiter.*
-                new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
+                // ⚠️ **Und die Kanten, damit der Abstieg durch die Knoten gehen kann.** *Seine
+                // Diagnose: «heisst wohl Renderkette ist unterbrochen». Ohne dies endete der Gang am
+                // ersten zusammengesetzten Feld — `Kontakt.Address` zeigte ein Kästchen, `Adresse` hat
+                // fünf Felder.*
+                relations: new WpdbRelationRepository(),
+                model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
             ),
             // ⚠️ *The same object the editor and the settings hold — that is the whole point of it
             // being memoised. A second one would open a bracket nobody writes into.*
