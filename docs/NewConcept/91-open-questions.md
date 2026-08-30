@@ -5554,3 +5554,60 @@ sagt nicht, dass sie eine war.** Ein Verweis hätte es gewusst. Ob das eine Spal
 Wert kam vom Default und wurde nie angefasst» — ist genau die Frage, die [D-532](90-decision-log.md)
 mit «ja» beantwortete und D-533 mit «nein». **Sie kommt hier zurück, aber nur für den Nachtrag-Akt
 statt für jedes Lesen.***
+
+---
+
+## OQ-137 — Journal und Rückgängig: Format, Umfang, Reichweite
+
+**Raised** 2026-08-30, auf seinen Satz *«wir sollten uns echt nochmal Gedanken über Log und
+Rückgängig machen machen»* — nachdem [D-534](90-decision-log.md) an einem fehlenden Rückgängig
+hängenblieb.
+
+*Blocks:* [Zeile 88](97-implementation-plan.md#the-working-list) und damit [D-534](90-decision-log.md)s
+Nachfrage-Akt · *Status:* **offen, mit vier Messungen als Grundlage**
+
+### Was gemessen wurde, am 2026-08-30
+
+⚠️ **1. Die Zustände sind Prosa und nicht zurückspielbar.**
+
+```text
+attribute restored   vorher : to=52250 kind=composition parked=57146 name=__p3 doomed
+                     nachher: to=52250 kind=composition parked=0 name=__p3 doomed
+promoted             vorher : 1.52221.52223.52227
+                     nachher: 1.52221.52227
+```
+
+*[D-061](90-decision-log.md) sagt «the changelog **is** the migration script». **Für diesen Text
+stimmt das nicht** — er ist für Menschen geschrieben und für keine Maschine.*
+
+⚠️ **2. Über die Hälfte des Journals beschreibt die Tabelle, die [D-529](90-decision-log.md)
+abschafft.** *`setting … set` in allen Spielarten sind zusammen **rund 10 259 von 19 968 Zeilen**.
+Ein Wiedereinspielen schriebe in `settings`.*
+
+⚠️ **3. `attribute removed` schreibt einen Nachher-Zustand, der dem Vorher gleicht** — *beide
+`parked=0`, **665 Zeilen**. Für dieses Verb hat ein Rückgängig nichts zu greifen.*
+
+⚠️ **4. Benutzerwerte kommen gar nicht vor** — *`node` 15311, `relation` 4651, `installation` 3,
+`gone` 3. **Keine Zeile für einen Datensatz oder einen Wert**, und `DataEntry` erwähnt das Journal
+null Mal ([Zeile 88](97-implementation-plan.md#the-working-list)).*
+
+**Was trägt:** die Klammer. *15 358 Gruppen, davon 12 882 mit einer Zeile, eine mit 46 —
+[D-348](90-decision-log.md) funktioniert.*
+
+### Der Anker, der schon steht
+
+[D-172](90-decision-log.md), im Code zitiert als *«what a restore writes: **forwards, never a
+rewind**»*. **Ein Rückgängig ist ein neuer Akt, der umkehrt** — kein Löschen von Geschichte. Das
+ist keine offene Frage mehr und begrenzt alle drei unten.
+
+### Die drei Fragen
+
+| | Frage | was daran hängt |
+|---|---|---|
+| **Format** | strukturierte Vorher/Nachher-Zustände statt Prosa — und was mit den 19 968 vorhandenen Zeilen geschieht | ohne das ist ein Rückgängig nicht baubar; [D-061](90-decision-log.md) steht oder fällt damit |
+| **Umfang** | jede Wertänderung, oder nur Akte, die **fremde Aussagen** anfassen? | [D-535](90-decision-log.md) hat gezeigt: die Umkehrung des **Anlegens** ist ein Löschen und braucht kein Vorher. Nur der Nachtrag in bestehende Datensätze braucht das volle Paar |
+| **Reichweite** | kehrt ein Rückgängig **eine Gruppe** um, oder setzt es **ein Objekt** auf eine Version zurück? | `version` gibt es an Knoten und Kanten, **an Datensätzen nicht** |
+
+⚠️ *Die dritte ist die, die am ehesten still falsch beantwortet wird: eine Gruppe umzukehren ist
+richtig, wenn seither nichts anderes geschah — **und die Frage «seither» hat heute keine Antwort**,
+weil Datensätze keine Version tragen.*
