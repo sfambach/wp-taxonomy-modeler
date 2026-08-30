@@ -2961,7 +2961,17 @@ final class NodesScreen
             . '<input type="hidden" name="_taxmod_nonce" value="'
                 . esc_attr(wp_create_nonce(self::ACTION . '_' . $id)) . '">'
             . '<input type="hidden" name="_wp_http_referer" value="'
-                . esc_attr(wp_unslash($_SERVER['REQUEST_URI'] ?? '')) . '">';
+                . esc_attr(wp_unslash($_SERVER['REQUEST_URI'] ?? '')) . '">'
+            // ⚠️ **Der Zustand des Baums reist mit, sonst klappt jeder Akt ihn zu.** *Der Eigentümer:
+            // «Clear von Trash sorgt immer dafür, dass der Tree collapsed». **Gemessen ist es nicht
+            // «Clear»**: diese verborgenen Felder schickt **jedes** Aktionsformular, und der Zustand
+            // fehlte in allen. {@see self::backTo()} sucht ihn in `$_POST` — und fand nichts, weil ihn
+            // niemand hineinlegte. Ihm ist es am Papierkorb aufgefallen, weil man dort einen tief
+            // geöffneten Baum vor sich hat.*
+            . '<input type="hidden" name="taxmod_collapsed" value="'
+                . esc_attr((string) ($this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks)) . '">'
+            . '<input type="hidden" name="taxmod_hidden" value="'
+                . esc_attr((string) $this->circumstance('taxmod_hidden')) . '">';
     }
 
     /**
