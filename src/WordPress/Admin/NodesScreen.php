@@ -866,12 +866,27 @@ final class NodesScreen
         // `Level::Admin`** — zwei Frontend-Ansichten an einer Stelle, die keine ist. Jetzt zeigt die
         // eine das Frontend und die andere das Modell.*
         //
-        // ⚠️ **Der Unterschied ist nicht nur der Zweck, sondern welche Kanten mitkommen:** *die Anzeige
-        // lässt Einstellungen weg (das ist der Sinn der Sichtprüfung), die Admin-Seite nimmt sie **mit**
-        // — dort sind sie der Inhalt. Deshalb sah er auf einem Einstellungsknoten nichts.*
+        // ⚠️ **Drei Seiten, und die dritte ist seine Entscheidung** ([D-547](../../../docs/NewConcept/90-decision-log.md)):
+        // *«es gibt eine dritte Form neben Admin und Show, machen wir jetzt Settings.»*
+        //
+        // ⚠️ **Mein Fehler davor, und er hat ihn an der Seite gesehen:** *ich hatte die Einstellungen in
+        // die **Admin**-Seite gelegt — und auf `Adresse` standen sie danach **zwischen** den Feldern:
+        // Street, Display Option, No., validator, Post Code, City, Country, read_only. Er: «man sieht den
+        // Render in Settings, aber auch in der Preview vom Modell, und das darf nicht sein.» **Zwei
+        // Dinge in einer Liste, die nichts miteinander zu tun haben.***
+        //
+        // ⚠️ *Also trennt jetzt die Ansicht, was vorher eine Liste war: **Anzeige** und **Admin** zeigen
+        // die Felder — die eine fürs Frontend, die andere fürs Modell —, und **Settings** zeigt die
+        // Einstellungen. Jede Seite bekommt genau die Kanten, die zu ihr gehören.*
+        $einstellungen = array_values(array_filter(
+            $edges,
+            static fn (Relation $edge): bool => $edge->kind->isSetting() && ! $edge->hide
+        ));
+
         foreach ([
             [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown']],
-            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $edges],
+            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown']],
+            [__('Settings', 'taxmod'), Purpose::Edit, true, Level::Settings, $einstellungen],
         ] as [$title, $purpose, $editable, $level, $gezeigte]) {
             $html .= '<div class="taxmod-preview-side">'
                 . '<h4>' . esc_html($title) . '</h4>'

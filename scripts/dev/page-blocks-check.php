@@ -403,6 +403,73 @@ if ($html === '') {
     );
 }
 
+echo "\n== Die Vorschau hat drei Seiten, und Admin mischt keine Einstellungen ein ==\n";
+
+// ⚠️ **Seine Entscheidung** ([D-547](../../docs/NewConcept/90-decision-log.md)), *gegen meinen
+// Widerspruch: «und da du dich wehrst, entscheide ich jetzt: es gibt eine dritte Form neben Admin und
+// Show, machen wir jetzt Settings.»*
+//
+// ⚠️ **Widerlegt hat mich seine Messung an der Seite.** *Ich hatte die Einstellungen in die
+// Admin-Seite gelegt — und auf `Adresse` standen sie **zwischen** den Feldern: Street, Display Option,
+// No., validator, Post Code … Er: «man sieht den Render in Settings, aber auch in der Preview vom
+// Modell, und das darf nicht sein.»*
+$id   = knotenId('Adresse');
+$html = $id === 0 ? '' : seiteVon($id);
+
+if ($html === '') {
+    check('«Adresse» steht im Modell', false);
+} else {
+    $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
+
+    $von  = strpos($html, '>Preview<');
+    $bis  = $von === false ? false : strpos($html, '>Used by<', $von);
+    $teil = $von === false ? '' : substr($html, $von, ($bis === false ? strlen($html) : $bis) - $von);
+
+    preg_match_all('/<h4>([^<]*)<\/h4>(.*?)(?=<h4>|$)/s', $teil, $seiten, PREG_SET_ORDER);
+
+    $ueberschriften = array_map(static fn (array $s): string => $s[1], $seiten);
+
+    check('drei Seiten', count($seiten) === 3, implode(', ', $ueberschriften));
+
+    foreach (['Display', 'Admin', 'Settings'] as $wunsch) {
+        check("  · «{$wunsch}»", in_array($wunsch, $ueberschriften, true), implode(', ', $ueberschriften));
+    }
+
+    $nachName = [];
+
+    foreach ($seiten as $s) {
+        $nachName[$s[1]] = trim((string) preg_replace('/\s+/', ' ', strip_tags($s[2])));
+    }
+
+    // ⚠️ *Genau der Fall, den er gemeldet hat.*
+    check(
+        'Admin nennt keine Einstellung',
+        ! str_contains($nachName['Admin'] ?? '', 'Display Option')
+        && ! str_contains($nachName['Admin'] ?? '', 'read_only'),
+        substr($nachName['Admin'] ?? '', 0, 80)
+    );
+
+    // ⚠️ **Die Gegenfälle.** *Ohne sie wären auch drei leere Seiten grün — und «Admin nennt keine
+    // Einstellung» wäre am billigsten dadurch erfüllt, dass Admin gar nichts nennt.*
+    check(
+        'aber seine Felder',
+        str_contains($nachName['Admin'] ?? '', 'Street'),
+        substr($nachName['Admin'] ?? '', 0, 80)
+    );
+
+    check(
+        'und Settings nennt die Einstellungen',
+        str_contains($nachName['Settings'] ?? '', 'Display Option'),
+        substr($nachName['Settings'] ?? '', 0, 80)
+    );
+
+    check(
+        'und keines seiner Felder',
+        ! str_contains($nachName['Settings'] ?? '', 'Street'),
+        substr($nachName['Settings'] ?? '', 0, 80)
+    );
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);
