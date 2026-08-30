@@ -488,6 +488,84 @@ final class DataEntry
         );
     }
 
+    /**
+     * Eine Angabe des Modells an einem Knoten festschreiben — dort, wo sie gelesen wird.
+     *
+     * ⚠️ **Das fehlende Gegenstück zum Leser** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+     * *Der Eigentümer hat es an der Oberfläche gesehen: «den Render kann ich noch nicht setzen.» Und
+     * gemessen war es kein fehlender Renderer, sondern ein **Schreiber an der alten Stelle**: der
+     * Wähler am Knoten schrieb in die `settings`-Tabelle, und {@see ModelValues} liest aus Datensätzen
+     * und **gewinnt**. **Vierter Fall derselben Sache an einem Tag** — Daten umgezogen, Schreiber
+     * stehengeblieben; die Reihenfolge heisst deshalb Wächter, Leser, Daten.*
+     *
+     * ⚠️ **Und sein Einwand war der richtige Zuschnitt:** *«auch Settings sind etwas, das gerendert
+     * werden kann, und die Renderer dafür existieren schon — der Unterschied: **Eingabe geschieht im
+     * Modell und nicht im Frontend**.» Deshalb steht hier keine neue Speicherform: die Angabe liegt in
+     * einem Datensatz wie jeder Wert, und ihr Datensatz ist der **`default`** des Knotens — denn
+     * [D-026](../../../docs/NewConcept/90-decision-log.md) sagt es scharf: «at model level there are no
+     * values, only defaults».*
+     *
+     * ⚠️ **Zwei Stufen, weil [D-541](../../../docs/NewConcept/90-decision-log.md) es so verlangt:** *hat
+     * das Ziel eigene Felder, gehört ihm ein **eigener Datensatz** — dann wird der Teil angelegt und der
+     * Wert **darin** geschrieben. Hat es nur Kinder, ist der Wert ein Verweis und liegt direkt an der
+     * Kante. **Die Entscheidung fällt nicht hier**, sondern in {@see self::ownsItsRecord()}, und
+     * {@see self::refuseUnwritable()} verweigert den direkten Weg, wenn er falsch ist.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["Knoten"] --> D["sein default-Satz"]
+     *   D -->|"Traegerkante"| T["Teil: DisplayOption"]
+     *   T -->|"Wertkante"| W["Verweis auf den Renderer-Knoten"]
+     * ```
+     */
+    public function putSettingValue(int $nodeId, SettingKey $key, TypedValue $value, string $locale = ''): void
+    {
+        $aussen = $this->framework->settingEdgeId($key);
+
+        if ($aussen === 0) {
+            throw NotYetStorable::thatSettingHasNoEdgeYet($key->value);
+        }
+
+        $satzId = $this->defaultRecordOf($nodeId);
+        $innen  = $this->framework->settingValueEdgeId($key);
+
+        // ⚠️ *Keine eigene Wertkante heisst: die Angabe **ist** der Verweis, und sie steht direkt an der
+        // Trägerkante. `refuseUnwritable()` sagt Nein, wenn das Ziel doch einen eigenen Satz braucht —
+        // also wird hier nichts geraten.*
+        if ($innen === 0) {
+            $this->put($satzId, $aussen, $value, $locale);
+
+            return;
+        }
+
+        $teile  = $this->partsOf($satzId);
+        $teilId = $teile[(string) $aussen] ?? null;
+
+        if ($teilId === null) {
+            $teilId = $this->createPart($satzId, $aussen)->id;
+        }
+
+        $this->put($teilId, $innen, $value, $locale);
+    }
+
+    /**
+     * Der `default`-Satz eines Knotens — angelegt, wenn es noch keinen gibt.
+     *
+     * ⚠️ *Genau **einer**: mehrere `default`-Sätze an einem Knoten wären zwei Antworten auf eine Frage,
+     * und der Leser nimmt den ersten. Gibt es schon einen, wird er benutzt und nicht ein zweiter
+     * daneben gestellt.*
+     */
+    private function defaultRecordOf(int $nodeId): int
+    {
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->kind === RecordKind::Default) {
+                return $satz->id;
+            }
+        }
+
+        return $this->create($nodeId, RecordKind::Default)->id;
+    }
+
     public function createPart(int $recordId, int $edgeId, string $path = ''): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);

@@ -2221,6 +2221,28 @@ final class NodesScreen
      * answers to** resolves to the fallback and shows as *no renderer* on a node that has one — a
      * fault two steps from its cause.
      */
+    /**
+     * Den gewählten Renderer am Knoten festschreiben — in seinem Datensatz.
+     *
+     * ⚠️ *Zwei Prüfungen vor dem Schreiben, und beide sagen etwas anderes: **kennt die Registratur den
+     * Namen** (sonst ist die Eingabe erfunden), und **steht er als Knoten im Modell** (sonst gibt es
+     * nichts, worauf der Verweis zeigen könnte). Der zweite Fall ist echt: die Registratur wird im Code
+     * erweitert, die Knoten im Modell — und dazwischen liegt immer ein Moment.*
+     */
+    private function chooseRenderer(int $nodeId, string $submitted): void
+    {
+        $name      = $this->registeredRendererName($nodeId, $submitted);
+        $rendererId = $this->rendering->nodeForRendererNamed($name);
+
+        if ($rendererId === null) {
+            $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
+
+            throw SettingDoesNotApply::thatRendererCannotDrawThis($name, $node->name);
+        }
+
+        $this->data->putSettingValue($nodeId, SettingKey::Renderer, TypedValue::ofReference($rendererId));
+    }
+
     private function registeredRendererName(int $nodeId, string $submitted): string
     {
         $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
@@ -3001,11 +3023,13 @@ final class NodesScreen
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
-                'put_renderer'   => $this->settings->put(
-                    $this->settingChain($id),
-                    SettingKey::Renderer->value,
-                    TypedValue::ofText($this->registeredRendererName($id, $rendererName))
-                ),
+                // ⚠️ **Geschrieben, wo es gelesen wird** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+                // *Hier stand `settings->put()` — die alte Tabelle. Und {@see \Taxmod\Core\Service\ModelValues}
+                // liest aus Datensätzen und **gewinnt**, also blieb jede Wahl an den 26 Knoten, die
+                // ihren Renderer im Datensatz tragen, **spurlos**. Der Eigentümer hat es gesehen: «den
+                // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
+                // Schreiber an der alten Stelle.*
+                'put_renderer'   => $this->chooseRenderer($id, $rendererName),
                 // ⚠️ **These two name their key in the button** (`do[<key>]`), because one form now
                 // holds every row and a hidden `setting_key` could only ever say one of them.
                 'empty_setting'  => $this->settings->put($this->settingChain($id, $edge), $this->keyOfRowAct(), TypedValue::nothing()),

@@ -29,6 +29,17 @@ final class InMemoryRelations implements RelationRepository
         $this->rows[$relation->id] = $relation;
     }
 
+    public function byId(int $edgeId): ?Relation
+    {
+        foreach ($this->rows as $edge) {
+            if ($edge->id === $edgeId) {
+                return $edge;
+            }
+        }
+
+        return null;
+    }
+
     public function inheritanceEdgeTo(int $childId): ?Relation
     {
         foreach ($this->rows as $edge) {

@@ -104,6 +104,22 @@ final class WpdbRelationRepository implements RelationRepository
         }
     }
 
+    public function byId(int $edgeId): ?Relation
+    {
+        global $wpdb;
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                'SELECT id, version, from_id, to_id, kind, name, position, hide, multiplicity FROM ' . Schema::table('relations') . '
+                 WHERE id = %d',
+                $edgeId
+            ),
+            ARRAY_A
+        );
+
+        return $row === null ? null : $this->hydrate($row);
+    }
+
     public function inheritanceEdgeTo(int $childId): ?Relation
     {
         global $wpdb;

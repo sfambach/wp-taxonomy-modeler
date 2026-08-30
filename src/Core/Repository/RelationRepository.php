@@ -129,4 +129,14 @@ interface RelationRepository
     public function edgesTouching(array $nodeIds): array;
 
     public function purgeEdgesTouching(int $nodeId): void;
+
+    /**
+     * Eine Kante zu ihrer Id.
+     *
+     * ⚠️ **Der Leser hat gefehlt, und das ist auffällig.** *Jeder andere Zugang hier braucht einen
+     * **Knoten** — den Besitzer, das Ziel, den Elternteil. Solange Kanten nur über ihre Nachbarn
+     * gefunden wurden, ging es; seit [D-543](../../../docs/NewConcept/90-decision-log.md) ist die **Id**
+     * einer Kante eine aufgeschriebene Angabe, und dann muss man von ihr aus auch zurückkommen.*
+     */
+    public function byId(int $edgeId): ?Relation;
 }

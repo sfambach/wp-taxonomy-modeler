@@ -95,6 +95,17 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('There is no record %d.', $id));
     }
 
+    /**
+     * ⚠️ **Kein stilles Nichts** ([D-543](../../../docs/NewConcept/90-decision-log.md)). *Wenn die Saat
+     * die Id der Einstellungskante noch nicht aufgeschrieben hat, ist Schreiben unmöglich — und der
+     * Vorgänger dieser Zeile, ein `return` ohne Wort, ist genau der Grund, warum ein Renderer-Ausfall
+     * einen ganzen Tag unsichtbar bleiben konnte.*
+     */
+    public static function thatSettingHasNoEdgeYet(string $key): self
+    {
+        return new self(sprintf('The setting «%s» has no edge written down yet, so nothing can be stored at it.', $key));
+    }
+
     public static function notAFieldOfThisModel(int $edgeId, string $model): self
     {
         return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));

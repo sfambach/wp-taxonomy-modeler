@@ -1825,6 +1825,18 @@ final class Rendering
     }
 
     /**
+     * Der Knoten, der für diesen Renderer steht — zum **Schreiben** einer Renderer-Angabe.
+     *
+     * ⚠️ *Eine Durchreiche und keine zweite Auskunft: die Abmachung «sein Name ist der Renderer»
+     * ([D-511](../../../docs/NewConcept/90-decision-log.md)) wohnt in {@see ModelValues}, und der Schirm
+     * fragt Renderer-Dinge über diese Klasse. **Wo die Angabe herkommt, ist nicht seine Sache.***
+     */
+    public function nodeForRendererNamed(string $name): ?int
+    {
+        return $this->model?->nodeForRendererNamed($name);
+    }
+
+    /**
      * The simple type a node **is**, rather than the one an attribute points at.
      *
      * ⚠️ *It used to load every ancestor to read their names. Since the binding is by id
