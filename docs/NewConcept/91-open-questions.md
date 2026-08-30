@@ -5611,3 +5611,32 @@ ist keine offene Frage mehr und begrenzt alle drei unten.
 ⚠️ *Die dritte ist die, die am ehesten still falsch beantwortet wird: eine Gruppe umzukehren ist
 richtig, wenn seither nichts anderes geschah — **und die Frage «seither» hat heute keine Antwort**,
 weil Datensätze keine Version tragen.*
+
+---
+
+## OQ-138 — Kommt die Schattentabelle zuerst oder als zweite Stufe?
+
+**Raised** 2026-08-30, zu [D-536](90-decision-log.md).
+
+*Blocks:* den Bau, nicht die Entscheidung · *Status:* **offen — mit einem Einwand gegen seine eigene
+Reihenfolge**
+
+Der Eigentümer nannte sie als *«zweite Ausbaustufe … das würde die Frontend-Datenbank klein halten,
+die Tabellen und Selektionen einfacher machen, weil ich nicht erst auf die Version gucken müsste
+oder ob es vielleicht schon gelöscht ist. **Ich habe einfach den Datensatz oder ich habe ihn
+nicht.**»*
+
+⚠️ **Der Einwand: ohne sie muss jede vorhandene Abfrage um «nur die aktuelle Version» ergänzt
+werden — und die, die es vergisst, liefert stillschweigend zu viel.** *Genau diese Sorte Fehler hat
+dieses Projekt am 2026-08-30 dreimal gefunden: eine halb angewandte Schemaänderung, die still 0
+Datensätze zurückgab; ein `SELECT` auf eine entfernte Spalte, aus dem die Saat schloss, ihre Knoten
+seien weg; ein Doppelgänger im Test, der anders sortierte als SQL.*
+
+⚠️ *Mit der Schattentabelle von Anfang an **bleibt jede Abfrage, wie sie ist** — die lebende Tabelle
+enthält genau eine Zeile je Identität, wie heute. Die Kosten wandern in **einen** Schreibweg statt in
+**jeden** Leseweg.*
+
+⚠️ **Was dagegen spricht und ehrlich genannt gehört:** *zwei Tabellen mit derselben Form laufen
+auseinander, sobald eine Spalte hinzukommt — dieselbe Krankheit, die `is_test` neben `kind` hatte.
+Ein Schemaschritt müsste beide anfassen, und ein Bau, der es einmal vergisst, verliert Geschichte
+still.*
