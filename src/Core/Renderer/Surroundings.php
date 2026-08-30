@@ -92,6 +92,21 @@ final class Surroundings
         public readonly ?string $href = null,
         public readonly ?Submission $submits = null,
         public readonly array $rows = [],
+        /**
+         * Je Datensatz die gezeichneten Felder — **für eine Tabelle**.
+         *
+         * ⚠️ **`parts` ist einer, das hier sind mehrere** ([D-542](../../../docs/NewConcept/90-decision-log.md)).
+         * *Der Eigentümer: «der Table-Renderer bekommt auch einen Knoten und kann **mehrere Datensätze
+         * untereinander** darstellen». Ein Formular zeichnet **einen** Datensatz, eine Tabelle mehrere
+         * — und die Spalten sind dieselben Felder.*
+         *
+         * ⚠️ *`rows` war es nicht: ein {@see DrawnRow} trägt **eine** Zelle mit einer Tiefe, das ist
+         * der Baum. Eine Tabellenzeile ist ein Satz Felder, also dieselbe Form wie `parts`, eine
+         * Ebene höher.*
+         *
+         * @var list<list<RenderedField>>
+         */
+        public readonly array $records = [],
         public readonly array $sections = [],
         public readonly array $configured = [],
         public readonly array $options = [],

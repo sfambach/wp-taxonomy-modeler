@@ -21,6 +21,7 @@ use Taxmod\Core\Renderer\MailtoRenderer;
 use Taxmod\Core\Renderer\NodeRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -203,7 +204,13 @@ final class TypedFieldsTest extends TestCase
         );
 
         sort($names);
-        self::assertSame([CompactRenderer::NAME, FormRenderer::NAME, NodeRenderer::NAME], $names);
+        // ⚠️ *`table` ist seit [D-542](../../docs/NewConcept/90-decision-log.md) dabei — ein Behälter
+        // ohne Typ, wie `form` und `compact`. **Diese Zusage hat den neuen Renderer gemeldet**, und
+        // das ist ihre Aufgabe: sie haelt fest, was einem Knoten angeboten wird.*
+        self::assertSame(
+            [CompactRenderer::NAME, FormRenderer::NAME, NodeRenderer::NAME, TableRenderer::NAME],
+            $names
+        );
     }
 
     #[Test]

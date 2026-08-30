@@ -438,7 +438,7 @@ $offeredForThing = array_map(static fn ($r): string => $r->name(), $rendering->c
 sort($offeredForThing);
 check(
     'a thing under Model is offered the structural renderers only',
-    $offeredForThing === ['compact', 'form', 'node'],
+    $offeredForThing === ['compact', 'form', 'node', 'table'],
     implode(', ', $offeredForThing)
 );
 check(

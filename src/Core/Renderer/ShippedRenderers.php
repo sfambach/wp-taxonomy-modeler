@@ -63,6 +63,10 @@ final class ShippedRenderers
         // with no simple type could honestly be given nothing.
         $registry->add(new FormRenderer());
 
+        // ⚠️ *Ohne Typ, wie das Formular: ein Behälter fasst keinen an. Er zeichnet mehrere
+        // Datensätze untereinander ([D-542](../../../docs/NewConcept/90-decision-log.md)).*
+        $registry->add(new TableRenderer());
+
         // ⚠️ **The second structural renderer, and the one D-245 has been carrying since 2026-08-23**
         // — *a node with several attributes shown as compactly as possible together*. **Offered**
         // rather than surface-only, because which of the two container shapes a node wants is exactly
