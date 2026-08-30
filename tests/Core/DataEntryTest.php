@@ -373,4 +373,74 @@ final class DataEntryTest extends TestCase
         self::assertCount(1, $this->data->recordsOf($other->id));
         self::assertNotNull($this->records->find($otherRecord->id));
     }
+    // ------------------------------------- ein Wert an einer Verwendungsstelle
+
+    /**
+     * ⚠️ **Die Adresse, die der Speicher seit Paket 1 kann und die niemand benutzt hat.**
+     * *Gemessen am 2026-08-30 trug **kein einziger** Pfad in `record_values` einen Punkt — während 21
+     * Zeilen der alten Settings-Tabelle genau diese Form längst benutzten.*
+     *
+     * ⚠️ **Der Eigentümer hat den Umweg abgeschnitten, den ich bauen wollte:** *«wir haben alle
+     * Mittel, einer Kanten-Knoten-Kombination in jeglicher Schachtelung Daten zuzuweisen — **warum
+     * brauche ich hier ein zusätzliches Mittel?**» Es ist kein Datensatz an der Kante, sondern ein
+     * Wert im Datensatz des Besitzers, adressiert über die Kette.*
+     */
+    #[Test]
+    public function a_value_may_sit_at_a_use_site(): void
+    {
+        $renderer = $this->editor->addField($this->text->id, $this->gram->id, 'renderer');
+        $record   = $this->data->create($this->part->id);
+
+        $this->data->putAt($record->id, [$this->description->id, $renderer->id], TypedValue::ofText('kompakt'));
+
+        $werte = $this->data->valuesAt($record->id, [$this->description->id, $renderer->id]);
+
+        self::assertCount(1, $werte);
+        self::assertSame('kompakt', $werte[0]->value->text);
+        self::assertSame($this->description->id . '.' . $renderer->id, $werte[0]->path);
+
+        // ⚠️ *Die **letzte** Stufe steht in `edge_id`, damit «alle Renderer, wo auch immer sie sitzen»
+        // ein indizierter Zugriff bleibt (D-134).*
+        self::assertSame($renderer->id, $werte[0]->edgeId);
+    }
+
+    /**
+     * ⚠️ **Der eigentliche Wert der Kette ist die Prüfung, nicht das Zusammensetzen.** *Eine Adresse
+     * «Feld A, darin Feld B» ist nur etwas wert, wenn B wirklich ein Feld des Zieles von A ist.
+     * **Ohne die Prüfung könnte man an jede erfundene Stelle schreiben**, und es fiele erst auf, wenn
+     * jemand dort etwas sucht.*
+     */
+    #[Test]
+    public function an_invented_second_step_is_refused(): void
+    {
+        $record = $this->data->create($this->part->id);
+
+        $this->expectException(NotYetStorable::class);
+
+        // ⚠️ *Auf die **Begründung** geprüft und nicht nur auf die Ausnahme: eine Gegenprobe zeigte, dass
+        // der Test auch grün blieb, als die Kettenprüfung durch eine **andere** Verweigerung ersetzt
+        // wurde. **Eine Zusage, die jede Ausnahme annimmt, prüft die Regel nicht.***
+        $this->expectExceptionMessage($this->nodes->byId($this->text->id)->name);
+
+        // `description` ist ein Feld von `Part`, aber nicht von `Text`.
+        $this->data->putAt($record->id, [$this->description->id, $this->description->id], TypedValue::ofText('nirgends'));
+    }
+
+    /**
+     * ⚠️ *Der Wert **des Feldes** und der Wert **an der Verwendungsstelle** sind zwei Stellen und
+     * überschreiben einander nicht — sie unterscheiden sich im Pfad, nicht in der Kante.*
+     */
+    #[Test]
+    public function the_field_and_its_use_site_are_two_places(): void
+    {
+        $renderer = $this->editor->addField($this->text->id, $this->gram->id, 'renderer');
+        $record   = $this->data->create($this->part->id);
+
+        $this->data->put($record->id, $this->description->id, TypedValue::ofText('4k7'));
+        $this->data->putAt($record->id, [$this->description->id, $renderer->id], TypedValue::ofText('kompakt'));
+
+        self::assertCount(2, $this->data->valuesOf($record->id));
+        self::assertSame('4k7', $this->data->valuesAt($record->id, [$this->description->id])[0]->value->text);
+        self::assertSame('kompakt', $this->data->valuesAt($record->id, [$this->description->id, $renderer->id])[0]->value->text);
+    }
 }

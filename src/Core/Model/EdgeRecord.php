@@ -64,6 +64,42 @@ final class EdgeRecord
         return new self($recordId, (string) $edgeId, $edgeId, $locale, $value, null, $position);
     }
 
+    /**
+     * Ein Wert **tiefer im Modell** — die Kette der Kanten, die ihn erreicht.
+     *
+     * ⚠️ **Das ist die Form, die der Docblock oben immer beschrieben hat und die niemand benutzt
+     * hat:** *«Kanten-Ids vom Modell des Datensatzes hinunter zu diesem Wert». Gemessen am 2026-08-30
+     * trug **kein einziger** Pfad in `record_values` einen Punkt — die Möglichkeit stand seit Paket 1
+     * da und blieb leer.*
+     *
+     * ⚠️ **Und sie ist es, die eine Einstellung an einer Verwendungsstelle möglich macht.** *Der
+     * Eigentümer, als ich einen neuen Behälter dafür bauen wollte: «wir haben alle Mittel, einer
+     * Kanten-Knoten-Kombination in jeglicher Schachtelung Daten zuzuweisen — **warum brauche ich hier
+     * ein zusätzliches Mittel?**» Er hatte recht: **es ist kein Datensatz an der Kante, sondern ein
+     * Wert im Datensatz des Besitzers, adressiert über die Kante.***
+     *
+     * ⚠️ *`edge_id` bleibt die **letzte** Stufe, damit die Suche «alle Renderer, wo auch immer sie
+     * sitzen» ein indizierter Zugriff bleibt ([D-134](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param list<int> $edgeIds Von aussen nach innen, mindestens eine.
+     */
+    public static function at(int $recordId, array $edgeIds, TypedValue $value, string $locale = '', int $position = 0): self
+    {
+        if ($edgeIds === []) {
+            throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
+        }
+
+        return new self(
+            $recordId,
+            implode('.', $edgeIds),
+            $edgeIds[array_key_last($edgeIds)],
+            $locale,
+            $value,
+            null,
+            $position
+        );
+    }
+
     /** Dieselbe Zeile, nachdem der Speicher ihr eine Id gegeben hat. */
     public function stored(int $id): self
     {

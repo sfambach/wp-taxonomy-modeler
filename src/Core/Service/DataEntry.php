@@ -167,6 +167,108 @@ final class DataEntry
     }
 
     /**
+     * Einen Wert **an einer Verwendungsstelle** setzen — «das Feld B des Feldes A dieses Datensatzes».
+     *
+     * ⚠️ **Kein neues Mittel, sondern das vorhandene tiefer benutzt.** *Der Eigentümer: «wir haben
+     * alle Mittel, einer Kanten-Knoten-Kombination in jeglicher Schachtelung Daten zuzuweisen — warum
+     * brauche ich hier ein zusätzliches?» **Das ist die Antwort:** ein Wert im Datensatz des
+     * Besitzers, adressiert über die Kette der Kanten.*
+     *
+     * ⚠️ *Gemessen benutzen 21 Zeilen der alten Settings-Tabelle diese Adresse längst — 20 davon sind
+     * die Exponenten von `Prefixes.exponent`. **Nur gelesen hat sie in `record_values` nie jemand.***
+     *
+     * @param list<int> $edgeIds Von aussen nach innen.
+     */
+    public function putAt(int $recordId, array $edgeIds, TypedValue $value, string $locale = ''): void
+    {
+        $kette = $this->walkedEdges($recordId, $edgeIds);
+        $letzte = $kette[array_key_last($kette)];
+
+        $this->refuseUnwritable($letzte);
+
+        $pfad      = implode('.', $edgeIds);
+        $vorhanden = $this->valuesAtPath($recordId, $pfad, $locale);
+
+        if (count($vorhanden) > 1) {
+            throw NotYetStorable::thatFieldHasSeveralValues($letzte->name, count($vorhanden));
+        }
+
+        $this->records->putValue(
+            $vorhanden === []
+                ? EdgeRecord::at($recordId, $edgeIds, $value, $locale)
+                : new EdgeRecord($recordId, $pfad, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        );
+    }
+
+    /**
+     * Die Werte an einer Verwendungsstelle, in ihrer Reihenfolge.
+     *
+     * @param  list<int> $edgeIds
+     * @return list<EdgeRecord>
+     */
+    public function valuesAt(int $recordId, array $edgeIds, string $locale = ''): array
+    {
+        $this->walkedEdges($recordId, $edgeIds);
+
+        return $this->valuesAtPath($recordId, implode('.', $edgeIds), $locale);
+    }
+
+    /**
+     * Die Kette abgehen und dabei jede Stufe prüfen.
+     *
+     * ⚠️ **Das ist der Wert dieser Methode, nicht das Zusammensetzen des Pfades.** *Eine Adresse wie
+     * «Feld 4654, darin Feld 7788» ist nur dann etwas wert, wenn 7788 wirklich ein Feld des Zieles von
+     * 4654 ist. **Ohne die Prüfung könnte man an jede erfundene Stelle schreiben**, und es fiele erst
+     * auf, wenn jemand dort etwas sucht.*
+     *
+     * @param  list<int>      $edgeIds
+     * @return list<Relation>
+     */
+    private function walkedEdges(int $recordId, array $edgeIds): array
+    {
+        if ($edgeIds === []) {
+            throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
+        }
+
+        $record   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        $besitzer = $this->nodes->byId($record->nodeId);
+        $kette    = [];
+
+        foreach ($edgeIds as $edgeId) {
+            $gefunden = null;
+
+            foreach ($this->relations->fieldEdgesOf([...$besitzer->ancestorIds(), $besitzer->id]) as $kante) {
+                if ($kante->id === $edgeId) {
+                    $gefunden = $kante;
+                }
+            }
+
+            if ($gefunden === null) {
+                throw NotYetStorable::notAFieldOfThisModel($edgeId, $besitzer->name);
+            }
+
+            $kette[]  = $gefunden;
+            $besitzer = $this->nodes->byId($gefunden->toId);
+        }
+
+        return $kette;
+    }
+
+    /** Die Zeilen unter genau diesem Pfad. @return list<EdgeRecord> */
+    private function valuesAtPath(int $recordId, string $path, string $locale): array
+    {
+        $meine = [];
+
+        foreach ($this->records->valuesOf($recordId) as $wert) {
+            if ($wert->path === $path && $wert->locale === $locale) {
+                $meine[] = $wert;
+            }
+        }
+
+        return $meine;
+    }
+
+    /**
      * Die Zeilen, die ein Feld in diesem Datensatz belegt — in ihrer Reihenfolge.
      *
      * @return list<EdgeRecord>
@@ -243,6 +345,20 @@ final class DataEntry
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
+
+        $this->refuseUnwritable($edge);
+
+        return $edge;
+    }
+
+    /**
+     * Die zwei Verweigerungen, die für jede Schreibstelle gelten — **einmal, nicht zweimal**.
+     *
+     * ⚠️ *Herausgezogen, als {@see putAt()} dieselben Prüfungen brauchte. Zwei Kopien einer Prüfung
+     * sind zwei Orte, an denen die nächste Regel vergessen wird.*
+     */
+    private function refuseUnwritable(Relation $edge): void
+    {
         $target = $this->nodes->byId($edge->toId);
         $branch = $this->framework->branchOf($target);
 
@@ -263,8 +379,6 @@ final class DataEntry
         if ($branch->storage() === Storage::OwnRecords) {
             throw NotYetStorable::compositionsNeedTheirOwnRecords($edge->name);
         }
-
-        return $edge;
     }
 
     /**
