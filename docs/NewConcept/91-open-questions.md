@@ -5528,3 +5528,29 @@ lassen und dann anhängen. Das wäre eine Kopie, und zwar genau dort, wo der Ben
 
 ⚠️ **Nicht geraten, weil es ein Datenverlust wäre, den man erst an den Daten merkt.** *Der Eigentümer
 hat Frage 1 beantwortet und diese ausdrücklich offen gelassen.*
+
+---
+
+## OQ-136 — Was tut «Default nachtragen» mit Feldern, die schon einen Wert haben?
+
+**Raised** 2026-08-30, aus [D-533](90-decision-log.md).
+
+*Blocks:* den Nachfrage-Akt, nicht die Kopie beim Anlegen · *Status:* **offen**
+
+⚠️ **Zwei Fragen, und die erste ist ein Datenverlust, wenn man sie falsch beantwortet.**
+
+**1. Ein Feld, das schon einen Wert hat.** Bei `0..*` ist Anhängen offensichtlich richtig. Bei `1..1`
+hiesse Kopieren **einen vorhandenen Wert überschreiben** — also entweder nur leere Felder füllen,
+oder solche Datensätze überspringen und sagen, wie viele.
+
+**2. Gilt dasselbe beim *Ändern* eines Defaults?** Der Eigentümer hat *«wenn ich **neue** Default-Werte
+anlege»* gesagt. Beim Ändern ist die Frage dieselbe — *«soll aus der 7 überall eine 3 werden, wo noch
+7 steht?»* — aber er hat sie nicht gestellt, und sie ist gefährlicher: **hier ist der vorhandene Wert
+genau der, den man treffen will**, und ein Datensatz, in dem jemand bewusst 7 eingetragen hat, sieht
+von dem mit dem kopierten Default nicht zu unterscheiden aus.
+
+⚠️ *Der zweite Punkt ist der eigentliche Preis von [D-533](90-decision-log.md)s Kopie: **eine Kopie
+sagt nicht, dass sie eine war.** Ein Verweis hätte es gewusst. Ob das eine Spalte wert ist — «dieser
+Wert kam vom Default und wurde nie angefasst» — ist genau die Frage, die [D-532](90-decision-log.md)
+mit «ja» beantwortete und D-533 mit «nein». **Sie kommt hier zurück, aber nur für den Nachtrag-Akt
+statt für jedes Lesen.***
