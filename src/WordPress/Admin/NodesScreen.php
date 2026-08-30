@@ -858,22 +858,33 @@ final class NodesScreen
 
         $html .= '<div class="taxmod-preview">';
 
+        // ⚠️ **Zwei Seiten, und sie heissen jetzt, was sie sind** — *auf sein Wort: «was machen wir mit
+        // der Preview, soll ja eigentlich nur **Anzeige** und **Admin** zeigen, also wird aktuell nix
+        // gerendert».*
+        //
+        // ⚠️ *Vorher hiessen sie «as a reader sees it» und «as an editor sees it» und **beide liefen auf
+        // `Level::Admin`** — zwei Frontend-Ansichten an einer Stelle, die keine ist. Jetzt zeigt die
+        // eine das Frontend und die andere das Modell.*
+        //
+        // ⚠️ **Der Unterschied ist nicht nur der Zweck, sondern welche Kanten mitkommen:** *die Anzeige
+        // lässt Einstellungen weg (das ist der Sinn der Sichtprüfung), die Admin-Seite nimmt sie **mit**
+        // — dort sind sie der Inhalt. Deshalb sah er auf einem Einstellungsknoten nichts.*
         foreach ([
-            [__('As a reader sees it', 'taxmod'), Purpose::Display, false],
-            [__('As an editor sees it', 'taxmod'), Purpose::Edit, true],
-        ] as [$title, $purpose, $editable]) {
+            [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown']],
+            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $edges],
+        ] as [$title, $purpose, $editable, $level, $gezeigte]) {
             $html .= '<div class="taxmod-preview-side">'
                 . '<h4>' . esc_html($title) . '</h4>'
                 // ⚠️ **No field prefix.** A preview must not be submittable: two forms with the same
                 // field names on one page is how a person saves the thing they were only looking at.
                 . $this->rendering->nodeAsForm(
                     $selected,
-                    $visibility['shown'],
+                    $gezeigte,
                     $values,
                     $purpose,
                     '',
                     $locale,
-                    Level::Admin,
+                    $level,
                     $editable
                 )->markup
                 . '</div>';

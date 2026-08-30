@@ -41,6 +41,7 @@ use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Renderer\RenderedSetting;
 use Taxmod\Core\Renderer\RenderResult;
 use Taxmod\Core\Renderer\Surroundings;
+use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
@@ -1543,6 +1544,15 @@ final class Rendering
 
     private function containerFor(Node $node, Purpose $purpose): Renderer
     {
+        // ⚠️ **Ein Einstellungsknoten wird als Tabelle gezeichnet** ([D-546](../../../docs/NewConcept/90-decision-log.md)),
+        // *dieselbe Regel wie für eine Einstellungskante, eine Ebene höher: er ist dasselbe Ding, nur
+        // von aussen betrachtet. **Und er hat keine Renderer-Einstellung** — seit
+        // [D-545](../../../docs/NewConcept/90-decision-log.md) erbt nichts im Settings-Ast von der
+        // Wurzel, also gäbe es unten nichts zu lesen und `form` käme als stille Vorgabe heraus.*
+        if ($node->kind === NodeKind::Setting) {
+            return $this->renderers->byName(TableRenderer::NAME);
+        }
+
         // ⚠️ **Auch aus den Datensätzen, und ohne dies war die Wahl wirkungslos** ([D-529](../../../docs/NewConcept/90-decision-log.md)).
         // *Hier stand nur die Auflösung über die `settings`-Tabelle. Der Renderer liegt seit dem Umzug
         // im Datensatz — also hätte der Eigentümer `table` wählen können und weiter ein Formular
@@ -2255,7 +2265,24 @@ final class Rendering
             [...$gesehen, $edge->toId => true]
         );
 
-        $behaelter = $this->containerFor($ziel, $purpose);
+        // ⚠️ **Eine Einstellung wird immer als Tabelle gezeichnet, auf sein Wort:** *«bei Einstellung
+        // kann ich damit rechnen — ich möchte, dass sie immer mit table_render gerendert wird, egal ob
+        // ein Feld oder mehrere, egal ob Multiplizität `0..1` oder `...*`»*
+        // ([D-546](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ **Das ist die Auflösung seines Dilemmas.** *Eine Einstellung muss gezeichnet werden, und
+        // das, was sagt **wie**, ist selbst eine Einstellung — erben Einstellungen Einstellungen,
+        // entsteht die Selbstbezüglichkeit, die [D-545](../../../docs/NewConcept/90-decision-log.md)
+        // beseitigt hat; erben sie keine, sagt niemand, wie sie zu zeichnen sind. **Also wird es nicht
+        // gesagt, sondern abgeleitet:** der Behälter ist die Tabelle, und was in den Zellen steht,
+        // entscheidet seine Regel [D-540](../../../docs/NewConcept/90-decision-log.md) — Auswahl oder
+        // Eingabe. **Nichts stellt seine eigene Bearbeitungsfläche ein.***
+        //
+        // ⚠️ *Kein `Level`-Vorbehalt: eine Einstellung wird nur im Modell bearbeitet, nie im Frontend
+        // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
+        $behaelter = $edge->kind->isSetting()
+            ? $this->renderers->byName(TableRenderer::NAME)
+            : $this->containerFor($ziel, $purpose);
 
         return [
             'renderer' => $behaelter->name(),
