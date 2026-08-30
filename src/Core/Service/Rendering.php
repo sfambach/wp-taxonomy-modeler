@@ -611,7 +611,14 @@ final class Rendering
             return null;
         }
 
-        $settings = $this->settings->resolve($this->settings->chainFor($node));
+        // ⚠️ **Auch aus den Datensätzen** ([D-529](../../../docs/NewConcept/90-decision-log.md)) — *hier
+        // stand nur die Auflösung über die `settings`-Tabelle, und der Eigentümer hat die Folge gesehen:
+        // «Renderer-Änderung ändert die Preview nicht, selbst nach Speichern». **Gemessen: `Integer`
+        // sagt im Modell `slider`, und diese Methode zeichnete ein Textfeld** — den Typvorgabewert.*
+        //
+        // ⚠️ **Sechster Fall derselben Sache an einem Tag:** *Daten umgezogen, ein Leser
+        // stehengeblieben. Dieselbe Zeile wie in {@see self::containerFor()} und aus demselben Grund.*
+        $settings = $this->withModelValues($this->settings->resolve($this->settings->chainFor($node)), $node);
 
         if ($value === null || $value->isNothing()) {
             $value = ($settings[SettingKey::DefaultValue->value] ?? null)?->value ?? TypedValue::nothing();

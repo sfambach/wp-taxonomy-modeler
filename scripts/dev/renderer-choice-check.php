@@ -41,6 +41,10 @@ require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\Rendering;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Settings;
@@ -209,6 +213,80 @@ foreach ($stellen as [$vonName, $feldName, $soll]) {
         $gewaehlt?->name() ?? 'nichts'
     );
 }
+
+echo "\n== Und die Vorschau folgt dem, was im Datensatz steht ==\n";
+
+// ⚠️ **Sein Befund:** *«Renderer-Änderung ändert die Preview nicht, selbst nach Speichern.»* *Gemessen
+// stimmte es: `Integer` sagte im Modell `slider`, und {@see \Taxmod\Core\Service\Rendering::valueOfType()}
+// zeichnete ein Textfeld — den Typvorgabewert. **Sechster Fall derselben Sache an einem Tag:** die
+// Angaben sind in die Datensätze gezogen ([D-529](../../docs/NewConcept/90-decision-log.md)), und dieser
+// Leser fragte weiter nur die alte Tabelle.*
+//
+// ⚠️ **Die Erwartung wird aus dem Modell abgeleitet, nicht hingeschrieben.** *Eine Liste «Integer muss
+// slider sein» wäre morgen rot, weil er den Renderer ändern darf — und genau das soll er ja. Geprüft
+// wird die **Übereinstimmung**: was das Modell sagt, muss man an der Zeichnung wiedererkennen.*
+// ⚠️ *Ein eigener Zeichenlauf, weil diese Prüfung bisher nur die Registratur befragte — sie will jetzt
+// wissen, was am Ende **auf der Seite** steht.*
+$rendering = new Rendering(
+    $nodes,
+    $framework,
+    $settings,
+    $registry,
+    new SeededTypeNodes($nodes, $framework),
+    new Labels(new WpdbLabelRepository(), $framework),
+    null,
+    $model,
+    $edges
+);
+
+$merkmal = [
+    'slider'   => 'type="range"',
+    'toggle'   => 'taxmod-toggle',
+    'spinner'  => 'type="number"',
+    'field'    => 'type="text"',
+    'checkbox' => 'type="checkbox"',
+    'color'    => 'type="color"',
+];
+
+$geprueft = 0;
+$daneben  = [];
+
+foreach ($wpdb->get_results(
+    'SELECT DISTINCT s.node_id FROM ' . Schema::table('records') . ' s
+     INNER JOIN ' . Schema::table('record_values') . ' w ON w.record_id = s.id
+     WHERE w.value_ref IS NOT NULL',
+    ARRAY_A
+) ?: [] as $z) {
+    $node = $nodes->find((int) $z['node_id']);
+
+    if ($node === null) {
+        continue;
+    }
+
+    $name = $rendering->rendererNameFor($node);
+
+    if ($name === null || ! isset($merkmal[$name])) {
+        continue;
+    }
+
+    $gezeichnet = $rendering->valueOfType($node, Purpose::Edit);
+
+    if ($gezeichnet === null) {
+        continue;
+    }
+
+    ++$geprueft;
+
+    if (! str_contains($gezeichnet->markup, $merkmal[$name])) {
+        $daneben[] = "{$node->name}: sagt «{$name}», zeichnet ohne «{$merkmal[$name]}»";
+    }
+}
+
+check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [], implode(' · ', array_slice($daneben, 0, 4)));
+
+// ⚠️ *Der Gegenfall: es wurde überhaupt etwas geprüft. Ohne ihn wäre «keine Abweichung» auch dann grün,
+// wenn kein einziger Knoten einen Renderer trägt.*
+check('und es wurden Knoten geprueft', $geprueft >= 3, (string) $geprueft);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
