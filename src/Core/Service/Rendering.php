@@ -921,6 +921,23 @@ final class Rendering
         // entfallen ist. **Sie waren danach reine Mitläufer**: der Aufrufer baute sie, die Methode nahm
         // sie an, und niemand las sie mehr.*
         array $targetHrefs = [],
+        /**
+         * ⚠️ **Der Wert je Angabe, damit die Zeile ihn zeigen kann** — *auf sein Wort: «ich verstehe
+         * nicht, warum es nicht im Setting `Display Option` angezeigt wird, das ist genau dafür da».
+         * Und das Konzept sagt dasselbe: «der Eingabemechanismus existiert bereits: die
+         * Einstellungsseite».*
+         *
+         * @var array<int, TypedValue> Kanten-Id => Wert
+         */
+        array $values = [],
+        /** ⚠️ *Der Namensvorsatz der Wertbedienungen — leer heisst «nur zeigen, nicht abschicken».* */
+        string $valuePrefix = '',
+        /**
+         * ⚠️ *Das Formular, in das die Wertbedienungen gehören. **Nicht das der Zeile**: sein Wunsch war
+         * ein Speichern oben und keiner je Wert — «Save in Fields sollte eigentlich auch über die Seite
+         * gehen».*
+         */
+        string $pageForm = '',
     ): array {
         if ($edges === []) {
             return [];
@@ -953,6 +970,25 @@ final class Rendering
             foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], FieldRowRenderer::formFor($edge), $edge->fromId === $declaredBy) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
+
+            // ⚠️ **Der Wert der Angabe, gezeichnet vom gewöhnlichen Abstieg.** *Bei `Display Option`
+            // steigt der in den Teil hinein und liefert **beide** Felder — `render` und `converter`;
+            // sein Satz dazu: «es sollte ja auch das zweite Feld für Converter zu sehen sein». Bei
+            // `read_only` kommt ein Schalter, bei `label_role` eine Auswahl.*
+            //
+            // ⚠️ *Ein Aufruf je Zeile, und er kostet keine Abfrage: die Kanten des Unterbaus holt
+            // {@see self::subgraph()} in einer festen Zahl von Abfragen
+            // ([D-159](../../../docs/NewConcept/90-decision-log.md)).*
+            $gezeichneterWert = $this->fieldsFor(
+                [$edge],
+                $values,
+                Purpose::Edit,
+                $valuePrefix,
+                $locale,
+                $level,
+                true,
+                $pageForm
+            );
 
             $context = new RenderContext(
                 purpose: Purpose::Edit,
@@ -999,7 +1035,15 @@ final class Rendering
                     //
                     // ⚠️ *Die Mehrfachheit bleibt: sie hängt an `surroundings->configured` und hat ihre
                     // eigene Spalte in der Zeile, nicht diesen Block.*
-                    sections: []
+                    // ⚠️ **Der gezeichnete Wert der Angabe** — *die Spalte, ohne die eine Einstellung
+                    // nicht einzustellen war. Bei `Display Option` stehen hier beide Felder des Teils.*
+                    //
+                    // ⚠️ *Der **Teildatensatz** wird nicht hier angelegt, obwohl die Multiplizität
+                    // `1..*` ihn verlangt: eine Seite anzusehen darf nichts schreiben. Er entsteht beim
+                    // ersten Speichern, in {@see \Taxmod\Core\Service\DataEntry::putSettingAt()}.*
+                    sections: $gezeichneterWert === []
+                        ? []
+                        : [FieldRowRenderer::VALUE => new Section('', $gezeichneterWert[0]->result->markup)]
                 ),
             );
 
@@ -2064,17 +2108,31 @@ final class Rendering
         $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toId, $edges)));
 
         for ($stufe = 0; $stufe < $tiefstens && $offen !== []; $stufe++) {
-            // ⚠️ *Nur Ziele, die überhaupt einen eigenen Satz haben könnten — ein `Text` hat keine
-            // Felder, und ihn zu fragen wäre eine Abfrage für eine Antwort, die schon feststeht.*
+            // ⚠️ *Nur Ziele, die überhaupt eigene Felder haben könnten — ein `Text` hat keine, und ihn
+            // zu fragen wäre eine Abfrage für eine Antwort, die schon feststeht.*
+            //
+            // ⚠️ **Und die Ausnahmeliste sagt, wer **keine** hat, nicht wer welche hat.** *Mein erster
+            // Entwurf fragte nur `Compositions` — und `DisplayOption` liegt seit
+            // [D-541](../../../docs/NewConcept/90-decision-log.md) unter **`Settings`**. **Damit blieb
+            // genau die Zeile leer, um die es ging**: der Eigentümer sah eine Wertspalte ohne Wert.
+            // Eine Liste der erlaubten Äste ist eine Liste, die beim nächsten Zweig wieder falsch ist.*
             $knoten = $this->nodes->byIds($offen);
             $fragen = [];
 
             foreach ($offen as $id) {
                 $ziel = $knoten[$id] ?? null;
 
-                if ($ziel !== null && ! isset($unterbau[$id]) && $this->framework->branchOf($ziel) === Branch::Compositions) {
-                    $fragen[] = $id;
+                if ($ziel === null || isset($unterbau[$id])) {
+                    continue;
                 }
+
+                $ast = $this->framework->branchOf($ziel);
+
+                if ($ast === Branch::DataTypes || $ast === Branch::Constants || $ast === null) {
+                    continue;
+                }
+
+                $fragen[] = $id;
             }
 
             if ($fragen === []) {

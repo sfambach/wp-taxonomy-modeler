@@ -69,12 +69,22 @@ final class ToggleRenderer extends TypedFieldRenderer
             . RenderResult::htmlTag('input', [
                 'type'  => 'hidden',
                 'name'  => $context->fieldName,
+                // ⚠️ **Sonst schickt der Schalter nichts** — *eine Tabellenzeile ist ein `<tr>`, und
+                // ein Formular darf keine Zellen umschliessen; ein Element in einer anderen Zelle
+                // steht draussen. **Dritter Fall derselben Sache**, nach dem Auswahlkasten «wie oft»
+                // und dem Namensfeld; `form-membership-check.php` hat ihn diesmal gefunden, bevor der
+                // Eigentümer ihn fand. Leer wird das Attribut weggelassen
+                // ({@see RenderResult::htmlTag()}), also kostet es nichts, wo es keins gibt.*
+                'form'  => $context->surroundings->formId,
                 'value' => '0',
             ])
             . RenderResult::htmlTag('input', [
                 'type'    => 'checkbox',
                 'class'   => 'taxmod-toggle-input',
                 'name'    => $context->fieldName,
+                // ⚠️ *Beide Eingaben des Schalters brauchen es — die verborgene **und** das Kästchen.
+                // Eine allein reicht nicht: dann käme beim Speichern immer «aus» an.*
+                'form'    => $context->surroundings->formId,
                 'value'   => '1',
                 'checked' => $on,
             ])

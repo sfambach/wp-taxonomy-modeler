@@ -55,6 +55,8 @@ final class ColorRenderer extends TypedFieldRenderer
             return RenderResult::htmlTag('input', [
                 'type'  => 'text',
                 'name'  => $context->fieldName,
+                // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+                'form'  => $context->surroundings->formId,
                 'value' => $outputValue,
             ]) . $this->patch($outputValue);
         }
@@ -62,6 +64,8 @@ final class ColorRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => 'color',
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
             'value' => $outputValue,
         ]);
     }

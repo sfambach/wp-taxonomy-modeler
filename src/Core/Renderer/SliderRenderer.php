@@ -47,6 +47,8 @@ final class SliderRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => 'range',
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
             'value' => $outputValue,
             'min'   => $this->numberSetting($context, SettingKey::Min->value),
             'max'   => $this->numberSetting($context, SettingKey::Max->value),

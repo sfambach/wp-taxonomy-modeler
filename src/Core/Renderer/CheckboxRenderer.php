@@ -64,10 +64,14 @@ final class CheckboxRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => 'hidden',
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
             'value' => '0',
         ]) . RenderResult::htmlTag('input', [
             'type'    => 'checkbox',
             'name'    => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'    => $context->surroundings->formId,
             'value'   => '1',
             'checked' => ! $context->value->isNothing() && $context->value->asBool(),
         ]);

@@ -215,6 +215,80 @@ if ($rendererKnoten === null) {
     }
 }
 
+echo "\n== Und derselbe Weg ueber die Seite, wie ein Mensch ihn geht ==\n";
+
+// ⚠️ **Das ist die Zusage, die zaehlt.** *Der Eigentümer: «gut, ich sehe die Settings, kann sie aber
+// nicht einstellen» — und danach, als ich daneben einen eigenen Wähler baute: «das ist genau dafür da,
+// und das ist glaube ich das, was du am Konzept vorbei machst». **Also prüft dieser Abschnitt den Weg,
+// den das Konzept nennt**: die Wertspalte des Einstellungsblocks, ein Speichern für die Seite.*
+//
+// ⚠️ *Es wird wirklich abgeschickt — `handlePost()` mit Nonce und Fähigkeit, kein Umweg um die
+// Prüfungen des Randes (`CD-5`). Die Weiterleitung am Ende wird abgefangen, sonst endete der Lauf hier.*
+$rendererId = $rendererKnoten === null ? 0 : (int) $rendererKnoten['id'];
+
+if ($rendererId === 0 || $aussen === 0 || $innen === 0) {
+    check('die Zutaten fuer den Seitenweg stehen bereit', false, "renderer={$rendererId} aussen={$aussen} innen={$innen}");
+} else {
+    check('die Zutaten fuer den Seitenweg stehen bereit', true);
+
+    $verwalter = get_users(['role' => 'administrator', 'number' => 1]);
+
+    if ($verwalter === []) {
+        check('ein Administrator ist da', false);
+    } else {
+        wp_set_current_user($verwalter[0]->ID);
+
+        add_filter('wp_redirect', static function ($ziel) {
+            throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
+        }, 10, 1);
+
+        $_POST = [
+            'action'        => 'taxmod_node',
+            'id'            => (string) $knotenId,
+            'do'            => 'put_setting',
+            '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
+            // Genau die Adresse, die die Wertspalte zeichnet.
+            'taxmod_value'  => [(string) $aussen => [(string) $innen => (string) $rendererId]],
+        ];
+        $_REQUEST = $_POST;
+
+        $meldung = '';
+
+        try {
+            $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+            $plugin = $bau->newInstanceWithoutConstructor();
+            $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+            $plugin->screen()->handlePost();
+        } catch (RuntimeException $e) {
+            $meldung = str_starts_with($e->getMessage(), '__weitergeleitet__')
+                ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
+                : $e->getMessage();
+        }
+
+        check('der Akt laeuft durch', $meldung === 'ok', $meldung);
+
+        $nachher = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
+
+        check(
+            'und der Renderer steht danach im Modell',
+            ($nachher['renderer']->value->text ?? null) === 'spinner',
+            $nachher['renderer']->value->text ?? 'nichts'
+        );
+
+        // ⚠️ **Der Gegenfall: der Teildatensatz ist entstanden, obwohl vorher keiner da war.** *Die
+        // Multiplizität von `Display Option` ist `1..*` — der Eigentümer hat darauf bestanden. Angelegt
+        // wird er beim **Speichern**, nicht beim Ansehen: eine Seite zu zeichnen darf nichts schreiben.*
+        $teile = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
+             INNER JOIN ' . Schema::table('record_values') . ' v ON v.value_ref = r.id
+             WHERE v.path = %s',
+            (string) $aussen
+        ));
+
+        check('ein Teildatensatz ist dabei entstanden', $teile >= 1, (string) $teile);
+    }
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

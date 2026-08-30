@@ -98,6 +98,8 @@ final class PlainRenderer implements Renderer
                 'type'  => 'text',
                 'class' => 'taxmod-no-renderer',
                 'name'  => $context->fieldName,
+                // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+                'form'  => $context->surroundings->formId,
                 'value' => $shown,
             ])
         );

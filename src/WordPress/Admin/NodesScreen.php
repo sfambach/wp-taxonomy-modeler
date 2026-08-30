@@ -5,7 +5,6 @@ namespace Taxmod\WordPress\Admin;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
-use Taxmod\Core\Exception\SettingDoesNotApply;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeKind;
@@ -668,14 +667,18 @@ final class NodesScreen
                 // out of the panel because a form cannot sit inside a form, which I had dismissed as
                 // an HTML limitation. `PageSlot::Display`'s own docblock places labels here because *a
                 // label is what a thing is called*; an icon is how it is **marked**, the same band.
-                // ⚠️ **Die Renderer-Wahl stand im Code und wurde nirgends platziert.** *Der Eigentümer:
-                // «ich kann Renderer nicht auswählen» — und gemessen hatte {@see self::rendererChoice()}
-                // **keinen einzigen Aufruf**. Gebaut und nicht angeschlossen; das Muster dieses Abends.*
+                // ⚠️ **Hier stand für eine Stunde ein eigener Renderer-Wähler, und er war falsch.**
+                // *Der Eigentümer hat es gestellt: «ich verstehe nicht, warum es nicht im Setting
+                // `Display Option` angezeigt wird, das ist genau dafür da, und das ist glaube ich das,
+                // was du am Konzept vorbei machst.» **Er hatte recht, und das Konzept sagt es wörtlich:**
+                // «der Eingabemechanismus existiert bereits: die Einstellungsseite»
+                // ([02-field-and-setting.md](../../../docs/NewConcept/02-field-and-setting.md)).*
                 //
-                // ⚠️ *Sie steht bei «Display», weil sie genau das sagt: wie dieser Knoten gezeichnet
-                // wird. Kein eigener Block — ein zweiter Kasten für ein Auswahlfeld wäre mehr Rahmen
-                // als Inhalt.*
-                $this->labelsPanel($selected) . $this->rendererChoice($selected)
+                // ⚠️ *Ein zweites Steuerelement für dieselbe Angabe ist genau das, was `R1` verbietet —
+                // und es hätte zwei Wege zum selben Wert gegeben, die auseinanderlaufen können. **Der
+                // Renderer wird jetzt in der Wertspalte des Einstellungsblocks gesetzt**, wie jede
+                // andere Angabe des Modells.*
+                $this->labelsPanel($selected)
             ),
 
             // ⚠️ **No band heading, because the panel carries its own** — with the `?` on it. Two
@@ -1540,7 +1543,21 @@ final class NodesScreen
                 self::SETTING_FIELD,
                 '',
                 \Taxmod\Core\Renderer\Level::Admin,
-                $targetHrefs
+                $targetHrefs,
+                // ⚠️ **Der Wert je Angabe, damit die Zeile ihn zeigen und annehmen kann.** *Auf sein
+                // Wort — «ich verstehe nicht, warum es nicht im Setting `Display Option` angezeigt
+                // wird, das ist genau dafür da» — und das Konzept sagt dasselbe: «der
+                // Eingabemechanismus existiert bereits: die Einstellungsseite».*
+                //
+                // ⚠️ *In **einem** Zug für alle Zeilen (`CD-7`), aus dem `default`-Satz des Knotens.*
+                $this->data->settingValuesOf(
+                    $selected->id,
+                    array_map(static fn (Relation $edge): int => $edge->id, $dieser)
+                ),
+                self::VALUE_FIELD,
+                // ⚠️ *Ein Speichern oben und keines je Wert — sein Wunsch: «Save in Fields sollte
+                // eigentlich auch über die Seite gehen».*
+                self::pageForm($selected)
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -1555,6 +1572,8 @@ final class NodesScreen
                     . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
                     . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
                     . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
+                    // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.*
+                    . '<th>' . esc_html__('Value', 'taxmod') . '</th>'
                     . '<th style="width:3em"></th>'
                     . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
@@ -1748,54 +1767,6 @@ final class NodesScreen
 
     
 
-    /**
-     * The renderer, **chosen** — never typed.
-     *
-     * ⚠️ **The owner's own words, and they settle it:** *of course the renderer should be picked —
-     * there are only certain ones for the current purpose, and how would the user know the name?*
-     * ([D-358](../../../docs/NewConcept/90-decision-log.md)). The generic box above writes a
-     * setting by typing its value, which for this key means knowing a token that lives in the
-     * code. **So this key gets the one control it always needed**, and the eligible set comes from
-     * {@see \Taxmod\Core\Service\Rendering::choicesForNode()} — the same core method the real
-     * panel will ask, narrowed by type **and** by purpose.
-     *
-     * ⚠️ **Not a rendered setting, and therefore not the line [R20a](../../../docs/NewConcept/30-renderer.md)
-     * draws.** It draws no value: it offers a set the core computed. *A picker that consumes
-     * `eligibleFor` cannot drift from the renderers, because it has no opinion of its own about
-     * what fits.*
-     */
-    private function rendererChoice(Node $selected): string
-    {
-        $eligible = $this->rendering->choicesForNode($selected);
-
-        if ($eligible === []) {
-            // ⚠️ Honest rather than empty-but-open: a node with no simple type wants a
-            // **structural** renderer — a form, a table — and none is built. Offering the typed
-            // ones here would be offering a spinner for a supplier.
-            return '<p class="description">'
-                . esc_html__('No renderer can be chosen here yet — this node is not a simple data type, and the structural renderers are not built.', 'taxmod')
-                . '</p>';
-        }
-
-        // ⚠️ **Mit Vorauswahl, und ohne sie wäre die Liste eine Falle.** *Sie zeigte immer den ersten
-        // Eintrag, und der nächste Klick schriebe ihn — **auch wenn niemand ihn wollte**. Dieselbe
-        // Überlegung wie beim Auswahlkasten für einen Verweis.*
-        $jetzt   = $this->rendering->rendererNameFor($selected);
-        $options = '';
-
-        foreach ($eligible as $renderer) {
-            $options .= '<option value="' . esc_attr($renderer->name()) . '"'
-                . ($renderer->name() === $jetzt ? ' selected' : '') . '>'
-                . esc_html($renderer->name())
-                . '</option>';
-        }
-
-        return $this->form(
-            $selected->id,
-            [['put_renderer', esc_html__('Use this renderer', 'taxmod'), __('Only the renderers that can draw this type are offered', 'taxmod')]],
-            '<select name="renderer_name" style="flex:1">' . $options . '</select>'
-        );
-    }
 
 
     /**
@@ -2229,53 +2200,7 @@ final class NodesScreen
     // ------------------------------------------------------------------ acting
 
 
-    /**
-     * The submitted renderer name, only if a renderer of that name exists.
-     *
-     * ⚠️ **A `<select>` is input, so it is checked** (`CD-5`) — but against what **exists**, not
-     * against what is **eligible**. [D-360](../../../docs/NewConcept/90-decision-log.md): the
-     * eligible set is what the screen **offers** ([R14](../../../docs/NewConcept/30-renderer.md#r12r17):
-     * *so the settings UI can offer a choice*), and the owner drew the line where R14 leaves it —
-     * *you cannot turn a text into a binary number; well, you can, it just makes no sense, **unless
-     * you have a special use case***.
-     *
-     * ⚠️ *The first version of this refused anything off the list, which is a fence R14 does not
-     * build.* What is still caught is the thing that is genuinely broken: a name **no renderer
-     * answers to** resolves to the fallback and shows as *no renderer* on a node that has one — a
-     * fault two steps from its cause.
-     */
-    /**
-     * Den gewählten Renderer am Knoten festschreiben — in seinem Datensatz.
-     *
-     * ⚠️ *Zwei Prüfungen vor dem Schreiben, und beide sagen etwas anderes: **kennt die Registratur den
-     * Namen** (sonst ist die Eingabe erfunden), und **steht er als Knoten im Modell** (sonst gibt es
-     * nichts, worauf der Verweis zeigen könnte). Der zweite Fall ist echt: die Registratur wird im Code
-     * erweitert, die Knoten im Modell — und dazwischen liegt immer ein Moment.*
-     */
-    private function chooseRenderer(int $nodeId, string $submitted): void
-    {
-        $name      = $this->registeredRendererName($nodeId, $submitted);
-        $rendererId = $this->rendering->nodeForRendererNamed($name);
 
-        if ($rendererId === null) {
-            $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
-
-            throw SettingDoesNotApply::thatRendererCannotDrawThis($name, $node->name);
-        }
-
-        $this->data->putSettingValue($nodeId, SettingKey::Renderer, TypedValue::ofReference($rendererId));
-    }
-
-    private function registeredRendererName(int $nodeId, string $submitted): string
-    {
-        $node = $this->editor->find($nodeId) ?? throw NodeNotFound::withId($nodeId);
-
-        if (! $this->rendering->knowsRenderer($submitted)) {
-            throw SettingDoesNotApply::thatRendererCannotDrawThis($submitted, $node->name);
-        }
-
-        return $submitted;
-    }
 
     /** The chain a setting written **at this node** belongs to. */
     /**
@@ -2596,8 +2521,113 @@ final class NodesScreen
     private function saveNodePage(int $nodeId, int $edgeId, string $name, string $locale): void
     {
         $this->saveSettings($nodeId, $edgeId, $name);
+        $this->saveSettingValues($nodeId);
         $this->saveLabels($nodeId, $locale);
         $this->saveKind($nodeId, $edgeId);
+    }
+
+    /**
+     * Die Werte der Angaben, die in der Wertspalte eingegeben wurden.
+     *
+     * ⚠️ **Das Konzept nennt diesen Weg als den einzigen:** *«der Eingabemechanismus existiert bereits:
+     * **die Einstellungsseite**. Was sich ändert, ist nur, wie sie zu verstehen ist — hier schreibt der
+     * Autor Feldwerte am Modell»* ([02-field-and-setting.md](../../../docs/NewConcept/02-field-and-setting.md)).
+     * *Und der Eigentümer hat mich daran erinnert, als ich daneben einen eigenen Renderer-Wähler gebaut
+     * hatte: «das ist genau dafür da, und das ist glaube ich das, was du am Konzept vorbei machst».*
+     *
+     * ⚠️ **Ein Speichern für die ganze Seite, keines je Wert** — *sein Wunsch, zweimal: «biete keinen
+     * Button an» und «Save in Fields sollte eigentlich auch über die Seite gehen». Deshalb hängen die
+     * Bedienelemente am Seitenformular und werden hier zusammen gelesen; ein Akt, eine Änderungsnummer
+     * ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Die Adresse ist zweistufig, weil der Wert zwei Stufen tief liegt** — `taxmod_value[aussen]`
+     * für eine Angabe, die direkt an ihrer Kante steht, und `taxmod_value[aussen][innen]` für eine, die
+     * in einem eigenen Teil wohnt ([D-541](../../../docs/NewConcept/90-decision-log.md)). *Beide Formen
+     * kommen aus derselben Zeichnung; **was hier nicht geraten wird, ist welche** — `is_array()`
+     * entscheidet es.*
+     */
+    private function saveSettingValues(int $nodeId): void
+    {
+        $eingereicht = isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD])
+            ? wp_unslash($_POST[self::VALUE_FIELD])
+            : [];
+
+        if ($eingereicht === []) {
+            return;
+        }
+
+        // ⚠️ *Nur Kanten, die dieser Knoten wirklich trägt — was das Formular sonst noch mitbringt,
+        // gehört nicht hierher (`CD-5`).*
+        $aussen = [];
+
+        foreach ($this->editor->fieldsOf($nodeId) as $edge) {
+            $aussen[$edge->id] = $edge;
+        }
+
+        foreach ($eingereicht as $rohAussen => $roh) {
+            $aussenId = absint($rohAussen);
+            $kante    = $aussen[$aussenId] ?? null;
+
+            if ($kante === null) {
+                continue;
+            }
+
+            if (! is_array($roh)) {
+                $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $roh);
+
+                continue;
+            }
+
+            // ⚠️ *Die Felder des Teils, einmal geholt — nicht je Wert (`CD-7`).*
+            $innen = [];
+
+            foreach ($this->editor->fieldsOf($kante->toId) as $feld) {
+                $innen[$feld->id] = $feld;
+            }
+
+            foreach ($roh as $rohInnen => $wert) {
+                $innenId    = absint($rohInnen);
+                $innenKante = $innen[$innenId] ?? null;
+
+                if ($innenKante === null || is_array($wert)) {
+                    continue;
+                }
+
+                $this->putOneSettingValue($nodeId, $kante, $innenId, $innenKante, (string) $wert);
+            }
+        }
+    }
+
+    /**
+     * Einen einzelnen Wert schreiben — oder ihn stehen lassen, wenn nichts kam.
+     *
+     * ⚠️ *Der Typ wird an der Kante bestimmt, deren Wert es **ist** — bei einem Teil also an der inneren.
+     * `valuesFrom()` ist derselbe Weg, den der Datensatzblock nimmt; ein zweiter wäre eine zweite
+     * Gelegenheit, anders zu deuten.*
+     *
+     * ⚠️ **Ein leeres Feld löscht nicht.** *Sonst räumte jedes Speichern der Seite alles ab, was auf ihr
+     * nicht gezeichnet wurde — und gezeichnet wird nur, was die Wertspalte trägt.*
+     */
+    private function putOneSettingValue(
+        int $nodeId,
+        Relation $carrier,
+        int $innerId,
+        Relation $ofValue,
+        string $submitted
+    ): void {
+        $characters = trim(sanitize_text_field($submitted));
+
+        if ($characters === '') {
+            return;
+        }
+
+        $value = $this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? null;
+
+        if ($value === null || $value->isNothing()) {
+            return;
+        }
+
+        $this->data->putSettingAt($nodeId, $carrier->id, $innerId, $value);
     }
 
     /**
@@ -2956,7 +2986,9 @@ final class NodesScreen
             ? sanitize_text_field(wp_unslash((string) $_POST[self::NAME_FIELD][$edge]))
             : '';
         $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
-        $rendererName = isset($_POST['renderer_name']) ? sanitize_text_field(wp_unslash($_POST['renderer_name'])) : '';
+        // ⚠️ *`$rendererName` stand hier und ist mit seinem Wähler gegangen: der Renderer kommt jetzt
+        // als **Wert** in der Spalte des Einstellungsblocks, unter `taxmod_value`, wie jede andere
+        // Angabe des Modells.*
         $stay   = $id;
 
         // ⚠️ **One act, one change number** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
@@ -3052,7 +3084,6 @@ final class NodesScreen
                 // ihren Renderer im Datensatz tragen, **spurlos**. Der Eigentümer hat es gesehen: «den
                 // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
                 // Schreiber an der alten Stelle.*
-                'put_renderer'   => $this->chooseRenderer($id, $rendererName),
                 // ⚠️ **These two name their key in the button** (`do[<key>]`), because one form now
                 // holds every row and a hidden `setting_key` could only ever say one of them.
                 'empty_setting'  => $this->settings->put($this->settingChain($id, $edge), $this->keyOfRowAct(), TypedValue::nothing()),

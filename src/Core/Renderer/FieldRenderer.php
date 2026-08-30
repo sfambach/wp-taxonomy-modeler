@@ -57,6 +57,9 @@ final class FieldRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'      => 'text',
             'name'      => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht —
+            // eine Tabellenzelle neben der Zelle mit dem `<form>`. Leer wird das Attribut weggelassen.*
+            'form'      => $context->surroundings->formId,
             'value'     => $this->outputValue($context),
             'pattern'   => $context->type?->pattern(),
             'inputmode' => $context->type?->inputMode(),

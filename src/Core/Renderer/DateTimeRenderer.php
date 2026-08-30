@@ -51,6 +51,8 @@ final class DateTimeRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => $this->controlType($context),
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
             'value' => $this->forControl($context, 'T'),
         ]);
     }

@@ -43,6 +43,8 @@ final class SpinnerRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => 'number',
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
             'value' => $this->outputValue($context),
             'min'   => $this->numberSetting($context, SettingKey::Min->value),
             'max'   => $this->numberSetting($context, SettingKey::Max->value),

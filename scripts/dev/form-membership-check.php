@@ -128,8 +128,13 @@ function stummeElemente(string $markup): array
             continue;
         }
 
-        // Draußen ist gut, wenn es sein Formular nennt — und zwar dieses.
-        if (preg_match('/\bform="([^"]*)"/', $tag, $gesagt) && $gesagt[1] === $formId) {
+        // ⚠️ **Draussen ist gut, wenn es überhaupt ein Formular nennt.**
+        //
+        // ⚠️ *Hier stand `=== $formId`, also «das Formular der Zeile» — und das war zu streng. Die
+        // Wertbedienungen der Einstellungen nennen absichtlich das Formular der **Seite**: der
+        // Eigentümer wollte ein Speichern oben und keines je Wert. **Die Prüfung hätte richtige Arbeit
+        // als Fehler gemeldet** — dasselbe, was `multiplicity-check.php` heute mit einem Namen tat.*
+        if (preg_match('/\bform="([^"]+)"/', $tag)) {
             continue;
         }
 
@@ -199,7 +204,14 @@ foreach (['Passiv', 'Dimension', 'Einheitenwert'] as $name) {
         'taxmod_setting',
         '',
         Level::Admin,
-        []
+        [],
+        // ⚠️ **Mit der Wertspalte, sonst prüft der Lauf eine Zeile, die es so nicht gibt.** *Seit dem
+        // Einstellungsblock tragen die Zeilen Bedienelemente für den **Wert** — und die stehen in einer
+        // eigenen Zelle, also **ausserhalb** des Formulars der Aktionsspalte. Genau die Lage, in der
+        // schon zweimal ein Element stumm war.*
+        [],
+        'taxmod_value',
+        'taxmod-page-' . $id
     );
 
     $stumm    = [];

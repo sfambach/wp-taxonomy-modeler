@@ -85,6 +85,9 @@ final class FieldRowRenderer implements Renderer
         return 'taxmod-field-' . $edge->id;
     }
 
+    /** Unter diesem Namen erwartet die Zeile den gezeichneten **Wert** ihrer Angabe. */
+    public const VALUE = 'value';
+
     public function name(): string
     {
         return self::NAME;
@@ -125,6 +128,7 @@ final class FieldRowRenderer implements Renderer
             . $this->cell($subject->kind->value, 'taxmod-field-kind', true)
             . $this->origin($context)
             . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
+            . $this->valueCell($context)
             . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-field-acts', false, true);
 
         return RenderResult::of(
@@ -203,6 +207,35 @@ final class FieldRowRenderer implements Renderer
      * ⚠️ *It is the one key kept **out** of the panel below and shown in the row instead, because it
      * is the only edge-only key there is (D-351) — the thing that makes a use site a use site.*
      */
+    /**
+     * Der **Wert** der Angabe — die Spalte, ohne die eine Einstellung nicht einzustellen ist.
+     *
+     * ⚠️ **Auf sein Wort, und das Konzept sagt es wörtlich:** *«der Eingabemechanismus existiert
+     * bereits: **die Einstellungsseite**. Was sich ändert, ist nur, wie sie zu verstehen ist — hier
+     * schreibt der Autor Feldwerte am Modell»* ([02-field-and-setting.md](../../../docs/NewConcept/02-field-and-setting.md)).
+     *
+     * ⚠️ **Und er hat mich dabei zu Recht gestellt.** *Ich hatte einen eigenen Renderer-Wähler oben auf
+     * die Seite gesetzt; er: «ich verstehe nicht, warum es nicht im Setting Display Option angezeigt
+     * wird, das ist genau dafür da, und das ist glaube ich das, was du am Konzept vorbei machst».
+     * **Ein zweites Steuerelement für dieselbe Angabe ist genau das, was `R1` verbietet** — und die
+     * Zeile, die es hätte tragen sollen, hatte einfach keine Wertspalte.*
+     *
+     * ⚠️ *Gezeichnet hat es der gewöhnliche Abstieg, nicht diese Klasse: bei `Display Option` steigt er
+     * in den Teil hinein und liefert dessen Felder (`render`, `converter`), bei `read_only` einen
+     * Schalter. **Ein Behälter fasst keinen Wert an** ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function valueCell(RenderContext $context): string
+    {
+        $gezeichnet = $context->surroundings->sections[self::VALUE] ?? null;
+
+        if ($gezeichnet === null || trim($gezeichnet->body) === '') {
+            // ⚠️ *Ein Gedankenstrich und keine leere Zelle — sonst liest die Spalte nicht als Spalte.*
+            return $this->cell('<span class="taxmod-nothing">—</span>', 'taxmod-field-value', false, true);
+        }
+
+        return $this->cell($gezeichnet->body, 'taxmod-field-value', false, true);
+    }
+
     private function multiplicity(RenderContext $context): string
     {
         $drawn = $context->surroundings->configured[SettingKey::Multiplicity->value] ?? null;
