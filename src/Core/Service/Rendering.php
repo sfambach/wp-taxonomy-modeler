@@ -890,7 +890,10 @@ final class Rendering
             // ⚠️ **The row's controls name the row's form**, because a `<tr>` cannot be wrapped in
             // one — see {@see FieldRowRenderer::formFor()}. Without it the multiplicity select sat
             // outside every form and submitted nothing.
-            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], FieldRowRenderer::formFor($edge)) as $drawn) {
+            // ⚠️ **Dieselbe Angabe wie die Zeile selbst** ([D-376](../../../docs/NewConcept/90-decision-log.md)):
+            // *eine geerbte Kante gehört dem Vorfahren, und «wie oft» hier zu ändern hiesse, es für alle
+            // zu ändern — still. Die Zeile wusste es und gab es nicht weiter.*
+            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], FieldRowRenderer::formFor($edge), $edge->fromId === $declaredBy) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
 
@@ -980,6 +983,12 @@ final class Rendering
         Level $level = Level::Admin,
         array $choices = [],
         string $formId = '',
+        /**
+         * ⚠️ *Ob eine Angabe **hier** geändert werden darf — an einer geerbten Kante nicht
+         * ([D-376](../../../docs/NewConcept/90-decision-log.md)). Vorgabe `true`, damit die
+         * Aufrufstellen unverändert bleiben, die eine eigene Sache zeichnen.*
+         */
+        bool $editable = true,
     ): array {
         // ⚠️ **A use site is configured too, and its type is its target's.** [C8](../../../docs/NewConcept/10-domain-core.md)
         // gives an edge settings of its own and [D-091](90-decision-log.md) resolves them the same
@@ -1038,7 +1047,7 @@ final class Rendering
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId);
+                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $editable);
 
                 continue;
             }
@@ -1633,6 +1642,7 @@ final class Rendering
         ?SimpleType $subjectType = null,
         array $choices = [],
         string $formId = '',
+        bool $editable = true,
     ): RenderedSetting {
         $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
         $options  = [];
@@ -1776,7 +1786,12 @@ final class Rendering
                     // implemented [D-399](90-decision-log.md)'s second half — which lived on `hide`
                     // being able to hide a **field**. Now it hides a node in the tree, and a hidden
                     // node's renderer choice is as real as any other's.*
-                    editable: true,
+                    // ⚠️ **Und seit heute auch: nur, wo die Kante erklärt ist** ([D-376](90-decision-log.md)).
+                    // *Hier stand `true`, fest. Der Eigentümer hat gefragt, ob die Umsetzung fehlt —
+                    // **sie fehlte**: gemessen an `render with label` war **keine einzige** Auswahl
+                    // gesperrt, auch nicht bei den drei geerbten Zeilen. Die Zeile wusste es (ihre
+                    // Spalte «From» sagte `inherited`) und gab es nicht weiter.*
+                    editable: $editable,
                     surroundings: new Surroundings(options: $options, mayBeNothing: $mayBeNothing, formId: $formId)
                 )
             ),
@@ -1834,6 +1849,27 @@ final class Rendering
     public function nodeForRendererNamed(string $name): ?int
     {
         return $this->model?->nodeForRendererNamed($name);
+    }
+
+    /**
+     * Welcher Renderer an diesem Knoten **jetzt** gilt.
+     *
+     * ⚠️ **Damit eine Auswahl zeigen kann, was gesetzt ist.** *Eine Auswahlliste ohne Vorauswahl ist
+     * keine Auskunft, sondern eine Falle: sie zeigt immer den ersten Eintrag, und der nächste Klick
+     * schreibt ihn — **auch wenn niemand ihn wollte**.*
+     *
+     * ⚠️ *Über {@see self::withModelValues()}, also einschliesslich dessen, was im Datensatz steht.
+     * `valueOfType()` tut das an dieser Stelle noch nicht und liest nur die alte Tabelle — notiert, nicht
+     * hier mitgeändert.*
+     */
+    public function rendererNameFor(Node $node, Purpose $purpose = Purpose::Edit): ?string
+    {
+        $settings = $this->withModelValues(
+            $this->settings->resolve($this->settings->chainFor($node)),
+            $node
+        );
+
+        return $this->renderers->chosenFor($node, $settings, $purpose, $this->typeOfNode($node))?->name();
     }
 
     /**

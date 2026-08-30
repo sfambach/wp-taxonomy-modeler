@@ -1498,18 +1498,29 @@ final class NodesScreen
         // wäre die zweite Art, dasselbe zu zeichnen, die `R1` verbietet; **dieselbe Tabelle, anders
         // gefiltert**, ist keine.*
         //
-        // ⚠️ *Die Sorte kommt vom **Zielknoten** und wird in zwei Abfragen für alle Zeilen aufgelöst,
-        // samt Vorfahrenlauf ({@see \Taxmod\Core\Repository\NodeRepository::resolvedKinds()}) — kein
-        // Aufstieg je Zeile (`CD-7`).*
-        $sorten = $this->editor->kindsOfTargets($edges);
-
+        // ⚠️ **Die Einteilung kommt von der **Kante**, nicht vom Zielknoten** ([D-526](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ *Vorher fragte diese Stelle die Sorte des **Ziels** — und der Eigentümer hat den Widerspruch
+        // in einer einzigen Zeile gesehen: auf dem Knoten `form` stand `with_label` **in der Tabelle
+        // Fields**, und in ihrer eigenen Spalte «Kind» stand `setting`. **Gemessen: fünf von sieben
+        // Einstellungskanten lagen unter Fields** — `orientation`, `exponent`, `label_role`,
+        // `with_label` und die vier Ziele, deren Knotensorte `field` ist.*
+        //
+        // ⚠️ **Seine Frage war «falscher Relationstyp gewählt?» — nein, die Art war richtig.** *Die
+        // Kante sagt es seit [D-526](../../../docs/NewConcept/90-decision-log.md) selbst, und die Sorte
+        // des Zielknotens ist eine zweite Abschrift derselben Aussage. **Zwei Angaben, die dasselbe
+        // sagen sollen, und eine sagt es falsch** — dieselbe Auflösung wie bei `mandatory`
+        // ([D-405](../../../docs/NewConcept/90-decision-log.md)) und `persistent`
+        // ([D-538](../../../docs/NewConcept/90-decision-log.md)), und beide Male kam der Satz von ihm.*
         $html = '';
 
-        foreach ([NodeKind::Field, NodeKind::Setting] as $sorte) {
+        foreach ([false, true] as $istEinstellung) {
             $dieser = array_values(array_filter(
                 $edges,
-                static fn (Relation $edge): bool => ($sorten[$edge->id] ?? NodeKind::standard()) === $sorte
+                static fn (Relation $edge): bool => $edge->kind->isSetting() === $istEinstellung
             ));
+
+            $sorte = $istEinstellung ? NodeKind::Setting : NodeKind::Field;
 
             $body = '';
 
