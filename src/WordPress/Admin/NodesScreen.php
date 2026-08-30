@@ -1583,7 +1583,15 @@ final class NodesScreen
                 self::VALUE_FIELD,
                 // ⚠️ *Ein Speichern oben und keines je Wert — sein Wunsch: «Save in Fields sollte
                 // eigentlich auch über die Seite gehen».*
-                self::pageForm($selected)
+                self::pageForm($selected),
+                // ⚠️ **Die Teile, damit die Wertspalte zeigt, was gespeichert ist.** *Er hat den Mangel
+                // gefunden: «auch bezweifle ich, dass dies Datensätze sind, die wir hier sehen». Bei
+                // `1..*` sind es mehrere, und jeder wird eine Zeile
+                // ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
+                $this->data->settingPartsOf(
+                    $selected->id,
+                    array_map(static fn (Relation $edge): int => $edge->id, $dieser)
+                )
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -2563,8 +2571,75 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $edgeId, $name);
         $this->saveSettingValues($nodeId);
+        $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
         $this->saveKind($nodeId, $edgeId);
+    }
+
+    /**
+     * Die Werte, die in einem **Teil** eingegeben wurden — adressiert über seine Satz-Id.
+     *
+     * ⚠️ **Die Satz-Id ist die Adresse, und das ist seine Lehre.** *Zweimal hat er mich gestossen —
+     * «warum wieder path? verstehe ich nicht» und «arbeitest auf einmal mit Pfaden anstatt mit den Ids,
+     * die wir haben» — und als es dastand: «siehst du, Satz-Id».*
+     *
+     * ⚠️ **Sie ist eindeutig, wo eine Kette es nicht wäre:** *bei mehreren Teilen
+     * ([D-548](../../../docs/NewConcept/90-decision-log.md), für das Farbschema) tragen alle **dieselben**
+     * Kanten — nur der Satz unterscheidet sie.*
+     *
+     * ⚠️ **Und die Id aus dem Formular wird nicht geglaubt** (`CD-5`). *Erlaubt ist nur ein Teil, den
+     * dieser Knoten wirklich hat, und darin nur eine Kante, die dem Knoten des Teils gehört. Sonst
+     * könnte ein verändertes Formular in einen fremden Datensatz schreiben.*
+     */
+    private function savePartValues(int $nodeId): void
+    {
+        $eingereicht = isset($_POST[Rendering::PART_FIELD]) && is_array($_POST[Rendering::PART_FIELD])
+            ? wp_unslash($_POST[Rendering::PART_FIELD])
+            : [];
+
+        if ($eingereicht === []) {
+            return;
+        }
+
+        // ⚠️ *Alle Feldkanten des Knotens, damit sowohl Einstellungen als auch zusammengesetzte Felder
+        // erfasst sind — beide leben in einem Teil.*
+        $kanten = array_map(
+            static fn (Relation $edge): int => $edge->id,
+            $this->editor->fieldsOf($nodeId)
+        );
+
+        $erlaubt = [];
+
+        foreach ($this->data->settingPartsOf($nodeId, $kanten) as $liste) {
+            foreach ($liste as $teil) {
+                $erlaubt[$teil['id']] = (int) $teil['nodeId'];
+            }
+        }
+
+        foreach ($eingereicht as $rohTeil => $werte) {
+            $teilId = absint($rohTeil);
+            $imTeil = $erlaubt[$teilId] ?? null;
+
+            if ($imTeil === null || ! is_array($werte)) {
+                continue;
+            }
+
+            $innen = [];
+
+            foreach ($this->editor->fieldsOf($imTeil) as $feld) {
+                $innen[$feld->id] = $feld;
+            }
+
+            foreach ($werte as $rohKante => $wert) {
+                $kante = $innen[absint($rohKante)] ?? null;
+
+                if ($kante === null || is_array($wert)) {
+                    continue;
+                }
+
+                $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $wert, $teilId);
+            }
+        }
     }
 
     /**
@@ -2654,7 +2729,13 @@ final class NodesScreen
         Relation $carrier,
         int $innerId,
         Relation $ofValue,
-        string $submitted
+        string $submitted,
+        /**
+         * ⚠️ *Ist der Teil schon bekannt — weil das Formular seine **Satz-Id** mitgeschickt hat —, wird
+         * direkt in ihn geschrieben. Dann muss niemand ihn über die Trägerkante suchen, und bei mehreren
+         * Teilen ([D-548](../../../docs/NewConcept/90-decision-log.md)) trifft es den richtigen.*
+         */
+        int $partId = 0
     ): void {
         $characters = trim(sanitize_text_field($submitted));
 
@@ -2665,6 +2746,12 @@ final class NodesScreen
         $value = $this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? null;
 
         if ($value === null || $value->isNothing()) {
+            return;
+        }
+
+        if ($partId !== 0) {
+            $this->data->put($partId, $ofValue->id, $value);
+
             return;
         }
 

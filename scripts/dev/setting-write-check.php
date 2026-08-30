@@ -52,6 +52,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -287,6 +288,104 @@ if ($rendererId === 0 || $aussen === 0 || $innen === 0) {
 
         check('ein Teildatensatz ist dabei entstanden', $teile >= 1, (string) $teile);
     }
+}
+
+echo "\n== Die Wertspalte zeigt, was gespeichert ist ==\n";
+
+// ⚠️ **Er hat den Mangel gefunden, bevor ich ihn zugab:** *«auch bezweifle ich, dass dies Datensätze
+// sind, die wir hier sehen — bitte überrasch mich, dass es doch so ist.» **Gemessen hatte er recht:**
+// gezeichnet wurden die **Kanten** des Teils, kein einziger seiner Kanten-Datensätze wurde gelesen. Im
+// Teil von `Passiv` stand `render = form`, der Auswahlkasten zeigte nichts.*
+//
+// ⚠️ **Und die Adresse ist seine Lehre:** *zweimal «arbeitest auf einmal mit Pfaden anstatt mit den Ids,
+// die wir haben», und als es dastand: «siehst du, Satz-Id». Ein Teil wird über
+// `taxmod_part[<Satz-Id>][<Kanten-Id>]` angesprochen — eindeutig auch bei mehreren Teilen
+// ([D-548](../../docs/NewConcept/90-decision-log.md)).*
+$verwalter = get_users(['role' => 'administrator', 'number' => 1]);
+
+if ($verwalter === []) {
+    check('ein Administrator ist da', false);
+} else {
+    wp_set_current_user($verwalter[0]->ID);
+
+    $passiv = (int) $wpdb->get_var(
+        'SELECT id FROM ' . Schema::table('nodes') . " WHERE name = 'Passiv' LIMIT 1"
+    );
+
+    $gilt = $passiv === 0
+        ? null
+        : (new ModelValues($records, $edges, $nodes, $framework))->forNode($nodes->byId($passiv))['renderer']->value->text ?? null;
+
+    check('«Passiv» traegt einen Renderer im Datensatz', $gilt !== null, (string) ($gilt ?? 'nichts'));
+
+    // ⚠️ *Das $_POST des Aktes von oben steht noch da und wuerde die Zeichnung stoeren — eine
+    // Seite ansehen ist kein Akt.*
+    $_POST    = [];
+    $_REQUEST = [];
+    $_GET['taxmod_node'] = (string) $passiv;
+    $_GET['page']        = 'taxmod-nodes';
+
+    $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+    $plugin = $bau->newInstanceWithoutConstructor();
+    $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+    $html = (string) $plugin->screen()->render();
+
+    // ⚠️ *Die Adresse muss die Satz-Id tragen — sonst könnte bei mehreren Teilen niemand sagen, welcher
+    // gemeint ist.*
+    check(
+        'die Bedienung wird ueber die Satz-Id angesprochen',
+        preg_match('/name="' . Rendering::PART_FIELD . '\[\d+\]\[\d+\]"/', $html) === 1,
+        'keine Teil-Adresse im Formular'
+    );
+
+    // ⚠️ **Der Kern der Zusage: sie zeigt den gespeicherten Wert.** *Vorher stand dort «nichts», und ein
+    // Speichern hätte einen Wert überschrieben, den niemand gesehen hat.*
+    $zeigt = null;
+
+    if (preg_match_all('/<select[^>]*name="' . Rendering::PART_FIELD . '\[\d+\]\[\d+\]"[^>]*>(.*?)<\/select>/s', $html, $treffer)) {
+        foreach ($treffer[1] as $inhalt) {
+            if (preg_match('/<option value="[^"]*"\s+selected>([^<]+)<\/option>/', $inhalt, $gewaehlt)) {
+                $zeigt = trim($gewaehlt[1]);
+
+                break;
+            }
+        }
+    }
+
+    check('und sie zeigt den gespeicherten Renderer', $zeigt === $gilt, (string) ($zeigt ?? 'nichts') . ' gegen ' . (string) ($gilt ?? 'nichts'));
+
+    // ⚠️ **Jeder gespeicherte Renderer zeigt in den Renderer-Ast — und diese Zusage steht hier, weil ich
+    // sie am eigenen Fehler gelernt habe.**
+    //
+    // ⚠️ *Ich wollte `Passiv` nach einem Test auf `form` zurückstellen und suchte den Knoten nach
+    // **Namen** mit `LIMIT 1`. **Es gibt zwei namens `form`**: die Label-Rolle `#733` und den Renderer
+    // `#43511` ([D-022](../../docs/NewConcept/90-decision-log.md): Knotennamen sind absichtlich nicht
+    // eindeutig). Geschrieben wurde die Rolle. Der Leser meldete weiter «form», weil er den **Namen**
+    // zurückgibt — und der Auswahlkasten zeigte nichts, weil `#733` nicht unter seinen Möglichkeiten
+    // ist. **Ein Wert, der richtig heisst und falsch zeigt, ist schlimmer als ein leerer.***
+    //
+    // ⚠️ *Gemessen danach: 59 Werte, alle richtig; meiner war der einzige falsche.*
+    $rendererPfad = (string) $wpdb->get_var(
+        'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
+    );
+
+    $daneben = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' w
+         INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = w.value_ref
+         WHERE w.edge_id = %d AND k.path NOT LIKE %s',
+        $innen,
+        $wpdb->esc_like($rendererPfad . '.') . '%'
+    ));
+
+    $gesamt = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d AND value_ref IS NOT NULL',
+        $innen
+    ));
+
+    check('jeder gespeicherte Renderer zeigt in den Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
+
+    // ⚠️ *Der Gegenfall: es gibt überhaupt gespeicherte Renderer.*
+    check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

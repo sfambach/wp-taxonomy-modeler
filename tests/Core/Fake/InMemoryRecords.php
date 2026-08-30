@@ -42,6 +42,21 @@ final class InMemoryRecords implements RecordRepository
         ));
     }
 
+    /**
+     * @param  list<int>                    $recordIds
+     * @return array<int, list<EdgeRecord>>
+     */
+    public function valuesOfMany(array $recordIds): array
+    {
+        $nachSatz = [];
+
+        foreach ($recordIds as $id) {
+            $nachSatz[$id] = $this->valuesOf($id);
+        }
+
+        return $nachSatz;
+    }
+
     public function valuesOf(int $recordId): array
     {
         $meine = array_filter(

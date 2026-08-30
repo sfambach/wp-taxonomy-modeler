@@ -436,6 +436,21 @@ final class Rendering
          * @var array<int, true> Knoten-Ids, die auf diesem Weg schon besucht wurden.
          */
         array $gesehen = [],
+        /**
+         * ⚠️ **Die Teile je Trägerkante — der Grund, warum in der Wertspalte nichts stand.**
+         *
+         * ⚠️ *Der Eigentümer: «auch bezweifle ich, dass dies Datensätze sind, die wir hier sehen». **Er
+         * hatte recht:** gezeichnet wurden die **Kanten** des Teils, und kein einziger seiner
+         * Kanten-Datensätze wurde gelesen. Gemessen an `Passiv`: im Teil steht `render = form`, der
+         * Auswahlkasten zeigte nichts.*
+         *
+         * ⚠️ *Eine **Liste** je Kante, weil eine Einstellung mehrere Teile haben kann
+         * ([D-548](../../../docs/NewConcept/90-decision-log.md), für das Farbschema) — und **ein Teil
+         * ist eine Zeile** ([D-546](../../../docs/NewConcept/90-decision-log.md)).*
+         *
+         * @var array<int, list<array{id: int, werte: array<int, TypedValue>}>>
+         */
+        array $parts = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -544,7 +559,7 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen);
+            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? []);
 
             $fields[] = new RenderedField(
                 $edge,
@@ -961,6 +976,14 @@ final class Rendering
          * gehen».*
          */
         string $pageForm = '',
+        /**
+         * ⚠️ *Die Teile je Trägerkante, geladen **vor** dem Zeichnen
+         * ([D-159](../../../docs/NewConcept/90-decision-log.md)) — sonst zeigte die Wertspalte leere
+         * Bedienelemente, obwohl im Teil ein Wert stand.*
+         *
+         * @var array<int, list<array{id: int, werte: array<int, TypedValue>}>>
+         */
+        array $parts = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -1015,7 +1038,8 @@ final class Rendering
                 [],
                 // ⚠️ *Der Knoten dieser Seite gilt als «schon besucht» — sonst klappt eine Einstellung,
                 // die auf ihn selbst zeigt, ihn ein zweites Mal auf ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
-                [$declaredBy => true]
+                [$declaredBy => true],
+                $parts
             );
 
             $context = new RenderContext(
@@ -2106,6 +2130,19 @@ final class Rendering
     private const TIEFSTENS = 3;
 
     /**
+     * Unter diesem Namen kommen die Werte eines **Teils** zurück — `taxmod_part[<Satz-Id>][<Kanten-Id>]`.
+     *
+     * ⚠️ **Die Satz-Id ist die Adresse, und das ist seine Lehre von heute Abend.** *Zweimal hat er mich
+     * gestossen — «warum wieder path? verstehe ich nicht» und «arbeitest auf einmal mit Pfaden anstatt
+     * mit den Ids, die wir haben» — und beim dritten Mal, als es dastand: «siehst du, Satz-Id».*
+     *
+     * ⚠️ *Sie ist eindeutig, wo eine Kette es nicht wäre: bei mehreren Teilen
+     * ([D-548](../../../docs/NewConcept/90-decision-log.md)) tragen alle **dieselben** Kanten, und nur
+     * der Satz unterscheidet sie.*
+     */
+    public const PART_FIELD = 'taxmod_part';
+
+    /**
      * Alle Feldkanten, die der Abstieg brauchen wird — **eine Abfrage je Stufe**.
      *
      * ⚠️ **[D-159](../../../docs/NewConcept/90-decision-log.md), und der Satz gilt wörtlich:** *«the
@@ -2211,6 +2248,7 @@ final class Rendering
         array $unterbau,
         array $values,
         array $gesehen = [],
+        array $teile = [],
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
@@ -2256,19 +2294,36 @@ final class Rendering
 
         // ⚠️ *Der Name des Feldes trägt den Weg: `v[<aussen>][<innen>]`. Damit ist die Adresse im
         // Formular dieselbe Kette von Kanten-Ids, die auch der Pfad im Datensatz ist.*
-        $teile = $this->fieldsFor(
-            $innen,
-            $values,
-            $purpose,
-            $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
-            $locale,
-            $level,
-            $editable,
-            $formId,
-            $tiefe + 1,
-            $unterbau,
-            [...$gesehen, $edge->toId => true]
-        );
+        // ⚠️ **Ein Teil wird über seine Satz-Id angesprochen, nicht über eine Kette von Kanten.**
+        //
+        // ⚠️ *Hier stand `v[<aussen>][<innen>]` — die Kette. Der Eigentümer hat mich zweimal daran
+        // gestossen: «warum wieder path? verstehe ich nicht» und «arbeitest auf einmal mit Pfaden
+        // anstatt mit den Ids, die wir haben». **Die Daten geben ihm recht:** die Werte eines Teils
+        // liegen in **seinem eigenen** Knoten-Datensatz, dort über seine eigenen Kanten geschlüsselt;
+        // verbunden wird über den Verweis. Also ist die Satz-Id die Adresse — und sie ist eindeutig,
+        // auch bei mehreren Teilen ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
+        //
+        // ⚠️ **Je Teil eine Zeile.** *Ohne Teil eine leere Zeile **ohne Namen**, also ohne Adresse: sie
+        // kann nichts abschicken, und das ist richtig — es gibt nichts, worin sie schreiben könnte.*
+        $zeilen = [];
+
+        foreach ($teile === [] ? [null] : $teile as $teil) {
+            $zeilen[] = $this->fieldsFor(
+                $innen,
+                $teil === null ? [] : $teil['werte'],
+                $purpose,
+                $teil === null || $fieldPrefix === '' ? '' : self::PART_FIELD . '[' . $teil['id'] . ']',
+                $locale,
+                $level,
+                $editable,
+                $formId,
+                $tiefe + 1,
+                $unterbau,
+                [...$gesehen, $edge->toId => true]
+            );
+        }
+
+        $teile = $zeilen[0] ?? [];
 
         // ⚠️ **Eine Einstellung wird immer als Tabelle gezeichnet, auf sein Wort:** *«bei Einstellung
         // kann ich damit rechnen — ich möchte, dass sie immer mit table_render gerendert wird, egal ob
@@ -2299,7 +2354,10 @@ final class Rendering
                     locale: $locale,
                     level: $level,
                     editable: $editable,
-                    surroundings: new Surroundings(parts: $teile, formId: $formId),
+                    // ⚠️ **`records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
+                    // er stand leer** — *der Grund, warum eine Einstellung mit `1..*` trotzdem nur eine
+                    // Zeile zeigte. `parts` bleibt daneben für die Behälter, die nur einen Satz kennen.*
+                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId),
                 )
             ),
         ];

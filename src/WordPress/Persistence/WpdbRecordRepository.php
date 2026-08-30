@@ -73,6 +73,59 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+    /**
+     * ⚠️ *Eine Abfrage für alle Sätze, sonst kostet jeder Teil einer Einstellung eine eigene (`CD-7`).
+     * Dieselbe Reihenfolge wie {@see self::valuesOf()} — `position`, bei Gleichstand die Id.*
+     *
+     * @param  list<int>                    $recordIds
+     * @return array<int, list<EdgeRecord>>
+     */
+    public function valuesOfMany(array $recordIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ *Jede angefragte Id bekommt einen Eintrag, auch die ohne Werte — sonst müsste jeder
+        // Aufrufer denselben `?? []` schreiben, und einer würde ihn vergessen.*
+        $nachSatz    = array_fill_keys($ids, []);
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
+                 FROM ' . Schema::table('record_values') . '
+                 WHERE record_id IN (' . $platzhalter . ') ORDER BY record_id ASC, position ASC, id ASC',
+                ...$ids
+            ),
+            ARRAY_A
+        );
+
+        foreach ($rows ?: [] as $r) {
+            $nachSatz[(int) $r['record_id']][] = new EdgeRecord(
+                (int) $r['record_id'],
+                (string) $r['path'],
+                (int) $r['edge_id'],
+                (string) $r['locale'],
+                TypedValue::fromStorage(
+                    $r['value_int'] === null ? null : (int) $r['value_int'],
+                    StoredDecimal::read($r['value_decimal']),
+                    $r['value_text'] === null ? null : (string) $r['value_text'],
+                    $r['value_date'] === null ? null : (string) $r['value_date'],
+                    $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                ),
+                (int) $r['id'],
+                (int) $r['position'],
+            );
+        }
+
+        return $nachSatz;
+    }
+
     public function valuesOf(int $recordId): array
     {
         global $wpdb;

@@ -27,6 +27,20 @@ interface RecordRepository
     /** @return list<EdgeRecord> Everything one record holds, in one statement. */
     public function valuesOf(int $recordId): array;
 
+    /**
+     * Die Kanten-Datensätze **mehrerer** Knoten-Datensätze — in einer Abfrage.
+     *
+     * ⚠️ **Damit die Teile einer Einstellung nicht je Teil eine Abfrage kosten** (`CD-7`,
+     * [D-159](../../../docs/NewConcept/90-decision-log.md): *«both loaded before it starts»*). *Eine
+     * Einstellung mit `1..*` kann mehrere Teile haben — [D-548](../../../docs/NewConcept/90-decision-log.md),
+     * für das Farbschema — und jeder ist ein eigener Knoten-Datensatz. Mit `valuesOf()` je Teil wäre die
+     * Zahl der Abfragen die Zahl der Zeilen, und genau das verbietet die Regel.*
+     *
+     * @param  list<int>                    $recordIds
+     * @return array<int, list<EdgeRecord>> Je angefragte Id genau ein Eintrag, notfalls leer.
+     */
+    public function valuesOfMany(array $recordIds): array;
+
     public function putValue(EdgeRecord $value): void;
 
     public function forgetValue(int $recordId, string $path, string $locale): void;

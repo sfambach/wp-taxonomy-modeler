@@ -610,6 +610,106 @@ final class DataEntry
     }
 
     /**
+     * Die **Teile** einer Einstellung samt ihren Werten — je Trägerkante eine Liste.
+     *
+     * ⚠️ **Das fehlende Stück, und er hat es gefunden, bevor ich es zugab.** *Der Eigentümer, nachdem
+     * ich ihm die Zeichnung erklärt hatte: «auch bezweifle ich, dass dies Datensätze sind, die wir hier
+     * sehen — bitte überrasch mich, dass es doch so ist.» **Er hatte recht:** die Bedienelemente in der
+     * Wertspalte wurden aus den **Kanten** des Teils gezeichnet, und kein einziger seiner
+     * Kanten-Datensätze wurde gelesen. Gemessen an `Passiv`: im Teil steht `render = form`, der
+     * Auswahlkasten zeigte nichts.*
+     *
+     * ⚠️ **Eine Liste je Trägerkante, weil eine Einstellung mehrere Teile haben kann**
+     * ([D-548](../../../docs/NewConcept/90-decision-log.md)): *`Display Option` trägt `1..*`, und der
+     * Grund ist seiner — «mehrere Display Options bedeutet mehrere Renderer möglich … hatten wir
+     * definiert für Farbschema». **Ein Teil ist eine Zeile** der Tabelle
+     * ([D-546](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Drei Abfragen für einen ganzen Block, gleich wie viele Kanten und Teile: die Sätze des
+     * Knotens, ihre Kanten-Datensätze, und die Werte aller Teile in einem Zug
+     * ({@see \Taxmod\Core\Repository\RecordRepository::valuesOfMany()}). `CD-7` und
+     * [D-159](../../../docs/NewConcept/90-decision-log.md).*
+     *
+     * @param  list<int>                                  $edgeIds Trägerkanten
+     * @return array<int, list<array{id: int, werte: array<int, TypedValue>}>>
+     *         Kanten-Id => je Teil seine Satz-Id und seine Werte, geschlüsselt über die **innere** Kante.
+     */
+    public function settingPartsOf(int $nodeId, array $edgeIds): array
+    {
+        if ($edgeIds === []) {
+            return [];
+        }
+
+        $gesucht = [];
+
+        foreach ($edgeIds as $id) {
+            $gesucht[(string) $id] = $id;
+        }
+
+        // ⚠️ *Auf Modellebene gibt es keine Werte, nur Vorgaben ([D-026](../../../docs/NewConcept/90-decision-log.md)).*
+        $satzIds = [];
+
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->kind === RecordKind::Default) {
+                $satzIds[] = $satz->id;
+            }
+        }
+
+        if ($satzIds === []) {
+            return [];
+        }
+
+        /** @var array<int, list<int>> Kanten-Id => Satz-Ids ihrer Teile, in der Reihenfolge der Werte */
+        $teileJeKante = [];
+        $alleTeile    = [];
+
+        foreach ($this->records->valuesOfMany($satzIds) as $werte) {
+            foreach ($werte as $wert) {
+                $kante = $gesucht[$wert->path] ?? null;
+
+                if ($kante === null || $wert->value->reference === null) {
+                    continue;
+                }
+
+                $teileJeKante[$kante][] = $wert->value->reference;
+                $alleTeile[]            = $wert->value->reference;
+            }
+        }
+
+        if ($alleTeile === []) {
+            return [];
+        }
+
+        $innere = $this->records->valuesOfMany(array_values(array_unique($alleTeile)));
+        $aus    = [];
+
+        foreach ($teileJeKante as $kante => $teile) {
+            foreach ($teile as $teilId) {
+                $werte = [];
+
+                foreach ($innere[$teilId] ?? [] as $wert) {
+                    if (! $wert->value->isNothing()) {
+                        $werte[$wert->edgeId] = $wert->value;
+                    }
+                }
+
+                // ⚠️ *Der Knoten des Teils kommt mit, damit der Rand beim Speichern prüfen kann, ob eine
+                // geschickte Kante überhaupt zu diesem Teil gehört (`CD-5`) — ohne dafür noch einmal
+                // nachzuschlagen.*
+                $satz = $this->records->find($teilId);
+
+                $aus[$kante][] = [
+                    'id'     => $teilId,
+                    'nodeId' => $satz?->nodeId ?? 0,
+                    'werte'  => $werte,
+                ];
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
      * Der `default`-Satz eines Knotens — angelegt, wenn es noch keinen gibt.
      *
      * ⚠️ *Genau **einer**: mehrere `default`-Sätze an einem Knoten wären zwei Antworten auf eine Frage,
