@@ -140,7 +140,22 @@ echo "\n== 7. An inherited attribute can be answered ==\n";
 $resistor = $editor->createNode('__p6 Resistor', $part->id);
 $child    = $data->create($resistor->id);
 $data->put($child->id, $description->id, TypedValue::ofText('__p6 inherited'));
-check('the child record answers what the parent declared', $data->valuesOf($child->id)[0]->value->text === '__p6 inherited');
+// ⚠️ **Nach der **Kante** gesucht und nicht an Stelle `[0]`.** *Die Zusage stand auf dem ersten
+// Eintrag, und seit dem 2026-08-31 steht dort etwas anderes: was die Multiplizität verlangt, entsteht
+// **mit** dem Datensatz — auf sein Wort «genauso bei `1..*` muss ein Record vorhanden sein». `__p6 lines`
+// zeigt auf eine Komposition, also legt `create()` deren Teil an, und der ist die erste Zeile.*
+//
+// ⚠️ *Die Absicht der Zusage war nie «die erste Zeile», sondern «der Wert dieses Feldes». **Eine Prüfung,
+// die über eine Position sucht, misst die Reihenfolge mit.***
+$geerbt = null;
+
+foreach ($data->valuesOf($child->id) as $wert) {
+    if ($wert->edgeId === $description->id) {
+        $geerbt = $wert->value->text;
+    }
+}
+
+check('the child record answers what the parent declared', $geerbt === '__p6 inherited', (string) ($geerbt ?? 'nichts'));
 
 echo "\n== 8. The two id spaces are separate ==\n";
 $maxRecord = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('records'));

@@ -139,10 +139,51 @@ final class DataEntry
 
         $id = $this->records->add($record);
 
+        $this->ensureRequiredParts($id, $model, $kind);
+
         // ⚠️ *Die Marke faehrt mit, sonst gibt die Methode etwas zurueck, das anders aussieht als das,
         // was sie geschrieben hat. **Gemessen war genau das der Fall**: die Spalte trug `default`, das
         // zurueckgegebene Exemplar sagte `user`.*
         return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->kind);
+    }
+
+    /**
+     * Was die Multiplizität verlangt, entsteht mit dem Datensatz.
+     *
+     * ⚠️ **Auf sein Wort, und es ist dieselbe Regel wie bei den Eingaben:** *«genauso bei `1..*` muss ein
+     * Record vorhanden sein»* — gesagt unmittelbar nach *«wenn `1..1` steht, muss ein Wert gesetzt
+     * sein»*. **Einmal für den Wert, einmal für den Datensatz.**
+     *
+     * ⚠️ *Bis heute war das ein einmaliger Nachtrag: 61 Knoten bekamen ihre `DisplayOption` per Skript.
+     * **Ein Nachtrag hält die Regel für den Bestand und nicht für das nächste, was jemand anlegt.***
+     *
+     * ⚠️ **Nur Kanten, die in diesem Datensatz überhaupt etwas halten.** *Eine Einstellung hält in einem
+     * **Benutzer**satz nichts ([D-538](../../../docs/NewConcept/90-decision-log.md)), also entstünde dort
+     * ein Teil, den niemand füllen darf.*
+     *
+     * ⚠️ *Und nur, wo das Ziel einen eigenen Satz braucht — das entscheidet
+     * {@see self::ownsItsRecord()} nach [D-541](../../../docs/NewConcept/90-decision-log.md), und
+     * {@see self::createPart()} sagt Nein, wenn es anders ist.*
+     */
+    private function ensureRequiredParts(int $recordId, Node $model, RecordKind $kind): void
+    {
+        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
+            if (! $edge->multiplicity->requiresOne() || $edge->hide) {
+                continue;
+            }
+
+            if ($kind === RecordKind::User && ! $this->keepsValues($edge)) {
+                continue;
+            }
+
+            $ziel = $this->nodes->find($edge->toId);
+
+            if ($ziel === null || ! $this->ownsItsRecord($edge, $ziel)) {
+                continue;
+            }
+
+            $this->createPart($recordId, $edge->id);
+        }
     }
 
     /**

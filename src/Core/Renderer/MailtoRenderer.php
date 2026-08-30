@@ -54,6 +54,11 @@ final class MailtoRenderer extends TypedFieldRenderer
         return RenderResult::htmlTag('input', [
             'type'  => 'email',
             'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
+            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
+            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
+            'required' => ! $context->surroundings->mayBeNothing,
             'value' => $this->outputValue($context),
         ]);
     }
