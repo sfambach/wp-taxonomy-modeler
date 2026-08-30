@@ -52,6 +52,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
         'compositions' => 'taxmod_branch_compositions_id',
         'data-types'   => 'taxmod_branch_data_types_id',
         'constants'    => 'taxmod_branch_constants_id',
+        'settings'     => 'taxmod_branch_settings_id',
     ];
 
     public function __construct(
@@ -207,6 +208,10 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         $this->ensure(self::BRANCH_OPTIONS['data-types'], 'Data Types', $primitives);
         $this->ensure(self::BRANCH_OPTIONS['constants'], 'Constants', $primitives);
+
+        // ⚠️ *Direkt unter der Wurzel und nicht unter `Primitives`: die Mengen, aus denen eine
+        // Einstellung gewählt wird, sind keine Datentypen.*
+        $this->ensure(self::BRANCH_OPTIONS['settings'], 'Settings', $root);
 
         // ⚠️ Roles are nodes and sit in **no data branch** — an attribute must not be able to
         // point at one. They are the engine's own vocabulary (D-151).

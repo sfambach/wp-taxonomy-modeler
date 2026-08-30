@@ -39,12 +39,30 @@ enum Branch: string
     /** Fixed values a person may extend — a unit, a colour. The value is a reference to a node. */
     case Constants = 'constants';
 
+    /**
+     * Die Mengen, aus denen eine **Einstellung** ausgewählt wird — Renderer, Wandler, Namensrollen,
+     * Validatoren.
+     *
+     * ⚠️ **Er sagt nicht «das ist eine Einstellung» — das sagt die Kante**
+     * ([D-526](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer, als ich ihm die
+     * Platz-Variante vorschlug: «ich sehe nicht, dass wir unbedingt einen Knoten brauchen, wenn wir
+     * eine Einstellungskante auf `int` setzen und sie `exponent` nennen.» **Er hat recht: der Typ kommt
+     * vom Ziel, die Einstellung von der Kante.***
+     *
+     * ⚠️ **Wofür dieser Ast dann da ist:** *eine Einstellung, deren Wert eine **Auswahl** ist, braucht
+     * eine Menge, aus der gewählt wird — und diese Mengen lagen bisher verstreut: `Renderer` und
+     * `Converter` unter `Constants`, `Label roles` neben den Ästen, wo die Speicherfrage **keine
+     * Antwort** hatte ([OQ-139](../../../docs/NewConcept/91-open-questions.md)). Hier haben sie einen
+     * Platz, und die Antwort ist dieselbe wie bei `Constants`: der Wert ist ein Knotenverweis.*
+     */
+    case Settings = 'settings';
+
     /** Which kind of edge reaches a node in this branch (D-161). */
     public function relationKind(): RelationKind
     {
         return match ($this) {
-            self::Model, self::Constants     => RelationKind::Aggregation,
-            self::Compositions, self::DataTypes => RelationKind::Composition,
+            self::Model, self::Constants, self::Settings => RelationKind::Aggregation,
+            self::Compositions, self::DataTypes          => RelationKind::Composition,
         };
     }
 
@@ -52,8 +70,8 @@ enum Branch: string
     public function holdsData(): bool
     {
         return match ($this) {
-            self::Model, self::Compositions   => true,
-            self::DataTypes, self::Constants  => false,
+            self::Model, self::Compositions                 => true,
+            self::DataTypes, self::Constants, self::Settings => false,
         };
     }
 
@@ -64,7 +82,9 @@ enum Branch: string
             self::Model        => Storage::ExternalReference,
             self::Compositions => Storage::OwnRecords,
             self::DataTypes    => Storage::InsideTheRecord,
-            self::Constants    => Storage::NodeRef,
+            // ⚠️ *Dieselbe Antwort wie `Constants`, und das ist der ganze Zweck: **damit die
+            // Speicherfrage überhaupt eine Antwort hat.** Ein Knoten neben den Ästen hatte keine.*
+            self::Constants, self::Settings => Storage::NodeRef,
         };
     }
 }

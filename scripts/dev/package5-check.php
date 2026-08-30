@@ -66,12 +66,16 @@ $editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
 $stored = new WpdbLabelRepository();
 $labels = new Labels($stored, $framework);
 
-echo "\n== 1. The roles are nodes, and they sit in no data branch ==\n";
+echo "\n== 1. Die Rollen sind Knoten, und ihr Zweig haelt keine Daten ==\n";
 foreach (SeededRole::cases() as $role) {
     $id   = $framework->roleId($role);
     $node = $id === 0 ? null : $nodes->find($id);
     check("{$role->value} is a node", $node !== null && $node->name === $role->value);
-    check("  and points at no branch", $node !== null && $framework->branchOf($node) === null);
+    // ⚠️ *Diese Zusage hiess bis zum 2026-08-30 «und zeigt auf keinen Zweig» — die Form der alten
+    // Regel. Ihre Absicht war «eine Rolle ist keine Daten», und die gilt unveraendert: auf sein Wort
+    // liegen die Rollen jetzt im Settings-Zweig, und der haelt keine Datensaetze.*
+    $zweig = $node === null ? null : $framework->branchOf($node);
+    check("  liegt im Settings-Zweig, der keine Daten haelt", $zweig === Branch::Settings && ! $zweig->holdsData(), $zweig?->value ?? "keiner");
 }
 
 echo "\n== 2. The chain ==\n";
