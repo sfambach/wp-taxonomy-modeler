@@ -109,7 +109,7 @@ final class Schema
      * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
      * nächsten Installation falsch ist.*
      */
-    public const VERSION = 15;
+    public const VERSION = 16;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -173,6 +173,8 @@ final class Schema
         self::shortenRangeKeys();
         self::moveHideOntoTheEdge();
         self::moveTestFlagIntoKind();
+        self::dropTheOneValueKey();
+        self::moveMultiplicityOntoTheEdge();
         self::ensureForeignKeys();
     }
 
@@ -533,6 +535,76 @@ final class Schema
         $wpdb->query("ALTER TABLE {$records} DROP COLUMN is_test");
     }
 
+    /**
+     * Der eindeutige Schlüssel `(record_id, path, locale)` fällt — Schema 16,
+     * [D-530](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * ⚠️ **`dbDelta` kann einen Schlüssel nicht entfernen**, nur hinzufügen — also ausdrücklich, und
+     * geprüft, ob es ihn überhaupt noch gibt. *Ohne diesen Schritt bliebe er auf jeder bestehenden
+     * Installation stehen und verböte weiterhin, was D-530 gerade erlaubt.*
+     *
+     * ⚠️ *An seine Stelle tritt `of_field (record_id, edge_id, locale)` — **kein eindeutiger**, sondern
+     * der Index für die Frage, die es jetzt gibt: «alle Werte dieses Feldes in diesem Datensatz».*
+     */
+    private static function dropTheOneValueKey(): void
+    {
+        global $wpdb;
+
+        $tabelle = self::table('record_values');
+
+        $vorhanden = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+            $tabelle,
+            'one_value'
+        ));
+
+        if ($vorhanden === 0) {
+            return;
+        }
+
+        $wpdb->query("ALTER TABLE {$tabelle} DROP INDEX one_value");
+    }
+
+    /**
+     * `multiplicity` wandert aus `settings` an die Kante — Schema 16,
+     * [D-528](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * ⚠️ **Gemessen vor dem Umzug: 10 Zeilen, alle zehn an Kanten**, keine an einem Knoten. *Die
+     * Auflösungskette hat für diesen Schlüssel nie etwas beigesteuert, was nicht schon an der Kante
+     * stand — der Umzug ist deshalb eine Umschrift und kein Zusammenführen.*
+     *
+     * ⚠️ *Nur die vier gültigen Werte werden übernommen ([D-351](../../../docs/NewConcept/90-decision-log.md)).
+     * Was etwas anderes sagt, behält die Spaltenvorgabe `1..1`, **die ohnehin das war, was eine
+     * fehlende Setting-Zeile bedeutete** ([D-434](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private static function moveMultiplicityOntoTheEdge(): void
+    {
+        global $wpdb;
+
+        $settings  = self::table('settings');
+        $relations = self::table('relations');
+
+        // ⚠️ *Läuft nur, solange die alte Tabelle noch steht — nach ihrem Abbau ist der Schritt eine
+        // stille Nulloperation statt eines Fehlers.*
+        $steht = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+            $settings
+        ));
+
+        if ($steht === 0) {
+            return;
+        }
+
+        $wpdb->query(
+            "UPDATE {$relations} r
+             JOIN {$settings} s ON s.owner_id = r.id AND s.setting_key = 'multiplicity' AND s.path = ''
+             SET r.multiplicity = s.value_text
+             WHERE s.value_text IN ('0..1', '1..1', '0..*', '1..*')"
+        );
+    }
+
     private static function dropRetiredColumns(): void
     {
         global $wpdb;
@@ -668,6 +740,7 @@ final class Schema
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
+                multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
@@ -763,13 +836,14 @@ final class Schema
                 edge_id bigint(20) unsigned NOT NULL,
                 path varchar(255) NOT NULL,
                 locale varchar(20) NOT NULL DEFAULT '',
+                position int(10) unsigned NOT NULL DEFAULT 0,
                 value_int bigint(20) DEFAULT NULL,
                 value_decimal decimal(30,10) DEFAULT NULL,
                 value_text mediumtext DEFAULT NULL,
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY one_value (record_id,path,locale),
+                KEY of_field (record_id,edge_id,locale),
                 KEY edge_id (edge_id),
                 KEY value_ref (value_ref)
             ) {$charset};",

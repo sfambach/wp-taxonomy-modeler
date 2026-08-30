@@ -79,9 +79,12 @@ final class WpdbRecordRepository implements RecordRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT record_id, path, edge_id, locale, value_int, value_decimal, value_text, value_date, value_ref
+                // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
+                // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
+                // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
                  FROM ' . Schema::table('record_values') . '
-                 WHERE record_id = %d ORDER BY path ASC',
+                 WHERE record_id = %d ORDER BY position ASC, id ASC',
                 $recordId
             ),
             ARRAY_A
@@ -100,31 +103,65 @@ final class WpdbRecordRepository implements RecordRepository
                     $r['value_text'] === null ? null : (string) $r['value_text'],
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],
-                )
+                ),
+                (int) $r['id'],
+                (int) $r['position'],
             ),
             $rows ?: []
         );
     }
 
+    /**
+     * Einen Wert schreiben — **einfügen, wenn er keine Id hat, sonst genau diese Zeile ändern**.
+     *
+     * ⚠️ **Hier stand `$wpdb->replace()` auf dem Schlüssel `(record_id, path, locale)`, und das war
+     * der ganze Grund für eine erfundene laufende Nummer** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     * *Drei Werte eines Feldes teilen sich eine Kante und damit einen Pfad — `replace()` behielt einen
+     * davon. **Der Eigentümer sah es sofort:** «warum führen wir jetzt eine neue Zahl ein, wo wir doch
+     * die Id des Records haben?»*
+     *
+     * ⚠️ *`insert()` und `update()` statt `replace()`: `replace` löscht und schreibt neu, **die Zeile
+     * bekäme also bei jedem Speichern eine neue Id** — und an der Id hängt jetzt, welcher Wert das ist.*
+     */
     public function putValue(EdgeRecord $value): void
     {
         global $wpdb;
 
-        $wpdb->replace(
-            Schema::table('record_values'),
-            [
-                'record_id'     => $value->recordId,
-                'path'          => $value->path,
-                'edge_id'       => $value->edgeId,
-                'locale'        => $value->locale,
-                'value_int'     => $value->value->int,
-                'value_decimal' => $value->value->decimal,
-                'value_text'    => $value->value->text,
-                'value_date'    => $value->value->date,
-                'value_ref'     => $value->value->reference,
-            ],
-            ['%d', '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%d']
-        );
+        $spalten = [
+            'record_id'     => $value->recordId,
+            'path'          => $value->path,
+            'edge_id'       => $value->edgeId,
+            'locale'        => $value->locale,
+            'position'      => $value->position,
+            'value_int'     => $value->value->int,
+            'value_decimal' => $value->value->decimal,
+            'value_text'    => $value->value->text,
+            'value_date'    => $value->value->date,
+            'value_ref'     => $value->value->reference,
+        ];
+
+        $formate = ['%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d'];
+
+        if ($value->id === null) {
+            $wpdb->insert(Schema::table('record_values'), $spalten, $formate);
+
+            return;
+        }
+
+        $wpdb->update(Schema::table('record_values'), $spalten, ['id' => $value->id], $formate, ['%d']);
+    }
+
+    /**
+     * Genau eine Wertzeile entfernen.
+     *
+     * ⚠️ *Über die Id, weil mehrere Werte eines Feldes denselben Pfad tragen
+     * ([D-530](../../../docs/NewConcept/90-decision-log.md)) — über den Pfad träfe es alle.*
+     */
+    public function forgetValueById(int $id): void
+    {
+        global $wpdb;
+
+        $wpdb->delete(Schema::table('record_values'), ['id' => $id], ['%d']);
     }
 
     public function forgetValue(int $recordId, string $path, string $locale): void

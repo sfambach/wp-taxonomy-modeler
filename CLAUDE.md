@@ -95,7 +95,7 @@ this file from turning back into a frozen snapshot of a model we have outgrown.
 
 | | Rule | Decision |
 |---|---|---|
-| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. Base tables: nodes, settings, labels, relations. *Storage of the content that the models describe is not decided yet* — see [OQ-015](docs/NewConcept/91-open-questions.md). | [D-007](docs/NewConcept/90-decision-log.md), [D-019](docs/NewConcept/90-decision-log.md) |
+| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. Base tables: **nodes, relations, labels, records**. ⚠️ *`settings` stand hier bis 2026-08-30 und ist **entfernt** — eine Einstellung ist ein Feld, also eine Kante ([D-529](docs/NewConcept/90-decision-log.md)). Die Zeile hat genau so lange als Beleg gedient, wie sie falsch war.* *Storage of the content that the models describe is not decided yet* — see [OQ-015](docs/NewConcept/91-open-questions.md). | [D-007](docs/NewConcept/90-decision-log.md), [D-019](docs/NewConcept/90-decision-log.md), [D-529](docs/NewConcept/90-decision-log.md) |
 | **AR-2** | **Nothing user-visible is hard-coded.** Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the model, per locale. The two never share a mechanism. | [D-019](docs/NewConcept/90-decision-log.md), [D-020](docs/NewConcept/90-decision-log.md) |
 
 That is the **complete** list. Everything else about the model — what a node is, whether an

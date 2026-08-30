@@ -428,12 +428,13 @@ config:
 flowchart TD
     ID[(identity space)] --> N[(nodes)]
     ID --> R[(relations)]
-    N --> S[(settings)]
-    R --> S
     N --> L[(labels)]
     R --> L
     N --> C[(changelog)]
     R --> C
+    N --> RC[(records)]
+    RC --> RV[(record_values)]
+    R --> RV
 ```
 
 **Naming: every foreign key ends in `_id`** ([D-090](90-decision-log.md)). The owner asked whether
@@ -443,8 +444,8 @@ the confusion the suffix prevents.
 | Table | Columns | Note |
 |---|---|---|
 | **nodes** | `id` · `version` · `name` · `path` | `id` from the shared identity space ([C11](10-domain-core.md)). `name` required, **not unique** ([D-022](90-decision-log.md)). `path` is the materialised ancestor path ([D-014](90-decision-log.md)) — **derived**, rebuildable, never a second truth. |
-| **relations** | `id` · `version` · `from_id` · `to_id` · `kind` · `name` · `position` | `kind` an enum ([D-036](90-decision-log.md)). `name` empty for inheritance edges. `position` orders siblings — it belongs to the **edge**, because order is per parent, not per node. |
-| **settings** | `owner_id` · `setting_key` · `path` · typed value columns | `owner_id` a single real foreign key into the identity space ([OQ-022](91-open-questions.md) option 3) — it holds the `id` of the node **or** relation the row belongs to. Engine-owned keys are a reserved namespace, not a column ([D-084](90-decision-log.md)). ⚠️ *`key` is reserved in MySQL, so the column is `setting_key` — the rename is assumption 4 of package 1 in [the implementation plan](97-implementation-plan.md), and it is more than cosmetic: backticked, `key` broke `dbDelta`'s index parser without saying so.* A further column is decided and not yet built — [P15](#p15--one-table-two-kinds-of-row-and-a-column-that-says-which). |
+| **relations** | `id` · `version` · `from_id` · `to_id` · `kind` · `name` · `position` · `hide` · `multiplicity` | `kind` an enum ([D-036](90-decision-log.md)). `name` empty for inheritance edges. `position` orders siblings — it belongs to the **edge**, because order is per parent, not per node. |
+| ~~**settings**~~ | — | ⚠️ **Entfernt am 2026-08-30** ([D-529](90-decision-log.md)). *Eine Einstellung ist ein Feld, also eine Kante — es gab nie einen zweiten Speicher, nur einen zweiten Mechanismus ([D-011](90-decision-log.md), [D-506](90-decision-log.md)). Die elf Schlüssel und wohin jeder ging, stehen in [02 Field and setting](02-field-and-setting.md#die-settings-tabelle-fällt--stand-2026-08-30).* |
 | **labels** | `owner_id` · `role` · `locale` · `text` | [D-019](90-decision-log.md), roles plain ([D-023](90-decision-log.md)). The full row, with the columns added since, is [I9a](40-i18n.md#i9a--what-a-label-row-carries) — this line is the summary, that one is the owner. |
 | **changelog** | `change_group_id` · `owner_id` · `owner_kind` · `at` · `by_user_id` · `what` · `before_state` · `after_state` | The migration script ([D-061](90-decision-log.md)) — what those last three columns carry is [P4e](#p4e--the-changelog-row-one-act-one-group-one-address). |
 

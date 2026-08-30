@@ -273,24 +273,55 @@ final class DataEntryTest extends TestCase
         self::assertSame($record->id, $this->data->find($record->id)->id);
     }
 
+    /**
+     * ⚠️ **[D-232](../../docs/NewConcept/90-decision-log.md): Mehrfachheit spielt für die Speicherung
+     * keine Rolle** — fünf Ganzzahlen sind fünf **Zeilen** in einem Datensatz, nicht fünf Datensätze.
+     *
+     * ⚠️ *Und sie sind **Zeilen**, nicht Pfade ([D-530](../../docs/NewConcept/90-decision-log.md)):
+     * alle drei tragen denselben Pfad, weil sie sich eine Kante teilen. **Was sie trennt, ist die Id,
+     * die jede Zeile immer schon hatte** — der Eigentümer: «warum führen wir jetzt eine neue Zahl ein,
+     * wo wir doch die Id des Records haben?»*
+     */
     #[Test]
-    public function several_values_of_one_attribute_are_several_paths_in_one_record(): void
+    public function several_values_of_one_attribute_are_several_rows_in_one_record(): void
     {
-        // ⚠️ D-232: multiplicity plays no part in storage. Five integers are five paths in one
-        // record, not five records.
         $record = $this->data->create($this->part->id);
 
-        $this->records->putValue(new EdgeRecord(
-            $record->id,
-            $this->description->id . '.1',
-            $this->description->id,
-            '',
-            TypedValue::ofText('second occurrence')
-        ));
-        $this->data->put($record->id, $this->description->id, TypedValue::ofText('first occurrence'));
+        $this->data->appendValue($record->id, $this->description->id, TypedValue::ofText('erster'));
+        $this->data->appendValue($record->id, $this->description->id, TypedValue::ofText('zweiter'));
 
-        self::assertCount(2, $this->data->valuesOf($record->id));
-        self::assertCount(1, $this->data->recordsOf($this->part->id));
+        $werte = $this->data->valuesOf($record->id);
+
+        self::assertCount(2, $werte);
+        self::assertCount(1, $this->data->recordsOf($this->part->id), 'und trotzdem nur ein Datensatz');
+
+        self::assertSame(
+            $werte[0]->path,
+            $werte[1]->path,
+            'beide teilen sich eine Kante, also auch einen Pfad'
+        );
+
+        self::assertNotSame($werte[0]->id, $werte[1]->id, 'die Zeilen-Id trennt sie');
+        self::assertLessThan($werte[1]->position, $werte[0]->position, 'und position ordnet sie');
+    }
+
+    /**
+     * ⚠️ **«Setze den Wert» kann ein Feld mit mehreren Werten nicht beantworten.**
+     * *Vorher verhinderte der eindeutige Schlüssel den Fall; seit [D-530](../../docs/NewConcept/90-decision-log.md)
+     * stehen mehrere Zeilen nebeneinander, und eine davon zu raten wäre in der Hälfte der Fälle
+     * die falsche.*
+     */
+    #[Test]
+    public function setting_the_value_of_a_field_that_holds_several_is_refused(): void
+    {
+        $record = $this->data->create($this->part->id);
+
+        $this->data->appendValue($record->id, $this->description->id, TypedValue::ofText('erster'));
+        $this->data->appendValue($record->id, $this->description->id, TypedValue::ofText('zweiter'));
+
+        $this->expectException(\Taxmod\Core\Exception\NotYetStorable::class);
+
+        $this->data->put($record->id, $this->description->id, TypedValue::ofText('welcher denn?'));
     }
 
     // ------------------------------------- ein Record ohne seinen Knoten darf es nicht geben

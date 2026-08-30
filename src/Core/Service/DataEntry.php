@@ -149,7 +149,39 @@ final class DataEntry
      */
     public function put(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): void
     {
-        $this->records->putValue(EdgeRecord::direct($recordId, $this->writableEdge($recordId, $edgeId)->id, $value, $locale));
+        $edge      = $this->writableEdge($recordId, $edgeId);
+        $vorhanden = $this->valuesOn($recordId, $edge->id, $locale);
+
+        // ⚠️ **Sonst schriebe jedes Speichern eine zweite Zeile** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+        // *Bis dahin tat `$wpdb->replace()` das über den eindeutigen Schlüssel; **der ist weg**, und
+        // damit muss dieser Dienst sagen, welche Zeile er meint.*
+        if (count($vorhanden) > 1) {
+            throw NotYetStorable::thatFieldHasSeveralValues($edge->name, count($vorhanden));
+        }
+
+        $this->records->putValue(
+            $vorhanden === []
+                ? EdgeRecord::direct($recordId, $edge->id, $value, $locale)
+                : new EdgeRecord($recordId, $vorhanden[0]->path, $edge->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        );
+    }
+
+    /**
+     * Die Zeilen, die ein Feld in diesem Datensatz belegt — in ihrer Reihenfolge.
+     *
+     * @return list<EdgeRecord>
+     */
+    private function valuesOn(int $recordId, int $edgeId, string $locale): array
+    {
+        $meine = [];
+
+        foreach ($this->records->valuesOf($recordId) as $wert) {
+            if ($wert->edgeId === $edgeId && $wert->locale === $locale) {
+                $meine[] = $wert;
+            }
+        }
+
+        return $meine;
     }
 
     /**
@@ -160,41 +192,33 @@ final class DataEntry
      * Schlüssel `(record_id, path, locale)` sah es immer vor. **Gemessen am 2026-08-30 hatte es
      * niemand je benutzt:** alle 43 Wertzeilen trugen einen Pfad, der schlicht die Kanten-Id war.*
      *
-     * ⚠️ **Die laufende Nummer wird nicht nachgerückt.** *Sie ist ein Name, kein Index: verschwindet
-     * der zweite von dreien, bleiben `.1` und `.3`. **Nachrücken änderte die Pfade der übrigen**, und
-     * an Pfaden hängen verschachtelte Teile — ein Nachrücken zöge sie mit oder liesse sie zurück.*
+     * ⚠️ **Die neue Zeile hängt sich hinten an** — `position` eins über der höchsten. *Die Zeilen-Id
+     * trennt sie von ihren Geschwistern, `position` ordnet sie, und beide sind Spalten, die es schon
+     * gab ([D-530](../../../docs/NewConcept/90-decision-log.md)).*
      *
      * ⚠️ *Ob ein Feld überhaupt mehrere tragen darf, sagt seine Mehrfachheit
      * ({@see \Taxmod\Core\Model\Multiplicity::allowsMany()}) — **hier wird es nicht geprüft**, weil
      * die Mehrfachheit an der Verwendungsstelle aufgelöst wird und dieser Dienst die Kette nicht
      * kennt. Der Rand fragt, bevor er den Knopf zeichnet.*
      *
-     * @return string Der Pfad, unter dem der neue Wert steht.
      */
-    public function appendValue(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): string
+    public function appendValue(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): void
     {
-        $edge = $this->writableEdge($recordId, $edgeId);
+        $edge     = $this->writableEdge($recordId, $edgeId);
+        $hinterste = -1;
 
-        $genommen = [];
-
-        foreach ($this->records->valuesOf($recordId) as $vorhanden) {
-            if ($vorhanden->edgeId === $edge->id) {
-                $genommen[] = EdgeRecord::ordinalIn($vorhanden->path) ?? 0;
-            }
+        foreach ($this->valuesOn($recordId, $edge->id, $locale) as $vorhanden) {
+            $hinterste = max($hinterste, $vorhanden->position);
         }
 
-        $naechste = $genommen === [] ? 1 : max($genommen) + 1;
-
-        $this->records->putValue(EdgeRecord::nth($recordId, $edge->id, $naechste, $value, $locale));
-
-        return EdgeRecord::pathFor($edge->id, $naechste);
+        $this->records->putValue(EdgeRecord::direct($recordId, $edge->id, $value, $locale, $hinterste + 1));
     }
 
     /**
      * Wie viele Werte ein Feld in diesem Datensatz trägt.
      *
-     * ⚠️ *Über die **Kanten-Id** gezählt und nicht über den Pfad, damit der einzige Wert (`path` =
-     * Kanten-Id) und die nummerierten (`4654.1`, `4654.2`) zusammen gezählt werden.*
+     * ⚠️ *Über die **Kanten-Id**: alle Werte eines Feldes teilen sich eine Kante, und seit
+     * [D-530](../../../docs/NewConcept/90-decision-log.md) auch einen Pfad.*
      */
     public function countValues(int $recordId, int $edgeId): int
     {

@@ -974,7 +974,14 @@ prüfbar, **aber als Verbot unbrauchbar**: alles liegt unter der Wurzel. Siehe
 
 ---
 
-### Wo die Angabe «Feld oder Einstellung» sitzt — geplant 2026-08-29
+### Wo die Angabe «Feld oder Einstellung» sitzt — ⚠️ überholt am 2026-08-30
+
+> ⚠️ **Dieser Abschnitt gilt nicht mehr.** *Die Marke sitzt an der **Kante**, nicht am Knoten
+> ([D-526](90-decision-log.md), auf sein «ja bitte Marke an Kante»), und `multiplicity` ist seit
+> [D-528](90-decision-log.md) eine **Spalte an der Kante** statt einer Setting-Zeile. Er bleibt
+> stehen statt überschrieben zu werden — dieselbe Regel wie bei [D-434](90-decision-log.md) —
+> **aber er ist als Beleg unbrauchbar.** *Genau daraus wurde am 2026-08-30 zitiert, als wäre es
+> geltend.*
 
 [D-518](90-decision-log.md): **eine Spalte am Knoten**, auf sein Wort — *«der Knoten bekommt eine
 zusätzliche Spalte, wie es die Kante auch hat»*.
@@ -1123,5 +1130,40 @@ Kante `44093` als ihr `renderer`-Feld. Einmal markiert, überall gültig.*
 
 ⚠️ **Offen und absichtlich nicht gebaut: wie eine Einstellungskante entsteht.** *Zweites Eingabefeld,
 `Settings`-Ast oder Umschalter — seine Entscheidung.*
+
+---
+
+### Die Settings-Tabelle fällt — Stand 2026-08-30
+
+[D-529](90-decision-log.md), sein Wort: *«Settings ist weg. Das ist ein Kantentyp. Entferne die alten
+Settings aus der Tabelle und auch aus dem Code.»*
+
+**Gemessen vor dem Umzug: 383 Zeilen, elf Schlüssel.** Wohin jeder geht:
+
+| Schlüssel | Zeilen | wird | durch |
+|---|---|---|---|
+| `persistent` | 148 | Feld, Wert im Datensatz | [D-505](90-decision-log.md) |
+| `read_only` | 147 | Feld, Wert im Datensatz | [D-505](90-decision-log.md) |
+| `renderer` | 32 | Feld auf einen Knoten unter `Constants` | [D-511](90-decision-log.md) |
+| `default` | 21 | Datensatz mit `kind = default` | [D-524](90-decision-log.md) |
+| `multiplicity` | 10 | **Spalte an der Kante** | [D-528](90-decision-log.md) |
+| `min`, `max`, `step` | 7 + 6 + 5 | Feld auf einer Spezialisierung | [D-516](90-decision-log.md) |
+| `factor`, `offset` | 2 + 2 | Feld am Knoten | [D-505](90-decision-log.md) |
+| `label_role` | 3 | **offen** | [OQ-134](91-open-questions.md) |
+
+⚠️ **Multiplizität verliert dabei das Einschränken, und das ist beabsichtigt.** *[D-086](90-decision-log.md)
+hielt sie in der Tabelle, weil sie «inherits and can be narrowed». **Der erste Grund gilt weiter und
+kostet nichts** — ein geerbtes Feld ist dieselbe Kante ([D-526](90-decision-log.md)), also erbt die
+Spalte, weil die Kante erbt. **Der zweite ist weggefallen:** es gibt unterhalb keine zweite Stelle
+mehr, an der jemand einschränken könnte. Er: «sie kann in Zukunft nicht mehr überschrieben werden».*
+
+⚠️ *Und `Narrowing` fällt mit: **alle vier Fälle beschreiben, wie ein Wert die Auflösungskette
+hinunterwandern darf**, und die Kette gibt es nicht mehr.*
+
+⚠️ **Warum das über eine Woche stehenblieb, gehört hierher.** *[D-506](90-decision-log.md) hat die
+Tabelle am 2026-08-29 namentlich zum Verschwinden verurteilt und niemand hat sie angefasst. Am
+2026-08-30 wurde aus ihrem Code zitiert, als wäre er geltend — der Eigentümer: «Du hast irgendwelches
+altes Zeug behauptet, das wir gestern überholt haben». **Ein entschiedener, nicht gebauter Umbau ist
+nicht neutral: er liegt als Beleg herum.***
 
 ---

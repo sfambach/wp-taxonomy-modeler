@@ -31,6 +31,9 @@ interface RecordRepository
 
     public function forgetValue(int $recordId, string $path, string $locale): void;
 
+    /** Genau eine Wertzeile — mehrere Werte eines Feldes teilen sich einen Pfad ([D-530](../../../docs/NewConcept/90-decision-log.md)). */
+    public function forgetValueById(int $id): void;
+
     /**
      * Records whose value at one edge equals this one, wherever in the record it sits.
      *

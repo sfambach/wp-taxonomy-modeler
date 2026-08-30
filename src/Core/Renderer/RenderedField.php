@@ -33,13 +33,13 @@ final class RenderedField
          * Wo dieser Wert unter seinem Feld sitzt — leer für den einzigen.
          *
          * ⚠️ **Es gibt ihn, weil mehrere Werte mehrere Pfade sind**
-         * ([D-527](../../../docs/NewConcept/90-decision-log.md)): drei Werte eines Feldes teilen sich
-         * **eine** Kante, also kann `edge` sie nicht auseinanderhalten. *Und
-         * {@see RepeatableRenderer} ordnet jedem Eintrag sein «entfernen» darüber zu — **nicht über
-         * die Stellung in der Liste**, denn die verschiebt sich beim Entfernen und der nächste Klick
-         * träfe den falschen.*
+         * ([D-530](../../../docs/NewConcept/90-decision-log.md)): drei Werte eines Feldes teilen sich
+         * **eine Kante und einen Pfad**, also kann keines von beiden sie auseinanderhalten — **die
+         * Zeilen-Id kann es**, und sie war immer da. *Und {@see RepeatableRenderer} ordnet jedem
+         * Eintrag sein «entfernen» darüber zu — **nicht über die Stellung in der Liste**, denn die
+         * verschiebt sich beim Entfernen und der nächste Klick träfe den falschen.*
          */
-        public readonly string $path = '',
+        public readonly string $valueId = '',
     ) {
     }
 

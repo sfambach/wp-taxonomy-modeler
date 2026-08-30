@@ -53,6 +53,22 @@ final class NotYetStorable extends DomainError
      * which is an answer and not a gap. It shares the class because the caller's question is the
      * same — *can this value be stored* — and the honest reply is no either way.
      */
+    /**
+     * ⚠️ **«Setze den Wert» ist keine Frage, die ein Feld mit mehreren Werten beantworten kann.**
+     * *Seit [D-530](../../../docs/NewConcept/90-decision-log.md) stehen mehrere Werte als mehrere
+     * Zeilen nebeneinander; früher verhinderte der eindeutige Schlüssel den Fall. **Verweigert statt
+     * geraten:** eine der Zeilen zu treffen wäre in der Hälfte der Fälle die falsche, und man sähe es
+     * erst an den Daten.*
+     */
+    public static function thatFieldHasSeveralValues(string $attribute, int $anzahl): self
+    {
+        return new self(sprintf(
+            '«%s» holds %d values — say which one, or append instead of setting.',
+            $attribute,
+            $anzahl
+        ));
+    }
+
     public static function thatFieldKeepsNothing(string $attribute): self
     {
         return new self(sprintf(

@@ -21,10 +21,10 @@ use Taxmod\Core\Model\Relation;
  * an der Verwendungsstelle auf; **der Rand fragt, bevor er dieses Gerüst überhaupt wählt**. Hier
  * stünde die Antwort ein zweites Mal, und zwei Orte für eine Regel sind einer zu viel.*
  *
- * ⚠️ *Jeder Eintrag findet sein Entfernen über seinen **Pfad**: mehrere Werte sind mehrere Pfade
- * ({@see \Taxmod\Core\Model\EdgeRecord::nth()}), und ein Steuerelement trägt seinen Pfad in `value`.
- * **Nicht über die Stellung in der Liste** — die verschiebt sich, sobald einer entfernt wird, und
- * dann löscht der zweite Klick den falschen.*
+ * ⚠️ *Jeder Eintrag findet sein Entfernen über seine **Zeilen-Id**: mehrere Werte sind mehrere Zeilen
+ * auf einer Kante ([D-530](../../../docs/NewConcept/90-decision-log.md)), und ein Steuerelement trägt
+ * diese Id in `value`. **Nicht über die Stellung in der Liste** — die verschiebt sich, sobald einer
+ * entfernt wird, und dann löscht der zweite Klick den falschen.*
  *
  * ```mermaid
  * flowchart TD
@@ -104,10 +104,10 @@ final class RepeatableRenderer implements Renderer
 
             $usedEdges = [...$usedEdges, ...$part->result->usedEdges];
 
-            // ⚠️ *Über den Pfad und nicht über die Stellung: entfernt jemand den zweiten von dreien,
-            // rücken die übrigen nicht nach ({@see \Taxmod\Core\Model\EdgeRecord::nth()}), und eine
+            // ⚠️ *Über die Zeilen-Id und nicht über die Stellung: entfernt jemand den zweiten von
+            // dreien, rutschen die übrigen in der Liste nach oben, **ihre Ids bleiben** — eine
             // Zuordnung nach Stellung zeigte danach auf den falschen Eintrag.*
-            $knopf = $entfernen[$part->path] ?? null;
+            $knopf = $entfernen[$part->valueId] ?? null;
 
             $zeilen .= '<li class="taxmod-repeatable-entry">'
                 . '<span class="taxmod-repeatable-value">' . $part->result->markup . '</span>'

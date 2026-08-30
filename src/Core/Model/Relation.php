@@ -64,9 +64,66 @@ final class Relation extends Identity implements Renderable
          * that falls out of `$skip` — a placement not followed takes its subtree with it.*
          */
         public readonly bool $hide = false,
+        /**
+         * Wie oft dieses Feld vorkommen darf — **eine Spalte, seit [D-528](../../../docs/NewConcept/90-decision-log.md)**.
+         *
+         * ⚠️ **Sie lag bis 2026-08-30 in der `settings`-Tabelle**, und [D-086](../../../docs/NewConcept/90-decision-log.md)
+         * begründete das damit, dass sie *«inherits and can be narrowed»* — die Auflösungskette gab
+         * beides gratis. **Der erste Grund gilt weiter und kostet nichts:** ein Feld *ist* die Kante,
+         * ein geerbtes Feld ist **dieselbe** Kante ([D-526](../../../docs/NewConcept/90-decision-log.md)),
+         * also erbt die Spalte, weil die Kante erbt.
+         *
+         * ⚠️ **Der zweite ist weggefallen, und der Eigentümer hat ihn ausdrücklich aufgegeben:**
+         * *«wir vereinfachen, Multiplizität hängen wir als Spalte an die Kante, **sie kann in Zukunft
+         * nicht mehr überschrieben werden**».* Es gibt unterhalb auch keine zweite Stelle mehr, an der
+         * jemand einschränken könnte.
+         *
+         * ⚠️ *Die Vorgabe ist `1..1` ([D-434](../../../docs/NewConcept/90-decision-log.md): «weil das
+         * der Standard beim Eingeben ist»). Als Setting war sie dünn besetzt — eine fehlende Zeile
+         * **bedeutete** die Vorgabe; als Spalte steht sie überall, mit demselben Ergebnis.*
+         */
+        public readonly Multiplicity $multiplicity = Multiplicity::ExactlyOne,
     ) {
         // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
         parent::__construct($id, $version, $name);
+    }
+
+    /**
+     * Dieselbe Kante mit einzelnen geänderten Angaben — **der einzige Ort, der alle Felder kennt**.
+     *
+     * ⚠️ **Gemessen am 2026-08-30, und das ist der Grund für diese Methode:** *von zehn Stellen, die
+     * `new self(...)` schrieben, liessen **zwei** `hide` weg. Eine Kante umzubenennen machte ein
+     * verstecktes Feld sichtbar, ohne dass jemand das gesagt hätte. **Mit einem vierten getragenen
+     * Feld wäre derselbe Fehler viermal möglich gewesen** — hier ist er einmal möglich und einmal
+     * getestet ({@see \Taxmod\Tests\Core\RelationCopyTest}).*
+     *
+     * ⚠️ *`$unpark` statt `parkedByGroup: null`, weil `null` hier zwei Dinge heissen müsste —
+     * «nicht ändern» und «wiederbeleben». Ein eigener Schalter sagt, welches gemeint ist.*
+     */
+    private function copy(
+        ?int $version = null,
+        ?int $fromId = null,
+        ?int $toId = null,
+        ?RelationKind $kind = null,
+        ?string $name = null,
+        ?int $position = null,
+        ?int $parkedByGroup = null,
+        ?bool $hide = null,
+        ?Multiplicity $multiplicity = null,
+        bool $unpark = false,
+    ): self {
+        return new self(
+            $this->id,
+            $version ?? $this->version,
+            $fromId ?? $this->fromId,
+            $toId ?? $this->toId,
+            $kind ?? $this->kind,
+            $name ?? $this->name,
+            $position ?? $this->position,
+            $unpark ? null : ($parkedByGroup ?? $this->parkedByGroup),
+            $hide ?? $this->hide,
+            $multiplicity ?? $this->multiplicity,
+        );
     }
 
     /**
@@ -85,16 +142,7 @@ final class Relation extends Identity implements Renderable
             throw InvalidName::empty();
         }
 
-        return new self(
-            $this->id,
-            $this->version + 1,
-            $this->fromId,
-            $this->toId,
-            $this->kind,
-            $name,
-            $this->position,
-            $this->parkedByGroup
-        );
+        return $this->copy(version: $this->version + 1, name: $name);
     }
 
     /** Whether it has been removed — parked, not purged (D-123's two stages). */
@@ -106,31 +154,13 @@ final class Relation extends Identity implements Renderable
     /** The same edge, parked by one act. */
     public function parkedBy(int $changeGroup): self
     {
-        return new self(
-            $this->id,
-            $this->version,
-            $this->fromId,
-            $this->toId,
-            $this->kind,
-            $this->name,
-            $this->position,
-            $changeGroup,
-            $this->hide
-        );
+        return $this->copy(parkedByGroup: $changeGroup);
     }
 
     /** The same edge, live again — what a restore writes (D-172: forwards, never a rewind). */
     public function revived(): self
     {
-        return new self(
-            $this->id,
-            $this->version,
-            $this->fromId,
-            $this->toId,
-            $this->kind,
-            $this->name,
-            $this->position
-        );
+        return $this->copy(unpark: true);
     }
 
     /** The tree edge: parent to child, and the only kind the tree is made of (V3). */
@@ -150,6 +180,7 @@ final class Relation extends Identity implements Renderable
         RelationKind $kind,
         string $name,
         int $position,
+        Multiplicity $multiplicity = Multiplicity::ExactlyOne,
     ): self {
         $name = trim($name);
 
@@ -157,7 +188,7 @@ final class Relation extends Identity implements Renderable
             throw InvalidName::empty();
         }
 
-        return new self($id, 1, $ownerId, $targetId, $kind, $name, $position);
+        return new self($id, 1, $ownerId, $targetId, $kind, $name, $position, null, false, $multiplicity);
     }
 
     public static function fromStorage(
@@ -170,6 +201,7 @@ final class Relation extends Identity implements Renderable
         int $position,
         ?int $parkedByGroup = null,
         bool $hide = false,
+        string $multiplicity = '1..1',
     ): self {
         return new self(
             $id,
@@ -180,7 +212,11 @@ final class Relation extends Identity implements Renderable
             $name,
             $position,
             $parkedByGroup,
-            $hide
+            $hide,
+            // ⚠️ *Ein unbekannter Wert fällt auf die Vorgabe zurück statt zu werfen: die Spalte
+            // kam mit [D-528](../../../docs/NewConcept/90-decision-log.md) und alte Zeilen sollen
+            // lesbar bleiben.*
+            Multiplicity::tryFrom($multiplicity) ?? Multiplicity::ExactlyOne
         );
     }
 
@@ -191,7 +227,7 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $parentId, $this->toId, $this->kind, $this->name, $position, null, $this->hide);
+        return $this->copy(version: $this->version + 1, fromId: $parentId, position: $position, unpark: true);
     }
 
     /**
@@ -225,17 +261,7 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self(
-            $this->id,
-            $this->version + 1,
-            $this->fromId,
-            $this->toId,
-            $kind,
-            $this->name,
-            $this->position,
-            $this->parkedByGroup,
-            $this->hide
-        );
+        return $this->copy(version: $this->version + 1, kind: $kind);
     }
 
     public function retargetedTo(int $targetId, RelationKind $kind): self
@@ -244,17 +270,7 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self(
-            $this->id,
-            $this->version + 1,
-            $this->fromId,
-            $targetId,
-            $kind,
-            $this->name,
-            $this->position,
-            $this->parkedByGroup,
-            $this->hide
-        );
+        return $this->copy(version: $this->version + 1, toId: $targetId, kind: $kind);
     }
 
     public function withHide(bool $hide): self
@@ -263,18 +279,24 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self(
-            $this->id,
-            $this->version + 1,
-            $this->fromId,
-            $this->toId,
-            $this->kind,
-            $this->name,
-            $this->position,
-            $this->parkedByGroup,
-            $hide
-        );
+        return $this->copy(version: $this->version + 1, hide: $hide);
     }
+    /**
+     * Dieselbe Kante mit einer anderen Multiplizität, eine Version weiter.
+     *
+     * ⚠️ *Kein Einschränken mehr, kein Vergleich mit einem Elternwert — [D-528](../../../docs/NewConcept/90-decision-log.md)
+     * hat das Überschreiben aufgegeben. **Wer die Multiplizität ändert, ändert sie**, und es gibt
+     * keine zweite Stelle, gegen die das geprüft werden müsste.*
+     */
+    public function withMultiplicity(Multiplicity $multiplicity): self
+    {
+        if ($multiplicity === $this->multiplicity) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, multiplicity: $multiplicity);
+    }
+
     /** The same edge in a different place among its siblings, one version on. */
     public function movedTo(int $position): self
     {

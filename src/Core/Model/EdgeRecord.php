@@ -31,53 +31,48 @@ final class EdgeRecord
         public readonly int $edgeId,
         public readonly string $locale,
         public readonly TypedValue $value,
+        /**
+         * Die Zeile selbst — **`null`, solange sie nicht geschrieben ist**.
+         *
+         * ⚠️ **Sie ist es, die mehrere Werte eines Feldes trennt** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+         * *Der Eigentümer, als eine laufende Nummer im Pfad auftauchte: «warum führen wir jetzt eine
+         * neue Zahl ein, wo wir doch die Id des Records haben?» — **es gab sie schon**, die Spalte ist
+         * seit jeher `AUTO_INCREMENT`, und niemand hat sie benutzt.*
+         */
+        public readonly ?int $id = null,
+        /**
+         * Wo dieser Wert unter seinen Geschwistern steht.
+         *
+         * ⚠️ *Getrennt von der Id, **weil eine Id nur die Eingabereihenfolge kennt**: umsortieren
+         * hiesse sonst, Zeilen neu zu schreiben. Dieselbe Form wie `relations.position` seit
+         * [D-407](../../../docs/NewConcept/90-decision-log.md).*
+         */
+        public readonly int $position = 0,
     ) {
     }
 
-    /** A value reached by one edge from the record's own model. */
-    public static function direct(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): self
-    {
-        return new self($recordId, self::pathFor($edgeId), $edgeId, $locale, $value);
-    }
-
     /**
-     * Der n-te Wert eines Feldes — mehrere Werte sind mehrere **Pfade**, nicht mehrere Kanten.
+     * Ein Wert, den **eine** Kante vom Modell des Datensatzes aus erreicht.
      *
-     * ⚠️ **Der Speicher sah das immer vor und niemand hat es benutzt:** *der eindeutige Schlüssel
-     * heisst `(record_id, path, locale)` und **nicht** `(record_id, edge_id, locale)` — gemessen am
-     * 2026-08-30 trugen alle 43 Wertzeilen einen Pfad, der schlicht die Kanten-Id war, und **keiner
-     * einen Punkt**. Und `DataEntry`s eigener Docblock sagt es seit langem: «five integers are five
-     * **paths** in one record».*
-     *
-     * ⚠️ **Die Form ist die von `nodes.path`:** *Ids mit Punkten, von aussen nach innen. So setzt sich
-     * ein zusammengesetzter Teil fort — `4654.2.7788` ist «der dritte Wert von Feld 4654, darin
-     * Feld 7788» — **ohne dass jemand eine zweite Konvention lernen muss**.*
-     *
-     * ⚠️ *Die laufende Nummer ist kein Index in eine Liste, sondern ein **Name**: wird der zweite von
-     * dreien entfernt, bleiben `.1` und `.3`. **Nachrücken würde die Pfade der übrigen ändern**, und an
-     * Pfaden hängen verschachtelte Teile.*
+     * ⚠️ **Auch der zweite und dritte Wert desselben Feldes gehen hier durch** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     * *Mehrere Werte sind mehrere **Zeilen** auf derselben Kante, nicht mehrere Pfade — sie werden
+     * durch ihre eigene Id unterschieden und durch `position` geordnet. **Der Pfad bleibt, was der
+     * Docblock oben sagt: Kanten-Ids.***
      */
-    public static function nth(int $recordId, int $edgeId, int $ordinal, TypedValue $value, string $locale = ''): self
+    public static function direct(int $recordId, int $edgeId, TypedValue $value, string $locale = '', int $position = 0): self
     {
-        return new self($recordId, self::pathFor($edgeId, $ordinal), $edgeId, $locale, $value);
+        return new self($recordId, (string) $edgeId, $edgeId, $locale, $value, null, $position);
     }
 
-    /** Wo ein Wert unter seinem Feld sitzt — die eine Stelle, die diese Form kennt. */
-    public static function pathFor(int $edgeId, ?int $ordinal = null): string
+    /** Dieselbe Zeile, nachdem der Speicher ihr eine Id gegeben hat. */
+    public function stored(int $id): self
     {
-        return $ordinal === null ? (string) $edgeId : $edgeId . '.' . $ordinal;
+        return new self($this->recordId, $this->path, $this->edgeId, $this->locale, $this->value, $id, $this->position);
     }
 
-    /**
-     * Die laufende Nummer aus einem Pfad, oder `null` für den einzigen Wert.
-     *
-     * ⚠️ *Nur die **erste** Stufe unter dem Feld: `4654.2.7788` gehört dem zweiten Wert von 4654,
-     * und was darunter liegt, ist die Sache des Teils.*
-     */
-    public static function ordinalIn(string $path): ?int
+    /** Derselbe Wert an einer anderen Stelle unter seinen Geschwistern. */
+    public function movedTo(int $position): self
     {
-        $stufen = explode('.', $path);
-
-        return isset($stufen[1]) && ctype_digit($stufen[1]) ? (int) $stufen[1] : null;
+        return new self($this->recordId, $this->path, $this->edgeId, $this->locale, $this->value, $this->id, $position);
     }
 }

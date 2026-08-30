@@ -18,6 +18,8 @@ final class InMemoryRecords implements RecordRepository
 
     private int $lastId = 0;
 
+    private int $lastValueId = 0;
+
     public function add(NodeRecord $record): int
     {
         $id = ++$this->lastId;
@@ -42,20 +44,47 @@ final class InMemoryRecords implements RecordRepository
 
     public function valuesOf(int $recordId): array
     {
-        return array_values(array_filter(
+        $meine = array_filter(
             $this->values,
             static fn (EdgeRecord $v): bool => $v->recordId === $recordId
-        ));
+        );
+
+        // ⚠️ *Dieselbe Ordnung wie in SQL — `position`, bei Gleichstand die Id
+        // ([D-530](../../../docs/NewConcept/90-decision-log.md)). Ein Doppelgänger, der anders
+        // sortiert, lässt einen Reihenfolgetest grün werden, den SQL rot machen würde.*
+        uasort(
+            $meine,
+            static fn (EdgeRecord $a, EdgeRecord $b): int => [$a->position, $a->id ?? 0] <=> [$b->position, $b->id ?? 0]
+        );
+
+        return array_values($meine);
     }
 
+    /**
+     * ⚠️ *Einfügen oder genau eine Zeile ändern — **nie überschreiben**
+     * ([D-530](../../../docs/NewConcept/90-decision-log.md)). Behielte dieser Doppelgänger den alten
+     * Schlüssel `(recordId, path, locale)`, könnte kein Kerntest zeigen, dass drei Werte eines Feldes
+     * nebeneinander stehen.*
+     */
     public function putValue(EdgeRecord $value): void
     {
-        $this->values[$this->key($value->recordId, $value->path, $value->locale)] = $value;
+        $id = $value->id ?? ++$this->lastValueId;
+
+        $this->values[$id] = $value->id === null ? $value->stored($id) : $value;
     }
 
     public function forgetValue(int $recordId, string $path, string $locale): void
     {
-        unset($this->values[$this->key($recordId, $path, $locale)]);
+        foreach ($this->values as $id => $stored) {
+            if ($stored->recordId === $recordId && $stored->path === $path && $stored->locale === $locale) {
+                unset($this->values[$id]);
+            }
+        }
+    }
+
+    public function forgetValueById(int $id): void
+    {
+        unset($this->values[$id]);
     }
 
     public function findByEdgeValue(int $edgeId, TypedValue $value): array
@@ -89,8 +118,8 @@ final class InMemoryRecords implements RecordRepository
                 continue;
             }
 
-            foreach (array_keys($this->values) as $key) {
-                if (str_starts_with((string) $key, $id . "\0")) {
+            foreach ($this->values as $key => $stored) {
+                if ($stored->recordId === $id) {
                     unset($this->values[$key]);
                     ++$gone['values'];
                 }
@@ -103,8 +132,5 @@ final class InMemoryRecords implements RecordRepository
         return $gone;
     }
 
-    private function key(int $recordId, string $path, string $locale): string
-    {
-        return $recordId . "\0" . $path . "\0" . $locale;
-    }
 }
+

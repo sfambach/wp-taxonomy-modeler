@@ -5476,3 +5476,29 @@ unten benennt**.*
 ⚠️ *C ist derselbe Wächter, den er bei [D-497](90-decision-log.md) schon gutgeheissen hat: **die
 Auflösung läuft hoch und verweigert eine Schleife, statt eine Tiefe zu raten.** Nur läuft sie hier am
 Leseweg statt am Schreibweg.*
+
+---
+
+## OQ-134 — Wo lebt `label_role`, wenn die `settings`-Tabelle fällt?
+
+**Raised** 2026-08-30, beim Aufräumen nach [D-529](90-decision-log.md).
+
+*Blocks:* den letzten Schritt von [D-529](90-decision-log.md) — die Tabelle kann nicht fallen,
+solange drei Zeilen keinen Ort haben · *Status:* **offen**
+
+⚠️ **Es ist der einzige der elf Schlüssel ohne Ziel.** *Zehn haben eines aus [D-505](90-decision-log.md),
+[D-511](90-decision-log.md), [D-516](90-decision-log.md), [D-524](90-decision-log.md) und
+[D-528](90-decision-log.md). Gemessen sind es **drei Zeilen, alle drei an Kanten**.*
+
+⚠️ **Und er ist anders als die anderen zehn: er ist kein Motorschlüssel.** *`SettingKey` kennt ihn
+nicht — `scripts/dev/model-audit.php` führt ihn ausdrücklich als **freien** Schlüssel
+(`$free = ['label_role']`), und gelesen wird er über `Rendering::LABEL_ROLE`.*
+
+⚠️ *Damit stellt er zwei Fragen auf einmal, und die zweite ist die grössere:* **wohin dieser eine
+Schlüssel geht** — und **ob es freie Schlüssel überhaupt weiter geben soll**. Ein freier Schlüssel
+war ein Angebot der Settings-Tabelle: irgendwer schreibt irgendetwas an eine Identität, ohne dass
+das Modell davon weiss. *Ein Feld ist das Gegenteil davon — es steht im Modell, bevor jemand einen
+Wert hat.*
+
+⚠️ *Nicht nebenbei entscheiden. Drei Zeilen sind ein kleiner Umzug; «gibt es noch freie Schlüssel»
+ist keine kleine Frage.*

@@ -32,8 +32,9 @@ final class WpdbRelationRepository implements RelationRepository
                 'name'     => $relation->name,
                 'position' => $relation->position,
                 'hide'     => $relation->hide ? 1 : 0,
+                'multiplicity' => $relation->multiplicity->value,
             ],
-            ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d']
+            ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s']
         );
     }
 
@@ -54,6 +55,9 @@ final class WpdbRelationRepository implements RelationRepository
             // conditional one. Placeholders are positional; a swap would write the change group
             // into `hide` and nothing would complain.*
             $relation->hide ? 1 : 0,
+            // ⚠️ *Aus demselben Grund direkt hinter `hide`: `multiplicity = %s` steht dort im SQL
+            // ([D-528](../../../docs/NewConcept/90-decision-log.md)).*
+            $relation->multiplicity->value,
         ];
 
         if ($relation->parkedByGroup !== null) {
@@ -74,6 +78,7 @@ final class WpdbRelationRepository implements RelationRepository
                 'UPDATE ' . Schema::table('relations') . '
                  SET version = %d, from_id = %d, to_id = %d, kind = %s, name = %s, position = %d,
                      hide = %d,
+                     multiplicity = %s,
                      parked_by_group_id = ' . $parked . '
                  WHERE id = %d AND version = %d',
                 ...$arguments
@@ -102,7 +107,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, hide FROM ' . Schema::table('relations') . '
+                'SELECT id, version, from_id, to_id, kind, name, position, hide, multiplicity FROM ' . Schema::table('relations') . '
                  WHERE to_id = %d AND kind = %s',
                 $childId,
                 RelationKind::Inheritance->value
@@ -119,7 +124,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, hide FROM ' . Schema::table('relations') . '
+                'SELECT id, version, from_id, to_id, kind, name, position, hide, multiplicity FROM ' . Schema::table('relations') . '
                  WHERE from_id = %d AND kind = %s
                  ORDER BY position ASC, id ASC',
                 $parentId,
@@ -150,7 +155,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, hide FROM ' . Schema::table('relations') . '
+                'SELECT id, version, from_id, to_id, kind, name, position, hide, multiplicity FROM ' . Schema::table('relations') . '
                  WHERE kind = %s
                  ORDER BY from_id ASC, position ASC, id ASC',
                 RelationKind::Inheritance->value
@@ -212,7 +217,7 @@ final class WpdbRelationRepository implements RelationRepository
         // deleted* toggle rather than a second reading of the same query.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
                  WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
                  ORDER BY position ASC, id ASC",
@@ -239,7 +244,7 @@ final class WpdbRelationRepository implements RelationRepository
         // edge ids.*
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
                  WHERE to_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
                  ORDER BY from_id ASC, position ASC, id ASC",
@@ -264,7 +269,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide
+                'SELECT id, version, from_id, to_id, kind, name, position, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
                  WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
                  ORDER BY position ASC, id ASC",
@@ -331,6 +336,7 @@ final class WpdbRelationRepository implements RelationRepository
             (int) $row['position'],
             isset($row['parked_by_group_id']) ? (int) $row['parked_by_group_id'] : null,
             (bool) ($row['hide'] ?? false),
+            (string) ($row['multiplicity'] ?? '1..1'),
         );
     }
 }
