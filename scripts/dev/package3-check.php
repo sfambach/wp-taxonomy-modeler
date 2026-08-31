@@ -33,8 +33,10 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
@@ -299,13 +301,31 @@ if (isset($underConstants['Base units'])) {
         check('Celsius is there', $shifted !== null);
 
         if ($shifted !== null) {
-            $celsius = (new Settings(new WpdbSettingRepository(), $nodes, $framework))
-                ->resolve((new Settings(new WpdbSettingRepository(), $nodes, $framework))->chainFor($shifted));
+            // ⚠️ **Der Leser ist umgezogen, also zieht der Wächter mit** (`PR-12`). *Hier stand
+            // `Settings::resolve()` — die alte Tabelle. Auf seine Entscheidung «Faktor und Offset einfach
+            // wie Exponent behandeln» sind beide jetzt Einstellungskanten mit ihrem Wert im
+            // `default`-Satz, und **diese Zusage wurde rot, wie sie soll**: die Daten sind gewandert und
+            // der Leser stand noch.*
+            $celsius = (new ModelValues(
+                new WpdbRecordRepository(),
+                $edges,
+                $nodes,
+                $framework
+            ))->forNode($shifted);
 
             // D-274's second half: Celsius is Kelvin **shifted**, not scaled.
-            check('and carries an offset rather than only a factor',
+            check(
+                'and carries an offset rather than only a factor',
                 ($celsius[SettingKey::Offset->value]->value->decimal ?? null) !== null,
-                $celsius[SettingKey::Offset->value]->value->decimal ?? 'none');
+                $celsius[SettingKey::Offset->value]->value->decimal ?? 'none'
+            );
+
+            // ⚠️ *Und der Faktor daneben — ohne ihn prüfte die Zeile nur die Hälfte des Umzugs.*
+            check(
+                'and a factor beside it',
+                ($celsius[SettingKey::Factor->value]->value->decimal ?? null) !== null,
+                $celsius[SettingKey::Factor->value]->value->decimal ?? 'none'
+            );
         }
     }
 }
