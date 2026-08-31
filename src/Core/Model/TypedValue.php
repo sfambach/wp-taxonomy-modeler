@@ -106,6 +106,112 @@ final class TypedValue
         return $this->int === 1;
     }
 
+    /**
+     * Ordnet diesen Wert gegen einen anderen — `-1`, `0`, `1`, oder `null`, wenn sie nicht vergleichbar
+     * sind.
+     *
+     * ⚠️ **Hier, weil `equals()` hier steht.** *«Wie zwei Werte sich vergleichen» ist **eine** Tatsache,
+     * und ein zweiter Vergleich in einem Validator oder in einer Suche wäre die zweite Heimat dafür — der
+     * Fehler, der dieses Projekt am meisten gekostet hat.*
+     *
+     * ⚠️ **Eine Dezimalzahl wird nie zu `float`** ([D-057](../../../docs/NewConcept/90-decision-log.md)):
+     * *`0.1 + 0.2` ist als Gleitkommazahl nicht `0.3`, und `(float) '1.10' > (float) '1.9'` ist zwar
+     * richtig, aber der Weg dahin ist es nicht — bei genug Stellen kippt er. Verglichen wird ziffernweise:
+     * erst der ganze Teil als Zahl, dann der Bruchteil, auf gleiche Länge aufgefüllt.*
+     *
+     * ⚠️ **Ein Datum vergleicht sich als Zeichenkette, und das ist kein Trick**: *die Form
+     * `YYYY-MM-DD HH:MM:SS` ist genau deshalb so gewählt, dass die alphabetische Ordnung die zeitliche
+     * ist.*
+     *
+     * ⚠️ *`null` heisst «nicht vergleichbar» und ist **nicht** `0`. Ein Text gegen eine Zahl, oder
+     * irgendetwas gegen «nichts» — beides ist keine Ordnung, und `0` zurückzugeben hiesse «gleich», was
+     * eine Grenze stillschweigend erfüllen würde.*
+     */
+    public function comparedTo(self $other): ?int
+    {
+        if ($this->isNothing() || $other->isNothing()) {
+            return null;
+        }
+
+        if ($this->int !== null && $other->int !== null) {
+            return $this->int <=> $other->int;
+        }
+
+        $meine  = $this->numericText();
+        $andere = $other->numericText();
+
+        if ($meine !== null && $andere !== null) {
+            return self::compareDecimals($meine, $andere);
+        }
+
+        if ($this->date !== null && $other->date !== null) {
+            return strcmp($this->date, $other->date) <=> 0;
+        }
+
+        if ($this->text !== null && $other->text !== null) {
+            return strcmp($this->text, $other->text) <=> 0;
+        }
+
+        return null;
+    }
+
+    /** Die Zahl als Zeichen, wenn dieser Wert eine ist — `int` und `decimal` mischen sich hier. */
+    private function numericText(): ?string
+    {
+        if ($this->decimal !== null) {
+            return $this->decimal;
+        }
+
+        return $this->int === null ? null : (string) $this->int;
+    }
+
+    /** ⚠️ *Ziffernweise, ohne `float` — siehe {@see self::comparedTo()}.* */
+    private static function compareDecimals(string $a, string $b): int
+    {
+        $negativA = str_starts_with($a, '-');
+        $negativB = str_starts_with($b, '-');
+
+        if ($negativA !== $negativB) {
+            return $negativA ? -1 : 1;
+        }
+
+        [$ganzA, $bruchA] = self::teile($a);
+        [$ganzB, $bruchB] = self::teile($b);
+
+        $laenge = max(strlen($bruchA), strlen($bruchB));
+        $bruchA = str_pad($bruchA, $laenge, '0');
+        $bruchB = str_pad($bruchB, $laenge, '0');
+
+        // ⚠️ *Der ganze Teil kann länger sein als ein `int` fasst, also auch er als Zeichen: erst die
+        // Länge (nach dem Streichen führender Nullen), dann Ziffer für Ziffer.*
+        $ordnung = self::compareDigits($ganzA, $ganzB) ?: strcmp($bruchA, $bruchB) <=> 0;
+
+        return $negativA ? -$ordnung : $ordnung;
+    }
+
+    /** @return array{0: string, 1: string} Ganzer Teil ohne Vorzeichen und führende Nullen, Bruchteil. */
+    private static function teile(string $zahl): array
+    {
+        $ohneVorzeichen = ltrim($zahl, '+-');
+        $punkt          = strpos($ohneVorzeichen, '.');
+
+        $ganz  = $punkt === false ? $ohneVorzeichen : substr($ohneVorzeichen, 0, $punkt);
+        $bruch = $punkt === false ? '' : substr($ohneVorzeichen, $punkt + 1);
+
+        $ganz = ltrim($ganz, '0');
+
+        return [$ganz === '' ? '0' : $ganz, $bruch];
+    }
+
+    private static function compareDigits(string $a, string $b): int
+    {
+        if (strlen($a) !== strlen($b)) {
+            return strlen($a) <=> strlen($b);
+        }
+
+        return strcmp($a, $b) <=> 0;
+    }
+
     public function equals(self $other): bool
     {
         return $this->int === $other->int

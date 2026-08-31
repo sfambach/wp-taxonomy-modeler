@@ -57,6 +57,19 @@ final class NotAPossibleTarget extends DomainError
         ));
     }
 
+    /**
+     * ⚠️ *Wie bei einem Konverter: ein unbekannter Name wirft, statt «nichts zu beanstanden» zu
+     * antworten. **Ein Validator, der still nicht läuft, ist schlimmer als keiner** — die Zeile sieht
+     * geprüft aus, und niemand erfährt, dass die Frage nie gestellt wurde.*
+     */
+    public static function thereIsNoSuchValidator(string $attempted): self
+    {
+        return new self(sprintf(
+            'No validator answers to «%s».',
+            $attempted
+        ));
+    }
+
     public static function itIsInTheTrash(string $name): self
     {
         return new self(sprintf('«%s» is in the trash. Restore it before pointing at it.', $name));
