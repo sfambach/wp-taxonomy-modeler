@@ -161,9 +161,10 @@ simply unreadable.»* Das Mittel ist also bekannt: **eine Spalte, die den Raum n
 unterschieden nur daran, in welcher Tabelle die Id gefunden wird.
 
 Gemessen: **138 Werte** tragen ein `value_ref` — **49** zeigen auf einen **Knoten**, **88** auf einen
-**Datensatz**. Unterschieden wird heute daran, in welcher Tabelle die Id gefunden wird.
+**Datensatz**.
 
-Und die Id-Räume sind **nicht getrennt**:
+Und die zwei Räume sind **nicht disjunkt** — sie sollen es auch nicht sein, aber ohne die Spalte
+wird die Überschneidung zur Zweideutigkeit:
 
 | | |
 |---|---|
@@ -176,6 +177,9 @@ Knoten-Ids kommen aus `identities`, Satz-Ids aus dem eigenen Zähler von `record
 eine Id unter 4 000.** Sobald der 22. weitere Datensatz entsteht, gibt es eine Id, die **beides**
 ist — und `value_ref` ist dann zweideutig. Heute: **0 Überschneidungen, 0 zweideutige Verweise, 1
 Verweis, der auf nichts zeigt.**
+
+⚠️ *Wo es still schiefgehen würde: `RecordRepository::holdersOf()` fragt `value_ref IN (Satz-Ids)`
+und träfe eine Zeile, die auf einen **Knoten** dieser Id zeigt — ein falscher Halter, ohne Meldung.*
 
 **Für ein Ereigniskonzept heisst das: eine Adresse muss sagen, *was* sie adressiert, und darf sich
 nicht darauf verlassen, dass eine Id nur eines sein kann.**
