@@ -12,4 +12,4 @@ Sie werden nicht laufend gepflegt. Jedes Blatt nennt seinen Stand; ist der alt, 
 | Blatt | Wofür |
 |---|---|
 | [`konzept-kompakt.md`](konzept-kompakt.md) | Gesamtüberblick für die Entwicklung eines Ereigniskonzepts durch Dritte. Stand 2026-08-31. |
-| [`antwort-01-ereignisse.md`](antwort-01-ereignisse.md) | Antwort auf die ersten zwei Rückfragen dazu — `source` und was ein Ereignis über einen Wert trägt. Stand 2026-08-31. |
+| [`antwort-01-ereignisse.md`](antwort-01-ereignisse.md) | Antworten auf die Rückfragen dazu — `source`, die Nutzlast, das Änderungsbuch als Ereignisquelle, PSR-14 als Vorbild, und die offenen Fragen. Stand 2026-08-31. |

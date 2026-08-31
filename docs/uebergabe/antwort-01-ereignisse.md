@@ -140,7 +140,7 @@ Begründung, die auch für das nächste Ereignis trägt.
 
 ---
 
-## 3 · Zwei Festlegungen, die seither dazugekommen sind
+## 3 · Drei Festlegungen, die seither dazugekommen sind
 
 ### 3.1 Körnung: die **Zeile**, nicht das Feld
 
@@ -179,14 +179,126 @@ weiterhin lesbar, was ein weiterer Grund ist, ihn nicht im Ereignis mitzuschlepp
 
 ---
 
-## 4 · Was ein Entwurf weiterhin beantworten muss
+## 4 · Frage: soll das Änderungsbuch mit Ereignissen gefüllt werden?
 
-Unverändert gültig aus dem ersten Blatt, hier nur die, die durch die zwei Antworten **nicht** erledigt
-sind:
+*Der Gedanke war: Empfänger melden sich an und bekommen Ereignisse — das passt fast perfekt für ein
+Änderungsbuch.*
+
+### Kurz
+
+**Die Richtung umdrehen: das Änderungsbuch stösst Ereignisse aus, es hört nicht zu.**
+
+### Warum — das ist das entscheidende Argument
+
+Das Änderungsbuch ist eine **Zusicherung**, keine Reaktion. Heute wird es im **selben Codeweg**
+geschrieben wie die Änderung — man *kann* nichts ändern, ohne es aufzuzeichnen. Schreibt es ein
+Empfänger, hängt die Geschichte daran, dass jemand angemeldet ist und nicht scheitert.
+
+> **Beweismittel, das davon abhängt, dass jemand zugehört hat, ist kein Beweismittel.**
+
+Das ist hier nicht theoretisch: «geschrieben und nicht gelesen» wurde an einer einzigen Naht achtmal
+gefunden. «Aufgezeichnet, falls jemand zuhörte» ist dieselbe Form, eine Stufe schlimmer.
+
+### Umgekehrt ist es sehr attraktiv
+
+Die Zeile im Änderungsbuch **ist fast schon die Nutzlast aus Abschnitt 2**:
+
+| Spalte | Rolle im Ereignis |
+|---|---|
+| `owner_id` + `owner_kind` | die Adresse |
+| `by_user_id` | der Handelnde |
+| `change_group_id` | die Ursachenkette |
+| `before_state` / `after_state` | Vorher und Nachher |
+| `at` | die Zeit |
+
+Eine Stelle weiss «etwas hat sich geändert», und jeder Empfänger bekommt einen vollständigen,
+geordneten, schon gruppierten Strom.
+
+### Aber es kann nur Vergangenheitsform tragen
+
+| | Quelle | Zeitform |
+|---|---|---|
+| **Absicht** | die Fläche | «ich tue gerade» |
+| **Projektion** | das Änderungsbuch | «es ist geschehen» |
+
+*«Ich habe die Multiplizität auf `0..*` gestellt und noch nicht gespeichert»* ist kein Eintrag im
+Änderungsbuch und wird nie einer. Keine Schwäche, sondern eine Trennung — aber es heisst, dass die
+beiden Ströme sich überschneiden und **nicht dasselbe** sind.
+
+### Drei gemessene Lücken, die vorher zu müssen
+
+1. **Datensatzänderungen stehen gar nicht drin.** *`owner_kind` kennt `node` (16 813), `relation`
+   (5 589), `installation` (3) und `gone` (3) — **kein einziges `record`**. Und die Klasse, die
+   Datensätze schreibt, ruft das Änderungsbuch nirgends auf: **jede Modelländerung ist aufgezeichnet,
+   keine einzige Datenänderung.*** Als Ereignisquelle wäre das die Hälfte aller Ereignisse — und die
+   Lücke darf nicht nebenbei geschlossen werden, weil ein Datenbuch anders wächst als ein Modellbuch.
+2. **`what` ist ein Satz, kein Typ.** *41 verschiedene Werte, zusammengesetzt aus Verb und Schlüssel:
+   `setting read_only set`, `setting converter set`, `setting range_max set` — die Liste wächst mit jedem
+   neuen Einstellungsschlüssel.* Auf `setting.set` kann sich so niemand anmelden.
+3. **`by_user_id` ist meist leer** — *2 929 von 22 408 Zeilen haben einen Benutzer; der Rest sind Saaten,
+   Migrationen und Prüfläufe.* Als `actor` brauchbar, aber die Antwort lautet fast immer «System».
+
+---
+
+## 5 · Frage: an PSR-14 anlehnen?
+
+**Festlegung: nicht übernehmen, nur ähnlich handeln.** Der Standard ist *Vorbild*, nicht Abhängigkeit —
+und er darf in Code und Dokumentation **nicht** als «PSR-14» bezeichnet werden. *Eine
+Konformitätsbehauptung, die niemand prüft, ist in diesem Projekt schon mehrfach als Beleg zitiert
+worden, ohne je gestimmt zu haben.*
+
+### Was die Form von selbst löst
+
+**Die Ereignisklasse *ist* der Typ.** Statt `"setting read_only set"` als eine Zeichenkette gibt es eine
+Klasse mit einer Eigenschaft `key`. Damit ist Lücke 2 aus Abschnitt 4 an der Wurzel erledigt — man kann
+gar nicht anders.
+
+**Die zwei Sorten Ereignis decken die zwei Hälften ab, ohne dass etwas erfunden wird:**
+
+| Form | Hälfte |
+|---|---|
+| Meldung — Vergangenheitsform, nichts kommt zurück | **Projektion** |
+| veränderbares Ereignis — der Aufruf gibt das Objekt zurück, der Empfänger hat es gefüllt | **Absicht** |
+
+Das zweite ist der Kanal aus Abschnitt 2, als Rückgabewert statt als neuer Begriff.
+
+**Und es passt zur Schichtenregel:** ein Verteiler und ein Verzeichnis der Empfänger, kein Rahmenwerk.
+Der Kern darf beides definieren und benutzen, ohne WordPress zu kennen; das **Verzeichnis der
+Empfänger** — die Stelle, die weiss, wer zuhört — gehört an den Rand.
+
+### Drei Dinge, die die Form nicht löst
+
+1. **Sie ist prozessintern und synchron.** Eine *Verteilung*, kein *Transport*. Der Grenzübergang
+   Browser → Server bleibt HTTP und bleibt zu entwerfen. **Die Form ordnet, was passiert, nachdem die
+   Anfrage in PHP angekommen ist.**
+2. **Ein «stoppbares» Ereignis ist eine Gefahr für jede Zusicherung.** Darf ein Empfänger die Weitergabe
+   abbrechen, kann er einen anderen stumm schalten. Zweites Argument dafür, dass das Änderungsbuch
+   **ausstösst** und nicht zuhört.
+3. **Die Reihenfolge der Empfänger ist unbestimmt.** Für eine Projektion egal; für alles, was genau
+   einmal und in Reihenfolge geschehen muss, nicht.
+
+### Zwei Dinge, die daran hängen
+
+**Keine Laufzeit-Abhängigkeit.** *Gemessen: das Plugin hat heute **keine** — nur PHP ≥ 8.1, PHPUnit nur
+für Tests.* In WordPress laufen alle Plugins in einem Prozess; zwei Fassungen desselben
+Interface-Namens sind ein harter Fehler. «Keine Abhängigkeiten» ist eine Eigenschaft, die es zu
+verlieren gibt, und sie wird nicht für drei Interface-Dateien verkauft.
+
+**WordPress hat schon ein Ereignissystem** — `do_action` / `apply_filters`. Zwei davon in einem Plugin
+wären genau das «zwei Heimaten für eine Sache», das an einer Naht achtmal zugeschlagen hat. Der
+Zuschnitt: **eigener Verteiler innen, und *ein* Empfänger am Rand, der als `do_action('taxmod_…')`
+weiterreicht.** Eine Brücke, kein zweites System — und andere Plugins können sich anhängen, was sie
+sonst nicht könnten.
+
+---
+
+## 6 · Offene Fragen — der Stand
+
+### Aus dem ersten Blatt, weiterhin offen
 
 1. **Wer hört zu?** Beschreibt eine Zeile selbst, wovon sie abhängt, oder gibt es eine Stelle, die alle
-   Abhängigkeiten kennt? *(Die Körnung «Zeile» entschärft es, beseitigt es aber nicht: eine Änderung an
-   Zeile A kann Zeile B betreffen.)*
+   Abhängigkeiten kennt? *(Die Körnung «Zeile» aus 3.1 entschärft es, beseitigt es nicht: eine Änderung
+   an Zeile A kann Zeile B betreffen.)*
 2. **Wettläufe und Fehler.** Zwei Ereignisse überholen sich; die Antwort kommt nach der nächsten
    Änderung; das Netz ist weg. Was zeigt der Schirm dann?
 3. **Ohne JavaScript.** Die Seite funktioniert heute vollständig ohne. Bleibt das so — Ereignisse als
@@ -195,3 +307,21 @@ sind:
    Ereignisantwort auseinandergehen. Wie sieht der aus?
 5. **Nachladen.** Ist «lade den Wertblock dieser Zeile» dasselbe Ereignis wie «diese Angabe hat sich
    geändert», oder zwei Dinge?
+
+### Neu aus diesen Antworten
+
+6. **Der Transport.** Die Form ordnet nur, was innerhalb von PHP geschieht. Wie kommt eine Absicht
+   hinein und eine Projektion hinaus — eine eigene Route, `admin-post.php`, die REST-Schnittstelle? Und
+   in welcher Verpackung reist das gezeichnete Stück aus Festlegung 3.2?
+7. **Gehören Datensatzänderungen ins Änderungsbuch?** Heute stehen null drin. Die Antwort entscheidet,
+   ob das Änderungsbuch als Ereignisquelle die Hälfte aller Ereignisse kennt.
+8. **Wie wird `what` aufgespalten**, und was geschieht mit den 22 408 Zeilen in der alten Form? *Eine
+   Umschreibung der Geschichte ist eine Änderung an Beweismitteln.*
+9. **Wer darf ein Ereignis auslösen?** Nur der Rand, oder auch der Kern? *Ein Kern, der ausstösst, kann
+   in eine Rückkopplung laufen; ein Kern, der es nicht darf, kann keine Folgeänderung melden.*
+10. **Wie viele Ereignisse verträgt ein Speichern?** Ein Seitenspeichern schreibt heute Name, Sorte,
+    Labels, Feldnamen, Multiplizitäten und Werte in **einer** Handlung mit **einer** Änderungsnummer.
+    Wird das ein Ereignis oder dreissig — und was hört ein Empfänger dann?
+11. **Umschaltbares automatisches Speichern: wo steht der Schalter?** *Es ist eine Einstellung, und
+    Einstellungen sind in diesem Modell Felder an Knoten. Gilt das auch für eine Einstellung der
+    Oberfläche, oder ist das eine WordPress-Option?*
