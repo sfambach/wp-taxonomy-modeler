@@ -53,6 +53,7 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\Shadow;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -346,11 +347,45 @@ foreach ([$thing->id, $text->id, $first->id] as $id) {
     $wpdb->query($wpdb->prepare("DELETE FROM {$journal} WHERE owner_id = %d", $id));
 }
 
+// ⚠️ **Und aus dem Papierkorb heraus, sonst liegen sie in seinem Baum.** *Bis zum 2026-09-01 hat
+// dieser Lauf seine zwei Knoten **geparkt** und stehen gelassen — je Lauf ein frisches Paar, das
+// vorige verschwand, aber zwei lagen immer dort. Der Eigentümer hat dieselbe Sorte Müll an
+// `__uv Resistor` gefunden: «ist übrigens ein Überbleibsel von dir, ich brauche den nicht.»*
+//
+// ⚠️ **Aufheben, dann entfernen** ([D-535](../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
+// «löschen tun wir ja eh nicht, wir schieben es in die Schattentabelle». Auch beim eigenen Müll.*
+//
+// ⚠️ *Nur die eigenen Ids und **nie** `clearTrash()`: das räumt auch weg, was ein Mensch dort
+// geparkt hat und zurückholen wollte.*
+foreach ([$thing->id, $text->id] as $meiner) {
+    foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $meiner)) ?: [] as $satzId) {
+        Shadow::keep('record_values', 'record_id = %d', [(int) $satzId], true);
+        Shadow::keep('records', 'id = %d', [(int) $satzId], true);
+
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+    }
+
+    Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$meiner, $meiner], true);
+    Shadow::keep('nodes', 'id = %d', [$meiner], true);
+
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $meiner, $meiner));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $meiner));
+}
+
 sane('tidying');
 
 check(
     'the scratch journal rows are gone',
     (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$journal} WHERE owner_id = %d", $thing->id)) === 0
+);
+
+// ⚠️ *Der Gegenfall: kein eigener Knoten bleibt liegen. Ohne ihn war der Lauf grün und liess zwei
+// im Papierkorb — dreizehn Läufe lang.*
+check(
+    'and no scratch node is left behind',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes') . " WHERE name LIKE '\_\_ja %'") === 0,
+    (string) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes') . " WHERE name LIKE '\_\_ja %'")
 );
 
 echo "\n---- {$ok} passed, {$bad} failed ----\n";
