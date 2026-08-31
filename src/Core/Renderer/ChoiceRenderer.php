@@ -85,20 +85,29 @@ final class ChoiceRenderer implements Renderer
         $now = $context->value->text
             ?? ($context->value->reference === null ? null : (string) $context->value->reference);
 
-        // ⚠️ **R31b's count.** *Nothing* is an outcome exactly where it is an allowed answer — R29
-        // reads that off the multiplicity: `0..1` and `0..*` may be empty, `1` and `1..*` may not.
-        $mayBeNothing = $context->surroundings->mayBeNothing;
-        $outcomes     = count($offered) + ($mayBeNothing ? 1 : 0);
-
         if ($context->purpose === Purpose::Display) {
             return $this->shown($now, $offered);
         }
 
-        // R31a: nothing can be chosen and nothing is not allowed — the model cannot be satisfied.
-        $unsatisfiable = $offered === [] && ! $mayBeNothing;
+        // ⚠️ **Hier stand die Regel, und sie steht jetzt in {@see Choice}.** *Der Eigentümer hat den
+        // Grund benannt: «von der Multiplizität zum Choice ist ein Weg — das ist nicht eine einfache
+        // Umsetzung, sondern da ist Code dazwischen. Und es kann sein, dass du den mehrfach
+        // erfindest.» **Gemessen: die Regel stand einmal, der Weg dorthin viermal** — und am
+        // 2026-08-31 kam ein fünfter Zweig dazu, von mir.*
+        //
+        // ⚠️ *Dieser Renderer **zeichnet** eine Wahl und **rechnet** sie nicht. Ausgänge, entschieden,
+        // unerfüllbar — alles Fragen an das eine Objekt, das sie beantworten darf.*
+        $wahl = Choice::forSetting(
+            $offered,
+            ! $context->surroundings->mayBeNothing,
+            $context->value,
+            $context->editable
+        );
 
-        // R30 / R31: one outcome or none is already decided, so the control is greyed.
-        $decided = $outcomes <= 1;
+        $mayBeNothing  = $wahl->mayBeNothing;
+        $outcomes      = $wahl->outcomes();
+        $unsatisfiable = $wahl->isUnsatisfiable();
+        $decided       = $wahl->isDecided();
 
         $markup = '<select name="' . RenderResult::escape($context->fieldName) . '"'
             // ⚠️ **Where the control cannot sit inside its form, it names it.** An attribute row is a
@@ -108,7 +117,7 @@ final class ChoiceRenderer implements Renderer
                 ? ''
                 : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
             . ' class="taxmod-choice' . ($unsatisfiable ? ' taxmod-unsatisfiable' : '') . '"'
-            . ($decided || ! $context->editable ? ' disabled' : '')
+            . ($wahl->isOperable() ? '' : ' disabled')
             . ($decided ? ' style="opacity:.55"' : '')
             . ($unsatisfiable
                 ? ' title="' . RenderResult::escape($context->surroundings->refersTo ?? '') . '"'

@@ -7,7 +7,7 @@ Cursor, or a human.
 
 The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
 since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
-for: **561 decisions, 143 questions of which 8 still say `open`.** *This line has been wrong twice. On 2026-08-27 it claimed 25 open questions and none had been answered — **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`**. On 2026-08-31 it still said 459 decisions; there were 548, and a whole evening of them had gone unrecorded here. **That is what a count in a rules file is worth** — and why the check below matters more than the number.* The previous planning round is frozen under
+for: **562 decisions, 143 questions of which 8 still say `open`.** *This line has been wrong twice. On 2026-08-27 it claimed 25 open questions and none had been answered — **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`**. On 2026-08-31 it still said 459 decisions; there were 548, and a whole evening of them had gone unrecorded here. **That is what a count in a rules file is worth** — and why the check below matters more than the number.* The previous planning round is frozen under
 [`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
 [`docs/NewConcept/`](docs/NewConcept/README.md).
 

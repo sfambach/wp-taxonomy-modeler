@@ -19,6 +19,7 @@ use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRowRenderer;
+use Taxmod\Core\Renderer\Choice;
 use Taxmod\Core\Renderer\ChoiceRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
@@ -519,7 +520,17 @@ final class Rendering
             // Textfeld mit `taxmod-no-renderer` da, obwohl ihre fünf beziehungsweise zwei
             // Möglichkeiten längst als Kinder im Modell stehen.*
             $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef;
-            $angebot = $istWahl ? ($wahl[$edge->id] ?? []) : [];
+
+            // ⚠️ **Die Wahl wird gebaut und nicht stückweise ausgerechnet** ({@see Choice}). *Der
+            // Eigentümer hat den Grund benannt: «von der Multiplizität zum Choice ist ein Weg … und es
+            // kann sein, dass du den mehrfach erfindest». **Gemessen stand der Weg viermal**, und ein
+            // Kerntest zählt jetzt nach, dass er einmal steht.*
+            $dieWahl = Choice::atUseSite(
+                $edge->multiplicity,
+                $istWahl ? ($wahl[$edge->id] ?? []) : [],
+                $values[$edge->id] ?? null,
+                $editable
+            );
 
             // ⚠️ **Ein gespeicherter Verweis ist immer ein Eintrag, auch wenn er heute nicht angeboten
             // würde** ([D-360](../../../docs/NewConcept/90-decision-log.md)).
@@ -536,9 +547,11 @@ final class Rendering
             // markierten Fehler sehen und nicht eine Id, die wie ein Name aussieht.*
             $verweis = ($values[$edge->id] ?? null)?->reference;
 
-            if ($istWahl && $verweis !== null && ! isset($angebot[$verweis]) && isset($names[$edge->id])) {
-                $angebot[$verweis] = $names[$edge->id];
+            if ($istWahl && $verweis !== null && isset($names[$edge->id])) {
+                $dieWahl = $dieWahl->including($verweis, $names[$edge->id]);
             }
+
+            $angebot = $dieWahl->options;
 
             // ⚠️ **Ein Renderer wird nur angeboten, wenn er das hier auch zeichnen kann**
             // ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
@@ -581,9 +594,7 @@ final class Rendering
             // *Der dritte ist keine Feinheit: das nächste Speichern hätte «nichts» geschrieben. Die Zusage
             // heisst «damit die Lücke sichtbar bleibt» — und ein Rückfall, der den Wert zeigt und den
             // Grund nennt, hält sie besser als ein leerer Kasten.*
-            $wahlKannDenZustandZeigen = $angebot !== [] || $verweis === null;
-
-            if ($istWahl && $wahlKannDenZustandZeigen && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
+            if ($istWahl && $dieWahl->canShowItsState() && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
                 $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
             }
 
@@ -630,7 +641,7 @@ final class Rendering
                     // Listen-Renderer setzt die Regel längst um — gesperrt bei null Ausgängen,
                     // ausgegraut bei genau einem, echte Bedienung darüber. **Ihm fehlte nur die
                     // Angabe.***
-                    mayBeNothing: ! $edge->multiplicity->requiresOne(),
+                    mayBeNothing: $dieWahl->mayBeNothing,
                     formId: $formId,
                 ),
                 shown: $this->convertedCharacters($value, $settings, $type),
