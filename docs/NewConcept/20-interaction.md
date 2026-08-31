@@ -1324,3 +1324,23 @@ bleibt sichtbar, und geprüft wird sie im Kern.*
 keiner.***
 
 ---
+
+## U36 · `Settings` in der Vorschau bekommt eine eigene Zeile
+
+**Entscheidung [D-555](90-decision-log.md)**, 2026-08-31.
+
+Anzeige und Admin stehen nebeneinander; **`Settings` bekommt eine eigene Zeile über die ganze Breite.**
+
+Der Eigentümer: *«ich würde noch Settings-Preview in eine neue Zeile packen und alles in einer Linie,
+also wie eine Tabellenzeile anzeigen — ergibt auch Sinn, weil es hier Table View ist. Wahrscheinlich ist
+das schon so.»*
+
+⚠️ **Halb war es schon so, und die andere Hälfte war der Punkt.** *Gemessen: die Hülle ist ein Raster
+`repeat(auto-fit, minmax(20em, 1fr))`, die drei Seiten standen längst in einer Linie. Aber **Anzeige und
+Admin sind gestapelte Formularzeilen, `Settings` ist eine echte Tabelle** ([D-546](90-decision-log.md)) —
+und eine Tabelle in einem Drittel der Breite bricht um.*
+
+⚠️ *Die Breite wird über eine Klasse gesagt und nicht im Code gerechnet, und die Regel steht dort, wo
+das Raster steht: **ein Layout an zwei Orten läuft auseinander.***
+
+---

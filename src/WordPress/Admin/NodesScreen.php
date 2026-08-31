@@ -907,12 +907,26 @@ final class NodesScreen
             static fn (Relation $edge): bool => $edge->kind->isSetting() && ! $edge->hide
         ));
 
+        // ⚠️ **`Settings` bekommt eine eigene Zeile über die ganze Breite** — *auf sein Wort: «ich würde
+        // noch Settings-Preview in eine neue Zeile packen und alles in einer Linie, also wie eine
+        // Tabellenzeile anzeigen — ergibt auch Sinn, weil es hier Table View ist. Wahrscheinlich ist das
+        // schon so.»*
+        //
+        // ⚠️ **Halb war es schon so, und die andere Hälfte war der eigentliche Punkt.** *Gemessen: die
+        // Hülle ist ein Raster `repeat(auto-fit, minmax(20em, 1fr))`, die drei Seiten stehen also längst
+        // in einer Linie. Aber **Anzeige und Admin sind gestapelte Formularzeilen, `Settings` ist eine
+        // echte Tabelle** ([D-546](../../../docs/NewConcept/90-decision-log.md)) — und eine Tabelle in
+        // einem Drittel der Breite bricht um. Seine «Tabellenzeile» braucht die Zeile.*
+        //
+        // ⚠️ *Die Breite wird nicht hier gerechnet, sondern über eine Klasse gesagt: `grid-column: 1/-1`
+        // steht im Stylesheet, wo der Rest des Rasters auch steht. **Ein Layout an zwei Orten ist ein
+        // Layout, das auseinanderläuft.***
         foreach ([
-            [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown']],
-            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown']],
-            [__('Settings', 'taxmod'), Purpose::Edit, true, Level::Settings, $einstellungen],
-        ] as [$title, $purpose, $editable, $level, $gezeigte]) {
-            $html .= '<div class="taxmod-preview-side">'
+            [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], ''],
+            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], ''],
+            [__('Settings', 'taxmod'), Purpose::Edit, true, Level::Settings, $einstellungen, ' taxmod-preview-wide'],
+        ] as [$title, $purpose, $editable, $level, $gezeigte, $breite]) {
+            $html .= '<div class="taxmod-preview-side' . $breite . '">'
                 . '<h4>' . esc_html($title) . '</h4>'
                 // ⚠️ **No field prefix.** A preview must not be submittable: two forms with the same
                 // field names on one page is how a person saves the thing they were only looking at.

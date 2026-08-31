@@ -667,11 +667,22 @@ final class RenderingTest extends TestCase
         self::assertSame(PlainRenderer::NAME, $field->rendererName);
     }
 
+    /**
+     * ⚠️ **Diese Zusage hiess «der Wähler fehlt, und die Lücke bleibt sichtbar» — den Wähler gibt es.**
+     *
+     * *Der Eigentümer: «`ChoiceRenderer` war genau das, was ich mit Select-Renderer meinte, also gibt es
+     * ihn schon.» Damit ist [D-244](../../docs/NewConcept/90-decision-log.md)s Lücke geschlossen, und ein
+     * Verweis beim Bearbeiten ist das, was er immer war: eine **Auswahl**.*
+     *
+     * ⚠️ **Die Absicht der Zusage bleibt und ist strenger geworden:** *der gespeicherte Wert muss zu
+     * **sehen** sein, und das Bedienelement darf nicht aussehen, als könne man frei hineinschreiben.
+     * `Gramm` hat keine Kinder, also gibt es genau **einen** Ausgang — den gespeicherten
+     * ([D-360](../../docs/NewConcept/90-decision-log.md)) —, und [R30](../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
+     * sagt: vorausgewählt und ausgegraut.*
+     */
     #[Test]
-    public function a_reference_declines_the_edit_purpose_so_the_chooser_gap_stays_visible(): void
+    public function a_stored_reference_is_a_greyed_choice_and_never_disappears(): void
     {
-        // ⚠️ Changing a reference means picking a node — the chooser, decided (D-244), not built.
-        // The descent falls back for a **value**, and the fallback marks itself (R14b).
         $gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
         $part = $this->thing('Part');
         $unit = $this->editor->addField($part->id, $gram->id, 'unit');
@@ -683,12 +694,15 @@ final class RenderingTest extends TestCase
             'v'
         )[0];
 
-        self::assertTrue($field->hasNoRenderer());
-        self::assertStringContainsString('taxmod-no-renderer', $field->result->markup);
+        self::assertFalse($field->hasNoRenderer());
+        self::assertStringContainsString('taxmod-choice', $field->result->markup);
 
-        // ⚠️ **And it blames the renderer control, correctly**: a constant *can* be drawn, the name
-        // stored here just cannot draw it. The record case below must not say the same thing.
-        self::assertStringContainsString('the one set for this cannot draw', $field->result->markup);
+        // ⚠️ **Der Wert ist zu sehen — das ist der Kern der alten Zusage.** *Eine leere gesperrte Auswahl
+        // hätte ihn verschwinden lassen, und das nächste Speichern hätte «nichts» geschrieben.*
+        self::assertStringContainsString('Gramm', $field->result->markup);
+
+        // ⚠️ *Und sie sieht nicht bedienbar aus: ein Ausgang ist keine Entscheidung (`R30`).*
+        self::assertStringContainsString('disabled', $field->result->markup);
     }
 
     #[Test]

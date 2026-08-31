@@ -734,6 +734,25 @@ details.taxmod-page-block > summary {
     padding: .6em .8em;
 }
 
+/* ⚠️ Eine eigene Zeile über die ganze Breite — auf sein Wort: «Settings-Preview in eine neue Zeile
+ * packen und alles in einer Linie, also wie eine Tabellenzeile, weil es hier Table View ist».
+ *
+ * ⚠️ Der Grund ist gemessen: Anzeige und Admin sind gestapelte Formularzeilen, Settings ist eine
+ * echte Tabelle (D-546) — und eine Tabelle in einem Drittel der Rasterbreite bricht um. Die zwei
+ * anderen standen schon in einer Linie; hier fehlte die Breite.
+ *
+ * ⚠️ `1 / -1` statt einer Zahl, damit es bei zwei wie bei fünf Spalten stimmt: das Raster ist
+ * `auto-fit`, die Spaltenzahl hängt am Fenster. Eine gezählte Spalte wäre eine Annahme über die
+ * Fensterbreite. */
+.taxmod-preview-wide {
+    grid-column: 1 / -1;
+}
+
+/* Und die Tabelle darin darf die Zeile auch benutzen. */
+.taxmod-preview-wide .taxmod-table {
+    width: 100%;
+}
+
 .taxmod-preview-side h4 {
     margin: 0 0 .5em;
     font-size: .9em;

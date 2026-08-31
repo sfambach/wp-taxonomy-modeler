@@ -3877,3 +3877,37 @@ heissen nicht «Datensatz-Spalten»: ein Behälter legt aus, was ihm gegeben wir
 was «löschen» hier heisst, ist nicht entschieden: [OQ-143](91-open-questions.md).*
 
 ---
+
+### R78 — eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist
+
+**Entscheidung [D-556](90-decision-log.md)**, 2026-08-31.
+
+Eine Einstellungskante, deren Ziel **keine eigenen Felder** hat, ist ein Knotenverweis — also eine
+Auswahl. Auch mit **null** Einträgen.
+
+Der Eigentümer: *«`validator` müsste eigentlich Select-Feld sein, `choice_renderer`, ausgegraut, weil
+aktuell kein Validator existiert.»*
+
+⚠️ **Keine neue Regel, sondern zwei bestehende zusammengelegt.** *[D-541](90-decision-log.md) sagt
+wörtlich: «hat es eigene Felder, braucht er einen Teil; **hat es nur Kinder, wählt man eines aus**».
+`Validator` hat weder — also der Wahlfall mit keinem Ausgang, und [R28](#r28r32--the-rule-complete)
+sagt, was dann gilt: **gesperrt und markiert.***
+
+### Die drei Fälle
+
+| Möglichkeiten | gespeicherter Wert | was gezeichnet wird |
+|---|---|---|
+| ja | egal | Auswahl; der gespeicherte Wert ist **immer** ein Eintrag ([D-360](90-decision-log.md)) |
+| nein | keiner | Auswahl, leer, **gesperrt und markiert** — der Fall `validator` |
+| nein | einer, dessen Name nicht auflöst | **Rückfall**, denn eine leere Auswahl liesse den Wert verschwinden |
+
+⚠️ **Der dritte Fall wurde von einem Kerntest gefangen**, und er ist keine Feinheit: *eine leere
+gesperrte Auswahl über einem gespeicherten Verweis zeigt den Wert nirgends — und das nächste Speichern
+schreibt «nichts».*
+
+⚠️ *Nur im Ast `Settings`. Ein Ziel im Ast `Model` ist ein Verweis auf einen **Datensatz** und will den
+Zusammenfassungs-Renderer ([D-106](90-decision-log.md)); es hier zum Knotenverweis zu machen wäre ein
+Verweis auf die falsche Art Sache. **Gemessen ändert die Regel genau eine Kante im Modell:
+`validator`.***
+
+---

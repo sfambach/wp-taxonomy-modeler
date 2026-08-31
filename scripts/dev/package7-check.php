@@ -371,16 +371,26 @@ check('drawn by the reference renderer', $named->rendererName === 'reference', $
 check('showing the name', str_contains($named->result->markup, '__p7 Gramm'), $named->result->markup);
 check('and not the id', ! str_contains($named->result->markup, (string) $gram->id));
 
-// ⚠️ The gap that is left, and it stays visible: changing a reference means picking a node, which
-// is the chooser — decided (D-244) and not built. So the edit purpose falls back and says so.
+// ⚠️ **Hier stand «die Luecke bleibt sichtbar: der Waehler ist entschieden (D-244) und nicht gebaut».
+// Den Waehler gibt es.** *Der Eigentümer: «`ChoiceRenderer` war genau das, was ich mit Select-Renderer
+// meinte, also gibt es ihn schon.» Ein Verweis beim Bearbeiten ist damit das, was er immer war: eine
+// **Auswahl**.*
+//
+// ⚠️ **Die Absicht der Zusage bleibt und ist strenger:** *der gespeicherte Wert muss zu **sehen** sein.
+// `__p7 Gramm` hat keine Kinder, also gibt es genau **einen** Ausgang — den gespeicherten
+// ([D-360](../../docs/NewConcept/90-decision-log.md)) — und [R30](../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
+// sagt: vorausgewaehlt und ausgegraut. **Eine leere gesperrte Auswahl haette den Wert verschwinden
+// lassen, und das naechste Speichern haette «nichts» geschrieben.***
 $editing = $rendering->fieldsFor(
     [$unit],
     [$unit->id => TypedValue::ofReference($gram->id)],
     Purpose::Edit,
     'taxmod_value'
 )[0];
-check('editing a reference still has no renderer, and says so', $editing->hasNoRenderer());
-check('marked in the markup rather than merely tidy (R14b)', str_contains($editing->result->markup, 'taxmod-no-renderer'));
+check('editing a reference is a choice now', ! $editing->hasNoRenderer(), $editing->rendererName);
+check('drawn by the choice renderer', str_contains($editing->result->markup, 'taxmod-choice'));
+check('the stored value is visible', str_contains($editing->result->markup, '__p7 Gramm'));
+check('and one outcome is not a decision (R30)', str_contains($editing->result->markup, 'disabled'));
 
 echo "\n== 11. Hide and read-only close a field wherever it is drawn ==\n";
 // ⚠️ *Die Spalte, nicht die Einstellung ([D-457]): `hide` ist eine Eigenschaft der Platzierung,

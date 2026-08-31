@@ -518,9 +518,27 @@ final class Rendering
             // ⚠️ *Gemessen, wie es vorher aussah: `label_role` und `orientation` standen als nacktes
             // Textfeld mit `taxmod-no-renderer` da, obwohl ihre fünf beziehungsweise zwei
             // Möglichkeiten längst als Kinder im Modell stehen.*
-            $angebot = ($purpose === Purpose::Edit && $type === SimpleType::NodeRef)
-                ? ($wahl[$edge->id] ?? [])
-                : [];
+            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef;
+            $angebot = $istWahl ? ($wahl[$edge->id] ?? []) : [];
+
+            // ⚠️ **Ein gespeicherter Verweis ist immer ein Eintrag, auch wenn er heute nicht angeboten
+            // würde** ([D-360](../../../docs/NewConcept/90-decision-log.md)).
+            //
+            // ⚠️ **Ohne das versteckt eine leere Auswahl den Wert, und ein Kerntest hat es gefangen.**
+            // *Ein Verweis auf `Gramm` mit null Möglichkeiten wäre als leeres gesperrtes `<select>`
+            // gezeichnet worden — **der Wert stand nirgends mehr auf dem Schirm**, und das nächste
+            // Speichern hätte «nichts» geschrieben. Die Zusage hiess «damit die Lücke sichtbar bleibt»;
+            // sie war für genau diesen Fall geschrieben.*
+            //
+            // ⚠️ *Der Name kommt aus {@see self::namesOfReferences()} — schon aufgelöst, in einem Zug für
+            // alle Zeilen (`CD-7`). Löst er **nicht** auf, hängt der Verweis ins Leere, und dann wird kein
+            // Eintrag erfunden: [D-363](../../../docs/NewConcept/90-decision-log.md) will einen
+            // markierten Fehler sehen und nicht eine Id, die wie ein Name aussieht.*
+            $verweis = ($values[$edge->id] ?? null)?->reference;
+
+            if ($istWahl && $verweis !== null && ! isset($angebot[$verweis]) && isset($names[$edge->id])) {
+                $angebot[$verweis] = $names[$edge->id];
+            }
 
             // ⚠️ **Ein Renderer wird nur angeboten, wenn er das hier auch zeichnen kann**
             // ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
@@ -538,7 +556,34 @@ final class Rendering
                 $angebot = $this->onlyUsableRenderers($angebot, $forNode, $values[$edge->id] ?? null);
             }
 
-            if ($angebot !== [] && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
+            // ⚠️ **Eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist** —
+            // *[R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete): «mit **keinem**
+            // verfügbaren Eintrag gibt es nichts zu wählen und das Bedienelement ist **gesperrt**».*
+            //
+            // ⚠️ **Hier stand `$angebot !== []`, und das war die Regel andersherum.** *Der Eigentümer an
+            // `validator`: «müsste eigentlich Select-Feld sein, `choice_renderer`, ausgegraut, weil
+            // aktuell kein Validator existiert.» Gemessen stand dort ein nacktes `<input type="text"
+            // class="taxmod-no-renderer">` — **die Einladung, einen Namen hinzuschreiben, den niemand
+            // kennt.** Ohne Einträge fiel die Zeile aus der Auswahl heraus und landete beim Rückfall.*
+            //
+            // ⚠️ *`ChoiceRenderer` kann den Fall längst: null Ausgänge heisst gesperrt **und markiert**,
+            // und bei `0..*` mit leerer Wahl. Es hat nur niemand hingeschickt.*
+            //
+            // ⚠️ **Drei Fälle und nicht zwei — der dritte hat mich beim ersten Versuch erwischt, und ein
+            // Kerntest hat ihn gefangen:**
+            //
+            // | Möglichkeiten | gespeicherter Wert | was gezeichnet wird |
+            // |---|---|---|
+            // | ja | egal | Auswahl; der gespeicherte Wert ist ein Eintrag ([D-360](../../../docs/NewConcept/90-decision-log.md)) |
+            // | nein | keiner | Auswahl, leer, **gesperrt und markiert** ([R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)) — der Fall `validator` |
+            // | nein | einer, dessen Name nicht auflöst | **Rückfall**, denn eine leere Auswahl würde den Wert **verschwinden lassen** |
+            //
+            // *Der dritte ist keine Feinheit: das nächste Speichern hätte «nichts» geschrieben. Die Zusage
+            // heisst «damit die Lücke sichtbar bleibt» — und ein Rückfall, der den Wert zeigt und den
+            // Grund nennt, hält sie besser als ein leerer Kasten.*
+            $wahlKannDenZustandZeigen = $angebot !== [] || $verweis === null;
+
+            if ($istWahl && $wahlKannDenZustandZeigen && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
                 $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
             }
 
@@ -2320,6 +2365,47 @@ final class Rendering
 
             foreach ($offen as $edgeId => $targetId) {
                 if (($kinder[$targetId] ?? []) !== []) {
+                    $types[$edgeId] = SimpleType::NodeRef;
+                    unset($offen[$edgeId]);
+                }
+            }
+        }
+
+        // ⚠️ **Ein Ziel im Ast `Settings` ohne eigene Felder ist ein Verweis — auch mit **null** Kindern.**
+        //
+        // ⚠️ *Der Eigentümer: «`validator` müsste eigentlich Select-Feld sein, `choice_renderer`,
+        // ausgegraut, weil aktuell kein Validator existiert.» Und es braucht keine neue Regel:
+        // [D-541](../../../docs/NewConcept/90-decision-log.md) sagt es wörtlich — «hat es eigene Felder,
+        // braucht er einen Teil; **hat es nur Kinder, wählt man eines aus**». `Validator` hat weder, also
+        // ist es der Wahlfall mit **keinem** Ausgang, und [R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
+        // sagt, was dann gilt: **gesperrt und markiert.***
+        //
+        // ⚠️ **Die Kinderregel allein konnte das nicht sehen**: sie fragt «hat das Ziel Kinder», und null
+        // Kinder heisst dort «keine Auswahl» — was als **Eingabefeld** endete. *Ein Textfeld für einen
+        // Validator ist die Einladung, einen Namen hinzuschreiben, den niemand kennt.*
+        //
+        // ⚠️ **Nur im Ast `Settings`, und das ist Absicht.** *Ein Ziel im Ast `Model` ist ein Verweis auf
+        // einen **Datensatz** und will den Zusammenfassungs-Renderer ([D-106](../../../docs/NewConcept/90-decision-log.md));
+        // es hier zum Knotenverweis zu machen wäre ein Verweis auf die falsche Art Sache. Gemessen ändert
+        // die Regel genau **eine** Kante: `validator`.*
+        //
+        // ⚠️ *In **einer** Abfrage für alle offenen Ziele (`CD-7`) — die Felder eines Ziels sind Kanten,
+        // und `fieldEdgesOf()` nimmt eine Liste.*
+        if ($offen !== [] && $this->relations !== null) {
+            $mitFeldern = [];
+
+            foreach ($this->relations->fieldEdgesOf(array_values(array_unique($offen))) as $eine) {
+                $mitFeldern[$eine->fromId] = true;
+            }
+
+            foreach ($offen as $edgeId => $targetId) {
+                $ziel = $targets[$targetId] ?? null;
+
+                if ($ziel === null || isset($mitFeldern[$targetId])) {
+                    continue;
+                }
+
+                if ($this->framework->branchOf($ziel) === Branch::Settings) {
                     $types[$edgeId] = SimpleType::NodeRef;
                 }
             }
