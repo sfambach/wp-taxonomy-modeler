@@ -42,20 +42,23 @@ final class SliderRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        $outputValue = $this->outputValue($context);
-
+        // ⚠️ **Zwei Werte, und vorher war es einer.** *In der Bahn steht der **gespeicherte** Wert, denn
+        // der Browser deutet ihn; neben der Bahn steht, was ein Mensch **liest** — mit Konverter also
+        // `XII` statt `12`. Vorher stand die Notation in `value`, und `<input type="range" value="XII">`
+        // ist kein Wert: der Griff sprang in die Mitte, und das nächste Speichern hätte die Mitte
+        // geschrieben. {@see TypedFieldRenderer::controlValue()} trägt die Messung.*
         return RenderResult::htmlTag('input', [
             'type'  => 'range',
             'name'  => $context->fieldName,
             // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
             'form'  => $context->surroundings->formId,
-            'value' => $outputValue,
+            'value' => $this->controlValue($context),
             'min'   => $this->numberSetting($context, SettingKey::Min->value),
             'max'   => $this->numberSetting($context, SettingKey::Max->value),
             // ⚠️ *`any` for a decimal, because a slider with an integer step cannot reach 2.5.*
             'step'  => $this->numberSetting($context, SettingKey::Step->value)
                 ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
         ])
-            . $this->createHtmlValueSpan(RenderResult::escape($outputValue));
+            . $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 }

@@ -5766,3 +5766,44 @@ gemerkte Ids gerichtet.*
 `field_row`, `head`, `labels`, `record`, `settings`, `tree`, `tree_node`. Das sind die Renderer, die den
 Schirm selbst zeichnen und darum keinen Knoten haben; **harmlos, aber genau die Sorte Rest, aus der
 später ein Befund wird.***
+
+---
+
+## OQ-142 — In welcher Notation kommt ein Wert **zurück**, wenn das Steuerelement eine andere zeigt?
+
+**Raised** 2026-08-31, gemessen an einem Schieber mit dem Konverter `roman`.
+
+*Blockiert:* jeden Konverter an einem Feld mit einem typisierten Steuerelement · *Status:* **open**
+
+⚠️ **Der Anlass ist seine Frage:** *«wenn ich einen Konverter habe, müssten die Werte anders
+dargestellt werden — wenn ich römisch habe, in römischen Werten. Ich weiss gar nicht, ob man beim
+Slider aktuell schon den Wert sieht.»*
+
+⚠️ **Man sieht ihn, und er stand auch im Attribut `value` — das war ein Datenverlust.** *Gemessen:
+`roman` macht aus `12` die Zeichen `XII`, und `<input type="range" value="XII">` ist für den Browser
+kein Wert. Der Griff springt in die Mitte, und das nächste Speichern schreibt die Mitte. **Ein
+Konverter hätte den Wert gelöscht, ohne dass etwas rot geworden wäre.***
+
+⚠️ **Behoben ist die eine Hälfte:** *`TypedFieldRenderer::controlValue()` gibt dem Steuerelement den
+**gespeicherten** Wert, die Notation steht daneben. Die Trennlinie: `range`, `number`, `color`, `date`
+bekommen den gespeicherten Wert; ein freies Textfeld bekommt die Notation, denn dort ist sie der Sinn
+der Sache. Drei Kerntests halten beide Seiten fest.*
+
+### Die offene Hälfte
+
+Ein Konverter darf nur mitreden, wenn er **umkehrbar** ist — er liest seine eigene Notation zurück.
+Zeigt das Steuerelement jetzt die gespeicherte Notation, kommt auch diese zurück, und der Konverter
+soll sie deuten.
+
+Gemessen: `roman->written('12')` **verweigert** mit `NotAValueOfThatType`. Der schlechteste Fall ist
+also eine sichtbare Absage und keine stille Verdrehung — aber eine Absage auf einen Wert, den der
+Mensch nie angefasst hat, ist trotzdem falsch.
+
+| | Weg | Preis |
+|---|---|---|
+| **A** | Wo das Steuerelement die gespeicherte Notation trägt, wird der Konverter beim **Lesen** übersprungen | die Notation ist dann eine reine Anzeige; der Konverter bestimmt nicht mehr, was eingegeben werden darf |
+| **B** | Ein Konverter ist an einem typisierten Steuerelement **nicht wählbar** — die Auswahl verengt sich, wie sie es für Renderer schon tut | ehrlich und sichtbar; nimmt aber «römisch anzeigen, mit dem Schieber einstellen» weg, was er gerade wollte |
+| **C** | Das Steuerelement trägt zwei Werte: einen versteckten, gespeicherten zum Abschicken und einen sichtbaren in der Notation | zwei Werte für eine Sache im Formular — genau das, was sonst Ärger macht, und es braucht den Ereignismechanismus |
+
+⚠️ **Nicht geraten.** *`A` ist heute faktisch der Zustand für `range` und `number`, weil `written()`
+absagt — aber **nicht entschieden**, und ein faktischer Zustand ist keine Regel.*

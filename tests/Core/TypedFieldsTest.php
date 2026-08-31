@@ -380,6 +380,98 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('47', $result->markup);
     }
 
+    /**
+     * ⚠️ **Der Konverter gehört neben die Bahn, nicht in die Bahn.**
+     *
+     * *Der Eigentümer: «wenn ich einen Konverter habe, müssten die Werte anders dargestellt werden —
+     * wenn ich römisch habe, in römischen Werten. Ich weiss gar nicht, ob man beim Slider aktuell schon
+     * den Wert sieht.»* **Man sieht ihn — und vorher stand er auch im Attribut `value`.**
+     *
+     * ⚠️ *`<input type="range" value="XII">` ist für den Browser kein Wert: der Griff springt in die
+     * Mitte, und das nächste Speichern schreibt die Mitte. **Ein Konverter hätte den Wert gelöscht,
+     * ohne dass etwas rot geworden wäre** — genau die Sorte Fehler, die `PR-12` beschreibt.*
+     */
+    #[Test]
+    public function a_slider_keeps_the_stored_number_in_the_track_and_the_notation_beside_it(): void
+    {
+        $result = (new SliderRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(12),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                // Was der Konverter `roman` aus der 12 macht.
+                'XII'
+            )
+        );
+
+        self::assertStringContainsString('value="12"', $result->markup);
+        self::assertStringNotContainsString('value="XII"', $result->markup);
+
+        // Und die Ziffer, die ein Mensch liest, steht daneben.
+        self::assertStringContainsString('XII', $result->markup);
+    }
+
+    /** ⚠️ *Dieselbe Trennlinie am Zahlenfeld — dieselben Typen, dieselben Konverter.* */
+    #[Test]
+    public function a_spinner_keeps_the_stored_number(): void
+    {
+        $result = (new SpinnerRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(255),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                'FF'
+            )
+        );
+
+        self::assertStringContainsString('value="255"', $result->markup);
+        self::assertStringNotContainsString('value="FF"', $result->markup);
+    }
+
+    /**
+     * ⚠️ **Der Gegenfall, und ohne ihn wäre der Wächter halb.** *Ein freies Textfeld bekommt die
+     * Notation — dort ist sie der Sinn der Sache, und der Konverter liest sie wieder ein. Ohne diese
+     * Zusage könnte jemand `controlValue()` überall einsetzen und der Konverter wäre wirkungslos.*
+     */
+    #[Test]
+    public function a_text_field_shows_the_notation(): void
+    {
+        $result = (new FieldRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(12),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                'XII'
+            )
+        );
+
+        self::assertStringContainsString('value="XII"', $result->markup);
+    }
+
     #[Test]
     public function an_address_becomes_a_link_and_cannot_break_out_of_it(): void
     {

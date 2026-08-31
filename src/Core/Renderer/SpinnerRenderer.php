@@ -48,7 +48,11 @@ final class SpinnerRenderer extends TypedFieldRenderer
             // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
             'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
-            'value' => $this->outputValue($context),
+            // ⚠️ **Der gespeicherte Wert und nicht die Notation** ({@see TypedFieldRenderer::controlValue()}).
+            // *`<input type="number" value="XII">` ist für den Browser kein Wert — das Feld kommt leer
+            // heraus, und das nächste Speichern schreibt leer. Dieselbe Messung wie am Schieber, und
+            // dieselben Typen: `roman`, `binary`, `hexadecimal`, `octal` gelten alle für `Int`.*
+            'value' => $this->controlValue($context),
             'min'   => $this->numberSetting($context, SettingKey::Min->value),
             'max'   => $this->numberSetting($context, SettingKey::Max->value),
             'step'  => $this->step($context),

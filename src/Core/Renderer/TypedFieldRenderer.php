@@ -99,6 +99,34 @@ abstract class TypedFieldRenderer implements Renderer
     }
 
     /**
+     * Der Wert für ein Steuerelement, **das der Browser selbst deutet** — immer der gespeicherte.
+     *
+     * ⚠️ **Der Unterschied zu {@see self::outputValue()} ist Datenverlust, und er war gebaut.** *Der
+     * Eigentümer hat danach gefragt: «wenn ich einen Konverter habe, müssten die Werte anders
+     * dargestellt werden — wenn ich römisch habe, in römischen Werten.» **Das stimmt für die Ziffer,
+     * die ein Mensch liest, und nicht für das Attribut `value`.** Gemessen: der Konverter `roman`
+     * macht aus `12` die Zeichen `XII`, und `<input type="range" value="XII">` ist für den Browser
+     * kein Wert — er setzt den Griff in die Mitte. **Beim nächsten Speichern wäre die Mitte der neue
+     * Wert.***
+     *
+     * ⚠️ **Die Trennlinie:** *ein `range`, `number`, `color`, `date` oder `email` bekommt den
+     * gespeicherten Wert; ein freies Textfeld bekommt, was ein Mensch liest — dort ist die Notation
+     * der Sinn der Sache und der Konverter liest sie wieder ein (`isInvertible()`).*
+     *
+     * ⚠️ *Die **Anzeige** (nicht die Eingabe) nimmt weiter {@see self::outputValue()}: was ein Leser
+     * sieht, ist die Notation. Der Schieber zeigt darum die Ziffer neben der Bahn in der Notation und
+     * trägt den gespeicherten Wert in der Bahn.*
+     *
+     * ⚠️ *Offen bleibt, was beim **Zurückschreiben** gilt, wenn beide Notationen im Spiel sind — siehe
+     * [OQ-142](../../../docs/NewConcept/91-open-questions.md). Gemessen: `roman->written('12')`
+     * **verweigert** und verdreht nicht, also ist der schlechteste Fall eine sichtbare Absage.*
+     */
+    final protected function controlValue(RenderContext $context): string
+    {
+        return $context->value->isNothing() ? '' : $context->value->describe();
+    }
+
+    /**
      * A numeric setting as characters — an integer or an exact decimal, whichever was written.
      *
      * ⚠️ **A decimal never becomes a float on the way through** (D-057). It is carried as the
