@@ -1294,3 +1294,33 @@ Namen, und eine Seite trägt vier dieser Formulare — `id="_taxmod_nonce"` stan
 wie bei der festen Panel-Id ([D-381](90-decision-log.md)).*
 
 ---
+
+## U35 · Eine Feldzeile wird mit der Seite gespeichert, nicht für sich
+
+**Entscheidung [D-551](90-decision-log.md)**, 2026-08-31.
+
+Name und Multiplizität einer Feldzeile gehören ins **Formular der Seite**. Die Diskette in der Zeile
+fällt weg. Es gibt einen Speichern-Knopf, und der steht im Kopf.
+
+Der Eigentümer: *«in Display Option hatte ich für Converter die `1..1`-Beziehung angegeben, das ist
+falsch, ich wollte es in `0..1` ändern, kann es aber nicht mit dem Speichern-Knopf in der Seite
+speichern»* — und schon früher: *«Save in Fields sollte eigentlich auch über die Seite gehen».*
+
+⚠️ **Zwei Bedingungen, und die zweite war der Grund, dass es lange nicht gebaut wurde.**
+
+1. **`form="…"` statt eines Formulars je Zeile.** *Ein `<tr>` darf kein `<form>` umschliessen, aber
+   ein Bedienelement darf jedes Formular **nennen**. Vorher nannte die Zeile ihr eigenes, und das
+   schickte nur die Diskette ab — der Knopf im Kopf sah die Angabe nie.*
+2. **Je Zeile ein eindeutiger Feldname.** *Alle Zeilen hiessen `taxmod_setting[multiplicity]`; in
+   einem gemeinsamen Formular wäre das **eine** Angabe für sechzig Zeilen, und die letzte gewinnt.
+   Der Vorsatz trägt jetzt die Kanten-Id.*
+
+⚠️ *Zurückgestellt war es, weil ein `required` in einer von sechzig Zeilen das Speichern der ganzen
+Seite gesperrt hätte. Mit `aria-required` ([D-549](90-decision-log.md)) ist der Grund weg: die Pflicht
+bleibt sichtbar, und geprüft wird sie im Kern.*
+
+⚠️ *Und der Knopf der Zeile geht mit — er schrieb genau diese zwei Angaben und hätte danach
+«Speichern» gesagt und nichts abgeschickt. **Ein Knopf, der nichts mehr trägt, ist schlimmer als
+keiner.***
+
+---

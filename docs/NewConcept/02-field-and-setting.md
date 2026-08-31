@@ -1190,3 +1190,26 @@ erreichte nichts, und **die einzige wirksame war `Prefixes.exponent`** — der e
 soll. Der einzige echte Fall des Schlüssels ist genau der, den die Art übernimmt.*
 
 ---
+
+## Ein leeres Feld nimmt den Wert heraus
+
+**Entscheidung [D-550](90-decision-log.md)**, 2026-08-31.
+
+Ein leeres Eingabefeld ist eine **Wahl** und nicht ein «nichts tun»: es nimmt den Wert heraus und
+lässt die Angabe unbeantwortet — der dritte Zustand, den [D-232](90-decision-log.md) längst nennt.
+
+Der Eigentümer, an `converter` in `Display Option`: *«wenn ich `0..1` wähle, müsste ich auch nichts
+im Value wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den
+Datensatz dahinter löschen.»*
+
+⚠️ **Die Regel, die das möglich macht, ist die Unterscheidung zwischen abwesend und leer.** *Ein
+gesperrtes Bedienelement schickt **nichts** ab ([R28](30-renderer.md#r28r32--the-rule-complete)), und
+was nicht gezeichnet wurde, schickt auch nichts. Ein Schlüssel, der im `POST` **ankommt**, war also
+ein Bedienelement, das dastand — und sein leerer Wert ist eine Aussage. Der Schreiber am Rand hatte
+diese Unterscheidung aufgegeben und bei einem leeren Wert einfach umgekehrt; damit war «nichts» die
+einzige Wahl der ganzen Seite, die sich nicht speichern liess.*
+
+⚠️ *Bei `1..1` gibt es die leere Wahl gar nicht ([D-549](90-decision-log.md)), also kommt dieser Fall
+dort nie an. Der Weg heisst `DataEntry::clearSettingAt()` und ist das Gegenstück zu `putSettingAt()`.*
+
+---

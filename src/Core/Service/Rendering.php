@@ -925,10 +925,30 @@ final class Rendering
         string $locale = '',
         Level $level = Level::Admin,
     ): RenderResult {
+        // ⚠️ **Ein Datensatz wird immer als **Tabelle** gezeichnet, nicht mit dem Renderer des
+        // Knotens.** *Auf sein Wort: «ich würde die Records immer als Tabelle zeigen, also Table-Renderer,
+        // nicht den Renderer des Knotens».*
+        //
+        // ⚠️ **Und es ist dieselbe Regel, die für Einstellungen schon gilt** ([D-546](90-decision-log.md)):
+        // *wie eine Sache **im Modelleditor** angeordnet wird, ist nicht die Anzeigewahl des Knotens. Der
+        // Renderer des Knotens sagt, wie er einem **Leser** erscheint; hier arbeitet ein Autor an einer
+        // Liste von Sätzen, und die liest sich als Tabelle. **Vorher konnte ein Knoten mit `compact` seine
+        // Datensätze zu einer Zeile zusammenschieben** — dieselbe Ansicht, unbrauchbar geworden durch eine
+        // Wahl, die für die Anzeige gedacht war.*
         $sections = [
             RecordRenderer::FORM => new Section(
                 $title,
-                $this->nodeAsForm($model, $edges, $values, $purpose, $fieldPrefix, $locale, $level)->markup
+                $this->nodeAsForm(
+                    $model,
+                    $edges,
+                    $values,
+                    $purpose,
+                    $fieldPrefix,
+                    $locale,
+                    $level,
+                    true,
+                    TableRenderer::NAME
+                )->markup
             ),
         ];
 
@@ -1570,12 +1590,19 @@ final class Rendering
         string $locale = '',
         Level $level = Level::Admin,
         bool $editable = true,
+        /**
+         * ⚠️ *Der Behälter, wenn der Aufrufer ihn **festlegt** statt ihn aus dem Modell zu holen —
+         * siehe {@see self::recordAsBlock()}. Leer heisst: das Modell entscheidet.*
+         */
+        string $containerName = '',
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
         $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true]);
 
-        $container = $this->containerFor($node, $purpose);
+        $container = $containerName === ''
+            ? $this->containerFor($node, $purpose)
+            : $this->renderers->byName($containerName);
 
         return $container->render(
             $node,
