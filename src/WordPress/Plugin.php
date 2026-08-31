@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Converter\ShippedConverters;
+use Taxmod\Core\Validator\ShippedValidators;
 use Taxmod\Core\Renderer\ResidueRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
@@ -372,7 +373,10 @@ final class Plugin
             $this->editor(),
             $this->frameworkNodes(),
             ShippedRenderers::registry(),
-            ShippedConverters::registry()
+            ShippedConverters::registry(),
+            // ⚠️ *Seit dem 2026-08-31 gibt es zwei Validatoren, also liegen sie auch als Knoten —
+            // dieselbe Naht wie bei Renderern und Konvertern.*
+            ShippedValidators::registry()
         );
     }
 

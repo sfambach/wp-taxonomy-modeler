@@ -8,11 +8,18 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Validator\ValidatorRegistry;
 
 /**
- * Renderer, Konverter und Validatoren als Knoten unter `Constants`.
+ * Renderer, Konverter und Validatoren als Knoten unter `Settings`.
  *
- * ⚠️ **Warum unter `Constants` und nicht in einem eigenen Zweig** ([D-511](../../../docs/NewConcept/90-decision-log.md)):
+ * ⚠️ **Sie lagen unter `Constants`, und der Eigentümer hat sie in den Ast `Settings` gelegt** —
+ * *«Renderer und Converter hatten wir in den Settings abgelegt», «der Validatorknoten liegt sehr
+ * wohl in Settings, und da soll er auch sein, mit Converter und Renderer zusammen».* **Diese Saat
+ * suchte sie danach weiter unter `Constants` und legte am 2026-08-31 vierundzwanzig Knoten doppelt
+ * an** — nichts sah kaputt aus, weil die Datensätze weiter auf die echten zeigten.
+ *
+ * ⚠️ **Warum kein eigener Zweig** ([D-511](../../../docs/NewConcept/90-decision-log.md)):
  * *sie **sind** Konstanten im genauen Sinn des Codes — `Storage::NodeRef`, «a fixed value a person
  * may extend, so the value is a reference to a node». Ein eigener Zweig hätte `relationKind()`,
  * `storage()` und `holdsData()` in **jeder** Eigenschaft genau wie `Constants` beantwortet, und drei
@@ -32,17 +39,20 @@ use Taxmod\Core\Service\ModelEditor;
  *
  * ```mermaid
  * flowchart TD
- *     C[Constants] --> R[Renderer]
- *     C --> K[Converter]
- *     C --> V[Validator]
- *     R --> R1[plain … 16 Namen]
+ *     S[Settings] --> R[Renderer]
+ *     S --> K[Converter]
+ *     S --> V[Validator]
+ *     R --> G["Gruppierungsknoten, vom Eigentümer"]
+ *     G --> R1["die Renderer-Namen"]
  *     K --> K1[binary, hexadecimal, octal, roman]
- *     V --> V1[noch keiner]
+ *     V --> V1[range, shape]
  * ```
  *
- * ⚠️ **`Validator` wird leer angelegt, und das ist eine Aussage.** *Validatoren sind nicht gebaut
- * (Arbeitsliste, Zeile 8). Ein leerer Behälter sagt «der Ort steht, es liegt nichts darin» — ein
- * fehlender Behälter sagt nichts, und der nächste Leser legt ihn woanders an.*
+ * ⚠️ **`Validator` war leer, und das war eine Aussage.** *Ein leerer Behälter sagt «der Ort steht,
+ * es liegt nichts darin» — ein fehlender sagt nichts, und der nächste Leser legt ihn woanders an.*
+ * **Seit dem 2026-08-31 liegen zwei darin**, `range` und `shape`
+ * ({@see \Taxmod\Core\Validator\ShippedValidators}), und sie kommen aus derselben Naht wie die
+ * Renderer: `namesForNodes()`.
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
@@ -54,9 +64,10 @@ final class RenderingScaffold
     /**
      * ⚠️ **Sie steigt, wenn der Code Namen dazubekommt** — sonst läuft {@see importOnce()} nie wieder
      * und die neuen liegen nirgends als Knoten. *2: `binary` und `octal`
-     * ([D-523](../../../docs/NewConcept/90-decision-log.md)).*
+     * ([D-523](../../../docs/NewConcept/90-decision-log.md)). 3: die zwei Validatoren, und der Ast
+     * wechselte von `Constants` auf `Settings`.*
      */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public const OPTION_PREFIX = 'taxmod_render_';
 
@@ -90,6 +101,12 @@ final class RenderingScaffold
         private readonly FrameworkNodes $framework,
         private readonly RendererRegistry $renderers,
         private readonly ConverterRegistry $converters,
+        /**
+         * ⚠️ *Voreingestellt auf `null`, damit ein älterer Aufrufer nicht bricht — und dann liegen
+         * keine Validatorknoten. **Kein stiller Standardsatz**: wer sie will, gibt die Registratur
+         * herein, und wer sie vergisst, sieht es an einem leeren Behälter.*
+         */
+        private readonly ?ValidatorRegistry $validators = null,
     ) {
     }
 
@@ -119,11 +136,25 @@ final class RenderingScaffold
      */
     public function import(): array
     {
-        $constants = $this->framework->rootOf(Branch::Constants);
-        $created   = [];
+        // ⚠️ **Der Ast `Settings`, nicht `Constants` — auf sein Wort, zweimal.** *«Renderer und Converter
+        // hatten wir in den Settings abgelegt» und «der Validatorknoten liegt sehr wohl in Settings, und
+        // da soll er auch sein, mit Converter und Renderer zusammen.»*
+        //
+        // ⚠️ **Hier stand `Constants`, und das hat wirklich Schaden angerichtet.** *Gemessen am
+        // 2026-08-31: die drei Behälter liegen unter `Settings` (`1.40768.…`), die Saat suchte sie unter
+        // `Constants` (`1.406.410`), fand sie nicht — und legte **24 Knoten** ein zweites Mal an, einen
+        // kompletten leeren `Renderer`-Baum samt `Converter` und `Validator`. **Nichts sah kaputt aus:**
+        // die Verweise in den Datensätzen zeigten weiter auf die echten, der Schirm zeichnete richtig,
+        // der Lauf meldete grün. Aufgefallen ist es nur, weil eine andere Prüfung plötzlich einen
+        // zweiten Knoten namens `form` fand.*
+        //
+        // ⚠️ *Ich habe das als offene Frage aufgeschrieben ([OQ-141](../../../docs/NewConcept/91-open-questions.md))
+        // — **es war keine.** Er hatte den Ort zweimal genannt; offen war nur diese Zeile.*
+        $heimat  = $this->framework->rootOf(Branch::Settings);
+        $created = [];
 
         foreach (self::CONTAINERS as $container) {
-            $node = $this->ensure($constants, $container, self::optionForContainer($container), $created);
+            $node = $this->ensure($heimat, $container, self::optionForContainer($container), $created);
 
             foreach ($this->namesFor($container) as $name) {
                 $this->ensure($node, $name, self::optionFor($container, $name), $created);
@@ -145,7 +176,7 @@ final class RenderingScaffold
             'Converter' => $this->converters->namesForNodes(),
             // ⚠️ *Kein `default`, weil ein vierter Behälter hier auffallen soll und nicht still leer
             // bleiben, nur weil niemand an ihn gedacht hat.*
-            'Validator' => [],
+            'Validator' => $this->validators?->namesForNodes() ?? [],
         };
     }
 
@@ -156,11 +187,15 @@ final class RenderingScaffold
      * *Der Namensschritt ist der Notnagel für eine Installation, die vor dieser Fassung gesät wurde,
      * und er schreibt die Id nach, damit er beim nächsten Mal nicht mehr gebraucht wird.*
      *
-     * ⚠️ **Die gemerkte Id wird gegen den Elternknoten geprüft, nicht bloss auf Existenz.** *Eine
-     * Option kann auf einen Knoten zeigen, den jemand in den Müll gezogen oder verschoben hat
-     * ([D-119](../../../docs/NewConcept/90-decision-log.md): eine Saat ist danach gewöhnlicher
-     * Inhalt). Ohne diese Prüfung würde die Saat einen Knoten im Müll als «vorhanden» melden, und die
-     * Auswahl zeigte auf etwas, das dort nicht mehr hängt.*
+     * ⚠️ **Die gemerkte Id gilt, wo der Knoten auch liegt — nur nicht im Müll.** *Hier stand «die
+     * gemerkte Id wird gegen den **Elternknoten** geprüft», und der Grund war richtig: eine Option kann
+     * auf einen Knoten zeigen, den jemand in den Müll gezogen hat ([D-119](../../../docs/NewConcept/90-decision-log.md):
+     * eine Saat ist danach gewöhnlicher Inhalt). **Aber die Prüfung war zu breit** — sie schlug auch an,
+     * wenn der Eigentümer den Knoten **verschoben** hat, und ein Umzug ist erlaubt. Genau daran sind am
+     * 2026-08-31 vierundzwanzig Knoten doppelt entstanden.*
+     *
+     * ⚠️ *Gefragt wird jetzt, was gemeint war: **liegt er im Müll?** Ein Umzug innerhalb des Modells
+     * lässt die gemerkte Id gelten, ein Parken nicht.*
      *
      * @param list<string> $created
      */
@@ -170,10 +205,14 @@ final class RenderingScaffold
         $known    = (int) get_option($option, 0);
 
         if ($known > 0) {
-            foreach ($children as $child) {
-                if ($child->id === $known) {
-                    return $child;
-                }
+            $gemerkt = $this->editor->find($known);
+
+            $muell = $this->framework->trash();
+
+            // ⚠️ *Der Mülleimer **selbst** zählt mit: `isDescendantOf()` ist streng, und eine Option, die
+            // auf den Eimer zeigt, wäre sonst geglaubt. Genau darauf zeigt die Gegenprüfung.*
+            if ($gemerkt !== null && $gemerkt->id !== $muell->id && ! $gemerkt->isDescendantOf($muell)) {
+                return $gemerkt;
             }
         }
 

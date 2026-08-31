@@ -1,12 +1,18 @@
 <?php declare(strict_types=1);
 /**
- * Renderer, Konverter und Validatoren als Knoten unter `Constants`.
+ * Renderer, Konverter und Validatoren als Knoten unter `Settings`.
  *
  *     php scripts/dev/rendering-scaffold-check.php [path/to/wordpress]
  *
- * ⚠️ **[D-511](../../docs/NewConcept/90-decision-log.md):** *sie werden Knoten unter `Constants` —
- * kein neuer Zweig, weil ein Renderer-Zweig `relationKind()`, `storage()` und `holdsData()` in jeder
+ * ⚠️ **[D-511](../../docs/NewConcept/90-decision-log.md) liess sie unter `Constants` entstehen** — *kein
+ * neuer Zweig, weil ein Renderer-Zweig `relationKind()`, `storage()` und `holdsData()` in jeder
  * Eigenschaft genau wie `Constants` beantwortet hätte.*
+ *
+ * ⚠️ **Der Eigentümer hat sie danach in den Ast `Settings` gelegt, zu `Converter` und `Validator`**
+ * — *«Renderer und Converter hatten wir in den Settings abgelegt»*, und dort sollen sie sein. Die
+ * Saat suchte sie danach noch unter `Constants` und legte am 2026-08-31 **24 Knoten doppelt** an;
+ * beides ist berichtigt. *D-511s Begründung bleibt gültig — sie sagte, dass es **kein eigener
+ * Zweig** wird, nicht, unter welchem Knoten sie hängen.*
  *
  * ⚠️ **Die eine Zusage, die diese Prüfung wirklich trägt, ist die dritte:** *was der Code kennt, liegt
  * als Knoten im Modell, und was als Knoten liegt, kennt der Code. **Eine Saat mit eigener Namensliste
@@ -47,6 +53,7 @@ use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Validator\ShippedValidators;
 use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -82,8 +89,9 @@ $editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $fram
 
 $renderers  = ShippedRenderers::registry();
 $converters = ShippedConverters::registry();
+$validators = ShippedValidators::registry();
 
-$scaffold = new RenderingScaffold($editor, $framework, $renderers, $converters);
+$scaffold = new RenderingScaffold($editor, $framework, $renderers, $converters, $validators);
 
 // ── Was vor dem ersten Aufruf dastand, damit ein roter Lauf es zurückgeben kann ────────────
 //
@@ -208,69 +216,28 @@ register_shutdown_function(static function () use ($editor, $framework, &$vorher
         . json_encode($weg) . "\n";
 });
 
-// ⚠️ **Diese Prüfung hat sein Modell beschädigt, und deshalb steht hier zuerst eine Absage.**
-//
-// ⚠️ *Gemessen am 2026-08-31: der Eigentümer hatte `Renderer` aus `Constants` heraus in den Ast
-// `Settings` verschoben — auf sein Wort «die Renderer von label with roles zu render with label
-// schieben». `import()` prüft die gemerkte Id **gegen den Elternknoten** `Constants`, fand sie dort
-// nicht mehr, und legte **24 Knoten** ein zweites Mal an: einen kompletten leeren `Renderer`-Baum,
-// `Converter` und `Validator` dazu. **Die gemerkten Ids zeigten danach auf die leeren.***
-//
-// ⚠️ **Nichts sah kaputt aus, und das ist das Schlimme daran.** *Die Verweise in den Datensätzen zeigten
-// weiter auf den echten Baum; die Prüfung lief grün. Aufgefallen ist es nur, weil `page-blocks-check`
-// plötzlich einen **zweiten** Knoten namens `form` fand.*
-//
-// ⚠️ **Wer nachgeben muss, ist nicht entschieden** — folgt die Saat einem verschobenen Knoten (gemerkte
-// Id gewinnt über den Elternknoten), oder ist das Verschieben eines gesäten Knotens aus seinem Ast heraus
-// zu verweigern? *Solange das offen ist, sät diese Prüfung nicht. **Eine Prüfung, die eine zweite Heimat
-// für eine Sache anlegt, ist schlimmer als eine, die nicht läuft.***
-$constantsRoot = $framework->rootOf(Branch::Constants);
-$anderswo      = [];
-
-foreach (RenderingScaffold::CONTAINERS as $behaelterName) {
-    $ids = $wpdb->get_col($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE BINARY name = %s',
-        $behaelterName
-    ));
-
-    // ⚠️ *`null` heisst «Abfrage kaputt» und nicht «nichts gefunden» — und eine Absage, die auf einer
-    // kaputten Abfrage «alles in Ordnung» sagt, wäre genau die Sorte Wächter, die nichts wiegt.*
-    if ($ids === null) {
-        fwrite(STDERR, 'Abfrage kaputt: ' . $wpdb->last_error . "\n");
-        exit(2);
-    }
-
-    foreach ($ids as $rohId) {
-        $einer = $editor->find((int) $rohId);
-
-        if ($einer !== null && $einer->parentId() !== $constantsRoot->id) {
-            $anderswo[] = $behaelterName . ' #' . $einer->id;
-        }
-    }
-}
-
-if ($anderswo !== []) {
-    echo "\n== Abgesagt ==\n";
-    echo '  Diese Behaelter liegen nicht unter «Constants»: ', implode(', ', $anderswo), "\n";
-    echo "  Ein import() wuerde sie ein zweites Mal anlegen. Siehe Arbeitsliste.\n";
-    echo "  scripts/dev/undo-duplicate-constants.php raeumt eine schon entstandene Doppelung weg.\n";
-
-    exit(0);
-}
+// ⚠️ **Hier stand eine Absage, und sie ist mit ihrem Grund weggefallen.** *Sie hielt den Lauf an,
+// solange ein Behälter nicht unter `Constants` lag — weil `import()` ihn dort suchte und bei
+// Nichtfinden neu anlegte. **Beides war falsch:** der Eigentümer hatte den Ort zweimal genannt
+// («Renderer und Converter hatten wir in den Settings abgelegt», «der Validatorknoten liegt sehr
+// wohl in Settings, und da soll er auch sein»), und ich hatte daraus eine offene Frage gemacht
+// statt einer Zeile Code. Jetzt sät `import()` in den Ast `Settings`, und die gemerkte Id gilt,
+// wo der Knoten auch liegt — nur nicht im Müll.*
 
 // ⚠️ *`import()` und nicht `importOnce()` — die Prüfung soll auch dann etwas messen, wenn die
 // Fassung längst gesetzt ist. Zweimal laufen darf nichts anlegen; genau das ist Abschnitt 5.*
 $created = $scaffold->import();
 
-echo "\n== 1. Die drei Behälter hängen unter Constants, und ihre Ids sind notiert ==\n";
+echo "\n== 1. Die drei Behälter hängen unter Settings, und ihre Ids sind notiert ==\n";
 
-$constants = $framework->rootOf(Branch::Constants);
+// ⚠️ *Der Ast `Settings` — sein Ort, zweimal genannt. Hier stand `Constants`.*
+$heimat = $framework->rootOf(Branch::Settings);
 
-/** @var array<int, \Taxmod\Core\Model\Node> $unterConstants */
-$unterConstants = [];
+/** @var array<int, \Taxmod\Core\Model\Node> $unterHeimat */
+$unterHeimat = [];
 
-foreach ($editor->childrenOf($constants->id) as $child) {
-    $unterConstants[$child->id] = $child;
+foreach ($editor->childrenOf($heimat->id) as $child) {
+    $unterHeimat[$child->id] = $child;
 }
 
 /** @var array<string, \Taxmod\Core\Model\Node> $behaelter */
@@ -281,12 +248,12 @@ foreach (RenderingScaffold::CONTAINERS as $name) {
 
     check(
         $name . ' → ' . RenderingScaffold::optionForContainer($name),
-        $id > 0 && isset($unterConstants[$id]) && $unterConstants[$id]->name === $name,
-        $id === 0 ? 'keine Option' : "Id $id ist kein Kind von Constants mit diesem Namen"
+        $id > 0 && isset($unterHeimat[$id]) && $unterHeimat[$id]->name === $name,
+        $id === 0 ? 'keine Option' : "Id $id ist kein Kind von Settings mit diesem Namen"
     );
 
-    if ($id > 0 && isset($unterConstants[$id])) {
-        $behaelter[$name] = $unterConstants[$id];
+    if ($id > 0 && isset($unterHeimat[$id])) {
+        $behaelter[$name] = $unterHeimat[$id];
     }
 }
 
@@ -295,7 +262,9 @@ echo "\n== 2. Jeder Name des Codes liegt als Knoten, über seine Id gefunden ==\
 $erwartet = [
     'Renderer'  => $renderers->namesForNodes(),
     'Converter' => $converters->namesForNodes(),
-    'Validator' => [],
+    // ⚠️ *Seit dem 2026-08-31 sind es zwei — `range` und `shape`. Aus derselben Naht wie die anderen
+    // beiden gelesen und nicht hier aufgezählt.*
+    'Validator' => $validators->namesForNodes(),
 ];
 
 foreach ($erwartet as $behaelterName => $namen) {
@@ -305,9 +274,16 @@ foreach ($erwartet as $behaelterName => $namen) {
         continue;
     }
 
+    // ⚠️ **Durch Gruppierungsknoten hindurch, nicht nur die direkten Kinder.** *Der Eigentümer hat
+    // Renderer unter `render with label` zusammengefasst — `form` liegt darum als **Enkel** unter
+    // `Renderer`. Er hat mich darauf hingewiesen: «weil du den Gruppierungsknoten von Renderer und
+    // Converter irgendwie nicht berücksichtigt hattest». **Und es ist dieselbe Regel, die die Auswahl
+    // schon hat** ([D-544](../../docs/NewConcept/90-decision-log.md)): sie schaut durch markierte
+    // Gruppierungsknoten hindurch. Eine Prüfung, die flache Kinder erwartet, verbietet ihm das
+    // Gruppieren — und das hat niemand entschieden.*
     $kinder = [];
 
-    foreach ($editor->childrenOf($behaelter[$behaelterName]->id) as $child) {
+    foreach ($nodes->subtreeOf($behaelter[$behaelterName]) as $child) {
         $kinder[$child->id] = $child;
     }
 
@@ -337,12 +313,22 @@ foreach ($erwartet as $behaelterName => $namen) {
         continue;
     }
 
+    // ⚠️ **Ein Gruppierungsknoten ist kein Codename, und das ist kein Mangel.** *`render with label`
+    // fasst Renderer zusammen; er zeichnet selbst nichts und hat darum keine Entsprechung im Code.
+    // **Erkannt daran, dass er Kinder hat** — nicht an seinem Namen, denn ein Name ist Modellinhalt
+    // und darf sich ändern ([D-022](../../docs/NewConcept/90-decision-log.md)).*
     $ueberzaehlig = [];
 
-    foreach ($editor->childrenOf($behaelter[$behaelterName]->id) as $child) {
-        if (! in_array($child->name, $namen, true)) {
-            $ueberzaehlig[] = $child->name . ' (' . $child->id . ')';
+    foreach ($nodes->subtreeOf($behaelter[$behaelterName]) as $child) {
+        if (in_array($child->name, $namen, true)) {
+            continue;
         }
+
+        if ($editor->childrenOf($child->id) !== []) {
+            continue;
+        }
+
+        $ueberzaehlig[] = $child->name . ' (' . $child->id . ')';
     }
 
     check(

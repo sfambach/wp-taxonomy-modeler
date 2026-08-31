@@ -5733,7 +5733,22 @@ Einstellung bis zur Entscheidung ein brechender Akt bleibt.*
 **Raised** 2026-08-31, gemessen, nachdem ein Prüflauf 24 Knoten ein zweites Mal angelegt hatte und
 niemand es bemerkte.
 
-*Blockiert:* jeden Saatlauf, solange ein Behälter draussen liegt · *Status:* **open**
+*Blockiert:* nichts mehr · *Status:* **geschlossen durch [D-557](90-decision-log.md)** — *und sie war nie offen*
+
+### Sie war keine Frage, und das ist mein Fehler
+
+Der Eigentümer hatte den Ort **zweimal** genannt, bevor ich diese Frage aufschrieb: *«Renderer und
+Converter hatten wir in den Settings abgelegt»* und *«der Validatorknoten liegt sehr wohl in Settings.
+Den hatten wir da schon hingelegt und da soll er auch sein, mit Converter und Renderer zusammen.»*
+
+⚠️ **Offen war nicht die Entscheidung, sondern eine veraltete Zeile.** *`RenderingScaffold::import()`
+säte nach `Constants`, und `ensure()` prüfte die gemerkte Id gegen den **Elternknoten**. Beides ist
+berichtigt: gesät wird in den Ast `Settings`, und die gemerkte Id gilt, wo der Knoten auch liegt —
+**nur nicht im Müll**, was der Schutz aus [D-119](90-decision-log.md) immer gemeint hat.*
+
+⚠️ *Aus «wer gibt nach» eine Entscheidung zu machen, hiess: **ihn nach etwas fragen, was er schon
+gesagt hatte.** Das ist die schlechtere Hälfte von `PR-4` — «Unklares bleibt unklar» heisst nicht,
+Klares für unklar zu erklären.*
 
 ⚠️ **Der Anlass ist gemessen und war beinahe unsichtbar.** *Der Eigentümer hat `Renderer` aus
 `Constants` heraus in den Ast `Settings` verschoben — auf sein Wort: «render with label sollte das
