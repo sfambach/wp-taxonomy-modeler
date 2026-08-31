@@ -5814,7 +5814,24 @@ absagt — aber **nicht entschieden**, und ein faktischer Zustand ist keine Rege
 
 **Raised** 2026-08-31, beim Bau des Datensatz-Blocks.
 
-*Blockiert:* den Löschknopf, den der Eigentümer bestellt hat · *Status:* **open**
+*Blockiert:* den Löschknopf, den der Eigentümer bestellt hat · *Status:* **open** — *Frage 1 ist beantwortet, Frage 2 nicht*
+
+### Halbe Antwort vom 2026-08-31: Frage 1 ist geschlossen
+
+Der Eigentümer: *«löschen tun wir ja eh nicht, wir schieben es in die Schattentabelle.»*
+
+⚠️ **Damit gilt der Weg, den [D-535](90-decision-log.md) schon festgelegt hat**, und er ist gebaut:
+*`Shadow::keep(…, deleted: true)` schreibt die Zeilen in `<tabelle>_history`, **bevor** sie aus der
+lebenden Tabelle verschwinden, und `RecordRepository::forgetNodes()` benutzt es bereits.* Die Frage
+«geparkt oder weg» war also falsch gestellt: **es ist keins von beidem, es ist aufgehoben.**
+
+⚠️ *Gemessen an diesem Tag: es gab **14 Datensätze ohne Knoten**, alle an einem Prüfknoten
+`__p6 Line` — einer je Lauf von `package6-check.php`, dessen Aufräumung die Sätze von zwei ihrer fünf
+Schmierknoten holte. Sie sind aufgehoben und entfernt, und die Prüfung fragt jetzt auch nach
+**Sätzen ohne Knoten** und nicht nur nach Werten ohne Satz — die fehlende Zusage ist der Grund, dass
+es vierzehnmal gutging.*
+
+**Offen bleibt Frage 2**, und sie ist die gefährlichere.
 
 ⚠️ **Der Eigentümer hat den Knopf bestellt:** *«Delete-Button, und zu welchem Knoten/Kante es gehört,
 würde ich auch noch vorne dran schreiben.»* Die Spalte steht; der Knopf nicht.
@@ -5825,7 +5842,7 @@ eine fehlende Fähigkeit, und sie fehlt, weil niemand entschieden hat, was sie t
 
 ### Zwei Fragen, und die zweite ist die gefährlichere
 
-**1. Geparkt oder weg?** Für Knoten und Felder gilt «geparkt, nicht vernichtet» in zwei Stufen
+**1. Geparkt oder weg? — ~~offen~~ beantwortet: aufgehoben.** Für Knoten und Felder gilt «geparkt, nicht vernichtet» in zwei Stufen
 ([D-123](90-decision-log.md)) — Papierkorb, dann endgültig. Ein Datensatz ist aber **Inhalt** und kein
 Modell, und keine Entscheidung deckt ihn. Ein Papierkorb für Daten ist etwas anderes als einer für
 Struktur: er wächst mit der Benutzung.

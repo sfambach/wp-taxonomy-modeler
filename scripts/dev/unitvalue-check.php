@@ -419,17 +419,116 @@ try {
 
 echo "\n== clearing up ==\n";
 
-// ⚠️ *Left where it is on purpose: parking it would put a fifth one in the trash next run. It is
-// named `__uv…` so it is recognisable, and it goes when purging exists.*
-check('the scratch model is reused rather than piled up', $thing->name === '__uv Resistor');
+// ⚠️ **Hier stand «bleibt absichtlich stehen, es geht, wenn Endgültig-Löschen existiert» — und das war
+// die falsche Entschuldigung.** *Der Eigentümer hat den Knoten in seinem Modell gefunden: «`__uv
+// Resistor` ist übrigens ein Überbleibsel von dir, ich brauche den nicht.» **Für den eigenen Müll
+// braucht eine Prüfung kein Endgültig-Löschen im Kern** — sie kennt ihre Ids und darf sie wegräumen,
+// genau wie `path-check.php` und `multiplicity-check.php` es tun.*
+//
+// ⚠️ **Und es sind mehr Leichen als der Knoten.** *Gemessen am 2026-08-31: zwei Datensätze (#2412 als
+// Benutzersatz, #2924 als `default`), und daran **zwei Teile** — einer an `Einheitenwert`, einer an
+// `DisplayOption`. Der Teil an `Einheitenwert` stand in dessen Datensatz-Block und sah dort aus wie
+// dessen eigener Satz. **Ein Teil ohne Halter ist eine Waise, die niemand als Waise erkennt.***
+//
+// ⚠️ *Nur die eigenen Ids und **nie** `clearTrash()`: das räumt auch weg, was ein Mensch dort geparkt
+// hat.*
+check('der Schmierknoten ist gefunden', $thing->name === '__uv Resistor');
+
+$wpdb    = $GLOBALS['wpdb'];
+$tabelle = static fn (string $name): string => \Taxmod\WordPress\Persistence\Schema::table($name);
+
+/** Ein Datensatz und alles, was nur an ihm hängt — Teile zuerst, damit keine Waise bleibt. */
+$satzWeg = static function (int $satzId) use ($wpdb, $tabelle, &$satzWeg): int {
+    $weg = 0;
+
+    $verweise = $wpdb->get_col($wpdb->prepare(
+        'SELECT value_ref FROM ' . $tabelle('record_values') . ' WHERE record_id = %d AND value_ref IS NOT NULL',
+        $satzId
+    ));
+
+    // ⚠️ *`null` heisst «Abfrage kaputt» und nicht «keine Verweise» — und hier wird danach gelöscht.*
+    if ($verweise === null) {
+        fwrite(STDERR, 'Abfrage kaputt: ' . $wpdb->last_error . "\n");
+        exit(2);
+    }
+
+    foreach ($verweise as $ref) {
+        $istSatz = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . $tabelle('records') . ' WHERE id = %d',
+            (int) $ref
+        ));
+
+        if ($istSatz > 0) {
+            $weg += $satzWeg((int) $ref);
+        }
+    }
+
+    // ⚠️ **Aufheben, dann löschen** ([D-535](../../docs/NewConcept/90-decision-log.md)). *Auf sein
+    // Wort: «löschen tun wir ja eh nicht, wir schieben es in die Schattentabelle.» Auch der eigene
+    // Müll einer Prüfung geht diesen Weg — sonst gibt es zwei Arten, etwas wegzunehmen, und die
+    // zweite ist die, die niemand nachlesen kann.*
+    \Taxmod\WordPress\Persistence\Shadow::keep('record_values', 'record_id = %d', [$satzId], true);
+    \Taxmod\WordPress\Persistence\Shadow::keep('records', 'id = %d', [$satzId], true);
+
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('record_values') . ' WHERE record_id = %d', $satzId));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('records') . ' WHERE id = %d', $satzId));
+
+    return $weg + 1;
+};
+
+$saetze = $wpdb->get_col($wpdb->prepare(
+    'SELECT id FROM ' . $tabelle('records') . ' WHERE node_id = %d',
+    $thing->id
+));
+
+if ($saetze === null) {
+    fwrite(STDERR, 'Abfrage kaputt: ' . $wpdb->last_error . "\n");
+    exit(2);
+}
+
+$weggeraeumt = 0;
+
+foreach ($saetze as $satzId) {
+    $weggeraeumt += $satzWeg((int) $satzId);
+}
+
+\Taxmod\WordPress\Persistence\Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$thing->id, $thing->id], true);
+\Taxmod\WordPress\Persistence\Shadow::keep('nodes', 'id = %d', [$thing->id], true);
+
+$wpdb->query($wpdb->prepare(
+    'DELETE FROM ' . $tabelle('relations') . ' WHERE from_id = %d OR to_id = %d',
+    $thing->id,
+    $thing->id
+));
+$wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('nodes') . ' WHERE id = %d', $thing->id));
+
+echo "  --   {$weggeraeumt} Datensaetze samt Teilen weggeraeumt\n";
+
+check(
+    'und er raeumt sich selbst weg',
+    (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . $tabelle('nodes') . ' WHERE id = %d', $thing->id)) === 0
+);
+
+// ⚠️ *Der Gegenfall: keine Waise zurück. Ein Teil trägt die Id des **Zielknotens**, also findet man ihn
+// nicht über den Schmierknoten — sondern daran, dass niemand mehr auf ihn zeigt.*
+$waisen = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . $tabelle('records') . ' r
+     WHERE NOT EXISTS (SELECT 1 FROM ' . $tabelle('nodes') . ' n WHERE n.id = r.node_id)'
+);
+
+check('kein Datensatz ohne Knoten', $waisen === 0, (string) $waisen);
 echo "\n== what is honestly not there yet ==\n";
 
 // ⚠️ **What was missing here this morning is built** (D-394): a composed value gets its own
 // record, and `2.7 kΩ` survives a save. *The note that stood here cited D-133 against the code and
 // was wrong twice over — D-232 supersedes it, and the own record turned out to be the real gap.*
-echo "  Deleting a record does not exist at all, so a part cannot yet die with its holder\n";
-echo "  (C12). That is the same missing act as purging a parked node, D-123 second stage,\n";
-echo "  and it is one piece of work rather than two.\n";
+// ⚠️ **Diese Notiz sagte «Deleting a record does not exist at all» und war überholt.** *Der Eigentümer
+// hat den Weg genannt: «löschen tun wir ja eh nicht, wir schieben es in die Schattentabelle» — und
+// `Shadow::keep(…, deleted: true)` steht seit [D-535](../../docs/NewConcept/90-decision-log.md), samt
+// `forgetNodes()`, das ihn benutzt. **Eine Prüfung, die «gibt es nicht» ausgibt, obwohl es das gibt, ist
+// eine Falschmeldung im Bericht** — und dieser Bericht wird gelesen.*
+echo "  Was fehlt, ist nicht der Weg, sondern die Entscheidung: darf ein Teil einzeln weg?\n";
+echo "  Ein Teil traegt die Id des Zielknotens und haengt am Satz eines anderen — OQ-143.\n";
 
 echo "\n" . ($failed === 0 ? "all {$passed} checks passed\n" : "{$passed} passed, {$failed} FAILED\n");
 

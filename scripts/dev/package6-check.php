@@ -33,6 +33,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\Shadow;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -167,13 +168,23 @@ check('and a record id is not a model identity', (int) $wpdb->get_var($wpdb->pre
      WHERE r.id = %d', $record->id)) >= 0);
 
 echo "\n== 9. The check cleans up after itself ==\n";
-foreach ($data->recordsOf($part->id) as $r) {
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
-}
-foreach ($data->recordsOf($resistor->id) as $r) {
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
+// ⚠️ **Über **alle** Schmierknoten, und vorher waren es zwei von fünf.** *Der Eigentümer hat einen
+// meiner Überbleibsel in seinem Modell gefunden, und die Messung danach ergab **14 Datensätze ohne
+// Knoten** — alle an einem Knoten namens `__p6 Line`, einer je Lauf. Die Aufräumung holte die Sätze von
+// `$part` und `$resistor`, dann wurden **alle fünf** Knoten vernichtet: der Satz an `$line` blieb als
+// Waise zurück, und der Knoten, der ihn erklärt, war weg.*
+//
+// ⚠️ *Sein Wort dazu ist die Regel: «löschen tun wir ja eh nicht, wir schieben es in die
+// Schattentabelle» — also wird aufgehoben und dann entfernt ([D-535](../../docs/NewConcept/90-decision-log.md)),
+// auch beim eigenen Müll.*
+foreach ([$part->id, $resistor->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratchId) {
+    foreach ($data->recordsOf($scratchId) as $r) {
+        Shadow::keep('record_values', 'record_id = %d', [$r->id], true);
+        Shadow::keep('records', 'id = %d', [$r->id], true);
+
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
+    }
 }
 foreach ([$part->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratch) {
     $node = $nodes->find($scratch);
@@ -189,6 +200,16 @@ $orphanValues = (int) $wpdb->get_var(
      WHERE r.id IS NULL'
 );
 check('no value belongs to a record that is gone', $orphanValues === 0, "$orphanValues orphans");
+
+// ⚠️ **Die Zusage, die gefehlt hat — und ihr Fehlen hat 14 Waisen erlaubt.** *Gefragt wurde nach
+// Werten ohne Satz, nie nach **Sätzen ohne Knoten**. Der Eigentümer hat den Rückstand gefunden, nicht
+// dieser Lauf: «ein Record ohne Knoten wäre undenkbar … sonst weiss man ja auch gar nicht, wie dieser
+// Record interpretiert werden soll».*
+$orphanRecords = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
+     WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = r.node_id)'
+);
+check('no record belongs to a node that is gone', $orphanRecords === 0, "$orphanRecords orphans");
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);
