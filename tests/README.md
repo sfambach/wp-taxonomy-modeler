@@ -35,6 +35,15 @@ as the whole net.*
 | `labels-page-save` | that the texts travel with the page save — the fields name the page's form, an unchanged one writes nothing, an emptied one loses its row ([D-384](../docs/NewConcept/90-decision-log.md), [D-392](../docs/NewConcept/90-decision-log.md)) |
 | `journal-address` | that a journal entry carries its **address** and not only its value — key, path, type and value, readable back out of the column ([D-427](../docs/NewConcept/90-decision-log.md)) — **and that all 10918 rows already in the table still parse**, with the reader it replaced compared against on every one of the 2904 in the old order |
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
+| `rules-index` | that [`02-rules-index.md`](../docs/NewConcept/02-rules-index.md) still lists **every** rule the project has — it goes red the moment a rule is introduced without appearing there |
+
+⚠️ **`rules-index-check` exists because the owner could not hand the rule set over.** *His words on
+2026-09-01: «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält, deswegen
+hatte ich gebeten den aufzuräumen, aber das ist nie passiert.» **Measured, the chaos was not dead
+weight — 306 rules in 16 namespaces, and 272 of them cited somewhere.** It was scatter: they live in
+15 different files, `CLAUDE.md` holds about 8 % of them, and **no single place listed them**. Nobody
+could know, before starting a task, which rules bore on it — which is how `R1` came to be broken
+repeatedly and the road from multiplicity to a control got invented four times over.*
 
 ⚠️ **`references-check` exists because seven decisions were cited in code and never written**, all
 on 2026-08-26 — `D-392` through `D-397`, each sitting in a docblock as if it had authority. *A
