@@ -11,6 +11,7 @@ Sie werden nicht laufend gepflegt. Jedes Blatt nennt seinen Stand; ist der alt, 
 
 | Blatt | Wofür |
 |---|---|
+| [`projektuebergabe.md`](projektuebergabe.md) | **Die Übergabe des ganzen Projekts an eine andere KI.** Lesereihenfolge, wie der Eigentümer arbeitet, was am Bestand verdächtig ist, Stand beider Prüfläufe. Stand 2026-09-01. |
 | [`konzept-kompakt.md`](konzept-kompakt.md) | Gesamtüberblick für die Entwicklung eines Ereigniskonzepts durch Dritte. Stand 2026-08-31. |
 | [`antwort-ereignisse.md`](antwort-ereignisse.md) | Antworten auf die Rückfragen dazu — `source`, die Nutzlast, das Änderungsbuch als Ereignisquelle, PSR-14 als Vorbild, die offenen Fragen, und in Abschnitt 7 eine **Arbeitshypothese** (kein Faktum) zu «der Kern beschreibt, der Rand malt». Stand 2026-08-31. |
 | [`datenmodell.md`](datenmodell.md) | Das Datenmodell, wie es heute wirklich aussieht — zwölf Tabellen, Spalte für Spalte, die drei Adressformen und was ein Ereignis adressieren muss. **Jede Zahl gemessen.** Stand 2026-08-31. |
