@@ -47,12 +47,26 @@ function check(string $what, bool $held, string $saw = ''): void
 $plugin = (new ReflectionClass(Plugin::class))->newInstanceWithoutConstructor();
 $screen = (new ReflectionMethod(Plugin::class, 'screen'))->invoke($plugin);
 
-/** Renders one node's detail page and returns only the preview band. */
+/**
+ * Renders one node's detail page and returns only the preview band.
+ *
+ * ⚠️ **Ein frischer Schirm je Zeichnung, und ohne das log diese Prüfung.** *{@see \Taxmod\Core\Service\ModelValues}
+ * merkt sich die Wertzeilen eines Datensatzes — absichtlich, denn ohne das Gedächtnis wäre jede
+ * gezeichnete Zeile eine eigene Abfrage (`CD-7`). **Das Gedächtnis gilt für eine Anfrage.** Diese Prüfung
+ * schreibt aber zwischen zwei Zeichnungen im **selben** Prozess: die erste ohne Flag füllte das
+ * Gedächtnis, die dritte las es, und `read_only` war unsichtbar. *Gemessen: auf einer echten Seite stand
+ * es da, in der Prüfung nicht — und die Prüfung hatte recht, nur über die falsche Sache.*
+ *
+ * ⚠️ *`$screen` bleibt im Aufruf stehen, damit der Rest der Datei unverändert bleibt; benutzt wird er
+ * nicht mehr. **Ein Parameter, der nichts tut, ist eine Lüge** — er geht, sobald diese Prüfung ohnehin
+ * angefasst wird.*
+ */
 function previewOf(object $screen, int $nodeId): string
 {
     $_GET['taxmod_node'] = $nodeId;
 
-    $html = $screen->render();
+    $frisch = (new ReflectionClass(Plugin::class))->newInstanceWithoutConstructor();
+    $html   = (new ReflectionMethod(Plugin::class, 'screen'))->invoke($frisch)->render();
     $at   = strpos($html, 'taxmod-preview');
 
     if ($at === false) {
@@ -69,14 +83,31 @@ function previewOf(object $screen, int $nodeId): string
 
 echo "== the preview appears where records are possible, and not elsewhere ==\n";
 
-$model = (int) $wpdb->get_var("SELECT node_id FROM {$prefix}records GROUP BY node_id ORDER BY COUNT(*) DESC LIMIT 1");
+// ⚠️ **Ein Knoten mit Datensätzen **und** einem echten Feld — und die zweite Hälfte fehlte.** *Gewählt
+// war «der Knoten mit den meisten Datensätzen», und das ist heute `DisplayOption`; dessen erste benannte
+// Kante heisst `render` und ist eine **Einstellungskante**. Seit
+// [D-518](../../docs/NewConcept/90-decision-log.md) lässt die Vorschau Einstellungen weg — also wurde die
+// Zeile als «versteckt» gezählt, und die `read_only`-Zusagen darunter prüften an einer Zeile, die gar
+// nicht gezeichnet wird. **Die Prüfung war rot, ohne dass am Schirm etwas falsch war.***
+$model = (int) $wpdb->get_var(
+    "SELECT r.node_id FROM {$prefix}records r
+     INNER JOIN {$prefix}relations e ON e.from_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     GROUP BY r.node_id ORDER BY COUNT(*) DESC LIMIT 1"
+);
 
 check('a model with records was found to test against', $model > 0, (string) $model);
 
 $band = previewOf($screen, $model);
 
 check('the preview band is drawn', $band !== '', strlen($band) . ' bytes');
-check('both sides are drawn', substr_count($band, 'taxmod-preview-side') === 2, (string) substr_count($band, 'taxmod-preview-side'));
+// ⚠️ **Drei Seiten und nicht zwei, seit [D-547](../../docs/NewConcept/90-decision-log.md).** *Auf sein
+// Wort: «es gibt eine dritte Form neben Admin und Show, machen wir jetzt Settings — eine dritte Ansicht
+// in der Preview.» **Eine Prüfung, die eine Zahl festschreibt, wird rot, wenn die Entscheidung sie
+// ändert**, und dass sie rot wurde, war richtig; sie war nur nicht nachgezogen.*
+//
+// ⚠️ *Ein **Datentyp** hat weiter zwei — er ist selbst ein Feld ([D-430](../../docs/NewConcept/90-decision-log.md))
+// und hat keine Einstellungen unter sich. Die zwei Zahlen sind darum nicht dieselbe Zusage.*
+check('all three sides are drawn', substr_count($band, 'taxmod-preview-side') === 3, (string) substr_count($band, 'taxmod-preview-side'));
 
 // ⚠️ **Provenance is asserted, not assumed.** A good-looking preview over sample values reads as
 // proof that the model holds real ones, which is the opposite of what a preview is for.
@@ -125,7 +156,12 @@ if ($dataType > 0) {
 echo "\n== hide removes a row from the preview and says which ==\n";
 
 $edge = $wpdb->get_row(
-    $wpdb->prepare("SELECT id, name FROM {$prefix}relations WHERE from_id = %d AND name <> '' LIMIT 1", $model),
+    // ⚠️ *Und hier ebenso: eine Kante, die die Vorschau wirklich zeichnet — keine Einstellung.*
+    $wpdb->prepare(
+        "SELECT id, name FROM {$prefix}relations
+         WHERE from_id = %d AND name <> '' AND kind <> 'setting' AND kind <> 'inheritance' LIMIT 1",
+        $model
+    ),
     ARRAY_A
 );
 
@@ -135,17 +171,42 @@ if ($edge === null) {
     $edgeId = (int) $edge['id'];
     $name   = (string) $edge['name'];
 
+    // ── Wo `read_only` heute wirklich liegt ──────────────────────────────────────────────────────
+    //
+    // ⚠️ **Diese Prüfung schrieb in die `settings`-Tabelle, die niemand mehr liest** — *und war deshalb
+    // rot, ohne dass am Schirm etwas falsch war. Der Eigentümer hat die Frage gestellt, die es aufdeckte:
+    // «warum wird das in Integer trotzdem nicht aufgelöst? Ist da ein Fehler?» **Ja, und zwar zwei:** der
+    // Leser konnte nur `renderer` beantworten, und dieser Wächter schrieb an die alte Stelle. `PR-12`
+    // verlangt beides zusammen — **der Wächter zieht mit dem Leser um.***
+    //
+    // ⚠️ *Die Adresse einer Angabe an einer **Verwendungsstelle** ist `<Stelle>.<Einstellung>` im
+    // `default`-Satz des Besitzers — dieselbe Form, die der Renderer schon benutzt.*
+    $readOnlyEdge = (int) $wpdb->get_var(
+        "SELECT id FROM {$prefix}relations WHERE BINARY name = 'read_only' AND kind = 'setting' ORDER BY id LIMIT 1"
+    );
+
+    $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$prefix}records WHERE node_id = %d AND kind = 'default' ORDER BY id LIMIT 1",
+        $model
+    ));
+
+    check('die read_only-Kante steht im Modell', $readOnlyEdge > 0, (string) $readOnlyEdge);
+    check('und das Modell hat einen default-Satz', $ownerRecord > 0, (string) $ownerRecord);
+
     /**
      * Puts one flag on the edge, or clears both.
      *
      * ⚠️ **Two homes since 2026-08-28, and that is the decision** ([D-457]): `hide` is a **column**
-     * on `relations`, `read_only` stays a setting ([D-461]). *So this helper writes to two places,
-     * and the fact that it has to is the clearest statement of what changed.*
+     * on `relations`, `read_only` stays a setting ([D-461]) — *und eine Einstellung ist seit
+     * [D-529](../../docs/NewConcept/90-decision-log.md) eine **Kante mit einem Wert im Datensatz**.*
      */
-    $flag = static function (?string $key) use ($wpdb, $prefix, $edgeId): void {
+    $flag = static function (?string $key) use ($wpdb, $prefix, $edgeId, $readOnlyEdge, $ownerRecord): void {
+        $pfad = $edgeId . '.' . $readOnlyEdge;
+
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$prefix}settings WHERE owner_id = %d AND setting_key = 'read_only'",
-            $edgeId
+            "DELETE FROM {$prefix}record_values WHERE record_id = %d AND path = %s",
+            $ownerRecord,
+            $pfad
         ));
         $wpdb->query($wpdb->prepare(
             "UPDATE {$prefix}relations SET hide = 0 WHERE id = %d",
@@ -163,9 +224,11 @@ if ($edge === null) {
 
         if ($key !== null) {
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO {$prefix}settings (owner_id, setting_key, value_int) VALUES (%d, %s, 1)",
-                $edgeId,
-                $key
+                "INSERT INTO {$prefix}record_values (record_id, edge_id, path, locale, value_int, position, version)
+                 VALUES (%d, %d, %s, '', 1, 0, 1)",
+                $ownerRecord,
+                $readOnlyEdge,
+                $pfad
             ));
         }
     };

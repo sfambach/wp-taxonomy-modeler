@@ -75,12 +75,130 @@ final class ModelValues
      */
     public function forNode(Node $node): array
     {
+        $aus = $this->settingsAt($node, $this->recordsOf($node->id), $node->id, []);
+
         $name = $this->rendererNameAt($this->recordsOf($node->id), []);
 
-        return $name === null
-            ? []
-            : ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText($name), $node->id, true)];
+        if ($name !== null) {
+            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $node->id, true);
+        }
+
+        return $aus;
     }
+
+    /**
+     * Jede Einstellungskante, die in diesen Datensätzen einen Wert hat — nicht nur der Renderer.
+     *
+     * ⚠️ **Der Eigentümer hat gefragt, und es war ein Fehler.** *«Warum wird das in `Integer` trotzdem
+     * nicht aufgelöst? Das verstehe ich nicht. Ist da ein Fehler?»* **Ja.** *Gemessen: `read_only` steht
+     * als `1..1`-Einstellungskante an `Root`, und drei Knoten tragen ihren Wert im `default`-Satz —
+     * `Integer`, `Root`, `Electronic Parts`, alle mit `0`. **Diese Klasse konnte genau einen Schlüssel
+     * beantworten**, `renderer`, und liess die anderen liegen.*
+     *
+     * ⚠️ **Damit war es der siebte Fall derselben Sache:** *die Daten sind umgezogen, der Leser ist
+     * stehengeblieben — und nichts wurde rot, weil der Schalter einfach «nichts gesetzt» zeigte. `PR-12`
+     * nennt genau das. **Und der Docblock dieser Klasse hat es selbst angekündigt** («sie antwortet
+     * vorläufig nur zum Renderer, weil nur der umgezogen ist») — die Ankündigung stimmte nicht mehr,
+     * sobald `read_only` und `with_label` wanderten.*
+     *
+     * ⚠️ **Der Schlüssel ist der Name der Kante**, und das ist keine neue Erfindung: die
+     * Einstellungskanten heissen `read_only`, `with_label`, `label_role`, `orientation` — genau wie
+     * {@see SettingKey}. *Der Name ist hier **die Angabe selbst** und nicht eine Beschriftung; ihn
+     * umzubenennen heisst, eine andere Angabe zu meinen. Dieselbe Unterscheidung, die
+     * {@see self::findEdges()} für die zwei Renderer-Kanten trifft.*
+     *
+     * ⚠️ **Die Trägerkante bleibt aussen vor.** *Ihr Wert ist ein Verweis auf einen **Teil** und nicht
+     * auf einen Knoten; {@see self::rendererNameAt()} steigt dort hinein. Sie hier auch auszugeben,
+     * hiesse dieselbe Angabe zweimal zu melden, einmal als Satz-Id.*
+     *
+     * ⚠️ *Noch **ohne Vererbung**: geantwortet wird aus dem `default`-Satz **dieses** Knotens. Ein
+     * Knoten ohne eigenen Wert bekommt nichts, und die Kette über Datensätze steht als eigene Zeile auf
+     * der Arbeitsliste — sie berührt [D-545](../../../docs/NewConcept/90-decision-log.md), und diese
+     * Regel wird nicht in einer zweiten Klasse nachgebaut (`CD`).*
+     *
+     * ⚠️ **Die Adresse einer Verwendungsstelle ist eine andere als die des Knotens, und das habe ich im
+     * ersten Zug falsch gemacht.** *Am Knoten ist der Pfad die Einstellungskante allein; an einer
+     * Verwendungsstelle steht die Kante der Stelle davor — `<Stelle>.<Einstellung>`, genau die Form, die
+     * {@see self::rendererNameAt()} baut. **Ohne den Vorlauf hätte `forUseSite()` die Angabe des Knotens
+     * als die der Stelle gemeldet** — und dann wäre `read_only` an einem Feld die Antwort seines
+     * Besitzers, was der ganzen Unterscheidung widerspricht.*
+     *
+     * @param  list<int> $recordIds
+     * @param  list<int> $vorlauf   Kanten vor der Einstellungskante — leer für den Knoten selbst.
+     * @return array<string,ResolvedSetting>
+     */
+    private function settingsAt(Node|Relation $subject, array $recordIds, int $owner, array $vorlauf): array
+    {
+        if ($recordIds === []) {
+            return [];
+        }
+
+        $this->findEdges();
+
+        $aus    = [];
+        $anfang = $vorlauf === [] ? '' : implode('.', $vorlauf) . '.';
+
+        foreach ($recordIds as $recordId) {
+            foreach ($this->valuesOf($recordId) as $wert) {
+                // ⚠️ *Genau diese Adresse und keine tiefere: ein Pfad, der weitergeht, liegt in einem
+                // Teil, und dessen Werte gehören der Kante des Teils, nicht dieser hier.*
+                if ($wert->path !== $anfang . $wert->edgeId || $wert->value->isNothing()) {
+                    continue;
+                }
+
+                if ($wert->edgeId === $this->rendererEdge) {
+                    continue;
+                }
+
+                $kante = $this->settingEdge($subject, $wert->edgeId);
+
+                if ($kante === null || isset($aus[$kante->name])) {
+                    continue;
+                }
+
+                $aus[$kante->name] = new ResolvedSetting($kante->name, $wert->value, $owner, true);
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Die Kante dieser Id, wenn sie eine **Einstellungskante** an diesem Träger ist.
+     *
+     * ⚠️ **Alle Kanten des Trägers und seiner Vorfahren in *einer* Abfrage** (`CD-7`). *Der Wert liegt
+     * im Satz des Knotens, die Kante gehört aber dem Vorfahren, der sie erklärt hat — `read_only` steht
+     * an `Root` und sein Wert an `Integer`. Ohne die Vorfahren wäre die Kante nicht zu finden; eine
+     * Abfrage je Wert wäre das N+1, das `package7-check.php` misst.*
+     */
+    private function settingEdge(Node|Relation $subject, int $edgeId): ?Relation
+    {
+        $traeger = $subject instanceof Node ? $subject->id : $subject->fromId;
+
+        if (! isset($this->kantenGedaechtnis[$traeger])) {
+            // ⚠️ **Auch die Vorfahren, und bei einer Verwendungsstelle habe ich das im ersten Zug
+            // vergessen.** *`read_only` ist an `Root` erklärt und sein Wert steht am Knoten — ohne die
+            // Vorfahren war die Kante nicht zu finden, und die Angabe fiel still weg. **Gemessen an
+            // `preview-check.php`, das genau deshalb rot blieb.***
+            $knoten   = $subject instanceof Node ? $subject : $this->nodes->find($traeger);
+            $besitzer = $knoten === null ? [$traeger] : [...$knoten->ancestorIds(), $traeger];
+
+            $gefunden = [];
+
+            foreach ($this->relations->fieldEdgesOf($besitzer) as $eine) {
+                $gefunden[$eine->id] = $eine;
+            }
+
+            $this->kantenGedaechtnis[$traeger] = $gefunden;
+        }
+
+        $kante = $this->kantenGedaechtnis[$traeger][$edgeId] ?? null;
+
+        return $kante !== null && $kante->kind->isSetting() ? $kante : null;
+    }
+
+    /** @var array<int,array<int,Relation>> Träger-Id => seine Kanten und die seiner Vorfahren */
+    private array $kantenGedaechtnis = [];
 
     /**
      * Die Angaben, die diese **Verwendungsstelle** am Modell trägt.
@@ -93,11 +211,14 @@ final class ModelValues
      */
     public function forUseSite(Relation $edge): array
     {
+        $aus  = $this->settingsAt($edge, $this->recordsOf($edge->fromId), $edge->id, [$edge->id]);
         $name = $this->rendererNameAt($this->recordsOf($edge->fromId), [$edge->id]);
 
-        return $name === null
-            ? []
-            : ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true)];
+        if ($name !== null) {
+            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true);
+        }
+
+        return $aus;
     }
 
     /**

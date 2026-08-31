@@ -1479,13 +1479,14 @@ final class Rendering
      *
      * @param  list<Relation>                            $edges
      * @param  array<int, array<string, ResolvedSetting>> $resolved
-     * @return array{shown: list<Relation>, hidden: list<Relation>, fixed: list<int>}
+     * @return array{shown: list<Relation>, hidden: list<Relation>, settings: list<Relation>, fixed: list<int>}
      */
     public function previewVisibilityFor(array $edges, array $resolved): array
     {
-        $shown  = [];
-        $hidden = [];
-        $fixed  = [];
+        $shown    = [];
+        $hidden   = [];
+        $settings = [];
+        $fixed    = [];
 
         foreach ($edges as $edge) {
             $keys = $resolved[$edge->id] ?? [];
@@ -1511,10 +1512,13 @@ final class Rendering
             // Grunde schon, es ist nur fehlgeleitet.» **Die Fähigkeit fehlte nie, sie stand am
             // falschen Ort.***
             //
-            // ⚠️ *Sie zählen als **versteckt** und nicht als weggelassen, damit die Zählung stimmt,
-            // die der Schirm über der Vorschau zeigt.*
+            // ⚠️ **Eigene Liste, denn «versteckt» und «keine Daten» sind zwei Gründe.** *Hier stand
+            // `$hidden[]`, und der Schirm schreibt über diese Liste «Left out by hide» — also stand an
+            // jedem Knoten «Left out by hide: Display Option, validator, read_only», obwohl niemand etwas
+            // versteckt hatte. **Ein Etikett, das den falschen Grund nennt, ist schlimmer als keines**,
+            // und `preview-check.php` hat genau daran drei Zusagen verloren.*
             if ($edge->kind->isSetting()) {
-                $hidden[] = $edge;
+                $settings[] = $edge;
 
                 continue;
             }
@@ -1526,7 +1530,7 @@ final class Rendering
             }
         }
 
-        return ['shown' => $shown, 'hidden' => $hidden, 'fixed' => $fixed];
+        return ['shown' => $shown, 'hidden' => $hidden, 'settings' => $settings, 'fixed' => $fixed];
     }
     /**
      * The detail head — three labelled rows, drawn by {@see HeadRenderer}.
@@ -1619,6 +1623,40 @@ final class Rendering
      * @param  array<string,\Taxmod\Core\Model\ResolvedSetting> $resolved
      * @return array<string,\Taxmod\Core\Model\ResolvedSetting>
      */
+    /**
+     * Was das Modell über diese Verwendungsstellen sagt — **die eine Naht**, die jeder Aufrufer nimmt.
+     *
+     * ⚠️ **Der Eigentümer hat den Grund benannt, bevor ich den achten Fall gefunden hatte:** *«umso
+     * wichtiger, dass wir unseren Code richtig kapseln, denn dann können wir ja ganze Teile herauslösen
+     * und durch neue ersetzen … hätte man diesen Settings-Mechanismus komplett gekapselt und dann
+     * rausgenommen, hätte man sehen können, überall da, wo er knallt.»*
+     *
+     * ⚠️ **Genau daran hat es gefehlt, und es ist messbar.** *Die Vorschau fragte `resolveForUseSites()`
+     * allein — die alte Tabelle mit ihren fünf Zeilen — und bekam für `read_only` nichts. Der Wert lag im
+     * Datensatz. **Weil es zwei Wege gab, konnte ein Aufrufer den falschen nehmen, und der falsche
+     * antwortete plausibel statt zu knallen.** Das ist derselbe Fehler, den `PR-12` sechsmal an einem
+     * Abend gezählt hat, und der Grund ist jedes Mal: zwei Leser für eine Sache.*
+     *
+     * ⚠️ *Deshalb ist diese Methode öffentlich und {@see self::withModelValues()} bleibt privat: **eine
+     * Stelle im Kern beantwortet die Frage**, und wenn die alte Tabelle herausgenommen wird, knallt es
+     * hier — an einer Stelle — und nicht still an acht.*
+     *
+     * @param  list<Relation> $edges
+     * @return array<int, array<string, \Taxmod\Core\Model\ResolvedSetting>> Kanten-Id => Angaben
+     */
+    public function settingsForUseSites(array $edges): array
+    {
+        $resolved = $this->settings->resolveForUseSites($edges);
+
+        $aus = [];
+
+        foreach ($edges as $edge) {
+            $aus[$edge->id] = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
+        }
+
+        return $aus;
+    }
+
     private function withModelValues(array $resolved, Node|Relation $subject): array
     {
         if ($this->model === null) {

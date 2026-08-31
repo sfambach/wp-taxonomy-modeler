@@ -862,7 +862,16 @@ final class NodesScreen
             return $html . '<p><em>' . esc_html__('No fields yet, so there is nothing to fill in.', 'taxmod') . '</em></p>';
         }
 
-        $resolved = $this->settings->resolveForUseSites($edges);
+        // ⚠️ **Über die eine Naht des Kerns und nicht direkt an die Settings-Tabelle** ({@see Rendering::settingsForUseSites()}).
+        // *Hier stand `$this->settings->resolveForUseSites($edges)` — die alte Tabelle allein, und die
+        // hat heute fünf Zeilen. **`read_only` lag im Datensatz und die Vorschau sah es nie**: der achte
+        // Fall von «Daten umgezogen, Leser stehengeblieben» an derselben Naht.*
+        //
+        // ⚠️ *Der Eigentümer hat den Grund benannt: «hätte man diesen Settings-Mechanismus komplett
+        // gekapselt und dann rausgenommen, hätte man sehen können, überall da, wo er knallt». **Solange
+        // es zwei Wege gab, konnte ein Aufrufer den falschen nehmen — und der falsche antwortete
+        // plausibel statt zu knallen.***
+        $resolved = $this->rendering->settingsForUseSites($edges);
         $seen     = $this->previewSource($selected);
 
         $values     = $this->rendering->previewValuesFor($edges, $resolved, $seen['held']);
@@ -934,6 +943,26 @@ final class NodesScreen
                     /* translators: %s: comma-separated attribute names. */
                     __('Left out by hide: %s', 'taxmod'),
                     implode(', ', $names)
+                ))
+                . '</p>';
+        }
+
+        // ⚠️ **Ein eigener Satz, weil es ein anderer Grund ist.** *Eine Einstellung ist keine Daten und
+        // gehört darum nicht in die Vorschau ([D-518](../../../docs/NewConcept/90-decision-log.md)) — das
+        // ist keine Sichtbarkeitswahl, die jemand getroffen hat. Vorher standen beide unter «Left out by
+        // hide», also las jeder Knoten so, als hätte jemand drei Zeilen versteckt.*
+        if ($visibility['settings'] !== []) {
+            $namen = [];
+
+            foreach ($visibility['settings'] as $edge) {
+                $namen[] = $edge->name;
+            }
+
+            $html .= '<p class="description taxmod-preview-settings">'
+                . esc_html(sprintf(
+                    /* translators: %s: comma-separated setting names. */
+                    __('Settings, not data, so not previewed here: %s', 'taxmod'),
+                    implode(', ', $namen)
                 ))
                 . '</p>';
         }
