@@ -76,6 +76,31 @@ final class InMemoryRecords implements RecordRepository
     }
 
     /**
+     * ⚠️ *Dieselbe Antwortform wie SQL: je gehaltenen Satz **eine** Zeile, und die erste gewinnt — ein
+     * Datensatz kann nicht an zwei Stellen hängen, und wenn doch, wäre das ein Fehler und keine Auswahl.*
+     *
+     * @param  list<int> $recordIds
+     * @return array<int, EdgeRecord>
+     */
+    public function holdersOf(array $recordIds): array
+    {
+        $gesucht = array_fill_keys(array_map('intval', $recordIds), true);
+        $aus     = [];
+
+        foreach ($this->values as $wert) {
+            $ziel = $wert->value->reference;
+
+            if ($ziel === null || ! isset($gesucht[$ziel]) || isset($aus[$ziel])) {
+                continue;
+            }
+
+            $aus[$ziel] = $wert;
+        }
+
+        return $aus;
+    }
+
+    /**
      * ⚠️ *Einfügen oder genau eine Zeile ändern — **nie überschreiben**
      * ([D-530](../../../docs/NewConcept/90-decision-log.md)). Behielte dieser Doppelgänger den alten
      * Schlüssel `(recordId, path, locale)`, könnte kein Kerntest zeigen, dass drei Werte eines Feldes

@@ -24,6 +24,7 @@ use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\LabelSlot;
@@ -911,6 +912,107 @@ final class Rendering
      * @param array<int, TypedValue> $values What this record holds, keyed by edge id.
      * @param list<Control>          $acts
      */
+    /**
+     * **Alle** Datensätze eines Knotens als **eine** Tabelle — eine Zeile je Satz.
+     *
+     * ⚠️ **Auf sein Wort:** *«Action sollte rechts sein, Record, Version davor, sodass wir eine schmale
+     * Zeile bekommen. Würde alle Datensätze in eine Tabelle packen, ist kompakter und sieht besser aus.
+     * Und zu welchem Knoten/Kante es gehört, würde ich auch noch vorne dran schreiben.»*
+     *
+     * ⚠️ **Die letzte Spalte ist nicht Deko, und das ist gemessen.** *An `Einheitenwert` stehen 23
+     * Datensätze; **einer davon ist ein Teil** des Datensatzes von `__uv Resistor`, angehängt über die
+     * Kante `resistance`. Er stand zwischen den anderen, ohne dass irgendetwas ihn unterschied — und er
+     * ist kein Datensatz von `Einheitenwert` im gewöhnlichen Sinn, sondern ein Stück eines fremden.*
+     *
+     * ⚠️ **Ein Formular je Zeile, nicht eines für die Tabelle.** *Zwei Datensätze auf einem Schirm sind
+     * zwei verschiedene Dinge, und ein Speichern darf nicht beide schreiben. Ein `<tr>` kann kein
+     * `<form>` umschliessen, also steht es in der Aktionszelle und die Wertfelder nennen es über
+     * `form="…"` — dieselbe Naht wie in der Feldzeile.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   S["je Satz: Werte, Vorspalten, Akte"] --> D["der Abstieg zeichnet die Felder"]
+     *   D --> T["table: Vorspalten · Felder · Akte"]
+     *   T --> R["record: Rahmen und Diagnose"]
+     * ```
+     *
+     * @param list<Relation>                                                                                        $edges  Die Felder des Modells, in ihrer Reihenfolge.
+     * @param list<array{id: int, values: array<int, TypedValue>, lead: array<string,string>, acts: list<Control>, submits: Submission}> $rows
+     */
+    public function recordsAsTable(
+        Node $model,
+        array $edges,
+        array $rows,
+        string $fieldPrefix = '',
+        string $diagnostic = '',
+        bool $developerMode = false,
+        Purpose $purpose = Purpose::Edit,
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): RenderResult {
+        $gezeichnet = [];
+        $vorne      = [];
+        $akte       = [];
+
+        foreach ($rows as $row) {
+            $formId = 'taxmod-record-' . $row['id'];
+
+            // ⚠️ *Der Knoten selbst gilt als «schon besucht»: eine Einstellung, die auf ihn zeigt, würde
+            // ihn sonst ein zweites Mal aufklappen ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
+            $gezeichnet[] = $this->fieldsFor(
+                $edges,
+                $row['values'],
+                $purpose,
+                $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $row['id'] . ']',
+                $locale,
+                $level,
+                true,
+                $formId,
+                0,
+                [],
+                [$model->id => true]
+            );
+
+            $vorne[] = $row['lead'];
+            $akte[]  = ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
+        }
+
+        $tabelle = $this->renderers->byName(TableRenderer::NAME)->render(
+            $model,
+            new RenderContext(
+                purpose: $purpose,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                surroundings: new Surroundings(
+                    records: $gezeichnet,
+                    rowLead: $vorne,
+                    rowActs: $akte
+                ),
+            )
+        );
+
+        $sections = [RecordRenderer::FORM => new Section('', $tabelle->markup)];
+
+        if ($diagnostic !== '') {
+            $sections[RecordRenderer::DIAGNOSTIC] = new Section('', $diagnostic);
+        }
+
+        // ⚠️ *`submits: null` mit Absicht: der Rahmen zieht **kein** Formular um die Tabelle — jede Zeile
+        // hat ihr eigenes. Ohne das lägen Formulare ineinander, was HTML verbietet.*
+        return $this->renderers->byName(RecordRenderer::NAME)->render(
+            $model,
+            new RenderContext(
+                purpose: $purpose,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                surroundings: new Surroundings(sections: $sections),
+                developerMode: $developerMode,
+            )
+        );
+    }
+
     public function recordAsBlock(
         Node $model,
         array $edges,

@@ -2175,7 +2175,22 @@ final class NodesScreen
      */
     private function recordsPanel(Node $selected): string
     {
-        $attributes = $this->editor->fieldsOf($selected->id);
+        // ⚠️ **Ohne die Einstellungskanten, und das ist gemessen.** *Sie standen als Spalten in jedem
+        // Benutzer-Datensatz — `Display Option`, `validator`, `read_only` — und waren **immer leer**:
+        // gemessen am 2026-08-31 gibt es **null** Werte an Einstellungskanten in Benutzer-Datensätzen und
+        // 148 in `default`-Sätzen. **Eine Einstellung wohnt im `default`-Satz** ([D-026](../../../docs/NewConcept/90-decision-log.md):
+        // «at model level there are no values, only defaults»), also war die Spalte nicht bloss leer,
+        // sondern das Angebot, eine Einstellung an die falsche Stelle zu schreiben.*
+        //
+        // ⚠️ *Dieselbe Trennung, die die Vorschau schon macht ([D-518](../../../docs/NewConcept/90-decision-log.md)):
+        // eine Einstellung ist keine Daten. Und sie ist genau das, was seine «schmale Zeile» braucht.*
+        $attributes = [];
+
+        foreach ($this->editor->fieldsOf($selected->id) as $edge) {
+            if (! $edge->kind->isSetting()) {
+                $attributes[] = $edge;
+            }
+        }
 
         // ⚠️ **Die Frage ist «hat er Felder», nicht «in welchem Zweig liegt er»**
         // ([D-522](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «so ein Record, den
@@ -2213,6 +2228,18 @@ final class NodesScreen
             return $html . '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>';
         }
 
+        // ⚠️ **Wer welchen Satz hält — in einer Abfrage für alle** (`CD-7`). *Ein Teil ist ein Datensatz
+        // wie jeder andere und stand darum unerkannt zwischen den anderen: gemessen an `Einheitenwert`
+        // sind es 23 Sätze, **einer davon** ein Teil des Satzes von `__uv Resistor` über die Kante
+        // `resistance`. Der Eigentümer wollte die Spalte: «zu welchem Knoten/Kante es gehört, würde ich
+        // auch noch vorne dran schreiben».*
+        $halter = $this->data->holdersOf(array_map(
+            static fn (\Taxmod\Core\Model\NodeRecord $satz): int => $satz->id,
+            $records
+        ));
+
+        $zeilen = [];
+
         foreach ($records as $record) {
             $held = [];
 
@@ -2220,20 +2247,18 @@ final class NodesScreen
                 $held[$value->edgeId] = $value->value;
             }
 
-            // ⚠️ **Through the renderer** (D-393). The screen states the facts — what this record
-            // is called, where a save goes, the nonce — and {@see RecordRenderer} decides the shape.
-            $html .= $this->rendering->recordAsBlock(
-                $selected,
-                $attributes,
-                $held,
-                sprintf(
-                    /* translators: 1: record id, 2: the model version it was written against. */
-                    __('Record #%1$d · written against version %2$d', 'taxmod'),
-                    $record->id,
-                    $record->nodeVersion
-                ),
-                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))],
-                new Submission(
+            $zeilen[] = [
+                'id'     => $record->id,
+                'values' => $held,
+                'lead'   => [
+                    __('Belongs to', 'taxmod') => $this->belongsTo($selected, $halter[$record->id] ?? null),
+                    __('Record', 'taxmod')     => '<code>#' . esc_html((string) $record->id) . '</code>',
+                    __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
+                ],
+                'acts'   => [
+                    Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
+                ],
+                'submits' => new Submission(
                     admin_url('admin-post.php'),
                     [
                         'action'        => self::ACTION,
@@ -2242,29 +2267,54 @@ final class NodesScreen
                         '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
                     ]
                 ),
-                self::VALUE_FIELD,
-                // ⚠️ *Der Knoten selbst gilt als «schon besucht»: `DisplayOption` erbt eine
-                // Einstellung, die auf **ihn** zeigt ([OQ-133](../../../docs/NewConcept/91-open-questions.md)),
-                // und ohne das stand `render` in jedem seiner Datensätze doppelt.*
-                $this->drawnBy($this->rendering->fieldsFor(
-                    $attributes,
-                    $held,
-                    Purpose::Edit,
-                    self::VALUE_FIELD,
-                    '',
-                    \Taxmod\Core\Renderer\Level::Admin,
-                    true,
-                    '',
-                    0,
-                    [],
-                    [$selected->id => true]
-                )),
-                $this->inDeveloperMode()
-            )->markup;
+            ];
         }
 
-        return $html;
+        return $html . $this->rendering->recordsAsTable(
+            $selected,
+            $attributes,
+            $zeilen,
+            self::VALUE_FIELD,
+            '',
+            $this->inDeveloperMode()
+        )->markup;
     }
+
+    /**
+     * Wovon dieser Datensatz einer ist — der Knoten, und bei einem Teil auch die Kante.
+     *
+     * ⚠️ **Die Spalte verrät einen Unterschied, der bisher unsichtbar war.** *Ein Teil ist ein Datensatz
+     * wie jeder andere; er trägt die Id des **Zielknotens**, taucht darum in dessen Datensatz-Block auf
+     * und ist kein Datensatz dieses Knotens im gewöhnlichen Sinn, sondern ein Stück eines fremden.*
+     *
+     * ⚠️ *Der Name des haltenden Knotens wird über den Datensatz gefunden und nicht geraten. Fehlt er,
+     * steht die Id da — **eine Lücke, die man sieht, ist besser als eine, die aussieht wie nichts**.*
+     */
+    private function belongsTo(Node $selected, ?\Taxmod\Core\Model\EdgeRecord $halter): string
+    {
+        if ($halter === null) {
+            return esc_html($selected->name);
+        }
+
+        $satz  = $this->data->find($halter->recordId);
+        $node  = $satz === null ? null : $this->editor->find($satz->nodeId);
+        // ⚠️ *Über den Editor und nicht über ein eigenes Kantenverzeichnis: der Schirm hat keines, und
+        // eine Abhängigkeit mehr für einen Namen wäre der falsche Preis. Die Kante gehört dem Knoten des
+        // haltenden Datensatzes — dort wird sie gesucht.*
+        $kante = null;
+
+        foreach ($satz === null ? [] : $this->editor->fieldsOf($satz->nodeId) as $eine) {
+            if ($eine->id === $halter->edgeId) {
+                $kante = $eine;
+            }
+        }
+
+        return '<span class="taxmod-record-part">'
+            . esc_html($node?->name ?? ('#' . (string) ($satz->nodeId ?? 0)))
+            . ' · <code>' . esc_html($kante?->name ?? ('#' . (string) $halter->edgeId)) . '</code>'
+            . '</span>';
+    }
+
 
     /**
      * One rendered attribute in the record box.

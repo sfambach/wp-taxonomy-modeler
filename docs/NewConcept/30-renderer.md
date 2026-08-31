@@ -3846,3 +3846,34 @@ nie über seine Stellung — bei `.1, .3` bekäme der zweite sonst den Knopf fü
 kennt die Mehrfachheit nicht. **Darum gilt es für Zahlen, Texte, Verweise und Teile gleichermassen.***
 
 ---
+
+### R77 — der Datensatz-Block ist eine Tabelle, und die erste Spalte sagt, wovon der Satz ist
+
+**Entscheidung [D-553](90-decision-log.md)**, 2026-08-31.
+
+Alle Datensätze eines Knotens stehen in **einer** Tabelle: eine Zeile je Satz, davor «wovon · Record ·
+Version», die Bedienelemente rechts.
+
+Der Eigentümer: *«Action sollte rechts sein, Record, Version davor, sodass wir eine schmale Zeile
+bekommen. Würde alle Datensätze in eine Tabelle packen, ist kompakter und sieht besser aus. Und zu
+welchem Knoten/Kante es gehört, würde ich auch noch vorne dran schreiben.»*
+
+⚠️ **Die erste Spalte ist keine Deko, und das ist gemessen.** *An `Einheitenwert` stehen 23 Datensätze;
+**einer davon ist ein Teil** des Satzes eines anderen Knotens, angehängt über dessen Kante. Ein Teil
+trägt die Id des **Zielknotens** und erscheint darum in dessen Block — ohne jedes Merkmal zwischen den
+eigenständigen Sätzen. **Er ist kein Datensatz dieses Knotens im gewöhnlichen Sinn, sondern ein Stück
+eines fremden.***
+
+⚠️ **Ein Formular je Zeile, nicht eines für die Tabelle.** *Zwei Datensätze sind zwei Dinge, und ein
+Speichern darf nicht beide schreiben. Ein `<tr>` kann kein `<form>` umschliessen, also steht es in der
+Aktionszelle und die Wertfelder nennen es über `form="…"` — dieselbe Naht wie in der Feldzeile
+([D-551](90-decision-log.md)).*
+
+⚠️ *Die Spalten vor und hinter den Feldern sind eine **allgemeine** Zutat des Tabellen-Renderers und
+heissen nicht «Datensatz-Spalten»: ein Behälter legt aus, was ihm gegeben wird
+([D-366](90-decision-log.md)), und die Überschriften sind Worte des Randes (`AR-2`).*
+
+⚠️ **Der Löschknopf fehlt, mit Grund** — *es gibt im Kern keinen Weg, einen Datensatz zu entfernen, und
+was «löschen» hier heisst, ist nicht entschieden: [OQ-143](91-open-questions.md).*
+
+---

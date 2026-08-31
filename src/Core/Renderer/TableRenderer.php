@@ -78,9 +78,23 @@ final class TableRenderer implements Renderer
             return RenderResult::of('');
         }
 
+        // ⚠️ **Die Spalten vor und hinter den Feldern** — *auf sein Wort: «Action sollte rechts sein,
+        // Record, Version davor, sodass wir eine schmale Zeile bekommen».* Die Überschriften kommen vom
+        // Aufrufer, weil der Kern keine Worte machen kann (`AR-2`).
+        $vorspalten = [];
+
+        foreach ($context->surroundings->rowLead as $vorne) {
+            foreach (array_keys($vorne) as $kopf) {
+                $vorspalten[$kopf] = true;
+            }
+        }
+
+        $vorspalten = array_keys($vorspalten);
+        $mitActs    = $context->surroundings->rowActs !== [];
+
         $zeilen = '';
 
-        foreach ($datensaetze as $felder) {
+        foreach ($datensaetze as $nummer => $felder) {
             $nachKante = [];
 
             foreach ($felder as $feld) {
@@ -92,6 +106,14 @@ final class TableRenderer implements Renderer
 
             $zellen = '';
 
+            // ⚠️ *Auch hier über die Spaltenliste: fehlt einer Zeile eine Vorspalte, bleibt die Zelle
+            // leer statt wegzufallen.*
+            foreach ($vorspalten as $kopf) {
+                $zellen .= '<td class="taxmod-table-lead">'
+                    . ($context->surroundings->rowLead[$nummer][$kopf] ?? '')
+                    . '</td>';
+            }
+
             // ⚠️ **Über die Spaltenliste und nicht über die vorhandenen Felder.** *Fehlt einem
             // Datensatz ein Feld, muss die Zelle **leer** erscheinen und nicht wegfallen — sonst
             // verrutscht die ganze Zeile, und das sieht wie Daten aus.*
@@ -100,12 +122,18 @@ final class TableRenderer implements Renderer
                 $zellen .= '<td class="taxmod-table-cell">' . ($feld?->result->markup ?? '') . '</td>';
             }
 
+            if ($mitActs) {
+                $zellen .= '<td class="taxmod-table-acts">'
+                    . ($context->surroundings->rowActs[$nummer] ?? '')
+                    . '</td>';
+            }
+
             $zeilen .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
         }
 
         return new RenderResult(
             '<table class="taxmod-table">'
-            . $this->head($spalten, $context)
+            . $this->head($spalten, $context, $vorspalten, $mitActs)
             . '<tbody>' . $zeilen . '</tbody>'
             . '</table>',
             array_values(array_unique($usedEdges))
@@ -141,8 +169,12 @@ final class TableRenderer implements Renderer
         return array_map(static fn ($edge): string => $edge->name, $gesehen);
     }
 
-    /** @param array<int,string> $spalten */
-    private function head(array $spalten, RenderContext $context): string
+    /**
+     * @param array<int,string> $spalten
+     * @param list<string>      $vorspalten Die Überschriften der Spalten vor den Feldern.
+     * @param bool              $mitActs    Ob rechts eine Spalte für Bedienelemente steht.
+     */
+    private function head(array $spalten, RenderContext $context, array $vorspalten = [], bool $mitActs = false): string
     {
         // ⚠️ *Fehlt die Einstellung, wird der Kopf gezeichnet — eine Tabelle ohne Spaltennamen ist
         // schlechter zu lesen als eine mit.*
@@ -152,8 +184,18 @@ final class TableRenderer implements Renderer
 
         $zellen = '';
 
+        foreach ($vorspalten as $name) {
+            $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
+        }
+
         foreach ($spalten as $name) {
             $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
+        }
+
+        // ⚠️ *Ohne Wort: die Aktionsspalte trägt Bilder, und ein Kopf über Bildern ist ein Wort, das der
+        // Kern nicht machen kann (`AR-2`). Die Feldzeile hält es genauso.*
+        if ($mitActs) {
+            $zellen .= '<th class="taxmod-table-head" scope="col"></th>';
         }
 
         return '<thead><tr>' . $zellen . '</tr></thead>';

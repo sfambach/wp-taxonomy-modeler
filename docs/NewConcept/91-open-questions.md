@@ -5807,3 +5807,41 @@ Mensch nie angefasst hat, ist trotzdem falsch.
 
 ⚠️ **Nicht geraten.** *`A` ist heute faktisch der Zustand für `range` und `number`, weil `written()`
 absagt — aber **nicht entschieden**, und ein faktischer Zustand ist keine Regel.*
+
+---
+
+## OQ-143 — Was heisst «einen Datensatz löschen», und darf ein **Teil** einzeln gelöscht werden?
+
+**Raised** 2026-08-31, beim Bau des Datensatz-Blocks.
+
+*Blockiert:* den Löschknopf, den der Eigentümer bestellt hat · *Status:* **open**
+
+⚠️ **Der Eigentümer hat den Knopf bestellt:** *«Delete-Button, und zu welchem Knoten/Kante es gehört,
+würde ich auch noch vorne dran schreiben.»* Die Spalte steht; der Knopf nicht.
+
+⚠️ **Es gibt im Kern keinen Weg, einen Datensatz zu entfernen.** *Gemessen: `DataEntry` kann `create()`,
+`put()`, `clear()` — aber keine Methode nimmt einen **Datensatz** weg. Es ist keine Verdrahtung, sondern
+eine fehlende Fähigkeit, und sie fehlt, weil niemand entschieden hat, was sie tun soll.*
+
+### Zwei Fragen, und die zweite ist die gefährlichere
+
+**1. Geparkt oder weg?** Für Knoten und Felder gilt «geparkt, nicht vernichtet» in zwei Stufen
+([D-123](90-decision-log.md)) — Papierkorb, dann endgültig. Ein Datensatz ist aber **Inhalt** und kein
+Modell, und keine Entscheidung deckt ihn. Ein Papierkorb für Daten ist etwas anderes als einer für
+Struktur: er wächst mit der Benutzung.
+
+**2. Darf ein Teil einzeln gelöscht werden? Vermutlich nicht.** *Gemessen an `Einheitenwert`: einer der
+23 Datensätze ist ein **Teil** des Satzes von `__uv Resistor`, angehängt über die Kante `resistance`.
+Er erscheint im Block dieses Knotens, weil ein Teil die Id des **Zielknotens** trägt.* **Ihn von hier
+zu löschen, würde ein Loch in den Datensatz eines anderen Knotens reissen** — und die Kante, an der er
+hängt, hat eine Multiplizität, die vielleicht `1..1` ist.
+
+| | Weg | Preis |
+|---|---|---|
+| **A** | Ein Datensatz wird sofort und endgültig entfernt | einfach, und passend dazu, dass Daten wiedereingegeben werden können — aber es gibt kein Zurück, und Daten sind das, was Arbeit kostet |
+| **B** | Zwei Stufen wie beim Modell ([D-123](90-decision-log.md)) | eine Regel für alles — aber ein Datenpapierkorb wächst mit der Benutzung und braucht selbst eine Bedienung |
+| **C** | Nur eigenständige Sätze löschbar; ein Teil nur über seinen Halter | schützt vor dem Loch im fremden Satz — die Zeile braucht dann zwei verschiedene Zustände des Knopfes |
+
+⚠️ **Nicht geraten.** *`C` ist unabhängig von `A`/`B` und scheint zwingend; aber «scheint zwingend» ist
+in diesem Projekt schon mehrfach falsch gewesen, und ein Löschknopf ist der falsche Ort für einen
+Versuch.*

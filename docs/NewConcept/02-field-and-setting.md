@@ -1213,3 +1213,20 @@ einzige Wahl der ganzen Seite, die sich nicht speichern liess.*
 dort nie an. Der Weg heisst `DataEntry::clearSettingAt()` und ist das Gegenstück zu `putSettingAt()`.*
 
 ---
+
+## Im Datensatz-Block stehen keine Einstellungsspalten
+
+**Entscheidung [D-554](90-decision-log.md)**, 2026-08-31.
+
+⚠️ **Gemessen, nicht gefunden.** *`Display Option`, `validator` und `read_only` standen als Spalten in
+**jedem** Benutzer-Datensatz und waren **immer leer**: es gibt **null** Werte an Einstellungskanten in
+Benutzer-Datensätzen und **148** in `default`-Sätzen. Die Spalte war also nicht bloss leer, sondern das
+Angebot, eine Einstellung an die falsche Stelle zu schreiben.*
+
+Es folgt aus [D-026](90-decision-log.md) — *«at model level there are no values, only defaults»*: eine
+Einstellung wohnt im `default`-Satz. Und es ist dieselbe Trennung, die die Vorschau seit
+[D-518](90-decision-log.md) macht: **eine Einstellung ist keine Daten.**
+
+⚠️ *Nebeneffekt und sein eigentliches Ziel: die Zeile wird schmal.*
+
+---

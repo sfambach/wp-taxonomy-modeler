@@ -928,6 +928,19 @@ final class DataEntry
         return $this->records->ofNode($nodeId);
     }
 
+    /**
+     * Wer diese Datensätze **hält** — je Satz die Wertzeile, die auf ihn zeigt.
+     *
+     * ⚠️ *Ein Durchgriff und keine Logik: die Frage ist eine Abfrage, und sie steht im Repository, weil
+     * sie eine Abfrage ist. Hier steht sie, damit der Rand nicht am Repository vorbei fragen muss.*
+     *
+     * @param  list<int> $recordIds
+     * @return array<int, \Taxmod\Core\Model\EdgeRecord>
+     */
+    public function holdersOf(array $recordIds): array
+    {
+        return $this->records->holdersOf($recordIds);
+    }
     public function find(int $recordId): ?NodeRecord
     {
         return $this->records->find($recordId);

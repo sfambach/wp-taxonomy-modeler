@@ -149,6 +149,40 @@ final class ControlMarkup
     }
 
     /**
+     * Ein `<form>` mit seinen verborgenen Feldern und seinen Knöpfen — **an einer Stelle**.
+     *
+     * ⚠️ **Weil es diese drei Zeilen schon zweimal gab.** *{@see FieldRowRenderer} baut sie in ihrer
+     * Aktionszelle, {@see RecordRenderer} um seinen Block. Eine dritte Abschrift für die Datensatz-Zeile
+     * wäre die vierte Gelegenheit, eine Regel zu vergessen — genau das ist mit `ControlMarkup::button()`
+     * schon passiert: **vier Abschriften, und die randlose Regel erreichte eine davon**, weshalb überall
+     * sonst die Kästen um die Bilder zurückkamen.*
+     *
+     * ⚠️ *Die `id` ist nötig, weil ein `<tr>` kein `<form>` umschliessen darf: die Wertfelder der Zeile
+     * stehen in anderen Zellen und nennen dieses Formular über `form="…"`.*
+     *
+     * @param list<Control> $controls Worte darin werden übersprungen ({@see self::isAWord()}).
+     */
+    public static function actsForm(string $formId, Submission $submits, array $controls): string
+    {
+        $buttons = '';
+
+        foreach ($controls as $control) {
+            if (self::isAWord($control)) {
+                continue;
+            }
+
+            $buttons .= self::button($control);
+        }
+
+        return '<form method="post" id="' . RenderResult::escape($formId) . '"'
+            . ' action="' . RenderResult::escape($submits->action) . '"'
+            . ' class="taxmod-acts">'
+            . self::hidden($submits)
+            . $buttons
+            . '</form>';
+    }
+
+    /**
      * Whether this control is a word travelling with the buttons rather than a button.
      *
      * ⚠️ *A shortcut around [OQ-087](../../../docs/NewConcept/91-open-questions.md) — the core cannot

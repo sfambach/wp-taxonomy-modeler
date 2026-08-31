@@ -153,6 +153,36 @@ final class Surroundings
          * pointing the other way: there a **button** stands outside its form, here a **field** does.*
          */
         public readonly string $formId = '',
+        /**
+         * Spalten **vor** den Feldern, je Zeile — Überschrift => gezeichnete Zelle.
+         *
+         * ⚠️ **Auf sein Wort zum Datensatz-Block:** *«Action sollte rechts sein, Record, Version davor,
+         * sodass wir eine schmale Zeile bekommen … und zu welchem Knoten/Kante es gehört, würde ich auch
+         * noch vorne dran schreiben.»*
+         *
+         * ⚠️ **Bewusst allgemein und nicht «Datensatz-Spalten».** *Die Tabelle soll nicht wissen, dass es
+         * Datensätze sind — sie legt Zellen aus, die ihr gegeben werden ([D-366](../../../docs/NewConcept/90-decision-log.md):
+         * ein Behälter fasst keinen Wert an). Der Aufrufer sagt, was vorne steht; die Überschriften sind
+         * seine Worte, weil der Kern keine machen kann (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)).*
+         *
+         * ⚠️ *Gleich lang wie {@see self::$records} und in derselben Reihenfolge. Fehlt ein Eintrag,
+         * bleibt die Zelle leer — **eine Zeile darf nicht verrutschen**, das sieht wie Daten aus.*
+         *
+         * @var list<array<string,string>>
+         */
+        public readonly array $rowLead = [],
+        /**
+         * Die Bedienelemente **hinter** den Feldern, je Zeile, schon gezeichnet.
+         *
+         * ⚠️ *Je Zeile und nicht je Tabelle: {@see self::$actions} gilt für das Ganze, hier hat jede
+         * Zeile ihre eigenen — ein Speichern gehört zu **einem** Datensatz und darf nicht zwei schreiben.*
+         *
+         * ⚠️ *Sie tragen ihr Formular selbst mit, denn ein `<tr>` darf kein `<form>` umschliessen — die
+         * Wertfelder nennen es über `form="…"`, genau wie in der Feldzeile.*
+         *
+         * @var list<string>
+         */
+        public readonly array $rowActs = [],
     ) {
     }
 

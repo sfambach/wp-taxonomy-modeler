@@ -470,6 +470,103 @@ if ($html === '') {
     );
 }
 
+echo "\n== Der Datensatz-Block ist eine Tabelle, mit Aktionen rechts ==\n";
+
+// ⚠️ **Auf sein Wort:** *«ich würde die Records immer als Tabelle zeigen … Action sollte rechts sein,
+// Record, Version davor, sodass wir eine schmale Zeile bekommen … und zu welchem Knoten/Kante es gehört,
+// würde ich auch noch vorne dran schreiben.»*
+//
+// ⚠️ **Gemessen an einem echten Knoten, nicht an einer Attrappe** — *der Block hat vorher **je Satz**
+// eine Tabelle gezeichnet, und der Unterschied zwischen «eine Tabelle» und «23 Tabellen» ist genau die
+// Zusage, die hier fehlte.*
+$mitSaetzen = (int) $wpdb->get_var(
+    'SELECT r.node_id FROM ' . Schema::table('records') . ' r
+     INNER JOIN ' . Schema::table('relations') . " e ON e.from_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     GROUP BY r.node_id HAVING COUNT(DISTINCT r.id) > 2 ORDER BY COUNT(DISTINCT r.id) DESC LIMIT 1"
+);
+
+if ($mitSaetzen === 0) {
+    check('ein Knoten mit mehreren Datensaetzen steht im Modell', false);
+} else {
+    check('ein Knoten mit mehreren Datensaetzen steht im Modell', true, (string) $mitSaetzen);
+
+    $seite = seiteVon($mitSaetzen);
+    $at    = strpos($seite, 'taxmod-record');
+    $block = $at === false ? '' : substr($seite, $at);
+
+    $saetze = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE node_id = %d',
+        $mitSaetzen
+    ));
+
+    check('der Block ist da', $block !== '', strlen($block) . ' Bytes');
+
+    // ⚠️ ***Eine** Tabelle auf der äusseren Ebene. Verschachtelte zählt diese Zusage mit, darum wird
+    // gegen die Zahl der Datensätze geprüft und nicht gegen 1: ein Satz mit einem zusammengesetzten Feld
+    // trägt seine eigene Tabelle in einer Zelle, und das ist richtig so.*
+    check(
+        'es sind nicht mehr n Tabellen',
+        substr_count($block, '<table class="taxmod-table"') < $saetze,
+        substr_count($block, '<table class="taxmod-table"') . ' Tabellen bei ' . $saetze . ' Saetzen'
+    );
+
+    check(
+        'je Satz eine Zeile mit Aktionszelle',
+        substr_count($block, 'taxmod-table-acts') === $saetze,
+        substr_count($block, 'taxmod-table-acts') . ' von ' . $saetze
+    );
+
+    // ⚠️ *Und je Zeile ihr **eigenes** Formular: zwei Datensätze sind zwei Dinge, und ein Speichern darf
+    // nicht beide schreiben. Ein `<tr>` kann kein `<form>` umschliessen, also nennt es die Zeile.*
+    check(
+        'je Satz ein eigenes Formular',
+        substr_count($block, 'id="taxmod-record-') === $saetze,
+        substr_count($block, 'id="taxmod-record-') . ' von ' . $saetze
+    );
+
+    check(
+        'drei Vorspalten je Zeile',
+        substr_count($block, 'taxmod-table-lead') === $saetze * 3,
+        substr_count($block, 'taxmod-table-lead') . ' bei ' . ($saetze * 3) . ' erwarteten'
+    );
+
+    // ⚠️ **Und keine Einstellungsspalte.** *Gemessen: null Werte an Einstellungskanten in
+    // Benutzer-Datensätzen, 148 in `default`-Sätzen. Eine Einstellungsspalte im Datensatz-Block war das
+    // Angebot, eine Einstellung an die falsche Stelle zu schreiben.*
+    $einstellungen = $wpdb->get_col($wpdb->prepare(
+        'SELECT e.name FROM ' . Schema::table('relations') . ' e
+         INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = %d
+         WHERE e.kind = %s AND e.name <> %s
+           AND (e.from_id = n.id OR n.path LIKE CONCAT(SUBSTRING_INDEX(n.path, %s, 1), %s))',
+        $mitSaetzen,
+        'setting',
+        '',
+        '.',
+        '%'
+    ));
+
+    if ($einstellungen === null) {
+        fwrite(STDERR, 'Abfrage kaputt: ' . $wpdb->last_error . "\n");
+        exit(2);
+    }
+
+    if (preg_match('#<thead>.*?</thead>#s', $block, $kopf)) {
+        $drin = [];
+
+        foreach ($einstellungen as $name) {
+            if (str_contains($kopf[0], '>' . $name . '<')) {
+                $drin[] = $name;
+            }
+        }
+
+        check(
+            'keine Einstellung steht als Spalte darin',
+            $drin === [],
+            $drin === [] ? '' : implode(', ', $drin)
+        );
+    }
+}
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

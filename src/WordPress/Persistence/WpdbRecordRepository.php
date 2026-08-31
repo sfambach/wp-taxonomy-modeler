@@ -176,6 +176,76 @@ final class WpdbRecordRepository implements RecordRepository
      * ⚠️ *`insert()` und `update()` statt `replace()`: `replace` löscht und schreibt neu, **die Zeile
      * bekäme also bei jedem Speichern eine neue Id** — und an der Id hängt jetzt, welcher Wert das ist.*
      */
+    /**
+     * Eine Wertzeile aus einer Datenbankzeile — **an einer Stelle**.
+     *
+     * ⚠️ *Diese fünfzehn Zeilen standen dreimal da, einmal je Abfrage. Die vierte Abschrift wäre die
+     * vierte Gelegenheit, eine Spalte zu vergessen.*
+     *
+     * @param array<string, mixed> $r
+     */
+    private function valueFromRow(array $r): EdgeRecord
+    {
+        return new EdgeRecord(
+            (int) $r['record_id'],
+            (string) $r['path'],
+            (int) $r['edge_id'],
+            (string) $r['locale'],
+            TypedValue::fromStorage(
+                $r['value_int'] === null ? null : (int) $r['value_int'],
+                StoredDecimal::read($r['value_decimal']),
+                $r['value_text'] === null ? null : (string) $r['value_text'],
+                $r['value_date'] === null ? null : (string) $r['value_date'],
+                $r['value_ref'] === null ? null : (int) $r['value_ref'],
+            ),
+            (int) $r['id'],
+            (int) $r['position'],
+        );
+    }
+    public function holdersOf(array $recordIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        // ⚠️ *`value_ref` ist der Sprung **zwischen** Datensätzen. Ein Verweis auf einen Knoten steht in
+        // derselben Spalte — deshalb wird nach den **angefragten Satz-Ids** gefragt und nicht umgekehrt.*
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
+                 FROM ' . Schema::table('record_values') . '
+                 WHERE value_ref IN (' . $platzhalter . ') ORDER BY value_ref ASC, id ASC',
+                ...$ids
+            ),
+            ARRAY_A
+        );
+
+        // ⚠️ **`null` heisst «Abfrage kaputt» und nicht «nichts gefunden».** *Die beiden sehen bei `$wpdb`
+        // gleich aus, und «keine Teile» ist hier eine Aussage, die auf dem Schirm landet.*
+        if ($rows === null) {
+            throw new \RuntimeException('holdersOf: ' . $wpdb->last_error);
+        }
+
+        $aus = [];
+
+        foreach ($rows as $r) {
+            $ziel = (int) $r['value_ref'];
+
+            if (isset($aus[$ziel])) {
+                continue;
+            }
+
+            $aus[$ziel] = $this->valueFromRow($r);
+        }
+
+        return $aus;
+    }
     public function putValue(EdgeRecord $value): void
     {
         global $wpdb;

@@ -41,6 +41,22 @@ interface RecordRepository
      */
     public function valuesOfMany(array $recordIds): array;
 
+    /**
+     * Wer diese Datensätze **hält** — je Satz die Wertzeile, die auf ihn zeigt, oder kein Eintrag.
+     *
+     * ⚠️ **Ein Teil ist ein Datensatz wie jeder andere, und genau das macht ihn ununterscheidbar.**
+     * *Gemessen am 2026-08-31 an `Einheitenwert`: 23 Datensätze, **einer davon** ein Teil des Satzes von
+     * `__uv Resistor` über die Kante `resistance`. Er stand zwischen den anderen, ohne dass etwas ihn
+     * unterschied — und er ist kein Datensatz dieses Knotens im gewöhnlichen Sinn, sondern ein Stück
+     * eines fremden. Der Eigentümer wollte die Spalte: «zu welchem Knoten/Kante es gehört, würde ich auch
+     * noch vorne dran schreiben».*
+     *
+     * ⚠️ *In **einer** Abfrage für alle (`CD-7`), weil die Frage je Zeile eines Blocks gestellt wird.*
+     *
+     * @param  list<int> $recordIds
+     * @return array<int, EdgeRecord> Satz-Id => die Wertzeile, die ihn hält; fehlt sie, ist er eigenständig.
+     */
+    public function holdersOf(array $recordIds): array;
     public function putValue(EdgeRecord $value): void;
 
     public function forgetValue(int $recordId, string $path, string $locale): void;
