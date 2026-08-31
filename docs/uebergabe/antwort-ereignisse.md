@@ -325,3 +325,134 @@ sonst nicht könnten.
 11. **Umschaltbares automatisches Speichern: wo steht der Schalter?** *Es ist eine Einstellung, und
     Einstellungen sind in diesem Modell Felder an Knoten. Gilt das auch für eine Einstellung der
     Oberfläche, oder ist das eine WordPress-Option?*
+
+---
+
+## 7 · Arbeitshypothese: der Kern beschreibt, der Rand malt
+
+> ⚠️ **Dies ist eine Arbeitshypothese, kein Faktum.** *Der Eigentümer hat sie ausdrücklich so
+> eingeordnet. Sie ist zwischen ihm und Claude entstanden, ist **nicht ausgebaut** und **nicht
+> geprüft**. Was daran entschieden ist, steht als [D-563](../NewConcept/90-decision-log.md); alles
+> andere ist ein Vorschlag, gegen den man denken soll.*
+
+Sie gehört hierher, weil sie das Ereigniskonzept **berührt**: wenn der Kern eine Beschreibung
+zurückgibt statt HTML, dann kann eine Projektion diese Beschreibung tragen — und der Renderer kann
+die **Absichten** gleich mitgeben.
+
+### 7.1 Der Anlass, gemessen
+
+Ein Renderer gibt heute eine **Zeichenkette HTML** zurück. Gemessen am 2026-08-31 im Kern:
+
+| | |
+|---|---|
+| Dateien, die Tags schreiben | **28** |
+| Tag-Literale | rund **245** |
+| `dashicons-…`-Klassen | **14** |
+| `style="…"` inline | **30** |
+| `<div>` / `<tr>` | **29** / **13** |
+| `htmlspecialchars()` statt `esc_html()` | 1 Stelle, mit dem Grund «der Kern darf nicht nach `esc_html()` greifen» |
+
+`CD-1`s Buchstabe ist gewahrt — HTML ist keine WordPress-Funktion. **Der Sinn nicht: der Domänenkern
+kennt den Icon-Satz von WordPress.**
+
+### 7.2 Und der Grund steht seit dem 22. August im Konzept
+
+[D-021](../NewConcept/90-decision-log.md), wörtlich:
+
+> *«Weil der Gutenberg-Editor von Bauart React ist, sind seine **Bedienelemente metadatengetrieben**:
+> der Editor bekommt die Attribute eines Knotens mit ihren Typen und Einstellungen und zeichnet sie
+> mit **einem generischen Satz** von Steuerelementen … **Deshalb muss `RenderResult` die
+> Attribut-Metadaten mitführen, die ein Renderer benutzt hat, und nicht nur fertiges Markup.»***
+
+**Die Beschreibung ist also keine neue Richtung, sondern eine halb gebaute Entscheidung** — und ihr
+Grund ist Gutenberg. Heute trägt `RenderResult` `usedEdges` als Metadaten, und dort hörte es auf.
+
+### 7.3 Die drei Flächen — schon entschieden
+
+[R8](../NewConcept/30-renderer.md) und [D-253](../NewConcept/90-decision-log.md): *Admin* sagt, was
+ein Ding **ist**; der *Block* sagt, was eine Seite **zeigt**; das *Frontend* **zeichnet nur**.
+
+[D-254](../NewConcept/90-decision-log.md): *«Blocks zeichnen auf dem Server, bei jedem Aufruf — auch
+im Editor.»* Sonst zeigte eine Seite letztes Jahres Preis. **Also bedient ein PHP-Maler alle drei
+Flächen**; JavaScript nur, wo Interaktion es verlangt, und es *«re-implementiert nie einen
+Renderer»*.
+
+**Die Ausnahme, die keine ist:** der generische Steuerelement-Satz des Editors zeichnet nicht einen
+Renderer nach, sondern **eine Beschreibung**. Daraus folgt eine harte Anforderung: **die Beschreibung
+muss als Daten reisen können.** Für den Admin genügte Markup; für den Block-Editor nicht.
+
+Fürs Frontend: Interactivity API auf servergezeichnetem Markup.
+
+### 7.4 Was der Kern sagen dürfte — und was tabu wäre
+
+Die Regel des Eigentümers ist schärfer als «was, nicht wieviel». Sie lautet: **Bedürfnisse, keine
+Werkzeuge** — *«genau die Worte Textarea oder Editor werden dann tabu, weil der Maler entscheiden
+muss, wie er deine Wünsche umsetzt.»*
+
+| Der Kern sagt | Der Kern sagt **nicht** |
+|---|---|
+| «eine Zahl», «ein Text», «ein Datum», «eine Wahrheit», «ein Verweis», «eine Wahl aus diesen Einträgen» | `input`, `select`, `textarea`, `checkbox`, `div`, `table`, `tr`, `td`, `span` |
+| «gesetzt / nicht gesetzt / darf nicht leer sein / nicht bedienbar / nur ein Ausgang» | `disabled`, `checked`, `selected` |
+| **Anweisungen**: «kann lang werden», «braucht Formatierung», «will stufenlos verstellt werden», «muss als Farbe sichtbar sein» | `editor`, `range`, `color`, `number` |
+| **Gruppierungen**: «das gehört zusammen», «bitte in einen Kasten», «eine Tabelle von Datensätzen», «eingeklappt», und der Titel dazu | Breiten, Höhen, `cols`, `rows`, Pixel, `style`, CSS-Klassen |
+| ein Icon **unter unserem Namen** | `dashicons-…` |
+
+### 7.5 Anweisung, Rückmeldung, Bauplan
+
+Der Eigentümer: *«man gibt ihm schon eine Anweisung, ne, zeichne das. Und wenn er dieser Anweisung
+nicht Folge leisten kann, dann muss er das mitteilen. Und dann sieht man das auch: kann an dieser
+Stelle nicht dargestellt werden, weil Werkzeug fehlt.»*
+
+**Das ist keine neue Regel, sondern [R14b](../NewConcept/30-renderer.md) eine Ebene höher** — dort
+markiert sich der Renderer-Rückfall selbst, statt still zu ersetzen. Drei Schritte:
+
+1. Der Kern **weist an**.
+2. Kann der Maler nicht, **meldet er es sichtbar**.
+3. Dann bekommt er einen **Bauplan** — einen neuen Pinsel.
+
+⚠️ *Ein unverbindlicher «Wunsch» wäre gefährlich: still ignoriert, und der Autor merkt es nur daran,
+dass es anders aussieht. **Das ist «geschrieben und nicht gelesen» in neuer Verkleidung**, und dieses
+Muster wurde an einer einzigen Naht achtmal gefunden.*
+
+### 7.6 Eine Folgerung, die noch nicht entschieden ist
+
+**Ein Werkzeugname darf *Daten* sein — die Wahl des Autors. Er darf nie *Code* sein.**
+
+Damit bleibt `render = slider` als Einstellung bestehen; was ginge, ist ein `SliderRenderer`, der
+`type="range"` schreibt. Und daraus folgt etwas Weitergehendes:
+
+> **Die Renderer-Liste wäre die Palette des Malers.**
+
+Heute kommt sie aus dem Kern (`ShippedRenderers::namesForNodes()` legt die Knoten unter `Renderer`
+an). In dieser Hypothese weiss **der Maler**, welche Pinsel es gibt — ein anderes Rahmenwerk hat
+andere, also bekommt der Autor andere Wahlmöglichkeiten. *Die Verengung «nur was der Typ verträgt»
+gibt es schon (`eligibleFor`); «nur was der Maler kann» wäre dieselbe Mechanik.*
+
+### 7.7 Was für einen Umbau gemessen wurde
+
+* **Die Reihenfolge ist umgekehrt zur Intuition:** ein **Behälter** als Beschreibung kann ein bereits
+  gemaltes Kind tragen; ein **Blatt** als Beschreibung kann keinen unbeschriebenen Behälter tragen.
+  Also **Behälter zuerst, Blätter danach** — und das ist `PR-12`s Ordnung: der Maler zuerst.
+* **Zwei Fragen davor**, sonst werden 28 Dateien zweimal angefasst: beschreibt der Kern die
+  **Anordnung** überhaupt, und gilt `R1` auch für Maler (**einer je Ausgabeform**)?
+* **Nichts geht verloren.** Der Schalter, der Wähler-Dialog, das Ausgrauen — alles darf bleiben, es
+  zieht nur an den Rand. Wo WordPress etwas Eigenes hat, nimmt der Maler es, statt es nachzubauen.
+
+### 7.8 Warum das hier steht und nicht nur in der Arbeitsliste
+
+Weil es **eine** Frage aus Abschnitt 6 entscheidet und **eine** neue stellt.
+
+*Entschieden:* was eine Projektion trägt. Für den Admin genügte Markup, für den Block-Editor nicht —
+**also eine Beschreibung.**
+
+*Neu:* wenn die Beschreibung die **Absichten** mitträgt, dann sind Zeichnung und Ereignis **nicht
+getrennt entwerfbar**. Der Eigentümer: *«das ist eng verstrickt mit dem Action-, Event-,
+Listener-Framework, weil der Renderer bereits die Nachrichten kennt und sie mitgeben kann, damit im
+Rand ein Event daraus wird.»* Und er weiss es wirklich — er kennt beim Zeichnen die Kante, den
+Datensatz und den Feldnamen. **Das ist genau die Adresse.**
+
+⚠️ *Preis, der benannt sein muss: eine Beschreibung mit Absichten ist **nicht mehr rein
+beschreibend** — sie nennt Verhalten beim Namen. Diese Namen müssen ein geschlossener,
+aufgeschriebener Satz sein, sonst laufen Kern und Maler auseinander. Dieselbe Falle, die das
+Änderungsbuch mit `what` als Satz statt als Typ hat (siehe [`datenmodell.md`](datenmodell.md),
+Abschnitt 6).*
