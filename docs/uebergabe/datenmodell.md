@@ -145,9 +145,20 @@ Satz #2233 an «DisplayOption» (default)  Kante 44092  Pfad 44092  value_ref ->
 Satz #2838 an «Primitives» (default)     Kante 44093  Pfad 44093  value_ref -> 3061    (ein Datensatz)
 ```
 
-### ⚠️ Ein Befund, der für Ereignisse zentral ist
+### ⚠️ Zwei Id-Räume, und `value_ref` sagt nicht, aus welchem
 
-**`value_ref` bedeutet zweierlei, und nur ein Blick in die Tabellen sagt welches.**
+**Das ist entschieden und nicht ein Versehen.** *Punkt 1 des Domänenkerns: «Model and data are two
+halves … They do **not** share an id space.» **Knoten und Kanten teilen einen** ([D-090](../NewConcept/90-decision-log.md));
+**Datensätze haben ihren eigenen** ([D-164](../NewConcept/90-decision-log.md), P4a).*
+
+**Und das Konzept kannte die Folge schon:** *«identities run from 1 to 26 453, records have their own
+`AUTO_INCREMENT` and run from 16 to 879. **They overlap — id 16 is at once a relation and a record.**
+An owner id alone therefore does not say which space it came from, and without the column the row is
+simply unreadable.»* Das Mittel ist also bekannt: **eine Spalte, die den Raum nennt.** Das
+Änderungsbuch hat sie als `owner_kind`. Derselbe Absatz sagt: *«Decided, **not built**.»*
+
+**`record_values.value_ref` hat keine solche Spalte** — und darum bedeutet die Spalte zweierlei,
+unterschieden nur daran, in welcher Tabelle die Id gefunden wird.
 
 Gemessen: **138 Werte** tragen ein `value_ref` — **49** zeigen auf einen **Knoten**, **88** auf einen
 **Datensatz**. Unterschieden wird heute daran, in welcher Tabelle die Id gefunden wird.
