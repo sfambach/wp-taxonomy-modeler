@@ -1050,13 +1050,24 @@ final class Rendering
             // The multiplicity, drawn once by the settings side and handed to the row.
             $configured = [];
 
-            // ⚠️ **The row's controls name the row's form**, because a `<tr>` cannot be wrapped in
-            // one — see {@see FieldRowRenderer::formFor()}. Without it the multiplicity select sat
-            // outside every form and submitted nothing.
+            // ⚠️ **Die Angabe gehört ins Seitenformular, nicht ins Formular der Zeile** — *sein Befund:
+            // «in Display Option hatte ich für Converter die `1..1`-Beziehung angegeben, das ist falsch,
+            // ich wollte es in `0..1` ändern, kann es aber nicht mit dem Speichern-Knopf in der Seite
+            // speichern.» **Gemessen war es genau das:** der Auswahlkasten nannte `taxmod-field-<Kante>`,
+            // und den schickt nur die Diskette der Zeile ab. Ein `<tr>` kann kein `<form>` umschliessen,
+            // aber `form="…"` darf jedes Formular nennen — also das der Seite, wie die Wertspalte längst.*
+            //
+            // ⚠️ **Und je Zeile ihr eigener Name, sonst gewinnt die letzte.** *Alle Zeilen hiessen
+            // `taxmod_setting[multiplicity]`; in **einem** Formular wäre das eine Angabe für die ganze
+            // Tabelle. Der Vorsatz trägt jetzt die Kanten-Id, wie es die Wertspalte schon tut.*
+            //
             // ⚠️ **Dieselbe Angabe wie die Zeile selbst** ([D-376](../../../docs/NewConcept/90-decision-log.md)):
             // *eine geerbte Kante gehört dem Vorfahren, und «wie oft» hier zu ändern hiesse, es für alle
             // zu ändern — still. Die Zeile wusste es und gab es nicht weiter.*
-            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $settingPrefix, $locale, $level, [], FieldRowRenderer::formFor($edge), $edge->fromId === $declaredBy) as $drawn) {
+            $rowSettings = $settingPrefix === '' ? '' : $settingPrefix . '[' . $edge->id . ']';
+            $rowForm     = $pageForm === '' ? FieldRowRenderer::formFor($edge) : $pageForm;
+
+            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $edge->fromId === $declaredBy) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
 
@@ -1108,6 +1119,10 @@ final class Rendering
                     // builds it from the same method the tree rows use.*
                     href: $targetHrefs[$edge->toId] ?? null,
                     submits: $submits[$edge->id] ?? null,
+                    // ⚠️ *Das Formular der **Seite**, damit das Namensfeld mit ihr gespeichert wird —
+                    // sein Wunsch: «Save in Fields sollte eigentlich auch über die Seite gehen». Leer
+                    // heisst «keins», und dann nimmt die Zeile wieder ihr eigenes.*
+                    formId: $pageForm,
                     configured: $configured,
                     // ⚠️ **The same panel as a node's, drawn here and placed there** — so the attribute
                     // row cannot grow a settings list of its own.

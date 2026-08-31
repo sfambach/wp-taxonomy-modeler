@@ -75,6 +75,21 @@ final class NodesScreen
     private const SETTING_FIELD = 'taxmod_setting';
 
     /**
+     * Die Angaben einer **Feldzeile**, als `taxmod_field_setting[<Kanten-Id>][<Schlüssel>]`.
+     *
+     * ⚠️ **Ein eigener Vorsatz und je Zeile ein eigener Name** — *sein Befund: «kann es aber nicht mit
+     * dem Speichern-Knopf in der Seite speichern». **Gemessen:** jede der Feldzeilen schickte ihre
+     * Multiplizität als `taxmod_setting[multiplicity]`, und in **einem** Seitenformular wäre das eine
+     * Angabe für sechzig Zeilen — die letzte hätte gewonnen. Deshalb trägt der Vorsatz die Kanten-Id,
+     * genau wie {@see self::VALUE_FIELD} es längst tut.*
+     *
+     * ⚠️ *Und nicht in {@see self::SETTING_FIELD} hineingeschachtelt: dort liegen die Angaben des
+     * **Knotens**, und ein Zahlenschlüssel neben `range_min` ist genau die Verwechslung, die der
+     * Kommentar an {@see self::NAME_FIELD} beschreibt.*
+     */
+    private const ROW_SETTING_FIELD = 'taxmod_field_setting';
+
+    /**
      * Where an attribute's new name is submitted, keyed by edge id.
      *
      * ⚠️ **Its own prefix rather than sharing the settings one**, because two different kinds of
@@ -1410,14 +1425,6 @@ final class NodesScreen
                 new Control('word:own', '', __('own', 'taxmod')),
                 new Control('word:inherited', '', __('inherited', 'taxmod')),
                 new Control('word:settings', '', __('Settings of this use site', 'taxmod')),
-                // ⚠️ **One button for the whole row, not one per value** — the owner's ask for the
-                // settings side applies here for the same reason: a row with two independent submits
-                // has no answer to *what does Enter do*. It writes the name and the multiplicity
-                // together, and each only where it actually changed.
-                // ⚠️ **Through {@see Control::saving()}, because the diskette used to sit in `$label`
-                // here** — the owner: *icons are boxes again and the wrong alignment*. Measured on this
-                // very row: `<button class="button">💾</button>`, 49×41 next to 24×17 neighbours, and
-                // the whole icon group crooked because of it.
                 // ⚠️ **Der Verstecken-Schalter am Feld** — der Fall, den
                 // [D-467](../../../docs/NewConcept/90-decision-log.md) als Grund nannte und für den es
                 // nie einen Knopf gab. *Gemessen am 2026-08-30: sieben versteckte Kanten, alle sieben
@@ -1439,13 +1446,15 @@ final class NodesScreen
                     $own,
                     icon: $edge->hide ? 'visibility' : 'hidden'
                 ),
-                Control::saving(
-                    'do',
-                    'save_field',
-                    __('Save', 'taxmod'),
-                    __('Save this field — its name and how often it may occur', 'taxmod'),
-                    $own
-                ),
+                // ⚠️ **Die Diskette der Zeile ist weg, und das ist sein Wunsch von zweimal:** *«biete
+                // keinen Button an» und «Save in Fields sollte eigentlich auch über die Seite gehen».*
+                // *Sie schrieb Name und «wie oft» — beide hängen jetzt am Seitenformular
+                // ({@see self::saveFieldRows()}), also hätte dieser Knopf «Speichern» gesagt und
+                // **nichts** abgeschickt. **Ein Knopf, der nichts mehr trägt, ist schlimmer als keiner.***
+                //
+                // ⚠️ *Sein Befund war der Anlass: «kann es aber nicht mit dem Speichern-Knopf in der
+                // Seite speichern» — zwei Speicherwege für eine Angabe, und der offensichtliche war der
+                // stumme.*
                 // ⚠️ **Eine Zeile mehr, wo die Multiplizität mehrere zulässt.** *Der Eigentümer bestand
                 // darauf, dass `Display Option` `1..*` ist und nicht `0..*`: «somit muss ich Zeilen
                 // hinzufügen können». Und der Grund ist seiner —
@@ -1592,7 +1601,7 @@ final class NodesScreen
                 $actions,
                 $submits,
                 self::NAME_FIELD,
-                self::SETTING_FIELD,
+                self::ROW_SETTING_FIELD,
                 '',
                 \Taxmod\Core\Renderer\Level::Admin,
                 $targetHrefs,
@@ -2595,10 +2604,70 @@ final class NodesScreen
     private function saveNodePage(int $nodeId, int $edgeId, string $name, string $locale): void
     {
         $this->saveSettings($nodeId, $edgeId, $name);
+        $this->saveFieldRows($nodeId);
         $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
         $this->saveKind($nodeId, $edgeId);
+    }
+
+    /**
+     * Die Feldzeilen des Knotens — Name und «wie oft» — mit der Seite gespeichert.
+     *
+     * ⚠️ **Auf seinen Befund, und es war kein Rechenfehler, sondern ein fehlender Leser:** *«in Display
+     * Option hatte ich für Converter die `1..1`-Beziehung angegeben, das ist falsch, ich wollte es in
+     * `0..1` ändern, kann es aber nicht mit dem Speichern-Knopf in der Seite speichern.»* **Die Angabe
+     * lag im Formular der Zeile und wurde nur von der Diskette der Zeile abgeschickt** — der
+     * Seiten-Knopf sah sie nie.
+     *
+     * ⚠️ **Und es ist sein alter Wunsch, jetzt fällig:** *«Save in Fields sollte eigentlich auch über die
+     * Seite gehen».* Er lag zurückgestellt, weil ein `required` in einer von sechzig Zeilen das Speichern
+     * der ganzen Seite gesperrt hätte — *diese Sperre ist weg
+     * ([Zeile 94](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)), also geht es.*
+     *
+     * ⚠️ **Nur eigene Kanten** ([D-376](../../../docs/NewConcept/90-decision-log.md)): *eine geerbte
+     * gehört dem Vorfahren, und {@see \Taxmod\Core\Service\ModelEditor::ownAttribute()} verweigert sie —
+     * die Zeile zeichnet sie gar nicht bedienbar, aber ein verändertes Formular darf es auch nicht
+     * (`CD-5`).*
+     *
+     * ⚠️ *Geschrieben wird je Zeile nur, was sich geändert hat — {@see self::saveField()} entscheidet
+     * das, und damit landet ein Speichern auf einer unberührten Tabelle nicht als sechzig Einträge im
+     * Änderungsbuch.*
+     */
+    private function saveFieldRows(int $nodeId): void
+    {
+        $namen = isset($_POST[self::NAME_FIELD]) && is_array($_POST[self::NAME_FIELD])
+            ? wp_unslash($_POST[self::NAME_FIELD])
+            : [];
+
+        $angaben = isset($_POST[self::ROW_SETTING_FIELD]) && is_array($_POST[self::ROW_SETTING_FIELD])
+            ? wp_unslash($_POST[self::ROW_SETTING_FIELD])
+            : [];
+
+        if ($namen === [] && $angaben === []) {
+            return;
+        }
+
+        foreach ($this->editor->fieldsOf($nodeId) as $kante) {
+            if ($kante->fromId !== $nodeId) {
+                continue;
+            }
+
+            $name = isset($namen[$kante->id]) && ! is_array($namen[$kante->id])
+                ? sanitize_text_field((string) $namen[$kante->id])
+                : '';
+
+            $wieOft = isset($angaben[$kante->id][SettingKey::Multiplicity->value])
+                && ! is_array($angaben[$kante->id][SettingKey::Multiplicity->value])
+                ? sanitize_text_field((string) $angaben[$kante->id][SettingKey::Multiplicity->value])
+                : '';
+
+            if ($name === '' && $wieOft === '') {
+                continue;
+            }
+
+            $this->saveField($nodeId, $kante->id, $name, $wieOft);
+        }
     }
 
     /**
@@ -2772,14 +2841,26 @@ final class NodesScreen
     }
 
     /**
-     * Einen einzelnen Wert schreiben — oder ihn stehen lassen, wenn nichts kam.
+     * Einen einzelnen Wert schreiben — oder ihn herausnehmen, wenn «nichts» gewählt wurde.
      *
      * ⚠️ *Der Typ wird an der Kante bestimmt, deren Wert es **ist** — bei einem Teil also an der inneren.
      * `valuesFrom()` ist derselbe Weg, den der Datensatzblock nimmt; ein zweiter wäre eine zweite
      * Gelegenheit, anders zu deuten.*
      *
-     * ⚠️ **Ein leeres Feld löscht nicht.** *Sonst räumte jedes Speichern der Seite alles ab, was auf ihr
-     * nicht gezeichnet wurde — und gezeichnet wird nur, was die Wertspalte trägt.*
+     * ⚠️ **Ein leeres Feld löscht — und die alte Begründung dagegen war ein Denkfehler.** *Hier stand
+     * «ein leeres Feld löscht nicht, sonst räumte jedes Speichern der Seite alles ab, was auf ihr nicht
+     * gezeichnet wurde». **Was nicht gezeichnet wurde, schickt auch nichts**, und diese Schleife läuft
+     * über die **eingereichten** Schlüssel: ein Schlüssel, der ankommt, ist ein Bedienelement, das
+     * dastand. Der Unterschied zwischen «abwesend» und «leer» ist genau der, den {@see saveSettings()}
+     * mit `array_key_exists` schon macht — hier war er zugunsten des einen Falls aufgegeben, der
+     * dadurch unerreichbar wurde.*
+     *
+     * ⚠️ **Und er ist genau darüber gestolpert:** *«wenn ich `0..1` wähle, müsste ich auch nichts im
+     * Value wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den
+     * Datensatz dahinter löschen.» **«Nichts» war die einzige Wahl, die sich nicht speichern liess.***
+     *
+     * ⚠️ *Ein gesperrtes Steuerelement schickt gar nichts ([R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)),
+     * und bei `1..1` gibt es die leere Wahl nicht — **beide Fälle kommen hier also nie als leer an**.*
      */
     private function putOneSettingValue(
         int $nodeId,
@@ -2796,7 +2877,17 @@ final class NodesScreen
     ): void {
         $characters = trim(sanitize_text_field($submitted));
 
+        // ⚠️ *Erst löschen, dann deuten: «nichts» hat keinen Typ, an dem `valuesFrom()` es festmachen
+        // könnte — es ist die Abwesenheit eines Wertes und nicht ein Wert der Sorte leer.*
         if ($characters === '') {
+            if ($partId !== 0) {
+                $this->data->clear($partId, $ofValue->id);
+
+                return;
+            }
+
+            $this->data->clearSettingAt($nodeId, $carrier->id, $innerId);
+
             return;
         }
 
@@ -3174,13 +3265,10 @@ final class NodesScreen
         $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
             ? sanitize_text_field(wp_unslash((string) $_POST[self::SETTING_FIELD][$settingKey]))
             : '';
-        // ⚠️ **Read by edge id, because that is what the row's field is keyed on.** Sanitised like
-        // any other name and then handed to the act, which trims it and refuses an empty one — the
-        // rule lives in the model (`Relation::renamedTo()`) and not a second, softer copy here.
-        $attributeName = isset($_POST[self::NAME_FIELD][$edge])
-            ? sanitize_text_field(wp_unslash((string) $_POST[self::NAME_FIELD][$edge]))
-            : '';
-        $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
+        // ⚠️ *`$attributeName` stand hier für **eine** Kante, weil die Diskette der Zeile nur ihre
+        // eigene abschickte. Das Seitenformular bringt alle mit, also liest
+        // {@see self::saveFieldRows()} sie dort — je Kante ihren eigenen Namen.*
+        $labelLocale  =isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
         // ⚠️ *`$rendererName` stand hier und ist mit seinem Wähler gegangen: der Renderer kommt jetzt
         // als **Wert** in der Spalte des Einstellungsblocks, unter `taxmod_value`, wie jede andere
         // Angabe des Modells.*
@@ -3244,7 +3332,8 @@ final class NodesScreen
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
                 'toggle_field_hide' => $this->editor->hideField($id, $edge),
-                'save_field'    => $this->saveField($id, $edge, $attributeName, $settingValue),
+                // ⚠️ *`save_field` stand hier und ist mit der Diskette der Zeile gegangen — Name und «wie
+                // oft» kommen jetzt mit dem Seitenformular ({@see self::saveFieldRows()}).*
                 // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
                 // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
                 // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere

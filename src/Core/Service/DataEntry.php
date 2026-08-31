@@ -607,6 +607,42 @@ final class DataEntry
     }
 
     /**
+     * Dieselbe Adresse, aber die Angabe wird **herausgenommen** statt geschrieben.
+     *
+     * ⚠️ **Auf sein Wort, gemessen an `converter`:** *«wenn ich `0..1` wähle, müsste ich auch nichts im
+     * Value wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den
+     * Datensatz dahinter löschen.»* **Genau so war es:** *der Schreiber am Rand kehrte bei einem leeren
+     * Wert einfach um — «ein leeres Feld löscht nicht» stand als Begründung darüber — und damit war
+     * «nichts» die einzige Wahl, die sich nicht speichern liess.*
+     *
+     * ⚠️ **Und es ist kein neuer Zustand, sondern der dritte, den es längst gibt** —
+     * [D-232](../../../docs/NewConcept/90-decision-log.md)s *unbeantwortet*, wie {@see self::clear()}
+     * ihn schon herstellt. *Was fehlte, war nur der Weg dorthin über die zweistufige Adresse.*
+     *
+     * ⚠️ **Kein Teil wird angelegt, um in ihm zu löschen.** *Gibt es ihn nicht, ist die Angabe schon
+     * unbeantwortet, und ein Satz, der nur entsteht, um leer zu sein, wäre ein Datensatz aus einem
+     * Nicht-Ereignis.*
+     */
+    public function clearSettingAt(int $nodeId, int $aussen, int $innen, string $locale = ''): void
+    {
+        $satzId = $this->defaultRecordOf($nodeId);
+
+        if ($innen === 0) {
+            $this->clear($satzId, $aussen, $locale);
+
+            return;
+        }
+
+        $teilId = $this->partsOf($satzId)[(string) $aussen] ?? null;
+
+        if ($teilId === null) {
+            return;
+        }
+
+        $this->clear($teilId, $innen, $locale);
+    }
+
+    /**
      * Was an den Einstellungskanten dieses Knotens steht — je Kante ihr Wert.
      *
      * ⚠️ **Damit eine Bedienung zeigen kann, was gesetzt ist.** *Ein Schalter ohne gelesenen Zustand

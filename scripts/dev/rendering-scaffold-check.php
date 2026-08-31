@@ -48,6 +48,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\RenderingScaffold;
+use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -206,6 +207,56 @@ register_shutdown_function(static function () use ($editor, $framework, &$vorher
     echo "\n  Zurückgenommen" . ($bad > 0 ? ', weil der Lauf rot war' : '') . ': '
         . json_encode($weg) . "\n";
 });
+
+// ⚠️ **Diese Prüfung hat sein Modell beschädigt, und deshalb steht hier zuerst eine Absage.**
+//
+// ⚠️ *Gemessen am 2026-08-31: der Eigentümer hatte `Renderer` aus `Constants` heraus in den Ast
+// `Settings` verschoben — auf sein Wort «die Renderer von label with roles zu render with label
+// schieben». `import()` prüft die gemerkte Id **gegen den Elternknoten** `Constants`, fand sie dort
+// nicht mehr, und legte **24 Knoten** ein zweites Mal an: einen kompletten leeren `Renderer`-Baum,
+// `Converter` und `Validator` dazu. **Die gemerkten Ids zeigten danach auf die leeren.***
+//
+// ⚠️ **Nichts sah kaputt aus, und das ist das Schlimme daran.** *Die Verweise in den Datensätzen zeigten
+// weiter auf den echten Baum; die Prüfung lief grün. Aufgefallen ist es nur, weil `page-blocks-check`
+// plötzlich einen **zweiten** Knoten namens `form` fand.*
+//
+// ⚠️ **Wer nachgeben muss, ist nicht entschieden** — folgt die Saat einem verschobenen Knoten (gemerkte
+// Id gewinnt über den Elternknoten), oder ist das Verschieben eines gesäten Knotens aus seinem Ast heraus
+// zu verweigern? *Solange das offen ist, sät diese Prüfung nicht. **Eine Prüfung, die eine zweite Heimat
+// für eine Sache anlegt, ist schlimmer als eine, die nicht läuft.***
+$constantsRoot = $framework->rootOf(Branch::Constants);
+$anderswo      = [];
+
+foreach (RenderingScaffold::CONTAINERS as $behaelterName) {
+    $ids = $wpdb->get_col($wpdb->prepare(
+        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE BINARY name = %s',
+        $behaelterName
+    ));
+
+    // ⚠️ *`null` heisst «Abfrage kaputt» und nicht «nichts gefunden» — und eine Absage, die auf einer
+    // kaputten Abfrage «alles in Ordnung» sagt, wäre genau die Sorte Wächter, die nichts wiegt.*
+    if ($ids === null) {
+        fwrite(STDERR, 'Abfrage kaputt: ' . $wpdb->last_error . "\n");
+        exit(2);
+    }
+
+    foreach ($ids as $rohId) {
+        $einer = $editor->find((int) $rohId);
+
+        if ($einer !== null && $einer->parentId() !== $constantsRoot->id) {
+            $anderswo[] = $behaelterName . ' #' . $einer->id;
+        }
+    }
+}
+
+if ($anderswo !== []) {
+    echo "\n== Abgesagt ==\n";
+    echo '  Diese Behaelter liegen nicht unter «Constants»: ', implode(', ', $anderswo), "\n";
+    echo "  Ein import() wuerde sie ein zweites Mal anlegen. Siehe Arbeitsliste.\n";
+    echo "  scripts/dev/undo-duplicate-constants.php raeumt eine schon entstandene Doppelung weg.\n";
+
+    exit(0);
+}
 
 // ⚠️ *`import()` und nicht `importOnce()` — die Prüfung soll auch dann etwas messen, wenn die
 // Fassung längst gesetzt ist. Zweimal laufen darf nichts anlegen; genau das ist Abschnitt 5.*

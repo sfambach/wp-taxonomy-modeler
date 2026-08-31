@@ -619,7 +619,15 @@ try {
         // ⚠️ The multiplicity comes from the settings side through the choice renderer, so a select
         // in this cell is also the proof that no second control was built beside it (D-376).
         check('the multiplicity is a real chooser', str_contains($detail, 'taxmod-choice'));
-        check('and it posts to the field the handler reads', str_contains($detail, 'taxmod_setting[multiplicity]'));
+        // ⚠️ **Der Name trägt jetzt die Kanten-Id, und diese Zusage ist rot geworden, wie sie soll.**
+        // *`taxmod_setting[multiplicity]` war **ein** Name für jede Zeile der Tabelle — solange nur die
+        // Diskette der eigenen Zeile ihn abschickte, ging das. Seit alles am Seitenformular hängt (sein
+        // Befund: «kann es aber nicht mit dem Speichern-Knopf in der Seite speichern») wäre es eine
+        // Angabe für sechzig Zeilen. **`PR-12`: der Wächter ist mit dem Leser gewandert.***
+        check(
+            'and it posts to the field the handler reads',
+            (bool) preg_match('/taxmod_field_setting\[\d+\]\[multiplicity\]/', $detail)
+        );
 
         // ⚠️ **The settings panel is one form and the save button is outside it** (D-392). *Checked
         // because the two halves are in different files: the renderer gives the form its id, the

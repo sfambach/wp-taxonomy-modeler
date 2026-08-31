@@ -40,8 +40,10 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -256,6 +258,132 @@ if ($kanteId === 0) {
             $kante->multiplicity->value
         );
     }
+}
+
+echo "\n== Der Speichern-Knopf der Seite schreibt «wie oft» ==\n";
+
+// ⚠️ **Sein Befund vom 2026-08-31, und dies ist der Rundlauf dazu:** *«in Display Option hatte ich für
+// Converter die `1..1`-Beziehung angegeben, das ist falsch, ich wollte es in `0..1` ändern, kann es aber
+// nicht mit dem Speichern-Knopf in der Seite speichern.»*
+//
+// ⚠️ **Der Abschnitt in `form-membership-check.php` prüft, dass die Bedienung das richtige Formular
+// nennt. Dieser hier prüft, dass am anderen Ende etwas ankommt** — *und die beiden zusammen sind, was
+// `PR-12` verlangt: eine Hälfte allein wird rot.*
+//
+// ⚠️ *An einem **eigenen** Knoten dieses Laufs und nicht an seinem Modell. Der Knoten wird am Ende
+// weggeräumt, samt seiner Kante — eine Prüfung, die ihren Müll parkt, ist eine Prüfung mit einem
+// Nebenwirkungsvorrat (die Lehre aus `path-check.php`).*
+$verwalter = get_users(['role' => 'administrator', 'number' => 1]);
+
+if ($verwalter === []) {
+    check('ein Administrator ist da', false);
+} else {
+    wp_set_current_user($verwalter[0]->ID);
+
+    add_filter('wp_redirect', static function ($ziel) {
+        throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
+    }, 10, 1);
+
+    $editor = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+    // ⚠️ *Ein eigener Typknoten und nicht die Wurzel des Astes — die steht für den Ast selbst und
+    // nicht für ein Ding darin, und der Kern verweigert sie zu Recht.*
+    $text   = $editor->createNode('__wieoft Text', $framework->rootOf(Branch::DataTypes)->id);
+    $traeger = $editor->createNode('__wieoft Traeger', $framework->rootOf(Branch::Model)->id);
+    $feld    = $editor->addField($traeger->id, $text->id, '__wieoft Feld');
+
+    // ⚠️ *Eine neue Kante steht auf «1..1» — gemessen, nicht angenommen. Und «1..1» nach «0..1» ist
+    // **genau seine Bewegung**: «habe die Multiplizität auf `0..1` gesetzt».*
+    check('das Pruefeld steht auf «1..1»', $feld->multiplicity->value === '1..1', $feld->multiplicity->value);
+
+    $_POST = [
+        'action'        => 'taxmod_node',
+        'id'            => (string) $traeger->id,
+        'do'            => 'put_setting',
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $traeger->id),
+        // Genau die Adresse, die die Feldzeile zeichnet.
+        'taxmod_field_setting' => [(string) $feld->id => ['multiplicity' => '0..1']],
+    ];
+    $_REQUEST = $_POST;
+
+    $meldung = '';
+
+    try {
+        $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+        $plugin = $bau->newInstanceWithoutConstructor();
+        $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+        $plugin->screen()->handlePost();
+    } catch (RuntimeException $e) {
+        $meldung = str_starts_with($e->getMessage(), '__weitergeleitet__')
+            ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
+            : $e->getMessage();
+    }
+
+    check('der Akt laeuft durch', $meldung === 'ok', $meldung);
+
+    $nachher = null;
+
+    foreach ($editor->fieldsOf($traeger->id) as $eine) {
+        if ($eine->id === $feld->id) {
+            $nachher = $eine;
+        }
+    }
+
+    check(
+        'und die Kante traegt danach «0..1»',
+        $nachher !== null && $nachher->multiplicity->value === '0..1',
+        $nachher === null ? 'Kante weg' : $nachher->multiplicity->value
+    );
+
+    // ⚠️ *Und der Name im selben Akt, denn das war die zweite Hälfte der Diskette, die weggefallen ist.*
+    $_POST['taxmod_field_setting'] = [];
+    $_POST['taxmod_field_name']    = [(string) $feld->id => '__wieoft umbenannt'];
+    $_REQUEST = $_POST;
+
+    try {
+        $bau2    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+        $plugin2 = $bau2->newInstanceWithoutConstructor();
+        $bau2->getProperty('file')->setValue($plugin2, 'taxmod.php');
+        $plugin2->screen()->handlePost();
+    } catch (RuntimeException $e) {
+        // Die Weiterleitung ist der Normalfall.
+    }
+
+    $umbenannt = null;
+
+    foreach ($editor->fieldsOf($traeger->id) as $eine) {
+        if ($eine->id === $feld->id) {
+            $umbenannt = $eine;
+        }
+    }
+
+    check(
+        'und der Name kommt mit derselben Seite an',
+        $umbenannt !== null && $umbenannt->name === '__wieoft umbenannt',
+        $umbenannt === null ? 'Kante weg' : $umbenannt->name
+    );
+
+    $_POST    = [];
+    $_REQUEST = [];
+
+    // ⚠️ *Weggeräumt, und nur das Eigene — nie `clearTrash()`, das räumt auch seine geparkte Arbeit weg.*
+    $editor->removeField($traeger->id, $feld->id);
+    $editor->moveToTrash($traeger->id);
+    $editor->moveToTrash($text->id);
+
+    foreach ([$traeger->id, $text->id] as $meinerId) {
+        foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $meinerId)) ?: [] as $satzId) {
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+        }
+
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $meinerId, $meinerId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $meinerId));
+    }
+
+    check(
+        'der Pruefknoten ist weg',
+        (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE id = %d', $traeger->id)) === 0
+    );
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

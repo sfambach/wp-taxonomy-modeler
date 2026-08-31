@@ -201,7 +201,7 @@ foreach (['Passiv', 'Dimension', 'Einheitenwert'] as $name) {
         $actions,
         $submits,
         'taxmod_field_name',
-        'taxmod_setting',
+        'taxmod_field_setting',
         '',
         Level::Admin,
         [],
@@ -272,7 +272,7 @@ foreach ($kanten as $kante) {
 $gefunden = 0;
 $stumm    = 0;
 
-foreach ($rendering->fieldRowsFor($kanten, $id, $actions, $submits, 'taxmod_field_name', 'taxmod_setting', '', Level::Admin, []) as $zeile) {
+foreach ($rendering->fieldRowsFor($kanten, $id, $actions, $submits, 'taxmod_field_name', 'taxmod_field_setting', '', Level::Admin, []) as $zeile) {
     $markup = $zeile->result->markup;
 
     if (! preg_match('/<input\b[^>]*\btaxmod-field-rename\b[^>]*>/', $markup, $treffer)) {
@@ -288,6 +288,111 @@ foreach ($rendering->fieldRowsFor($kanten, $id, $actions, $submits, 'taxmod_fiel
 
 check('«Passiv» zeichnet Umbenennungsfelder', $gefunden > 0, (string) $gefunden);
 check('und jedes nennt sein Formular', $stumm === 0, "{$stumm} von {$gefunden} ohne form-Attribut");
+
+echo "\n== Name und «wie oft» gehoeren ins Seitenformular, je Zeile eigen ==\n";
+
+// ⚠️ **Der Wächter zu seinem Befund vom 2026-08-31:** *«in Display Option hatte ich für Converter die
+// `1..1`-Beziehung angegeben … kann es aber nicht mit dem Speichern-Knopf in der Seite speichern.»*
+//
+// ⚠️ **Zwei Hälften, und `PR-12` verlangt, dass eine allein rot wird.** *Die Angabe muss (a) das
+// Formular der **Seite** nennen — nicht das der Zeile, denn das schickt nur die Diskette ab, die es
+// nicht mehr gibt — und (b) je Zeile einen **eigenen** Namen tragen. Ohne (b) wäre ein Formular voller
+// `taxmod_setting[multiplicity]` genau eine Angabe für sechzig Zeilen, und die letzte gewinnt.*
+$id = (int) $wpdb->get_var(
+    'SELECT from_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance' GROUP BY from_id ORDER BY COUNT(*) DESC LIMIT 1"
+);
+
+$knoten     = $nodes->byId($id);
+$kanten     = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+$seitenForm = 'taxmod-page-' . $id;
+
+$zeilen = $rendering->fieldRowsFor(
+    $kanten,
+    $id,
+    [],
+    [],
+    'taxmod_field_name',
+    'taxmod_field_setting',
+    '',
+    Level::Admin,
+    [],
+    [],
+    'taxmod_value',
+    $seitenForm
+);
+
+$namen       = [];
+$wieOft      = [];
+$falschesFor = [];
+
+foreach ($zeilen as $zeile) {
+    preg_match_all(
+        '/<(?:input|select|textarea)\b[^>]*\bname="([^"]+)"[^>]*>/',
+        $zeile->result->markup,
+        $alle,
+        PREG_SET_ORDER
+    );
+
+    foreach ($alle as $eines) {
+        $name = $eines[1];
+
+        $istName   = str_starts_with($name, 'taxmod_field_name[');
+        $istWieOft = str_contains($name, 'taxmod_field_setting[') && str_contains($name, '[multiplicity]');
+
+        if (! $istName && ! $istWieOft) {
+            continue;
+        }
+
+        if ($istName) {
+            $namen[] = $name;
+        } else {
+            $wieOft[] = $name;
+        }
+
+        if (! preg_match('/\bform="' . preg_quote($seitenForm, '/') . '"/', $eines[0])) {
+            $falschesFor[] = $name;
+        }
+    }
+}
+
+check('die Zeilen zeichnen Namensfelder', $namen !== [], (string) count($namen));
+check('die Zeilen zeichnen «wie oft»', $wieOft !== [], (string) count($wieOft));
+
+check(
+    'jedes nennt das Formular der Seite',
+    $falschesFor === [],
+    $falschesFor === [] ? '' : count($falschesFor) . ' nicht: ' . implode(', ', array_slice(array_unique($falschesFor), 0, 4))
+);
+
+// ⚠️ *Die Hälfte, die vorher fehlte: eindeutig je Zeile.*
+check(
+    'jeder Name kommt genau einmal vor',
+    count(array_unique($namen)) === count($namen),
+    (count($namen) - count(array_unique($namen))) . ' doppelt'
+);
+
+check(
+    'und «wie oft» ebenso',
+    count(array_unique($wieOft)) === count($wieOft),
+    (count($wieOft) - count(array_unique($wieOft))) . ' doppelt'
+);
+
+// ⚠️ **Und der Leser, in derselben Prüfung** — *sonst ist genau das möglich, was `PR-12` beschreibt:
+// die Bedienung zieht um, der Leser bleibt stehen, und alles bleibt grün.*
+$schirm = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/NodesScreen.php');
+
+check(
+    'die Seite liest genau diesen Vorsatz',
+    str_contains($schirm, "ROW_SETTING_FIELD = 'taxmod_field_setting'")
+        && str_contains($schirm, 'private function saveFieldRows('),
+    'ROW_SETTING_FIELD und saveFieldRows()'
+);
+
+check(
+    'und niemand schickt die Angabe mehr an das Formular der Zeile',
+    ! str_contains($schirm, "'save_field'"),
+    'save_field steht noch im Schirm'
+);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

@@ -5725,3 +5725,44 @@ naheliegende — *aber er ist Arbeit, und `B` ist heute Abend fertig.* **Nicht g
 ⚠️ *Zwischenstand: die Kante wurde auf `renderer` zurückbenannt, damit der Schirm wieder arbeitet. **Das
 ist keine Antwort, sondern ein zurückgedrehter Nebeneffekt** — und es heisst, dass Umbenennen einer
 Einstellung bis zur Entscheidung ein brechender Akt bleibt.*
+
+---
+
+## OQ-141 — Was gilt, wenn ein **gesäter Knoten** aus seinem Ast heraus verschoben wird?
+
+**Raised** 2026-08-31, gemessen, nachdem ein Prüflauf 24 Knoten ein zweites Mal angelegt hatte und
+niemand es bemerkte.
+
+*Blockiert:* jeden Saatlauf, solange ein Behälter draussen liegt · *Status:* **open**
+
+⚠️ **Der Anlass ist gemessen und war beinahe unsichtbar.** *Der Eigentümer hat `Renderer` aus
+`Constants` heraus in den Ast `Settings` verschoben — auf sein Wort: «render with label sollte das
+gleiche sein wie render label roles, also die Renderer von label with roles zu render with label
+schieben». Danach lief `RenderingScaffold::import()` aus einer Prüfung heraus. Sie prüft die gemerkte
+Id **gegen den Elternknoten** — mit gutem Grund, denn eine Option kann auf einen Knoten im Müll zeigen
+([D-119](90-decision-log.md)) — fand `Renderer` unter `Constants` nicht mehr, und legte **24 Knoten**
+neu an: einen kompletten leeren `Renderer`-Baum samt `Converter` und `Validator`. **Die gemerkten Ids
+zeigten danach auf die leeren.***
+
+⚠️ **Nichts sah kaputt aus, und das ist der beunruhigende Teil.** *Die 31 Verweise in den Datensätzen
+zeigten weiter auf den echten Baum, der Schirm zeichnete richtig, und der Saatlauf meldete grün.
+Aufgefallen ist es nur, weil eine **andere** Prüfung plötzlich einen zweiten Knoten namens `form` fand
+und über `ORDER BY id DESC` den leeren erwischte.*
+
+### Die drei Wege
+
+| | Preis | Was er kostet |
+|---|---|---|
+| **A** — die **gemerkte Id gewinnt** über den Elternknoten | die Saat folgt jedem Umzug, ohne Zutun | der Schutz aus [D-119](90-decision-log.md) fällt: ein Knoten im Müll gilt wieder als «vorhanden» |
+| **B** — der Umzug eines gesäten Knotens **aus seinem Ast heraus** wird verweigert | der Bruch ist unmöglich statt still | seine Verschiebung von heute ist rückgängig zu machen, und «gesät» wird damit eine dauerhafte Eigenschaft — was [D-119](90-decision-log.md) ausdrücklich nicht will |
+| **C** — die Saat legt nie stillschweigend an, sondern **meldet** | keine Regel wird geändert, und der Fall fällt sofort auf | eine Installation, in der wirklich etwas fehlt, sät nicht mehr von selbst |
+
+⚠️ **Nicht geraten.** *Zwischenstand: `rendering-scaffold-check.php` sät nicht mehr, solange ein
+Behälter ausserhalb von `Constants` liegt — das ist `C`, aber nur in der Prüfung und nicht in der Saat.
+`scripts/dev/undo-duplicate-constants.php` hat die entstandene Doppelung weggeräumt: 24 Knoten weg, drei
+gemerkte Ids gerichtet.*
+
+⚠️ *Und ein Rest bleibt sichtbar: **neun gemerkte Ids zeigen ins Leere** — `choice`, `chooser_node`,
+`field_row`, `head`, `labels`, `record`, `settings`, `tree`, `tree_node`. Das sind die Renderer, die den
+Schirm selbst zeichnen und darum keinen Knoten haben; **harmlos, aber genau die Sorte Rest, aus der
+später ein Befund wird.***

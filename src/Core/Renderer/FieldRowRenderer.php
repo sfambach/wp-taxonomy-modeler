@@ -156,22 +156,32 @@ final class FieldRowRenderer implements Renderer
             );
         }
 
-        // ⚠️ **Required, and the rule is the model's**: a field cannot be nameless
-        // (`Relation::renamedTo()` refuses it), so the browser says the same thing the core
-        // says rather than a second, softer rule of its own — the mistake `int` made once.
+        // ⚠️ **Die Regel ist die des Modells** — *ein Feld kann nicht namenlos sein
+        // (`Relation::renamedTo()` verweigert es), also sagt der Browser dasselbe wie der Kern und
+        // nicht eine zweite, weichere Regel.*
+        //
+        // ⚠️ **Aber `aria-required` und nicht `required`, seit die Zeile im Seitenformular hängt.**
+        // *Genau diese Blockade hat er schon einmal gefunden: «habe die Multiplizität auf `0..1`
+        // gesetzt und wollte dann die Seite speichern — da kam dieser Fehler.» **Ein `required` in
+        // einer von sechzig Zeilen sperrt das Speichern der ganzen Seite**, und der Kern verweigert
+        // einen leeren Namen ohnehin — dort, wo die Regel wohnt.*
         $field = RenderResult::htmlTag('input', [
             'type'     => 'text',
             'class'    => 'taxmod-field-rename',
             'name'     => $context->fieldName,
             'value'    => $subject->name,
-            'required' => true,
+            'aria-required' => 'true',
             'style'    => 'width:100%',
             // ⚠️ **Ohne dies schickt das Feld nichts** — derselbe Fehler, den {@see self::formFor()}
             // für den Auswahlkasten beschreibt, eine Zelle weiter und ungeheilt geblieben. *Der
             // Eigentümer hat ihn zum zweiten Mal gefunden: «Änderungen in Namen … werden nicht mehr
             // übernommen.» **Gemessen: `attribute renamed` stand 0 mal im ganzen Changelog**, während
             // «wie oft» längst ankam — die Umbenennung hat nie gegriffen, nicht seit heute.*
-            'form'     => self::formFor($subject),
+            //
+            // ⚠️ **Das Formular der Seite, wo es eines gibt** — *«Save in Fields sollte eigentlich auch
+            // über die Seite gehen». Leer heisst «keins» (die Vorschau hat keines), und dann bleibt es
+            // beim Formular der Zeile.*
+            'form'     => $context->surroundings->formId === '' ? self::formFor($subject) : $context->surroundings->formId,
         ]);
 
         return $this->cell($field, 'taxmod-field-name', false, true);

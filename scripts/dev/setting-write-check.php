@@ -397,6 +397,72 @@ if ($verwalter === []) {
     check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 }
 
+echo "\n== «Nichts» ist eine Wahl, und sie loescht ==\n";
+
+// ⚠️ **Auf seinen Befund vom 2026-08-31:** *«wenn ich `0..1` wähle, müsste ich auch nichts im Value
+// wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den Datensatz
+// dahinter löschen.»*
+//
+// ⚠️ **Gemessen war es ein Rücksprung am Rand:** *`putOneSettingValue()` kehrte bei einem leeren Wert um,
+// mit der Begründung «ein leeres Feld löscht nicht, sonst räumte jedes Speichern alles ab, was nicht
+// gezeichnet wurde». **Was nicht gezeichnet wurde, schickt aber auch nichts** — und damit war «nichts»
+// die einzige Wahl der ganzen Seite, die sich nicht speichern liess.*
+//
+// ⚠️ *Der Wächter läuft über denselben Weg wie der Abschnitt darüber: `handlePost()` mit Nonce, und
+// derselbe Knoten, dem gerade ein Renderer gesetzt wurde. **Erst löschen, dann zurückschreiben** — ein
+// Lauf, der etwas wegnimmt und nicht zurücklegt, verändert das Modell des Eigentümers.*
+if ($rendererId !== 0 && $aussen !== 0 && $innen !== 0 && $verwalter !== []) {
+    $lesen = static function () use ($records, $edges, $nodes, $framework, $knoten): ?string {
+        $gelesen = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
+
+        return $gelesen['renderer']->value->text ?? null;
+    };
+
+    check('vorher steht ein Renderer da', $lesen() !== null, $lesen() ?? 'nichts');
+
+    $schicken = static function (string $wert) use ($knotenId, $aussen, $innen): string {
+        $_POST = [
+            'action'        => 'taxmod_node',
+            'id'            => (string) $knotenId,
+            'do'            => 'put_setting',
+            '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
+            'taxmod_value'  => [(string) $aussen => [(string) $innen => $wert]],
+        ];
+        $_REQUEST = $_POST;
+
+        try {
+            $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+            $plugin = $bau->newInstanceWithoutConstructor();
+            $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+            $plugin->screen()->handlePost();
+        } catch (RuntimeException $e) {
+            return str_starts_with($e->getMessage(), '__weitergeleitet__')
+                ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
+                : $e->getMessage();
+        }
+
+        return '';
+    };
+
+    check('der leere Akt laeuft durch', $schicken('') === 'ok');
+
+    check(
+        'und danach steht dort nichts mehr',
+        $lesen() === null,
+        $lesen() ?? 'nichts'
+    );
+
+    // ⚠️ *Zurückgelegt, sonst hinterlässt der Lauf einen Knoten ohne Renderer — und «jeder Knoten muss
+    // einen Renderer haben» ist eine Regel des Eigentümers.*
+    check('zurueckgeschrieben laeuft auch durch', $schicken((string) $rendererId) === 'ok');
+
+    check(
+        'und der Wert ist wieder da',
+        $lesen() !== null,
+        $lesen() ?? 'nichts'
+    );
+}
+
 echo "\n== Eine Zeile hinzufuegen legt einen zweiten Teil an ==\n";
 
 // ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich Zeilen
