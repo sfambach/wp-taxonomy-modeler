@@ -37,6 +37,7 @@ as the whole net.*
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
 | `rules-index` | that [`02-rules-index.md`](../docs/NewConcept/02-rules-index.md) still lists **every** rule the project has — it goes red the moment a rule is introduced without appearing there |
 | `concept-drift` | that a **model document** never changes without a reason standing as a decision ([`PR-2`](../CLAUDE.md), [D-565](../docs/NewConcept/90-decision-log.md)) — either the decision log changes with it, or the new lines name an existing decision |
+| `confirmed-quote` | that a decision calling itself **confirmed** actually carries a sentence of the owner's ([D-571](../docs/NewConcept/90-decision-log.md)) — otherwise it is `INFERRED` and needs his yes |
 
 ⚠️ **`concept-drift-check` belongs to a rule of the owner's, and the rule replaced a term of mine.**
 *He rejected «locked» on 2026-09-01: «ich wollte nie Sachen locken … es gibt nur Konzept ist fertig
@@ -75,6 +76,15 @@ catches it.
 
 ## The rule
 
-⚠️ **Both runs are green before anything is committed**
-([D-342](../docs/NewConcept/90-decision-log.md)). And **every package adds its checks to the
+⚠️ **What works keeps working: both runs are green before anything is committed**
+([D-564](../docs/NewConcept/90-decision-log.md)). And **every package adds its checks to the
 net** — a package whose behaviour nothing guards is a package the next one may quietly break.
+
+⚠️ **But a check guards the *current* target state, never a past one.** *The owner added that half
+himself: «klar sollen neue Entwicklungen keine alten kaputt machen aber Konzeptänderungen müssen
+möglich sein und umbauen». **Without it a green check can veto a concept change** — it then guards a
+target state nobody wants any more. When the concept changes, the check changes with it — **and
+changing or deleting a check is a visible part of that change**, never something that happens in
+passing. That second half is the counter-safety: without it «Konzeptänderung» becomes the word that
+clears away any red check, and then nothing guards anything. [D-342](../docs/NewConcept/90-decision-log.md)
+said only the first half and is superseded.*

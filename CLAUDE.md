@@ -3,25 +3,29 @@
 **Read this before acting.** These rules bind every agent working in this repo — Claude Code,
 Cursor, or a human.
 
-## Where things stand (2026-08-31)
+## Where things stand (2026-09-01)
 
-The project **restarted its concept phase** on 2026-08-22 and **finished it** on 2026-08-24. It has
-since kept deciding while building, which is what [D-222](docs/NewConcept/90-decision-log.md) asks
-for: **562 decisions, 143 questions of which 8 still say `open`.** *This line has been wrong twice. On 2026-08-27 it claimed 25 open questions and none had been answered — **67 of them said «Closed → D-nnn» in their own text while their status line still read `open`**. On 2026-08-31 it still said 459 decisions; there were 548, and a whole evening of them had gone unrecorded here. **That is what a count in a rules file is worth** — and why the check below matters more than the number.* The previous planning round is frozen under
-[`docs/legacy/`](docs/legacy/README.md) and has no authority. The concept lives in
-[`docs/NewConcept/`](docs/NewConcept/README.md).
+**The concept in `docs/NewConcept/` is outdated and is being replaced** ([D-568](docs/NewConcept/90-decision-log.md),
+the owner: «das alte Konzept ist veraltet, wir brauchen ein neues und das muss in Zukunft definiert
+werden»). It is **harvested material now** — quotable as evidence, never as a source — exactly as
+`docs/legacy/` has been since 2026-08-23. **It is not extended any more, not even by open questions.**
+Until the new concept has a shape, new input goes to [`docs/neues-konzept-eingang.md`](docs/neues-konzept-eingang.md).
 
-**Current gate: none — building.** [`10-domain-core.md`](docs/NewConcept/10-domain-core.md) went
-`locked` on 2026-08-24 ([D-338](docs/NewConcept/90-decision-log.md)). **Packages 1–7 are built and
-guarded**; work now runs down [the working list](docs/NewConcept/97-implementation-plan.md#the-working-list),
-which is where the owner's posted changes are appended in the order he asks for them, and **not** the
-roadmap — the roadmap is *later, maybe*, the list is *next, in this order*.
+The working model is [`docs/arbeitsmodell.md`](docs/arbeitsmodell.md), written by the owner. It
+governs how things are decided, changed and documented from here on.
 
-⚠️ **These two numbers go stale and there is a check for the thing that matters.**
-`scripts/dev/references-check.php` fails if any file cites a `D-` or `OQ-` id that was never written —
-which is how **seven decisions came to sit in docblocks with no entry in the log** on 2026-08-26. *A
-count in a rules file is a changelog; a dangling id is a rule nobody agreed to, quoted as though
-somebody had.*
+**Current state: building, and the table concept is under review** — see
+[`docs/review-tabellen.md`](docs/review-tabellen.md). Packages 1–7 are built and guarded; work runs
+down [the working list](docs/NewConcept/97-implementation-plan.md#the-working-list), where the
+owner's posted changes are appended in the order he asks for them.
+
+⚠️ **No counts in this file.** *Two stood here and both were wrong — «25 open questions» when 67 of
+them said «Closed» in their own text, and «459 decisions» when there were 548. **A count in a rules
+file is a changelog.** What matters is guarded instead: `references-check` fails on a `D-`/`OQ-` id
+that was never written, `superseded-check` on a live claim resting on a withdrawn one,
+`rules-index-check` on a rule missing from the index, `concept-drift-check` on a model document
+changing without a reason, and `confirmed-quote-check` on a decision called confirmed that carries
+no sentence of his.*
 
 ---
 
@@ -29,20 +33,16 @@ somebody had.*
 
 | | Rule |
 |---|---|
-| **PR-1** | **Source of truth is [`docs/NewConcept/`](docs/NewConcept/README.md).** Nothing else. `docs/legacy/` is a frozen quarry — quote it, never inherit from it. |
-| **PR-1b** | **The legacy is harvested and closed.** Documentation and code were swept on 2026-08-23 and every finding is placed in [`03`](docs/NewConcept/_harvest/03-legacy-inspiration.md) and [`04`](docs/NewConcept/_harvest/04-legacy-code-inspiration.md) — decided, already covered, contradicting, a workaround, or deliberately not taken. **Look in the sheets first; the old material is evidence, not a source.** It is never extended and never used as a template. The old plugin code lives in [`legacy-code/`](legacy-code/README.md) and no longer runs; the repository root is free for the rebuild. |
+| **PR-1** | **Source of truth is the current package documentation and the active decisions** ([`docs/arbeitsmodell.md`](docs/arbeitsmodell.md) §16). **`docs/NewConcept/` and `docs/legacy/` are both frozen quarries — quote them, never inherit from them, and never use either as a template** ([D-568](docs/NewConcept/90-decision-log.md)). ⚠️ *`PR-1b` said this for the legacy alone and is gone: the working model covers it in §3 («**Alter ist kein Gültigkeitsstatus**»), §6.1 and §16. What survives is the half that is not covered — **not as a template** — because the risk now is that the new concept inherits the shape of the old.* |
 | **PR-2** | **There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason** ([D-565](docs/NewConcept/90-decision-log.md)). There is no third state and **there is no quiet change**: a gap found while building becomes a decision ([D-222](docs/NewConcept/90-decision-log.md)), never an edit to the concept. **A decided model is not softened without a reason; replacing it with one is wanted.** Guarded by `scripts/dev/concept-drift-check.php`. Work proceeds in the packages of [`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md), and **every package ends with something the owner can operate** and a list of what was assumed that the concept did not say. ⚠️ *«`locked`» stood here until 2026-09-01 and was **not his word** — the owner: «ich wollte nie Sachen locken … es gibt nur Konzept ist fertig und kann jetzt umgesetzt werden. Oder Konzept ist veraltet und wird durch neues ersetzt.» **The proof that the term was wrong stood in the line that introduced it:** two sentences after «is `locked`» it had to say «locked is not frozen». A term that immediately needs an exception was the wrong term. [D-338](docs/NewConcept/90-decision-log.md) is `REJECTED`; its useful half was never the lock.* |
 | **PR-3** | **Nothing is decided until it is in [`90-decision-log.md`](docs/NewConcept/90-decision-log.md)** with a `D-<nnn>` id. A decision reached in chat and not written down did not happen. |
-| **PR-4** | **Unclear stays unclear.** Anything undecided becomes an entry in [`91-open-questions.md`](docs/NewConcept/91-open-questions.md). Never invent an answer to fill a gap, and never pick one silently because it seemed obvious. |
-| **PR-5** | **The concept is written from the statements of the owner first.** Legacy is harvested afterwards, as a cross-check, through a sheet in `docs/NewConcept/_harvest/`. |
+| **PR-4** | **Unclear stays unclear.** Anything undecided becomes an entry in [`docs/neues-konzept-eingang.md`](docs/neues-konzept-eingang.md) — the old question sheet is closed with the concept it belonged to. Never invent an answer to fill a gap, and never pick one silently because it seemed obvious. |
 | **PR-6** | **Documentation style** per [`98-documentation-style.md`](docs/NewConcept/98-documentation-style.md): one small mermaid diagram per *Sachverhalt*, explanation beneath, code only where detail demands it. Code blocks are labelled `CONTRACT` or `SKETCH`. |
 | **PR-7** | **Report faithfully.** If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. |
 | **PR-8** | **Rule hygiene** applies to this file — see the last section. |
 | **PR-9** | **What works keeps working: both test runs are green before anything is committed** ([D-564](docs/NewConcept/90-decision-log.md)) — the **core** run under PHPUnit, which loads no WordPress, and the **boundary** run against a real database. **Every package adds its checks to the net**; a package nothing guards is one the next may quietly break. **A check guards the *current* target state, never a past one** — when the concept changes the check changes with it, **but changing or deleting a check is a visible part of that concept change** and never happens in passing. See [`tests/README.md`](tests/README.md). ⚠️ *The owner added the first half himself, and it was missing: «klar sollen neue Entwicklungen keine alten kaputt machen aber Konzeptänderungen müssen möglich sein und umbauen». **Without it a green check can veto a concept change** — it then guards a target state nobody wants any more. The second half is the counter-safety: without it «Konzeptänderung» becomes the word that clears away any red check, and then nothing guards anything.* |
 | **PR-13** | **The yardstick for a specification is whether a person can check it, not whether the AI can build from it** ([D-566](docs/NewConcept/90-decision-log.md)). **If the only reader who can hold the model is the thing that also writes the code, nobody can check the code.** ⚠️ *This stood in the reasoning under [D-338](docs/NewConcept/90-decision-log.md) from 2026-08-24 and was never carried as a rule. It is the measured reason a 2.6 MB concept folder does not work, and it was recovered when D-338 was rejected — otherwise it would have sunk with the decision.* Not machine-checkable; it is read, not run. |
 | **PR-10** | **Look it up before you say it. No claim about the concept without a quotation from it.** Whenever an answer turns on *what was decided* — a mechanism, a rule, where something belongs — read the source and **quote the sentence**, with its `D-<nnn>`. Recalling it is not reading it. ⚠️ *This rule exists because 2026-08-25 measured the difference: every answer given from memory that day was wrong — «a constant has no records» cited the data layer against a model-level question, «`default` is one key per owner» was reported as a rule when it is a consequence of a unique key, and a `node_label` type was designed for a value that is never stored. Every answer given after a `grep` held — and twice it showed the **owner** his own error, which memory never does.* Also **orient before starting**: the tail of [`90-decision-log.md`](docs/NewConcept/90-decision-log.md), [`91-open-questions.md`](docs/NewConcept/91-open-questions.md) and the current package in [`97-implementation-plan.md`](docs/NewConcept/97-implementation-plan.md). A conversation summary is a reminder of what happened, never a substitute for the documents. |
-| **PR-11** | **Never write the result of a text transformation back to a file unguarded.** Check that a replacement actually matched before saving, and prefer the editing tools over regular expressions on source. ⚠️ *`preg_replace` returned `null` on a bad pattern and `null` was written straight to disk — a file emptied to zero bytes, and it was not yet in git. `sed` eats the backslashes out of PHP namespaces the same way.* |
-| **PR-12** | **When data moves, the reader moves first — and a check must exist that would go red if only one of them did.** The order is **guard, reader, data**. ⚠️ *This rule was earned six times in one evening (2026-08-30). Renderer settings moved into records, and six separate readers were left asking the old table: `containerFor()`, `valueOfType()`, the boundary that wrote the choice, and three more. **Each time the screen kept working and quietly showed the wrong thing** — a node drew with `plain` instead of its renderer, a picker saved into a table nothing read, a preview ignored a change the owner had just made. Not one of the 305 checks noticed, because none of them guarded the resolution. The first fix of the day was rolled back for exactly this reason: the data had moved before the reader, and everything stayed green.* |
 
 Dev environment (Laragon on Windows, SQLite on the cloud VM): [`AGENTS.md`](AGENTS.md).
 
@@ -90,18 +90,23 @@ WordPress bootstrap. WordPress reaches *into* it, never the other way round.
 
 ## AR — Architecture rules
 
-**An architecture rule exists only with a decision id.** No `D-<nnn>` → no rule. If the
-decision is superseded, the rule is deleted in the same commit. This is the rule that keeps
+**An architecture rule needs a basis that can be checked: a decision id, or a measurement plus
+the owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)). If the basis falls, the
+rule is deleted in the same commit. ⚠️ *The second form was added on 2026-09-01 because both rules
+below had **true content and dead citations** — `AR-2` rested on a withdrawn decision. A measurement
+survives its own justification: «not one occurrence» can be re-run, a decision from ten days ago
+cannot.* This is the rule that keeps
 this file from turning back into a frozen snapshot of a model we have outgrown.
 
-| | Rule | Decision |
+| | Rule | Basis |
 |---|---|---|
-| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. Base tables: **nodes, relations, labels, records**. ⚠️ *`settings` stand hier bis 2026-08-30 und ist **entfernt** — eine Einstellung ist ein Feld, also eine Kante ([D-529](docs/NewConcept/90-decision-log.md)). Die Zeile hat genau so lange als Beleg gedient, wie sie falsch war.* *Storage of the content that the models describe is not decided yet* — see [OQ-015](docs/NewConcept/91-open-questions.md). | [D-007](docs/NewConcept/90-decision-log.md), [D-019](docs/NewConcept/90-decision-log.md), [D-529](docs/NewConcept/90-decision-log.md) |
-| **AR-2** | **Nothing user-visible is hard-coded.** Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the model, per locale. The two never share a mechanism. | [D-019](docs/NewConcept/90-decision-log.md), [D-020](docs/NewConcept/90-decision-log.md) |
+| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. ⚠️ **Measured 2026-09-01: `wp_insert_post`, `get_post_meta`, `wp_insert_term`, `register_post_type` and six more — *not one occurrence* in `src/`, against 13 own tables.** *The table list that stood here is gone: it named `settings`, which is dying ([D-529](docs/NewConcept/90-decision-log.md)), and omitted `records` and `record_values`. Naming the tables is deliberately **not** part of this rule any more — the table concept is under review ([D-568](docs/NewConcept/90-decision-log.md), [`docs/review-tabellen.md`](docs/review-tabellen.md)), and a rule that names them would freeze the errors it inherited.* | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
+| **AR-2** | **Nothing user-visible is hard-coded.** Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the model, per locale. The two never share a mechanism. ⚠️ **Measured 2026-09-01: 195 text-domain calls at the boundary; in the whole core exactly one display-shaped string, and it is the *initial name* of a shipped node, which the owner may rename.** *The open edge is a different one and belongs to the new concept: shipped names arrive in one language, and `labels.locale` is filled in 4 of 47 rows.* | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
 
 That is the **complete** list. Everything else about the model — what a node is, whether an
 attribute is an edge, whether a type is data or code, where the renderer runs — is **open**
-and lives in [`91-open-questions.md`](docs/NewConcept/91-open-questions.md). Do not act as if
+and lives in the entry sheet [`docs/neues-konzept-eingang.md`](docs/neues-konzept-eingang.md),
+since [D-568](docs/NewConcept/90-decision-log.md) closed the old concept. Do not act as if
 any of it were settled, and do not settle it in passing while doing something else.
 
 ---

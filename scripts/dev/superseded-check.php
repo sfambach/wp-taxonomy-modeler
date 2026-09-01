@@ -56,8 +56,12 @@
  * heutigen Basistabellen festlegt, und das nachzuweisen heisst, die abgelösten Glieder zu nennen.
  * Genau der Fall, den der Kopf dieser Datei beschreibt: «mechanisch trennen lässt sich «als
  * Geschichte» nicht von «als Grund»».*
+ * ⚠️ **Angehoben auf 87 am 2026-09-01, zweiter Grund.** *[D-569](../../docs/NewConcept/90-decision-log.md)
+ * nennt `D-020`, **weil ihre Zurücknahme der Anlass der Entscheidung ist**: `AR-2` stand auf einer
+ * zurückgenommenen Entscheidung, und genau das begründet, warum eine Messung als Grundlage taugt.
+ * Die Zeile ohne diesen Verweis wäre unbelegt.*
  */
-const HINGENOMMEN = 86;
+const HINGENOMMEN = 87;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 

@@ -6,7 +6,7 @@ steht in der Datei, auf die verwiesen wird, und nur dort wird sie geändert.
 
 ⚠️ **Warum es dieses Verzeichnis gibt.** *Der Eigentümer konnte den Regelsatz nicht übergeben:
 «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält». Gemessen war das
-Chaos nicht Altlast — **307 Regeln in 16 Räumen, die meisten davon lebendig zitiert** —,
+Chaos nicht Altlast — **303 Regeln in 16 Räumen, die meisten davon lebendig zitiert** —,
 sondern **Streuung**: sie stehen in 15 verschiedenen Dateien, und **keine Stelle listete sie auf.**
 Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
@@ -15,7 +15,7 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
 | Raum | Wofür | Regeln |
 |---|---|---|
-| **PR** | Prozess — wie gearbeitet wird | 14 |
+| **PR** | Prozess — wie gearbeitet wird | 10 |
 | **CD** | Code — wie geschrieben wird | 12 |
 | **AR** | Architektur — was gebaut wird (braucht je eine Entscheidung) | 2 |
 | **DC** | Dokumentation im Code | 5 |
@@ -31,7 +31,7 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 | **B** | Standardbaum — Inhalt | 8 |
 | **S** | Speicher | 1 |
 | **Q** | Aus der Altlast übernommene Frage | 1 |
-| | **Summe** | **307** |
+| | **Summe** | **303** |
 
 Bei **4** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
 vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
@@ -42,20 +42,16 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **PR1** | Source of truth is docs/NewConcept/. Nothing else. docs/legacy/ is a frozen quarry — quote it, never inherit from it. | [CLAUDE.md:32](../../CLAUDE.md) | 11 |
-| **PR1b** | The legacy is harvested and closed. Documentation and code were swept on 2026-08-23 and every finding is placed in 03 and 04 — decided, already cov… | [CLAUDE.md:33](../../CLAUDE.md) | 3 |
-| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:34](../../CLAUDE.md) | 6 |
-| **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:35](../../CLAUDE.md) | 14 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in 91-open-questions.md. Never invent an answer to fill a gap, and never pick one silent… | [CLAUDE.md:36](../../CLAUDE.md) | 44 |
-| **PR5** | The concept is written from the statements of the owner first. Legacy is harvested afterwards, as a cross-check, through a sheet in docs/NewConcept… | [CLAUDE.md:37](../../CLAUDE.md) | **nie** |
-| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:38](../../CLAUDE.md) | 1 |
-| **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:39](../../CLAUDE.md) | 3 |
-| **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:40](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:41](../../CLAUDE.md) | 5 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:43](../../CLAUDE.md) | 15 |
-| **PR11** | Never write the result of a text transformation back to a file unguarded. Check that a replacement actually matched before saving, and prefer the e… | [CLAUDE.md:44](../../CLAUDE.md) | 2 |
-| **PR12** | When data moves, the reader moves first — and a check must exist that would go red if only one of them did. The order is guard, reader, data. This … | [CLAUDE.md:45](../../CLAUDE.md) | 8 |
-| **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
+| **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 12 |
+| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 6 |
+| **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 14 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 44 |
+| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
+| **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
+| **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 5 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 16 |
+| **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | **nie** |
 
 ## CD — Code — wie geschrieben wird
 
@@ -78,18 +74,18 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Base tables: nodes, relations, labels, records… | [CLAUDE.md:99](../../CLAUDE.md) | 13 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:100](../../CLAUDE.md) | 46 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 16 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 50 |
 
 ## DC — Dokumentation im Code
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **DC1** | Comments explain why, not what. If a comment restates the code, delete one of them — usually the comment. | [CLAUDE.md:115](../../CLAUDE.md) | **nie** |
-| **DC2** | Every class and interface gets a short docblock: one sentence of purpose, plus the concept document it implements (@see docs/NewConcept/10-domain-c… | [CLAUDE.md:116](../../CLAUDE.md) | **nie** |
-| **DC3** | @param / @return only where the type declaration cannot say it — array shapes, generics, units, ranges. Never as an echo of the signature. | [CLAUDE.md:117](../../CLAUDE.md) | **nie** |
-| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:118](../../CLAUDE.md) | **nie** |
-| **DC5** | Each top-level source folder has a README.md: what lives here, what it must not depend on, where its concept document is. Short. This is the docume… | [CLAUDE.md:119](../../CLAUDE.md) | **nie** |
+| **DC1** | Comments explain why, not what. If a comment restates the code, delete one of them — usually the comment. | [CLAUDE.md:120](../../CLAUDE.md) | **nie** |
+| **DC2** | Every class and interface gets a short docblock: one sentence of purpose, plus the concept document it implements (@see docs/NewConcept/10-domain-c… | [CLAUDE.md:121](../../CLAUDE.md) | **nie** |
+| **DC3** | @param / @return only where the type declaration cannot say it — array shapes, generics, units, ranges. Never as an echo of the signature. | [CLAUDE.md:122](../../CLAUDE.md) | **nie** |
+| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:123](../../CLAUDE.md) | **nie** |
+| **DC5** | Each top-level source folder has a README.md: what lives here, what it must not depend on, where its concept document is. Short. This is the docume… | [CLAUDE.md:124](../../CLAUDE.md) | **nie** |
 
 ## V — Vision und Umfang
 
