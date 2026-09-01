@@ -30,7 +30,8 @@ final class SettingShapeTest extends TestCase
     {
         // ⚠️ `mandatory` was here until [D-405]: the multiplicity says it, so the key is gone.
         // ⚠️ *Zwei, nicht drei: `hide` ist seit [D-457] eine Spalte und kein Schalter mehr.*
-        foreach ([SettingKey::ReadOnly, SettingKey::Persistent] as $key) {
+        // ⚠️ *Einer, nicht zwei: `persistent` ist seit [D-538] gefallen — die Relationsart sagt es.*
+        foreach ([SettingKey::ReadOnly] as $key) {
             self::assertSame(SettingShape::Switch, $key->shape(), $key->value);
             self::assertSame(SimpleType::Bool, $key->typeFor(null), $key->value);
         }

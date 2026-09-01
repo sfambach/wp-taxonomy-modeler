@@ -89,10 +89,11 @@ final class SettingCategoryTest extends TestCase
     {
         // ⚠️ A thing can be required, hidden, fixed, counted or ordered whatever it holds — none of
         // these borrows a type, so none of them belongs to one.
+        // ⚠️ *`persistent` stand hier bis 2026-09-01 und ist mit [D-538] ersatzlos gefallen: die
+        // Relationsart sagt, dass ein Wert nicht im Benutzerdatensatz landet.*
         $rules = [
             SettingKey::ReadOnly,
             SettingKey::Multiplicity,
-            SettingKey::Persistent,
         ];
 
         foreach ($rules as $key) {

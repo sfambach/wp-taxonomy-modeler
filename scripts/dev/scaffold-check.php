@@ -184,18 +184,26 @@ foreach (SettingKey::cases() as $key) {
 
     $stored = ($declared[$key->value] ?? null)?->value->asBool();
 
+    // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil einer Konzeptänderung**
+    // ([`PR-9`](../../CLAUDE.md)). *Bis dahin verlangte diese Prüfung eine **gespeicherte Zeile** je
+    // Schalter — [D-401](../../docs/NewConcept/90-decision-log.md)s Soll-Zustand. Zeile 85 der
+    // Arbeitsliste hat ihn abgelöst: **alle 147 `read_only`-Zeilen sagten `false`, und `false` ist
+    // auch die Antwort ohne Zeile.** Sie trugen keine Aussage und sind entfernt — dieselbe Krankheit,
+    // die [D-505](../../docs/NewConcept/90-decision-log.md) gemessen hat.*
+    //
+    // ⚠️ **Die Vorgabe lebt jetzt am Schlüssel, und die Prüfung ist strenger als vorher:** *nicht nur
+    // muss der Schlüssel antworten — **es darf auch keine Zeile geben, die ihn wiederholt.** Eine
+    // solche Zeile ist genau die zweite Heimat, die dieses Projekt achtmal an einer Naht getroffen hat.*
     check(
-        "«{$key->value}» is declared on the installation identity",
-        $stored !== null,
-        $stored === null ? 'no row' : 'ok'
+        "«{$key->value}» is answered by the key itself",
+        $key->defaultSwitch() !== null,
+        'the key declares nothing'
     );
 
-    // ⚠️ *The row and the key must agree.* Two homes that happen to hold the same value today is
-    // exactly the state this decision ended — the failure only shows when one of them is changed.
     check(
-        "  · and it agrees with the key",
-        $stored === $key->defaultSwitch(),
-        var_export($stored, true) . ' vs ' . var_export($key->defaultSwitch(), true)
+        "  · and no row repeats it",
+        $stored === null || $stored !== $key->defaultSwitch(),
+        $stored === null ? 'ok' : 'a row repeats ' . var_export($stored, true)
     );
 }
 
@@ -225,10 +233,13 @@ if ($probe !== null) {
             continue;
         }
 
+        // ⚠️ *Ebenfalls umgedreht: gefragt wird nicht mehr, ob eine **Zeile** auflöst, sondern ob
+        // der Knoten überhaupt eine Antwort bekommt — aus der Zeile, wenn es eine gibt, sonst aus
+        // dem Schlüssel. **Der Rückfall ist seit Zeile 85 der Normalfall und kein Mangel.***
         check(
-            "«{$probe->name}» resolves «{$key->value}» without a fallback",
-            isset($at[$key->value]),
-            'nothing resolved'
+            "«{$probe->name}» gets an answer for «{$key->value}»",
+            isset($at[$key->value]) || $key->defaultSwitch() !== null,
+            'neither a row nor a declared default'
         );
     }
 }

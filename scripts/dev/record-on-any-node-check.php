@@ -150,11 +150,30 @@ if ($kilo === null) {
             check('ein Datensatz an kilo lässt sich anlegen', false, $e->getMessage());
         }
 
+        $verweigert = null;
+
         if ($record !== null) {
             check('ein Datensatz an kilo lässt sich anlegen', $record->id > 0, (string) $record->id);
 
-            $data->put($record->id, $exponent->id, TypedValue::ofInt(3));
+            // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil von [D-538](../../docs/NewConcept/90-decision-log.md).**
+            // *Diese Prüfung schrieb hier einen Wert und verlangte, dass er unter der Kanten-Id steht.
+            // **`exponent` ist aber eine Einstellungskante** (4654, `kind = setting`), und seit D-538
+            // gilt: «für den Benutzer werden ja nur die Felder gespeichert, nicht die Settings, weil
+            // die Settings Eigenschaften des Modells sind». **Die Prüfung hatte sich genau das
+            // Beispiel gesucht, das die Entscheidung unmöglich macht** — und stürzte deshalb ab,
+            // statt rot zu werden. Ein Absturz überspringt die restlichen Zusicherungen.*
+            try {
+                $data->put($record->id, $exponent->id, TypedValue::ofInt(3));
+            } catch (NotYetStorable $e) {
+                $verweigert = $e->getMessage();
+            }
         }
+
+        check(
+            'eine Einstellungskante verweigert den Datensatzwert, mit Begründung',
+            $verweigert !== null && str_contains($verweigert, 'setting'),
+            $verweigert ?? 'nicht verweigert — der Wert wurde geschrieben'
+        );
 
         $roh = $record === null ? null : $wpdb->get_row($wpdb->prepare(
             'SELECT edge_id, path, value_int FROM ' . Schema::table('record_values') . ' WHERE record_id = %d',
@@ -164,9 +183,12 @@ if ($kilo === null) {
         // ⚠️ **Das ist die Zusage, um die es geht:** *der Wert steht unter der **Kanten-Id** des
         // Feldes — nicht unter einem Namen wie `default`. **Damit ist eine Einstellung und ein
         // Datensatzwert dieselbe Zeile in zwei Tabellen**, und eine davon kann fallen.*
+        // ⚠️ **Die Gegenprobe zur Verweigerung: es darf auch wirklich nichts dastehen.** *Ohne sie
+        // wäre die Zusage oben aus einem Grund grün, der nichts beweist — eine Ausnahme kann fliegen,
+        // nachdem geschrieben wurde.*
         check(
-            'und der Wert steht unter der Kanten-Id des Feldes',
-            $roh !== null && (int) $roh['edge_id'] === $exponent->id && (int) $roh['value_int'] === 3,
+            'und es steht wirklich kein Wert da',
+            $roh === null,
             json_encode($roh)
         );
     }

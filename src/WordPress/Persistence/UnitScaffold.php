@@ -190,11 +190,12 @@ final class UnitScaffold
         // its model-level value, which is what a default has always been.
         $exponent = $this->field($prefixes, 'exponent', 'int');
 
-        $this->settings->put(
-            $this->settings->chainForUseSite($exponent),
-            SettingKey::Persistent->value,
-            TypedValue::ofBool(false)
-        );
+        // ⚠️ **Hier stand bis 2026-09-01 `persistent = false`, und es ist mit [D-538](../../../docs/NewConcept/90-decision-log.md)
+        // ersatzlos gefallen.** *Der Eigentümer hat es selbst hergeleitet: «diese nicht persistenten
+        // Datensätze sind eigentlich alles Settings … die Settings sind ja Eigenschaften des Modells.»
+        // **Die Kante `exponent` trägt seit [D-526](../../../docs/NewConcept/90-decision-log.md) die
+        // Relationsart `setting`, und die sagt dasselbe** — gemessen am 2026-09-01: Kante 4654,
+        // `kind = setting`. Zwei Heimaten für eine Tatsache, und nur eine war je die Wahrheit.*
 
         foreach (self::PREFIXES as $name => $power) {
             $node = $this->ensure($prefixes, $name, $created);

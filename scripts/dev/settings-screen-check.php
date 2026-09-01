@@ -174,8 +174,8 @@ $table = $wpdb->prefix . 'taxmod_settings';
 $keptPost = $_POST;
 
 foreach ([
-    [Taxmod\Core\Model\SettingKey::Persistent, '0'],
-    [Taxmod\Core\Model\SettingKey::Persistent, '1'],
+    // ⚠️ *`persistent` stand hier bis 2026-09-01 und ist mit [D-538] ersatzlos gefallen — die
+    // Relationsart sagt es. `read_only` bleibt der Schalter, der einer ist ([D-461]).*
     [Taxmod\Core\Model\SettingKey::ReadOnly, '1'],
     [Taxmod\Core\Model\SettingKey::ReadOnly, '0'],
     // ⚠️ *`hide` stand hier bis 2026-08-28 und ist seit [D-457] eine Spalte, kein Setting.

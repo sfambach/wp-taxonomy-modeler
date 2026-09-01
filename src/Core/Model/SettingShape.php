@@ -29,7 +29,7 @@ namespace Taxmod\Core\Model;
  */
 enum SettingShape
 {
-    /** True or false — `hide`, `read_only`, `persistent`. *`mandatory` was here until [D-405].* */
+    /** True or false — `read_only`. *`mandatory` fell with [D-405], `hide` became a column with [D-457], `persistent` fell with [D-538].* */
     case Switch;
 
     /** A whole number of its own, independent of whatever is being configured. */

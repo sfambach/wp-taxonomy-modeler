@@ -180,7 +180,15 @@ enum SettingKey: string
      * — *at model level there are no values, only defaults* — so a non-persistent attribute's value
      * is its `default`, which is what a default has always been.
      */
-    case Persistent = 'persistent';
+    // ⚠️ **`Persistent` stand hier bis 2026-09-01 und ist mit [D-538](../../../docs/NewConcept/90-decision-log.md)
+    // ersatzlos gefallen.** *Der Eigentümer hat es selbst hergeleitet: «ich glaube nämlich eigentlich,
+    // dass diese nicht persistenten Datensätze alles eigentlich Settings sind … wenn der Benutzer was
+    // eingibt in einen Knoten, der Settings und Felder hat, dann werden für den Benutzer ja nur die
+    // Felder gespeichert und nicht die Settings, weil die Settings ja Eigenschaften des Modells sind.»*
+    // **Dass ein Wert nicht im Benutzerdatensatz landet, sagt seit [D-526] die Relationsart.**
+    // *Gemessen am 2026-09-01, bevor der Schlüssel fiel: **null Zeilen** in der Tabelle, **keine einzige
+    // Verzweigung** im Code, die ihn las — geschrieben wurde er an genau einer Stelle und von vier
+    // Prüfungen behauptet. Die Kante, die ihn trug (`exponent`, 4654), ist bereits `kind = setting`.*
 
     // ⚠️ **`order` used to be here and is gone** ([D-407](../../../docs/NewConcept/90-decision-log.md)).
     // The owner: *if `order` is not used then remove it.* **It was not used**: nothing in
@@ -245,8 +253,7 @@ enum SettingKey: string
     public function shape(): SettingShape
     {
         return match ($this) {
-            self::ReadOnly,
-            self::Persistent                           => SettingShape::Switch,
+            self::ReadOnly                             => SettingShape::Switch,
             self::Factor, self::Offset                 => SettingShape::Exact,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter,
@@ -292,7 +299,6 @@ enum SettingKey: string
     {
         return match ($this) {
             // ⚠️ *`true`, and it is the one that went wrong* ([D-377](../../../docs/NewConcept/90-decision-log.md)).
-            self::Persistent   => TypedValue::ofBool(true),
             self::ReadOnly     => TypedValue::ofBool(false),
             self::Multiplicity => TypedValue::ofText(Multiplicity::standard()->value),
             // ⚠️ **Nothing, and that is an answer.** A range, a factor or a renderer has no meaning

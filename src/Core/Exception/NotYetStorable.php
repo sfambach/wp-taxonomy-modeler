@@ -72,7 +72,10 @@ final class NotYetStorable extends DomainError
     public static function thatFieldKeepsNothing(string $attribute): self
     {
         return new self(sprintf(
-            '«%s» is not persistent — its value lives as a default and is read, never written.',
+            // ⚠️ *Wortlaut nachgezogen am 2026-09-01: «not persistent» war das Vokabular von
+            // [D-538]s Vorgänger. Die Kante ist eine **Einstellung** — das ist der Grund, und
+            // `keepsValues()` fragt genau das.*
+            '«%s» is a setting, not a field — its value lives as a default and is read, never written.',
             $attribute
         ));
     }

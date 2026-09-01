@@ -139,9 +139,12 @@ check('  · read_only came along', ownValue($child->id, SettingKey::ReadOnly->va
 // at all ([D-457]), so there is no row for it to materialise and no declared default on the
 // installation identity. `persistent` and `read_only` stay settings and stay in the list ([D-460],
 // [D-461]) — only `hide` had a second meaning nobody asked for.*
-foreach ([SettingKey::Persistent] as $key) {
-    check("  · {$key->value} is a row rather than a resolution", ownValue($child->id, $key->value) !== null, 'missing');
-}
+// ⚠️ **`persistent` verliess diese Liste am 2026-09-01, und die Prüfung folgt der Konzeptänderung**
+// ([D-538](../../docs/NewConcept/90-decision-log.md), ausgeführt): *«`persistent` fällt ersatzlos.
+// Dass ein Wert nicht im Benutzerdatensatz landet, ist dasselbe wie «die Kante ist eine
+// Einstellung» — und das sagt seit [D-526] die Relationsart.»* **Die Liste ist damit leer**, und der
+// Block daneben — dass `multiplicity` **nicht** auf dem Knoten landet — trägt die Aussage allein.
+// *Das Ändern dieser Prüfung ist der sichtbare Teil jener Konzeptänderung ([`PR-9`](../../CLAUDE.md)).*
 
 // ⚠️ **The counter-check that gives the block its meaning**: `multiplicity` is edge-only, so it must
 // **not** land on a node. *Without this, a materialiser that copied everything blindly would pass.*
