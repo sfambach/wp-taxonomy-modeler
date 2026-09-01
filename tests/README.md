@@ -38,6 +38,7 @@ as the whole net.*
 | `rules-index` | that [`02-rules-index.md`](../docs/NewConcept/02-rules-index.md) still lists **every** rule the project has — it goes red the moment a rule is introduced without appearing there |
 | `concept-drift` | that a **model document** never changes without a reason standing as a decision ([`PR-2`](../CLAUDE.md), [D-565](../docs/NewConcept/90-decision-log.md)) — either the decision log changes with it, or the new lines name an existing decision |
 | `confirmed-quote` | that a decision calling itself **confirmed** actually carries a sentence of the owner's ([D-571](../docs/NewConcept/90-decision-log.md)) — otherwise it is `INFERRED` and needs his yes |
+| `always-on` | that what must be read **before every task** — `CLAUDE.md`, the working model, `AGENTS.md` — stays under its measured ceiling ([D-573](../docs/NewConcept/90-decision-log.md)). *The previous rule set died at 82 KB, «most of it always-on». Today: 42 KB.* |
 
 ⚠️ **`concept-drift-check` belongs to a rule of the owner's, and the rule replaced a term of mine.**
 *He rejected «locked» on 2026-09-01: «ich wollte nie Sachen locken … es gibt nur Konzept ist fertig

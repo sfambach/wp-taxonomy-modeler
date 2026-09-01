@@ -75,3 +75,21 @@ Vergleich um, und jedes Datum wird dabei gleich `'0'`.** Nachgemessen war keine 
 getrennt zählen. Und der allgemeine Teil: **ein Test, der für einen Spaltentyp gebaut ist, gilt nicht
 für alle** — die Zahl «verschiedene Werte» hätte den Widerspruch sofort gezeigt und tat es auch,
 sobald jemand hinsah.
+
+---
+
+## `git checkout <datei>` wirft nicht committete Arbeit weg
+
+**Kosten: eine halbe Stunde Umbau an `CLAUDE.md`, am 2026-09-01, durch mich selbst.**
+
+Ein Wächter sollte gegengeprüft werden: eine Datei künstlich aufblähen, sehen, ob er rot wird, dann
+zurücksetzen. Das Zurücksetzen war `git checkout CLAUDE.md` — **und die Datei enthielt eine noch
+nicht committete Änderung.** Der Wächter hatte richtig gemeldet, die Gegenprobe war richtig gedacht,
+und trotzdem war die Arbeit weg.
+
+**Was hilft:** vor einer Gegenprobe, die eine Datei verändert, eine Kopie in den Arbeitsordner legen
+und **daraus** zurückstellen, nicht aus git. Oder die Gegenprobe an einer Wegwerfdatei führen statt
+an der echten.
+
+⚠️ *Das allgemeine Muster: **ein Rückgängig, das weiter reicht als die Änderung.** `git checkout`
+kennt nur den letzten Commit, nicht die letzte Absicht.*
