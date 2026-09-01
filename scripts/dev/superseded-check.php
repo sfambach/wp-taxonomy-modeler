@@ -60,8 +60,13 @@
  * nennt `D-020`, **weil ihre Zurücknahme der Anlass der Entscheidung ist**: `AR-2` stand auf einer
  * zurückgenommenen Entscheidung, und genau das begründet, warum eine Messung als Grundlage taugt.
  * Die Zeile ohne diesen Verweis wäre unbelegt.*
+ *
+ * ⚠️ **Angehoben auf 88 am 2026-09-01, dritter Grund.** *[D-577](../../docs/NewConcept/90-decision-log.md)
+ * nennt `D-133`, **weil dessen Flachklopfen der ganze Grund für den Pfad war**: «required by D-133's
+ * flattening». Ohne den Verweis liesse sich nicht erklären, warum der Pfad je da war und warum er
+ * ersatzlos fällt. Erzählung, nicht Berufung — der Fall, den der Kopf dieser Datei beschreibt.*
  */
-const HINGENOMMEN = 87;
+const HINGENOMMEN = 88;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 

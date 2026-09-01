@@ -134,3 +134,43 @@ Beim Prüfen des dreispaltigen Schlüssels gegen die Daten: **ohne `type` sind e
 
 ⚠️ *Meine Zusage «zu bereinigen gibt es nichts» war vorschnell. Sie stand auf der Messung ohne `type`
 und ich hatte sie nicht mit `type` wiederholt, bevor ich sie aussprach.*
+
+
+---
+
+## 2026-09-01 · Herleitungen aus `package.md`
+
+*Nach [`arbeitsmodell.md`](../../arbeitsmodell.md) §4 gehoert die Herleitung in die Historie. Die
+folgenden Absaetze standen in `package.md` und haben es ueber die Decke gebracht.*
+
+⚠️ **Zwei Listen, nicht eine.** *Die Kinder eines Knotens im Baum werden 0, 1, 2 … durchgezählt, und
+seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** Sechs Knoten haben
+heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
+genau dort überschneiden sich die Zahlen.*
+
+⚠️ **Eine echte Doppelung bleibt und muss vor dem Schlüssel weg** — *gemessen: ohne `relation_type` sind es **8**
+Verletzungen, mit `relation_type` genau **eine**. Knoten 55659 «render with label» hat **zwei
+Einstellungskanten auf Stelle 0**: `label_role` und `with_label`. **Ich hatte vorschnell gesagt, es
+gebe nichts zu bereinigen — das war falsch.** Siehe [`tasks.md`](tasks.md) TASK-012.*
+
+⚠️ **`sort_order` und nicht `order`** — *`order` ist ein reserviertes SQL-Wort und bräuchte in jeder
+Abfrage Backticks; wer sie einmal vergisst, merkt es erst zur Laufzeit. Gegengeprüft am 2026-09-01:
+ohne Backticks ist jede Abfrage ein Syntaxfehler.*
+
+⚠️ **Seine Vermutung über den heutigen Code ist bestätigt, gemessen:** *`node_version` wird
+geschrieben, zurückgelesen und auf dem Bildschirm als «Version» angezeigt — **aber nirgends
+verglichen.** Keine einzige Verzweigung hängt daran. Gemessen sind **29 von 209** Datensätzen älter
+als die heutige Version ihres Knotens; keiner ist neuer.*
+
+⚠️ **Gemessen: im Änderungsbuch gibt es null Einträge mit `owner_kind = 'record'`.** *Es
+protokolliert Knoten (17 608) und Kanten (5 964), **Datensätze nicht als eigene Art**. Wird die
+Spalte jetzt gestrichen, ist die Entstehungszeit weg — das Log kann sie nicht übernehmen, weil es
+sie nie geführt hat.*
+
+⚠️ **Bei einer Komposition ist ein verwaister Datensatz ein Fehler.** *Ein Teil kann nicht ohne sein
+Ganzes bestehen. Zeigt niemand mehr auf `#3`, ist das kein gültiger Zustand — **und die Struktur
+verhindert es nicht, also muss eine Prüfung es finden.***
+
+⚠️ *Der Unterschied zwischen **Komposition** und **Aggregation** ist allein, **ob zwei Datensätze auf
+denselben zeigen dürfen.** Die Speicherung muss dafür nichts anderes können — es sagt
+`relation_type`.*

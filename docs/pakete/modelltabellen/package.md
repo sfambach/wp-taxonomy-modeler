@@ -7,6 +7,21 @@
 
 ---
 
+## 0 · Stand
+
+**`nodes` und `relations` sind fertig** ([D-578](../../NewConcept/90-decision-log.md)) — sie werden
+umgesetzt, siehe [`tasks.md`](tasks.md). *Kein Lock: veraltet später etwas, wird es mit Grund
+ersetzt ([D-565](../../NewConcept/90-decision-log.md)).*
+
+**Die Speicherform gilt für alle Kantenarten.** *Vererbung, Komposition, Aggregation, Einstellung —
+**es gibt keine zweite Ablage für eine bestimmte Art.** Ein Wert an einer Kante ist eine Zeile in
+`relation_records`; was die Kante ist, sagt `relation_type`, nicht die Ablage.*
+
+**Noch offen:** `labels`, `changelog` (im Paket [`aenderungstabellen/`](../aenderungstabellen/package.md)),
+und ob die drei letzten `settings`-Zeilen umziehen oder neu eingegeben werden.
+
+---
+
 ## 1 · Zweck
 
 Die vier Tabellen, die das Modell tragen — **Knoten, Kante, Knoten-Datensatz, Kanten-Datensatz** —
@@ -92,24 +107,10 @@ Code fragen nur «ist es Vererbung?».
 und je `relation_type`** — der Knoten in `from` ist der besitzende: bei einem Feld der Knoten, der es hat,
 bei Vererbung der Elternknoten.
 
-⚠️ **Zwei Listen, nicht eine.** *Die Kinder eines Knotens im Baum werden 0, 1, 2 … durchgezählt, und
-seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** Sechs Knoten haben
-heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
-genau dort überschneiden sich die Zahlen.*
-
 **Der eindeutige Schlüssel geht deshalb über drei Spalten: `(from_node_id, relation_type, sort_order)`.**
 Er dient zugleich als **Suchindex** — gefiltert wird nach `from_node_id`, oft zusätzlich nach `relation_type`,
 und `sort_order` ist die Sortierspalte am Ende. **Damit wird der heutige Einzelindex auf `from_id`
 überflüssig:** ein zusammengesetzter Index mit `from_node_id` an erster Stelle deckt ihn mit ab.
-
-⚠️ **Eine echte Doppelung bleibt und muss vor dem Schlüssel weg** — *gemessen: ohne `relation_type` sind es **8**
-Verletzungen, mit `relation_type` genau **eine**. Knoten 55659 «render with label» hat **zwei
-Einstellungskanten auf Stelle 0**: `label_role` und `with_label`. **Ich hatte vorschnell gesagt, es
-gebe nichts zu bereinigen — das war falsch.** Siehe [`tasks.md`](tasks.md) TASK-012.*
-
-⚠️ **`sort_order` und nicht `order`** — *`order` ist ein reserviertes SQL-Wort und bräuchte in jeder
-Abfrage Backticks; wer sie einmal vergisst, merkt es erst zur Laufzeit. Gegengeprüft am 2026-09-01:
-ohne Backticks ist jede Abfrage ein Syntaxfehler.*
 
 ### 4.3 · Kein `parked_by_group_id` mehr — Parken heisst wandern
 
@@ -152,20 +153,10 @@ Version — Konflikt muss manuell aufgelöst werden, somit kann dieser Record ni
 werden. Gibt es keinen Konflikt, müsste die `node_version` upgedatet werden. **Das können wir
 erstmal so lassen.**»*
 
-⚠️ **Seine Vermutung über den heutigen Code ist bestätigt, gemessen:** *`node_version` wird
-geschrieben, zurückgelesen und auf dem Bildschirm als «Version» angezeigt — **aber nirgends
-verglichen.** Keine einzige Verzweigung hängt daran. Gemessen sind **29 von 209** Datensätzen älter
-als die heutige Version ihres Knotens; keiner ist neuer.*
-
 ### 5.2 · `created_at` fällt — aber nicht sofort
 
 *Der Eigentümer: «das `created_at` ist eigentlich was fürs Log, brauchen wir glaube ich nicht mehr
 im `node_record`.»* **Richtig — nur führt das Log es heute nicht.**
-
-⚠️ **Gemessen: im Änderungsbuch gibt es null Einträge mit `owner_kind = 'record'`.** *Es
-protokolliert Knoten (17 608) und Kanten (5 964), **Datensätze nicht als eigene Art**. Wird die
-Spalte jetzt gestrichen, ist die Entstehungszeit weg — das Log kann sie nicht übernehmen, weil es
-sie nie geführt hat.*
 
 **Reihenfolge nach `PR-12`: erst führt das Änderungsbuch Datensätze, dann fällt die Spalte.**
 → [`tasks.md`](tasks.md) TASK-015
@@ -174,37 +165,60 @@ sie nie geführt hat.*
 
 ## 5a · `relation_records` — der Kanten-Datensatz
 
-**Die Tabellen heissen künftig wie der Wortschatz:** `records` → **`node_records`**,
-`record_values` → **`relation_records`**.
-
-*Der Eigentümer: «records → node_records, record_values → relation_records».*
-
-⚠️ **Die Zuordnung ist gemessen und ausnahmslos:** *`records.node_id` zeigt in **209 von 209**
-Fällen auf einen Knoten, `record_values.edge_id` in **183 von 183** auf eine Kante,
-`record_values.record_id` in **183 von 183** auf einen Datensatz. Ausgeschrieben liest sich eine
-Zeile genau so: **Knoten «Condensator» · Kante «Value» (Typ Decimal) = 110.***
-
-**Daraus folgen zwei Spaltennamen** — nach derselben Regel wie `from_node_id` (§6):
-
-| heute | künftig | |
+| Spalte | | |
 |---|---|---|
-| `record_values.record_id` | **`node_record_id`** | zeigt auf `node_records` |
-| `record_values.edge_id` | **`relation_id`** | zeigt auf `relations` |
+| `id` | Schlüssel, eigener Id-Raum | |
+| `version` | für die Schattentabelle | |
+| `node_record_id` | zu **welcher Ausprägung** der Wert gehört | war `record_id` |
+| `relation_id` | **welches Feld** | war `edge_id` |
+| `sort_order` | Reihenfolge **innerhalb eines Feldes**, erste Stelle `0` | war `position` |
+| `value_int` · `value_decimal` · `value_text` · `value_date` | der Wert | |
+| `value_node_record_id` | **oder** ein Verweis auf eine eingebettete Ausprägung | Verschachtelung |
+| `value_node_id` | **oder** ein Verweis auf einen Knoten | Knotenverweis |
+| ~~`path`~~ · ~~`locale`~~ | gestrichen | |
 
-⚠️ **«relation» bleibt, «edge» wird abgelöst** ([D-576](../../NewConcept/90-decision-log.md)).
-*Seine Frage entschied es: «gibt es eine `edge`, die nicht `relation` ist?» — **nein.** Der
-Wortschatz sagt es seit jeher: «**`Relation` | Kante, Verbindung** — a directed **edge** from one
-node to another. **One construct**.» **«Relation» ist der Name, «edge» die Beschreibung.** Und der
-Code bestätigt es: jede typisierte `$edge`-Variable ist ein `Relation`, eine Klasse `Edge` gibt es
-nicht.*
+**Schlüssel: `(node_record_id, relation_id, sort_order)`** — dieselbe Form wie bei der Kante, eine
+Etage tiefer.
 
-⚠️ *Die **699 Bezeichner** im Quelltext ziehen später nach, als eigene Aufgabe — nicht in derselben
-Bewegung wie eine Tabellenbenennung. → [`tasks.md`](tasks.md) TASK-016*
+### 5a.1 · Wie eine Verschachtelung aussieht
 
-**Die übrigen Spalten der beiden Tabellen sind noch nicht überarbeitet**, ebenso `labels`. Bis dahin
-gilt [`review-tabellen.md`](../../review-tabellen.md) als **Befund, nicht als Vorgabe** — dort steht
-unter anderem, dass `relation_records.value_ref` auf **Knoten und Datensätze zugleich** zeigt und
-`position` in **0 von 183** Zeilen gefüllt ist.
+Modell: `Kunde` hat `vorname`, `name` und `Adresse` (`0..*`); `Adresse` hat `Strasse` und `Nr`.
+
+```text
+node_records
+  #1  node_id = Kunde        #3  node_id = Adresse
+  #2  node_id = Kunde        #5  node_id = Adresse
+                             #7  node_id = Adresse
+
+relation_records
+  node_record_id   relation   sort_order   Wert / Verweis
+  #1               vorname    0            «Anna»
+  #1               name       0            «Müller»
+  #1               Adresse    0            → #3
+  #1               Adresse    1            → #5
+  #3               Strasse    0            «Hauptstr.»
+  #3               Nr         0            «12»
+  #5               Strasse    0            «Bahnhofstr.»
+  #5               Nr         0            «5»
+  #2               vorname    0            «Peter»
+  #2               name       0            «Schmidt»
+  #2               Adresse    0            → #7
+```
+
+**Jede Verbindung ist genau eine Zeile, und jede steht genau einmal da.** Kein Pfad, keine `node_id`
+auf der Wertzeile, kein Elternzeiger.
+
+### 5a.2 · `sort_order` gibt es auf zwei Ebenen
+
+An der **Kante** ordnet es die Felder **im Modell** — `vorname` vor `name` vor `Adresse`.
+Am **Wert** ordnet es die Werte **innerhalb eines Feldes** — erste Adresse, zweite Adresse.
+**Gleiches Wort, gleiche Idee, verschiedene Ebene.**
+
+### 5a.3 · Was die Struktur nicht verhindert
+
+**Die Verbindung steht nur in eine Richtung** — vom Eltern hinunter. Wer wissen will, zu wem
+Adresse `#3` gehört, sucht über die Verweisspalte; **ein Index darauf macht das billig.** Ein
+Elternzeiger am Kind wäre eine zweite Heimat und kann auseinanderlaufen.
 
 ---
 
