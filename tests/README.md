@@ -36,6 +36,17 @@ as the whole net.*
 | `journal-address` | that a journal entry carries its **address** and not only its value — key, path, type and value, readable back out of the column ([D-427](../docs/NewConcept/90-decision-log.md)) — **and that all 10918 rows already in the table still parse**, with the reader it replaced compared against on every one of the 2904 in the old order |
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
 | `rules-index` | that [`02-rules-index.md`](../docs/NewConcept/02-rules-index.md) still lists **every** rule the project has — it goes red the moment a rule is introduced without appearing there |
+| `concept-drift` | that a **model document** never changes without a reason standing as a decision ([`PR-2`](../CLAUDE.md), [D-565](../docs/NewConcept/90-decision-log.md)) — either the decision log changes with it, or the new lines name an existing decision |
+
+⚠️ **`concept-drift-check` belongs to a rule of the owner's, and the rule replaced a term of mine.**
+*He rejected «locked» on 2026-09-01: «ich wollte nie Sachen locken … es gibt nur Konzept ist fertig
+und kann jetzt umgesetzt werden. Oder Konzept ist veraltet und wird durch neues ersetzt», plus
+«Modelle die beschlossen sind nicht einfach ohne Grund aufgeweicht werden».* **What it lets through is
+measured, not guessed:** *of the last 80 commits, 12 changed a model document and **one** did so
+without touching the decision log — and that one's added lines **name** `D-183` and `D-522`, because
+the decision had landed a commit earlier. Hence two acceptable proofs instead of one. Without the
+second, the guard would have been wrong in the only historical case it had — and a guard that flags
+correct work gets switched off.*
 
 ⚠️ **`rules-index-check` exists because the owner could not hand the rule set over.** *His words on
 2026-09-01: «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält, deswegen

@@ -6,7 +6,7 @@ steht in der Datei, auf die verwiesen wird, und nur dort wird sie geändert.
 
 ⚠️ **Warum es dieses Verzeichnis gibt.** *Der Eigentümer konnte den Regelsatz nicht übergeben:
 «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält». Gemessen war das
-Chaos nicht Altlast — **306 Regeln in 16 Räumen, die meisten davon lebendig zitiert** —,
+Chaos nicht Altlast — **307 Regeln in 16 Räumen, die meisten davon lebendig zitiert** —,
 sondern **Streuung**: sie stehen in 15 verschiedenen Dateien, und **keine Stelle listete sie auf.**
 Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
@@ -15,7 +15,7 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
 | Raum | Wofür | Regeln |
 |---|---|---|
-| **PR** | Prozess — wie gearbeitet wird | 13 |
+| **PR** | Prozess — wie gearbeitet wird | 14 |
 | **CD** | Code — wie geschrieben wird | 12 |
 | **AR** | Architektur — was gebaut wird (braucht je eine Entscheidung) | 2 |
 | **DC** | Dokumentation im Code | 5 |
@@ -31,7 +31,7 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 | **B** | Standardbaum — Inhalt | 8 |
 | **S** | Speicher | 1 |
 | **Q** | Aus der Altlast übernommene Frage | 1 |
-| | **Summe** | **306** |
+| | **Summe** | **307** |
 
 Bei **4** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
 vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
@@ -44,17 +44,18 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **PR1** | Source of truth is docs/NewConcept/. Nothing else. docs/legacy/ is a frozen quarry — quote it, never inherit from it. | [CLAUDE.md:32](../../CLAUDE.md) | 10 |
 | **PR1b** | The legacy is harvested and closed. Documentation and code were swept on 2026-08-23 and every finding is placed in 03 and 04 — decided, already cov… | [CLAUDE.md:33](../../CLAUDE.md) | 2 |
-| **PR2** | 10-domain-core.md is locked since 2026-08-24 (D-338) — production code is allowed. What replaces the gate: build what the document says, and when i… | [CLAUDE.md:34](../../CLAUDE.md) | 4 |
+| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:34](../../CLAUDE.md) | 6 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:35](../../CLAUDE.md) | 14 |
 | **PR4** | Unclear stays unclear. Anything undecided becomes an entry in 91-open-questions.md. Never invent an answer to fill a gap, and never pick one silent… | [CLAUDE.md:36](../../CLAUDE.md) | 44 |
 | **PR5** | The concept is written from the statements of the owner first. Legacy is harvested afterwards, as a cross-check, through a sheet in docs/NewConcept… | [CLAUDE.md:37](../../CLAUDE.md) | **nie** |
-| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:38](../../CLAUDE.md) | **nie** |
+| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:38](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:39](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:40](../../CLAUDE.md) | **nie** |
-| **PR9** | Both test runs are green before anything is committed (D-342) — the core run under PHPUnit, which loads no WordPress, and the boundary run against … | [CLAUDE.md:41](../../CLAUDE.md) | 4 |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:41](../../CLAUDE.md) | 5 |
 | **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:43](../../CLAUDE.md) | 15 |
 | **PR11** | Never write the result of a text transformation back to a file unguarded. Check that a replacement actually matched before saving, and prefer the e… | [CLAUDE.md:44](../../CLAUDE.md) | 2 |
 | **PR12** | When data moves, the reader moves first — and a check must exist that would go red if only one of them did. The order is guard, reader, data. This … | [CLAUDE.md:45](../../CLAUDE.md) | 7 |
+| **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
 
 ## CD — Code — wie geschrieben wird
 

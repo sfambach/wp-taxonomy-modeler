@@ -40,10 +40,17 @@
 /**
  * Wieviele Verweise auf zurückgenommene Entscheidungen hingenommen werden.
  *
- * ⚠️ *Gemessen am 2026-09-01: **108**. Diese Zahl ist die Schuld, nicht das Ziel — sie darf sinken und
- * nie steigen. Wer sie anhebt, schreibt daneben, warum.*
+ * ⚠️ *Gemessen am 2026-09-01: erst **108**, nach der symmetrischen Ausnahme **85**. Diese Zahl ist
+ * die Schuld, nicht das Ziel — sie darf sinken und nie steigen. Wer sie anhebt, schreibt daneben,
+ * warum.*
+ *
+ * ⚠️ **Der Sprung von 108 auf 85 ist kein Aufräumen, sondern eine genauere Frage.** *24 der
+ * gemeldeten Verweise waren Nachfolgerinnen, die ihre Vorgängerin nennen — **in beiden Richtungen
+ * dokumentiert**, also gerade der Beleg dafür, dass die Ablösung nachvollziehbar ist. Sie wurden
+ * gemeldet, weil die Ausnahme nur die zurückgenommene Zeile übersprang, nicht die ablösende. Die 85
+ * übrigen sind unverändert Berufungen ohne Gegenbeleg.*
  */
-const HINGENOMMEN = 108;
+const HINGENOMMEN = 85;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 
@@ -108,9 +115,21 @@ foreach ($entscheidungen as $id => $zeile) {
     }
 
     foreach (array_keys($ueberholt) as $alt) {
-        if (str_contains($zeile, '[' . $alt . ']')) {
-            $verweise[$id][] = $alt;
+        if (! str_contains($zeile, '[' . $alt . ']')) {
+            continue;
         }
+
+        // ⚠️ **Die Nachfolgerin darf ihre Vorgängerin nennen — sie muss, sonst wäre die Ablösung
+        // nicht nachvollziehbar.** *Die Ausnahme oben griff nur in einer Richtung: die
+        // zurückgenommene Zeile wurde übersprungen, die ablösende nicht. Am 2026-09-01 stieg die
+        // Zahl deswegen von 108 auf 109, als `D-564` die von ihr abgelöste `D-342` nannte —
+        // **ein Wächter, der die richtige Arbeit meldet, wird abgeschaltet.** Der Beleg ist
+        // gegenseitig und deshalb prüfbar: die alte Zeile nennt die neue als ihren Nachfolger.*
+        if (str_contains($entscheidungen[$alt] ?? '', '[' . $id . ']')) {
+            continue;
+        }
+
+        $verweise[$id][] = $alt;
     }
 }
 
