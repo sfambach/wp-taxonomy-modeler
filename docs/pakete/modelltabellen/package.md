@@ -137,7 +137,7 @@ Löschen bleibt zweistufig — **parken, dann endgültig entfernen**
 | `version` | für die Schattentabelle — **steht künftig direkt unter `id`** | |
 | `node_id` | welcher Knoten — indiziert | |
 | `node_version` | gegen **welche Version des Knotens** der Datensatz entstand | |
-| `type` | `default` oder `user` — indiziert | war `kind` |
+| `record_type` | `default` oder `user` — indiziert | war `kind` |
 | ~~`created_at`~~ | **fällt — gehört ins Änderungsbuch** | siehe unten |
 
 **Die Paarung `node_id` + `node_version` bleibt: ein Datensatz gehört immer zu einer bestimmten

@@ -176,7 +176,7 @@ deutsches Wort ist **Kante** — was näher an «edge» liegt. **Zwei Wörter f�
 `CD-9`; welches bleibt, ist offen.** Erst die Wortwahl, dann die Spaltennamen.*
 
 ```text
-[ ] TASK-015  node_records: kind -> type, version unter id, created_at faellt
+[ ] TASK-015  node_records: kind -> record_type, version unter id, created_at faellt
 ```
 
 *Der Eigentümer: «`kind` → `type` umbenennen, `version` würde ich nach oben unter `id` packen. Das
@@ -186,7 +186,9 @@ deutsches Wort ist **Kante** — was näher an «edge» liegt. **Zwei Wörter f�
 mit `owner_kind = 'record'`** — das Log protokolliert Knoten und Kanten, Datensätze nicht als eigene
 Art. **Erst der neue Leser, dann die Daten** (`PR-12`).*
 
-⚠️ *Offen: heisst die Spalte `type` oder `record_type`? Bei der Kante wurde `relation_type` gewählt.*
+⚠️ *Die Frage «`type` oder `record_type`» ist entschieden: **`record_type`.** Der Eigentümer:
+«Records — gleiche Handhabung wie Knoten und Kanten.» Damit heissen alle drei qualifiziert:
+`field_type`, `relation_type`, `record_type`.*
 
 ```text
 [?] node_version bei Versionskonflikt — bewusst zurückgestellt
