@@ -127,15 +127,16 @@ Gleiche Bewegung wie TASK-007 am Knoten. **Vier Klassen braucht es nicht:** der 
 Stellen auf die Kantenart, 15 davon fragen nur «ist es Vererbung?».
 
 ```text
-[ ] TASK-012  position in order umbenennen; 17 doppelte Reihenfolgen bereinigen
+[ ] TASK-012  position in order umbenennen, Schluessel (from_node_id, type, order)
 ```
 
-**Entschieden: die erste Stelle ist `0`** — damit ist die Zweideutigkeit der Spalte weg.
-*Der Eigentümer: «Position würde ich eher Order nennen. Und die erste Position ist immer null.»*
+**Entschieden: die erste Stelle ist `0`, gezählt je `from_node_id` und je `type`.**
+*Der Eigentümer: «Position würde ich eher Order nennen. Und die erste Position ist immer null … die
+Sort Order entsteht pro Knoten, und zwar dem From-Knoten.»*
 
-⚠️ **Dabei kam eine andere Mehrdeutigkeit zum Vorschein: 17 Kanten teilen sich eine Stelle mit einem
-Geschwister**, in 8 Gruppen — Knoten 55659 hat drei Kinder auf `0`. **Dort ist die Reihenfolge nicht
-definiert.** Entweder bereinigen oder einen eindeutigen Schlüssel auf `(from_node_id, order)` setzen.
+⚠️ **Meine gemeldeten «17 doppelten Reihenfolgen» waren keine.** *Alle 8 Gruppen mischen
+Kantenarten — Kind im Baum gegen Feld des Knotens. **Nicht eine Doppelung liegt innerhalb derselben
+Art.** Es sind zwei Listen in einer Spalte, und beide sind für sich in Ordnung. **Mein Vorschlag
+eines Schlüssels auf `(from_node_id, order)` hätte 17 gültige Zeilen abgelehnt.***
 
-⚠️ **Offen: `order` ist ein reserviertes SQL-Wort.** *Gegengeprüft — ohne Backticks ist jede Abfrage
-ein Syntaxfehler. `sort_order` wäre dasselbe Wort ohne die Falle.*
+**Zu bereinigen gibt es nichts.** Zu bauen ist die Umbenennung und der Schlüssel über drei Spalten.

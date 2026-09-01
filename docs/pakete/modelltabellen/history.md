@@ -93,3 +93,23 @@ Gruppen-Id und kein Schalter. Gemessen ist genau eine Kante geparkt.
 Beim Entscheidungsbuch waren es 64 %, in `CLAUDE.md` 41 %. **Dasselbe Muster zum dritten Mal an einem
 Tag.** Die Herleitungen sind hierher gezogen; `package.md` steht danach bei 7,0 KB, mit denselben
 Entscheidungen.
+
+### Nachtrag: die «17 doppelten Reihenfolgen» waren keine
+
+Seine Frage machte es sichtbar: *«wenn ich im Knoten ein Attribut hinzufüge, wo steht dann der Knoten,
+in `from` oder in `to`?»*
+
+**Gemessen: der besitzende Knoten steht immer in `from`.** Bei einem Feld ist es der Knoten, der es
+hat — «Value» von `Passiv` nach `Decimal`. Bei Vererbung der Elternknoten — von `Data Types` nach
+`Integer`.
+
+**Damit löste sich der Befund auf: alle 8 Gruppen mit gleicher Stelle mischen Kantenarten**, ohne
+Ausnahme. `Passiv` hat auf Stelle 0 sein Kind `Resistor` **und** sein Feld `Value`. `Prefixes` hat auf
+Stelle 0 sein Kind `yotta` **und** seine Einstellung `exponent`.
+
+**Es sind zwei Listen in einer Spalte, und beide sind für sich lückenlos.** Sechs Knoten haben
+gleichzeitig Kinder und Felder — genau die sechs, in denen die Zahlen sich überschneiden.
+
+⚠️ **Mein Vorschlag war falsch.** *Ich wollte einen eindeutigen Schlüssel auf `(from_node_id, order)`;
+der hätte **17 gültige Zeilen abgelehnt.** Richtig ist `(from_node_id, type, order)`, und zu bereinigen
+gibt es nichts.*

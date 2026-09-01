@@ -87,20 +87,22 @@ Code fragen nur «ist es Vererbung?».
 | `multiplicity` | **sagt bei Vererbung nichts** — alle 127 auf `1..1` |
 | `hide` | **nur auf Vererbungskanten** — 6 Stück |
 
-### 4.2 · `order` — die Reihenfolge, und sie ist heute mehrdeutig
+### 4.2 · `order` — die Reihenfolge, je Knoten **und** je Kantenart
 
-**`position` heisst künftig `order`. Die erste Stelle ist `0`** — damit ist `0` ein Wert und kein
-«nicht gesetzt».
+**`position` heisst künftig `order`. Die erste Stelle ist `0`.** Gezählt wird **je `from_node_id`
+und je `type`** — der Knoten in `from` ist der besitzende: bei einem Feld der Knoten, der es hat,
+bei Vererbung der Elternknoten.
 
-⚠️ **Damit ist die Zweideutigkeit der Spalte behoben — aber eine andere aufgedeckt: 17 Kanten teilen
-sich eine Stelle mit einem Geschwister**, in 8 Gruppen. *Knoten 55659 hat **drei** Kinder auf `0`;
-Knoten 3636 hat zwei auf `0` und zwei auf `1`. **Dort ist die Reihenfolge nicht definiert.** Das
-verlangt entweder eine Bereinigung oder einen eindeutigen Schlüssel auf `(from_node_id, order)`.*
-→ TASK-012
+⚠️ **Zwei Listen, nicht eine.** *Die Kinder eines Knotens im Baum werden 0, 1, 2 … durchgezählt, und
+seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** Sechs Knoten haben
+heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
+genau dort überschneiden sich die Zahlen.*
 
-⚠️ **`order` ist ein reserviertes SQL-Wort** — *gegengeprüft: ohne Backticks ist jede Abfrage ein
-Syntaxfehler. **Jede Abfrage im Paket braucht `` `order` ``**, und wer es einmal vergisst, merkt es
-erst zur Laufzeit. `sort_order` wäre dasselbe Wort ohne die Falle — **noch nicht entschieden**.*
+**Der eindeutige Schlüssel ist deshalb `(from_node_id, type, order)`, nicht `(from_node_id, order)`.**
+→ [`history.md`](history.md)
+
+⚠️ *`order` ist ein reserviertes SQL-Wort und braucht überall Backticks. Der Eigentümer hat es so
+gewollt; die Alternative `sort_order` ist verworfen.*
 
 ### 4.3 · `parked_by_group_id` — der Papierkorb
 
