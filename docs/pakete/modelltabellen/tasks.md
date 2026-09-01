@@ -196,3 +196,16 @@ Art. **Erst der neue Leser, dann die Daten** (`PR-12`).*
 
 *«Das können wir erstmal so lassen.»* **Seine Vermutung ist bestätigt:** `node_version` wird
 geschrieben, angezeigt und **nirgends verglichen**. 29 von 209 Datensätzen sind älter als ihr Knoten.
+
+```text
+[ ] TASK-016  «edge» im Quelltext durch «relation» ersetzen
+```
+
+[D-576](../../NewConcept/90-decision-log.md). **Nicht Teil der Tabellenbenennung** — eigenes
+Arbeitsstück.
+
+**Gemessen: 699 Bezeichner in 26 Dateien**, dazu 381 Nennungen in Kommentaren. **Vier Dateien tragen
+79 %:** `ModelEditor` 180, `Rendering` 149, `NodesScreen` 123, `DataEntry` 98. Dazu `EdgeRecord` →
+`RelationRecord`.
+
+⚠️ *Kein Feldzug mit einem regulären Ausdruck — siehe [`bekannte-fallen.md`](../../bekannte-fallen.md).*

@@ -65,7 +65,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 14 |
 | **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 109 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 3 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 24 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 25 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:78](../../CLAUDE.md) | 2 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:79](../../CLAUDE.md) | 7 |

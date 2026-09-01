@@ -191,14 +191,15 @@ Zeile genau so: **Knoten «Condensator» · Kante «Value» (Typ Decimal) = 110.
 | `record_values.record_id` | **`node_record_id`** | zeigt auf `node_records` |
 | `record_values.edge_id` | **`relation_id`** | zeigt auf `relations` |
 
-⚠️ **«edge» und «relation» sind zwei Wörter für dieselbe Sache, und es ist offen, welches gewinnt.**
-*Gemessen im Quelltext: **«edge» 1080-mal, «relation» 407-mal** — fast dreimal so häufig. Die Tabelle
-heisst `relations` und die Klasse `Relation`, **der Code sagt aber überwiegend `edge`.** Zwei Wörter
-für eine Sache sind das, was [`CD-9`](../../../CLAUDE.md) verbietet — **welches bleibt, ist nicht
-entschieden.** Sein deutsches Wort ist **Kante**, was näher an «edge» liegt als an «relation».*
+⚠️ **«relation» bleibt, «edge» wird abgelöst** ([D-576](../../NewConcept/90-decision-log.md)).
+*Seine Frage entschied es: «gibt es eine `edge`, die nicht `relation` ist?» — **nein.** Der
+Wortschatz sagt es seit jeher: «**`Relation` | Kante, Verbindung** — a directed **edge** from one
+node to another. **One construct**.» **«Relation» ist der Name, «edge» die Beschreibung.** Und der
+Code bestätigt es: jede typisierte `$edge`-Variable ist ein `Relation`, eine Klasse `Edge` gibt es
+nicht.*
 
-⚠️ *Die Spaltennamen oben stehen deshalb unter Vorbehalt: `relation_id` folgt dem Tabellennamen,
-`edge_id` folgt dem Code. **Erst die Wortwahl, dann die Spalte.***
+⚠️ *Die **699 Bezeichner** im Quelltext ziehen später nach, als eigene Aufgabe — nicht in derselben
+Bewegung wie eine Tabellenbenennung. → [`tasks.md`](tasks.md) TASK-016*
 
 **Die übrigen Spalten der beiden Tabellen sind noch nicht überarbeitet**, ebenso `labels`. Bis dahin
 gilt [`review-tabellen.md`](../../review-tabellen.md) als **Befund, nicht als Vorgabe** — dort steht
