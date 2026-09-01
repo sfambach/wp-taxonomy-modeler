@@ -209,3 +209,18 @@ Arbeitsstück.
 `RelationRecord`.
 
 ⚠️ *Kein Feldzug mit einem regulären Ausdruck — siehe [`bekannte-fallen.md`](../../bekannte-fallen.md).*
+
+```text
+[ ] TASK-017  settings streichen — Tabelle und Code
+```
+
+[D-579](../../NewConcept/90-decision-log.md), auf sein Wort: *«settings bitte rausschmeissen»*, und
+zur Abwägung Umzug gegen Neueingabe: *«B»*.
+
+**Was mitgeht:** die Tabelle, `WpdbSettingRepository`, die Leser in `SettingsScreen`, die Einträge in
+`Schema` — und `path-check.php`, das eigens `settings.path` prüft.
+
+⚠️ **Drei Werte gehen verloren:** `label_role = symbol` an `prefix`, `prefix (Kopie)` und `einheit`,
+alle von `Einheitenwert`. **Bis `label_role` seinen neuen Ort hat (`OQ-134`), zeigt `Einheitenwert`
+den langen Namen statt des Zeichens** — «Kiloohm» statt «kΩ». Kein Fehler, umkehrbar, und bewusst in
+Kauf genommen.

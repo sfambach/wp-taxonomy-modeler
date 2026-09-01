@@ -18,7 +18,8 @@ ersetzt ([D-565](../../NewConcept/90-decision-log.md)).*
 `relation_records`; was die Kante ist, sagt `relation_type`, nicht die Ablage.*
 
 **Noch offen:** `labels`, `changelog` (im Paket [`aenderungstabellen/`](../aenderungstabellen/package.md)),
-und ob die drei letzten `settings`-Zeilen umziehen oder neu eingegeben werden.
+**`settings` ist gestrichen** ([D-579](../../NewConcept/90-decision-log.md)) — die drei letzten Werte
+werden neu eingegeben, sobald `label_role` seinen Ort hat.
 
 ---
 
