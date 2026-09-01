@@ -115,16 +115,44 @@ function knoten(string $name): ?\Taxmod\Core\Model\Node
 
 echo "\n== Welchen Renderer ein Knoten bekommt ==\n";
 
-// ⚠️ *Der erwartete Wert ist das, was am 2026-08-30 herauskam — festgenagelt, damit ein Umzug ihn
-// nicht unbemerkt verliert.*
-$erwartet = [
-    'Base units' => 'chooser-inline',
-    'Passiv'     => 'form',
-    'Integer'    => 'spinner',
-    'Dimension'  => 'node',
-    'Prefixes'   => 'chooser-dialog',
-    'Parts List' => 'form',
-];
+// ⚠️ **Hier standen bis zum 2026-09-01 festgenagelte Renderernamen, und das war der Fehler.**
+// *Die Absicht war richtig — «damit ein Umzug ihn nicht unbemerkt verliert» —, aber die Prüfung
+// konnte **«ein Umzug hat den Wert verloren»** nicht von **«der Eigentümer hat ihn geändert»**
+// unterscheiden. **Beides sah gleich aus.** Am 2026-09-01 stand «Base units» auf `chooser-inline`
+// und «Integer» auf `spinner`; gemessen in den Daten waren es `table` und `slider` — er hatte den
+// Wähler benutzt, den wir tags zuvor gebaut hatten. **Eine Prüfung, die einen benutzerveränderlichen
+// Wert festnagelt, wird rot, sobald jemand die Funktion benutzt.***
+//
+// ⚠️ **Die Zusage ist jetzt der Mechanismus statt des Werts, und sie ist strenger:** *was gespeichert
+// ist, wird auch gezeichnet — **egal was es ist.** Ein Umzug, der die Wahl verliert, fällt weiterhin
+// auf: die Auflösung liefert dann den Rückfall statt des gespeicherten Werts. Der gespeicherte Wert
+// wird dafür auf einem **zweiten, unabhängigen Weg** gelesen, direkt aus den Datensätzen — zwei Wege
+// zur selben Antwort sind der Grund, dass die Zusage etwas wiegt.*
+$erwartet = [];
+
+foreach (['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts List'] as $name) {
+    $k = knoten($name);
+
+    if ($k === null) {
+        $erwartet[$name] = null;
+
+        continue;
+    }
+
+    // Der gespeicherte Renderer, unabhängig von der Registratur gelesen.
+    $erwartet[$name] = $wpdb->get_var($wpdb->prepare(
+        'SELECT ziel.name
+           FROM ' . Schema::table('record_values') . ' aussen
+           JOIN ' . Schema::table('records') . ' satz ON satz.id = aussen.record_id
+           JOIN ' . Schema::table('record_values') . ' innen ON innen.record_id = aussen.value_ref
+           JOIN ' . Schema::table('relations') . ' kante ON kante.id = innen.edge_id AND kante.name = %s
+           JOIN ' . Schema::table('nodes') . ' ziel ON ziel.id = innen.value_ref
+          WHERE satz.node_id = %d
+          LIMIT 1',
+        'render',
+        $k->id
+    ));
+}
 
 foreach ($erwartet as $name => $soll) {
     $node = knoten($name);
@@ -141,8 +169,34 @@ foreach ($erwartet as $name => $soll) {
         Purpose::Edit
     );
 
-    check("«{$name}» zeichnet mit «{$soll}»", ($gewaehlt?->name() ?? null) === $soll, $gewaehlt?->name() ?? 'nichts');
+    if ($soll === null) {
+        // ⚠️ *Nichts gespeichert heisst Rückfall, und der muss sich als solcher zeigen (`R14b`) —
+        // nicht: die Prüfung sagt nichts.*
+        check("«{$name}» bekommt ohne gespeicherte Wahl einen Rückfall", $gewaehlt !== null, 'nichts');
+
+        continue;
+    }
+
+    check(
+        "«{$name}» zeichnet mit dem, was gespeichert ist — «{$soll}»",
+        ($gewaehlt?->name() ?? null) === $soll,
+        'gespeichert «' . $soll . '», gezeichnet «' . ($gewaehlt?->name() ?? 'nichts') . '»'
+    );
 }
+
+// ⚠️ **Die Gegensicherung, und ohne sie wäre die Lockerung oben ein Loch.** *Die Zusage «zeichnet,
+// was gespeichert ist» ist auch dann grün, wenn **nichts** gespeichert ist — dann greift der
+// Rückfallzweig. **Ein Umzug, der alle Wahlen verliert, käme damit durch**, und genau davor sollte
+// diese Prüfung schützen. Also wird zusätzlich gezählt, **wie viele der sechs überhaupt eine
+// gespeicherte Wahl haben.** Gemessen am 2026-09-01: **6 von 6.** Die Zahl darf steigen und nie
+// fallen — fällt sie, hat etwas eine Wahl verloren, und es ist gleichgültig welche.*
+$mitWahl = count(array_filter($erwartet, static fn ($x): bool => $x !== null));
+
+check(
+    'mindestens 6 der geprueften Knoten haben eine gespeicherte Wahl',
+    $mitWahl >= 6,
+    $mitWahl . ' statt 6 — eine Wahl ist verlorengegangen'
+);
 
 echo "\n== Und an einer Verwendungsstelle ==\n";
 

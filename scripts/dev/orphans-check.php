@@ -98,14 +98,26 @@ $allein = count($residue->nodesWithoutConnections());
 printf("  --   %d Werte ohne Kante, %d Knoten ohne Verbindungen (Cleanup-Seite)\n", $werte, $allein);
 
 // ⚠️ **Die Gegenpruefung, die den zwei oben erst Bedeutung gibt.** *Ohne sie waere eine Abfrage, die
-// versehentlich nichts findet, genauso gruen — und die Installationsidentitaet ist der eine Besitzer,
-// der garantiert keinen Knoten hat und trotzdem bleiben muss.*
-$declared = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$p}settings WHERE owner_id = %d", $installation));
+// versehentlich nichts findet, genauso gruen.*
+//
+// ⚠️ **Der Anker war bis zum 2026-09-01 die Installationsidentitaet — «der eine Besitzer, der
+// garantiert keinen Knoten hat und trotzdem bleiben muss».** *Er traegt seit Zeile 85 der
+// Arbeitsliste **null Zeilen**: alle 147 `read_only`-Zeilen sagten `false`, und `false` ist auch die
+// Antwort ohne Zeile — sie trugen keine Aussage und sind entfernt ([D-505](../../docs/NewConcept/90-decision-log.md)).
+// **Die Gegenpruefung war damit rot, ohne dass etwas kaputt war**, und das Aendern dieser Zusicherung
+// ist der sichtbare Teil jener Aenderung ([`PR-9`](../../CLAUDE.md)).*
+//
+// ⚠️ **Der neue Anker ist das, was die Abfragen ueberhaupt durchsuchen.** *«Keine Waisen» wiegt nur,
+// wenn es etwas zu durchsuchen gab. `settings` stirbt ([D-529](../../docs/NewConcept/90-decision-log.md)) —
+// **deshalb darf der Anker nicht daran haengen**: gezaehlt werden beide Tabellen zusammen, und
+// `labels` bleibt, wenn `settings` faellt.*
+$durchsucht = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings")
+    + (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}labels");
 
 check(
-    'die Installationsidentitaet behaelt ihre erklaerten Standardwerte',
-    $declared > 0,
-    "{$declared} Zeilen bei {$installation}"
+    'es gab ueberhaupt etwas zu durchsuchen',
+    $durchsucht > 0,
+    "{$durchsucht} Zeilen in settings und labels zusammen"
 );
 
 echo "\n", $failed === 0 ? "all green\n" : "{$failed} failed\n";
