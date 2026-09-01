@@ -3,6 +3,23 @@
 /**
  * Erreicht eine Entscheidung das Dokument, das sie selbst als betroffen nennt?
  *
+ * ⚠️ **STILLGELEGT am 2026-09-01, auf das Wort des Eigentümers: «ok dann stilllegen».**
+ *
+ * *Die Datei heisst nicht mehr `*-check.php` und ist damit **aus dem Randlauf**
+ * ([`tests/README.md`](../../tests/README.md) läuft über genau dieses Muster). Sie bleibt lesbar und
+ * von Hand aufrufbar, weil ihre Zahl weiter etwas aussagt — sie ist nur keine Zusage mehr.*
+ *
+ * ⚠️ **Der Grund ist, dass sie ihren Gegenstand verloren hat.** *Sie misst, wie gut das Konzept in
+ * `docs/NewConcept/` dokumentiert ist — und [D-568](../../docs/NewConcept/90-decision-log.md) hat
+ * dieses Konzept für veraltet erklärt: «das alte Konzept ist veraltet, wir brauchen ein neues».
+ * **Sie zu erfüllen hiesse, in den Steinbruch zu schreiben**, was [`PR-1`](../../CLAUDE.md) verbietet.
+ * Sie konnte also nie wieder grün werden, und rot bleiben ohne Abhilfe ist schlimmer als
+ * abgeschaltet: **ein dauerhaft roter Wächter erzieht dazu, rote Wächter zu übersehen.***
+ *
+ * ⚠️ *Ihr Prinzip überlebt und gehört ins neue Konzept: **eine Entscheidung, die ein Dokument als
+ * betroffen nennt, muss dieses Dokument auch erreichen.** Beim letzten Lauf waren **370 von 728**
+ * solcher Zusagen unerfüllt — das ist Eingangsmaterial, kein Auftrag an das alte Konzept.*
+ *
  * ⚠️ **Der Eigentümer hat danach gefragt:** *«wäre es mal an der Zeit, die Doku zu updaten mit all den
  * Konzeptänderungen, die wir gemacht haben?»* — und die ehrliche Antwort war eine Zahl: **370 von 728**
  * Zusagen «diese Entscheidung betrifft dieses Dokument» waren unerfüllt, davon **52 vom selben Tag**.

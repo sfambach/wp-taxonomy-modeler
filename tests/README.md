@@ -40,6 +40,13 @@ as the whole net.*
 | `confirmed-quote` | that a decision calling itself **confirmed** actually carries a sentence of the owner's ([D-571](../docs/NewConcept/90-decision-log.md)) — otherwise it is `INFERRED` and needs his yes |
 | `always-on` | that what must be read **before every task** — `CLAUDE.md`, the working model, `AGENTS.md` — stays under its measured ceiling ([D-573](../docs/NewConcept/90-decision-log.md)). *The previous rule set died at 82 KB, «most of it always-on». Today: 42 KB.* |
 
+⚠️ **`doc-reach-check` ist am 2026-09-01 stillgelegt** ([D-574](../docs/NewConcept/90-decision-log.md))
+und heisst jetzt `doc-reach-stillgelegt.php` — damit ist es aus dem Muster oben heraus. *Es mass, ob
+eine Entscheidung das Dokument erreicht, das sie als betroffen nennt; [D-568](../docs/NewConcept/90-decision-log.md)
+hat dieses Konzept für veraltet erklärt, und es zu erfüllen hiesse, in den Steinbruch zu schreiben.
+**Ein dauerhaft roter Wächter erzieht dazu, rote Wächter zu übersehen** — deshalb sichtbar
+stillgelegt statt stillschweigend ignoriert.*
+
 ⚠️ **`concept-drift-check` belongs to a rule of the owner's, and the rule replaced a term of mine.**
 *He rejected «locked» on 2026-09-01: «ich wollte nie Sachen locken … es gibt nur Konzept ist fertig
 und kann jetzt umgesetzt werden. Oder Konzept ist veraltet und wird durch neues ersetzt», plus
