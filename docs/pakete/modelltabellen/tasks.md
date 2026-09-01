@@ -120,14 +120,14 @@ auf `identities.id` — die Bedingung erlaubt strukturell eine Kante, die von ei
 ausgeht. Gehört zu TASK-004, weil `identities` dabei ohnehin fällt.
 
 ```text
-[ ] TASK-011  relations.kind in type umbenennen
+[ ] TASK-011  relations.kind in relation_type umbenennen
 ```
 
 Gleiche Bewegung wie TASK-007 am Knoten. **Vier Klassen braucht es nicht:** der Code verzweigt an 19
 Stellen auf die Kantenart, 15 davon fragen nur «ist es Vererbung?».
 
 ```text
-[ ] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, type, sort_order)
+[ ] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, relation_type, sort_order)
 ```
 
 **Entschieden: die erste Stelle ist `0`, gezählt je `from_node_id` und je `type`.**
@@ -143,5 +143,19 @@ eines Schlüssels auf `(from_node_id, sort_order)` hätte 17 gültige Zeilen abg
 Suchindex dient und den heutigen Einzelindex auf `from_id` überflüssig macht.
 
 ⚠️ **Und eine echte Doppelung muss vorher weg.** *Gemessen: ohne `type` sind es 8 Verletzungen, **mit
-`type` genau eine** — Knoten 55659 «render with label» hat zwei Einstellungskanten auf Stelle 0,
+`relation_type` genau eine** — Knoten 55659 «render with label» hat zwei Einstellungskanten auf Stelle 0,
 `label_role` und `with_label`. **Meine Zusage «zu bereinigen gibt es nichts» war vorschnell.***
+
+```text
+[ ] TASK-013  parked_by_group_id aus relations entfernen; Parken wandert in den Schatten
+```
+
+[D-575](../../NewConcept/90-decision-log.md), wörtlich von ihm: *«Parken heisst: in die
+Schattentabelle wandern, mit der Änderungsgruppe im Gepäck.»*
+
+**Reihenfolge Wächter, Leser, Daten** — und die Leser sind hier viele: **23 Stellen in 12 Dateien**
+erwähnen «geparkt», darunter `ModelEditor` 18, `WpdbRelationRepository` 12, `NodesScreen` 11.
+
+⚠️ *Drei bis vier Ansichten brauchen danach eine zweite Abfrage, um Gelöschtes zu zeigen
+([D-128](../../NewConcept/90-decision-log.md)s Umschalter). **Das ist der genannte Preis** — gegen
+23 Stellen, die heute etwas vergessen können.*

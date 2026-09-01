@@ -65,3 +65,25 @@ Tabelle trägt — **das ist die einzige Kopplung und sie ist beabsichtigt.**
 ⚠️ *Mit eigenen Id-Räumen je Tabelle ([`modelltabellen/`](../modelltabellen/package.md) §3.3) ist zu
 klären, worauf `changelog.owner_id` künftig zeigt. **`owner_kind` löst es schon** — es ist die einzige
 Spalte im Projekt, die ihren Id-Raum von jeher nennt.*
+
+## 6 · Neu: die Schattentabellen tragen die Änderungsgruppe
+
+**[D-575](../../NewConcept/90-decision-log.md), wörtlich vom Eigentümer:**
+
+> **Parken heisst: in die Schattentabelle wandern, mit der Änderungsgruppe im Gepäck. Die lebende
+> Tabelle verliert die Spalte ersatzlos — ein Datensatz ist da oder er ist nicht da.**
+
+Damit bekommen die vier Schattentabellen eine Spalte für die Gruppe, und `relations` verliert ihr
+`parked_by_group_id`.
+
+**Warum keine eigene Gruppentabelle:** *er hatte eine vorgeschlagen — «einfach eine Gruppentabelle
+aufmachen und da Knoten plus Version plus Kanten und die Records kopieren». **Die Schattentabellen
+tun genau das bereits**; ihnen fehlte nur die Gruppe. Eine dritte Tabelle wäre ein drittes Verfahren
+neben Schatten und Änderungsbuch.*
+
+**Was das trägt:** [D-127](../../NewConcept/90-decision-log.md) — *«restore puts back the whole
+event»* — sind dann die Schattenzeilen mit derselben Gruppen-Id.
+[D-128](../../NewConcept/90-decision-log.md)s Umschalter «Gelöschtes zeigen» wird eine Abfrage hier
+statt ein Filter auf der lebenden Tabelle.
+
+→ [`modelltabellen/`](../modelltabellen/package.md) §4.3, [`tasks.md`](tasks.md)

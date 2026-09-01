@@ -65,12 +65,11 @@ des Modells halten — gegen [`AR-1`](../../../CLAUDE.md).
 | `id` | eigener Id-Raum | |
 | `version` | für die Schattentabelle | |
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
-| `type` | die Kantenart | `inheritance` 127 · `composition` 23 · `setting` 11 · `aggregation` 5 |
+| `relation_type` | die Kantenart | `inheritance` 127 · `composition` 23 · `setting` 11 · `aggregation` 5 |
 | `name` | | 39 von 166 |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
 | `hide` | | 6 von 166 |
-| `parked_by_group_id` | | 1 von 166 |
 
 **`from_node_id`/`to_node_id` sind keine Umbenennung, sondern eine Verschärfung:** heute zeigen alle
 sieben Fremdschlüssel auf `identities.id`, was strukturell **eine Kante von einem Datensatz aus**
@@ -79,7 +78,7 @@ erlaubt. → [`history.md`](history.md)
 **Die vier Kantenarten sind keine eigenen Klassen und brauchen es nicht** — 15 von 19 Verzweigungen im
 Code fragen nur «ist es Vererbung?».
 
-### 4.1 · Was an `type` hängt
+### 4.1 · Was an `relation_type` hängt
 
 | | |
 |---|---|
@@ -90,7 +89,7 @@ Code fragen nur «ist es Vererbung?».
 ### 4.2 · `sort_order` — die Reihenfolge, je Knoten **und** je Kantenart
 
 **`position` heisst künftig `sort_order`. Die erste Stelle ist `0`.** Gezählt wird **je `from_node_id`
-und je `type`** — der Knoten in `from` ist der besitzende: bei einem Feld der Knoten, der es hat,
+und je `relation_type`** — der Knoten in `from` ist der besitzende: bei einem Feld der Knoten, der es hat,
 bei Vererbung der Elternknoten.
 
 ⚠️ **Zwei Listen, nicht eine.** *Die Kinder eines Knotens im Baum werden 0, 1, 2 … durchgezählt, und
@@ -98,13 +97,13 @@ seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** S
 heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
 genau dort überschneiden sich die Zahlen.*
 
-**Der eindeutige Schlüssel geht deshalb über drei Spalten: `(from_node_id, type, sort_order)`.**
-Er dient zugleich als **Suchindex** — gefiltert wird nach `from_node_id`, oft zusätzlich nach `type`,
+**Der eindeutige Schlüssel geht deshalb über drei Spalten: `(from_node_id, relation_type, sort_order)`.**
+Er dient zugleich als **Suchindex** — gefiltert wird nach `from_node_id`, oft zusätzlich nach `relation_type`,
 und `sort_order` ist die Sortierspalte am Ende. **Damit wird der heutige Einzelindex auf `from_id`
 überflüssig:** ein zusammengesetzter Index mit `from_node_id` an erster Stelle deckt ihn mit ab.
 
-⚠️ **Eine echte Doppelung bleibt und muss vor dem Schlüssel weg** — *gemessen: ohne `type` sind es **8**
-Verletzungen, mit `type` genau **eine**. Knoten 55659 «render with label» hat **zwei
+⚠️ **Eine echte Doppelung bleibt und muss vor dem Schlüssel weg** — *gemessen: ohne `relation_type` sind es **8**
+Verletzungen, mit `relation_type` genau **eine**. Knoten 55659 «render with label» hat **zwei
 Einstellungskanten auf Stelle 0**: `label_role` und `with_label`. **Ich hatte vorschnell gesagt, es
 gebe nichts zu bereinigen — das war falsch.** Siehe [`tasks.md`](tasks.md) TASK-012.*
 
@@ -112,18 +111,21 @@ gebe nichts zu bereinigen — das war falsch.** Siehe [`tasks.md`](tasks.md) TAS
 Abfrage Backticks; wer sie einmal vergisst, merkt es erst zur Laufzeit. Gegengeprüft am 2026-09-01:
 ohne Backticks ist jede Abfrage ein Syntaxfehler.*
 
-### 4.3 · `parked_by_group_id` — der Papierkorb
+### 4.3 · Kein `parked_by_group_id` mehr — Parken heisst wandern
 
-**Mit welchem Löschereignis ist diese Kante gefallen?** Löschen ist zweistufig — **parken, dann
-endgültig entfernen** ([D-123](../../NewConcept/90-decision-log.md)). Wird ein referenzierter Knoten
-gelöscht, parkt jede Kante, die auf ihn zeigt, mit ([D-125](../../NewConcept/90-decision-log.md)),
-und **das Wiederherstellen bringt das ganze Ereignis zurück**
-([D-127](../../NewConcept/90-decision-log.md)).
+**Die Spalte ist ersatzlos gestrichen** ([D-575](../../NewConcept/90-decision-log.md)).
 
-*Deshalb eine **Gruppen**-Id und kein Schalter: sie hält zusammen, was zusammen gefallen ist.*
-**Gemessen: genau eine Kante ist geparkt.**
+> **Parken heisst: in die Schattentabelle wandern, mit der Änderungsgruppe im Gepäck. Die lebende
+> Tabelle verliert die Spalte ersatzlos — ein Datensatz ist da oder er ist nicht da.**
 
-⚠️ *Sie zeigt in einen dritten Id-Raum — Änderungsgruppen — und die Spalte sagt das nicht (§6).*
+Löschen bleibt zweistufig — **parken, dann endgültig entfernen**
+([D-123](../../NewConcept/90-decision-log.md)). Was sich ändert, ist **wo** eine geparkte Zeile liegt.
+
+**Die Gruppe zieht mit in die Schattentabelle** → [`aenderungstabellen/`](../aenderungstabellen/package.md).
+*Damit bringt das Wiederherstellen weiter das ganze Löschereignis zurück
+([D-127](../../NewConcept/90-decision-log.md)): es sind die Schattenzeilen mit derselben Gruppen-Id.*
+
+⚠️ *Der Preis der alten Lösung, gemessen: **23 Stellen in 12 Dateien** mussten an «geparkt» denken.*
 
 ---
 
