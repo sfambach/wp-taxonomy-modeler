@@ -30,3 +30,49 @@ Beschreibung: Alle sieben Fremdschlüssel zeigen heute auf identities.id.
 
 Genau das trägt die Schattentabellen: **mehrere Zeilen mit derselben Id brechen keinen davon.**
 Fällt `identities` (TASK-004), ist zu klären, worauf sie künftig zeigen — oder ob es sie noch gibt.
+
+```text
+INF-003
+Typ: VORSCHLAG — offen, er denkt darüber nach
+Beschreibung: Labels als Kanten-Datensätze statt eigener Tabelle.
+```
+
+**Sein Rahmen:** *«das Label ist nichts anderes als Multilang mit zusätzlichen Feldtypen.»*
+
+**Der Vorschlag:** die fünf Rollen werden **Kanten**, einmal an der Wurzel deklariert und von allen
+geerbt — `form`, `table`, `select`, `symbol`, `help`, je `0..*`. Ein Label ist dann **ein
+Kanten-Datensatz** mit `locale` und Text. Keine `Label`-Knoten, keine eingebetteten Datensätze.
+
+```text
+Knoten-Datensatz  #10   node_id = Condensator · record_type = default
+   #10 · form   · de_DE · "Kondensator"
+   #10 · form   · en_US · "Capacitor"
+   #10 · symbol · ""    · "C"
+```
+
+**Was wegfiele:** die Tabelle `labels`, **476 Zeilen** eigener Klassen (`Labels`, `LabelRepository`,
+`WpdbLabelRepository`), zwei Wächter, ein zweiter Auflösungsweg und die toten Spalten `path` und
+`number`.
+
+**Was es kostet:** die Zeilenzahl bleibt gleich — *eine Zeile je geschriebenem Text, heute wie
+morgen*. Dazu **bis zu 40 zusätzliche Knoten-Datensätze**, einer je Knoten mit Labels; die meisten
+gibt es schon.
+
+⚠️ **Der Punkt, an dem er abgebrochen hat, und er hat einen Fehler in meinem Vorschlag gefunden:**
+*heute hängt ein Label am **Knoten**, in meinem Vorschlag an einem **Knoten-Datensatz** — also an
+einer Ausprägung. Bei `Einheitenwert` mit 21 Benutzer-Datensätzen wären das 21 Gelegenheiten für
+verschiedene Beschriftungen. **Unsinn.***
+
+**Die Auflösung, die es braucht, und sie muss ausdrücklich dastehen:**
+
+> **Ein Label steht immer am `default`-Datensatz des Knotens — nie an einem `user`-Datensatz.**
+
+*Dort liegen heute schon die Einstellungen, und [D-026](../../NewConcept/90-decision-log.md) begründet
+es: «at model level there are no values, only defaults».*
+
+⚠️ **Offen:** *ob dieser Satz reicht, oder ob «Label am Knoten» und «Daten am Datensatz» zwei zu
+verschiedene Dinge sind, um sich eine Tabelle zu teilen. **Darüber denkt er nach.***
+
+⚠️ *Und eine zweite Folge, falls es kommt: `locale` müsste auf dem Kanten-Datensatz **bleiben** — wir
+hatten sie gestrichen, weil sie leer war, und sie war leer, weil die Labels noch nicht dort lagen.
+Der Schlüssel würde dann `(node_record_id, relation_id, sort_order, locale)`.*
