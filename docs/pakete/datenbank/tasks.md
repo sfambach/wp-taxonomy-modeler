@@ -1,0 +1,110 @@
+# Paket · Datenbank — Arbeitsliste
+
+**Neue Aufgaben werden hinten angehängt.** Der Status wird nach Erledigung nachgezogen.
+
+⚠️ *Reihenfolge bei jedem Umzug: **Wächter, Leser, Daten** ([`arbeitsmodell.md`](../../arbeitsmodell.md) §5).
+Eine Wanderung, bei der die Daten vorangehen, bleibt grün und zeigt still das Falsche.*
+
+---
+
+```text
+[ ] TASK-001  path aus nodes entfernen
+```
+
+Beschlossen am 2026-09-01. **Die teuerste der vier**: `WpdbNodeRepository` fasst die Spalte an
+**20 Stellen** an, und sie ist **indiziert** — der Vorfahrenweg muss danach aus `relations` kommen.
+`path-check.php` prüft heute eigens diese Spalte und zieht mit.
+
+```text
+[ ] TASK-002  path aus record_values entfernen
+```
+
+**Spiegel von `edge_id`**: 183 Zeilen, und beide Spalten haben dieselben 12 verschiedenen Werte.
+Vorher zu klären ist die Frage aus [`review-tabellen.md`](../../review-tabellen.md): bekommt eine
+Komposition mit Multiplizität 1 immer ihren eigenen Datensatz?
+
+```text
+[ ] TASK-003  path aus labels und settings entfernen
+```
+
+**Beide nachweislich leer** — 0 von 47, 0 von 3. Die billigste der vier und der geeignete erste
+Durchgang durch die Reihenfolge Wächter-Leser-Daten, bevor sie bei `nodes.path` teuer wird.
+
+```text
+[ ] TASK-004  identities streichen — JEDE Tabelle bekommt ihren eigenen Id-Raum
+```
+
+Die Tabelle hat genau eine Spalte, es zieht nichts um. **Nicht nur `nodes` und `relations`, sondern
+jede Tabelle** — der Eigentümer: «jede Tabelle bekommt ihren eigenen Id-Raum … Records hatten dann
+einen zweiten Nummernraum, das eliminieren wir jetzt.»
+
+**Vorher muss TASK-005 stehen**, sonst wird `value_ref` mehrdeutig.
+
+⚠️ *Eingereiht, nicht sofort — auf sein Wort: «das kommt noch, wir können nicht alles auf einmal
+machen.»*
+
+```text
+[ ] TASK-005  Fremdschlüssel nennen ihre Zieltabelle; value_ref bekommt eine Spalte für den Raum
+```
+
+Heute zeigt `record_values.value_ref` auf **Knoten (49) und Datensätze (88)** — ohne dass etwas sagt,
+worauf. Mit einem gemeinsamen Id-Raum ging das; mit eigenen Ids nicht mehr.
+**`changelog.owner_kind` ist das Muster.** [D-164](../../NewConcept/90-decision-log.md) hat die
+Abhilfe längst beschlossen und sie wurde nie gebaut.
+
+```text
+[ ] TASK-006  Identität erst vergeben, wenn die Zeile geschrieben wird
+```
+
+Gemessen: **65 593 vergebene Ids für rund 300 lebende Knoten und Kanten.** Offenbar wird eine Nummer
+geholt, bevor feststeht, dass eine Zeile entsteht, und ein Fehlschlag gibt sie nicht zurück.
+*Heute schadlos — aber es macht jede Zählung aus dieser Tabelle wertlos.*
+⚠️ *Erledigt sich womöglich mit TASK-004 von selbst.*
+
+---
+
+## Wartet auf eine Entscheidung des Eigentümers
+
+```text
+[?] nodes.kind  — zweite Heimat neben relations.kind = setting?
+[?] kind        — drei Spalten dieses Namens, drei Bedeutungen (CD-9)
+[?] label_role  — OQ-134; solange offen, kann settings nicht fallen
+```
+
+---
+
+```text
+[ ] TASK-007  nodes.kind in field_type umbenennen
+```
+
+**Spalte `kind` → `field_type`, Wert `field` → `model`.** *Nach seiner Selbstkorrektur: «Entschuldigung,
+Model und Settings, richtig.»*
+
+**Trotzdem keine Datenwanderung, gemessen:** der Wert `field` steht in **keiner einzigen Zeile** —
+gefüllt sind vier, alle `setting`.
+
+Betroffen sind `NodeKind`, `Node`, `NodeRepository`, `Schema` und `node-kind-check`.
+**Offen dabei:** 124 von 128 Knoten sagen heute nichts — ist «nichts» gleich `field`, oder muss es
+dastehen?
+
+```text
+[ ] TASK-008  Spalte: welche PHP-Klasse setzt diesen Knoten um
+```
+
+**Entschieden am 2026-09-01: die Spalte trägt den Klassennamen, keine Factory.**
+*Der Eigentümer: «wenn das ohne Factory geht, weil der Klassenname da drinsteht, perfekt.»*
+
+**Dazu gehört der Wächter, und er ist Teil derselben Aufgabe:** eine Zeile, die eine Klasse nennt,
+die es nicht gibt, wird rot. *Das ist der Ausgleich dafür, dass ein Klassenname die Daten an den
+Code bindet — und es ist der eine Vorteil, den eine Marke nicht hätte.*
+
+```text
+[ ] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken
+```
+
+Folgt aus TASK-008. **Gemessen: 56 WordPress-Optionen** halten heute die Bindung «welcher Knoten ist
+der Int-Typ, welcher der Slider-Renderer» — `taxmod_type_int_id`, `taxmod_render_renderer_slider_id`
+und vierundfünfzig weitere. **Sagt der Knoten es selbst, können sie fallen.**
+
+⚠️ *Das ist eine eigene Aufgabe und kein Nebenbei: 56 Optionen zu entfernen heisst, jeden Leser
+vorher umzuziehen — Reihenfolge Wächter, Leser, Daten.*
