@@ -1,0 +1,85 @@
+# Eingang für das neue Konzept
+
+**Angelegt 2026-09-01, unmittelbar nach [D-568](NewConcept/90-decision-log.md).**
+
+Mit D-568 gilt `docs/NewConcept/` als veraltet und wird **nicht mehr erweitert** — auch nicht um
+offene Fragen. Der Aufbau des neuen Konzepts ist noch nicht festgelegt. Bis dahin sammelt dieses
+Blatt, was sonst verloren ginge.
+
+**Das ist ein Eingangskanal, keine Entscheidung** (Arbeitsmodell v1.2 §7.1). Nichts hier ist
+`ACTIVE`. Ein Eintrag wird später geprüft und eingeordnet.
+
+---
+
+## INF-001 · Der geteilte Id-Raum als mögliche Wurzel
+
+**Typ:** `HYPOTHESE` · **Status:** `INFERRED` — **vom Eigentümer**, ausdrücklich als Vermutung
+formuliert
+
+**Seine Worte, 2026-09-01:**
+
+> *«Ich glaube ehrlich gesagt, dass viele Probleme daraus entstanden sind, dass wir einen gemeinsamen
+> Id-Bereich für Knoten und Kanten haben und daraus der Wunsch eines Pfades entstanden ist. Aber das
+> ändern wir im neuen Konzept.»*
+
+**Was daran gemessen ist:**
+
+| | |
+|---|---|
+| Der geteilte Id-Raum **existiert** | [D-339](NewConcept/90-decision-log.md): *«identities(id), append-only … nodes and relations take the number and use it as their own primary key»* |
+| Er wird **massiv** verbraucht | 64 703 vergebene Identitäten für **680** lebende Zeilen — **1,1 %**; 53 561 gehören zu gar keiner Tabelle |
+| Alle Fremdschlüssel zeigen auf `identities.id` | genau das trägt den Schattentabellen-Entwurf: mehrere Zeilen mit derselben Id brechen keinen davon |
+
+**Was der zweiten Hälfte der Hypothese widerspricht — und es ist eine echte Einschränkung:**
+
+[D-082](NewConcept/90-decision-log.md) nennt als Grund für `nodes.path` **nicht** den Id-Raum,
+sondern:
+
+> *«`path` is the **materialised ancestor path — derived and rebuildable**»*
+
+**Der Pfad entstand also aus dem Wunsch nach einer vorgerechneten Vorfahrensuche, nicht aus dem
+geteilten Id-Raum.** Und D-082 steht bis heute auf `agreed (proposal)` — **die Abkürzung wurde nie
+bestätigt**, und `50-wordpress-persistence.md` zitiert für sie ausserdem die falsche Nummer (`D-014`).
+
+⚠️ *Beides kann nebeneinander wahr sein: der Id-Raum ist ein eigenes Thema, der Pfad ein anderes. Ich
+löse das nicht auf — es gehört in das neue Konzept, und er hat es dort ausdrücklich hingelegt.*
+
+**Für das neue Konzept zu entscheiden:**
+
+1. Teilen sich Knoten und Kanten weiterhin einen Id-Raum?
+2. Wenn ja: wann wird eine Identität vergeben — beim Anfordern oder beim Schreiben der Zeile?
+3. Braucht es eine vorgerechnete Vorfahrensuche überhaupt, und wenn ja, in welcher Form?
+
+---
+
+## INF-002 · Das Tabellen-Review liegt vor
+
+**Typ:** `MATERIAL` · **Status:** `FACT` — an der laufenden Datenbank gemessen
+
+[`docs/review-tabellen.md`](review-tabellen.md), 2026-09-01. **Eingangsmaterial für das neue Konzept,
+kein Flickwerk am alten.** Die Kernpunkte:
+
+- **`path` steht in vier Tabellen.** `labels.path` und `settings.path` sind **leer** (0 von 47, 0 von 3). `record_values.path` ist der **Spiegel** von `edge_id` (je 12 verschiedene Werte bei 183 Zeilen). `nodes.path` trägt punktseparierte Id-Ketten und ist in **127 von 127** Fällen aus `relations` herleitbar, ohne eine einzige Abweichung.
+- **18 Knoten haben mehr als eine eingehende Kante** — ein einzelner Pfad je Knoten kann davon nur einen Weg nennen und ist dort **verlustbehaftet**.
+- **Zwei beschlossene Mechanismen kommen in den Daten nicht vor:** [D-530](NewConcept/90-decision-log.md)s `position` ist in **0 von 183** Zeilen gefüllt; [D-536](NewConcept/90-decision-log.md)s Journalversion in **25 von 23 229**.
+- **Neun Spalten** tragen keine oder nur eine einzige Ausprägung; drei davon sind echte Kandidaten (`nodes.kind`, `labels.number`, die `records_history`-Spalten).
+
+---
+
+## INF-003 · Was das neue Konzept vor seinem Inhalt braucht
+
+**Typ:** `QUESTION` · **Status:** `OPEN`
+
+D-568 sagt: **wie das neue Konzept aufgebaut wird, ist vor seinem Inhalt festzulegen.** Offen ist
+damit:
+
+1. **Welche Pakete**, und wo verlaufen ihre Grenzen? (Arbeitsmodell v1.2 §2)
+2. **Was verhindert, dass es wieder 2688 KB werden?** [D-566](NewConcept/90-decision-log.md) gibt den Maßstab — *prüfbar durch einen Menschen* —, aber keine Grenze. Ein messbarer Deckel wäre ein Wächter; ohne einen ist es eine Absicht.
+3. **Was wird aus den 307 Regeln** des alten Bestandes — je Paket verteilt, oder als Historie geschlossen?
+4. **Was wird aus den 562 Entscheidungen?** Nach v1.2 §6.1 sind sie `LEGACY`, bis geprüft. Bisher sind acht geklärt.
+
+---
+
+## Erledigte Eingänge
+
+*(noch keine)*
