@@ -108,3 +108,34 @@ und vierundfünfzig weitere. **Sagt der Knoten es selbst, können sie fallen.**
 
 ⚠️ *Das ist eine eigene Aufgabe und kein Nebenbei: 56 Optionen zu entfernen heisst, jeden Leser
 vorher umzuziehen — Reihenfolge Wächter, Leser, Daten.*
+
+```text
+[ ] TASK-010  from_id/to_id in from_node_id/to_node_id, Constraint auf nodes.id
+```
+
+*Der Eigentümer: «machen wir es eh eindeutiger … das ist eine Knoten-Id, da ist ein Constraint.»*
+
+**Keine Umbenennung, sondern eine Verschärfung.** Die sieben heutigen Fremdschlüssel zeigen **alle**
+auf `identities.id` — die Bedingung erlaubt strukturell eine Kante, die von einem **Datensatz**
+ausgeht. Gehört zu TASK-004, weil `identities` dabei ohnehin fällt.
+
+```text
+[ ] TASK-011  relations.kind in type umbenennen
+```
+
+Gleiche Bewegung wie TASK-007 am Knoten. **Vier Klassen braucht es nicht:** der Code verzweigt an 19
+Stellen auf die Kantenart, 15 davon fragen nur «ist es Vererbung?».
+
+```text
+[ ] TASK-012  position in order umbenennen; 17 doppelte Reihenfolgen bereinigen
+```
+
+**Entschieden: die erste Stelle ist `0`** — damit ist die Zweideutigkeit der Spalte weg.
+*Der Eigentümer: «Position würde ich eher Order nennen. Und die erste Position ist immer null.»*
+
+⚠️ **Dabei kam eine andere Mehrdeutigkeit zum Vorschein: 17 Kanten teilen sich eine Stelle mit einem
+Geschwister**, in 8 Gruppen — Knoten 55659 hat drei Kinder auf `0`. **Dort ist die Reihenfolge nicht
+definiert.** Entweder bereinigen oder einen eindeutigen Schlüssel auf `(from_node_id, order)` setzen.
+
+⚠️ **Offen: `order` ist ein reserviertes SQL-Wort.** *Gegengeprüft — ohne Backticks ist jede Abfrage
+ein Syntaxfehler. `sort_order` wäre dasselbe Wort ohne die Falle.*
