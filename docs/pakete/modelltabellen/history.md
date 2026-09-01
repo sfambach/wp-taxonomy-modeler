@@ -73,8 +73,8 @@ Gruppen.** Knoten 55659 hat **drei** Kinder auf `0`, Knoten 3636 zwei auf `0` un
 **Dort ist die Reihenfolge nicht definiert** — das ist kein Benennungsproblem, sondern ein fehlender
 eindeutiger Schlüssel.
 
-**Und `order` ist ein reserviertes SQL-Wort.** *Gegengeprüft: ohne Backticks ist jede Abfrage ein
-Syntaxfehler.* Noch nicht entschieden, ob es `order` oder `sort_order` heisst.
+**Und `sort_order` ist ein reserviertes SQL-Wort.** *Gegengeprüft: ohne Backticks ist jede Abfrage ein
+Syntaxfehler.* Noch nicht entschieden, ob es `sort_order` oder `sort_order` heisst.
 
 ### Was `parked_by_group_id` ist — nachgeschlagen, nicht erklärt
 
@@ -110,6 +110,16 @@ Stelle 0 sein Kind `yotta` **und** seine Einstellung `exponent`.
 **Es sind zwei Listen in einer Spalte, und beide sind für sich lückenlos.** Sechs Knoten haben
 gleichzeitig Kinder und Felder — genau die sechs, in denen die Zahlen sich überschneiden.
 
-⚠️ **Mein Vorschlag war falsch.** *Ich wollte einen eindeutigen Schlüssel auf `(from_node_id, order)`;
-der hätte **17 gültige Zeilen abgelehnt.** Richtig ist `(from_node_id, type, order)`, und zu bereinigen
+⚠️ **Mein Vorschlag war falsch.** *Ich wollte einen eindeutigen Schlüssel auf `(from_node_id, sort_order)`;
+der hätte **17 gültige Zeilen abgelehnt.** Richtig ist `(from_node_id, type, sort_order)`, und zu bereinigen
 gibt es nichts.*
+
+### Nachtrag: `sort_order`, nicht `order`
+
+Ich hatte seinen Satz *«so, der Order ist okay»* als Zustimmung zum Spaltennamen `order` gelesen.
+**Gemeint war `sort_order`**, das ich als Alternative vorgeschlagen hatte — er stellte es richtig:
+*«warum hast du das `sort_order` jetzt verworfen, das war doch schon ok.»*
+
+**Und `sort_order` ist die bessere Wahl:** `order` ist ein reserviertes SQL-Wort und bräuchte in jeder
+Abfrage Backticks — gegengeprüft, ohne sie ist jede Abfrage ein Syntaxfehler. **Wer sie einmal
+vergisst, merkt es erst zur Laufzeit.**

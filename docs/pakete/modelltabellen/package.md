@@ -67,7 +67,7 @@ des Modells halten — gegen [`AR-1`](../../../CLAUDE.md).
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
 | `type` | die Kantenart | `inheritance` 127 · `composition` 23 · `setting` 11 · `aggregation` 5 |
 | `name` | | 39 von 166 |
-| `order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
+| `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
 | `hide` | | 6 von 166 |
 | `parked_by_group_id` | | 1 von 166 |
@@ -87,9 +87,9 @@ Code fragen nur «ist es Vererbung?».
 | `multiplicity` | **sagt bei Vererbung nichts** — alle 127 auf `1..1` |
 | `hide` | **nur auf Vererbungskanten** — 6 Stück |
 
-### 4.2 · `order` — die Reihenfolge, je Knoten **und** je Kantenart
+### 4.2 · `sort_order` — die Reihenfolge, je Knoten **und** je Kantenart
 
-**`position` heisst künftig `order`. Die erste Stelle ist `0`.** Gezählt wird **je `from_node_id`
+**`position` heisst künftig `sort_order`. Die erste Stelle ist `0`.** Gezählt wird **je `from_node_id`
 und je `type`** — der Knoten in `from` ist der besitzende: bei einem Feld der Knoten, der es hat,
 bei Vererbung der Elternknoten.
 
@@ -98,11 +98,12 @@ seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** S
 heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
 genau dort überschneiden sich die Zahlen.*
 
-**Der eindeutige Schlüssel ist deshalb `(from_node_id, type, order)`, nicht `(from_node_id, order)`.**
+**Der eindeutige Schlüssel ist deshalb `(from_node_id, type, sort_order)`, nicht `(from_node_id, sort_order)`.**
 → [`history.md`](history.md)
 
-⚠️ *`order` ist ein reserviertes SQL-Wort und braucht überall Backticks. Der Eigentümer hat es so
-gewollt; die Alternative `sort_order` ist verworfen.*
+⚠️ **`sort_order` und nicht `order`** — *`order` ist ein reserviertes SQL-Wort und bräuchte in jeder
+Abfrage Backticks; wer sie einmal vergisst, merkt es erst zur Laufzeit. Gegengeprüft am 2026-09-01:
+ohne Backticks ist jede Abfrage ein Syntaxfehler.*
 
 ### 4.3 · `parked_by_group_id` — der Papierkorb
 

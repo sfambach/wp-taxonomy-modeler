@@ -127,7 +127,7 @@ Gleiche Bewegung wie TASK-007 am Knoten. **Vier Klassen braucht es nicht:** der 
 Stellen auf die Kantenart, 15 davon fragen nur «ist es Vererbung?».
 
 ```text
-[ ] TASK-012  position in order umbenennen, Schluessel (from_node_id, type, order)
+[ ] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, type, sort_order)
 ```
 
 **Entschieden: die erste Stelle ist `0`, gezählt je `from_node_id` und je `type`.**
@@ -137,6 +137,6 @@ Sort Order entsteht pro Knoten, und zwar dem From-Knoten.»*
 ⚠️ **Meine gemeldeten «17 doppelten Reihenfolgen» waren keine.** *Alle 8 Gruppen mischen
 Kantenarten — Kind im Baum gegen Feld des Knotens. **Nicht eine Doppelung liegt innerhalb derselben
 Art.** Es sind zwei Listen in einer Spalte, und beide sind für sich in Ordnung. **Mein Vorschlag
-eines Schlüssels auf `(from_node_id, order)` hätte 17 gültige Zeilen abgelehnt.***
+eines Schlüssels auf `(from_node_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.***
 
 **Zu bereinigen gibt es nichts.** Zu bauen ist die Umbenennung und der Schlüssel über drei Spalten.
