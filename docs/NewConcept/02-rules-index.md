@@ -78,7 +78,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Base tables: nodes, relations, labels, records… | [CLAUDE.md:99](../../CLAUDE.md) | 10 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Base tables: nodes, relations, labels, records… | [CLAUDE.md:99](../../CLAUDE.md) | 12 |
 | **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:100](../../CLAUDE.md) | 46 |
 
 ## DC — Dokumentation im Code

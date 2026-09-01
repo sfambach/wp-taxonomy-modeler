@@ -49,8 +49,15 @@
  * dokumentiert**, also gerade der Beleg dafür, dass die Ablösung nachvollziehbar ist. Sie wurden
  * gemeldet, weil die Ausnahme nur die zurückgenommene Zeile übersprang, nicht die ablösende. Die 85
  * übrigen sind unverändert Berufungen ohne Gegenbeleg.*
+ *
+ * ⚠️ **Angehoben auf 86 am 2026-09-01, und hier steht warum** — *wie die Regel oben es verlangt.
+ * [D-567](../../docs/NewConcept/90-decision-log.md) nennt `D-020`, `D-083` und `D-133`, **weil ihr
+ * ganzer Inhalt die Erzählung dieser Kette ist**: es gibt keine einzelne Entscheidung, die die
+ * heutigen Basistabellen festlegt, und das nachzuweisen heisst, die abgelösten Glieder zu nennen.
+ * Genau der Fall, den der Kopf dieser Datei beschreibt: «mechanisch trennen lässt sich «als
+ * Geschichte» nicht von «als Grund»».*
  */
-const HINGENOMMEN = 85;
+const HINGENOMMEN = 86;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 
