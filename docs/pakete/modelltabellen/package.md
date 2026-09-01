@@ -98,8 +98,15 @@ seine Felder ebenfalls 0, 1, 2 … **Beide hängen am selben `from_node_id`.** S
 heute beides — `Root`, `Kontact`, `Passiv`, `Prefixes`, `Without prefix`, `render with label` — und
 genau dort überschneiden sich die Zahlen.*
 
-**Der eindeutige Schlüssel ist deshalb `(from_node_id, type, sort_order)`, nicht `(from_node_id, sort_order)`.**
-→ [`history.md`](history.md)
+**Der eindeutige Schlüssel geht deshalb über drei Spalten: `(from_node_id, type, sort_order)`.**
+Er dient zugleich als **Suchindex** — gefiltert wird nach `from_node_id`, oft zusätzlich nach `type`,
+und `sort_order` ist die Sortierspalte am Ende. **Damit wird der heutige Einzelindex auf `from_id`
+überflüssig:** ein zusammengesetzter Index mit `from_node_id` an erster Stelle deckt ihn mit ab.
+
+⚠️ **Eine echte Doppelung bleibt und muss vor dem Schlüssel weg** — *gemessen: ohne `type` sind es **8**
+Verletzungen, mit `type` genau **eine**. Knoten 55659 «render with label» hat **zwei
+Einstellungskanten auf Stelle 0**: `label_role` und `with_label`. **Ich hatte vorschnell gesagt, es
+gebe nichts zu bereinigen — das war falsch.** Siehe [`tasks.md`](tasks.md) TASK-012.*
 
 ⚠️ **`sort_order` und nicht `order`** — *`order` ist ein reserviertes SQL-Wort und bräuchte in jeder
 Abfrage Backticks; wer sie einmal vergisst, merkt es erst zur Laufzeit. Gegengeprüft am 2026-09-01:

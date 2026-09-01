@@ -123,3 +123,14 @@ Ich hatte seinen Satz *«so, der Order ist okay»* als Zustimmung zum Spaltennam
 **Und `sort_order` ist die bessere Wahl:** `order` ist ein reserviertes SQL-Wort und bräuchte in jeder
 Abfrage Backticks — gegengeprüft, ohne sie ist jede Abfrage ein Syntaxfehler. **Wer sie einmal
 vergisst, merkt es erst zur Laufzeit.**
+
+### Nachtrag zum Nachtrag: eine Doppelung bleibt doch
+
+Beim Prüfen des dreispaltigen Schlüssels gegen die Daten: **ohne `type` sind es 8 Verletzungen, mit
+`type` genau eine.**
+
+`type` löst also 7 der 8 auf — sie waren Kind gegen Feld. **Die achte ist echt:** Knoten 55659
+«render with label» hat **zwei Einstellungskanten auf Stelle 0**, `label_role` und `with_label`.
+
+⚠️ *Meine Zusage «zu bereinigen gibt es nichts» war vorschnell. Sie stand auf der Messung ohne `type`
+und ich hatte sie nicht mit `type` wiederholt, bevor ich sie aussprach.*

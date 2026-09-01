@@ -139,4 +139,9 @@ Kantenarten — Kind im Baum gegen Feld des Knotens. **Nicht eine Doppelung lieg
 Art.** Es sind zwei Listen in einer Spalte, und beide sind für sich in Ordnung. **Mein Vorschlag
 eines Schlüssels auf `(from_node_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.***
 
-**Zu bereinigen gibt es nichts.** Zu bauen ist die Umbenennung und der Schlüssel über drei Spalten.
+**Zu bauen:** die Umbenennung, der eindeutige Schlüssel über drei Spalten — der zugleich als
+Suchindex dient und den heutigen Einzelindex auf `from_id` überflüssig macht.
+
+⚠️ **Und eine echte Doppelung muss vorher weg.** *Gemessen: ohne `type` sind es 8 Verletzungen, **mit
+`type` genau eine** — Knoten 55659 «render with label» hat zwei Einstellungskanten auf Stelle 0,
+`label_role` und `with_label`. **Meine Zusage «zu bereinigen gibt es nichts» war vorschnell.***
