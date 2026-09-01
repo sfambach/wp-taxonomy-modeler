@@ -129,10 +129,81 @@ Löschen bleibt zweistufig — **parken, dann endgültig entfernen**
 
 ---
 
-## 5 · Noch nicht überarbeitet
+## 5 · `node_records` — der Knoten-Datensatz
 
-`records`, `record_values` und `labels`. Bis dahin gilt für sie
-[`review-tabellen.md`](../../review-tabellen.md) als **Befund, nicht als Vorgabe**.
+| Spalte | | |
+|---|---|---|
+| `id` | Schlüssel, eigener Id-Raum | |
+| `version` | für die Schattentabelle — **steht künftig direkt unter `id`** | |
+| `node_id` | welcher Knoten — indiziert | |
+| `node_version` | gegen **welche Version des Knotens** der Datensatz entstand | |
+| `type` | `default` oder `user` — indiziert | war `kind` |
+| ~~`created_at`~~ | **fällt — gehört ins Änderungsbuch** | siehe unten |
+
+**Die Paarung `node_id` + `node_version` bleibt: ein Datensatz gehört immer zu einer bestimmten
+Version des Knotens.**
+
+### 5.1 · Offen: was bei einem Versionskonflikt geschieht
+
+**STATUS: `OPEN` — bewusst zurückgestellt**
+
+*Der Eigentümer: «wenn wir Konflikte haben — Knoten hat sich geändert, Record zeigt auf alte
+Version — Konflikt muss manuell aufgelöst werden, somit kann dieser Record nicht mehr dargestellt
+werden. Gibt es keinen Konflikt, müsste die `node_version` upgedatet werden. **Das können wir
+erstmal so lassen.**»*
+
+⚠️ **Seine Vermutung über den heutigen Code ist bestätigt, gemessen:** *`node_version` wird
+geschrieben, zurückgelesen und auf dem Bildschirm als «Version» angezeigt — **aber nirgends
+verglichen.** Keine einzige Verzweigung hängt daran. Gemessen sind **29 von 209** Datensätzen älter
+als die heutige Version ihres Knotens; keiner ist neuer.*
+
+### 5.2 · `created_at` fällt — aber nicht sofort
+
+*Der Eigentümer: «das `created_at` ist eigentlich was fürs Log, brauchen wir glaube ich nicht mehr
+im `node_record`.»* **Richtig — nur führt das Log es heute nicht.**
+
+⚠️ **Gemessen: im Änderungsbuch gibt es null Einträge mit `owner_kind = 'record'`.** *Es
+protokolliert Knoten (17 608) und Kanten (5 964), **Datensätze nicht als eigene Art**. Wird die
+Spalte jetzt gestrichen, ist die Entstehungszeit weg — das Log kann sie nicht übernehmen, weil es
+sie nie geführt hat.*
+
+**Reihenfolge nach `PR-12`: erst führt das Änderungsbuch Datensätze, dann fällt die Spalte.**
+→ [`tasks.md`](tasks.md) TASK-015
+
+---
+
+## 5a · `relation_records` — der Kanten-Datensatz
+
+**Die Tabellen heissen künftig wie der Wortschatz:** `records` → **`node_records`**,
+`record_values` → **`relation_records`**.
+
+*Der Eigentümer: «records → node_records, record_values → relation_records».*
+
+⚠️ **Die Zuordnung ist gemessen und ausnahmslos:** *`records.node_id` zeigt in **209 von 209**
+Fällen auf einen Knoten, `record_values.edge_id` in **183 von 183** auf eine Kante,
+`record_values.record_id` in **183 von 183** auf einen Datensatz. Ausgeschrieben liest sich eine
+Zeile genau so: **Knoten «Condensator» · Kante «Value» (Typ Decimal) = 110.***
+
+**Daraus folgen zwei Spaltennamen** — nach derselben Regel wie `from_node_id` (§6):
+
+| heute | künftig | |
+|---|---|---|
+| `record_values.record_id` | **`node_record_id`** | zeigt auf `node_records` |
+| `record_values.edge_id` | **`relation_id`** | zeigt auf `relations` |
+
+⚠️ **«edge» und «relation» sind zwei Wörter für dieselbe Sache, und es ist offen, welches gewinnt.**
+*Gemessen im Quelltext: **«edge» 1080-mal, «relation» 407-mal** — fast dreimal so häufig. Die Tabelle
+heisst `relations` und die Klasse `Relation`, **der Code sagt aber überwiegend `edge`.** Zwei Wörter
+für eine Sache sind das, was [`CD-9`](../../../CLAUDE.md) verbietet — **welches bleibt, ist nicht
+entschieden.** Sein deutsches Wort ist **Kante**, was näher an «edge» liegt als an «relation».*
+
+⚠️ *Die Spaltennamen oben stehen deshalb unter Vorbehalt: `relation_id` folgt dem Tabellennamen,
+`edge_id` folgt dem Code. **Erst die Wortwahl, dann die Spalte.***
+
+**Die übrigen Spalten der beiden Tabellen sind noch nicht überarbeitet**, ebenso `labels`. Bis dahin
+gilt [`review-tabellen.md`](../../review-tabellen.md) als **Befund, nicht als Vorgabe** — dort steht
+unter anderem, dass `relation_records.value_ref` auf **Knoten und Datensätze zugleich** zeigt und
+`position` in **0 von 183** Zeilen gefüllt ist.
 
 ---
 

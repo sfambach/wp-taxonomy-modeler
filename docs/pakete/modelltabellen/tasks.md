@@ -159,3 +159,38 @@ erwähnen «geparkt», darunter `ModelEditor` 18, `WpdbRelationRepository` 12, `
 ⚠️ *Drei bis vier Ansichten brauchen danach eine zweite Abfrage, um Gelöschtes zu zeigen
 ([D-128](../../NewConcept/90-decision-log.md)s Umschalter). **Das ist der genannte Preis** — gegen
 23 Stellen, die heute etwas vergessen können.*
+
+```text
+[ ] TASK-014  records -> node_records, record_values -> relation_records
+```
+
+*Der Eigentümer: «records → node_records, record_values → relation_records».* **Die Zuordnung ist
+gemessen und ausnahmslos** — 209 von 209, 183 von 183.
+
+**Dazu gehören zwei Spalten, nach derselben Regel wie `from_node_id`:**
+`record_id` → **`node_record_id`**, `edge_id` → **`relation_id`**.
+
+⚠️ **Vorher zu entscheiden: «edge» oder «relation»?** *Gemessen im Quelltext: **edge 1080-mal,
+relation 407-mal.** Die Tabelle heisst `relations`, der Code sagt überwiegend `edge`, und sein
+deutsches Wort ist **Kante** — was näher an «edge» liegt. **Zwei Wörter für eine Sache verbietet
+`CD-9`; welches bleibt, ist offen.** Erst die Wortwahl, dann die Spaltennamen.*
+
+```text
+[ ] TASK-015  node_records: kind -> type, version unter id, created_at faellt
+```
+
+*Der Eigentümer: «`kind` → `type` umbenennen, `version` würde ich nach oben unter `id` packen. Das
+`created_at` ist eigentlich was fürs Log.»*
+
+⚠️ **`created_at` fällt erst, wenn das Änderungsbuch Datensätze führt.** *Gemessen: **null Einträge
+mit `owner_kind = 'record'`** — das Log protokolliert Knoten und Kanten, Datensätze nicht als eigene
+Art. **Erst der neue Leser, dann die Daten** (`PR-12`).*
+
+⚠️ *Offen: heisst die Spalte `type` oder `record_type`? Bei der Kante wurde `relation_type` gewählt.*
+
+```text
+[?] node_version bei Versionskonflikt — bewusst zurückgestellt
+```
+
+*«Das können wir erstmal so lassen.»* **Seine Vermutung ist bestätigt:** `node_version` wird
+geschrieben, angezeigt und **nirgends verglichen**. 29 von 209 Datensätzen sind älter als ihr Knoten.
