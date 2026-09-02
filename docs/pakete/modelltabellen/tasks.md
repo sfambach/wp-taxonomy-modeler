@@ -249,3 +249,17 @@ wird an vielen Stellen gelesen. Reihenfolge `PR-12` — Wächter, Leser, Daten.
 wenn wir Settings nochmal umwerfen».* **[D-457](../../NewConcept/90-decision-log.md) sagt das
 Gegenteil** — «a column on a node and a column on an edge, and **never** a chain-resolved setting» —
 **und sie entstand, weil sein Wort «Attribut» als «Setting» gelesen wurde.** Nicht aufgelöst.
+
+```text
+[ ] TASK-020  settings_record_id an nodes und relations
+```
+
+[D-582](../../NewConcept/90-decision-log.md). **Damit kann eine Kante die Einstellungen ihres
+Zielknotens überschreiben** — ohne Kante-zu-Kante-Beziehung und ohne Überschreiben-Konstrukt.
+
+**Die Auflösung wird zweistufig:** Einstellungsdatensatz der Kante → der des Zielknotens → Rückfall.
+Der Code kennt die Verwendungsstelle schon: **`UseSite` kommt an 17 Stellen vor**, acht davon in
+`Rendering.php`. **Was fehlte, war der Ort, an dem so ein Wert liegt** — seit `settings.path` weg ist.
+
+⚠️ *Nur die Einstellungskante, die den **Weg zum Behälter** beschreibt, wird dadurch überflüssig —
+drei von elf. Felder im Behälter und Einstellungen direkt am Knoten bleiben Kanten.*

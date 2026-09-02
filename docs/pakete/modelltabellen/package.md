@@ -50,6 +50,7 @@ berührt.
 | `sort_order` | **an welcher Stelle unter dem Elternknoten** | §3.3 |
 | `field_type` | **`model`** oder **`setting`** | war `kind` |
 | `label_id` | → `labels.id`, **verpflichtend** — hier steht der Name | §3.4 |
+| `settings_record_id` | → `node_records.id`, optional — eigene Einstellungen | §3.6 |
 | *(neu)* | die **PHP-Klasse**, die diesen Knoten umsetzt | §3.2 |
 
 **`name` ist gestrichen — er steht in `labels.name`** ([D-580](../../NewConcept/90-decision-log.md)).
@@ -120,6 +121,35 @@ Suchen von Hand und beim Prüfen.*
 
 ---
 
+### 3.6 · Eigene Einstellungen an Knoten **und** Kante
+
+**`settings_record_id` steht an beiden** ([D-582](../../NewConcept/90-decision-log.md)) und zeigt auf
+den eigenen Einstellungsdatensatz.
+
+```text
+node_record  #40   node_id = DisplayOption
+   #40 · render · → Knoten «slider»
+
+relations    «vorname»  settings_record_id = #40
+```
+
+**Es gibt kein Überschreiben-Konstrukt, nur eine Reihenfolge:**
+
+```text
+Renderer für «Kunde.vorname»:
+   1. Einstellungsdatensatz der Kante        → gilt
+   2. sonst der des Zielknotens «Text»       → gilt
+   3. sonst Rückfall
+```
+
+**Ein zusätzlicher Renderer ist kein neuer Mechanismus** — die Kante trägt mehrere Werte für
+dasselbe Feld, `sort_order` unterscheidet sie.
+
+⚠️ *Damit fällt **nur** die Einstellungskante, die den Weg zum Behälter beschreibt (drei von elf).
+Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
+
+---
+
 ## 4 · `relations` — die Kante
 
 | Spalte | | gemessen |
@@ -129,6 +159,7 @@ Suchen von Hand und beim Prüfen.*
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
 | `relation_type` | die Kantenart — **ohne Vererbung** | `composition` 23 · `setting` 11 · `aggregation` 5 |
 | `label_id` | → `labels.id`, **optional** — hier steht der Name | §3.4 |
+| `settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** | §3.6 |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
 | `hide` | **offen** — verliert mit der Vererbung alle Benutzer | §4.4 |
