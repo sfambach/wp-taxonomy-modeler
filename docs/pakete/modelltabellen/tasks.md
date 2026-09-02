@@ -224,3 +224,28 @@ zur Abwägung Umzug gegen Neueingabe: *«B»*.
 alle von `Einheitenwert`. **Bis `label_role` seinen neuen Ort hat (`OQ-134`), zeigt `Einheitenwert`
 den langen Namen statt des Zeichens** — «Kiloohm» statt «kΩ». Kein Fehler, umkehrbar, und bewusst in
 Kauf genommen.
+
+```text
+[ ] TASK-018  Vererbung wird nodes.parent_node_id + nodes.sort_order
+```
+
+[D-581](../../NewConcept/90-decision-log.md). **`relations` fällt von 166 auf 39 Zeilen.** Betroffen
+ist alles, was heute «ist es Vererbung?» fragt — 15 von 19 Verzweigungen auf `RelationKind`.
+
+```text
+[ ] TASK-019  labels und label_texts; name zieht aus nodes und relations hinein
+```
+
+[D-580](../../NewConcept/90-decision-log.md). **Grösster Einzelposten:** `nodes.name` ist indiziert und
+wird an vielen Stellen gelesen. Reihenfolge `PR-12` — Wächter, Leser, Daten.
+
+⚠️ *Offen davor: sind die vier Rollen Spalten in `label_texts` oder Zeilen mit `role_id`?*
+
+```text
+[?] hide — vertagt bis zum Settings-Umbau
+```
+
+*Der Eigentümer: «`hide` ist eigentlich eine Einstellung am Modell», und dazu: «das besprechen wir,
+wenn wir Settings nochmal umwerfen».* **[D-457](../../NewConcept/90-decision-log.md) sagt das
+Gegenteil** — «a column on a node and a column on an edge, and **never** a chain-resolved setting» —
+**und sie entstand, weil sein Wort «Attribut» als «Setting» gelesen wurde.** Nicht aufgelöst.

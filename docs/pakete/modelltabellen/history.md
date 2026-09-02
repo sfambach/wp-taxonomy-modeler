@@ -174,3 +174,10 @@ verhindert es nicht, also muss eine Prüfung es finden.***
 ⚠️ *Der Unterschied zwischen **Komposition** und **Aggregation** ist allein, **ob zwei Datensätze auf
 denselben zeigen dürfen.** Die Speicherung muss dafür nichts anderes können — es sagt
 `relation_type`.*
+
+
+---
+
+## 2026-09-02 · Herleitungen aus `package.md`
+
+

@@ -65,8 +65,13 @@
  * nennt `D-133`, **weil dessen Flachklopfen der ganze Grund für den Pfad war**: «required by D-133's
  * flattening». Ohne den Verweis liesse sich nicht erklären, warum der Pfad je da war und warum er
  * ersatzlos fällt. Erzählung, nicht Berufung — der Fall, den der Kopf dieser Datei beschreibt.*
+ *
+ * ⚠️ **Auf 85 gesenkt am 2026-09-02, nachdem die Erkennung geschärft wurde.** *Vier Entscheidungen
+ * galten fälschlich als zurückgenommen, weil ihr Text die Rücknahme einer **anderen** erzählt —
+ * damit war auch jede Berufung auf sie falsch gezählt. **Die Decke war insoweit fiktiv.**
+ * Rücknahmen: 30 gemeldet, **26 echt**.*
  */
-const HINGENOMMEN = 88;
+const HINGENOMMEN = 85;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 
@@ -97,10 +102,19 @@ foreach ($zeilen as $z) {
 
     // ⚠️ *Drei Schreibweisen, weil das Buch zweisprachig gewachsen ist. **Eine vierte fiele hier
     // durch** — deshalb wird unten geprüft, dass überhaupt welche gefunden wurden.*
+    //
+    // ⚠️ **Nur der Anfang der Entscheidungsspalte zählt, und das ist eine Korrektur vom 2026-09-02.**
+    // *Vorher wurde die ganze Zeile durchsucht — und eine Entscheidung, die **die Rücknahme einer
+    // anderen erzählt**, galt damit selbst als zurückgenommen. **Gemessen waren es vier:** `D-088`,
+    // `D-373`, `D-457`, `D-532`. Bei `D-457` fiel es auf, weil ihr Text «superseded by D-453» über
+    // **D-449** sagt. **Alle 26 echten Rücknahmen tragen die Markierung vorn**, das ist die
+    // Schreibweise des Buches.*
+    $anfang = mb_substr(trim(explode('|', $z)[3] ?? ''), 0, 120);
+
     if (
-        str_contains($z, 'Überholt durch')
-        || str_contains($z, 'Superseded by')
-        || str_contains($z, 'superseded by')
+        str_contains($anfang, 'Überholt durch')
+        || str_contains($anfang, 'Superseded by')
+        || str_contains($anfang, 'superseded by')
     ) {
         $ueberholt[$t[1]] = true;
     }

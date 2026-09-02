@@ -46,9 +46,13 @@ berührt.
 |---|---|---|
 | `id` | eigener Id-Raum je Tabelle | §6 |
 | `version` | für die Schattentabelle | |
-| `name` | indiziert | |
-| `field_type` | **`model`** oder **`setting`** — Modellfeld oder Einstellungsfeld | war `kind` |
+| `parent_node_id` | **unter wem der Knoten hängt** — war eine Vererbungskante | §3.3 |
+| `sort_order` | **an welcher Stelle unter dem Elternknoten** | §3.3 |
+| `field_type` | **`model`** oder **`setting`** | war `kind` |
+| `label_id` | → `labels.id`, **verpflichtend** — hier steht der Name | §3.4 |
 | *(neu)* | die **PHP-Klasse**, die diesen Knoten umsetzt | §3.2 |
+
+**`name` ist gestrichen — er steht in `labels.name`** ([D-580](../../NewConcept/90-decision-log.md)).
 
 **`path` ist gestrichen.** Er wiederholte, was `relations` besitzt, und war bei mehreren Elternkanten
 verlustbehaftet. → [`history.md`](history.md)
@@ -74,6 +78,48 @@ des Modells halten — gegen [`AR-1`](../../../CLAUDE.md).
 
 ---
 
+### 3.3 · Vererbung ist eine Spalte, keine Kante
+
+**`parent_node_id` und `sort_order` stehen am Kind** ([D-581](../../NewConcept/90-decision-log.md)).
+`parent_node_id` sagt, unter wem der Knoten hängt; `sort_order`, an welcher Stelle unter seinen
+Geschwistern. **Schlüssel und Index: `(parent_node_id, sort_order)`.**
+
+**`relations` verliert damit 127 von 166 Zeilen.** Die Frage «ist es Vererbung?», die heute 15 von
+19 Verzweigungen im Code stellen, verschwindet.
+
+⚠️ *Eine Liste von Ids am Elternknoten wäre ein zusammengesetzter Wert in einer Spalte — dasselbe
+Muster wie der Pfad. Deshalb am Kind.*
+
+### 3.4 · Beschriftungen — `labels` und `label_texts`
+
+```text
+nodes       label_id  → labels.id     verpflichtend
+relations   label_id  → labels.id     optional
+
+labels        id · name · symbol · icon                       sprachunabhängig
+label_texts   label_id · locale · form · table · select · help sprachabhängig
+```
+
+**Der Verweis zeigt vom Gegenstand auf das Label, nicht umgekehrt** — so bekommt jede Tabelle ihre
+eigene `label_id`, statt dass `labels` je neuer Art eine Spalte wächst.
+
+**`name` steht in `labels`, nicht mehr an Knoten und Kante.** Damit liegt die **ganze Rückfallkette
+in einer Tabelle**: angefragte Sprache → Standardsprache → `labels.name`.
+
+**Keine neutrale Zeile.** Die Standardsprache ist die von WordPress (`get_locale()`, hier `en_US`).
+
+⚠️ **`symbol` und `icon` sind sprachunabhängig** — *gemessen: 38 von 38 `symbol`-Labels tragen keine
+Sprache, und [`I5`](../../NewConcept/40-i18n.md) sagt es fürs Icon ausdrücklich.*
+
+⚠️ **Offen: sind die vier Rollen Spalten oder Zeilen mit `role_id`?**
+
+### 3.5 · `nodes` hat danach keine lesbare Spalte mehr
+
+*Wer die Tabelle roh ansieht, sieht nur Ids. Kein Gegenargument, aber eine spürbare Änderung beim
+Suchen von Hand und beim Prüfen.*
+
+---
+
 ## 4 · `relations` — die Kante
 
 | Spalte | | gemessen |
@@ -81,11 +127,11 @@ des Modells halten — gegen [`AR-1`](../../../CLAUDE.md).
 | `id` | eigener Id-Raum | |
 | `version` | für die Schattentabelle | |
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
-| `relation_type` | die Kantenart | `inheritance` 127 · `composition` 23 · `setting` 11 · `aggregation` 5 |
-| `name` | | 39 von 166 |
+| `relation_type` | die Kantenart — **ohne Vererbung** | `composition` 23 · `setting` 11 · `aggregation` 5 |
+| `label_id` | → `labels.id`, **optional** — hier steht der Name | §3.4 |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
-| `hide` | | 6 von 166 |
+| `hide` | **offen** — verliert mit der Vererbung alle Benutzer | §4.4 |
 
 **`from_node_id`/`to_node_id` sind keine Umbenennung, sondern eine Verschärfung:** heute zeigen alle
 sieben Fremdschlüssel auf `identities.id`, was strukturell **eine Kante von einem Datensatz aus**

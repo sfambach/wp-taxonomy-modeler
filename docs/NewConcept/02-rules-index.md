@@ -335,12 +335,12 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **I2** | A node name is text too. Identity runs over the id, not over the name. | [40-i18n.md:32](40-i18n.md) | 5 |
 | **I3** | Every text should be translatable. | [40-i18n.md:33](40-i18n.md) | **nie** |
 | **I4** | A node carries several labels: a long description, a form label, a table label, and a symbol of roughly three characters or fewer. | [40-i18n.md:34](40-i18n.md) | 1 |
-| **I5** | A node also carries an icon, which is not language-dependent but must be changeable in a suitable place. | [40-i18n.md:35](40-i18n.md) | 2 |
+| **I5** | A node also carries an icon, which is not language-dependent but must be changeable in a suitable place. | [40-i18n.md:35](40-i18n.md) | 4 |
 | **I6** | Validators and dialogs contain texts that must be translatable too. | [40-i18n.md:36](40-i18n.md) | 2 |
 | **I7** | WordPress standard is preferred, including for multilingual operation. | [40-i18n.md:37](40-i18n.md) | 1 |
 | **I8** | Modelling translations as nodes is not sensible — they are not really translations in that sense. | [40-i18n.md:38](40-i18n.md) | 2 |
 | **I9** | Configuration values such as an upper bound, a lower bound and a step are a different thing from labels and should be kept apart, possibly in their… | [40-i18n.md:39](40-i18n.md) | 1 |
-| **I10** | A node must always have a name by default, even when no translation was entered. | [40-i18n.md:40](40-i18n.md) | 4 |
+| **I10** | A node must always have a name by default, even when no translation was entered. | [40-i18n.md:40](40-i18n.md) | 5 |
 
 ## K — Rechnen
 
