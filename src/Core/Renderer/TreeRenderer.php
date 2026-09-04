@@ -82,8 +82,20 @@ final class TreeRenderer implements Renderer
                 . '</div>';
         }
 
+        // WICHTIG: Das Suchfeld gehoert an den Baum und nicht in den Auswahldialog. Auf sein Wort:
+        // "das Suchfeld sollten wir in die Baumansicht integrieren, kann auch in tax config Sinn
+        // ergeben zu filtern". Vorher stand es im Dialogkopf und half genau dort, wo der Baum
+        // ohnehin kurz ist -- die lange Liste steht in der Seitenansicht.
+        //
+        // WICHTIG: Ein Zeichen, kein Wort. Der Kern darf die Textdomaene nicht rufen (CD-1), und
+        // AR-2 verbietet fest hingeschriebene Beschriftungen.
+        $suche = '<div class="taxmod-tree-search">'
+            . '<span aria-hidden="true">&#128269;</span>'
+            . RenderResult::htmlTag('input', ['type' => 'search', 'class' => 'taxmod-tree-filter'])
+            . '</div>';
+
         return new RenderResult(
-            '<div class="taxmod-tree">' . $markup . '</div>',
+            '<div class="taxmod-tree">' . $suche . $markup . '</div>',
             array_values(array_unique($used))
         );
     }

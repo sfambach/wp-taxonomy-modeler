@@ -368,7 +368,7 @@ Unterscheidung Komposition/Aggregation. Was von `setting` übrig ist, trägt `re
 ```text
 [ ] TASK-033  Ein Auswahl-Renderer statt zwei — dialog/inline wird eine
               Einstellung an ihm
-[ ] TASK-034  Das Suchfeld gehoert als Einstellung an den Auswahl-Renderer,
+[x] TASK-034  Das Suchfeld gehoert als Einstellung an den Auswahl-Renderer,
               nicht fest in den Dialog gebaut
 ```
 
@@ -383,3 +383,10 @@ beim Aufklappen wieder [ein Baum].»*
 ⚠️ *Heute sind es zwei Renderer-Knoten, `chooser-dialog` (43499) und `chooser-inline` (43501). Sie
 werden einer, und der Unterschied wird ein Feld — dieselbe Bewegung wie bei
 [D-585](../../NewConcept/90-decision-log.md), wo `DisplayOption` fiel.*
+
+**TASK-034 anders gelöst als notiert, auf sein Wort:** *«das Suchfeld sollten wir in die Baumansicht
+integrieren, kann auch in tax config Sinn ergeben zu filtern»* — bestätigt mit *«genau so»*.
+
+⚠️ *Es ist damit **keine** Einstellung am Auswahl-Renderer geworden, sondern Teil des Baumes selbst.
+Das ist der bessere Ort: die lange Liste steht in der Seitenansicht, und der Dialog bekommt es
+umsonst mit, weil beide denselben Baum zeichnen. Gemessen: drei Bäume auf der Seite, drei Suchfelder.*

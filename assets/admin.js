@@ -305,11 +305,11 @@
 	document.addEventListener( 'input', function ( event ) {
 		var feld = event.target;
 
-		if ( ! feld || ! feld.matches || ! feld.matches( '.taxmod-chooser-filter' ) ) {
+		if ( ! feld || ! feld.matches || ! feld.matches( '.taxmod-tree-filter' ) ) {
 			return;
 		}
 
-		var panel = feld.closest( '.taxmod-dialog-panel' );
+		var panel = feld.closest( '.taxmod-tree' );
 
 		if ( ! panel ) {
 			return;

@@ -1069,15 +1069,21 @@ details.taxmod-page-block > summary {
  * nicht — ohne Skript steht es da und tut nichts, und die vollständige Liste
  * bleibt darunter erreichbar.
  */
-.taxmod-chooser-search {
+.taxmod-tree-search {
 	display: flex;
 	align-items: center;
 	gap: .4em;
 	flex: 1 1 auto;
-	margin: 0 .6em;
+	margin: 0;
+	padding: .4em .6em;
+	border-bottom: 1px solid #dcdcde;
+	position: sticky;
+	top: 0;
+	background: #fff;
+	z-index: 1;
 }
 
-.taxmod-chooser-filter {
+.taxmod-tree-filter {
 	width: 100%;
 	min-width: 8em;
 }
