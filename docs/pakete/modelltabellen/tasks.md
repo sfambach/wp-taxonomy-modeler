@@ -293,7 +293,12 @@ bestätigt, nicht geprüft.*
 
 [D-584](../../NewConcept/90-decision-log.md), [D-585](../../NewConcept/90-decision-log.md).
 
-**TASK-024 ist nicht entschieden, nur benannt.** Dieselbe Abwägung wie bei `settings`
+**TASK-024 ist am 2026-09-04 entschieden: umziehen** ([D-594](../../NewConcept/90-decision-log.md)).
+*Gemessen sind es **29 Datensätze mit Inhalt und 125 leere** — die leeren fallen ersatzlos, die 29
+Renderer-Wahlen ziehen um, die 3 Konverter werden Werte am geerbten `converter`-Feld. Der Verweis,
+der schon dasteht, wird zur `node_id` des Datensatzes.*
+
+⚠️ *Der alte Text stand hier und war die offene Frage:* Dieselbe Abwägung wie bei `settings`
 ([D-579](../../NewConcept/90-decision-log.md)), wo er «neu eingeben» gewählt hat — dort waren es
 drei Zeilen, hier sind es 32.
 
