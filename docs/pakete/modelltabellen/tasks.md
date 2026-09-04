@@ -529,3 +529,17 @@ sind beide **Tabellenarbeit**, keine Maskenarbeit.
 ⚠️ **TASK-032 gehört hinter TASK-018, nicht hinter eine Umbenennung.** *TASK-011 hätte die Spalte
 umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimmt der Spalte 127 von
 166 Zeilen ab**, und was danach übrig ist, fällt in einem Zug.*
+
+```text
+[ ] TASK-037  Loeschen fragt nach den Verwendungen — Dialog, und bei «ja»
+              wandern sie mit in den Papierkorb        (D-604)
+[ ] TASK-038  Ein Verweis auf einen verschwundenen Knoten ist am Feld
+              sichtbar, nicht in einer Liste woanders  (D-604)
+[ ] TASK-039  cleartrash-check leert den ganzen Papierkorb, nicht seinen
+              Teil — er darf nur wegraeumen, was er selbst angelegt hat
+```
+
+⚠️ **TASK-039 ist kein Notfall, aber es ist derselbe Fehler wie bei TASK-025:** *ein Wächter, der
+mehr anfasst als seine eigenen Knoten. **«Geparkt, nicht gelöscht» gilt nicht, solange ein
+Wächterlauf dazwischenkommt** — gemessen an `DisplayOption`, den der Eigentümer selbst geparkt
+hatte und der beim nächsten Lauf endgültig fiel.*
