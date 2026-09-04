@@ -553,6 +553,8 @@ hatte und der beim nächsten Lauf endgültig fiel.*
 ```text
 [ ] TASK-040  Ein Knoten erbt keine Einstellungskante, die auf ihn selbst
               zeigt (D-607) — plus Waechter dafuer
+[ ] TASK-042  Die gesperrte Zeile wird angezeigt, als gesperrt erkennbar,
+              mit Hinweistext, der den Grund nennt (D-608)
 ```
 
 ⚠️ *Gemessen betrifft es heute **einen** Knoten: `read_only` unter `Boolean`. `Validator` und
