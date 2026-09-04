@@ -33,13 +33,11 @@ use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $passed = 0;
@@ -65,12 +63,10 @@ function check(string $what, bool $ok, string $detail = ''): void
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$rows      = new WpdbSettingRepository();
 $labelRows = new WpdbLabelRepository();
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings($rows, $nodes, $framework, $log);
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log, $rows, $labelRows, $settings);
+$editor = new ModelEditor($nodes, $edges, $framework, $log, $labelRows, $rows);
 
 global $wpdb;
 
@@ -97,7 +93,9 @@ $doomed = $editor->createNode('__ct doomed', $root->id);
 $target = $editor->createNode('__ct target', $root->id);
 $edge   = $editor->addField($doomed->id, $target->id, 'feld');
 
-$settings->put($settings->chainFor($doomed), SettingKey::Max->value, TypedValue::ofInt(77));
+// ⚠️ *Hier bekam der Knoten eine Zeile in der `settings`-Tabelle, damit sich zeigen laesst, dass sie
+// mit ihm verschwindet. **Die Tabelle ist mit D-579 gestrichen**; was mitgeht, sind Labels, Kanten
+// und Datensaetze — und genau das misst der Rest dieser Datei.*
 // ⚠️ *The role is a **seeded node** ([D-196](../../docs/NewConcept/90-decision-log.md)), so `role_id`
 // is a real id and not an enum value. Taking one that exists keeps the foreign key honest — inventing
 // a number here would test the check's imagination rather than the act.*
@@ -113,7 +111,6 @@ $labelRows->put(new Label($doomed->id, '', $roleId, '', 'de_DE', 'Weg damit'));
 
 $owners = [$doomed->id, $edge->id];
 
-check('the node holds settings', rowsFor('settings', $owners) > 0, (string) rowsFor('settings', $owners));
 check('and a label', rowsFor('labels', $owners) > 0, (string) rowsFor('labels', $owners));
 
 // ⚠️ *Only the doomed one is parked. `__ct target` stays in the model — which is what makes the last
@@ -130,11 +127,10 @@ echo "\n== clearing it ==\n";
 
 $gone = $editor->clearTrash();
 
-printf("  %d Knoten, %d Kanten, %d Settings, %d Labels\n", $gone['nodes'], $gone['edges'], $gone['settings'], $gone['labels']);
+printf("  %d Knoten, %d Kanten, %d Labels\n", $gone['nodes'], $gone['edges'], $gone['labels']);
 
 check('the trash is empty', count($nodes->subtreeOf($trash)) === 0, (string) count($nodes->subtreeOf($trash)));
 check('the node is gone', $nodes->find($doomed->id) === null);
-check('its settings went with it', rowsFor('settings', $owners) === 0, (string) rowsFor('settings', $owners));
 check('its labels went with it', rowsFor('labels', $owners) === 0, (string) rowsFor('labels', $owners));
 check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$edge->id}") === 0);
 
@@ -185,7 +181,6 @@ $in    = $mine === [] ? (string) $target->id : implode(',', $mine);
 $stray = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id IN ({$in}) OR to_id IN ({$in})"));
 $own   = $stray === [] ? $in : $in . ',' . implode(',', $stray);
 
-$wpdb->query("DELETE FROM {$p}settings WHERE owner_id IN ({$own})");
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
 
 if ($stray !== []) {

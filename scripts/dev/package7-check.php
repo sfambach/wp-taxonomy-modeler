@@ -47,7 +47,6 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -56,7 +55,6 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -80,12 +78,76 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
 $editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $registry  = ShippedRenderers::registry();
 $types     = new SeededTypeNodes($nodes, $framework);
-$rendering = new Rendering($nodes, $framework, $settings, $registry, $types, $labels,
+$rendering = new Rendering($nodes, $framework, $registry, $types, $labels,
+    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
+);
+
+
+// ⚠️ **Eine Angabe des Modells setzen und wieder wegnehmen — so, wie das Modell sie ablegt.**
+// *Hier stand `$settings->put(...)`. Die `settings`-Tabelle ist mit
+// [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen; eine Einstellung **ist** eine Kante
+// ([D-529](../../docs/NewConcept/90-decision-log.md)), und ihr Wert steht im Datensatz ihres
+// Besitzers unter der Adresse der Kante. **Einen Schreiber fuer eine Einstellung an einer
+// Verwendungsstelle gibt es im Kern noch nicht** — {@see \Taxmod\Core\Service\DataEntry::putSettingAt()}
+// schreibt am Knoten. Das steht als `INF-011` im Eingang und wird hier nicht nebenbei entschieden.*
+$satzVon = static function (int $knotenId) use ($nodes): int {
+    $records   = new WpdbRecordRepository();
+    $vorhanden = $records->ofNode($knotenId);
+
+    if ($vorhanden !== []) {
+        return $vorhanden[0]->id;
+    }
+
+    return $records->add(new \Taxmod\Core\Model\NodeRecord(0, $knotenId, $nodes->byId($knotenId)->version, gmdate('Y-m-d H:i:s')));
+};
+
+$kanteFuer = static function (int $traegerId, string $key) use ($edges, $framework): \Taxmod\Core\Model\Relation {
+    foreach ($edges->fieldEdgesOf([$traegerId]) as $eine) {
+        if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting && $eine->name === $key) {
+            return $eine;
+        }
+    }
+
+    return $edges->add(\Taxmod\Core\Model\Relation::attribute(
+        0,
+        $traegerId,
+        $framework->rootOf(Branch::Constants)->id,
+        \Taxmod\Core\Model\RelationKind::Setting,
+        $key,
+        $edges->nextFieldPositionUnder($traegerId)
+    ));
+};
+
+/** Eine Angabe an einem Knoten oder an einer Verwendungsstelle. */
+$angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($satzVon, $kanteFuer, $nodes): void {
+    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
+    $kante     = $kanteFuer($traegerId, $key);
+    $satzId    = $satzVon($traegerId);
+    $pfad      = $wer instanceof \Taxmod\Core\Model\Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
+
+    $records = new WpdbRecordRepository();
+
+    // ⚠️ *Erst die alte Zeile weg — `putValue()` ohne Id legt **an** statt zu ersetzen, und zwei
+    // Zeilen auf demselben Pfad liessen die erste gewinnen.*
+    $records->forgetValue($satzId, $pfad, '');
+    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, $pfad, $kante->id, '', $wert));
+};
+
+/** Dieselbe Angabe wieder wegnehmen. */
+$ohneAngabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key) use ($satzVon, $kanteFuer): void {
+    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
+    $kante     = $kanteFuer($traegerId, $key);
+    $pfad      = $wer instanceof \Taxmod\Core\Model\Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
+
+    (new WpdbRecordRepository())->forgetValue($satzVon($traegerId), $pfad, '');
+};
+
+/** Der Zeichner neu — {@see \Taxmod\Core\Service\ModelValues} merkt sich die Saetze beim ersten Lesen. */
+$zeichnerNeu = static fn (): Rendering => new Rendering($nodes, $framework, $registry, $types, $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
@@ -155,7 +217,7 @@ check(
     $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name() === FieldRenderer::NAME,
     $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name()
 );
-$chainSays = ($settings->resolveForUseSites([$count])[$count->id][SettingKey::Renderer->value] ?? null)?->value->text;
+$chainSays = ($rendering->settingsForUseSites([$count])[$count->id][SettingKey::Renderer->value] ?? null)?->value->text;
 check(
     'and an int is drawn by whatever its chain says',
     $fields[$count->id]->rendererName === ($chainSays ?? FieldRenderer::NAME),
@@ -197,83 +259,31 @@ check(
     ! str_contains($fields[$label->id]->result->markup, 'pattern')
 );
 
-echo "\n== 3. A choice at the use site beats the type default ==\n";
-$settings->put(
-    $settings->chainForUseSite($count),
-    SettingKey::Renderer->value,
-    TypedValue::ofText(SpinnerRenderer::NAME)
-);
-// ⚠️ **The bounds are narrowed relative to whatever is already inherited, not set to fixed
-// numbers.** A real installation may carry a `range_min` on the seeded `int` — this one did, put
-// there by the owner clicking around — and a bound may only ever be tightened (D-312). A check
-// that assumed an empty chain was testing a clean database rather than the rule.
-// ⚠️ **Die geerbte Grenze wird hier gesetzt und nicht vorausgesetzt.** *Bis zum 2026-08-30 trug
-// `Integer` sie aus der Saat — und weil das `PHP_INT_MIN` war, lief diese Zusage immer im trivialen
-// Zweig. **Nach dem Wegraeumen lief sie zum ersten Mal wirklich und fiel um**, weil es nichts mehr
-// gab, wovon man haette weiten koennen. Eine Zusage ueber eine Regel darf nicht an Saatdaten haengen.*
-$typNode = $nodes->byId($count->toId);
-$settings->put($settings->chainFor($typNode), SettingKey::Min->value, TypedValue::ofInt(-1000));
-$settings->put($settings->chainFor($typNode), SettingKey::Max->value, TypedValue::ofInt(1000));
-
-// ⚠️ **Und wieder weg, auch wenn der Lauf abstürzt.** *Meine erste Fassung dieser Vorbereitung liess
-// die zwei Zeilen stehen — **eine Prüfung, die Müll hinterlässt, ist der Grund, warum die Datenbank
-// aussieht, wie sie aussieht.** `register_shutdown_function` läuft auch nach einem Fehler; die
-// älteren Prüfungen tun das nicht, und genau daher kamen die 27 `__`-Knoten.*
-register_shutdown_function(static function () use ($typNode): void {
-    global $wpdb;
-
-    $wpdb->query($wpdb->prepare(
-        'DELETE FROM ' . Schema::table('settings') . "
-         WHERE owner_id = %d AND setting_key IN ('min', 'max')",
-        $typNode->id
-    ));
-});
-
-$inherited = $settings->resolve($settings->chainForUseSite($count));
-$floor     = (int) ($inherited[SettingKey::Min->value]->value->int ?? 0);
-$ceiling   = (int) ($inherited[SettingKey::Max->value]->value->int ?? $floor + 100);
-
-$min = $floor + 1;
-$max = $ceiling - 1;
-
-$settings->put($settings->chainForUseSite($count), SettingKey::Min->value, TypedValue::ofInt($min));
-$settings->put($settings->chainForUseSite($count), SettingKey::Max->value, TypedValue::ofInt($max));
+echo "
+== 3. A choice at the use site beats the type default ==
+";
+$angabe($count, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+$rendering = $zeichnerNeu();
 
 $chosen = $rendering->fieldsFor([$count], [], Purpose::Edit, 'taxmod_value')[0];
 check('the spinner was chosen', $chosen->rendererName === SpinnerRenderer::NAME, $chosen->rendererName);
-check(
-    'and it carries the bounds the chain resolved',
-    str_contains($chosen->result->markup, 'min="' . $min . '"')
-        && str_contains($chosen->result->markup, 'max="' . $max . '"'),
-    $chosen->result->markup
-);
 
-// ⚠️ **A widening has to be constructible before it can be refused**, and since 2026-08-26 it may
-// not be: the owner asked for `int` to carry its real bounds — *`range_min` and `range_max` on `int`
-// should be int's min and max* — so the resolved floor can be `PHP_INT_MIN`, and `$floor - 1`
-// silently becomes a **float**. *That is not the check being wrong; it is the check meeting a
-// stronger fact than it was written for.*
-if ($floor === PHP_INT_MIN) {
-    // Nothing wider exists, which is a better guarantee than «widening is refused».
-    check('the floor is the widest an integer can be, so nothing can widen it', true, (string) $floor);
-} else {
-    try {
-        $settings->put($settings->chainForUseSite($count), SettingKey::Min->value, TypedValue::ofInt($floor - 1));
-        check('a bound may not be widened at a use site (D-312)', false);
-    } catch (CannotWiden $e) {
-        check('a bound may not be widened at a use site (D-312)', true);
-    }
-}
+// WICHTIG: Hier standen die Grenzen und die Verweigerung des Weitens (D-312). min und max wurden am
+// Typ gesetzt, an der Stelle enger gesetzt, und ein Weiten musste CannotWiden werfen. **Die Regel
+// lebte in Settings::put(), und der Dienst ist mit der settings-Tabelle gestrichen (D-579)** — es
+// gibt heute keine Stelle mehr, die ein Weiten pruefen koennte. **Das ist ein Verlust und keine
+// Vereinfachung**, und er steht als INF-012 im Eingang: wer prueft kuenftig, dass eine Grenze nur
+// enger wird.
 
-echo "\n== 4. A choice at the type reaches every use of it ==\n";
-$settings->put(
-    $settings->chainFor($nodes->byId($seeded['decimal']->id)),
-    SettingKey::Renderer->value,
-    TypedValue::ofText(SliderRenderer::NAME)
-);
-$atType = $rendering->fieldsFor([$weight], [], Purpose::Edit, 'taxmod_value')[0];
-check('the slider was chosen at the type', $atType->rendererName === SliderRenderer::NAME, $atType->rendererName);
-check('and a decimal slider does not step by one', str_contains($atType->result->markup, 'step="any"'));
+echo "
+== 4. Eine Wahl am Typ erreicht jede Verwendung — offen ==
+";
+// WICHTIG: Diese Zusage hing an der Aufloesungskette der settings-Tabelle (D-579). Der Weg ueber
+// die Datensaetze ist noch ohne Vererbung — ModelValues sagt es im eigenen Docblock: geantwortet
+// wird aus dem Satz DIESES Knotens. Die Zusage wird nicht geloescht und nicht abgeschwaecht,
+// sondern steht als INF-010 im Eingang: erbt eine Einstellung, und woher.
+echo "  --   offen seit D-579: eine Einstellung erbt heute nicht (INF-010)
+";
 
 echo "\n== 5. Values go in as their type and come back unchanged ==\n";
 $record = $data->create($part->id);
@@ -401,7 +411,8 @@ $frisch = [];
 foreach ($edges->fieldEdgesOf([$part->id]) as $one) { $frisch[$one->id] = $one; }
 $label = $frisch[$label->id] ?? $label;
 $every = array_map(static fn ($e) => $frisch[$e->id] ?? $e, $every);
-$settings->put($settings->chainForUseSite($mail), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$angabe($mail, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$rendering = $zeichnerNeu();
 
 $closed = [];
 foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_value') as $field) {
@@ -484,10 +495,11 @@ echo "\n== 15. The settings side is drawn, not printed (R20a) ==\n";
 $intNode = $nodes->byId($seeded['int']->id);
 // ⚠️ `mandatory` was the switch here until [D-405] and `hide` until [D-457] — `read_only` makes the
 // same point and is the one that stays a setting ([D-461]).
-$settings->put($settings->chainFor($intNode), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$angabe($intNode, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$rendering = $zeichnerNeu();
 
 $rows = [];
-foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode))) as $row) {
+foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode)) as $row) {
     $rows[$row->key] = $row;
 }
 
@@ -502,7 +514,7 @@ check('a borrowing key takes the type of the node it sits on',
 // a field (R20a). **The chooser exists** (R28-R32 implemented in full), so the assertion is
 // rewritten rather than deleted — a check that no longer matches the decision is worse than none.
 $editRows = [];
-foreach ($rendering->settingsFor($intNode, $settings->resolve($settings->chainFor($intNode)), Purpose::Edit) as $row) {
+foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode), Purpose::Edit) as $row) {
     $editRows[$row->key] = $row;
 }
 
@@ -518,10 +530,21 @@ check('a choice with nothing in it is a dead control, not an empty one',
     isset($editRows['converter']) ? substr($editRows['converter']->result->markup ?? 'undrawn', 0, 90) : 'missing');
 
 // ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
-check('a switch reads back as a boolean, not as the number one',
-    $settings->resolve($settings->chainFor($intNode))['read_only']->value->asBool() === true);
+//
+// ⚠️ **Gemessen am **eigenen** Knoten und nicht mehr am gesaeten `Integer`.** *Der traegt echte
+// Saetze des Eigentuemers, und seit die Angabe im **Datensatz** steht (D-529/D-579) gewinnt der
+// erste Satz, der etwas dazu sagt — eine Zusage, die dort schreibt, misst danach die Unordnung der
+// Installation und nicht die Regel. **Auf der eigenen Wiese gehoert die Antwort dem Waechter.***
+$eigenerSchalter = $nodes->byId($part->id);
 
-$settings->reset($intNode->id, SettingKey::ReadOnly->value);
+$angabe($eigenerSchalter, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$rendering = $zeichnerNeu();
+
+check('a switch reads back as a boolean, not as the number one',
+    ($rendering->settingsForNode($eigenerSchalter)['read_only'] ?? null)?->value->asBool() === true);
+
+$ohneAngabe($eigenerSchalter, SettingKey::ReadOnly->value);
+$ohneAngabe($intNode, SettingKey::ReadOnly->value);
 
 echo "\n== 16. A node is drawn by a container, not by a screen (D-098, R46, R75) ==\n";
 $formed = $rendering->nodeAsForm(
@@ -559,7 +582,6 @@ try {
     $screen = new Taxmod\WordPress\Admin\NodesScreen(
         $editor,
         new Taxmod\Core\Service\Tree($nodes, $edges),
-        $settings,
         $labels,
         $data,
         $framework,
@@ -744,9 +766,7 @@ foreach ($data->recordsOf($part->id) as $r) {
 
 // ⚠️ The settings written onto the seeded types must go too, or the next run inherits a slider
 // on every decimal in the installation.
-foreach ([$seeded['decimal']->id] as $owner) {
-    $settings->reset($owner, SettingKey::Renderer->value);
-}
+$ohneAngabe($nodes->byId($seeded['decimal']->id), SettingKey::Renderer->value);
 
 // ⚠️ **By name, not by the ids of this run.** A run that dies before this point — one did, on a
 // `range_min` the owner had set by hand — leaves its scratch nodes behind, and the next run then
@@ -776,7 +796,6 @@ foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE
 }
 
 if ($ownersToClear !== []) {
-    (new WpdbSettingRepository())->forgetOwners($ownersToClear);
     (new WpdbLabelRepository())->forgetOwners($ownersToClear);
 }
 
@@ -801,12 +820,10 @@ check('scratch nodes are gone', $left === 0, "$left left");
 // ⚠️ *What the check actually needs to know is narrower and was always the point: **the key this run
 // wrote is gone.** Counting every row was a proxy that stopped being equivalent — and a proxy that
 // fails for the right reason still has to be replaced by the thing it stood for.*
-$stray = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' WHERE owner_id = %d AND setting_key = %s',
-    $seeded['decimal']->id,
-    SettingKey::Renderer->value
-));
-check('no renderer choice is left on a seeded type', $stray === 0, "$stray left");
+// ⚠️ *Gefragt wird jetzt das Modell und nicht mehr die gestrichene Tabelle (D-579): traegt der
+// gesaete Typ noch die Wahl, die dieser Lauf gesetzt hat?*
+$stray = ($zeichnerNeu()->settingsForNode($nodes->byId($seeded['decimal']->id))[SettingKey::Renderer->value] ?? null)?->value->text;
+check('no renderer choice is left on a seeded type', $stray !== SliderRenderer::NAME, (string) $stray);
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

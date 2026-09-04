@@ -8,15 +8,11 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
-use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 
 /**
  * Prefixes and base units, under `Constants`.
@@ -138,7 +134,6 @@ final class UnitScaffold
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
-        private readonly Settings $settings,
         private readonly Labels $labels,
         /** ⚠️ *So a member's type is found by id and not by the node's name ([D-510](../../../docs/NewConcept/90-decision-log.md)).* */
         private readonly TypeNodes $typeNodes,
@@ -200,28 +195,12 @@ final class UnitScaffold
         foreach (self::PREFIXES as $name => $power) {
             $node = $this->ensure($prefixes, $name, $created);
 
-            // ⚠️ **At the exponent attribute's path, and that is the fix** ([D-413](../../../docs/NewConcept/90-decision-log.md)).
-            // This used to write `default` at the **empty** path, meaning *kilo's own default* — and the
-            // `exponent` attribute could never see it, because a use site resolves from its target's
-            // chain and `kilo` is not in that chain. **So [D-378](../../../docs/NewConcept/90-decision-log.md)
-            // was written and did not function for four days**, measured on 2026-08-26
-            // ([OQ-099](../../../docs/NewConcept/91-open-questions.md)).
-            //
-            // ⚠️ *The path is the edge id, so the row says «kilo's value **for that attribute**» rather
-            // than «kilo's value». Those are the two different questions the column exists to keep
-            // apart, and this is the first consumer of it.*
-            $this->settings->put(
-                $this->settings->chainFor($node),
-                SettingKey::DefaultValue->value,
-                TypedValue::ofInt($power),
-                (string) $exponent->id
-            );
-
-            // ⚠️ **The old row is taken out rather than left beside the new one.** It said something
-            // false about the node — *kilo defaults to 3* — and a wrong answer that nobody reads is
-            // still a wrong answer sitting in the model. *`reset` at the empty path removes exactly
-            // that one and leaves the new one alone, which is what the path is for.*
-            $this->settings->reset($node->id, SettingKey::DefaultValue->value);
+            // ⚠️ *Hier stand der Exponent des Praefixes als `default` in der `settings`-Tabelle, an
+            // der Adresse der Kante `exponent` ([D-413](../../../docs/NewConcept/90-decision-log.md)).
+            // **Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen**,
+            // und gemessen am 2026-09-04 trug sie **keine einzige `default`-Zeile** mehr: der Wert
+            // steht seit [D-529](../../../docs/NewConcept/90-decision-log.md) im Datensatz, und
+            // {@see \Taxmod\Core\Service\Rendering::nonPersistentValue()} liest ihn dort.*
         }
 
         $base = $this->ensure($constants, 'Base units', $created);
@@ -235,23 +214,11 @@ final class UnitScaffold
         $withoutPrefix = $this->ensure($base, 'Without prefix', $created);
 
         foreach (self::WITHOUT_PREFIX as $name => $conversion) {
-            $node = $this->ensure($withoutPrefix, $name, $created);
-
-            if (isset($conversion['factor'])) {
-                $this->settings->put(
-                    $this->settings->chainFor($node),
-                    SettingKey::Factor->value,
-                    TypedValue::ofDecimal($conversion['factor'])
-                );
-            }
-
-            if (isset($conversion['offset'])) {
-                $this->settings->put(
-                    $this->settings->chainFor($node),
-                    SettingKey::Offset->value,
-                    TypedValue::ofDecimal($conversion['offset'])
-                );
-            }
+            // ⚠️ *`factor` und `offset` standen hier als Zeilen der `settings`-Tabelle. Sie ist mit
+            // [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen; gemessen trug sie
+            // zuletzt weder das eine noch das andere — [D-529](../../../docs/NewConcept/90-decision-log.md)
+            // hat beide als **Felder am Knoten** fortgeschrieben.*
+            $this->ensure($withoutPrefix, $name, $created);
         }
 
         $this->unitValue($prefixes, $base, $created);
@@ -366,13 +333,11 @@ final class UnitScaffold
         // Der Präfix ist optional, weil «10 Ohm» keinen hat.*
         $this->editor->setMultiplicity($prefix->fromId, $prefix->id, Multiplicity::ZeroToOne);
 
-        foreach ([$prefix, $unit] as $edge) {
-            $this->settings->put(
-                $this->settings->chainForUseSite($edge),
-                Rendering::LABEL_ROLE,
-                TypedValue::ofText(SeededRole::Symbol->value)
-            );
-        }
+        // ⚠️ **Hier stand `label_role = symbol` fuer `prefix` und `einheit`, und das sind genau die
+        // drei Zeilen, die [D-579](../../../docs/NewConcept/90-decision-log.md) aufgibt.** *Der
+        // Eigentümer hat zwischen Umzug und Neueingabe gewaehlt — «B» — und die sichtbare Folge
+        // vorher benannt: bis `label_role` seinen neuen Ort hat (`OQ-134`), zeigt `Einheitenwert`
+        // «Kiloohm» statt «kΩ». **Kein Fehler, umkehrbar, und bewusst in Kauf genommen.***
     }
 
     /**

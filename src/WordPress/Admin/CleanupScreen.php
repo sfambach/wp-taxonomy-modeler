@@ -60,7 +60,6 @@ final class CleanupScreen
     public const PAGE = 'taxmod-cleanup';
 
     /** Which act a button asks for. */
-    private const FORGET_SETTINGS = 'forget_settings';
     private const FORGET_VALUES   = 'forget_values';
     private const PURGE_NODE      = 'purge_node';
     private const FORGET_RECORDS  = 'forget_records';
@@ -87,7 +86,6 @@ final class CleanupScreen
             . '</p>'
             . $this->notice()
             . $this->renderer->render([
-                $this->orphanedSettings(),
                 $this->valuesWithoutEdge(),
                 $this->nodesWithoutConnections(),
                 $this->recordsWithoutNode(),
@@ -95,36 +93,11 @@ final class CleanupScreen
             . '</div>';
     }
 
-    /** [D-156](../../../docs/NewConcept/90-decision-log.md) — an override whose owner went. */
-    private function orphanedSettings(): ResidueGroup
-    {
-        $entries = [];
-
-        foreach ($this->residue->orphanedSettings() as $owner => $rows) {
-            $entries[] = new ResidueEntry(
-                sprintf(
-                    /* translators: 1: owner id, 2: how many setting rows it still holds. */
-                    _n(
-                        'Owner %1$d is gone and still holds %2$d setting.',
-                        'Owner %1$d is gone and still holds %2$d settings.',
-                        $rows,
-                        'taxmod'
-                    ),
-                    $owner,
-                    $rows
-                ),
-                $this->act(self::FORGET_SETTINGS, __('Remove these settings for good', 'taxmod')),
-                $this->submits(self::FORGET_SETTINGS, $owner)
-            );
-        }
-
-        return new ResidueGroup(
-            __('Settings whose owner is gone', 'taxmod'),
-            __('A node or an attribute was purged and what had been set on it stayed. Nothing reads these, so no screen is wrong — but a migration replaying this model would carry answers to questions nobody can ask.', 'taxmod'),
-            __('Nothing to tidy up here.', 'taxmod'),
-            $entries
-        );
-    }
+    /*
+     * Hier stand die Gruppe «Settings, deren Eigentuemer weg ist» ([D-156]). Die `settings`-Tabelle
+     * ist mit [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen — **eine Quelle, die es
+     * nicht mehr gibt, hinterlaesst keinen Rest.** *Die drei anderen Gruppen bleiben.*
+     */
 
     /** [D-159](../../../docs/NewConcept/90-decision-log.md) — a value whose edge went. */
     private function valuesWithoutEdge(): ResidueGroup
@@ -323,7 +296,6 @@ final class CleanupScreen
         }
 
         return match ($act) {
-            self::FORGET_SETTINGS => $this->removed($this->residue->forgetOrphanedSettings($target)),
             self::FORGET_VALUES   => $this->removed($this->residue->forgetValuesOfEdge($target)),
             self::PURGE_NODE      => $this->purged($target),
             self::FORGET_RECORDS  => $this->forgotRecords($target),
@@ -355,9 +327,8 @@ final class CleanupScreen
         }
 
         return sprintf(
-            /* translators: 1: settings, 2: labels. */
-            __('The node is gone, with %1$d settings and %2$d labels. Its id and its changelog entries stay.', 'taxmod'),
-            $gone['settings'],
+            /* translators: %d: labels. */
+            __('The node is gone, with %d labels. Its id and its changelog entries stay.', 'taxmod'),
             $gone['labels']
         );
     }

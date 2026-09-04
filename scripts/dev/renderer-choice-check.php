@@ -47,14 +47,12 @@ use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelValues;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -80,7 +78,6 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $registry  = ShippedRenderers::registry();
 
 // ⚠️ **Die Prüfung geht denselben Weg wie die Anwendung, und das ist der Punkt.** *Sie fragt beide
@@ -92,11 +89,13 @@ $model = new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $framework)
 /** @return array<string,\Taxmod\Core\Model\ResolvedSetting> */
 function beideQuellen(\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $subject): array
 {
-    global $settings, $model;
+    global $model;
 
+    // ⚠️ *Es waren einmal **zwei** Quellen — die `settings`-Tabelle und das Modell. Die Tabelle ist
+    // mit D-579 gestrichen; geblieben ist die eine, die schon vorher gewann.*
     return $subject instanceof \Taxmod\Core\Model\Node
-        ? [...$settings->resolve($settings->chainFor($subject)), ...$model->forNode($subject)]
-        : [...$settings->resolve($settings->chainForUseSite($subject)), ...$model->forUseSite($subject)];
+        ? $model->forNode($subject)
+        : $model->forUseSite($subject);
 }
 
 /** Der Knoten mit diesem Namen, oder null. */
@@ -283,7 +282,6 @@ echo "\n== Und die Vorschau folgt dem, was im Datensatz steht ==\n";
 $rendering = new Rendering(
     $nodes,
     $framework,
-    $settings,
     $registry,
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),

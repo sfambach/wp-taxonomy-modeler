@@ -34,10 +34,8 @@ use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\ModelValues;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -207,7 +205,6 @@ check('Prefixes is there', isset($underConstants['Prefixes']));
 check('Base units is there', isset($underConstants['Base units']));
 
 if (isset($underConstants['Prefixes'])) {
-    $prefixSettings = new Settings(new WpdbSettingRepository(), $nodes, $framework);
     $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
@@ -259,14 +256,8 @@ if (isset($underConstants['Prefixes'])) {
             : $prefixModel->defaultFor($prefixNode, $exponentEdge)?->int;
     }
 
-    check(
-        'the exponent is nowhere at the node\'s own default any more',
-        (int) $GLOBALS['wpdb']->get_var(
-            'SELECT COUNT(*) FROM ' . $GLOBALS['wpdb']->prefix . "taxmod_settings s
-             JOIN {$GLOBALS['wpdb']->prefix}taxmod_nodes n ON n.id = s.owner_id
-             WHERE s.setting_key = 'default' AND s.path = '' AND n.path LIKE '%.{$prefixes->id}.%'"
-        ) === 0
-    );
+    // ⚠️ *Hier stand die Gegenprobe «keine Zeile mehr am eigenen Default des Knotens». **Die
+    // `settings`-Tabelle ist mit D-579 gestrichen**, es kann keine geben.*
 
     check('every prefix carries its power of ten as a default', ! in_array(null, $exponents, true));
     // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
@@ -275,8 +266,6 @@ if (isset($underConstants['Prefixes'])) {
     // ⚠️ **The counter-check that keeps the flip honest:** the setting route left twenty
     // `prefix_exponent` rows behind, and a stale row under a retired key answers nothing while
     // cluttering every panel. The key is gone from the enum, so this asserts the data went with it.
-    check('and no row is left under the retired key',
-        (int) $GLOBALS['wpdb']->get_var("SELECT COUNT(*) FROM {$GLOBALS['wpdb']->prefix}taxmod_settings WHERE setting_key = 'prefix_exponent'") === 0);
 }
 
 if (isset($underConstants['Base units'])) {

@@ -45,7 +45,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 13 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 6 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 14 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 45 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 44 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
@@ -62,8 +62,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 17 |
-| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 14 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 110 |
+| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 13 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 104 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 3 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 25 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
@@ -134,7 +134,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **C27** | There are three layers, not two: the model, the data entered into it, and the presentation — the latter being what the renderer concept covers. | [10-domain-core.md:1382](10-domain-core.md) | **nie** |
 | **C28** | Test data is ordinary data, marked as such. Rows can be flagged as test data, and the preview renderer uses those. The default value is checked at … | [10-domain-core.md:1383](10-domain-core.md) | 6 |
 | **C29** | A default says how data is filled by default. An integer with default 10 means a new record starts at 10. | [10-domain-core.md:1384](10-domain-core.md) | **nie** |
-| **C30** | Defaults work with multiplicity: several defaults, several pre-filled rows. | [10-domain-core.md:1385](10-domain-core.md) | 13 |
+| **C30** | Defaults work with multiplicity: several defaults, several pre-filled rows. | [10-domain-core.md:1385](10-domain-core.md) | 12 |
 | **C31** | A default may be a node reference. Given an attribute that chooses from four options, options one and two can be the defaults — and those options a… | [10-domain-core.md:1386](10-domain-core.md) | 1 |
 | **C32** | The same holds for an aggregation: take the target node, look at which values get filled, and pre-fill them. | [10-domain-core.md:1387](10-domain-core.md) | 2 |
 | **C33** | The default is entered in the attribute, but it looks exactly like entering data into the model. Same display, same interaction. | [10-domain-core.md:1388](10-domain-core.md) | 1 |

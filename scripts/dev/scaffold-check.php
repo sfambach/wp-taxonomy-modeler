@@ -34,8 +34,6 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -72,7 +70,6 @@ $types     = new SeededTypeNodes($nodes, $framework);
 $scaffold  = new BaseScaffold($editor, $framework, $types);
 
 $dataTypes = $framework->rootOf(Branch::DataTypes);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 
 echo "\n== 1. Every simple type is there ==\n";
 $scaffold->import();
@@ -173,15 +170,15 @@ check('and color is back under Data Types',
 // that is how the data layer came to read `persistent` as **on** while the switch drew it **off**.
 echo "\n== 6. Every switch declares its default in one place (D-401) ==\n";
 
-$installation = $framework->installationId();
-$declared     = $settings->resolve([$installation]);
+// ⚠️ **Die zweite Haelfte dieser Zusicherung ist mit der Tabelle gefallen** (D-579): *gefragt wurde,
+// ob eine **Zeile** an der Installation die Vorgabe eines Schalters wiederholt. Es gibt keine Zeilen
+// mehr, also kann keine sie wiederholen — **die Vorgabe lebt nur noch am Schluessel**, und genau das
+// ist es, was hier jetzt gemessen wird.*
 
 foreach (SettingKey::cases() as $key) {
     if ($key->shape() !== SettingShape::Switch) {
         continue;
     }
-
-    $stored = ($declared[$key->value] ?? null)?->value->asBool();
 
     // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil einer Konzeptänderung**
     // ([`PR-9`](../../CLAUDE.md)). *Bis dahin verlangte diese Prüfung eine **gespeicherte Zeile** je
@@ -199,11 +196,6 @@ foreach (SettingKey::cases() as $key) {
         'the key declares nothing'
     );
 
-    check(
-        "  · and no row repeats it",
-        $stored === null || $stored !== $key->defaultSwitch(),
-        $stored === null ? 'ok' : 'a row repeats ' . var_export($stored, true)
-    );
 }
 
 // ⚠️ **The counter-check that gives the block its meaning**: a key that is *not* a switch must have
@@ -225,7 +217,6 @@ check('asking a range for its switch default is refused', $threw);
 $probe = $editor->childrenOf($dataTypes->id)[0] ?? null;
 
 if ($probe !== null) {
-    $at = $settings->resolve($settings->chainFor($probe));
 
     foreach (SettingKey::cases() as $key) {
         if ($key->shape() !== SettingShape::Switch) {
@@ -237,8 +228,8 @@ if ($probe !== null) {
         // dem Schlüssel. **Der Rückfall ist seit Zeile 85 der Normalfall und kein Mangel.***
         check(
             "«{$probe->name}» gets an answer for «{$key->value}»",
-            isset($at[$key->value]) || $key->defaultSwitch() !== null,
-            'neither a row nor a declared default'
+            $key->defaultSwitch() !== null,
+            'der Schluessel erklaert nichts'
         );
     }
 }

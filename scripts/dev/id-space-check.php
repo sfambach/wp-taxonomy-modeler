@@ -23,11 +23,10 @@
  * hier gelesen — *die Bedingungen auf `nodes.id` setzt TASK-010; bis dahin ist dieser Lauf die
  * Stelle, die es merkt. Gemessen vor dem Umbau: **null Waisen in allen sieben Spalten.***
  *
- * ⚠️ **`settings.owner_id` ist der eine offene Punkt und wird darum gezählt, nicht verlangt.**
- * *Gemessen zeigt sie auf **Knoten (3) und Kanten (10)** — ohne dass eine zweite Spalte den Raum
- * nennt, wie `package.md` §6 es für so eine Spalte verlangt. Solange die Räume ineinander lagen, war
- * das schadlos; ab jetzt kann es mehrdeutig werden, und **der Lauf wird rot, sobald es das ist**.
- * `INF-009` in [`inbox.md`](../../docs/pakete/modelltabellen/inbox.md).*
+ * ⚠️ **Der eine offene Punkt war `settings.owner_id` — sie nannte ihren Raum nicht und zeigte
+ * gemessen auf Knoten (3) und Kanten (10).** *Die Tabelle ist mit
+ * [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen; mit ihr faellt der Abstand, der die
+ * beiden Raeume auseinanderhielt, und `INF-009` ist damit erledigt.*
  *
  * ⚠️ *Dieser Lauf schreibt nichts und legt nichts an — er liest nur, also gibt es nichts wegzuräumen.*
  *
@@ -123,7 +122,8 @@ check(
 echo "\n2 · Jede Tabelle vergibt ihre Ids selbst\n";
 
 // ⚠️ *Eine Abfrage über `information_schema` und keine je Tabelle (`CD-7`).*
-$eigene = ['nodes', 'relations', 'records', 'record_values', 'labels', 'settings', 'changelog'];
+// WICHTIG: settings stand hier und ist mit D-579 gestrichen.
+$eigene = ['nodes', 'relations', 'records', 'record_values', 'labels', 'changelog'];
 
 foreach ($eigene as $name) {
     $tabelle = Schema::table($name);
@@ -143,7 +143,7 @@ echo "\n3 · Kein Fremdschluessel zeigt ins Leere\n";
 
 // ⚠️ *Die sieben Spalten, die bis Fassung 20 auf `identities.id` zeigten, plus die drei, die schon
 // immer ihre Zieltabelle im Namen trugen. **Was hier steht, ist der Soll-Zustand von `package.md` §6**,
-// und `settings.owner_id` fehlt bewusst — sie hat noch keinen eindeutigen Raum.*
+// und `settings.owner_id` stand hier bewusst nicht — die Tabelle ist seit D-579 fort.*
 $verweise = [
     ['relations', 'from_id', 'nodes'],
     ['relations', 'to_id', 'nodes'],
@@ -215,40 +215,35 @@ foreach (['node' => 'nodes', 'relation' => 'relations'] as $art => $name) {
     );
 }
 
-echo "\n5 · Und was offen ist, wird gezaehlt statt behauptet\n";
+echo "
+5 · Der Behelf ist weg, und das ist die Zusage
+";
 
-$mehrdeutig = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' s
-     WHERE EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = s.owner_id)
-       AND EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = s.owner_id)'
+// WICHTIG: Hier standen drei Zeilen ueber settings.owner_id (INF-009): sie nannte ihren Raum nicht
+// und zeigte gemessen auf 3 Knoten und 10 Kanten, weshalb der Kantenraum eine Milliarde ueber dem
+// Knotenraum beginnen musste. **Die Tabelle ist mit D-579 gestrichen, und der Abstand mit ihr** —
+// die Zusage «keine Nummer ist zugleich Knoten und Kante» ist damit nicht mehr noetig und
+// ausdruecklich nicht mehr gewollt: package.md §6 sagt, mit eigenen Raeumen gebe es «Knoten 5,
+// Kante 5 und Datensatz 5».
+//
+// Was bleibt, ist die Gegenprobe, dass niemand mehr ohne Raum fragt: keine Tabelle mit einer
+// mehrdeutigen Besitzerspalte. changelog nennt owner_kind, record_values nennt value_ref_kind, und
+// labels.owner_id zeigt gemessen nur auf Knoten — das steht in Abschnitt 3.
+$settingsTabelle = Schema::table('settings');
+
+check(
+    'die settings-Tabelle ist fort',
+    $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $settingsTabelle)) === null,
+    'sie steht noch'
 );
 
-check('keine settings.owner_id meint zwei Dinge zugleich', $mehrdeutig === 0, "$mehrdeutig mehrdeutig");
-
-// ⚠️ **Der Abstand zwischen den beiden Räumen ist ein Behelf, und dies ist seine Prüfung**
-// (`Schema::RELATION_SPACE_OFFSET`, `INF-009`): *solange `settings.owner_id` ihren Raum nicht nennt,
-// darf keine Nummer zugleich ein Knoten und eine Kante sein. **Gemessen am 2026-09-04, nachdem der
-// Abstand fehlte: 16 solche Nummern, und `package4-check` zerbrach daran.***
 $doppelt = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
      INNER JOIN ' . Schema::table('relations') . ' r ON r.id = n.id'
 );
 
-check('keine Nummer ist zugleich Knoten und Kante', $doppelt === 0, "$doppelt Nummern");
-
-$verteilung = $wpdb->get_row(
-    'SELECT
-        SUM(EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = s.owner_id)) AS k,
-        SUM(EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = s.owner_id)) AS ka
-     FROM ' . Schema::table('settings') . ' s',
-    ARRAY_A
-) ?: ['k' => '0', 'ka' => '0'];
-
-printf(
-    "       gemessen: %d Einstellungen an Knoten, %d an Kanten — INF-009 ist offen\n",
-    (int) $verteilung['k'],
-    (int) $verteilung['ka']
-);
+printf("       gemessen: %d Nummern sind zugleich Knoten und Kante — erlaubt, seit jede Tabelle ihren eigenen Raum hat
+", $doppelt);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

@@ -40,7 +40,6 @@ use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $go = in_array('--go', $argv, true);
@@ -60,25 +59,20 @@ $p = $wpdb->prefix . 'taxmod_';
 // {@see \Taxmod\WordPress\Persistence\Residue}, weil die `Cleanup`-Seite
 // ([D-247](../../docs/NewConcept/90-decision-log.md)) genau dieselbe stellt — und **zwei Kopien einer
 // Abfrage sind der Weg, auf dem eine Korrektur nur eine von beiden erreicht.***
-$residue = new Residue($framework, new WpdbSettingRepository(), new WpdbLabelRepository(), $changelog);
+// ⚠️ *Die Settings-Haelfte ist mit der Tabelle gegangen (D-579) — was es nicht gibt, laesst nichts
+// liegen. Geblieben sind die Labels.*
+$residue = new Residue($framework, new WpdbLabelRepository(), $changelog);
 
-$settings = $residue->orphanedSettings();
-$labels   = $residue->orphanedLabels();
-
-$settingOwners = array_keys($settings);
-$labelOwners   = array_keys($labels);
-
-$settingRows = array_sum($settings);
+$labels      = $residue->orphanedLabels();
+$labelOwners = array_keys($labels);
 $labelRows   = array_sum($labels);
 
-printf(
-    "Installationsidentitaet %d — bleibt, mit %d erklaerten Standardwerten.\n\n",
-    $installation,
-    (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$p}settings WHERE owner_id = %d", $installation))
-);
+printf("Installationsidentitaet %d — bleibt.
 
-printf("Settings: %d Zeilen bei %d verschwundenen Besitzern\n", $settingRows, count($settingOwners));
-printf("Labels:   %d Zeilen bei %d verschwundenen Besitzern\n", $labelRows, count($labelOwners));
+", $installation);
+
+printf("Labels:   %d Zeilen bei %d verschwundenen Besitzern
+", $labelRows, count($labelOwners));
 
 if (! $go) {
     echo "\n— Probelauf. Mit --go werden sie entfernt. —\n";
@@ -90,12 +84,7 @@ if (! $go) {
 // betaetigt — **sie misst vor jedem Entfernen erneut**, statt einer uebergebenen Liste zu glauben. Das
 // kostet hier eine Abfrage pro Besitzer und ist der Preis dafuer, dass es nur **eine** Stelle gibt, an
 // der ein verwaister Override verschwindet.*
-$goneSettings = 0;
-$goneLabels   = 0;
-
-foreach ($settingOwners as $owner) {
-    $goneSettings += $residue->forgetOrphanedSettings((int) $owner);
-}
+$goneLabels = 0;
 
 foreach ($labelOwners as $owner) {
     $goneLabels += $residue->forgetOrphanedLabels((int) $owner);

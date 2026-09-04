@@ -38,7 +38,6 @@ use Taxmod\Core\Service\RestoreResult;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Plugin;
 
@@ -156,7 +155,6 @@ final class NodesScreen
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly Tree $tree,
-        private readonly Settings $settings,
         private readonly Labels $labels,
         private readonly DataEntry $data,
         private readonly FrameworkNodes $framework,
@@ -2579,25 +2577,12 @@ final class NodesScreen
 
 
 
-    /** The chain a setting written **at this node** belongs to. */
-    /**
-     * The chain a setting is written to — the **node's**, or the **use site's** when an edge is named.
-     *
-     * ⚠️ **The edge case had no way in until the panels were unified** ([D-381](../../../docs/NewConcept/90-decision-log.md)).
-     * The attribute row now shows every setting that applies to a use site, and `persistent`
-     * ([D-378](../../../docs/NewConcept/90-decision-log.md)) is one of them — so a write that landed
-     * on the **node** instead would set it for the type and every other user of it, quietly. *The
-     * form states which owner it means; a zero means the node, which is what an absent edge has always
-     * meant on this screen.*
+    /*
+     * Hier stand `settingChain()` — die Kette, an deren letztes Glied eine Einstellung geschrieben
+     * wurde ([D-381](../../../docs/NewConcept/90-decision-log.md)). **Mit der `settings`-Tabelle
+     * ([D-579](../../../docs/NewConcept/90-decision-log.md)) ist auch die Kette gestrichen**: es
+     * gibt keinen Schreiber mehr, der ein Ziel bräuchte.
      */
-    private function settingChain(int $nodeId, int $edgeId = 0): array
-    {
-        if ($edgeId !== 0) {
-            return $this->settings->chainForUseSite($this->editor->ownAttribute($nodeId, $edgeId));
-        }
-
-        return $this->settings->chainFor($this->editor->find($nodeId) ?? $this->framework->root());
-    }
 
     /**
      * Turn what somebody typed into a typed value.
@@ -2856,24 +2841,6 @@ final class NodesScreen
         }
 
         return sanitize_key(wp_unslash((string) $raw));
-    }
-
-    /**
-     * Which setting a row's act meant.
-     *
-     * ⚠️ **Read out of the button's own name**, and sanitised like any key. *Returning `''` where
-     * nothing was named is deliberate: the core then refuses it rather than this method guessing at a
-     * key, and a refusal names the problem where a guess would write to the wrong row.*
-     */
-    private function keyOfRowAct(): string
-    {
-        $raw = $_POST['do'] ?? '';
-
-        if (! is_array($raw) || $raw === []) {
-            return '';
-        }
-
-        return sanitize_text_field(wp_unslash((string) array_key_first($raw)));
     }
 
     /**
@@ -3264,66 +3231,13 @@ final class NodesScreen
             }
         }
 
-        $submitted = isset($_POST[self::SETTING_FIELD]) && is_array($_POST[self::SETTING_FIELD])
-            ? wp_unslash($_POST[self::SETTING_FIELD])
-            : [];
-
-        if ($submitted === []) {
-            return;
-        }
-
-        $chain    = $this->settingChain($nodeId, $edgeId);
-        $resolved = $this->settings->resolve($chain);
-
-        foreach ($submitted as $key => $raw) {
-            $key = sanitize_text_field((string) $key);
-
-            if ($key === '') {
-                continue;
-            }
-
-            $value  = $this->settingValue($nodeId, $key, sanitize_text_field((string) $raw));
-            $before = $resolved[$key] ?? null;
-
-            // ⚠️ **Compared against what the chain *answers*, not against what was written here — and
-            // the difference was a real defect.** A switch always submits `0` or `1`, never nothing
-            // ([D-315](../../../docs/NewConcept/90-decision-log.md)'s hidden field is what makes *off*
-            // mean false), so on the old test every unset switch counted as changed and a page save
-            // wrote `hide=false`, `mandatory=false` and — worst — **`persistent=false`** onto every
-            // node somebody looked at. *`persistent=false` silently stops an attribute from storing
-            // anything (D-378): a save that touched nothing would have broken data entry.*
-            //
-            // ⚠️ *The owner asked for exactly this: **check whether the default values are right.**
-            // They were not, and the cause is that «unset» and «false» look identical on a switch.*
-            //
-            // ⚠️ **And the inherited case still writes**, which is why the comparison is against the
-            // resolved value: an ancestor saying `hide = true` shows the switch **on**, so turning it
-            // off differs from what the chain answers and must be kept.
-            if ($before !== null && $before->value->equals($value)) {
-                continue;
-            }
-
-            // ⚠️ **An empty field does not create a row, and this was the source of the litter.**
-            // Measured 2026-08-26: **17 rows held no value at all** — `icon`, `factor` and `offset` on
-            // exactly the nodes the owner had opened. *A page save writes every key on the panel, so
-            // every field left blank wrote an all-`NULL` row — and the resolver reads such a row as
-            // «set here» and stops the chain ([row 29](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
-            // Five of them on a minutes-old node once made `persistent` impossible to switch on.*
-            //
-            // ⚠️ **Only where nothing is stored yet, and the distinction is the whole point.** *«Nothing
-            // here» is a real, reachable state — the `empty` act writes it deliberately
-            // ([D-266](../../../docs/NewConcept/90-decision-log.md)) — so a save may not undo it and may
-            // not invent it either. Blank field plus no row means the person did not fill it in; blank
-            // field plus an existing row is a change, and changes are kept.*
-            // ⚠️ *`setHere` and not `!== null`: since [D-423](../../../docs/NewConcept/90-decision-log.md)
-            // almost every key **resolves**, so «no value» would practically never be true — the
-            // question is whether this owner holds a row of **its own**.*
-            if ($value->isNothing() && ($before === null || ! $before->setHere)) {
-                continue;
-            }
-
-            $this->settings->put($chain, $key, $value);
-        }
+        // ⚠️ **Hier stand der Schreiber der `settings`-Tabelle**, der jeden geaenderten Wert der
+        // Tafel in eine Zeile schrieb. *Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
+        // gestrichen. **Der Schreiber war schon vorher wirkungslos**: seit
+        // [D-543](../../../docs/NewConcept/90-decision-log.md) liest {@see \Taxmod\Core\Service\ModelValues}
+        // aus Datensaetzen und **gewinnt** — der Eigentuemer hat es an der Oberflaeche gesehen («den
+        // Render kann ich noch nicht setzen»), und `setting-write-check.php` bewacht seither, dass
+        // geschrieben wird, wo gelesen wird. **Was hier fiel, war ein Schreiber ohne Leser.***
     }
 
     /**
@@ -3679,14 +3593,10 @@ final class NodesScreen
                 // ihren Renderer im Datensatz tragen, **spurlos**. Der Eigentümer hat es gesehen: «den
                 // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
                 // Schreiber an der alten Stelle.*
-                // ⚠️ **These two name their key in the button** (`do[<key>]`), because one form now
-                // holds every row and a hidden `setting_key` could only ever say one of them.
-                'empty_setting'  => $this->settings->put($this->settingChain($id, $edge), $this->keyOfRowAct(), TypedValue::nothing()),
-                // ⚠️ **Reset **pulls** now rather than forgetting** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
-                // With every owner carrying its own rows there is no walk left to fall through, so
-                // dropping the row would leave **nothing** instead of the inherited value. *The chain
-                // is what says where «above» is, which is why it is handed in rather than an id.*
-                'reset_setting'  => $this->settings->pull($this->settingChain($id, $edge), $this->keyOfRowAct()),
+                // ⚠️ *Hier standen die Zeilen-Akte `empty_setting` und `reset_setting`. Ihre Knöpfe
+                // sind mit der Tafel gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
+                // `package7-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
+                // Ziel, die `settings`-Tabelle, mit [D-579](../../../docs/NewConcept/90-decision-log.md).*
                 // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein
                 // unbekannter Wert wird verworfen und nicht geraten — die vier Konstanten sind die
                 // ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)).*

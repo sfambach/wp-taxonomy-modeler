@@ -12,7 +12,6 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
 
 /**
  * The composed types the concept names as **its own test** — an address, a dimension, a recipe.
@@ -72,7 +71,6 @@ final class CompositionScaffold
     public function __construct(
         private readonly ModelEditor $editor,
         private readonly FrameworkNodes $framework,
-        private readonly Settings $settings,
         /** ⚠️ *So a member's type is found by id and not by the node's name ([D-510](../../../docs/NewConcept/90-decision-log.md)).* */
         private readonly TypeNodes $typeNodes,
     ) {

@@ -11,7 +11,6 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Admin\NodesScreen;
@@ -29,7 +28,6 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 
 /**
  * The boundary. It wires WordPress to the core and decides nothing (D-170).
@@ -283,7 +281,6 @@ final class Plugin
         return new CleanupScreen(
             new Residue(
                 $this->frameworkNodes(),
-                new WpdbSettingRepository(),
                 new WpdbLabelRepository(),
                 $this->changelog(),
                 // ⚠️ *Die vierte Quelle misst Datensätze, deren Knoten fort ist, und entfernt sie
@@ -302,15 +299,9 @@ final class Plugin
             new WpdbRelationRepository(),
             $this->frameworkNodes(),
             $this->changelog(),
-            // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
-            // original, so its own settings and labels travel with it.
-            new WpdbSettingRepository(),
+            // ⚠️ **Only `duplicate()` reads this** — a copy has to resolve exactly like its
+            // original, so its own labels travel with it.
             new WpdbLabelRepository(),
-            // ⚠️ **The materialiser** ([D-423](../../../docs/NewConcept/90-decision-log.md)): a new
-            // node gets its parent's settings written into it, and a new attribute its target's.
-            // *Handed in rather than made required, because the core tests and the boundary checks
-            // build this service to move nodes about and have nothing to furnish.*
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             // ⚠️ **Damit `clearTrash()` die Daten mitnimmt** — [C102](../../docs/NewConcept/10-domain-core.md):
             // *ein Record ohne seinen Knoten ist undenkbar.* Ohne dieses Argument überlebten die Records
             // ihren Knoten, während der Docblock der Methode behauptete, sie gingen mit.
@@ -330,7 +321,6 @@ final class Plugin
         return new UnitScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             // ⚠️ *Mit Changelog und Knoten-Repository, damit eine Labelaenderung in der Geschichte
             // steht ([D-489]) und `owner_kind` nicht geraten wird.*
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository()),
@@ -350,7 +340,6 @@ final class Plugin
         return new CompositionScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             $this->typeNodes()
         );
     }
@@ -385,11 +374,7 @@ final class Plugin
             $this->frameworkNodes(),
             // ⚠️ **The seed writes down which node each type became** ([D-510](../../docs/NewConcept/90-decision-log.md)),
             // and everything afterwards reads that id instead of a name.
-            $this->typeNodes(),
-            // ⚠️ **Handed in so the scaffold can say what a number type permits.** The owner:
-            // *`range_min` and `range_max` on `int` should be int's min and max.* The bounds come
-            // from the column it is stored in, because storage is what refuses.
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository())
+            $this->typeNodes()
         );
     }
 
@@ -471,7 +456,6 @@ final class Plugin
      */
     public function screen(): NodesScreen
     {
-        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository());
         // ⚠️ *Dasselbe Exemplar des Changelogs wie ueberall ([D-470](../../docs/NewConcept/90-decision-log.md)),
         // damit eine Labelaenderung in derselben Aenderungsgruppe landet wie der Akt, der sie ausloeste.*
         $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository());
@@ -479,7 +463,6 @@ final class Plugin
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
-            $settings,
             $labels,
             new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
             $this->frameworkNodes(),
@@ -489,7 +472,6 @@ final class Plugin
             new Rendering(
                 new WpdbNodeRepository(),
                 $this->frameworkNodes(),
-                $settings,
                 ShippedRenderers::registry(),
                 // ⚠️ **Which node is which type, by id** ([D-510](../../docs/NewConcept/90-decision-log.md)).
                 // *The same instance as the scaffolds', so the eleven options are read once a request.*
@@ -502,9 +484,6 @@ final class Plugin
                 // `converter` setting drew as a **dead** control until there was one to ask
                 // (D-219, list row 7).*
                 ShippedConverters::registry(),
-                // ⚠️ **Die Brücke waehrend des Umzugs** ([D-529](../../docs/NewConcept/90-decision-log.md)):
-                // *was schon als Datensatz im Modell steht, gewinnt; was noch in der Settings-Tabelle
-                // liegt, traegt der alte Weg weiter.*
                 // ⚠️ **Und die Kanten, damit der Abstieg durch die Knoten gehen kann.** *Seine
                 // Diagnose: «heisst wohl Renderkette ist unterbrochen». Ohne dies endete der Gang am
                 // ersten zusammengesetzten Feld — `Kontakt.Address` zeigte ein Kästchen, `Adresse` hat

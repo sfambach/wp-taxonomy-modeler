@@ -13,13 +13,11 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\Labels;
-use Taxmod\Core\Service\Settings;
 use Taxmod\Tests\Core\Fake\CountingIdentities;
 use Taxmod\Tests\Core\Fake\FixedFramework;
 use Taxmod\Tests\Core\Fake\InMemoryLabels;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
 use Taxmod\Tests\Core\Fake\InMemoryRelations;
-use Taxmod\Tests\Core\Fake\InMemorySettings;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
 
 /**
@@ -202,94 +200,15 @@ final class FrozenStateTest extends TestCase
         TypedValue::ofTypeName('colour', '#ff0000');
     }
 
-    /**
-     * ⚠️ **The whole of row 47 in one assertion.** *Before this, both of these writes produced
-     * `after = "10"` and the journal could not say which of the two places was meant.*
+    /*
+     * Hier standen fuenf Zusicherungen ueber die Journalzeilen, die {@see Settings} beim Setzen und
+     * Zuruecknehmen einer Einstellung schrieb — Schluessel, Pfad, Typ, Wert, und die Gegenprobe,
+     * dass ein Zuruecknehmen ohne Wert nichts verzeichnet. **Der Schreiber ist mit der
+     * `settings`-Tabelle gestrichen (D-579)**, und eine Zusicherung ueber eine Zeile, die niemand
+     * mehr schreibt, prueft nichts. *Der Rest dieser Datei — die Form `FrozenState` selbst und der
+     * Label-Eintrag — bleibt unberuehrt.*
      */
-    #[Test]
-    public function the_same_key_at_two_places_writes_two_distinguishable_entries(): void
-    {
-        [$settings, $changes, $node] = $this->aNodeWithSettings();
 
-        $chain = $settings->chainFor($node);
-
-        $settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
-        $settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10), '4654');
-
-        $written = array_values(array_filter(
-            $changes->entries,
-            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
-        ));
-
-        self::assertCount(2, $written);
-
-        $own = FrozenState::parse((string) $written[0][4]);
-        $at  = FrozenState::parse((string) $written[1][4]);
-
-        self::assertSame('', $own?->field('path'), 'the owner itself');
-        self::assertSame('4654', $at?->field('path'), 'and the place it answers for');
-        self::assertNotSame($written[0][4], $written[1][4]);
-    }
-
-    #[Test]
-    public function a_setting_entry_carries_key_path_type_and_value(): void
-    {
-        [$settings, $changes, $node] = $this->aNodeWithSettings();
-
-        $settings->put($settings->chainFor($node), SettingKey::DefaultValue->value, TypedValue::ofDecimal('2.50'), '4654');
-
-        $entry = array_values(array_filter(
-            $changes->entries,
-            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
-        ))[0];
-
-        $after = FrozenState::parse((string) $entry[4]);
-
-        self::assertNotNull($after);
-        self::assertSame(SettingKey::DefaultValue->value, $after->field('key'));
-        self::assertSame('4654', $after->field('path'));
-        self::assertSame('decimal', $after->field('type'));
-        self::assertSame('2.50', $after->field('value'));
-
-        // And the value can be rebuilt, which is what «replayable» means.
-        self::assertTrue(
-            TypedValue::ofDecimal('2.50')->equals(
-                TypedValue::ofTypeName((string) $after->field('type'), (string) $after->field('value'))
-            )
-        );
-    }
-
-    /**
-     * ⚠️ *«Deliberately nothing» and «no row at all» used to be the same `NULL` in this column. They
-     * are different states (D-266, D-401) and a replay of the second where the first was meant would
-     * hand a value back to inheritance that somebody switched off on purpose.*
-     */
-    #[Test]
-    public function emptying_a_setting_is_not_the_same_entry_as_never_having_one(): void
-    {
-        [$settings, $changes, $node] = $this->aNodeWithSettings();
-
-        $chain = $settings->chainFor($node);
-
-        $settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
-        $settings->put($chain, SettingKey::Min->value, TypedValue::nothing());
-
-        $entries = array_values(array_filter(
-            $changes->entries,
-            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
-        ));
-
-        self::assertCount(2, $entries);
-        self::assertNull($entries[0][3], 'there was no row before the first write');
-        self::assertSame('nothing', FrozenState::parse((string) $entries[1][4])?->field('type'));
-        self::assertStringEndsWith('cleared', (string) $entries[1][2]);
-    }
-
-    /**
-     * ⚠️ **The label side wrote its address into `what` this morning, and this is where that stops.**
-     * *`what` is matched by equality and shown raw; the address goes where a reader can ask for it by
-     * name.*
-     */
     #[Test]
     public function a_label_entry_says_the_verb_in_what_and_the_address_in_the_state(): void
     {
@@ -324,101 +243,5 @@ final class FrozenStateTest extends TestCase
         self::assertSame('one', $after->field('number'));
         self::assertSame('de_DE', $after->field('locale'));
         self::assertSame('Ein Name mit Leerzeichen', $after->field('text'));
-    }
-
-    /**
-     * ⚠️ **`reset()` schrieb gar keine Journalzeile** — gemessen beim Bau von Zeile 47, gebaut als
-     * Zeile 74. *`put()` verzeichnete jede Änderung (D-403), `reset()` entfernte eine Zeile und sagte
-     * nichts. Damit war «hier war etwas gesetzt und jemand hat es auf geerbt zurückgestellt» im
-     * Journal nicht von «hier war nie etwas» zu unterscheiden — und genau diese zwei Zustände hält
-     * D-266 auseinander.*
-     */
-    #[Test]
-    public function resetting_a_setting_says_so_and_says_what_it_took_back(): void
-    {
-        [$settings, $changes, $node] = $this->aNodeWithSettings();
-
-        $chain = $settings->chainFor($node);
-
-        $settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
-        $settings->reset($node->id, SettingKey::Min->value);
-
-        $written = array_values(array_filter(
-            $changes->entries,
-            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
-        ));
-
-        self::assertCount(2, $written, 'setzen und zuruecksetzen sind zwei Eintraege');
-        self::assertSame('setting min set', $written[0][2]);
-        self::assertSame('setting min cleared', $written[1][2]);
-
-        // ⚠️ *Der Eintrag muss sagen, **was** zurückgenommen wurde — sonst ist er nicht abspielbar
-        // (D-492). Der alte Wert wird dafür gelesen, bevor er verschwindet.*
-        $before = FrozenState::parse((string) $written[1][3]);
-
-        self::assertNotNull($before);
-        self::assertSame(SettingKey::Min->value, $before->field('key'));
-        self::assertSame('10', $before->field('value'));
-
-        // ⚠️ **`null` und nicht «nichts»**: die Zeile ist fort, sie hält nicht absichtlich nichts.
-        self::assertNull($written[1][4]);
-    }
-
-    /**
-     * ⚠️ *Die Gegenrichtung, und sie kommt ohne eigenen Wächter aus: {@see Settings::note()} vergleicht
-     * beide Zustände und schreibt nichts, wenn sie gleich sind. **Ein zweiter Wächter in `reset()` wäre
-     * eine zweite Stelle, die dieselbe Frage beantwortet.***
-     */
-    #[Test]
-    public function resetting_what_was_never_set_writes_nothing(): void
-    {
-        [$settings, $changes, $node] = $this->aNodeWithSettings();
-
-        $settings->reset($node->id, SettingKey::Min->value);
-
-        $written = array_filter(
-            $changes->entries,
-            static fn (array $e): bool => str_starts_with((string) $e[2], 'setting ')
-        );
-
-        self::assertSame([], $written, 'nichts gesetzt, nichts zurueckgenommen, nichts verzeichnet');
-    }
-    /**
-     * A node, its chain, and a changelog that keeps what was written.
-     *
-     * @return array{Settings, RecordedChanges, Node}
-     */
-    private function aNodeWithSettings(): array
-    {
-        $edges = new InMemoryRelations();
-        $nodes = new InMemoryNodes($edges);
-        $ids   = new CountingIdentities();
-
-        $make = static function (string $name, ?Node $parent) use ($ids, $nodes, $edges): Node {
-            $node = Node::create($ids->next(), $name, $parent?->path);
-            $nodes->add($node);
-
-            if ($parent !== null) {
-                $edges->add(Relation::inheritance($ids->next(), $parent->id, $node->id, $edges->nextPositionUnder($parent->id)));
-            }
-
-            return $node;
-        };
-
-        $root  = $make('Root', null);
-        $trash = $make('Trash', $root);
-        $model = $make('Model', $root);
-        $node  = $make('Board', $model);
-
-        $changes = new RecordedChanges();
-
-        $settings = new Settings(
-            new InMemorySettings(),
-            $nodes,
-            new FixedFramework($root, $trash, ['model' => $model]),
-            $changes
-        );
-
-        return [$settings, $changes, $node];
     }
 }

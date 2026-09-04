@@ -360,7 +360,6 @@ $say(count($ueber) === 1 && $ueber[0]->text === '__lb Über den eigenen Knopf', 
 $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$knoten->id} OR to_id = {$knoten->id}"));
 $own = $e === [] ? (string) $knoten->id : $knoten->id . ',' . implode(',', $e);
 
-$roh("DELETE FROM {$p}settings WHERE owner_id IN ({$own})");
 $roh("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
 $roh("DELETE FROM {$p}changelog WHERE owner_id IN ({$own})");
 

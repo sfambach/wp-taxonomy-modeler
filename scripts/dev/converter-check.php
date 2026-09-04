@@ -16,7 +16,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\{Purpose, ShippedRenderers};
 use Taxmod\Core\Service\{Labels, ModelEditor, Rendering, Settings};
-use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository, WpdbSettingRepository};
+use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
@@ -24,18 +24,22 @@ $edges = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
 $fw    = new SeededFrameworkNodes($nodes, $edges, $log);
 
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $fw, $log);
 $editor    = new ModelEditor($nodes, $edges, $fw, $log);
-$rendering = new Rendering(
+
+// ⚠️ *Frisch gebaut nach jeder gesetzten Angabe: {@see \Taxmod\Core\Service\ModelValues} merkt sich
+// die Saetze eines Knotens beim ersten Lesen. Ein Waechter, der erst zeichnet, dann setzt und wieder
+// zeichnet, saehe sonst den alten Stand — **und genau so ist dieser hier gebaut.***
+$zeichner = static fn (): Rendering => new Rendering(
     $nodes,
     $fw,
-    $settings,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $fw),
     new Labels(new WpdbLabelRepository(), $fw),
     ShippedConverters::registry(),
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $fw)
 );
+
+$rendering = $zeichner();
 
 $failed = 0;
 
@@ -69,6 +73,55 @@ if ($integerId === null) {
 
 $edge = $editor->addField($holder->id, $integerId, 'zaehler');
 
+// ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — so, wie das Modell sie ablegt.**
+// *Hier stand `$settings->put($settings->chainForUseSite($edge), …)`. Die `settings`-Tabelle ist mit
+// [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen, und einen **Schreiber fuer eine
+// Einstellung an einer Verwendungsstelle** gibt es im Kern noch nicht:
+// {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} schreibt am **Knoten**. Das ist im Eingang
+// als `INF-011` vermerkt und nicht hier nebenbei entschieden — der Waechter legt die Zeile darum
+// selbst, ueber die Speicher, und raeumt sie mit seiner Spielwiese wieder weg.*
+$einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($nodes, $edges, $fw, $zeichner, &$rendering): void {
+    $records = new WpdbRecordRepository();
+    $traeger = $nodes->byId($stelle->fromId);
+
+    $kante = null;
+
+    foreach ($edges->fieldEdgesOf([$traeger->id]) as $eine) {
+        if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting && $eine->name === $key) {
+            $kante = $eine;
+        }
+    }
+
+    if ($kante === null) {
+        $kante = $edges->add(\Taxmod\Core\Model\Relation::attribute(
+            0,
+            $traeger->id,
+            $fw->rootOf(Branch::Constants)->id,
+            \Taxmod\Core\Model\RelationKind::Setting,
+            $key,
+            $edges->nextFieldPositionUnder($traeger->id)
+        ));
+    }
+
+    // ⚠️ *Denselben Satz wieder benutzen und nicht jedes Mal einen neuen: {@see \Taxmod\Core\Service\ModelValues}
+    // nimmt je Schluessel den **ersten** Satz, der etwas dazu sagt — ein zweiter Satz haette die
+    // erste Angabe nie abgeloest, und der Waechter haette den alten Konverter weitergemessen.*
+    $vorhanden = $records->ofNode($traeger->id);
+    $satzId    = $vorhanden === []
+        ? $records->add(new \Taxmod\Core\Model\NodeRecord(0, $traeger->id, $traeger->version, gmdate('Y-m-d H:i:s')))
+        : $vorhanden[0]->id;
+
+    // ⚠️ *Erst die alte Zeile weg: {@see \Taxmod\WordPress\Persistence\WpdbRecordRepository::putValue()}
+    // legt ohne Id **an** statt zu ersetzen, und zwei Zeilen auf demselben Pfad haetten die erste
+    // gewinnen lassen.*
+    $pfad = $stelle->id . '.' . $kante->id;
+
+    $records->forgetValue($satzId, $pfad, '');
+    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, $pfad, $kante->id, '', $wert));
+
+    $rendering = $zeichner();
+};
+
 echo "== der Schluessel war ein totes Steuerelement, jetzt nicht mehr ==\n";
 
 // ⚠️ **Am Attribut gemessen, nicht am Knoten.** Ein Knoten unter `Model` hat keinen einfachen Typ,
@@ -76,7 +129,7 @@ echo "== der Schluessel war ein totes Steuerelement, jetzt nicht mehr ==\n";
 // ist die Frage «welche Abbildung darf dieser Wert bekommen» ueberhaupt gestellt.
 $drawn = $rendering->settingsFor(
     $edge,
-    $settings->resolve($settings->chainForUseSite($edge)),
+    $rendering->settingsForUseSites([$edge])[$edge->id] ?? [],
     Purpose::Edit
 );
 
@@ -111,7 +164,7 @@ $say(str_contains($before->result->markup, '12'), 'die 12 steht als 12 da');
 
 echo "\n== mit roman wird sie XII, ohne den Renderer zu wechseln ==\n";
 
-$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('roman'));
+$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('roman'));
 
 $after = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
@@ -130,7 +183,7 @@ $say(($read[$edge->id]->int ?? null) === 12, 'auch klein geschrieben');
 
 echo "\n== hexadecimal genauso ==\n";
 
-$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
+$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
 
 $hex = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(255)], Purpose::Display)[0];
 
@@ -146,7 +199,7 @@ echo "\n== binary und octal auch, in beide Richtungen ==\n";
 // Zeichenkette auf dem Schirm, nicht durch einen direkten Aufruf des Konverters. **Der Kern prüft die
 // Abbildung; hier steht die Frage, ob sie über Einstellung und Auflösung überhaupt ankommt.***
 foreach ([['binary', 12, '1100'], ['octal', 493, '755']] as [$konverter, $zahl, $zeichen]) {
-    $settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText($konverter));
+    $einstellung($edge, SettingKey::Converter->value, TypedValue::ofText($konverter));
 
     $gezeichnet = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt($zahl)], Purpose::Display)[0];
 
@@ -161,7 +214,7 @@ echo "\n== eine Ziffer, die es in dieser Basis nicht gibt, wird verweigert ==\n"
 
 // ⚠️ *`bindec('2')` ist `0` und `octdec('9')` ist `0` — dieselbe stille Null, die
 // [D-071](../../docs/NewConcept/90-decision-log.md) verbietet.*
-$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('binary'));
+$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('binary'));
 
 try {
     $rendering->valuesFrom([$edge], [$edge->id => '2']);
@@ -172,7 +225,7 @@ try {
 
 echo "\n== was nicht lesbar ist, wird verweigert und nicht als 0 gespeichert ==\n";
 
-$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
+$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
 
 try {
     $rendering->valuesFrom([$edge], [$edge->id => 'zz']);
@@ -183,7 +236,7 @@ try {
 
 echo "\n== ein Konvertername, den es nicht gibt, nimmt kein Formular mit runter ==\n";
 
-$settings->put($settings->chainForUseSite($edge), SettingKey::Converter->value, TypedValue::ofText('gibt-es-nicht'));
+$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('gibt-es-nicht'));
 
 $stale = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
@@ -194,7 +247,7 @@ $in  = (string) $holder->id;
 $all = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$in} OR to_id = {$in}"));
 $own = $all === [] ? $in : $in . ',' . implode(',', $all);
 
-$wpdb->query("DELETE FROM {$p}settings WHERE owner_id IN ({$own})");
+(new WpdbRecordRepository())->forgetNodes([$holder->id]);
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
 
 if ($all) {

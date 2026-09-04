@@ -122,7 +122,6 @@ foreach ([$allein->id, $enkel->id, $kind->id, $feld->id, $typ->id, $ast->id] as 
     $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$id} OR to_id = {$id}"));
     $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
-    $wpdb->query("DELETE FROM {$p}settings WHERE owner_id IN ({$own})");
     $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
     $wpdb->query("DELETE FROM {$p}changelog WHERE owner_id IN ({$own})");
 

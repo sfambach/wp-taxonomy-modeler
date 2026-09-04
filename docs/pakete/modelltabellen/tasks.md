@@ -248,7 +248,7 @@ Arbeitsstück.
 ⚠️ *Kein Feldzug mit einem regulären Ausdruck — siehe [`bekannte-fallen.md`](../../bekannte-fallen.md).*
 
 ```text
-[ ] TASK-017  settings streichen — Tabelle und Code
+[x] TASK-017  settings streichen — Tabelle und Code
 ```
 
 [D-579](../../NewConcept/90-decision-log.md), auf sein Wort: *«settings bitte rausschmeissen»*, und
@@ -261,6 +261,36 @@ zur Abwägung Umzug gegen Neueingabe: *«B»*.
 alle von `Einheitenwert`. **Bis `label_role` seinen neuen Ort hat (`OQ-134`), zeigt `Einheitenwert`
 den langen Namen statt des Zeichens** — «Kiloohm» statt «kΩ». Kein Fehler, umkehrbar, und bewusst in
 Kauf genommen.
+
+**Gebaut am 2026-09-04, Schema 22.** **Gemessen vor dem Streichen: 13 Zeilen**, nicht drei — die drei
+`label_role` an Kanten und dazu **zehn `read_only`** (eine am Wurzelknoten, zwei an Knoten, sieben an
+Kanten). *Die zehn hat niemand gelesen: gemessen an der geleerten Tabelle wurden **nur die drei
+`label_role`** irgendwo bemerkt — zwei Wächter, und beide genau an der Stelle, die D-579 benannt hat.*
+
+**Was gefallen ist:** die Tabelle, `WpdbSettingRepository`, `SettingRepository`, `SettingRecord`, der
+`Settings`-Dienst (768 Zeilen), `InMemorySettings`, `SettingsTest` — dazu die Materialisierung nach
+[D-423](../../NewConcept/90-decision-log.md), `ModelEditor::copySettings()`, der Schreiber der
+Einstellungstafel in `NodesScreen`, die Zeilen-Akte `empty_setting`/`reset_setting`, die
+Grenzen-Saat in `BaseScaffold` und die Waisenquelle auf der Aufräumseite. *`SettingsScreen` bleibt —
+sie schreibt WordPress-Optionen und hat die Tabelle nie angefasst; D-579s Satz «die Leser in
+`SettingsScreen`» geht ins Leere.*
+
+⚠️ **Der Milliarden-Abstand aus TASK-004 ist weg** (`INF-009` erledigt): *er hing an
+`settings.owner_id`, die ihren Raum nicht nannte. Beide Räume beginnen wieder dort, wo der gemeinsame
+aufgehört hat; **umnummeriert wurde nichts**, `AUTO_INCREMENT` lässt sich nicht nach unten setzen.
+`id-space-check.php` verlangt die Trennung nicht mehr, sondern zählt sie — gemessen **1** Nummer, die
+zugleich Knoten und Kante ist, und `package.md` §6 will genau das.*
+
+⚠️ **Drei Wächter sind gelöscht, weil ihr Gegenstand fort ist**: `path-check.php` (prüfte
+`settings.path`), `settings-screen-check.php`, `materialise-check.php` samt `materialise-backfill.php`
+— und `package4-check.php`, dessen ganzer Gegenstand «Einstellungen und die Kette» war. *Elf weitere
+sind mitgezogen, jeder mit der Begründung im Text (`PR-9`).*
+
+⚠️ **Drei Befunde blieben offen und stehen im Eingang:** *`INF-010` — eine Einstellung **erbt heute
+nicht** mehr, weil die Kette mit der Tabelle ging; `INF-011` — es gibt **keinen Schreiber** für eine
+Einstellung an einer Verwendungsstelle; `INF-012` — **niemand prüft mehr**, dass eine Grenze nur enger
+wird ([D-312](../../NewConcept/90-decision-log.md)). **Zwei Kerntests und ein Abschnitt von
+`package7-check` tragen den ersten Befund sichtbar als `markTestIncomplete`** statt gelöscht zu sein.*
 
 ```text
 [ ] TASK-018  Vererbung wird nodes.parent_node_id + nodes.sort_order

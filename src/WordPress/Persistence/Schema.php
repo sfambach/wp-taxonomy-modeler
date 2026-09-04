@@ -27,16 +27,17 @@ use Taxmod\Core\Model\RelationKind;
  * Tabelle zeigen kann, nennt eine zweite Spalte den Raum — `changelog.owner_kind`,
  * `record_values.value_ref_kind`.*
  *
- * `settings`, `labels` and `changelog` all hang off **an identity**, not off a node — which is
- * what lets a *relation* carry settings too (C8). That is why `owner_id` is one column rather
- * than a kind plus an id.
+ * `labels` und `changelog` hängen an einer **Nummer**, nicht an einem Knoten — das ist es, was
+ * eine *Kante* eigene Labels tragen lässt (C8). Darum ist `owner_id` eine Spalte und nicht eine Art
+ * plus eine Id.
  *
  * ⚠️ **Und genau darum trägt `changelog` die Spalte `owner_kind`.** *`labels.owner_id` zeigt
- * gemessen auf Knoten und nur auf Knoten (47 von 47); **`settings.owner_id` mischt** — 3 Knoten,
- * 10 Kanten —, und seit die Räume auseinanderlaufen, ist das eine offene Frage und keine
- * Erledigung: `INF-009` in [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md).
- * [`id-space-check.php`](../../../scripts/dev/id-space-check.php) schlägt an, sobald eine
- * `settings.owner_id` in beiden Tabellen zugleich vorkommt.*
+ * gemessen auf Knoten und nur auf Knoten (47 von 47), und [`id-space-check.php`](../../../scripts/dev/id-space-check.php)
+ * hält das lesend fest.*
+ *
+ * ⚠️ *Die dritte solche Tabelle war `settings`, und sie **mischte** — gemessen 3 Knoten und 10
+ * Kanten, ohne dass etwas sagte welches (`INF-009`). **Sie ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
+ * gestrichen**, und der Behelf, der die beiden Räume auseinanderhielt, mit ihr.*
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
@@ -174,7 +175,7 @@ final class Schema
      * `nodes` wie `relations` beginnen dort bei `2`. **Wo sie künftig wohnen soll, ist eine Frage an
      * den Eigentümer** ([`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md) `INF-008`).*
      */
-    public const VERSION = 21;
+    public const VERSION = 22;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -219,27 +220,17 @@ final class Schema
      */
     private const RESERVED_INSTALLATION_ID = 1;
 
-    /**
-     * Der Abstand, mit dem der Kantenraum über dem Knotenraum beginnt.
+    /*
+     * Hier stand `RELATION_SPACE_OFFSET` — der Kantenraum begann eine Milliarde ueber dem
+     * Knotenraum, weil `settings.owner_id` ihren Raum nicht nannte und `Settings` deshalb eine
+     * Kante fuer einen Knoten halten konnte (`INF-009`).
      *
-     * ⚠️ **Ein Provisorium, und es steht hier, weil es gemessen nötig ist** (`PR-4`): *`package.md` §6
-     * sagt, mit eigenen Räumen gebe es «Knoten 5, Kante 5 und Datensatz 5» — und derselbe Abschnitt
-     * verlangt, dass eine Spalte, die auf mehr als eine Tabelle zeigen kann, den Raum nennt.
-     * **`settings.owner_id` tut das nicht** und zeigt gemessen auf 3 Knoten und 10 Kanten. Ohne
-     * Abstand hielt {@see \Taxmod\Core\Service\Settings} eine Kante für einen Knoten, sobald beide
-     * dieselbe Nummer trugen — `package4-check` ist am 2026-09-04 genau daran zerbrochen, zweimal.*
-     *
-     * ⚠️ **Was der Eigentümer gesagt hat, bleibt gewahrt:** *es wird nichts umnummeriert, und keine
-     * Nummer wird ein zweites Mal vergeben — beide Räume beginnen über dem, was der gemeinsame je
-     * hergab. **Nur der Kantenraum beginnt zusätzlich weit darüber**, damit sich die beiden nicht
-     * überholen, solange `settings.owner_id` ihren Raum nicht nennt.*
-     *
-     * ⚠️ *Er fällt weg, sobald `INF-009` entschieden ist
-     * ([`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md)) — bis dahin prüft
-     * [`id-space-check.php`](../../../scripts/dev/id-space-check.php), dass keine Nummer zugleich
-     * Knoten und Kante ist.*
+     * **Der Behelf faellt mit der Tabelle** (D-579): es gibt keine Spalte mehr, die zwischen Knoten
+     * und Kante nicht unterscheidet, und damit keinen Grund fuer den Abstand. *Beide Raeume beginnen
+     * wieder dort, wo der gemeinsame aufgehoert hat — genau das, was der Eigentuemer verlangt hatte.
+     * **Umnummeriert wird nichts**: eine bestehende Installation behaelt den Zaehlerstand, den sie
+     * hat, denn `AUTO_INCREMENT` laesst sich nicht nach unten setzen (D-340).*
      */
-    private const RELATION_SPACE_OFFSET = 1000000000;
 
     /**
      * Die Tabellen, deren Geschichte aufgehoben wird — und der Name ihres Schattens.
@@ -260,7 +251,7 @@ final class Schema
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['settings', 'labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
+        return ['labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
     }
 
     public static function table(string $name): string
@@ -313,6 +304,35 @@ final class Schema
         self::moveMultiplicityOntoTheEdge();
         self::nameTheReferenceSpace();
         self::dropIdentitiesTable();
+        self::dropSettingsTable();
+    }
+
+    /**
+     * Fassung 22: `settings` fällt — die zweite Ablage für eine Kantenart.
+     *
+     * ⚠️ **[D-579](../../../docs/NewConcept/90-decision-log.md), auf sein Wort «settings bitte
+     * rausschmeissen» und, zur Abwägung Umzug gegen Neueingabe, «B».** *Gemessen vor dem Streichen:
+     * **13 Zeilen** — dreimal `label_role = symbol` an den Kanten `prefix`, `prefix (Kopie)` und
+     * `einheit`, dazu zehnmal `read_only`. **Sie gehen verloren und werden später neu eingegeben**;
+     * die sichtbare Folge ist vorher benannt: bis `label_role` seinen neuen Ort hat (`OQ-134`) zeigt
+     * `Einheitenwert` «Kiloohm» statt «kΩ».*
+     *
+     * ⚠️ *Zuletzt im Lauf, wie `identities`: die älteren Schritte darüber lesen die Tabelle noch
+     * (`moveHideOutOfSettings()`, `moveMultiplicityOntoTheEdge()`), und jeder von ihnen prüft mit
+     * `SHOW TABLES`, ob es sie gibt. **Eine Installation, die von Fassung 9 kommt, wandert also
+     * vollständig, bevor hier gelöscht wird.***
+     */
+    private static function dropSettingsTable(): void
+    {
+        global $wpdb;
+
+        $tabelle = self::table('settings');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $tabelle)) !== $tabelle) {
+            return;
+        }
+
+        $wpdb->query("DROP TABLE {$tabelle}");
     }
 
     /**
@@ -912,7 +932,7 @@ final class Schema
             // Lauf harmlos und kann keinen bereits weitergelaufenen Zähler zurückdrehen.*
             $wpdb->query($wpdb->prepare(
                 "ALTER TABLE {$tabelle} AUTO_INCREMENT = %d",
-                $name === 'relations' ? $beginn + self::RELATION_SPACE_OFFSET : $beginn
+                $beginn
             ));
         }
 
@@ -1006,37 +1026,10 @@ final class Schema
                 KEY target_settings_record_id (target_settings_record_id)
             ) {$charset};",
 
-            // Typed value columns, never one stringly value cast in and out (D-071, D-074).
-            // No floating point anywhere: a price and a tolerance are exact (D-057).
-            // ⚠️ **`path` is an address, not a multiplicity** ([D-409](../../../docs/NewConcept/90-decision-log.md),
-            // [OQ-092](../../../docs/NewConcept/91-open-questions.md)). One key still holds one answer
-            // at one place; `path` says **which place** — which attribute of this node, which member of
-            // a composed value. *Several rows for one key at one place would be a multiplicity, and a
-            // setting has none.*
-            //
-            // ⚠️ **Four decisions had already assumed it existed**, which is the argument for building
-            // it before anything else: several renderers ([D-236](../../../docs/NewConcept/90-decision-log.md)),
-            // several validators ([D-158](../../../docs/NewConcept/90-decision-log.md)), several defaults
-            // (C30), and the prefix exponent ([D-378](../../../docs/NewConcept/90-decision-log.md)) —
-            // which was measured on 2026-08-26 to be **written and not connected** for exactly this
-            // reason: `kilo`'s value had nowhere to sit that the `exponent` attribute could read.
-            //
-            // ⚠️ **Empty means «the owner itself»**, so every row written before this version keeps its
-            // meaning without being touched — the same choice `labels.path` made, and the same default.
-            "CREATE TABLE {$t('settings')} (
-                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-                owner_id bigint(20) unsigned NOT NULL,
-                setting_key varchar(191) NOT NULL,
-                path varchar(255) NOT NULL DEFAULT '',
-                value_int bigint(20) DEFAULT NULL,
-                value_decimal decimal(30,10) DEFAULT NULL,
-                value_text mediumtext DEFAULT NULL,
-                value_date datetime DEFAULT NULL,
-                value_ref bigint(20) unsigned DEFAULT NULL,
-                PRIMARY KEY  (id),
-                UNIQUE KEY owner_key (owner_id,setting_key,path),
-                KEY value_ref (value_ref)
-            ) {$charset};",
+            // ⚠️ *Hier stand `settings` samt der Begruendung ihrer `path`-Spalte. **Die Tabelle ist mit
+            // D-579 gestrichen** — eine Einstellung ist eine Kante (D-529), und ihr Wert steht in
+            // `record_values`. Die Adressfrage, die `settings.path` beantwortete, beantwortet dort der
+            // Pfad.*
 
             "CREATE TABLE {$t('labels')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

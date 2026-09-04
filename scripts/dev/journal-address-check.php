@@ -51,7 +51,6 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\Shadow;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -59,7 +58,6 @@ use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -101,85 +99,21 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
 $framework->seed();
 
 $editor   = new ModelEditor($nodes, $edges, $framework, $changelog);
-$settings = new Settings(new WpdbSettingRepository(), $nodes, $framework, $changelog);
 $labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog, $nodes);
 
 $journal = Schema::table('changelog');
 
-// ── 1. A setting written at a path says which place ────────────────────────
-echo "\n== 1. The address reaches the column ==\n";
-
-$mark = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) FROM {$journal}");
-sane('high water mark');
+// ── 1./2. Hier stand der Schreiber der `settings`-Tabelle ──────────────────
+//
+// ⚠️ **Zwei Abschnitte sind mit der Tabelle gegangen** ([D-579](../../docs/NewConcept/90-decision-log.md)):
+// *sie schrieben eine Einstellung an einer Adresse und lasen die Adresse aus der Journalspalte
+// zurueck. **Der Schreiber ist fort**, und eine Zusage ueber eine Zeile, die niemand mehr schreibt,
+// misst nichts. Was die Spalte kann, misst Abschnitt 3 an den Labels und Abschnitt 4 an **jeder
+// Zeile, die schon dasteht** — einschliesslich der alten Einstellungszeilen.*
 
 $thing = $editor->createNode('__ja Thing', $framework->rootOf(Branch::Model)->id);
 $text  = $editor->createNode('__ja Text', $framework->rootOf(Branch::DataTypes)->id);
 $first = $editor->addField($thing->id, $text->id, '__ja first');
-
-$chain = $settings->chainFor($thing);
-
-// ⚠️ *The same key twice: once for the node itself, once for one of its attributes. **This is the
-// pair the old journal could not tell apart** — both rows read `after = "10"`.*
-$settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10));
-$settings->put($chain, SettingKey::Min->value, TypedValue::ofInt(10), (string) $first->id);
-
-$rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT what, before_state, after_state FROM {$journal}
-     WHERE id > %d AND what LIKE %s ORDER BY id ASC",
-    $mark,
-    'setting ' . SettingKey::Min->value . ' %'
-), ARRAY_A);
-sane('the two setting rows');
-
-check('both writes were journalled', count($rows) === 2, (string) count($rows));
-
-$own = FrozenState::parse($rows[0]['after_state'] ?? null);
-$at  = FrozenState::parse($rows[1]['after_state'] ?? null);
-
-check('the first entry names the key', $own?->field('key') === SettingKey::Min->value, $rows[0]['after_state'] ?? 'nothing');
-check('and its path is the empty one — the owner itself', $own?->field('path') === '', var_export($own?->field('path'), true));
-check('the second entry names the attribute it answers for', $at?->field('path') === (string) $first->id, var_export($at?->field('path'), true));
-
-// ⚠️ **The whole promise of the row in one line.** *Two writes of the same key with the same value
-// used to leave two identical columns; a replay had no way to put either back in the right place.*
-check(
-    'the two entries are distinguishable at all',
-    ($rows[0]['after_state'] ?? null) !== ($rows[1]['after_state'] ?? null),
-    (string) ($rows[0]['after_state'] ?? '')
-);
-
-check('the type travels', $at?->field('type') === 'int', var_export($at?->field('type'), true));
-
-// ⚠️ *Guarded rather than trusting the field above: with the old, address-less entry this line threw
-// and the check **died** instead of reporting — a check that crashes tells you less than one that
-// fails, because the remaining sections never run.*
-check(
-    'and the value can be rebuilt from what was stored',
-    $at?->field('type') !== null
-        && TypedValue::ofInt(10)->equals(TypedValue::ofTypeName((string) $at->field('type'), (string) $at->field('value')))
-);
-
-// ── 2. A text value with spaces comes back whole ───────────────────────────
-echo "\n== 2. A value that could break the format ==\n";
-
-$mark2 = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) FROM {$journal}");
-sane('second mark');
-
-$nasty = 'two words = one path=9 thing';
-
-$settings->put($chain, SettingKey::DefaultValue->value, TypedValue::ofText($nasty), (string) $first->id);
-
-$row = $wpdb->get_var($wpdb->prepare(
-    "SELECT after_state FROM {$journal} WHERE id > %d AND what LIKE %s ORDER BY id DESC LIMIT 1",
-    $mark2,
-    'setting %'
-));
-sane('the text row');
-
-$read = FrozenState::parse($row === null ? null : (string) $row);
-
-check('the text survived the round trip through the column', $read?->field('value') === $nasty, (string) $row);
-check('and the address was not taken from inside the text', $read?->field('path') === (string) $first->id, var_export($read?->field('path'), true));
 
 // ── 3. A label writes its address in the state and a verb in `what` ────────
 echo "\n== 3. The label side speaks the same format ==\n";
@@ -341,7 +275,6 @@ $editor->moveToTrash($thing->id);
 $editor->moveToTrash($text->id);
 
 foreach ([$thing->id, $text->id, $first->id] as $id) {
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('settings') . ' WHERE owner_id = %d', $id));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('labels') . ' WHERE owner_id = %d', $id));
     $wpdb->query($wpdb->prepare("DELETE FROM {$journal} WHERE owner_id = %d", $id));
 }

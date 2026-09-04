@@ -207,3 +207,73 @@ Liste blosser Nummern, und die Kette müsste künftig Nummer **und** Raum tragen
 ⚠️ *`labels.owner_id` hat das Problem **nicht**: gemessen gehören alle 47 Zeilen einem Knoten, keine
 einer Kante — [`id-space-check.php`](../../../scripts/dev/id-space-check.php) prüft das jetzt gegen
 `nodes` statt gegen `identities` und ist damit strenger als vorher.*
+
+⚠️ **Erledigt am 2026-09-04 mit TASK-017 — nicht beantwortet, sondern weggefallen.** *Die Frage war
+«welchen Raum meint `settings.owner_id`». **Die Tabelle ist gestrichen** ([D-579](../../NewConcept/90-decision-log.md)),
+also gibt es die Spalte nicht mehr, und beide Behelfe fallen mit ihr:*
+
+| Behelf | was daraus wurde |
+|---|---|
+| `Schema::RELATION_SPACE_OFFSET` | **weg.** Beide Räume beginnen wieder dort, wo der gemeinsame aufgehört hat — genau das, was Du verlangt hattest. *Umnummeriert wurde nichts: `AUTO_INCREMENT` lässt sich nicht nach unten setzen, eine bestehende Installation behält also ihren Zählerstand.* |
+| `Settings` bekommt den Kantenspeicher | **weg** — der Dienst selbst ist gestrichen. |
+
+⚠️ *Der Wächter zieht mit: [`id-space-check.php`](../../../scripts/dev/id-space-check.php) verlangte
+«keine Nummer ist zugleich Knoten und Kante» und **verlangt es nicht mehr** — das war die Zusage des
+Behelfs, und [`package.md` §6](package.md) sagt das Gegenteil («Knoten 5, Kante 5 und Datensatz 5»).
+Gemessen nach dem Wegfall: **1 solche Nummer**, gemeldet statt beanstandet.*
+
+---
+
+## INF-010 · Erbt eine Einstellung — und woher?
+
+**2026-09-04, beim Bauen von TASK-017 gemessen. Nicht entschieden (`PR-4`).**
+
+Bis heute erbte eine Einstellung über die **Auflösungskette** der `settings`-Tabelle:
+*Installation → Modellwurzel → Vorfahren → Knoten → Verwendungsstelle*. Die Tabelle ist gestrichen
+([D-579](../../NewConcept/90-decision-log.md)), und der Weg über die Datensätze **erbt nicht** —
+{@see ModelValues} sagt es in ihrem eigenen Docblock: *«geantwortet wird aus dem `default`-Satz
+**dieses** Knotens»*.
+
+⚠️ **Gemessen, was das kostet: zwei Kerntests und ein Abschnitt von `package7-check`.** *«Eine Wahl
+am Typ erreicht jede Verwendung» und «das Symbol erbt die Kette hinunter» sind rot geworden und
+stehen jetzt als `markTestIncomplete` mit dieser Nummer im Text — **nicht gelöscht und nicht
+abgeschwächt**, damit die Frage sichtbar bleibt, statt in einem grünen Lauf zu verschwinden.*
+
+⚠️ *In der Sache ist es womöglich kein Verlust, sondern eine andere Antwort: seit
+[D-526](../../NewConcept/90-decision-log.md) ist ein geerbtes Feld **dieselbe** Kante, und die Kante
+erbt. Was heute nicht erbt, ist der **Wert** im Datensatz. Ob er das soll — und ob dann der Vorfahr
+oder die Kante antwortet — ist Deine Entscheidung, nicht meine.*
+
+---
+
+## INF-011 · Es gibt keinen Schreiber für eine Einstellung an einer Verwendungsstelle
+
+**2026-09-04, beim Bauen von TASK-017 gemessen. Nicht entschieden (`PR-4`).**
+
+`DataEntry::putSettingAt()` schreibt eine Angabe **an einem Knoten**. Für eine Angabe **an einer
+Kante** — `label_role` an `Einheitenwert.prefix`, `converter` an einem Feld — gab es genau einen
+Schreiber, und der war `Settings::put()` in die gestrichene Tabelle.
+
+⚠️ **Die Ablage kann es**: der Wert liegt im Satz des Besitzers unter der Adresse
+`<Verwendungsstelle>.<Einstellungskante>`, und {@see ModelValues::forUseSite()} **liest** ihn dort.
+*Zwei Wächter legen die Zeile deshalb heute selbst über die Speicher an
+([`converter-check.php`](../../../scripts/dev/converter-check.php),
+[`package7-check.php`](../../../scripts/dev/package7-check.php)) — das ist ein Behelf in einer
+Prüfung und keine Lösung.*
+
+⚠️ *Was fehlt, ist eine Zeile im Kern und keine Entscheidung über das Modell — aber sie gehört an
+eine Stelle, und welche, sagst Du.*
+
+---
+
+## INF-012 · Wer prüft künftig, dass eine Grenze nur enger wird?
+
+**2026-09-04, beim Bauen von TASK-017 gemessen. Nicht entschieden (`PR-4`).**
+
+[D-312](../../NewConcept/90-decision-log.md): *eine begrenzende Einstellung darf nur nach unten
+enger werden.* Durchgesetzt hat das `Settings::put()` — es warf `CannotWiden`, und
+`package7-check.php` hat die Verweigerung gemessen. **Der Dienst ist mit der Tabelle gestrichen, und
+damit gibt es heute keine Stelle mehr, die ein Weiten bemerkt.**
+
+⚠️ *Das ist ein Verlust und keine Vereinfachung.* Die Ausnahme `CannotWiden` steht noch, ohne
+Werfer; der Abschnitt in `package7-check.php` ist mit dieser Nummer im Text ausgebaut.

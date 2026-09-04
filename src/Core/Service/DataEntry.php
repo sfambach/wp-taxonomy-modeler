@@ -42,10 +42,10 @@ final class DataEntry
     /** Wie tief der Abstieg in geschachtelte Teile geht -- ein Knoten kann auf sich selbst zeigen. */
     private const TEILE_TIEFSTENS = 4;
 
-    /**
-     * @param Settings|null $settings Optional so the existing wiring keeps working; without it the
-     *                                `persistent` flag cannot be resolved and every attribute is
-     *                                treated as persistent, which is the default anyway.
+    /*
+     * ⚠️ *Hier nahm der Dienst zusaetzlich einen `Settings` entgegen, um `persistent` aufzuloesen.
+     * **Der Schluessel ist mit D-538 gefallen und die Tabelle mit D-579** — was nicht speichert,
+     * sagt seither die Art der Kante.*
      */
     public function __construct(
         private readonly RecordRepository $records,
@@ -53,7 +53,6 @@ final class DataEntry
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
         private readonly Clock $clock,
-        private readonly ?Settings $settings = null,
     ) {
     }
 

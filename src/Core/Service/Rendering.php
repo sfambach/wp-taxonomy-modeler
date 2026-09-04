@@ -80,7 +80,6 @@ final class Rendering
     public function __construct(
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
-        private readonly Settings $settings,
         private readonly RendererRegistry $renderers,
         /**
          * ⚠️ **Required, and that is the decision rather than an oversight** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
@@ -155,7 +154,7 @@ final class Rendering
         }
 
         $types    = $this->typesOf($edges);
-        $resolved = $this->settings->resolveForUseSites($edges);
+        $resolved = $this->settingsForUseSites($edges);
         $values   = [];
 
         foreach ($edges as $edge) {
@@ -367,7 +366,67 @@ final class Rendering
      */
     public function labelRoleFor(Relation $edge): SeededRole
     {
-        return $this->roleOf($this->settings->resolveForUseSites([$edge])[$edge->id] ?? []);
+        return $this->roleOf($this->settingsForUseSites([$edge])[$edge->id] ?? []);
+    }
+
+    /**
+     * Was die **Kante selbst** über sich sagt — heute genau die Multiplizität.
+     *
+     * ⚠️ **Das ist der Rest der alten Auflösungskette** ([D-579](../../../docs/NewConcept/90-decision-log.md)).
+     * *Vor dem Streichen der `settings`-Tabelle las diese Stelle deren Zeilen und legte die
+     * Spalte darüber. **Gemessen trug die Tabelle zuletzt 13 Zeilen**, und was daraus noch gelesen
+     * wurde, war `label_role` an drei Kanten — der Verlust, den [D-579](../../../docs/NewConcept/90-decision-log.md)
+     * benannt und in Kauf genommen hat. Alles andere kommt aus dem Datensatz
+     * ({@see self::withModelValues()}) und gewann schon vorher.*
+     *
+     * ⚠️ *Die Spalte `multiplicity` ist `NOT NULL` seit [D-528](../../../docs/NewConcept/90-decision-log.md) —
+     * es gibt kein «sagt nichts» mehr, darum steht hier keine Bedingung.*
+     *
+     * @param  list<Relation>                            $edges
+     * @return array<int, array<string, ResolvedSetting>> Nach Kanten-Id.
+     */
+    /**
+     * Die Angaben eines **Knotens**, über dieselbe Naht wie die einer Verwendungsstelle.
+     *
+     * ⚠️ *Das Gegenstück zu {@see self::settingsForUseSites()} und aus demselben Grund öffentlich:
+     * **eine Stelle im Kern beantwortet die Frage.** Vor [D-579](../../../docs/NewConcept/90-decision-log.md)
+     * fragten Randprüfungen die `settings`-Tabelle direkt und bekamen eine zweite, plausible
+     * Antwort.*
+     *
+     * @return array<string, ResolvedSetting>
+     */
+    public function settingsForNode(Node $node): array
+    {
+        return $this->withModelValues([], $node);
+    }
+
+    private function vonDenKnoten(array $nodes): array
+    {
+        $aus = [];
+
+        foreach ($nodes as $node) {
+            $aus[$node->id] = $this->withModelValues([], $node);
+        }
+
+        return $aus;
+    }
+
+    private function vonDenKanten(array $edges): array
+    {
+        $aus = [];
+
+        foreach ($edges as $edge) {
+            $aus[$edge->id] = [
+                SettingKey::Multiplicity->value => new ResolvedSetting(
+                    SettingKey::Multiplicity->value,
+                    TypedValue::ofText($edge->multiplicity->value),
+                    $edge->id,
+                    true
+                ),
+            ];
+        }
+
+        return $aus;
     }
 
     private function roleOf(array $settings): SeededRole
@@ -502,7 +561,7 @@ final class Rendering
         // die Gruppen dafür. **Gemessen: der Form-Renderer sortierte danach wieder nach `position` und
         // machte sie zunichte** — zwei Stellen für eine Reihenfolge, und die zweite gewann.*
         $types    = $this->typesOf($edges);
-        $resolved = $this->settings->resolveForUseSites($edges);
+        $resolved = $this->settingsForUseSites($edges);
         $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);
         $wahl     = $this->optionsFor($edges);
         $fields   = [];
@@ -732,7 +791,7 @@ final class Rendering
         //
         // ⚠️ **Sechster Fall derselben Sache an einem Tag:** *Daten umgezogen, ein Leser
         // stehengeblieben. Dieselbe Zeile wie in {@see self::containerFor()} und aus demselben Grund.*
-        $settings = $this->withModelValues($this->settings->resolve($this->settings->chainFor($node)), $node);
+        $settings = $this->withModelValues([], $node);
 
         if ($value === null || $value->isNothing()) {
             $value = ($settings[SettingKey::DefaultValue->value] ?? null)?->value ?? TypedValue::nothing();
@@ -952,7 +1011,7 @@ final class Rendering
             return [];
         }
 
-        $settings = $this->settings->resolveForNodes($nodes);
+        $settings = $this->vonDenKnoten($nodes);
         $renderer = $this->renderers->byName(ChooserCellRenderer::NAME);
         $cells    = [];
 
@@ -1250,7 +1309,7 @@ final class Rendering
         }
 
         $renderer = $this->renderers->byName(FieldRowRenderer::NAME);
-        $resolved = $this->settings->resolveForUseSites($edges);
+        $resolved = $this->vonDenKanten($edges);
         $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
 
         // ⚠️ One query for the whole table, not one per row (`CD-7`) — and through the ordinary
@@ -1606,23 +1665,12 @@ final class Rendering
      */
     public function nonPersistentValue(Node $node, Relation $edge): ?TypedValue
     {
-        // ⚠️ **Zuerst die neue Stelle** ([D-529](../../../docs/NewConcept/90-decision-log.md)): *steht
-        // die Vorgabe schon als Datensatz im Modell, gilt sie; sonst trägt die Settings-Tabelle weiter.
-        // **Ein Umzug, nach dem der alte Wert weiter gewinnt, hat nichts bewegt.***
-        $ausDemModell = $this->model?->defaultFor($node, $edge);
-
-        if ($ausDemModell !== null) {
-            return $ausDemModell;
-        }
-
-        $resolved = $this->settings->resolve(
-            $this->settings->chainFor($node),
-            (string) $edge->id
-        );
-
-        $default = $resolved[SettingKey::DefaultValue->value] ?? null;
-
-        return $default === null || $default->value->isNothing() ? null : $default->value;
+        // ⚠️ **Nur noch die neue Stelle** ([D-579](../../../docs/NewConcept/90-decision-log.md)):
+        // *hier stand darunter der Rückfall auf die `settings`-Tabelle. Sie ist gestrichen, und
+        // gemessen am 2026-09-04 trug sie **keine einzige `default`-Zeile** mehr, sondern nur noch
+        // 13 Zeilen mit `read_only` und `label_role`. **Ein Rückfall auf eine Tabelle, die für
+        // diesen Schlüssel nichts hält, ist kein Rückfall, sondern toter Code.***
+        return $this->model?->defaultFor($node, $edge);
     }
 
     /**
@@ -1891,7 +1939,7 @@ final class Rendering
      */
     public function settingsForUseSites(array $edges): array
     {
-        $resolved = $this->settings->resolveForUseSites($edges);
+        $resolved = $this->vonDenKanten($edges);
 
         $aus = [];
 
@@ -1931,7 +1979,7 @@ final class Rendering
         // im Datensatz — also hätte der Eigentümer `table` wählen können und weiter ein Formular
         // gesehen. **Fünfter Fall derselben Sache an einem Tag:** Daten umgezogen, ein Leser
         // stehengeblieben.*
-        $chosen = ($this->withModelValues($this->settings->resolve($this->settings->chainFor($node)), $node)[SettingKey::Renderer->value] ?? null)
+        $chosen = ($this->withModelValues([], $node)[SettingKey::Renderer->value] ?? null)
             ?->value
             ->text;
 
@@ -1984,7 +2032,7 @@ final class Rendering
             return [];
         }
 
-        $settings = $this->settings->resolveForNodes($nodes);
+        $settings = $this->vonDenKnoten($nodes);
         $renderer = $this->renderers->byName($cell);
 
         $cells = [];
@@ -2375,10 +2423,7 @@ final class Rendering
      */
     public function rendererNameFor(Node $node, Purpose $purpose = Purpose::Edit): ?string
     {
-        $settings = $this->withModelValues(
-            $this->settings->resolve($this->settings->chainFor($node)),
-            $node
-        );
+        $settings = $this->withModelValues([], $node);
 
         return $this->renderers->chosenFor($node, $settings, $purpose, $this->typeOfNode($node))?->name();
     }

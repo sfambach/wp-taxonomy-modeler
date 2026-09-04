@@ -44,7 +44,6 @@ use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $nodes     = new WpdbNodeRepository();
@@ -54,7 +53,7 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
 
 $installation = $framework->installationId();
 
-$residue = new Residue($framework, new WpdbSettingRepository(), new WpdbLabelRepository(), $changelog);
+$residue = new Residue($framework, new WpdbLabelRepository(), $changelog);
 
 global $wpdb;
 
@@ -80,10 +79,10 @@ echo "\n== nichts gehoert einem Besitzer, den es nicht gibt ==\n";
 
 // ⚠️ *Dieselbe Abfrage, die die `Cleanup`-Seite stellt — und sie prueft `$wpdb->last_error` selbst
 // nach jeder Anweisung und wirft, statt eine kaputte Abfrage als «kein Rueckstand» zu melden.*
-$settings = array_sum($residue->orphanedSettings());
-$labels   = array_sum($residue->orphanedLabels());
+// ⚠️ *Die Waisen der `settings`-Tabelle sind mit der Tabelle gegangen (D-579) — was es nicht gibt,
+// laesst nichts liegen. Die Labels bleiben, wie es hier vorgesehen war.*
+$labels = array_sum($residue->orphanedLabels());
 
-check('keine Waisen-Settings', $settings === 0, "{$settings} Zeilen");
 check('keine Waisen-Labels', $labels === 0, "{$labels} Zeilen");
 
 // ⚠️ **Die anderen zwei Quellen, die [D-247](../../docs/NewConcept/90-decision-log.md) nennt** —
@@ -107,16 +106,14 @@ printf("  --   %d Werte ohne Kante, %d Knoten ohne Verbindungen (Cleanup-Seite)\
 // ist der sichtbare Teil jener Aenderung ([`PR-9`](../../CLAUDE.md)).*
 //
 // ⚠️ **Der neue Anker ist das, was die Abfragen ueberhaupt durchsuchen.** *«Keine Waisen» wiegt nur,
-// wenn es etwas zu durchsuchen gab. `settings` stirbt ([D-529](../../docs/NewConcept/90-decision-log.md)) —
-// **deshalb darf der Anker nicht daran haengen**: gezaehlt werden beide Tabellen zusammen, und
-// `labels` bleibt, wenn `settings` faellt.*
-$durchsucht = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings")
-    + (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}labels");
+// wenn es etwas zu durchsuchen gab. **`settings` ist mit D-579 gefallen, und der Anker haengt
+// deshalb nur noch an `labels`** — genau so vorgesehen, als der Anker gebaut wurde.*
+$durchsucht = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}labels");
 
 check(
     'es gab ueberhaupt etwas zu durchsuchen',
     $durchsucht > 0,
-    "{$durchsucht} Zeilen in settings und labels zusammen"
+    "{$durchsucht} Zeilen in labels"
 );
 
 echo "\n", $failed === 0 ? "all green\n" : "{$failed} failed\n";

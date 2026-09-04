@@ -7,7 +7,6 @@ use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\LabelRepository;
 use Taxmod\Core\Repository\RecordRepository;
-use Taxmod\Core\Repository\SettingRepository;
 
 /**
  * What deliberate non-tidying left behind — **measured in one place, removed in the same place**.
@@ -66,7 +65,6 @@ final class Residue
 
     public function __construct(
         private readonly FrameworkNodes $framework,
-        private readonly SettingRepository $settings,
         private readonly LabelRepository $labels,
         private readonly Changelog $changelog,
         // ⚠️ *Optional, damit die vorhandene Verdrahtung weiterläuft — ohne ihn meldet die
@@ -75,15 +73,13 @@ final class Residue
     ) {
     }
 
-    /**
-     * Owners of settings that no node and no relation answers for — [D-156](../../../docs/NewConcept/90-decision-log.md).
-     *
-     * @return array<int,int> owner id ⇒ how many rows it still holds
+    /*
+     * Hier stand `orphanedSettings()` — verwaiste Zeilen der `settings`-Tabelle
+     * ([D-156](../../../docs/NewConcept/90-decision-log.md)). **Die Tabelle ist mit
+     * [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen; eine Quelle, die es nicht
+     * mehr gibt, kann keinen Rest mehr hinterlassen.** *Die drei anderen Quellen — Labels, Knoten
+     * ohne Verbindung, Datensaetze ohne Knoten — bleiben unberuehrt.*
      */
-    public function orphanedSettings(): array
-    {
-        return $this->ownersWithoutOwner('settings');
-    }
 
     /**
      * The same for labels.
@@ -160,25 +156,6 @@ final class Residue
         );
     }
 
-    /**
-     * Remove one gone owner's settings, and say how many went.
-     *
-     * ⚠️ *The removal itself is {@see SettingRepository::forgetOwners()} — the same method
-     * `orphans-clean.php` uses, so nothing here writes its own `DELETE`.*
-     */
-    public function forgetOrphanedSettings(int $ownerId): int
-    {
-        if (! array_key_exists($ownerId, $this->orphanedSettings())) {
-            return 0;
-        }
-
-        $gone = $this->settings->forgetOwners([$ownerId]);
-
-        $this->record($ownerId, self::KIND_GONE, 'settings removed', $gone);
-
-        return $gone;
-    }
-
     public function forgetOrphanedLabels(int $ownerId): int
     {
         if (! array_key_exists($ownerId, $this->orphanedLabels())) {
@@ -227,7 +204,7 @@ final class Residue
      * very residue this screen exists to remove — creating more of it while removing some would be a
      * repair that produces work.*
      *
-     * @return array{settings: int, labels: int}|null Null when this id is not a disconnected node —
+     * @return array{labels: int}|null Null when this id is not a disconnected node —
      *         **which is not the same as a node that owned nothing.** *Both would be two zeroes, and a
      *         page that reported «removed 0 and 0» for a refusal would be reporting an act that never
      *         happened.*
@@ -246,8 +223,7 @@ final class Residue
         }
 
         $gone = [
-            'settings' => $this->settings->forgetOwners([$id]),
-            'labels'   => $this->labels->forgetOwners([$id]),
+            'labels' => $this->labels->forgetOwners([$id]),
         ];
 
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
@@ -259,7 +235,7 @@ final class Residue
             'node',
             'purged',
             'no connections',
-            sprintf('%d settings, %d labels', $gone['settings'], $gone['labels'])
+            sprintf('%d labels', $gone['labels'])
         );
 
         return $gone;

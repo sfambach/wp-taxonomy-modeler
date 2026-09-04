@@ -37,12 +37,10 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\SystemClock;
@@ -71,11 +69,10 @@ $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock(), $settings);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels,
+$data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+$rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
@@ -139,7 +136,7 @@ check('  · einheit', isset($members['einheit']));
 
 echo "\n== the prefix is optional, because D-039 says so ==\n";
 
-$resolved = $settings->resolveForUseSites(array_values($members));
+$resolved = $rendering->settingsForUseSites(array_values($members));
 
 $many = ($resolved[$members['prefix']->id][SettingKey::Multiplicity->value] ?? null)?->value->text;
 
@@ -228,15 +225,22 @@ check(
 // ⚠️ **This is the whole point of the exercise.** Before the label role became a setting the descent
 // resolved every reference with `SeededRole::Form`, so this cell read *kilo* and the preview of
 // `2k7` came out as `2.7 kilo Ohm`.
+// ⚠️ **Bis zum 2026-09-04 stand hier «k» und «Ω», und jetzt steht «kilo» und «Ohm» — das ist der
+// Verlust aus [D-579](../../docs/NewConcept/90-decision-log.md), nicht ein Fehler.** *Die drei
+// `label_role`-Zeilen lagen in der gestrichenen `settings`-Tabelle; der Eigentuemer hat zwischen
+// Umzug und Neueingabe gewaehlt («B») und die Folge vorher benannt: «Kiloohm» statt «kΩ», bis
+// `label_role` seinen neuen Ort hat (`OQ-134`). **Die Zusage wird mitgezogen und nicht abgeschaltet**
+// (`PR-9`) — sie misst den Zustand, der gilt, und wird wieder rot, wenn `OQ-134` gebaut ist und die
+// Rolle trotzdem nicht ankommt.*
 check(
-    'the prefix reads k and not kilo',
-    isset($drawn['prefix']) && str_contains($drawn['prefix'], '>k<') && ! str_contains($drawn['prefix'], 'kilo'),
+    'der Praefix liest sich als «kilo» — die Rolle «symbol» ist mit D-579 verloren',
+    isset($drawn['prefix']) && str_contains($drawn['prefix'], 'kilo'),
     strip_tags($drawn['prefix'] ?? '—')
 );
 
 check(
-    'the unit reads Ω and not Ohm',
-    isset($drawn['einheit']) && str_contains($drawn['einheit'], 'Ω'),
+    'die Einheit liest sich als «Ohm» — dieselbe Ursache',
+    isset($drawn['einheit']) && str_contains($drawn['einheit'], 'Ohm'),
     strip_tags($drawn['einheit'] ?? '—')
 );
 
@@ -329,9 +333,9 @@ foreach ($rendering->fieldsFor(array_values($members), $held, Purpose::Display) 
     $readBack[$field->edge->name] = trim(strip_tags($field->result->markup));
 }
 
-check('and it draws as 2.7 k Ω', ($readBack['wert'] ?? '') === '2.7'
-    && ($readBack['prefix'] ?? '') === 'k'
-    && ($readBack['einheit'] ?? '') === 'Ω',
+check('und es zeichnet sich als 2.7 kilo Ohm — bis `OQ-134` steht', ($readBack['wert'] ?? '') === '2.7'
+    && ($readBack['prefix'] ?? '') === 'kilo'
+    && ($readBack['einheit'] ?? '') === 'Ohm',
     implode(' ', $readBack));
 
 echo "\n== a holder points at a part with a record of its own ==\n";

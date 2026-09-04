@@ -42,7 +42,6 @@ use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -50,7 +49,6 @@ use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $failed = 0;
@@ -80,7 +78,6 @@ $fw    = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemCl
 $rendering = new Rendering(
     $nodes,
     $fw,
-    new Settings(new WpdbSettingRepository(), $nodes, $fw),
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $fw),
     new Labels(new WpdbLabelRepository(), $fw),

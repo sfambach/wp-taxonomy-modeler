@@ -43,7 +43,6 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -51,7 +50,6 @@ use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 $passed = 0;
@@ -78,15 +76,14 @@ $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework, $log);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $editor    = new ModelEditor($nodes, $edges, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
-$rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types, $labels,
+$rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types, $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
-$scaffold = new CompositionScaffold($editor, $framework, $settings, $types);
+$scaffold = new CompositionScaffold($editor, $framework, $types);
 
 /** @return array<string, \Taxmod\Core\Model\Relation> The node's own attributes, by name. */
 function membersOf(ModelEditor $editor, \Taxmod\Core\Model\Node $node): array
@@ -287,7 +284,7 @@ foreach (['titel', 'backzeit', 'ofentemperatur', 'zutat'] as $member) {
 
 check('zutat points at Zutat', ($recipeMembers['zutat'] ?? null)?->toId === $ingredient->id);
 
-$resolved = $settings->resolveForUseSites(array_values($recipeMembers));
+$resolved = $rendering->settingsForUseSites(array_values($recipeMembers));
 $many     = ($resolved[$recipeMembers['zutat']->id][SettingKey::Multiplicity->value] ?? null)?->value->text;
 
 check('zutat is 1..*, because a recipe with no ingredient is not one', $many === Multiplicity::OneToMany->value, (string) $many);

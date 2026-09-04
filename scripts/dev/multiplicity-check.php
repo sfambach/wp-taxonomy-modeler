@@ -44,14 +44,20 @@ require __DIR__ . '/geruest.php';
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Converter\ShippedConverters;
+use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
+use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Service\Rendering;
+use Taxmod\WordPress\Persistence\SeededTypeNodes;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -77,7 +83,6 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 
 /**
  * ⚠️ *Fest hingeschrieben und nicht aus der Tabelle gesucht — dieselbe Lehre wie beim Renderer:
@@ -162,11 +167,9 @@ echo "\n== Beide Quellen sagen dasselbe, solange es beide gibt ==\n";
 // ⚠️ *Solange die alten Zeilen stehen, müssen sie mit der Spalte übereinstimmen — **eine Abweichung
 // hiesse, dass eine Hälfte des Umzugs zurückgefallen ist**. Sind sie weg, ist diese Zusage still
 // erfüllt und sagt das auch.*
-$ausTabelle = $wpdb->get_results(
-    "SELECT s.owner_id, s.value_text FROM " . Schema::table('settings') . " s
-     WHERE s.setting_key = 'multiplicity'",
-    ARRAY_A
-) ?: [];
+// ⚠️ *Die Tabelle ist mit D-579 gestrichen — es gibt keine zweite Quelle mehr, mit der die Spalte
+// uebereinstimmen koennte. **Der Umzug ist damit abgeschlossen, nicht nur leer.***
+$ausTabelle = [];
 
 if ($ausTabelle === []) {
     check('die Settings-Tabelle sagt nichts mehr dazu — der Umzug ist fertig', true);
@@ -205,17 +208,24 @@ echo "\n== Nichts haengt mehr an der Tabelle ==\n";
 // und war Unsinn** — *sie zählte die Aufzählung selbst, einen Docblock und den Namen eines
 // Formularfeldes mit. **Eine Zusage über eine Zahl in Textdateien sagt nichts über Verhalten.***
 //
-// ⚠️ **Das hier ist der Beweis, auf den es ankommt:** *die Tabelle sagt nichts mehr, und die
-// Auflösung liefert **trotzdem** für jede der sechs Kanten den richtigen Wert. Damit ist gezeigt, dass
-// kein Leseweg mehr an den alten Zeilen hängt — nicht behauptet, sondern gemessen.*
-$nochDa = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM " . Schema::table('settings') . " WHERE setting_key = 'multiplicity'"
+// ⚠️ **Das hier ist der Beweis, auf den es ankommt:** *die Auflösung liefert für jede der sechs
+// Kanten den richtigen Wert, und sie hat keine Tabelle mehr, aus der sie ihn nehmen koennte.*
+//
+// ⚠️ *Hier stand daneben die Zaehlung «keine `multiplicity`-Zeile mehr in `settings`». **Die Tabelle
+// selbst ist mit [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen** — eine Zusage ueber
+// eine Tabelle, die es nicht gibt, misst nichts.*
+$rendering = new Rendering(
+    $nodes,
+    $framework,
+    ShippedRenderers::registry(),
+    new SeededTypeNodes($nodes, $framework),
+    new Labels(new WpdbLabelRepository(), $framework),
+    ShippedConverters::registry(),
+    model: new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $framework)
 );
 
-check('die Settings-Tabelle sagt nichts mehr zur Multiplizitaet', $nochDa === 0, "{$nochDa} Zeilen");
-
 if ($gefunden !== []) {
-    $ausAufloesung = $settings->resolveForUseSites(array_map(static fn (array $g) => $g[0], $gefunden));
+    $ausAufloesung = $rendering->settingsForUseSites(array_map(static fn (array $g) => $g[0], $gefunden));
     $abweichung    = [];
 
     foreach ($gefunden as [$kante, $soll, $wo]) {

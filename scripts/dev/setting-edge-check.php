@@ -52,14 +52,12 @@ use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -85,9 +83,8 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock(), $settings);
+$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
 
 /** Ein Feld eines Knotens über seinen Namen. */
 function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Relation
@@ -220,7 +217,6 @@ echo "\n== Die Vorschau zeigt keine Einstellungen ==\n";
 $rendering = new Rendering(
     $nodes,
     $framework,
-    $settings,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
@@ -242,7 +238,7 @@ foreach (['Passiv', 'Dimension', 'Integer'] as $name) {
 
     $knoten = $nodes->byId($id);
     $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
-    $sicht  = $rendering->previewVisibilityFor($kanten, $settings->resolveForUseSites($kanten));
+    $sicht  = $rendering->previewVisibilityFor($kanten, $rendering->settingsForUseSites($kanten));
 
     $einstellungen = 0;
 
@@ -277,13 +273,9 @@ foreach (['Passiv', 'Dimension', 'Integer'] as $name) {
 
 echo "\n== Woher die Auskunft kommt ==\n";
 
-$ausTabelle = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . " WHERE setting_key = 'persistent'"
-);
-
-if ($ausTabelle > 0) {
-    check("noch {$ausTabelle} Zeilen in der Tabelle — der Umzug laeuft", true);
-} else {
+// ⚠️ *Hier wurde gezaehlt, ob die `settings`-Tabelle noch `persistent`-Zeilen haelt. **Es gibt sie
+// nicht mehr** (D-579) — geblieben ist die Frage, ob die Art der Kante es sagt.*
+{
     // ⚠️ *Nach dem Umzug muss die Art der Kante es sagen — sonst wäre die Verweigerung oben aus einem
     // Grund grün, den es nicht mehr gibt.*
     check(

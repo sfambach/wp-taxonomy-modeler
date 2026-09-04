@@ -15,11 +15,9 @@ use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Model\Label;
-use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Repository\LabelRepository;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RecordRepository;
-use Taxmod\Core\Repository\SettingRepository;
 use Taxmod\Core\Repository\RelationRepository;
 
 /**
@@ -51,19 +49,22 @@ final class ModelEditor
         private readonly RelationRepository $relations,
         private readonly FrameworkNodes $framework,
         private readonly Changelog $changelog,
-        // ⚠️ **Only `duplicate()` uses these, and that is why they are optional.** A copy has to
-        // resolve exactly like its original or it is not a copy — which means its **own** settings
-        // and labels travel with it. *Everything else in this service moves nodes and edges around
-        // and has no business reading either.*
-        private readonly ?SettingRepository $settings = null,
+        // ⚠️ **Only `duplicate()` uses this, and that is why it is optional.** A copy has to
+        // resolve exactly like its original or it is not a copy — which means its **own** labels
+        // travel with it. *Everything else in this service moves nodes and edges around and has
+        // no business reading them.*
+        //
+        // ⚠️ *Hier stand daneben ein `SettingRepository`. Die `settings`-Tabelle ist mit
+        // [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen; was eine Kopie an
+        // Angaben mitnimmt, steht seit [D-529](../../../docs/NewConcept/90-decision-log.md) im
+        // Datensatz und hängt an den Kanten, die `duplicate()` ohnehin mitkopiert.*
         private readonly ?LabelRepository $labels = null,
-        // ⚠️ **The *service*, not the repository, and it is here for materialising**
-        // ([D-423](../../../docs/NewConcept/90-decision-log.md)). A new node's rows are what its
-        // parent **resolves** to, which only the service can answer — the repository above holds
-        // rows and knows nothing of chains. *Optional for the same reason as the other two: the
-        // eighteen places that construct this service mostly move nodes around, and a required
-        // argument would make every one of them declare a dependency it never uses.*
-        private readonly ?Settings $materialiser = null,
+        // ⚠️ *Hier stand der `Settings`-Dienst als **Materialisierer**
+        // ([D-423](../../../docs/NewConcept/90-decision-log.md)): ein neuer Knoten bekam das, was
+        // sein Elternteil **auflöst**, als eigene Zeilen geschrieben. **Das war die Kette, und die
+        // Kette ist mit der Tabelle gestrichen** ([D-579](../../../docs/NewConcept/90-decision-log.md)).
+        // *Ein geerbtes Feld ist seit [D-526](../../../docs/NewConcept/90-decision-log.md) **dieselbe**
+        // Kante — es gibt nichts mehr zu kopieren, damit der Erbe dasselbe sieht.*
         // ⚠️ **Nur `clearTrash()` braucht es, und es fehlte — deshalb überlebten Records ihren Knoten.**
         // *Optional aus demselben Grund wie die drei darüber: die achtzehn Stellen, die diesen Dienst
         // bauen, verschieben meist nur Knoten und hätten sonst eine Abhängigkeit zu erklären, die sie
@@ -110,33 +111,11 @@ final class ModelEditor
         ));
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
 
-        // ⚠️ **The parent's settings are written into the child** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
-        // The owner: *on inheriting, the settings are written into the inheriting node, where they can
-        // be changed.* **After the changelog entry on purpose** — the node exists before it is
-        // furnished, and each setting write journals itself ([D-403](../../../docs/NewConcept/90-decision-log.md)),
-        // so the order in the log reads the way it happened.
-        $this->materialise($parent, $node);
-
+        // ⚠️ *Hier stand `materialise($parent, $node)` — [D-423](../../../docs/NewConcept/90-decision-log.md)s
+        // Kopie dessen, was das Elternteil in der `settings`-Tabelle **auflöste**. Die Tabelle ist
+        // mit [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen, und damit auch die
+        // Kette, aus der kopiert wurde.*
         return $node;
-    }
-
-    /**
-     * Give a fresh node its own copy of what its parent resolves to.
-     *
-     * ⚠️ *Silently absent where no materialiser was handed in, which is the same contract the
-     * settings and labels repositories above already have — a caller that only moves nodes about
-     * gets the old sparse behaviour and nothing breaks.*
-     */
-    private function materialise(Node $parent, Node $child): void
-    {
-        if ($this->materialiser === null) {
-            return;
-        }
-
-        $this->materialiser->materialise(
-            $this->materialiser->chainFor($parent),
-            $this->materialiser->chainFor($child)
-        );
     }
 
     public function rename(int $id, string $name): Node
@@ -427,7 +406,6 @@ final class ModelEditor
             $newEdges[$edge->id] = $this->addField($copy->id, $edge->toId, $edge->name)->id;
         }
 
-        $this->copySettings($node->id, $copy->id, $newEdges);
         $this->copyLabels($node->id, $copy->id, $newEdges);
 
         return $copy;
@@ -479,42 +457,9 @@ final class ModelEditor
 
         $copy = $this->addField($ownerId, $edge->toId, $name);
 
-        $this->copySettings($edge->id, $copy->id);
-
         return $copy;
     }
 
-    /**
-     * The original's **own** settings, onto the copy.
-     *
-     * ⚠️ **Own, not resolved** — and the difference is the whole point. Copying what the original
-     * *resolves* would freeze its ancestors' answers into the copy, so a later change above would
-     * reach the original and not the copy. *Copying only what it holds keeps both of them children
-     * of the same parent, which is what a sibling copy is.*
-     *
-     * ⚠️ *Written straight to the repository rather than through {@see \Taxmod\Core\Service\Settings}:
-     * the values were already accepted once at this exact place in the chain, so re-running the
-     * bounds checks would refuse nothing and could refuse something — a bound the original was
-     * narrowed **to** is not a widening for the copy.*
-     *
-     * ⚠️ **The `path` used to be dropped and that lost everything the original said about its
-     * individual attributes** ([list row 43](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
-     * *Found by the owner asking «the path is there via the node edges, isn't it?». The fourth
-     * argument was simply not passed, so a copy kept the node's own values and none of its per-attribute
-     * ones.*
-     *
-     * @param array<int, int> $edgeMap Original edge id ⇒ the copy's own new edge id.
-     */
-    private function copySettings(int $fromId, int $toId, array $edgeMap = []): void
-    {
-        if ($this->settings === null) {
-            return;
-        }
-
-        foreach ($this->settings->ownedBy($fromId) as $one) {
-            $this->settings->put(new SettingRecord($toId, $one->key, $one->value, $this->remapPath($one->path, $edgeMap)));
-        }
-    }
 
     /**
      * An address on the original, read as the same address on the copy.
@@ -627,18 +572,9 @@ final class ModelEditor
             sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value)
         );
 
-        // ⚠️ **The target's settings are written into the attribute** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
-        // The owner: *when an attribute is created, **all** settings of the node are taken into the
-        // attribute and can be changed there.* **The source is the *target*, not the owner** — the
-        // type is what an attribute is configured like, and it is also what its `reset` pulls from,
-        // so creation and reset agree by construction.
-        if ($this->materialiser !== null) {
-            $this->materialiser->materialise(
-                $this->materialiser->chainFor($target),
-                $this->materialiser->chainForUseSite($edge)
-            );
-        }
-
+        // ⚠️ *Hier wurden dem neuen Feld die Angaben seines **Ziels** als eigene Zeilen
+        // hineingeschrieben ([D-423](../../../docs/NewConcept/90-decision-log.md)). Mit der
+        // `settings`-Tabelle ist auch das gestrichen ([D-579](../../../docs/NewConcept/90-decision-log.md)).*
         return $edge;
     }
 
@@ -723,7 +659,7 @@ final class ModelEditor
         $parked = $this->nodes->subtreeOf($trash);
 
         if ($parked === []) {
-            return ['nodes' => 0, 'edges' => 0, 'settings' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];
+            return ['nodes' => 0, 'edges' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];
         }
 
         $ids   = array_map(static fn (Node $one): int => $one->id, $parked);
@@ -755,7 +691,6 @@ final class ModelEditor
         $data = $this->records?->forgetNodes($ids) ?? ['records' => 0, 'values' => 0];
 
         $gone = [
-            'settings' => $this->settings?->forgetOwners($owners) ?? 0,
             'labels'   => $this->labels?->forgetOwners($owners) ?? 0,
             'records'  => $data['records'],
             'values'   => $data['values'],
@@ -794,10 +729,9 @@ final class ModelEditor
             'trash cleared',
             sprintf('%d parked', count($ids)),
             sprintf(
-                '%d nodes, %d edges, %d settings, %d labels, %d records, %d values',
+                '%d nodes, %d edges, %d labels, %d records, %d values',
                 $gone['nodes'],
                 $gone['edges'],
-                $gone['settings'],
                 $gone['labels'],
                 $gone['records'],
                 $gone['values']

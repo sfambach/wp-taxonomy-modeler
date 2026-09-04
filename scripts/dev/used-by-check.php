@@ -142,7 +142,6 @@ try {
         )));
         $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
-        $wpdb->query("DELETE FROM {$prefix}settings WHERE owner_id IN ({$own})");
         $wpdb->query("DELETE FROM {$prefix}labels WHERE owner_id IN ({$own})");
         $wpdb->query("DELETE FROM {$prefix}changelog WHERE owner_id IN ({$own})");
 

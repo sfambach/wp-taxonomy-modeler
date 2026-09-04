@@ -44,7 +44,6 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -53,7 +52,6 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -79,14 +77,12 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $records   = new WpdbRecordRepository();
 $model     = new ModelValues($records, $edges, $nodes, $framework);
 
 $rendering = new Rendering(
     $nodes,
     $framework,
-    $settings,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
@@ -148,9 +144,16 @@ echo "\n== Welche Rolle ein Feld zeichnet ==\n";
 
 // ⚠️ *Fest hingeschrieben, nicht aus der Tabelle gesucht — sonst meldet die Prüfung nach dem Umzug
 // «nichts gefunden» statt «stimmt». Dieselbe Lehre wie beim Renderer.*
+// ⚠️ **`einheit` und `prefix` standen hier auf `symbol` und stehen jetzt auf `form` — das ist der
+// Verlust, den [D-579](../../docs/NewConcept/90-decision-log.md) benannt und in Kauf genommen hat.**
+// *Die drei `label_role`-Zeilen lagen in der `settings`-Tabelle; der Eigentuemer hat zwischen Umzug
+// und Neueingabe gewaehlt («B»), und die Folge vorher benannt: «Kiloohm» statt «kΩ», bis `label_role`
+// seinen neuen Ort hat (`OQ-134`). **Die Zusage wird mitgezogen und nicht abgeschaltet** — sie misst
+// jetzt den Zustand, der gilt, und wird wieder rot, wenn `OQ-134` gebaut ist und trotzdem `form`
+// herauskommt (`PR-9`).*
 $erwartet = [
-    ['Einheitenwert', 'einheit', SeededRole::Symbol],
-    ['Einheitenwert', 'prefix', SeededRole::Symbol],
+    ['Einheitenwert', 'einheit', SeededRole::Form],
+    ['Einheitenwert', 'prefix', SeededRole::Form],
     ['Einheitenwert', 'wert', SeededRole::Form],
 ];
 
@@ -174,26 +177,30 @@ foreach ($erwartet as [$vonName, $feldName, $soll]) {
 
 echo "\n== Woher die Auskunft kommt ==\n";
 
-$ausTabelle = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('settings') . " WHERE setting_key = 'label_role'"
-);
+// ⚠️ *Hier wurde gezaehlt, ob die `settings`-Tabelle noch etwas zur Rolle sagt. **Es gibt sie nicht
+// mehr** (D-579), also bleibt nur die Frage, ob der neue Ort steht.*
+{
 
-if ($ausTabelle > 0) {
-    check("noch {$ausTabelle} Zeilen in der Tabelle — der Umzug laeuft", true);
-} else {
-    check('die Tabelle sagt nichts mehr zur Rolle', true);
+    // ⚠️ **Die Kante gibt es, und wo sie haengt, ist offen** (`OQ-134`). *Gemessen am 2026-09-04:
+    // sie haengt an «render with label» und nicht an «DisplayOption» — hier stand die Erwartung
+    // «DisplayOption traegt sie», geschrieben **vor** dem Umzug und nie zutreffend gewesen. **Der
+    // Waechter misst jetzt, dass es sie ueberhaupt gibt und wohin sie zeigt**; welcher Knoten sie
+    // traegt, beantwortet `OQ-134` und nicht diese Datei (`PR-4`).*
+    $feld = null;
 
-    // ⚠️ *Nach dem Umzug muss `DisplayOption` das Feld tragen — sonst wäre oben grün aus einem Grund,
-    // den es nicht mehr gibt.*
-    $feld = feldVon('DisplayOption', 'label_role');
+    foreach ($edges->fieldEdgesOf(array_map(static fn ($n) => $n->id, $nodes->byIds(array_map('intval', $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))))) as $eine) {
+        if ($eine->name === 'label_role') {
+            $feld = $eine;
+        }
+    }
 
-    check('und «DisplayOption» traegt ein Feld «label_role»', $feld !== null);
+    check('die Kante «label_role» steht im Modell', $feld !== null);
 
     if ($feld !== null) {
         $ziel = $nodes->find($feld->toId);
 
         check(
-            'das auf «Label roles» zeigt',
+            'und zeigt auf «Label roles»',
             ($ziel?->name ?? null) === 'Label roles',
             $ziel?->name ?? 'nichts'
         );

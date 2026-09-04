@@ -55,7 +55,6 @@ use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -64,7 +63,6 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -150,7 +148,6 @@ $records   = new WpdbRecordRepository();
 $rendering = new Rendering(
     $nodes,
     $framework,
-    new Settings(new WpdbSettingRepository(), $nodes, $framework),
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
