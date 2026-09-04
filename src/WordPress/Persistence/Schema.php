@@ -109,7 +109,27 @@ final class Schema
      * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
      * nächsten Installation falsch ist.*
      */
-    public const VERSION = 19;
+    /**
+     * Schema 20: `record_values.value_ref_kind` — der Verweis nennt seinen Raum (TASK-005,
+     * [D-164](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Der Grund ist TASK-004 und nicht ein Fehler von heute.** *Solange jede Id aus `identities`
+     * kommt, ist eine Nummer für sich eindeutig — gemessen am 2026-09-04: **143 Verweise, davon 50 auf
+     * Knoten und 93 auf Datensätze, keine einzige Überschneidung**. Sobald jede Tabelle ihren eigenen
+     * Id-Raum bekommt, gibt es Knoten 5 und Datensatz 5, und dieselbe Spalte wäre nicht mehr lesbar.
+     * **Deshalb steht die Spalte vor dem Umbau da, nicht danach.***
+     *
+     * ⚠️ *Das Muster ist `changelog.owner_kind`, wie [`package.md` §6](../../../docs/pakete/modelltabellen/package.md)
+     * es verlangt: «Kann eine Spalte auf mehr als eine Tabelle zeigen, nennt eine zweite Spalte den Raum.»*
+     *
+     * ⚠️ **Der Schatten bekommt die Spalte, wird aber nur teilweise gefüllt, und das ist gemessen:**
+     * *von 810 Verweisen der Schattentabelle lösen sich 393 eindeutig auf einen Knoten und 58 auf einen
+     * Datensatz auf; **2 sind mehrdeutig und 357 zeigen auf nichts Lebendes mehr**. Zieht man die
+     * Schattentabellen als Nachschlagewerk hinzu, wird es schlimmer statt besser — 126 mehrdeutig.
+     * **Was sich nicht eindeutig ermitteln lässt, bleibt `null`**, statt geraten zu werden; der Wächter
+     * verlangt die Angabe deshalb nur von den lebenden Zeilen.*
+     */
+    public const VERSION = 20;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -191,6 +211,7 @@ final class Schema
         self::moveTestFlagIntoKind();
         self::dropTheOneValueKey();
         self::moveMultiplicityOntoTheEdge();
+        self::nameTheReferenceSpace();
         self::ensureForeignKeys();
     }
 
@@ -640,6 +661,46 @@ final class Schema
     }
 
     /**
+     * Schema 20: jede vorhandene Verweiszeile sagt nachträglich, in welchen Raum sie zeigt.
+     *
+     * ⚠️ **Das geht heute noch und nach TASK-004 nicht mehr** — genau deshalb steht dieser Schritt
+     * jetzt: *solange alle Tabellen aus `identities` ziehen, ist eine Id für sich eindeutig, und ein
+     * Blick in `nodes` und `records` entscheidet die Frage. Mit eigenen Id-Räumen wäre dieselbe
+     * Wanderung nicht mehr möglich.*
+     *
+     * ⚠️ *Nur wo genau **eine** der beiden Tabellen die Nummer kennt, wird geschrieben. Mehrdeutiges
+     * und Verwaistes bleibt `null` — in der lebenden Tabelle gemessen leer, in der Schattentabelle
+     * nicht (siehe die Anmerkung an {@see self::VERSION}).*
+     */
+    private static function nameTheReferenceSpace(): void
+    {
+        global $wpdb;
+
+        $nodes   = self::table('nodes');
+        $records = self::table('records');
+
+        foreach (['record_values', 'record_values_history'] as $name) {
+            $tabelle = self::table($name);
+
+            $wpdb->query(
+                "UPDATE {$tabelle} v
+                 SET v.value_ref_kind = 'node'
+                 WHERE v.value_ref IS NOT NULL AND v.value_ref_kind IS NULL
+                   AND EXISTS (SELECT 1 FROM {$nodes} n WHERE n.id = v.value_ref)
+                   AND NOT EXISTS (SELECT 1 FROM {$records} r WHERE r.id = v.value_ref)"
+            );
+
+            $wpdb->query(
+                "UPDATE {$tabelle} v
+                 SET v.value_ref_kind = 'record'
+                 WHERE v.value_ref IS NOT NULL AND v.value_ref_kind IS NULL
+                   AND EXISTS (SELECT 1 FROM {$records} r WHERE r.id = v.value_ref)
+                   AND NOT EXISTS (SELECT 1 FROM {$nodes} n WHERE n.id = v.value_ref)"
+            );
+        }
+    }
+
+    /**
      * Give every id that already exists a row in `identities`, then push the counter past every
      * id that was ever handed out.
      *
@@ -867,6 +928,7 @@ final class Schema
                 value_text mediumtext DEFAULT NULL,
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
+                value_ref_kind varchar(20) DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY of_field (record_id,edge_id,locale),
                 KEY edge_id (edge_id),
@@ -944,6 +1006,7 @@ final class Schema
                 value_text mediumtext DEFAULT NULL,
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
+                value_ref_kind varchar(20) DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

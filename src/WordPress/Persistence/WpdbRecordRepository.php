@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
@@ -97,7 +98,7 @@ final class WpdbRecordRepository implements RecordRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
                  FROM ' . Schema::table('record_values') . '
                  WHERE record_id IN (' . $platzhalter . ') ORDER BY record_id ASC, position ASC, id ASC',
                 ...$ids
@@ -117,6 +118,7 @@ final class WpdbRecordRepository implements RecordRepository
                     $r['value_text'] === null ? null : (string) $r['value_text'],
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                    ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
                 ),
                 (int) $r['id'],
                 (int) $r['position'],
@@ -135,7 +137,7 @@ final class WpdbRecordRepository implements RecordRepository
                 // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
                 // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
                 // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
                  FROM ' . Schema::table('record_values') . '
                  WHERE record_id = %d ORDER BY position ASC, id ASC',
                 $recordId
@@ -156,6 +158,7 @@ final class WpdbRecordRepository implements RecordRepository
                     $r['value_text'] === null ? null : (string) $r['value_text'],
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                    ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
                 ),
                 (int) $r['id'],
                 (int) $r['position'],
@@ -197,6 +200,7 @@ final class WpdbRecordRepository implements RecordRepository
                 $r['value_text'] === null ? null : (string) $r['value_text'],
                 $r['value_date'] === null ? null : (string) $r['value_date'],
                 $r['value_ref'] === null ? null : (int) $r['value_ref'],
+                ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
             ),
             (int) $r['id'],
             (int) $r['position'],
@@ -215,12 +219,15 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         // ⚠️ *`value_ref` ist der Sprung **zwischen** Datensätzen. Ein Verweis auf einen Knoten steht in
-        // derselben Spalte — deshalb wird nach den **angefragten Satz-Ids** gefragt und nicht umgekehrt.*
+        // derselben Spalte — **seit TASK-005 sagt `value_ref_kind`, welcher von beiden gemeint ist**,
+        // und die Abfrage fragt nur noch die Datensatzverweise. Vorher hätte ein Knoten mit der Nummer
+        // eines Datensatzes hier mitgeliefert; heute nicht mehr.*
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref
+                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
                  FROM ' . Schema::table('record_values') . '
-                 WHERE value_ref IN (' . $platzhalter . ') ORDER BY value_ref ASC, id ASC',
+                 WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
+                 ORDER BY value_ref ASC, id ASC',
                 ...$ids
             ),
             ARRAY_A
@@ -261,9 +268,12 @@ final class WpdbRecordRepository implements RecordRepository
             'value_text'    => $value->value->text,
             'value_date'    => $value->value->date,
             'value_ref'     => $value->value->reference,
+            // ⚠️ *Der Raum wird **mitgeschrieben**, nicht abgeleitet: sobald jede Tabelle ihren eigenen
+            // Id-Raum hat (TASK-004), sagt die Nummer allein nicht mehr, auf welche Tabelle sie zeigt.*
+            'value_ref_kind' => $value->value->referenceSpace?->value,
         ];
 
-        $formate = ['%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d'];
+        $formate = ['%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s'];
 
         if ($value->id === null) {
             $wpdb->insert(Schema::table('record_values'), $spalten, $formate);
