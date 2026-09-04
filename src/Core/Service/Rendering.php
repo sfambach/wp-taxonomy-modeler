@@ -107,6 +107,7 @@ final class Rendering
          * gewinnt die neue Stelle** — sonst hätte der Umzug keine Wirkung.*
          */
         private readonly ?ModelValues $model = null,
+
         /**
          * ⚠️ **Damit der Abstieg durch die Knoten gehen kann.** *Der Eigentümer hat es diagnostiziert:
          * «heisst wohl Renderkette ist unterbrochen» — und: «Form-Render sollte ja die Knoten
@@ -1992,6 +1993,15 @@ final class Rendering
         string $locale = '',
         Level $level = Level::Admin,
         bool $developerMode = false,
+        /**
+         * Feldname des Suchfeldes, leer = keines.
+         *
+         * WICHTIG: Die Seitenansicht ist zugeklappt -- gemessen 11 von 145 Zeilen. Was nicht im
+         * Dokument steht, findet kein Skript, und genau daran ist seine Suche gescheitert.
+         * Traegt das Feld einen Namen, sucht der Server.
+         */
+        string $filterName = '',
+        string $filterValue = '',
     ): RenderResult {
         if ($walked === []) {
             return RenderResult::of('');
@@ -2019,7 +2029,7 @@ final class Rendering
                 locale: $locale,
                 level: $level,
                 editable: false,
-                surroundings: new Surroundings(rows: $rows),
+                surroundings: new Surroundings(rows: $rows, filterName: $filterName, filterValue: $filterValue),
             )
         );
     }
@@ -2792,6 +2802,101 @@ final class Rendering
         }
 
         return $aus;
+    }
+
+    /**
+     * Ein Knoten-Chooser aus seinen drei Angaben -- Wurzel, offener Ast, Vorauswahl.
+     *
+     * ⚠️ **Das ist sein Konzept, und es gehoert hierher und nicht in die Maske.** *Er hat es
+     * benannt: «wir haben ein Konzept fuer den Knoten-Chooser: Root-Knoten, optional Ast der
+     * [aufgeklappt] ist, optional Knoten der vorselektiert ist.» **Ich hatte es im Feldformular
+     * ausgerechnet** — damit haette der naechste Aufrufer es noch einmal ausgerechnet, und die
+     * zweite Rechnung waere irgendwann anders ausgefallen.*
+     *
+     * ⚠️ *Der offene Ast schliesst seinen Weg mit ein: liegt er zwei Ebenen tief, muessen seine
+     * Vorfahren offen sein, sonst waere «offen» eine Angabe ueber etwas, das niemand sieht.*
+     *
+     * @param list<int> $unpickable
+     */
+    /**
+     * Der Baumlaeufer, aus den Behaeltern gebaut, die es ohnehin hat.
+     *
+     * WICHTIG: Als Parameter waere er an elf Stellen nachzutragen gewesen, und einer davon haette
+     * ihn vergessen -- package7-check hat genau das sofort gemeldet. Tree ist ein reiner
+     * Kerndienst ueber zwei Behaeltern, also kann er hier entstehen statt hereingereicht zu werden.
+     */
+    private function walker(): ?Tree
+    {
+        return $this->relations === null ? null : new Tree($this->nodes, $this->relations);
+    }
+
+    public function nodeChooser(
+        Node $root,
+        string $fieldName,
+        ?Node $expanded = null,
+        ?int $preselected = null,
+        array $skip = [],
+        array $unpickable = [],
+        ?string $chosenName = null,
+        string $nothingToChoose = '',
+        string $chooser = DialogChooserRenderer::NAME,
+        string $locale = '',
+        Level $level = Level::Admin,
+        string $trigger = '',
+        string $confirm = '',
+    ): RenderResult {
+        $laeufer = $this->walker();
+
+        if ($laeufer === null) {
+            return RenderResult::of('');
+        }
+
+        $walked = $laeufer->rowsUnder($root, $skip, $this->collapsedApartFrom($root, $expanded, $skip));
+
+        return $this->chooserFor(
+            $walked,
+            $fieldName,
+            $preselected,
+            $unpickable,
+            $chosenName,
+            $nothingToChoose,
+            $chooser,
+            $locale,
+            $level,
+            $trigger,
+            $confirm
+        );
+    }
+
+    /**
+     * Alles zugeklappt ausser diesem Ast und dem Weg dorthin.
+     *
+     * @param list<int> $skip
+     * @return list<int>
+     */
+    private function collapsedApartFrom(Node $root, ?Node $expanded, array $skip): array
+    {
+        $laeufer = $this->walker();
+
+        if ($laeufer === null || $expanded === null) {
+            return [];
+        }
+
+        $offen = [$expanded->id => true];
+
+        foreach ($expanded->ancestorIds() as $id) {
+            $offen[$id] = true;
+        }
+
+        $zu = [];
+
+        foreach ($laeufer->rowsUnder($root, $skip) as $row) {
+            if (! isset($offen[$row['node']->id])) {
+                $zu[] = $row['node']->id;
+            }
+        }
+
+        return $zu;
     }
 
     private function optionsFor(array $edges): array

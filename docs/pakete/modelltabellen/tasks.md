@@ -401,6 +401,19 @@ Gemessen: der Dialog zeigt 30 statt 134 Zeilen.*
 ```text
 [x] TASK-035  Klapp-Pfeile im Auswahldialog — heute fehlt «toggle», weil ein
               Klapp-Link die Seite neu laedt und damit den Dialog schliesst
-[ ] TASK-036  Einstiegsast und Root als Parameter des Auswahldialogs, nicht
+[x] TASK-036  Einstiegsast und Root als Parameter des Auswahldialogs, nicht
               im Feldformular ausgerechnet
 ```
+
+**TASK-036 erledigt am 2026-09-04, und die Suche im Modellbaum dazu.**
+
+⚠️ **Sein Einwand war berechtigt:** *«ausserdem hast du nicht das gemacht was besprochen war, wir
+haben ein Konzept für den Knoten-Chooser: Root-Knoten, optional Ast der [aufgeklappt] ist, optional
+Knoten der vorselektiert ist.»* *Ich hatte den Klappzustand im Feldformular ausgerechnet — der
+nächste Aufrufer hätte es noch einmal getan, und die zweite Rechnung wäre irgendwann anders
+ausgefallen. Jetzt trägt `Rendering::nodeChooser()` das Konzept.*
+
+⚠️ **Und «knoten filter geht nicht» hatte einen Grund, den kein Skript beheben kann:** *die
+Seitenansicht ist zugeklappt — 11 von 145 Zeilen stehen im Dokument. **Was nicht dasteht, findet
+kein Skript.** Deshalb sucht dort jetzt der Server: voll aufklappen, auf Treffer plus deren Weg
+eindampfen. Der Auswahldialog behält den Browserfilter, weil er alle Zeilen hat.*

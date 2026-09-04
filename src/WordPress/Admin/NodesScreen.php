@@ -255,7 +255,24 @@ final class NodesScreen
             $this->framework->rootOf(Branch::Model),
             __('Add a subject area under Model', 'taxmod')
         );
-        $left .= $this->table($rows, 'tree', $collapsed, $selected);
+        // WICHTIG: Beim Suchen wird voll aufgeklappt und auf Treffer plus deren Weg eingedampft.
+        // Sein Befund: "knoten filter geht nicht" -- und der Grund war, dass die Seitenansicht
+        // zugeklappt ist: 11 von 145 Zeilen stehen im Dokument, und was nicht dasteht, findet
+        // kein Skript. Deshalb sucht hier der Server.
+        $gesucht = $this->searchTerm();
+
+        if ($gesucht !== '') {
+            $rows = $this->matching($this->tree->rowsUnder($root, [$trash->id], [], $showHidden, $this->showsRoot()), $gesucht);
+        }
+
+        // WICHTIG: Ein Suchfeld, nicht zwei. Der Baum zeichnet es selbst (der Kern kennt keine
+        // URL, CD-1), das Formular steht nur darum, damit die Eingabetaste sucht.
+        $left .= '<form method="get" class="taxmod-tree-searchform">'
+            . '<input type="hidden" name="page" value="taxmod">'
+            . '<input type="hidden" name="taxmod_node" value="'
+            . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
+            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht)
+            . '</form>';
         $left .= $this->heading(
             __('Trash', 'taxmod'),
             __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here. «Clear» is the other half: it removes them for good and keeps their ids and their history, so nothing is ever handed out twice and the changelog still says what was there.', 'taxmod'),
@@ -318,7 +335,55 @@ final class NodesScreen
      * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
      * @param list<int>                                                                                           $collapsed
      */
-    private function table(array $rows, string $mode, array $collapsed, ?Node $selected): string
+    /**
+     * Wonach gerade gesucht wird — leer, wenn nicht gesucht wird.
+     */
+    private function searchTerm(): string
+    {
+        return isset($_GET['taxmod_search'])
+            ? trim(sanitize_text_field(wp_unslash($_GET['taxmod_search'])))
+            : '';
+    }
+
+    /**
+     * Nur die Zeilen, die passen — mitsamt dem Weg zu ihnen.
+     *
+     * ⚠️ **Der Weg gehoert dazu, sonst haengen die Treffer in der Luft.** *Ein Treffer drei Ebenen
+     * tief ohne seine Vorfahren waere eine Zeile ohne Zusammenhang — und die Einrueckung wuerde
+     * eine Hierarchie behaupten, die im Bild fehlt.*
+     *
+     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}> $rows
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool}>
+     */
+    private function matching(array $rows, string $gesucht): array
+    {
+        $nadel   = mb_strtolower($gesucht);
+        $behalten = [];
+
+        foreach ($rows as $row) {
+            if (! str_contains(mb_strtolower($row['node']->name), $nadel)) {
+                continue;
+            }
+
+            $behalten[$row['node']->id] = true;
+
+            foreach ($row['node']->ancestorIds() as $id) {
+                $behalten[$id] = true;
+            }
+        }
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            if (isset($behalten[$row['node']->id])) {
+                $aus[] = $row;
+            }
+        }
+
+        return $aus;
+    }
+
+    private function table(array $rows, string $mode, array $collapsed, ?Node $selected, string $gesucht = ''): string
     {
         if ($rows === []) {
             return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
@@ -384,7 +449,11 @@ final class NodesScreen
             \Taxmod\Core\Renderer\Level::Admin,
             // ⚠️ **A circumstance, read from the option** (D-389) — the write count is a diagnostic
             // and waits for developer mode, which is now a fact about the installation.
-            $this->inDeveloperMode()
+            $this->inDeveloperMode(),
+            // Nur der Modellbaum sucht ueber den Server -- der Auswahldialog hat alle Zeilen da
+            // und filtert im Browser. Der Feldname entscheidet, welches von beidem gilt.
+            $mode === 'tree' ? 'taxmod_search' : '',
+            $gesucht
         )->markup;
     }
 
@@ -1707,34 +1776,6 @@ final class NodesScreen
     }
 
     /**
-     * Alles zugeklappt ausser diesem Ast und dem Weg dorthin.
-     *
-     * ⚠️ **Der Weg gehoert dazu, sonst sieht man den Ast gar nicht.** *Liegt der Einstieg zwei
-     * Ebenen tief, muessen seine Vorfahren offen sein -- sonst waere «offen» eine Angabe ueber
-     * etwas, das niemand sieht.*
-     *
-     * @return list<int>
-     */
-    private function collapsedApartFrom(Node $einstieg): array
-    {
-        $offen = [$einstieg->id => true];
-
-        foreach ($einstieg->ancestorIds() as $id) {
-            $offen[$id] = true;
-        }
-
-        $zu = [];
-
-        foreach ($this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]) as $row) {
-            if (! isset($offen[$row['node']->id])) {
-                $zu[] = $row['node']->id;
-            }
-        }
-
-        return $zu;
-    }
-
-    /**
      * Überschrift und Hinweis eines der zwei Blöcke.
      *
      * ⚠️ *An **einer** Stelle, weil die zwei Aufrufe sonst zwei Orte wären, an denen dasselbe über
@@ -1831,11 +1872,11 @@ final class NodesScreen
         // WICHTIG: Das ersetzt eine Sortierung, die ich vorher gebaut hatte und die falsch war:
         // sie riss den Ast aus seinem Elternknoten und stellte ihn oben hin, wodurch der Dialog
         // eine andere Hierarchie zeigte als die Seitenansicht. Er hat es sofort gesehen.
-        $rows = $this->tree->rowsUnder(
-            $this->framework->root(),
-            [$this->framework->trash()->id],
-            $this->collapsedApartFrom($this->framework->rootOf(Branch::DataTypes))
-        );
+        // WICHTIG: Der Rand rechnet den Klappzustand nicht mehr aus -- der Chooser traegt sein
+        // eigenes Konzept (Wurzel, offener Ast, Vorauswahl). Sein Einwand: "ausserdem hast du
+        // nicht das gemacht was besprochen war, wir haben ein Konzept fuer den Knoten-Chooser".
+        // Die Zeilen werden hier nur noch geholt, um die unmoeglichen Ziele zu bestimmen.
+        $rows = $this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]);
         // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
         // same eighty entries with middle dots that the parent chooser had before — and worse here,
@@ -1867,14 +1908,18 @@ final class NodesScreen
         // ([D-244](../../../docs/NewConcept/90-decision-log.md)) and because this sits inside a form
         // that already has a name field — a tree unfolding in place would push the button it belongs to
         // off the screen.*
-        $chooser = $this->rendering->chooserFor(
-            $rows,
+        $chooser = $this->rendering->nodeChooser(
+            $this->framework->root(),
             // ⚠️ **Its own field name, not `target` again.** The move chooser already uses `target`, and
             // two radio groups of one name on one page is a collision waiting for a second reader — *and
             // it is honest besides: «where does this node go» and «what does this attribute point at»
             // are two questions.*
             'field_target',
+            // Der offene Ast: die einfachen Typen, weil sie am meisten gebraucht werden.
+            $this->framework->rootOf(Branch::DataTypes),
+            // Vorauswahl: keine -- welcher Typ gemeint ist, weiss nur er.
             null,
+            [$this->framework->trash()->id],
             $barred,
             null,
             __('Nothing here can be a target.', 'taxmod'),
