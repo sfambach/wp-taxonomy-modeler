@@ -551,9 +551,8 @@ Wächterlauf dazwischenkommt** — gemessen an `DisplayOption`, den der Eigentü
 hatte und der beim nächsten Lauf endgültig fiel.*
 
 ```text
-[ ] TASK-040  Ein Knoten mit kind = setting erbt keine Einstellungskanten
-              (D-605) — plus Waechter: kein Knoten zeigt sich selbst als
-              seine eigene Einstellung
+[ ] TASK-040  Ein Knoten erbt keine Einstellungskante, die auf ihn selbst
+              zeigt (D-607) — plus Waechter dafuer
 ```
 
 ⚠️ *Gemessen betrifft es heute **einen** Knoten: `read_only` unter `Boolean`. `Validator` und
@@ -573,3 +572,13 @@ und **keine Kante zeigt auf sie**. Vermutlich sind sie kein Einstellungsknoten m
 
 ⚠️ *Danach kann [D-605](../../NewConcept/90-decision-log.md) greifen (ein markierter Knoten erbt
 keine Einstellungskanten) — heute griffe die Regel an drei Knoten statt an achtunddreissig.*
+
+⚠️ **TASK-040 neu gefasst am 2026-09-04.** *Die erste Fassung (`kind = setting` erbt nichts,
+[D-605](../../NewConcept/90-decision-log.md)) war zu breit — sie hätte `render with label` den
+geerbten `converter` genommen. **Er hat es gesehen, bevor es gebaut war.** Gemessen betrifft die
+neue Fassung zwei Kanten: `Root --validator--> Validator` und `Root --read_only--> read_only`.*
+
+⚠️ *Und `min`/`max` sind damit **kein Rest**: sie wurden ausgelagert, um genau dieser Rekursion
+auszuweichen — «wenn wir am Knoten `int` die `min`/`max` einhängen und `int` `min`/`max` als Setting
+hat, erben `min`/`max` diese wieder». **Mit [D-607](../../NewConcept/90-decision-log.md) fällt der
+Grund weg**, sie können zurück unter `Integer`.*
