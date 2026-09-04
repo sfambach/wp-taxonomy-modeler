@@ -34,7 +34,6 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -57,12 +56,11 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $framework, $log);
 $stored = new WpdbLabelRepository();
 $labels = new Labels($stored, $framework);
 
@@ -168,12 +166,14 @@ $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p5%"');
 $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p5%"');
 check('scratch nodes are gone', $left === 0, "$left left");
+// ⚠️ *Seit TASK-004 gegen `nodes` statt gegen `identities` — und das ist **strenger**: gemessen am
+// 2026-09-04 gehören alle 47 Labels einem Knoten, keines einer Kante.*
 $orphans = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('labels') . ' l
-     LEFT JOIN ' . Schema::table('identities') . ' i ON i.id = l.owner_id
-     WHERE i.id IS NULL'
+     LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = l.owner_id
+     WHERE n.id IS NULL'
 );
-check('no label hangs on an identity that never existed', $orphans === 0, "$orphans orphans");
+check('no label hangs on a node that never existed', $orphans === 0, "$orphans orphans");
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

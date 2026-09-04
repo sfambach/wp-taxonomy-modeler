@@ -20,7 +20,7 @@
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\WordPress\Persistence\{Schema, SeededFrameworkNodes, TableIdentityAllocator, WpdbChangelog,
+use Taxmod\WordPress\Persistence\{Schema, SeededFrameworkNodes, WpdbChangelog,
     WpdbNodeRepository, WpdbRecordRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
 
@@ -39,11 +39,10 @@ final class Geruest
     {
         $knoten          = new WpdbNodeRepository();
         $kanten          = new WpdbRelationRepository();
-        $ids             = new TableIdentityAllocator();
         $log             = new WpdbChangelog(new SystemClock());
         $this->nodes     = $knoten;
-        $this->framework = new SeededFrameworkNodes($knoten, $kanten, $ids, $log);
-        $this->editor    = new ModelEditor($knoten, $kanten, $ids, $this->framework, $log);
+        $this->framework = new SeededFrameworkNodes($knoten, $kanten, $log);
+        $this->editor    = new ModelEditor($knoten, $kanten, $this->framework, $log);
     }
 
     /**

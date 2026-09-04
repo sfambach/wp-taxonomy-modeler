@@ -23,7 +23,6 @@ use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\UnitScaffold;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
@@ -301,7 +300,6 @@ final class Plugin
         return new ModelEditor(
             new WpdbNodeRepository(),
             new WpdbRelationRepository(),
-            new TableIdentityAllocator(),
             $this->frameworkNodes(),
             $this->changelog(),
             // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
@@ -312,7 +310,7 @@ final class Plugin
             // node gets its parent's settings written into it, and a new attribute its target's.
             // *Handed in rather than made required, because the core tests and the boundary checks
             // build this service to move nodes about and have nothing to furnish.*
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             // ⚠️ **Damit `clearTrash()` die Daten mitnimmt** — [C102](../../docs/NewConcept/10-domain-core.md):
             // *ein Record ohne seinen Knoten ist undenkbar.* Ohne dieses Argument überlebten die Records
             // ihren Knoten, während der Docblock der Methode behauptete, sie gingen mit.
@@ -332,7 +330,7 @@ final class Plugin
         return new UnitScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             // ⚠️ *Mit Changelog und Knoten-Repository, damit eine Labelaenderung in der Geschichte
             // steht ([D-489]) und `owner_kind` nicht geraten wird.*
             new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository()),
@@ -352,7 +350,7 @@ final class Plugin
         return new CompositionScaffold(
             $this->editor(),
             $this->frameworkNodes(),
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog()),
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository()),
             $this->typeNodes()
         );
     }
@@ -391,7 +389,7 @@ final class Plugin
             // ⚠️ **Handed in so the scaffold can say what a number type permits.** The owner:
             // *`range_min` and `range_max` on `int` should be int's min and max.* The bounds come
             // from the column it is stored in, because storage is what refuses.
-            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog())
+            new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository())
         );
     }
 
@@ -456,12 +454,10 @@ final class Plugin
         return $this->frameworkNodes ??= new SeededFrameworkNodes(
             new WpdbNodeRepository(),
             new WpdbRelationRepository(),
-            new TableIdentityAllocator(),
-            $this->changelog(),
-            // ⚠️ **Only `duplicate()` reads these** — a copy has to resolve exactly like its
-            // original, so its own settings and labels travel with it.
-            new WpdbSettingRepository(),
-            new WpdbLabelRepository()
+            // ⚠️ *Hier standen zwei Argumente mehr, als {@see SeededFrameworkNodes} Parameter hat —
+            // PHP nimmt überzählige Argumente wortlos an. Beim Streichen des Id-Vergebers (TASK-004)
+            // fielen sie auf und gehen mit.*
+            $this->changelog()
         );
     }
 
@@ -475,7 +471,7 @@ final class Plugin
      */
     public function screen(): NodesScreen
     {
-        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog());
+        $settings = new Settings(new WpdbSettingRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbRelationRepository());
         // ⚠️ *Dasselbe Exemplar des Changelogs wie ueberall ([D-470](../../docs/NewConcept/90-decision-log.md)),
         // damit eine Labelaenderung in derselben Aenderungsgruppe landet wie der Akt, der sie ausloeste.*
         $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository());

@@ -48,7 +48,6 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -77,7 +76,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 
 /**
@@ -291,7 +290,7 @@ if ($verwalter === []) {
         throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
     }, 10, 1);
 
-    $editor = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+    $editor = new ModelEditor($nodes, $edges, $framework, $log);
     // ⚠️ *Ein eigener Typknoten und nicht die Wurzel des Astes — die steht für den Ast selbst und
     // nicht für ein Ding darin, und der Kern verweigert sie zu Recht.*
     $text   = $editor->createNode('__wieoft Text', $framework->rootOf(Branch::DataTypes)->id);

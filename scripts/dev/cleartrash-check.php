@@ -35,7 +35,6 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -63,16 +62,15 @@ function check(string $what, bool $ok, string $detail = ''): void
     echo "  FAIL {$what}" . ($detail === '' ? '' : " — {$detail}") . "\n";
 }
 
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $rows      = new WpdbSettingRepository();
 $labelRows = new WpdbLabelRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $settings  = new Settings($rows, $nodes, $framework, $log);
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log, $rows, $labelRows, $settings);
+$editor = new ModelEditor($nodes, $edges, $framework, $log, $rows, $labelRows, $settings);
 
 global $wpdb;
 
@@ -142,12 +140,22 @@ check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}r
 
 echo "\n== and what must survive ==\n";
 
-// ⚠️ **[D-340](../../docs/NewConcept/90-decision-log.md): an id once handed out is never reissued.**
-// *So the identity row stays — and this is the assertion that would fail if somebody ever «tidied up»
-// the identities table, which is the one tidy-up that cannot be undone.*
+// ⚠️ **[D-340](../../docs/NewConcept/90-decision-log.md): eine einmal vergebene Id wird nie wieder
+// vergeben.** *Bis Fassung 20 hielt das eine Zeile in `identities`, und hier stand die Prüfung, dass
+// sie das Aufräumen überlebt. **Mit TASK-004 ist die Tabelle gestrichen** — was die Zusage jetzt hält,
+// ist der Zähler der Tabelle selbst: InnoDB senkt `AUTO_INCREMENT` beim Löschen nicht. Die Zusage ist
+// dieselbe, die Prüfung fragt nur eine andere Stelle (`PR-9`).*
+// ⚠️ *Aus `SHOW CREATE TABLE` gelesen — `information_schema` gibt die Zahl zwischengespeichert und
+// im Versuch als `NULL` zurück. Dieselbe Lesart wie in [`id-space-check.php`](id-space-check.php).*
+$erzeugt = ($wpdb->get_row("SHOW CREATE TABLE {$p}nodes", ARRAY_N) ?: [1 => ''])[1];
+$treffer = [];
+$zaehler = preg_match('/AUTO_INCREMENT=(\d+)/', (string) $erzeugt, $treffer) === 1
+    ? (int) $treffer[1]
+    : (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) + 1 FROM {$p}nodes");
 check(
-    'the identity is kept, so the id can never be handed out again',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}identities WHERE id = {$doomed->id}") === 1
+    'die Nummer bleibt verbraucht, der Zaehler steht darueber',
+    $zaehler > $doomed->id,
+    "$zaehler > {$doomed->id}"
 );
 
 // ⚠️ **[D-065](../../docs/NewConcept/90-decision-log.md): the changelog outlives what it refers to.**

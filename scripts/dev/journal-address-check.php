@@ -55,7 +55,6 @@ use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\Shadow;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -98,10 +97,10 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 $changelog = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $changelog);
+$framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
 $framework->seed();
 
-$editor   = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $changelog);
+$editor   = new ModelEditor($nodes, $edges, $framework, $changelog);
 $settings = new Settings(new WpdbSettingRepository(), $nodes, $framework, $changelog);
 $labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog, $nodes);
 

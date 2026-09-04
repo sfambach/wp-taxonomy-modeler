@@ -39,7 +39,6 @@ use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -61,12 +60,11 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $framework, $log);
 
 echo "\n== 1. The branches exist and are protected ==\n";
 foreach (Branch::cases() as $branch) {
@@ -99,8 +97,11 @@ $row = $wpdb->get_row($wpdb->prepare(
 check('the edge is stored', $row !== null);
 check('it points from the owner to the target', (int) $row['from_id'] === $order->id && (int) $row['to_id'] === $supplier->id);
 check('it carries its name', $row['name'] === 'supplied by', (string) $row['name']);
-check('its id came from the shared identity space', (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('identities') . ' WHERE id = %d', $byModel->id)) === 1);
+// ⚠️ *Bis Fassung 20 hiess die Zusage «die Id kam aus dem geteilten Raum». **Seit TASK-004 gibt es
+// den nicht mehr** — geprüft wird jetzt, dass die Nummer aus dem Raum der eigenen Tabelle kommt
+// (`PR-9`).*
+check('its id came from the relations table itself', (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d', $byModel->id)) === 1);
 
 echo "\n== 4. Attributes are inherited ==\n";
 $part    = $editor->createNode('__p3 Part', $order->id);

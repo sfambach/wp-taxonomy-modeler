@@ -5,8 +5,8 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Model\RelationKind;
 
 /**
- * The seven tables (D-083) plus the identity base they draw their numbers from (D-339),
- * created on activation and guarded by a stored schema version.
+ * Die Tabellen des Modells (D-083), auf der Aktivierung angelegt und von einer gespeicherten
+ * Schemafassung geführt.
  *
  * ⚠️ **Seven, and no table per model** — the model *is* the schema (D-066). A per-model
  * projection may exist later, but only as a rebuildable cache (D-228), never as a place where
@@ -14,17 +14,29 @@ use Taxmod\Core\Model\RelationKind;
  *
  * ```mermaid
  * flowchart TD
- *   I[(identities)] --> N[(nodes)]
- *   I --> R[(relations)]
- *   I --> S[(settings)]
- *   I --> L[(labels)]
- *   I --> C[(changelog)]
- *   RC[(records)] --> RV[(record_values)]
+ *   N[(nodes)] --> L[(labels)]
+ *   N --> R[(relations)]
+ *   N --> RC[(records)]
+ *   R --> RV[(record_values)]
+ *   RC --> RV
  * ```
+ *
+ * ⚠️ **Jede Tabelle vergibt ihre Ids selbst** (TASK-004,
+ * [`package.md` §6](../../../docs/pakete/modelltabellen/package.md)). *`identities` ist gestrichen;
+ * eine Nummer ist nur noch innerhalb ihrer Tabelle eindeutig, und wo eine Spalte auf mehr als eine
+ * Tabelle zeigen kann, nennt eine zweite Spalte den Raum — `changelog.owner_kind`,
+ * `record_values.value_ref_kind`.*
  *
  * `settings`, `labels` and `changelog` all hang off **an identity**, not off a node — which is
  * what lets a *relation* carry settings too (C8). That is why `owner_id` is one column rather
- * than a kind plus an id, and since D-339 it is a real foreign key rather than a promise.
+ * than a kind plus an id.
+ *
+ * ⚠️ **Und genau darum trägt `changelog` die Spalte `owner_kind`.** *`labels.owner_id` zeigt
+ * gemessen auf Knoten und nur auf Knoten (47 von 47); **`settings.owner_id` mischt** — 3 Knoten,
+ * 10 Kanten —, und seit die Räume auseinanderlaufen, ist das eine offene Frage und keine
+ * Erledigung: `INF-009` in [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md).
+ * [`id-space-check.php`](../../../scripts/dev/id-space-check.php) schlägt an, sobald eine
+ * `settings.owner_id` in beiden Tabellen zugleich vorkommt.*
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
@@ -129,15 +141,55 @@ final class Schema
      * **Was sich nicht eindeutig ermitteln lässt, bleibt `null`**, statt geraten zu werden; der Wächter
      * verlangt die Angabe deshalb nur von den lebenden Zeilen.*
      */
-    public const VERSION = 20;
+    /**
+     * Schema 21: **jede Tabelle hat ihren eigenen Id-Raum, `identities` ist gestrichen** (TASK-004,
+     * [`package.md` §6](../../../docs/pakete/modelltabellen/package.md)).
+     *
+     * ⚠️ **Der Eigentümer wörtlich:** *«jede Tabelle bekommt ihren eigenen Id-Raum … Records hatten
+     * dann einen zweiten Nummernraum, das eliminieren wir jetzt.»*
+     *
+     * ⚠️ **`AUTO_INCREMENT` und kein eigener Zähler, und der Grund ist der von
+     * [D-339](../../../docs/NewConcept/90-decision-log.md):** *ein Zähler, der neben den Daten wohnt,
+     * kann hinter sie zurückfallen und eine Nummer ein zweites Mal vergeben — das war der Fehler, den
+     * `identities` damals geheilt hat. **Der Zähler einer Tabelle kann von ihren eigenen Zeilen nicht
+     * abweichen**, und InnoDB senkt ihn beim Löschen nicht, womit [D-340](../../../docs/NewConcept/90-decision-log.md)s
+     * «nie wieder dieselbe Nummer» je Raum weiter gilt.*
+     *
+     * ⚠️ **Es wird nichts umnummeriert.** *Die Räume beginnen dort, wo der gemeinsame aufgehört hat —
+     * gemessen am 2026-09-04 bei `identities` 79 755, also `AUTO_INCREMENT = 79 756` für `nodes` und
+     * `relations`. **Damit kann keine neue Zeile eine Nummer bekommen, die im gemeinsamen Raum schon
+     * einmal vergeben war**, auch nicht die von etwas längst Gelöschtem, das nur noch im Schatten und
+     * im Änderungsbuch steht.*
+     *
+     * ⚠️ **Die sieben Fremdschlüssel auf `identities.id` fallen ersatzlos, und das ist eine
+     * Entscheidung und keine Nachlässigkeit** (`PR-9`): *`relations.from_id`/`to_id` bekommen ihre
+     * Bedingung auf `nodes.id` in **TASK-010**, wo auch die Umbenennung steht; sie hier zu setzen
+     * hiesse, `ON DELETE RESTRICT` gegen die bestehenden Aufräumwege laufen zu lassen, ohne dass
+     * jemand deren Reihenfolge geprüft hat. **Bis dahin hält
+     * [`id-space-check.php`](../../../scripts/dev/id-space-check.php) dieselbe Zusage lesend** —
+     * gemessen vor dem Umbau: 0 Waisen in allen sieben Spalten.*
+     *
+     * ⚠️ *Die Installationsidentität hat keinen Raum mehr, aus dem sie ziehen könnte. Auf einer
+     * bestehenden Installation bleibt ihre Nummer stehen; auf einer frischen ist `1` reserviert, und
+     * `nodes` wie `relations` beginnen dort bei `2`. **Wo sie künftig wohnen soll, ist eine Frage an
+     * den Eigentümer** ([`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md) `INF-008`).*
+     */
+    public const VERSION = 21;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
     /** The counter version 1 allocated from. Read once during the upgrade, then removed. */
     private const RETIRED_COUNTER_OPTION = 'taxmod_model_last_id';
 
-    /** Every column that holds a model identity, and the table it sits in. */
-    private const IDENTITY_REFERENCES = [
+    /**
+     * Die sieben Spalten, die bis Fassung 20 einen Fremdschlüssel auf `identities.id` trugen.
+     *
+     * ⚠️ **Sie bleibt als Liste stehen, weil die Bedingungen abgeräumt werden müssen** (TASK-004).
+     * *`dbDelta` kennt keine Fremdschlüssel und würde keinen davon entfernen; ohne diese Liste bliebe
+     * eine Bedingung auf eine Tabelle zeigen, die es nicht mehr gibt, und `DROP TABLE identities`
+     * schlüge fehl — still, wie `$wpdb` es tut.*
+     */
+    private const RETIRED_IDENTITY_REFERENCES = [
         ['nodes', 'id'],
         ['relations', 'id'],
         ['relations', 'from_id'],
@@ -146,6 +198,48 @@ final class Schema
         ['labels', 'owner_id'],
         ['changelog', 'owner_id'],
     ];
+
+    /**
+     * Die Tabellen, die ihre Ids seit Fassung 21 aus ihrem eigenen `AUTO_INCREMENT` vergeben und
+     * es bis dahin nicht taten.
+     *
+     * ⚠️ *`records`, `record_values`, `labels`, `settings` und `changelog` hatten immer schon ihr
+     * eigenes; nur diese beiden zogen aus `identities`.*
+     */
+    private const OWN_ID_SPACE = ['nodes', 'relations'];
+
+    /**
+     * Die reservierte Nummer der Installationsidentität auf einer **frischen** Installation.
+     *
+     * ⚠️ *Sie ist weder Knoten noch Kante und hat seit TASK-004 keinen Raum mehr, aus dem sie ziehen
+     * könnte. Damit sie mit keiner Knoten- oder Kanten-Id zusammenfällt, beginnen beide Räume auf
+     * einer frischen Installation bei `2`. **Auf einer bestehenden bleibt die alte Nummer stehen** —
+     * es wird nichts umnummeriert. Siehe `INF-008` in
+     * [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md).*
+     */
+    private const RESERVED_INSTALLATION_ID = 1;
+
+    /**
+     * Der Abstand, mit dem der Kantenraum über dem Knotenraum beginnt.
+     *
+     * ⚠️ **Ein Provisorium, und es steht hier, weil es gemessen nötig ist** (`PR-4`): *`package.md` §6
+     * sagt, mit eigenen Räumen gebe es «Knoten 5, Kante 5 und Datensatz 5» — und derselbe Abschnitt
+     * verlangt, dass eine Spalte, die auf mehr als eine Tabelle zeigen kann, den Raum nennt.
+     * **`settings.owner_id` tut das nicht** und zeigt gemessen auf 3 Knoten und 10 Kanten. Ohne
+     * Abstand hielt {@see \Taxmod\Core\Service\Settings} eine Kante für einen Knoten, sobald beide
+     * dieselbe Nummer trugen — `package4-check` ist am 2026-09-04 genau daran zerbrochen, zweimal.*
+     *
+     * ⚠️ **Was der Eigentümer gesagt hat, bleibt gewahrt:** *es wird nichts umnummeriert, und keine
+     * Nummer wird ein zweites Mal vergeben — beide Räume beginnen über dem, was der gemeinsame je
+     * hergab. **Nur der Kantenraum beginnt zusätzlich weit darüber**, damit sich die beiden nicht
+     * überholen, solange `settings.owner_id` ihren Raum nicht nennt.*
+     *
+     * ⚠️ *Er fällt weg, sobald `INF-009` entschieden ist
+     * ([`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md)) — bis dahin prüft
+     * [`id-space-check.php`](../../../scripts/dev/id-space-check.php), dass keine Nummer zugleich
+     * Knoten und Kante ist.*
+     */
+    private const RELATION_SPACE_OFFSET = 1000000000;
 
     /**
      * Die Tabellen, deren Geschichte aufgehoben wird — und der Name ihres Schattens.
@@ -166,7 +260,7 @@ final class Schema
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['identities', 'settings', 'labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
+        return ['settings', 'labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
     }
 
     public static function table(string $name): string
@@ -197,11 +291,17 @@ final class Schema
         // the one nothing reads any more.*
         self::renameRecordColumns();
 
+        // ⚠️ **Ebenfalls vor `dbDelta`, und aus demselben Grund wie die Umbenennung darüber**
+        // (TASK-004): *solange die Bedingungen auf `identities` stehen, kann keine der beiden
+        // Id-Spalten zu `AUTO_INCREMENT` werden — MySQL weist die Änderung an einer gebundenen
+        // Spalte zurück, und `$wpdb` sagt darüber nichts.*
+        self::dropIdentityForeignKeys();
+
         foreach (self::statements() as $sql) {
             dbDelta($sql);
         }
 
-        self::backfillIdentities();
+        self::giveEveryTableItsOwnIdSpace();
         self::backfillInheritanceEdges();
         self::dropRetiredColumns();
         self::widenSettingUniqueKey();
@@ -212,7 +312,7 @@ final class Schema
         self::dropTheOneValueKey();
         self::moveMultiplicityOntoTheEdge();
         self::nameTheReferenceSpace();
-        self::ensureForeignKeys();
+        self::dropIdentitiesTable();
     }
 
     /**
@@ -486,7 +586,6 @@ final class Schema
 
         $nodes     = self::table('nodes');
         $relations = self::table('relations');
-        $allocator = new TableIdentityAllocator();
 
         $orphans = $wpdb->get_results(
             $wpdb->prepare(
@@ -513,8 +612,8 @@ final class Schema
 
             $wpdb->insert(
                 $relations,
+                // ⚠️ *Ohne `id`: seit TASK-004 vergibt `relations` sie selbst.*
                 [
-                    'id'       => $allocator->next(),
                     'version'  => 1,
                     'from_id'  => $parentId,
                     'to_id'    => (int) $row['id'],
@@ -522,7 +621,7 @@ final class Schema
                     'name'     => '',
                     'position' => $position === null ? 0 : (int) $position + 1,
                 ],
-                ['%d', '%d', '%d', '%d', '%s', '%s', '%d']
+                ['%d', '%d', '%d', '%s', '%s', '%d']
             );
         }
     }
@@ -701,76 +800,156 @@ final class Schema
     }
 
     /**
-     * Give every id that already exists a row in `identities`, then push the counter past every
-     * id that was ever handed out.
+     * Schema 21: die sieben Bedingungen auf `identities.id` fallen — **vor `dbDelta`**.
      *
-     * ⚠️ **The second half is the one that matters.** Version 1 allocated from a counter in
-     * `wp_options`, and ids belonging to purged objects leave no trace in any table. Seeding
-     * `AUTO_INCREMENT` from the highest *surviving* id would reissue exactly those numbers —
-     * the reuse D-339 exists to prevent, introduced by the migration meant to prevent it.
+     * ⚠️ **Sie müssen weg, bevor irgendetwas anderes geschieht** (TASK-004): *eine Spalte, an der eine
+     * Fremdschlüsselbedingung hängt, lässt sich nicht zu `AUTO_INCREMENT` machen, und eine Tabelle,
+     * auf die noch eine Bedingung zeigt, lässt sich nicht löschen. **Beides schlägt bei `$wpdb`
+     * lautlos fehl** — der Wächter [`id-space-check.php`](../../../scripts/dev/id-space-check.php) ist
+     * die Stelle, die es merkt.*
+     *
+     * ⚠️ **Ersatzlos, und das ist eine Entscheidung** (`PR-9`): *die Bedingungen auf die jeweilige
+     * Zieltabelle setzt **TASK-010**, zusammen mit der Umbenennung von `from_id`/`to_id`. Sie hier
+     * schon zu setzen hiesse, `ON DELETE RESTRICT` gegen die bestehenden Aufräumwege zu stellen, ohne
+     * deren Reihenfolge geprüft zu haben. **Gemessen am 2026-09-04: alle sieben Spalten hatten null
+     * Waisen** — die Zusage ist also erfüllt, sie wird bis TASK-010 nur lesend gehalten.*
+     *
+     * ⚠️ *Idempotent: der zweite Lauf findet keine der Bedingungen mehr und tut nichts.*
      */
-    private static function backfillIdentities(): void
+    private static function dropIdentityForeignKeys(): void
     {
         global $wpdb;
 
-        $identities = self::table('identities');
-        $highest    = (int) get_option(self::RETIRED_COUNTER_OPTION, 0);
-
-        foreach (self::IDENTITY_REFERENCES as [$table, $column]) {
-            $source = self::table($table);
-
-            $wpdb->query(
-                "INSERT IGNORE INTO {$identities} (id)
-                 SELECT DISTINCT s.{$column} FROM {$source} s
-                 WHERE s.{$column} > 0"
-            );
-
-            $highest = max($highest, (int) $wpdb->get_var("SELECT MAX({$column}) FROM {$source}"));
-        }
-
-        if ($highest > 0) {
-            $wpdb->query(
-                $wpdb->prepare("ALTER TABLE {$identities} AUTO_INCREMENT = %d", $highest + 1)
-            );
-        }
-
-        // One source, not two. Leaving the old counter behind would invite somebody to trust it.
-        delete_option(self::RETIRED_COUNTER_OPTION);
-    }
-
-    /**
-     * Add the foreign keys `dbDelta` cannot express, once, and only if they are missing.
-     *
-     * ⚠️ **`RESTRICT` is deliberate and is not laziness.** An identity row is never deleted
-     * (D-339), so the database refusing to delete one is the rule being enforced rather than a
-     * case left unhandled.
-     */
-    private static function ensureForeignKeys(): void
-    {
-        global $wpdb;
-
-        $identities = self::table('identities');
-
-        foreach (self::IDENTITY_REFERENCES as [$table, $column]) {
+        foreach (self::RETIRED_IDENTITY_REFERENCES as [$table, $column]) {
             $source     = self::table($table);
             $constraint = 'fk_taxmod_' . $table . '_' . $column;
 
             $exists = (int) $wpdb->get_var($wpdb->prepare(
                 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-                 WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = %s',
-                $constraint
+                 WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = %s
+                   AND TABLE_NAME = %s',
+                $constraint,
+                $source
             ));
 
-            if ($exists > 0) {
+            if ($exists === 0) {
                 continue;
             }
 
-            $wpdb->query(
-                "ALTER TABLE {$source}
-                 ADD CONSTRAINT {$constraint} FOREIGN KEY ({$column})
-                 REFERENCES {$identities} (id) ON DELETE RESTRICT ON UPDATE RESTRICT"
-            );
+            $wpdb->query("ALTER TABLE {$source} DROP FOREIGN KEY {$constraint}");
         }
+    }
+
+    /**
+     * Schema 21: `nodes` und `relations` vergeben ihre Ids selbst, **hinter dem gemeinsamen Raum**.
+     *
+     * ⚠️ **Der Anfang der beiden Räume ist die entscheidende Zahl.** *Er ist die höchste Nummer, die
+     * der gemeinsame Raum je vergeben hat, plus eins — und die steht **nicht** in den lebenden
+     * Tabellen. Sie steht in `identities`, und dort auch für alles längst Gelöschte. Deshalb wird sie
+     * von dort genommen, solange die Tabelle noch da ist, und erst danach fällt sie. **Nähme man das
+     * Höchste der lebenden Zeilen, bekäme die nächste neue Zeile eine Nummer, die im Schatten und im
+     * Änderungsbuch schon einer anderen Sache gehört** — genau der Wiedergebrauch, den
+     * [D-340](../../../docs/NewConcept/90-decision-log.md) verbietet.*
+     *
+     * ⚠️ *Zur Sicherheit gehen auch die Schattentabellen und `changelog.owner_id` in das Maximum ein:
+     * sie überleben, was sie beschreiben, und wären sonst die eine Quelle, die niemand befragt hat.*
+     *
+     * ⚠️ **Auf einer frischen Installation beginnen beide bei `2`** — `1` gehört der
+     * Installationsidentität ({@see self::RESERVED_INSTALLATION_ID}).
+     */
+    private static function giveEveryTableItsOwnIdSpace(): void
+    {
+        global $wpdb;
+
+        $hoechste = (int) get_option(self::RETIRED_COUNTER_OPTION, 0);
+        $identities = self::table('identities');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $identities)) === $identities) {
+            $hoechste = max($hoechste, (int) $wpdb->get_var("SELECT MAX(id) FROM {$identities}"));
+        }
+
+        $quellen = [
+            ['nodes', 'id'],
+            ['relations', 'id'],
+            ['nodes_history', 'id'],
+            ['relations_history', 'id'],
+            ['changelog', 'owner_id'],
+            ['labels', 'owner_id'],
+            ['settings', 'owner_id'],
+        ];
+
+        foreach ($quellen as [$name, $spalte]) {
+            $tabelle = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $tabelle)) !== $tabelle) {
+                continue;
+            }
+
+            $hoechste = max($hoechste, (int) $wpdb->get_var("SELECT MAX({$spalte}) FROM {$tabelle}"));
+        }
+
+        $beginn = max($hoechste + 1, self::RESERVED_INSTALLATION_ID + 1);
+
+        foreach (self::OWN_ID_SPACE as $name) {
+            $tabelle = self::table($name);
+
+            $selbst = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'id'
+                   AND EXTRA LIKE %s",
+                $tabelle,
+                '%auto_increment%'
+            ));
+
+            if ($selbst === 0) {
+                $wpdb->query(
+                    "ALTER TABLE {$tabelle} MODIFY id bigint(20) unsigned NOT NULL AUTO_INCREMENT"
+                );
+            }
+
+            // ⚠️ *`AUTO_INCREMENT` lässt sich nach unten nicht setzen — MySQL hebt einen zu kleinen
+            // Wert stillschweigend auf das nötige Minimum. Der Aufruf ist damit auch beim zweiten
+            // Lauf harmlos und kann keinen bereits weitergelaufenen Zähler zurückdrehen.*
+            $wpdb->query($wpdb->prepare(
+                "ALTER TABLE {$tabelle} AUTO_INCREMENT = %d",
+                $name === 'relations' ? $beginn + self::RELATION_SPACE_OFFSET : $beginn
+            ));
+        }
+
+        // Eine Quelle und nicht zwei. Der alte Zähler aus Fassung 1 wäre nur noch eine Einladung.
+        delete_option(self::RETIRED_COUNTER_OPTION);
+    }
+
+    /**
+     * Schema 21: `identities` fällt — **zuletzt, und nur wenn nichts mehr auf sie zeigt**.
+     *
+     * ⚠️ *Sie hatte genau eine Spalte, es zieht also nichts um. Was sie festhielt — «diese Nummer war
+     * einmal vergeben» —, hält jetzt der Anfang der beiden Räume, den
+     * {@see self::giveEveryTableItsOwnIdSpace()} aus ihr gelesen hat, **bevor** sie hier verschwindet.*
+     */
+    private static function dropIdentitiesTable(): void
+    {
+        global $wpdb;
+
+        $identities = self::table('identities');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $identities)) !== $identities) {
+            return;
+        }
+
+        $zeigerAufSie = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+             WHERE CONSTRAINT_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = %s',
+            $identities
+        ));
+
+        // ⚠️ *Steht noch eine Bedingung darauf, bleibt die Tabelle stehen. Ein `DROP`, das MySQL
+        // zurückweist, sagt `$wpdb` niemandem — der Wächter schlägt dafür an.*
+        if ($zeigerAufSie > 0) {
+            return;
+        }
+
+        $wpdb->query("DROP TABLE {$identities}");
     }
 
     /**
@@ -784,16 +963,11 @@ final class Schema
         $t       = static fn (string $n): string => self::table($n);
 
         return [
-            // The model identity space, shared by nodes and relations (C11). One column, and
-            // that is the whole point: it exists so that a number is allocated in exactly one
-            // place and never a second time. Rows are added, never removed (D-339).
-            "CREATE TABLE {$t('identities')} (
-                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-                PRIMARY KEY  (id)
-            ) {$charset};",
-
+            // ⚠️ *`identities` stand hier bis Fassung 20 — der gemeinsame Nummernraum. **Sie ist
+            // gestrichen** (TASK-004): jede Tabelle vergibt ihre Ids aus ihrem eigenen
+            // `AUTO_INCREMENT`.*
             "CREATE TABLE {$t('nodes')} (
-                id bigint(20) unsigned NOT NULL,
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
@@ -812,7 +986,7 @@ final class Schema
             // because D-128 wants a parked attribute labelled *deleted with «X»* and the group is
             // where that act is described (D-348). One column, two facts, neither of them a copy.
             "CREATE TABLE {$t('relations')} (
-                id bigint(20) unsigned NOT NULL,
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 from_id bigint(20) unsigned NOT NULL,
                 to_id bigint(20) unsigned NOT NULL,

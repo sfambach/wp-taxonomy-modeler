@@ -52,7 +52,6 @@ final class ModelEditorTest extends TestCase
         $this->editor = new ModelEditor(
             $this->nodes,
             $this->edges,
-            $identities,
             new FixedFramework($this->root, $this->trash),
             $this->changes
         );
@@ -760,7 +759,6 @@ final class ModelEditorTest extends TestCase
         $this->editor = new ModelEditor(
             $this->nodes,
             $this->edges,
-            $this->identities,
             new FixedFramework($this->root, $this->trash, [\Taxmod\Core\Model\Branch::Model->value => $model]),
             $this->changes
         );

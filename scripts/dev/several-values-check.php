@@ -47,7 +47,6 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -76,7 +75,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $records   = new WpdbRecordRepository();
 $data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
 

@@ -46,7 +46,6 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -58,7 +57,7 @@ $schreiben = in_array('--write', $argv, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
 
 $traeger = $framework->settingEdgeId(SettingKey::Renderer);
 

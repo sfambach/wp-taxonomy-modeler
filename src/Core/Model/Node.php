@@ -133,6 +133,32 @@ final class Node extends Identity implements Renderable
     // the tree, which is one thing to hide rather than two that can disagree.*
 
     /**
+     * Derselbe frische Knoten, nachdem seine Tabelle ihm die Id vergeben hat (TASK-004).
+     *
+     * ⚠️ **Seit `identities` gestrichen ist, kommt die Id aus dem `AUTO_INCREMENT` der eigenen
+     * Tabelle** — also erst beim Schreiben und nicht davor
+     * ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)). *Der Pfad trägt die eigene
+     * Id als letztes Glied ([D-014](../../../docs/NewConcept/90-decision-log.md)), und genau deshalb
+     * gibt es diese Methode: **das letzte Glied wird nachgezogen**, sobald die Nummer feststeht.*
+     *
+     * ⚠️ *Nur für eine Zeile gedacht, die gerade erst entstanden ist. Eine bestehende Id zu
+     * verbiegen wäre eine Umnummerierung, und die gibt es nicht — die Fassung bleibt darum
+     * unberührt.*
+     */
+    public function withAssignedId(int $id): self
+    {
+        if ($id === $this->id) {
+            return $this;
+        }
+
+        $segmente = explode('.', $this->path);
+        array_pop($segmente);
+        $segmente[] = (string) $id;
+
+        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->kind);
+    }
+
+    /**
      * The ids of this node's ancestors, nearest last, without the node itself.
      *
      * @return list<int>

@@ -35,16 +35,15 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\NodesScreen;
-use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, TableIdentityAllocator, WpdbChangelog, WpdbNodeRepository, WpdbRelationRepository};
+use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, WpdbChangelog, WpdbNodeRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
 $edges = new WpdbRelationRepository();
-$ids   = new TableIdentityAllocator();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
 
-$editor = new ModelEditor($nodes, $edges, $ids, $fw, $log);
+$editor = new ModelEditor($nodes, $edges, $fw, $log);
 $tree   = new Tree($nodes, $edges);
 
 $failed = 0;

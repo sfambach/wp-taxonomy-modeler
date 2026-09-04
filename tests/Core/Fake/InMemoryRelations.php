@@ -13,9 +13,16 @@ final class InMemoryRelations implements RelationRepository
     /** @var array<int,Relation> */
     private array $rows = [];
 
-    public function add(Relation $relation): void
+    /** ⚠️ *Eigener Id-Raum, genau wie {@see InMemoryNodes::add()} — `0` heisst «vergib eine».* */
+    public function add(Relation $relation): Relation
     {
+        if ($relation->id === 0) {
+            $relation = $relation->withAssignedId($this->rows === [] ? 1 : max(array_keys($this->rows)) + 1);
+        }
+
         $this->rows[$relation->id] = $relation;
+
+        return $relation;
     }
 
     public function save(Relation $relation, int $expectedVersion): void

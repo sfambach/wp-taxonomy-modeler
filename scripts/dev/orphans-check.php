@@ -40,7 +40,6 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -51,7 +50,7 @@ use Taxmod\WordPress\SystemClock;
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $changelog = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $changelog);
+$framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
 
 $installation = $framework->installationId();
 

@@ -48,7 +48,6 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -77,8 +76,8 @@ function check(string $what, bool $passed, string $detail = ''): void
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
-$editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$editor    = new ModelEditor($nodes, $edges, $framework, $log);
 $data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
 
 /** @var list<int> Alles, was dieser Lauf angelegt hat. */

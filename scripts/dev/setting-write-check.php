@@ -56,7 +56,6 @@ use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -86,7 +85,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $records   = new WpdbRecordRepository();
 $data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock(), $settings);
@@ -145,7 +144,7 @@ echo "\n== Ein Renderer wird geschrieben und wieder gelesen ==\n";
 // ([D-339](../../docs/NewConcept/90-decision-log.md)), nicht aus `AUTO_INCREMENT` — ein `INSERT` von
 // Hand bekam `insert_id = 0` zurück und legte nichts an.*
 $modellWurzel = $framework->rootOf(\Taxmod\Core\Model\Branch::Model);
-$editor       = new \Taxmod\Core\Service\ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+$editor       = new \Taxmod\Core\Service\ModelEditor($nodes, $edges, $framework, $log);
 
 $knoten        = $editor->createNode('Pruefknoten Einstellung', $modellWurzel->id);
 $knotenId      = $knoten->id;

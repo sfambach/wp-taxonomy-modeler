@@ -17,6 +17,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\SettingRepository;
 
 /**
@@ -54,6 +55,22 @@ final class Settings
         // ⚠️ *Optional, because the core must keep working without one — a scaffold, a test and a
         // migration all write settings and none of them has a person behind the change.*
         private readonly ?Changelog $changelog = null,
+        /**
+         * ⚠️ **Seit TASK-004 gibt es Knoten 5 **und** Kante 5**, und ohne diesen Zeiger beantwortet
+         * {@see self::refuseWhereItDoesNotApply()} die Frage «ist das eine Kante?» falsch.
+         *
+         * ⚠️ *Der Fehler ist gemessen und nicht vermutet: `package4-check` brach am 2026-09-04 mit
+         * «multiplicity gehört nicht an einen Knoten» ab — für eine **Kante**, deren Nummer auch ein
+         * Knoten trug.*
+         *
+         * ⚠️ **Wahlfrei, und das ist ein Provisorium mit Ablaufdatum.** *Sauber wäre, dass
+         * `settings.owner_id` ihren Raum nennt, wie `package.md` §6 es für jede Spalte verlangt, die
+         * auf mehr als eine Tabelle zeigen kann — das ist `INF-009` in
+         * [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md) und eine Entscheidung des
+         * Eigentümers. Bis dahin zählt `id-space-check.php`, ob je eine `settings.owner_id` in beiden
+         * Tabellen zugleich vorkommt, statt es zu behaupten.*
+         */
+        private readonly ?RelationRepository $relations = null,
     ) {
     }
 
@@ -523,13 +540,20 @@ final class Settings
     /**
      * Refuse a key at an owner that has nothing to say about it.
      *
-     * ⚠️ **Nodes and edges share one id space** (C11), so *is this owner an edge* is answered by
-     * looking: an id the node table does not know is a relation. One lookup, and it is the same
-     * lookup the resolution walk already does.
+     * ⚠️ **Bis TASK-004 zogen Knoten und Kanten aus einem Raum**, und darum genügte ein Blick: eine
+     * Id, die die Knotentabelle nicht kennt, gehört einer Kante. *Seit jede Tabelle ihre Ids selbst
+     * vergibt, gibt es Knoten 5 und Kante 5 — **die Antwort «ist ein Knoten» ist dann keine Antwort
+     * auf «ist keine Kante»**.*
+     *
+     * ⚠️ *Deshalb wird, wo der Kantenspeicher zur Hand ist, auch dort nachgesehen und nur verweigert,
+     * was ein Knoten und **keine** Kante ist. Ohne ihn bleibt die alte Lesart stehen; welchen Raum
+     * `settings.owner_id` künftig nennt, ist `INF-009`.*
      */
     private function refuseWhereItDoesNotApply(SettingKey $key, int $ownerId, TypedValue $value): void
     {
-        if ($key->isEdgeOnly() && $this->nodes->find($ownerId) !== null) {
+        $istKante = $this->relations?->byId($ownerId) !== null;
+
+        if ($key->isEdgeOnly() && ! $istKante && $this->nodes->find($ownerId) !== null) {
             throw SettingDoesNotApply::toANode($key);
         }
 

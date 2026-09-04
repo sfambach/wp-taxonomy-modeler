@@ -49,7 +49,6 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -61,8 +60,8 @@ global $wpdb;
 $nodes  = new WpdbNodeRepository();
 $edges  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$fw     = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
-$editor = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $fw, $log, records: new WpdbRecordRepository());
+$fw     = new SeededFrameworkNodes($nodes, $edges, $log);
+$editor = new ModelEditor($nodes, $edges, $fw, $log, records: new WpdbRecordRepository());
 
 $n = Schema::table('nodes');
 $r = Schema::table('relations');

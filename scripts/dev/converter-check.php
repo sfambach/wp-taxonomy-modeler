@@ -16,17 +16,16 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\{Purpose, ShippedRenderers};
 use Taxmod\Core\Service\{Labels, ModelEditor, Rendering, Settings};
-use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, TableIdentityAllocator, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository, WpdbSettingRepository};
+use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository, WpdbSettingRepository};
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
 $edges = new WpdbRelationRepository();
-$ids   = new TableIdentityAllocator();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
 
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $fw, $log);
-$editor    = new ModelEditor($nodes, $edges, $ids, $fw, $log);
+$editor    = new ModelEditor($nodes, $edges, $fw, $log);
 $rendering = new Rendering(
     $nodes,
     $fw,

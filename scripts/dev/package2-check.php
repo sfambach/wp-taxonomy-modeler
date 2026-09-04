@@ -35,7 +35,6 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -57,12 +56,11 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $framework, $log);
 $tree   = new Tree($nodes, $edges);
 
 $treeRoot = $framework->root();
@@ -104,7 +102,19 @@ $x = $editor->createNode('__check X', $a->id);
 
 $edge = $edges->inheritanceEdgeTo($x->id);
 check('the child got an edge from its parent', $edge !== null && $edge->fromId === $a->id);
-check('the edge has an id of its own', $edge !== null && $edge->id !== $x->id, 'edge #' . ($edge?->id ?? 0));
+// ⚠️ **Die Zusage ist mit TASK-004 eine andere geworden, und das gehört sichtbar** (`PR-9`): *hier
+// stand «die Kante hat eine eigene Id», geprüft als `$edge->id !== $x->id`. **Das galt, solange alle
+// aus einem Topf zogen.** Mit eigenen Räumen gibt es Knoten 5 **und** Kante 5, und der Lauf ist
+// gerade daran rot geworden — Knoten und Kante trugen beide die 79929. Was zu prüfen bleibt: die
+// Kante ist ein eigenes Ding mit einer Zeile in ihrer eigenen Tabelle.*
+check(
+    'die Kante ist ein eigenes Ding mit einer eigenen Zeile',
+    $edge !== null && (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d',
+        $edge->id
+    )) === 1,
+    'edge #' . ($edge?->id ?? 0)
+);
 check('the path follows the parent', $x->path === $a->path . '.' . $x->id, $x->path);
 
 $deep  = $editor->createNode('__check deep', $x->id);

@@ -191,6 +191,34 @@ final class Relation extends Identity implements Renderable
         return new self($id, 1, $ownerId, $targetId, $kind, $name, $position, null, false, $multiplicity);
     }
 
+    /**
+     * Dieselbe frische Kante, nachdem ihre Tabelle ihr die Id vergeben hat (TASK-004).
+     *
+     * ⚠️ **Das Gegenstück zu {@see \Taxmod\Core\Model\Node::withAssignedId()}** — seit `identities`
+     * gestrichen ist, vergibt jede Tabelle ihre Ids selbst, und eine Kante kennt ihre Nummer darum
+     * erst nach dem Schreiben ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)).
+     * *Eine Kante trägt keinen Pfad, also ist hier nichts nachzuziehen.*
+     */
+    public function withAssignedId(int $id): self
+    {
+        if ($id === $this->id) {
+            return $this;
+        }
+
+        return new self(
+            $id,
+            $this->version,
+            $this->fromId,
+            $this->toId,
+            $this->kind,
+            $this->name,
+            $this->position,
+            $this->parkedByGroup,
+            $this->hide,
+            $this->multiplicity,
+        );
+    }
+
     public static function fromStorage(
         int $id,
         int $version,

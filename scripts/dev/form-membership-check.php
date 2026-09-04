@@ -59,7 +59,6 @@ use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -146,7 +145,7 @@ function stummeElemente(string $markup): array
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
 $records   = new WpdbRecordRepository();
 $rendering = new Rendering(
     $nodes,

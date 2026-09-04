@@ -39,16 +39,15 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Admin\CleanupScreen;
-use Taxmod\WordPress\Persistence\{Residue, Schema, SeededFrameworkNodes, TableIdentityAllocator, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRecordRepository, WpdbRelationRepository, WpdbSettingRepository};
+use Taxmod\WordPress\Persistence\{Residue, Schema, SeededFrameworkNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRecordRepository, WpdbRelationRepository, WpdbSettingRepository};
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
 $edges = new WpdbRelationRepository();
-$ids   = new TableIdentityAllocator();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
 
-$editor   = new ModelEditor($nodes, $edges, $ids, $fw, $log);
+$editor   = new ModelEditor($nodes, $edges, $fw, $log);
 $data     = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $fw, new SystemClock());
 $settings = new WpdbSettingRepository();
 

@@ -46,7 +46,6 @@ use Taxmod\Core\Service\Settings;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -76,7 +75,7 @@ if ($js === false) {
 // ── Die Auszeichnung, wie der Renderer sie wirklich erzeugt ────────────────
 $nodes = new WpdbNodeRepository();
 $edges = new WpdbRelationRepository();
-$fw    = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$fw    = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
 
 $rendering = new Rendering(
     $nodes,

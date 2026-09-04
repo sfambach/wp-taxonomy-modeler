@@ -17,9 +17,32 @@ use Taxmod\Core\Repository\RelationRepository;
  */
 final class WpdbRelationRepository implements RelationRepository
 {
-    public function add(Relation $relation): void
+    /**
+     * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004) — dieselbe Zusage wie
+     * bei {@see WpdbNodeRepository::add()}. *Id `0` heisst «vergib eine», jede andere bleibt.*
+     */
+    public function add(Relation $relation): Relation
     {
         global $wpdb;
+
+        if ($relation->id === 0) {
+            $wpdb->insert(
+                Schema::table('relations'),
+                [
+                    'version'  => $relation->version,
+                    'from_id'  => $relation->fromId,
+                    'to_id'    => $relation->toId,
+                    'kind'     => $relation->kind->value,
+                    'name'     => $relation->name,
+                    'position' => $relation->position,
+                    'hide'     => $relation->hide ? 1 : 0,
+                    'multiplicity' => $relation->multiplicity->value,
+                ],
+                ['%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s']
+            );
+
+            return $relation->withAssignedId((int) $wpdb->insert_id);
+        }
 
         $wpdb->insert(
             Schema::table('relations'),
@@ -36,6 +59,8 @@ final class WpdbRelationRepository implements RelationRepository
             ],
             ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s']
         );
+
+        return $relation;
     }
 
     public function save(Relation $relation, int $expectedVersion): void

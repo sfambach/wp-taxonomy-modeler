@@ -48,9 +48,19 @@ final class InMemoryNodes implements NodeRepository
         return $found;
     }
 
-    public function add(Node $node): void
+    /**
+     * ⚠️ *Wie die SQL-Fassung seit TASK-004: **Id `0` heisst «vergib eine»**, und der eigene
+     * Id-Raum dieser Tabelle ist hier schlicht das höchste, was schon dasteht, plus eins.*
+     */
+    public function add(Node $node): Node
     {
+        if ($node->id === 0) {
+            $node = $node->withAssignedId($this->rows === [] ? 1 : max(array_keys($this->rows)) + 1);
+        }
+
         $this->rows[$node->id] = $node;
+
+        return $node;
     }
 
     public function save(Node $node, int $expectedVersion): void

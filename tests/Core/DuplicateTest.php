@@ -91,7 +91,6 @@ final class DuplicateTest extends TestCase
         $this->editor = new ModelEditor(
             $this->nodes,
             $this->edges,
-            $identities,
             $framework,
             new RecordedChanges(),
             $this->stored,

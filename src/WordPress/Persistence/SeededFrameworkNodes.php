@@ -9,7 +9,6 @@ use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 
@@ -69,7 +68,6 @@ final class SeededFrameworkNodes implements FrameworkNodes
     public function __construct(
         private readonly NodeRepository $nodes,
         private readonly RelationRepository $relations,
-        private readonly IdentityAllocator $identities,
         private readonly Changelog $changelog,
     ) {
     }
@@ -175,10 +173,18 @@ final class SeededFrameworkNodes implements FrameworkNodes
         $id = (int) get_option(self::INSTALLATION_OPTION, 0);
 
         if ($id === 0) {
-            // ⚠️ An identity with no node behind it. The foreign keys point at `identities`,
-            // not at `nodes` (D-339), so a settings owner that is not a node is a first-class
-            // thing rather than a hole in the schema.
-            $id = $this->identities->next();
+            // ⚠️ **Eine Identität, hinter der kein Knoten steht** — der Kopf der Einstellungskette.
+            //
+            // ⚠️ **Seit TASK-004 gibt es keinen geteilten Nummernraum mehr, aus dem sie kommen
+            // könnte.** *`1` ist deshalb reserviert: {@see Schema} setzt das `AUTO_INCREMENT` von
+            // `nodes` und `relations` auf einer frischen Installation auf `2`, damit diese Nummer
+            // niemand anders bekommt. **Auf einer bestehenden Installation steht hier weiter die
+            // alte Nummer** — es wird nichts umnummeriert.*
+            //
+            // ⚠️ *Wo die Installationsidentität künftig wohnen soll, ist eine Frage an den
+            // Eigentümer und steht als `INF-008` in
+            // [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md).*
+            $id = 1;
             update_option(self::INSTALLATION_OPTION, $id, true);
         }
 
@@ -301,13 +307,14 @@ final class SeededFrameworkNodes implements FrameworkNodes
             return $existing;
         }
 
-        $node = Node::create($this->identities->next(), $name, $parent?->path);
-        $this->nodes->add($node);
+        // ⚠️ *`0` heisst «die Tabelle vergibt die Id» (TASK-004) — der Speicher gibt den
+        // geschriebenen Knoten mit seiner Nummer und seinem fertigen Pfad zurück.*
+        $node = $this->nodes->add(Node::create(0, $name, $parent?->path));
 
         if ($parent !== null) {
             // A framework node without an edge would be a node the tree cannot see.
             $this->relations->add(Relation::inheritance(
-                $this->identities->next(),
+                0,
                 $parent->id,
                 $node->id,
                 $this->relations->nextPositionUnder($parent->id)

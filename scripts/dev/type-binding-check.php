@@ -54,7 +54,6 @@ use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -83,8 +82,8 @@ function check(string $what, bool $passed, string $detail = ''): void
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), $log);
-$editor    = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$editor    = new ModelEditor($nodes, $edges, $framework, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types,

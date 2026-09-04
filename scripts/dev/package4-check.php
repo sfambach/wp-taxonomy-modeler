@@ -38,7 +38,6 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
@@ -61,22 +60,28 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
-$editor   = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor   = new ModelEditor($nodes, $edges, $framework, $log);
 $stored   = new WpdbSettingRepository();
-$settings = new Settings($stored, $nodes, $framework);
+// ⚠️ *Der Kantenspeicher fährt seit TASK-004 mit: ohne ihn hält {@see Settings} eine Kante für einen
+// Knoten, sobald beide dieselbe Nummer tragen — was mit eigenen Id-Räumen der Normalfall ist.*
+$settings = new Settings($stored, $nodes, $framework, null, $edges);
 
 $installation = $framework->installationId();
 
+// ⚠️ **Die Zusage hat sich mit TASK-004 geändert** (`PR-9`): *bis Fassung 20 verlangte sie eine Zeile
+// in `identities`. Die Tabelle ist gestrichen; was bleibt und was zählt, ist, dass die
+// Installationsidentität **weder Knoten noch Kante** ist — sonst läse die Einstellungskette die
+// Einstellungen eines fremden Dings als Vorgabe der Installation. **Wo sie künftig wohnt, ist
+// `INF-008`** in [`inbox.md`](../../docs/pakete/modelltabellen/inbox.md).*
 echo "\n== 1. The installation is an identity, not a node ==\n";
-check('it has an identity row', (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('identities') . ' WHERE id = %d', $installation)) === 1);
-check('and no node behind it', $nodes->find($installation) === null);
-check('so a foreign key can still point at it', $installation > 0);
+check('no node behind it', $nodes->find($installation) === null);
+check('und auch keine Kante', (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d', $installation)) === 0);
+check('sie ist eine Nummer', $installation > 0);
 
 echo "\n== 2. The chain ==\n";
 $thing = $editor->createNode('__p4 Thing', $framework->rootOf(Branch::Model)->id);
@@ -239,12 +244,16 @@ $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p4%"');
 $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p4%"');
 check('scratch nodes are gone', $left === 0, "$left left");
-$orphanSettings = (int) $wpdb->get_var(
+// ⚠️ *Dieselbe Frage, andere Quelle: seit TASK-004 gibt es keine `identities` mehr, gegen die man
+// prüfen könnte. Ein Eigentümer ist ein Knoten, eine Kante oder die Installation.*
+$orphanSettings = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('settings') . ' s
-     LEFT JOIN ' . Schema::table('identities') . ' i ON i.id = s.owner_id
-     WHERE i.id IS NULL'
-);
-check('no setting hangs on an identity that never existed', $orphanSettings === 0, "$orphanSettings orphans");
+     WHERE s.owner_id <> %d
+       AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = s.owner_id)
+       AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = s.owner_id)',
+    $installation
+));
+check('no setting hangs on an owner that never existed', $orphanSettings === 0, "$orphanSettings orphans");
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

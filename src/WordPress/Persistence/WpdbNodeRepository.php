@@ -68,21 +68,47 @@ final class WpdbNodeRepository implements NodeRepository
         return $found;
     }
 
-    public function add(Node $node): void
+    /**
+     * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004). *`identities` ist
+     * gestrichen; wer mit Id `0` ankommt, bekommt die nächste freie Nummer **dieses** Raums, und der
+     * Pfad wird mit ihr nachgezogen ({@see Node::withAssignedId()}). Eine mitgebrachte Id bleibt,
+     * wie sie ist — sonst könnte ein Wiederaufbau seine Nummern nicht zurückschreiben.*
+     */
+    public function add(Node $node): Node
     {
         global $wpdb;
 
-        $wpdb->insert(
+        $spalten = [
+            'version' => $node->version,
+            'name'    => $node->name,
+            'path'    => $node->path,
+            'kind'    => $node->kind?->value,
+        ];
+        $formate = ['%d', '%s', '%s', '%s'];
+
+        if ($node->id !== 0) {
+            $spalten = ['id' => $node->id, ...$spalten];
+            $formate = ['%d', ...$formate];
+        }
+
+        $wpdb->insert(Schema::table('nodes'), $spalten, $formate);
+
+        if ($node->id !== 0) {
+            return $node;
+        }
+
+        $node = $node->withAssignedId((int) $wpdb->insert_id);
+
+        // Der Pfad trug bis eben die 0 an letzter Stelle; er wird mit der vergebenen Id nachgezogen.
+        $wpdb->update(
             Schema::table('nodes'),
-            [
-                'id'      => $node->id,
-                'version' => $node->version,
-                'name'    => $node->name,
-                'path'    => $node->path,
-                'kind'    => $node->kind?->value,
-            ],
-            ['%d', '%d', '%s', '%s', '%s']
+            ['path' => $node->path],
+            ['id' => $node->id],
+            ['%s'],
+            ['%d']
         );
+
+        return $node;
     }
 
     public function save(Node $node, int $expectedVersion): void

@@ -35,7 +35,6 @@ require $plugin . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -66,10 +65,9 @@ foreach (Schema::tableNames() as $name) {
 
 echo "\n== 2. Framework nodes ==\n";
 $nodes = new WpdbNodeRepository();
-$ids = new TableIdentityAllocator();
 $log = new WpdbChangelog(new SystemClock());
 $edges = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
 $root = $framework->root();
@@ -78,14 +76,41 @@ check('root exists, path is its own id', $root->path === (string) $root->id, $ro
 check('trash sits under the root', $trash->path === $root->path . '.' . $trash->id, $trash->path);
 check('root is protected', $framework->isProtected($root));
 
-echo "\n== 3. Identity space is shared and never repeats ==\n";
-$a = $ids->next();
-$b = $ids->next();
-check('two calls give two numbers', $a !== $b, "$a / $b");
-check('and they go up', $b > $a, "$a -> $b");
+// ⚠️ **Die Zusage hat sich mit TASK-004 geändert, und das ist Absicht** (`PR-9`): *bis Fassung 20
+// zog jede Tabelle ihre Nummer aus `identities`, und dieser Abschnitt prüfte genau diesen einen
+// Zähler. **`identities` ist gestrichen**, jede Tabelle vergibt selbst
+// ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)) — geprüft wird darum jetzt,
+// dass jede Tabelle einen eigenen, aufsteigenden Zähler hat. Was der alte Abschnitt hielt, hält
+// vollständig `id-space-check.php`.*
+echo "\n== 3. Jede Tabelle hat ihren eigenen Id-Raum ==\n";
+check(
+    'identities ist weg',
+    $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->prefix . 'taxmod_identities')) === null
+);
+
+// ⚠️ *Der Zähler kommt aus `SHOW CREATE TABLE`: MySQL 8 hält die Zahl in `information_schema`
+// zwischengespeichert und gibt dort `NULL` zurück, obwohl die Tabelle einen Zähler hat. Dieselbe
+// Lesart wie in [`id-space-check.php`](id-space-check.php).*
+$zaehlerVon = static function (string $tabelle) use ($wpdb): int {
+    $sql     = ($wpdb->get_row("SHOW CREATE TABLE {$tabelle}", ARRAY_N) ?: [1 => ''])[1];
+    $treffer = [];
+
+    if (preg_match('/AUTO_INCREMENT=(\d+)/', (string) $sql, $treffer) === 1) {
+        return (int) $treffer[1];
+    }
+
+    return (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) + 1 FROM {$tabelle}");
+};
+
+foreach (['nodes', 'relations'] as $name) {
+    $zaehler  = $zaehlerVon(Schema::table($name));
+    $hoechste = (int) $wpdb->get_var('SELECT COALESCE(MAX(id), 0) FROM ' . Schema::table($name));
+
+    check("{$name} vergibt selbst und zaehlt vorwaerts", $zaehler > $hoechste, "$zaehler > $hoechste");
+}
 
 echo "\n== 4. Create, rename, trash ==\n";
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $framework, $log);
 
 $made = $editor->createNode('  Platine  ', $root->id);
 check('name is trimmed on the way in', $made->name === 'Platine', "«{$made->name}»");
@@ -138,8 +163,9 @@ foreach ([$child->id, $made->id] as $scratch) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('changelog') . ' WHERE owner_id = %d', $scratch));
 }
 check('scratch nodes are gone', $nodes->find($made->id) === null && $nodes->find($child->id) === null);
-check('their identities stay spent', (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('identities') . ' WHERE id IN (%d, %d)', $made->id, $child->id)) === 2);
+// ⚠️ *Dieselbe Zusage wie bisher, an der Stelle, die sie seit TASK-004 hält: der Zähler von `nodes`
+// steht über beiden Nummern, also kann keine von beiden noch einmal vergeben werden ([D-340]).*
+check('their ids stay spent', $zaehlerVon(Schema::table('nodes')) > max($made->id, $child->id));
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

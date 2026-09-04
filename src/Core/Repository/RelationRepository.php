@@ -21,7 +21,14 @@ use Taxmod\Core\Model\Relation;
  */
 interface RelationRepository
 {
-    public function add(Relation $relation): void;
+    /**
+     * Eine neue Kante schreiben — **und die Kante zurückgeben, wie sie nun dasteht**.
+     *
+     * ⚠️ *Dieselbe Zusage wie {@see \Taxmod\Core\Repository\NodeRepository::add()}: seit TASK-004
+     * vergibt `relations` ihre Ids selbst, **Id `0` heisst «vergib eine»**, jede andere wird
+     * übernommen.*
+     */
+    public function add(Relation $relation): Relation;
 
     /**
      * @throws \Taxmod\Core\Exception\ConcurrentChange

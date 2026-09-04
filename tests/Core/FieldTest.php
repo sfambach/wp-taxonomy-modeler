@@ -138,7 +138,6 @@ final class FieldTest extends TestCase
         $this->editor = new ModelEditor(
             $this->nodes,
             $this->edges,
-            $identities,
             new FixedFramework($this->root, $this->trash, $this->branchRoot),
             new RecordedChanges()
         );

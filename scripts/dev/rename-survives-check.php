@@ -52,7 +52,6 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -80,7 +79,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
 $records   = new WpdbRecordRepository();
 $registry  = ShippedRenderers::registry();
 

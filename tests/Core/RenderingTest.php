@@ -114,7 +114,7 @@ final class RenderingTest extends TestCase
 
         $this->labelStore = new InMemoryLabels();
 
-        $this->editor    = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
+        $this->editor    = new ModelEditor($this->nodes, $this->edges, $framework, new RecordedChanges());
         $this->settings  = new Settings($this->stored, $this->nodes, $framework);
         $this->typeNodes = new RememberedTypeNodes();
         $this->rendering = new Rendering(

@@ -47,7 +47,6 @@ use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -75,14 +74,13 @@ function check(string $what, bool $ok, string $detail = ''): void
     echo "  FAIL {$what}" . ($detail === '' ? '' : " — {$detail}") . "\n";
 }
 
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework, $log);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
-$editor    = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor    = new ModelEditor($nodes, $edges, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, $settings, ShippedRenderers::registry(), $types, $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)

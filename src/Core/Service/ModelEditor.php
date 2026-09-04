@@ -14,7 +14,6 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SettingRecord;
 use Taxmod\Core\Repository\LabelRepository;
@@ -50,7 +49,6 @@ final class ModelEditor
     public function __construct(
         private readonly NodeRepository $nodes,
         private readonly RelationRepository $relations,
-        private readonly IdentityAllocator $identities,
         private readonly FrameworkNodes $framework,
         private readonly Changelog $changelog,
         // ⚠️ **Only `duplicate()` uses these, and that is why they are optional.** A copy has to
@@ -98,18 +96,18 @@ final class ModelEditor
     {
         $parent = $this->nodes->byId($parentId);
 
-        // Two identities, because an edge is a first-class thing that can carry settings and
-        // labels of its own (C8) — and both come from the one model space (C11).
-        $node = Node::create($this->identities->next(), $name, $parent->path);
-        $edge = Relation::inheritance(
-            $this->identities->next(),
+        // ⚠️ **Zwei Ids aus zwei Räumen** — seit TASK-004 vergibt jede Tabelle ihre eigene
+        // ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)). *Eine Kante bleibt ein
+        // Ding erster Ordnung, das eigene Einstellungen und Labels trägt (C8); nur die Nummer kommt
+        // nicht mehr aus einem geteilten Topf. **`0` heisst «vergib eine»**, und der Speicher gibt
+        // die geschriebene Zeile mit ihrer Nummer zurück.*
+        $node = $this->nodes->add(Node::create(0, $name, $parent->path));
+        $edge = $this->relations->add(Relation::inheritance(
+            0,
             $parent->id,
             $node->id,
             $this->relations->nextPositionUnder($parent->id)
-        );
-
-        $this->nodes->add($node);
-        $this->relations->add($edge);
+        ));
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
 
         // ⚠️ **The parent's settings are written into the child** ([D-423](../../../docs/NewConcept/90-decision-log.md)).
@@ -611,7 +609,8 @@ final class ModelEditor
         }
 
         $edge = Relation::attribute(
-            $this->identities->next(),
+            // ⚠️ *`0` heisst «die Tabelle vergibt sie» (TASK-004).*
+            0,
             $owner->id,
             $target->id,
             $branch->relationKind(),
@@ -619,7 +618,7 @@ final class ModelEditor
             $this->relations->nextFieldPositionUnder($owner->id)
         );
 
-        $this->relations->add($edge);
+        $edge = $this->relations->add($edge);
         $this->changelog->record(
             $edge->id,
             'relation',
@@ -691,11 +690,14 @@ final class ModelEditor
      * Empty the trash for good — the act [row 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)
      * asks for, and the owner: *build a button behind the Trash label, «clear», so we can tidy up.*
      *
-     * ⚠️ **What it keeps is the whole design, not an oversight.** The **identities** stay, because
-     * [D-340](../../../docs/NewConcept/90-decision-log.md) says an id once handed out is never
-     * reissued; the **changelog** stays, because [D-065](../../../docs/NewConcept/90-decision-log.md)
-     * built it to *outlive what it refers to*. **So a purge removes the thing and keeps the record
-     * that it existed.**
+     * ⚠️ **What it keeps is the whole design, not an oversight.** The **changelog** stays, because
+     * [D-065](../../../docs/NewConcept/90-decision-log.md) built it to *outlive what it refers to*.
+     * **So a purge removes the thing and keeps the record that it existed.**
+     *
+     * ⚠️ **Seit TASK-004 gibt es keine `identities`-Zeile mehr, die eine verbrauchte Nummer
+     * festhielte.** *Was [D-340](../../../docs/NewConcept/90-decision-log.md) verlangt — eine einmal
+     * vergebene Id wird nie wieder vergeben —, hält jetzt das `AUTO_INCREMENT` der jeweiligen
+     * Tabelle: InnoDB senkt den Zähler beim Löschen nicht.*
      *
      * ⚠️ **And it takes what belongs to a node with it**, which is
      * [row 28](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s rule from the
@@ -710,7 +712,7 @@ final class ModelEditor
      * flowchart LR
      *   T["Trash"] --> P["parked · everything under it"]
      *   P --> G["records · values · settings · labels · edges · nodes"]
-     *   P --> K["identities · changelog<br/>stay"]
+     *   P --> K["changelog<br/>bleibt"]
      * ```
      *
      * @return array<string, int> What went, keyed for a surface to report.

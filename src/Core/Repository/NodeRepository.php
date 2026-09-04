@@ -29,7 +29,16 @@ interface NodeRepository
      */
     public function byIds(array $ids): array;
 
-    public function add(Node $node): void;
+    /**
+     * Einen neuen Knoten schreiben — **und den Knoten zurückgeben, wie er nun dasteht**.
+     *
+     * ⚠️ **Seit TASK-004 vergibt die Tabelle die Id selbst.** *`identities` ist gestrichen, jede
+     * Tabelle hat ihren eigenen Id-Raum ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)),
+     * und der Speicher ist die einzige Stelle, die weiss, welche Nummer frei ist.* **Id `0` heisst
+     * «vergib eine»**; jede andere Id wird so übernommen, wie sie ankommt — das braucht der
+     * Wiederaufbau, der eine bekannte Nummer zurückschreibt.
+     */
+    public function add(Node $node): Node;
 
     /**
      * @param int $expectedVersion The version the caller read. Guards against a concurrent

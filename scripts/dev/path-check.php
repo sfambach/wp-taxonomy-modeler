@@ -48,7 +48,6 @@ use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -79,10 +78,10 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new TableIdentityAllocator(), new WpdbChangelog(new SystemClock()));
+$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
 $framework->seed();
 
-$editor   = new ModelEditor($nodes, $edges, new TableIdentityAllocator(), $framework, new WpdbChangelog(new SystemClock()));
+$editor   = new ModelEditor($nodes, $edges, $framework, new WpdbChangelog(new SystemClock()));
 $settings = new Settings(new WpdbSettingRepository(), $nodes, $framework);
 
 echo "\n== 1. The column and the key ==\n";

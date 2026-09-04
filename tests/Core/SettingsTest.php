@@ -76,7 +76,7 @@ final class SettingsTest extends TestCase
 
         $framework = new FixedFramework($this->root, $trash, $this->branchRoot, self::INSTALLATION);
 
-        $this->editor   = new ModelEditor($this->nodes, $this->edges, $identities, $framework, new RecordedChanges());
+        $this->editor   = new ModelEditor($this->nodes, $this->edges, $framework, new RecordedChanges());
         $this->settings = new Settings($this->stored, $this->nodes, $framework);
     }
 

@@ -145,17 +145,15 @@ echo "\n== the three switches actually take, form to row ==\n";
 //
 // ⚠️ *On a scratch node, never on his `int`: [row 23](../../docs/NewConcept/97-implementation-plan.md#the-working-list)
 // says a checker must not read data a person is editing, and writing it is worse.*
-$ids       = new Taxmod\WordPress\Persistence\TableIdentityAllocator();
 $log       = new Taxmod\WordPress\Persistence\WpdbChangelog(new Taxmod\WordPress\SystemClock());
 $nodeRepo  = new Taxmod\WordPress\Persistence\WpdbNodeRepository();
 $edgeRepo  = new Taxmod\WordPress\Persistence\WpdbRelationRepository();
 $rowRepo   = new Taxmod\WordPress\Persistence\WpdbSettingRepository();
-$framework = new Taxmod\WordPress\Persistence\SeededFrameworkNodes($nodeRepo, $edgeRepo, $ids, $log);
+$framework = new Taxmod\WordPress\Persistence\SeededFrameworkNodes($nodeRepo, $edgeRepo, $log);
 $settings  = new Taxmod\Core\Service\Settings($rowRepo, $nodeRepo, $framework, $log);
 $editor    = new Taxmod\Core\Service\ModelEditor(
     $nodeRepo,
     $edgeRepo,
-    $ids,
     $framework,
     $log,
     $rowRepo,

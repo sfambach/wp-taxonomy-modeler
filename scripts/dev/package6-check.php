@@ -35,7 +35,6 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\Shadow;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -58,12 +57,11 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $edges, $framework, $log);
 $data   = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
 
 $part = $editor->createNode('__p6 Part', $framework->rootOf(Branch::Model)->id);
@@ -158,10 +156,14 @@ foreach ($data->valuesOf($child->id) as $wert) {
 
 check('the child record answers what the parent declared', $geerbt === '__p6 inherited', (string) ($geerbt ?? 'nichts'));
 
+// ⚠️ **Die Zusage ist mit TASK-004 breiter geworden, nicht schmaler** (`PR-9`): *sie verglich zwei
+// Räume, weil es zwei gab — `records` gegen `identities`. **Jetzt hat jede Tabelle ihren eigenen**,
+// und dass sie es tut, prüft [`id-space-check.php`](id-space-check.php) für alle. Hier bleibt der
+// Punkt, um den es dem Abschnitt ging: eine Datensatz-Nummer ist keine Knoten-Nummer.*
 echo "\n== 8. The two id spaces are separate ==\n";
 $maxRecord = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('records'));
-$maxModel  = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('identities'));
-check('records number from their own sequence', $maxRecord < $maxModel, "records $maxRecord, identities $maxModel");
+$maxNode   = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('nodes'));
+check('records number from their own sequence', $maxRecord !== $maxNode, "records $maxRecord, nodes $maxNode");
 check('and a record id is not a model identity', (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
      INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.id

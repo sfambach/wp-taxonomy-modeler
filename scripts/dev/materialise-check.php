@@ -33,7 +33,6 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -61,18 +60,16 @@ function check(string $what, bool $ok, string $detail = ''): void
     echo "  FAIL {$what}" . ($detail === '' ? '' : " — {$detail}") . "\n";
 }
 
-$ids       = new TableIdentityAllocator();
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $rows      = new WpdbSettingRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $settings  = new Settings($rows, $nodes, $framework, $log);
 
 $editor = new ModelEditor(
     $nodes,
     $edges,
-    $ids,
     $framework,
     $log,
     $rows,

@@ -44,7 +44,6 @@ final class TreeTest extends TestCase
         $this->editor = new ModelEditor(
             $this->nodes,
             $this->edges,
-            $identities,
             new FixedFramework($this->root, $this->trash),
             new RecordedChanges()
         );
