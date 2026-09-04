@@ -1737,7 +1737,12 @@ final class NodesScreen
                 // ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
                 // ⚠️ *Einmal oben geholt und hier nur benutzt — zwei Abfragen für dieselbe Auskunft
                 // wären zwei Gelegenheiten, verschieden zu antworten.*
-                $teile
+                $teile,
+                // WICHTIG: Ein Auswahldialog je Feldzeile -- TASK-029, auf sein Wort: "Points at
+                // ist der type und type muss aenderbar sein. Auswahl ist Mussfeld, also leere
+                // Auswahl nicht moeglich". Nur fuer eigene Felder: ein geerbtes gehoert dem
+                // Vorfahren und wird dort geaendert (D-376, dieselbe Regel wie beim Umbenennen).
+                $this->targetChoosersFor($dieser, $selected)
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -1773,6 +1778,85 @@ final class NodesScreen
         }
 
         return $html;
+    }
+
+    /**
+     * Ein Auswahldialog je eigener Feldzeile, damit ihr Ziel geändert werden kann.
+     *
+     * ⚠️ **Nur für **eigene** Felder.** *Ein geerbtes gehört dem Vorfahren; es von hier zu ändern
+     * änderte es für jeden anderen Benutzer mit — dieselbe Regel, die
+     * [D-376](../../../docs/NewConcept/90-decision-log.md) fürs Umbenennen aufgestellt hat.*
+     *
+     * ⚠️ *Der Einstiegsast ist der Ast, in dem das heutige Ziel liegt: wer einen Typ ändert, will
+     * meistens einen anderen aus derselben Familie.*
+     *
+     * @param list<Relation> $edges
+     * @return array<int, string>
+     */
+    private function targetChoosersFor(array $edges, Node $selected): array
+    {
+        $aus = [];
+
+        foreach ($edges as $edge) {
+            if ($edge->fromId !== $selected->id) {
+                continue;
+            }
+
+            $ziel = $this->editor->find($edge->toId);
+            $ast  = $ziel === null ? null : $this->framework->branchOf($ziel);
+
+            $aus[$edge->id] = $this->rendering->nodeChooser(
+                $this->framework->root(),
+                'retarget_' . $edge->id,
+                $ast === null ? null : $this->framework->rootOf($ast),
+                $edge->toId,
+                [$this->framework->trash()->id],
+                $this->barredTargets(),
+                $ziel?->name,
+                __('Nothing here can be a target.', 'taxmod'),
+                DialogChooserRenderer::NAME,
+                $this->localeFromRequest(),
+                Level::Admin,
+                '<span class="button taxmod-icon-button" title="'
+                . esc_attr__('Change what this field points at', 'taxmod') . '">'
+                . IconMarkup::dashicon('networking')
+                . '<span class="screen-reader-text">' . esc_html__('Change type', 'taxmod') . '</span>'
+                . '</span>',
+                ControlMarkup::button(new Control(
+                    'do',
+                    'retarget_field',
+                    __('Change type', 'taxmod'),
+                    '',
+                    true,
+                    false,
+                    '',
+                    '',
+                    true
+                ))
+            )->markup;
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Welche Knoten kein Ziel sein können — Zweigwurzeln und alles ausserhalb eines Zweiges.
+     *
+     * @return list<int>
+     */
+    private function barredTargets(): array
+    {
+        $aus = [];
+
+        foreach ($this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]) as $row) {
+            $ast = $this->framework->branchOf($row['node']);
+
+            if ($ast === null || $row['node']->id === $this->framework->rootOf($ast)->id) {
+                $aus[] = $row['node']->id;
+            }
+        }
+
+        return $aus;
     }
 
     /**
@@ -3522,6 +3606,11 @@ final class NodesScreen
                     $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name
                 ),
                 // Parked, not purged — D-123's two stages, so it can come back.
+                // WICHTIG: Den Typ eines eigenen Feldes aendern -- TASK-029. Sein Regel fuer die
+                // Daten: "sollten keine Daten da sein einfach aendern, wenn Daten da sind neue
+                // Version und Konflikt". Die Kante wird ueber ihre Version gespeichert, also
+                // meldet ein gleichzeitiger Umbau sich als Konflikt statt still zu gewinnen.
+                'retarget_field' => $this->editor->retargetField($id, $edge, $this->retargetTo($edge)),
                 'remove_field'  => $this->editor->removeField($id, $edge),
                 'restore_field' => $this->editor->restoreField($id, $edge),
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,

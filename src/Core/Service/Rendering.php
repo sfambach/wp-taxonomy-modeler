@@ -1215,6 +1215,12 @@ final class Rendering
          * @var array<int, list<array{id: int, werte: array<int, TypedValue>}>>
          */
         array $parts = [],
+        /**
+         * Der Auswahldialog je Kante, fertig gezeichnet vom Rand -- TASK-029.
+         *
+         * @var array<int, string> Kanten-Id => Markup
+         */
+        array $targetChoosers = [],
     ): array {
         if ($edges === []) {
             return [];
@@ -1306,6 +1312,9 @@ final class Rendering
                     // fact (`CD-1`) and one lookup per row would be `CD-7`'s loop. The screen
                     // builds it from the same method the tree rows use.*
                     href: $targetHrefs[$edge->toId] ?? null,
+                    // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
+                    // Rand, weil er URL und Nonce braucht, und wird nur durchgereicht.
+
                     submits: $submits[$edge->id] ?? null,
                     // ⚠️ *Das Formular der **Seite**, damit das Namensfeld mit ihr gespeichert wird —
                     // sein Wunsch: «Save in Fields sollte eigentlich auch über die Seite gehen». Leer
@@ -1342,9 +1351,16 @@ final class Rendering
                     // ⚠️ *Der **Teildatensatz** wird nicht hier angelegt, obwohl die Multiplizität
                     // `1..*` ihn verlangt: eine Seite anzusehen darf nichts schreiben. Er entsteht beim
                     // ersten Speichern, in {@see \Taxmod\Core\Service\DataEntry::putSettingAt()}.*
-                    sections: $gezeichneterWert === []
-                        ? []
-                        : [FieldRowRenderer::VALUE => new Section('', $gezeichneterWert[0]->result->markup)]
+                    sections: array_merge(
+                        $gezeichneterWert === []
+                            ? []
+                            : [FieldRowRenderer::VALUE => new Section('', $gezeichneterWert[0]->result->markup)],
+                        // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
+                        // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
+                        isset($targetChoosers[$edge->id])
+                            ? ['target-chooser' => new Section('', $targetChoosers[$edge->id])]
+                            : []
+                    )
                 ),
             );
 

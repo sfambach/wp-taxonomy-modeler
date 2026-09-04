@@ -106,13 +106,18 @@ function tabelleUnter(string $html, string $ueberschrift, string $bisUeberschrif
     // ⚠️ *Die Dialoge des Ziel-Wählers weg — sie tragen den ganzen Baum und darin steht jedes Wort.*
     $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
 
-    $von = strpos($html, '>' . $ueberschrift . '<');
-
-    if ($von === false) {
+    // WICHTIG: Die Ueberschrift wird als <h3> gesucht und nicht als blosses Wort. Seit der
+    // Auswahldialog in der Zelle steht, tragen die Zeilen den ganzen Baum -- und darin kommt
+    // "Settings" als Knotenname vor. Der Block wurde dadurch mitten in der ersten Zeile
+    // abgeschnitten, und die Zusage meldete null Felder, wo drei sind.
+    if (! preg_match('/<h3\b[^>]*>' . preg_quote($ueberschrift, '/') . '</', $html, $t, PREG_OFFSET_CAPTURE)) {
         return [];
     }
 
-    $bis  = strpos($html, '>' . $bisUeberschrift . '<', $von + 4);
+    $von = $t[0][1];
+    $bis = preg_match('/<h3\b[^>]*>' . preg_quote($bisUeberschrift, '/') . '</', substr($html, $von + 4), $u, PREG_OFFSET_CAPTURE)
+        ? $von + 4 + $u[0][1]
+        : false;
     $teil = substr($html, $von, ($bis === false ? strlen($html) : $bis) - $von);
 
     if (! preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/s', $teil, $zeilen)) {

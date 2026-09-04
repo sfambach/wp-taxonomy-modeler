@@ -327,7 +327,7 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
 [x] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
 [x] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
               fertig; der Anlegen-Knopf bleibt in der Zeile
-[ ] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
+[x] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
               Pflichtfeld ohne leere Wahl
 [ ] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
               Baum
@@ -426,3 +426,16 @@ umschalten, Feld wird geöffnet, Name steht noch da».*
 auch aus dem Knoten verwendet werden, somit müsste `label_id` von Kante auf den gleichen zeigen wie
 Knoten.» **Das geht erst, wenn `labels` und `label_texts` stehen** ([D-580](../../NewConcept/90-decision-log.md)) —
 heute gibt es die Spalte `relations.label_id` noch nicht.*
+
+⚠️ **TASK-029 erledigt am 2026-09-04 — mit einer benannten Lücke.** *Der Typ eines **eigenen** Feldes
+ist über einen Auswahldialog in der Zeile änderbar; ein geerbtes bleibt beim Vorfahren
+([D-376](../../NewConcept/90-decision-log.md)). Die Kante wird über ihre Version gespeichert, ein
+gleichzeitiger Umbau meldet sich also als Konflikt.*
+
+⚠️ **Was noch fehlt, ist die Hälfte seiner Regel:** *«sollten keine Daten da sein, einfach ändern;
+wenn Daten da sind, neue Version und Konflikt.» **Der zweite Teil ist nicht gebaut** — heute ändert
+sich der Typ auch dann, wenn Werte an der Kante hängen, und die Werte bleiben stehen. Das gehört zur
+Versionierung in den Schattentabellen und wartet auf TASK-013 bis TASK-015.*
+
+⚠️ *Gemessen, was der Dialog je Zeile kostet: die Seite von `Adresse` wächst auf 176 KB und zeichnet
+in 0,13 s — vier Auswahldialoge, 183 Baumzeilen. Tragbar, aber es wächst mit der Zahl der Felder.*

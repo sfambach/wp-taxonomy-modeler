@@ -296,13 +296,19 @@ final class FieldRowRenderer implements Renderer
         $name = $context->surroundings->refersTo ?? '—';
         $href = $context->surroundings->href;
 
+        // WICHTIG: Der Auswahldialog dieser Zeile, wenn der Rand einen mitgegeben hat -- TASK-029,
+        // auf sein Wort: "Points at ist der type und type muss aenderbar sein". Er kommt als
+        // fertiges Markup herein, weil er eine URL und eine Nonce braucht (CD-1).
+        $wahl = $context->surroundings->sections['target-chooser']->body ?? '';
+
         if ($href === null || $name === '—') {
-            return RenderResult::escape($name);
+            return RenderResult::escape($name) . $wahl;
         }
 
         return RenderResult::htmlTag('a', ['href' => $href, 'class' => 'taxmod-field-target-link'])
             . RenderResult::escape($name)
-            . '</a>';
+            . '</a>'
+            . $wahl;
     }
 
     private function cell(string $inner, string $class, bool $code = false, bool $trusted = false): string
