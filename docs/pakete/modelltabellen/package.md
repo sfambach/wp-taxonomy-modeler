@@ -1,6 +1,6 @@
 # Paket · Modelltabellen
 
-**Stand 2026-09-01.** Nur der aktuell gültige Soll-Zustand. **Jede Begründung steht in
+**Stand 2026-09-04.** Nur der aktuell gültige Soll-Zustand. **Jede Begründung steht in
 [`history.md`](history.md)**, Offenes in [`tasks.md`](tasks.md), Fehler in [`bugs.md`](bugs.md).
 
 ⚠️ **Soll, nicht Ist.** *Wo beides auseinandergeht, steht «gemessen» dabei.*
@@ -13,9 +13,14 @@
 umgesetzt, siehe [`tasks.md`](tasks.md). *Kein Lock: veraltet später etwas, wird es mit Grund
 ersetzt ([D-565](../../NewConcept/90-decision-log.md)).*
 
-**Die Speicherform gilt für alle Kantenarten.** *Vererbung, Komposition, Aggregation, Einstellung —
-**es gibt keine zweite Ablage für eine bestimmte Art.** Ein Wert an einer Kante ist eine Zeile in
-`relation_records`; was die Kante ist, sagt `relation_type`, nicht die Ablage.*
+**Die Speicherform gilt für alle Kantenarten** — *es gibt keine zweite Ablage für eine bestimmte
+Art. Ein Wert an einer Kante ist eine Zeile in `relation_records`.*
+
+⚠️ **Und seit dem 2026-09-04 gibt es nur noch *eine* Kantenart**
+([D-587](../../NewConcept/90-decision-log.md)): *`relation_type` fällt. Was Komposition von
+Aggregation unterschied, ist eine einzige Frage — **wird mit dem Knoten gelöscht** —, und ob eine
+Kante eine Einstellung trägt, sagt der Ast des Zielknotens. Die Spalte war ohnehin abgeleitet:
+die Oberfläche sagt es dem Benutzer schon heute, «Kind is not a choice».*
 
 **Noch offen:** `labels`, `changelog` (im Paket [`aenderungstabellen/`](../aenderungstabellen/package.md)),
 **`settings` ist gestrichen** ([D-579](../../NewConcept/90-decision-log.md)) — die drei letzten Werte
@@ -169,9 +174,11 @@ Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 | `id` | eigener Id-Raum | |
 | `version` | für die Schattentabelle | |
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
-| `relation_type` | die Kantenart — **ohne Vererbung** | `composition` 23 · `setting` 11 · `aggregation` 5 |
+| ~~`relation_type`~~ | **gestrichen** ([D-587](../../NewConcept/90-decision-log.md)) | war `composition` 23 · `setting` 11 · `aggregation` 5 |
+| `deletes_with_node` | **wird mit dem Knoten gelöscht** — bei einem einfachen Typ immer an und nicht wählbar ([D-588](../../NewConcept/90-decision-log.md)) | |
 | `label_id` | → `labels.id`, **optional** — hier steht der Name | §3.4 |
-| `settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** | §3.6 |
+| `settings_record_id` | → `node_records.id`, optional — **der eigene Form-Renderer der Kante** | §3.6 |
+| `target_settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** ([D-586](../../NewConcept/90-decision-log.md)) | §3.6 |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
 | `hide` | **offen** — verliert mit der Vererbung alle Benutzer | §4.4 |
@@ -180,8 +187,16 @@ Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 sieben Fremdschlüssel auf `identities.id`, was strukturell **eine Kante von einem Datensatz aus**
 erlaubt. → [`history.md`](history.md)
 
-**Die vier Kantenarten sind keine eigenen Klassen und brauchen es nicht** — 15 von 19 Verzweigungen im
-Code fragen nur «ist es Vererbung?».
+**Die Kantenarten sind keine eigenen Klassen und brauchen es nicht** — 15 von 19 Verzweigungen im
+Code fragten nur «ist es Vererbung?», und die Frage verschwindet mit
+[D-581](../../NewConcept/90-decision-log.md) ganz.
+
+⚠️ **Zwei Zeiger und nicht einer, und beide werden gleichzeitig gebraucht**
+([D-586](../../NewConcept/90-decision-log.md)): *der eigene trägt den **Form-Renderer** der Kante —
+wie die Liste aussieht, wo die Beschriftung steht —, der zweite die **Überschreibungen am
+Zielknoten**. Ein Einstellungsdatensatz ist ein Datensatz von genau einem Knoten und kann nicht
+beides sein. **Der Form-Renderer zählt seine Kinder nicht auf**, er läuft die Kanten des
+Zielknotens ab und fragt jede nach ihrem Renderer.*
 
 ### 4.1 · Was an `relation_type` hängt
 

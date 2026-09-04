@@ -99,3 +99,22 @@ nochmal drüber nachdenken».*
 den Baum ewig laufen. Beides ungeklärt.*
 
 Gehört zu [D-583](../../NewConcept/90-decision-log.md), TASK-021 und TASK-022.
+
+## INF-006 · Was der 2026-09-04 an der Oberfläche geändert hat
+
+**Kein Auftrag, sondern der Stand** — damit der nächste Leser die Maske wiedererkennt.
+
+| | |
+|---|---|
+| **Auswahldialog** | wählt und schliesst sich; der gewählte Knoten steht danach in einem gesperrten Feld der Zeile, der Anlegen-Knopf daneben ([D-589](../../NewConcept/90-decision-log.md)) |
+| **Baumansicht** | Suchfeld oben, in **jedem** Baum. In der Seitenansicht sucht der Server, im Dialog filtert der Browser |
+| **Auswahlbaum** | zeichnet dieselbe Zeile wie der Modellbaum, ohne die Funktionen rechts, mit Klapp-Pfeilen |
+| **Feld anlegen** | ohne Namen zieht es den Knotennamen; nur der Einstiegsast ist offen |
+| **Feld ändern** | «Points at» ist über einen Dialog änderbar, für eigene Felder |
+
+⚠️ **Zwei Stellen brauchen jetzt Skript, die vorher keines brauchten:** *der Auswahldialog — Klappen,
+Wählen, Schliessen — und der Schalter «Knotennamen benutzen». **Die Seitenansicht bleibt skriptfrei**,
+und ohne Skript bleibt jede Wahl gültig: sie reist über den Radioknopf im Formular.*
+
+⚠️ **Was es kostet, gemessen an `Adresse`:** *176 KB Seite, 0,13 s, vier Auswahldialoge, 183
+Baumzeilen. **Es wächst mit der Zahl der Felder**, weil jede eigene Zeile ihren eigenen Dialog trägt.*

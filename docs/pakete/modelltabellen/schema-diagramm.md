@@ -1,6 +1,6 @@
 # Modelltabellen — Diagramm zum Spielen
 
-**Stand 2026-09-02.** Gibt den Soll-Zustand aus [`package.md`](package.md) wieder.
+**Stand 2026-09-04.** Gibt den Soll-Zustand aus [`package.md`](package.md) wieder.
 **Zum Ausprobieren gedacht** — Änderungen hier sind kein Konzept, bis sie dort ankommen.
 
 ```mermaid
@@ -21,9 +21,10 @@ erDiagram
         int  version
         int  from_node_id FK
         int  to_node_id   FK
-        enum relation_type "composition | aggregation | setting"
+        bool deletes_with_node "D-587: relation_type ist gestrichen"
         int  label_id      FK "optional"
-        int  settings_record_id FK "auf node_records — ueberschreibt den Zielknoten"
+        int  settings_record_id FK "der eigene Form-Renderer der Kante"
+        int  target_settings_record_id FK "ueberschreibt den Zielknoten"
         int  sort_order    "je Knoten und Kantenart, erste ist 0"
         text multiplicity  "1..1 | 0..1 | 1..* | 0..*"
         bool hide          "OFFEN"
@@ -78,6 +79,7 @@ erDiagram
     relations        ||--o{ relation_records : "relation_id"
     node_records     ||--o| nodes            : "settings_record_id"
     node_records     ||--o| relations        : "settings_record_id"
+    node_records     ||--o| relations        : "target_settings_record_id"
     node_records     ||--o{ relation_records : "value_node_record_id"
     nodes            ||--o{ relation_records : "value_node_id"
 ```
@@ -93,8 +95,18 @@ node_record_id · relation_id · sort_order      Reihenfolge der Werte in einem 
 
 - `hide` an `relations` — verliert mit der Vererbung alle Benutzer
 - Was bei einem Konflikt zwischen `node_records.node_version` und dem Knoten geschieht
-- **Ob `settings_record_id` überhaupt bleibt** — [D-529](../../NewConcept/90-decision-log.md) sagt
-  «eine Einstellung ist ein Feld, also eine Kante», [D-578](../../NewConcept/90-decision-log.md)
-  «ein Wert an einer Kante ist eine Zeile in `relation_records`». Dann wären die Einstellungen
-  eines Knotens einfach seine Kanten vom Typ `setting` — und die Spalte wäre ein zweiter
-  Mechanismus für dasselbe.
+- Ob `deletes_with_node` eine Spalte wird oder ein Feld am Einstellungsdatensatz
+  ([D-587](../../NewConcept/90-decision-log.md) lässt es ausdrücklich offen)
+- Was mit den 39 Werten in `relation_type` geschieht — Umzug oder Neusetzen
+
+## Was seit dem 2026-09-02 beantwortet ist
+
+**Ob `settings_record_id` ein zweiter Mechanismus ist** — nein. *Der Verdacht kam daher, dass
+[D-529](../../NewConcept/90-decision-log.md) sagt «eine Einstellung ist ein Feld, also eine Kante».
+**Mit genau einem Renderer je Knoten und Kante** ([D-584](../../NewConcept/90-decision-log.md)) ist
+ein einzelner Zeiger auf einen einzelnen Datensatz genau richtig, und dessen `node_id` sagt schon,
+welcher Renderer es ist.*
+
+**Wo der Konverter hängt** — am Basisknoten `Renderer`, vererbt an alle 18
+([D-585](../../NewConcept/90-decision-log.md)). *Der Hüllknoten `DisplayOption` entfällt: er sah
+immer gleich aus und trug damit keine Aussage.*
