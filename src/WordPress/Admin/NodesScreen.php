@@ -1707,37 +1707,31 @@ final class NodesScreen
     }
 
     /**
-     * Den Ast der einfachen Typen an den Anfang, alles andere dahinter.
+     * Alles zugeklappt ausser diesem Ast und dem Weg dorthin.
      *
-     * ⚠️ **Ein Block und nicht eine Zeile:** *ein Ast ist seine Wurzelzeile **und** alles, was
-     * darunter eingerückt folgt. Nur die Wurzel zu verschieben risse ihre Kinder ab und liesse sie
-     * unter dem falschen Kopf stehen.*
+     * ⚠️ **Der Weg gehoert dazu, sonst sieht man den Ast gar nicht.** *Liegt der Einstieg zwei
+     * Ebenen tief, muessen seine Vorfahren offen sein -- sonst waere «offen» eine Angabe ueber
+     * etwas, das niemand sieht.*
      *
-     * @param list<array{node:\Taxmod\Core\Model\Node, depth:int}> $rows
-     * @return list<array{node:\Taxmod\Core\Model\Node, depth:int}>
+     * @return list<int>
      */
-    private function simpleTypesFirst(array $rows): array
+    private function collapsedApartFrom(Node $einstieg): array
     {
-        $gesucht = $this->framework->rootOf(Branch::DataTypes)->id;
-        $ast     = [];
-        $rest    = [];
-        $drin    = false;
+        $offen = [$einstieg->id => true];
 
-        foreach ($rows as $row) {
-            if ($row['node']->id === $gesucht) {
-                $drin = true;
-            } elseif ($drin && $row['depth'] === 0) {
-                $drin = false;
-            }
+        foreach ($einstieg->ancestorIds() as $id) {
+            $offen[$id] = true;
+        }
 
-            if ($drin) {
-                $ast[] = $row;
-            } else {
-                $rest[] = $row;
+        $zu = [];
+
+        foreach ($this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]) as $row) {
+            if (! isset($offen[$row['node']->id])) {
+                $zu[] = $row['node']->id;
             }
         }
 
-        return [...$ast, ...$rest];
+        return $zu;
     }
 
     /**
@@ -1830,13 +1824,18 @@ final class NodesScreen
         //
         // ⚠️ *Versteckte bleiben draussen — ein verstecktes Vorkommen ist kein Ziel — und die
         // Wurzel ebenso, denn sie ist ohnehin gesperrt.*
-        $rows = $this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]);
-
-        // WICHTIG: Die einfachen Typen zuerst -- TASK-027, auf sein Wort: "default Knoten sollte
-        // simple types sein, wird am meisten verwendet, erleichtert die Eingabe". Vorausgewaehlt
-        // werden kann keiner: der Astkopf ist als Ziel gesperrt (D-238), und welcher einfache Typ
-        // gemeint ist, weiss nur er. Also wird der Ast nach oben sortiert, damit er offen daliegt.
-        $rows = $this->simpleTypesFirst($rows);
+        // WICHTIG: Nur der Einstiegsast steht offen, alles andere zugeklappt -- auf sein Wort:
+        // "aufgeklappt werden soll nur der einstiegs ast ... bekommt optionaler default knoten,
+        // einstiegs ast und root knoten als parameter".
+        //
+        // WICHTIG: Das ersetzt eine Sortierung, die ich vorher gebaut hatte und die falsch war:
+        // sie riss den Ast aus seinem Elternknoten und stellte ihn oben hin, wodurch der Dialog
+        // eine andere Hierarchie zeigte als die Seitenansicht. Er hat es sofort gesehen.
+        $rows = $this->tree->rowsUnder(
+            $this->framework->root(),
+            [$this->framework->trash()->id],
+            $this->collapsedApartFrom($this->framework->rootOf(Branch::DataTypes))
+        );
         // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
         // same eighty entries with middle dots that the parent chooser had before — and worse here,

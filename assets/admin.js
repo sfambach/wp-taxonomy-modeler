@@ -309,6 +309,10 @@
 			return;
 		}
 
+		if ( feld.name ) {
+			return;
+		}
+
 		var panel = feld.closest( '.taxmod-tree' );
 
 		if ( ! panel ) {
@@ -323,7 +327,10 @@
 				|| zeilen[ i ].querySelector( '.taxmod-tree-label' );
 			var text = name ? name.textContent.toLowerCase() : '';
 
-			zeilen[ i ].style.display = ( gesucht === '' || text.indexOf( gesucht ) !== -1 ) ? '' : 'none';
+			// Wieder 'flex' und nicht '': die Zeile traegt ihr display im style-Attribut, und ein
+			// leerer Wert loescht es. Der Baum fiel danach auseinander -- Namen untereinander, keine
+			// Einrueckung mehr. Er hat es beim Loeschen der Suchbuchstaben gesehen.
+			zeilen[ i ].style.display = ( gesucht === '' || text.indexOf( gesucht ) !== -1 ) ? 'flex' : 'none';
 		}
 	} );
 

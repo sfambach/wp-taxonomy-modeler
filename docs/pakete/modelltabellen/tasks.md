@@ -390,3 +390,17 @@ integrieren, kann auch in tax config Sinn ergeben zu filtern»* — bestätigt m
 ⚠️ *Es ist damit **keine** Einstellung am Auswahl-Renderer geworden, sondern Teil des Baumes selbst.
 Das ist der bessere Ort: die lange Liste steht in der Seitenansicht, und der Dialog bekommt es
 umsonst mit, weil beide denselben Baum zeichnen. Gemessen: drei Bäume auf der Seite, drei Suchfelder.*
+
+⚠️ **TASK-027 anders gelöst, und die erste Lösung war falsch.** *Ich hatte den Ast der einfachen
+Typen nach oben **sortiert** — damit stand er nicht mehr unter `Primitives`, und der Dialog zeigte
+eine andere Hierarchie als die Seitenansicht. Er hat es sofort gesehen: «das ist falsch». Jetzt ist
+alles **zugeklappt ausser dem Einstiegsast**, auf sein Wort: «aufgeklappt werden soll nur der
+Einstiegsast … bekommt optionaler Default-Knoten, Einstiegsast und Root-Knoten als Parameter».
+Gemessen: der Dialog zeigt 30 statt 134 Zeilen.*
+
+```text
+[ ] TASK-035  Klapp-Pfeile im Auswahldialog — heute fehlt «toggle», weil ein
+              Klapp-Link die Seite neu laedt und damit den Dialog schliesst
+[ ] TASK-036  Einstiegsast und Root als Parameter des Auswahldialogs, nicht
+              im Feldformular ausgerechnet
+```

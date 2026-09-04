@@ -91,7 +91,12 @@ final class TreeRenderer implements Renderer
         // AR-2 verbietet fest hingeschriebene Beschriftungen.
         $suche = '<div class="taxmod-tree-search">'
             . '<span aria-hidden="true">&#128269;</span>'
-            . RenderResult::htmlTag('input', ['type' => 'search', 'class' => 'taxmod-tree-filter'])
+            . RenderResult::htmlTag('input', array_filter([
+                'type'  => 'search',
+                'class' => 'taxmod-tree-filter',
+                'name'  => $context->surroundings->filterName,
+                'value' => $context->surroundings->filterValue,
+            ], static fn (string $v): bool => $v !== ''))
             . '</div>';
 
         return new RenderResult(

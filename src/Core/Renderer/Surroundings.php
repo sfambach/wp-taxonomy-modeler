@@ -163,6 +163,19 @@ final class Surroundings
          * ohne dass die Zeile zwei Renderer braucht.
          */
         public readonly string $rowIdPrefix = 'taxmod-node-',
+
+        /**
+         * Feldname des Suchfeldes im Baum, leer fuer «filtert nur im Browser».
+         *
+         * WICHTIG: Der Unterschied ist nicht Geschmack, sondern was ueberhaupt da ist. Der
+         * Auswahldialog zeigt alle Zeilen, dort kann ein Skript filtern. Die Seitenansicht ist
+         * zugeklappt -- gemessen 11 von 145 Zeilen -- und was nicht im Dokument steht, findet kein
+         * Skript. Traegt das Feld einen Namen, sucht der Server.
+         */
+        public readonly string $filterName = '',
+
+        /** Wonach gerade gesucht wird, damit es nach dem Laden im Feld stehen bleibt. */
+        public readonly string $filterValue = '',
         /**
          * Spalten **vor** den Feldern, je Zeile — Überschrift => gezeichnete Zelle.
          *
