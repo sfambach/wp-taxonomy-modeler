@@ -29,6 +29,15 @@ use Taxmod\Core\Repository\RelationRepository;
  * kommen hier dazu, sobald sie wandern — jede in einer eigenen Methode, damit sichtbar bleibt, welche
  * schon an der neuen Stelle liegt.*
  *
+ * ⚠️ **Sie löst über die Kette auf** ([D-602](../../../docs/NewConcept/90-decision-log.md)):
+ * *Datensatz der Kante → Datensatz des Zielknotens → Datensätze der Vorfahren, von nah nach fern →
+ * Rückfall im Kode. **Die Installationsstufe ist nicht dabei** — ihre Vorgaben stehen im Kode.*
+ *
+ * ```mermaid
+ * flowchart LR
+ *   K1["Kante"] --> K2["Zielknoten"] --> K3["Vorfahren, nah → fern"] --> K4["Rückfall im Kode"]
+ * ```
+ *
  * ```mermaid
  * flowchart LR
  *   N["Knoten"] --> R["sein Datensatz"]
@@ -75,15 +84,167 @@ final class ModelValues
      */
     public function forNode(Node $node): array
     {
-        $aus = $this->settingsAt($node, $this->recordsOf($node->id), $node->id, []);
+        return $this->kette($node, true);
+    }
 
-        $name = $this->rendererNameAt($this->recordsOf($node->id), []);
+    /**
+     * Stufe 2 und 3 der Auflösungskette: der Knoten selbst, dann seine **Vorfahren von nah nach fern**.
+     *
+     * ⚠️ **Das ist [D-602](../../../docs/NewConcept/90-decision-log.md), und es stellt her, was
+     * [D-579](../../../docs/NewConcept/90-decision-log.md) genommen hat.** *Sein Wort: «ja, Vorfahren
+     * sollen wieder funktionieren.» **Sein eigenes Modell begründet es:** `Prefixes` trägt
+     * `label_role = symbol`, damit `kilo` als `k` erscheint — für alle Präfixe, nicht je einzeln.*
+     *
+     * ⚠️ **Näher schlägt ferner, und die Kante schlägt alles.** *Deshalb `??=`: der erste Fund gewinnt,
+     * und gegangen wird von nah nach fern. Die Kante steht vor dieser Kette
+     * ({@see self::forUseSite()}), also überschreibt hier nichts mehr, was sie gesetzt hat.*
+     *
+     * ⚠️ **Die Installationsstufe kommt ausdrücklich *nicht* zurück** ([D-602](../../../docs/NewConcept/90-decision-log.md)):
+     * *die Zeile, die sie trug, ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
+     * weggefallen, ihre Vorgaben stehen im Kode. **Und «Modellwurzel» braucht keine eigene Stufe**,
+     * weil die Wurzel ein Vorfahr ist.*
+     *
+     * ⚠️ **Alle Sätze der Kette in *einer* Abfrage** (`CD-7`). *Ein Satz je Vorfahrenstufe wäre eine
+     * Abfrage je Stufe — die Tiefe des Baums als Zahl der Läufe, genau das N+1, das
+     * `package7-check.php` misst. {@see Node::ancestorIds()} gibt die Kette auf einmal, sie kostet
+     * keine eigene Abfrage.*
+     *
+     * @param  bool $amKopfGesetzt Ob der Knoten selbst «hier gesetzt» heisst — von einer Kante aus nicht.
+     * @return array<string,ResolvedSetting>
+     */
+    private function kette(Node $node, bool $amKopfGesetzt): array
+    {
+        // ⚠️ *Von nah nach fern, und die Kette kommt von {@see self::erbkette()} — dort wohnt der
+        // Schnitt an der Wurzel des Settings-Astes ([D-545](../../../docs/NewConcept/90-decision-log.md)).*
+        // ⚠️ **Die Installationsstufe steht bewusst nicht in dieser Kette**
+        // ([D-602](../../../docs/NewConcept/90-decision-log.md): *«die Installationsstufe kommt
+        // ausdrücklich nicht zurück … ihre Vorgaben stehen jetzt im Kode»*). *Sie ist auch nicht
+        // versehentlich drin: **gemessen am 2026-09-04 ist {@see FrameworkNodes::installationId()}
+        // eine eigene Nummer und steht in keinem Knotenpfad**, also kann kein Vorfahr sie sein. Die
+        // **Modellwurzel** dagegen ist ein Vorfahr und gehört dazu — genau das sagt D-602.*
+        $kette     = $this->erbkette($node);
+        $vorfahren = array_values(array_diff(array_reverse($kette), [$node->id]));
 
-        if ($name !== null) {
-            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $node->id, true);
+        $this->vorladen($kette);
+
+        $aus = $this->stufe($node, $node->id, $amKopfGesetzt);
+
+        foreach ($vorfahren as $vorfahr) {
+            foreach ($this->stufe($node, $vorfahr, false) as $schluessel => $angabe) {
+                $aus[$schluessel] ??= $angabe;
+            }
         }
 
         return $aus;
+    }
+
+    /**
+     * Was **ein** Glied der Kette sagt — die Sätze eines Knotens, gelesen mit der Kantenkunde des
+     * gefragten Knotens.
+     *
+     * ⚠️ *Gelesen wird mit `$subject` und nicht mit dem Träger: die Einstellungskante ist am Vorfahren
+     * erklärt, der Wert kann am Nachfahren liegen, und umgekehrt. {@see self::settingEdge()} kennt für
+     * `$subject` die ganze Kette und findet beides.*
+     *
+     * @return array<string,ResolvedSetting>
+     */
+    private function stufe(Node $subject, int $traeger, bool $gesetzt): array
+    {
+        $saetze = $this->recordsOf($traeger);
+
+        if ($saetze === []) {
+            return [];
+        }
+
+        $aus = $this->settingsAt($subject, $saetze, $traeger, []);
+
+        $name = $this->rendererNameAt($saetze, []);
+
+        if ($name !== null) {
+            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $traeger, true);
+        }
+
+        if ($gesetzt) {
+            return $aus;
+        }
+
+        // ⚠️ *«Geerbt» und «hier gesetzt» müssen auf dem Bildschirm verschieden aussehen
+        // ([D-266](../../../docs/NewConcept/90-decision-log.md)) — also wird die Herkunft hier
+        // umgeschrieben und nicht bloss der Wert durchgereicht.*
+        foreach ($aus as $schluessel => $angabe) {
+            $aus[$schluessel] = new ResolvedSetting($angabe->key, $angabe->value, $traeger, false);
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Die Sätze dieser Knoten und ihre Werte **auf einmal** ins Gedächtnis holen (`CD-7`).
+     *
+     * @param list<int> $nodeIds
+     */
+    private function vorladen(array $nodeIds): void
+    {
+        $offen = array_values(array_filter(
+            array_unique($nodeIds),
+            fn (int $id): bool => ! isset($this->satzGedaechtnis[$id])
+        ));
+
+        if ($offen === []) {
+            return;
+        }
+
+        $saetze = [];
+
+        foreach ($this->records->ofNodes($offen) as $nodeId => $seine) {
+            $this->satzGedaechtnis[$nodeId] = $seine;
+
+            foreach ($seine as $satz) {
+                $saetze[] = $satz->id;
+            }
+        }
+
+        // ⚠️ *Auch die zu füllen, die keine Sätze haben — sonst fragt der nächste Lauf sie erneut.*
+        foreach ($offen as $id) {
+            $this->satzGedaechtnis[$id] ??= [];
+        }
+
+        $fehlend = array_values(array_filter(
+            $saetze,
+            fn (int $id): bool => ! isset($this->wertGedaechtnis[$id])
+        ));
+
+        foreach ($this->records->valuesOfMany($fehlend) as $satzId => $werte) {
+            $this->wertGedaechtnis[$satzId] = $werte;
+        }
+
+        // ⚠️ **Und die Teile gleich mit** (`CD-7`). *Der Renderer steht eine Stufe tiefer: die
+        // Trägerkante zeigt auf einen **Teil**, und dessen Feld `render` nennt den Knoten
+        // ([D-511](../../../docs/NewConcept/90-decision-log.md)). {@see self::rendererNameAt()} steigt
+        // dort hinein — je Glied der Kette einmal. **Gemessen, was das kostet: 31 Abfragen für 7
+        // Felder und 59 für 14**, also linear, weil jeder Vorfahr seinen eigenen Teil hat.*
+        $this->findEdges();
+
+        $teile = [];
+
+        foreach ($fehlend as $satzId) {
+            foreach ($this->wertGedaechtnis[$satzId] ?? [] as $wert) {
+                if ($wert->edgeId === $this->rendererEdge
+                    && $wert->value->reference !== null
+                    && ! isset($this->wertGedaechtnis[$wert->value->reference])
+                ) {
+                    $teile[] = $wert->value->reference;
+                }
+            }
+        }
+
+        if ($teile === []) {
+            return;
+        }
+
+        foreach ($this->records->valuesOfMany(array_values(array_unique($teile))) as $satzId => $werte) {
+            $this->wertGedaechtnis[$satzId] = $werte;
+        }
     }
 
     /**
@@ -111,10 +272,9 @@ final class ModelValues
      * auf einen Knoten; {@see self::rendererNameAt()} steigt dort hinein. Sie hier auch auszugeben,
      * hiesse dieselbe Angabe zweimal zu melden, einmal als Satz-Id.*
      *
-     * ⚠️ *Noch **ohne Vererbung**: geantwortet wird aus dem `default`-Satz **dieses** Knotens. Ein
-     * Knoten ohne eigenen Wert bekommt nichts, und die Kette über Datensätze steht als eigene Zeile auf
-     * der Arbeitsliste — sie berührt [D-545](../../../docs/NewConcept/90-decision-log.md), und diese
-     * Regel wird nicht in einer zweiten Klasse nachgebaut (`CD`).*
+     * ⚠️ *Diese Methode liest **ein** Glied der Kette — die Sätze, die man ihr gibt. Die Kette selbst
+     * baut {@see self::kette()} ([D-602](../../../docs/NewConcept/90-decision-log.md)); hier steht
+     * bewusst keine zweite Fassung derselben Regel (`CD`).*
      *
      * ⚠️ **Die Adresse einer Verwendungsstelle ist eine andere als die des Knotens, und das habe ich im
      * ersten Zug falsch gemacht.** *Am Knoten ist der Pfad die Einstellungskante allein; an einer
@@ -173,32 +333,151 @@ final class ModelValues
      */
     private function settingEdge(Node|Relation $subject, int $edgeId): ?Relation
     {
-        $traeger = $subject instanceof Node ? $subject->id : $subject->fromId;
+        // ⚠️ **Auch die Vorfahren, und bei einer Verwendungsstelle habe ich das im ersten Zug
+        // vergessen.** *`read_only` ist an `Root` erklärt und sein Wert steht am Knoten — ohne die
+        // Vorfahren war die Kante nicht zu finden, und die Angabe fiel still weg. **Gemessen an
+        // `preview-check.php`, das genau deshalb rot blieb.***
+        $kette = $this->erbkette($subject);
 
-        if (! isset($this->kantenGedaechtnis[$traeger])) {
-            // ⚠️ **Auch die Vorfahren, und bei einer Verwendungsstelle habe ich das im ersten Zug
-            // vergessen.** *`read_only` ist an `Root` erklärt und sein Wert steht am Knoten — ohne die
-            // Vorfahren war die Kante nicht zu finden, und die Angabe fiel still weg. **Gemessen an
-            // `preview-check.php`, das genau deshalb rot blieb.***
-            $knoten   = $subject instanceof Node ? $subject : $this->nodes->find($traeger);
-            $besitzer = $knoten === null ? [$traeger] : [...$knoten->ancestorIds(), $traeger];
+        $this->kantenVorladen($kette);
 
-            $gefunden = [];
+        foreach ($kette as $besitzer) {
+            $kante = $this->kantenNachBesitzer[$besitzer][$edgeId] ?? null;
 
-            foreach ($this->relations->fieldEdgesOf($besitzer) as $eine) {
-                $gefunden[$eine->id] = $eine;
+            if ($kante !== null) {
+                return $kante->kind->isSetting() ? $kante : null;
             }
-
-            $this->kantenGedaechtnis[$traeger] = $gefunden;
         }
 
-        $kante = $this->kantenGedaechtnis[$traeger][$edgeId] ?? null;
-
-        return $kante !== null && $kante->kind->isSetting() ? $kante : null;
+        return null;
     }
 
-    /** @var array<int,array<int,Relation>> Träger-Id => seine Kanten und die seiner Vorfahren */
-    private array $kantenGedaechtnis = [];
+    /**
+     * Wer für diesen Träger vererbt — die eine Stelle, an der [D-545](../../../docs/NewConcept/90-decision-log.md)
+     * wohnt.
+     *
+     * ⚠️ *Nicht `ancestorIds()` von Hand: der Schnitt an der Wurzel des Settings-Astes gehört
+     * {@see FrameworkNodes::inheritanceOwnersOf()}, und eine zweite Fassung derselben Regel wäre
+     * genau das, was `CD` verbietet.*
+     *
+     * @return list<int> Von fern nach nah, der Träger selbst zuletzt.
+     */
+    private function erbkette(Node|Relation $subject): array
+    {
+        $traeger = $subject instanceof Node ? $subject->id : $subject->fromId;
+
+        if (isset($this->ketteGedaechtnis[$traeger])) {
+            return $this->ketteGedaechtnis[$traeger];
+        }
+
+        $knoten = $subject instanceof Node ? $subject : $this->knoten($traeger);
+
+        return $this->ketteGedaechtnis[$traeger] = $knoten === null
+            ? [$traeger]
+            : $this->framework->inheritanceOwnersOf($knoten);
+    }
+
+    /**
+     * Die Feldkanten dieser Besitzer in **einer** Abfrage (`CD-7`).
+     *
+     * @param list<int> $besitzer
+     */
+    private function kantenVorladen(array $besitzer): void
+    {
+        $offen = array_values(array_filter(
+            array_unique($besitzer),
+            fn (int $id): bool => ! isset($this->kantenNachBesitzer[$id])
+        ));
+
+        if ($offen === []) {
+            return;
+        }
+
+        // ⚠️ *Erst leer setzen, dann füllen — sonst fragt der nächste Lauf jeden Besitzer erneut, der
+        // gar keine Kanten hat.*
+        foreach ($offen as $id) {
+            $this->kantenNachBesitzer[$id] = [];
+        }
+
+        foreach ($this->relations->fieldEdgesOf($offen) as $eine) {
+            $this->kantenNachBesitzer[$eine->fromId][$eine->id] = $eine;
+        }
+    }
+
+    /** @var array<int,array<int,Relation>> Besitzer-Id => seine **eigenen** Feldkanten */
+    private array $kantenNachBesitzer = [];
+
+    /** @var array<int,list<int>> Träger-Id => wer für ihn vererbt */
+    private array $ketteGedaechtnis = [];
+
+    /** @var array<int,?Node> Knoten-Id => der Knoten, oder null wenn es ihn nicht gibt */
+    private array $knotenGedaechtnis = [];
+
+    private function knoten(int $id): ?Node
+    {
+        if (! array_key_exists($id, $this->knotenGedaechtnis)) {
+            $this->knotenGedaechtnis[$id] = $this->nodes->find($id);
+        }
+
+        return $this->knotenGedaechtnis[$id];
+    }
+
+    /**
+     * Alles, was diese Gegenstände zusammen brauchen, in **einem** Zug holen.
+     *
+     * ⚠️ **Ohne das ist die Kette ein N+1** (`CD-7`). *Gemessen an `package7-check.php`, das genau
+     * dafür da ist: **«sieben Felder kosten keine sieben Läufe»** — mit einem Zug je Feld waren es
+     * 19 Abfragen für 7 Felder und 35 für 14, also linear mit der Zahl der Felder. Ein Formular fragt
+     * alle seine Felder nacheinander, und die Ketten überschneiden sich fast vollständig.*
+     *
+     * @param list<Node|Relation> $subjects
+     */
+    public function preload(array $subjects): void
+    {
+        $ziele   = [];
+        $traeger = [];
+
+        foreach ($subjects as $subject) {
+            if ($subject instanceof Node) {
+                $this->knotenGedaechtnis[$subject->id] = $subject;
+                $ziele[]                               = $subject->id;
+
+                continue;
+            }
+
+            $ziele[]   = $subject->toId;
+            $traeger[] = $subject->fromId;
+        }
+
+        $unbekannt = array_values(array_filter(
+            array_unique([...$ziele, ...$traeger]),
+            fn (int $id): bool => ! array_key_exists($id, $this->knotenGedaechtnis)
+        ));
+
+        if ($unbekannt !== []) {
+            $gefunden = $this->nodes->byIds($unbekannt);
+
+            foreach ($unbekannt as $id) {
+                $this->knotenGedaechtnis[$id] = $gefunden[$id] ?? null;
+            }
+        }
+
+        $alle = $traeger;
+
+        foreach ([...$ziele, ...$traeger] as $id) {
+            $knoten = $this->knoten($id);
+
+            $alle = [
+                ...$alle,
+                ...($knoten === null ? [$id] : $this->framework->inheritanceOwnersOf($knoten)),
+            ];
+        }
+
+        $alle = array_values(array_unique($alle));
+
+        $this->kantenVorladen($alle);
+        $this->vorladen($alle);
+    }
 
     /**
      * Die Angaben, die diese **Verwendungsstelle** am Modell trägt.
@@ -218,6 +497,19 @@ final class ModelValues
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true);
         }
 
+        // ⚠️ **Stufe 2 und 3 der Kette** ([D-602](../../../docs/NewConcept/90-decision-log.md)): *was
+        // die Kante nicht selbst sagt, sagt der **Zielknoten**, und was der nicht sagt, seine
+        // Vorfahren. Vom Standpunkt der Kante ist beides geerbt — deshalb `false`.*
+        $ziel = $this->knoten($edge->toId);
+
+        if ($ziel === null) {
+            return $aus;
+        }
+
+        foreach ($this->kette($ziel, false) as $schluessel => $angabe) {
+            $aus[$schluessel] ??= $angabe;
+        }
+
         return $aus;
     }
 
@@ -234,14 +526,23 @@ final class ModelValues
      */
     private function rendererNodeBehind(int $reference): ?Node
     {
-        $satz = $this->records->find($reference);
-
-        if ($satz !== null) {
-            return $this->nodes->find($satz->nodeId);
+        // ⚠️ **Gemerkt, weil die Kette dieselbe Antwort mehrfach braucht** (`CD-7`,
+        // [D-602](../../../docs/NewConcept/90-decision-log.md)). *Gemessen an drei Feldern:
+        // **sechzehn Abfragen, zehn davon hier** — derselbe Renderer viermal nachgeschlagen, einmal je
+        // Glied der Kette. Die Zahl der Renderer ist klein und fest; die der Felder ist es nicht.*
+        if (array_key_exists($reference, $this->rendererGedaechtnis)) {
+            return $this->rendererGedaechtnis[$reference];
         }
 
-        return $this->nodes->find($reference);
+        $satz = $this->records->find($reference);
+
+        return $this->rendererGedaechtnis[$reference] = $satz !== null
+            ? $this->knoten($satz->nodeId)
+            : $this->knoten($reference);
     }
+
+    /** @var array<int,?Node> Verweis => der Knoten des Renderers dahinter */
+    private array $rendererGedaechtnis = [];
 
     /**
      * Der Name des Renderers unter dieser Adresse, oder `null`.

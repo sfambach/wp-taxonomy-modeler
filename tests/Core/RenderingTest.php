@@ -368,13 +368,11 @@ final class RenderingTest extends TestCase
     #[Test]
     public function a_choice_made_at_the_type_reaches_every_use_of_it(): void
     {
-        // ⚠️ **Diese Zusicherung hing an der Auflösungskette der `settings`-Tabelle, und die ist mit
-        // [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen.** *Der Weg über die
-        // Datensätze ist **noch ohne Vererbung** — {@see \Taxmod\Core\Service\ModelValues} sagt es
-        // in ihrem eigenen Docblock: «geantwortet wird aus dem Satz **dieses** Knotens». **Die
-        // Zusicherung wird nicht gelöscht und nicht abgeschwächt**, sondern steht als offene Frage
-        // im Eingang (`INF-010`): erbt eine Einstellung, und woher.*
-        self::markTestIncomplete('Vererbung von Einstellungen: offen seit D-579, siehe INF-010 im Eingang.');
+        // ⚠️ **Wieder eine echte Zusage seit [D-602](../../docs/NewConcept/90-decision-log.md).**
+        // *Sie hing an der Auflösungskette der `settings`-Tabelle und stand seit deren Streichung
+        // ([D-579](../../docs/NewConcept/90-decision-log.md)) als `INF-010` offen — nicht gelöscht
+        // und nicht abgeschwächt. Getragen wird sie jetzt von Stufe 2 der Kette über die Datensätze:
+        // die Kante sagt nichts, also antwortet der **Zielknoten**.*
 
         $int  = $this->type('int');
         $part = $this->thing('Part');
@@ -898,11 +896,10 @@ final class RenderingTest extends TestCase
         // a **setting** (D-251, D-252) and settings inherit (D-079) — so a change above arrives.
         // Recorded rather than reconciled: legacy is a quarry, not a source (`PR-1`).
         //
-        // ⚠️ **Getragen hat das die Kette der `settings`-Tabelle, gestrichen mit
-        // [D-579](../../docs/NewConcept/90-decision-log.md).** *Der Weg über die Datensätze erbt
-        // heute nicht ({@see \Taxmod\Core\Service\ModelValues}: «noch ohne Vererbung»). Offen im
-        // Eingang als `INF-010`.*
-        self::markTestIncomplete('Vererbung von Einstellungen: offen seit D-579, siehe INF-010 im Eingang.');
+        // ⚠️ **Wieder eine echte Zusage seit [D-602](../../docs/NewConcept/90-decision-log.md).**
+        // *Getragen hat das die Kette der `settings`-Tabelle, gestrichen mit
+        // [D-579](../../docs/NewConcept/90-decision-log.md); seither stand sie als `INF-010` offen.
+        // Jetzt trägt sie Stufe 3: der Wert liegt am **Vorfahren**, und der Nachfahre sieht ihn.*
 
         $part  = $this->thing('Part');
         $child = $this->editor->createNode('Resistor', $part->id);

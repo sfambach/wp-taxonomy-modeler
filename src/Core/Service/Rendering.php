@@ -1941,6 +1941,12 @@ final class Rendering
     {
         $resolved = $this->vonDenKanten($edges);
 
+        // ⚠️ *Alle Ketten auf einmal, bevor die erste gelesen wird (`CD-7`,
+        // [D-602](../../../docs/NewConcept/90-decision-log.md)). Sieben Felder eines Formulars zeigen
+        // auf sieben Typen, deren Vorfahren sich fast vollständig überschneiden — je Feld nachzusehen
+        // wäre linear in der Zahl der Felder, und genau das misst `package7-check.php`.*
+        $this->model?->preload($edges);
+
         $aus = [];
 
         foreach ($edges as $edge) {
