@@ -1944,7 +1944,13 @@ final class NodesScreen
         return $this->form(
             $selected->id,
             [],
-            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" required style="flex:1">'
+            // WICHTIG: Ohne Namen wird der Knotenname benutzt -- TASK-026, auf sein Wort: "wenn
+            // kein name eingegeben wird, wird der knoten name verwendet". Der Schalter steht
+            // auf «Knotennamen benutzen», weil das der haeufigere Fall ist; er hat es so
+            // entschieden. Das Feld ist deshalb auch nicht mehr Pflicht.
+            '<label class="taxmod-usename"><input type="checkbox" name="use_node_name" value="1" checked> '
+            . esc_html__('Use the node name', 'taxmod') . '</label>'
+            . '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" style="flex:1" disabled>'
             . $chooser
             . '<input type="text" class="taxmod-chosen" readonly tabindex="-1"'
             . ' placeholder="' . esc_attr__('Nothing chosen yet', 'taxmod') . '" style="flex:1">'
@@ -3507,7 +3513,14 @@ final class NodesScreen
                 'clear_trash'    => $this->clearedTrash(),
                 'trash'          => $this->editor->moveToTrash($id),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
-                'add_field'  => $this->editor->addField($id, $pointsAt, $name),
+                // WICHTIG: Leerer Name heisst «nimm den des Zielknotens» (TASK-026). Entschieden
+                // wird es hier und nicht im Kern: welcher Name gemeint ist, ist eine Frage der
+                // Maske, und addField() soll weiter genau das anlegen, was man ihm sagt.
+                'add_field'  => $this->editor->addField(
+                    $id,
+                    $pointsAt,
+                    $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name
+                ),
                 // Parked, not purged — D-123's two stages, so it can come back.
                 'remove_field'  => $this->editor->removeField($id, $edge),
                 'restore_field' => $this->editor->restoreField($id, $edge),

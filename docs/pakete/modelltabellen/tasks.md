@@ -322,7 +322,7 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
 ## Seine Liste vom 2026-09-04
 
 ```text
-[ ] TASK-026  Fields/Anlegen: ohne Namen wird der Knotenname benutzt — mit
+[x] TASK-026  Fields/Anlegen: ohne Namen wird der Knotenname benutzt — mit
               Schalter, und die Beschriftung zieht mit
 [x] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
 [x] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
@@ -417,3 +417,12 @@ ausgefallen. Jetzt trägt `Rendering::nodeChooser()` das Konzept.*
 Seitenansicht ist zugeklappt — 11 von 145 Zeilen stehen im Dokument. **Was nicht dasteht, findet
 kein Skript.** Deshalb sucht dort jetzt der Server: voll aufklappen, auf Treffer plus deren Weg
 eindampfen. Der Auswahldialog behält den Browserfilter, weil er alle Zeilen hat.*
+
+⚠️ **TASK-026 zur Hälfte erledigt am 2026-09-04.** *Der **Name** zieht aus dem Zielknoten, der
+Schalter steht auf «Knotennamen benutzen», und das Feld wird gesperrt statt geleert — «Schalter
+umschalten, Feld wird geöffnet, Name steht noch da».*
+
+⚠️ **Die andere Hälfte wartet auf TASK-019:** *«die Frage ist, was mit Labels ist — die sollten dann
+auch aus dem Knoten verwendet werden, somit müsste `label_id` von Kante auf den gleichen zeigen wie
+Knoten.» **Das geht erst, wenn `labels` und `label_texts` stehen** ([D-580](../../NewConcept/90-decision-log.md)) —
+heute gibt es die Spalte `relations.label_id` noch nicht.*

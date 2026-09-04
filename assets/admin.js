@@ -406,4 +406,25 @@
 		}
 	} );
 
+	/**
+	 * Der Schalter «Knotennamen benutzen» -- TASK-026.
+	 *
+	 * Auf sein Wort: "Schalter umschalten, Feld wird geoeffnet, Name steht noch da". Das Feld wird
+	 * also nur gesperrt und nicht geleert -- wer zurueckschaltet, findet seinen Namen wieder.
+	 */
+	document.addEventListener( 'change', function ( event ) {
+		var schalter = event.target;
+
+		if ( ! schalter || ! schalter.matches || ! schalter.matches( 'input[name="use_node_name"]' ) ) {
+			return;
+		}
+
+		var form = schalter.closest( 'form' );
+		var feld = form ? form.querySelector( 'input[name="name"]' ) : null;
+
+		if ( feld ) {
+			feld.disabled = schalter.checked;
+		}
+	} );
+
 } )();
