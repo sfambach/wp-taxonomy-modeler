@@ -264,6 +264,22 @@ Prüfung und keine Lösung.*
 ⚠️ *Was fehlt, ist eine Zeile im Kern und keine Entscheidung über das Modell — aber sie gehört an
 eine Stelle, und welche, sagst Du.*
 
+**2026-09-04 gebaut — die Stelle ist `DataEntry`, neben dem Schreiber am Knoten.** *Sie heisst
+`putSettingAtUseSite()` / `clearSettingAtUseSite()`, legt keine neue Ablage an und schreibt an genau
+die Adresse, an der `ModelValues::forUseSite()` liest. **Die zwei Behelfe sind weg**: `converter-check`
+und `package7-check` schreiben jetzt durch den Kern und sind beide grün. Der Rand ruft sie in
+`NodesScreen::saveUseSiteSettings()` — die Angaben einer **Feldzeile**, die als
+`taxmod_field_setting[<Kanten-Id>][<Schlüssel>]` ankommen und bis dahin bis auf `multiplicity` **alle
+fallengelassen wurden**; gezeichnet waren sie längst, als Feldzeilen im Settings-Block
+([D-520](../../NewConcept/90-decision-log.md)), und keine zweite Tafel ist dazugekommen.*
+
+⚠️ **Eine Grenze, die dabei gemessen wurde und die Du kennen solltest.** *Eine Einstellungskante wird
+an der Kette des **Besitzers** gesucht, weil der Leser sie genau dort sucht. Ein Schlüssel, den nur
+der **Zielknoten** erklärt — `read_only` gibt es zweimal, an `Root` und an `Integer` — wird an einer
+Verwendungsstelle darum **nicht** geschrieben statt an eine Adresse gelegt, die niemand liest. Das
+ist heute eine Entscheidung des Schreibers und keine des Modells; **ob eine Verwendungsstelle eine
+Einstellung des Ziels überschreiben können soll, sagst Du.***
+
 ---
 
 ## INF-012 · Wer prüft künftig, dass eine Grenze nur enger wird?

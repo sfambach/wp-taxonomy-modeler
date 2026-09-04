@@ -471,6 +471,115 @@ if ($rendererId !== 0 && $aussen !== 0 && $innen !== 0 && $verwalter !== []) {
     );
 }
 
+echo "\n== Und dieselbe Angabe an einer Verwendungsstelle ==\n";
+
+// ⚠️ **Die Zusage aus [`INF-011`](../../docs/pakete/modelltabellen/inbox.md).** *Fuer eine Angabe **an
+// einer Kante** — `label_role` an `Einheitenwert.prefix`, `read_only` an einem Feld — gab es genau
+// einen Schreiber, und der war `Settings::put()` in die mit
+// [D-579](../../docs/NewConcept/90-decision-log.md) gestrichene Tabelle. **Zwei Waechter legten die
+// Zeile deshalb selbst ueber die Speicher an** — ein Behelf in einer Pruefung.*
+//
+// ⚠️ *Derselbe Rundlauf wie oben, nur eine Adresse tiefer: schreiben, lesen, dasselbe herausbekommen.
+// **Und die Gegenprobe zaehlt genauso** — `setHere` sagt, ob die Angabe **hier** steht oder vom Ziel
+// geerbt ist ([D-602](../../docs/NewConcept/90-decision-log.md)), und ohne sie waere eine geerbte
+// Antwort von einer gesetzten nicht zu unterscheiden.*
+//
+// ⚠️ *Auf dem eigenen Pruefknoten und an einer eigens angelegten Stelle — der Aufraeumer nimmt die
+// Kante mit, weil sie an ihm haengt.*
+// ⚠️ *Der Typ ueber die notierte Id und nicht ueber den Namen
+// ([D-510](../../docs/NewConcept/90-decision-log.md)) — es darf mehrere Knoten namens `Integer`
+// geben ([D-022](../../docs/NewConcept/90-decision-log.md)), und einer davon hat schon einmal
+// geantwortet.*
+$typId = (new \Taxmod\WordPress\Persistence\SeededTypeNodes($nodes, $framework))
+    ->nodeId(\Taxmod\Core\Model\SimpleType::Int);
+
+if ($typId === null) {
+    check('der Datentyp «int» ist gesaet', false);
+
+    exit(1);
+}
+
+$stelle = $editor->addField($knotenId, $typId, 'pruefstelle');
+
+$einstellung = $data->settingEdgeAtUseSite($stelle, 'read_only');
+
+if ($einstellung === null) {
+    check('die Einstellungskante «read_only» ist an der Stelle zu finden', false, 'nicht gefunden');
+} else {
+    check('die Einstellungskante «read_only» ist an der Stelle zu finden', true);
+
+    // ⚠️ *Ein frischer Leser je Frage — {@see ModelValues} merkt sich seine Funde je Instanz (`CD-7`).*
+    $anDerStelle = static function () use ($records, $edges, $nodes, $framework, $stelle): ?bool {
+        $angabe = (new ModelValues($records, $edges, $nodes, $framework))->forUseSite($stelle)['read_only'] ?? null;
+
+        return $angabe === null ? null : $angabe->setHere;
+    };
+
+    check('vorher steht dort nichts', $anDerStelle() !== true, 'schon gesetzt');
+
+    $data->putSettingAtUseSite($stelle->id, $einstellung->id, TypedValue::ofBool(true));
+
+    check('geschrieben, und der Leser findet sie an der Stelle', $anDerStelle() === true);
+
+    // ⚠️ **Und sie liegt unter der Adresse, an der der Leser sie sucht** — im Satz des **Besitzers**
+    // unter `<Verwendungsstelle>.<Einstellungskante>`. *Ohne diese Zusage koennte der Wert im Satz des
+    // Ziels landen und truege dort fuer alle, die es verwenden.*
+    $zeilen = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' w
+         INNER JOIN ' . Schema::table('records') . ' r ON r.id = w.record_id
+         WHERE r.node_id = %d AND w.path = %s',
+        $knotenId,
+        $stelle->id . '.' . $einstellung->id
+    ));
+
+    check('und zwar im Satz des Besitzers, unter der zweistufigen Adresse', $zeilen === 1, (string) $zeilen);
+
+    // ⚠️ *«Nichts» ist auch hier eine Wahl und sie loescht — derselbe dritte Zustand wie am Knoten.*
+    $data->clearSettingAtUseSite($stelle->id, $einstellung->id);
+
+    check('herausgenommen, und die Stelle sagt nichts mehr', $anDerStelle() !== true);
+
+    // ⚠️ **Und derselbe Weg ueber die Seite, wie ein Mensch ihn geht** — die Angaben einer Feldzeile
+    // kommen als `taxmod_field_setting[<Kanten-Id>][<Schluessel>]` an
+    // ([D-520](../../docs/NewConcept/90-decision-log.md): sie stehen als **Feldzeilen** im
+    // Settings-Block, nicht in einer eigenen Tafel unter der Zeile).
+    if ($verwalter !== []) {
+        wp_set_current_user($verwalter[0]->ID);
+
+        $zeile = static function (string $wert) use ($knotenId, $stelle): string {
+            $_POST = [
+                'action'               => 'taxmod_node',
+                'id'                   => (string) $knotenId,
+                'do'                   => 'put_setting',
+                '_taxmod_nonce'        => wp_create_nonce('taxmod_node_' . $knotenId),
+                'taxmod_field_setting' => [(string) $stelle->id => ['read_only' => $wert]],
+            ];
+            $_REQUEST = $_POST;
+
+            try {
+                $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+                $plugin = $bau->newInstanceWithoutConstructor();
+                $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+                $plugin->screen()->handlePost();
+            } catch (RuntimeException $e) {
+                return str_starts_with($e->getMessage(), '__weitergeleitet__')
+                    ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
+                    : $e->getMessage();
+            }
+
+            return '';
+        };
+
+        check('der Akt der Feldzeile laeuft durch', $zeile('1') === 'ok');
+
+        check('und die Angabe steht danach an der Stelle', $anDerStelle() === true);
+
+        check('der leere Akt laeuft auch durch', $zeile('') === 'ok');
+
+        check('und nimmt sie wieder heraus', $anDerStelle() !== true);
+    }
+}
+
 echo "\n== Eine Zeile hinzufuegen legt einen zweiten Teil an ==\n";
 
 // ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich Zeilen

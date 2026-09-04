@@ -2923,11 +2923,80 @@ final class NodesScreen
                 ? sanitize_text_field((string) $angaben[$kante->id][SettingKey::Multiplicity->value])
                 : '';
 
+            // ⚠️ **Alles ausser «wie oft» ist eine Einstellung dieser Verwendungsstelle**
+            // ([`INF-011`](../../../docs/pakete/modelltabellen/inbox.md)). *Gezeichnet wurden sie
+            // längst — als **Feldzeilen im Settings-Block**, wie
+            // [D-520](../../../docs/NewConcept/90-decision-log.md) es verlangt —, angenommen hat sie
+            // niemand: diese Schleife las genau einen Schlüssel und liess die übrigen fallen. **Ein
+            // Steuerelement, das man bedienen kann und das nichts bewirkt**, ist derselbe Mangel, den
+            // der Eigentümer am Renderer gefunden hat.*
+            //
+            // ⚠️ *«wie oft» geht weiter seinen eigenen Weg: es ist eine **Spalte** der Kante
+            // ([D-351](../../../docs/NewConcept/90-decision-log.md)) und keine Zeile in einem Satz.*
+            $this->saveUseSiteSettings($kante, is_array($angaben[$kante->id] ?? null) ? $angaben[$kante->id] : []);
+
             if ($name === '' && $wieOft === '') {
                 continue;
             }
 
             $this->saveField($nodeId, $kante->id, $name, $wieOft);
+        }
+    }
+
+    /**
+     * Die Angaben **einer Feldzeile** annehmen — die Einstellungen dieser einen Verwendungsstelle.
+     *
+     * ⚠️ **Das fehlende Gegenstück zum Leser** ({@see \Taxmod\Core\Service\ModelValues::forUseSite()}).
+     * *`label_role` an `Einheitenwert.prefix`, `converter` an einem Feld: der Leser sucht sie im Satz
+     * des Besitzers unter `<Verwendungsstelle>.<Einstellungskante>`, und geschrieben hat sie zuletzt
+     * `Settings::put()` in die mit [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichene
+     * Tabelle.*
+     *
+     * ⚠️ **Keine zweite Tafel** ([D-520](../../../docs/NewConcept/90-decision-log.md)): *die Angaben
+     * stehen als Feldzeilen im Settings-Block und kommen unter der Adresse an, die diese Zeilen schon
+     * zeichnen. **Hier entsteht kein neues Steuerelement**, nur der Weg, den das gezeichnete nimmt.*
+     *
+     * ⚠️ **Der Schlüssel wird nachgeschlagen und nicht geglaubt** (`CD-5`): *nur eine
+     * Einstellungskante, die das Ziel dieser Stelle wirklich trägt, darf geschrieben werden — sonst
+     * schriebe ein verändertes Formular an eine Adresse, die niemand liest.*
+     *
+     * ⚠️ *Ein leerer Wert **löscht**, wie überall sonst auf dieser Seite: er kommt nur an, wenn ein
+     * Steuerelement dastand, und «nichts» ist eine Wahl
+     * ([D-232](../../../docs/NewConcept/90-decision-log.md)s dritter Zustand).*
+     *
+     * @param array<array-key, mixed> $angaben Schlüssel ⇒ eingereichter Text.
+     */
+    private function saveUseSiteSettings(Relation $useSite, array $angaben): void
+    {
+        foreach ($angaben as $schluessel => $roh) {
+            $key = sanitize_key((string) $schluessel);
+
+            // «wie oft» ist eine Spalte der Kante und wird von saveField() geschrieben.
+            if ($key === SettingKey::Multiplicity->value || is_array($roh)) {
+                continue;
+            }
+
+            $kante = $this->data->settingEdgeAtUseSite($useSite, $key);
+
+            if ($kante === null) {
+                continue;
+            }
+
+            $zeichen = trim(sanitize_text_field((string) $roh));
+
+            if ($zeichen === '') {
+                $this->data->clearSettingAtUseSite($useSite->id, $kante->id);
+
+                continue;
+            }
+
+            $wert = $this->rendering->valuesFrom([$kante], [$kante->id => $zeichen])[$kante->id] ?? null;
+
+            if ($wert === null || $wert->isNothing()) {
+                continue;
+            }
+
+            $this->data->putSettingAtUseSite($useSite->id, $kante->id, $wert);
         }
     }
 

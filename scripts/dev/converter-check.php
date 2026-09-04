@@ -73,24 +73,27 @@ if ($integerId === null) {
 
 $edge = $editor->addField($holder->id, $integerId, 'zaehler');
 
-// ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — so, wie das Modell sie ablegt.**
-// *Hier stand `$settings->put($settings->chainForUseSite($edge), …)`. Die `settings`-Tabelle ist mit
-// [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen, und einen **Schreiber fuer eine
-// Einstellung an einer Verwendungsstelle** gibt es im Kern noch nicht:
-// {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} schreibt am **Knoten**. Das ist im Eingang
-// als `INF-011` vermerkt und nicht hier nebenbei entschieden — der Waechter legt die Zeile darum
-// selbst, ueber die Speicher, und raeumt sie mit seiner Spielwiese wieder weg.*
+// ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — jetzt ueber den Kern.**
+// *Hier stand `$settings->put($settings->chainForUseSite($edge), …)`, und danach stand hier ein
+// **Behelf**: der Waechter legte die Zeile selbst ueber die Speicher an, weil
+// {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} am **Knoten** schreibt und es fuer eine
+// Verwendungsstelle keinen Schreiber gab ([`INF-011`](../../docs/pakete/modelltabellen/inbox.md)).
+// **Den gibt es jetzt** — {@see \Taxmod\Core\Service\DataEntry::putSettingAtUseSite()} —, und ein
+// Waechter, der an der Pruefung vorbei schreibt, misst seinen eigenen Behelf statt den Kode.*
+//
+// ⚠️ *Was hier bleibt, ist das Anlegen der Einstellungskante: der Kern **erfindet** keine Kante
+// (`CD-5`), und die Spielwiese dieses Laufs bringt sie nicht mit.*
 $einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($nodes, $edges, $fw, $zeichner, &$rendering): void {
-    $records = new WpdbRecordRepository();
     $traeger = $nodes->byId($stelle->fromId);
+    $data    = new \Taxmod\Core\Service\DataEntry(
+        new WpdbRecordRepository(),
+        $edges,
+        $nodes,
+        $fw,
+        new \Taxmod\WordPress\SystemClock()
+    );
 
-    $kante = null;
-
-    foreach ($edges->fieldEdgesOf([$traeger->id]) as $eine) {
-        if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting && $eine->name === $key) {
-            $kante = $eine;
-        }
-    }
+    $kante = $data->settingEdgeAtUseSite($stelle, $key);
 
     if ($kante === null) {
         $kante = $edges->add(\Taxmod\Core\Model\Relation::attribute(
@@ -103,21 +106,7 @@ $einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key
         ));
     }
 
-    // ⚠️ *Denselben Satz wieder benutzen und nicht jedes Mal einen neuen: {@see \Taxmod\Core\Service\ModelValues}
-    // nimmt je Schluessel den **ersten** Satz, der etwas dazu sagt — ein zweiter Satz haette die
-    // erste Angabe nie abgeloest, und der Waechter haette den alten Konverter weitergemessen.*
-    $vorhanden = $records->ofNode($traeger->id);
-    $satzId    = $vorhanden === []
-        ? $records->add(new \Taxmod\Core\Model\NodeRecord(0, $traeger->id, $traeger->version, gmdate('Y-m-d H:i:s')))
-        : $vorhanden[0]->id;
-
-    // ⚠️ *Erst die alte Zeile weg: {@see \Taxmod\WordPress\Persistence\WpdbRecordRepository::putValue()}
-    // legt ohne Id **an** statt zu ersetzen, und zwei Zeilen auf demselben Pfad haetten die erste
-    // gewinnen lassen.*
-    $pfad = $stelle->id . '.' . $kante->id;
-
-    $records->forgetValue($satzId, $pfad, '');
-    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, $pfad, $kante->id, '', $wert));
+    $data->putSettingAtUseSite($stelle->id, $kante->id, $wert);
 
     $rendering = $zeichner();
 };

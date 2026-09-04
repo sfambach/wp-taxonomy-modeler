@@ -113,4 +113,13 @@ final class NotYetStorable extends DomainError
     {
         return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));
     }
+
+    /**
+     * ⚠️ *Eine Verwendungsstelle wird über ihre **Id** angesprochen, und eine Id, die auf nichts zeigt,
+     * ist Eingabe und kein Zustand — sie wird gemeldet und nicht als «nichts zu tun» geschluckt.*
+     */
+    public static function noSuchUseSite(int $edgeId): self
+    {
+        return new self(sprintf('There is no use site %d.', $edgeId));
+    }
 }

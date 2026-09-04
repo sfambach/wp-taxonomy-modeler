@@ -702,6 +702,133 @@ final class DataEntry
     }
 
     /**
+     * Eine Angabe **an einer Verwendungsstelle** festschreiben — «hier, an dieser einen Kante».
+     *
+     * ⚠️ **Das Stück, das gefehlt hat** ([`INF-011`](../../../docs/pakete/modelltabellen/inbox.md)).
+     * *{@see self::putSettingAt()} schreibt am **Knoten**; für `label_role` an `Einheitenwert.prefix`
+     * gab es genau einen Schreiber, und der war `Settings::put()` in die mit
+     * [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichene Tabelle. **Zwei Wächter legten
+     * die Zeile deshalb selbst über die Speicher an** — ein Behelf in einer Prüfung.*
+     *
+     * ⚠️ **Keine neue Ablage, und das ist der ganze Punkt.** *Die Adresse steht schon fest, weil der
+     * Leser sie schon liest: {@see ModelValues::forUseSite()} sucht im Satz des **Besitzers** unter
+     * `<Verwendungsstelle>.<Einstellungskante>`. Hier wird nur an dieselbe Stelle geschrieben —
+     * {@see self::putAt()} tut es, samt geprüfter Adresse.*
+     *
+     * ⚠️ *Der Satz ist der **`default`** des Besitzers, wie bei jeder Angabe des Modells
+     * ([D-026](../../../docs/NewConcept/90-decision-log.md): «at model level there are no values, only
+     * defaults»). Der Besitzer ist `fromId` und nicht das Ziel — sonst stünde die Angabe am Typ und
+     * gälte für alle, die ihn verwenden, was genau die Unterscheidung ist, um die es hier geht.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   B["Besitzer"] --> D["sein default-Satz"]
+     *   D -->|"Kanten-Id . Einstellungskante"| W["der Wert dieser einen Stelle"]
+     * ```
+     */
+    /**
+     * Welche Einstellungskante an dieser Verwendungsstelle diesen Namen trägt.
+     *
+     * ⚠️ **Gesucht wird an der Kette des *Besitzers*, und das ist gemessen und nicht überlegt.**
+     * *Erst stand hier die Kette des **Ziels** — und `read_only` gibt es zweimal: an `Root` und an
+     * `Integer`. Geschrieben wurde die Kante von `Integer`, und
+     * {@see ModelValues::settingEdge()} sucht die Kante einer Verwendungsstelle an der Kette ihres
+     * **Besitzers** — dort ist `Integer` nicht. **Die Zeile stand richtig in der Datenbank und war
+     * für den Leser nicht da.** Genau der Fehler, den dieses Projekt schon mehrfach hatte: Schreiber
+     * und Leser auf zwei Adressen.*
+     *
+     * ⚠️ *Kein Name aus dem Formular wird zur Id gemacht, ohne dass er hier gefunden wurde
+     * (`CD-5`) — ein unbekannter Schlüssel bekommt `null` und nicht eine erfundene Kante. **Und ein
+     * Schlüssel, den nur das Ziel erklärt, bekommt ebenfalls `null`**: ihn zu schreiben hiesse, eine
+     * Zeile anzulegen, die niemand liest.*
+     */
+    public function settingEdgeAtUseSite(Relation $useSite, string $key): ?Relation
+    {
+        $besitzer = $this->nodes->find($useSite->fromId);
+
+        if ($besitzer === null) {
+            return null;
+        }
+
+        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
+            if ($kante->kind->isSetting() && $kante->name === $key) {
+                return $kante;
+            }
+        }
+
+        return null;
+    }
+
+    public function putSettingAtUseSite(int $edgeId, int $settingEdgeId, TypedValue $value, string $locale = ''): void
+    {
+        $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
+
+        // ⚠️ **Nicht über {@see self::putAt()}, und der Grund ist gemessen.** *Jener prüft die zweite
+        // Stufe an der Kette des **Ziels** — «ist `converter` ein Feld von `Integer`?». Eine
+        // Einstellungskante einer Verwendungsstelle gehört aber dem **Besitzer**: sie ist an ihm oder
+        // an einem seiner Vorfahren erklärt, und genau dort sucht sie der Leser wieder
+        // ({@see ModelValues::settingEdge()}). **Durch `putAt()` gelegt wurde jede Angabe abgewiesen,
+        // die der Besitzer erklärt hat** — also die, um die es hier geht.*
+        $satzId    = $this->defaultRecordOf($stelle->fromId);
+        $kante     = $this->useSiteSettingEdge($stelle, $settingEdgeId);
+        $pfad      = $edgeId . '.' . $kante->id;
+        $vorhanden = $this->valuesAtPath($satzId, $pfad, $locale);
+
+        // ⚠️ *Zwei Zeilen auf einem Pfad liessen die erste gewinnen, und das Ändern ginge ins Leere —
+        // dieselbe Verweigerung wie in {@see self::put()}.*
+        if (count($vorhanden) > 1) {
+            throw NotYetStorable::thatFieldHasSeveralValues($kante->name, count($vorhanden));
+        }
+
+        $this->records->putValue(
+            $vorhanden === []
+                ? EdgeRecord::at($satzId, [$edgeId, $kante->id], $value, $locale)
+                : new EdgeRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        );
+    }
+
+    /**
+     * Die Einstellungskante dieser Id — geprüft an der Kette, an der der Leser sie sucht.
+     *
+     * ⚠️ **Geprüft statt geglaubt** (`CD-5`). *Eine Id aus einem Formular, die keine
+     * Einstellungskante des Besitzers ist, würde eine Zeile an eine Adresse legen, die niemand liest.*
+     */
+    private function useSiteSettingEdge(Relation $useSite, int $settingEdgeId): Relation
+    {
+        $besitzer = $this->nodes->byId($useSite->fromId);
+
+        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
+            if ($kante->id === $settingEdgeId && $kante->kind->isSetting()) {
+                return $kante;
+            }
+        }
+
+        throw NotYetStorable::notAFieldOfThisModel($settingEdgeId, $besitzer->name);
+    }
+
+    /**
+     * Dieselbe Adresse, aber die Angabe wird **herausgenommen**.
+     *
+     * ⚠️ **Der dritte Zustand aus [D-232](../../../docs/NewConcept/90-decision-log.md), nicht ein
+     * vierter.** *«Nichts» ist an einer Verwendungsstelle dasselbe wie am Knoten: die Zeile geht weg,
+     * und was der Zielknoten oder seine Vorfahren sagen, gilt wieder
+     * ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Kein Satz wird angelegt, um in ihm zu löschen — gibt es keinen, ist die Angabe schon
+     * unbeantwortet. Dieselbe Zurückhaltung wie in {@see self::clearSettingAt()}.*
+     */
+    public function clearSettingAtUseSite(int $edgeId, int $settingEdgeId, string $locale = ''): void
+    {
+        $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
+
+        foreach ($this->records->ofNode($stelle->fromId) as $satz) {
+            if ($satz->kind === RecordKind::Default) {
+                $this->clearPath($satz->id, $edgeId . '.' . $settingEdgeId, $locale);
+            }
+        }
+    }
+
+    /**
      * Was an den Einstellungskanten dieses Knotens steht — je Kante ihr Wert.
      *
      * ⚠️ **Damit eine Bedienung zeigen kann, was gesetzt ist.** *Ein Schalter ohne gelesenen Zustand

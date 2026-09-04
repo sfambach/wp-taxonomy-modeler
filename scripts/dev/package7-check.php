@@ -123,27 +123,42 @@ $kanteFuer = static function (int $traegerId, string $key) use ($edges, $framewo
 };
 
 /** Eine Angabe an einem Knoten oder an einer Verwendungsstelle. */
-$angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($satzVon, $kanteFuer, $nodes): void {
+$angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($satzVon, $kanteFuer, $data): void {
     $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
     $kante     = $kanteFuer($traegerId, $key);
-    $satzId    = $satzVon($traegerId);
-    $pfad      = $wer instanceof \Taxmod\Core\Model\Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
+
+    // ⚠️ **An einer Verwendungsstelle geht es jetzt ueber den Kern.** *Hier stand ein **Behelf** —
+    // der Waechter legte die Zeile selbst ueber die Speicher an, weil es fuer eine Verwendungsstelle
+    // keinen Schreiber gab ([`INF-011`](../../docs/pakete/modelltabellen/inbox.md)). **Den gibt es
+    // jetzt**, und ein Waechter, der am Kode vorbei schreibt, misst seinen eigenen Behelf.*
+    if ($wer instanceof \Taxmod\Core\Model\Relation) {
+        $data->putSettingAtUseSite($wer->id, $kante->id, $wert);
+
+        return;
+    }
+
+    $satzId = $satzVon($traegerId);
 
     $records = new WpdbRecordRepository();
 
     // ⚠️ *Erst die alte Zeile weg — `putValue()` ohne Id legt **an** statt zu ersetzen, und zwei
     // Zeilen auf demselben Pfad liessen die erste gewinnen.*
-    $records->forgetValue($satzId, $pfad, '');
-    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, $pfad, $kante->id, '', $wert));
+    $records->forgetValue($satzId, (string) $kante->id, '');
+    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
 };
 
 /** Dieselbe Angabe wieder wegnehmen. */
-$ohneAngabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key) use ($satzVon, $kanteFuer): void {
+$ohneAngabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key) use ($satzVon, $kanteFuer, $data): void {
     $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
     $kante     = $kanteFuer($traegerId, $key);
-    $pfad      = $wer instanceof \Taxmod\Core\Model\Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
 
-    (new WpdbRecordRepository())->forgetValue($satzVon($traegerId), $pfad, '');
+    if ($wer instanceof \Taxmod\Core\Model\Relation) {
+        $data->clearSettingAtUseSite($wer->id, $kante->id);
+
+        return;
+    }
+
+    (new WpdbRecordRepository())->forgetValue($satzVon($traegerId), (string) $kante->id, '');
 };
 
 /** Der Zeichner neu — {@see \Taxmod\Core\Service\ModelValues} merkt sich die Saetze beim ersten Lesen. */
