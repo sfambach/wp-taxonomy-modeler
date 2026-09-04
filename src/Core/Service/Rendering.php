@@ -658,7 +658,13 @@ final class Rendering
                 $edge,
                 $type,
                 $tiefer === null ? $renderer->name() : $tiefer['renderer'],
-                $tiefer === null ? $renderer->render($edge, $context) : $tiefer['result'],
+                // WICHTIG: Bei einer Auswahl bleiben *beide* stehen -- der Kasten, in dem gewaehlt
+                // wird, und daneben die Felder des Gewaehlten (D-583: "einfach rechts davon
+                // anhaengen finde ich am schoensten"). Vorher ersetzte der Abstieg den Kasten,
+                // und der Renderer liess sich nicht mehr wechseln.
+                $tiefer === null
+                    ? $renderer->render($edge, $context)
+                    : $this->chosenAndItsFields($edge, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
                 $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch()
@@ -2578,7 +2584,13 @@ final class Rendering
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
-        if ($type !== null || $tiefe >= self::TIEFSTENS) {
+        // WICHTIG: Ein Teil schlaegt den Typ. Diese Zeile hiess "$type !== null" und stammt aus der
+        // Zeit, in der ein Knotenverweis nie Felder hatte -- die Kante "render" traegt den Typ
+        // NodeRef, und damit endete der Abstieg genau an der Auswahl. Seit D-583 ist ein gewaehlter
+        // Renderer ein Datensatz mit eigenen Feldern (D-585: converter, geerbt). Ein Teil entsteht
+        // nur, wo das Modell sagt, dass das Ziel einen eigenen Satz braucht -- also ist sein
+        // Vorhandensein der bessere Beleg als der Typ.
+        if (($type !== null && $teile === []) || $tiefe >= self::TIEFSTENS) {
             return null;
         }
 
@@ -2634,8 +2646,13 @@ final class Rendering
         $zeilen = [];
 
         foreach ($teile === [] ? [null] : $teile as $teil) {
+            // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
+            // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
+            // gezeichnet gehoeren dessen Felder. Ohne das endet der Abstieg an der Auswahl.
+            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $edge->toId, $innen);
+
             $zeilen[] = $this->fieldsFor(
-                $innen,
+                $dieseFelder,
                 $teil === null ? [] : $teil['werte'],
                 $purpose,
                 $teil === null || $fieldPrefix === '' ? '' : self::PART_FIELD . '[' . $teil['id'] . ']',
@@ -2646,7 +2663,9 @@ final class Rendering
                 $tiefe + 1,
                 $unterbau,
                 [...$gesehen, $edge->toId => true],
-                [],
+                // WICHTIG: Hier stand eine leere Liste, und daran endete der Abstieg. Die Teile
+                // *dieses* Teils sind der gewaehlte Renderer und was unter ihm haengt (D-583).
+                $teil['teile'] ?? [],
                 $forNode
             );
         }
@@ -2689,6 +2708,68 @@ final class Rendering
                 )
             ),
         ];
+    }
+
+    /**
+     * Welche Felder ein Teil zeigt -- die seines eigenen Knotens.
+     *
+     * WICHTIG: Mit Vererbung, sonst fehlt genau das, was der Basisknoten beisteuert -- seit D-585
+     * ist das der «converter», den jeder Renderer erbt.
+     *
+     * WICHTIG: Faellt auf die Felder des Kantenziels zurueck, wenn der Knoten des Teils derselbe ist
+     * oder nichts zu holen war. Ohne den Rueckfall waere eine Zeile leer, sobald etwas fehlt -- und
+     * eine leere Maske sieht aus wie «nichts eingestellt» statt wie ein Fehler.
+     *
+     * @param array{nodeId?:int} $teil
+     * @param list<Relation> $innen
+     * @return list<Relation>
+     */
+    private function fieldsOfChosen(array $teil, int $targetId, array $innen): array
+    {
+        $gewaehlt = $teil['nodeId'] ?? 0;
+
+        if ($gewaehlt === 0 || $gewaehlt === $targetId || $this->relations === null) {
+            return $innen;
+        }
+
+        $knoten = $this->nodes->find($gewaehlt);
+
+        if ($knoten === null) {
+            return $innen;
+        }
+
+        $eigene = array_values(array_filter(
+            $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($knoten)),
+            static fn (Relation $e): bool => ! $e->hide
+        ));
+
+        return $eigene === [] ? $innen : $eigene;
+    }
+
+    /**
+     * Der Auswahlkasten und die Felder des Gewaehlten, nebeneinander.
+     *
+     * WICHTIG: Nur bei einem Knotenverweis. Ein zusammengesetztes Feld -- eine Adresse in einem
+     * Kunden -- hat nichts zu waehlen; dort waere ein Kasten davor sinnlos.
+     */
+    private function chosenAndItsFields(
+        Relation $edge,
+        ?SimpleType $type,
+        Renderer $renderer,
+        RenderContext $context,
+        RenderResult $tiefer
+    ): RenderResult {
+        if ($type !== SimpleType::NodeRef) {
+            return $tiefer;
+        }
+
+        $wahl = $renderer->render($edge, $context);
+
+        return new RenderResult(
+            $wahl->markup . $tiefer->markup,
+            [...$wahl->usedEdges, ...$tiefer->usedEdges],
+            $tiefer->condition
+        );
     }
 
     private function optionsFor(array $edges): array

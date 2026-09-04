@@ -265,8 +265,8 @@ Der Code kennt die Verwendungsstelle schon: **`UseSite` kommt an 17 Stellen vor*
 drei von elf. Felder im Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 
 ```text
-[ ] TASK-021  Die Renderer-Wahl setzt den Knoten eines vorhandenen Datensatzes
-[ ] TASK-022  Die Einstellungsmaske zeigt den Unterbaum und haengt die Renderer-
+[x] TASK-021  Die Renderer-Wahl setzt den Knoten eines vorhandenen Datensatzes
+[x] TASK-022  Die Einstellungsmaske zeigt den Unterbaum und haengt die Renderer-
               Felder rechts an derselben Zeile an
 ```
 
@@ -282,7 +282,7 @@ Renderer von `Street`, `No.`, `Post Code`, `City` und `Country` zeigen, damit si
 bestätigt, nicht geprüft.*
 
 ```text
-[ ] TASK-023  Basisknoten «Renderer» mit der Einstellung converter, alle
+[x] TASK-023  Basisknoten «Renderer» mit der Einstellung converter, alle
               Renderer erben von ihm
 [ ] TASK-024  Huellknoten DisplayOption abschaffen — 29 Datensaetze,
               32 Wertzeilen: umhaengen oder wegwerfen ist zu entscheiden
@@ -308,3 +308,11 @@ by display name, label, path, or a specific node»*.
 wenn sie fehlen.** Ein Wächter, der Beispielknoten in sein Arbeitsmodell schreibt.
 
 ⚠️ *Vorbild ist `package3-check`: eigene Knoten mit eigenem Namensraum, geprüft, weggeräumt.*
+
+**TASK-021 bis TASK-023 erledigt am 2026-09-04.** Die Maske zeigt am gewählten Renderer jetzt
+`orientation`, `with_label`, `label_role` und den geerbten `converter` — neben dem Auswahlkasten,
+nicht statt seiner.
+
+⚠️ **Drei Stellen mussten dafür weichen, und alle drei stammten aus derselben Annahme** — *ein
+Knotenverweis hat keine Felder*: der Abstieg brach bei jedem Typ ab, die Teile eines Teils wurden
+nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten geholt.

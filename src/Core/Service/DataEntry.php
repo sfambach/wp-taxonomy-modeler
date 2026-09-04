@@ -39,6 +39,9 @@ use Taxmod\Core\Repository\RelationRepository;
  */
 final class DataEntry
 {
+    /** Wie tief der Abstieg in geschachtelte Teile geht -- ein Knoten kann auf sich selbst zeigen. */
+    private const TEILE_TIEFSTENS = 4;
+
     /**
      * @param Settings|null $settings Optional so the existing wiring keeps working; without it the
      *                                `persistent` flag cannot be resolved and every attribute is
@@ -835,8 +838,59 @@ final class DataEntry
                     'id'     => $teilId,
                     'nodeId' => $satz?->nodeId ?? 0,
                     'werte'  => $werte,
+                    // WICHTIG: Die Teile *dieses* Teils, sonst endet der Abstieg hier. Seit D-583
+                    // ist ein gewaehlter Renderer selbst ein Datensatz -- ohne diese Zeile zeichnet
+                    // die Maske «compact» als Auswahl und seine eigenen Felder nie.
+                    'teile'  => $this->partsBelow($teilId, 1),
                 ];
             }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Die Teile eines Teils, rekursiv -- Kanten-Id => Liste von Teilen.
+     *
+     * WICHTIG: Ein Renderer-Datensatz kann selbst einen tragen (ein Konverter, ein Unter-Renderer).
+     * Die Tiefe ist begrenzt, weil ein Knoten auf sich selbst zeigen kann und der Abstieg sonst
+     * nie endet -- derselbe Grund, aus dem der Zeichner eine Grenze hat.
+     *
+     * @return array<int, list<array{id:int, nodeId:int, werte:array<int, TypedValue>, teile:array}>>
+     */
+    private function partsBelow(int $recordId, int $tiefe): array
+    {
+        if ($tiefe > self::TEILE_TIEFSTENS) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach ($this->records->valuesOf($recordId) as $wert) {
+            if ($wert->value->reference === null) {
+                continue;
+            }
+
+            $satz = $this->records->find($wert->value->reference);
+
+            if ($satz === null) {
+                continue;
+            }
+
+            $werte = [];
+
+            foreach ($this->records->valuesOf($satz->id) as $innen) {
+                if (! $innen->value->isNothing()) {
+                    $werte[$innen->edgeId] = $innen->value;
+                }
+            }
+
+            $aus[$wert->edgeId][] = [
+                'id'     => $satz->id,
+                'nodeId' => $satz->nodeId,
+                'werte'  => $werte,
+                'teile'  => $this->partsBelow($satz->id, $tiefe + 1),
+            ];
         }
 
         return $aus;

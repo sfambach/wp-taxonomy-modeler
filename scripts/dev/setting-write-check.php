@@ -532,10 +532,22 @@ if (preg_match_all('/name="' . Rendering::PART_FIELD . '\[(\d+)\]\[\d+\]"/', $se
     $saetze = array_values(array_unique($treffer[1]));
 }
 
+// WICHTIG: Gezaehlt werden die *aeusseren* Teile, nicht jede Satz-Id auf der Seite -- und das ist
+// eine sichtbare Aenderung dieser Zusage (PR-9). Seit D-583 steigt die Maske in den gewaehlten
+// Renderer hinab, also steht dort eine dritte Satz-Id, die keine dritte Zeile ist. Die Frage
+// bleibt dieselbe: sind beide Teile sichtbar.
+$fehlen = [];
+
+foreach ($nachher as $teil) {
+    if (! in_array((string) $teil['id'], $saetze, true)) {
+        $fehlen[] = (string) $teil['id'];
+    }
+}
+
 check(
     'und die Tabelle zeigt beide',
-    count($saetze) === 2,
-    count($saetze) . ': ' . implode(', ', $saetze)
+    $fehlen === [] && count($nachher) === 2,
+    $fehlen === [] ? count($nachher) . ' Teile' : 'fehlen: ' . implode(', ', $fehlen)
 );
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
