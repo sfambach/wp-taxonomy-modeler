@@ -277,3 +277,25 @@ damit gibt es heute keine Stelle mehr, die ein Weiten bemerkt.**
 
 ⚠️ *Das ist ein Verlust und keine Vereinfachung.* Die Ausnahme `CannotWiden` steht noch, ohne
 Werfer; der Abschnitt in `package7-check.php` ist mit dieser Nummer im Text ausgebaut.
+
+## INF-013 · `addField()` leitet die Kantenart nicht aus dem Ast ab
+
+**2026-09-04, vom Eigentümer an seinem Modell gefunden.** *«converter sollte setting von renderer
+sein, nicht field.»*
+
+**Die Oberfläche sagt dem Benutzer:** *«‹Kind› is not a choice — it follows from where the target
+sits in the tree.»* **Über den Code stimmt das nicht:** `ModelEditor::addField()` legte die Kante
+`Renderer --converter--> Converter` als `aggregation` an, obwohl `Converter` im Einstellungsast
+liegt. Erst `markAsSetting()` machte sie zu dem, was sie ist.
+
+⚠️ **Es ist mir am selben Tag zweimal passiert** — *bei dieser Kante ([D-585](../../NewConcept/90-decision-log.md))
+und beim Gerüst für `node-kind-check`. **Dort fiel es auf, weil ein Wächter rot wurde; hier hat es
+nur sein Blick gefunden.*** Die Kante stand einen halben Tag falsch im Modell.
+
+**Gemessen nach der Korrektur:** *keine weitere Kante zeigt in den Einstellungsast, ohne eine
+Einstellungskante zu sein — es war die einzige.*
+
+⚠️ **Nicht entschieden (`PR-4`):** *soll `addField()` die Art ableiten, oder soll der Aufrufer sie
+nennen müssen? **Für das Ableiten spricht, dass die Oberfläche es ohnehin behauptet**; dagegen, dass
+ein Akt, der rät, schwerer zu prüfen ist als einer, dem man es sagt. **Ein Wächter fehlt in beiden
+Fällen** — dass jede Kante in den Einstellungsast eine Einstellungskante ist, prüft heute niemand.*

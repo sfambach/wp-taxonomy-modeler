@@ -90,10 +90,12 @@ foreach ($labelOwners as $owner) {
     $goneLabels += $residue->forgetOrphanedLabels((int) $owner);
 }
 
-printf("\nEntfernt: %d Settings, %d Labels\n", $goneSettings, $goneLabels);
+printf("
+Entfernt: %d Labels
+", $goneLabels);
 
-printf(
-    "Uebrig: %d Settings, %d Labels ohne Besitzer\n",
-    count($residue->orphanedSettings()),
-    count($residue->orphanedLabels())
-);
+// WICHTIG: Die Settings-Haelfte ist mit der Tabelle gegangen (D-579). Der Waechter wurde
+// nachgezogen, dieses Skript nicht -- es rief weiter Residue::orphanedSettings() und starb
+// daran, sobald jemand --go benutzte. Gefunden hat es der Eigentuemer an seinem Baum, kein Lauf.
+printf("Uebrig: %d Labels ohne Besitzer
+", count($residue->orphanedLabels()));
