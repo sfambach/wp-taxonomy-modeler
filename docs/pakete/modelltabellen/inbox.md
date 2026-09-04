@@ -329,3 +329,34 @@ modellweite Vorgabewert, so wie `Root` die Einstellungskanten trägt, damit jede
 die Wurzel als Träger von Werten überhaupt ausgenommen sein? **Ich habe nichts gelöscht und nichts
 ausgenommen**: die Kette ist gebaut, wie D-602 sie beschreibt, und die zwei Läufe stehen rot, statt
 dass die Frage in einem grünen Lauf verschwindet.*
+
+---
+
+## INF-015 · Was die Wanderung aus D-594 stehengelassen hat
+
+**2026-09-04, bei TASK-024 gemessen. Nicht entschieden (`PR-4`).**
+
+[D-594](../../NewConcept/90-decision-log.md) ist vollzogen: 29 Renderer-Wahlen sind umgezogen, 2
+Konverter-Werte hängen an der geerbten Kante, 161 leere Behälter sind gefallen. **Drei Dinge blieben
+liegen, weil D-594 sie nicht nennt.**
+
+⚠️ **1 · Die Halterzeilen sitzen an einer toten Kante.** *Die 29 umgezogenen Sätze werden von einer
+Wertzeile an Kante `44093` gehalten — dem Feld `display` des gelöschten Hüllknotens. **Die Kante gibt
+es nicht mehr, den Halter schon.** D-594 zeichnet den Halter ausdrücklich als bleibend
+(«Halter → Satz (node_id = «compact»)»), also blieb er. Zusammen mit den Resten aus Punkt 2 sind das
+**32 Wertzeilen, deren Kante fehlt** — `id-space-check` zählt sie. Das ist genau die Leiche, die
+[D-604](../../NewConcept/90-decision-log.md) sichtbar machen will; **wohin der Halter stattdessen
+gehört — `settings_record_id` ist heute in 0 Knoten und 0 Kanten gefüllt — ist nicht entschieden.**
+
+⚠️ **2 · Satz `2233` trägt drei `render`-Zeilen, in zwei Formen.** *Eine zeigt auf einen **Knoten**
+(`table`, die alte Form) — sie ist umgezogen. Zwei zeigen auf einen **Datensatz**
+(`5893` und `5902`, die neue Form aus [D-583](../../NewConcept/90-decision-log.md)) — **sie stehen
+noch da, und `5893` gibt es nicht mehr.** Dazu eine `converter`-Zeile ohne Verweis. **Ich habe
+nichts davon gewählt oder geworfen**: D-594 beschreibt eine Ebene weniger, keinen Formwechsel.*
+
+⚠️ **3 · 28 Datensätze ohne Knoten sind nicht vom Hüllknoten.** *Ihre `node_id` liegt im
+Testraum (`149000083806` aufwärts), sie tragen keine Werte und niemand hält sie — **Rückstände aus
+Wächterläufen, die ihre Knoten aufräumen, ihre Datensätze aber nicht.** Gemessen entstehen sie nicht
+bei jedem Lauf; die Zahl blieb über zwei volle Wächterläufe bei 28. **Sie sind nicht in D-594 und
+darum stehengeblieben** — und sie sind der einzige Grund, warum `package6-check` und
+`unitvalue-check` weiter «kein Datensatz ohne Knoten» rot melden, jetzt mit 28 statt 218.*
