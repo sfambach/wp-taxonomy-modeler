@@ -119,12 +119,15 @@ vorher umzuziehen — Reihenfolge Wächter, Leser, Daten.*
 auf `identities.id` — die Bedingung erlaubt strukturell eine Kante, die von einem **Datensatz**
 ausgeht. Gehört zu TASK-004, weil `identities` dabei ohnehin fällt.
 
-```text
-[ ] TASK-011  relations.kind in relation_type umbenennen
-```
+⚠️ **TASK-011 ist gestrichen** (2026-09-04, auf sein Wort: *«TASK-011 löschen»*). *Sie hätte
+`relations.kind` in `relation_type` umbenannt — **und [D-587](../../NewConcept/90-decision-log.md)
+streicht die Spalte ganz.** Erst umbenennen und dann löschen ist zweimal Arbeit an derselben
+Spalte; nach TASK-018 trägt sie ohnehin nur noch 39 von 166 Zeilen. **Die Reihenfolge ist damit
+TASK-018 → TASK-032**, nicht TASK-011 → TASK-032.*
 
-Gleiche Bewegung wie TASK-007 am Knoten. **Vier Klassen braucht es nicht:** der Code verzweigt an 19
-Stellen auf die Kantenart, 15 davon fragen nur «ist es Vererbung?».
+⚠️ *Die Beobachtung dahinter bleibt gültig und gehört zu TASK-032: der Code verzweigt an 19
+Stellen auf die Kantenart, **15 davon fragen nur «ist es Vererbung?»** — und genau die Frage
+verschwindet mit TASK-018.*
 
 ```text
 [ ] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, relation_type, sort_order)
@@ -454,7 +457,6 @@ umzuschreiben hiesse, ein Zitat zu fälschen.*
 [D-588](../../NewConcept/90-decision-log.md)) und **TASK-033** (ein Auswahl-Renderer statt zwei)
 sind beide **Tabellenarbeit**, keine Maskenarbeit.
 
-⚠️ **Und TASK-032 gehört hinter die Umbenennungen, nicht davor.** *TASK-011 benennt `relations.kind`
-in `relation_type` um; TASK-032 streicht die Spalte. **Wer zuerst streicht, benennt nichts mehr um —
-wer zuerst umbenennt, streicht einmal statt zweimal.** Dasselbe gilt für TASK-018 (Vererbung wird
-eine Spalte): sie nimmt der Spalte 127 von 166 Zeilen ab.*
+⚠️ **TASK-032 gehört hinter TASK-018, nicht hinter eine Umbenennung.** *TASK-011 hätte die Spalte
+umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimmt der Spalte 127 von
+166 Zeilen ab**, und was danach übrig ist, fällt in einem Zug.*
