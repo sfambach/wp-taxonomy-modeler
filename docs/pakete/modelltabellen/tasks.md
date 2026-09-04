@@ -329,7 +329,7 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
               fertig; der Anlegen-Knopf bleibt in der Zeile
 [x] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
               Pflichtfeld ohne leere Wahl
-[ ] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
+[x] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
               Baum
 [x] TASK-031  NodeChooser bekommt oben ein Such-/Filterfeld
 [ ] TASK-032  Komposition und Aggregation werden dieselbe Ablage; ein Schalter
@@ -439,3 +439,22 @@ Versionierung in den Schattentabellen und wartet auf TASK-013 bis TASK-015.*
 
 ⚠️ *Gemessen, was der Dialog je Zeile kostet: die Seite von `Adresse` wächst auf 176 KB und zeichnet
 in 0,13 s — vier Auswahldialoge, 183 Baumzeilen. Tragbar, aber es wächst mit der Zahl der Felder.*
+
+⚠️ **TASK-030 abgeschlossen als Befund, nicht als Umbenennung.** *«TreeChooser» gibt es im Code
+nicht: die Klassen heissen `DialogChooserRenderer`, `InlineChooserRenderer`, `ChooserCellRenderer`,
+die Methode `chooserFor()`, die Renderer-Knoten `chooser-dialog` und `chooser-inline`. Der Begriff
+steht nur in Kommentaren — **und die Hälfte davon sind seine eigenen Sätze, wörtlich zitiert.** Die
+umzuschreiben hiesse, ein Zitat zu fälschen.*
+
+---
+
+## Was von seiner Liste noch offen ist
+
+**TASK-032** (`relation_type` fällt, [D-587](../../NewConcept/90-decision-log.md),
+[D-588](../../NewConcept/90-decision-log.md)) und **TASK-033** (ein Auswahl-Renderer statt zwei)
+sind beide **Tabellenarbeit**, keine Maskenarbeit.
+
+⚠️ **Und TASK-032 gehört hinter die Umbenennungen, nicht davor.** *TASK-011 benennt `relations.kind`
+in `relation_type` um; TASK-032 streicht die Spalte. **Wer zuerst streicht, benennt nichts mehr um —
+wer zuerst umbenennt, streicht einmal statt zweimal.** Dasselbe gilt für TASK-018 (Vererbung wird
+eine Spalte): sie nimmt der Spalte 127 von 166 Zeilen ab.*
