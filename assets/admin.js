@@ -372,4 +372,38 @@
 		klapper.innerHTML = zu ? '\u25B8' : '\u25BE';
 	} );
 
+	/**
+	 * Waehlen schliesst den Dialog und schreibt den Knoten in die Zeile -- TASK-028.
+	 *
+	 * Auf sein Wort: "Benutzer drueckt auf Button, selektiert Knoten wie im Baum, Dialog schliesst
+	 * sich, Knoten steht im Feld". Danach erst der Anlegen-Knopf.
+	 */
+	document.addEventListener( 'change', function ( event ) {
+		var radio = event.target;
+
+		if ( ! radio || ! radio.matches || ! radio.matches( '.taxmod-dialog-panel input[type="radio"]' ) ) {
+			return;
+		}
+
+		var chooser = radio.closest( '.taxmod-chooser' );
+
+		if ( ! chooser ) {
+			return;
+		}
+
+		var name = radio.closest( '.taxmod-chooser-row' );
+		var text = name ? name.querySelector( '.taxmod-tree-label' ) : null;
+		var feld = chooser.parentNode ? chooser.parentNode.querySelector( '.taxmod-chosen' ) : null;
+
+		if ( feld && text ) {
+			feld.value = text.textContent;
+		}
+
+		var schalter = chooser.querySelector( '.taxmod-dialog-switch' );
+
+		if ( schalter ) {
+			schalter.checked = false;
+		}
+	} );
+
 } )();

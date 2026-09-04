@@ -1930,7 +1930,25 @@ final class NodesScreen
             . IconMarkup::dashicon('networking')
             . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
             . '</span>',
-            ControlMarkup::button(new Control(
+            // WICHTIG: Kein Knopf mehr im Dialog. Auf sein Wort: "tree chooser ist ein standard
+            // dialog, sollte keine zusaetzliche Funktion haben, Benutzer waehlt Knoten aus und
+            // bestaetigt, Knoten wird in Anlege-Zeile angezeigt und der Benutzer kann einen Knopf
+            // add/anlegen druecken". Damit ist der Dialog ueberall dasselbe Werkzeug.
+            ''
+        )->markup;
+
+        // WICHTIG: Der Anlegen-Knopf steht in der Zeile, nicht im Dialog -- das dreht D-392 fuer
+        // diesen Fall um, und zwar auf sein Wort. Die Begruendung dort war "zwei Knoepfe fuer
+        // einen Akt"; hier sind es nicht zwei Knoepfe fuer einen Akt, sondern zwei Akte: waehlen
+        // und anlegen. Was gewaehlt wurde, steht dazwischen sichtbar im gesperrten Feld.
+        return $this->form(
+            $selected->id,
+            [],
+            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" required style="flex:1">'
+            . $chooser
+            . '<input type="text" class="taxmod-chosen" readonly tabindex="-1"'
+            . ' placeholder="' . esc_attr__('Nothing chosen yet', 'taxmod') . '" style="flex:1">'
+            . ControlMarkup::button(new Control(
                 'do',
                 'add_field',
                 __('Add field', 'taxmod'),
@@ -1939,20 +1957,8 @@ final class NodesScreen
                 false,
                 '',
                 '',
-                // ⚠️ *The leading act of its dialog — a person opened the chooser to do this one thing.*
                 true
             ))
-        )->markup;
-
-        // ⚠️ **No second «Add attribute» outside the dialog.** The act needs a target, and the target is
-        // picked inside — so the one button that finishes it lives where the choice is made. *Two
-        // buttons for one act is what the settings panel was corrected for
-        // ([D-392](../../../docs/NewConcept/90-decision-log.md)).*
-        return $this->form(
-            $selected->id,
-            [],
-            '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" required style="flex:1">'
-            . $chooser
         );
     }
 

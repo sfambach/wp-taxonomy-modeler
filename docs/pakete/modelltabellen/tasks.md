@@ -325,7 +325,7 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
 [ ] TASK-026  Fields/Anlegen: ohne Namen wird der Knotenname benutzt — mit
               Schalter, und die Beschriftung zieht mit
 [x] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
-[ ] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
+[x] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
               fertig; der Anlegen-Knopf bleibt in der Zeile
 [ ] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
               Pflichtfeld ohne leere Wahl
