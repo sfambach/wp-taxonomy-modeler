@@ -182,8 +182,29 @@ final class DataEntry
                 continue;
             }
 
+            // WICHTIG: Ist das Ziel ein Basisknoten, aus dem gewaehlt wird, entsteht hier nichts.
+            // Seit D-584 sagt die node_id des Datensatzes, *welcher* Renderer es ist -- ein im
+            // Voraus angelegter Satz truege den Basisknoten und damit eine Wahl, die niemand
+            // getroffen hat. Gemessen: jeder Lauf legte so einen Satz von «Renderer» an, 16 Stueck,
+            // auf die nichts zeigte. Der Satz entsteht durch die Wahl (D-583), nicht davor.
+            if ($this->isChosenFrom($ziel)) {
+                continue;
+            }
+
             $this->createPart($recordId, $edge->id);
         }
+    }
+
+    /**
+     * Wird aus diesem Knoten *gewaehlt*, statt ihn selbst zu benutzen?
+     *
+     * WICHTIG: Ja, sobald andere Knoten von ihm erben -- dann ist er der Basisknoten einer Auswahl
+     * (D-584: die Vererbung sagt, was gewaehlt werden darf). «Adresse» hat keine erbenden Knoten
+     * und wird deshalb direkt benutzt.
+     */
+    private function isChosenFrom(Node $target): bool
+    {
+        return $this->nodes->childrenOf($target) !== [];
     }
 
     /**
@@ -591,6 +612,17 @@ final class DataEntry
         // Trägerkante. `refuseUnwritable()` sagt Nein, wenn das Ziel doch einen eigenen Satz braucht —
         // also wird hier nichts geraten.*
         if ($innen === 0) {
+            // WICHTIG: Die Wahl eines Renderers legt einen Datensatz an, keinen Knotenverweis
+            // (D-583, D-584). Der Eigentuemer: «wenn ich den Renderer auswaehle, muss ein
+            // Datensatz geaendert werden, es sollte schon einer da sein.» Solange «Renderer»
+            // feldlos war, griff das nie -- seit D-585 traegt er «converter», und damit
+            // braucht jeder gewaehlte Renderer seinen eigenen Satz.
+            if ($value->isAReference() && $this->targetOwnsItsRecord($satzId, $aussen)) {
+                $this->chooseSettingRecord($satzId, $aussen, (int) $value->reference);
+
+                return;
+            }
+
             $this->put($satzId, $aussen, $value, $locale);
 
             return;
@@ -601,6 +633,14 @@ final class DataEntry
 
         if ($teilId === null) {
             $teilId = $this->createPart($satzId, $aussen)->id;
+        }
+
+        // WICHTIG: Dieselbe Wahl eine Ebene tiefer. Die aeussere Kante fuehrt in den Behaelter,
+        // die innere traegt den Renderer -- und der braucht seit D-585 seinen eigenen Satz.
+        if ($value->isAReference() && $this->targetOwnsItsRecord($teilId, $innen)) {
+            $this->chooseSettingRecord($teilId, $innen, (int) $value->reference);
+
+            return;
         }
 
         $this->put($teilId, $innen, $value, $locale);
@@ -820,7 +860,51 @@ final class DataEntry
         return $this->create($nodeId, RecordKind::Default)->id;
     }
 
-    public function createPart(int $recordId, int $edgeId, string $path = ''): NodeRecord
+    /**
+     * Braucht das Ziel dieser Kante einen eigenen Datensatz?
+     */
+    private function targetOwnsItsRecord(int $recordId, int $edgeId): bool
+    {
+        $record = $this->records->find($recordId);
+
+        if ($record === null) {
+            return false;
+        }
+
+        $edge = $this->edgeOf($record, $edgeId);
+
+        return $this->ownsItsRecord($edge, $this->nodes->byId($edge->toId));
+    }
+
+    /**
+     * Einen Einstellungsdatensatz **waehlen** -- den vorhandenen umhaengen oder einen anlegen.
+     *
+     * WICHTIG: Die Zeile *ist* der Datensatz (D-583). Die Wahl erzeugt nichts Zweites: gibt es den
+     * Teil schon, bekommt er den neuen Knoten; gibt es ihn nicht, entsteht er. Ein zweiter
+     * Erzeugungsweg waere genau das, was der Eigentuemer korrigiert hat.
+     *
+     * WICHTIG: Der alte Teil wird weggeworfen, wenn ein anderer Renderer gewaehlt wird -- seine
+     * Felder sind die des alten Knotens und sagen ueber den neuen nichts. Stehen zu lassen hiesse,
+     * Werte zu behalten, die niemand mehr lesen kann.
+     */
+    private function chooseSettingRecord(int $recordId, int $edgeId, int $chosenNodeId): void
+    {
+        $teilId = $this->partsOf($recordId)[(string) $edgeId] ?? null;
+
+        if ($teilId !== null) {
+            $teil = $this->records->find($teilId);
+
+            if ($teil !== null && $teil->nodeId === $chosenNodeId) {
+                return;
+            }
+
+            $this->records->forgetRecord($teilId);
+        }
+
+        $this->createPart($recordId, $edgeId, '', $chosenNodeId);
+    }
+
+    public function createPart(int $recordId, int $edgeId, string $path = '', int $chosenNodeId = 0): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
@@ -843,7 +927,25 @@ final class DataEntry
         // {@see self::refuseUnwritable()} verweigert eine Einstellungskante in einem Benutzersatz. Der
         // Eigentümer hatte gerade gefragt, warum `render` und `converter` als **Felder** erscheinen —
         // «nur damit du rendern kannst, das ist falsch» —, und die Antwort hing an dieser Zeile.*
-        $part = $this->create($target->id, $record->kind);
+        // ⚠️ **Der Datensatz ist einer des *gewählten* Knotens, nicht des Kantenziels**
+        // ([D-584](../../../docs/NewConcept/90-decision-log.md)). *Die Kante zeigt auf den
+        // Basisknoten — `Renderer` —, gewählt wird ein erbender: `compact`. **Ohne das wäre jeder
+        // Renderer-Datensatz einer von `Renderer` und trüge dessen Felder statt seiner eigenen.***
+        //
+        // ⚠️ *Geprüft statt geglaubt: der gewählte Knoten muss unter dem Kantenziel liegen. Sonst
+        // liesse sich als Renderer irgendein Knoten eintragen, und der Fehler fiele erst beim
+        // Zeichnen auf.*
+        $gewaehlt = $target;
+
+        if ($chosenNodeId !== 0 && $chosenNodeId !== $target->id) {
+            $gewaehlt = $this->nodes->byId($chosenNodeId);
+
+            if (! $gewaehlt->isDescendantOf($target)) {
+                throw NotYetStorable::thatIsNotAComposedPart($edge->name);
+            }
+        }
+
+        $part = $this->create($gewaehlt->id, $record->kind);
 
         // The holder points at it, which is the whole of the relationship.
         $this->records->putValue(new EdgeRecord(

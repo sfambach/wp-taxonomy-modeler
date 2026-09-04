@@ -222,6 +222,28 @@ final class ModelValues
     }
 
     /**
+     * Welcher Renderer steht hinter diesem Verweis?
+     *
+     * WICHTIG: Seit D-583 legt die Wahl eines Renderers einen *Datensatz* an, keinen Knotenverweis --
+     * der Eigentuemer: «wenn ich den Renderer auswaehle, muss ein Datensatz geaendert werden».
+     * Welcher Renderer es ist, sagt dann die node_id dieses Datensatzes (D-584).
+     *
+     * WICHTIG: Der Knotenverweis bleibt als zweiter Weg stehen, weil die vorhandenen Daten ihn noch
+     * benutzen. Er verschwindet mit TASK-024, nicht vorher -- ein Leser, der die Altform nicht mehr
+     * kennt, macht bestehende Einstellungen unsichtbar, ohne dass jemand etwas geaendert haette.
+     */
+    private function rendererNodeBehind(int $reference): ?Node
+    {
+        $satz = $this->records->find($reference);
+
+        if ($satz !== null) {
+            return $this->nodes->find($satz->nodeId);
+        }
+
+        return $this->nodes->find($reference);
+    }
+
+    /**
      * Der Name des Renderers unter dieser Adresse, oder `null`.
      *
      * @param list<int> $vorlauf Kanten vor der Renderer-Kante — leer für den Knoten selbst.
@@ -249,7 +271,7 @@ final class ModelValues
                         continue;
                     }
 
-                    $knoten = $this->nodes->find($imTeil->value->reference);
+                    $knoten = $this->rendererNodeBehind($imTeil->value->reference);
 
                     if ($knoten !== null) {
                         return $knoten->name;

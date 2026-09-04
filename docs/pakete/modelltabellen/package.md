@@ -46,7 +46,7 @@ berührt.
 |---|---|---|
 | `id` | eigener Id-Raum je Tabelle | §6 |
 | `version` | für die Schattentabelle | |
-| `parent_node_id` | **unter wem der Knoten hängt** — war eine Vererbungskante | §3.3 |
+| `parent_node_id` | **unter wem der Knoten hängt** — zeigt auf `nodes.id`, war eine Vererbungskante | §3.3 |
 | `sort_order` | **an welcher Stelle unter dem Elternknoten** | §3.3 |
 | `field_type` | **`model`** oder **`setting`** | war `kind` |
 | `label_id` | → `labels.id`, **verpflichtend** — hier steht der Name | §3.4 |
@@ -82,7 +82,7 @@ des Modells halten — gegen [`AR-1`](../../../CLAUDE.md).
 ### 3.3 · Vererbung ist eine Spalte, keine Kante
 
 **`parent_node_id` und `sort_order` stehen am Kind** ([D-581](../../NewConcept/90-decision-log.md)).
-`parent_node_id` sagt, unter wem der Knoten hängt; `sort_order`, an welcher Stelle unter seinen
+`parent_node_id` **zeigt auf `nodes.id`** — der Vaterknoten ist ein Knoten, kein Datensatz — und sagt, unter wem der Knoten hängt; `sort_order`, an welcher Stelle unter seinen
 Geschwistern. **Schlüssel und Index: `(parent_node_id, sort_order)`.**
 
 **`relations` verliert damit 127 von 166 Zeilen.** Die Frage «ist es Vererbung?», die heute 15 von
@@ -124,11 +124,15 @@ Suchen von Hand und beim Prüfen.*
 ### 3.6 · Eigene Einstellungen an Knoten **und** Kante
 
 **`settings_record_id` steht an beiden** ([D-582](../../NewConcept/90-decision-log.md)) und zeigt auf
-den eigenen Einstellungsdatensatz.
+den eigenen Einstellungsdatensatz. **Ein Knoten und eine Kante haben genau *einen* Renderer**
+([D-584](../../NewConcept/90-decision-log.md)) — deshalb genügt ein einzelner Zeiger, und die
+`node_id` des Datensatzes sagt schon, *welcher* Renderer es ist.
 
 ```text
-node_record  #40   node_id = DisplayOption
-   #40 · render · → Knoten «slider»
+node_record  #40   node_id = Code-Editor
+   #40 · converter · → «keiner»      geerbt vom Basisknoten «Renderer»
+   #40 · sprache   · c#
+   #40 · theme     · dunkel
 
 relations    «vorname»  settings_record_id = #40
 ```
@@ -142,10 +146,18 @@ Renderer für «Kunde.vorname»:
    3. sonst Rückfall
 ```
 
-**Ein zusätzlicher Renderer ist kein neuer Mechanismus** — die Kante trägt mehrere Werte für
-dasselbe Feld, `sort_order` unterscheidet sie.
+**Mehrere Renderer sind kein Mechanismus, sondern ein Modell**
+([D-584](../../NewConcept/90-decision-log.md)): ein Knoten `render list` mit einer Kante `1..n`.
+Die Reihenfolge kommt über `sort_order` in `relation_records`, wie bei jedem anderen Feld.
+
+⚠️ **Der Konverter hängt am Basisknoten `Renderer` und wird vererbt**
+([D-585](../../NewConcept/90-decision-log.md)). *Eine Spalte an `nodes` wäre falsch: bei einer
+`render list` hätte der ganze Knoten einen Konverter, obwohl jeder Renderer darin seinen eigenen
+braucht. **Der Hüllknoten `DisplayOption` entfällt** — er sah immer gleich aus und trug damit keine
+Aussage.*
 
 ⚠️ *Damit fällt **nur** die Einstellungskante, die den Weg zum Behälter beschreibt (drei von elf).
+Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 
 ---

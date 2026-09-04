@@ -65,6 +65,15 @@ interface RecordRepository
     public function forgetValueById(int $id): void;
 
     /**
+     * Einen ganzen Datensatz entfernen, mitsamt seinen Werten.
+     *
+     * WICHTIG: Gebraucht, seit die Wahl eines Renderers einen Datensatz anlegt (D-583). Waehlt
+     * jemand einen anderen, sind die Felder des alten sinnlos -- sie gehoeren einem Knoten, der
+     * hier nicht mehr steht. Stehen zu lassen hiesse, Waisen zu erzeugen.
+     */
+    public function forgetRecord(int $id): void;
+
+    /**
      * Records whose value at one edge equals this one, wherever in the record it sits.
      *
      * ⚠️ **This is what `edge_id` is for** (D-134) — the question *which parts are 4k7* asked

@@ -378,11 +378,23 @@ if ($verwalter === []) {
         'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
     );
 
+    // WICHTIG: Zwei Formen sind erlaubt, und das ist eine sichtbare Aenderung dieser Zusage
+    // (PR-9). Seit D-583 legt die Wahl eines Renderers einen *Datensatz* an -- value_ref zeigt
+    // dann auf einen Datensatz, dessen node_id den Renderer nennt (D-584). Der alte Knotenverweis
+    // bleibt gueltig, solange die vorhandenen Daten ihn tragen; er faellt mit TASK-024.
+    // Falsch ist nur, was ueber *keinen* der beiden Wege im Renderer-Ast landet.
     $daneben = (int) $wpdb->get_var($wpdb->prepare(
         'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' w
-         INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = w.value_ref
-         WHERE w.edge_id = %d AND k.path NOT LIKE %s',
+         LEFT JOIN ' . Schema::table('nodes') . ' k ON k.id = w.value_ref
+         LEFT JOIN ' . Schema::table('records') . ' r ON r.id = w.value_ref
+         LEFT JOIN ' . Schema::table('nodes') . ' rk ON rk.id = r.node_id
+         WHERE w.edge_id = %d AND w.value_ref IS NOT NULL
+           AND COALESCE(k.path, %s) NOT LIKE %s
+           AND COALESCE(rk.path, %s) NOT LIKE %s',
         $innen,
+        '',
+        $wpdb->esc_like($rendererPfad . '.') . '%',
+        '',
         $wpdb->esc_like($rendererPfad . '.') . '%'
     ));
 

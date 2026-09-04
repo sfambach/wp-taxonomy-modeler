@@ -263,3 +263,48 @@ Der Code kennt die Verwendungsstelle schon: **`UseSite` kommt an 17 Stellen vor*
 
 ⚠️ *Nur die Einstellungskante, die den **Weg zum Behälter** beschreibt, wird dadurch überflüssig —
 drei von elf. Felder im Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
+
+```text
+[ ] TASK-021  Die Renderer-Wahl setzt den Knoten eines vorhandenen Datensatzes
+[ ] TASK-022  Die Einstellungsmaske zeigt den Unterbaum und haengt die Renderer-
+              Felder rechts an derselben Zeile an
+```
+
+[D-583](../../NewConcept/90-decision-log.md). **Gemessen am 2026-09-02: es gibt keinen einzigen
+Datensatzverweis ausser auf `DisplayOption`, und die Maske zeichnet genau eine Ebene.**
+
+**TASK-021** ist die kleinere: heute entsteht bei der Wahl ein Knotenverweis, künftig trägt die
+schon vorhandene Zeile den gewählten Knoten. **TASK-022** ist die sichtbare — `Kontakt` muss die
+Renderer von `Street`, `No.`, `Post Code`, `City` und `Country` zeigen, damit sie dort
+überschrieben werden können.
+
+⚠️ *Der Eigentümer hat beides gesehen, bevor es gemessen war. Die Messung hat seinen Satz
+bestätigt, nicht geprüft.*
+
+```text
+[ ] TASK-023  Basisknoten «Renderer» mit der Einstellung converter, alle
+              Renderer erben von ihm
+[ ] TASK-024  Huellknoten DisplayOption abschaffen — 29 Datensaetze,
+              32 Wertzeilen: umhaengen oder wegwerfen ist zu entscheiden
+```
+
+[D-584](../../NewConcept/90-decision-log.md), [D-585](../../NewConcept/90-decision-log.md).
+
+**TASK-024 ist nicht entschieden, nur benannt.** Dieselbe Abwägung wie bei `settings`
+([D-579](../../NewConcept/90-decision-log.md)), wo er «neu eingeben» gewählt hat — dort waren es
+drei Zeilen, hier sind es 32.
+
+```text
+[ ] TASK-025  Waechter von seinen Knotennamen loesen — eigene Knoten anlegen,
+              pruefen, wegraeumen
+```
+
+**Der Eigentümer hat es gefunden:** *«warum haben wir einen Check auf Adresse, ich hatte das mal so
+angelegt, aber das war kein Vertrag».* Und `CLAUDE.md` verbietet es ausdrücklich — *«Special-casing
+by display name, label, path, or a specific node»*.
+
+**Gemessen am 2026-09-04:** `composition-check`, `multiplicity-check` und `page-blocks-check` suchen
+`Adresse`, `Dimension`, `Zutat`, `Backrezept` und `Einheitenwert` beim Namen — **und legen sie an,
+wenn sie fehlen.** Ein Wächter, der Beispielknoten in sein Arbeitsmodell schreibt.
+
+⚠️ *Vorbild ist `package3-check`: eigene Knoten mit eigenem Namensraum, geprüft, weggeräumt.*

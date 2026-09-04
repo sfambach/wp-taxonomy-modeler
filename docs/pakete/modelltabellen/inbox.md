@@ -76,3 +76,26 @@ verschiedene Dinge sind, um sich eine Tabelle zu teilen. **Darüber denkt er nac
 ⚠️ *Und eine zweite Folge, falls es kommt: `locale` müsste auf dem Kanten-Datensatz **bleiben** — wir
 hatten sie gestrichen, weil sie leer war, und sie war leer, weil die Labels noch nicht dort lagen.
 Der Schlüssel würde dann `(node_record_id, relation_id, sort_order, locale)`.*
+
+## INF-004 · Der Einstellungsbaum zeigt nur Kanten — er denkt noch darüber nach
+
+**2026-09-02, unentschieden.** Sein Satz: *«die Frage die sich mir stellt, wir könnten auch nur
+die Kanten nehmen, das würde glaube ich reichen»* — und danach: *«merk dir das mal, da muss ich
+nochmal drüber nachdenken».*
+
+**Der Stand, bis er entscheidet:**
+
+- Die Einstellungsmaske eines Knotens zeigt **eine Wurzelzeile** (der Knoten selbst) und darunter
+  **nur Kantenzeilen**, geschachtelt.
+- Die Knotenzeilen entfallen in der Anzeige, weil jeder Knoten über genau **eine** Kante erreicht
+  wird. Damit gibt es je Schritt nur eine Zeile und keine Vorrangfrage.
+- **Leer heisst geerbt:** sagt die Kantenzeile nichts, gilt der Zielknoten, dann der Rückfall. Der
+  geerbte Wert steht blass an derselben Stelle; Tippen macht blass zu schwarz.
+- «Alle `Text` sollen so aussehen» sagt er dann **auf dem Knoten `Text`**, wo dieser die Wurzel ist.
+- **In den Daten bleibt die Abwechslung Kante/Knoten bestehen** — sie trägt die Adresse. Nur das
+  Bild lässt die Knotenzeilen weg.
+
+⚠️ **Offen ausserdem:** *die Tiefe hat kein Ende, und ein Knoten, der auf sich selbst zeigt, lässt
+den Baum ewig laufen. Beides ungeklärt.*
+
+Gehört zu [D-583](../../NewConcept/90-decision-log.md), TASK-021 und TASK-022.

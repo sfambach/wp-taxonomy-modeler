@@ -109,7 +109,7 @@ final class Schema
      * `is_test = 1` nach `test`**, weil eine Wanderung, die nur den gemessenen Fall kann, auf der
      * nächsten Installation falsch ist.*
      */
-    public const VERSION = 18;
+    public const VERSION = 19;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -737,9 +737,11 @@ final class Schema
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
                 kind varchar(20) DEFAULT NULL,
+                settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY path (path),
-                KEY name (name)
+                KEY name (name),
+                KEY settings_record_id (settings_record_id)
             ) {$charset};",
 
             // ⚠️ `parked_by_group_id` is the one place an edge can be parked (D-371). A node needs
@@ -759,10 +761,14 @@ final class Schema
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                settings_record_id bigint(20) unsigned DEFAULT NULL,
+                target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY from_id (from_id),
                 KEY to_id (to_id),
-                KEY parked_by_group_id (parked_by_group_id)
+                KEY parked_by_group_id (parked_by_group_id),
+                KEY settings_record_id (settings_record_id),
+                KEY target_settings_record_id (target_settings_record_id)
             ) {$charset};",
 
             // Typed value columns, never one stringly value cast in and out (D-071, D-074).
@@ -886,6 +892,7 @@ final class Schema
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
                 kind varchar(20) DEFAULT NULL,
+                settings_record_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),
@@ -903,6 +910,8 @@ final class Schema
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                settings_record_id bigint(20) unsigned DEFAULT NULL,
+                target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

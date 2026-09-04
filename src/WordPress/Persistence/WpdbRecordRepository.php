@@ -308,6 +308,23 @@ final class WpdbRecordRepository implements RecordRepository
         $wpdb->delete(Schema::table('record_values'), ['id' => $id], ['%d']);
     }
 
+    /**
+     * Einen ganzen Datensatz entfernen -- erst seine Werte, dann ihn selbst.
+     *
+     * WICHTIG: In dieser Reihenfolge, sonst zeigen die Werte auf nichts mehr und die
+     * Schattenzeile haette keinen Datensatz, zu dem sie gehoert.
+     */
+    public function forgetRecord(int $id): void
+    {
+        global $wpdb;
+
+        Shadow::keep('record_values', 'record_id = %d', [$id], true);
+        $wpdb->delete(Schema::table('record_values'), ['record_id' => $id], ['%d']);
+
+        Shadow::keepOne('records', $id, true);
+        $wpdb->delete(Schema::table('records'), ['id' => $id], ['%d']);
+    }
+
     public function forgetValue(int $recordId, string $path, string $locale): void
     {
         global $wpdb;

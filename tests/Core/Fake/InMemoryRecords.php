@@ -127,6 +127,17 @@ final class InMemoryRecords implements RecordRepository
         unset($this->values[$id]);
     }
 
+    public function forgetRecord(int $id): void
+    {
+        foreach ($this->values as $vid => $wert) {
+            if ($wert->recordId === $id) {
+                unset($this->values[$vid]);
+            }
+        }
+
+        unset($this->records[$id]);
+    }
+
     public function findByEdgeValue(int $edgeId, TypedValue $value): array
     {
         $found = [];
