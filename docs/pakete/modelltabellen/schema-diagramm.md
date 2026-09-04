@@ -22,7 +22,7 @@ erDiagram
         int  version
         int  from_node_id FK
         int  to_node_id   FK
-        bool deletes_with_node "D-587: relation_type ist gestrichen"
+        bool deletes_with_node "D-591: aus relation_type abgebildet"
         int  label_id      FK "optional"
         int  settings_record_id FK "der eigene Form-Renderer der Kante"
         int  target_settings_record_id FK "ueberschreibt den Zielknoten"
@@ -94,9 +94,6 @@ node_record_id · relation_id · sort_order      Reihenfolge der Werte in einem 
 ## Was offen ist
 
 - Was bei einem Konflikt zwischen `node_records.node_version` und dem Knoten geschieht
-- Ob `deletes_with_node` eine Spalte wird oder ein Feld am Einstellungsdatensatz
-  ([D-587](../../NewConcept/90-decision-log.md) lässt es ausdrücklich offen)
-- Was mit den 39 Werten in `relation_type` geschieht — Umzug oder Neusetzen
 
 ## Was seit dem 2026-09-02 beantwortet ist
 

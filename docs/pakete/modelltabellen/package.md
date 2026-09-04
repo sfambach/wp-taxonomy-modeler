@@ -176,7 +176,7 @@ Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 | `version` | für die Schattentabelle | |
 | `from_node_id` → `to_node_id` | **Constraint auf `nodes.id`** | je 166 |
 | ~~`relation_type`~~ | **gestrichen** ([D-587](../../NewConcept/90-decision-log.md)) | war `composition` 23 · `setting` 11 · `aggregation` 5 |
-| `deletes_with_node` | **wird mit dem Knoten gelöscht** — bei einem einfachen Typ immer an und nicht wählbar ([D-588](../../NewConcept/90-decision-log.md)) | |
+| `deletes_with_node` | **wird mit dem Knoten gelöscht** — Spalte, nicht Einstellung ([D-591](../../NewConcept/90-decision-log.md)); bei einem einfachen Typ immer an und nicht wählbar ([D-588](../../NewConcept/90-decision-log.md)) | aus `relation_type`: `composition` 48 und `setting` 11 → **1**, `aggregation` 6 → **0** |
 | `label_id` | → `labels.id`, **optional** — hier steht der Name | §3.4 |
 | `settings_record_id` | → `node_records.id`, optional — **der eigene Form-Renderer der Kante** | §3.6 |
 | `target_settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** ([D-586](../../NewConcept/90-decision-log.md)) | §3.6 |
