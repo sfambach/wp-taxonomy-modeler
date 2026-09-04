@@ -157,3 +157,53 @@ sagt der **Spaltenname** die Zieltabelle, hier eine zweite Spalte.
 muss.** *Sie steht der zweiten nicht im Weg: eine spätere Aufteilung liest `value_ref_kind` und
 verteilt — **was heute nicht ginge, weil der Raum nirgends stünde.** Die Frage stellt sich erst beim
 Umbenennen auf `relation_records`.*
+
+---
+
+## INF-008 · Wo wohnt die Installationsidentität, seit `identities` weg ist?
+
+**2026-09-04, beim Bauen von TASK-004 aufgefallen. Nicht entschieden, sondern erfasst (`PR-4`).**
+
+Die Installationsidentität ist **weder Knoten noch Kante** — sie ist der Kopf der
+Einstellungskette und hat keine Zeile in irgendeiner Tabelle. Bis Fassung 20 zog sie ihre Nummer
+aus `identities`; **die Tabelle ist gestrichen, und damit hat sie keine Quelle mehr.**
+
+**So gebaut, bis Du entscheidest:** auf einer **bestehenden** Installation bleibt die vorhandene
+Nummer unangetastet (hier: 641). Auf einer **frischen** ist `1` reserviert, und `nodes` wie
+`relations` beginnen deshalb bei `2`.
+
+⚠️ *Das ist eine Reservierung und kein Zuhause. Denkbar wären: eine eigene kleine Tabelle, ein
+Knoten wie jeder andere (dann wäre die Kette durchgehend aus Knoten), oder `owner_kind =
+installation`, wie das Änderungsbuch es schon führt — dort stehen gemessen **3 Zeilen** dieser Art.*
+
+---
+
+## INF-009 · `settings.owner_id` nennt ihren Raum nicht — und muss es
+
+**2026-09-04, beim Bauen von TASK-004 gemessen. Der Wächter hält es sichtbar, entschieden ist es
+nicht (`PR-4`).**
+
+[`package.md` §6](package.md) verlangt: *«Kann eine Spalte auf mehr als eine Tabelle zeigen, nennt
+eine zweite Spalte den Raum.»* **`settings.owner_id` kann und tut es nicht** — gemessen zeigt sie
+auf **3 Knoten und 10 Kanten**. Solange alle aus `identities` zogen, war das schadlos.
+
+⚠️ **Es ist nicht theoretisch, es ist zweimal passiert.** *`Settings::refuseWhereItDoesNotApply()`
+beantwortete «ist das eine Kante?» mit «die Knotentabelle kennt die Nummer nicht». Mit eigenen
+Räumen kennen sie **beide** — `package4-check` brach daran ab: «multiplicity gehört nicht an einen
+Knoten», gesagt über eine Kante.*
+
+**So gebaut, bis Du entscheidest — zwei Behelfe, beide mit Ablaufdatum:**
+
+| | |
+|---|---|
+| `Schema::RELATION_SPACE_OFFSET` | der Kantenraum beginnt eine Milliarde über dem Knotenraum, damit sich die beiden nicht überholen |
+| `Settings` bekommt den Kantenspeicher | die Frage «ist das eine Kante?» wird bei den Kanten gestellt statt bei den Knoten |
+
+⚠️ **Beide fallen an dem Tag weg, an dem `settings.owner_id` ihren Raum nennt** — `owner_kind`, wie
+`changelog` es seit jeher führt und wie `record_values.value_ref_kind` es seit TASK-005 tut. *Der
+Preis ist nicht die Spalte, sondern die Leser: `SettingRepository::forOwners()` bekommt heute eine
+Liste blosser Nummern, und die Kette müsste künftig Nummer **und** Raum tragen.*
+
+⚠️ *`labels.owner_id` hat das Problem **nicht**: gemessen gehören alle 47 Zeilen einem Knoten, keine
+einer Kante — [`id-space-check.php`](../../../scripts/dev/id-space-check.php) prüft das jetzt gegen
+`nodes` statt gegen `identities` und ist damit strenger als vorher.*

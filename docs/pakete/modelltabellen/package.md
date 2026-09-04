@@ -367,6 +367,17 @@ Spalte.
 | **`settings.owner_id`** | **Kanten** | **derselbe Name, anderes Ziel als in `labels`** |
 | `record_values.value_ref` | Knoten 50 · Datensätze 93 | **`value_ref_kind` sagt den Raum** (TASK-005, gebaut) |
 
+**Gebaut am 2026-09-04, Schema 21** (TASK-004). `identities` ist gelöscht, `nodes` und `relations`
+vergeben aus ihrem eigenen `AUTO_INCREMENT`, und beide Räume beginnen über dem Höchstwert des
+gemeinsamen — **es wurde nichts umnummeriert und keine Nummer wird ein zweites Mal vergeben.**
+
+⚠️ **Ein Satz oben stimmt so noch nicht: `settings.owner_id` zeigt gemessen auf Knoten (3) *und*
+Kanten (10)**, nicht nur auf Kanten — *und sie nennt ihren Raum nicht, was dieselbe Zeile darüber
+verlangt.* **Das ist der eine Punkt, der aus TASK-004 offen blieb** (`INF-009` in
+[`inbox.md`](inbox.md)); solange er offen ist, beginnt der Kantenraum weit über dem Knotenraum, damit
+keine Nummer beides sein kann, und [`id-space-check.php`](../../../scripts/dev/id-space-check.php)
+zählt es nach.
+
 → [`tasks.md`](tasks.md) TASK-004, TASK-005, TASK-010
 
 ---

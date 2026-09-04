@@ -31,7 +31,7 @@ Komposition mit Multiplizität 1 immer ihren eigenen Datensatz?
 Durchgang durch die Reihenfolge Wächter-Leser-Daten, bevor sie bei `nodes.path` teuer wird.
 
 ```text
-[ ] TASK-004  identities streichen — JEDE Tabelle bekommt ihren eigenen Id-Raum
+[x] TASK-004  identities streichen — JEDE Tabelle bekommt ihren eigenen Id-Raum
 ```
 
 Die Tabelle hat genau eine Spalte, es zieht nichts um. **Nicht nur `nodes` und `relations`, sondern
@@ -42,6 +42,25 @@ einen zweiten Nummernraum, das eliminieren wir jetzt.»
 
 ⚠️ *Eingereiht, nicht sofort — auf sein Wort: «das kommt noch, wir können nicht alles auf einmal
 machen.»*
+
+**Gebaut am 2026-09-04, Schema 21.** `identities` ist gelöscht; `nodes` und `relations` vergeben ihre
+Ids aus ihrem eigenen `AUTO_INCREMENT`. **Nichts wurde umnummeriert** — beide Räume beginnen über
+`79 755`, dem Höchstwert des gemeinsamen Raums, damit keine Nummer ein zweites Mal vergeben wird
+([D-340](../../NewConcept/90-decision-log.md)). Der Kern kennt keinen Id-Vergeber mehr: `add()` gibt
+die geschriebene Zeile mit ihrer Nummer zurück, **`0` heisst «vergib eine»**.
+
+⚠️ **Die sieben Fremdschlüssel auf `identities.id` fallen ersatzlos, und das ist eine Entscheidung:**
+*die Bedingungen auf `nodes.id` setzt **TASK-010**, wo auch die Umbenennung steht; sie hier zu setzen
+hiesse, `ON DELETE RESTRICT` gegen ungeprüfte Aufräumwege zu stellen. Bis dahin hält
+[`id-space-check.php`](../../../scripts/dev/id-space-check.php) dieselbe Zusage lesend — **gemessen:
+null Waisen in allen sieben Spalten.***
+
+⚠️ **Zwei Behelfe blieben, beide im Eingang und beide bewacht.** *`INF-008`: die
+Installationsidentität hat keinen Raum mehr, aus dem sie ziehen könnte — auf einer frischen
+Installation ist `1` reserviert. **`INF-009`: `settings.owner_id` nennt ihren Raum nicht** und zeigt
+gemessen auf 3 Knoten und 10 Kanten; ohne Abstand zwischen den Räumen hielt `Settings` eine Kante für
+einen Knoten, und `package4-check` brach daran ab. **Der Kantenraum beginnt darum eine Milliarde über
+dem Knotenraum, bis die Spalte ihren Raum nennt.***
 
 ```text
 [x] TASK-005  Fremdschlüssel nennen ihre Zieltabelle; value_ref bekommt eine Spalte für den Raum
