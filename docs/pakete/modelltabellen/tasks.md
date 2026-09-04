@@ -584,3 +584,16 @@ neue Fassung zwei Kanten: `Root --validator--> Validator` und `Root --read_only-
 auszuweichen — «wenn wir am Knoten `int` die `min`/`max` einhängen und `int` `min`/`max` als Setting
 hat, erben `min`/`max` diese wieder». **Mit [D-607](../../NewConcept/90-decision-log.md) fällt der
 Grund weg**, sie können zurück unter `Integer`.*
+
+```text
+[ ] TASK-043  Ein Datensatz entsteht beim ersten Schreiben, nicht beim
+              Ansehen (D-609) — behebt BUG-004
+```
+
+**Gemessen: 324 von 377 Datensätzen tragen keine einzige Wertzeile, 287 davon `default`.**
+*Sie entstehen in `DataEntry::defaultRecordOf()`, gerufen auch aus `clearSettingAt()` — **Löschen
+legt an**, bevor es merkt, dass nichts zu löschen ist.*
+
+⚠️ **Nicht entschieden: was mit den 324 vorhandenen geschieht.** *Sie tragen nichts, also verliert
+ihr Wegräumen nichts — aber es ist eine Handlung an seinen Daten und gehört gefragt, nicht
+nebenbei erledigt.*
