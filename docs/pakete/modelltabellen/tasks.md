@@ -560,3 +560,16 @@ hatte und der beim nächsten Lauf endgültig fiel.*
 `render with label` sind über den Ast schon geschützt ([D-545](../../NewConcept/90-decision-log.md)).
 **Der Wächter ist trotzdem der wichtigere Teil** — der Fall ist heute selten und morgen wieder da,
 sobald jemand einen Einstellungsknoten ausserhalb des Astes anlegt.*
+
+```text
+[ ] TASK-041  Die Marke «ist eine Einstellung» einmalig aus dem Ast fuellen —
+              36 von 38 Knoten fehlen (D-606), mit Waechter, dass sie
+              gepflegt bleibt
+```
+
+⚠️ **Beim Füllen ist `min` und `max` gesondert anzusehen:** *sie liegen im Ast, tragen keine Marke,
+und **keine Kante zeigt auf sie**. Vermutlich sind sie kein Einstellungsknoten mehr, sondern Rest —
+**nicht blind mitmarkieren.***
+
+⚠️ *Danach kann [D-605](../../NewConcept/90-decision-log.md) greifen (ein markierter Knoten erbt
+keine Einstellungskanten) — heute griffe die Regel an drei Knoten statt an achtunddreissig.*
