@@ -316,3 +316,51 @@ nicht statt seiner.
 ⚠️ **Drei Stellen mussten dafür weichen, und alle drei stammten aus derselben Annahme** — *ein
 Knotenverweis hat keine Felder*: der Abstieg brach bei jedem Typ ab, die Teile eines Teils wurden
 nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten geholt.
+
+---
+
+## Seine Liste vom 2026-09-04
+
+```text
+[ ] TASK-026  Fields/Anlegen: ohne Namen wird der Knotenname benutzt — mit
+              Schalter, und die Beschriftung zieht mit
+[ ] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
+[ ] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
+              fertig; der Anlegen-Knopf bleibt in der Zeile
+[ ] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
+              Pflichtfeld ohne leere Wahl
+[ ] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
+              Baum
+[ ] TASK-031  NodeChooser bekommt oben ein Such-/Filterfeld
+[ ] TASK-032  Komposition und Aggregation werden dieselbe Ablage; ein Schalter
+              am Feld sagt nur, ob die Daten mitgeloescht werden
+```
+
+**INF-005 · Er hat `city` und `street` von Simple nach Combined verschoben** (2026-09-04). *Kein
+Auftrag, sondern der Stand — wird hier vermerkt, weil Wächter daran hängen können (TASK-025).*
+
+⚠️ **Zu TASK-026, seine Beschreibung:** *«wenn kein Name eingegeben wird, wird der Knotenname
+verwendet, die Frage ist, was mit Labels ist — die sollten dann auch aus dem Knoten verwendet
+werden, somit müsste `label_id` von Kante auf den gleichen zeigen wie Knoten. Evtl. sollte man das
+mit Schalter machen … Schalter umschalten, Feld wird geöffnet, Name steht noch da, aber beim
+Speichern wird eigenes Label angezeigt.»*
+
+⚠️ **Zu TASK-032, seine Beschreibung:** *«Composition nur noch Knoten ohne Funktion. Benutzer wählt
+am Feld, ob Verbindung eine Composition oder eine Aggregation ist, aber er sagt nur: Schalter wird
+mit Knoten-Daten gelöscht ⇒ Composition, sonst Aggregation. Alle Daten werden gleich abgelegt für
+Composition und Aggregation. Nur simple Werte werden direkt geschrieben.»*
+
+⚠️ *Punkt 3 seiner Liste ist leer geblieben — offen, was dort stehen sollte.*
+
+**Seine Antworten vom 2026-09-04:**
+
+| | |
+|---|---|
+| **Punkt 3** | *«ignorieren»* — bleibt leer |
+| **TASK-026** | Der Schalter steht auf **«Knotennamen benutzen»** |
+| **TASK-029** | *«haben wir ein Konzept für: sollten keine Daten da sein, einfach ändern; wenn Daten da sind, neue Version und Konflikt»* — die Schattentabellen tragen das schon |
+| **TASK-032** | *«dann vereinfachen wir und haben nur noch eine Relation und Feld das mit löschen»* — [D-587](../../NewConcept/90-decision-log.md) |
+
+⚠️ **TASK-032 ist damit grösser als die anderen:** *`relation_type` fällt ganz, nicht nur die
+Unterscheidung Komposition/Aggregation. Was von `setting` übrig ist, trägt `record_type`
+([D-583](../../NewConcept/90-decision-log.md)); was ein Ziel ist, sagt sein Ast.*

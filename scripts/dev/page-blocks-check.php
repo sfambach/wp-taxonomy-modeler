@@ -43,6 +43,7 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require __DIR__ . '/geruest.php';
 
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Plugin;
@@ -303,14 +304,14 @@ echo "\n== Die Renderkette geht durch ein zusammengesetztes Feld ==\n";
 //
 // ⚠️ *Der Knoten wird über **die Kante** gesucht, nicht über seinen Namen: er heisst «Kontact» und
 // nicht «Kontakt», und eine Prüfung, die den Namen rät, ist morgen rot, weil jemand ihn korrigiert.*
-$zusammengesetzt = $wpdb->get_row(
-    'SELECT v.id AS besitzer, z.id AS ziel, rel.name AS feld
-     FROM ' . Schema::table('relations') . ' rel
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = rel.from_id
-     INNER JOIN ' . Schema::table('nodes') . " z ON z.id = rel.to_id
-     WHERE z.name = 'Adresse' AND rel.kind <> 'inheritance' LIMIT 1",
-    ARRAY_A
-);
+// WICHTIG: Der Waechter baut sich seine eigene Komposition, statt eine im Modell zu suchen --
+// TASK-025. Der Eigentuemer hat es gefunden: "warum haben wir einen Check auf Adresse, ich hatte
+// das mal so angelegt, aber das war kein Vertrag". CLAUDE.md verbietet es ausdruecklich:
+// "Special-casing by display name, label, path, or a specific node". Vorher suchte diese Zusage
+// "Adresse" beim Namen -- und wurde rot, als er dort eine Schachtelung einbaute, ohne dass etwas
+// kaputt war. Geprueft wird die Sache: geht die Renderkette durch ein zusammengesetztes Feld.
+$geruest = new Geruest('__pb');
+$zusammengesetzt = $geruest->komposition('Anschrift', ['Gasse', 'Nummer', 'Postleitzahl', 'Stadt']);
 
 if ($zusammengesetzt === null) {
     check('ein Feld zeigt auf «Adresse»', false, 'keines gefunden');
@@ -413,11 +414,15 @@ echo "\n== Die Vorschau hat drei Seiten, und Admin mischt keine Einstellungen ei
 // Admin-Seite gelegt — und auf `Adresse` standen sie **zwischen** den Feldern: Street, Display Option,
 // No., validator, Post Code … Er: «man sieht den Render in Settings, aber auch in der Preview vom
 // Modell, und das darf nicht sein.»*
-$id   = knotenId('Adresse');
+// WICHTIG: Auch hier das eigene Geruest statt seines Modells (TASK-025). Geprueft wird, dass
+// Admin die Felder nennt und Settings die Einstellungen -- und keiner das des anderen. Welcher
+// Knoten das zeigt, ist nicht die Sache dieser Zusage.
+$eigenes = $geruest->komposition('Ansicht', ['Gasse', 'Nummer', 'Postleitzahl', 'Stadt']);
+$id      = $eigenes['ziel'];
 $html = $id === 0 ? '' : seiteVon($id);
 
 if ($html === '') {
-    check('«Adresse» steht im Modell', false);
+    check('der Geruestknoten steht im Modell', false);
 } else {
     $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
 
@@ -453,7 +458,7 @@ if ($html === '') {
     // Einstellung» wäre am billigsten dadurch erfüllt, dass Admin gar nichts nennt.*
     check(
         'aber seine Felder',
-        str_contains($nachName['Admin'] ?? '', 'Street'),
+        str_contains($nachName['Admin'] ?? '', 'Gasse'),
         substr($nachName['Admin'] ?? '', 0, 80)
     );
 
@@ -465,7 +470,7 @@ if ($html === '') {
 
     check(
         'und keines seiner Felder',
-        ! str_contains($nachName['Settings'] ?? '', 'Street'),
+        ! str_contains($nachName['Settings'] ?? '', 'Gasse'),
         substr($nachName['Settings'] ?? '', 0, 80)
     );
 }
@@ -566,6 +571,8 @@ if ($mitSaetzen === 0) {
         );
     }
 }
+
+$geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

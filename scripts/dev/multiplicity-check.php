@@ -39,6 +39,7 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require __DIR__ . '/geruest.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
@@ -84,12 +85,18 @@ $settings  = new Settings(new WpdbSettingRepository(), $nodes, $framework);
  * **eine Prüfung, die ihre Fälle in der Tabelle sucht, die geleert wird, meldet danach «nichts
  * gefunden» statt «stimmt».***
  */
-$erwartet = [
-    ['Backrezept', 'zutat', '1..*'],
-    ['Einheitenwert', 'prefix', '0..1'],
-    ['Part List Item', 'Bauteil Ref.', '1..*'],
-    ['Parts List', 'Position', '0..*'],
-];
+// WICHTIG: Die Faelle werden gebaut, nicht in seinem Modell gesucht (TASK-025). Sein Satz:
+// "warum haben wir einen Check auf Adresse, ich hatte das mal so angelegt, aber das war kein
+// Vertrag". Die vier Multiplizitaeten sind die Sache; welcher seiner Knoten sie zufaellig traegt,
+// ist es nicht -- und benennt er ihn um, war die Zusage rot, ohne dass etwas kaputt war.
+$geruest = new Geruest('__mult');
+
+$erwartet = [];
+
+foreach (['1..*', '0..1', '1..1', '0..*'] as $i => $soll) {
+    $geruest->feldMit('Traeger' . $i, 'feld' . $i, $soll);
+    $erwartet[] = ['__mult Traeger' . $i, 'feld' . $i, $soll];
+}
 
 echo "\n== Die Kante traegt ihre Multiplizitaet ==\n";
 
@@ -387,5 +394,7 @@ if ($verwalter === []) {
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
+
+$geruest->abbauen();
 
 exit($bad === 0 ? 0 : 1);
