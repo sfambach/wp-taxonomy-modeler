@@ -261,9 +261,26 @@ Löschen bleibt zweistufig — **parken, dann endgültig entfernen**
 **Die Paarung `node_id` + `node_version` bleibt: ein Datensatz gehört immer zu einer bestimmten
 Version des Knotens.**
 
-### 5.1 · Offen: was bei einem Versionskonflikt geschieht
+### 5.1 · Was bei einem Konflikt geschieht
 
-**STATUS: `OPEN` — bewusst zurückgestellt**
+**STATUS: `ENTSCHIEDEN` am 2026-09-04** ([D-599](../../NewConcept/90-decision-log.md))
+
+**Ein Konflikt entsteht nicht durch die Art der Änderung, sondern dadurch, dass die vorhandenen
+Werte sie nicht überleben — gemessen, nicht angenommen.** Zahl→Text immer gut; Text→Zahl gut,
+wenn jeder Wert eine Zahl ist; Text kürzen gut, wenn der längste hineinpasst; `1..*`→`1..1` gut,
+wenn kein Datensatz mehr als einen hat. **Was sich nicht messen lässt, ist ein Konflikt.**
+
+**Ein Datensatz mit Konflikt wird angezeigt, soweit es geht, und als solcher kenntlich gemacht** —
+*ein Datensatz, den man nicht sieht, ist einer, den man nicht reparieren kann.*
+
+⚠️ **`node_version` taugt als Auslöser nicht und wird dafür auch nicht gebraucht.** *Gemessen:
+34 von 407 Datensätzen liegen hinter ihrem Knoten, zwei davon 170 und 188 Zählschritte —
+[D-349](../../NewConcept/90-decision-log.md) sagt, der Zähler bewegt sich bei **jedem** Schreiben
+auf die Zeile, auch beim Umbenennen. **Gemessen wird an den Werten, nicht an einer Zahl.***
+
+⚠️ *Der ursprüngliche Wortlaut, zurückgestellt seit dem 1.9.:*
+
+**STATUS: war `OPEN` — bewusst zurückgestellt**
 
 *Der Eigentümer: «wenn wir Konflikte haben — Knoten hat sich geändert, Record zeigt auf alte
 Version — Konflikt muss manuell aufgelöst werden, somit kann dieser Record nicht mehr dargestellt
