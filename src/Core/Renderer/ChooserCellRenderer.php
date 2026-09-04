@@ -6,6 +6,7 @@ use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
+
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -82,7 +83,10 @@ final class ChooserCellRenderer implements Renderer
         // darum in der 20px-Vorgabe von WordPress, neben Nachbarn mit 17.*
         $glyph = $icon === '' ? '' : IconMarkup::dashicon($icon) . ' ';
 
-        $name = $glyph . '<span class="taxmod-chooser-name">' . RenderResult::escape($subject->name) . '</span>';
+        // WICHTIG: Dieselbe Zeile wie im Modellbaum, ein Renderer, unterschieden nur durch
+        // editable. Vorher zeichnete diese Zelle ihre eigene Form -- gleiche Sache, zwei
+        // Aussehen, und jede Aenderung am Baum ging an ihr vorbei.
+        $name = (new TreeNodeRenderer())->render($subject, $context->asChooserRow())->markup;
 
         if ($this->cannotBePicked($context)) {
             // ⚠️ Shown and not offered: the tree has to stay whole, because a child of an impossible

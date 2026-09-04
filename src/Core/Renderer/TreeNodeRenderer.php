@@ -126,15 +126,33 @@ final class TreeNodeRenderer implements Renderer
         $hidden = $context->surroundings->hidden;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
-            . ' id="taxmod-node-' . (int) $subject->id . '"'
+            . ' id="' . RenderResult::escape($context->surroundings->rowIdPrefix) . (int) $subject->id . '"'
             . ' style="display:flex;gap:.5em;align-items:center">'
             . $named;
 
         // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the
         // name to the far edge, so the names stay a readable column and the controls line up.
+        // WICHTIG: Ohne Bearbeitung keine Funktionen rechts -- auf sein Wort: die Baumansicht im
+        // Auswahldialog "sollte so wie in tree view aussehen, nur ohne die Funktionen rechts,
+        // somit koennte hier der gleiche Render verwendet werden, wir muessen nur eine Einstellung
+        // schaffen die sagt editable oder nicht". In der Seitenansicht an, im Dialog aus.
+        $funktionen = $this->controls($context->surroundings);
+        $zaehler    = $subject instanceof Node && $context->developerMode
+            ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
+            : '';
+
+        // WICHTIG: Kein leerer Schwanz. Im Auswahldialog werden keine Funktionen hereingereicht --
+        // das ist genau, was er wollte: "sollte so wie in tree view aussehen, nur ohne die
+        // Funktionen rechts". Und es braucht keinen neuen Schalter dafuer: wer nichts hineingibt,
+        // bekommt nichts. RenderContext::editable taugt nicht als Signal -- es heisst "ein
+        // Eingabefeld darf angeboten werden", und cellsFor() setzt es auch im Modellbaum auf false.
+        if ($funktionen === '' && $zaehler === '') {
+            return RenderResult::of($markup . '</div>');
+        }
+
         $markup .= '<span class="taxmod-tree-tail" style="margin-left:auto;display:flex;'
             . 'gap:.4em;align-items:center">'
-            . $this->controls($context->surroundings)
+            . $funktionen
             // ⚠️ **The write count is a diagnostic and shows only in developer mode** — the owner
             // asked for it off by default, and [D-248](../../../docs/NewConcept/90-decision-log.md)
             // says there is **one** mode for that rather than a switch per diagnostic.
@@ -143,10 +161,7 @@ final class TreeNodeRenderer implements Renderer
             // *version* promises a state to return to, and this only says *nobody changed this row
             // since you read it*. **It stays visible in that mode because it earns its place** —
             // that decision was written after a defect was found by reading these numbers.
-            . ($subject instanceof Node
-                && $context->developerMode
-                ? '<span class="taxmod-tree-writes" style="opacity:.55">' . (int) $subject->version . '</span>'
-                : '')
+            . $zaehler
             . '</span>';
 
         return RenderResult::of($markup . '</div>');

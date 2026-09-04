@@ -364,3 +364,22 @@ Composition und Aggregation. Nur simple Werte werden direkt geschrieben.»*
 ⚠️ **TASK-032 ist damit grösser als die anderen:** *`relation_type` fällt ganz, nicht nur die
 Unterscheidung Komposition/Aggregation. Was von `setting` übrig ist, trägt `record_type`
 ([D-583](../../NewConcept/90-decision-log.md)); was ein Ziel ist, sagt sein Ast.*
+
+```text
+[ ] TASK-033  Ein Auswahl-Renderer statt zwei — dialog/inline wird eine
+              Einstellung an ihm
+[ ] TASK-034  Das Suchfeld gehoert als Einstellung an den Auswahl-Renderer,
+              nicht fest in den Dialog gebaut
+```
+
+**Sein Wort:** *«der Renderer soll eigentlich den Dialog-Chooser nur verwenden, weil dieser auch an
+anderer Stelle nicht nur im Renderer verwendet wird. Ich würde auch sagen, der Renderer hat ein
+Setting dialog/inline.»*
+
+⚠️ **Und wann `inline` überhaupt Sinn ergibt, hat er gleich mitgesagt:** *«nur wenn wir einen Knoten
+haben, der nur eine Ebene hat, also Knoten mit Kindern die alle Blätter sind — ansonsten erscheint
+beim Aufklappen wieder [ein Baum].»*
+
+⚠️ *Heute sind es zwei Renderer-Knoten, `chooser-dialog` (43499) und `chooser-inline` (43501). Sie
+werden einer, und der Unterschied wird ein Feld — dieselbe Bewegung wie bei
+[D-585](../../NewConcept/90-decision-log.md), wo `DisplayOption` fiel.*

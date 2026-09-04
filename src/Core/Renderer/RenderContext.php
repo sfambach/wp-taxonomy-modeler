@@ -119,6 +119,58 @@ final class RenderContext
      * occurrences of one multi-valued reference point at two different nodes, and keeping the first
      * one's label would name the second wrongly.
      */
+    /**
+     * Derselbe Zusammenhang, nur ohne Bearbeitung.
+     *
+     * WICHTIG: Damit ein Renderer zweimal benutzt werden kann statt zweimal geschrieben --
+     * die Baumzeile in der Seitenansicht traegt ihre Funktionen, im Auswahldialog nicht.
+     */
+    /**
+     * Derselbe Zusammenhang, aber als Zeile in einem Auswahldialog.
+     *
+     * WICHTIG: Nur die Zeilen-Id bekommt einen anderen Vorsatz. Sonst stuende jeder Knoten zweimal
+     * mit derselben HTML-Id im Dokument -- einmal im Modellbaum, einmal im Dialog.
+     */
+    public function asChooserRow(): self
+    {
+        return new self(
+            purpose: $this->purpose,
+            value: $this->value,
+            settings: $this->settings,
+            locale: $this->locale,
+            level: $this->level,
+            editable: false,
+            fieldName: $this->fieldName,
+            type: $this->type,
+            surroundings: new Surroundings(
+                hidden: $this->surroundings->hidden,
+                // WICHTIG: Der Feldname gehoert hinein, weil zwei Dialoge auf einer Seite
+                // dieselben Knoten zeigen -- der Verschiebe-Dialog und der Typ-Dialog. Genau
+                // dieselbe Kollision, vor der der Docblock von DialogChooserRenderer warnt.
+                rowIdPrefix: 'taxmod-choice-'
+                    . (string) preg_replace('/[^a-z0-9_-]/i', '', $this->fieldName)
+                    . '-',
+            ),
+            developerMode: false,
+        );
+    }
+
+    public function notEditable(): self
+    {
+        return new self(
+            purpose: $this->purpose,
+            value: $this->value,
+            settings: $this->settings,
+            locale: $this->locale,
+            level: $this->level,
+            editable: false,
+            fieldName: $this->fieldName,
+            type: $this->type,
+            surroundings: $this->surroundings,
+            developerMode: $this->developerMode,
+        );
+    }
+
     public function withValue(TypedValue $value, string $fieldName = '', ?string $refersTo = null): self
     {
         return new self(

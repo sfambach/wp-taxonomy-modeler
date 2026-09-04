@@ -153,6 +153,16 @@ final class Surroundings
          * pointing the other way: there a **button** stands outside its form, here a **field** does.*
          */
         public readonly string $formId = '',
+
+        /**
+         * Vorsatz der Zeilen-Id, damit dieselbe Zeile zweimal auf einer Seite stehen kann.
+         *
+         * WICHTIG: Seit der Auswahldialog dieselbe Baumzeile zeichnet wie die Seitenansicht, steht
+         * jeder Knoten zweimal im Dokument -- und eine HTML-Id darf es nur einmal geben.
+         * package7-check hat es gemeldet, elf Stueck. Der Vorsatz trennt die beiden Vorkommen,
+         * ohne dass die Zeile zwei Renderer braucht.
+         */
+        public readonly string $rowIdPrefix = 'taxmod-node-',
         /**
          * Spalten **vor** den Feldern, je Zeile — Überschrift => gezeichnete Zelle.
          *
