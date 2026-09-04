@@ -543,3 +543,14 @@ umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimm
 mehr anfasst als seine eigenen Knoten. **«Geparkt, nicht gelöscht» gilt nicht, solange ein
 Wächterlauf dazwischenkommt** — gemessen an `DisplayOption`, den der Eigentümer selbst geparkt
 hatte und der beim nächsten Lauf endgültig fiel.*
+
+```text
+[ ] TASK-040  Ein Knoten mit kind = setting erbt keine Einstellungskanten
+              (D-605) — plus Waechter: kein Knoten zeigt sich selbst als
+              seine eigene Einstellung
+```
+
+⚠️ *Gemessen betrifft es heute **einen** Knoten: `read_only` unter `Boolean`. `Validator` und
+`render with label` sind über den Ast schon geschützt ([D-545](../../NewConcept/90-decision-log.md)).
+**Der Wächter ist trotzdem der wichtigere Teil** — der Fall ist heute selten und morgen wieder da,
+sobald jemand einen Einstellungsknoten ausserhalb des Astes anlegt.*
