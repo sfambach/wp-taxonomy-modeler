@@ -56,6 +56,7 @@ berührt.
 | `field_type` | **`model`** oder **`setting`** | war `kind` |
 | `label_id` | → `labels.id`, **verpflichtend** — hier steht der Name | §3.4 |
 | `settings_record_id` | → `node_records.id`, optional — eigene Einstellungen | §3.6 |
+| `hide` | **im Baum nicht anzeigen** ([D-590](../../NewConcept/90-decision-log.md)) — dass ein *Feld* nicht gezeichnet wird, sagt ein Renderer, der nichts ausgibt | 6, von den Kanten übernommen |
 | *(neu)* | die **PHP-Klasse**, die diesen Knoten umsetzt | §3.2 |
 
 **`name` ist gestrichen — er steht in `labels.name`** ([D-580](../../NewConcept/90-decision-log.md)).
@@ -181,7 +182,7 @@ Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 | `target_settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** ([D-586](../../NewConcept/90-decision-log.md)) | §3.6 |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
-| `hide` | **offen** — verliert mit der Vererbung alle Benutzer | §4.4 |
+| ~~`hide`~~ | **gestrichen** ([D-590](../../NewConcept/90-decision-log.md)) — zieht als `nodes.hide` an den Knoten | war 6, alle auf Vererbungskanten |
 
 **`from_node_id`/`to_node_id` sind keine Umbenennung, sondern eine Verschärfung:** heute zeigen alle
 sieben Fremdschlüssel auf `identities.id`, was strukturell **eine Kante von einem Datensatz aus**
@@ -202,9 +203,15 @@ Zielknotens ab und fragt jede nach ihrem Renderer.*
 
 | | |
 |---|---|
-| `name` | **leer genau dann, wenn Vererbung** — 127 von 127 ohne, 39 von 39 mit |
-| `multiplicity` | **sagt bei Vererbung nichts** — alle 127 auf `1..1` |
-| `hide` | **nur auf Vererbungskanten** — 6 Stück |
+| `name` | **leer genau dann, wenn Vererbung** — gemessen 133 von 133 ohne, 65 von 65 mit |
+| `multiplicity` | **sagt bei Vererbung nichts** — alle 133 auf `1..1` |
+| `hide` | **nur auf Vererbungskanten** — 6 Stück, und alle sechs ziehen mit an den Knoten ([D-590](../../NewConcept/90-decision-log.md)) |
+
+⚠️ **Alle drei sind Belege für dieselbe Sache, und die ist entschieden**
+([D-581](../../NewConcept/90-decision-log.md)): *jede dieser Spalten sagt bei Vererbung nichts oder
+etwas anderes als sonst. **Gemessen am 2026-09-04: 133 Vererbungskanten für 134 Knoten, davon 133
+mit genau einer und keiner mit mehr** — eine Beziehung, die immer genau eine ist, ist eine Spalte
+und keine Tabelle. Zwei Drittel der Zeilen von `relations` verschwinden damit.*
 
 ### 4.2 · `sort_order` — die Reihenfolge, je Knoten **und** je Kantenart
 

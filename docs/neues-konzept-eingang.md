@@ -80,6 +80,39 @@ damit:
 
 ---
 
+## INF-004 · Ein Feld, das den Knotennamen benutzt, folgt ihm — statt ihn zu kopieren
+
+**Typ:** `DECISION` · **Status:** `CONFIRMED` — vom Eigentümer, 2026-09-04
+
+**Sein Wort:** *«wenn use the node name gewählt ist sollte eigentlich die node_labels_id an das
+Feld gehängt werden, nur wenn später ein Name eingegeben wird soll ein eigenes Label gewählt
+werden»* — und auf Rückfrage: Basisname des Knotens (nicht eine Rolle/Locale-Label); bestehende,
+bereits kopierte Feldnamen werden umgestellt statt nur künftige; der Eintrag hier steht auf sein
+Geheiss.
+
+**Der gemessene Ist-Zustand, vor der Änderung:** [`ModelEditor::addField()`](../src/Core/Service/ModelEditor.php)
+nimmt einen reinen `string $name`. Beim Anlegen mit angehaktem "Use the node name" kopiert
+[`NodesScreen`](../src/WordPress/Admin/NodesScreen.php) einmalig den **damaligen** Basisnamen des
+Zielknotens in `relations.name`. Wird der Knoten später umbenannt, läuft die Kopie auseinander —
+niemand aktualisiert sie nach.
+
+**Die Entscheidung:** Ein Feld, das "use node name" trägt, zeigt den **aktuellen** Basisnamen
+seines Zielknotens, nicht eine eingefrorene Kopie. Erst ein eigener, ausdrücklich eingegebener
+Name löst die Kopplung — dann bekommt die Kante ihren eigenen Text, wie heute.
+
+**Was das berührt (Datenmodell, deshalb hier und nicht stillschweigend gebaut, Arbeitsmodell v1.2
+§4.1):** eine neue Spalte auf `relations` (Schema-Version, `dbDelta`), das `Relation`-Modell, die
+Zeile in [`FieldRowRenderer`](../src/Core/Renderer/FieldRowRenderer.php), und eine rückwirkende
+Wanderung für bestehende Kanten, deren Name heute zufällig mit dem Namen ihres Zielknotens
+übereinstimmt (das einzige Erkennungsmerkmal, das es rückwirkend gibt — echte Verwechslungen mit
+einem absichtlich gleichlautenden eigenen Namen sind eine bekannte, hingenommene Unschärfe dieser
+Wanderung).
+
+**Umgesetzt am selben Tag** — Einzelheiten siehe Änderungshistorie des Pakets (`git log` auf
+`src/Core/Model/Relation.php`, `src/WordPress/Persistence/Schema.php`).
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*

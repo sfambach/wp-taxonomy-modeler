@@ -14,6 +14,7 @@ erDiagram
         int  label_id       FK "verpflichtend"
         int  settings_record_id FK "auf node_records — optional"
         text php_klasse
+        bool hide "D-590: nur im Baum verstecken"
     }
 
     relations {
@@ -27,7 +28,6 @@ erDiagram
         int  target_settings_record_id FK "ueberschreibt den Zielknoten"
         int  sort_order    "je Knoten und Kantenart, erste ist 0"
         text multiplicity  "1..1 | 0..1 | 1..* | 0..*"
-        bool hide          "OFFEN"
     }
 
     node_records {
@@ -93,7 +93,6 @@ node_record_id · relation_id · sort_order      Reihenfolge der Werte in einem 
 
 ## Was offen ist
 
-- `hide` an `relations` — verliert mit der Vererbung alle Benutzer
 - Was bei einem Konflikt zwischen `node_records.node_version` und dem Knoten geschieht
 - Ob `deletes_with_node` eine Spalte wird oder ein Feld am Einstellungsdatensatz
   ([D-587](../../NewConcept/90-decision-log.md) lässt es ausdrücklich offen)
