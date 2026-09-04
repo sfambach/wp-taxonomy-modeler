@@ -299,3 +299,33 @@ Einstellungskante zu sein — es war die einzige.*
 nennen müssen? **Für das Ableiten spricht, dass die Oberfläche es ohnehin behauptet**; dagegen, dass
 ein Akt, der rät, schwerer zu prüfen ist als einer, dem man es sagt. **Ein Wächter fehlt in beiden
 Fällen** — dass jede Kante in den Einstellungsast eine Einstellungskante ist, prüft heute niemand.*
+
+---
+
+## INF-014 · An der Modellwurzel steht ein Renderer, und seit D-602 gilt er für alles
+
+**2026-09-04, beim Bauen von [D-602](../../NewConcept/90-decision-log.md) gemessen. Nicht
+entschieden (`PR-4`).**
+
+Die Auflösungskette hat die Vorfahren zurück, und **die Wurzel ist ein Vorfahr** — genau so sagt es
+[D-602](../../NewConcept/90-decision-log.md). Damit wirkt zum ersten Mal, was im Datensatz der Wurzel
+steht.
+
+⚠️ **Was dort steht, gemessen:** *der `default`-Satz von `Root` trägt eine `Display Option`, und
+deren Teil sagt `render = checkbox` und `converter = hexadecimal`. **Damit wird jedes Feld des
+Modells als Ankreuzfeld gezeichnet** — ein Datum, eine Adresse, eine Farbe.*
+
+⚠️ **Was es kostet, gemessen:** *`package7-check` verliert 16 Zusagen, `composition-check` sechs.
+Mit dieser einen Zeile stillgelegt sind beide Läufe grün und der Rest des Netzes unverändert.*
+
+⚠️ **Woher die Zeile kommt, gemessen:** *kein Journaleintrag, keine Zeile im Schatten — sie ist
+**nie über die Oberfläche geschrieben worden**. Sie stammt aus `scripts/migrate-renderer-settings.php`,
+das eine `settings`-Zeile mit `owner_id = 1` umgezogen hat. **Und `1` ist die Modellwurzel, nicht die
+Installation**: `installationId()` ist gemessen `641` und steht in keinem Knotenpfad.*
+
+⚠️ **Die Frage, und sie ist Deine:** *ist eine Einstellung an der Modellwurzel gewollt — der
+modellweite Vorgabewert, so wie `Root` die Einstellungskanten trägt, damit jeder sie erbt
+([D-545](../../NewConcept/90-decision-log.md)) — und ist dann nur **dieser Wert** falsch? Oder soll
+die Wurzel als Träger von Werten überhaupt ausgenommen sein? **Ich habe nichts gelöscht und nichts
+ausgenommen**: die Kette ist gebaut, wie D-602 sie beschreibt, und die zwei Läufe stehen rot, statt
+dass die Frage in einem grünen Lauf verschwindet.*

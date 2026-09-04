@@ -248,10 +248,17 @@ check(
 // dafuer hat, ist die Sache des Steuerelements.*
 $intMarkup = $fields[$count->id]->result->markup;
 
+// WICHTIG: Eine dritte Schreibweise dazugenommen, und zwar aus demselben Grund wie die zweite
+// (D-356, PR-9): der Eigentuemer hat am gesaeten `Integer` `renderer = slider` gewaehlt, und seit
+// D-602 erreicht diese Wahl am Typ jede Verwendung. Ein `type="range"` traegt die Regel als
+// min/max/step und **kann keine Buchstaben annehmen** -- die Zusage der Zeile ist erfuellt, nur
+// nicht in einer der zwei Formen, die hier bisher aufgezaehlt waren. Aufgezaehlt wird weiter, statt
+// die Zusage zu weiten: ein nacktes Textfeld faellt nach wie vor durch.
 check(
     'an int field does not offer letters it will then refuse',
     str_contains($intMarkup, 'pattern="' . SimpleType::Int->pattern() . '"')
-        || (str_contains($intMarkup, 'type="number"') && str_contains($intMarkup, 'step=')),
+        || (str_contains($intMarkup, 'type="number"') && str_contains($intMarkup, 'step='))
+        || (str_contains($intMarkup, 'type="range"') && str_contains($intMarkup, 'step=')),
     $intMarkup
 );
 check(
@@ -276,14 +283,71 @@ check('the spinner was chosen', $chosen->rendererName === SpinnerRenderer::NAME,
 // enger wird.
 
 echo "
-== 4. Eine Wahl am Typ erreicht jede Verwendung — offen ==
+== 4. Eine Wahl am Typ erreicht jede Verwendung ==
 ";
-// WICHTIG: Diese Zusage hing an der Aufloesungskette der settings-Tabelle (D-579). Der Weg ueber
-// die Datensaetze ist noch ohne Vererbung — ModelValues sagt es im eigenen Docblock: geantwortet
-// wird aus dem Satz DIESES Knotens. Die Zusage wird nicht geloescht und nicht abgeschwaecht,
-// sondern steht als INF-010 im Eingang: erbt eine Einstellung, und woher.
-echo "  --   offen seit D-579: eine Einstellung erbt heute nicht (INF-010)
-";
+// WICHTIG: Wieder eine echte Zusage seit D-602. Sie hing an der Aufloesungskette der
+// settings-Tabelle, stand seit deren Streichung (D-579) als INF-010 offen und ist nicht
+// abgeschwaecht worden: geprueft wird die ganze Kette, jede Stufe einzeln und die Reihenfolge.
+//
+// WICHTIG: Gebaut wird auf eigenen __p7-Knoten unter dem gesaeten int und nicht am gesaeten Typ
+// selbst. Eine Wahl dort waere eine Aenderung an den Daten des Eigentuemers, und ein Wegnehmen
+// danach wuerde seine eigene Wahl mitnehmen -- der Lauf hat am gesaeten decimal schon einmal
+// aufgeraeumt, was ihm gehoerte.
+$eigenerTyp = $editor->createNode('__p7 Int', $seeded['int']->id);
+$unterTyp   = $editor->createNode('__p7 Int schmal', $eigenerTyp->id);
+
+$eins = $editor->addField($part->id, $eigenerTyp->id, '__p7 erste Zahl');
+$zwei = $editor->addField($part->id, $eigenerTyp->id, '__p7 zweite Zahl');
+$tief = $editor->addField($part->id, $unterTyp->id, '__p7 tiefe Zahl');
+
+/** @return array<int,string> Kanten-Id => Name des Renderers, mit frischem Gedaechtnis gezeichnet. */
+$gezeichnet = static function (array $kanten) use (&$zeichnerNeu): array {
+    $aus = [];
+    foreach ($zeichnerNeu()->fieldsFor($kanten, [], Purpose::Edit, 'taxmod_value') as $feld) {
+        $aus[$feld->edge->id] = $feld->rendererName;
+    }
+
+    return $aus;
+};
+
+$angabe($eigenerTyp, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+$jetzt = $gezeichnet([$eins, $zwei, $tief]);
+
+check('Stufe 2: die Verwendung sieht die Wahl am Zielknoten', $jetzt[$eins->id] === SpinnerRenderer::NAME, $jetzt[$eins->id]);
+check('einmal gesetzt, nicht je Verwendung', $jetzt[$zwei->id] === SpinnerRenderer::NAME, $jetzt[$zwei->id]);
+check('Stufe 3: ein Nachfahre des Typs erbt sie', $jetzt[$tief->id] === SpinnerRenderer::NAME, $jetzt[$tief->id]);
+
+// WICHTIG: naeher schlaegt ferner (D-602). Der Untertyp sagt etwas anderes als sein Vorfahr, und
+// er gewinnt -- fuer sich, ohne die Geschwister zu aendern.
+$angabe($unterTyp, SettingKey::Renderer->value, TypedValue::ofText(FieldRenderer::NAME));
+$jetzt = $gezeichnet([$eins, $tief]);
+
+check('naeher schlaegt ferner', $jetzt[$tief->id] === FieldRenderer::NAME, $jetzt[$tief->id]);
+check('und nur dort', $jetzt[$eins->id] === SpinnerRenderer::NAME, $jetzt[$eins->id]);
+
+// WICHTIG: Stufe 1 schlaegt alles -- die Wahl an der Verwendungsstelle steht vor der ganzen Kette.
+$angabe($eins, SettingKey::Renderer->value, TypedValue::ofText(FieldRenderer::NAME));
+$jetzt = $gezeichnet([$eins, $zwei]);
+
+check('Stufe 1: die Kante schlaegt den Typ', $jetzt[$eins->id] === FieldRenderer::NAME, $jetzt[$eins->id]);
+check('und die Nachbarkante bleibt, was der Typ sagt', $jetzt[$zwei->id] === SpinnerRenderer::NAME, $jetzt[$zwei->id]);
+
+// WICHTIG: Wird die eigene Angabe wieder weggenommen, faellt die Verwendung auf das zurueck, was
+// weiter oben in der Kette steht -- hier der gesaete Typ, an dem der Eigentuemer selbst gewaehlt hat.
+// **Stufe 4, der Rueckfall im Kode, ist an dieser Stelle nicht zu zeigen**, weil oberhalb etwas
+// steht; sie ist im Kernlauf gepruefte Sache (RendererRegistry::defaultFor).
+$ohneAngabe($eins, SettingKey::Renderer->value);
+$ohneAngabe($unterTyp, SettingKey::Renderer->value);
+$ohneAngabe($eigenerTyp, SettingKey::Renderer->value);
+$jetzt = $gezeichnet([$eins, $zwei, $tief]);
+
+$obenInDerKette = ($zeichnerNeu()->settingsForNode($seeded['int'])[SettingKey::Renderer->value] ?? null)?->value->text
+    ?? $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name();
+
+check('weggenommen faellt sie auf die Kette darueber zurueck', $jetzt[$eins->id] === $obenInDerKette, $jetzt[$eins->id] . ' vs ' . (string) $obenInDerKette);
+check('auch tief unten', $jetzt[$tief->id] === $obenInDerKette, $jetzt[$tief->id]);
+
+$rendering = $zeichnerNeu();
 
 echo "\n== 5. Values go in as their type and come back unchanged ==\n";
 $record = $data->create($part->id);
@@ -798,6 +862,12 @@ foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE
 if ($ownersToClear !== []) {
     (new WpdbLabelRepository())->forgetOwners($ownersToClear);
 }
+
+// WICHTIG: Auch die Datensaetze, und das ist derselbe Fehler wie bei den Beschriftungen eine Stufe
+// hoeher. Der Lauf legt an jedem Knoten, an dem er eine Angabe macht, einen Datensatz an ($satzVon)
+// -- und loeschte bisher nur die Knoten. Gemessen am 2026-09-04: 125 Datensaetze ohne Knoten allein
+// von diesem Tag, und id-space-check und package6-check melden sie beide als Waisen.
+(new WpdbRecordRepository())->forgetNodes(array_map('intval', $scratchIds));
 
 foreach ($scratchIds as $scratch) {
     $node = $nodes->find((int) $scratch);
