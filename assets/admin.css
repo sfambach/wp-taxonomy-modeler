@@ -1061,3 +1061,23 @@ details.taxmod-page-block > summary {
         animation: none;
     }
 }
+
+/* ── Das Suchfeld im Auswahldialog ───────────────────────────────────────────
+ *
+ * TASK-031, auf sein Wort: ein Filterfeld oben, «um schneller einen Knoten
+ * über den Namen zu suchen». Der Dialog kommt ohne Skript aus; dieses Feld
+ * nicht — ohne Skript steht es da und tut nichts, und die vollständige Liste
+ * bleibt darunter erreichbar.
+ */
+.taxmod-chooser-search {
+	display: flex;
+	align-items: center;
+	gap: .4em;
+	flex: 1 1 auto;
+	margin: 0 .6em;
+}
+
+.taxmod-chooser-filter {
+	width: 100%;
+	min-width: 8em;
+}

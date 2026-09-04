@@ -177,6 +177,17 @@ final class DialogChooserRenderer implements Renderer
             . '<span class="taxmod-chooser-current">' . $current . '</span>'
             . '<label class="taxmod-dialog-close" for="' . RenderResult::escape($switch) . '">&times;</label>'
             . '</span>'
+            // WICHTIG: Ein Suchfeld, weil die Liste achtzig Eintraege lang werden kann (TASK-031).
+            // Es traegt kein Wort, sondern ein Zeichen -- AR-2: nichts vom Benutzer Sichtbares wird
+            // fest hingeschrieben, und der Kern darf die Textdomaene nicht rufen (CD-1). Ohne
+            // Skript bleibt es ein Feld, das nichts tut; es filtert also nur, wo Skript laeuft, und
+            // die vollstaendige Liste steht ohnehin darunter.
+            . '<span class="taxmod-chooser-search"><span aria-hidden="true">&#128269;</span>'
+            . RenderResult::htmlTag('input', [
+                'type'  => 'search',
+                'class' => 'taxmod-chooser-filter',
+            ])
+            . '</span>'
             . '<span class="taxmod-chooser-tree">' . $tree->body . '</span>'
             . $this->foot($context)
             . '</span></span></span>'

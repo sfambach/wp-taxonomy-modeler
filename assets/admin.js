@@ -295,4 +295,35 @@
 			stops[ 0 ].focus();
 		}
 	} );
+	/**
+	 * Das Suchfeld im Auswahldialog -- TASK-031.
+	 *
+	 * Der Baum ist eine flache Folge von Zeilen mit Einrueckung, keine Verschachtelung im DOM.
+	 * Deshalb reicht es, Zeilen ohne Treffer auszublenden. Die Eltern eines Treffers verschwinden
+	 * dabei mit, und das ist gewollt -- wer sucht, will die Liste und nicht den Baum.
+	 */
+	document.addEventListener( 'input', function ( event ) {
+		var feld = event.target;
+
+		if ( ! feld || ! feld.matches || ! feld.matches( '.taxmod-chooser-filter' ) ) {
+			return;
+		}
+
+		var panel = feld.closest( '.taxmod-dialog-panel' );
+
+		if ( ! panel ) {
+			return;
+		}
+
+		var gesucht = feld.value.trim().toLowerCase();
+		var zeilen  = panel.querySelectorAll( '.taxmod-tree-row' );
+
+		for ( var i = 0; i < zeilen.length; i++ ) {
+			var name = zeilen[ i ].querySelector( '.taxmod-tree-label' );
+			var text = name ? name.textContent.toLowerCase() : '';
+
+			zeilen[ i ].style.display = ( gesucht === '' || text.indexOf( gesucht ) !== -1 ) ? '' : 'none';
+		}
+	} );
+
 } )();
