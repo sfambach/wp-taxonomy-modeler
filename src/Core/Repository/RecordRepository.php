@@ -24,6 +24,19 @@ interface RecordRepository
     /** @return list<NodeRecord> Every record entered against one model node. */
     public function ofNode(int $nodeId): array;
 
+    /**
+     * Die Datensätze **mehrerer** Knoten — in einer Abfrage.
+     *
+     * ⚠️ **Gebraucht seit [D-602](../../../docs/NewConcept/90-decision-log.md).** *Die Auflösungskette
+     * einer Einstellung geht über die **Vorfahren**, und ein Knoten hat so viele Vorfahren, wie er
+     * tief steht. Mit {@see self::ofNode()} je Stufe wäre die Zahl der Abfragen die Tiefe des Baums —
+     * genau das N+1, das `CD-7` verbietet und `package7-check.php` misst.*
+     *
+     * @param  list<int>                    $nodeIds
+     * @return array<int, list<NodeRecord>> Je angefragte Id genau ein Eintrag, notfalls leer.
+     */
+    public function ofNodes(array $nodeIds): array;
+
     /** @return list<EdgeRecord> Everything one record holds, in one statement. */
     public function valuesOf(int $recordId): array;
 

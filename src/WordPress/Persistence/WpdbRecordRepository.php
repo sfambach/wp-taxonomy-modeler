@@ -75,6 +75,44 @@ final class WpdbRecordRepository implements RecordRepository
     }
 
     /**
+     * ⚠️ *Eine Abfrage für alle Knoten, sonst kostet jede Stufe der Vorfahrenkette eine eigene
+     * (`CD-7`, [D-602](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param  list<int>                    $nodeIds
+     * @return array<int, list<NodeRecord>>
+     */
+    public function ofNodes(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $nodeIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ *Jede angefragte Id bekommt einen Eintrag, auch die ohne Sätze — sonst müsste jeder
+        // Aufrufer denselben `?? []` schreiben, und einer würde ihn vergessen.*
+        $nachKnoten  = array_fill_keys($ids, []);
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
+                 WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
+                ...$ids
+            ),
+            ARRAY_A
+        );
+
+        foreach ($rows ?: [] as $row) {
+            $nachKnoten[(int) $row['node_id']][] = $this->hydrate($row);
+        }
+
+        return $nachKnoten;
+    }
+
+    /**
      * ⚠️ *Eine Abfrage für alle Sätze, sonst kostet jeder Teil einer Einstellung eine eigene (`CD-7`).
      * Dieselbe Reihenfolge wie {@see self::valuesOf()} — `position`, bei Gleichstand die Id.*
      *

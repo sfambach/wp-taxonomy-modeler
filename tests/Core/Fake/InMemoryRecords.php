@@ -43,6 +43,21 @@ final class InMemoryRecords implements RecordRepository
     }
 
     /**
+     * @param  list<int>                    $nodeIds
+     * @return array<int, list<NodeRecord>>
+     */
+    public function ofNodes(array $nodeIds): array
+    {
+        $nachKnoten = [];
+
+        foreach ($nodeIds as $id) {
+            $nachKnoten[$id] = $this->ofNode($id);
+        }
+
+        return $nachKnoten;
+    }
+
+    /**
      * @param  list<int>                    $recordIds
      * @return array<int, list<EdgeRecord>>
      */
