@@ -70,8 +70,14 @@
  * galten fälschlich als zurückgenommen, weil ihr Text die Rücknahme einer **anderen** erzählt —
  * damit war auch jede Berufung auf sie falsch gezählt. **Die Decke war insoweit fiktiv.**
  * Rücknahmen: 30 gemeldet, **26 echt**.*
+ * ⚠️ **Angehoben auf 86 am 2026-09-04, und hier steht warum.** *[D-606](../../docs/NewConcept/90-decision-log.md)
+ * nennt `D-605`, **weil sie erzählt, dass sie auf ihr stand und nicht mehr darauf steht**: die Zeile
+ * trug ursprünglich D-605 als Grund, D-605 wurde durch D-607 zurückgenommen, und der Verweis steht
+ * jetzt in einem Satz, der genau das sagt. **Ohne ihn läse sich D-606, als habe sie nie einen Grund
+ * gehabt.** Derselbe Fall, den der Kopf dieser Datei beschreibt: «mechanisch trennen lässt sich ‹als
+ * Geschichte› nicht von ‹als Grund›».*
  */
-const HINGENOMMEN = 85;
+const HINGENOMMEN = 86;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 
