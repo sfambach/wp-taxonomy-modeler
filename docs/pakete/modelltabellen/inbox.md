@@ -128,7 +128,16 @@ und ohne Skript bleibt jede Wahl gültig: sie reist über den Radioknopf im Form
 ⚠️ **Was es kostet, gemessen an `Adresse`:** *176 KB Seite, 0,13 s, vier Auswahldialoge, 183
 Baumzeilen. **Es wächst mit der Zahl der Felder**, weil jede eigene Zeile ihren eigenen Dialog trägt.*
 
-## INF-007 · Eine Spalte plus Raum, oder zwei Spalten? — `package.md` §5a gegen TASK-005
+## INF-007 · Eine Spalte plus Raum, oder zwei Spalten? — **entschieden am 2026-09-04**
+
+**Eine Spalte plus Raum** ([D-597](../../NewConcept/90-decision-log.md)), auf sein Wort: *«ok ich
+vertraue dir, eine Spalte, und zweck kein echter FK»*. Der Grund war seine Frage — *«ist es denn
+sicher, dass es immer entweder oder ist?»* — und die Antwort darauf ist **nein**: nicht ob,
+sondern wie viele «oder» es einmal gibt, ist offen.
+
+⚠️ *Der ursprüngliche Eintrag steht darunter unverändert.*
+
+### Der Eintrag, wie er gestellt wurde — `package.md` §5a gegen TASK-005
 
 **2026-09-04, beim Bauen von TASK-005 aufgefallen. Nicht entschieden, sondern erfasst (`PR-4`).**
 

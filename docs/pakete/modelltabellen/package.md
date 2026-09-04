@@ -285,12 +285,22 @@ im `node_record`.»* **Richtig — nur führt das Log es heute nicht.**
 | `relation_id` | **welches Feld** | war `edge_id` |
 | `sort_order` | Reihenfolge **innerhalb eines Feldes**, erste Stelle `0` | war `position` |
 | `value_int` · `value_decimal` · `value_text` · `value_date` | der Wert | |
-| `value_node_record_id` | **oder** ein Verweis auf eine eingebettete Ausprägung | Verschachtelung |
-| `value_node_id` | **oder** ein Verweis auf einen Knoten | Knotenverweis |
+| `value_ref` | **oder** ein Verweis — auf einen Knoten *oder* eine eingebettete Ausprägung ([D-597](../../NewConcept/90-decision-log.md)) | 50 Knoten · 93 Datensätze |
+| `value_ref_kind` | in welchem Raum die Id gilt — `node` oder `record` | Muster: `changelog.owner_kind` |
 | ~~`path`~~ · ~~`locale`~~ | gestrichen | |
 
 **Schlüssel: `(node_record_id, relation_id, sort_order)`** — dieselbe Form wie bei der Kante, eine
 Etage tiefer.
+
+⚠️ **Eine Spalte plus Raum, nicht zwei Spalten** ([D-597](../../NewConcept/90-decision-log.md)).
+*Gemessen: 143 Verweise, kein einziger Zwitter — «entweder oder» ist heute ausnahmslos wahr.
+**Offen ist nicht ob, sondern wie viele «oder» es einmal gibt:** sobald eine Einstellung
+«sortiere nach *diesem Feld*» lautet, zeigt ein Wert auf eine **Relation**. Eine Spalte plus Raum
+nimmt das als neuen Wert auf; zwei Spalten bräuchten eine dritte.*
+
+⚠️ **Der Preis: kein echter Fremdschlüssel** — *das Ziel wechselt, also kann die Datenbank nicht
+mitprüfen. **Es hält allein `scripts/dev/value-ref-space-check.php`**, und damit ist dieser
+Wächter nicht Komfort, sondern die Zusicherung selbst.*
 
 ### 5a.1 · Wie eine Verschachtelung aussieht
 
