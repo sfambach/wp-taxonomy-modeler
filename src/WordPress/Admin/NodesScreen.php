@@ -267,10 +267,18 @@ final class NodesScreen
 
         // WICHTIG: Ein Suchfeld, nicht zwei. Der Baum zeichnet es selbst (der Kern kennt keine
         // URL, CD-1), das Formular steht nur darum, damit die Eingabetaste sucht.
+        //
+        // WICHTIG: Der Klappzustand reist mit, sonst wirft jede Suche ihn weg (D-390-Fehler noch
+        // einmal, diesmal am Suchfeld statt am Aktionsformular): ohne dieses Feld fehlte
+        // `taxmod_collapsed` in der Adresse, {@see self::collapsedFromRequest()} las «nichts» und
+        // die Vorgabe griff -- ein leeres Suchfeld liess den Baum dann so aussehen, als sei er
+        // aufgeklappt geblieben.
         $left .= '<form method="get" class="taxmod-tree-searchform">'
             . '<input type="hidden" name="page" value="taxmod">'
             . '<input type="hidden" name="taxmod_node" value="'
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
+            . '<input type="hidden" name="taxmod_collapsed" value="'
+            . esc_attr((string) ($this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks)) . '">'
             . $this->table($rows, 'tree', $collapsed, $selected, $gesucht)
             . '</form>';
         $left .= $this->heading(
@@ -1742,7 +1750,11 @@ final class NodesScreen
                 // ist der type und type muss aenderbar sein. Auswahl ist Mussfeld, also leere
                 // Auswahl nicht moeglich". Nur fuer eigene Felder: ein geerbtes gehoert dem
                 // Vorfahren und wird dort geaendert (D-376, dieselbe Regel wie beim Umbenennen).
-                $this->targetChoosersFor($dieser, $selected)
+                $this->targetChoosersFor($dieser, $selected),
+                // WICHTIG: Nur die Einstellungen haben eine Wertspalte -- auf sein Wort: "die
+                // ganze Spalte Value muss weg". Ein Feld ist Benutzerdaten fuer einen Datensatz,
+                // nicht fuer das Modell; die Zeile hier definiert nur seinen Typ.
+                $istEinstellung
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -1753,12 +1765,15 @@ final class NodesScreen
                 ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
                 : '<table class="wp-list-table widefat striped"><thead><tr>'
                     . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
-                    . '<th>' . esc_html__('Points at', 'taxmod') . '</th>'
+                    // WICHTIG: "Type", nicht "Points at" -- auf sein Wort: "points at in type
+                    // umbenennen". Die Spalte zeigt das Ziel des Feldes, und das ist sein Typ.
+                    . '<th>' . esc_html__('Type', 'taxmod') . '</th>'
                     . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
                     . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
                     . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
-                    // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.*
-                    . '<th>' . esc_html__('Value', 'taxmod') . '</th>'
+                    // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.* Nur bei
+                    // den Einstellungen -- Felder haben seit seinem Wort keine mehr.
+                    . ($istEinstellung ? '<th>' . esc_html__('Value', 'taxmod') . '</th>' : '')
                     . '<th style="width:3em"></th>'
                     . '</tr></thead><tbody>' . $body . '</tbody></table>';
 
@@ -2032,12 +2047,18 @@ final class NodesScreen
             // kein name eingegeben wird, wird der knoten name verwendet". Der Schalter steht
             // auf «Knotennamen benutzen», weil das der haeufigere Fall ist; er hat es so
             // entschieden. Das Feld ist deshalb auch nicht mehr Pflicht.
-            '<label class="taxmod-usename"><input type="checkbox" name="use_node_name" value="1" checked> '
+            // WICHTIG: Voreinstellung aus, nicht an -- auf sein Wort: "der Haken fuer use nodename
+            // sollte Standard aus sein, passt besser". Das Namensfeld ist deshalb auch nicht mehr
+            // gesperrt: der Schalter selbst entscheidet das per Skript ({@see admin.js}).
+            '<label class="taxmod-usename"><input type="checkbox" name="use_node_name" value="1"> '
             . esc_html__('Use the node name', 'taxmod') . '</label>'
-            . '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" style="flex:1" disabled>'
-            . $chooser
+            . '<input type="text" name="name" placeholder="' . esc_attr__('Name of the field', 'taxmod') . '" style="flex:1">'
+            // WICHTIG: Erst das Anzeigefeld, dann der Baumknopf -- auf sein Wort: "tree knop bei
+            // der erstellung von feldern rechts vom anzeige feld". Dieselbe Reihenfolge wie jetzt
+            // bei bestehenden Feldern ({@see FieldRowRenderer::targetCell()}).
             . '<input type="text" class="taxmod-chosen" readonly tabindex="-1"'
             . ' placeholder="' . esc_attr__('Nothing chosen yet', 'taxmod') . '" style="flex:1">'
+            . $chooser
             . ControlMarkup::button(new Control(
                 'do',
                 'add_field',

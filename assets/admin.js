@@ -335,6 +335,101 @@
 	} );
 
 	/**
+	 * Das Suchfeld im Modellbaum sucht nach einer kurzen Pause, nicht erst auf Enter.
+	 *
+	 * Sein Befund: "da muss man erst enter druecken damit es filtert". Das Feld hier traegt einen
+	 * Namen -- der Server sucht (siehe TreeRenderer und NodesScreen::searchTerm) -- und jede
+	 * Eingabe wuerde sonst sofort die Seite neu laden. Deshalb wartet dieses Skript, bis eine
+	 * halbe Sekunde lang nichts mehr getippt wurde, und schickt das Formular dann selbst ab.
+	 */
+	( function () {
+		var WARTEZEIT = 500;
+		var anstehend = null;
+
+		document.addEventListener( 'input', function ( event ) {
+			var feld = event.target;
+
+			if ( ! feld || ! feld.matches || ! feld.matches( '.taxmod-tree-filter[name]' ) ) {
+				return;
+			}
+
+			var formular = feld.form;
+
+			if ( ! formular ) {
+				return;
+			}
+
+			if ( anstehend ) {
+				window.clearTimeout( anstehend );
+			}
+
+			anstehend = window.setTimeout( function () {
+				anstehend = null;
+				formular.requestSubmit ? formular.requestSubmit() : formular.submit();
+			}, WARTEZEIT );
+		} );
+
+		// ⚠️ **Der Fokus bleibt im Feld, sonst wuerde jede Pause beim Tippen den naechsten
+		// Buchstaben irgendwo anders hinschreiben.** Dieselbe Bauart wie die Bildlaufposition oben:
+		// einmal lesen, bevor irgendetwas anderes den Zustand veraendern kann, und die Marke steht
+		// in der Session, nicht in der Adresse -- ein zweiter Tab soll nicht den Fokus des ersten
+		// erben.
+		var MARKE = 'taxmod.suchfokus';
+
+		document.addEventListener( 'submit', function ( event ) {
+			var formular = event.target;
+
+			if ( ! formular || ! formular.matches || ! formular.matches( '.taxmod-tree-searchform' ) ) {
+				return;
+			}
+
+			var feld = formular.querySelector( '.taxmod-tree-filter[name]' );
+
+			if ( ! feld ) {
+				return;
+			}
+
+			try {
+				window.sessionStorage.setItem( MARKE, String( feld.selectionStart ) );
+			} catch ( e ) {
+				// Nichts zu tun: das Feld bekommt beim Laden dann keinen Fokus.
+			}
+		} );
+
+		function fokusWiederherstellen() {
+			var marke = null;
+
+			try {
+				marke = window.sessionStorage.getItem( MARKE );
+				window.sessionStorage.removeItem( MARKE );
+			} catch ( e ) {
+				return;
+			}
+
+			if ( marke === null ) {
+				return;
+			}
+
+			var feld = document.querySelector( '.taxmod-tree-filter[name]' );
+
+			if ( ! feld ) {
+				return;
+			}
+
+			var position = parseInt( marke, 10 ) || feld.value.length;
+
+			feld.focus();
+			feld.setSelectionRange( position, position );
+		}
+
+		if ( document.readyState === 'loading' ) {
+			document.addEventListener( 'DOMContentLoaded', fokusWiederherstellen );
+		} else {
+			fokusWiederherstellen();
+		}
+	} )();
+
+	/**
 	 * Auf- und Zuklappen im Auswahldialog -- TASK-035.
 	 *
 	 * Auf der Seite ist der Klapper ein Link und braucht kein Skript. Im Dialog kann er keiner sein:

@@ -460,6 +460,18 @@ final class Rendering
          * `0` heisst «unbekannt», und dann wird nichts eingeschränkt.*
          */
         int $forNode = 0,
+        /**
+         * Nur eine Einstellungskante steigt in ihr Ziel ab -- der Rest bleibt beim Verweis stehen.
+         *
+         * WICHTIG: Fuer die Wertspalte der Feldtabelle, nicht fuer die Vorschau. Auf sein Wort:
+         * "Felder sind nur fuer Settings-Relation sichtbar" -- ein gewoehnliches Feld auf eine
+         * Komposition (z.B. eine Adresse) zeigte dort deren eigene Glieder als Eingabezeilen, wo
+         * nur der **Typ** definiert wird und niemand einen Datensatz ausfuellt. Die Vorschau
+         * ([D-159](../../../docs/NewConcept/90-decision-log.md), "Renderkette geht durch ein
+         * zusammengesetztes Feld") braucht den vollen Abstieg weiterhin und laesst dies auf
+         * Vorgabe stehen.
+         */
+        bool $onlySettingParts = false,
     ): array {
         if ($edges === []) {
             return [];
@@ -653,7 +665,9 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? [], $forNode);
+            $tiefer = $onlySettingParts && ! $edge->kind->isSetting()
+                ? null
+                : $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? [], $forNode);
 
             $fields[] = new RenderedField(
                 $edge,
@@ -1221,6 +1235,15 @@ final class Rendering
          * @var array<int, string> Kanten-Id => Markup
          */
         array $targetChoosers = [],
+        /**
+         * Ob diese Zeilen ueberhaupt eine Wertspalte haben.
+         *
+         * WICHTIG: Fuer Felder aus, fuer Einstellungen an -- auf sein Wort: "die ganze Spalte
+         * Value muss weg". Ein Feld ist Benutzerdaten, die in einem Datensatz stehen, nicht im
+         * Modell; eine Einstellung ist Modelldaten, und ihr Wert gehoert hier gezeichnet
+         * (D-546, D-548).
+         */
+        bool $showValue = true,
     ): array {
         if ($edges === []) {
             return [];
@@ -1273,7 +1296,7 @@ final class Rendering
             // ⚠️ *Ein Aufruf je Zeile, und er kostet keine Abfrage: die Kanten des Unterbaus holt
             // {@see self::subgraph()} in einer festen Zahl von Abfragen
             // ([D-159](../../../docs/NewConcept/90-decision-log.md)).*
-            $gezeichneterWert = $this->fieldsFor(
+            $gezeichneterWert = ! $showValue ? [] : $this->fieldsFor(
                 [$edge],
                 $values,
                 Purpose::Edit,
@@ -1290,7 +1313,11 @@ final class Rendering
                 $parts,
                 // ⚠️ *Wessen Angaben hier stehen — damit die Renderer-Auswahl auf das eingeschränkt
                 // werden kann, was **dieser** Knoten verträgt ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).*
-                $declaredBy
+                $declaredBy,
+                // WICHTIG: Diese Wertspalte definiert den Typ, sie fuellt keinen Datensatz --
+                // ein Feld auf eine Komposition (z.B. Adresse) bekommt hier keine eigene
+                // Eingabezeile fuer ihre Glieder, nur eine Einstellungskante steigt ab.
+                true
             );
 
             $context = new RenderContext(
@@ -1352,9 +1379,16 @@ final class Rendering
                     // `1..*` ihn verlangt: eine Seite anzusehen darf nichts schreiben. Er entsteht beim
                     // ersten Speichern, in {@see \Taxmod\Core\Service\DataEntry::putSettingAt()}.*
                     sections: array_merge(
-                        $gezeichneterWert === []
+                        // ⚠️ **Nur, wo es die Spalte gibt** ({@see self::fieldRowsFor()}'s
+                        // `$showValue`) — sonst schriebe eine leer gezeichnete Feldzeile denselben
+                        // Gedankenstrich, den eine Einstellung ohne Wert zeigt, in eine Tabelle,
+                        // die den Kopf dafür gar nicht hat.
+                        ! $showValue
                             ? []
-                            : [FieldRowRenderer::VALUE => new Section('', $gezeichneterWert[0]->result->markup)],
+                            : [FieldRowRenderer::VALUE => new Section(
+                                '',
+                                $gezeichneterWert === [] ? '' : $gezeichneterWert[0]->result->markup
+                            )],
                         // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                         // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
                         isset($targetChoosers[$edge->id])
@@ -2821,20 +2855,6 @@ final class Rendering
     }
 
     /**
-     * Ein Knoten-Chooser aus seinen drei Angaben -- Wurzel, offener Ast, Vorauswahl.
-     *
-     * ⚠️ **Das ist sein Konzept, und es gehoert hierher und nicht in die Maske.** *Er hat es
-     * benannt: «wir haben ein Konzept fuer den Knoten-Chooser: Root-Knoten, optional Ast der
-     * [aufgeklappt] ist, optional Knoten der vorselektiert ist.» **Ich hatte es im Feldformular
-     * ausgerechnet** — damit haette der naechste Aufrufer es noch einmal ausgerechnet, und die
-     * zweite Rechnung waere irgendwann anders ausgefallen.*
-     *
-     * ⚠️ *Der offene Ast schliesst seinen Weg mit ein: liegt er zwei Ebenen tief, muessen seine
-     * Vorfahren offen sein, sonst waere «offen» eine Angabe ueber etwas, das niemand sieht.*
-     *
-     * @param list<int> $unpickable
-     */
-    /**
      * Der Baumlaeufer, aus den Behaeltern gebaut, die es ohnehin hat.
      *
      * WICHTIG: Als Parameter waere er an elf Stellen nachzutragen gewesen, und einer davon haette
@@ -2846,6 +2866,27 @@ final class Rendering
         return $this->relations === null ? null : new Tree($this->nodes, $this->relations);
     }
 
+    /**
+     * Ein Knoten-Chooser aus seinen drei Angaben -- Wurzel, offener Ast, Vorauswahl.
+     *
+     * ⚠️ **Das ist sein Konzept, und es gehoert hierher und nicht in die Maske.** *Er hat es
+     * benannt: «wir haben ein Konzept fuer den Knoten-Chooser: Root-Knoten, optional Ast der
+     * [aufgeklappt] ist, optional Knoten der vorselektiert ist.» **Ich hatte es im Feldformular
+     * ausgerechnet** — damit haette der naechste Aufrufer es noch einmal ausgerechnet, und die
+     * zweite Rechnung waere irgendwann anders ausgefallen.*
+     *
+     * ⚠️ *Der offene Ast schliesst seinen Weg mit ein: liegt er zwei Ebenen tief, muessen seine
+     * Vorfahren offen sein, sonst waere «offen» eine Angabe ueber etwas, das niemand sieht.*
+     *
+     * ⚠️ **Ungekuerzt geholt.** *Der Dialog klappt nur im Browser -- ein Neuaufbau haelt ihn nicht
+     * offen, also gibt es keinen zweiten Weg zum Server, der einen erst jetzt gebrauchten Ast
+     * nachliefern koennte. Jede Zeile muss also schon im Dokument stehen, auch die eines
+     * geschlossenen Astes; nur ihre Anzeige startet zu.* **Gemessen:** «Compositions» liess sich im
+     * Dialog nicht aufklappen, weil die alte Fassung `Tree::rowsUnder()` mit dem geschlossenen Ast
+     * fuetterte und der genau dort aufhoert zu sammeln (`Tree::collect()`).
+     *
+     * @param list<int> $unpickable
+     */
     public function nodeChooser(
         Node $root,
         string $fieldName,
@@ -2867,7 +2908,7 @@ final class Rendering
             return RenderResult::of('');
         }
 
-        $walked = $laeufer->rowsUnder($root, $skip, $this->collapsedApartFrom($root, $expanded, $skip));
+        $walked = $this->closedApartFrom($laeufer->rowsUnder($root, $skip), $expanded);
 
         return $this->chooserFor(
             $walked,
@@ -2885,17 +2926,19 @@ final class Rendering
     }
 
     /**
-     * Alles zugeklappt ausser diesem Ast und dem Weg dorthin.
+     * Dieselben Zeilen, nur die Klapp-Markierung neu gesetzt: offen ist der Ast und sein Weg,
+     * zu ist der Rest.
      *
-     * @param list<int> $skip
-     * @return list<int>
+     * ⚠️ *Der offene Ast schliesst seinen Weg mit ein: liegt er zwei Ebenen tief, muessen seine
+     * Vorfahren offen sein, sonst waere «offen» eine Angabe ueber etwas, das niemand sieht.*
+     *
+     * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}> $walked
+     * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}>
      */
-    private function collapsedApartFrom(Node $root, ?Node $expanded, array $skip): array
+    private function closedApartFrom(array $walked, ?Node $expanded): array
     {
-        $laeufer = $this->walker();
-
-        if ($laeufer === null || $expanded === null) {
-            return [];
+        if ($expanded === null) {
+            return $walked;
         }
 
         $offen = [$expanded->id => true];
@@ -2904,15 +2947,11 @@ final class Rendering
             $offen[$id] = true;
         }
 
-        $zu = [];
-
-        foreach ($laeufer->rowsUnder($root, $skip) as $row) {
-            if (! isset($offen[$row['node']->id])) {
-                $zu[] = $row['node']->id;
-            }
+        foreach ($walked as &$row) {
+            $row['collapsed'] = ! isset($offen[$row['node']->id]);
         }
 
-        return $zu;
+        return $walked;
     }
 
     private function optionsFor(array $edges): array

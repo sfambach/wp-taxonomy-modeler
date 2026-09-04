@@ -662,6 +662,25 @@ details.taxmod-page-block > summary {
     min-width: 10em;
 }
 
+/* ⚠️ **Dasselbe gesperrte Feld, egal ob es ein `<input readonly>` oder ein `<a>` ist.** Auf sein
+ * Wort: "sollte in den Feldern genauso aussehen wie unten bei der Anlage" -- ein `<a>` traegt von
+ * sich aus keine Feld-Optik, deshalb bekommt die Klasse hier ihre eigene Umrandung statt sich auf
+ * das an-oder-abwesende `<input>`-Aussehen des Browsers zu verlassen. */
+.taxmod-chosen {
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 3px 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #f0f0f1;
+    color: #2c3338;
+    text-decoration: none;
+}
+
+a.taxmod-chosen:hover {
+    background: #e3e3e3;
+}
+
 /* ⚠️ Bounded and scrolling: a hundred prefixes must not push the toolbar off the screen. */
 .taxmod-chooser-tree {
     max-height: 18em;
@@ -679,6 +698,27 @@ details.taxmod-page-block > summary {
     align-items: center;
     gap: .3em;
     cursor: pointer;
+}
+
+/* ⚠️ **Der Kreis ist weg, das Klicken bleibt.** Auf sein Wort: "Kreis soll einfach weg, klicken
+ * funktioniert jetzt" -- die ganze Zeile ist ein `<label>` um den Radio, ein Klick irgendwo auf
+ * ihr trifft ihn also schon. Geklemmt statt `display:none`, aus demselben Grund wie beim
+ * Dialogschalter oben: ein `display:none`-Radio bleibt zwar vom Label ansteuerbar, ist aber per
+ * Tastatur nicht mehr erreichbar. */
+.taxmod-chooser-row input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    opacity: 0;
+}
+
+/* ⚠️ Der Ring landet auf der Zeile, sonst wird der Tastaturfokus unsichtbar -- derselbe Grund wie
+ * beim Dialogschalter. */
+.taxmod-chooser-row input[type="radio"]:focus-visible + * {
+    box-shadow: 0 0 0 1px #007cba;
+    border-radius: 3px;
 }
 
 /* ⚠️ **A row that cannot be picked is shown, not removed** — its child may be pickable, so taking it

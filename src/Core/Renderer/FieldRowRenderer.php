@@ -234,11 +234,19 @@ final class FieldRowRenderer implements Renderer
      * in den Teil hinein und liefert dessen Felder (`render`, `converter`), bei `read_only` einen
      * Schalter. **Ein Behälter fasst keinen Wert an** ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
      */
+    // WICHTIG: Die Zelle fehlt ganz, wenn die Spalte fehlt -- auf sein Wort: "die ganze Spalte
+    // Value muss weg". `isset()` statt `??` unterscheidet «kein Wert zu zeigen» (Gedankenstrich,
+    // die Spalte gibt es) von «diese Zeilen haben gar keine Wertspalte» (kein `<td>` ueberhaupt),
+    // sonst wuerde jede Feldzeile eine leere Zelle in eine Tabelle ohne den Kopf dazu schreiben.
     private function valueCell(RenderContext $context): string
     {
-        $gezeichnet = $context->surroundings->sections[self::VALUE] ?? null;
+        if (! isset($context->surroundings->sections[self::VALUE])) {
+            return '';
+        }
 
-        if ($gezeichnet === null || trim($gezeichnet->body) === '') {
+        $gezeichnet = $context->surroundings->sections[self::VALUE];
+
+        if (trim($gezeichnet->body) === '') {
             // ⚠️ *Ein Gedankenstrich und keine leere Zelle — sonst liest die Spalte nicht als Spalte.*
             return $this->cell('<span class="taxmod-nothing">—</span>', 'taxmod-field-value', false, true);
         }
@@ -301,14 +309,34 @@ final class FieldRowRenderer implements Renderer
         // fertiges Markup herein, weil er eine URL und eine Nonce braucht (CD-1).
         $wahl = $context->surroundings->sections['target-chooser']->body ?? '';
 
+        // WICHTIG: Dieselbe Erscheinung wie beim Anlegen eines Feldes -- auf sein Wort:
+        // "existierendes Feld sollte genauso wie beim Erstellen von Feldern aussehen, Feld
+        // nicht eingebbar und rechts daneben der Baumknopf". Dieselbe Klasse wie das gesperrte
+        // Feld dort ({@see NodesScreen::fieldForm()}), damit beide gleich aussehen -- ein blosser
+        // Text neben dem Knopf sah dagegen wie ein anderes Bedienelement aus.
+        //
+        // WICHTIG: In einer eigenen Zeile mit Flex-Layout, sonst zeigt `flex:1` ins Leere --
+        // eine Tabellenzelle ist kein Flex-Behaelter. Auf sein Wort: "typ felder breiter und
+        // button rechts davon", statt darunter, wenn der Name lang ist.
         if ($href === null || $name === '—') {
-            return RenderResult::escape($name) . $wahl;
+            return '<span style="display:flex;align-items:center;gap:.3em">'
+                . RenderResult::htmlTag('input', [
+                    'type'     => 'text',
+                    'class'    => 'taxmod-chosen',
+                    'readonly' => true,
+                    'tabindex' => '-1',
+                    'value'    => $name,
+                    'style'    => 'flex:1;min-width:8em',
+                ]) . $wahl
+                . '</span>';
         }
 
-        return RenderResult::htmlTag('a', ['href' => $href, 'class' => 'taxmod-field-target-link'])
+        return '<span style="display:flex;align-items:center;gap:.3em">'
+            . RenderResult::htmlTag('a', ['href' => $href, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
             . RenderResult::escape($name)
             . '</a>'
-            . $wahl;
+            . $wahl
+            . '</span>';
     }
 
     private function cell(string $inner, string $class, bool $code = false, bool $trusted = false): string

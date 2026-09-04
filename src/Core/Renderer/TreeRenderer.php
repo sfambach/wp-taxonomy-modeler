@@ -69,14 +69,27 @@ final class TreeRenderer implements Renderer
 
         $markup = '';
         $used   = [];
+        // ⚠️ **Zu, solange eine Zeile unter einem geschlossenen Ast liegt.** *Auf der Seite kommt
+        // eine zugeklappte Zeile nie hierher — der Server laesst sie weg. Im Dialog stehen dagegen
+        // alle Zeilen im Dokument ({@see Rendering::nodeChooser()}), weil ein Neuaufbau ihn
+        // schliessen wuerde, und muessen deshalb hier ihr Anfangsbild bekommen; dasselbe Mass, das
+        // der Klapper im Skript benutzt, um sie wieder zu zeigen.*
+        $zuAb = null;
 
         foreach ($rows as $row) {
-            $used   = [...$used, ...$row->cell->usedEdges];
+            $used = [...$used, ...$row->cell->usedEdges];
+
+            $versteckt = $zuAb !== null && $row->depth > $zuAb;
+
+            if (! $versteckt) {
+                $zuAb = ($row->collapsed && $row->hasChildren) ? $row->depth : null;
+            }
+
             // WICHTIG: Die Tiefe steht am Element, nicht nur in der Einrueckung. Ein Skript, das
             // einen Ast auf- und zuklappt, muss wissen, wo er aufhoert -- und im Dokument ist der
             // Baum flach.
             $markup .= '<div class="taxmod-tree-row" data-depth="' . (int) $row->depth . '"'
-                . ' style="display:flex;align-items:center;'
+                . ' style="display:' . ($versteckt ? 'none' : 'flex') . ';align-items:center;'
                 . 'padding:1px 6px;border-bottom:1px solid #f0f0f1'
                 . ($row->highlighted ? ';background:#e8f0fb' : '') . '">'
                 . '<span style="display:inline-block;width:'

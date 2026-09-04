@@ -1559,7 +1559,7 @@ final class RenderingTest extends TestCase
         $markup = $rows[0]->result->markup;
 
         self::assertStringContainsString('taxmod_node=' . $position->id, $markup);
-        self::assertStringContainsString('class="taxmod-field-target-link"', $markup);
+        self::assertStringContainsString('class="taxmod-field-target-link taxmod-chosen"', $markup);
         // ⚠️ *The `&` of the query string has to arrive escaped — `htmlTag()` does that, and this is
         // the assertion that would fail if the cell were ever handed the URL as trusted markup.*
         self::assertStringContainsString('&amp;taxmod_node=', $markup);

@@ -62,7 +62,7 @@ $markup = $plugin->screen()->render();
 echo "== die Zeile führt zum Ziel ==\n";
 
 $say(
-    str_contains($markup, 'class="taxmod-field-target-link"'),
+    str_contains($markup, 'class="taxmod-field-target-link taxmod-chosen"'),
     'das Ziel ist ein Link und kein Text'
 );
 
@@ -71,7 +71,7 @@ $say(
 // Namensvergleich findet dann den Rest statt die Wiese dieses Laufs.*
 $say(
     (bool) preg_match(
-        '/<a href="[^"]*taxmod_node=' . $pos->id . '[^"]*" class="taxmod-field-target-link"/',
+        '/<a href="[^"]*taxmod_node=' . $pos->id . '[^"]*" class="taxmod-field-target-link taxmod-chosen"/',
         $markup
     ),
     sprintf('der Link wählt Knoten %d aus', $pos->id)
