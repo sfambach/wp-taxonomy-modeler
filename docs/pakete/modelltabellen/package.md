@@ -118,6 +118,11 @@ in einer Tabelle**: angefragte Sprache → Standardsprache → `labels.name`.
 ⚠️ **`symbol` und `icon` sind sprachunabhängig** — *gemessen: 38 von 38 `symbol`-Labels tragen keine
 Sprache, und [`I5`](../../NewConcept/40-i18n.md) sagt es fürs Icon ausdrücklich.*
 
+⚠️ **Entschieden am 2026-09-04: vier Spalten** ([D-598](../../NewConcept/90-decision-log.md)).
+*Rollen als Zeilen mit `role_id` sind nicht verworfen, sondern geparkt
+([`INF-005`](../../neues-konzept-eingang.md)) — **zu verlassen, wenn zum ersten Mal eine Rolle
+fehlt.** Der ursprüngliche Wortlaut der Frage:*
+
 ⚠️ **Offen: sind die vier Rollen Spalten oder Zeilen mit `role_id`?**
 
 ### 3.5 · `nodes` hat danach keine lesbare Spalte mehr

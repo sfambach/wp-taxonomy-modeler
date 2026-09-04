@@ -116,6 +116,29 @@ Wanderung).
 
 ---
 
+## INF-005 · Beschriftungsrollen als Zeilen statt als Spalten — auf dem Parkplatz
+
+**Typ:** `IDEA` · **Status:** `PARKED` — vom Eigentümer, 2026-09-04
+
+**Sein Wort:** *«zu 2: ich glaube, Rollen sind was Programmiertechnisches. Aber wenn ich überlege,
+dass ich die im Renderer auswählen kann, brauche ich evtl. dann und wann neue, wenn die alten nicht
+reichen. Würde das mal auf den Parkplatz für mögliche spätere Entwicklungen schieben und bei vier
+Spalten bleiben.»*
+
+**Es bleibt bei vier Spalten** in `label_texts`: `form`, `table`, `select`, `help`
+([D-580](NewConcept/90-decision-log.md), [D-598](NewConcept/90-decision-log.md)).
+
+**Was den Parkplatz begründet, ist sein eigener Einwand gegen sich selbst.** *Eine Rolle sieht nach
+Programmierung aus — bis man merkt, dass **er** sie im Renderer auswählt. Damit ist sie eine
+Angabe des Modellierers, und Angaben des Modellierers wachsen. **Vier Spalten heisst: eine fünfte
+Rolle ist eine Schemaänderung**; Zeilen mit `role_id` hiesse: eine fünfte Rolle ist eine neue Zeile.*
+
+⚠️ *Woran man merken wird, dass der Parkplatz zu verlassen ist: **wenn zum ersten Mal eine Rolle
+fehlt.** Solange die vier reichen, wäre die Zeilenform eine Tabelle mehr für einen Fall, den es
+nicht gibt.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*
