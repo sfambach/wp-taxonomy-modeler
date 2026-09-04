@@ -82,7 +82,11 @@ damit:
 
 ## INF-004 · Ein Feld, das den Knotennamen benutzt, folgt ihm — statt ihn zu kopieren
 
-**Typ:** `DECISION` · **Status:** `CONFIRMED` — vom Eigentümer, 2026-09-04
+**Typ:** `DECISION` · **Status:** `CONFIRMED`, aber **zurückgestellt** — vom Eigentümer, 2026-09-04:
+*«vergiss bitte den Vorschlag mit der Id, das werde ich später angehen, vielleicht könnte man das
+auf den Parkplatz schieben für spätere Releases»*. Die Entscheidung steht; der Zeitpunkt ist offen.
+Ein erster Bauversuch (Schema-Spalte, `Relation`-Modell, Wanderung) wurde noch am selben Tag
+zurückgenommen, bevor er fertig war — nichts davon ist im Code.
 
 **Sein Wort:** *«wenn use the node name gewählt ist sollte eigentlich die node_labels_id an das
 Feld gehängt werden, nur wenn später ein Name eingegeben wird soll ein eigenes Label gewählt
@@ -108,8 +112,7 @@ Wanderung für bestehende Kanten, deren Name heute zufällig mit dem Namen ihres
 einem absichtlich gleichlautenden eigenen Namen sind eine bekannte, hingenommene Unschärfe dieser
 Wanderung).
 
-**Umgesetzt am selben Tag** — Einzelheiten siehe Änderungshistorie des Pakets (`git log` auf
-`src/Core/Model/Relation.php`, `src/WordPress/Persistence/Schema.php`).
+**Nicht umgesetzt — Parkplatz für ein späteres Release**, auf sein Wort.
 
 ---
 
