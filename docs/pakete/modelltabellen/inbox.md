@@ -79,6 +79,15 @@ Der Schlüssel würde dann `(node_record_id, relation_id, sort_order, locale)`.*
 
 ## INF-004 · Der Einstellungsbaum zeigt nur Kanten — er denkt noch darüber nach
 
+**Am 2026-09-04 entschieden: «erstmal alles zeigen».** *Also **beide** Zeilenarten — die Kante und
+der Knoten dahinter —, nicht die auf Kanten verkürzte Fassung. Das ist ausdrücklich vorläufig:
+«erstmal». **Der Grund, es nicht gleich zu verkürzen: die kurze Fassung nimmt eine Auskunft weg,
+die man erst vermisst, wenn man sie braucht** — welcher Knoten hinter einer Kante steht. Zeigt
+sich im Betrieb, dass die Knotenzeilen nichts beitragen, fallen sie später; umgekehrt wäre es
+teurer.*
+
+⚠️ *Der Stand, den er sich angesehen hat:*
+
 **2026-09-02, unentschieden.** Sein Satz: *«die Frage die sich mir stellt, wir könnten auch nur
 die Kanten nehmen, das würde glaube ich reichen»* — und danach: *«merk dir das mal, da muss ich
 nochmal drüber nachdenken».*
