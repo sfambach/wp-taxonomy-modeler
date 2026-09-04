@@ -597,3 +597,14 @@ legt an**, bevor es merkt, dass nichts zu löschen ist.*
 ⚠️ **Nicht entschieden: was mit den 324 vorhandenen geschieht.** *Sie tragen nichts, also verliert
 ihr Wegräumen nichts — aber es ist eine Handlung an seinen Daten und gehört gefragt, nicht
 nebenbei erledigt.*
+
+```text
+[ ] TASK-044  Einmaliger Reset: die 2 Zeilen mit value_ref = 0 und die
+              wirklich unbenutzten leeren Datensaetze (D-610)
+```
+
+⚠️ **Die Grenze ist das Wichtige an dieser Aufgabe, nicht die Zahl.** *Von 324 leeren Datensätzen
+stehen **26 in `nodes.settings_record_id`** — sie tragen ihre Aussage in der `node_id` («dieser
+Renderer ist gewählt, nichts daran eingestellt»). **Wer sie als leer wegräumt, löscht 26
+Renderer-Wahlen.** Der Reset braucht deshalb eine Bedingung, keine Zählung: *unbenutzt* heisst
+nirgends referenziert — nicht *ohne Wertzeilen*.
