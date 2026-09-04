@@ -72,7 +72,11 @@ final class TreeRenderer implements Renderer
 
         foreach ($rows as $row) {
             $used   = [...$used, ...$row->cell->usedEdges];
-            $markup .= '<div class="taxmod-tree-row" style="display:flex;align-items:center;'
+            // WICHTIG: Die Tiefe steht am Element, nicht nur in der Einrueckung. Ein Skript, das
+            // einen Ast auf- und zuklappt, muss wissen, wo er aufhoert -- und im Dokument ist der
+            // Baum flach.
+            $markup .= '<div class="taxmod-tree-row" data-depth="' . (int) $row->depth . '"'
+                . ' style="display:flex;align-items:center;'
                 . 'padding:1px 6px;border-bottom:1px solid #f0f0f1'
                 . ($row->highlighted ? ';background:#e8f0fb' : '') . '">'
                 . '<span style="display:inline-block;width:'
@@ -118,6 +122,15 @@ final class TreeRenderer implements Renderer
 
         if (! $row->hasChildren || $row->toggle === null) {
             return '<span style="' . $box . '"></span>';
+        }
+
+        // WICHTIG: '#' heisst "klappt im Browser". Im Dialog kann der Klapper kein Link sein --
+        // ein Neuaufbau schliesst den Dialog, weil er von einer angehakten Checkbox offengehalten
+        // wird. Auf der Seite bleibt es ein echter Link und braucht kein Skript.
+        if ($row->toggle === '#') {
+            return '<a href="#" class="taxmod-tree-fold" data-fold="' . ($row->collapsed ? 'zu' : 'auf') . '"'
+                . ' style="' . $box . ';text-decoration:none;color:inherit">'
+                . ($row->collapsed ? '&#9656;' : '&#9662;') . '</a>';
         }
 
         return '<a href="' . RenderResult::escape($row->toggle) . '"'

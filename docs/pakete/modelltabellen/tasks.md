@@ -399,7 +399,7 @@ Einstiegsast … bekommt optionaler Default-Knoten, Einstiegsast und Root-Knoten
 Gemessen: der Dialog zeigt 30 statt 134 Zeilen.*
 
 ```text
-[ ] TASK-035  Klapp-Pfeile im Auswahldialog — heute fehlt «toggle», weil ein
+[x] TASK-035  Klapp-Pfeile im Auswahldialog — heute fehlt «toggle», weil ein
               Klapp-Link die Seite neu laedt und damit den Dialog schliesst
 [ ] TASK-036  Einstiegsast und Root als Parameter des Auswahldialogs, nicht
               im Feldformular ausgerechnet

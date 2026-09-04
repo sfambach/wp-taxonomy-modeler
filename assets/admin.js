@@ -334,4 +334,42 @@
 		}
 	} );
 
+	/**
+	 * Auf- und Zuklappen im Auswahldialog -- TASK-035.
+	 *
+	 * Auf der Seite ist der Klapper ein Link und braucht kein Skript. Im Dialog kann er keiner sein:
+	 * der Dialog wird von einer angehakten Checkbox offengehalten, und ein Seitenneuaufbau schliesst
+	 * ihn. Deshalb traegt er dort href='#' und diese Behandlung.
+	 *
+	 * Der Baum ist im Dokument flach, jede Zeile kennt nur ihre Tiefe. Ein Ast ist deshalb: alle
+	 * folgenden Zeilen, bis wieder eine kommt, die nicht tiefer steht.
+	 */
+	document.addEventListener( 'click', function ( event ) {
+		var klapper = event.target.closest ? event.target.closest( '.taxmod-tree-fold' ) : null;
+
+		if ( ! klapper ) {
+			return;
+		}
+
+		event.preventDefault();
+
+		var zeile = klapper.closest( '.taxmod-tree-row' );
+
+		if ( ! zeile ) {
+			return;
+		}
+
+		var zu    = klapper.getAttribute( 'data-fold' ) === 'auf';
+		var tiefe = parseInt( zeile.getAttribute( 'data-depth' ), 10 );
+		var naechste = zeile.nextElementSibling;
+
+		while ( naechste && parseInt( naechste.getAttribute( 'data-depth' ), 10 ) > tiefe ) {
+			naechste.style.display = zu ? 'none' : 'flex';
+			naechste = naechste.nextElementSibling;
+		}
+
+		klapper.setAttribute( 'data-fold', zu ? 'zu' : 'auf' );
+		klapper.innerHTML = zu ? '\u25B8' : '\u25BE';
+	} );
+
 } )();

@@ -883,7 +883,10 @@ final class Rendering
                 value: TypedValue::nothing(),
                 locale: $locale,
                 level: $level,
-                surroundings: new Surroundings(rows: $this->drawnRows($walked, $cells)),
+                // WICHTIG: Klapper fuer jede Zeile mit Kindern, damit der Dialog aussieht und sich
+                // verhaelt wie die Baumansicht. '#' statt einer Adresse: hier klappt das Skript,
+                // weil ein Seitenneuaufbau den Dialog schliessen wuerde.
+                surroundings: new Surroundings(rows: $this->drawnRows($walked, $cells, $this->foldsInPlace($walked))),
             )
         );
 
@@ -2770,6 +2773,25 @@ final class Rendering
             [...$wahl->usedEdges, ...$tiefer->usedEdges],
             $tiefer->condition
         );
+    }
+
+    /**
+     * Ein Klapper je Zeile mit Kindern, der im Browser klappt statt die Seite zu laden.
+     *
+     * @param list<array{node: Node, hasChildren: bool}> $walked
+     * @return array<int, string>
+     */
+    private function foldsInPlace(array $walked): array
+    {
+        $aus = [];
+
+        foreach ($walked as $row) {
+            if ($row['hasChildren']) {
+                $aus[$row['node']->id] = '#';
+            }
+        }
+
+        return $aus;
     }
 
     private function optionsFor(array $edges): array
