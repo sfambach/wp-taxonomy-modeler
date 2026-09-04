@@ -206,6 +206,19 @@ final class Surroundings
          * @var list<string>
          */
         public readonly array $rowActs = [],
+        /**
+         * Ob diese Zeile **gesperrt** ist — [D-607](../../../docs/NewConcept/90-decision-log.md),
+         * angezeigt nach [D-608](../../../docs/NewConcept/90-decision-log.md).
+         *
+         * ⚠️ **Vorbereitet und nicht erfragt** ([D-445](../../../docs/NewConcept/90-decision-log.md)):
+         * ob eine Kante auf den Knoten zeigt, der sie erben würde, weiss der Abstieg — er kennt den
+         * Knoten der Seite, die Zeile kennt nur ihre Kante.
+         *
+         * ⚠️ *Ein Wahrheitswert und kein Text: **der Grund ist Benutzertext** und gehört durch die
+         * Textdomäne am Rand (`AR-2`), den der Kern nicht rufen darf (`CD-1`). Er kommt als Wort
+         * herein wie «own» und «inherited» auch ([OQ-087](../../../docs/NewConcept/91-open-questions.md)).*
+         */
+        public readonly bool $locked = false,
     ) {
     }
 

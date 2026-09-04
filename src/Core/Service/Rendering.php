@@ -1406,6 +1406,13 @@ final class Rendering
                     // sein Wunsch: «Save in Fields sollte eigentlich auch über die Seite gehen». Leer
                     // heisst «keins», und dann nimmt die Zeile wieder ihr eigenes.*
                     formId: $pageForm,
+                    // ⚠️ **Die Sperre aus [D-607](../../../docs/NewConcept/90-decision-log.md), hier
+                    // nur weitergereicht.** *Die Regel wohnt an einer Stelle
+                    // ({@see ModelValues::inheritanceBlocked()}); die Zeile kann sie nicht selbst
+                    // stellen, weil sie den Knoten der Seite nicht kennt — genau dafür ist
+                    // `$declaredBy` da. **Weggelassen wird die Zeile nicht**
+                    // ([D-608](../../../docs/NewConcept/90-decision-log.md)).*
+                    locked: ModelValues::inheritanceBlocked($edge, $declaredBy),
                     configured: $configured,
                     // ⚠️ **The same panel as a node's, drawn here and placed there** — so the attribute
                     // row cannot grow a settings list of its own.

@@ -78,6 +78,31 @@ final class ModelValues
 
 
     /**
+     * Ob dieser Erbe diese Einstellungskante **nicht** erbt — [D-607](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * ⚠️ **Die Regel ist die des Ziels, nicht die der Marke.** *Sein Einwand hat die erste Fassung
+     * («ein Knoten mit `kind = setting` erbt nichts», [D-605](../../../docs/NewConcept/90-decision-log.md))
+     * umgeworfen: «aber das ist falsch, weil Renderer converter hat und jeder Kindknoten muss ihn
+     * erben». **Schädlich sind genau die Kanten, deren Ziel der erbende Knoten selbst ist** — gemessen
+     * am 2026-09-04 zwei von elf: `Root --validator--> Validator` und `Root --read_only--> read_only`.
+     * `Renderer --converter--> Converter` ist nicht darunter, wenn `compact` fragt.*
+     *
+     * ⚠️ **Es geht ums Erben, nicht ums Haben.** *`fromId !== $heirId`: eine Kante, die jemand
+     * absichtlich von einem Knoten auf sich selbst legt, steht da, weil er sie hingeschrieben hat, und
+     * bleibt erlaubt ([D-608](../../../docs/NewConcept/90-decision-log.md) nennt genau das als Ausweg).*
+     *
+     * ⚠️ *Statisch, weil {@see \Taxmod\Core\Service\Rendering} die Sperre für die **Anzeige** braucht
+     * und dort kein {@see ModelValues} gesetzt sein muss — **eine Fassung der Regel und nicht zwei**
+     * (`CD`).*
+     */
+    public static function inheritanceBlocked(Relation $edge, int $heirId): bool
+    {
+        return $edge->kind->isSetting()
+            && $edge->toId === $heirId
+            && $edge->fromId !== $heirId;
+    }
+
+    /**
      * Die Angaben, die dieser **Knoten** am Modell trägt.
      *
      * @return array<string,ResolvedSetting>
@@ -327,6 +352,15 @@ final class ModelValues
                 $kante = $this->settingEdge($subject, $wert->edgeId);
 
                 if ($kante === null || isset($aus[$kante->name])) {
+                    continue;
+                }
+
+                // ⚠️ **Die Sperre aus [D-607](../../../docs/NewConcept/90-decision-log.md), an der
+                // einen Stelle, an der ein Wert in die Kette kommt.** *Ohne sie zeigte der Knoten
+                // `read_only` `read_only` als seine eigene, geerbte Einstellung — sein Befund am
+                // Bildschirm: «setting cannot inherit itself». Sie greift nur für einen **Knoten**;
+                // eine Verwendungsstelle ist nie das Ziel ihrer eigenen Einstellungskante.*
+                if ($subject instanceof Node && self::inheritanceBlocked($kante, $subject->id)) {
                     continue;
                 }
 

@@ -131,9 +131,40 @@ final class FieldRowRenderer implements Renderer
             . $this->valueCell($context)
             . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-field-acts', false, true);
 
+        $klasse = 'taxmod-field' . ($context->surroundings->locked ? ' taxmod-field-locked' : '');
+
         return RenderResult::of(
-            '<tr class="taxmod-field">' . $cells . '</tr>'
+            '<tr class="' . $klasse . '">' . $cells . '</tr>'
         );
+    }
+
+    /**
+     * Die Kennzeichnung «gesperrt» samt Grund — [D-608](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * ⚠️ **Beides ist verlangt und keins genügt allein.** *Sein Wort: «muss aber ne Tooltip-Begründung
+     * da sein, und ‹gesperrt› muss sichtbar sein.» **«Gesperrt» sichtbar** sagt, dass die Zeile nicht
+     * bedienbar ist; **der Hinweistext** sagt warum. Ohne den Text wäre es eine Sperre ohne Grund.*
+     *
+     * ⚠️ **Weggelassen wird die Zeile ausdrücklich nicht.** *Das war der Mangel, den D-608 behebt: wer
+     * fragt «warum hat `read_only` kein `read_only`», fand keine Antwort im Modell — nur in einer
+     * Entscheidung, die er suchen muss. Dieselbe Haltung wie in
+     * [D-604](../../../docs/NewConcept/90-decision-log.md): was der Benutzer wissen muss, steht dort,
+     * wo er hinschaut.*
+     *
+     * ⚠️ **Die zwei Worte kommen vom Rand** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)),
+     * wie «own» und «inherited» — *bis der Rand sie mitgibt, steht der Schlüssel selbst da, sichtbar.
+     * Ein bemerktes falsches Wort schlägt ein geratenes.*
+     */
+    private function lockMark(RenderContext $context): string
+    {
+        if (! $context->surroundings->locked) {
+            return '';
+        }
+
+        return ' ' . RenderResult::htmlTag('span', [
+            'class' => 'taxmod-locked',
+            'title' => $this->plainWord($context, 'locked-reason'),
+        ]) . '&#128274; ' . $this->word($context, 'locked') . '</span>';
     }
 
     
@@ -197,9 +228,13 @@ final class FieldRowRenderer implements Renderer
     private function origin(RenderContext $context): string
     {
         return $this->cell(
-            $context->editable
+            ($context->editable
                 ? $this->word($context, 'own')
-                : '<em>' . $this->word($context, 'inherited') . '</em>',
+                : '<em>' . $this->word($context, 'inherited') . '</em>')
+            // ⚠️ *Hier und nicht in einer eigenen Spalte: die Sperre **ist** eine Aussage über die
+            // Herkunft — die Kante kommt von oben und hält an diesem Knoten an
+            // ([D-607](../../../docs/NewConcept/90-decision-log.md)).*
+            . $this->lockMark($context),
             'taxmod-field-from',
             false,
             true
@@ -244,6 +279,13 @@ final class FieldRowRenderer implements Renderer
             return '';
         }
 
+        // ⚠️ **Gesperrt heisst nicht bedienbar** ([D-608](../../../docs/NewConcept/90-decision-log.md)):
+        // *ein Eingabefeld in einer Zeile, die «gesperrt» sagt, wäre die Sperre nur behauptet. Die
+        // Zeile bleibt stehen, ihr Wert ist keiner — der Gedankenstrich, den die Spalte schon kennt.*
+        if ($context->surroundings->locked) {
+            return $this->cell('<span class="taxmod-nothing">—</span>', 'taxmod-field-value', false, true);
+        }
+
         $gezeichnet = $context->surroundings->sections[self::VALUE];
 
         if (trim($gezeichnet->body) === '') {
@@ -284,6 +326,23 @@ final class FieldRowRenderer implements Renderer
         }
 
         return RenderResult::escape($key);
+    }
+
+    /**
+     * Dasselbe Wort **unescaped** — für ein Attribut, das {@see RenderResult::htmlTag()} selbst escapt.
+     *
+     * ⚠️ *Zweimal escapen ist der Fehler, der aus einem Apostroph `&amp;#039;` macht — in einem
+     * Tooltip liest das jeder.*
+     */
+    private function plainWord(RenderContext $context, string $key): string
+    {
+        foreach ($context->surroundings->actions as $control) {
+            if ($control->name === 'word:' . $key) {
+                return $control->label;
+            }
+        }
+
+        return $key;
     }
 
     /**
