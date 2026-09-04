@@ -319,7 +319,8 @@
 		var zeilen  = panel.querySelectorAll( '.taxmod-tree-row' );
 
 		for ( var i = 0; i < zeilen.length; i++ ) {
-			var name = zeilen[ i ].querySelector( '.taxmod-tree-label' );
+			var name = zeilen[ i ].querySelector( '.taxmod-chooser-name' )
+				|| zeilen[ i ].querySelector( '.taxmod-tree-label' );
 			var text = name ? name.textContent.toLowerCase() : '';
 
 			zeilen[ i ].style.display = ( gesucht === '' || text.indexOf( gesucht ) !== -1 ) ? '' : 'none';

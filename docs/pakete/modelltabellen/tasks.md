@@ -324,14 +324,14 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
 ```text
 [ ] TASK-026  Fields/Anlegen: ohne Namen wird der Knotenname benutzt — mit
               Schalter, und die Beschriftung zieht mit
-[ ] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
+[x] TASK-027  Fields/Anlegen: Vorauswahl im Typbaum sind die Simple Types
 [ ] TASK-028  NodeChooser ist ein reiner Auswahldialog — waehlen, bestaetigen,
               fertig; der Anlegen-Knopf bleibt in der Zeile
 [ ] TASK-029  Fields/Bestand: «Points at» ist der Typ und muss aenderbar sein,
               Pflichtfeld ohne leere Wahl
 [ ] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
               Baum
-[ ] TASK-031  NodeChooser bekommt oben ein Such-/Filterfeld
+[x] TASK-031  NodeChooser bekommt oben ein Such-/Filterfeld
 [ ] TASK-032  Komposition und Aggregation werden dieselbe Ablage; ein Schalter
               am Feld sagt nur, ob die Daten mitgeloescht werden
 ```

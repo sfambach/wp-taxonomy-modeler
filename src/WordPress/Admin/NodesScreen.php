@@ -1707,6 +1707,40 @@ final class NodesScreen
     }
 
     /**
+     * Den Ast der einfachen Typen an den Anfang, alles andere dahinter.
+     *
+     * ⚠️ **Ein Block und nicht eine Zeile:** *ein Ast ist seine Wurzelzeile **und** alles, was
+     * darunter eingerückt folgt. Nur die Wurzel zu verschieben risse ihre Kinder ab und liesse sie
+     * unter dem falschen Kopf stehen.*
+     *
+     * @param list<array{node:\Taxmod\Core\Model\Node, depth:int}> $rows
+     * @return list<array{node:\Taxmod\Core\Model\Node, depth:int}>
+     */
+    private function simpleTypesFirst(array $rows): array
+    {
+        $gesucht = $this->framework->rootOf(Branch::DataTypes)->id;
+        $ast     = [];
+        $rest    = [];
+        $drin    = false;
+
+        foreach ($rows as $row) {
+            if ($row['node']->id === $gesucht) {
+                $drin = true;
+            } elseif ($drin && $row['depth'] === 0) {
+                $drin = false;
+            }
+
+            if ($drin) {
+                $ast[] = $row;
+            } else {
+                $rest[] = $row;
+            }
+        }
+
+        return [...$ast, ...$rest];
+    }
+
+    /**
      * Überschrift und Hinweis eines der zwei Blöcke.
      *
      * ⚠️ *An **einer** Stelle, weil die zwei Aufrufe sonst zwei Orte wären, an denen dasselbe über
@@ -1797,6 +1831,12 @@ final class NodesScreen
         // ⚠️ *Versteckte bleiben draussen — ein verstecktes Vorkommen ist kein Ziel — und die
         // Wurzel ebenso, denn sie ist ohnehin gesperrt.*
         $rows = $this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]);
+
+        // WICHTIG: Die einfachen Typen zuerst -- TASK-027, auf sein Wort: "default Knoten sollte
+        // simple types sein, wird am meisten verwendet, erleichtert die Eingabe". Vorausgewaehlt
+        // werden kann keiner: der Astkopf ist als Ziel gesperrt (D-238), und welcher einfache Typ
+        // gemeint ist, weiss nur er. Also wird der Ast nach oben sortiert, damit er offen daliegt.
+        $rows = $this->simpleTypesFirst($rows);
         // ⚠️ **The last flat `<select>` on this screen, and now it is a tree** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *the type selection in the attribute should be the tree chooser too.* It was the
         // same eighty entries with middle dots that the parent chooser had before — and worse here,
