@@ -113,6 +113,36 @@ final class RenderContext
     }
 
     /**
+     * Derselbe Zusammenhang, aber als Zeile in einem Auswahldialog.
+     *
+     * WICHTIG: Nur die Zeilen-Id bekommt einen anderen Vorsatz. Sonst stuende jeder Knoten zweimal
+     * mit derselben HTML-Id im Dokument -- einmal im Modellbaum, einmal im Dialog.
+     */
+    public function asChooserRow(): self
+    {
+        return new self(
+            purpose: $this->purpose,
+            value: $this->value,
+            settings: $this->settings,
+            locale: $this->locale,
+            level: $this->level,
+            editable: false,
+            fieldName: $this->fieldName,
+            type: $this->type,
+            surroundings: new Surroundings(
+                hidden: $this->surroundings->hidden,
+                // WICHTIG: Der Feldname gehoert hinein, weil zwei Dialoge auf einer Seite
+                // dieselben Knoten zeigen -- der Verschiebe-Dialog und der Typ-Dialog. Genau
+                // dieselbe Kollision, vor der der Docblock von DialogChooserRenderer warnt.
+                rowIdPrefix: 'taxmod-choice-'
+                    . (string) preg_replace('/[^a-z0-9_-]/i', '', $this->fieldName)
+                    . '-',
+            ),
+            developerMode: false,
+        );
+    }
+
+    /**
      * The same context around a different value — what a list does for each occurrence.
      *
      * ⚠️ **A target's label travels with the value**, so it is replaced rather than carried: two
