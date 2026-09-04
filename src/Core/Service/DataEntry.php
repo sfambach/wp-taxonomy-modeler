@@ -1007,7 +1007,9 @@ final class DataEntry
             $path === '' ? (string) $edgeId : $path,
             $edgeId,
             '',
-            TypedValue::ofReference($part->id)
+            // ⚠️ *Ein **Datensatz**verweis und kein Knotenverweis — die einzige Stelle im Kern, die
+            // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
+            TypedValue::ofRecordReference($part->id)
         ));
 
         return $part;

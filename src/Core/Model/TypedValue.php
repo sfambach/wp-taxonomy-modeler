@@ -23,8 +23,16 @@ final class TypedValue
         public readonly ?string $text = null,
         public readonly ?string $date = null,
         public readonly ?int $reference = null,
+        ?ReferenceSpace $referenceSpace = null,
     ) {
+        // ⚠️ *Die Zusicherung wird hier hergestellt und nicht von den Aufrufern verlangt: ein Verweis
+        // ohne Raumangabe ist genau der mehrdeutige Zustand, den TASK-005 beseitigt. Ein Verweis ohne
+        // Angabe meint einen **Knoten** — das ist, was jeder Aufrufer ausser {@see DataEntry} meint.
+        $this->referenceSpace = $reference === null ? null : ($referenceSpace ?? ReferenceSpace::Node);
     }
+
+    /** Der Raum, in den {@see $reference} zeigt — **nie `null`, solange ein Verweis da ist**. */
+    public readonly ?ReferenceSpace $referenceSpace;
 
 
     /**
@@ -37,8 +45,9 @@ final class TypedValue
         ?string $text,
         ?string $date,
         ?int $reference,
+        ?ReferenceSpace $referenceSpace = null,
     ): self {
-        return new self($int, $decimal, $text, $date, $reference);
+        return new self($int, $decimal, $text, $date, $reference, $referenceSpace);
     }
 
     public static function ofInt(int $value): self
@@ -83,7 +92,16 @@ final class TypedValue
 
     public static function ofReference(int $nodeId): self
     {
-        return new self(reference: $nodeId);
+        return new self(reference: $nodeId, referenceSpace: ReferenceSpace::Node);
+    }
+
+    /**
+     * Ein Verweis auf eine **Ausprägung** statt auf einen Knoten — der eingebettete Teil
+     * ({@see \Taxmod\Core\Service\DataEntry::createPart()}).
+     */
+    public static function ofRecordReference(int $recordId): self
+    {
+        return new self(reference: $recordId, referenceSpace: ReferenceSpace::Record);
     }
 
     /** Deliberately nothing — the row exists and holds no value. */
@@ -275,6 +293,11 @@ final class TypedValue
             $this->int !== null       => 'int',
             $this->decimal !== null   => 'decimal',
             $this->date !== null      => 'date',
+            // ⚠️ *Zwei Namen statt einem, seit TASK-005: ein Rückspielen muss den **Raum**
+            // mitbekommen, sonst zeigt der wiederhergestellte Verweis auf einen Knoten mit der
+            // Nummer eines Datensatzes. Ältere Journalzeilen sagen nur «reference» und werden
+            // als Knotenverweis gelesen — was sie bis hierher auch bedeutet haben.*
+            $this->referenceSpace === ReferenceSpace::Record => 'record_reference',
             $this->reference !== null => 'reference',
             default                   => 'text',
         };
@@ -319,7 +342,8 @@ final class TypedValue
             'int'       => self::ofInt((int) $rawValue),
             'decimal'   => self::ofDecimal($rawValue),
             'date'      => self::ofDate($rawValue),
-            'reference' => self::ofReference((int) $rawValue),
+            'reference'        => self::ofReference((int) $rawValue),
+            'record_reference' => self::ofRecordReference((int) $rawValue),
             'text'      => self::ofText($rawValue),
             default     => throw NotAValueOfThatType::submitted($rawValue, $type),
         };
