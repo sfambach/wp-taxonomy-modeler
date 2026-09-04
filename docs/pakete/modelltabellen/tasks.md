@@ -44,13 +44,28 @@ einen zweiten Nummernraum, das eliminieren wir jetzt.»
 machen.»*
 
 ```text
-[ ] TASK-005  Fremdschlüssel nennen ihre Zieltabelle; value_ref bekommt eine Spalte für den Raum
+[x] TASK-005  Fremdschlüssel nennen ihre Zieltabelle; value_ref bekommt eine Spalte für den Raum
 ```
 
 Heute zeigt `record_values.value_ref` auf **Knoten (49) und Datensätze (88)** — ohne dass etwas sagt,
 worauf. Mit einem gemeinsamen Id-Raum ging das; mit eigenen Ids nicht mehr.
 **`changelog.owner_kind` ist das Muster.** [D-164](../../NewConcept/90-decision-log.md) hat die
 Abhilfe längst beschlossen und sie wurde nie gebaut.
+
+**Gebaut am 2026-09-04, Schema 20.** Die Spalte heisst `value_ref_kind` und trägt `node` oder
+`record`; im Kern sagt es [`ReferenceSpace`](../../../src/Core/Model/ReferenceSpace.php), und
+`TypedValue::ofRecordReference()` steht neben `ofReference()`. **Der einzige Schreiber eines
+Datensatzverweises im Kern ist `DataEntry::createPart()`** — alles andere meint einen Knoten.
+
+⚠️ **Nachgemessen vor dem Umbau: 143 Verweise, 50 auf Knoten, 93 auf Datensätze, keine
+Überschneidung** — die Zahlen oben stammen von einem früheren Stand. *Die Wanderung konnte deshalb
+jede lebende Zeile eindeutig benennen; **nach TASK-004 wäre genau das nicht mehr gegangen**.*
+
+⚠️ **Die Schattentabelle bleibt lückenhaft, und das ist gemessen statt hingenommen:** *von 810
+Verweisen alter Fassungen lassen sich 393 auf einen Knoten und 58 auf einen Datensatz auflösen,
+**359 zeigen auf nichts Lebendes mehr oder wären mehrdeutig**. Geraten wird nicht (`PR-4`) — der
+Wächter [`value-ref-space-check.php`](../../../scripts/dev/value-ref-space-check.php) verlangt die
+Angabe deshalb von den lebenden Zeilen und **zählt** die Lücke im Schatten.*
 
 ```text
 [ ] TASK-006  Identität erst vergeben, wenn die Zeile geschrieben wird

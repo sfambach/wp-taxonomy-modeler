@@ -118,3 +118,24 @@ und ohne Skript bleibt jede Wahl gültig: sie reist über den Radioknopf im Form
 
 ⚠️ **Was es kostet, gemessen an `Adresse`:** *176 KB Seite, 0,13 s, vier Auswahldialoge, 183
 Baumzeilen. **Es wächst mit der Zahl der Felder**, weil jede eigene Zeile ihren eigenen Dialog trägt.*
+
+## INF-007 · Eine Spalte plus Raum, oder zwei Spalten? — `package.md` §5a gegen TASK-005
+
+**2026-09-04, beim Bauen von TASK-005 aufgefallen. Nicht entschieden, sondern erfasst (`PR-4`).**
+
+TASK-005 sagt: *«`value_ref` bekommt eine Spalte für den Raum»* — so gebaut, `value_ref_kind` mit
+`node` oder `record`, nach dem Muster `changelog.owner_kind`, wie [§6](package.md) es verlangt.
+
+**Der Soll-Zustand in [§5a](package.md) sieht dagegen zwei getrennte Spalten vor** —
+`value_node_record_id` **oder** `value_node_id`. Das ist dieselbe Aussage in einer anderen Form: dort
+sagt der **Spaltenname** die Zieltabelle, hier eine zweite Spalte.
+
+| | dafür | dagegen |
+|---|---|---|
+| **eine Spalte + Raum** | ein Index, eine Wertspalte mehr neben `value_int` … `value_date`; der Raum ist ein Datum wie jedes andere | zwei Spalten müssen zusammenpassen — der Wächter muss es prüfen |
+| **zwei Spalten** | jeder Fremdschlüssel nennt seine Tabelle im Namen, echte Fremdschlüssel möglich | zwei nullbare Spalten, die einander ausschliessen müssen — auch das braucht einen Wächter |
+
+⚠️ **Gebaut ist die erste Form, weil TASK-005 sie wörtlich verlangt und weil sie vor TASK-004 stehen
+muss.** *Sie steht der zweiten nicht im Weg: eine spätere Aufteilung liest `value_ref_kind` und
+verteilt — **was heute nicht ginge, weil der Raum nirgends stünde.** Die Frage stellt sich erst beim
+Umbenennen auf `relation_records`.*

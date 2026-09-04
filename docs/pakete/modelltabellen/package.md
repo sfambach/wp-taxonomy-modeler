@@ -350,7 +350,7 @@ Spalte.
 | `changelog.owner_id` | vier Tabellen | `owner_kind` sagt es |
 | `labels.owner_id` · `role_id` | Knoten | Name sagt es **nicht** |
 | **`settings.owner_id`** | **Kanten** | **derselbe Name, anderes Ziel als in `labels`** |
-| **`record_values.value_ref`** | **Knoten 49 · Datensätze 88** | **mehrdeutig** |
+| `record_values.value_ref` | Knoten 50 · Datensätze 93 | **`value_ref_kind` sagt den Raum** (TASK-005, gebaut) |
 
 → [`tasks.md`](tasks.md) TASK-004, TASK-005, TASK-010
 
