@@ -371,6 +371,61 @@ final class WpdbRelationRepository implements RelationRepository
         ));
     }
 
+    public function settingsRecordIdsOfEdges(array $edgeIds): array
+    {
+        global $wpdb;
+
+        $edgeIds = array_values(array_unique(array_filter(array_map(intval(...), $edgeIds))));
+
+        if ($edgeIds === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($edgeIds), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, settings_record_id, target_settings_record_id FROM ' . Schema::table('relations')
+                    . " WHERE id IN ($slots)",
+                ...$edgeIds
+            ),
+            ARRAY_A
+        );
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            $aus[(int) $row['id']] = [
+                'own'    => (int) ($row['settings_record_id'] ?? 0),
+                'target' => (int) ($row['target_settings_record_id'] ?? 0),
+            ];
+        }
+
+        return $aus;
+    }
+
+    public function rememberSettingsRecord(int $edgeId, int $recordId): void
+    {
+        global $wpdb;
+
+        // ⚠️ *Wie am Knoten: `NULL` heisst «hier nichts gesagt», `0` wäre eine Satz-Id, die es nie
+        // gibt. `prepare()` setzt kein `NULL` ein, darum zwei Anweisungen.*
+        if ($recordId === 0) {
+            $wpdb->query($wpdb->prepare(
+                'UPDATE ' . Schema::table('relations') . ' SET settings_record_id = NULL WHERE id = %d',
+                $edgeId
+            ));
+
+            return;
+        }
+
+        $wpdb->query($wpdb->prepare(
+            'UPDATE ' . Schema::table('relations') . ' SET settings_record_id = %d WHERE id = %d',
+            $recordId,
+            $edgeId
+        ));
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): Relation
     {

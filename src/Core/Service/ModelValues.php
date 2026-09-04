@@ -158,7 +158,12 @@ final class ModelValues
 
         $aus = $this->settingsAt($subject, $saetze, $traeger, []);
 
-        $name = $this->rendererNameAt($saetze, []);
+        // ⚠️ **Zuerst die Spalte** ([D-584](../../../docs/NewConcept/90-decision-log.md), TASK-020):
+        // *der Einstellungsdatensatz eines Knotens hängt an `nodes.settings_record_id`, und seine
+        // `node_id` sagt, welcher Renderer es ist. **Der alte Weg über die Trägerkante bleibt als
+        // Rückfall stehen**, solange Daten ihn noch benutzen — ein Leser, der die Altform nicht mehr
+        // kennt, macht bestehende Einstellungen unsichtbar, ohne dass jemand etwas geändert hätte.*
+        $name = $this->rendererNameOfNode($traeger) ?? $this->rendererNameAt($saetze, []);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $traeger, true);
@@ -207,6 +212,15 @@ final class ModelValues
         // ⚠️ *Auch die zu füllen, die keine Sätze haben — sonst fragt der nächste Lauf sie erneut.*
         foreach ($offen as $id) {
             $this->satzGedaechtnis[$id] ??= [];
+        }
+
+        // ⚠️ **Die Spalte für die ganze Kette in einem Zug** (`CD-7`, TASK-020). *Sonst wäre der
+        // Renderer wieder eine Abfrage je Vorfahrenstufe — dasselbe N+1, das dieser Vorladelauf
+        // überhaupt erst beseitigt hat.*
+        $spalten = $this->nodes->settingsRecordIdsOf($offen);
+
+        foreach ($offen as $id) {
+            $this->spalteAmKnoten[$id] = $spalten[$id] ?? 0;
         }
 
         $fehlend = array_values(array_filter(
@@ -490,8 +504,13 @@ final class ModelValues
      */
     public function forUseSite(Relation $edge): array
     {
-        $aus  = $this->settingsAt($edge, $this->recordsOf($edge->fromId), $edge->id, [$edge->id]);
-        $name = $this->rendererNameAt($this->recordsOf($edge->fromId), [$edge->id]);
+        $aus = $this->settingsAt($edge, $this->recordsOf($edge->fromId), $edge->id, [$edge->id]);
+
+        // ⚠️ **Auch hier zuerst die Spalte** ([D-586](../../../docs/NewConcept/90-decision-log.md)):
+        // *`relations.settings_record_id` trägt den eigenen Renderer der Kante. Der zweistufige Pfad
+        // am Datensatz des Besitzers bleibt als Rückfall.*
+        $name = $this->rendererNameOfEdge($edge->id)
+            ?? $this->rendererNameAt($this->recordsOf($edge->fromId), [$edge->id]);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true);
@@ -543,6 +562,57 @@ final class ModelValues
 
     /** @var array<int,?Node> Verweis => der Knoten des Renderers dahinter */
     private array $rendererGedaechtnis = [];
+
+    /** @var array<int,int> Knoten-Id => Satz-Id aus der Spalte; `0` heisst «gefragt, nichts da» */
+    private array $spalteAmKnoten = [];
+
+    /** @var array<int,int> Kanten-Id => Satz-Id aus der Spalte */
+    private array $spalteAnDerKante = [];
+
+    /**
+     * Der Renderer, den die **Spalte** dieses Knotens nennt — oder `null`.
+     *
+     * ⚠️ **Das ist die Form aus [D-584](../../../docs/NewConcept/90-decision-log.md)** und der Ort,
+     * an den TASK-020 die 29 Halter gebracht hat: *`Knoten.settings_record_id → Satz`, und die
+     * `node_id` des Satzes ist der Renderer.* **Eine Stufe weniger als vorher** — die Trägerkante
+     * «Display Option» dazwischen ist mit ihrem Hüllknoten gefallen.
+     *
+     * ⚠️ *Gemerkt, weil die Kette aus [D-602](../../../docs/NewConcept/90-decision-log.md) jeden
+     * Vorfahren fragt und dieselbe Antwort mehrfach braucht (`CD-7`).*
+     */
+    private function rendererNameOfNode(int $nodeId): ?string
+    {
+        if (! array_key_exists($nodeId, $this->spalteAmKnoten)) {
+            $this->spalteAmKnoten[$nodeId] = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
+        }
+
+        return $this->rendererNameOfRecord($this->spalteAmKnoten[$nodeId]);
+    }
+
+    /** Dasselbe an einer Kante ([D-586](../../../docs/NewConcept/90-decision-log.md)). */
+    private function rendererNameOfEdge(int $edgeId): ?string
+    {
+        if (! array_key_exists($edgeId, $this->spalteAnDerKante)) {
+            $this->spalteAnDerKante[$edgeId] = $this->relations->settingsRecordIdsOfEdges([$edgeId])[$edgeId]['own'] ?? 0;
+        }
+
+        return $this->rendererNameOfRecord($this->spalteAnDerKante[$edgeId]);
+    }
+
+    /**
+     * Welcher Renderer ist dieser Einstellungsdatensatz?
+     *
+     * ⚠️ *Ein Zeiger auf einen Satz, den es nicht mehr gibt, heisst «nichts» und nicht «Absturz» —
+     * genau der Fall, den [D-604](../../../docs/NewConcept/90-decision-log.md) beschreibt.*
+     */
+    private function rendererNameOfRecord(int $recordId): ?string
+    {
+        if ($recordId === 0) {
+            return null;
+        }
+
+        return $this->rendererNodeBehind($recordId)?->name;
+    }
 
     /**
      * Der Name des Renderers unter dieser Adresse, oder `null`.

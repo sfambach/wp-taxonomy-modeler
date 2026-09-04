@@ -360,3 +360,36 @@ Wächterläufen, die ihre Knoten aufräumen, ihre Datensätze aber nicht.** Geme
 bei jedem Lauf; die Zahl blieb über zwei volle Wächterläufe bei 28. **Sie sind nicht in D-594 und
 darum stehengeblieben** — und sie sind der einzige Grund, warum `package6-check` und
 `unitvalue-check` weiter «kein Datensatz ohne Knoten» rot melden, jetzt mit 28 statt 218.*
+
+---
+
+## INF-016 · Was TASK-020 stehengelassen hat
+
+**2026-09-04 gemessen. Nicht entschieden (`PR-4`).**
+
+TASK-020 ist vollzogen: **28 Halter sind aus der Wertzeile an der toten Kante `44093` in
+`nodes.settings_record_id` gezogen**, der Leser fragt die Spalte, der Schreiber füllt sie, und
+`settings-record-column-check.php` bewacht beide Richtungen. **Punkt 1 aus `INF-015` ist damit
+erledigt.** Vier Wertzeilen an toten Kanten blieben stehen.
+
+⚠️ **1 · Der Halter der *Wurzel* ist nicht mitgezogen — gemessen, nicht vermutet.** *Er zeigt auf
+einen Satz von `checkbox`. Solange er an der toten Kante hing, sah ihn niemand; **in der Spalte
+wirkt er, und die Vorfahrenkette aus [D-602](../../NewConcept/90-decision-log.md) trägt ihn an jeden
+Knoten des Modells.** Beim ersten Lauf, der ihn mitnahm, wurden `composition-check` und
+`package7-check` rot — «a bool gets the sliding switch — checkbox», «the date is a date control».
+**Das ist `INF-014` und eine eigene Entscheidung:** ist die Display-Option an der Wurzel gewollt
+(dann muss die Kette sie anders behandeln) oder ein Versehen (dann fällt sie)?*
+
+⚠️ **2 · Die drei Reste in Satz `2233` stehen weiter** — unverändert Punkt 2 aus `INF-015`. *Zwei
+`render`-Zeilen der Neuform an Kante `44091` und eine `converter`-Zeile ohne Verweis an `44092`.
+**Nichts davon steht in TASK-020**, und der Wächter deckelt sie bei vier statt sie wegzuschauen: die
+Zahl darf fallen und nie steigen.*
+
+⚠️ **3 · Was die Spalte nicht heilt: es gibt keine Einstellungskante für den Renderer mehr.** *Sie
+ging mit dem Hüllknoten. Der **Leser** kommt ohne sie aus — die sechs beobachteten Knoten zeichnen
+wieder mit `table`, `form`, `slider`, `node`, `chooser-dialog`, `form` statt sechsmal `plain`. **Der
+Schreiber am Rand kommt nicht ohne sie aus:** die Einstellungsmaske sucht ihre Zeilen über die
+Feldkanten des Knotens, und ohne Kante gibt es keine Zeile, in der man wählen könnte. Darum melden
+`setting-write-check`, `page-blocks-check`, `multiplicity-check` und der Auswahl-Teil von
+`renderer-choice-check` weiter rot. **Wie eine Einstellungskante entsteht, ist offen** — dieselbe
+Frage, die seit dem Umbau `settings` → Felder offensteht.*

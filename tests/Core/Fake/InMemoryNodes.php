@@ -203,4 +203,31 @@ final class InMemoryNodes implements NodeRepository
     {
         return count($this->rows);
     }
+
+    /** @var array<int,int> Knoten-Id => Satz-Id */
+    private array $settingsRecords = [];
+
+    public function settingsRecordIdsOf(array $nodeIds): array
+    {
+        $aus = [];
+
+        foreach ($nodeIds as $id) {
+            if (isset($this->settingsRecords[(int) $id])) {
+                $aus[(int) $id] = $this->settingsRecords[(int) $id];
+            }
+        }
+
+        return $aus;
+    }
+
+    public function rememberSettingsRecord(int $nodeId, int $recordId): void
+    {
+        if ($recordId === 0) {
+            unset($this->settingsRecords[$nodeId]);
+
+            return;
+        }
+
+        $this->settingsRecords[$nodeId] = $recordId;
+    }
 }

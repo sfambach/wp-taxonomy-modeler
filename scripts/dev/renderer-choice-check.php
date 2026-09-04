@@ -138,16 +138,17 @@ foreach (['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts Lis
     }
 
     // Der gespeicherte Renderer, unabhängig von der Registratur gelesen.
+    // ⚠️ **Seit TASK-020 steht der Halter in der Spalte** ([D-584](../../docs/NewConcept/90-decision-log.md)):
+    // *`Knoten.settings_record_id → Satz`, und die `node_id` des Satzes ist der Renderer. Der Weg
+    // über die Trägerkante `render` ist damit weg — und ihn hier stehenzulassen hiesse, die Prüfung
+    // gegen einen vergangenen Zielzustand zu halten (`PR-9`).*
     $erwartet[$name] = $wpdb->get_var($wpdb->prepare(
         'SELECT ziel.name
-           FROM ' . Schema::table('record_values') . ' aussen
-           JOIN ' . Schema::table('records') . ' satz ON satz.id = aussen.record_id
-           JOIN ' . Schema::table('record_values') . ' innen ON innen.record_id = aussen.value_ref
-           JOIN ' . Schema::table('relations') . ' kante ON kante.id = innen.edge_id AND kante.name = %s
-           JOIN ' . Schema::table('nodes') . ' ziel ON ziel.id = innen.value_ref
-          WHERE satz.node_id = %d
+           FROM ' . Schema::table('nodes') . ' k
+           JOIN ' . Schema::table('records') . ' satz ON satz.id = k.settings_record_id
+           JOIN ' . Schema::table('nodes') . ' ziel ON ziel.id = satz.node_id
+          WHERE k.id = %d
           LIMIT 1',
-        'render',
         $k->id
     ));
 }
@@ -303,9 +304,10 @@ $geprueft = 0;
 $daneben  = [];
 
 foreach ($wpdb->get_results(
-    'SELECT DISTINCT s.node_id FROM ' . Schema::table('records') . ' s
-     INNER JOIN ' . Schema::table('record_values') . ' w ON w.record_id = s.id
-     WHERE w.value_ref IS NOT NULL',
+    // ⚠️ **Die Kandidaten sind seit TASK-020 die Knoten mit gefüllter Spalte.** *Vorher wurden sie
+    // über Wertzeilen mit Verweis gesucht — der Halter war eine Wertzeile. **Jetzt ist er eine
+    // Spalte**, und die alte Suche fand darum null Knoten mit Renderer, obwohl 28 einen haben.*
+    'SELECT id AS node_id FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL',
     ARRAY_A
 ) ?: [] as $z) {
     $node = $nodes->find((int) $z['node_id']);

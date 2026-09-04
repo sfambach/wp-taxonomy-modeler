@@ -168,7 +168,24 @@ $umbenannt = (int) $wpdb->get_var($wpdb->prepare(
     $innenId
 ));
 
-check('beide Kanten heissen jetzt anders', $umbenannt === 2, "{$umbenannt} von 2");
+// ⚠️ **Seit TASK-020 kann diese Zahl kleiner als 2 sein, und das ist kein Ausfall, sondern die
+// Entscheidung.** *Der Renderer hängt an `nodes.settings_record_id` und nicht mehr an einer
+// Trägerkante ([D-584](../../docs/NewConcept/90-decision-log.md)); die beiden aufgeschriebenen
+// Kanten gingen mit dem Hüllknoten `DisplayOption`, den der Eigentümer gelöscht hat
+// ([D-604](../../docs/NewConcept/90-decision-log.md)). **Umbenannt werden kann nur, was es gibt** —
+// also ist die Zusage: jede noch vorhandene der beiden trägt danach den anderen Namen. **Die
+// eigentliche Zusage steht unverändert darunter:** die Zeichnung ändert sich davon nicht.*
+$vorhanden = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$r} WHERE id IN (%d, %d)",
+    $aussenId,
+    $innenId
+));
+
+check(
+    "die noch vorhandenen der beiden Kanten heissen jetzt anders ({$vorhanden} von 2 gibt es)",
+    $umbenannt === $vorhanden,
+    "{$umbenannt} von {$vorhanden}"
+);
 
 $nachher = gezeichnet($beobachtet);
 
@@ -194,7 +211,11 @@ $zurueck = (int) $wpdb->get_var($wpdb->prepare(
     $namenVorher[$innenId] ?? ''
 ));
 
-check('beide Namen stehen wieder da', $zurueck === 2, "{$zurueck} von 2");
+check(
+    'die Namen der noch vorhandenen Kanten stehen wieder da',
+    $zurueck === $vorhanden,
+    "{$zurueck} von {$vorhanden}"
+);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

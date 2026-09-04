@@ -406,6 +406,63 @@ final class WpdbNodeRepository implements NodeRepository
         return $aufgeloest;
     }
 
+    public function settingsRecordIdsOf(array $nodeIds): array
+    {
+        global $wpdb;
+
+        $nodeIds = array_values(array_unique(array_filter(array_map(intval(...), $nodeIds))));
+
+        if ($nodeIds === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($nodeIds), '%d'));
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, settings_record_id FROM ' . Schema::table('nodes')
+                    . " WHERE id IN ($slots) AND settings_record_id IS NOT NULL",
+                ...$nodeIds
+            ),
+            ARRAY_A
+        );
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            $satz = (int) $row['settings_record_id'];
+
+            if ($satz !== 0) {
+                $aus[(int) $row['id']] = $satz;
+            }
+        }
+
+        return $aus;
+    }
+
+    public function rememberSettingsRecord(int $nodeId, int $recordId): void
+    {
+        global $wpdb;
+
+        // ⚠️ *`NULL` und nicht `0`: die Spalte soll «hier nichts gesagt» sagen können, und eine
+        // Null wäre eine Satz-Id, die es nie gibt — zwei Bedeutungen in einem Wert.
+        // `prepare()` kann kein `NULL` einsetzen, darum zwei Anweisungen statt eines Platzhalters.*
+        if ($recordId === 0) {
+            $wpdb->query($wpdb->prepare(
+                'UPDATE ' . Schema::table('nodes') . ' SET settings_record_id = NULL WHERE id = %d',
+                $nodeId
+            ));
+
+            return;
+        }
+
+        $wpdb->query($wpdb->prepare(
+            'UPDATE ' . Schema::table('nodes') . ' SET settings_record_id = %d WHERE id = %d',
+            $recordId,
+            $nodeId
+        ));
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): Node
     {

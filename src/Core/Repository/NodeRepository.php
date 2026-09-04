@@ -121,4 +121,30 @@ interface NodeRepository
      *                                  Reihenfolge des Modells.
      */
     public function visibleChildrenOf(array $parentIds): array;
+
+    /**
+     * Der Einstellungsdatensatz dieser Knoten — je Knoten höchstens einer.
+     *
+     * ⚠️ **Eine Spalte, keine Kante** ([D-584](../../../docs/NewConcept/90-decision-log.md)): *«bei
+     * genau einem Renderer ist ein einzelner Zeiger auf einen einzelnen Datensatz genau richtig, und
+     * dessen `node_id` sagt schon, welcher Renderer es ist».* **Vorher hing der Halter an einer
+     * Trägerkante** — und als der Eigentümer den Hüllknoten löschte, hing er an einer Kante, die es
+     * nicht mehr gab.
+     *
+     * ⚠️ *In einem Zug für die ganze Vorfahrenkette (`CD-7`) — je Stufe eine Abfrage wäre genau das
+     * N+1, das `package7-check.php` misst.*
+     *
+     * @param  list<int>       $nodeIds
+     * @return array<int, int> Knoten-Id => Satz-Id. Wer nichts gesetzt hat, fehlt.
+     */
+    public function settingsRecordIdsOf(array $nodeIds): array;
+
+    /**
+     * Diesen Knoten auf diesen Einstellungsdatensatz zeigen lassen; `0` nimmt den Zeiger weg.
+     *
+     * ⚠️ *Ohne Versionswechsel: der Zeiger ist eine Einstellung am Knoten und keine Änderung an
+     * seiner Gestalt. Ein Versionssprung je Renderer-Wahl hätte jede Wahl zu einem Konflikt für
+     * jeden gemacht, der den Knoten offen hat.*
+     */
+    public function rememberSettingsRecord(int $nodeId, int $recordId): void;
 }

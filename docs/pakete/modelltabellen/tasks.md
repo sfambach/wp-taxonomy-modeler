@@ -318,8 +318,14 @@ Gegenteil** — «a column on a node and a column on an edge, and **never** a ch
 **und sie entstand, weil sein Wort «Attribut» als «Setting» gelesen wurde.** Nicht aufgelöst.
 
 ```text
-[ ] TASK-020  settings_record_id an nodes und relations
+[x] TASK-020  settings_record_id an nodes und relations
 ```
+
+**2026-09-04 in Betrieb genommen.** *28 Halter sind aus der Wertzeile an der toten Kante `44093` in
+`nodes.settings_record_id` gezogen; der Leser ({@see ModelValues}) fragt die Spalte vor der Kante,
+der Schreiber ({@see DataEntry::chooseSettingRecordAtNode()}) füllt sie, und
+`settings-record-column-check.php` bewacht beide Richtungen.* **Was stehenblieb — der Halter der
+Wurzel und die drei Reste in Satz `2233` — steht in `INF-016`.**
 
 [D-582](../../NewConcept/90-decision-log.md). **Damit kann eine Kante die Einstellungen ihres
 Zielknotens überschreiben** — ohne Kante-zu-Kante-Beziehung und ohne Überschreiben-Konstrukt.

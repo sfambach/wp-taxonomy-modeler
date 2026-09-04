@@ -620,7 +620,12 @@ final class DataEntry
             // feldlos war, griff das nie -- seit D-585 traegt er «converter», und damit
             // braucht jeder gewaehlte Renderer seinen eigenen Satz.
             if ($value->isAReference() && $this->targetOwnsItsRecord($satzId, $aussen)) {
-                $this->chooseSettingRecord($satzId, $aussen, (int) $value->reference);
+                // WICHTIG: Der Halter steht seit TASK-020 in `nodes.settings_record_id` und nicht
+                // mehr als Wertzeile an einer Traegerkante (D-584: «bei genau einem Renderer ist ein
+                // einzelner Zeiger auf einen einzelnen Datensatz genau richtig»). Der alte Weg hing
+                // an einer Kante -- und als der Eigentuemer den Huellknoten loeschte, hing er an
+                // einer Kante, die es nicht mehr gab.
+                $this->chooseSettingRecordAtNode($nodeId, (int) $value->reference);
 
                 return;
             }
@@ -670,6 +675,18 @@ final class DataEntry
         $satzId = $this->defaultRecordOf($nodeId);
 
         if ($innen === 0) {
+            // WICHTIG: Was ueber die Spalte geschrieben wurde, muss auch ueber die Spalte
+            // herausgenommen werden -- sonst waere «nichts» wieder die einzige Wahl, die sich nicht
+            // speichern laesst, genau der Fall, den der Eigentuemer an `converter` gefunden hat.
+            if ($this->targetOwnsItsRecord($satzId, $aussen)) {
+                $bisher = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
+
+                if ($bisher !== 0) {
+                    $this->nodes->rememberSettingsRecord($nodeId, 0);
+                    $this->records->forgetRecord($bisher);
+                }
+            }
+
             $this->clear($satzId, $aussen, $locale);
 
             return;
@@ -940,6 +957,47 @@ final class DataEntry
      * Felder sind die des alten Knotens und sagen ueber den neuen nichts. Stehen zu lassen hiesse,
      * Werte zu behalten, die niemand mehr lesen kann.
      */
+    /**
+     * Dieselbe Wahl, aber am **Knoten** statt an einer Kante — der Ort aus TASK-020.
+     *
+     * ⚠️ **Eine Spalte, keine Kante** ([D-584](../../../docs/NewConcept/90-decision-log.md)). *Der
+     * Zeiger steht in `nodes.settings_record_id`, der Satz ist ein `default`-Satz des gewaehlten
+     * Knotens, und seine `node_id` sagt, welcher Renderer es ist.*
+     *
+     * ⚠️ *Der alte Satz wird vergessen, wenn ein anderer Renderer gewaehlt wird — seine Felder sind
+     * die des alten Knotens und sagen ueber den neuen nichts. Dieselbe Begruendung wie bei
+     * {@see self::chooseSettingRecord()}, nur eine Ebene hoeher.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["Knoten"] -->|"settings_record_id"| S["Satz"]
+     *   S -->|"node_id"| R["Renderer"]
+     * ```
+     */
+    public function chooseSettingRecordAtNode(int $nodeId, int $chosenNodeId): void
+    {
+        $bisher = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
+
+        if ($bisher !== 0) {
+            $satz = $this->records->find($bisher);
+
+            if ($satz !== null && $satz->nodeId === $chosenNodeId) {
+                return;
+            }
+
+            $this->nodes->rememberSettingsRecord($nodeId, 0);
+
+            if ($satz !== null) {
+                $this->records->forgetRecord($bisher);
+            }
+        }
+
+        $this->nodes->rememberSettingsRecord(
+            $nodeId,
+            $this->create($chosenNodeId, RecordKind::Default)->id
+        );
+    }
+
     private function chooseSettingRecord(int $recordId, int $edgeId, int $chosenNodeId): void
     {
         $teilId = $this->partsOf($recordId)[(string) $edgeId] ?? null;

@@ -442,4 +442,45 @@ final class DataEntryTest extends TestCase
         self::assertSame('4k7', $this->data->valuesAt($record->id, [$this->description->id])[0]->value->text);
         self::assertSame('kompakt', $this->data->valuesAt($record->id, [$this->description->id, $renderer->id])[0]->value->text);
     }
+
+    /**
+     * Die Wahl eines Einstellungsdatensatzes steht in der **Spalte** und nicht an einer Kante.
+     *
+     * ⚠️ **Das ist [D-584](../../docs/NewConcept/90-decision-log.md), und es ist die Zusage von
+     * TASK-020:** *«bei genau einem Renderer ist ein einzelner Zeiger auf einen einzelnen Datensatz
+     * genau richtig, und dessen `node_id` sagt schon, welcher Renderer es ist».*
+     *
+     * ⚠️ **Warum es überhaupt eine Zusage braucht:** *solange der Halter eine Wertzeile an einer
+     * Trägerkante war, hing er von dieser Kante ab — und als der Eigentümer den Hüllknoten löschte,
+     * standen **29 Renderer-Wahlen an einer Kante, die es nicht mehr gab**
+     * ([D-604](../../docs/NewConcept/90-decision-log.md)). Eine Spalte kann das nicht.*
+     */
+    #[Test]
+    public function a_chosen_setting_record_lives_in_the_column(): void
+    {
+        // ⚠️ *Zwei waehlbare Knoten, und beide muessen eigene Datensaetze haben koennen — der
+        // Einstellungssatz ist ein Satz des **gewaehlten** Knotens (D-583).*
+        $compact = $this->editor->createNode('compact', $this->branchRoot['model']->id);
+        $table   = $this->editor->createNode('table', $this->branchRoot['model']->id);
+
+        $this->data->chooseSettingRecordAtNode($this->gram->id, $compact->id);
+
+        $satzId = $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0;
+
+        self::assertNotSame(0, $satzId, 'der Zeiger steht in der Spalte');
+        self::assertSame($compact->id, $this->records->find($satzId)?->nodeId, 'und der Satz ist einer des gewaehlten Knotens');
+
+        // Dieselbe Wahl noch einmal legt nichts Zweites an — die Zeile *ist* der Datensatz (D-583).
+        $this->data->chooseSettingRecordAtNode($this->gram->id, $compact->id);
+
+        self::assertSame($satzId, $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0);
+
+        // Eine andere Wahl haengt um, statt einen zweiten Halter danebenzustellen.
+        $this->data->chooseSettingRecordAtNode($this->gram->id, $table->id);
+
+        $neu = $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0;
+
+        self::assertNotSame($satzId, $neu);
+        self::assertSame($table->id, $this->records->find($neu)?->nodeId);
+    }
 }
