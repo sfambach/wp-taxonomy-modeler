@@ -75,6 +75,35 @@ final class Geruest
     }
 
     /**
+     * Eine Komposition mit benannten Feldern, die auf beliebige Ziele zeigen duerfen.
+     *
+     * ⚠️ *Die allgemeine Form von {@see komposition()}: dort sind alle Glieder Text, hier sagt
+     * jedes selbst, worauf es zeigt und wie viele. **Damit laesst sich eine Leiter bauen** —
+     * einfache Glieder, zusammengesetzte Glieder, eine Sammlung davon — ohne einen einzigen
+     * Knoten des Eigentuemers anzufassen (TASK-025).*
+     *
+     * @param array<string, array{ziel?: int, mult?: string}> $felder
+     */
+    public function kompositionMit(string $name, array $felder): \Taxmod\Core\Model\Node
+    {
+        global $wpdb;
+
+        $text = $this->knotenNamens('Text', Branch::DataTypes);
+        $ziel = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->framework->rootOf(Branch::Compositions)->id);
+        $this->gebaut[] = $ziel->id;
+
+        foreach ($felder as $feld => $wie) {
+            $kante = $this->editor->addField($ziel->id, $wie['ziel'] ?? $text, $feld);
+
+            if (isset($wie['mult'])) {
+                $wpdb->update(Schema::table('relations'), ['multiplicity' => $wie['mult']], ['id' => $kante->id]);
+            }
+        }
+
+        return $this->nodes->byId($ziel->id);
+    }
+
+    /**
      * Ein Knoten mit einem Feld darauf, mit gewählter Multiplizität.
      *
      * ⚠️ *Die Multiplizität wird nach dem Anlegen gesetzt, weil {@see ModelEditor::addField()} sie

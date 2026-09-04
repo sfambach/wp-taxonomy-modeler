@@ -29,6 +29,7 @@ define('WP_USE_THEMES', false);
 
 require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/geruest.php';
 
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\Core\Service\ModelValues;
@@ -116,27 +117,38 @@ function childNamed(ModelEditor $editor, \Taxmod\Core\Model\Node $parent, string
 
 echo "\n== the delivery ==\n";
 
-$created = $scaffold->import();
+// WICHTIG: Der Waechter baut seine Leiter selbst, statt die Beispielknoten des Eigentuemers zu
+// pruefen -- TASK-025. Sein Satz: "warum haben wir einen Check auf Adresse, ich hatte das mal so
+// angelegt, aber das war kein Vertrag". Und CLAUDE.md verbietet es: "Special-casing by display
+// name, label, path, or a specific node". Vorher legte dieser Lauf die Beispiele sogar an, wenn
+// sie fehlten -- ein Waechter, der in sein Arbeitsmodell schreibt.
+//
+// Geprueft wird die Sache und nicht die Woerter: eine Komposition aus einfachen Gliedern, eine
+// aus zusammengesetzten, und eine Sammlung davon.
+$geruest = new Geruest('__ck');
 
-echo '  angelegt: ' . ($created === [] ? '(alles war schon da)' : implode(', ', $created)) . "\n";
+$unitValue  = $geruest->kompositionMit('Wert', ['zahl' => [], 'einheit' => []]);
+$address    = $geruest->kompositionMit('Anschrift', [
+    'gasse' => [], 'nummer' => [], 'plz' => [], 'stadt' => [], 'land' => [],
+]);
+$dimension  = $geruest->kompositionMit('Mass', [
+    'breite' => ['ziel' => $unitValue->id],
+    'hoehe'  => ['ziel' => $unitValue->id],
+    'tiefe'  => ['ziel' => $unitValue->id],
+]);
+$ingredient = $geruest->kompositionMit('Posten', [
+    'menge' => ['ziel' => $unitValue->id],
+    'name'  => [],
+]);
+$recipe     = $geruest->kompositionMit('Rezept', [
+    'titel'          => [],
+    'backzeit'       => ['ziel' => $unitValue->id],
+    'ofentemperatur' => ['ziel' => $unitValue->id],
+    'zutat'          => ['ziel' => $ingredient->id, 'mult' => '1..*'],
+]);
 
-$compositions = $framework->rootOf(Branch::Compositions);
-
-foreach (['Adresse', 'Dimension', 'Zutat', 'Backrezept'] as $name) {
-    check("«{$name}» sits under Compositions", childNamed($editor, $compositions, $name) !== null);
-}
-
-$address   = childNamed($editor, $compositions, 'Adresse');
-$dimension = childNamed($editor, $compositions, 'Dimension');
-$ingredient = childNamed($editor, $compositions, 'Zutat');
-$recipe    = childNamed($editor, $compositions, 'Backrezept');
-$unitValue = childNamed($editor, $compositions, 'Einheitenwert');
-
-if ($address === null || $dimension === null || $ingredient === null || $recipe === null || $unitValue === null) {
-    echo "\nNothing more can be checked.\n";
-
-    exit(1);
-}
+echo '  gebaut: ' . implode(', ', [$unitValue->name, $address->name, $dimension->name, $ingredient->name, $recipe->name]) . "
+";
 
 echo "\n== rung one · Adresse · simple members only ==\n";
 
@@ -325,5 +337,7 @@ check('Adresse still has five members', count(membersOf($editor, $address)) === 
 check('Dimension still has three', count(membersOf($editor, $dimension)) === 3, (string) count(membersOf($editor, $dimension)));
 
 printf("\n%d ok, %d failed\n", $passed, $failed);
+
+$geruest->abbauen();
 
 exit($failed === 0 ? 0 : 1);

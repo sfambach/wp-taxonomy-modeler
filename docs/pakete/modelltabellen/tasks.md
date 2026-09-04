@@ -295,7 +295,7 @@ bestätigt, nicht geprüft.*
 drei Zeilen, hier sind es 32.
 
 ```text
-[ ] TASK-025  Waechter von seinen Knotennamen loesen — eigene Knoten anlegen,
+[x] TASK-025  Waechter von seinen Knotennamen loesen — eigene Knoten anlegen,
               pruefen, wegraeumen
 ```
 
