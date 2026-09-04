@@ -208,14 +208,34 @@ check(
 
 echo "\n== 3. Was der Umbau kostet, wird gemessen und nicht geschätzt ==\n";
 
-$alle  = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes'));
-$ohne  = 0;
+// WICHTIG: Ausserhalb des Settings-Astes, und das ist eine sichtbare Aenderung dieser Zusage
+// (PR-9). Sie verlangte es von *jedem* Knoten und war gruen, solange der Settings-Ast klein
+// war. Gemessen am 2026-09-04: 20 von 131 ohne Feld, und alle 20 liegen unter Settings --
+// Label roles, Converter, Validator, Orientation und ihre Kinder. Dass ein Einstellungsknoten
+// die Modellfelder nicht erbt, ist richtig; die Zusage war zu weit gefasst.
+$settings = $framework->rootOf(Branch::Settings);
+$alle     = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes'));
+$ohne     = 0;
+$inSettings = 0;
 
 foreach ($alle as $id) {
-    if ($editor->fieldsOf((int) $id) === []) {
-        $ohne++;
+    if ($editor->fieldsOf((int) $id) !== []) {
+        continue;
     }
+
+    $knoten = $nodes->find((int) $id);
+
+    if ($knoten !== null && ($knoten->id === $settings->id || $knoten->isDescendantOf($settings))) {
+        $inSettings++;
+
+        continue;
+    }
+
+    $ohne++;
 }
+
+printf("  --   %d Knoten im Settings-Ast ohne Feld, und das ist richtig
+", $inSettings);
 
 // ⚠️ **Solange die Wurzel Felder erklärt, hat **jeder** Knoten Felder** — gemessen 0 von 129 ohne.
 // *Also zeigt der Datensätze-Bereich überall, auch am Müll und an den Zweigwurzeln. **Das ist Lärm,
@@ -223,7 +243,7 @@ foreach ($alle as $id) {
 // Renderer, den alles erbt. Eine Ausnahme für «Maschinerie» nähme die Wurzel mit, darum gibt es
 // keine — aber die Zahl steht hier, damit die Folge sichtbar bleibt statt vergessen zu werden.*
 check(
-    'jeder Knoten hat Felder, solange die Wurzel welche erklärt',
+    'jeder Knoten ausserhalb von Settings hat Felder',
     $ohne === 0,
     $ohne . ' von ' . count($alle) . ' ohne Feld'
 );

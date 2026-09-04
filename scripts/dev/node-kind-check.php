@@ -42,6 +42,7 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require __DIR__ . '/geruest.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\NodeKind;
@@ -93,23 +94,16 @@ check(
 
 echo "\n== 2. Was gesetzt ist, liest sich zurück ==\n";
 
-// ⚠️ *Die vier Knoten, die [D-518](../../docs/NewConcept/90-decision-log.md) markiert hat — über die
-// Optionen gefunden, wo es welche gibt, sonst über die Kinder ihres Elternknotens.*
-$validator = (int) get_option('taxmod_render_validator_id', 0);
+// WICHTIG: Der Waechter baut seinen eigenen Einstellungsknoten, statt min, max und Validator im
+// Modell zu suchen -- TASK-025. Sein Satz: "warum haben wir einen Check auf Adresse, ich hatte
+// das mal so angelegt, aber das war kein Vertrag". Er hat min und max inzwischen verschoben, und
+// die Zusage wurde rot, ohne dass etwas kaputt war.
+$geruest = new Geruest('__nk');
+$gebaut  = $geruest->einstellung('Schwelle', 'schwelle');
 
-$markiert = [];
+$markiert = [$gebaut['einstellung'] => '__nk Schwelle'];
 
-foreach ($nodes->childrenOf($nodes->byId((int) get_option('taxmod_type_int_id', 0))) as $kind) {
-    if (in_array($kind->name, ['min', 'max'], true)) {
-        $markiert[$kind->id] = 'Integer > ' . $kind->name;
-    }
-}
-
-if ($validator > 0) {
-    $markiert[$validator] = 'Validator';
-}
-
-check('mindestens drei Knoten sind als Einstellung markiert', count($markiert) >= 3, (string) count($markiert));
+check('der gebaute Knoten ist als Einstellung markiert', count($markiert) === 1, (string) count($markiert));
 
 foreach ($markiert as $id => $name) {
     check($name . ' trägt kind = setting', $nodes->find($id)?->kind === NodeKind::Setting);
@@ -221,6 +215,11 @@ $ctor->setAccessible(true);
 $plugin = $rc->newInstanceWithoutConstructor();
 $ctor->invoke($plugin, __FILE__);
 
+// WICHTIG: Die Seite des gebauten Traegers, nicht irgendeine. Vorher wurde ohne ausgewaehlten
+// Knoten gezeichnet und darauf gehofft, dass «min» irgendwo steht.
+$_GET['page']       = 'taxmod';
+$_GET['taxmod_node'] = (string) $gebaut['traeger'];
+
 $markup = $plugin->screen()->render();
 
 preg_match_all('#<h3[^>]*>(Fields|Settings)<#', $markup, $treffer, PREG_OFFSET_CAPTURE);
@@ -242,7 +241,18 @@ if (count($treffer[0]) === 2) {
 
     // ⚠️ **Die eigentliche Zusage: `min` steht bei den Einstellungen und nicht bei den Feldern.**
     // *Sie ist der Grund, dass diese Prüfung mehr misst als «zwei Überschriften erschienen».*
-    check('«min» steht im Settings-Block', str_contains($bloecke['Settings'] ?? '', 'value="min"'));
+    check(
+        'die gebaute Einstellung steht im Settings-Block',
+        str_contains($bloecke['Settings'] ?? '', $gebaut['feld']),
+        substr(strip_tags($bloecke['Settings'] ?? ''), 0, 80)
+    );
+
+    // Der Gegenfall: sie steht *nicht* bei den Feldern.
+    check(
+        'und nicht im Fields-Block',
+        ! str_contains($bloecke['Fields'] ?? '', $gebaut['feld']),
+        substr(strip_tags($bloecke['Fields'] ?? ''), 0, 80)
+    );
     check('und nicht im Fields-Block', ! str_contains($bloecke['Fields'] ?? '', 'value="min"'));
     check(
         'Integer hat keine Benutzerfelder, und der Block sagt es',
@@ -282,5 +292,7 @@ check('drei Einträge: erbt, field, setting', $optionen[1] === ['', 'field', 'se
 check('und «erbt» nennt, was dabei herauskäme', (bool) preg_match('#<option value="" selected>inherited — (field|setting)</option>#', $markup));
 
 echo "\n" . ($bad === 0 ? "Alles grün: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
+
+$geruest->abbauen();
 
 exit($bad === 0 ? 0 : 1);
