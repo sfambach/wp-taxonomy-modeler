@@ -113,6 +113,50 @@ final class RendererRegistry
     }
 
     /**
+     * Die Klassen hinter {@see namesForNodes()} — **die Brücke zu den Knoten**.
+     *
+     * ⚠️ *`nodes.implemented_by` trägt die Klasse ([D-620](../../../docs/NewConcept/90-decision-log.md)),
+     * also ist das die Menge, mit der man alle Renderer-Knoten in **einer** Abfrage holt (`CD-7`) —
+     * die zweite Aufgabe derselben Brücke, die das Inventar gebaut hat
+     * ([D-647](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @return list<class-string>
+     */
+    public function classesForNodes(): array
+    {
+        $classes = [];
+
+        foreach ($this->namesForNodes() as $name) {
+            $class = $this->classFor($name);
+
+            if ($class !== null) {
+                $classes[] = $class;
+            }
+        }
+
+        return $classes;
+    }
+
+    /**
+     * Die Kennungen, die eine **Oberfläche** anfordert und niemand wählt.
+     *
+     * ⚠️ *Das Gegenstück zu {@see namesForNodes()}, und es hat seit
+     * [D-648](../../../docs/NewConcept/90-decision-log.md) eine Zusage: **ein interner Renderer hat
+     * keinen Knoten.** Ohne diese Liste müsste ein Wächter die Trennung ein zweites Mal treffen —
+     * `addForSurfaces()` trifft sie schon.*
+     *
+     * @return list<string> Sortiert, damit zwei Läufe dieselbe Reihenfolge melden.
+     */
+    public function namesForSurfaces(): array
+    {
+        $names = array_keys($this->surfaceOnly);
+
+        sort($names);
+
+        return $names;
+    }
+
+    /**
      * Die PHP-Klasse hinter diesem Namen, oder `null`, wenn ihn niemand registriert hat.
      *
      * ⚠️ **Ohne Rückfall, und das ist der Unterschied zu {@see byName()}** (TASK-008). *Der Rückfall

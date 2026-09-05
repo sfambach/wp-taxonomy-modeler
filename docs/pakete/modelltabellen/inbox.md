@@ -1362,3 +1362,44 @@ indem die Zeile den geltenden Renderer über seinen Namen auf seinen Knoten abbi
 vorwählt — **gezeigt, nicht geschrieben** ([R33c](../../NewConcept/30-renderer.md)). ⚠️ *Was hier
 nicht entschieden ist: **ob eine Wertzeile allgemein einen Datensatzverweis auf seinen Knoten
 abbilden soll**. Heute tut es nur die Renderer-Zeile, weil nur sie einen eigenen Satz anlegt.*
+
+---
+
+## INF-049 · Die Renderer-Wahl hat eine eigene Klasse — was dabei auffiel
+
+**2026-09-05, beim Bau von [D-647](../../NewConcept/90-decision-log.md) und
+[D-648](../../NewConcept/90-decision-log.md).** *Befunde, keine Entscheidungen (`PR-4`, `PR-7`).*
+
+**Gebaut ist, was er gesagt hat:** *die Wahl geht **von den Knoten aus und siebt mit der
+Registratur**, sie steht **flach**, sie zeigt die **`select`-Beschriftung** mit Rückfall auf den
+Namen, und gespeichert bleibt der **Verweis**. Der Wähler selbst bekommt keinen Knoten und steht als
+elfter interner Renderer in der Registratur. Der Wächter `renderer-choice-mask-check` geht denselben
+Weg wie vorher und ist unverändert grün, jetzt mit vier Zusagen mehr.*
+
+⚠️ **Erstens: die `select`-Rolle ist verkabelt, aber im Bestand trägt sie niemand.** *Gemessen am
+2026-09-05: **3 `select`-Beschriftungen im ganzen Modell gegen 195 Namen — und keine der drei sitzt
+auf einem Renderer-Knoten** (es sind `Kondensator` in zwei Sprachen und `Read Only`). **Alle 17
+Einträge der Liste kommen also heute über den Rückfall.** Das ist kein Fehler — der Rückfall ist
+gewollt —, aber es heisst, dass eine Zusage am Rand die Rolle nicht prüfen kann, ohne sein Modell zu
+verändern. **Deshalb prüft sie der Kern** (`RendererChoiceTest`), und der Rand vergleicht nur noch,
+dass die Liste dieselbe Auflösung zeigt wie die Beschriftungskette. Wer eine `select`-Beschriftung
+auf einen Renderer-Knoten setzt, sieht sie sofort.*
+
+⚠️ **Zweitens: die Liste sortiert nach Zeichen und nicht nach Sprache.** *Sie stand vorher nach
+Knotennamen und steht jetzt nach der angezeigten Beschriftung — beide Male mit `asort`. Solange alle
+Einträge Kennungen in Kleinbuchstaben sind, fällt nichts auf; **eine Beschriftung mit grossem
+Anfangsbuchstaben stünde vor allen kleingeschriebenen**, und Umlaute stünden hinten. Nicht geändert,
+weil das eine Frage an die ganze Oberfläche ist und nicht an diese eine Liste.*
+
+⚠️ **Drittens: die Vorauswahl ging über den angezeigten Text und hätte still aufgehört zu
+funktionieren.** *Sie verglich den Namen des geltenden Renderers mit den **Werten** der Liste —
+solange dort Knotennamen standen, traf das zu. **Mit der `select`-Beschriftung hätte sie nichts mehr
+gefunden, und die Liste wäre auf ihren ersten Eintrag zurückgefallen** — genau der Fehler, den
+`INF-048` viertens beschreibt, einmal mehr. Sie geht jetzt denselben Bogen wie die Liste selbst:
+Kennung → Klasse → Knoten. **Aufgefallen ist es nur, weil beides in eine Klasse wanderte**; verteilt
+hätte es niemand nebeneinander gesehen.*
+
+⚠️ **Viertens: die Zahlen aus [D-648](../../NewConcept/90-decision-log.md) sind jetzt Zusagen, und
+sie stehen bei 17 zu 11.** *Vorher 27 Kennungen gegen 17 Knoten; der Wähler macht daraus 28 gegen 17.
+**Beide Richtungen sind bewacht** — jeder wählbare Renderer hat einen Knoten mit seiner Klasse, und
+kein interner hat einen. Vorher war beides nur gemessen.*

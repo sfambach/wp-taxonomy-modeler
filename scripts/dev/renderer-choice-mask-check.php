@@ -180,6 +180,39 @@ function angebotDerZeile(string $markup, int $kante): array
     return $aus;
 }
 
+/**
+ * Was in der Liste **steht** — Knoten-Id => angezeigter Text.
+ *
+ * ⚠️ *Das Gegenstueck zu {@see angebotDerZeile()}, und der Unterschied ist die ganze Zusage:
+ * dort steht der **Name aus der Datenbank**, hier der **Text aus dem Markup**. Faellt die
+ * `select`-Rolle weg, sind beide wieder gleich — und nur dieser Weg sieht es.*
+ *
+ * @return array<int, string>
+ */
+function beschriftungenDerZeile(string $markup, int $kante): array
+{
+    $hinter = preg_split('/name="taxmod_value\[' . $kante . '\]"/', $markup)[1] ?? '';
+
+    preg_match_all(
+        '/<option value="([^"]*)"[^>]*>([^<]*)</',
+        explode('</select>', $hinter)[0],
+        $treffer,
+        PREG_SET_ORDER
+    );
+
+    $aus = [];
+
+    foreach ($treffer as $eins) {
+        if ($eins[1] === '') {
+            continue;
+        }
+
+        $aus[(int) $eins[1]] = html_entity_decode($eins[2], ENT_QUOTES, 'UTF-8');
+    }
+
+    return $aus;
+}
+
 echo "\n== ein eigener Knoten, der einen Renderer haben kann ==\n";
 
 $intId = $types->nodeId(SimpleType::Int);
@@ -306,6 +339,106 @@ if ($rendererKnoten === null) {
         implode(',', $namen)
     );
 }
+
+echo "\n== die Bruecke Kennung -> Klasse -> Knoten ==\n";
+
+// ⚠️ **Zwei Zusagen, eine Regel** ([D-648](../../docs/NewConcept/90-decision-log.md)): *«jeder
+// **waehlbare** Renderer-Knoten traegt seine Klasse — und ein **interner** hat keinen Knoten».*
+//
+// ⚠️ **Warum sie hier stehen und nicht im Kern:** *die Bruecke ist `nodes.implemented_by`
+// ([D-620](../../docs/NewConcept/90-decision-log.md)), also eine Spalte — sie faellt nur an einer
+// echten Datenbank auf. **Ohne sie waere der Waehler still leer**: die Registratur wuesste weiter
+// Bescheid, und die Liste haette nichts zu speichern.*
+$registratur = \Taxmod\Core\Renderer\ShippedRenderers::registry();
+
+$mitKlasse = $nodes->byImplementations($registratur->classesForNodes());
+
+$ohneKnoten = [];
+
+foreach ($registratur->namesForNodes() as $kennung) {
+    $klasse = $registratur->classFor($kennung);
+
+    if ($klasse === null || ! isset($mitKlasse[$klasse])) {
+        $ohneKnoten[] = $kennung;
+    }
+}
+
+check(
+    'jeder waehlbare Renderer hat einen Knoten, der seine Klasse traegt',
+    $ohneKnoten === [],
+    'ohne Knoten: ' . implode(',', $ohneKnoten)
+);
+
+// ⚠️ **Die Kehrseite** ([D-648](../../docs/NewConcept/90-decision-log.md), sein Wort zum
+// Renderer-Waehler: *«bin mir unsicher, wuerde eher nein sagen, ist was Internes»*). *Ein Knoten
+// machte ihn **waehlbar** — dann stuende «Renderer-Waehler» in der Renderer-Liste eines Textfeldes,
+// und man muesste hinterher mit einer Regel verbieten, was der Knoten erst moeglich gemacht hat.*
+$interneKlassen = [];
+
+foreach ($registratur->namesForSurfaces() as $kennung) {
+    $klasse = $registratur->classFor($kennung);
+
+    if ($klasse !== null) {
+        $interneKlassen[$klasse] = $kennung;
+    }
+}
+
+$internMitKnoten = [];
+
+foreach ($nodes->byImplementations(array_keys($interneKlassen)) as $klasse => $einer) {
+    $internMitKnoten[] = ($interneKlassen[$klasse] ?? $klasse) . ' => ' . $einer->name;
+}
+
+check(
+    'und kein interner Renderer hat einen — auch der Renderer-Waehler nicht',
+    $internMitKnoten === [],
+    implode(', ', $internMitKnoten)
+);
+
+// ⚠️ *Damit die beiden Zahlen nicht stillschweigend zusammenfallen: **der Waehler ist einer der
+// internen** und steht in der Registratur wie die anderen zehn.*
+check(
+    'der Renderer-Waehler steht in der Registratur, aber nicht in der Wahl',
+    in_array(\Taxmod\Core\Renderer\RendererChoiceRenderer::NAME, $registratur->namesForSurfaces(), true)
+        && ! in_array(\Taxmod\Core\Renderer\RendererChoiceRenderer::NAME, $registratur->namesForNodes(), true)
+);
+
+echo "\n== beschriftet mit der `select`-Rolle, Rueckfall auf den Namen ==\n";
+
+// ⚠️ **Seine Schaerfung** ([D-647](../../docs/NewConcept/90-decision-log.md)): *«vielleicht sogar
+// eher select label»* — *in einem Auswahlfeld ist das die Rolle, fuer die es die Rollen gibt.*
+//
+// ⚠️ **Gemessen am 2026-09-05: 3 `select`-Beschriftungen im ganzen Bestand, 195 Namen — und
+// **keine der drei sitzt auf einem Renderer-Knoten**. Der Rueckfall traegt heute also alle 17.**
+// *Genau darum vergleicht diese Zusage nicht mit den Namen, sondern mit dem, was die
+// Beschriftungsaufloesung fuer die Rolle `select` sagt: sie bleibt gruen, wenn jemand eine setzt,
+// und rot, wenn die Rolle wieder aus dem Weg faellt.*
+$gezeichnet = beschriftungenDerZeile(seite($probe->id), $kante);
+
+$erwarteteTexte = (new \Taxmod\Core\Service\Labels(
+    new WpdbLabelRepository(),
+    \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()
+))->forNodes(
+    array_values($nodes->byIds(array_keys($gezeichnet))),
+    \Taxmod\Core\Model\SeededRole::Select,
+    // ⚠️ *Dieselbe Sprache, die der Bildschirm nimmt, wenn niemand eine waehlt — sonst pruefte der
+    // Waechter einen anderen Weg als den, den der Benutzer geht.*
+    \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()
+);
+
+$abweichend = [];
+
+foreach ($gezeichnet as $id => $text) {
+    if (($erwarteteTexte[$id] ?? null) !== $text) {
+        $abweichend[] = $id . ': «' . $text . '» statt «' . ($erwarteteTexte[$id] ?? '—') . '»';
+    }
+}
+
+check(
+    'jeder Eintrag zeigt seine `select`-Beschriftung',
+    $gezeichnet !== [] && $abweichend === [],
+    implode(', ', $abweichend) ?: 'die Liste ist leer'
+);
 
 echo "\n== waehlen, speichern, frisch lesen ==\n";
 

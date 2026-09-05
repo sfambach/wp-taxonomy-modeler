@@ -126,6 +126,14 @@ final class ShippedRenderers
         // *draw me as a choice*, and the set it needs has to be handed in by whoever knows it.
         $registry->addForSurfaces(new ChoiceRenderer());
 
+        // ⚠️ **Die Renderer-Wahl selbst** ([D-647](../../../docs/NewConcept/90-decision-log.md)):
+        // *sie holt ihre Menge nicht aus den Kindern des Kantenziels, sondern aus den Renderer-Knoten,
+        // gesiebt durch diese Registratur.* **Oberflaechen-Renderer und damit ohne Knoten**
+        // ([D-648](../../../docs/NewConcept/90-decision-log.md), sein Wort: *«ist was Internes»*) —
+        // ein Knoten machte ihn waehlbar, und dann stuende «Renderer-Waehler» in der Renderer-Liste
+        // eines Textfeldes.
+        $registry->addForSurfaces(new RendererChoiceRenderer());
+
         // ⚠️ **The attribute row, and the first renderer whose subject is an **relation**.** Surface-only
         // for the same reason as the tree's cell: it is asked for by a panel, and naming it as a
         // node's `renderer` would be meaningless — it cannot draw a node at all ({@see

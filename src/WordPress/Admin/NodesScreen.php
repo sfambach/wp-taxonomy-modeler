@@ -1818,8 +1818,9 @@ final class NodesScreen
         // ⚠️ **Was ihn stehen liess, war eine Lücke in der Menge und nicht der Block**: *die Zeile
         // `renderer` sammelte ihre Möglichkeiten aus den Kindern des Kantenziels
         // ([D-540](../../../docs/NewConcept/90-decision-log.md)) und verlor mit dem Fall der Marke die
-        // sechs unter `render with label` (`INF-043`). **Die Menge kommt jetzt aus der Registratur**
-        // ({@see \Taxmod\Core\Service\Rendering::renderersOffered()}, [D-603](../../../docs/NewConcept/90-decision-log.md)),
+        // sechs unter `render with label` (`INF-043`). **Die Menge kommt jetzt aus den Renderer-Knoten,
+        // gesiebt durch die Registratur** ({@see \Taxmod\Core\Renderer\RendererChoiceRenderer},
+        // [D-603](../../../docs/NewConcept/90-decision-log.md), [D-647](../../../docs/NewConcept/90-decision-log.md)),
         // also gibt es nichts mehr, was nur dieser Block konnte — und die Wahl steht dort, wo jede
         // andere Einstellung steht.*
         return $html;

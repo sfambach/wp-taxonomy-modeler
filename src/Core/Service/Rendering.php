@@ -46,6 +46,7 @@ use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
+use Taxmod\Core\Renderer\RendererChoiceRenderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Model\FieldType;
@@ -618,11 +619,37 @@ final class Rendering
             // ⚠️ *Keine Sonderregel für **einen Knoten**: gefragt wird der Einstellungsschlüssel
             // `renderer`, nicht ein Name und nicht ein Ast (`CD · Prohibited`). Ein Knoten, der unter
             // `Renderer` hängt, aber in der Registratur fehlt, ist damit keine Möglichkeit.*
-            if ($istWahl && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
-                $knoten = $this->nodes->find($forNode);
+            //
+            // ⚠️ **Seit [D-647](../../../docs/NewConcept/90-decision-log.md) liegt die Logik in einer
+            // Klasse und nicht mehr hier verteilt** ({@see RendererChoiceRenderer}). *Hier steht nur
+            // noch, **dass** diese Zeile die Renderer-Wahl ist; **was** sie anbietet und **was**
+            // darin vorausgewählt steht, beantwortet der Wähler selbst.*
+            $rendererZeile = false;
 
-                if ($knoten !== null) {
-                    $moeglich = $this->renderersOffered($knoten);
+            if ($istWahl && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
+                $knoten  = $this->nodes->find($forNode);
+                $waehler = $this->renderers->byName(RendererChoiceRenderer::NAME);
+
+                if ($knoten !== null && $waehler instanceof RendererChoiceRenderer) {
+                    $rendererZeile = true;
+
+                    // ⚠️ *Zwei Abfragen **vor** dem Zeichnen, nicht eine je Eintrag
+                    // ([D-159](../../../docs/NewConcept/90-decision-log.md), `CD-7`): die
+                    // Renderer-Knoten in einem Zug, ihre Beschriftungen in einem Zug.*
+                    $kandidaten = $this->nodes->byImplementations($this->renderers->classesForNodes());
+
+                    $moeglich = $waehler->offer(
+                        $knoten,
+                        $this->typeOfNode($knoten),
+                        $this->renderers,
+                        $kandidaten,
+                        // ⚠️ **Die `select`-Beschriftung, Rückfall auf den Namen** — sein Wort:
+                        // *«vielleicht sogar eher select label»*. *Den Rückfall macht
+                        // {@see \Taxmod\Core\Service\Labels::forNodes()} von sich aus, Rolle vor
+                        // Sprache ([D-646](../../../docs/NewConcept/90-decision-log.md)).*
+                        $this->labels?->forNodes(array_values($kandidaten), SeededRole::Select, $locale) ?? [],
+                        $this->framework->trash(),
+                    );
 
                     // ⚠️ **Und die Zeile muss zeigen, was gilt — sonst wäre sie eine Falle.** *Eine
                     // Auswahlliste ohne Vorauswahl zeigt immer den ersten Eintrag, und der nächste
@@ -639,11 +666,15 @@ final class Rendering
                     // gefragt wird, welcher Renderer **jetzt** zeichnet — auch wenn das die Vorgabe des
                     // Typs ist. Ein leeres Steuerelement über einem laufenden Renderer liest sich als
                     // «hier zeichnet nichts».*
-                    $name = $this->rendererNameFor($knoten);
-                    $id   = $name === null ? false : array_search($name, $moeglich, true);
+                    $id = $waehler->chosenIn(
+                        $moeglich,
+                        $kandidaten,
+                        $this->renderers,
+                        $this->rendererNameFor($knoten),
+                    );
 
-                    if ($id !== false) {
-                        $gewaehlt = TypedValue::ofReference((int) $id);
+                    if ($id !== null) {
+                        $gewaehlt = TypedValue::ofReference($id);
                     }
                 }
             }
@@ -708,8 +739,16 @@ final class Rendering
             // *Der dritte ist keine Feinheit: das nächste Speichern hätte «nichts» geschrieben. Die Zusage
             // heisst «damit die Lücke sichtbar bleibt» — und ein Rückfall, der den Wert zeigt und den
             // Grund nennt, hält sie besser als ein leerer Kasten.*
+            //
+            // ⚠️ **Die Renderer-Wahl nimmt ihren eigenen** ([D-647](../../../docs/NewConcept/90-decision-log.md)).
+            // *Er zeichnet dasselbe Auswahlfeld — {@see RendererChoiceRenderer::render()} reicht an
+            // `choice` weiter, weil [R28–R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
+            // nur an einer Stelle stehen dürfen. **Was ihn unterscheidet, ist die Menge, nicht die
+            // Gestalt.***
             if ($istWahl && $dieWahl->canShowItsState() && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
-                $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
+                $renderer = $this->renderers->byName(
+                    $rendererZeile ? RendererChoiceRenderer::NAME : ChoiceRenderer::NAME
+                );
             }
 
             if ($renderer === null) {
@@ -3198,61 +3237,6 @@ final class Rendering
 
             $offen = $weiter;
         }
-
-        return $angebot;
-    }
-
-    /**
-     * Welche Renderer diesen Knoten zeichnen können — **aus der Registratur**, nicht aus dem Baum.
-     *
-     * ⚠️ **[D-603](../../../docs/NewConcept/90-decision-log.md) sagt, wo die Antwort steht:** *«wofür
-     * ein Konverter oder ein Renderer taugt, bleibt im Kode — `handles()` an der Klasse»*, und
-     * *«am Knoten den Knoten und an der Kante den to-Knoten»*. `eligibleFor()` verengt auf den Typ —
-     * *gemessen für `Integer` genau `field`, `spinner`, `slider`, für `Boolean` `toggle`, `checkbox`.*
-     *
-     * ⚠️ **Der Baum sagt nur noch, welcher Knoten der gemeinte ist.** *Ein Wert ist ein Knotenverweis
-     * ([D-583](../../../docs/NewConcept/90-decision-log.md)), also wird der Renderer über seine
-     * **Klasse** auf seinen Knoten abgebildet — dieselbe Bindung, die
-     * {@see \Taxmod\Core\Service\ModelEditor::nodeImplementing()} benutzt, und sie liegt im Modell
-     * und nicht in einer Option daneben (`AR-1`).*
-     *
-     * ⚠️ **Ein Knoten unter `Renderer`, den die Registratur nicht kennt, ist keine Möglichkeit.**
-     * *Genau das trifft den Zwischenknoten `render with label`: es gibt keinen Renderer dieses Namens,
-     * also fällt er heraus — **ohne dass jemand ihn löschen oder verschieben müsste**, und seine Kinder
-     * stehen wieder zur Wahl. **Fünf von sechs**, gemessen: `reference` unterstützt nur
-     * `Purpose::Display` und ist beim Bearbeiten nirgends wählbar — auch vorher nicht (`INF-048`).*
-     *
-     * ⚠️ *Eine Abfrage, unabhängig von der Zahl der Renderer (`CD-7`): die Klassen in einem Zug.*
-     *
-     * @return array<int, string> Knoten-Id => Name
-     */
-    private function renderersOffered(Node $knoten): array
-    {
-        $klassen = [];
-
-        foreach ($this->renderers->eligibleFor($knoten, $this->typeOfNode($knoten), Purpose::Edit) as $einer) {
-            $klassen[] = $einer::class;
-        }
-
-        if ($klassen === []) {
-            return [];
-        }
-
-        $muell   = $this->framework->trash();
-        $angebot = [];
-
-        foreach ($this->nodes->byImplementations($klassen) as $einer) {
-            // ⚠️ *Was im Müll liegt, ist keine Möglichkeit — dieselbe Grenze wie in
-            // {@see \Taxmod\Core\Service\ModelEditor::nodeImplementing()}.*
-            if ($einer->id === $muell->id || $einer->isDescendantOf($muell)) {
-                continue;
-            }
-
-            $angebot[$einer->id] = $einer->name;
-        }
-
-        // ⚠️ *Nach Namen, damit die Liste sich nicht mit der Anlagereihenfolge umsortiert.*
-        asort($angebot);
 
         return $angebot;
     }
