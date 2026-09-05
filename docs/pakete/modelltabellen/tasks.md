@@ -24,11 +24,36 @@ Vorher zu klären ist die Frage aus [`review-tabellen.md`](../../review-tabellen
 Komposition mit Multiplizität 1 immer ihren eigenen Datensatz?
 
 ```text
-[ ] TASK-003  path aus labels und settings entfernen
+[x] TASK-003  path aus labels und settings entfernen
 ```
 
 **Beide nachweislich leer** — 0 von 47, 0 von 3. Die billigste der vier und der geeignete erste
 Durchgang durch die Reihenfolge Wächter-Leser-Daten, bevor sie bei `nodes.path` teuer wird.
+
+⚠️ **Erledigt am 2026-09-05, und beide Spalten waren schon weg, als der Durchgang begann.** *Es
+wanderte keine Zeile und es fiel keine Spalte — die Aufgabe hatte sich in zwei anderen mit erledigt,
+und das ist nachgemessen und nicht erinnert:*
+
+| | Wie sie verschwand | Gemessen am 2026-09-05 |
+|---|---|---|
+| `settings.path` | **mit der ganzen Tabelle** ([D-579](../../NewConcept/90-decision-log.md), Fassung 22) | `SHOW TABLES` kennt `wp_taxmod_settings` nicht mehr |
+| `labels.path` | **mit dem Umbau der Beschriftungen** (TASK-019, [D-580](../../NewConcept/90-decision-log.md), Fassung 34) | `labels` trägt vier Spalten — `id`, `version`, `owner_kind`, `icon`; `label_texts` trägt keinen Pfad |
+
+*Der Grund steht in [`Label.php`](../../../src/Core/Model/Label.php): «**`path` gibt es nicht mehr.**»
+Der umgedrehte Verweis gibt einer Beschriftung genau **einen** Eigentümer und keine Stelle darin —
+`nodes.label_id` zeigt auf sie, nicht sie auf den Knoten.*
+
+⚠️ **Was hier trotzdem entstanden ist, ist das Bleibende: [`path-check.php`](../../../scripts/dev/path-check.php).**
+*Ein Wächter dieses Namens gab es schon einmal — er prüfte `settings.path`
+([D-413](../../NewConcept/90-decision-log.md)) und ist **mit der Tabelle gefallen, ohne Ersatz**. Die
+neue Zusage ist die umgekehrte: **die Spalte ist weg und darf nicht wiederkommen.** *Das ist keine
+Förmlichkeit — `dbDelta` **fügt fehlende Spalten hinzu**: stünde `path` versehentlich wieder in einer
+`CREATE TABLE`-Anweisung, legte die nächste Aktivierung sie klaglos an, leer und ungelesen. Der Lauf
+prüft deshalb beides, die Datenbank **und** die Anweisung, aus der sie gebaut wird.*
+
+⚠️ *Und er liest den Quelltext **ohne seine Kommentare**. Der erste Entwurf wurde an der eigenen
+Begründung rot: `ModelEditor.php` erklärt in zwei Absätzen, warum `labels.path` fiel — der Kommentar
+ist der Beleg und nicht der Verstoß.*
 
 ```text
 [x] TASK-004  identities streichen — JEDE Tabelle bekommt ihren eigenen Id-Raum
