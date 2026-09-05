@@ -109,6 +109,25 @@ final class Plugin
         Schema::install();
         update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
+        // ⚠️ **Die Standardsprache wird beim Anlegen **geschrieben**, nicht nur hergeleitet** — und
+        // dass sie es nicht wurde, war mein Versäumnis. *Der Eigentümer, am 2026-09-05, auf meinen
+        // Befund «die Option ist nicht gesetzt»: «aber das ist doch dein Fehler, dass du sie beim
+        // Anlegen nicht gesetzt hast.» **Der Bildschirm zeigte `en_US`, gespeichert war nichts** —
+        // die Anzeige fiel auf die Sprache der Website zurück, und «gewählt» war von «hergeleitet»
+        // nicht zu unterscheiden.*
+        //
+        // ⚠️ **Die Folge, die es zu verhindern gilt:** *stellt jemand die Sprache der Website um,
+        // wanderte die Standardsprache **stillschweigend mit** — und damit änderte sich, welche
+        // Beschriftungen als überall gültig zählen, ohne dass jemand das Modell angefasst hätte
+        // ([D-387](../../docs/NewConcept/90-decision-log.md)).*
+        //
+        // ⚠️ *Nur wenn nichts dasteht: eine getroffene Wahl wird nie überschrieben.*
+        if (get_option(SettingsScreen::NEUTRAL_LOCALE, '') === '') {
+            $site = get_locale();
+
+            update_option(SettingsScreen::NEUTRAL_LOCALE, $site === '' ? 'en_US' : $site, true);
+        }
+
         $this->frameworkNodes()->seed();
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
