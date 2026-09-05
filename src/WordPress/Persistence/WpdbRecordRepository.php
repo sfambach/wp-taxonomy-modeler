@@ -46,14 +46,11 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records')
-                    . ' WHERE id = %d',
-                $id
-            ),
-            ARRAY_A
-        );
+        $row = Query::row('Datensatz lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records')
+                . ' WHERE id = %d',
+            $id
+        ));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -62,14 +59,11 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
-                 WHERE node_id = %d ORDER BY id ASC',
-                $nodeId
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Datensaetze des Knotens lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
+             WHERE node_id = %d ORDER BY id ASC',
+            $nodeId
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -96,14 +90,11 @@ final class WpdbRecordRepository implements RecordRepository
         $nachKnoten  = array_fill_keys($ids, []);
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
-                 WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
-                ...$ids
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Datensaetze der Knoten lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
+             WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
+            ...$ids
+        ));
 
         foreach ($rows ?: [] as $row) {
             $nachKnoten[(int) $row['node_id']][] = $this->hydrate($row);
@@ -134,15 +125,12 @@ final class WpdbRecordRepository implements RecordRepository
         $nachSatz    = array_fill_keys($ids, []);
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-                 FROM ' . Schema::table('record_values') . '
-                 WHERE record_id IN (' . $platzhalter . ') ORDER BY record_id ASC, position ASC, id ASC',
-                ...$ids
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Wertzeilen mehrerer Datensaetze lesen', $wpdb->prepare(
+            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('record_values') . '
+             WHERE record_id IN (' . $platzhalter . ') ORDER BY record_id ASC, position ASC, id ASC',
+            ...$ids
+        ));
 
         foreach ($rows ?: [] as $r) {
             $nachSatz[(int) $r['record_id']][] = new EdgeRecord(
@@ -170,18 +158,15 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
-                // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
-                // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-                 FROM ' . Schema::table('record_values') . '
-                 WHERE record_id = %d ORDER BY position ASC, id ASC',
-                $recordId
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Wertzeilen des Datensatzes lesen', $wpdb->prepare(
+            // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
+            // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
+            // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
+            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('record_values') . '
+             WHERE record_id = %d ORDER BY position ASC, id ASC',
+            $recordId
+        ));
 
         return array_map(
             static fn (array $r): EdgeRecord => new EdgeRecord(
@@ -260,23 +245,17 @@ final class WpdbRecordRepository implements RecordRepository
         // derselben Spalte — **seit TASK-005 sagt `value_ref_kind`, welcher von beiden gemeint ist**,
         // und die Abfrage fragt nur noch die Datensatzverweise. Vorher hätte ein Knoten mit der Nummer
         // eines Datensatzes hier mitgeliefert; heute nicht mehr.*
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-                 FROM ' . Schema::table('record_values') . '
-                 WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
-                 ORDER BY value_ref ASC, id ASC',
-                ...$ids
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Halter der Datensaetze lesen', $wpdb->prepare(
+            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('record_values') . '
+             WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
+             ORDER BY value_ref ASC, id ASC',
+            ...$ids
+        ));
 
-        // ⚠️ **`null` heisst «Abfrage kaputt» und nicht «nichts gefunden».** *Die beiden sehen bei `$wpdb`
-        // gleich aus, und «keine Teile» ist hier eine Aussage, die auf dem Schirm landet.*
-        if ($rows === null) {
-            throw new \RuntimeException('holdersOf: ' . $wpdb->last_error);
-        }
-
+        // ⚠️ **«Abfrage kaputt» heisst nicht «nichts gefunden»** — und «keine Teile» ist hier eine
+        // Aussage, die auf dem Schirm landet. *Die Unterscheidung stand einmal nur an dieser einen
+        // Stelle; sie steht jetzt in {@see Query} und gilt für jede Lesung.*
         $aus = [];
 
         foreach ($rows as $r) {
@@ -327,7 +306,7 @@ final class WpdbRecordRepository implements RecordRepository
         // eine Version eine Aussage über die Zeile im Speicher ist und nicht über den Wert. Ohne das
         // Hochzählen träfe jedes Aufheben denselben Schlüssel `(id, 1)` und der Schatten hielte nur
         // den ersten Zustand.*
-        $spalten['version'] = 1 + (int) $wpdb->get_var($wpdb->prepare(
+        $spalten['version'] = 1 + (int) Query::value('Version der Wertzeile lesen', $wpdb->prepare(
             'SELECT version FROM ' . Schema::table('record_values') . ' WHERE id = %d',
             $value->id
         ));
@@ -406,7 +385,7 @@ final class WpdbRecordRepository implements RecordRepository
             default                    => ['value_text', (string) $value->text],
         };
 
-        $ids = $wpdb->get_col($wpdb->prepare(
+        $ids = Query::column('Datensaetze zu einem Kantenwert lesen', $wpdb->prepare(
             'SELECT DISTINCT record_id FROM ' . Schema::table('record_values') . "
              WHERE edge_id = %d AND {$column} = %s",
             $edgeId,

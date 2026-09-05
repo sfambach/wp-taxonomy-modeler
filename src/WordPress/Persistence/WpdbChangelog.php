@@ -199,7 +199,7 @@ final class WpdbChangelog implements Changelog
 
         $table = Schema::table('changelog');
 
-        $group = $wpdb->get_var($wpdb->prepare(
+        $group = Query::value('Aenderungsgruppe lesen', $wpdb->prepare(
             "SELECT change_group_id FROM {$table}
              WHERE owner_id = %d AND what = %s
              ORDER BY id DESC LIMIT 1",
@@ -211,11 +211,11 @@ final class WpdbChangelog implements Changelog
             return [];
         }
 
-        $rows = $wpdb->get_results($wpdb->prepare(
+        $rows = Query::rows('Eintraege der Aenderungsgruppe lesen', $wpdb->prepare(
             "SELECT owner_id, what, before_state, after_state FROM {$table}
              WHERE change_group_id = %d ORDER BY id ASC",
             (int) $group
-        ), ARRAY_A);
+        ));
 
         return array_map(
             static fn (array $r): array => [
@@ -232,7 +232,7 @@ final class WpdbChangelog implements Changelog
     {
         global $wpdb;
 
-        $before = $wpdb->get_var($wpdb->prepare(
+        $before = Query::value('Pfad vor dem Parken lesen', $wpdb->prepare(
             'SELECT before_state FROM ' . Schema::table('changelog') . '
              WHERE owner_id = %d AND what = %s
              ORDER BY id DESC LIMIT 1',
@@ -273,7 +273,7 @@ final class WpdbChangelog implements Changelog
 
         // ⚠️ **Ordered by `id` and not by `at`.** Two acts in the same second are ordinary — a save
         // writes several rows — and a timestamp cannot order them. The id is the sequence.
-        $first = $wpdb->get_row($wpdb->prepare(
+        $first = Query::row('ersten Eintrag lesen', $wpdb->prepare(
             'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id ASC LIMIT 1',
             $ownerId
         ));
@@ -282,15 +282,15 @@ final class WpdbChangelog implements Changelog
             return new ChangeSummary();
         }
 
-        $last = $wpdb->get_row($wpdb->prepare(
+        $last = Query::row('letzten Eintrag lesen', $wpdb->prepare(
             'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id DESC LIMIT 1',
             $ownerId
-        ));
+        )) ?? $first;
 
         // ⚠️ *The first row is only a **creation** where it says so. A node seeded before the
         // changelog existed has a first row that is a rename or a move, and calling that its birthday
         // would be a guess presented as a fact.*
-        $created = $first->what === 'created';
+        $created = $first['what'] === 'created';
 
         // ⚠️ **`(int) null` is `0`, and that undid the whole of [D-296](../../../docs/NewConcept/90-decision-log.md)
         // on the way out.** *The column stores null correctly — measured, **7696 rows** of it against
@@ -302,11 +302,11 @@ final class WpdbChangelog implements Changelog
         $who = static fn (?string $id): ?int => $id === null ? null : (int) $id;
 
         return new ChangeSummary(
-            $created ? (string) $first->at : null,
-            $created ? $who($first->by_user_id) : null,
-            (string) $last->at,
-            $who($last->by_user_id),
-            (string) $last->what
+            $created ? (string) $first['at'] : null,
+            $created ? $who($first['by_user_id']) : null,
+            (string) $last['at'],
+            $who($last['by_user_id']),
+            (string) $last['what']
         );
     }
 }

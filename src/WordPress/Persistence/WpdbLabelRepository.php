@@ -26,14 +26,11 @@ final class WpdbLabelRepository implements LabelRepository
 
         $places = implode(',', array_fill(0, count($ownerIds), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT owner_id, path, role_id, number, locale, text FROM ' . Schema::table('labels') . "
-                 WHERE owner_id IN ({$places})",
-                array_map(intval(...), $ownerIds)
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Texte der Eigentuemer lesen', $wpdb->prepare(
+            'SELECT owner_id, path, role_id, number, locale, text FROM ' . Schema::table('labels') . "
+             WHERE owner_id IN ({$places})",
+            array_map(intval(...), $ownerIds)
+        ));
 
         return array_map(
             static fn (array $r): Label => new Label(

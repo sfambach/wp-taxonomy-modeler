@@ -29,10 +29,7 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
-            ARRAY_A
-        );
+        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -51,13 +48,10 @@ final class WpdbNodeRepository implements NodeRepository
         // interpolated — `CD-6` has no exception for values that look safe.
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
-                ...array_map(intval(...), $ids)
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
+            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+            ...array_map(intval(...), $ids)
+        ));
 
         $found = [];
 
@@ -193,18 +187,15 @@ final class WpdbNodeRepository implements NodeRepository
 
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT r.from_node_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
-                 FROM ' . Schema::table('relations') . ' r
-                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
-                 WHERE r.kind = %s AND r.hide = 0 AND r.from_node_id IN (' . $platzhalter . ')
-                 ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC',
-                RelationKind::Inheritance->value,
-                ...$ids
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
+            'SELECT r.from_node_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
+             FROM ' . Schema::table('relations') . ' r
+             INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
+             WHERE r.kind = %s AND r.hide = 0 AND r.from_node_id IN (' . $platzhalter . ')
+             ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC',
+            RelationKind::Inheritance->value,
+            ...$ids
+        ));
 
         foreach ($rows ?: [] as $row) {
             $kinder[(int) $row['from_node_id']][] = $this->hydrate($row);
@@ -221,18 +212,15 @@ final class WpdbNodeRepository implements NodeRepository
         // (D-014); the path is the shortcut derived from them. And order lives on the edge,
         // because it is per parent — the same node under two parents may sit third under one
         // and first under the other. One statement, one join, no walking (`CD-7`).
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
-                 FROM ' . Schema::table('relations') . ' r
-                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
-                 WHERE r.from_node_id = %d AND r.kind = %s
-                 ORDER BY r.sort_order ASC, r.id ASC',
-                $parent->id,
-                RelationKind::Inheritance->value
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Kinder lesen', $wpdb->prepare(
+            'SELECT n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
+             FROM ' . Schema::table('relations') . ' r
+             INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
+             WHERE r.from_node_id = %d AND r.kind = %s
+             ORDER BY r.sort_order ASC, r.id ASC',
+            $parent->id,
+            RelationKind::Inheritance->value
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -243,15 +231,12 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . '
-                 WHERE path LIKE %s
-                 ORDER BY path ASC',
-                $wpdb->esc_like($root->path . '.') . '%'
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
+            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . '
+             WHERE path LIKE %s
+             ORDER BY path ASC',
+            $wpdb->esc_like($root->path . '.') . '%'
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -343,13 +328,10 @@ final class WpdbNodeRepository implements NodeRepository
 
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, path, field_type FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
-                ...$ids
-            ),
-            ARRAY_A
-        ) ?: [];
+        $rows = Query::rows('Feldsorten am Pfad lesen', $wpdb->prepare(
+            'SELECT id, path, field_type FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+            ...$ids
+        )) ?: [];
 
         // Jede Id, die in irgendeinem Pfad vorkommt — das sind die Kandidaten für den Lauf.
         $entlang = [];
@@ -367,14 +349,11 @@ final class WpdbNodeRepository implements NodeRepository
             $slots = implode(',', array_fill(0, count($wo), '%d'));
 
             foreach (
-                $wpdb->get_results(
-                    $wpdb->prepare(
-                        'SELECT id, field_type FROM ' . Schema::table('nodes')
-                            . " WHERE id IN ($slots) AND field_type IS NOT NULL",
-                        ...$wo
-                    ),
-                    ARRAY_A
-                ) ?: [] as $row
+                Query::rows('Feldsorten entlang des Pfades lesen', $wpdb->prepare(
+                    'SELECT id, field_type FROM ' . Schema::table('nodes')
+                        . " WHERE id IN ($slots) AND field_type IS NOT NULL",
+                    ...$wo
+                )) ?: [] as $row
             ) {
                 $sorte = FieldType::fromStorage((string) $row['field_type']);
 
@@ -422,14 +401,11 @@ final class WpdbNodeRepository implements NodeRepository
 
         $slots = implode(',', array_fill(0, count($nodeIds), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, settings_record_id FROM ' . Schema::table('nodes')
-                    . " WHERE id IN ($slots) AND settings_record_id IS NOT NULL",
-                ...$nodeIds
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Einstellungsdatensaetze der Knoten lesen', $wpdb->prepare(
+            'SELECT id, settings_record_id FROM ' . Schema::table('nodes')
+                . " WHERE id IN ($slots) AND settings_record_id IS NOT NULL",
+            ...$nodeIds
+        ));
 
         $aus = [];
 
@@ -484,14 +460,11 @@ final class WpdbNodeRepository implements NodeRepository
 
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes')
-                    . " WHERE implemented_by IN ($slots) ORDER BY id",
-                ...$classNames
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
+            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes')
+                . " WHERE implemented_by IN ($slots) ORDER BY id",
+            ...$classNames
+        ));
 
         $aus = [];
 

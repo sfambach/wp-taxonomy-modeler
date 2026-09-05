@@ -40,6 +40,8 @@ as the whole net.*
 | `concept-drift` | that a **model document** never changes without a reason standing as a decision ([`PR-2`](../CLAUDE.md), [D-565](../docs/NewConcept/90-decision-log.md)) — either the decision log changes with it, or the new lines name an existing decision |
 | `confirmed-quote` | that a decision calling itself **confirmed** actually carries a sentence of the owner's ([D-571](../docs/NewConcept/90-decision-log.md)) — otherwise it is `INFERRED` and needs his yes |
 | `always-on` | that what must be read **before every task** — `CLAUDE.md`, the working model, `AGENTS.md` — stays under its measured ceiling ([D-573](../docs/NewConcept/90-decision-log.md)). *The previous rule set died at 82 KB, «most of it always-on». Today: 42 KB.* |
+| `silent-query` | dass eine **kaputte Abfrage wirft, statt leer zu antworten** — alle vier Lesewege, dazu die leere `prepare()`-Anweisung, der Gegenbeweis, dass ein wirklich leeres Ergebnis leer bleibt, und die Messung, dass die Speicher kein `$wpdb->get_*` mehr direkt aufrufen |
+| `seed-twice` | dass **eine Saat, die zweimal läuft, nichts verdoppelt** — Saat und alle vier Gerüste ein zweites Mal, an `importOnce()` vorbei, Knoten und Kanten vorher und nachher gezählt |
 
 ⚠️ **`doc-reach-check` ist am 2026-09-01 stillgelegt** ([D-574](../docs/NewConcept/90-decision-log.md))
 und heisst jetzt `doc-reach-stillgelegt.php` — damit ist es aus dem Muster oben heraus. *Es mass, ob

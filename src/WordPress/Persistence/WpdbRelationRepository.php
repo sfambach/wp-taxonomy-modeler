@@ -119,7 +119,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         // MySQL reports 0 changed rows for a write that matched but altered nothing, so only
         // a version that actually moved on is a collision.
-        $current = (int) $wpdb->get_var($wpdb->prepare(
+        $current = (int) Query::value('Version der Kante lesen', $wpdb->prepare(
             'SELECT version FROM ' . Schema::table('relations') . ' WHERE id = %d',
             $relation->id
         ));
@@ -133,14 +133,11 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE id = %d',
-                $edgeId
-            ),
-            ARRAY_A
-        );
+        $row = Query::row('Kante lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+             WHERE id = %d',
+            $edgeId
+        ));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -149,15 +146,12 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE to_node_id = %d AND kind = %s',
-                $childId,
-                RelationKind::Inheritance->value
-            ),
-            ARRAY_A
-        );
+        $row = Query::row('Vererbungskante zum Kind lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+             WHERE to_node_id = %d AND kind = %s',
+            $childId,
+            RelationKind::Inheritance->value
+        ));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -166,16 +160,13 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE from_node_id = %d AND kind = %s
-                 ORDER BY sort_order ASC, id ASC',
-                $parentId,
-                RelationKind::Inheritance->value
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Kinderkanten lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+             WHERE from_node_id = %d AND kind = %s
+             ORDER BY sort_order ASC, id ASC',
+            $parentId,
+            RelationKind::Inheritance->value
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -184,7 +175,7 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $highest = $wpdb->get_var($wpdb->prepare(
+        $highest = Query::value('naechste Stelle unter dem Knoten lesen', $wpdb->prepare(
             'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind = %s',
             $parentId,
             RelationKind::Inheritance->value
@@ -197,15 +188,12 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE kind = %s
-                 ORDER BY from_node_id ASC, sort_order ASC, id ASC',
-                RelationKind::Inheritance->value
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('alle Vererbungskanten lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+             WHERE kind = %s
+             ORDER BY from_node_id ASC, sort_order ASC, id ASC',
+            RelationKind::Inheritance->value
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -234,7 +222,7 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $highest = $wpdb->get_var($wpdb->prepare(
+        $highest = Query::value('naechste Stelle der Felder lesen', $wpdb->prepare(
             'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind <> %s',
             $ownerId,
             RelationKind::Inheritance->value
@@ -259,16 +247,13 @@ final class WpdbRelationRepository implements RelationRepository
         // default in its owning node — a model full of ghost attributes is unreadable*. Whoever
         // wants to see them asks {@see parkedFieldEdgesOf()} instead, which is the *show
         // deleted* toggle rather than a second reading of the same query.
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
-                 FROM ' . Schema::table('relations') . "
-                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
-                 ORDER BY sort_order ASC, id ASC",
-                [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+             FROM ' . Schema::table('relations') . "
+             WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+             ORDER BY sort_order ASC, id ASC",
+            [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -286,16 +271,13 @@ final class WpdbRelationRepository implements RelationRepository
         // ⚠️ **`to_node_id` and not `from_node_id` — that one word is the whole method** ([D-199]). *Ordered by
         // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
         // edge ids.*
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
-                 FROM ' . Schema::table('relations') . "
-                 WHERE to_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
-                 ORDER BY from_node_id ASC, sort_order ASC, id ASC",
-                [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+             FROM ' . Schema::table('relations') . "
+             WHERE to_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+             ORDER BY from_node_id ASC, sort_order ASC, id ASC",
+            [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -311,16 +293,13 @@ final class WpdbRelationRepository implements RelationRepository
 
         $places = implode(',', array_fill(0, count($ownerIds), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
-                 FROM ' . Schema::table('relations') . "
-                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
-                 ORDER BY sort_order ASC, id ASC",
-                [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('geparkte Feldkanten lesen', $wpdb->prepare(
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+             FROM ' . Schema::table('relations') . "
+             WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
+             ORDER BY sort_order ASC, id ASC",
+            [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -344,14 +323,11 @@ final class WpdbRelationRepository implements RelationRepository
 
         $places = implode(",", array_fill(0, count($ids), "%d"));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM " . Schema::table("relations") . "
-                 WHERE from_node_id IN ({$places}) OR to_node_id IN ({$places})",
-                ...[...$ids, ...$ids]
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Kanten am Knoten lesen', $wpdb->prepare(
+            "SELECT * FROM " . Schema::table("relations") . "
+             WHERE from_node_id IN ({$places}) OR to_node_id IN ({$places})",
+            ...[...$ids, ...$ids]
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
@@ -383,14 +359,11 @@ final class WpdbRelationRepository implements RelationRepository
 
         $slots = implode(',', array_fill(0, count($edgeIds), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, settings_record_id, target_settings_record_id FROM ' . Schema::table('relations')
-                    . " WHERE id IN ($slots)",
-                ...$edgeIds
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Einstellungsdatensaetze der Kanten lesen', $wpdb->prepare(
+            'SELECT id, settings_record_id, target_settings_record_id FROM ' . Schema::table('relations')
+                . " WHERE id IN ($slots)",
+            ...$edgeIds
+        ));
 
         $aus = [];
 

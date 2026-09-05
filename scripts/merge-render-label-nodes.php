@@ -76,7 +76,7 @@ echo "Ziel:   «{$ziel['name']}» #{$ziel['id']}\n\n";
 // Was bewegt wird: die Vererbungskanten der Kinder und die eigenen Felder.
 $kinder = $wpdb->get_results($wpdb->prepare(
     "SELECT e.id, k.name FROM {$r} e INNER JOIN {$n} k ON k.id = e.to_node_id
-     WHERE e.from_node_id = %d AND e.kind = 'inheritance' ORDER BY e.position",
+     WHERE e.from_node_id = %d AND e.kind = 'inheritance' ORDER BY e.sort_order",
     $quelle['id']
 ), ARRAY_A) ?: [];
 
@@ -88,7 +88,7 @@ $felder = $wpdb->get_results($wpdb->prepare(
 // ⚠️ *Hinter die vorhandenen Kinder, nicht davor — die Reihenfolge unter dem Ziel ist eine Aussage
 // ([D-407](../docs/NewConcept/90-decision-log.md)), und ein Umzug soll sie nicht umsortieren.*
 $naechste = 1 + (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT COALESCE(MAX(position), 0) FROM {$r} WHERE from_node_id = %d AND kind = 'inheritance'",
+    "SELECT COALESCE(MAX(sort_order), 0) FROM {$r} WHERE from_node_id = %d AND kind = 'inheritance'",
     $ziel['id']
 ));
 
@@ -114,7 +114,7 @@ $bewegt = 0;
 
 foreach ($kinder as $k) {
     $getan = $wpdb->query($wpdb->prepare(
-        "UPDATE {$r} SET from_node_id = %d, position = %d, version = version + 1 WHERE id = %d",
+        "UPDATE {$r} SET from_node_id = %d, sort_order = %d, version = version + 1 WHERE id = %d",
         $ziel['id'],
         $naechste++,
         (int) $k['id']

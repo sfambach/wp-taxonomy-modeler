@@ -134,17 +134,19 @@ final class Shadow
 
         global $wpdb;
 
-        $lebend = $wpdb->get_col($wpdb->prepare(
+        // ⚠️ **Hier ist die stille Klasse besonders teuer**: eine leere Spaltenliste archiviert
+        // *nichts* und sieht dabei wie ein Erfolg aus. *Darum {@see Query} und nicht `?: []`.*
+        $lebend = Query::column('Spalten der lebenden Tabelle lesen', $wpdb->prepare(
             'SELECT COLUMN_NAME FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s ORDER BY ORDINAL_POSITION',
             Schema::table($liveTable)
-        )) ?: [];
+        ));
 
-        $imSchatten = $wpdb->get_col($wpdb->prepare(
+        $imSchatten = Query::column('Spalten der Schattentabelle lesen', $wpdb->prepare(
             'SELECT COLUMN_NAME FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
             Schema::table($shadowTable)
-        )) ?: [];
+        ));
 
         $geteilt = [];
 
@@ -160,6 +162,14 @@ final class Shadow
             }
 
             $geteilt[] = $name;
+        }
+
+        // ⚠️ *Keine gemeinsame Spalte heisst nicht «nichts zu sichern», sondern «die Frage kam nicht
+        // an». Eine Schattentabelle ohne eine einzige geteilte Spalte gibt es nicht.*
+        if ($geteilt === []) {
+            throw new \RuntimeException(
+                "«{$liveTable}» und «{$shadowTable}» teilen keine einzige Spalte — die Sicherung würde leer laufen."
+            );
         }
 
         return self::$spalten[$liveTable] = $geteilt;
