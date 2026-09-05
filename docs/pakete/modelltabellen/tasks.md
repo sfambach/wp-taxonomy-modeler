@@ -1627,7 +1627,7 @@ Kopf, weil `TASK-001` bis `TASK-003` seit dem 2026-09-01 beschlossen sind und **
 wurden** — nicht wegen einer offenen Frage, sondern weil immer etwas dazwischenkam. Das ist mein
 Versaeumnis und keine Unklarheit.*
 
-1. **Die Auswahl fragt die Registratur** (TASK-059, neu). *Die Moeglichkeiten eines Renderer-Waehlers
+1. **Die Auswahl fragt die Registratur — und zeichnet nach der Tiefe** (TASK-059, neu). *Die Moeglichkeiten eines Renderer-Waehlers
    kommen aus `RendererRegistry`, nicht aus den Kindern des Kantenziels. **Gemessen kennt die
    Registratur 27 Renderer** — `form`, `table`, `compact`, `reference`, `chooser-dialog`,
    `chooser-inline` sind darunter, **`render with label` ist es nicht.** Damit wird der
@@ -1651,3 +1651,29 @@ Versaeumnis und keine Unklarheit.*
 `label_role` (0 Werte); er ist die Zwischenklasse, die `with_label` traegt (sein Wort). Faellt er
 ohne neuen Ort fuer die beiden, fallen sie mit. **Nach Schritt 1 stoert er den Waehler ohnehin
 nicht mehr** — dann ist es seine freie Entscheidung statt einer erzwungenen.*
+
+⚠️ **Berichtigung zu Schritt 1, am 2026-09-05, nachdem er mich auf `R63` gestossen hat.** *Ich hatte
+geschrieben, `render with label` falle dem Waehler «auf die Fuesse», und Schritt 1 als «Registratur
+**statt** Baum» aufgesetzt. **Beides war falsch, und die Regel gab es die ganze Zeit** — ich hatte
+im Entscheidungsprotokoll gesucht und nicht im Renderer-Konzept:*
+
+> **`R63`:** *«If the selectable set has **no children — only one level** — it is really a selection
+> list … **One level → list, several levels → tree view.**»* Und dazu
+> [D-109](../../NewConcept/90-decision-log.md): **«List or tree in a chooser — derived from the
+> depth of the branch, not a third renderer and not a setting.»**
+
+**Ein Ziel mit mehreren Ebenen ist danach kein Hindernis, sondern der zweite Fall der Regel.** *Der
+Zwischenknoten wird nicht uebersprungen, er wird **gezeichnet** — als Baum statt als Liste —, und
+die sechs Renderer sind darin sichtbar, ohne dass irgendetwas «hindurchsehen» muss.*
+
+⚠️ **Und die Registratur bleibt trotzdem gefragt, auf sein Wort: «die Registratur muesste immer noch
+gefragt werden».** *Die beiden beantworten verschiedene Fragen und ersetzen einander nicht:*
+
+| | Frage | Antwort aus |
+|---|---|---|
+| **Was ist ueberhaupt waehlbar** | welche Renderer taugen fuer diesen Typ | **Registratur** — `eligibleFor()`, `handles()` an der Klasse ([D-603](../../NewConcept/90-decision-log.md)) |
+| **Wie wird gewaehlt** | Liste oder Baum | **Tiefe des Astes** (`R63`, [D-109](../../NewConcept/90-decision-log.md)) |
+
+*Der Ast liefert also die **Gestalt** der Bedienung, die Registratur die **Menge**. Wer nur den Ast
+fragt, bietet an einem `Text`-Feld alle vier Ganzzahl-Konverter an — der gemessene Fehler aus
+D-603. Wer nur die Registratur fragt, verliert die Baumansicht, die `R63` verlangt.*
