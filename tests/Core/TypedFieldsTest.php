@@ -14,6 +14,8 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\ColorRenderer;
 use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
+use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
@@ -135,6 +137,55 @@ final class TypedFieldsTest extends TestCase
 
         self::assertStringContainsString('taxmod-dangling', $shown->markup);
         self::assertStringContainsString('#4711', $shown->markup);
+    }
+
+    /**
+     * ⚠️ **Derselbe Fall im Bedienweg** ([D-604](../../docs/NewConcept/90-decision-log.md), TASK-038).
+     *
+     * ⚠️ *Der Auswahldialog zeichnete «zeigt auf einen geloeschten Knoten» als Gedankenstrich —
+     * **ununterscheidbar von «nichts gewaehlt»**. Sein Wort: «das muss sichtbar sein, also am Feld
+     * in der Kante.»*
+     */
+    #[Test]
+    public function the_chooser_tells_a_deleted_target_apart_from_no_choice(): void
+    {
+        $baum = new Section('', '<span class="row">Gramm</span>');
+
+        $ins_leere = (new DialogChooserRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::ofReference(4711),
+                editable: true,
+                fieldName: 'wert',
+                type: SimpleType::NodeRef,
+                surroundings: new Surroundings(
+                    sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                ),
+            )
+        )->markup;
+
+        $nichts = (new DialogChooserRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::nothing(),
+                editable: true,
+                fieldName: 'wert',
+                type: SimpleType::NodeRef,
+                surroundings: new Surroundings(
+                    sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                ),
+            )
+        )->markup;
+
+        self::assertStringContainsString('taxmod-dangling', $ins_leere);
+        self::assertStringContainsString('#4711', $ins_leere);
+
+        // ⚠️ *Der Gegenfall traegt die Zusage: ohne ihn waere «markiert» auch dann wahr, wenn
+        // **jede** leere Wahl markiert wuerde — und das Mal saehe man ueberall und nirgends.*
+        self::assertStringNotContainsString('taxmod-dangling', $nichts);
+        self::assertStringContainsString('taxmod-nothing', $nichts);
     }
 
     #[Test]

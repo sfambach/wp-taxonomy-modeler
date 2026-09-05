@@ -539,11 +539,34 @@ umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimm
 ```text
 [ ] TASK-037  Loeschen fragt nach den Verwendungen — Dialog, und bei «ja»
               wandern sie mit in den Papierkorb        (D-604)
-[ ] TASK-038  Ein Verweis auf einen verschwundenen Knoten ist am Feld
+[x] TASK-038  Ein Verweis auf einen verschwundenen Knoten ist am Feld
               sichtbar, nicht in einer Liste woanders  (D-604)
 [x] TASK-039  cleartrash-check leert den ganzen Papierkorb, nicht seinen
               Teil — er darf nur wegraeumen, was er selbst angelegt hat
 ```
+
+**TASK-038 gebaut am 2026-09-05, und es war eine Zeile.** *Die **Anzeige** zeichnete den Verweis ins
+Leere seit je als `#4711` in Rot ({@see ReferenceRenderer}); **der Auswahldialog zeichnete einen
+Gedankenstrich** — dasselbe Bild wie «nichts gewählt». **Genau dort war die Leiche unsichtbar**, und
+zwar im Bedienweg, also da, wo jemand hinsieht.*
+
+⚠️ *Der Fall wird **abgeleitet, nicht gemeldet**: der Wert trägt einen Verweis, der Name kam nicht an.
+**Keine neue Angabe an `Surroundings`** — die Unterscheidung stand schon da, sie war nur an einer
+Stelle nicht gelesen.*
+
+⚠️ **Gemessen: null Wertzeilen im Bestand zeigen ins Leere** — *der Wächter
+[`dangling-reference-check.php`](../../../scripts/dev/dangling-reference-check.php) legt sich seine
+Leiche darum selbst an (eigener Knoten, Wert darauf, Knoten löschen, zeichnen, nachsehen, wegräumen).
+**Er zählt den Bestand und bewertet ihn nicht**: ein Verweis ins Leere ist nach
+[D-604](../../NewConcept/90-decision-log.md) erlaubt — es ist die Hälfte, die der Benutzer mit «nein»
+wählt. Falsch wäre nur, ihn auszublenden.*
+
+⚠️ **Nicht gebaut und im Eingang als `INF-021`:** *ob zum Mal ein **Grund** gehört, wie ihn
+[D-608](../../NewConcept/90-decision-log.md) für die gesperrte Zeile verlangt. Die Nummer ist
+sprachlos und darum vom Kern zeichenbar; ein Satz wäre Benutzertext und müsste vom Rand kommen.*
+
+⚠️ *TASK-037 — der **Dialog beim Löschen** — bleibt offen. Erst er erzeugt den Fall absichtlich;
+sichtbar ist er ab jetzt.*
 
 ⚠️ **TASK-039 ist kein Notfall, aber es ist derselbe Fehler wie bei TASK-025:** *ein Wächter, der
 mehr anfasst als seine eigenen Knoten. **«Geparkt, nicht gelöscht» gilt nicht, solange ein

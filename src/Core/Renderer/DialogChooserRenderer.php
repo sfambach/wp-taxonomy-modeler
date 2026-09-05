@@ -129,9 +129,29 @@ final class DialogChooserRenderer implements Renderer
         $switch = 'taxmod-dialog-' . $subject->id . '-' . preg_replace('/[^a-z0-9_-]/i', '', $context->fieldName);
 
         // ⚠️ The closed field: **what is chosen**, and only enough of it to recognise (D-263).
-        $current = $context->surroundings->refersTo === null
-            ? '<span class="taxmod-nothing">—</span>'
-            : RenderResult::escape($context->surroundings->refersTo);
+        //
+        // ⚠️ **Drei Fälle und nicht zwei** ([D-604](../../../docs/NewConcept/90-decision-log.md),
+        // TASK-038). *Hier standen zwei: Name oder Gedankenstrich. **Damit sah «es zeigt auf einen
+        // Knoten, den es nicht mehr gibt» genauso aus wie «nichts gewählt»** — und sein Satz zu
+        // D-604 verlangt das Gegenteil: «bei nein haben wir Leichen im Baum, die auf nichts mehr
+        // zeigen — das muss sichtbar sein, **also am Feld in der Kante**.»*
+        //
+        // ⚠️ *Der Fall wird **abgeleitet und nicht gemeldet**: der Wert trägt einen Verweis, der
+        // Name kam nicht an. Genau die Unterscheidung, die {@see ReferenceRenderer} in der
+        // Anzeige schon trifft — hier fehlte sie nur im Bedienweg.*
+        //
+        // ⚠️ *Die Nummer statt eines Wortes, weil ein Wort Benutzertext wäre und der Kern keinen
+        // erfinden darf (`AR-2`, `CD-1`). **Sie ist nicht als Auskunft gemeint, sondern als Mal** —
+        // die Farbe kommt aus `.taxmod-dangling`, dieselbe wie in der Anzeige.*
+        if ($context->surroundings->refersTo !== null) {
+            $current = RenderResult::escape($context->surroundings->refersTo);
+        } elseif ($context->value->reference !== null) {
+            $current = '<span class="taxmod-dangling">'
+                . RenderResult::escape('#' . (string) $context->value->reference)
+                . '</span>';
+        } else {
+            $current = '<span class="taxmod-nothing">—</span>';
+        }
 
         $trigger = $context->surroundings->sections[self::TRIGGER] ?? null;
 

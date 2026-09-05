@@ -512,3 +512,24 @@ aus TASK-025, TASK-039 und TASK-047.*
 
 ⚠️ *Er ist ein Beleg für **TASK-050** (D-614): ein Testast, in dem solche Reste liegen dürfen, statt
 im Arbeitsbaum des Eigentümers. Bis dahin bleibt die Frage offen, **wer** ihn wegräumen darf.*
+
+---
+
+## INF-021 · Gehört zum Mal am toten Verweis ein Grund?
+
+**2026-09-05, beim Bau von TASK-038. Nicht entschieden (`PR-4`).**
+
+**Gebaut ist das Mal:** *ein Verweis auf einen verschwundenen Knoten steht rot als `#4711` da — in
+der Anzeige wie im Auswahldialog. **Er ist unterscheidbar von «nichts gewählt», und das war das
+Verlangte** ([D-604](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Offen ist die zweite Hälfte, die es anderswo gibt:** *[D-608](../../NewConcept/90-decision-log.md)
+verlangt für die **gesperrte** Zeile ausdrücklich beides — «‹gesperrt› muss sichtbar sein» **und**
+«muss ne Tooltip-Begründung da sein». Am toten Verweis steht heute nur das Mal. **Wer `#4711` sieht,
+weiss nicht, dass dort ein gelöschter Knoten stand** — er könnte es für eine Id halten, die jemand
+hineingeschrieben hat.*
+
+⚠️ **Warum es nicht nebenbei gebaut ist:** *die Nummer ist sprachlos, ein Satz wäre Benutzertext.
+Der Kern darf keinen erfinden (`AR-2`, `CD-1`); er müsste als Wort vom Rand kommen, wie
+`word:locked-reason` in der Feldzeile. **Das ist eine Zeile Arbeit und eine Entscheidung**, welchen
+Satz sie trägt — und die gehört ihm.*
