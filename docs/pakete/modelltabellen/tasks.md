@@ -897,3 +897,42 @@ auf dem gewöhnlichen Weg — genau die Ableitung, die Teil 1 ablösen soll.*
 ⚠️ *Teil 1 und Teil 2 sind **nicht** gebaut.*
 
 ⚠️ *Ableiten ist damit nicht verboten, sondern vertagt: «später, aber auch nur vielleicht».*
+
+---
+
+[ ] TASK-054  Der Faltzustand des Dialogs ist der des Dialogs, nicht der der Seite
+
+**2026-09-05, vom Eigentümer gemeldet:** *«der baum im dialog funktioniert noch nicht so wie er
+soll, er hat noch die einstellungen bezüglich elapsed und collapsed von der baumansicht auf der
+einstellungsseite, dies muss unabhängig voneinander sein.»*
+
+**Was gelten soll, in seinen Worten:** *«im dialog muss alles collapsed sein bis auf den default
+ast oder/und wenn knoten gegeben wird der ast des knotens, der benutzer muss aufklappen wenn er
+was anderes braucht — und das gilt nicht nur für die oberste ebene sondern auch für alle darunter.»*
+
+⚠️ **Zwei Ansichten, ein Zustand — das ist der Fehler.** *Der Faltzustand der Seitenansicht reist
+heute in den Dialog hinein. **Er gehört ihm nicht:** die Seite hält, was der Benutzer sich dort
+eingerichtet hat; der Dialog fängt jedes Mal am selben Punkt an, weil er eine Frage stellt und
+keine Arbeitsfläche ist.*
+
+⚠️ **«Alle darunter» ist die Hälfte, die man übersieht:** *heute genügt es, die oberste Ebene zu
+schliessen, und die Tiefe bleibt offen. Verlangt ist **zu bis auf einen Weg** — den des
+Einstiegsastes und den des vorgewählten Knotens, und sonst nichts.*
+
+Gehört zu [D-615](../../NewConcept/90-decision-log.md) und TASK-036, TASK-048, TASK-051.
+
+---
+
+[ ] TASK-055  Warum sich ein Knoten nicht verschieben laesst
+
+**2026-09-05, vom Eigentümer gemeldet:** *«schau warum ich knoten nicht verschieben kann — wollte
+`stree/…` und `zip/…` nach `combined` verschieben, weil es dort besser hinpasst; ist ein typ der
+aus zwei feldern besteht.»*
+
+⚠️ **Erst messen, dann bauen.** *Ob der Akt fehlt, ob er verweigert oder ob er still nichts tut,
+ist ungemessen. **Sein Satz ist der Befund** — die Frage ist nur, an welcher der drei Stellen es
+hängt.*
+
+⚠️ *Der Fall ist der begründete: ein Typ aus zwei Feldern gehört unter `Combined` und nicht dort,
+wo er heute liegt. Das ist keine Aufräumlaune, sondern seine Einordnung — **und dass sie sich nicht
+vollziehen lässt, ist der Fehler**, nicht die Einordnung.*
