@@ -204,12 +204,11 @@ if ($knoten === null) {
 
 // Ein echter Renderer-Knoten als Wert — der Wert ist ein **Verweis**, nicht ein Name.
 $rendererKnoten = $wpdb->get_row($wpdb->prepare(
-    'SELECT k.id, k.name FROM ' . Schema::table('relations') . ' e
-     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_node_id
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_node_id
-     WHERE v.name = %s AND e.kind = %s AND k.name = %s LIMIT 1',
+    // ⚠️ *Aus der Spalte statt aus der Kante (TASK-018, [D-581](../../NewConcept/90-decision-log.md)).*
+    'SELECT k.id, k.name FROM ' . Schema::table('nodes') . ' k
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = k.parent_node_id
+     WHERE v.name = %s AND k.name = %s LIMIT 1',
     'Renderer',
-    'inheritance',
     'spinner'
 ), ARRAY_A);
 
@@ -317,12 +316,10 @@ echo "\n== Ein anderer Renderer ersetzt den Satz, er kommt nicht dazu ==\n";
 // herauszunehmen. Der Rundlauf ueber `handlePost()` kann darum nicht geprueft werden -- er
 // existiert nicht. Das ist eine Luecke des Umbaus und gehoert ins Eingangsblatt.
 $zweiter = $wpdb->get_row($wpdb->prepare(
-    'SELECT k.id, k.name FROM ' . Schema::table('relations') . ' e
-     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_node_id
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_node_id
-     WHERE v.name = %s AND e.kind = %s AND k.name = %s LIMIT 1',
+    'SELECT k.id, k.name FROM ' . Schema::table('nodes') . ' k
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = k.parent_node_id
+     WHERE v.name = %s AND k.name = %s LIMIT 1',
     'Renderer',
-    'inheritance',
     'slider'
 ), ARRAY_A);
 

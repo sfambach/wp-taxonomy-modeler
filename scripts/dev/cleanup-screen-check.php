@@ -103,7 +103,11 @@ $roh("DELETE FROM {$p}relations WHERE id = {$feld->id}");
 
 // Quelle 3: ein Knoten, dessen Kante verschwindet — er selbst bleibt stehen.
 $allein = $editor->createNode('__cl Alleinstehend', $fw->rootOf(Branch::Model)->id);
+// ⚠️ *Seit TASK-018 hängt ein Knoten an einer **Spalte** und nicht an einer Kante
+// ([D-581](../../NewConcept/90-decision-log.md)) — die Wiese muss beides kappen, sonst ist der
+// Knoten weiterhin im Baum und ist zu Recht kein Rückstand.*
 $roh("DELETE FROM {$p}relations WHERE to_node_id = {$allein->id} OR from_node_id = {$allein->id}");
+$roh("UPDATE {$p}nodes SET parent_node_id = NULL WHERE id = {$allein->id}");
 
 // ⚠️ *Quelle 4: ein Datensatz, dessen **Knoten** verschwindet. Seine Settings gehen mit, damit
 // diese Wiese **nur** die vierte Quelle füttert und nicht nebenbei die erste — sonst misst der

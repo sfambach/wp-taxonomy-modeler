@@ -927,3 +927,47 @@ den nichts mehr einlöst.*
 Einstellungsart wird (dann gehört sie in die Aufzählung der Schlüssel) oder eine gewöhnliche
 Einstellungskante auf einen Ja/Nein-Knoten. **Beides ist vertretbar, und die Wahl bestimmt, wie die
 Saat aussieht** — deshalb wird sie nicht nebenbei getroffen.*
+
+## INF-034 · `SeededFrameworkNodes` bekommt einen Kantenspeicher, den sie nicht mehr liest
+
+**2026-09-05, bei TASK-018 entstanden und stehengelassen.**
+
+Die Saat schrieb je Rahmenknoten **zwei** Zeilen: den Knoten und seine Vererbungskante. Seit
+[D-581](../../NewConcept/90-decision-log.md) ist es eine, und der `RelationRepository` im
+Konstruktor wird von keiner Zeile der Klasse mehr gelesen.
+
+⚠️ **Warum er trotzdem steht:** *ihn zu streichen sind **58 Aufrufstellen**, die ihn der Reihe nach
+übergeben — quer durch `src`, `tests` und die Prüfläufe. **Das mitten in einer Datenwanderung zu
+tun, hiesse zwei Umbauten in einem Commit**, und einer davon wäre reine Formsache. Er fällt mit
+TASK-032, wo die Kantenart ohnehin angefasst wird.*
+
+## INF-035 · `labels.owner_id` nennt ihren Raum nicht — und eine Kante kann die Nummer eines Knotens tragen
+
+**2026-09-05, an einem rot gewordenen Prüflauf gemessen, nicht hergeleitet.**
+
+`package5-check` fragte `forOwners([$edge->id])` und bekam **sechs** Zeilen statt einer: die frische
+Kante trug **dieselbe Nummer** wie ein Knoten, der zwei Zeilen zuvor entstanden war und schon fünf
+Beschriftungen hatte.
+
+⚠️ **Die Lücke ist alt, TASK-018 hat sie nur ausgelöst.** *Seit TASK-004 hat jede Tabelle ihren
+eigenen Id-Raum; beide begannen bei derselben Zahl. Solange ein neuer Knoten **immer** auch eine
+Vererbungskante anlegte, liefen die zwei Zähler im Gleichschritt und trafen sich selten. **Seit
+D-581 ein Knoten keine Kante mehr anlegt, laufen sie verschieden schnell** — und dann treffen sie
+sich.
+
+⚠️ **Es ist derselbe Fehler, den `INF-009` an `settings.owner_id` beschrieb**, und die Abhilfe hat
+[D-164](../../NewConcept/90-decision-log.md) längst benannt: *eine zweite Spalte, die den Raum
+nennt, wie `changelog.owner_kind` und wie `record_values.value_ref_kind` seit TASK-005.*
+
+⚠️ *Offen und nicht geraten (`PR-4`): **ob das eine eigene Aufgabe ist oder zu TASK-019 gehört**, wo
+`labels` ohnehin zu `labels` und `label_texts` wird. Gemessen im heutigen Bestand: **null** Ids, die
+Knoten und Kante zugleich sind — der Schaden ist bisher nur in Prüfläufen aufgetreten, die selbst
+anlegen.*
+
+## INF-036 · `always-on-check` ist rot, und nicht wegen dieses Umbaus
+
+**2026-09-05 gemessen:** das Immer-Gelesene (`CLAUDE.md`, `docs/arbeitsmodell.md`, `AGENTS.md`) liegt
+mit 44 761 Bytes **1 591 Bytes über der Decke** von 43 170.
+
+⚠️ *Hier nur festgehalten, nicht behoben: **alle drei Dateien sind für diesen Auftrag gesperrt.** Der
+Lauf war schon rot, bevor TASK-018 anfing, und keine seiner Zeilen berührt eine der drei.*

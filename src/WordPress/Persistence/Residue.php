@@ -136,9 +136,20 @@ final class Residue
      */
     public function nodesWithoutConnections(): array
     {
+        // ⚠️ **Die Baumhälfte der Frage steht seit TASK-018 in einer Spalte**
+        // ([D-581](../../../docs/NewConcept/90-decision-log.md)). *Ohne diese beiden Zeilen zählte der
+        // Lauf **101 lebende Knoten als Rückstand** — gemessen unmittelbar nach der Wanderung —, weil
+        // ihre Vererbungskante fort ist und die Frage nur noch die Kantentabelle befragte. **Ein
+        // Aufräumschirm, der 101 gesunde Knoten zum Wegwerfen anbietet, ist schlimmer als keiner.***
+        //
+        // ⚠️ *`parent_node_id IS NULL` **und** niemand hängt an mir: die Wurzel hat keinen Vater und
+        // ist trotzdem kein Rückstand — sie trägt Kinder. Genau diese Unterscheidung stand vorher in
+        // «no edge in either direction».*
         $rows = $this->rows(
             'SELECT n.id, n.version, n.name, n.path FROM ' . Schema::table('nodes') . ' n
-             WHERE NOT EXISTS (
+             WHERE n.parent_node_id IS NULL
+               AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' k WHERE k.parent_node_id = n.id)
+               AND NOT EXISTS (
                  SELECT 1 FROM ' . Schema::table('relations') . ' r
                  WHERE r.from_node_id = n.id OR r.to_node_id = n.id
              )

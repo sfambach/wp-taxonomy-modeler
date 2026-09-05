@@ -35,11 +35,10 @@ final class TreeTest extends TestCase
         $identities  = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
-        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path);
+        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path, $this->root->id, 0);
 
         $this->nodes->add($this->root);
         $this->nodes->add($this->trash);
-        $this->edges->add(Relation::inheritance($identities->next(), $this->root->id, $this->trash->id, 0));
 
         $this->editor = new ModelEditor(
             $this->nodes,
@@ -48,7 +47,7 @@ final class TreeTest extends TestCase
             new RecordedChanges()
         );
 
-        $this->tree = new Tree($this->nodes, $this->edges);
+        $this->tree = new Tree($this->nodes);
     }
 
     /** @return list<string> */

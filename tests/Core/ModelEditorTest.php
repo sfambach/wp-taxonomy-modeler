@@ -43,11 +43,10 @@ final class ModelEditorTest extends TestCase
         $identities    = $this->identities = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
-        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path);
+        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path, $this->root->id, 0);
 
         $this->nodes->add($this->root);
         $this->nodes->add($this->trash);
-        $this->edges->add(Relation::inheritance($identities->next(), $this->root->id, $this->trash->id, 0));
 
         $this->editor = new ModelEditor(
             $this->nodes,
@@ -215,25 +214,29 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function creating_a_node_creates_exactly_one_inheritance_edge(): void
+    public function creating_a_node_writes_its_place_onto_the_node(): void
     {
+        // ⚠️ *Seit TASK-018 ist die Einordnung eine Spalte und keine zweite Zeile*
+        // *([D-581](../../../docs/NewConcept/90-decision-log.md)). **Der Prüfsatz hat sich mit ihr
+        // gedreht**: er hiess «legt genau eine Vererbungskante an» und misst jetzt dieselbe Zusage
+        // an der Stelle, an der sie heute steht — nicht entschärft, sondern umgezogen (`PR-9`).*
         $node = $this->editor->createNode('Board', $this->root->id);
-        $edge = $this->edges->inheritanceEdgeTo($node->id);
 
-        self::assertNotNull($edge);
-        self::assertSame($this->root->id, $edge->fromNodeId);
-        self::assertSame($node->id, $edge->toNodeId);
-        self::assertSame('', $edge->name, 'a tree edge has no name of its own');
+        self::assertSame($this->root->id, $node->parentNodeId);
+        self::assertSame($this->root->id, $this->nodes->byId($node->id)->parentNodeId);
+        self::assertSame(0, $this->edges->count(), 'ein neuer Knoten legt keine Kante an');
     }
 
     #[Test]
-    public function the_edge_gets_its_own_identity_not_the_nodes(): void
+    public function a_new_node_lands_behind_its_siblings(): void
     {
-        // C11: nodes and edges share one space, which is what lets an edge carry settings and
-        // labels of its own. Sharing a space is not sharing a number.
-        $node = $this->editor->createNode('Board', $this->root->id);
+        // ⚠️ *Hier stand «die Kante bekommt ihre eigene Identität» — eine Aussage über eine Zeile,
+        // die es seit TASK-018 nicht mehr gibt. **An ihrer Stelle steht die Zusage, die `sort_order`
+        // am Knoten überhaupt trägt**: das nächste Kind kommt hinter das letzte.*
+        $erste  = $this->editor->createNode('Board', $this->root->id);
+        $zweite = $this->editor->createNode('Resistor', $this->root->id);
 
-        self::assertNotSame($node->id, $this->edges->inheritanceEdgeTo($node->id)->id);
+        self::assertGreaterThan($erste->sortOrder, $zweite->sortOrder);
     }
 
     #[Test]
@@ -245,7 +248,7 @@ final class ModelEditorTest extends TestCase
 
         $moved = $this->editor->move($x->id, $b->id);
 
-        self::assertSame($b->id, $this->edges->inheritanceEdgeTo($x->id)->fromNodeId);
+        self::assertSame($b->id, $this->nodes->byId($x->id)->parentNodeId);
         self::assertSame($b->path . '.' . $x->id, $moved->path);
         self::assertSame(['created', 'moved'], $this->changes->verbsFor($x->id));
     }
@@ -302,7 +305,7 @@ final class ModelEditorTest extends TestCase
         $node = $this->editor->createNode('Board', $this->root->id);
         $this->editor->moveToTrash($node->id);
 
-        self::assertSame($this->trash->id, $this->edges->inheritanceEdgeTo($node->id)->fromNodeId);
+        self::assertSame($this->trash->id, $this->nodes->byId($node->id)->parentNodeId);
     }
 
     #[Test]
@@ -325,11 +328,11 @@ final class ModelEditorTest extends TestCase
     {
         $parent = $this->editor->createNode('Board', $this->root->id);
         $child  = $this->editor->createNode('Resistor', $parent->id);
-        $before = $this->edges->inheritanceEdgeTo($child->id)->version;
+        $before = $this->nodes->byId($child->id)->version;
 
         $this->editor->reorder($child->id, 0);
 
-        self::assertSame($before, $this->edges->inheritanceEdgeTo($child->id)->version);
+        self::assertSame($before, $this->nodes->byId($child->id)->version);
     }
 
     #[Test]
@@ -352,8 +355,8 @@ final class ModelEditorTest extends TestCase
     {
         $ids = [$id];
 
-        while (($edge = $this->edges->inheritanceEdgeTo($id)) !== null) {
-            $id = $edge->fromNodeId;
+        while (($vater = $this->nodes->byId($id)->parentNodeId) !== null) {
+            $id = $vater;
             array_unshift($ids, $id);
         }
 
@@ -419,7 +422,7 @@ final class ModelEditorTest extends TestCase
 
         $this->editor->moveToTrashPromotingChildren($middle->id);
 
-        self::assertSame($grandparent->id, $this->edges->inheritanceEdgeTo($child->id)->fromNodeId);
+        self::assertSame($grandparent->id, $this->nodes->byId($child->id)->parentNodeId);
         self::assertSame(
             $grandparent->path . '.' . $child->id,
             $this->nodes->byId($child->id)->path
@@ -499,7 +502,7 @@ final class ModelEditorTest extends TestCase
         $back = $this->editor->restore($node->id)->node;
 
         self::assertSame($was, $back->path);
-        self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromNodeId);
+        self::assertSame($parent->id, $this->nodes->byId($node->id)->parentNodeId);
         self::assertSame(['created', 'parked', 'restored'], $this->changes->verbsFor($node->id));
     }
 

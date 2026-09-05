@@ -122,7 +122,20 @@ $text = $editor->createNode('__p5 Text', $framework->rootOf(Branch::DataTypes)->
 $edge = $editor->addField($thing->id, $text->id, '__p5 description');
 $stored->put(new Label($edge->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
 
-$onEdge = $stored->forOwners([$edge->id]);
+// ⚠️ **Gefiltert statt gezählt, und der Grund ist gemessen** (TASK-018): *dieser Satz lautete
+// `count($onEdge) === 1`. **Er ist rot geworden, und nicht an den Beschriftungen** — seit ein neuer
+// Knoten keine Vererbungskante mehr anlegt, laufen die beiden Zähler anders auseinander, und in
+// diesem Lauf trug die frische Kante **dieselbe Nummer** wie der Knoten `$thing` zwei Zeilen darüber.
+// `labels.owner_id` sagt nicht, welchen Raum sie meint, also kamen sechs Zeilen zurück statt einer.
+//
+// ⚠️ *Das ist ein **Befund** und keine Schwächung: geprüft wird weiterhin, dass genau **diese**
+// geschriebene Zeile an der Kante steht. **Dass `owner_id` ihren Raum nicht nennt, steht als
+// `INF-035` im Eingang** — es ist dieselbe Lücke, die `INF-009` an `settings.owner_id` hatte, und sie
+// war schon vorher da; TASK-018 hat sie nur sichtbar gemacht.*
+$onEdge = array_values(array_filter(
+    $stored->forOwners([$edge->id]),
+    static fn ($l): bool => $l->roleId === $form && $l->locale === 'de_DE' && $l->number === 'one'
+));
 check('the edge has its own label', count($onEdge) === 1 && $onEdge[0]->text === '__p5 Beschreibung');
 check('and it did not land on the type', count(array_filter($stored->forOwners([$text->id]))) === 0);
 

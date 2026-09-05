@@ -44,7 +44,7 @@ $log   = new WpdbChangelog(new SystemClock());
 $fw    = new SeededFrameworkNodes($nodes, $edges, $log);
 
 $editor = new ModelEditor($nodes, $edges, $fw, $log);
-$tree   = new Tree($nodes, $edges);
+$tree   = new Tree($nodes);
 
 $failed = 0;
 

@@ -3,19 +3,24 @@
 namespace Taxmod\Core\Model;
 
 /**
- * The three kinds of edge — and the kind is never chosen.
+ * The kinds of edge — and the kind is never chosen.
  *
  * It is **read off** the branch the target sits in (sentence 5 of the core on one page), which
  * is why this enum has no factory taking user input: nothing outside the branch rule may decide
  * a kind.
  *
+ * ⚠️ **`Inheritance` stand hier und ist gefallen** (TASK-018,
+ * [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Satz: «Vererbung ist so
+ * unterschiedlich zu Relation, eigentlich würde hier eine `parent_node_id` im Knoten reichen.» Der
+ * Beleg lag gemessen daneben — **`name` war leer genau dann, wenn Vererbung, `multiplicity` sagte
+ * nichts, `hide` sass nur dort**: drei von neun Spalten verhielten sich anders, und das war das
+ * Signal, dass es kein Kantentyp ist. **Der Baum steht jetzt in `nodes.parent_node_id` mit
+ * `nodes.sort_order`**, und die Frage «ist es Vererbung?» stellt niemand mehr.*
+ *
  * @see docs/NewConcept/10-domain-core.md
  */
 enum RelationKind: string
 {
-    /** Parent to child in the tree. The tree is inheritance and only inheritance (D-041). */
-    case Inheritance = 'inheritance';
-
     /** The target belongs to the whole and is deleted with it. */
     case Composition = 'composition';
 

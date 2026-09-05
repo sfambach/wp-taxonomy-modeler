@@ -67,6 +67,14 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
     public function __construct(
         private readonly NodeRepository $nodes,
+        /**
+         * ⚠️ **Wird seit TASK-018 nicht mehr gelesen** ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+         * *Die Saat schrieb Knoten **und** Vererbungskante; die Kante gibt es nicht mehr. Der
+         * Parameter steht noch, weil ihn 58 Aufrufer der Reihe nach übergeben — **ihn hier zu
+         * streichen wäre eine Änderung an 58 Stellen mitten in einer Datenwanderung**, und das ist
+         * genau die Vermischung, die `PR-2` nicht will. Er fällt mit TASK-032, wo die Kantenart
+         * ohnehin angefasst wird; bis dahin steht er als `INF-034` im Eingang.*
+         */
         private readonly RelationRepository $relations,
         private readonly Changelog $changelog,
     ) {
@@ -309,17 +317,17 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         // ⚠️ *`0` heisst «die Tabelle vergibt die Id» (TASK-004) — der Speicher gibt den
         // geschriebenen Knoten mit seiner Nummer und seinem fertigen Pfad zurück.*
-        $node = $this->nodes->add(Node::create(0, $name, $parent?->path));
-
-        if ($parent !== null) {
-            // A framework node without an edge would be a node the tree cannot see.
-            $this->relations->add(Relation::inheritance(
-                0,
-                $parent->id,
-                $node->id,
-                $this->relations->nextPositionUnder($parent->id)
-            ));
-        }
+        // ⚠️ *Vater und Stelle kommen seit TASK-018 mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand danach eine Vererbungskante — «ein Rahmenknoten ohne Kante wäre ein Knoten, den
+        // der Baum nicht sieht». **Das kann jetzt nicht mehr auseinanderfallen**, weil es eine Zeile
+        // ist.*
+        $node = $this->nodes->add(Node::create(
+            0,
+            $name,
+            $parent?->path,
+            $parent?->id,
+            $parent === null ? 0 : $this->nodes->nextPositionUnder($parent->id)
+        ));
 
         $this->changelog->record($node->id, 'node', 'created', null, 'framework: ' . $name);
         update_option($option, $node->id, true);

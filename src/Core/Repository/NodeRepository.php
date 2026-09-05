@@ -57,6 +57,38 @@ interface NodeRepository
     public function childrenOf(Node $parent): array;
 
     /**
+     * Eine Stelle hinter der letzten unter diesem Elternteil — wo ein neues Kind hinkommt.
+     *
+     * ⚠️ *Kam mit TASK-018 von `RelationRepository::nextPositionUnder()` hierher
+     * ([D-581](../../../docs/NewConcept/90-decision-log.md)): die Reihenfolge steht jetzt am Kind.*
+     */
+    public function nextPositionUnder(int $parentId): int;
+
+    /**
+     * Jedes Kind eines Elternteils unter ein anderes hängen, in einer Anweisung.
+     *
+     * ⚠️ **Damit [U4](../../../docs/NewConcept/20-interaction.md) keine Schleife ist** — ein Knoten
+     * allein zu löschen hebt seine Kinder zum Grosselternteil, und Kind für Kind wäre das ein
+     * Schreibvorgang je Kind, den `CD-7` verbietet.
+     *
+     * @param int $startPosition Wo die gehobenen Kinder unter ihren neuen Geschwistern stehen —
+     *                           ihre Reihenfolge untereinander bleibt.
+     */
+    public function reparentChildren(int $fromParentId, int $toParentId, int $startPosition): void;
+
+    /**
+     * Wo jeder Knoten des Modells hängt — Vater, Stelle, und ob er gezeichnet wird.
+     *
+     * ⚠️ **Die Ablösung von `RelationRepository::allInheritanceEdges()`** (TASK-018,
+     * [D-581](../../../docs/NewConcept/90-decision-log.md)). *Bewusst unbegrenzt, aus demselben
+     * Grund wie dort: das Modell ist entwurfsgemäss klein ([D-308](../../../docs/NewConcept/90-decision-log.md)),
+     * und je Elternteil zu fragen wäre eine Abfrage je Ebene.*
+     *
+     * @return array<int, array{parent: ?int, sortOrder: int, hide: bool}> Knoten-Id => seine Stelle.
+     */
+    public function allPlacements(): array;
+
+    /**
      * Rewrite the paths of everything below a node that has just moved, in one statement.
      *
      * @param string $oldPath The subtree's path before the move.

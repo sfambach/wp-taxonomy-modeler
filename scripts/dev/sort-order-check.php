@@ -203,43 +203,49 @@ $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $editor    = new ModelEditor($nodes, $edges, $framework, $log);
 
+// ⚠️ **Der Fall ist ein anderer geworden, die Zusage nicht** (TASK-018,
+// [D-581](../../NewConcept/90-decision-log.md)): *hier standen zwei **Kinder** eines Elternknotens.
+// Deren Reihenfolge liegt seit TASK-018 in `nodes.sort_order` und geht diesen Schlüssel nichts mehr
+// an. **Getauscht werden jetzt zwei Felder desselben Besitzers** — die Liste, die
+// `(from_node_id, kind, sort_order)` tatsächlich noch bewacht. Nicht entschärft: der Tausch über eine
+// besetzte Stelle ist genau derselbe, und er ist es, den der Schlüssel gebrochen hatte.*
 $paar = $wpdb->get_results(
-    "SELECT from_node_id FROM {$relations} WHERE kind = 'inheritance'
-     GROUP BY from_node_id HAVING COUNT(*) > 1 ORDER BY from_node_id LIMIT 1",
+    "SELECT from_node_id, kind FROM {$relations}
+     GROUP BY from_node_id, kind HAVING COUNT(*) > 1 ORDER BY from_node_id LIMIT 1",
     ARRAY_A
 ) ?: [];
 
 if ($paar === []) {
-    check('ein Elternknoten mit zwei Kindern war zu finden', false);
+    check('ein Knoten mit zwei gleichartigen Feldern war zu finden', false);
 } else {
     $eltern = (int) $paar[0]['from_node_id'];
-    $kinder = array_map(
-        static fn ($n): int => $n->id,
-        $editor->childrenOf($eltern)
-    );
+    $art    = (string) $paar[0]['kind'];
 
-    $vorher = array_slice($kinder, 0, 2);
+    $liste = static function () use ($wpdb, $relations, $eltern, $art): array {
+        return array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+            "SELECT id FROM {$relations} WHERE from_node_id = %d AND kind = %s
+             ORDER BY sort_order ASC, id ASC",
+            $eltern,
+            $art
+        )));
+    };
 
-    $editor->moveUp($vorher[1]);
+    $vorher = array_slice($liste(), 0, 2);
 
-    $nachher = array_slice(array_map(
-        static fn ($n): int => $n->id,
-        $editor->childrenOf($eltern)
-    ), 0, 2);
+    $editor->moveField($eltern, $vorher[1], -1);
+
+    $nachher = array_slice($liste(), 0, 2);
 
     check(
-        'die beiden ersten Kinder haben getauscht',
+        'die beiden ersten Felder haben getauscht',
         $nachher === [$vorher[1], $vorher[0]],
         implode(',', $vorher) . ' → ' . implode(',', $nachher)
     );
 
     // ⚠️ *Zurück, auch wenn es rot war — dieser Lauf lässt das Modell, wie er es fand.*
-    $editor->moveUp($vorher[0]);
+    $editor->moveField($eltern, $vorher[0], -1);
 
-    $zurueck = array_slice(array_map(
-        static fn ($n): int => $n->id,
-        $editor->childrenOf($eltern)
-    ), 0, 2);
+    $zurueck = array_slice($liste(), 0, 2);
 
     check('und der Lauf hat zurückgetauscht', $zurueck === $vorher, implode(',', $zurueck));
 }

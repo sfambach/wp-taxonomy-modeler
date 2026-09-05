@@ -4,20 +4,21 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Repository\NodeRepository;
-use Taxmod\Core\Repository\RelationRepository;
 
 /**
  * The tree as something that can be drawn: every node under a root, in order, with its depth.
  *
  * ⚠️ **Two queries for the whole tree, whatever its shape.** The nodes come out in one
- * statement because the path answers *who is below whom*; the edges come out in one because
- * order lives on them. Everything after that is assembled in memory, which is what `CD-7`
- * asks for — the traversal is solved once, here, and every caller uses it.
+ * statement because the path answers *who is below whom*; where each one hangs and in what order
+ * comes out in one because it is a column on the node itself (TASK-018,
+ * [D-581](../../../docs/NewConcept/90-decision-log.md)). Everything after that is assembled in
+ * memory, which is what `CD-7` asks for — the traversal is solved once, here, and every caller
+ * uses it.
  *
  * ```mermaid
  * flowchart LR
  *   N["nodes under a path"] --> A["assemble"]
- *   E["inheritance edges"] --> A
+ *   E["parent_node_id + sort_order"] --> A
  *   A --> R["rows: node + depth, in order"]
  * ```
  *
@@ -26,13 +27,15 @@ use Taxmod\Core\Repository\RelationRepository;
 final class Tree
 {
     public function __construct(
+        // ⚠️ *Der `RelationRepository` stand hier und ist gefallen (TASK-018,
+        // [D-581](../../../docs/NewConcept/90-decision-log.md)): **der Baum ist keine Kante mehr**,
+        // also braucht der Baumläufer nur noch die Knoten.*
         private readonly NodeRepository $nodes,
-        private readonly RelationRepository $relations,
     ) {
     }
 
     /**
-     * @var array<int,true> Which nodes hang on a hidden inheritance edge — filled by
+     * @var array<int,true> Which nodes are hidden at their placement — filled by
      *                     {@see self::rowsUnder()} so that a row can carry the fact.
      *
      * ⚠️ *Only meaningful while `showHidden` is on: with it off those rows do not exist. It is a
@@ -88,15 +91,18 @@ final class Tree
         $childIdsByParent = [];
         $hidden           = [];
 
-        foreach ($this->relations->allInheritanceEdges() as $edge) {
-            if (! isset($byId[$edge->toNodeId])) {
+        // ⚠️ *Seit TASK-018 sagt der Knoten selbst, wo er hängt* ([D-581](../../../docs/NewConcept/90-decision-log.md))
+        // — **also braucht dieser Lauf keine zweite Abfrage mehr**: `subtreeOf()` hat Vater, Stelle
+        // und `hide` schon mitgebracht.
+        foreach ($this->nodes->allPlacements() as $childId => $stelle) {
+            if (! isset($byId[$childId]) || $stelle['parent'] === null) {
                 continue;
             }
 
-            $childIdsByParent[$edge->fromNodeId][] = $edge->toNodeId;
+            $childIdsByParent[$stelle['parent']][] = $childId;
 
-            if ($edge->hide) {
-                $hidden[$edge->toNodeId] = true;
+            if ($stelle['hide']) {
+                $hidden[$childId] = true;
             }
         }
 
@@ -106,11 +112,10 @@ final class Tree
         // takes its subtree with it by construction. The owner's words: «it stops before rendering
         // itself and does not look at the children either.»*
         //
-        // ⚠️ **`hide` sits on the **inheritance edge**, which is what puts a node in the tree at all**
-        // ([D-014](../../../docs/NewConcept/90-decision-log.md), [D-467](../../../docs/NewConcept/90-decision-log.md)).
-        // *So the walk already has the answer in the edges it just loaded — no second query, and no
-        // filter afterwards. **The path-based filter this replaced lived in the screen** and had to
-        // reconstruct from `path` what the walk knew all along.*
+        // ⚠️ **`hide` sitzt an der Einordnung, die den Knoten überhaupt in den Baum stellt**
+        // ([D-014](../../../docs/NewConcept/90-decision-log.md), [D-467](../../../docs/NewConcept/90-decision-log.md),
+        // seit TASK-018 als `nodes.hide`). *So the walk already has the answer in what it just
+        // loaded — no second query, and no filter afterwards.*
         if (! $showHidden) {
             $skip = [...$skip, ...array_keys($hidden)];
         }
@@ -134,8 +139,8 @@ final class Tree
                 // tauschen könnte.*
                 'isFirst'     => true,
                 'isLast'      => true,
-                // ⚠️ *Nie versteckt: `hide` sitzt auf der **Vererbungskante**, und auf die Wurzel
-                // zeigt keine — gemessen 0.*
+                // ⚠️ *Nie versteckt: die Wurzel hat kein Elternteil, an dem sie versteckt werden
+                // könnte — gemessen 0.*
                 'hidden'      => false,
             ];
 
@@ -185,8 +190,10 @@ final class Tree
     {
         $fold = [];
 
-        foreach ($this->relations->allInheritanceEdges() as $edge) {
-            $fold[$edge->fromNodeId] = true;
+        foreach ($this->nodes->allPlacements() as $stelle) {
+            if ($stelle['parent'] !== null) {
+                $fold[$stelle['parent']] = true;
+            }
         }
 
         // ⚠️ *`ancestorIds()` und nicht die Scheibe aus dem `path` von Hand — dieselbe Tatsache, und

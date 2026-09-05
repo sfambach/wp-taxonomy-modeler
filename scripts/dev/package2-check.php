@@ -61,25 +61,29 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $framework->seed();
 
 $editor = new ModelEditor($nodes, $edges, $framework, $log);
-$tree   = new Tree($nodes, $edges);
+$tree   = new Tree($nodes);
 
 $treeRoot = $framework->root();
 $trash    = $framework->trash();
 
-echo "\n== 1. Every node except the root has an inheritance edge ==\n";
+// ⚠️ **Die Frage ist dieselbe, die Spalte eine andere** (TASK-018,
+// [D-581](../../NewConcept/90-decision-log.md)): *der Abschnitt hiess «jeder Knoten ausser der
+// Wurzel hat eine Vererbungskante» und las die Kantentabelle. **Es gibt keine Vererbungskante
+// mehr** — die Einordnung steht in `nodes.parent_node_id`. Der Prüfsatz zieht mit, statt zu
+// verschwinden, und die Zusage ist nicht schwächer geworden (`PR-9`).*
+echo "\n== 1. Every node except the root names its parent ==\n";
 $orphans = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-     LEFT JOIN ' . Schema::table('relations') . ' r ON r.to_node_id = n.id AND r.kind = "inheritance"
-     WHERE n.path LIKE "%.%" AND r.id IS NULL'
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . '
+     WHERE path LIKE "%.%" AND parent_node_id IS NULL'
 );
-check('no node is left without one', $orphans === 0, "$orphans without an edge");
+check('no node is left without one', $orphans === 0, "$orphans without a parent");
 
-echo "\n== 2. The path can be rebuilt from the edges alone ==\n";
+echo "\n== 2. The path can be rebuilt from the column alone ==\n";
 // ⚠️ D-014: the path is derived, rebuildable, never a second truth. If this drifts, the tree
 // and its shortcut disagree and every descendant query is quietly wrong.
 $parentOf = [];
-foreach ($wpdb->get_results('SELECT from_node_id, to_node_id FROM ' . Schema::table('relations') . ' WHERE kind = "inheritance"', ARRAY_A) as $r) {
-    $parentOf[(int) $r['to_node_id']] = (int) $r['from_node_id'];
+foreach ($wpdb->get_results('SELECT id, parent_node_id FROM ' . Schema::table('nodes') . ' WHERE parent_node_id IS NOT NULL', ARRAY_A) as $r) {
+    $parentOf[(int) $r['id']] = (int) $r['parent_node_id'];
 }
 $wrong = [];
 foreach ($wpdb->get_results('SELECT id, path, name FROM ' . Schema::table('nodes'), ARRAY_A) as $r) {
@@ -93,33 +97,31 @@ foreach ($wpdb->get_results('SELECT id, path, name FROM ' . Schema::table('nodes
         $wrong[] = $r['name'] . ': ' . $r['path'] . ' vs ' . implode('.', $chain);
     }
 }
-check('every stored path matches the edges', $wrong === [], implode('; ', $wrong));
+check('every stored path matches the column', $wrong === [], implode('; ', $wrong));
 
 echo "\n== 3. Creating, hanging and ordering ==\n";
 $a = $editor->createNode('__check A', $treeRoot->id);
 $b = $editor->createNode('__check B', $treeRoot->id);
 $x = $editor->createNode('__check X', $a->id);
 
-$edge = $edges->inheritanceEdgeTo($x->id);
-check('the child got an edge from its parent', $edge !== null && $edge->fromNodeId === $a->id);
-// ⚠️ **Die Zusage ist mit TASK-004 eine andere geworden, und das gehört sichtbar** (`PR-9`): *hier
-// stand «die Kante hat eine eigene Id», geprüft als `$edge->id !== $x->id`. **Das galt, solange alle
-// aus einem Topf zogen.** Mit eigenen Räumen gibt es Knoten 5 **und** Kante 5, und der Lauf ist
-// gerade daran rot geworden — Knoten und Kante trugen beide die 79929. Was zu prüfen bleibt: die
-// Kante ist ein eigenes Ding mit einer Zeile in ihrer eigenen Tabelle.*
+check('the child hangs on its parent', $nodes->byId($x->id)->parentNodeId === $a->id);
+// ⚠️ **Die Zusage hat sich mit TASK-018 gedreht, und das gehört sichtbar** (`PR-9`,
+// [D-581](../../NewConcept/90-decision-log.md)): *hier stand «das Kind bekam eine Kante von seinem
+// Vater», und davor, bis TASK-004, «die Kante hat eine eigene Id». **Es gibt keine Vererbungskante
+// mehr** — geprüft wird jetzt, dass die Einordnung am Knoten steht und dass sie **keine** Zeile in
+// der Kantentabelle hinterlässt.*
 check(
-    'die Kante ist ein eigenes Ding mit einer eigenen Zeile',
-    $edge !== null && (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d',
-        $edge->id
-    )) === 1,
-    'edge #' . ($edge?->id ?? 0)
+    'und legt dafür keine Kante an',
+    (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE to_node_id = %d',
+        $x->id
+    )) === 0
 );
 check('the path follows the parent', $x->path === $a->path . '.' . $x->id, $x->path);
 
 $deep  = $editor->createNode('__check deep', $x->id);
 $moved = $editor->move($x->id, $b->id);
-check('moving repoints the edge', $edges->inheritanceEdgeTo($x->id)->fromNodeId === $b->id);
+check('moving repoints the node', $nodes->byId($x->id)->parentNodeId === $b->id);
 check('moving rewrites the path', $moved->path === $b->path . '.' . $x->id, $moved->path);
 check('the subtree came along', $nodes->byId($deep->id)->path === $moved->path . '.' . $deep->id, $nodes->byId($deep->id)->path);
 
@@ -150,7 +152,7 @@ check('the trash is left out when asked', ! isset($drawn[$trash->id]));
 
 echo "\n== 7. Parking is a move, and it cascades ==\n";
 $editor->moveToTrash($x->id);
-check('the edge now points at the trash', $edges->inheritanceEdgeTo($x->id)->fromNodeId === $trash->id);
+check('the node now hangs in the trash', $nodes->byId($x->id)->parentNodeId === $trash->id);
 check('the subtree is parked with it', str_starts_with($nodes->byId($deep->id)->path, $trash->path . '.'));
 
 echo "\n== 8. Deleting only a node promotes its children ==\n";
@@ -162,9 +164,9 @@ $deepK = $editor->createNode('__check K1a', $k1->id);
 
 $editor->moveToTrashPromotingChildren($m->id);
 
-check('the child hangs on the grandparent', $edges->inheritanceEdgeTo($k1->id)->fromNodeId === $g->id);
+check('the child hangs on the grandparent', $nodes->byId($k1->id)->parentNodeId === $g->id);
 check('and its path says so', $nodes->byId($k1->id)->path === $g->path . '.' . $k1->id, $nodes->byId($k1->id)->path);
-check('the second child came too', $edges->inheritanceEdgeTo($k2->id)->fromNodeId === $g->id);
+check('the second child came too', $nodes->byId($k2->id)->parentNodeId === $g->id);
 check('their own subtrees came along', $nodes->byId($deepK->id)->path === $nodes->byId($k1->id)->path . '.' . $deepK->id, $nodes->byId($deepK->id)->path);
 check('the node itself is parked, empty', str_starts_with($nodes->byId($m->id)->path, $trash->path . '.') && $editor->childrenOf($m->id) === []);
 check('their order among themselves survived',
@@ -194,7 +196,7 @@ check('it is in the trash', str_starts_with($nodes->byId($r1->id)->path, $trash-
 $editor->restore($r1->id);
 check('restored to exactly where it was', $nodes->byId($r1->id)->path === $wasR1, $nodes->byId($r1->id)->path);
 check('its subtree came back too', $nodes->byId($r2->id)->path === $wasR2, $nodes->byId($r2->id)->path);
-check('the edge points at the old parent again', $edges->inheritanceEdgeTo($r1->id)->fromNodeId === $treeRoot->id);
+check('der Knoten haengt wieder am alten Vater', $nodes->byId($r1->id)->parentNodeId === $treeRoot->id);
 
 try { $editor->restore($r2->id); check('a node that was never parked is refused', false); }
 catch (CannotRestore $e) { check('a node that was never parked is refused', true); }

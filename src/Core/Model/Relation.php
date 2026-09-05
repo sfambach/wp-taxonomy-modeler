@@ -163,11 +163,10 @@ final class Relation extends Identity implements Renderable
         return $this->copy(unpark: true);
     }
 
-    /** The tree edge: parent to child, and the only kind the tree is made of (V3). */
-    public static function inheritance(int $id, int $parentId, int $childId, int $sortOrder): self
-    {
-        return new self($id, 1, $parentId, $childId, RelationKind::Inheritance, '', $sortOrder);
-    }
+    // ⚠️ **Hier stand `inheritance()`** — die Baumkante (TASK-018,
+    // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Der Baum ist keine Kante mehr:
+    // ein neuer Knoten bringt seinen Vater und seine Stelle mit ({@see Node::create()}),
+    // statt gleich danach eine zweite Zeile zu brauchen.*
 
     /**
      * An attribute edge: the owner points at a target, and the **kind comes from the caller

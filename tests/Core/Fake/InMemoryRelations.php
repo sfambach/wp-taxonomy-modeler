@@ -4,7 +4,6 @@ namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\RelationRepository;
 
 /** Edges in an array, ordered the way the SQL one orders them. */
@@ -58,66 +57,8 @@ final class InMemoryRelations implements RelationRepository
         return null;
     }
 
-    public function inheritanceEdgeTo(int $childId): ?Relation
-    {
-        foreach ($this->rows as $edge) {
-            if ($edge->toNodeId === $childId && $edge->kind === RelationKind::Inheritance) {
-                return $edge;
-            }
-        }
-
-        return null;
-    }
-
-    public function childEdgesOf(int $parentId): array
-    {
-        $edges = [];
-
-        foreach ($this->rows as $edge) {
-            if ($edge->fromNodeId === $parentId && $edge->kind === RelationKind::Inheritance) {
-                $edges[] = $edge;
-            }
-        }
-
-        usort($edges, static fn (Relation $a, Relation $b): int => $a->sortOrder <=> $b->sortOrder ?: $a->id <=> $b->id);
-
-        return $edges;
-    }
-
-    public function nextPositionUnder(int $parentId): int
-    {
-        $edges = $this->childEdgesOf($parentId);
-
-        return $edges === [] ? 0 : end($edges)->sortOrder + 1;
-    }
-
-    public function allInheritanceEdges(): array
-    {
-        $edges = [];
-
-        foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance) {
-                $edges[] = $edge;
-            }
-        }
-
-        usort($edges, static fn (Relation $a, Relation $b): int =>
-            [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
-
-        return $edges;
-    }
-
-
-    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
-    {
-        foreach ($this->rows as $id => $edge) {
-            if ($edge->fromNodeId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
-                $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->sortOrder + $startPosition);
-            }
-        }
-    }
-
-
+    // ⚠️ *Die fünf Baumleser sind mit TASK-018 gefallen* ([D-581](../../../docs/NewConcept/90-decision-log.md))
+    // *— ihre Ablösung steht in {@see InMemoryNodes}.*
 
     public function nextFieldPositionUnder(int $ownerId): int
     {
@@ -138,7 +79,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->geparkt as $edge) {
-            if ($edge->kind !== RelationKind::Inheritance && in_array($edge->fromNodeId, $ownerIds, true)) {
+            if (in_array($edge->fromNodeId, $ownerIds, true)) {
                 $edges[] = $edge;
             }
         }
@@ -183,7 +124,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->toNodeId, $targetIds, true)) {
+            if (! in_array($edge->toNodeId, $targetIds, true)) {
                 continue;
             }
 
@@ -206,7 +147,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->fromNodeId, $ownerIds, true)) {
+            if (! in_array($edge->fromNodeId, $ownerIds, true)) {
                 continue;
             }
 

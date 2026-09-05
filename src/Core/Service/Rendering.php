@@ -2933,7 +2933,7 @@ final class Rendering
      */
     private function walker(): ?Tree
     {
-        return $this->relations === null ? null : new Tree($this->nodes, $this->relations);
+        return $this->relations === null ? null : new Tree($this->nodes);
     }
 
     /**

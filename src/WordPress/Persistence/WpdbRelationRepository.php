@@ -4,7 +4,6 @@ namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\RelationRepository;
 
 /**
@@ -17,6 +16,20 @@ use Taxmod\Core\Repository\RelationRepository;
  */
 final class WpdbRelationRepository implements RelationRepository
 {
+    /**
+     * Das Wort, das die Tabelle bis TASK-018 für den Baum benutzt hat.
+     *
+     * ⚠️ **Es steht hier, weil der **Schatten** es noch kennt** ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+     * *Lebend gibt es keine Vererbungskante mehr, also fällt jede `kind <>`-Bedingung auf `relations`.
+     * **`relations_history` ist der eine Ort, an dem sie bleiben muss**: dort stehen alte
+     * Vererbungskanten, darunter geparkte, und `RelationKind::from('inheritance')` wirft seit dem
+     * Streichen des Aufzählungsfalls. **Gemessen: genau eine solche Zeile brachte
+     * `page-blocks-check` zum Absturz, bevor diese Bedingung zurückkam** — die Auslassung war keine
+     * Zierde.*
+     */
+    private const RETIRED_INHERITANCE_KIND = 'inheritance';
+
+
     /**
      * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004) — dieselbe Zusage wie
      * bei {@see WpdbNodeRepository::add()}. *Id `0` heisst «vergib eine», jede andere bleibt.*
@@ -131,90 +144,20 @@ final class WpdbRelationRepository implements RelationRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
-    public function inheritanceEdgeTo(int $childId): ?Relation
-    {
-        global $wpdb;
-
-        $row = Query::row('Vererbungskante zum Kind lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-             WHERE to_node_id = %d AND kind = %s',
-            $childId,
-            RelationKind::Inheritance->value
-        ));
-
-        return $row === null ? null : $this->hydrate($row);
-    }
-
-    public function childEdgesOf(int $parentId): array
-    {
-        global $wpdb;
-
-        $rows = Query::rows('Kinderkanten lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-             WHERE from_node_id = %d AND kind = %s
-             ORDER BY sort_order ASC, id ASC',
-            $parentId,
-            RelationKind::Inheritance->value
-        ));
-
-        return array_map($this->hydrate(...), $rows ?: []);
-    }
-
-    public function nextPositionUnder(int $parentId): int
-    {
-        global $wpdb;
-
-        $highest = Query::value('naechste Stelle unter dem Knoten lesen', $wpdb->prepare(
-            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind = %s',
-            $parentId,
-            RelationKind::Inheritance->value
-        ));
-
-        return $highest === null ? 0 : (int) $highest + 1;
-    }
-
-    public function allInheritanceEdges(): array
-    {
-        global $wpdb;
-
-        $rows = Query::rows('alle Vererbungskanten lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-             WHERE kind = %s
-             ORDER BY from_node_id ASC, sort_order ASC, id ASC',
-            RelationKind::Inheritance->value
-        ));
-
-        return array_map($this->hydrate(...), $rows ?: []);
-    }
-
-
-    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
-    {
-        global $wpdb;
-
-        // One statement, however many children there are. `position + start` keeps their
-        // order relative to each other while placing them after their new siblings.
-        $wpdb->query($wpdb->prepare(
-            'UPDATE ' . Schema::table('relations') . '
-             SET from_node_id = %d, sort_order = sort_order + %d, version = version + 1
-             WHERE from_node_id = %d AND kind = %s',
-            $toParentId,
-            $startPosition,
-            $fromParentId,
-            RelationKind::Inheritance->value
-        ));
-    }
-
-
+    // ⚠️ **Hier standen die fünf Leser des Baumes** — `inheritanceEdgeTo()`, `childEdgesOf()`,
+    // `nextPositionUnder()`, `allInheritanceEdges()` und `reparentChildEdges()` (TASK-018,
+    // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Vererbung ist keine Kantenart mehr,
+    // sondern `nodes.parent_node_id` mit `nodes.sort_order`; ihre Ablösung steht in
+    // {@see WpdbNodeRepository}. **Damit fällt auch jede `kind <> inheritance`-Bedingung hier**:
+    // eine lebende Zeile dieser Tabelle ist nie mehr eine Vererbung.*
 
     public function nextFieldPositionUnder(int $ownerId): int
     {
         global $wpdb;
 
         $highest = Query::value('naechste Stelle der Felder lesen', $wpdb->prepare(
-            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind <> %s',
-            $ownerId,
-            RelationKind::Inheritance->value
+            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d',
+            $ownerId
         ));
 
         return $highest === null ? 0 : (int) $highest + 1;
@@ -243,9 +186,9 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
             'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
              FROM ' . Schema::table('relations') . "
-             WHERE from_node_id IN ({$places}) AND kind <> %s
+             WHERE from_node_id IN ({$places})
              ORDER BY sort_order ASC, id ASC",
-            [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+            array_map(intval(...), $ownerIds)
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -267,9 +210,9 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
             'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
              FROM ' . Schema::table('relations') . "
-             WHERE to_node_id IN ({$places}) AND kind <> %s
+             WHERE to_node_id IN ({$places})
              ORDER BY from_node_id ASC, sort_order ASC, id ASC",
-            [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
+            array_map(intval(...), $targetIds)
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -303,13 +246,14 @@ final class WpdbRelationRepository implements RelationRepository
              FROM {$schatten} h
              INNER JOIN (
                  SELECT id, MAX(version) AS version FROM {$schatten}
-                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
+                 WHERE from_node_id IN ({$places}) AND parked_by_group_id IS NOT NULL
                  GROUP BY id
              ) neuste ON neuste.id = h.id AND neuste.version = h.version
              WHERE h.parked_by_group_id IS NOT NULL
+               AND h.kind <> %s
                AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)
              ORDER BY h.sort_order ASC, h.id ASC",
-            [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
+            [...array_map(intval(...), $ownerIds), self::RETIRED_INHERITANCE_KIND]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);

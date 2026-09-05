@@ -23,7 +23,6 @@ require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 wp_set_current_user(1);
 
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\RelationKind;
 use Taxmod\WordPress\Plugin;
 
 $failed = 0;
@@ -73,7 +72,7 @@ foreach ($wpdb->get_results("SELECT kind, (name <> '') AS named, COUNT(*) c FROM
 $thirdKind = 0;
 
 foreach ($kinds as $what => $count) {
-    if (str_ends_with($what, ' unnamed') && ! str_starts_with($what, RelationKind::Inheritance->value)) {
+    if (str_ends_with($what, ' unnamed')) {
         $thirdKind += $count;
     }
 }

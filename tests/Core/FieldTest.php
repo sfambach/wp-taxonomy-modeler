@@ -107,17 +107,15 @@ final class FieldTest extends TestCase
         $identities  = new CountingIdentities();
 
         $make = function (string $name, ?Node $parent) use ($identities): Node {
-            $node = Node::create($identities->next(), $name, $parent?->path);
+            // ⚠️ *Eine Zeile statt zweier, seit TASK-018* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+            $node = Node::create(
+                $identities->next(),
+                $name,
+                $parent?->path,
+                $parent?->id,
+                $parent === null ? 0 : $this->nodes->nextPositionUnder($parent->id)
+            );
             $this->nodes->add($node);
-
-            if ($parent !== null) {
-                $this->edges->add(Relation::inheritance(
-                    $identities->next(),
-                    $parent->id,
-                    $node->id,
-                    $this->edges->nextPositionUnder($parent->id)
-                ));
-            }
 
             return $node;
         };
@@ -205,7 +203,6 @@ final class FieldTest extends TestCase
         self::assertTrue(RelationKind::Setting->isComposition());
         self::assertTrue(RelationKind::Composition->isComposition());
         self::assertFalse(RelationKind::Aggregation->isComposition());
-        self::assertFalse(RelationKind::Inheritance->isComposition());
     }
 
     /**

@@ -102,12 +102,15 @@ final class ModelEditor
         // Ding erster Ordnung, das eigene Einstellungen und Labels trägt (C8); nur die Nummer kommt
         // nicht mehr aus einem geteilten Topf. **`0` heisst «vergib eine»**, und der Speicher gibt
         // die geschriebene Zeile mit ihrer Nummer zurück.*
-        $node = $this->nodes->add(Node::create(0, $name, $parent->path));
-        $edge = $this->relations->add(Relation::inheritance(
+        // ⚠️ *Eine Zeile statt zweier, seit TASK-018* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+        // *Vater und Stelle kommen **mit** dem Knoten; vorher folgte gleich danach eine
+        // Vererbungskante, und zwischen den beiden Schreibvorgängen war der Knoten kurz nirgends.*
+        $node = $this->nodes->add(Node::create(
             0,
+            $name,
+            $parent->path,
             $parent->id,
-            $node->id,
-            $this->relations->nextPositionUnder($parent->id)
+            $this->nodes->nextPositionUnder($parent->id)
         ));
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
 
@@ -331,36 +334,41 @@ final class ModelEditor
         return $hidden;
     }
 
-    public function hidePlacement(int $nodeId, ?bool $hide = null): ?Relation
+    /**
+     * ⚠️ **Gibt seit TASK-018 einen `Node` zurück und keine `Relation`**
+     * ([D-581](../../../docs/NewConcept/90-decision-log.md)). *`hide` sass auf der Vererbungskante,
+     * und mit ihr sind **alle** seine Benutzer umgezogen — die Angabe steht jetzt am Knoten.*
+     */
+    public function hidePlacement(int $nodeId, ?bool $hide = null): ?Node
     {
-        $edge = $this->relations->inheritanceEdgeTo($nodeId);
+        $node = $this->nodes->find($nodeId);
 
-        // ⚠️ *The root has no inheritance edge, so it cannot be hidden — correct rather than a gap
+        // ⚠️ *The root has no placement, so it cannot be hidden — correct rather than a gap
         // ([D-194](../../../docs/NewConcept/90-decision-log.md)): it is machinery. Answering `null`
         // keeps the caller from having to know that.*
-        if ($edge === null) {
+        if ($node === null || $node->parentNodeId === null) {
             return null;
         }
 
         // ⚠️ *`null` means «the other way», which is what a switch in a tree row wants. An explicit
         // value is for callers that know the state they want — a data pack, a migration, a test.*
-        $wanted = $hide ?? ! $edge->hide;
-        $hidden = $edge->withHide($wanted);
+        $wanted   = $hide ?? ! $node->hide;
+        $versteckt = $node->withHide($wanted);
 
-        if ($hidden === $edge) {
-            return $edge;
+        if ($versteckt === $node) {
+            return $node;
         }
 
-        $this->relations->save($hidden, $edge->version);
+        $this->nodes->save($versteckt, $node->version);
         $this->changelog->record(
-            $edge->id,
-            'relation',
+            $node->id,
+            'node',
             $wanted ? 'hidden' : 'shown',
-            $edge->hide ? '1' : '0',
+            $node->hide ? '1' : '0',
             $wanted ? '1' : '0'
         );
 
-        return $hidden;
+        return $versteckt;
     }
 
     /**
@@ -874,21 +882,14 @@ final class ModelEditor
             throw NodeIsProtected::named($node->name);
         }
 
-        $edge        = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $grandparent = $this->nodes->byId($edge->fromNodeId);
+        $grandparent = $this->nodes->byId($node->parentNodeId ?? throw ImpossibleMove::ofTheRoot());
 
         // ⚠️ **One row per promoted child, not one row saying *the children moved*** (D-348).
         // A restore has to know **which** child went **where** to put it back, and *these
         // children moved* is not an answer. Read before the move, written in one statement.
         $promoted = [];
 
-        foreach ($this->relations->childEdgesOf($id) as $childEdge) {
-            $child = $this->nodes->find($childEdge->toNodeId);
-
-            if ($child === null) {
-                continue;
-            }
-
+        foreach ($this->nodes->childrenOf($node) as $child) {
             $promoted[] = [
                 'ownerId'   => $child->id,
                 'ownerKind' => 'node',
@@ -898,10 +899,14 @@ final class ModelEditor
             ];
         }
 
-        // Both halves in one statement each: the edges repoint together, and the paths of every
+        // Both halves in one statement each: the children repoint together, and the paths of every
         // descendant are rewritten by dropping this node out of the middle of them. Done child
         // by child, either would be a write per row (`CD-7`).
-        $this->relations->reparentChildEdges($id, $grandparent->id, $this->relations->nextPositionUnder($grandparent->id));
+        //
+        // ⚠️ *Zwei Anweisungen auf **dieselbe** Tabelle, seit TASK-018 — vorher traf die erste
+        // `relations` und die zweite `nodes`. Die Reihenfolge bleibt trotzdem: erst umhängen, dann
+        // die Pfade nachziehen, sonst zieht der zweite Lauf Pfade nach, die noch nicht gelten.*
+        $this->nodes->reparentChildren($id, $grandparent->id, $this->nodes->nextPositionUnder($grandparent->id));
         $this->nodes->moveSubtree($node->path, $grandparent->path);
 
         // The bracket opens here and the parking joins it, so both are one act (D-348).
@@ -915,18 +920,29 @@ final class ModelEditor
         return $this->reparent($id, $this->framework->trash(), 'parked', $group);
     }
 
-    /** Put a node at a different place among its siblings. Order lives on the edge, not the node. */
+    /**
+     * Put a node at a different place among its siblings.
+     *
+     * ⚠️ *Die Reihenfolge steht seit TASK-018 **am Knoten**, nicht an der Kante
+     * ([D-581](../../../docs/NewConcept/90-decision-log.md)) — sein «`sort_order` wandert an den
+     * Knoten».*
+     */
     public function reorder(int $id, int $sortOrder): void
     {
-        $edge = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $moved = $edge->movedTo(max(0, $sortOrder));
+        $node = $this->nodes->byId($id);
 
-        if ($moved === $edge) {
+        if ($node->parentNodeId === null) {
+            throw ImpossibleMove::ofTheRoot();
+        }
+
+        $moved = $node->movedTo(max(0, $sortOrder));
+
+        if ($moved === $node) {
             return;
         }
 
-        $this->relations->save($moved, $edge->version);
-        $this->changelog->record($id, 'node', 'reordered', (string) $edge->sortOrder, (string) $moved->sortOrder);
+        $this->nodes->save($moved, $node->version);
+        $this->changelog->record($id, 'node', 'reordered', (string) $node->sortOrder, (string) $moved->sortOrder);
     }
 
     /**
@@ -1048,13 +1064,21 @@ final class ModelEditor
             }
         }
 
-        foreach ($own as $edge) {
-            if ($edge->id === $edgeId) {
-                $this->swapAmong($edge, $own, $direction);
+        $this->swapAmong(
+            $edgeId,
+            array_map(
+                static fn (Relation $e): array => ['id' => $e->id, 'sortOrder' => $e->sortOrder, 'version' => $e->version],
+                $own
+            ),
+            $direction,
+            'relation',
+            function (int $wen, int $stelle, int $erwartet): int {
+                $kante = ($this->relations->byId($wen) ?? throw ImpossibleMove::ofTheRoot())->movedTo($stelle);
+                $this->relations->save($kante, $erwartet);
 
-                return;
+                return $kante->version;
             }
-        }
+        );
     }
 
 
@@ -1386,65 +1410,95 @@ final class ModelEditor
      */
     private function swapWithNeighbour(int $id, int $direction): void
     {
-        $edge     = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $siblings = $this->relations->childEdgesOf($edge->fromNodeId);
+        $node = $this->nodes->byId($id);
 
-        $this->swapAmong($edge, $siblings, $direction, $id, 'node');
+        if ($node->parentNodeId === null) {
+            throw ImpossibleMove::ofTheRoot();
+        }
+
+        $geschwister = $this->nodes->childrenOf($this->nodes->byId($node->parentNodeId));
+
+        $this->swapAmong(
+            $id,
+            array_map(
+                static fn (Node $n): array => ['id' => $n->id, 'sortOrder' => $n->sortOrder, 'version' => $n->version],
+                $geschwister
+            ),
+            $direction,
+            'node',
+            function (int $wen, int $stelle, int $erwartet): int {
+                $knoten = $this->nodes->byId($wen)->movedTo($stelle);
+                $this->nodes->save($knoten, $erwartet);
+
+                return $knoten->version;
+            }
+        );
     }
 
     /**
-     * Swap one edge with its neighbour in a given list — the whole of reordering, for both callers.
+     * Swap one thing with its neighbour in a given list — the whole of reordering, for both callers.
      *
      * ⚠️ **Extracted rather than copied** ([D-435](../../../docs/NewConcept/90-decision-log.md)): a
-     * node reorders its **inheritance** edge among its parent's children, an attribute reorders **its
-     * own** edge among the attributes its owner declares. *Two sibling lists, one column, one swap —
-     * and a second copy of the equal-positions trick below is exactly how the two would drift.*
+     * node reorders **itself** among its parent's children, an attribute reorders **its own** edge
+     * among the attributes its owner declares. *Two sibling lists, one column, one swap — and a
+     * second copy of the equal-positions trick below is exactly how the two would drift.*
      *
-     * @param list<Relation> $siblings In the order the list is drawn.
+     * ⚠️ **Seit TASK-018 sind es zwei **Tabellen** und nicht mehr zwei Listen einer Tabelle**
+     * ([D-581](../../../docs/NewConcept/90-decision-log.md)). *Die Reihenfolge eines Knotens steht in
+     * `nodes.sort_order`, die eines Feldes in `relations.sort_order`. **Darum reicht der Aufrufer
+     * jetzt das Schreiben herein** — die Rechnung darüber, wer wohin rutscht, bleibt genau einmal
+     * hier stehen, und sie ist der Teil, der zweimal falsch sein könnte.*
+     *
+     * @param list<array{id: int, sortOrder: int, version: int}> $siblings In the order the list is drawn.
+     * @param \Closure(int, int, int): int                       $move     Id, Zielstelle, erwartete
+     *                                                                     Fassung — gibt die neue zurück.
      */
-    private function swapAmong(Relation $edge, array $siblings, int $direction, ?int $subject = null, string $kind = 'relation'): void
+    private function swapAmong(int $subjectId, array $siblings, int $direction, string $kind, \Closure $move): void
     {
-
         $here = null;
 
         foreach ($siblings as $index => $sibling) {
-            if ($sibling->id === $edge->id) {
+            if ($sibling['id'] === $subjectId) {
                 $here = $index;
                 break;
             }
         }
 
-        $there = $here + $direction;
-
-        if ($here === null || ! isset($siblings[$there])) {
+        if ($here === null) {
             return;
         }
 
+        $there = $here + $direction;
+
+        if (! isset($siblings[$there])) {
+            return;
+        }
+
+        $mir   = $siblings[$here];
         $other = $siblings[$there];
 
         // Positions may be equal — nothing forbids it, and the list then falls back to id
         // order. Swapping equal numbers would move nothing, so they are forced apart.
-        $mine  = $edge->sortOrder;
-        $yours = $other->sortOrder;
+        $mine  = $mir['sortOrder'];
+        $yours = $other['sortOrder'];
 
         if ($mine === $yours) {
             $mine  = $here;
             $yours = $there;
         }
 
-        // ⚠️ **Über eine freie Stelle und nicht direkt, seit `(from_node_id, kind, sort_order)` eindeutig
-        // ist** (TASK-012). *Ein Tausch schreibt zwangsläufig einmal auf eine Stelle, die noch besetzt
-        // ist — **MySQL weist das zurück, und `$wpdb` sagt darüber nichts**: `package2-check` meldete
-        // «moving up swaps them» als rot, ohne dass irgendwo ein Fehler stand. Also erst zur Seite,
-        // dann der andere, dann hin.*
-        $frei = 1 + max(array_map(static fn (Relation $e): int => $e->sortOrder, $siblings));
+        // ⚠️ **Über eine freie Stelle und nicht direkt, seit die Stelle eindeutig ist** (TASK-012,
+        // und seit TASK-018 gilt derselbe Schlüsseltyp auch für `nodes`). *Ein Tausch schreibt
+        // zwangsläufig einmal auf eine Stelle, die noch besetzt ist — **MySQL weist das zurück, und
+        // `$wpdb` sagt darüber nichts**: `package2-check` meldete «moving up swaps them» als rot,
+        // ohne dass irgendwo ein Fehler stand. Also erst zur Seite, dann der andere, dann hin.*
+        $frei = 1 + max(array_map(static fn (array $e): int => $e['sortOrder'], $siblings));
 
-        $beiseite = $edge->movedTo($frei);
-        $this->relations->save($beiseite, $edge->version);
-        $this->relations->save($other->movedTo($mine), $other->version);
-        $this->relations->save($beiseite->movedTo($yours), $beiseite->version);
+        $fassung = $move($subjectId, $frei, $mir['version']);
+        $move($other['id'], $mine, $other['version']);
+        $move($subjectId, $yours, $fassung);
 
-        $this->changelog->record($subject ?? $edge->id, $kind, 'reordered', (string) $here, (string) $there);
+        $this->changelog->record($subjectId, $kind, 'reordered', (string) $here, (string) $there);
     }
 
     /**
@@ -1462,7 +1516,9 @@ final class ModelEditor
             throw NodeIsProtected::named($node->name);
         }
 
-        $edge = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
+        if ($node->parentNodeId === null) {
+            throw ImpossibleMove::ofTheRoot();
+        }
 
         // A node dropped onto its own descendant would cut its whole subtree out of the tree,
         // silently. The path already answers this — that is what a materialised path is for.
@@ -1470,16 +1526,18 @@ final class ModelEditor
             throw ImpossibleMove::intoItsOwnDescendant($node->name);
         }
 
-        $moved = $node->movedUnder($newParent->path);
+        // ⚠️ *Ein Schreibvorgang statt zweier, seit TASK-018* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+        // *Vorher zog die Kante um und der Pfad hinterher; **zwischen den beiden hing der Knoten an
+        // zwei verschiedenen Vätern**, je nachdem, wen man fragte.*
+        $moved = $node->movedUnder(
+            $newParent->path,
+            $newParent->id,
+            $this->nodes->nextPositionUnder($newParent->id)
+        );
 
         if ($moved === $node) {
             return $node;
         }
-
-        $this->relations->save(
-            $edge->reparentedTo($newParent->id, $this->relations->nextPositionUnder($newParent->id)),
-            $edge->version
-        );
 
         $this->nodes->save($moved, $node->version);
         $this->nodes->moveSubtree($node->path, $moved->path);

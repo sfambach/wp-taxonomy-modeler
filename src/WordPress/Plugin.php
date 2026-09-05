@@ -462,7 +462,7 @@ final class Plugin
 
         return new NodesScreen(
             $this->editor(),
-            new Tree(new WpdbNodeRepository(), new WpdbRelationRepository()),
+            new Tree(new WpdbNodeRepository()),
             $labels,
             new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
             $this->frameworkNodes(),

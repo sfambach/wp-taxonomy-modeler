@@ -35,44 +35,15 @@ interface RelationRepository
      */
     public function save(Relation $relation, int $expectedVersion): void;
 
-    /** The inheritance edge that puts this node where it is, or null for the root. */
-    public function inheritanceEdgeTo(int $childId): ?Relation;
-
-    /**
-     * The inheritance edges under a parent, in `position` order.
-     *
-     * @return list<Relation>
-     */
-    public function childEdgesOf(int $parentId): array;
-
-    /** One past the last position among a parent's children — where a new child goes. */
-    public function nextPositionUnder(int $parentId): int;
+    // ⚠️ **Hier standen `inheritanceEdgeTo()`, `childEdgesOf()`, `nextPositionUnder()`,
+    // `reparentChildEdges()` und `allInheritanceEdges()` — der ganze Baum** (TASK-018,
+    // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Vererbung ist keine Kantenart mehr,
+    // sondern `nodes.parent_node_id` mit `nodes.sort_order`; ihre Leser stehen jetzt in
+    // {@see NodeRepository}. **Damit verschwindet auch die Frage «ist es Vererbung?»**, die
+    // gemessen 15 von 19 Verzweigungen auf die Kantenart stellten.*
 
     /** One past the last position among a node's **attributes** — where a new one goes. */
     public function nextFieldPositionUnder(int $ownerId): int;
-
-    /**
-     * Hang every child of one parent under another, in one statement.
-     *
-     * ⚠️ **Exists so that [U4](../../../docs/NewConcept/20-interaction.md) is not a loop.**
-     * Deleting only a node promotes its children to their grandparent; done one edge at a time
-     * that is a write per child, which `CD-7` forbids.
-     *
-     * @param int $startPosition Where the promoted children are placed among their new
-     *                           siblings — their relative order is kept.
-     */
-    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void;
-
-    /**
-     * Every inheritance edge in the model.
-     *
-     * ⚠️ **Deliberately unbounded, because the model is small by design.** This is a modeller:
-     * thousands of *records* are unremarkable, but the model itself stays in the hundreds
-     * (D-308). Asking per parent instead would be one query per level.
-     *
-     * @return list<Relation>
-     */
-    public function allInheritanceEdges(): array;
 
     /**
      * The attribute edges owned by any of these nodes — everything that is not inheritance.

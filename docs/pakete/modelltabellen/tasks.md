@@ -475,11 +475,84 @@ wird ([D-312](../../NewConcept/90-decision-log.md)). **Zwei Kerntests und ein Ab
 `package7-check` tragen den ersten Befund sichtbar als `markTestIncomplete`** statt gelöscht zu sein.*
 
 ```text
-[ ] TASK-018  Vererbung wird nodes.parent_node_id + nodes.sort_order
+[x] TASK-018  Vererbung wird nodes.parent_node_id + nodes.sort_order
 ```
 
-[D-581](../../NewConcept/90-decision-log.md). **`relations` fällt von 166 auf 39 Zeilen.** Betroffen
-ist alles, was heute «ist es Vererbung?» fragt — 15 von 19 Verzweigungen auf `RelationKind`.
+[D-581](../../NewConcept/90-decision-log.md). Betroffen ist alles, was «ist es Vererbung?» fragt —
+15 von 19 Verzweigungen auf `RelationKind`.
+
+**Gebaut am 2026-09-05, Schema 28.** `nodes` bekommt `parent_node_id`, `sort_order` und `hide`, der
+Schlüssel `one_place` geht über `(parent_node_id, sort_order)`; im Kern heissen sie
+`Node::$parentNodeId`, `$sortOrder`, `$hide`. **`RelationKind::Inheritance` ist gefallen**, mit ihm
+`Relation::inheritance()` und die fünf Baumleser des `RelationRepository` — ihre Ablösung steht im
+`NodeRepository` (`nextPositionUnder()`, `reparentChildren()`, `allPlacements()`).
+
+⚠️ **Die Zahlen vorher und nachher, und sie sind gezählt und nicht erinnert.** *Die Wanderung nimmt
+sie selbst, vor und nach dem Schreiben, und **bricht mit einer Ausnahme ab, wenn eine abweicht** —
+dann bleibt die Fassungsnummer stehen, was die einzige Art ist, wie `$wpdb` etwas melden kann.*
+
+| | vorher | nachher |
+|---|---|---|
+| Knoten | 137 | 137 |
+| Einordnungen (Vererbungskanten → Spalte) | 136 | 136 |
+| Wurzeln | 1 | 1 |
+| Tiefen 0…5 | 1 · 6 · 29 · 46 · 41 · 14 | 1 · 6 · 29 · 46 · 41 · 14 |
+| Geschwisterreihenfolge (Prüfsumme über *Vater : Stelle : Kind*) | `ab865ea5…` | `ab865ea5…` |
+| `hide` | 9 (an Kanten) | 9 (an Knoten) |
+| `relations` | 193 | **57** |
+
+⚠️ **Die Zahl aus der Entscheidung war eine ältere:** *D-581 rechnete mit 166 → 39. Das Modell ist
+seither gewachsen; das Verhältnis stimmt — **mehr als zwei Drittel der Kantentabelle waren Baum**.*
+
+⚠️ **Umkehrbar, und das ist nachgemessen:** *jede der 136 Knotenzeilen ging vor dem Schreiben nach
+`nodes_history`, jede der 136 Kanten als gelöschte Zeile nach `relations_history` —
+**136 von 136 in beiden Richtungen deckungsgleich**. Die Kanten bekommen dabei **keine**
+Änderungsgruppe in `parked_by_group_id`: sie sind abgelöst und nicht geparkt, und eine Gruppe hätte
+136 Geister in die Liste «entfernte Felder» gestellt.*
+
+⚠️ **`hide` ist mitgekommen, und das war keine Wahl.** *[D-581](../../NewConcept/90-decision-log.md)
+hält fest, dass `relations.hide` mit dieser Entscheidung **alle** seine Benutzer verliert, weil alle
+Vererbungskanten sind. Fällt die Kante, ginge die Angabe verloren. **Was `hide` ist** — Spalte oder
+Einstellung — bleibt vertagt, auf sein «das besprechen wir, wenn wir Settings nochmal umwerfen».
+`relations.hide` bleibt stehen: sie trägt weiter das Verstecken eines **Feldes**.*
+
+⚠️ **Zwei Schemaschritte sind gestrichen, und das gehört sichtbar** (`PR-9`): *`moveHideOntoTheEdge()`
+(Fassung 12) hätte `nodes.hide` bei jedem Aufstieg wieder entfernt — **nach** dem `dbDelta`, das sie
+gerade angelegt hat. `backfillInheritanceEdges()` (Fassung 3) hätte beim nächsten Aufstieg 136 Kanten
+neu erfunden. **Beide waren richtig für ihre Fassung und sind jetzt Fallen**; eine Installation, die
+noch unter Fassung 12 steht, verliert dadurch nichts — ihr `nodes.hide` steht schon dort, wo die
+Angabe hingehört.*
+
+⚠️ **Ein Wächter hat den ganzen Umzug bezahlt gemacht, ohne dafür gebaut worden zu sein:**
+*`cleanup-screen-check` meldete **101 lebende Knoten als Rückstand**. `Residue::nodesWithoutConnections()`
+fragte «keine Kante in beide Richtungen» — und die Vererbungskante war gerade fort. **Ein
+Aufräumschirm, der 101 gesunde Knoten zum Wegwerfen anbietet, ist schlimmer als keiner.***
+
+**Neu am Netz:** [`inheritance-column-check.php`](../../../scripts/dev/inheritance-column-check.php)
+— die drei Spalten lebend und im Schatten, der Schlüssel über genau zwei Spalten, keine lebende
+Vererbungskante mehr, **eine Wurzel, kein Zyklus, kein Kind ohne Vater**, der Pfad folgt der Spalte,
+jede Einordnung ist im Schatten wiederzufinden, und die gemessene Gestalt ist noch die von der
+Wanderung.
+
+**Mitgezogen sind:** `package2-check` (Abschnitt 1 und 2 lesen die Spalte statt der Kante),
+`sort-order-check` (Abschnitt 4 tauscht jetzt zwei **Felder**, denn der Schlüssel
+`(from_node_id, kind, sort_order)` bewacht nur noch die), `preview-check`, `setting-write-check`,
+`cleanup-screen-check` (seine Wiese muss beides kappen), `setting-branch-edge-check`, `used-by-check`
+und `package5-check`. **Keiner davon ist entschärft** — jeder prüft dieselbe Zusage an der Stelle, an
+der sie heute steht.
+
+⚠️ **Drei Befunde stehen im Eingang:** *`INF-034` — `SeededFrameworkNodes` bekommt einen
+Kantenspeicher, den sie nicht mehr liest (58 Aufrufstellen, fällt mit TASK-032); `INF-035` —
+**`labels.owner_id` nennt ihren Raum nicht**, und seit ein Knoten keine Kante mehr anlegt, laufen die
+beiden Id-Zähler verschieden schnell und treffen sich; `INF-036` — `always-on-check` ist über der
+Decke, aus Gründen, die diesen Umbau nicht berühren.*
+
+⚠️ **Ein Fehler im Ablauf, und er gehört ins Protokoll:** *der Probelauf war vorgesehen und ist nicht
+gelaufen. **Die Wanderung startete von selbst**, als eine Messung `wp-load.php` einband — der Plugin
+ruft beim Laden `Schema::ensureCurrent()`, und die Fassungsnummer stand schon auf 28. Sie hat
+getan, was sie tun sollte, und ihre eigene Vorher/Nachher-Prüfung bestanden; **verlassen konnte man
+sich darauf erst hinterher**. Wer eine Schemafassung hebt, hat die Wanderung ab diesem Augenblick
+scharf gestellt — jeder `wp-load.php` löst sie aus.*
 
 ```text
 [ ] TASK-019  labels und label_texts; name zieht aus nodes und relations hinein

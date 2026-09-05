@@ -84,7 +84,7 @@ $rendering = new Rendering(
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $fw)
 );
 
-$rows = (new Tree($nodes, $edges))->rowsUnder($fw->rootOf(Branch::Model), [], [], false);
+$rows = (new Tree($nodes))->rowsUnder($fw->rootOf(Branch::Model), [], [], false);
 
 if ($rows === []) {
     fwrite(STDERR, "Keine Knoten unter Model — nichts zu waehlen.\n");

@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Persistence;
 
-use Taxmod\Core\Model\RelationKind;
 
 /**
  * Die Tabellen des Modells (D-083), auf der Aktivierung angelegt und von einer gespeicherten
@@ -252,7 +251,38 @@ final class Schema
      * ⚠️ *Gemessen am 2026-09-05: **14 geparkte Kanten, keine einzige mit einer Wertzeile.** Es geht
      * nichts verloren, und die Regel steht, bevor der erste Fall sie erzwingt.*
      */
-    public const VERSION = 27;
+    /**
+     * Fassung 28: **die Vererbung wird eine Spalte** — `nodes.parent_node_id` mit
+     * `nodes.sort_order`, dazu `nodes.hide` (TASK-018,
+     * [D-581](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Der gefährlichste Umzug des Pakets, weil er die Struktur selbst bewegt.** *Darum zählt
+     * {@see self::moveInheritanceOntoTheNode()} **vorher und nachher dieselben fünf Zahlen** —
+     * Knoten, Vererbungskanten, Wurzeln, Tiefe, Geschwisterreihenfolge — und **bricht ab, statt
+     * einen Vater zu erfinden**, wenn ein Kind zwei Väter hat, ein Zyklus dasteht oder ein Ziel
+     * fehlt.*
+     *
+     * ⚠️ **Umkehrbar:** *jede berührte Knotenzeile geht vorher in den Schatten, jede Vererbungskante
+     * wandert als gelöschte Zeile nach `relations_history`, und beides trägt dieselbe
+     * Änderungsgruppe.*
+     *
+     * ⚠️ **`hide` kommt mit, und das ist kein Nebenprodukt:** *[D-581](../../../docs/NewConcept/90-decision-log.md)
+     * hält fest, dass `relations.hide` mit dieser Entscheidung **alle** seine Benutzer verliert, weil
+     * alle Vererbungskanten sind. Fällt die Kante, ginge die Angabe sonst verloren. **Was `hide`
+     * ist** — Spalte oder Einstellung — hat der Eigentümer ausdrücklich vertagt, und dieser Umzug
+     * beantwortet die Frage nicht.*
+     */
+    public const VERSION = 28;
+
+    /**
+     * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
+     *
+     * ⚠️ *Es steht hier als Zeichenkette und nicht mehr als Aufzählungsfall, weil
+     * `RelationKind::Inheritance` gefallen ist ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+     * **Alte Wanderungen lesen alte Daten** — sie dürfen nicht davon abhängen, dass der Kern das
+     * Wort noch kennt.*
+     */
+    private const RETIRED_INHERITANCE_KIND = 'inheritance';
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -398,12 +428,10 @@ final class Schema
         }
 
         self::giveEveryTableItsOwnIdSpace();
-        self::backfillInheritanceEdges();
         self::dropRetiredColumns();
         self::widenSettingUniqueKey();
         self::moveHideOutOfSettings();
         self::shortenRangeKeys();
-        self::moveHideOntoTheEdge();
         self::moveTestFlagIntoKind();
         self::dropTheOneValueKey();
         self::moveMultiplicityOntoTheEdge();
@@ -415,6 +443,11 @@ final class Schema
         // wieder an, es entfernt keine. Die Wanderung muss also laufen, wenn die Tabelle steht — und
         // sie räumt die Zeilen weg, bevor sie die Spalte fallen lässt (TASK-013).*
         self::moveParkingIntoTheShadow();
+
+        // ⚠️ **Nach `dbDelta`, weil die drei Spalten dastehen müssen, bevor etwas hineinwandert** —
+        // und **vor** {@see self::constrainRelationsToNodes()}, weil die Wanderung 136 Kantenzeilen
+        // entfernt und eine Bedingung, die auf sie zeigte, im Weg stünde (TASK-018).
+        self::moveInheritanceOntoTheNode();
 
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
@@ -513,58 +546,15 @@ final class Schema
         $wpdb->query("DROP TABLE {$tabelle}");
     }
 
-    /**
-     * `nodes.hide` goes; `hide` lives on the **edge** alone — schema 12.
-     *
-     * ⚠️ **The owner narrowed it once the access he thought was missing turned out to exist.** *He had
-     * said «we have no access to the inheritance edge at the moment, that is my problem here» — and
-     * measured, {@see \Taxmod\Core\Repository\RelationRepository::inheritanceEdgeTo()} is there with an
-     * implementation. On being shown that: **«then we only need it on the edge».***
-     *
-     * ⚠️ **And his reason is better than the mechanism.** *«I do not simply create a model node and then
-     * say I will not draw it — that would be nonsense. Where I would say it is on the **fields** of a
-     * model node, when I only want something in the background, to calculate with.» So hiding is about
-     * a **placement**, and a node-level flag had no use case behind it — [D-457](../../../docs/NewConcept/90-decision-log.md)
-     * gave it one on my reading of «both», not on his.*
-     *
-     * ⚠️ *Every one of the 7 hidden nodes has exactly one inheritance edge to travel to — measured
-     * before writing this, 7 of 7. **The root has none and can therefore never be hidden**, which is
-     * correct rather than a gap: it is machinery ([D-194](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    private static function moveHideOntoTheEdge(): void
-    {
-        global $wpdb;
-
-        $nodes = self::table('nodes');
-
-        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $nodes)) !== $nodes) {
-            return;
-        }
-
-        $present = $wpdb->get_col($wpdb->prepare(
-            'SELECT COLUMN_NAME FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
-            $nodes,
-            'hide'
-        ));
-
-        if ($present === []) {
-            return;
-        }
-
-        $relations = self::table('relations');
-
-        // ⚠️ *The value travels **before** the column goes, and the join is the inheritance edge —
-        // which is the one thing that puts a node in the tree ([D-014]).*
-        $wpdb->query(
-            "UPDATE {$relations} r
-             JOIN {$nodes} n ON n.id = r.to_node_id AND r.kind = 'inheritance'
-             SET r.hide = 1
-             WHERE n.hide = 1"
-        );
-
-        $wpdb->query("ALTER TABLE {$nodes} DROP COLUMN hide");
-    }
+    // ⚠️ **Hier stand `moveHideOntoTheEdge()` — Fassung 12 — und der Schritt ist gestrichen**
+    // (TASK-018, [D-581](../../../docs/NewConcept/90-decision-log.md)). *Er schob `nodes.hide` auf
+    // die Vererbungskante und liess die Spalte dann fallen. **Fassung 28 legt sie wieder an**, also
+    // hätte er sie bei jedem Aufstieg aufs Neue entfernt — und zwar **nach** `dbDelta`, das sie
+    // gerade angelegt hat. Das Streichen ist hier kein Aufräumen, sondern der sichtbare Teil der
+    // Entscheidung (`PR-9`).*
+    //
+    // ⚠️ *Eine Installation, die noch unter Fassung 12 steht, verliert dadurch nichts: ihre
+    // `nodes.hide` steht schon genau dort, wo die Angabe seit TASK-018 hingehört.*
 
     /**
      * `range_min`, `range_max` and `range_step` become `min`, `max` and `step` — schema 11.
@@ -1066,73 +1056,18 @@ final class Schema
         $wpdb->query("ALTER TABLE {$table} RENAME INDEX owner_key_path TO owner_key");
     }
 
-    /**
-     * Give every node that has a parent the inheritance edge it should always have had.
-     *
-     * ⚠️ **Version 1 and 2 stored the tree only as `nodes.path`** — but D-014 calls the path
-     * *derived, rebuildable, never a second truth*, and the truth it should derive from is the
-     * inheritance edge. Until this ran, the derived value **was** the only truth, which is the
-     * relation the concept forbids, the wrong way round.
-     *
-     * The parent is read back out of the path, which is exactly what the path is good for. It
-     * is a one-time pass over the existing nodes, so the row-by-row insert is not the N+1 that
-     * `CD-7` forbids — that rule is about the paths a person walks every day.
-     */
-    private static function backfillInheritanceEdges(): void
-    {
-        global $wpdb;
+    // ⚠️ **Hier stand `backfillInheritanceEdges()` — Fassung 3 — und der Schritt ist gestrichen**
+    // (TASK-018, [D-581](../../../docs/NewConcept/90-decision-log.md)). *Er legte für jeden Knoten,
+    // dessen Pfad einen Vater nennt, die fehlende Vererbungskante an. **Seit Fassung 28 gibt es
+    // keine mehr** — er hätte beim nächsten Aufstieg 136 Kanten neu erfunden, die die Wanderung
+    // gerade abgeräumt hat, und niemand hätte es gemerkt: `$wpdb` meldet ein gelungenes `INSERT`
+    // genauso wortlos wie ein misslungenes.*
+    //
+    // ⚠️ *Was er sicherstellte, stellt jetzt {@see self::moveInheritanceOntoTheNode()} sicher, und
+    // zwar zählend: **eine Wurzel, kein Zyklus, kein Kind ohne Vater.** Eine Installation, die von
+    // Fassung 2 kommt, bringt ihren Baum weiterhin nur im Pfad mit — dafür steht der Wächter
+    // `inheritance-column-check.php`, der genau das misst.*
 
-        $nodes     = self::table('nodes');
-        $relations = self::table('relations');
-
-        $orphans = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT n.id, n.path FROM {$nodes} n
-                 LEFT JOIN {$relations} r ON r.to_node_id = n.id AND r.kind = %s
-                 WHERE n.path LIKE %s AND r.id IS NULL
-                 ORDER BY LENGTH(n.path) ASC, n.id ASC",
-                RelationKind::Inheritance->value,
-                '%.%'
-            ),
-            ARRAY_A
-        );
-
-        foreach ($orphans ?: [] as $row) {
-            $segments = explode('.', (string) $row['path']);
-            array_pop($segments);
-            $parentId = (int) end($segments);
-
-            $position = $wpdb->get_var($wpdb->prepare(
-                "SELECT MAX(sort_order) FROM {$relations} WHERE from_node_id = %d AND kind = %s",
-                $parentId,
-                RelationKind::Inheritance->value
-            ));
-
-            $wpdb->insert(
-                $relations,
-                // ⚠️ *Ohne `id`: seit TASK-004 vergibt `relations` sie selbst.*
-                [
-                    'version'  => 1,
-                    'from_node_id'  => $parentId,
-                    'to_node_id'    => (int) $row['id'],
-                    'kind'     => RelationKind::Inheritance->value,
-                    'name'     => '',
-                    'sort_order' => $position === null ? 0 : (int) $position + 1,
-                ],
-                ['%d', '%d', '%d', '%s', '%s', '%d']
-            );
-        }
-    }
-
-    /**
-     * Remove columns a later version replaced. `dbDelta` never drops anything, so without this
-     * an upgraded installation would carry both the old column and the new one, and nobody
-     * reading the table could tell which one is true.
-     *
-     * ⚠️ **Dropping a column destroys what is in it.** That is only defensible here because
-     * `settings.key` never shipped with data in it — version 1 created the table and nothing
-     * ever wrote a row. **A future retirement that holds data must copy first and drop after.**
-     */
     /**
      * `records.is_test` wird `records.kind` — Schema 15.
      *
@@ -1451,6 +1386,234 @@ final class Schema
     }
 
     /**
+     * Fassung 28: die Vererbungskanten werden `nodes.parent_node_id`, `nodes.sort_order`, `nodes.hide`.
+     *
+     * ⚠️ **Erst messen, dann wandern, dann dieselben Zahlen noch einmal messen.** *Fünf Zahlen
+     * beschreiben die Struktur, ohne einen einzigen Namen zu nennen: **Knoten, Vererbungskanten,
+     * Wurzeln, Tiefenverteilung, Geschwisterreihenfolge**. Sie werden vorher genommen, nachher noch
+     * einmal, und wenn eine abweicht, endet der Aufstieg mit einer Ausnahme — die Fassungsnummer
+     * bleibt dann stehen, was die einzige Art ist, wie `$wpdb` überhaupt etwas melden kann.*
+     *
+     * ⚠️ **Vier Gründe, gar nicht erst anzufangen** (`PR-4` — geraten wird nicht): *ein Kind mit zwei
+     * Vätern, eine Kante ohne lebendes Ziel oder ohne lebenden Vater, ein Zyklus, oder mehr als eine
+     * Wurzel. **Jeder davon bricht ab, statt einen Vater zu erfinden.***
+     *
+     * ⚠️ **Umkehrbar:** *jede berührte Knotenzeile geht vorher in `nodes_history`, jede
+     * Vererbungskante nach `relations_history` mit Löschkennzeichen. Der Rückweg ist der Schatten und
+     * nichts sonst — es gibt keine zweite Spalte, die sich merkt, was hier geschah.*
+     *
+     * ⚠️ *`parked_by_group_id` bleibt bei den wandernden Kanten **leer**: sie sind nicht geparkt,
+     * sondern abgelöst, und `parkedFieldEdgesOf()` liest genau diese Spalte. Eine Gruppe darauf
+     * hätte 136 Geister in die Liste «entfernte Felder» gestellt.*
+     *
+     * @throws \RuntimeException Wenn die Struktur vorher nicht in Ordnung ist oder nachher nicht
+     *                           mehr dieselbe.
+     */
+    private static function moveInheritanceOntoTheNode(): void
+    {
+        global $wpdb;
+
+        $nodes     = self::table('nodes');
+        $relations = self::table('relations');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $nodes)) !== $nodes) {
+            return;
+        }
+
+        if (! self::hasColumn($nodes, 'parent_node_id') || ! self::hasColumn($relations, 'kind')) {
+            return;
+        }
+
+        $kanten = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, from_node_id, to_node_id, sort_order, hide FROM {$relations} WHERE kind = %s",
+            self::RETIRED_INHERITANCE_KIND
+        ), ARRAY_A) ?: [];
+
+        // Ein zweiter Lauf findet nichts zu tun. Nichts zu tun ist kein Fehler.
+        if ($kanten === []) {
+            return;
+        }
+
+        $vorher = self::countedShapeFromEdges($kanten, $nodes);
+
+        // ⚠️ *Die Wanderung selbst: Zeile für Zeile, weil jede ihren eigenen Vater bekommt. **Das ist
+        // nicht das N+1, das `CD-7` verbietet** — das ist ein einmaliger Lauf über ein Modell, das
+        // entwurfsgemäss in den Hunderten bleibt ([D-308](../../../docs/NewConcept/90-decision-log.md)).*
+        $gruppe = time();
+
+        foreach ($kanten as $kante) {
+            $kind = (int) $kante['to_node_id'];
+
+            Shadow::keepOne('nodes', $kind);
+
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$nodes}
+                 SET parent_node_id = %d, sort_order = %d, hide = %d, version = version + 1
+                 WHERE id = %d",
+                (int) $kante['from_node_id'],
+                (int) $kante['sort_order'],
+                (int) $kante['hide'],
+                $kind
+            ));
+        }
+
+        foreach ($kanten as $kante) {
+            Shadow::keepOne('relations', (int) $kante['id'], true);
+
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$relations} WHERE id = %d",
+                (int) $kante['id']
+            ));
+        }
+
+        $nachher = self::countedShapeFromColumns($nodes);
+
+        if ($vorher !== $nachher) {
+            throw new \RuntimeException(
+                'TASK-018: die Struktur nach der Wanderung ist nicht die von vorher. '
+                . 'Vorher ' . wp_json_encode($vorher) . ', nachher ' . wp_json_encode($nachher) . '. '
+                . 'Der Schatten haelt beide Staende; die Fassungsnummer bleibt stehen.'
+            );
+        }
+
+        // ⚠️ *Die Zahlen bleiben stehen, damit der Wächter sie nicht nachrechnen muss, sondern
+        // **vergleichen** kann — und damit in der Aufgabe nicht behauptet steht, was niemand mehr
+        // nachsehen kann.*
+        update_option('taxmod_task018_shape', ['group' => $gruppe, 'shape' => $nachher], false);
+    }
+
+    /**
+     * Die fünf Zahlen, aus den **Kanten** gelesen — und der Abbruch, wenn sie keinen Baum ergeben.
+     *
+     * @param  list<array<string,mixed>> $kanten
+     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     */
+    private static function countedShapeFromEdges(array $kanten, string $nodes): array
+    {
+        global $wpdb;
+
+        $alle  = array_map(intval(...), $wpdb->get_col("SELECT id FROM {$nodes}"));
+        $vater = [];
+
+        foreach ($kanten as $kante) {
+            $kind = (int) $kante['to_node_id'];
+
+            if (isset($vater[$kind])) {
+                throw new \RuntimeException('TASK-018: Knoten ' . $kind . ' hat mehr als einen Vater.');
+            }
+
+            $vater[$kind] = [(int) $kante['from_node_id'], (int) $kante['sort_order']];
+        }
+
+        return self::countedShape($alle, $vater);
+    }
+
+    /**
+     * Dieselben fünf Zahlen, aus den **Spalten** gelesen.
+     *
+     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     */
+    private static function countedShapeFromColumns(string $nodes): array
+    {
+        global $wpdb;
+
+        $alle  = [];
+        $vater = [];
+
+        foreach ($wpdb->get_results("SELECT id, parent_node_id, sort_order FROM {$nodes}", ARRAY_A) ?: [] as $zeile) {
+            $id     = (int) $zeile['id'];
+            $alle[] = $id;
+
+            if ($zeile['parent_node_id'] !== null) {
+                $vater[$id] = [(int) $zeile['parent_node_id'], (int) $zeile['sort_order']];
+            }
+        }
+
+        return self::countedShape($alle, $vater);
+    }
+
+    /**
+     * Die Struktur in fünf Zahlen — **und kein Name darunter**.
+     *
+     * ⚠️ *Namen bewegen sich aus anderen Gründen; sie hätten die Prüfung weich gemacht. Was gleich
+     * bleiben muss, ist: wie viele Knoten, wie viele Einordnungen, wie viele Wurzeln, wie tief, und
+     * **welches Kind auf welcher Stelle unter welchem Vater** — die letzte Zahl ist eine Prüfsumme
+     * über genau diese Tripel.*
+     *
+     * @param  list<int>                 $alle
+     * @param  array<int, array{int,int}> $vater Kind-Id => [Vater-Id, Stelle].
+     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     */
+    private static function countedShape(array $alle, array $vater): array
+    {
+        $lebt = array_flip($alle);
+
+        foreach ($vater as $kind => [$wer, $stelle]) {
+            if (! isset($lebt[$kind]) || ! isset($lebt[$wer])) {
+                throw new \RuntimeException(
+                    'TASK-018: die Einordnung ' . $wer . ' -> ' . $kind . ' nennt einen Knoten, den es nicht gibt.'
+                );
+            }
+        }
+
+        $tiefen  = [];
+        $wurzeln = 0;
+
+        foreach ($alle as $id) {
+            $tiefe   = 0;
+            $laeufer = $id;
+            $gesehen = [];
+
+            while (isset($vater[$laeufer])) {
+                if (isset($gesehen[$laeufer])) {
+                    throw new \RuntimeException('TASK-018: Knoten ' . $id . ' haengt in einem Zyklus.');
+                }
+
+                $gesehen[$laeufer] = true;
+                $laeufer           = $vater[$laeufer][0];
+                $tiefe++;
+            }
+
+            if ($tiefe === 0) {
+                $wurzeln++;
+            }
+
+            $tiefen[$tiefe] = ($tiefen[$tiefe] ?? 0) + 1;
+        }
+
+        ksort($tiefen);
+
+        $tripel = [];
+
+        foreach ($vater as $kind => [$wer, $stelle]) {
+            $tripel[] = $wer . ':' . $stelle . ':' . $kind;
+        }
+
+        sort($tripel);
+
+        return [
+            'nodes'    => count($alle),
+            'edges'    => count($vater),
+            'roots'    => $wurzeln,
+            'depths'   => $tiefen,
+            'siblings' => md5(implode('|', $tripel)),
+        ];
+    }
+
+    /** Ob eine Tabelle diese Spalte hat — die Frage, die vor jedem Wanderungsschritt steht. */
+    private static function hasColumn(string $table, string $column): bool
+    {
+        global $wpdb;
+
+        return (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+            $table,
+            $column
+        )) === 1;
+    }
+
+    /**
      * @return list<string>
      */
     private static function statements(): array
@@ -1472,11 +1635,15 @@ final class Schema
                 field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
+                parent_node_id bigint(20) unsigned DEFAULT NULL,
+                sort_order int(10) unsigned NOT NULL DEFAULT 0,
+                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY path (path),
                 KEY name (name),
                 KEY implemented_by (implemented_by),
-                KEY settings_record_id (settings_record_id)
+                KEY settings_record_id (settings_record_id),
+                UNIQUE KEY one_place (parent_node_id,sort_order)
             ) {$charset};",
 
             // ⚠️ **`parked_by_group_id` steht hier nicht mehr** ([D-619](../../../docs/NewConcept/90-decision-log.md),
@@ -1601,6 +1768,9 @@ final class Schema
                 field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
+                parent_node_id bigint(20) unsigned DEFAULT NULL,
+                sort_order int(10) unsigned NOT NULL DEFAULT 0,
+                hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

@@ -6,7 +6,6 @@ use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\FieldType;
-use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\NodeRepository;
 
 /**
@@ -29,7 +28,7 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
+        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -49,7 +48,7 @@ final class WpdbNodeRepository implements NodeRepository
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
             ...array_map(intval(...), $ids)
         ));
 
@@ -78,8 +77,14 @@ final class WpdbNodeRepository implements NodeRepository
             'path'           => $node->path,
             'field_type'     => $node->fieldType?->value,
             'implemented_by' => $node->implementedBy,
+            // ⚠️ *Seit TASK-018 kommt die Einordnung mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+            // *`null` ist die Wurzel und nicht «weiss nicht» — `$wpdb->insert()` schreibt dafür ein
+            // echtes NULL, was `prepare('%d', null)` nicht täte.*
+            'parent_node_id' => $node->parentNodeId,
+            'sort_order'     => $node->sortOrder,
+            'hide'           => $node->hide ? 1 : 0,
         ];
-        $formate = ['%d', '%s', '%s', '%s', '%s'];
+        $formate = ['%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -139,12 +144,17 @@ final class WpdbNodeRepository implements NodeRepository
                 // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
                 // Klassenangabe gelöscht (TASK-008).*
                 'implemented_by' => $node->implementedBy,
+                // ⚠️ *Fahren mit, aus demselben Grund wie `field_type` und `implemented_by`: ein
+                // Umbenennen hätte den Knoten sonst aus dem Baum geschrieben (TASK-018).*
+                'parent_node_id' => $node->parentNodeId,
+                'sort_order'     => $node->sortOrder,
+                'hide'           => $node->hide ? 1 : 0,
             ],
             [
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%s', '%s', '%s'],
+            ['%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d'],
             ['%d', '%d']
         );
 
@@ -187,18 +197,19 @@ final class WpdbNodeRepository implements NodeRepository
 
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
+        // ⚠️ *Kein Join mehr, seit die Einordnung eine Spalte ist* (TASK-018,
+        // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
+        // selektionstechnisch billiger».*
         $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
-            'SELECT r.from_node_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
-             FROM ' . Schema::table('relations') . ' r
-             INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
-             WHERE r.kind = %s AND r.hide = 0 AND r.from_node_id IN (' . $platzhalter . ')
-             ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC',
-            RelationKind::Inheritance->value,
+            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide
+             FROM ' . Schema::table('nodes') . '
+             WHERE hide = 0 AND parent_node_id IN (' . $platzhalter . ')
+             ORDER BY parent_node_id ASC, sort_order ASC, id ASC',
             ...$ids
         ));
 
         foreach ($rows ?: [] as $row) {
-            $kinder[(int) $row['from_node_id']][] = $this->hydrate($row);
+            $kinder[(int) $row['parent_node_id']][] = $this->hydrate($row);
         }
 
         return $kinder;
@@ -208,21 +219,78 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        // ⚠️ **Asked of the edges, not of the path.** The inheritance rows are the tree
-        // (D-014); the path is the shortcut derived from them. And order lives on the edge,
-        // because it is per parent — the same node under two parents may sit third under one
-        // and first under the other. One statement, one join, no walking (`CD-7`).
+        // ⚠️ **Asked of the column, not of the path** (TASK-018,
+        // [D-581](../../../docs/NewConcept/90-decision-log.md)). *`parent_node_id` **ist** der Baum;
+        // der Pfad ist die daraus abgeleitete Abkürzung ([D-014](../../../docs/NewConcept/90-decision-log.md))
+        // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
+        // war ein Join.*
         $rows = Query::rows('Kinder lesen', $wpdb->prepare(
-            'SELECT n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
-             FROM ' . Schema::table('relations') . ' r
-             INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
-             WHERE r.from_node_id = %d AND r.kind = %s
-             ORDER BY r.sort_order ASC, r.id ASC',
-            $parent->id,
-            RelationKind::Inheritance->value
+            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide
+             FROM ' . Schema::table('nodes') . '
+             WHERE parent_node_id = %d
+             ORDER BY sort_order ASC, id ASC',
+            $parent->id
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
+    }
+
+    public function nextPositionUnder(int $parentId): int
+    {
+        global $wpdb;
+
+        $hoechste = Query::value('naechste Stelle unter dem Knoten lesen', $wpdb->prepare(
+            'SELECT MAX(sort_order) FROM ' . Schema::table('nodes') . ' WHERE parent_node_id = %d',
+            $parentId
+        ));
+
+        return $hoechste === null ? 0 : (int) $hoechste + 1;
+    }
+
+    public function reparentChildren(int $fromParentId, int $toParentId, int $startPosition): void
+    {
+        global $wpdb;
+
+        // ⚠️ *Eine Anweisung, wie viele Kinder es auch sind. `sort_order + start` behält ihre
+        // Reihenfolge untereinander und setzt sie hinter ihre neuen Geschwister (`CD-7`).*
+        //
+        // ⚠️ *Auch eine Massenänderung hebt in den Schatten* ([D-536](../../../docs/NewConcept/90-decision-log.md))
+        // — **sie zählt `version` selbst hoch**, also muss der alte Stand vorher hinüber. *Bis
+        // TASK-018 lag der alte Stand in `relations` und `Shadow::keep()` stand in
+        // `reparentChildEdges()`; die Zusage zieht mit der Spalte um.*
+        Shadow::keep('nodes', 'parent_node_id = %d', [$fromParentId]);
+
+        $wpdb->query($wpdb->prepare(
+            'UPDATE ' . Schema::table('nodes') . '
+             SET parent_node_id = %d, sort_order = sort_order + %d, version = version + 1
+             WHERE parent_node_id = %d',
+            $toParentId,
+            $startPosition,
+            $fromParentId
+        ));
+    }
+
+    public function allPlacements(): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows(
+            'alle Einordnungen lesen',
+            'SELECT id, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
+                . ' ORDER BY parent_node_id ASC, sort_order ASC, id ASC'
+        );
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $aus[(int) $row['id']] = [
+                'parent'    => $row['parent_node_id'] === null ? null : (int) $row['parent_node_id'],
+                'sortOrder' => (int) $row['sort_order'],
+                'hide'      => (bool) (int) $row['hide'],
+            ];
+        }
+
+        return $aus;
     }
 
 
@@ -232,7 +300,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . '
+            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . '
              WHERE path LIKE %s
              ORDER BY path ASC',
             $wpdb->esc_like($root->path . '.') . '%'
@@ -461,7 +529,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes')
+            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
                 . " WHERE implemented_by IN ($slots) ORDER BY id",
             ...$classNames
         ));
@@ -493,6 +561,15 @@ final class WpdbNodeRepository implements NodeRepository
             isset($row['implemented_by']) && (string) $row['implemented_by'] !== ''
                 ? (string) $row['implemented_by']
                 : null,
+            // ⚠️ *Dieselbe Vorsicht wie oben, und hier zählt sie doppelt: `parent_node_id` ist bei der
+            // Wurzel echt `NULL`, und eine Abfrage ohne die Spalte darf daraus keine Wurzel machen.
+            // Beides liest sich hier als `null` — deshalb steht der Wächter daneben, der die eine
+            // Wurzel **zählt** (TASK-018).*
+            isset($row['parent_node_id']) && (int) $row['parent_node_id'] !== 0
+                ? (int) $row['parent_node_id']
+                : null,
+            (int) ($row['sort_order'] ?? 0),
+            (bool) (int) ($row['hide'] ?? 0),
         );
     }
 }

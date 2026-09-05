@@ -72,6 +72,40 @@ class Node extends Identity implements Renderable
          * eine Klasse nennt, die es nicht gibt.*
          */
         public readonly ?string $implementedBy = null,
+        /**
+         * Unter wem dieser Knoten hängt — `null` genau für die Wurzel
+         * ([D-581](../../../docs/NewConcept/90-decision-log.md), TASK-018).
+         *
+         * ⚠️ **Vererbung ist keine Kantenart mehr, sondern eine Spalte.** *Sein Satz: «Vererbung ist
+         * so unterschiedlich zu Relation, eigentlich würde hier eine `parent_node_id` im Knoten
+         * reichen, um das abzubilden, und wäre selektionstechnisch billiger.»*
+         *
+         * ⚠️ *Sie steht **am Kind**, nicht als Liste am Elternteil — eine Liste von Ids in einer
+         * Spalte wäre ein zusammengesetzter Wert, dasselbe Muster wie der Pfad.*
+         */
+        public readonly ?int $parentNodeId = null,
+        /**
+         * An welcher Stelle unter dem Elternteil — die zweite Hälfte von
+         * [D-581](../../../docs/NewConcept/90-decision-log.md).
+         *
+         * ⚠️ *Seine Annahme, er habe sie bei Vererbung «noch nie» benutzt, war falsch: **gemessen
+         * hatten alle Elternknoten mit mehreren Kindern lauter verschiedene Stellen**. Etwas hat
+         * dort sortiert.*
+         */
+        public readonly int $sortOrder = 0,
+        /**
+         * Ob diese Stelle im Baum gezeichnet wird.
+         *
+         * ⚠️ **Die Spalte kommt von der Vererbungskante hierher** (TASK-018). *[D-467](../../../docs/NewConcept/90-decision-log.md)
+         * hatte sie «auf die Kante allein» gelegt — **und [D-581](../../../docs/NewConcept/90-decision-log.md)
+         * hält fest, dass damit alle ihre Benutzer Vererbungskanten sind**. Fällt die Kante, muss die
+         * Angabe mitkommen, sonst geht sie verloren.*
+         *
+         * ⚠️ *Was `hide` **ist** — Spalte oder Einstellung —, hat der Eigentümer ausdrücklich
+         * vertagt: «das besprechen wir, wenn wir Settings nochmal umwerfen». Dieser Umzug beantwortet
+         * die Frage nicht, er bewahrt nur die Angabe.*
+         */
+        public readonly bool $hide = false,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
@@ -100,10 +134,49 @@ class Node extends Identity implements Renderable
         string $path,
         ?FieldType $fieldType = null,
         ?string $implementedBy = null,
+        ?int $parentNodeId = null,
+        int $sortOrder = 0,
+        bool $hide = false,
     ): self {
         $class = self::classHydrating($implementedBy) ?? static::class;
 
-        return new $class($id, $version, $name, $path, $fieldType, $implementedBy);
+        return new $class($id, $version, $name, $path, $fieldType, $implementedBy, $parentNodeId, $sortOrder, $hide);
+    }
+
+    /**
+     * Derselbe Knoten mit einzelnen geänderten Angaben — **benannt statt der Reihe nach**.
+     *
+     * ⚠️ **Aus demselben Anlass wie {@see Relation::copy()}, und der Anlass war ein Fehler.** *Mit
+     * neun Angaben ist ein `new static(...)` der Reihe nach eine Falle: der Umzug von TASK-018 hat
+     * drei davon hinzugefügt, und jede Stelle, die sie vergisst, setzt still eine Wurzel ohne
+     * Elternteil auf Stelle 0. **Die Fassung zählt der Aufrufer**, nicht diese Methode — ein
+     * Umbenennen hebt sie, ein Nachziehen der Id nicht.*
+     */
+    private function copy(
+        ?int $id = null,
+        ?int $version = null,
+        ?string $name = null,
+        ?string $path = null,
+        bool $clearFieldType = false,
+        ?FieldType $fieldType = null,
+        bool $clearImplementedBy = false,
+        ?string $implementedBy = null,
+        bool $clearParent = false,
+        ?int $parentNodeId = null,
+        ?int $sortOrder = null,
+        ?bool $hide = null,
+    ): static {
+        return new static(
+            $id ?? $this->id,
+            $version ?? $this->version,
+            $name ?? $this->name,
+            $path ?? $this->path,
+            $clearFieldType ? null : ($fieldType ?? $this->fieldType),
+            $clearImplementedBy ? null : ($implementedBy ?? $this->implementedBy),
+            $clearParent ? null : ($parentNodeId ?? $this->parentNodeId),
+            $sortOrder ?? $this->sortOrder,
+            $hide ?? $this->hide,
+        );
     }
 
     /** @var array<string, class-string<self>|null> Einmal je Klassenname gefragt, nicht je Zeile. */
@@ -135,8 +208,13 @@ class Node extends Identity implements Renderable
      * A node as it is first created: version 1, and its path decided by its parent.
      *
      * @param string|null $parentPath Null for a root, whose path is its own id.
+     *
+     * ⚠️ *Seit TASK-018 kommen Elternteil und Stelle **mit**, statt gleich danach als Kante
+     * geschrieben zu werden ([D-581](../../../docs/NewConcept/90-decision-log.md)). Der Pfad allein
+     * sagte den Vater schon, die Stelle nicht — und zwei Schreibwege für eine Einordnung sind zwei
+     * Gelegenheiten, verschieden zu antworten.*
      */
-    public static function create(int $id, string $name, ?string $parentPath): self
+    public static function create(int $id, string $name, ?string $parentPath, ?int $parentNodeId = null, int $sortOrder = 0): self
     {
         $name = self::cleanName($name);
 
@@ -145,6 +223,10 @@ class Node extends Identity implements Renderable
             1,
             $name,
             $parentPath === null ? (string) $id : $parentPath . '.' . $id,
+            null,
+            null,
+            $parentNodeId,
+            $sortOrder,
         );
     }
 
@@ -162,7 +244,7 @@ class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new static($this->id, $this->version + 1, $name, $this->path, $this->fieldType, $this->implementedBy);
+        return $this->copy(version: $this->version + 1, name: $name);
     }
 
     /**
@@ -171,15 +253,57 @@ class Node extends Identity implements Renderable
      * The path of every descendant changes with it; that is the repository's job, because it is
      * one statement in the database and would be N+1 here (`CD-7`).
      */
-    public function movedUnder(?string $parentPath): self
+    public function movedUnder(?string $parentPath, ?int $parentNodeId = null, ?int $sortOrder = null): self
     {
         $path = $parentPath === null ? (string) $this->id : $parentPath . '.' . $this->id;
 
-        if ($path === $this->path) {
+        $vater  = $parentNodeId ?? $this->parentNodeId;
+        $stelle = $sortOrder ?? $this->sortOrder;
+
+        if ($path === $this->path && $vater === $this->parentNodeId && $stelle === $this->sortOrder) {
             return $this;
         }
 
-        return new static($this->id, $this->version + 1, $this->name, $path, $this->fieldType, $this->implementedBy);
+        return $this->copy(
+            version: $this->version + 1,
+            path: $path,
+            clearParent: $vater === null,
+            parentNodeId: $vater,
+            sortOrder: $stelle,
+        );
+    }
+
+    /**
+     * Derselbe Knoten an einer anderen Stelle unter demselben Elternteil — eine Fassung weiter.
+     *
+     * ⚠️ *Die Ablösung von `Relation::movedTo()` für den Baum (TASK-018,
+     * [D-581](../../../docs/NewConcept/90-decision-log.md)): die Reihenfolge steht am Kind, also
+     * ändert sie der Knoten.*
+     */
+    public function movedTo(int $sortOrder): self
+    {
+        if ($sortOrder === $this->sortOrder) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, sortOrder: $sortOrder);
+    }
+
+    /**
+     * Dieselbe Stelle im Baum, gezeichnet oder nicht — eine Fassung weiter.
+     *
+     * ⚠️ *Kam mit TASK-018 von {@see Relation::withHide()} hierher, weil alle ihre Benutzer
+     * Vererbungskanten waren ([D-581](../../../docs/NewConcept/90-decision-log.md)). **Die Frage, ob
+     * `hide` eine Einstellung sein soll, ist damit nicht beantwortet** — der Eigentümer hat sie
+     * vertagt.*
+     */
+    public function withHide(bool $hide): self
+    {
+        if ($hide === $this->hide) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, hide: $hide);
     }
 
     /**
@@ -195,7 +319,7 @@ class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new static($this->id, $this->version + 1, $this->name, $this->path, $fieldType, $this->implementedBy);
+        return $this->copy(version: $this->version + 1, clearFieldType: $fieldType === null, fieldType: $fieldType);
     }
 
     /**
@@ -214,7 +338,7 @@ class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new static($this->id, $this->version + 1, $this->name, $this->path, $this->fieldType, $className);
+        return $this->copy(version: $this->version + 1, clearImplementedBy: $className === null, implementedBy: $className);
     }
 
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
@@ -246,7 +370,7 @@ class Node extends Identity implements Renderable
         array_pop($segmente);
         $segmente[] = (string) $id;
 
-        return new static($id, $this->version, $this->name, implode('.', $segmente), $this->fieldType, $this->implementedBy);
+        return $this->copy(id: $id, path: implode('.', $segmente));
     }
 
     /**

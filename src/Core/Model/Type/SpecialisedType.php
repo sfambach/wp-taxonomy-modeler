@@ -69,6 +69,9 @@ abstract class SpecialisedType extends Node
         string $path = '',
         ?FieldType $fieldType = null,
         ?string $implementedBy = null,
+        ?int $parentNodeId = null,
+        int $sortOrder = 0,
+        bool $hide = false,
     ) {
         parent::__construct(
             $id,
@@ -77,6 +80,9 @@ abstract class SpecialisedType extends Node
             $path,
             $fieldType,
             $implementedBy,
+            $parentNodeId,
+            $sortOrder,
+            $hide,
         );
     }
 

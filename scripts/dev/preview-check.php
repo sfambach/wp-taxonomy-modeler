@@ -132,10 +132,10 @@ $dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
     'Data Types'
 ));
 
+// ⚠️ *Aus der Spalte statt aus der Kante (TASK-018, [D-581](../../NewConcept/90-decision-log.md)).*
 $dataType = $dataTypeRoot === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT to_node_id FROM {$prefix}relations WHERE from_node_id = %d AND kind = %s ORDER BY sort_order ASC LIMIT 1",
-    $dataTypeRoot,
-    'inheritance'
+    "SELECT id FROM {$prefix}nodes WHERE parent_node_id = %d ORDER BY sort_order ASC LIMIT 1",
+    $dataTypeRoot
 ));
 
 check('a data type was found to test against', $dataType > 0, (string) $dataType);

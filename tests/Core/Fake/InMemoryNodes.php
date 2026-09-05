@@ -20,7 +20,11 @@ final class InMemoryNodes implements NodeRepository
     /** @var array<int,Node> */
     private array $rows = [];
 
-    /** Children are ordered by the edge, so the fake needs to see the edges too. */
+    /**
+     * ⚠️ *Der Kantenspeicher wird für den Baum nicht mehr gebraucht (TASK-018,
+     * [D-581](../../../docs/NewConcept/90-decision-log.md)) — **die Einordnung steht am Knoten**. Der
+     * Parameter bleibt, weil ihn die Tests der Reihe nach übergeben.*
+     */
     public function __construct(private readonly ?InMemoryRelations $relations = null)
     {
     }
@@ -85,14 +89,8 @@ final class InMemoryNodes implements NodeRepository
         foreach ($parentIds as $id) {
             $kinder[$id] = [];
 
-            if ($this->relations === null) {
-                continue;
-            }
-
-            foreach ($this->relations->childEdgesOf($id) as $edge) {
-                $child = $edge->hide ? null : $this->find($edge->toNodeId);
-
-                if ($child !== null) {
+            foreach ($this->kinderVon((int) $id) as $child) {
+                if (! $child->hide) {
                     $kinder[$id][] = $child;
                 }
             }
@@ -103,34 +101,69 @@ final class InMemoryNodes implements NodeRepository
 
     public function childrenOf(Node $parent): array
     {
-        // Order lives on the edge (position), because it is per parent. Without edges — a
-        // repository used on its own in a test — name order keeps the result stable.
-        if ($this->relations !== null) {
-            $children = [];
+        return $this->kinderVon($parent->id);
+    }
 
-            foreach ($this->relations->childEdgesOf($parent->id) as $edge) {
-                $child = $this->find($edge->toNodeId);
-
-                if ($child !== null) {
-                    $children[] = $child;
-                }
-            }
-
-            return $children;
-        }
-
-        $prefix   = $parent->path . '.';
+    /**
+     * Die Kinder eines Knotens, in ihrer Reihenfolge — wie die SQL-Fassung sie liest.
+     *
+     * ⚠️ *`parent_node_id` und **nicht** der Pfad: der Pfad ist abgeleitet
+     * ([D-014](../../../docs/NewConcept/90-decision-log.md)), und ein Fake, der die abgeleitete
+     * Angabe befragt, hielte einen Fehler in der führenden grün.*
+     *
+     * @return list<Node>
+     */
+    private function kinderVon(int $parentId): array
+    {
         $children = [];
 
         foreach ($this->rows as $node) {
-            if (str_starts_with($node->path, $prefix) && ! str_contains(substr($node->path, strlen($prefix)), '.')) {
+            if ($node->parentNodeId === $parentId) {
                 $children[] = $node;
             }
         }
 
-        usort($children, static fn (Node $a, Node $b): int => strcmp($a->name, $b->name));
+        usort($children, static fn (Node $a, Node $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
 
         return $children;
+    }
+
+    public function nextPositionUnder(int $parentId): int
+    {
+        $kinder = $this->kinderVon($parentId);
+
+        return $kinder === [] ? 0 : end($kinder)->sortOrder + 1;
+    }
+
+    public function reparentChildren(int $fromParentId, int $toParentId, int $startPosition): void
+    {
+        foreach ($this->kinderVon($fromParentId) as $child) {
+            $this->rows[$child->id] = $child->movedUnder(
+                $this->find($toParentId)?->path,
+                $toParentId,
+                $child->sortOrder + $startPosition
+            );
+        }
+    }
+
+    public function allPlacements(): array
+    {
+        $zeilen = $this->rows;
+
+        uasort($zeilen, static fn (Node $a, Node $b): int =>
+            [$a->parentNodeId ?? 0, $a->sortOrder, $a->id] <=> [$b->parentNodeId ?? 0, $b->sortOrder, $b->id]);
+
+        $aus = [];
+
+        foreach ($zeilen as $node) {
+            $aus[$node->id] = [
+                'parent'    => $node->parentNodeId,
+                'sortOrder' => $node->sortOrder,
+                'hide'      => $node->hide,
+            ];
+        }
+
+        return $aus;
     }
 
     public function subtreeOf(Node $root): array
@@ -157,7 +190,12 @@ final class InMemoryNodes implements NodeRepository
                     $node->id,
                     $node->version + 1,
                     $node->name,
-                    $newPath . substr($node->path, strlen($oldPath))
+                    $newPath . substr($node->path, strlen($oldPath)),
+                    $node->fieldType,
+                    $node->implementedBy,
+                    $node->parentNodeId,
+                    $node->sortOrder,
+                    $node->hide
                 );
             }
         }

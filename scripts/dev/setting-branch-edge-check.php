@@ -107,10 +107,9 @@ function abweichungen(
     $gezaehlt = 0;
 
     foreach ($zeilen as $zeile) {
-        // ⚠️ *Der Ast ist der Ast: eine Vererbungskante **baut** ihn und ist keine Einstellung.*
-        if ($zeile->kind === RelationKind::Inheritance->value) {
-            continue;
-        }
+        // ⚠️ *Hier stand die Ausnahme für Vererbungskanten — **es gibt keine mehr** (TASK-018,
+        // [D-581](../../NewConcept/90-decision-log.md)). Der Ast wird von `nodes.parent_node_id`
+        // gebaut, und diese Tabelle trägt nur noch Felder und Einstellungen.*
 
         $ziel = $nodes->find((int) $zeile->to_node_id);
 
