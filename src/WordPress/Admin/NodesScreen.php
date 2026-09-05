@@ -2443,6 +2443,21 @@ final class NodesScreen
             ? $_POST[self::VALUE_FIELD]
             : [];
 
+        // ⚠️ **Der Datensatzblock schickt seine Felder unter der Satz-Id, und dieser Leser hat die
+        // erste Ebene fuer die Kante gehalten.** *Gemessen am 2026-09-06, auf seinen Befund: «einen
+        // neuen Datensatz anlegen funktioniert, aber keine Werte». Die Zeile zeichnet mit dem
+        // Praefix `taxmod_value[<Satz-Id>]` ({@see \Taxmod\Core\Service\Rendering::recordsAsTable()}),
+        // also kommt `taxmod_value[4756][75475]` an. **Hier stand `foreach ($submitted as
+        // $rawRelation => …)`** — das las `4756` als Kanten-Id, fand dazu keine Kante des Knotens
+        // und uebersprang **jeden** Wert. Anlegen ging, weil das ein anderer Akt ist; schreiben nie.*
+        //
+        // ⚠️ *Beide Formen werden gelesen: die geschachtelte, die der Block schickt, und die flache,
+        // falls ein anderer Aufrufer sie noch benutzt. **Die geschachtelte gewinnt**, weil sie sagt,
+        // zu welchem Satz die Werte gehoeren — und der Satz steht ohnehin schon in `node_record_id`.*
+        if ($recordId !== 0 && isset($submitted[$recordId]) && is_array($submitted[$recordId])) {
+            $submitted = $submitted[$recordId];
+        }
+
         if ($submitted === []) {
             return;
         }
