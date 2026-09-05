@@ -76,6 +76,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Was ist ein Block? | [D-625](90-decision-log.md) — ein Gutenberg-Block; er bekommt einen Knoten und holt sich dessen Datensätze | — |
 | Von der Multiplizität zum Auswahlfeld? | [D-562](90-decision-log.md) — ein Begriff, die *Choice*, an **einer** Stelle gerechnet; was zur Wahl steht, sagt [D-540](90-decision-log.md) | — |
 | Welche Renderer werden angeboten? | [D-481](90-decision-log.md), [D-482](90-decision-log.md), [D-483](90-decision-log.md) — der Anspruch liegt beim Renderer, nie am Knoten | — |
+| Wie wird ein Benutzerverweis gezeichnet? | [D-649](90-decision-log.md) — eigener Renderer: der Name auf dem Schirm, die Id im Datensatz, beim Anlegen vom Rand vorbelegt; der Typ ist [D-330](90-decision-log.md) | — |
 | Wo liegen Renderer, Konverter, Validator im Baum? | [D-557](90-decision-log.md) — im Ast `Settings`, und die Saat sät dorthin | ~~D-511~~ |
 | Braucht die Vorschau eine Sonderregel? | [D-096](90-decision-log.md) — nein, sie ruft zeichnen zweimal auf | ~~D-095~~ |
 | Ersetzt ein Konverter den Wert oder schmückt er ihn? | [D-226](90-decision-log.md) — freie Wahl; die Umkehrbarkeit entscheidet nur, ob hineingeschrieben werden darf | ~~D-225~~ |
