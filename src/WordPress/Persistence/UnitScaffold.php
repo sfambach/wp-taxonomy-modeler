@@ -14,6 +14,7 @@ use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\WordPress\Admin\SettingsScreen;
 
 /**
  * Prefixes and base units, under `Constants`.
@@ -392,10 +393,12 @@ final class UnitScaffold
      * deliberately stops it from re-entering. *Putting a label that is already there costs one write
      * and is the difference between this working and only working on a fresh database.*
      *
-     * ⚠️ **The empty locale, which is the fallback everything lands on** ([D-020](../../../docs/NewConcept/90-decision-log.md)):
-     * `Ω` is right in every language, so a German row and an English row would be the same text
-     * twice. Where a symbol genuinely differs — `St` against `pc` — a locale row is added beside
-     * this one and wins.
+     * ⚠️ **Die Standardsprache, auf die jeder Rückfall läuft** ([D-387](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md)). *Hier stand die **leere** Locale mit der
+     * Begründung, `Ω` sei in jeder Sprache richtig. **Die sprachneutrale Zeile gibt es nicht mehr** —
+     * an ihre Stelle tritt die erklärte Standardsprache, und weil jede andere Sprache auf sie
+     * zurückfällt, steht `Ω` weiterhin genau einmal da. Wo ein Symbol wirklich abweicht — `St` gegen
+     * `pc` —, kommt eine Zeile dieser Sprache daneben und gewinnt.*
      */
     private function label(Node $node): void
     {
@@ -408,10 +411,9 @@ final class UnitScaffold
         $this->labels->put(new Label(
             $node->id,
             IdentitySpace::Node,
-            '',
-            $this->framework->roleId(SeededRole::Symbol),
+            SeededRole::Symbol,
             Label::BASE_NUMBER,
-            '',
+            SettingsScreen::neutralLocale(),
             $symbol
         ));
     }

@@ -43,6 +43,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\IdentitySpace;
@@ -60,6 +61,11 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 
@@ -102,7 +108,7 @@ $framework->seed();
 $editor   = new ModelEditor($nodes, $relations, $framework, $changelog);
 // ⚠️ *Ohne Knotenspeicher: `Labels` hat ihn benutzt, um `node` von `relation` zu **raten**, und die
 // Zeile nennt ihren Raum seit Fassung 31 selbst (`INF-035`, D-597).*
-$labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog);
+$labels   = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale(), $changelog);
 
 $journal = Schema::table('changelog');
 
@@ -129,7 +135,7 @@ $role = $framework->roleId(SeededRole::Form);
 if ($role === 0) {
     echo "  --   no seeded label roles here; the label half is skipped\n";
 } else {
-    $labels->put(new Label($thing->id, IdentitySpace::Node, (string) $first->id, $role, Label::BASE_NUMBER, '', '__ja Ein Text mit Leerzeichen'));
+    $labels->put(new Label($thing->id, IdentitySpace::Node, SeededRole::Form, Label::BASE_NUMBER, SettingsScreen::neutralLocale(), '__ja Ein Text mit Leerzeichen'));
 
     $labelRow = $wpdb->get_row($wpdb->prepare(
         "SELECT what, after_state FROM {$journal} WHERE id > %d AND what LIKE %s ORDER BY id DESC LIMIT 1",
@@ -142,8 +148,12 @@ if ($role === 0) {
 
     $labelState = FrozenState::parse($labelRow['after_state'] ?? null);
 
-    check('the role is in the state', $labelState?->field('role') === (string) $role, var_export($labelState?->field('role'), true));
-    check('the path is in the state', $labelState?->field('path') === (string) $first->id, var_export($labelState?->field('path'), true));
+    // ⚠️ *Die Rolle steht seit TASK-019 als **Wort** in der Zeile und nicht mehr als Knotennummer
+    // ([D-598](../../docs/NewConcept/90-decision-log.md): die Rollen sind Spalten). Und einen `path`
+    // gibt es an einer Beschriftung nicht mehr ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+    // **die Adresse ist die `label_id`**, und die haengt an genau einem Eigentuemer.*
+    check('the role is in the state', $labelState?->field('role') === SeededRole::Form->value, var_export($labelState?->field('role'), true));
+    check('and no path is claimed any more', $labelState?->field('path') === null, var_export($labelState?->field('path'), true));
     check('and the text came back whole', $labelState?->field('text') === '__ja Ein Text mit Leerzeichen', var_export($labelState?->field('text'), true));
 }
 
@@ -331,8 +341,8 @@ check(
 // im Papierkorb — dreizehn Läufe lang.*
 check(
     'and no scratch node is left behind',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes') . " WHERE name LIKE '\_\_ja %'") === 0,
-    (string) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes') . " WHERE name LIKE '\_\_ja %'")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes_named') . " WHERE name LIKE '\_\_ja %'") === 0,
+    (string) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes_named') . " WHERE name LIKE '\_\_ja %'")
 );
 
 echo "\n---- {$ok} passed, {$bad} failed ----\n";

@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\LabelRepository;
 
 /**
@@ -38,15 +39,14 @@ final class InMemoryLabels implements LabelRepository
     {
         ++$this->writes;
 
-        $key = $this->key($label->ownerId, $label->ownerKind, $label->path, $label->roleId, $label->number, $label->locale);
+        $key = $this->key($label->ownerId, $label->ownerKind, $label->role, $label->number, $label->locale);
 
         $version = isset($this->rows[$key]) ? $this->rows[$key]->version + 1 : 1;
 
         $this->rows[$key] = new Label(
             $label->ownerId,
             $label->ownerKind,
-            $label->path,
-            $label->roleId,
+            $label->role,
             $label->number,
             $label->locale,
             $label->text,
@@ -54,14 +54,14 @@ final class InMemoryLabels implements LabelRepository
         );
     }
 
-    public function forget(int $ownerId, IdentitySpace $ownerKind, string $path, int $roleId, string $number, string $locale): void
+    public function forget(int $ownerId, IdentitySpace $ownerKind, SeededRole $role, string $number, string $locale): void
     {
-        unset($this->rows[$this->key($ownerId, $ownerKind, $path, $roleId, $number, $locale)]);
+        unset($this->rows[$this->key($ownerId, $ownerKind, $role, $number, $locale)]);
     }
 
-    private function key(int $ownerId, IdentitySpace $ownerKind, string $path, int $roleId, string $number, string $locale): string
+    private function key(int $ownerId, IdentitySpace $ownerKind, SeededRole $role, string $number, string $locale): string
     {
-        return implode("\0", [$ownerId, $ownerKind->value, $path, $roleId, $number, $locale]);
+        return implode("\0", [$ownerId, $ownerKind->value, $role->value, $number, $locale]);
     }
 
     public function forgetOwners(array $ownerIds, IdentitySpace $ownerKind): int

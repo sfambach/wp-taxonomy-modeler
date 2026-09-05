@@ -51,18 +51,22 @@ erDiagram
 
     labels {
         int  id PK
-        text name   "sprachunabhaengig"
-        text symbol
-        text icon
+        int  version
+        text owner_kind "node ODER relation"
+        text icon       "sprachunabhaengig, I5"
     }
 
     label_texts {
+        int  id PK
         int  label_id FK
         text locale
-        text form
-        text table
-        text select
-        text help
+        text number      "Numerusklasse, D-216"
+        text text_name   "D-646: der Name ist sprachabhaengig"
+        text text_form
+        text text_table
+        text text_select
+        text text_help
+        text text_symbol "D-645: auch das Symbol"
     }
 
     nodes            ||--o{ nodes            : "parent_node_id"

@@ -31,6 +31,7 @@ require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 require __DIR__ . '/geruest.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
@@ -51,6 +52,11 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 $passed = 0;
 $failed = 0;
@@ -76,7 +82,7 @@ $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
 $relations     = new WpdbRelationRepository();
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
-$labels    = new Labels(new WpdbLabelRepository(), $framework);
+$labels    = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale());
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types, $labels,

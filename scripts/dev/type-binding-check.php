@@ -60,6 +60,11 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -269,7 +274,7 @@ echo "\n== 7. Die Prüfung räumt hinter sich auf ==\n";
 // nach dem Namen greift, darf den Namen nicht selbst ändern.*
 $eigene = [$doppel->id];
 
-$stale = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "\\_\\_tb%" ORDER BY LENGTH(path) DESC');
+$stale = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_tb%" ORDER BY LENGTH(path) DESC');
 
 foreach ([...$eigene, ...array_map('intval', $stale)] as $id) {
     $node = $nodes->find((int) $id);
@@ -283,7 +288,7 @@ foreach ([...$eigene, ...array_map('intval', $stale)] as $id) {
 check('der Doppelgänger ist fort', $nodes->find($doppel->id) === null);
 
 check('und kein Schmierknoten aus einem früheren Lauf bleibt liegen',
-    $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "\\_\\_tb%"') === '0');
+    $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_tb%"') === '0');
 
 // ⚠️ *Und die Gegenprobe zur Aufräumung selbst: **unter `Data Types` steht jeder Typ genau einmal.**
 // Genau diese Zeile hätte die sechs Leichen gemeldet, und sie ist der Grund, dass sie hier steht.*

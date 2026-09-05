@@ -26,6 +26,11 @@ wp_set_current_user(1);
 
 use Taxmod\Core\Model\Branch;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $failed = 0;
 
 $say = static function (bool $ok, string $what) use (&$failed): void {
@@ -133,7 +138,7 @@ foreach ([$allein->id, $enkel->id, $kind->id, $feld->id, $typ->id, $ast->id] as 
 }
 
 echo "\n";
-$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '__cg %'") === 0, 'die Wiese ist wieder weg');
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '__cg %'") === 0, 'die Wiese ist wieder weg');
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 

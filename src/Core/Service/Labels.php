@@ -8,7 +8,6 @@ use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\Changelog;
-use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\LabelRepository;
 
 /**
@@ -16,7 +15,8 @@ use Taxmod\Core\Repository\LabelRepository;
  *
  * ```mermaid
  * flowchart LR
- *   A["role · number"] --> B["role · one"] --> D["node.name"]
+ *   A["Rolle · angefragte Sprache"] --> B["name · angefragte Sprache"]
+ *   B --> C["Rolle · Standardsprache"] --> D["name · Standardsprache"]
  * ```
  *
  * ⚠️ **Number before role** (D-153): a missing plural form falls back to the base form of the
@@ -26,11 +26,17 @@ use Taxmod\Core\Repository\LabelRepository;
  * ⚠️ **`help` is not in the chain** (D-386) — it was, and it made a `form` label nobody wrote
  * inherit the whole help **sentence**. The owner found it on a real node. *The intent of D-020
  * survives — a role only needs storing where it should genuinely differ — but the thing the others
- * are a variation of is the **node's own name**, never the long text.*
+ * are a variation of is the **name**, never the long text.*
  *
- * ⚠️ **The chain ends on `node.name` and never on nothing** (D-020). A screen with an
- * empty cell where a name should be is worse than a screen showing the internal name — and the
- * internal name is always there, because a node cannot exist without one (D-022).
+ * ⚠️ **Die Kette endet auf der Rolle `name` und nie auf nichts** (D-020, D-646). *Sie war bis
+ * TASK-019 eine Spalte am Knoten; seit [D-646](../../../docs/NewConcept/90-decision-log.md) ist sie
+ * **sprachabhängig** und damit eine Beschriftung wie die anderen — sein Fund: «sonst schaltet man die
+ * Sprache um und alle Knoten haben noch den gleichen Namen».*
+ *
+ * ⚠️ **Die sprachneutrale Zeile ist fort** ([D-387](../../../docs/NewConcept/90-decision-log.md),
+ * [D-645](../../../docs/NewConcept/90-decision-log.md)). *An ihrer Stelle steht die
+ * **Standardsprache**, und die steht auf der Installationsseite — sie wird vom Rand hereingereicht,
+ * weil der Kern keine WordPress-Option lesen darf (`CD-1`).*
  *
  * @see docs/NewConcept/40-i18n.md
  */
@@ -38,7 +44,18 @@ final class Labels
 {
     public function __construct(
         private readonly LabelRepository $labels,
-        private readonly FrameworkNodes $framework,
+        /**
+         * Die Standardsprache, auf die jeder Rückfall zuletzt läuft
+         * ([D-387](../../../docs/NewConcept/90-decision-log.md),
+         * [D-645](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ *Sie steht auf der Installationsseite als `taxmod_neutral_locale` und wird hier
+         * **hereingereicht**: der Kern kennt WordPress nicht (`CD-1`). Hier stand vorher ein
+         * `FrameworkNodes`, weil die Rolle eine **Knotennummer** war — seit
+         * [D-598](../../../docs/NewConcept/90-decision-log.md) ist sie eine Spalte, und die
+         * Abhängigkeit ist fort und nicht nur unbenutzt.*
+         */
+        private readonly string $defaultLocale = 'en_US',
         // ⚠️ **Damit eine Labeländerung in der Geschichte steht** ([D-489](../../../docs/NewConcept/90-decision-log.md)).
         // Der Eigentümer: *«Labeländerungen sollten auch dokumentiert werden.»*
         //
@@ -69,14 +86,11 @@ final class Labels
         SeededRole $role = SeededRole::Form,
         string $locale = '',
         string $number = Label::BASE_NUMBER,
-        string $path = '',
     ): string {
-        $stored = $this->indexed($this->labels->forOwners([$node->id], IdentitySpace::Node), $path);
+        $stored = $this->indexed($this->labels->forOwners([$node->id], IdentitySpace::Node));
 
-        $roleId = $this->framework->roleId($role);
-
-        foreach ($this->attempts($roleId, $number, $locale) as [$tryRole, $tryNumber, $tryLocale]) {
-            $found = $stored[$tryRole . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
+        foreach ($this->attempts($role, $number, $locale) as [$tryRole, $tryNumber, $tryLocale]) {
+            $found = $stored[$tryRole->value . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
 
             if ($found !== null && $found->text !== '') {
                 return $found->text;
@@ -115,15 +129,10 @@ final class Labels
         $stored = [];
 
         foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes), IdentitySpace::Node) as $label) {
-            if ($label->path !== '') {
-                continue;
-            }
-
-            $stored[$label->ownerId][$label->roleId . "\0" . $label->number . "\0" . $label->locale] = $label;
+            $stored[$label->ownerId][$label->role->value . "\0" . $label->number . "\0" . $label->locale] = $label;
         }
 
-        $roleId = $this->framework->roleId($role);
-        $order = $this->attempts($roleId, $number, $locale);
+        $order = $this->attempts($role, $number, $locale);
 
         $found = [];
 
@@ -131,7 +140,7 @@ final class Labels
             $found[$node->id] = $node->name;
 
             foreach ($order as [$tryRole, $tryNumber, $tryLocale]) {
-                $label = $stored[$node->id][$tryRole . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
+                $label = $stored[$node->id][$tryRole->value . "\0" . $tryNumber . "\0" . $tryLocale] ?? null;
 
                 if ($label !== null && $label->text !== '') {
                     $found[$node->id] = $label->text;
@@ -147,22 +156,36 @@ final class Labels
     /**
      * The order the chain is tried in.
      *
-     * ⚠️ **The locale falls back to the neutral row before the role gives way.** A label stored
-     * without a locale is one somebody wrote for everybody; using it beats dropping to a
-     * different role, which would answer a different question.
+     * ⚠️ **Der Rückfall geht auf die Standardsprache, nicht mehr auf eine sprachneutrale Zeile**
+     * ([D-387](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md)): *«das mit der sprachneutralen Zeile
+     * hatten wir behoben»* — und *«wenn's nicht gepflegt ist, fällt's jetzt sowieso auf die
+     * Defaultsprache zurück».*
      *
-     * @return list<array{0: int, 1: string, 2: string}>
+     * ⚠️ **Innerhalb einer Sprache fällt die Rolle auf `name` zurück, bevor die Sprache weicht**
+     * ([D-646](../../../docs/NewConcept/90-decision-log.md)): *ein deutscher Name schlägt eine
+     * englische Rollenbeschriftung, denn genau darum wurde der Name sprachabhängig — «sonst schaltet
+     * man die Sprache um und alle Knoten haben noch den gleichen Namen».*
+     *
+     * @return list<array{0: SeededRole, 1: string, 2: string}>
      */
-    private function attempts(int $roleId, string $number, string $locale): array
+    private function attempts(SeededRole $role, string $number, string $locale): array
     {
-        $locales = $locale === '' ? [''] : [$locale, ''];
+        $locales = array_values(array_unique(array_filter(
+            [$locale === '' ? $this->defaultLocale : $locale, $this->defaultLocale],
+            static fn (string $one): bool => $one !== ''
+        )));
+
         $numbers = $number === Label::BASE_NUMBER ? [Label::BASE_NUMBER] : [$number, Label::BASE_NUMBER];
+        $roles   = $role === SeededRole::Name ? [SeededRole::Name] : [$role, SeededRole::Name];
 
         $order = [];
 
         foreach ($numbers as $tryNumber) {
             foreach ($locales as $tryLocale) {
-                $order[] = [$roleId, $tryNumber, $tryLocale];
+                foreach ($roles as $tryRole) {
+                    $order[] = [$tryRole, $tryNumber, $tryLocale];
+                }
             }
         }
 
@@ -221,7 +244,7 @@ final class Labels
     {
         $vorhanden = $this->stored($label);
 
-        $this->labels->forget($label->ownerId, $label->ownerKind, $label->path, $label->roleId, $label->number, $label->locale);
+        $this->labels->forget($label->ownerId, $label->ownerKind, $label->role, $label->number, $label->locale);
 
         // ⚠️ *Die Version der Zeile, die es gerade noch gab — beim Löschen gibt es keine neue.*
         $this->note($label, $vorhanden?->text, null, $vorhanden?->version);
@@ -238,8 +261,7 @@ final class Labels
     private function stored(Label $label): ?Label
     {
         foreach ($this->labels->forOwners([$label->ownerId], $label->ownerKind) as $one) {
-            if ($one->path === $label->path
-                && $one->roleId === $label->roleId
+            if ($one->role === $label->role
                 && $one->number === $label->number
                 && $one->locale === $label->locale
             ) {
@@ -292,8 +314,7 @@ final class Labels
         // ⚠️ *Der Text steht **zuletzt**, weil er das einzige Feld ist, das Leerzeichen enthalten
         // darf; {@see FrozenState} verweigert jede andere Reihenfolge.*
         $state = static fn (?string $text): ?string => $text === null ? null : FrozenState::of([
-            'role'   => $label->roleId,
-            'path'   => $label->path,
+            'role'   => $label->role->value,
             'number' => $label->number,
             'locale' => $label->locale,
             'text'   => $text,
@@ -335,16 +356,12 @@ final class Labels
      *
      * @return array<string,Label>
      */
-    private function indexed(array $labels, string $path): array
+    private function indexed(array $labels): array
     {
         $byKey = [];
 
         foreach ($labels as $label) {
-            if ($label->path !== $path) {
-                continue;
-            }
-
-            $byKey[$label->roleId . "\0" . $label->number . "\0" . $label->locale] = $label;
+            $byKey[$label->role->value . "\0" . $label->number . "\0" . $label->locale] = $label;
         }
 
         return $byKey;

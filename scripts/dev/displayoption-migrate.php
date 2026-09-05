@@ -93,7 +93,7 @@ $targets = array_values(array_unique(array_map(static fn (array $m): int => $m[1
 $known   = $targets === []
     ? []
     : $wpdb->get_results(
-        "SELECT id, name, version FROM {$p}nodes WHERE id IN (" . implode(',', $targets) . ')',
+        "SELECT id, name, version FROM {$p}nodes_named WHERE id IN (" . implode(',', $targets) . ')',
         OBJECT_K
     );
 

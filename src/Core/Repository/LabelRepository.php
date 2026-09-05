@@ -4,6 +4,7 @@ namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 
 /**
  * Storage for labels.
@@ -32,7 +33,7 @@ interface LabelRepository
     public function put(Label $label): void;
 
     /** Remove one label so the chain falls through to the next step. */
-    public function forget(int $ownerId, IdentitySpace $ownerKind, string $path, int $roleId, string $number, string $locale): void;
+    public function forget(int $ownerId, IdentitySpace $ownerKind, SeededRole $role, string $number, string $locale): void;
 
     /**
      * Every label these owners hold, gone.

@@ -47,6 +47,11 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Plugin;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $passed = 0;
 $failed = 0;
 
@@ -260,7 +265,7 @@ echo "\n== aufraeumen ==\n";
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit.
 // Nach Namen und nicht nur nach den Ids dieses Laufs: ein abgestuerzter Lauf laesst sonst Reste
 // stehen, die der naechste als eigenen Fehlschlag meldet.*
-$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name LIKE '\\_\\_mv %'"));
+$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_mv %'"));
 $in    = $meine === [] ? '0' : implode(',', $meine);
 
 $wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$in}))");
@@ -273,7 +278,7 @@ $wpdb->query("DELETE FROM {$p}changelog WHERE owner_id IN ({$in}) AND owner_kind
 
 check(
     'der Waechter laesst nichts zurueck',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '\\_\\_mv %'") === 0
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_mv %'") === 0
 );
 
 printf("\n%d ok, %d failed\n", $passed, $failed);

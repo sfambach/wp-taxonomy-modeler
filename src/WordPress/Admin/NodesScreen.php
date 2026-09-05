@@ -2219,15 +2219,15 @@ final class NodesScreen
         // ⚠️ *Die Maske hat einen **Knoten** offen — der Raum ist damit gesagt und nicht geraten
         // (Fassung 31, `INF-035`).*
         foreach ($this->labels->storedFor($selected->id, IdentitySpace::Node) as $label) {
-            if ($label->path === '') {
-                $stored[$label->roleId . "\0" . $label->locale] = $label->text;
-            }
+            $stored[$label->role->value . "\0" . $label->locale] = $label->text;
         }
 
         $slots = [];
 
         foreach (SeededRole::cases() as $role) {
-            $roleId = $this->framework->roleId($role);
+            if (self::nameBelongsToTheNodeField($role, $locale)) {
+                continue;
+            }
 
             $slots[] = new LabelSlot(
                 $role->value,
@@ -2235,15 +2235,17 @@ final class NodesScreen
                 // name (D-020). It becomes the field's placeholder, so an empty box reads as *nothing
                 // is stored here* rather than as *this has no name*.
                 $this->labels->of($selected, $role, $locale),
-                $stored[$roleId . "\0" . $locale] ?? null,
+                $stored[$role->value . "\0" . $locale] ?? null,
                 self::LABEL_FIELD . '[' . $role->value . ']',
                 // ⚠️ `help` is the long one, and that is read off the role rather than off a list of
                 // names in this method — a sixth role lands somewhere sensible by itself (`CD-9`).
                 $role === SeededRole::Help,
-                $role->translatableByDefault(),
-                $role->translatableByDefault()
-                    ? ''
-                    : __('the same in every language', 'taxmod')
+                // ⚠️ **Jede Rolle ist übersetzbar, seit [D-645](../../../docs/NewConcept/90-decision-log.md)
+                // auch `symbol`.** *«Symbol wird sprachabhängig» — hier stand die Ausnahme, die es
+                // sprachneutral zeichnete, samt dem Hinweis «the same in every language». Beides ist
+                // fort, weil es nicht mehr stimmt.*
+                true,
+                ''
             );
         }
 
@@ -2457,7 +2459,12 @@ final class NodesScreen
             ? sanitize_text_field(wp_unslash($_GET['taxmod_locale']))
             : self::neutralLocale();
 
-        return $asked === self::neutralLocale() ? '' : $asked;
+        // ⚠️ **Hier stand die Abbildung «Standardsprache → leere Spalte»** ([D-387](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sie ist mit [D-645](../../../docs/NewConcept/90-decision-log.md) gefallen: **es gibt keine
+        // sprachneutrale Zeile mehr**, die Standardsprache steht als sie selbst da. Sein Wort: «das mit
+        // der sprachneutralen Zeile hatten wir behoben.» **Solange die Abbildung stand, schrieb jedes
+        // Speichern in der Standardsprache eine Zeile ohne Sprache** — gemessen am 2026-09-05.*
+        return $asked === '' ? self::neutralLocale() : $asked;
     }
 
     /**
@@ -2861,6 +2868,23 @@ final class NodesScreen
      * fallback reader only survives it because it happens to skip empty texts. Measured before the
      * change: 46 label rows, **0** of them empty, so nothing existing depends on the old shape.*
      */
+    /**
+     * Ob die Rolle `name` in dieser Sprache dem **Namensfeld** des Knotens gehört und nicht der
+     * Beschriftungsmaske.
+     *
+     * ⚠️ **Zwei Felder für denselben Text sind ein Feld zu viel** (TASK-019, D-646). *Seit der Name
+     * sprachabhängig ist, ist er eine Beschriftung wie jede andere — **in der Standardsprache steht er
+     * aber schon im Namensfeld oben**. Stünde er zusätzlich hier, schriebe das eine das andere
+     * stillschweigend zurück, weil beide Masken in einem POST gespeichert werden.*
+     *
+     * ⚠️ *In **jeder anderen** Sprache gehört er hierher, und das ist der ganze Zweck von D-646:
+     * «sonst schaltet man die Sprache um und alle Knoten haben noch den gleichen Namen».*
+     */
+    private static function nameBelongsToTheNodeField(SeededRole $role, string $locale): bool
+    {
+        return $role === SeededRole::Name && $locale === SettingsScreen::neutralLocale();
+    }
+
     private function saveLabels(int $nodeId, string $locale): void
     {
         $submitted = isset($_POST[self::LABEL_FIELD]) && is_array($_POST[self::LABEL_FIELD])
@@ -2870,25 +2894,24 @@ final class NodesScreen
         $stored = [];
 
         foreach ($this->labels->storedFor($nodeId, IdentitySpace::Node) as $label) {
-            if ($label->path === '' && $label->locale === $locale) {
-                $stored[$label->roleId] = $label->text;
+            if ($label->locale === $locale) {
+                $stored[$label->role->value] = $label->text;
             }
         }
 
         foreach (SeededRole::cases() as $role) {
-            if (! array_key_exists($role->value, $submitted)) {
+            if (! array_key_exists($role->value, $submitted) || self::nameBelongsToTheNodeField($role, $locale)) {
                 continue;
             }
 
-            $roleId = $this->framework->roleId($role);
             $text   = sanitize_textarea_field((string) $submitted[$role->value]);
-            $before = $stored[$roleId] ?? null;
+            $before = $stored[$role->value] ?? null;
 
             if ($text === (string) $before) {
                 continue;
             }
 
-            $label = new Label($nodeId, IdentitySpace::Node, '', $roleId, Label::BASE_NUMBER, $locale, $text);
+            $label = new Label($nodeId, IdentitySpace::Node, $role, Label::BASE_NUMBER, $locale, $text);
 
             if ($text === '') {
                 $this->labels->forget($label);
@@ -3717,7 +3740,10 @@ final class NodesScreen
         // ⚠️ *`$attributeName` stand hier für **eine** Kante, weil die Diskette der Zeile nur ihre
         // eigene abschickte. Das Seitenformular bringt alle mit, also liest
         // {@see self::saveFieldRows()} sie dort — je Kante ihren eigenen Namen.*
-        $labelLocale  =isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
+        // ⚠️ *Leer heisst «die Standardsprache» und nicht «keine Sprache» — die neutrale Zeile ist mit
+        // [D-645](../../../docs/NewConcept/90-decision-log.md) gefallen.*
+        $labelLocale  = isset($_POST['label_locale']) ? sanitize_text_field(wp_unslash($_POST['label_locale'])) : '';
+        $labelLocale  = $labelLocale === '' ? self::neutralLocale() : $labelLocale;
         // ⚠️ *`$rendererName` stand hier und ist mit seinem Wähler gegangen: der Renderer kommt jetzt
         // als **Wert** in der Spalte des Einstellungsblocks, unter `taxmod_value`, wie jede andere
         // Angabe des Modells.*

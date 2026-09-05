@@ -140,7 +140,7 @@ final class RenderingTest extends TestCase
             $this->framework,
             ShippedRenderers::registry(),
             $this->typeNodes,
-            new Labels($this->labelStore, $this->framework),
+            new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
             model: $this->model
         );
@@ -608,10 +608,9 @@ final class RenderingTest extends TestCase
         $this->labelStore->put(new Label(
             $kilo->id,
             IdentitySpace::Node,
-            '',
-            self::ROLE_IDS['symbol'],
+            SeededRole::Symbol,
             Label::BASE_NUMBER,
-            '',
+            'en_US',
             'k'
         ));
 

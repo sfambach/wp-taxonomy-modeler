@@ -69,12 +69,15 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodesTable = Schema::table('nodes');
+// ⚠️ *Namensabfragen gehen ueber die Sicht — `nodes.name` gibt es seit TASK-019 nicht mehr
+// ([D-580](../../docs/NewConcept/90-decision-log.md)).*
+$nodesNamed = Schema::table('nodes_named');
 $relationsTable = Schema::table('relations');
 
 echo "\n== 1. Der Ast ist auffindbar ==\n";
 
 $branch = $wpdb->get_row(
-    "SELECT id, path FROM {$nodesTable} WHERE name = 'Settings' AND path NOT LIKE '%.%.%'"
+    "SELECT id, path FROM {$nodesNamed} WHERE name = 'Settings' AND path NOT LIKE '%.%.%'"
 );
 
 check('die Astwurzel `Settings` steht direkt unter der Wurzel', $branch !== null);
@@ -86,7 +89,7 @@ if ($branch === null) {
 }
 
 $rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT id, name, path FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
+    "SELECT id, name, path FROM {$nodesNamed} WHERE path LIKE %s ORDER BY path",
     $wpdb->esc_like($branch->path . '.') . '%'
 ), ARRAY_A);
 

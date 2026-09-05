@@ -70,6 +70,11 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 
 $ok  = 0;
@@ -102,6 +107,8 @@ echo "\n== 1. Der Bestand — nur gezaehlt, nicht bewertet ==\n";
 
 $werte = Schema::table('relation_records');
 $tab   = Schema::table('nodes');
+// ⚠️ *Namensabfragen gehen ueber die Sicht (TASK-019, D-580).*
+$tabBenannt = Schema::table('nodes_named');
 
 $leichen = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM {$werte} v
@@ -228,7 +235,7 @@ try {
 echo "\n== 5. Weggeraeumt ==\n";
 
 $rest = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$tab} WHERE name LIKE '__leiche%'"
+    "SELECT COUNT(*) FROM {$tabBenannt} WHERE name LIKE '__leiche%'"
 );
 
 check('kein eigener Knoten bleibt stehen', $rest === 0, "{$rest} stehen noch da");

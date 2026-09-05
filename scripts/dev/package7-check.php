@@ -28,6 +28,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\NotAValueOfThatType;
@@ -58,6 +59,11 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -80,7 +86,7 @@ $framework->seed();
 
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $data      = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
-$labels    = new Labels(new WpdbLabelRepository(), $framework);
+$labels    = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale());
 $registry  = ShippedRenderers::registry();
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, $registry, $types, $labels,
@@ -890,7 +896,7 @@ if ($selbstGelegteKanten !== []) {
 // `range_min` the owner had set by hand — leaves its scratch nodes behind, and the next run then
 // reports them as its own failure. Cleaning up by name makes the check self-healing.
 $scratchIds = $wpdb->get_col(
-    'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p7%" ORDER BY LENGTH(path) DESC'
+    'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p7%" ORDER BY LENGTH(path) DESC'
 );
 
 // ⚠️ **What hangs off them goes first, and measuring is what found this.** After the 892 orphaned
@@ -914,7 +920,7 @@ foreach ($relations->relationsTouching($knotenZuLeeren) as $relation) {
     $kantenZuLeeren[] = $relation->id;
 }
 
-foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"') as $named) {
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "__p7%"') as $named) {
     $kantenZuLeeren[] = (int) $named;
 }
 
@@ -939,10 +945,10 @@ foreach ($scratchIds as $scratch) {
     if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
 
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"');
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "__p7%") x)');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p7%"');
 
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p7%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p7%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 
 // ⚠️ **Rewritten 2026-08-26 for [D-423](../../docs/NewConcept/90-decision-log.md), not loosened.** It

@@ -65,11 +65,21 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SeededRole;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 $ok  = 0;
@@ -281,16 +291,31 @@ $stelle = 1 + (int) Query::value(
     )
 );
 
+// ⚠️ *Seit TASK-019 hat `nodes` keine Spalte `name` mehr ([D-580](../../docs/NewConcept/90-decision-log.md));
+// der Name ist eine Beschriftung und wird danach geschrieben.*
+$beschriftungen = new WpdbLabelRepository();
+
 foreach (['__zweiBesitzerA', '__zweiBesitzerB'] as $name) {
     Query::run('Probeknoten anlegen', $wpdb->prepare(
-        'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[0]) . ' (version, name, path, parent_node_id, sort_order, hide)
-         VALUES (1, %s, %s, %d, %d, 1)',
-        $name,
+        'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[0]) . ' (version, path, parent_node_id, sort_order, hide)
+         VALUES (1, %s, %d, %d, 1)',
         (string) $wurzel,
         $wurzel,
         $stelle++
     ));
-    $meine['knoten'][] = (int) $wpdb->insert_id;
+
+    $neu = (int) $wpdb->insert_id;
+
+    $beschriftungen->put(new Label(
+        $neu,
+        IdentitySpace::Node,
+        SeededRole::Name,
+        Label::BASE_NUMBER,
+        SettingsScreen::neutralLocale(),
+        $name
+    ));
+
+    $meine['knoten'][] = $neu;
 }
 
 check('beide Probeknoten sind entstanden', count($meine['knoten']) === 2 && ! in_array(0, $meine['knoten'], true));

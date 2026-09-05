@@ -60,6 +60,11 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 
 $ok  = 0;
@@ -100,7 +105,7 @@ function abweichungen(
     global $wpdb;
 
     $zeilen = $wpdb->get_results(
-        'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations')
+        'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations_named')
     );
 
     $treffer = [];
@@ -219,7 +224,7 @@ try {
 echo "\n== 4. Weggeraeumt ==\n";
 
 $rest = $wpdb->get_var(
-    "SELECT COUNT(*) FROM " . Schema::table('nodes') . " WHERE name LIKE '__astkante%'"
+    "SELECT COUNT(*) FROM " . Schema::table('nodes_named') . " WHERE name LIKE '__astkante%'"
 );
 
 check('kein eigener Knoten bleibt stehen', (int) $rest === 0, "{$rest} stehen noch da");

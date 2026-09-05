@@ -3,8 +3,12 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Exception\ConcurrentChange;
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\RelationRepository;
+use Taxmod\WordPress\Admin\SettingsScreen;
 
 /**
  * Relations in a table of our own, reached through `$wpdb`.
@@ -29,6 +33,64 @@ final class WpdbRelationRepository implements RelationRepository
      */
     private const RETIRED_INHERITANCE_KIND = 'inheritance';
 
+    /**
+     * Die Spalten einer Kante — **und der Name kommt aus den Beschriftungen** (TASK-019, D-580, D-646).
+     *
+     * ⚠️ *`relations.name` gibt es nicht mehr. Der Verweis ist an der Kante **freiwillig** (D-580):
+     * eine namenlose Kante hat keine Beschriftungszeile, und `COALESCE` macht daraus die leere
+     * Zeichenkette, die dort immer schon stand.*
+     */
+    private const COLUMNS = "r.id, r.version, r.from_node_id, r.to_node_id, r.kind, COALESCE(t.text_name, '') AS name, r.sort_order, r.hide, r.multiplicity";
+
+    private static function fromRelations(): string
+    {
+        return ' FROM ' . Schema::table('relations') . ' r LEFT JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = r.label_id AND t.locale = %s AND t.number = %s ';
+    }
+
+    /**
+     * ⚠️ *Vorn in der Argumentliste, weil `FROM` vor `WHERE` steht.*
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function nameArgs(): array
+    {
+        return [SettingsScreen::neutralLocale(), Label::BASE_NUMBER];
+    }
+
+    /**
+     * Der Name der Kante geht in die Beschriftungen (TASK-019, D-580).
+     *
+     * ⚠️ **Eine namenlose Kante bekommt keine Beschriftungszeile** — *«die 127 Vererbungskanten haben
+     * heute keinen Namen und brauchen auch keinen» (D-580). Der Verweis ist hier freiwillig, und
+     * freiwillig heisst: nichts anlegen, was leer bliebe.*
+     */
+    private function writeName(Relation $relation): void
+    {
+        $ablage = new WpdbLabelRepository();
+
+        if ($relation->name === '') {
+            $ablage->forget(
+                $relation->id,
+                IdentitySpace::Relation,
+                SeededRole::Name,
+                Label::BASE_NUMBER,
+                SettingsScreen::neutralLocale()
+            );
+
+            return;
+        }
+
+        $ablage->put(new Label(
+            $relation->id,
+            IdentitySpace::Relation,
+            SeededRole::Name,
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            $relation->name
+        ));
+    }
+
 
     /**
      * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004) — dieselbe Zusage wie
@@ -46,15 +108,18 @@ final class WpdbRelationRepository implements RelationRepository
                     'from_node_id'  => $relation->fromNodeId,
                     'to_node_id'    => $relation->toNodeId,
                     'kind'     => $relation->kind->value,
-                    'name'     => $relation->name,
                     'sort_order' => $relation->sortOrder,
                     'hide'     => $relation->hide ? 1 : 0,
                     'multiplicity' => $relation->multiplicity->value,
                 ],
-                ['%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s']
+                ['%d', '%d', '%d', '%s', '%d', '%d', '%s']
             );
 
-            return $relation->withAssignedId((int) $wpdb->insert_id);
+            $relation = $relation->withAssignedId((int) $wpdb->insert_id);
+
+            $this->writeName($relation);
+
+            return $relation;
         }
 
         $wpdb->insert(
@@ -65,13 +130,14 @@ final class WpdbRelationRepository implements RelationRepository
                 'from_node_id'  => $relation->fromNodeId,
                 'to_node_id'    => $relation->toNodeId,
                 'kind'     => $relation->kind->value,
-                'name'     => $relation->name,
                 'sort_order' => $relation->sortOrder,
                 'hide'     => $relation->hide ? 1 : 0,
                 'multiplicity' => $relation->multiplicity->value,
             ],
-            ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%s']
+            ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s']
         );
+
+        $this->writeName($relation);
 
         return $relation;
     }
@@ -85,7 +151,6 @@ final class WpdbRelationRepository implements RelationRepository
             $relation->fromNodeId,
             $relation->toNodeId,
             $relation->kind->value,
-            $relation->name,
             $relation->sortOrder,
             $relation->hide ? 1 : 0,
             // ⚠️ *Aus demselben Grund direkt hinter `hide`: `multiplicity = %s` steht dort im SQL
@@ -107,13 +172,15 @@ final class WpdbRelationRepository implements RelationRepository
                 // TASK-013): **eine geparkte Kante hat gar keine lebende Zeile** — sie steht im
                 // Schatten. Siehe {@see self::park()}.
                 'UPDATE ' . Schema::table('relations') . '
-                 SET version = %d, from_node_id = %d, to_node_id = %d, kind = %s, name = %s, sort_order = %d,
+                 SET version = %d, from_node_id = %d, to_node_id = %d, kind = %s, sort_order = %d,
                      hide = %d,
                      multiplicity = %s
                  WHERE id = %d AND version = %d',
                 ...$arguments
             )
         );
+
+        $this->writeName($relation);
 
         if ($written === 1) {
             return;
@@ -136,9 +203,8 @@ final class WpdbRelationRepository implements RelationRepository
         global $wpdb;
 
         $row = Query::row('Kante lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-             WHERE id = %d',
-            $relationId
+            'SELECT ' . self::COLUMNS . self::fromRelations() . 'WHERE r.id = %d',
+            ...[...self::nameArgs(), $relationId]
         ));
 
         return $row === null ? null : $this->hydrate($row);
@@ -184,11 +250,9 @@ final class WpdbRelationRepository implements RelationRepository
         // mehr: **eine geparkte Kante steht im Schatten und nicht hier**. Die Auslassung ist die
         // Tabelle selbst.*
         $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
-             FROM ' . Schema::table('relations') . "
-             WHERE from_node_id IN ({$places})
-             ORDER BY sort_order ASC, id ASC",
-            array_map(intval(...), $ownerIds)
+            'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.from_node_id IN ({$places})
+             ORDER BY r.sort_order ASC, r.id ASC",
+            [...self::nameArgs(), ...array_map(intval(...), $ownerIds)]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -208,11 +272,9 @@ final class WpdbRelationRepository implements RelationRepository
         // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
         // relation ids.*
         $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
-             FROM ' . Schema::table('relations') . "
-             WHERE to_node_id IN ({$places})
-             ORDER BY from_node_id ASC, sort_order ASC, id ASC",
-            array_map(intval(...), $targetIds)
+            'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.to_node_id IN ({$places})
+             ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC",
+            [...self::nameArgs(), ...array_map(intval(...), $targetIds)]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -363,6 +425,19 @@ final class WpdbRelationRepository implements RelationRepository
             throw new \RuntimeException('Die geparkte Kante liess sich nicht zurückholen: ' . $wpdb->last_error);
         }
 
+        // ⚠️ **Der Name kommt aus dem Schatten zurueck in die Beschriftungen** (TASK-019,
+        // [D-580](../../../docs/NewConcept/90-decision-log.md)). *Lebend gibt es die Spalte nicht mehr,
+        // im Schatten schon — sie wird darum oben uebersprungen, und **ohne diese Zeile kaeme eine
+        // zurueckgeholte Kante namenlos wieder**.*
+        // ⚠️ *Eine namenlose Kante bleibt namenlos — `renamedTo('')` waere ein Fehler und nicht ein
+        // leerer Name.*
+        $ausDemSchatten = (string) ($zeile['name'] ?? '');
+        $zurueck        = $ausDemSchatten === '' ? null : $this->byId($relationId);
+
+        if ($zurueck !== null) {
+            $this->writeName($zurueck->renamedTo($ausDemSchatten));
+        }
+
         $this->unparkValues($relationId);
 
         return $this->byId($relationId);
@@ -433,9 +508,9 @@ final class WpdbRelationRepository implements RelationRepository
         $places = implode(",", array_fill(0, count($ids), "%d"));
 
         $rows = Query::rows('Kanten am Knoten lesen', $wpdb->prepare(
-            "SELECT * FROM " . Schema::table("relations") . "
-             WHERE from_node_id IN ({$places}) OR to_node_id IN ({$places})",
-            ...[...$ids, ...$ids]
+            'SELECT ' . self::COLUMNS . self::fromRelations()
+                . "WHERE r.from_node_id IN ({$places}) OR r.to_node_id IN ({$places})",
+            ...[...self::nameArgs(), ...$ids, ...$ids]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -449,11 +524,38 @@ final class WpdbRelationRepository implements RelationRepository
         // die verschwindet, nimmt sonst mit, **warum** sie da war.*
         Shadow::keep('relations', 'from_node_id = %d OR to_node_id = %d', [$nodeId, $nodeId], true);
 
+        // ⚠️ **Die Beschriftungen gehen mit** (TASK-019, [D-580](../../../docs/NewConcept/90-decision-log.md)):
+        // *eine Kante mit Namen hat seither eine Beschriftungszeile, und eine, auf die niemand mehr
+        // zeigt, ist eine Waise. **Der Schatten behält den Namen** — dort ist er eingefrorene
+        // Geschichte ([D-065](../../../docs/NewConcept/90-decision-log.md)).*
+        $labelIds = array_values(array_filter(array_map(intval(...), Query::column(
+            'Beschriftungen der weggeraeumten Kanten lesen',
+            $wpdb->prepare(
+                'SELECT label_id FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
+                $nodeId,
+                $nodeId
+            )
+        ))));
+
         $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
             $nodeId,
             $nodeId
         ));
+
+        if ($labelIds !== []) {
+            $slots = implode(',', array_fill(0, count($labelIds), '%d'));
+
+            $wpdb->query($wpdb->prepare(
+                'DELETE FROM ' . Schema::table('label_texts') . " WHERE label_id IN ({$slots})",
+                ...$labelIds
+            ));
+
+            $wpdb->query($wpdb->prepare(
+                'DELETE FROM ' . Schema::table('labels') . " WHERE id IN ({$slots})",
+                ...$labelIds
+            ));
+        }
     }
 
     /** @param array<string,mixed> $row */

@@ -347,8 +347,16 @@ final class Schema
      * hier ist — nicht der Knoten und nicht der Ast.» **39 Knoten trugen die Marke; die Auskunft kommt
      * jetzt aus den eingehenden Kanten**, und wo keine ist, von der Kante über dem nächsten Vorfahren.
      * Der Schatten geht mit, aus demselben Grund wie in Fassung 32.*
+     *
+     * ⚠️ **Fassung 34 teilt die Beschriftungen und holt den Namen hinein** (TASK-019,
+     * [D-580](../../../docs/NewConcept/90-decision-log.md), [D-598](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md), [D-646](../../../docs/NewConcept/90-decision-log.md)).
+     * *`labels` trägt das Sprachunabhängige — heute nur noch `icon` —, `label_texts` das
+     * Sprachabhängige je Sprache in sechs Spalten: `text_name`, `text_form`, `text_table`,
+     * `text_select`, `text_help`, `text_symbol`. **Knoten und Kanten zeigen mit `label_id` dorthin**,
+     * damit jeder Fremdschlüssel echt und einspaltig ist; `nodes.name` und `relations.name` fallen.*
      */
-    public const VERSION = 33;
+    public const VERSION = 34;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -359,6 +367,14 @@ final class Schema
      * Wort noch kennt.*
      */
     private const RETIRED_INHERITANCE_KIND = 'inheritance';
+
+    /**
+     * Wie die hohe Beschriftungstabelle heisst, während Fassung 34 aus ihr schöpft.
+     *
+     * ⚠️ *Sie ist die Sicherung des Umzugs und fällt erst, wenn jede Zeile nachgewiesen angekommen
+     * ist — siehe {@see self::moveNamesIntoLabels()}.*
+     */
+    private const RETIRED_LABELS_TABLE = 'labels_v33';
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -442,13 +458,23 @@ final class Schema
      *
      * ⚠️ *Sie steht hier und nicht in {@see self::SHADOW_ONLY}, weil die dort genannten Spalten in
      * **jedem** Schatten stehen müssen — `nodes_history` hat kein Parken und soll auch keins bekommen.*
+     *
+     * ⚠️ **Seit Fassung 34 steht `name` hier** (TASK-019, [D-580](../../../docs/NewConcept/90-decision-log.md)):
+     * *die lebende Zeile hat keinen Namen mehr, sie zeigt mit `label_id` auf ihre Beschriftung. **Der
+     * Schatten behält ihn**, aus demselben Grund, aus dem das Änderungsbuch seine Zustände behält
+     * ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben als
+     * **Datum** mit. 21 366 + 25 440 Namen wegzuwerfen, um eine Spaltenliste symmetrisch zu machen,
+     * wäre der teuerste denkbare Aufräumschritt.*
      */
-    public const SHADOW_ONLY_IN = ['relations_history' => ['parked_by_group_id']];
+    public const SHADOW_ONLY_IN = [
+        'relations_history' => ['parked_by_group_id', 'name'],
+        'nodes_history'     => ['name'],
+    ];
 
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['labels', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
+        return ['labels', 'label_texts', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
     }
 
     public static function table(string $name): string
@@ -514,6 +540,13 @@ final class Schema
         // Spalte zurück, und `$wpdb` sagt darüber nichts.*
         self::dropIdentityForeignKeys();
 
+        // ⚠️ **Vor `dbDelta`, und aus einem eigenen Grund** (Fassung 34, TASK-019): *`dbDelta` fügt
+        // fehlende Spalten hinzu und entfernt keine — es könnte die alte, hohe `labels` nie in die
+        // neue, flache verwandeln. **Also tritt die alte zur Seite und die neue wird frisch
+        // gebaut**; {@see self::moveNamesIntoLabels()} schöpft danach aus ihr und lässt sie erst
+        // fallen, wenn Zeile für Zeile nachgewiesen ist, dass nichts fehlt.*
+        self::setOldLabelsAside();
+
         foreach (self::statements() as $sql) {
             dbDelta($sql);
         }
@@ -556,6 +589,13 @@ final class Schema
         // ⚠️ **Nach `dbDelta`, aus demselben Grund** (Fassung 33, TASK-059,
         // [D-621](../../../docs/NewConcept/90-decision-log.md)).
         self::dropNodeFieldTypeColumn();
+
+        // ⚠️ **Nach `dbDelta`, weil `label_texts`, `labels.icon` und die beiden `label_id` dastehen
+        // müssen, bevor etwas hineinwandert** (Fassung 34, TASK-019).
+        self::moveNamesIntoLabels();
+
+        // ⚠️ **Nach der Wanderung, weil sie auf `label_texts` steht** (Fassung 34, TASK-019).
+        self::buildTheReadableViews();
 
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
@@ -603,6 +643,12 @@ final class Schema
         }
 
         if (! self::hasColumn($labels, 'owner_kind')) {
+            return;
+        }
+
+        // ⚠️ *Seit Fassung 34 ist `labels` flach: der Raum steht weiter darin, `owner_id` und die
+        // Textspalten nicht mehr. Dieser Schritt gehört der alten Form und hat dort nichts zu suchen.*
+        if (! self::hasColumn($labels, 'owner_id')) {
             return;
         }
 
@@ -963,6 +1009,617 @@ final class Schema
                 $gruppe
             );
         }
+    }
+
+    /**
+     * Die alte, hohe `labels` tritt zur Seite, damit die neue, flache frisch gebaut werden kann
+     * (Fassung 34, TASK-019).
+     *
+     * ⚠️ **`dbDelta` kann keine Tabelle umformen** — es fügt fehlende Spalten hinzu und entfernt
+     * keine. *Eine Tabelle, deren Schlüssel und deren halbe Spaltenmenge sich ändern, lässt sich
+     * damit nicht wandeln; sie muss neu gebaut und ihr Inhalt umgegossen werden.*
+     *
+     * ⚠️ **Und die zur Seite gestellte Tabelle **ist** die Sicherung.** *Sie fällt erst, wenn
+     * {@see self::moveNamesIntoLabels()} Zeile für Zeile nachgewiesen hat, dass jeder Text an seiner
+     * Stelle angekommen ist. Bricht der Schritt vorher ab, steht sie unangetastet da und der nächste
+     * Lauf beginnt wieder bei ihr.*
+     */
+    private static function setOldLabelsAside(): void
+    {
+        global $wpdb;
+
+        $labels   = self::table('labels');
+        $beiseite = self::table(self::RETIRED_LABELS_TABLE);
+
+        if (self::tableMissing($labels) || ! self::tableMissing($beiseite)) {
+            return;
+        }
+
+        // ⚠️ *`owner_id` ist das Kennzeichen der alten Form — hat sie es nicht, ist sie schon die neue.*
+        if (! self::hasColumn($labels, 'owner_id')) {
+            return;
+        }
+
+        $wpdb->query("RENAME TABLE {$labels} TO {$beiseite}");
+    }
+
+    /**
+     * Fassung 34: **die Beschriftungen bekommen ihre zwei Tabellen, und der Name zieht mit hinein**
+     * (TASK-019, [D-580](../../../docs/NewConcept/90-decision-log.md),
+     * [D-598](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md),
+     * [D-646](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   N[(nodes.name)] --> T[(label_texts.text_name)]
+     *   R[(relations.name)] --> T
+     *   A[(labels alt · eine Zeile je Rolle)] --> T
+     *   N -.label_id.-> L[(labels)]
+     *   L --> T
+     * ```
+     *
+     * ⚠️ **Der Verweis dreht sich um, und das ist der Kern** (D-580): *«wenn wir jeder Kante eine
+     * `label_id` geben … dann hätten wir das Problem gelöst». **Zeigte die Labeltabelle auf ihren
+     * Gegenstand, bräuchte sie je neuer Art eine weitere Spalte.***
+     *
+     * ⚠️ **Die sprachlosen Zeilen werden Zeilen der Standardsprache** (D-580, D-387, D-645). *Es gibt
+     * keine sprachneutrale Zeile mehr; die Standardsprache steht auf der Installationsseite und wird
+     * hier vom Rand hereingereicht, weil der Kern sie nicht kennen darf (`CD-1`).*
+     *
+     * ⚠️ **Erst messen, dann wandern, dann nachmessen — Zeile für Zeile und nicht als Summe**
+     * (`PR-9`): *jeder Knoten und jede Kante muss nachher denselben Namen und dieselbe Beschriftung
+     * liefern wie vorher. Weicht **eine** ab, bricht der Schritt ab, die Fassungsnummer bleibt stehen
+     * und die alte Tabelle mit ihr.*
+     *
+     * ⚠️ **Das Sichern steht in diesem Schritt und nicht in einem Skript daneben.** *Das Laden von
+     * WordPress hebt die Fassung, bevor ein Skript seine erste Zeile schreiben kann — am 2026-09-05
+     * sind so rund 190 Schattenzeilen verlorengegangen.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet weder die alte Tabelle noch eine Spalte `name`.*
+     */
+    private static function moveNamesIntoLabels(): void
+    {
+        global $wpdb;
+
+        $labels = self::table('labels');
+        $texts  = self::table('label_texts');
+        $nodes  = self::table('nodes');
+        $rels   = self::table('relations');
+        $alt    = self::table(self::RETIRED_LABELS_TABLE);
+
+        if (self::tableMissing($labels) || self::tableMissing($texts) || self::tableMissing($nodes)) {
+            return;
+        }
+
+        $mitNamen = self::hasColumn($nodes, 'name') || self::hasColumn($rels, 'name');
+
+        if (self::tableMissing($alt) && ! $mitNamen) {
+            return;
+        }
+
+        $standard = \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale();
+
+        // ── 1. Vorher zählen. Die Rollen zuerst, denn sie hängen an `nodes.name`, das gleich fällt.
+        $rollen  = self::labelRolesBeforeTheMove($alt, $nodes);
+        $vorher  = self::namesBeforeTheMove($nodes, $rels);
+        $texteAlt = self::labelTextsBeforeTheMove($alt, $rollen, $standard);
+
+        // ── 2. Jede lebende Zeile bekommt ihre Beschriftungszeile, und der Name zieht hinein.
+        //
+        // ⚠️ *Eine Änderungsgruppe für **beide** Tabellen: es ist ein Akt
+        // ([D-348](../../../docs/NewConcept/90-decision-log.md)), und ein Rückgängig, das nur die
+        // Knoten zurückholte, wäre kein Rückgängig dieses Schritts.*
+        $gruppe = null;
+
+        self::giveEveryOwnerALabel($labels, $texts, $nodes, 'node', $vorher['node'], $standard, $gruppe);
+        self::giveEveryOwnerALabel($labels, $texts, $rels, 'relation', $vorher['relation'], $standard, $gruppe);
+
+        // ── 3. Die alten Beschriftungen giessen sich in die Spalten ihrer Rolle.
+        self::pourOldLabelsIntoColumns($texts, $nodes, $rels, $texteAlt);
+
+        // ── 4. Nachher messen — Zeile für Zeile.
+        self::proveTheMove($texts, $nodes, $rels, $vorher, $texteAlt, $standard);
+
+        // ── 5. Erst jetzt fällt, was ersetzt ist.
+        foreach ([[$nodes, 'name'], [$rels, 'name']] as [$tabelle, $spalte]) {
+            if (! self::tableMissing($tabelle) && self::hasColumn($tabelle, $spalte)) {
+                $wpdb->query("ALTER TABLE {$tabelle} DROP COLUMN {$spalte}");
+            }
+        }
+
+        if (! self::tableMissing($alt)) {
+            $wpdb->query("DROP TABLE {$alt}");
+        }
+
+        Shadow::forgetColumnPlan();
+
+        // ⚠️ *Die Zahlen bleiben stehen, damit `label-texts-check` sie **vergleichen** kann, statt sie
+        // nachzurechnen — dieselbe Vorsorge wie bei Fassung 31.*
+        update_option('taxmod_labeltexts_shape', [
+            'nodes'     => count($vorher['node']),
+            'relations' => count($vorher['relation']),
+            'texts'     => count($texteAlt),
+            'locale'    => $standard,
+        ], false);
+    }
+
+    /**
+     * Welche Rollennummer welche Rolle war — gelesen, solange `nodes.name` es noch sagen kann.
+     *
+     * ⚠️ **Geraten wird hier nichts** (`PR-4`): *eine Rollennummer ohne Knoten, oder mit einem Namen,
+     * den {@see \Taxmod\Core\Model\SeededRole} nicht kennt, lässt den Schritt abbrechen. Sie still in
+     * eine Spalte zu schieben hiesse, einen Text an eine Stelle zu legen, an der ihn niemand sucht.*
+     *
+     * @return array<int,string> Rollennummer => Rollenwort.
+     */
+    private static function labelRolesBeforeTheMove(string $alt, string $nodes): array
+    {
+        global $wpdb;
+
+        if (self::tableMissing($alt)) {
+            return [];
+        }
+
+        $zeilen = $wpdb->get_results(
+            "SELECT DISTINCT l.role_id, n.name FROM {$alt} l LEFT JOIN {$nodes} n ON n.id = l.role_id",
+            ARRAY_A
+        ) ?: [];
+
+        $rollen = [];
+
+        foreach ($zeilen as $zeile) {
+            $wort = (string) ($zeile['name'] ?? '');
+
+            if (\Taxmod\Core\Model\SeededRole::tryFrom($wort) === null) {
+                throw new \RuntimeException(
+                    'Fassung 34: die Rollennummer ' . (int) $zeile['role_id'] . ' heisst «' . $wort
+                    . '» und ist keine bekannte Rolle. Es wurde nichts geloescht.'
+                );
+            }
+
+            $rollen[(int) $zeile['role_id']] = $wort;
+        }
+
+        return $rollen;
+    }
+
+    /**
+     * Die Namen, wie sie vor dem Umzug dastehen.
+     *
+     * @return array{node: array<int,string>, relation: array<int,string>}
+     */
+    private static function namesBeforeTheMove(string $nodes, string $rels): array
+    {
+        global $wpdb;
+
+        $lesen = static function (string $tabelle) use ($wpdb): array {
+            if (self::tableMissing($tabelle) || ! self::hasColumn($tabelle, 'name')) {
+                return [];
+            }
+
+            $gefunden = [];
+
+            foreach ($wpdb->get_results("SELECT id, name FROM {$tabelle}", ARRAY_A) ?: [] as $zeile) {
+                $name = (string) $zeile['name'];
+
+                if ($name !== '') {
+                    $gefunden[(int) $zeile['id']] = $name;
+                }
+            }
+
+            return $gefunden;
+        };
+
+        return ['node' => $lesen($nodes), 'relation' => $lesen($rels)];
+    }
+
+    /**
+     * Die alten Beschriftungen, auf ihre künftige Stelle umgerechnet.
+     *
+     * ⚠️ **Hier fällt die sprachneutrale Zeile** (D-580, D-387, D-645): *eine leere Sprache wird die
+     * Standardsprache. **Träfen dabei zwei Zeilen auf dieselbe Stelle**, würde die eine die andere
+     * überschreiben — darum wird das gezählt und nicht geduldet.*
+     *
+     * @param  array<int,string> $rollen
+     * @return array<string,string> «Raum·Eigentümer·Sprache·Numerus·Rolle» => Text.
+     */
+    private static function labelTextsBeforeTheMove(string $alt, array $rollen, string $standard): array
+    {
+        global $wpdb;
+
+        if (self::tableMissing($alt)) {
+            return [];
+        }
+
+        $gefunden = [];
+
+        foreach ($wpdb->get_results("SELECT * FROM {$alt}", ARRAY_A) ?: [] as $zeile) {
+            $text = (string) $zeile['text'];
+
+            if ($text === '') {
+                continue;
+            }
+
+            $pfad = (string) ($zeile['path'] ?? '');
+
+            if ($pfad !== '') {
+                throw new \RuntimeException(
+                    'Fassung 34: eine Beschriftung traegt einen Pfad («' . $pfad . '»), und die neue Form '
+                    . 'hat keine Stelle dafuer. Es wurde nichts geloescht; siehe INF-043.'
+                );
+            }
+
+            $schluessel = implode("\0", [
+                self::spaceOfOldLabel($zeile),
+                (string) (int) $zeile['owner_id'],
+                ((string) $zeile['locale']) === '' ? $standard : (string) $zeile['locale'],
+                ((string) $zeile['number']) === '' ? \Taxmod\Core\Model\Label::BASE_NUMBER : (string) $zeile['number'],
+                $rollen[(int) $zeile['role_id']] ?? '',
+            ]);
+
+            if (isset($gefunden[$schluessel]) && $gefunden[$schluessel] !== $text) {
+                throw new \RuntimeException(
+                    'Fassung 34: zwei Beschriftungen fallen auf dieselbe Stelle, weil die sprachlose '
+                    . 'Zeile zur Standardsprache wird. Es wurde nichts geloescht.'
+                );
+            }
+
+            $gefunden[$schluessel] = $text;
+        }
+
+        return $gefunden;
+    }
+
+    /**
+     * An welchem Raum eine alte Beschriftung hing.
+     *
+     * ⚠️ **Eine Installation, die vor Fassung 31 stehengeblieben ist, hat die Spalte `owner_kind`
+     * nicht** — dann wird sie **gelesen** und nicht geraten: gibt es unter der Nummer einen Knoten
+     * **und** eine Kante, oder keines von beidem, bricht der Schritt ab (`PR-4`, `INF-035`).
+     *
+     * @param array<string,mixed> $zeile
+     */
+    private static function spaceOfOldLabel(array $zeile): string
+    {
+        global $wpdb;
+
+        $raum = (string) ($zeile['owner_kind'] ?? '');
+
+        if ($raum !== '') {
+            return $raum;
+        }
+
+        $id      = (int) $zeile['owner_id'];
+        $istNode = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . self::table('nodes') . ' WHERE id = %d', $id));
+        $istKante = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . self::table('relations') . ' WHERE id = %d', $id));
+
+        if ($istNode === 1 && $istKante === 0) {
+            return 'node';
+        }
+
+        if ($istKante === 1 && $istNode === 0) {
+            return 'relation';
+        }
+
+        throw new \RuntimeException(
+            'Fassung 34: die Beschriftung an Nummer ' . $id . ' nennt ihren Raum nicht und er laesst sich '
+            . 'nicht eindeutig lesen. Es wurde nichts geloescht.'
+        );
+    }
+
+    /**
+     * Jede lebende Zeile bekommt ihre `label_id`, und ihr Name wird ihr `text_name`.
+     *
+     * ⚠️ **Am Knoten ist die Beschriftung Pflicht, an der Kante freiwillig** (D-580): *«die 127
+     * Vererbungskanten haben heute keinen Namen und brauchen auch keinen». Eine Kante ohne Namen
+     * bekommt darum keine Zeile.*
+     *
+     * ⚠️ **Erst sichern, dann schreiben** (`PR-9`, D-348, D-634): *jede Zeile geht als Schattenzeile
+     * fort — mit ihrer `label_id` und ihrem noch vorhandenen Namen —, und jede bekommt eine
+     * Journalzeile mit Version unter **einer** Änderungsgruppe.*
+     *
+     * ⚠️ *Eine Schleife mit Abfragen darin, und das ist hier die richtige Form: **jede Zeile braucht
+     * ihre eigene neue Nummer**, die `AUTO_INCREMENT` erst beim Einfügen vergibt. `CD-7` verbietet die
+     * Abfrage im Auflösungslauf, nicht den einmaligen Umzug bei der Aktivierung.*
+     *
+     * @param array<int,string> $namen
+     */
+    private static function giveEveryOwnerALabel(
+        string $labels,
+        string $texts,
+        string $tabelle,
+        string $raum,
+        array $namen,
+        string $standard,
+        ?int &$gruppe
+    ): void {
+        global $wpdb;
+
+        if (self::tableMissing($tabelle) || ! self::hasColumn($tabelle, 'label_id')) {
+            return;
+        }
+
+        $offen = $wpdb->get_col("SELECT id FROM {$tabelle} WHERE label_id IS NULL OR label_id = 0");
+
+        if ($offen === []) {
+            return;
+        }
+
+        $log = new WpdbChangelog(new SystemClock());
+
+        foreach ($offen as $rohe) {
+            $id   = (int) $rohe;
+            $name = $namen[$id] ?? '';
+
+            // ⚠️ *Eine Kante ohne Namen bleibt ohne Beschriftung — D-580 macht sie dort freiwillig.*
+            if ($raum === 'relation' && $name === '') {
+                continue;
+            }
+
+            $wpdb->insert($labels, ['version' => 1, 'owner_kind' => $raum], ['%d', '%s']);
+
+            $labelId = (int) $wpdb->insert_id;
+
+            if ($labelId === 0) {
+                throw new \RuntimeException(
+                    'Fassung 34: fuer ' . $raum . ' ' . $id . ' liess sich keine Beschriftungszeile anlegen: '
+                    . $wpdb->last_error
+                );
+            }
+
+            $wpdb->update($tabelle, ['label_id' => $labelId], ['id' => $id], ['%d'], ['%d']);
+
+            if ($name !== '') {
+                $wpdb->insert(
+                    $texts,
+                    [
+                        'label_id'  => $labelId,
+                        'locale'    => $standard,
+                        'number'    => \Taxmod\Core\Model\Label::BASE_NUMBER,
+                        'text_name' => $name,
+                    ],
+                    ['%d', '%s', '%s', '%s']
+                );
+            }
+
+            $version = (int) $wpdb->get_var($wpdb->prepare("SELECT version FROM {$tabelle} WHERE id = %d", $id));
+
+            Shadow::keepOne($raum === 'node' ? 'nodes' : 'relations', $id);
+
+            $gruppe = $log->record($id, $raum, 'name moved to label', $name, (string) $labelId, $version, $gruppe);
+        }
+    }
+
+    /**
+     * Die alten Beschriftungen in die Spalte ihrer Rolle.
+     *
+     * @param array<string,string> $texteAlt
+     */
+    private static function pourOldLabelsIntoColumns(string $texts, string $nodes, string $rels, array $texteAlt): void
+    {
+        global $wpdb;
+
+        if ($texteAlt === []) {
+            return;
+        }
+
+        foreach ($texteAlt as $schluessel => $text) {
+            [$raum, $ownerId, $locale, $number, $rolle] = explode("\0", $schluessel);
+
+            $labelId = self::labelIdOf($raum === 'relation' ? $rels : $nodes, (int) $ownerId);
+
+            if ($labelId === 0) {
+                throw new \RuntimeException(
+                    'Fassung 34: die Beschriftung von ' . $raum . ' ' . $ownerId . ' findet keine Zeile, '
+                    . 'an der sie haengen koennte. Es wurde nichts geloescht.'
+                );
+            }
+
+            $spalte = 'text_' . $rolle;
+
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO {$texts} (label_id, locale, number, {$spalte}) VALUES (%d, %s, %s, %s)
+                 ON DUPLICATE KEY UPDATE {$spalte} = VALUES({$spalte})",
+                $labelId,
+                $locale,
+                $number,
+                $text
+            ));
+
+            if ($wpdb->last_error !== '') {
+                throw new \RuntimeException('Fassung 34: eine Beschriftung liess sich nicht schreiben: ' . $wpdb->last_error);
+            }
+        }
+    }
+
+    /**
+     * Nachher: jeder Name und jede Beschriftung an derselben Stelle wie vorher — **Zeile für Zeile**.
+     *
+     * @param array{node: array<int,string>, relation: array<int,string>} $vorher
+     * @param array<string,string>                                       $texteAlt
+     */
+    private static function proveTheMove(
+        string $texts,
+        string $nodes,
+        string $rels,
+        array $vorher,
+        array $texteAlt,
+        string $standard
+    ): void {
+        foreach ($vorher as $raum => $namen) {
+            $tabelle = $raum === 'relation' ? $rels : $nodes;
+
+            foreach ($namen as $id => $name) {
+                $jetzt = self::storedText($texts, $tabelle, $id, $standard, \Taxmod\Core\Model\Label::BASE_NUMBER, 'text_name');
+
+                if ($jetzt !== $name) {
+                    throw new \RuntimeException(
+                        'Fassung 34: ' . $raum . ' ' . $id . ' hiess «' . $name . '» und heisst jetzt «'
+                        . (string) $jetzt . '». Die Wanderung bricht ab; es wurde keine Spalte geloescht.'
+                    );
+                }
+            }
+        }
+
+        foreach ($texteAlt as $schluessel => $text) {
+            [$raum, $ownerId, $locale, $number, $rolle] = explode("\0", $schluessel);
+
+            $jetzt = self::storedText(
+                $texts,
+                $raum === 'relation' ? $rels : $nodes,
+                (int) $ownerId,
+                $locale,
+                $number,
+                'text_' . $rolle
+            );
+
+            if ($jetzt !== $text) {
+                throw new \RuntimeException(
+                    'Fassung 34: die Beschriftung «' . $rolle . '» von ' . $raum . ' ' . $ownerId
+                    . ' ist nicht angekommen. Die Wanderung bricht ab; es wurde keine Spalte geloescht.'
+                );
+            }
+        }
+
+        unset($standard);
+    }
+
+    private static function labelIdOf(string $tabelle, int $id): int
+    {
+        global $wpdb;
+
+        return (int) $wpdb->get_var($wpdb->prepare("SELECT label_id FROM {$tabelle} WHERE id = %d", $id));
+    }
+
+    private static function storedText(
+        string $texts,
+        string $tabelle,
+        int $ownerId,
+        string $locale,
+        string $number,
+        string $spalte
+    ): ?string {
+        global $wpdb;
+
+        $wert = $wpdb->get_var($wpdb->prepare(
+            "SELECT t.{$spalte} FROM {$texts} t
+             JOIN {$tabelle} o ON o.label_id = t.label_id
+             WHERE o.id = %d AND t.locale = %s AND t.number = %s",
+            $ownerId,
+            $locale,
+            $number
+        ));
+
+        return $wert === null ? null : (string) $wert;
+    }
+
+    /**
+     * Zwei Sichten, die einen Knoten und eine Kante **mit ihrem Namen** zeigen (Fassung 34,
+     * TASK-019).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   N[(nodes)] --> V[["nodes_named"]]
+     *   T[(label_texts · Standardsprache)] --> V
+     * ```
+     *
+     * ⚠️ **Sie beantworten die Folge, die [D-580](../../../docs/NewConcept/90-decision-log.md) selbst
+     * benannt hat:** *«`nodes` hat danach keine lesbare Spalte mehr — wer die Tabelle roh ansieht,
+     * sieht Ids.» **Eine Sicht ist keine zweite Wahrheit** ([D-016](../../../docs/NewConcept/90-decision-log.md),
+     * [D-228](../../../docs/NewConcept/90-decision-log.md)): sie hält nichts, sie rechnet bei jedem
+     * Blick neu, und sie kann mit der Tabelle nicht auseinanderlaufen.*
+     *
+     * ⚠️ **Sie sind für das Lesen da und nie für das Schreiben** — *die Prüfläufe fragen «welcher
+     * Knoten heisst so», und ohne sie hätte jeder von ihnen denselben Verbund noch einmal
+     * hingeschrieben. Der schreibende Weg geht durch {@see WpdbLabelRepository}.*
+     *
+     * ⚠️ *Die Standardsprache steht **in** der Sicht, weil eine Sicht keine Parameter nimmt. Ändert
+     * sie sich, werden die Sichten beim nächsten Fassungslauf neu gebaut; wer sie augenblicklich
+     * braucht, fragt die Beschriftungen selbst.*
+     */
+    private static function buildTheReadableViews(): void
+    {
+        global $wpdb;
+
+        if (self::tableMissing(self::table('label_texts'))) {
+            return;
+        }
+
+        $texts    = self::table('label_texts');
+        $standard = \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale();
+
+        foreach (['nodes', 'relations'] as $tabelle) {
+            $quelle = self::table($tabelle);
+            $sicht  = self::table($tabelle . '_named');
+
+            if (self::tableMissing($quelle)) {
+                continue;
+            }
+
+            $wpdb->query($wpdb->prepare(
+                "CREATE OR REPLACE VIEW {$sicht} AS
+                 SELECT q.*, COALESCE(t.text_name, '') AS name
+                 FROM {$quelle} q
+                 LEFT JOIN {$texts} t ON t.label_id = q.label_id AND t.locale = %s AND t.number = %s",
+                $standard,
+                \Taxmod\Core\Model\Label::BASE_NUMBER
+            ));
+        }
+    }
+
+    /**
+     * Beschriftungen, auf die niemand mehr zeigt — samt ihren Texten.
+     *
+     * ⚠️ **Warum es das seit TASK-019 überhaupt gibt** ([D-580](../../../docs/NewConcept/90-decision-log.md)):
+     * *bis dahin hatte ein Knoten nur dann eine Beschriftungszeile, wenn jemand einen Text
+     * geschrieben hatte. **Jetzt hat sie jeder**, weil der Name eine ist — und jede Zeile, die mit
+     * rohem SQL aus `nodes` entfernt wird, lässt eine zurück. Die Ablagewege räumen selbst auf
+     * ({@see WpdbNodeRepository::purgeSubtree()}); die Prüfläufe, die an ihnen vorbei löschen,
+     * rufen dies am Ende auf.*
+     *
+     * ⚠️ *Es räumt **nur** weg, worauf weder ein Knoten noch eine Kante zeigt — eine Beschriftung
+     * mit Eigentümer wird nie angefasst.*
+     *
+     * @return int Wie viele Beschriftungen gefallen sind.
+     */
+    public static function forgetOrphanLabels(): int
+    {
+        global $wpdb;
+
+        if (self::tableMissing(self::table('labels')) || self::tableMissing(self::table('label_texts'))) {
+            return 0;
+        }
+
+        $labels = self::table('labels');
+
+        $ids = array_map(intval(...), $wpdb->get_col(
+            "SELECT l.id FROM {$labels} l
+             WHERE NOT EXISTS (SELECT 1 FROM " . self::table('nodes') . ' n WHERE n.label_id = l.id)
+               AND NOT EXISTS (SELECT 1 FROM ' . self::table('relations') . ' r WHERE r.label_id = l.id)'
+        ) ?: []);
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . self::table('label_texts') . " WHERE label_id IN ({$slots})",
+            ...$ids
+        ));
+
+        $wpdb->query($wpdb->prepare("DELETE FROM {$labels} WHERE id IN ({$slots})", ...$ids));
+
+        return count($ids);
+    }
+
+    private static function tableMissing(string $table): bool
+    {
+        global $wpdb;
+
+        return $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table;
     }
 
     private static function dropSettingsTable(): void
@@ -2248,10 +2905,14 @@ final class Schema
             // ⚠️ *`identities` stand hier bis Fassung 20 — der gemeinsame Nummernraum. **Sie ist
             // gestrichen** (TASK-004): jede Tabelle vergibt ihre Ids aus ihrem eigenen
             // `AUTO_INCREMENT`.*
+            // ⚠️ **`name` steht hier seit Fassung 34 nicht mehr, `label_id` steht an seiner Stelle**
+            // (TASK-019, D-580, D-646). *Der Verweis zeigt vom Knoten auf die Beschriftung und nicht
+            // umgekehrt — «so bekommt jede Tabelle ihre eigene `label_id`, und jeder Fremdschlüssel
+            // ist echt und einspaltig». **Am Knoten ist er Pflicht**, an der Kante freiwillig.*
             "CREATE TABLE {$t('nodes')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
-                name varchar(191) NOT NULL,
+                label_id bigint(20) unsigned NOT NULL DEFAULT 0,
                 path varchar(255) NOT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
@@ -2259,7 +2920,7 @@ final class Schema
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY path (path),
-                KEY name (name),
+                KEY label_id (label_id),
                 KEY implemented_by (implemented_by),
                 UNIQUE KEY one_place (parent_node_id,sort_order)
             ) {$charset};",
@@ -2276,13 +2937,14 @@ final class Schema
                 from_node_id bigint(20) unsigned NOT NULL,
                 to_node_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
-                name varchar(191) NOT NULL DEFAULT '',
+                label_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
-                KEY to_node_id (to_node_id)
+                KEY to_node_id (to_node_id),
+                KEY label_id (label_id)
             ) {$charset};",
 
             // ⚠️ *Hier stand `settings` samt der Begruendung ihrer `path`-Spalte. **Die Tabelle ist mit
@@ -2299,19 +2961,51 @@ final class Schema
             //
             // ⚠️ **`version` ist die Zeilennummer** (D-634). *`labels` war die **einzige** Tabelle ohne
             // sie, und der Melder musste dem Journal `null` hinschreiben.*
+            // ⚠️ **Seit Fassung 34 trägt `labels` nur noch das Sprachunabhängige** (TASK-019, D-580,
+            // D-645, D-646). *`name` und `symbol` sind sprachabhängig geworden und stehen in
+            // `label_texts`; `icon` bleibt hier, weil es «not language-dependent» ist (I5) — «bei drei
+            // Sprachen gäbe es dasselbe Bild dreimal».*
+            //
+            // ⚠️ **`owner_kind` bleibt, `owner_id` fällt** (D-641). *Der Verweis zeigt jetzt von
+            // `nodes.label_id` und `relations.label_id` hierher; die Spalte, die den **Raum** nennt,
+            // bleibt an der Zeile, damit eine Beschriftung selbst sagen kann, woran sie hängt.*
             "CREATE TABLE {$t('labels')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
-                owner_id bigint(20) unsigned NOT NULL,
                 owner_kind varchar(20) NOT NULL DEFAULT '',
-                path varchar(255) NOT NULL DEFAULT '',
-                role_id bigint(20) unsigned NOT NULL,
-                number varchar(20) NOT NULL DEFAULT '',
-                locale varchar(20) NOT NULL DEFAULT '',
-                text mediumtext NOT NULL,
+                icon varchar(191) DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY one_text (owner_id,owner_kind,path,role_id,number,locale),
-                KEY role_id (role_id)
+                KEY owner_kind (owner_kind)
+            ) {$charset};",
+
+            // ⚠️ **Die vier Rollen aus D-598 plus `symbol` (D-646) plus `name` (D-646) — Spalten und
+            // nicht Zeilen.** *Der Eigentümer: «würde das mal auf den Parkplatz für mögliche spätere
+            // Entwicklungen schieben und bei vier Spalten bleiben». **Woran man merkt, dass der
+            // Parkplatz zu verlassen ist, steht dabei: wenn zum ersten Mal eine Rolle fehlt.**
+            //
+            // ⚠️ **Warum die Spalten `text_…` heissen und nicht `form`, `table`, `select`:** *`table`
+            // und `select` sind in MySQL reservierte Wörter, und `dbDelta` liest den ersten Bezeichner
+            // einer Zeile roh und schreibt ihn unquotiert in ein `ALTER TABLE` — genau die Falle, die
+            // schon `key` zu `setting_key` und `before` zu `before_state` gemacht hat. **Und `$wpdb`
+            // sagt über einen Syntaxfehler nichts.** Ein Präfix für alle sechs statt einer Ausnahme
+            // für zwei (`CD-9`).*
+            //
+            // ⚠️ *`number` ist die Numerusklasse (D-216) und steht im Schlüssel, damit die
+            // Rückfallkette «Numerus vor Rolle» (D-153) weiter etwas zu finden hat.*
+            "CREATE TABLE {$t('label_texts')} (
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                label_id bigint(20) unsigned NOT NULL,
+                locale varchar(20) NOT NULL,
+                number varchar(20) NOT NULL DEFAULT 'one',
+                text_name mediumtext DEFAULT NULL,
+                text_form mediumtext DEFAULT NULL,
+                text_table mediumtext DEFAULT NULL,
+                text_select mediumtext DEFAULT NULL,
+                text_help mediumtext DEFAULT NULL,
+                text_symbol mediumtext DEFAULT NULL,
+                PRIMARY KEY  (id),
+                UNIQUE KEY one_row (label_id,locale,number),
+                KEY label_id (label_id)
             ) {$charset};",
 
             // owner_kind is stored alongside because the changelog outlives what it refers
@@ -2388,6 +3082,7 @@ final class Schema
             "CREATE TABLE {$t('nodes_history')} (
                 id bigint(20) unsigned NOT NULL,
                 version int(10) unsigned NOT NULL,
+                label_id bigint(20) unsigned NOT NULL DEFAULT 0,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
@@ -2406,6 +3101,7 @@ final class Schema
                 from_node_id bigint(20) unsigned NOT NULL,
                 to_node_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
+                label_id bigint(20) unsigned DEFAULT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',

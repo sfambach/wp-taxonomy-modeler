@@ -1270,3 +1270,51 @@ weg**». **Die erste Haelfte ist gebaut, die zweite nicht** — und der Grund is
 weil der Weg ueber das Modell sie nicht mehr erreicht und nur der Block sie noch aus der Registratur
 holt. **Den Block zu loeschen waere eine Entscheidung ueber diese sechs, und die ist nicht getroffen**
 (`PR-4`). Der Block faellt, sobald `INF-043` beantwortet ist — nicht vorher.*
+
+---
+
+## INF-046 · Eine Beschriftung hat keinen `path` mehr — und was das kostet
+
+**2026-09-05, beim Bauen von TASK-019 gemessen** (`PR-4`, `PR-7`).
+
+**`labels.path` adressierte eine Stelle *innerhalb* eines Eigentümers** ([D-158](../../NewConcept/90-decision-log.md),
+[D-413](../../NewConcept/90-decision-log.md)) — «eine von mehreren Prüfungen an demselben Knoten».
+**Mit dem umgedrehten Verweis aus [D-580](../../NewConcept/90-decision-log.md) gibt es dafür keine
+Stelle mehr:** ein Knoten zeigt mit **einer** `label_id` auf **eine** Beschriftung, und die hat
+keinen Platz für ein «welches darin».
+
+⚠️ **Gemessen, bevor etwas fiel: keine einzige der 52 Beschriftungen trug einen Pfad.** *Es ist
+also nichts verlorengegangen — verloren ist die **Möglichkeit**, und die stand in einer Entscheidung.*
+
+⚠️ **Die Wanderung rät hier nicht** (`PR-4`): *fände sie eine Zeile mit Pfad, bricht sie ab und lässt
+alles stehen. Auf einer anderen Installation kann es sie geben.*
+
+**Die offene Frage:** *soll eine Stelle innerhalb eines Knotens eigene Beschriftungen tragen können —
+und wenn ja, wie, wenn der Verweis von aussen kommt?* Zwei Formen liegen nahe und **keine ist
+gewählt**: eine eigene `label_id` an der Stelle selbst (dann ist die Stelle ein Ding mit Identität),
+oder eine dritte Spalte in `label_texts`. **Nicht entschieden, nicht gebaut.**
+
+---
+
+## INF-047 · Zwei Wächter, die sich gegenseitig rot machen — und einer, der es schon vorher war
+
+**2026-09-05, beim Grünziehen nach TASK-019 gemessen. Keiner der drei Befunde hängt am Namensumzug.**
+
+**Erstens: `scaffold-check` verschiebt `Color`, und `inheritance-column-check` misst genau das.**
+*Gemessen: läuft `scaffold-check`, steht der Typknoten `Color` danach auf Stelle 14 statt 12 unter
+`Data Types`. `inheritance-column-check` vergleicht `sort_order` gegen die Aufzeichnung von TASK-018
+(`taxmod_task018_shape`) und wird davon rot — **jedes Mal, und dauerhaft**, denn die Aufzeichnung ist
+ein Standbild. **Nacheinander laufen die beiden nicht zusammen.** Zurückgestellt und nicht
+entschärft: der Knoten steht wieder auf 12.*
+
+**Zweitens: `unitvalue-check` zeichnet `2.7 kilo` statt `2.7 kilo Ohm`, und der Grund ist gemessen.**
+*Das Feld `einheit` zeigt auf `Base units`, und **dieser Knoten trägt die Renderer-Wahl `table`** —
+Datensatz 2233, angelegt am 2026-08-30. Der `table`-Renderer zeichnet für einen einzelnen Verweis
+nichts. **Es ist kein Beschriftungsfehler:** dieselbe Prüfung bestätigt zwei Zeilen darüber, dass
+`Ohm` das Symbol `Ω` und die Rolle `form` den Namen `Ohm` liefert. Was zu entscheiden wäre: soll ein
+Knoten wie `Base units` überhaupt eine Renderer-Wahl tragen, wenn ein Feld auf ihn zeigt?*
+
+**Drittens: `always-on-check` und `rules-index-check` waren vorher rot und sind es geblieben.**
+*Das Immer-Gelesene liegt 2266 Bytes über der Decke, und das Regelverzeichnis nennt eine andere Zahl
+als die 303 Regeln im Baum. **Beide betreffen gesperrte Dateien** (`CLAUDE.md`, `AGENTS.md`,
+`arbeitsmodell.md`) und wurden hier nicht angefasst.*

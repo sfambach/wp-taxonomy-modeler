@@ -46,11 +46,16 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelValues;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -83,8 +88,17 @@ $framework = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new 
 $records   = new WpdbRecordRepository();
 $registry  = ShippedRenderers::registry();
 
-$r = Schema::table('relations');
-$n = Schema::table('nodes');
+$r = Schema::table('relations_named');
+$n = Schema::table('nodes_named');
+
+// ⚠️ **Umbenennen heisst seit TASK-019: eine Beschriftung schreiben** ([D-580](../../docs/NewConcept/90-decision-log.md),
+// [D-646](../../docs/NewConcept/90-decision-log.md)). *`nodes.name` und `relations.name` gibt es
+// nicht mehr; gelesen wird ueber die Sicht, geschrieben ueber die Ablage.*
+$beschriftungen = new WpdbLabelRepository();
+
+$benenne = static function (IdentitySpace $raum, int $id, string $name) use ($beschriftungen): void {
+    $beschriftungen->put(new Label($id, $raum, SeededRole::Name, Label::BASE_NUMBER, SettingsScreen::neutralLocale(), $name));
+};
 
 /**
  * Was jeder Knoten zeichnet — mit einem **frischen** Leser, damit nichts aus dem Gedächtnis kommt.
@@ -184,16 +198,14 @@ foreach ($traeger as $id) {
     $knotenNamenVorher[$id] = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$n} WHERE id = %d", $id));
 }
 
-register_shutdown_function(static function () use ($knotenNamenVorher, $n): void {
-    global $wpdb;
-
+register_shutdown_function(static function () use ($knotenNamenVorher, $benenne): void {
     foreach ($knotenNamenVorher as $id => $name) {
-        $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", $name, $id));
+        $benenne(IdentitySpace::Node, (int) $id, $name);
     }
 });
 
 foreach ($knotenNamenVorher as $id => $name) {
-    $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", 'Etwas ganz anderes', $id));
+    $benenne(IdentitySpace::Node, (int) $id, 'Etwas ganz anderes');
 }
 
 $namenVorher = [];
@@ -209,16 +221,14 @@ foreach ([$aussenId, $innenId] as $id) {
 // ⚠️ **Vor der ersten Änderung angemeldet, nicht danach.** *Ein Absturz zwischen Umbenennen und
 // Zurueckbenennen liesse den Schirm kaputt zurueck — und der naechste Lauf wuerde den Schaden fuer
 // den Zustand halten.*
-register_shutdown_function(static function () use ($namenVorher, $r): void {
-    global $wpdb;
-
+register_shutdown_function(static function () use ($namenVorher, $benenne): void {
     foreach ($namenVorher as $id => $name) {
-        $wpdb->query($wpdb->prepare("UPDATE {$r} SET name = %s WHERE id = %d", $name, $id));
+        $benenne(IdentitySpace::Relation, (int) $id, $name);
     }
 });
 
 foreach ($namenVorher as $id => $name) {
-    $wpdb->query($wpdb->prepare("UPDATE {$r} SET name = %s WHERE id = %d", 'Etwas ganz anderes', $id));
+    $benenne(IdentitySpace::Relation, (int) $id, 'Etwas ganz anderes');
 }
 
 $umbenannt = (int) $wpdb->get_var($wpdb->prepare(
@@ -267,11 +277,11 @@ check(
 echo "\n== Und die Namen sind zurueck ==\n";
 
 foreach ($namenVorher as $id => $name) {
-    $wpdb->query($wpdb->prepare("UPDATE {$r} SET name = %s WHERE id = %d", $name, $id));
+    $benenne(IdentitySpace::Relation, (int) $id, $name);
 }
 
 foreach ($knotenNamenVorher as $id => $name) {
-    $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", $name, $id));
+    $benenne(IdentitySpace::Node, (int) $id, $name);
 }
 
 $knotenZurueck = 0;

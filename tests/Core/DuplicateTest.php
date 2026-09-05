@@ -8,6 +8,7 @@ use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Tests\Core\Fake\CountingIdentities;
@@ -116,26 +117,34 @@ final class DuplicateTest extends TestCase
      * Adressrechnung ab (`remapPath()`), die diese vier mitgeprueft haben.*
      */
 
+    /**
+     * ⚠️ **Diese Zusicherung hiess einmal «eine Beschriftung für **ein Feld** wandert genauso mit».**
+     * *Sie prüfte, dass `copyLabels()` den `path` einer Beschriftung auf die Kantennummer der Kopie
+     * umschreibt. **`labels.path` gibt es seit TASK-019 nicht mehr**
+     * ([D-580](../../../docs/NewConcept/90-decision-log.md)): der Verweis zeigt vom Knoten auf die
+     * Beschriftung, und eine Beschriftung hat damit genau einen Eigentümer und keine Stelle darin.*
+     *
+     * ⚠️ *Was bleibt, ist die Frage, um die es dem Eigentümer ging — «eine Kopie, die anders heisst
+     * als ihr Original, ist keine Kopie»: **jede Rolle und jede Sprache wandert mit.***
+     */
     #[Test]
-    public function a_label_written_for_one_attribute_travels_the_same_way(): void
+    public function every_role_and_every_locale_travels_to_the_copy(): void
     {
-        $part  = $this->thing('Part');
-        $count = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $part = $this->thing('Part');
 
-        // ⚠️ *`labels.path` addresses a place exactly as `settings.path` does, and `copyLabels()` had
-        // the identical fault one line over — unmentioned by the row that found the first one.*
-        $this->labelStore->put(new Label($part->id, IdentitySpace::Node, (string) $count->id, 901, '', 'de_DE', 'Stückzahl'));
+        $this->labelStore->put(new Label($part->id, IdentitySpace::Node, SeededRole::Form, 'one', 'de_DE', 'Stückzahl'));
+        $this->labelStore->put(new Label($part->id, IdentitySpace::Node, SeededRole::Symbol, 'one', 'en_US', 'St'));
 
-        $copy     = $this->editor->duplicate($part->id);
-        $copyRelation = $this->fieldNamed($copy, 'count');
+        $copy = $this->editor->duplicate($part->id);
 
-        $paths = array_map(
-            static fn (Label $one): string => $one->path,
-            array_values($this->labelStore->forOwners([$copy->id], IdentitySpace::Node))
-        );
+        $gefunden = [];
 
-        self::assertContains((string) $copyRelation->id, $paths);
-        self::assertNotContains((string) $count->id, $paths);
+        foreach ($this->labelStore->forOwners([$copy->id], IdentitySpace::Node) as $one) {
+            $gefunden[$one->role->value . '·' . $one->locale] = $one->text;
+        }
+
+        self::assertSame('Stückzahl', $gefunden['form·de_DE'] ?? null);
+        self::assertSame('St', $gefunden['symbol·en_US'] ?? null);
     }
 
 }

@@ -41,6 +41,11 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -192,9 +197,9 @@ foreach ([$part->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratch
     $node = $nodes->find($scratch);
     if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p6%"');
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "__p6%") x)');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p6%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p6%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p6%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 $orphanValues = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v

@@ -290,7 +290,20 @@ final class SeededFrameworkNodes implements FrameworkNodes
         // point at one. They are the engine's own vocabulary (D-151).
         $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $root);
 
+        // ⚠️ **`name` bekommt keinen Rollenknoten, und das ist der Unterschied zu den anderen fünf**
+        // (TASK-019, [D-646](../../../docs/NewConcept/90-decision-log.md)). *Die Rollenknoten sind
+        // das, **woraus ein Renderer seine Rolle wählt** ([D-044](../../../docs/NewConcept/90-decision-log.md));
+        // `name` ist keine Wahl, sondern **das Ende der Kette**, auf das jede Wahl zurückfällt
+        // ([D-386](../../../docs/NewConcept/90-decision-log.md)). Ihn anzubieten hiesse, «fall auf
+        // dich selbst zurück» wählbar zu machen.*
+        //
+        // ⚠️ *Als **Spalte** in `label_texts` gibt es ihn trotzdem, und die Beschriftungsmaske bietet
+        // ihn je Sprache an — sie liest die Aufzählung, nicht die Knoten.*
         foreach (SeededRole::cases() as $role) {
+            if ($role === SeededRole::Name) {
+                continue;
+            }
+
             $this->ensure(self::ROLE_OPTION_PREFIX . $role->value, $role->value, $roles);
         }
     }

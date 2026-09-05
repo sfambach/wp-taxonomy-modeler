@@ -44,6 +44,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
@@ -90,7 +91,7 @@ $rendering = new Rendering(
     $framework,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
-    new Labels(new WpdbLabelRepository(), $framework),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     null,
     $model
 );
@@ -107,6 +108,13 @@ echo "\n== Die Rollen sind Knoten und werden benutzt ==\n";
 // können. Das Rahmenwerk führt seine Rollen selbst ({@see SeededFrameworkNodes::roleId()}), und genau
 // dort fragt die Prüfung jetzt nach.*
 foreach (SeededRole::cases() as $rolle) {
+    // ⚠️ *`name` hat keinen Rollenknoten (TASK-019, [D-646](../../docs/NewConcept/90-decision-log.md)):
+    // die Rollenknoten sind das, **woraus ein Renderer waehlt**, und `name` ist das Ende der Kette,
+    // auf das jede Wahl zurueckfaellt ([D-386](../../docs/NewConcept/90-decision-log.md)).*
+    if ($rolle === SeededRole::Name) {
+        continue;
+    }
+
     $id = $framework->roleId($rolle);
 
     check(
@@ -124,14 +132,13 @@ echo "\n== Und Knoten tragen ihre Symbole ==\n";
 // drei Zeilen, sondern der Mechanismus:** es gibt Symbolbeschriftungen, sie hängen an der Rolle
 // `symbol`, und sie tragen Text. Ohne das stünde «4 kilo Ohm» statt «4 kΩ» — wessen Einheit auch
 // immer.*
-$symbolRolle = $framework->roleId(SeededRole::Symbol);
-
-$symbole = $wpdb->get_col($wpdb->prepare(
-    'SELECT lb.text FROM ' . Schema::table('labels') . ' lb
-     JOIN ' . Schema::table('nodes') . ' kn ON kn.id = lb.owner_id
-     WHERE lb.role_id = %d',
-    $symbolRolle
-)) ?: [];
+// ⚠️ *Seit TASK-019 ist die Rolle eine **Spalte** ([D-598](../../docs/NewConcept/90-decision-log.md)),
+// und der Knoten zeigt auf seine Beschriftung ([D-580](../../docs/NewConcept/90-decision-log.md)).*
+$symbole = $wpdb->get_col(
+    'SELECT t.' . WpdbLabelRepository::columnFor(SeededRole::Symbol) . ' FROM ' . Schema::table('label_texts') . ' t
+     JOIN ' . Schema::table('nodes') . ' kn ON kn.label_id = t.label_id
+     WHERE t.' . WpdbLabelRepository::columnFor(SeededRole::Symbol) . ' IS NOT NULL'
+) ?: [];
 
 $mitText = count(array_filter($symbole, static fn (?string $t): bool => $t !== null && trim($t) !== ''));
 

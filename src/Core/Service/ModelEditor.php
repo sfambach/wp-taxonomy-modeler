@@ -496,34 +496,14 @@ final class ModelEditor
     }
 
 
-    /**
-     * An address on the original, read as the same address on the copy.
+    /*
+     * Hier stand `remapPath()` — eine Adresse am Original, gelesen als dieselbe Adresse an der
+     * Kopie.
      *
-     * ⚠️ **An unmapped segment is kept rather than dropped, and that is the correct half of it.** *A
-     * path may name an **inherited** relation, and a copy sitting under the same parent inherits **the
-     * same relation** — the same id ([D-405](../../../docs/NewConcept/90-decision-log.md): an inherited
-     * attribute *is* the same relation). So the address is already the copy's own address. Only the
-     * original's **own** declarations get new ids, and only those are in the map.*
-     *
-     * ⚠️ *Split on `.` although nothing writes a multi-segment path today — a `path` is documented as
-     * a **chain** of relation ids and `Node::$path` already spells a chain that way. **One line now, or a
-     * silent half-remap the day the second segment arrives.***
-     *
-     * @param array<int, int> $relationMap
+     * **Sie faellt mit `labels.path` (TASK-019, D-580).** Der umgedrehte Verweis gibt einer
+     * Beschriftung genau einen Eigentuemer und keine Stelle darin; es gibt keine Adresse mehr, die
+     * umzuschreiben waere. *Gemessen trug keine der 52 Beschriftungen einen Pfad.*
      */
-    private function remapPath(string $path, array $relationMap): string
-    {
-        if ($path === '' || $relationMap === []) {
-            return $path;
-        }
-
-        $moved = array_map(
-            static fn (string $segment): string => (string) ($relationMap[(int) $segment] ?? $segment),
-            explode('.', $path)
-        );
-
-        return implode('.', $moved);
-    }
 
     /**
      * The original's labels, onto the copy — every role, every locale.
@@ -547,11 +527,13 @@ final class ModelEditor
 
         // ⚠️ *Beide Seiten sind Knoten — eine Kopie eines Knotens (Fassung 31, `INF-035`).*
         foreach ($this->labels->forOwners([$fromNodeId], IdentitySpace::Node) as $one) {
+            // ⚠️ *Seit TASK-019 gibt es keinen Pfad mehr an einer Beschriftung
+            // ([D-580](../../../docs/NewConcept/90-decision-log.md)); `$relationMap` wird hier
+            // deshalb nicht mehr gebraucht.*
             $this->labels->put(new Label(
                 $toNodeId,
                 IdentitySpace::Node,
-                $this->remapPath($one->path, $relationMap),
-                $one->roleId,
+                $one->role,
                 $one->number,
                 $one->locale,
                 $one->text

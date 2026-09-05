@@ -94,7 +94,7 @@ $abdruck = static function () use ($nodes, $relations, $records, $framework, $wp
 
     $spalten = [];
 
-    foreach ($wpdb->get_results("SELECT n.id, z.name FROM {$p}nodes n JOIN {$p}node_records s ON s.id = n.settings_record_id JOIN {$p}nodes z ON z.id = s.node_id", ARRAY_A) as $row) {
+    foreach ($wpdb->get_results("SELECT n.id, z.name FROM {$p}nodes_named n JOIN {$p}node_records s ON s.id = n.settings_record_id JOIN {$p}nodes_named z ON z.id = s.node_id", ARRAY_A) as $row) {
         $spalten[(int) $row['id']] = (string) $row['name'];
     }
 

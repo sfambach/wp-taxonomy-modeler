@@ -41,6 +41,11 @@ use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Persistence\{Residue, Schema, SeededFrameworkNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRecordRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $nodes = new WpdbNodeRepository();
 $relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
@@ -260,7 +265,8 @@ foreach ([$modell->id, $typ->id] as $id) {
     $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$id} OR to_node_id = {$id}"));
     $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
-    $roh("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
+    // ⚠️ *Seit TASK-019 zeigt der Knoten auf seine Beschriftung ([D-580](../../docs/NewConcept/90-decision-log.md)).*
+    $roh("DELETE FROM {$p}label_texts WHERE label_id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$own}))");
     $roh("DELETE FROM {$p}changelog WHERE owner_id IN ({$own})");
 
     if ($e !== []) {

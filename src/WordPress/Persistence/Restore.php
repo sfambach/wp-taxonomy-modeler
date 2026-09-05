@@ -2,6 +2,11 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
+use Taxmod\WordPress\Admin\SettingsScreen;
+
 /**
  * Setzt eine Zeile auf ihren vorigen Stand zurück — aus dem Schatten, vorwärts geschrieben.
  *
@@ -105,7 +110,39 @@ final class Restore
             throw new \RuntimeException("«{$liveTable}» liess sich nicht zurücksetzen: " . $wpdb->last_error);
         }
 
+        self::restoreName($liveTable, $id, (string) ($ziel['name'] ?? ''));
+
         return true;
+    }
+
+    /**
+     * Den Namen aus der Schattenzeile zurück in die Beschriftungen (TASK-019,
+     * [D-580](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Der Schatten behält `name`, die lebende Zeile hat ihn nicht mehr.** *Er steht damit in der
+     * Liste der Nur-im-Schatten-Spalten und würde beim Zurückholen einfach übergangen — **dann käme
+     * ein rückgängig gemachtes Umbenennen ohne seinen Namen zurück**. Er wird deshalb hier
+     * geschrieben, dorthin, wo er jetzt wohnt.*
+     *
+     * ⚠️ *Die Standardsprache, wie überall, wo `Node::$name` gemeint ist
+     * ([D-387](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md)). **Übersetzungen bleiben stehen**: der
+     * Schatten kennt sie nicht, und was er nicht kennt, darf er nicht überschreiben.*
+     */
+    private static function restoreName(string $liveTable, int $id, string $name): void
+    {
+        if ($name === '' || ! in_array($liveTable, ['nodes', 'relations'], true)) {
+            return;
+        }
+
+        (new WpdbLabelRepository())->put(new Label(
+            $id,
+            $liveTable === 'relations' ? IdentitySpace::Relation : IdentitySpace::Node,
+            SeededRole::Name,
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            $name
+        ));
     }
 
     /**

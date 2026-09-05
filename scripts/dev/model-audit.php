@@ -142,7 +142,7 @@ echo "\n== Duplikate mit gleichem Namen unter demselben Vater ==\n";
 // name are worth seeing, because a duplicate act now makes them on purpose.
 $twins = $wpdb->get_results(
     "SELECT SUBSTRING_INDEX(path, '.', LENGTH(path) - LENGTH(REPLACE(path, '.', ''))) AS parent, name, COUNT(*) c
-     FROM {$prefix}nodes GROUP BY parent, name HAVING c > 1 ORDER BY c DESC LIMIT 10",
+     FROM {$prefix}nodes_named GROUP BY parent, name HAVING c > 1 ORDER BY c DESC LIMIT 10",
     ARRAY_A
 );
 

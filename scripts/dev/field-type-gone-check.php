@@ -159,7 +159,7 @@ echo "\n== 4. Der Waehler unter `Renderer` bietet wieder Moeglichkeiten an ==\n"
 
 $nodes      = new WpdbNodeRepository();
 $rendererId = (int) $wpdb->get_var(
-    $wpdb->prepare('SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1', 'Renderer')
+    $wpdb->prepare('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s LIMIT 1', 'Renderer')
 );
 
 if ($rendererId === 0) {

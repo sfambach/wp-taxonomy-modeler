@@ -59,7 +59,7 @@ berührt.
 | `hide` | **im Baum nicht anzeigen** ([D-590](../../NewConcept/90-decision-log.md)) — dass ein *Feld* nicht gezeichnet wird, sagt ein Renderer, der nichts ausgibt | 6, von den Kanten übernommen |
 | *(neu)* | die **PHP-Klasse**, die diesen Knoten umsetzt | §3.2 |
 
-**`name` ist gestrichen — er steht in `labels.name`** ([D-580](../../NewConcept/90-decision-log.md)).
+**`name` ist gestrichen — er steht als `label_texts.text_name` je Sprache** ([D-580](../../NewConcept/90-decision-log.md), [D-646](../../NewConcept/90-decision-log.md)). **Gebaut mit Fassung 34** (TASK-019).
 
 **`path` ist gestrichen.** Er wiederholte, was `relations` besitzt, und war bei mehreren Elternkanten
 verlustbehaftet. → [`history.md`](history.md)
@@ -99,36 +99,65 @@ Muster wie der Pfad. Deshalb am Kind.*
 
 ### 3.4 · Beschriftungen — `labels` und `label_texts`
 
+**Gebaut mit Fassung 34** (TASK-019).
+
 ```text
 nodes       label_id  → labels.id     verpflichtend
 relations   label_id  → labels.id     optional
 
-labels        id · name · symbol · icon                       sprachunabhängig
-label_texts   label_id · locale · form · table · select · help sprachabhängig
+labels        id · version · owner_kind · icon                      sprachunabhängig
+label_texts   label_id · locale · number
+              · text_name · text_form · text_table
+              · text_select · text_help · text_symbol               sprachabhängig
 ```
 
 **Der Verweis zeigt vom Gegenstand auf das Label, nicht umgekehrt** — so bekommt jede Tabelle ihre
 eigene `label_id`, statt dass `labels` je neuer Art eine Spalte wächst.
 
-**`name` steht in `labels`, nicht mehr an Knoten und Kante.** Damit liegt die **ganze Rückfallkette
-in einer Tabelle**: angefragte Sprache → Standardsprache → `labels.name`.
+**`name` ist eine Beschriftung wie jede andere, und er ist sprachabhängig**
+([D-646](../../NewConcept/90-decision-log.md)). *Sein Fund: «sonst schaltet man die Sprache um und
+alle Knoten haben noch den gleichen Namen.»* Die Kette lautet damit: **angefragte Sprache →
+Standardsprache**, und innerhalb einer Sprache **Rolle → `name`**.
 
-**Keine neutrale Zeile.** Die Standardsprache ist die von WordPress (`get_locale()`, hier `en_US`).
+**Keine neutrale Zeile.** *Die Standardsprache steht auf der Installationsseite
+(`taxmod_neutral_locale`, [D-387](../../NewConcept/90-decision-log.md),
+[D-645](../../NewConcept/90-decision-log.md)); die 43 sprachlosen Zeilen von damals sind bei der
+Wanderung zu Zeilen dieser Sprache geworden.*
 
-⚠️ **`symbol` und `icon` sind sprachunabhängig** — *gemessen: 38 von 38 `symbol`-Labels tragen keine
-Sprache, und [`I5`](../../NewConcept/40-i18n.md) sagt es fürs Icon ausdrücklich.*
+⚠️ **`symbol` ist sprachabhängig, `icon` nicht** ([D-645](../../NewConcept/90-decision-log.md),
+[`I5`](../../NewConcept/40-i18n.md)). *Sein Wort: «Symbol wird sprachabhängig.» Beim Icon bleibt es
+beim Gegenteil — «bei drei Sprachen gäbe es dasselbe Bild dreimal».*
 
-⚠️ **Entschieden am 2026-09-04: vier Spalten** ([D-598](../../NewConcept/90-decision-log.md)).
+⚠️ **Warum die Spalten `text_…` heissen und nicht `form`, `table`, `select`:** *`table` und `select`
+sind in MySQL reservierte Wörter, und `dbDelta` schreibt einen Spaltennamen unquotiert in ein
+`ALTER TABLE`. **Dieselbe Falle, die `key` zu `setting_key` gemacht hat** — und `$wpdb` sagt über
+einen Syntaxfehler nichts. Ein Präfix für alle sechs statt einer Ausnahme für zwei.*
+
+⚠️ **Entschieden am 2026-09-04: Spalten und nicht Zeilen** ([D-598](../../NewConcept/90-decision-log.md)).
 *Rollen als Zeilen mit `role_id` sind nicht verworfen, sondern geparkt
 ([`INF-005`](../../neues-konzept-eingang.md)) — **zu verlassen, wenn zum ersten Mal eine Rolle
-fehlt.** Der ursprüngliche Wortlaut der Frage:*
+fehlt.***
 
-⚠️ **Offen: sind die vier Rollen Spalten oder Zeilen mit `role_id`?**
+⚠️ **`name` hat als einzige Rolle keinen Rollenknoten.** *Die Rollenknoten sind das, **woraus ein
+Renderer wählt** ([D-044](../../NewConcept/90-decision-log.md)); `name` ist das Ende der Kette, auf
+das jede Wahl zurückfällt ([D-386](../../NewConcept/90-decision-log.md)). Als Spalte und in der
+Beschriftungsmaske gibt es ihn trotzdem.*
 
-### 3.5 · `nodes` hat danach keine lesbare Spalte mehr
+⚠️ **Ein `path` an einer Beschriftung ist mit dem umgedrehten Verweis fort** — *siehe `INF-046` im
+Eingang; gemessen trug keine der 52 Zeilen einen.*
+
+### 3.5 · `nodes` hat danach keine lesbare Spalte mehr — und zwei Sichten antworten darauf
 
 *Wer die Tabelle roh ansieht, sieht nur Ids. Kein Gegenargument, aber eine spürbare Änderung beim
 Suchen von Hand und beim Prüfen.*
+
+**Darum legt Fassung 34 zwei Sichten an: `…nodes_named` und `…relations_named`** — dieselben Spalten
+wie die Tabelle, dazu `name` aus `label_texts` in der Standardsprache.
+
+⚠️ *Eine Sicht ist **keine zweite Wahrheit** ([D-016](../../NewConcept/90-decision-log.md),
+[D-228](../../NewConcept/90-decision-log.md)): sie hält nichts, sie rechnet bei jedem Blick neu und
+kann mit der Tabelle nicht auseinanderlaufen. **Sie ist zum Lesen da** — die Prüfläufe fragen «welcher
+Knoten heisst so» —, geschrieben wird durch die Ablage.*
 
 ---
 
@@ -393,8 +422,8 @@ Spalte.
 |---|---|---|
 | `records.node_id` · `record_values.record_id` · `record_values.edge_id` | Knoten · Datensätze · Kanten | Name sagt es |
 | `changelog.owner_id` | vier Tabellen | `owner_kind` sagt es |
-| `labels.owner_id` | Knoten **oder** Kanten | **`owner_kind` sagt den Raum** (Fassung 31, gebaut) |
-| `labels.role_id` | Knoten | Name sagt es **nicht** |
+| ~~`labels.owner_id`~~ | — | **gestrichen mit Fassung 34**: der Verweis zeigt jetzt von `nodes.label_id` und `relations.label_id` hierher (D-580). `owner_kind` bleibt und nennt den Raum, aus dem der Verweis kommt (D-641) |
+| ~~`labels.role_id`~~ | — | **gestrichen mit Fassung 34**: die Rollen sind Spalten in `label_texts` (D-598) |
 | **`settings.owner_id`** | **Kanten** | **derselbe Name, anderes Ziel als in `labels`** |
 | `record_values.value_ref` | Knoten 50 · Datensätze 93 | **`value_ref_kind` sagt den Raum** (TASK-005, gebaut) |
 

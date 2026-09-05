@@ -3,7 +3,9 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\LabelRepository;
@@ -90,11 +92,24 @@ final class Residue
      * `orphans-check.php` has measured them since row 28 — so the query lives here, and **whether the
      * screen offers them is a decision the owner has not made**.*
      *
-     * @return array<int,int> owner id ⇒ how many rows it still holds
+     * ⚠️ **Seit TASK-019 zeigt der Verweis in die Gegenrichtung** ([D-580](../../../docs/NewConcept/90-decision-log.md)),
+     * *also lautet die Frage anders: verwaist ist eine Beschriftung, auf die **niemand mehr zeigt** —
+     * weder ein Knoten noch eine Kante. Der Schlüssel ist damit die Nummer der Beschriftung.*
+     *
+     * @return array<int,int> Beschriftungsnummer ⇒ wie viele Textzeilen sie noch hält
      */
     public function orphanedLabels(): array
     {
-        return $this->ownersWithoutOwner('labels');
+        $rows = $this->rows(
+            'SELECT l.id AS owner, COUNT(t.id) AS rows_held FROM ' . Schema::table('labels') . ' l
+             LEFT JOIN ' . Schema::table('label_texts') . ' t ON t.label_id = l.id
+             WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.label_id = l.id)
+               AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.label_id = l.id)
+             GROUP BY l.id
+             ORDER BY l.id ASC'
+        );
+
+        return $this->countsByOwner($rows);
     }
 
     /**
@@ -137,6 +152,8 @@ final class Residue
      */
     public function nodesWithoutConnections(): array
     {
+        global $wpdb;
+
         // ⚠️ **Die Baumhälfte der Frage steht seit TASK-018 in einer Spalte**
         // ([D-581](../../../docs/NewConcept/90-decision-log.md)). *Ohne diese beiden Zeilen zählte der
         // Lauf **101 lebende Knoten als Rückstand** — gemessen unmittelbar nach der Wanderung —, weil
@@ -146,16 +163,23 @@ final class Residue
         // ⚠️ *`parent_node_id IS NULL` **und** niemand hängt an mir: die Wurzel hat keinen Vater und
         // ist trotzdem kein Rückstand — sie trägt Kinder. Genau diese Unterscheidung stand vorher in
         // «no relation in either direction».*
-        $rows = $this->rows(
-            'SELECT n.id, n.version, n.name, n.path FROM ' . Schema::table('nodes') . ' n
+        // ⚠️ *Der Name kommt seit TASK-019 aus den Beschriftungen ([D-580](../../../docs/NewConcept/90-decision-log.md)),
+        // in der Standardsprache — `nodes.name` gibt es nicht mehr.*
+        $rows = $this->rows($wpdb->prepare(
+            "SELECT n.id, n.version, COALESCE(t.text_name, '') AS name, n.path
+             FROM " . Schema::table('nodes') . ' n
+             LEFT JOIN ' . Schema::table('label_texts') . ' t
+               ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s
              WHERE n.parent_node_id IS NULL
                AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' k WHERE k.parent_node_id = n.id)
                AND NOT EXISTS (
                  SELECT 1 FROM ' . Schema::table('relations') . ' r
                  WHERE r.from_node_id = n.id OR r.to_node_id = n.id
              )
-             ORDER BY n.id ASC'
-        );
+             ORDER BY n.id ASC',
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER
+        ));
 
         return array_map(
             static fn (object $row): Node => Node::fromStorage(
@@ -168,59 +192,37 @@ final class Residue
         );
     }
 
-    public function forgetOrphanedLabels(int $ownerId): int
+    /**
+     * Eine Beschriftung, auf die nichts mehr zeigt, samt ihren Texten.
+     *
+     * ⚠️ **Die Frage hat sich mit TASK-019 umgedreht** ([D-580](../../../docs/NewConcept/90-decision-log.md)).
+     * *Vorher hiess sie «welche Nummer nennt ein Label als Eigentümer, den es nicht gibt»; jetzt heisst
+     * sie «auf welche Beschriftung zeigt weder ein Knoten noch eine Kante». **Die Zahl, die übergeben
+     * wird, ist deshalb die der Beschriftung** und nicht mehr die ihres Eigentümers — es gibt keine
+     * Spalte mehr, in der der stünde.*
+     */
+    public function forgetOrphanedLabels(int $labelId): int
     {
-        if (! array_key_exists($ownerId, $this->orphanedLabels())) {
+        global $wpdb;
+
+        if (! array_key_exists($labelId, $this->orphanedLabels())) {
             return 0;
         }
 
         // ⚠️ *Vor dem Löschen gelesen — danach wäre die Version nicht mehr feststellbar. Seit Fassung
-        // 31 hat eine Beschriftung eine ([D-634](../../../docs/NewConcept/90-decision-log.md)); hier
-        // stand vorher `null` mit dem Befund «`labels` hat keine Versionsspalte».*
-        $version = $this->hoechsteVersion('labels', 'owner_id = %d', [$ownerId]);
+        // 31 hat eine Beschriftung eine ([D-634](../../../docs/NewConcept/90-decision-log.md)).*
+        $version = $this->hoechsteVersion('labels', 'id = %d', [$labelId]);
 
-        // ⚠️ **Jeder Raum für sich, und nur der verwaiste** (Fassung 31, `INF-035`,
-        // [D-597](../../../docs/NewConcept/90-decision-log.md)): *eine Nummer kann im einen Raum
-        // verwaist und im anderen lebendig sein. **Beide Seiten pauschal wegzuräumen wäre genau der
-        // Schaden, gegen den `owner_kind` gebaut ist** — die Beschriftungen eines gesunden Knotens,
-        // gelöscht, weil eine gleichnummerige Kante fort ist.*
-        $gone = 0;
+        $gone = (int) $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('label_texts') . ' WHERE label_id = %d',
+            $labelId
+        ));
 
-        foreach ($this->verwaisteRaeume($ownerId) as $raum) {
-            $gone += $this->labels->forgetOwners([$ownerId], $raum);
-        }
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('labels') . ' WHERE id = %d', $labelId));
 
-        $this->record($ownerId, self::KIND_GONE, 'labels removed', $gone, $version);
+        $this->record($labelId, self::KIND_GONE, 'labels removed', $gone, $version);
 
         return $gone;
-    }
-
-    /**
-     * Die Räume, in denen diese Nummer keinen Eigentümer mehr hat.
-     *
-     * ⚠️ *Zwei kleine Abfragen statt einer Vermutung (`INF-035`). Sie laufen einmal je Aufräumklick
-     * und nicht in einer Schleife — das ist nicht das N+1, das `CD-7` verbietet.*
-     *
-     * @return list<IdentitySpace>
-     */
-    private function verwaisteRaeume(int $ownerId): array
-    {
-        global $wpdb;
-
-        $raeume = [];
-
-        foreach ([[IdentitySpace::Node, 'nodes'], [IdentitySpace::Relation, 'relations']] as [$raum, $tabelle]) {
-            $lebt = (int) $wpdb->get_var($wpdb->prepare(
-                'SELECT COUNT(*) FROM ' . Schema::table($tabelle) . ' t WHERE t.id = %d',
-                $ownerId
-            ));
-
-            if ($lebt === 0) {
-                $raeume[] = $raum;
-            }
-        }
-
-        return $raeume;
     }
 
     /** Remove the values of an relation that no longer exists, and say how many went. */
@@ -385,41 +387,14 @@ final class Residue
 
         return $gone;
     }
-    /**
-     * Owners a table names that are neither a node, nor an relation, nor the installation.
+    /*
+     * Hier stand `ownersWithoutOwner()` — «welche Nummer nennt eine Zeile als Eigentuemer, den es
+     * nicht gibt».
      *
-     * @return array<int,int> owner id ⇒ rows held
+     * **Sie faellt mit `labels.owner_id`** (TASK-019, D-580): der Verweis zeigt jetzt vom Knoten auf
+     * die Beschriftung, also lautet die Frage umgekehrt und steht in {@see self::orphanedLabels()}.
+     * *Sie war zuletzt die einzige Benutzerin dieser Methode.*
      */
-    private function ownersWithoutOwner(string $table): array
-    {
-        global $wpdb;
-
-        // ⚠️ **Die Zeile nennt ihren Raum, also wird in genau diesem Raum nachgesehen** (Fassung 31,
-        // `INF-035`, [D-597](../../../docs/NewConcept/90-decision-log.md)). *Hier stand «weder ein
-        // Knoten noch eine Kante trägt diese Nummer» — die einzige Frage, die ohne Raumangabe möglich
-        // war, und sie ist **zu nachsichtig**: die Beschriftung einer gelöschten Kante blieb
-        // unentdeckt liegen, solange irgendein Knoten zufällig dieselbe Nummer trug. **Seit
-        // [D-581](../../../docs/NewConcept/90-decision-log.md) ist «zufällig dieselbe Nummer» der
-        // Normalfall.***
-        //
-        // ⚠️ *Eine Zeile ohne Raum — es gibt heute keine — bliebe hier unsichtbar; dafür ist
-        // `label-space-check` da, der genau sie zählt.*
-        $rows = $this->rows($wpdb->prepare(
-            'SELECT t.owner_id AS owner, COUNT(*) AS rows_held FROM ' . Schema::table($table) . ' t
-             WHERE t.owner_id <> %d
-               AND ((t.owner_kind = %s
-                     AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = t.owner_id))
-                 OR (t.owner_kind = %s
-                     AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = t.owner_id)))
-             GROUP BY t.owner_id
-             ORDER BY t.owner_id ASC',
-            $this->framework->installationId(),
-            IdentitySpace::Node->value,
-            IdentitySpace::Relation->value
-        ));
-
-        return $this->countsByOwner($rows);
-    }
 
     /**
      * @param list<object> $rows

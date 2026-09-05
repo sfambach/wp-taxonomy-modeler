@@ -1,27 +1,21 @@
 <?php declare(strict_types=1);
 /**
- * Die Beschriftungen nach dem Benennen ihres Raums — an gezaehlten Zahlen, nicht an Namen.
+ * Die Beschriftungen in ihren zwei Tabellen — an gezaehlten Zahlen, nicht an Namen.
  *
  *     php scripts/dev/label-space-check.php [path/to/wordpress]
  *
  * ⚠️ **Die Zusage ist eine einzige:** *jede Beschriftung liefert nach dem Umbau **denselben Text an
- * derselben Stelle**. Gemessen wird sie als Pruefsumme ueber Eigentuemer, Pfad, Rolle, Numerus,
- * Locale und Text — die Fassung 31 hat diese sechs Felder nicht angeruehrt, sie hat nur eine siebte
- * Angabe daneben geschrieben.*
+ * derselben Stelle**.*
  *
- * ⚠️ **Der Anlass ist gemessen** (`INF-035`, 2026-09-05): *`package5-check` fragte die Beschriftungen
- * einer frisch angelegten **Kante** ab und bekam sechs Zeilen statt einer — die Kante trug dieselbe
- * Nummer wie ein zwei Zeilen zuvor entstandener Knoten. Seit
- * [D-581](../../docs/NewConcept/90-decision-log.md) ein Knoten keine Vererbungskante mehr anlegt,
- * laufen die beiden Id-Zaehler verschieden schnell und treffen sich.*
+ * ⚠️ **Seit TASK-019 zeigt der Verweis in die Gegenrichtung** ([D-580](../../docs/NewConcept/90-decision-log.md)):
+ * *`nodes.label_id` und `relations.label_id` statt `labels.owner_id`. **Damit ist der Fehler von
+ * `INF-035` nicht mehr abzufangen, sondern unmoeglich** — Knoten 5 und Kante 5 zeigen auf zwei
+ * verschiedene Zeilen, weil der Verweis aus zwei verschiedenen Tabellen kommt. *Hier stand die
+ * Nachstellung dieses Fehlers; sie prueft jetzt, dass die Struktur ihn ausschliesst.*
  *
- * ⚠️ **Die Abhilfe ist die vorgegebene und keine neue** ([D-164](../../docs/NewConcept/90-decision-log.md),
- * [D-597](../../docs/NewConcept/90-decision-log.md)): *eine zweite Spalte, die den Raum nennt — wie
- * `changelog.owner_kind` und wie `relation_records.value_ref_kind`.*
- *
- * ⚠️ *Die zweite Zusage ist die Version ([D-634](../../docs/NewConcept/90-decision-log.md)):
- * `labels` war die einzige Tabelle ohne Zeilennummer, und der Melder musste dem Journal `null`
- * hinschreiben. Hier wird gemessen, dass es sie gibt und dass sie beim Ueberschreiben steigt.*
+ * ⚠️ *`labels.owner_kind` und `labels.version` bleiben ([D-640](../../docs/NewConcept/90-decision-log.md),
+ * [D-641](../../docs/NewConcept/90-decision-log.md)) — die Zeile sagt weiter selbst, an welchem Raum
+ * sie haengt, und traegt ihre Nummer.*
  *
  * @see docs/pakete/modelltabellen/package.md
  */
@@ -46,10 +40,25 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Service\Labels;
+use Taxmod\Core\Service\ModelEditor;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 
@@ -69,107 +78,125 @@ $check = static function (string $was, bool $gruen, string $detail = '') use (&$
 };
 
 $labels    = Schema::table('labels');
+$texts     = Schema::table('label_texts');
 $nodes     = Schema::table('nodes');
 $relations = Schema::table('relations');
+$standard  = SettingsScreen::neutralLocale();
 
 echo "\n1 · Die Spalten stehen\n";
 
-$spalten = $wpdb->get_col($wpdb->prepare(
-    'SELECT COLUMN_NAME FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
-    $labels
-));
+$spaltenVon = static function (string $tabelle) use ($wpdb): array {
+    return $wpdb->get_col($wpdb->prepare(
+        'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+        $tabelle
+    ));
+};
 
-$check('labels traegt owner_kind', in_array('owner_kind', $spalten, true));
-$check('labels traegt version', in_array('version', $spalten, true));
+$anLabels = $spaltenVon($labels);
+$anTexten = $spaltenVon($texts);
 
-$schluessel = $wpdb->get_col($wpdb->prepare(
-    "SELECT COLUMN_NAME FROM information_schema.STATISTICS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = 'one_text'
-     ORDER BY SEQ_IN_INDEX",
-    $labels
-));
+$check('labels traegt owner_kind', in_array('owner_kind', $anLabels, true));
+$check('labels traegt version', in_array('version', $anLabels, true));
+$check('labels traegt icon und keinen Text', in_array('icon', $anLabels, true) && ! in_array('text', $anLabels, true));
+$check('labels traegt kein owner_id mehr', ! in_array('owner_id', $anLabels, true));
 
-$check(
-    'der eindeutige Schluessel nennt den Raum mit',
-    in_array('owner_kind', $schluessel, true),
-    implode(', ', $schluessel)
-);
+foreach (SeededRole::cases() as $rolle) {
+    $check(
+        "label_texts traegt die Spalte der Rolle «{$rolle->value}»",
+        in_array(WpdbLabelRepository::columnFor($rolle), $anTexten, true)
+    );
+}
+
+$check('nodes zeigt mit label_id', in_array('label_id', $spaltenVon($nodes), true));
+$check('relations zeigt mit label_id', in_array('label_id', $spaltenVon($relations), true));
+$check('nodes traegt keinen Namen mehr', ! in_array('name', $spaltenVon($nodes), true));
+$check('relations traegt keinen Namen mehr', ! in_array('name', $spaltenVon($relations), true));
 
 echo "\n2 · Die Wanderung hat nichts verloren\n";
 
 // ⚠️ *Die Zahlen, die die Wanderung selbst festgehalten hat — verglichen statt nachgerechnet. **Wer
 // sie nachrechnet, misst dieselbe Datenbank ein zweites Mal und bemerkt nichts.***
-$gemerkt = get_option('taxmod_labelspace_shape', null);
+$gemerkt = get_option('taxmod_labeltexts_shape', null);
 
-$jetzt = [
-    'rows'     => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels}"),
-    'node'     => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = 'node'"),
-    'relation' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = 'relation'"),
-    'homeless' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = ''"),
-];
-
-printf(
-    "       gemessen: %d Beschriftungen — %d an Knoten, %d an Kanten, %d ohne Raum\n",
-    $jetzt['rows'],
-    $jetzt['node'],
-    $jetzt['relation'],
-    $jetzt['homeless']
+$mitNamen = static fn (string $tabelle): int => (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$tabelle} o
+     JOIN " . Schema::table('label_texts') . " t ON t.label_id = o.label_id
+     WHERE t.text_name IS NOT NULL AND t.text_name <> ''"
 );
 
 if (! is_array($gemerkt)) {
     echo "  --   die Wanderung hat hier keine Zahlen hinterlassen (frische Installation)\n";
 } else {
     printf(
-        "       bei der Wanderung: %d Beschriftungen — %d an Knoten, %d an Kanten, %d ohne Raum\n",
-        (int) ($gemerkt['rows'] ?? -1),
-        (int) ($gemerkt['node'] ?? -1),
-        (int) ($gemerkt['relation'] ?? -1),
-        (int) ($gemerkt['homeless'] ?? -1)
+        "       bei der Wanderung: %d Knotennamen, %d Kantennamen, %d Beschriftungen, Standardsprache %s\n",
+        (int) ($gemerkt['nodes'] ?? -1),
+        (int) ($gemerkt['relations'] ?? -1),
+        (int) ($gemerkt['texts'] ?? -1),
+        (string) ($gemerkt['locale'] ?? '?')
     );
 
-    // ⚠️ *Kleiner werden darf die Zahl — dieser Baum wird bearbeitet, und ein Aufraeumlauf loescht
-    // Beschriftungen. **Was nicht sein darf, ist eine Zeile ohne Raum**, denn die kann nur aus einem
-    // Schreibweg kommen, der die Spalte nicht kennt.*
+    // ⚠️ *Wachsen darf die Zahl — dieser Baum wird bearbeitet. **Unter den Stand der Wanderung darf
+    // sie nicht fallen**, denn dann waere ein Name verlorengegangen statt geloescht worden.*
     $check(
-        'seit der Wanderung ist keine Zeile ohne Raum dazugekommen',
-        $jetzt['homeless'] === 0,
-        $jetzt['homeless'] . ' ohne Raum'
+        'kein Knotenname ist seit der Wanderung verschwunden',
+        $mitNamen($nodes) >= (int) ($gemerkt['nodes'] ?? 0),
+        $mitNamen($nodes) . ' heute gegen ' . (int) ($gemerkt['nodes'] ?? 0)
+    );
+
+    $check(
+        'die Standardsprache der Wanderung ist noch dieselbe',
+        (string) ($gemerkt['locale'] ?? '') === $standard,
+        (string) ($gemerkt['locale'] ?? '') . ' gegen ' . $standard
     );
 }
 
-$check('keine Beschriftung ohne Raum', $jetzt['homeless'] === 0, $jetzt['homeless'] . ' Zeilen');
+echo "\n3 · Kein Knoten ohne Beschriftung, keine Beschriftung ohne Text\n";
 
-foreach ([['node', $nodes], ['relation', $relations]] as [$raum, $ziel]) {
-    $waisen = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$labels} l
-         WHERE l.owner_kind = %s
-           AND NOT EXISTS (SELECT 1 FROM {$ziel} z WHERE z.id = l.owner_id)",
-        $raum
-    ));
+$ohneLabel = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodes} WHERE label_id = 0 OR label_id IS NULL");
+$check('kein Knoten ohne label_id', $ohneLabel === 0, "$ohneLabel Knoten");
 
-    $check("owner_kind = {$raum} findet seinen Eintrag", $waisen === 0, "$waisen Waisen");
-}
+$ohneNamen = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$nodes} n
+     WHERE NOT EXISTS (
+       SELECT 1 FROM {$texts} t
+       WHERE t.label_id = n.label_id AND t.text_name IS NOT NULL AND t.text_name <> ''
+     )"
+);
+$check('kein Knoten ohne Namen', $ohneNamen === 0, "$ohneNamen Knoten");
 
 $ohneVersion = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE version < 1");
-
 $check('jede Beschriftung hat eine Version', $ohneVersion === 0, "$ohneVersion ohne Version");
 
-echo "\n3 · Knoten 5 und Kante 5 teilen keine Beschriftung\n";
+$ohneRaum = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = ''");
+$check('keine Beschriftung ohne Raum', $ohneRaum === 0, "$ohneRaum Zeilen");
 
-// ⚠️ **Der gemessene Fehler, nachgestellt.** *Eine Nummer, die es in beiden Raeumen gibt, bekommt in
-// jedem eine eigene Beschriftung — und beide Fragen liefern genau ihre eigene. **Ohne `owner_kind`
-// war das dieselbe Frage.***
-$ablage = new WpdbLabelRepository();
+echo "\n4 · Knoten und Kante teilen keine Beschriftung, weil sie es nicht koennen\n";
 
-$nummer = (int) $wpdb->get_var("SELECT COALESCE(MAX(id), 0) + 1000000 FROM {$labels}");
-$rolle  = (int) $wpdb->get_var("SELECT COALESCE(MAX(role_id), 1) FROM {$labels}");
+// ⚠️ **Der gemessene Fehler von `INF-035`, und warum er nicht mehr eintreten kann.** *Ein Knoten und
+// eine Kante bekommen zwei verschiedene Beschriftungen, denn jede der beiden Tabellen zeigt mit
+// ihrer eigenen `label_id`.*
+$nodeRepo  = new WpdbNodeRepository();
+$relRepo   = new WpdbRelationRepository();
+$log       = new WpdbChangelog(new SystemClock());
+$framework = new SeededFrameworkNodes($nodeRepo, $relRepo, $log);
+$editor    = new ModelEditor($nodeRepo, $relRepo, $framework, $log);
+$ablage    = new WpdbLabelRepository();
 
-$ablage->put(new Label($nummer, IdentitySpace::Node, '', $rolle, 'one', 'de_DE', '__ls am Knoten'));
-$ablage->put(new Label($nummer, IdentitySpace::Relation, '', $rolle, 'one', 'de_DE', '__ls an der Kante'));
+$traeger = $editor->createNode('__ls Traeger', $framework->rootOf(Branch::Model)->id);
+$ziel    = $editor->createNode('__ls Ziel', $framework->rootOf(Branch::Model)->id);
+$kante   = $editor->addField($traeger->id, $ziel->id, '__ls Feld');
 
-$amKnoten   = $ablage->forOwners([$nummer], IdentitySpace::Node);
-$anDerKante = $ablage->forOwners([$nummer], IdentitySpace::Relation);
+$ablage->put(new Label($traeger->id, IdentitySpace::Node, SeededRole::Form, 'one', 'de_DE', '__ls am Knoten'));
+$ablage->put(new Label($kante->id, IdentitySpace::Relation, SeededRole::Form, 'one', 'de_DE', '__ls an der Kante'));
+
+$nurForm = static fn (array $zeilen): array => array_values(array_filter(
+    $zeilen,
+    static fn (Label $l): bool => $l->role === SeededRole::Form
+));
+
+$amKnoten   = $nurForm($ablage->forOwners([$traeger->id], IdentitySpace::Node));
+$anDerKante = $nurForm($ablage->forOwners([$kante->id], IdentitySpace::Relation));
 
 $check(
     'die Frage nach dem Knoten liefert genau eine Zeile',
@@ -183,38 +210,69 @@ $check(
     count($anDerKante) . ' Zeile(n)'
 );
 
-echo "\n4 · Die Version steigt beim Ueberschreiben\n";
-
-$check('eine frische Zeile ist Version 1', ($amKnoten[0]->version ?? 0) === 1, (string) ($amKnoten[0]->version ?? 0));
-
-$ablage->put(new Label($nummer, IdentitySpace::Node, '', $rolle, 'one', 'de_DE', '__ls am Knoten, anders'));
-
-$erneut = $ablage->forOwners([$nummer], IdentitySpace::Node);
-
 $check(
-    'ein zweites Schreiben hebt sie auf 2',
-    ($erneut[0]->version ?? 0) === 2 && ($erneut[0]->text ?? '') === '__ls am Knoten, anders',
-    (string) ($erneut[0]->version ?? 0)
+    'und die beiden Verweise zeigen auf verschiedene Zeilen',
+    (int) $wpdb->get_var($wpdb->prepare("SELECT label_id FROM {$nodes} WHERE id = %d", $traeger->id))
+        !== (int) $wpdb->get_var($wpdb->prepare("SELECT label_id FROM {$relations} WHERE id = %d", $kante->id))
 );
 
-// ⚠️ *Und ein Loeschen nimmt nur seinen Raum mit — die Gegenprobe zum Aufraeumlauf, der bis Fassung
-// 31 beide Raeume in einen Topf warf.*
-$ablage->forgetOwners([$nummer], IdentitySpace::Node);
+echo "\n5 · Der Rueckfall geht auf die Standardsprache\n";
+
+// ⚠️ **Die Gegenprobe zu [D-387](../../docs/NewConcept/90-decision-log.md) und
+// [D-645](../../docs/NewConcept/90-decision-log.md):** *eine Sprache, fuer die nichts gepflegt ist,
+// bekommt den Text der Standardsprache — und **nicht** eine leere Zelle.*
+$leser = new Labels($ablage, $standard);
+
+$ablage->put(new Label($traeger->id, IdentitySpace::Node, SeededRole::Form, 'one', $standard, '__ls in der Standardsprache'));
 
 $check(
-    'ein Loeschen im Knotenraum laesst die Kante stehen',
-    $ablage->forOwners([$nummer], IdentitySpace::Node) === []
-        && count($ablage->forOwners([$nummer], IdentitySpace::Relation)) === 1
+    'eine Sprache, fuer die nichts gepflegt ist, bekommt den Text der Standardsprache',
+    $leser->of($nodeRepo->byId($traeger->id), SeededRole::Form, 'fr_FR') === '__ls in der Standardsprache',
+    $leser->of($nodeRepo->byId($traeger->id), SeededRole::Form, 'fr_FR')
 );
 
-echo "\n5 · Der Lauf raeumt hinter sich auf\n";
+// ⚠️ *Und der Name ist selbst eine Beschriftung je Sprache (D-646): steht er in der angefragten
+// Sprache da, schlaegt er die Rollenbeschriftung der Standardsprache.*
+$ablage->put(new Label($traeger->id, IdentitySpace::Node, SeededRole::Name, 'one', 'de_DE', '__ls deutscher Name'));
 
-$ablage->forgetOwners([$nummer], IdentitySpace::Relation);
+$check(
+    'der Name der angefragten Sprache schlaegt die Rolle der Standardsprache',
+    $leser->of($nodeRepo->byId($traeger->id), SeededRole::Table, 'de_DE') === '__ls deutscher Name',
+    $leser->of($nodeRepo->byId($traeger->id), SeededRole::Table, 'de_DE')
+);
 
-$rest = (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$labels} WHERE owner_id = %d",
-    $nummer
+echo "\n6 · Die Version steigt beim Ueberschreiben\n";
+
+$versionAm = static fn (int $id): int => (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT l.version FROM {$labels} l JOIN {$nodes} n ON n.label_id = l.id WHERE n.id = %d",
+    $id
 ));
+
+$vorher = $versionAm($traeger->id);
+
+$ablage->put(new Label($traeger->id, IdentitySpace::Node, SeededRole::Form, 'one', 'de_DE', '__ls am Knoten, anders'));
+
+$nachher = $versionAm($traeger->id);
+
+$check('ein Schreiben hebt die Version', $nachher === $vorher + 1, "$vorher -> $nachher");
+
+echo "\n7 · Der Lauf raeumt hinter sich auf\n";
+
+$relRepo->purgeRelationsTouching($traeger->id);
+$ablage->forgetOwners([$traeger->id, $ziel->id], IdentitySpace::Node);
+$ablage->forgetOwners([$kante->id], IdentitySpace::Relation);
+
+foreach ([$traeger, $ziel] as $weg) {
+    $stand = $nodeRepo->find($weg->id);
+
+    if ($stand !== null) {
+        $nodeRepo->purgeSubtree($stand);
+    }
+}
+
+$wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__ls %"');
+
+$rest = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes_named') . " WHERE name LIKE '\\_\\_ls %'");
 
 $check('die Wiese ist wieder weg', $rest === 0, "$rest Zeile(n) uebrig");
 

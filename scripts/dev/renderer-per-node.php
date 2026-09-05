@@ -33,6 +33,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelValues;
@@ -60,7 +61,7 @@ $rendering = new Rendering(
     $framework,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
-    new Labels(new WpdbLabelRepository(), $framework),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     null,
     $model,
     $relations

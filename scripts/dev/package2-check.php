@@ -86,7 +86,7 @@ foreach ($wpdb->get_results('SELECT id, parent_node_id FROM ' . Schema::table('n
     $parentOf[(int) $r['id']] = (int) $r['parent_node_id'];
 }
 $wrong = [];
-foreach ($wpdb->get_results('SELECT id, path, name FROM ' . Schema::table('nodes'), ARRAY_A) as $r) {
+foreach ($wpdb->get_results('SELECT id, path, name FROM ' . Schema::table('nodes_named'), ARRAY_A) as $r) {
     $chain = [(int) $r['id']];
     $walk  = (int) $r['id'];
     while (isset($parentOf[$walk])) {
@@ -261,7 +261,7 @@ foreach ([$x->id, $a->id, $b->id, $g->id, $m->id, $k1->id, $k2->id, $r1->id, $r2
     if ($node !== null) { $nodes->purgeSubtree($node); }
 }
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__check%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__check%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__check%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 $dangling = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' r

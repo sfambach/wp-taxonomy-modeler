@@ -124,7 +124,7 @@ echo "\n== 2. Ein Feld auf einen einfachen Typ, an echten Daten ==\n";
 $kandidat = null;
 
 foreach ($wpdb->get_results(
-    'SELECT id, from_node_id, to_node_id, name FROM ' . Schema::table('relations') . "
+    'SELECT id, from_node_id, to_node_id, name FROM ' . Schema::table('relations_named') . "
      WHERE kind <> 'inheritance'"
 ) as $zeile) {
     $ziel     = $nodes->find((int) $zeile->to_node_id);

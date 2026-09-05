@@ -7,6 +7,7 @@ define('WP_USE_THEMES', false);
 require 'C:/Devel/Wordpress/wp-load.php';
 require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Converter\ShippedConverters;
@@ -18,6 +19,11 @@ use Taxmod\Core\Renderer\{Purpose, ShippedRenderers};
 use Taxmod\Core\Service\{Labels, ModelEditor, Rendering, Settings};
 use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 $nodes = new WpdbNodeRepository();
 $relations = new WpdbRelationRepository();
@@ -34,7 +40,7 @@ $zeichner = static fn (): Rendering => new Rendering(
     $fw,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $fw),
-    new Labels(new WpdbLabelRepository(), $fw),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $fw)
 );
@@ -245,7 +251,7 @@ if ($all) {
 
 $wpdb->query("DELETE FROM {$p}nodes WHERE id = {$in}");
 
-$left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '__cv %'");
+$left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '__cv %'");
 
 echo "\n";
 $say($left === 0, 'die Spielwiese ist wieder weg');

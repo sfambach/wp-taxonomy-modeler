@@ -316,7 +316,7 @@ final class Geruest
         $wurzel = $this->framework->rootOf($ast);
 
         $id = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s AND path LIKE %s LIMIT 1',
+            'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s AND path LIKE %s LIMIT 1',
             $name,
             $wpdb->esc_like($this->nodes->byId($wurzel->id)->path . '.') . '%'
         ));

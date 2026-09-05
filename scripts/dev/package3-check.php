@@ -42,6 +42,11 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -89,7 +94,7 @@ check('Constants → aggregation', $byConstant->kind === RelationKind::Aggregati
 
 echo "\n== 3. It is a row in relations, with an identity of its own ==\n";
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
+    'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations_named') . ' WHERE id = %d',
     $byModel->id
 ), ARRAY_A);
 check('the relation is stored', $row !== null);
@@ -164,9 +169,9 @@ foreach ([$order->id, $supplier->id, $line->id, $text->id, $gram->id] as $scratc
     $node = $nodes->find($scratch);
     if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "%supplied by%" OR name IN ("lines","note","unit","part number")');
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "%supplied by%" OR name IN ("lines","note","unit","part number")) x)');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p3%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p3%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p3%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 $dangling = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' r

@@ -26,6 +26,11 @@ require_once ABSPATH . 'wp-admin/includes/template.php';
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\WordPress\Plugin;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 wp_set_current_user(1);
 
 global $wpdb;
@@ -91,7 +96,7 @@ echo "== the preview appears where records are possible, and not elsewhere ==\n"
 // nicht gezeichnet wird. **Die Prüfung war rot, ohne dass am Schirm etwas falsch war.***
 $model = (int) $wpdb->get_var(
     "SELECT r.node_id FROM {$prefix}node_records r
-     INNER JOIN {$prefix}relations e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     INNER JOIN {$prefix}relations_named e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id ORDER BY COUNT(*) DESC LIMIT 1"
 );
 
@@ -128,7 +133,7 @@ check('it says where the values came from', str_contains($band, 'Filled from'));
 // ⚠️ *Der Knoten wird jetzt über seinen **Ast** gesucht und nicht über einen Namen: ein Name ist
 // Modellinhalt und darf sich ändern, ein Ast ist Gerüst.*
 $dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT id FROM {$prefix}nodes WHERE name = %s LIMIT 1",
+    "SELECT id FROM {$prefix}nodes_named WHERE name = %s LIMIT 1",
     'Data Types'
 ));
 
@@ -158,7 +163,7 @@ echo "\n== hide removes a row from the preview and says which ==\n";
 $relation = $wpdb->get_row(
     // ⚠️ *Und hier ebenso: eine Kante, die die Vorschau wirklich zeichnet — keine Einstellung.*
     $wpdb->prepare(
-        "SELECT id, name FROM {$prefix}relations
+        "SELECT id, name FROM {$prefix}relations_named
          WHERE from_node_id = %d AND name <> '' AND kind <> 'setting' AND kind <> 'inheritance' LIMIT 1",
         $model
     ),
@@ -182,7 +187,7 @@ if ($relation === null) {
     // ⚠️ *Die Adresse einer Angabe an einer **Verwendungsstelle** ist `<Stelle>.<Einstellung>` im
     // `default`-Satz des Besitzers — dieselbe Form, die der Renderer schon benutzt.*
     $readOnlyRelation = (int) $wpdb->get_var(
-        "SELECT id FROM {$prefix}relations WHERE BINARY name = 'read_only' AND kind = 'setting' ORDER BY id LIMIT 1"
+        "SELECT id FROM {$prefix}relations_named WHERE BINARY name = 'read_only' AND kind = 'setting' ORDER BY id LIMIT 1"
     );
 
     $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
@@ -269,7 +274,7 @@ if ($relation === null) {
 
 echo "\n== hide puts the renderer out of force (D-399) ==\n";
 
-$node = (int) $wpdb->get_var("SELECT id FROM {$prefix}nodes WHERE name = 'yotta' LIMIT 1");
+$node = (int) $wpdb->get_var("SELECT id FROM {$prefix}nodes_named WHERE name = 'yotta' LIMIT 1");
 
 if ($node === 0) {
     echo "  --   no scaffolded node to test against\n";
@@ -348,7 +353,7 @@ $clean = 0;
 foreach ($wpdb->get_col(
     "SELECT n.id
        FROM {$prefix}nodes n
-       JOIN {$prefix}relations r ON r.from_node_id = n.id AND r.name <> ''
+       JOIN {$prefix}relations_named r ON r.from_node_id = n.id AND r.name <> ''
       WHERE n.id NOT IN (SELECT node_id FROM {$prefix}node_records)
       GROUP BY n.id
       ORDER BY COUNT(r.id) DESC, n.id ASC"

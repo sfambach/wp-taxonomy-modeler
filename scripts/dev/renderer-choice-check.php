@@ -40,6 +40,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Service\Labels;
@@ -55,6 +56,11 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 $ok  = 0;
@@ -105,7 +111,7 @@ function knoten(string $name): ?\Taxmod\Core\Model\Node
     global $wpdb, $nodes;
 
     $id = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
+        'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s LIMIT 1',
         $name
     ));
 
@@ -150,7 +156,7 @@ foreach (['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts Lis
            JOIN ' . Schema::table('relation_records') . " wert ON wert.node_record_id = halter.id
                 AND wert.relation_id = %d AND wert.value_ref_kind = 'record'
            JOIN " . Schema::table('node_records') . ' satz ON satz.id = wert.value_ref
-           JOIN ' . Schema::table('nodes') . " ziel ON ziel.id = satz.node_id
+           JOIN ' . Schema::table('nodes_named') . " ziel ON ziel.id = satz.node_id
           WHERE halter.node_id = %d AND halter.record_type = 'default'
           LIMIT 1",
         $framework->settingRelationId(SettingKey::Renderer),
@@ -290,7 +296,7 @@ $rendering = new Rendering(
     $framework,
     $registry,
     new SeededTypeNodes($nodes, $framework),
-    new Labels(new WpdbLabelRepository(), $framework),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     null,
     $model,
     $relations

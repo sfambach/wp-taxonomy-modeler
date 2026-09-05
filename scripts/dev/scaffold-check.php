@@ -43,6 +43,11 @@ use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -137,7 +142,7 @@ echo "\n== 5. The check cleans up after itself ==\n";
 // and it is here because two runs of mine died before this line on 2026-08-26 and left a `__sc thing`
 // each. *A cleanup that only knows the ids of the run it is in reports the **previous** run's litter
 // as its own failure, which is the least useful thing a check can say.*
-foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes') . ' WHERE name LIKE "\\_\\_sc%" ORDER BY LENGTH(path) DESC') as $stale) {
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_sc%" ORDER BY LENGTH(path) DESC') as $stale) {
     $node = $nodes->find((int) $stale);
 
     if ($node !== null) {
@@ -154,9 +159,9 @@ if ($still !== null) {
     $relations->purgeRelationsTouching($still->id);
     $nodes->purgeSubtree($still);
 }
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__sc%"');
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "__sc%") x)');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__sc%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__sc%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__sc%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 
 $colourNow = $colour === null ? null : $nodes->byId($colour->id);

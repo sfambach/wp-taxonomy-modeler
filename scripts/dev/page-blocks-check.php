@@ -48,6 +48,11 @@ require __DIR__ . '/geruest.php';
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Plugin;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -143,7 +148,7 @@ function knotenId(string $name): int
     global $wpdb;
 
     return (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s ORDER BY id DESC LIMIT 1',
+        'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s ORDER BY id DESC LIMIT 1',
         $name
     ));
 }
@@ -331,7 +336,7 @@ if ($zusammengesetzt === null) {
     check('ein Feld zeigt auf «Adresse»', true);
 
     $innen = $wpdb->get_col($wpdb->prepare(
-        'SELECT rel.name FROM ' . Schema::table('relations') . " rel
+        'SELECT rel.name FROM ' . Schema::table('relations_named') . " rel
          WHERE rel.from_node_id = %d AND rel.kind <> 'inheritance' AND rel.hide = 0 AND rel.kind <> 'setting'",
         (int) $zusammengesetzt['ziel']
     )) ?: [];
@@ -413,7 +418,10 @@ if ($node === null) {
         $framework,
         \Taxmod\Core\Renderer\ShippedRenderers::registry(),
         new \Taxmod\WordPress\Persistence\SeededTypeNodes($nodesRepo, $framework),
-        new \Taxmod\Core\Service\Labels(new \Taxmod\WordPress\Persistence\WpdbLabelRepository(), $framework),
+        new \Taxmod\Core\Service\Labels(
+            new \Taxmod\WordPress\Persistence\WpdbLabelRepository(),
+            \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()
+        ),
         null,
         new \Taxmod\Core\Service\ModelValues(
             new \Taxmod\WordPress\Persistence\WpdbRecordRepository(),
@@ -531,7 +539,7 @@ echo "\n== Der Datensatz-Block ist eine Tabelle, mit Aktionen rechts ==\n";
 // Zusage, die hier fehlte.*
 $mitSaetzen = (int) $wpdb->get_var(
     'SELECT r.node_id FROM ' . Schema::table('node_records') . ' r
-     INNER JOIN ' . Schema::table('relations') . " e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     INNER JOIN ' . Schema::table('relations_named') . " e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id HAVING COUNT(DISTINCT r.id) > 2 ORDER BY COUNT(DISTINCT r.id) DESC LIMIT 1"
 );
 
@@ -584,7 +592,7 @@ if ($mitSaetzen === 0) {
     // Benutzer-Datensätzen, 148 in `default`-Sätzen. Eine Einstellungsspalte im Datensatz-Block war das
     // Angebot, eine Einstellung an die falsche Stelle zu schreiben.*
     $einstellungen = $wpdb->get_col($wpdb->prepare(
-        'SELECT e.name FROM ' . Schema::table('relations') . ' e
+        'SELECT e.name FROM ' . Schema::table('relations_named') . ' e
          INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = %d
          WHERE e.kind = %s AND e.name <> %s
            AND (e.from_node_id = n.id OR n.path LIKE CONCAT(SUBSTRING_INDEX(n.path, %s, 1), %s))',

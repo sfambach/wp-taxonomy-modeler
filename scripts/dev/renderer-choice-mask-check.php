@@ -47,6 +47,11 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Plugin;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $passed = 0;
 $failed = 0;
 
@@ -241,7 +246,7 @@ check('die Wahl haengt als Datensatz an dieser Kante', $satz !== 0, (string) $sa
 // ([D-583](../../docs/NewConcept/90-decision-log.md)). Eine Zeile, die auf irgendeinen Satz zeigt,
 // waere keine Zusage.*
 $gewaehlterKnoten = $satz === 0 ? '' : (string) $wpdb->get_var(
-    "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes z ON z.id = s.node_id WHERE s.id = {$satz}"
+    "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes_named z ON z.id = s.node_id WHERE s.id = {$satz}"
 );
 
 check('und der Satz ist ein Satz des gewaehlten Renderers', $gewaehlterKnoten === $wahl, "«{$gewaehlterKnoten}» statt «{$wahl}»");
@@ -285,7 +290,7 @@ echo "\n== aufraeumen ==\n";
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit
 // (TASK-039). Nach Namen und nicht nur nach den Ids dieses Laufs: ein abgestuerzter Lauf laesst sonst
 // Reste stehen, die der naechste als eigenen Fehlschlag meldet.*
-$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name LIKE '\\_\\_rcm %'"));
+$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %'"));
 $in    = $meine === [] ? (string) $probe->id : implode(',', $meine);
 
 $wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$in}))");
@@ -296,7 +301,7 @@ $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 check(
     'der Waechter laesst nichts zurueck',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '\\_\\_rcm %'") === 0
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %'") === 0
 );
 
 printf("\n%d ok, %d failed\n", $passed, $failed);

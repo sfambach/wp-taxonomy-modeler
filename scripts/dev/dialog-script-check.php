@@ -32,6 +32,7 @@ require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 
 wp_set_current_user(1);
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
@@ -80,7 +81,7 @@ $rendering = new Rendering(
     $fw,
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $fw),
-    new Labels(new WpdbLabelRepository(), $fw),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $fw)
 );
 

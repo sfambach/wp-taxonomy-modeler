@@ -117,7 +117,7 @@ was hier gemessen wird, gilt erst, wenn Abschnitt 6 es bestaetigt.
     wp_set_current_user(1);
     global $wpdb;
     $p = $wpdb->prefix . 'taxmod_';
-    $_GET['taxmod_node'] = (string) (int) $wpdb->get_var("SELECT id FROM {$p}nodes WHERE name = 'Adresse' LIMIT 1");
+    $_GET['taxmod_node'] = (string) (int) $wpdb->get_var("SELECT id FROM {$p}nodes_named WHERE name = 'Adresse' LIMIT 1");
     $echt = $plugin->screen()->render();
     // ⚠️ *Ganz ausgeben statt einen Teil herausschneiden — verschachteltes Markup mit einem
     // regulaeren Ausdruck zu zerlegen misst am Ende den Ausdruck und nicht die Seite.*

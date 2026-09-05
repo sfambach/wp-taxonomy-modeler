@@ -658,15 +658,62 @@ sich darauf erst hinterher**. Wer eine Schemafassung hebt, hat die Wanderung ab 
 scharf gestellt — jeder `wp-load.php` löst sie aus.*
 
 ```text
-[ ] TASK-019  labels und label_texts; name zieht aus nodes und relations hinein
+[x] TASK-019  labels und label_texts; name zieht aus nodes und relations hinein
 ```
+
+⚠️ **2026-09-05 gebaut — Schemafassung 34.** *`labels` trägt nur noch das Sprachunabhängige (`icon`,
+dazu `version` und `owner_kind` aus Fassung 31); `label_texts` trägt sechs Textspalten je Sprache und
+Numerus — `text_name`, `text_form`, `text_table`, `text_select`, `text_help`, `text_symbol`. **Knoten
+und Kanten zeigen mit `label_id` dorthin**, `nodes.name` und `relations.name` sind gefallen.*
+
+⚠️ **Gemessen vorher: 137 Knotennamen, 58 Kantennamen, 52 Beschriftungen** (39 `symbol`, 4 `form`,
+4 `table`, 3 `select`, 2 `help`; 4 `de_DE`, 48 ohne Sprache, 0 mit Pfad, 0 mit einem anderen Numerus
+als `one`). **Nachher: 195 Beschriftungszeilen, 197 Textzeilen, 247 belegte Rollenfelder — Zeile für
+Zeile derselbe Text an derselben Stelle.** *Die 48 sprachlosen Zeilen sind Zeilen der Standardsprache
+`en_US` geworden ([D-387](../../NewConcept/90-decision-log.md),
+[D-645](../../NewConcept/90-decision-log.md)); ein Zusammenstoss dabei wurde vorher gezählt: keiner.*
+
+⚠️ **Umkehrbar: 195 Schattenzeilen, eine Änderungsgruppe, jede Journalzeile mit ihrer Version**
+([D-348](../../NewConcept/90-decision-log.md), [D-634](../../NewConcept/90-decision-log.md)). *Und
+das Sichern steht **im Fassungsschritt selbst** — `INF-045`: das Laden von WordPress hebt die Fassung,
+bevor ein Skript daneben zum Schreiben käme. **`nodes_history` und `relations_history` behalten `name`**,
+aus demselben Grund, aus dem das Änderungsbuch seine Zustände behält
+([D-065](../../NewConcept/90-decision-log.md)) — 21 465 + 25 440 Namen bleiben als Geschichte stehen,
+und `Restore` schreibt sie beim Zurückholen wieder in die Beschriftungen.*
+
+⚠️ **Die drei Fragen, die `INF-040` offen nannte, sind beantwortet und nicht umgangen:** *Rollen sind
+Spalten ([D-598](../../NewConcept/90-decision-log.md)), `symbol` ist sprachabhängig geworden
+([D-645](../../NewConcept/90-decision-log.md)), und die neutrale Zeile ist durch die **erklärte**
+Standardsprache abgelöst, die vom Rand in den Kern hereingereicht wird (`CD-1`).*
+
+⚠️ **Neu am Netz und mitgezogen:** *`label-space-check` misst jetzt die neue Form — kein Knoten ohne
+`label_id`, keiner ohne Namen, und **die Gegenprobe zum Rückfall**: eine Sprache, für die nichts
+gepflegt ist, bekommt den Text der Standardsprache. `id-space-check`, `orphans-check`,
+`label-role-check`, `labels-page-save-check`, `journal-address-check`, `rename-survives-check`,
+`package5-check`, `cleartrash-check`, `cleanup-screen-check`, `implemented-by-check`,
+`setting-kind-check`, `setting-write-check`, `renderer-choice-check`, `seed-twice-check`,
+`edge-class-check`, `dangling-reference-check` und `silent-query-check` ziehen mit — **keiner
+entschärft**.*
+
+⚠️ **Was der Umzug an Werkzeug gebraucht hat: zwei Sichten.** *`…nodes_named` und `…relations_named`
+zeigen die Zeile samt ihrem Namen in der Standardsprache — die Antwort auf die Folge, die D-580 selbst
+benannt hat («`nodes` hat danach keine lesbare Spalte mehr»). **Eine Sicht hält nichts und kann mit
+der Tabelle nicht auseinanderlaufen** ([D-016](../../NewConcept/90-decision-log.md),
+[D-228](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Was offen blieb, steht als `INF-046` und `INF-047` im Eingang:** *der `path` an einer
+Beschriftung (0 Zeilen betroffen, aber eine Möglichkeit weniger), und drei Wächterbefunde, die nicht
+am Namensumzug hängen.*
 
 [D-580](../../NewConcept/90-decision-log.md). **Grösster Einzelposten:** `nodes.name` ist indiziert und
 wird an vielen Stellen gelesen. Reihenfolge `PR-12` — Wächter, Leser, Daten.
 
-⚠️ *Offen davor: sind die vier Rollen Spalten in `label_texts` oder Zeilen mit `role_id`?*
+⚠️ *Die Frage davor — Rollen als Spalten oder als Zeilen mit `role_id` — hat
+[D-598](../../NewConcept/90-decision-log.md) beantwortet: **Spalten**, und die Zeilenform steht auf
+dem Parkplatz.*
 
-⚠️ **2026-09-05 angelaufen und **nicht** gebaut — der Grund steht gezählt in `INF-040`.** *Die Teilung
+⚠️ **Der Zwischenstand vom selben Tag, aufgehoben statt gelöscht: 2026-09-05 angelaufen und zunächst
+**nicht** gebaut — der Grund stand gezählt in `INF-040`.** *Die Teilung
 und der Umzug des Namens sind ein Stück: die Umkehrung des Verweises allein erzeugt 194 leere
 Beschriftungszeilen, der Umzug allein hat keine Tabelle. **Gemessen, was daran hängt: 137 Knoten- und
 57 Kantennamen, 166 SQL-Stellen in 60 der 88 Prüfläufe, 20 685 + 25 124 Namen in den

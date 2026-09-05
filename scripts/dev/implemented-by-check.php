@@ -85,6 +85,9 @@ echo "1 · Die Spalte steht, lebend und im Schatten\n";
 
 $nodes  = Schema::table('nodes');
 $shadow = Schema::table('nodes_history');
+// ⚠️ *Der Name steht seit TASK-019 in den Beschriftungen ([D-580](../../docs/NewConcept/90-decision-log.md));
+// die Sicht zeigt ihn in der Standardsprache.*
+$benannt = Schema::table('nodes_named');
 
 check('nodes.implemented_by', hatSpalte($nodes, 'implemented_by'));
 check('nodes_history.implemented_by', hatSpalte($shadow, 'implemented_by'), 'der Schatten zieht mit');
@@ -99,7 +102,7 @@ echo "\n2 · Jede Angabe nennt eine Klasse, die es gibt\n";
 
 /** @var list<array{id: string, name: string, implemented_by: string}> $zeilen */
 $zeilen = $wpdb->get_results(
-    "SELECT id, name, implemented_by FROM {$nodes}
+    "SELECT id, name, implemented_by FROM {$benannt}
      WHERE implemented_by IS NOT NULL AND implemented_by <> '' ORDER BY id",
     ARRAY_A
 ) ?: [];

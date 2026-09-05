@@ -296,13 +296,17 @@ $ohneRaum = (int) $wpdb->get_var(
 
 check('jede Beschriftung nennt einen der beiden Raeume', $ohneRaum === 0, "$ohneRaum ohne Raum");
 
+// ⚠️ **Seit TASK-019 zeigt der Verweis in die Gegenrichtung** ([D-580](../../docs/NewConcept/90-decision-log.md)):
+// *`nodes.label_id` und `relations.label_id` statt `labels.owner_id`. Die Frage lautet darum umgekehrt
+// — **auf jede Beschriftung zeigt jemand**, und der Raum, den sie nennt, ist der, aus dem der Verweis
+// kommt.*
 foreach ([['node', 'nodes'], ['relation', 'relations']] as [$raum, $ziel]) {
     $zielTabelle = Schema::table($ziel);
 
     $waisen = (int) $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM {$labelTabelle} l
          WHERE l.owner_kind = %s
-           AND NOT EXISTS (SELECT 1 FROM {$zielTabelle} z WHERE z.id = l.owner_id)",
+           AND NOT EXISTS (SELECT 1 FROM {$zielTabelle} z WHERE z.label_id = l.id)",
         $raum
     ));
 
@@ -315,16 +319,20 @@ $ohneVersion = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labelTabelle} WHERE 
 
 check('jede Beschriftung hat eine Version', $ohneVersion === 0, "$ohneVersion ohne Version");
 
+// ⚠️ **Hier stand der eindeutige Schluessel `one_text` und die Zusage, dass er den Raum nennt.**
+// *Er ist mit TASK-019 gefallen: die Beschriftung traegt keine Adresse mehr, sie **ist** die Adresse
+// ([D-580](../../docs/NewConcept/90-decision-log.md)). Was an seine Stelle tritt, ist der Schluessel
+// von `label_texts` — eine Zeile je Beschriftung, Sprache und Numerus.*
 $schluessel = $wpdb->get_col($wpdb->prepare(
     "SELECT COLUMN_NAME FROM information_schema.STATISTICS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = 'one_text'
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = 'one_row'
      ORDER BY SEQ_IN_INDEX",
-    $labelTabelle
+    Schema::table('label_texts')
 ));
 
 check(
-    'der eindeutige Schluessel nennt den Raum mit',
-    in_array('owner_kind', $schluessel, true),
+    'der eindeutige Schluessel nennt Beschriftung, Sprache und Numerus',
+    $schluessel === ['label_id', 'locale', 'number'],
     implode(', ', $schluessel)
 );
 

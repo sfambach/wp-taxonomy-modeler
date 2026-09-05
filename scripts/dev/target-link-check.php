@@ -25,6 +25,11 @@ use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, WpdbChangelog, WpdbNodeRepository, WpdbRelationRepository};
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $nodes = new WpdbNodeRepository();
 $relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
@@ -108,7 +113,7 @@ foreach ([$pos->id, $teil->id] as $id) {
 }
 
 echo "\n";
-$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '__tl %'") === 0, 'die Wiese ist wieder weg');
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '__tl %'") === 0, 'die Wiese ist wieder weg');
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 

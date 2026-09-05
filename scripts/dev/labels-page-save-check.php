@@ -42,12 +42,18 @@ require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 wp_set_current_user(1);
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\SettingsRenderer;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 
@@ -92,7 +98,7 @@ if (($argv[1] ?? '') === 'post') {
         foreach ((array) ($wpdb->queries ?? []) as $eine) {
             $sql = (string) ($eine[0] ?? '');
 
-            if (preg_match('/^\s*(REPLACE|INSERT|UPDATE|DELETE)\b/i', $sql) && str_contains($sql, $p . 'labels')) {
+            if (preg_match('/^\s*(REPLACE|INSERT|UPDATE|DELETE)\b/i', $sql) && str_contains($sql, $p . 'label_texts')) {
                 ++$gemeldet['writes'];
                 $gemeldet['sql'][] = preg_replace('/\s+/', ' ', substr($sql, 0, 120));
             }
@@ -144,7 +150,7 @@ $rolle  = $fw->roleId(SeededRole::Form);
 
 // ⚠️ *Ein Text, der schon dasteht — sonst wäre «unverändert» nicht prüfbar: ein leeres Feld gegen
 // eine leere Zeile ist derselbe Vergleich und beweist nichts.*
-$labels->put(new Label($knoten->id, IdentitySpace::Node, '', $rolle, Label::BASE_NUMBER, '', '__lb Stückliste'));
+$labels->put(new Label($knoten->id, IdentitySpace::Node, SeededRole::Form, Label::BASE_NUMBER, SettingsScreen::neutralLocale(), '__lb Stückliste'));
 
 // ⚠️ **Das Formular der Seite, nicht das eines Blocks darin** ([D-517](../../docs/NewConcept/90-decision-log.md)).
 // *Bis zum 2026-08-29 stand hier `SettingsRenderer::formFor()`, und als der Einstellungsblock ging,
@@ -268,11 +274,14 @@ $say(
 
 $gelesen = array_values(array_filter(
     $labels->forOwners([$knoten->id], IdentitySpace::Node),
-    static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
+    static fn (Label $l): bool => $l->role === SeededRole::Form && $l->locale === SettingsScreen::neutralLocale()
 ));
 
 $say(count($gelesen) === 1 && $gelesen[0]->text === '__lb Formname', 'der Text steht in der Tabelle: ' . ($gelesen[0]->text ?? '—'));
-$say((int) $erster['writes'] === 1, sprintf('genau eine Schreibabfrage, für das eine geänderte Feld (%d)', (int) $erster['writes']));
+// ⚠️ *Zwei, seit TASK-019: der **Name** ist selbst eine Beschriftung (D-646), und der Akt aendert
+// den Namen und das Formfeld. Was hier zaehlt, ist «nur das Geaenderte» — jedes geaenderte Feld eine
+// Schreibabfrage, kein Feld mehr.*
+$say((int) $erster['writes'] === 2, sprintf('je eine Schreibabfrage fuer die zwei geaenderten Felder (%d)', (int) $erster['writes']));
 
 $zeilen = $wpdb->get_results($wpdb->prepare("SELECT change_group_id, owner_kind, what FROM {$p}changelog WHERE id > %d", $marke));
 
@@ -325,12 +334,14 @@ $dritter = $abschicken($dritte);
 
 $danach = array_values(array_filter(
     $labels->forOwners([$knoten->id], IdentitySpace::Node),
-    static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
+    static fn (Label $l): bool => $l->role === SeededRole::Form && $l->locale === SettingsScreen::neutralLocale()
 ));
 
 $say($dritter['redirect'] !== '', 'der dritte Akt lief durch');
 $say($danach === [], sprintf('die Zeile ist weg statt leer (%d Zeile(n) übrig)', count($danach)));
-$say((int) $dritter['writes'] === 1, sprintf('und das war eine Schreiboperation, kein stilles Nichts (%d)', (int) $dritter['writes']));
+// ⚠️ *Zwei Anweisungen fuer **ein** geleertes Feld: die Spalte wird leer, und die Zeile faellt, wenn
+// keine Spalte mehr etwas sagt (D-384: leer heisst vergiss die Zeile).*
+$say((int) $dritter['writes'] === 2, sprintf('und das war eine Schreiboperation, kein stilles Nichts (%d)', (int) $dritter['writes']));
 
 echo "\n== 5. der eigene Knopf des Labels-Bereichs speichert dieselbe Seite ==\n";
 
@@ -347,7 +358,7 @@ $vierter = $abschicken($vierte);
 
 $ueber = array_values(array_filter(
     $labels->forOwners([$knoten->id], IdentitySpace::Node),
-    static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
+    static fn (Label $l): bool => $l->role === SeededRole::Form && $l->locale === SettingsScreen::neutralLocale()
 ));
 
 $say($vierter['redirect'] !== '', 'der Akt des eigenen Knopfes lief durch');
@@ -361,7 +372,10 @@ $say(count($ueber) === 1 && $ueber[0]->text === '__lb Über den eigenen Knopf', 
 $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$knoten->id} OR to_node_id = {$knoten->id}"));
 $own = $e === [] ? (string) $knoten->id : $knoten->id . ',' . implode(',', $e);
 
-$roh("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
+// ⚠️ *Seit TASK-019 zeigt der Knoten auf seine Beschriftung und nicht umgekehrt
+// ([D-580](../../docs/NewConcept/90-decision-log.md)) — geraeumt wird ueber `label_id`.*
+$roh("DELETE FROM {$p}label_texts WHERE label_id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$own}))");
+$roh("DELETE FROM {$p}labels WHERE id IN (SELECT label_id FROM (SELECT label_id FROM {$p}nodes WHERE id IN ({$own})) x)");
 $roh("DELETE FROM {$p}changelog WHERE owner_id IN ({$own})");
 
 if ($e !== []) {
@@ -372,7 +386,7 @@ $roh("DELETE FROM {$p}nodes WHERE id = {$knoten->id}");
 
 echo "\n";
 
-$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '__lb %'") === 0, 'die Wiese ist wieder weg');
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '__lb %'") === 0, 'die Wiese ist wieder weg');
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 

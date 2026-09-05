@@ -58,6 +58,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
@@ -76,6 +77,11 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 $ok  = 0;
@@ -108,7 +114,7 @@ function doppelteGeschwister(): array
         'doppelte Geschwister suchen',
         'SELECT r.from_node_id, k.name, COUNT(*) AS wie_oft
          FROM ' . Schema::table('relations') . ' r
-         INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = r.to_node_id
+         INNER JOIN ' . Schema::table('nodes_named') . ' k ON k.id = r.to_node_id
          WHERE r.kind = \'inheritance\'
          GROUP BY r.from_node_id, k.name
          HAVING wie_oft > 1'
@@ -143,7 +149,7 @@ $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $typeNodes = new SeededTypeNodes($nodes, $framework);
-$labels    = new Labels(new WpdbLabelRepository(), $framework, $log);
+$labels    = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale(), $log);
 
 // ⚠️ *Dieselbe Reihenfolge wie in `Plugin::activate()` — `unitScaffold` braucht, was `baseScaffold`
 // legt, und `compositionScaffold` braucht beide.*

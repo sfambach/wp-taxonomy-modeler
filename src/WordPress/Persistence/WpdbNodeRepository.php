@@ -4,10 +4,14 @@ namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\WordPress\Admin\SettingsScreen;
 
 /**
  * Nodes in a table of our own (AR-1), reached through `$wpdb`.
@@ -20,6 +24,41 @@ use Taxmod\Core\Repository\NodeRepository;
  */
 final class WpdbNodeRepository implements NodeRepository
 {
+    /**
+     * Die Spalten eines Knotens — **und der Name kommt aus den Beschriftungen** (TASK-019,
+     * [D-580](../../../docs/NewConcept/90-decision-log.md),
+     * [D-646](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *`nodes.name` gibt es nicht mehr. Was ein Knoten heisst, steht als `text_name` in
+     * `label_texts` — je Sprache, seit D-646. **Hier wird die Standardsprache gelesen**: sie ist der
+     * letzte Schritt jeder Rückfallkette ({@see \Taxmod\Core\Service\Labels}), und ein `Node` trägt
+     * genau diesen einen Namen. Die sprachabhängige Anzeige läuft über die Kette und nicht über
+     * dieses Feld.*
+     */
+    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, '') AS name, n.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+
+    /**
+     * ⚠️ **`LEFT JOIN` und kein `JOIN`:** *ein Knoten ohne Beschriftungszeile hätte sonst gar keine
+     * Zeile mehr — er wäre unsichtbar statt namenlos, und das ist die schlechtere Störung. Dass es
+     * ihn nicht geben darf, hält `label-texts-check.php` fest, nicht dieser Leser.*
+     */
+    private static function fromNodes(): string
+    {
+        return ' FROM ' . Schema::table('nodes') . ' n LEFT JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s ';
+    }
+
+    /**
+     * ⚠️ *Die beiden Werte des Verbunds stehen **vorn** in der Argumentliste, weil `FROM` vor `WHERE`
+     * steht und `prepare()` der Reihe nach füllt.*
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function nameArgs(): array
+    {
+        return [SettingsScreen::neutralLocale(), Label::BASE_NUMBER];
+    }
+
     public function byId(int $id): Node
     {
         return $this->find($id) ?? throw NodeNotFound::withId($id);
@@ -29,7 +68,10 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
+        $row = Query::row('Knoten lesen', $wpdb->prepare(
+            'SELECT ' . self::COLUMNS . self::fromNodes() . 'WHERE n.id = %d',
+            ...[...self::nameArgs(), $id]
+        ));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -49,8 +91,8 @@ final class WpdbNodeRepository implements NodeRepository
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
-            ...array_map(intval(...), $ids)
+            'SELECT ' . self::COLUMNS . self::fromNodes() . "WHERE n.id IN ($slots)",
+            ...[...self::nameArgs(), ...array_map(intval(...), $ids)]
         ));
 
         $found = [];
@@ -74,7 +116,6 @@ final class WpdbNodeRepository implements NodeRepository
 
         $spalten = [
             'version'        => $node->version,
-            'name'           => $node->name,
             'path'           => $node->path,
             'implemented_by' => $node->implementedBy,
             // ⚠️ *Seit TASK-018 kommt die Einordnung mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
@@ -84,7 +125,7 @@ final class WpdbNodeRepository implements NodeRepository
             'sort_order'     => $node->sortOrder,
             'hide'           => $node->hide ? 1 : 0,
         ];
-        $formate = ['%d', '%s', '%s', '%s', '%d', '%d', '%d'];
+        $formate = ['%d', '%s', '%s', '%d', '%d', '%d'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -94,6 +135,8 @@ final class WpdbNodeRepository implements NodeRepository
         $wpdb->insert(Schema::table('nodes'), $spalten, $formate);
 
         if ($node->id !== 0) {
+            $this->writeName($node);
+
             return $node;
         }
 
@@ -108,7 +151,34 @@ final class WpdbNodeRepository implements NodeRepository
             ['%d']
         );
 
+        $this->writeName($node);
+
         return $node;
+    }
+
+    /**
+     * Der Name geht in die Beschriftungen, nicht in die Knotenzeile (TASK-019, D-580, D-646).
+     *
+     * ⚠️ **Und hier entsteht die `label_id`, die am Knoten Pflicht ist.** *Ein Knoten ohne sie hätte
+     * keinen Namen mehr — darum legt die Ablage die Beschriftungszeile beim ersten Schreiben an
+     * ({@see WpdbLabelRepository::put()}), und `label-texts-check.php` misst, dass keiner ohne
+     * durchkommt.*
+     *
+     * ⚠️ *Die **Standardsprache**, weil `Node::$name` genau die eine ist, auf die jede Rückfallkette
+     * zuletzt läuft ([D-387](../../../docs/NewConcept/90-decision-log.md),
+     * [D-645](../../../docs/NewConcept/90-decision-log.md)). Eine Übersetzung schreibt die Maske, nicht
+     * dieser Weg.*
+     */
+    private function writeName(Node $node): void
+    {
+        (new WpdbLabelRepository())->put(new Label(
+            $node->id,
+            IdentitySpace::Node,
+            SeededRole::Name,
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            $node->name
+        ));
     }
 
     public function save(Node $node, int $expectedVersion): void
@@ -138,7 +208,6 @@ final class WpdbNodeRepository implements NodeRepository
             Schema::table('nodes'),
             [
                 'version'        => $node->version,
-                'name'           => $node->name,
                 'path'           => $node->path,
                 // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
                 // Klassenangabe gelöscht (TASK-008).*
@@ -153,11 +222,13 @@ final class WpdbNodeRepository implements NodeRepository
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%s', '%s', '%d', '%d', '%d'],
+            ['%d', '%s', '%s', '%d', '%d', '%d'],
 
         );
 
         if ($written === 1) {
+            $this->writeName($node);
+
             return;
         }
 
@@ -200,11 +271,10 @@ final class WpdbNodeRepository implements NodeRepository
         // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
         // selektionstechnisch billiger».*
         $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide
-             FROM ' . Schema::table('nodes') . '
-             WHERE hide = 0 AND parent_node_id IN (' . $platzhalter . ')
-             ORDER BY parent_node_id ASC, sort_order ASC, id ASC',
-            ...$ids
+            'SELECT ' . self::COLUMNS . self::fromNodes()
+                . 'WHERE n.hide = 0 AND n.parent_node_id IN (' . $platzhalter . ')
+             ORDER BY n.parent_node_id ASC, n.sort_order ASC, n.id ASC',
+            ...[...self::nameArgs(), ...$ids]
         ));
 
         foreach ($rows ?: [] as $row) {
@@ -224,11 +294,9 @@ final class WpdbNodeRepository implements NodeRepository
         // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
         // war ein Join.*
         $rows = Query::rows('Kinder lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide
-             FROM ' . Schema::table('nodes') . '
-             WHERE parent_node_id = %d
-             ORDER BY sort_order ASC, id ASC',
-            $parent->id
+            'SELECT ' . self::COLUMNS . self::fromNodes()
+                . 'WHERE n.parent_node_id = %d ORDER BY n.sort_order ASC, n.id ASC',
+            ...[...self::nameArgs(), $parent->id]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -299,10 +367,8 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . '
-             WHERE path LIKE %s
-             ORDER BY path ASC',
-            $wpdb->esc_like($root->path . '.') . '%'
+            'SELECT ' . self::COLUMNS . self::fromNodes() . 'WHERE n.path LIKE %s ORDER BY n.path ASC',
+            ...[...self::nameArgs(), $wpdb->esc_like($root->path . '.') . '%']
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -359,6 +425,23 @@ final class WpdbNodeRepository implements NodeRepository
 
         Shadow::keep('nodes', 'id = %d OR path LIKE %s', [$node->id, $under], true);
 
+        // ⚠️ **Die Beschriftungen gehen mit, und das ist seit TASK-019 nicht mehr optional**
+        // ([D-580](../../../docs/NewConcept/90-decision-log.md)). *Vorher hatte ein Knoten nur dann
+        // eine Beschriftungszeile, wenn jemand einen Text geschrieben hatte; **jetzt hat sie jeder**,
+        // weil der Name eine ist. Ein Löschen, das sie stehenlässt, hinterlässt eine Waise je
+        // gelöschtem Knoten — gemessen an den Prüfläufen, die genau das taten.*
+        $this->forgetLabelsOf(
+            "SELECT n.label_id FROM {$nodes} n WHERE n.id = %d OR n.path LIKE %s",
+            [$node->id, $under]
+        );
+
+        $this->forgetLabelsOf(
+            "SELECT r.label_id FROM {$relations} r
+             INNER JOIN {$nodes} n ON n.id = r.to_node_id OR n.id = r.from_node_id
+             WHERE n.id = %d OR n.path LIKE %s",
+            [$node->id, $under]
+        );
+
         // The relations go first, because a relation row whose node is gone is the dangling
         // reference the whole two-stage deletion exists to avoid. Both are one statement.
         $wpdb->query($wpdb->prepare(
@@ -373,6 +456,40 @@ final class WpdbNodeRepository implements NodeRepository
             "DELETE FROM {$nodes} WHERE id = %d OR path LIKE %s",
             $node->id,
             $under
+        ));
+    }
+
+    /**
+     * Die Beschriftungen, auf die eine gleich verschwindende Zeile zeigt — samt ihren Texten.
+     *
+     * ⚠️ *Vor dem Löschen der Zeile aufgerufen, weil danach niemand mehr sagen könnte, worauf sie
+     * zeigte. **Die Geschichte behält sie trotzdem**: der Schatten trägt `label_id` und `name`.*
+     *
+     * @param list<int|string> $args
+     */
+    private function forgetLabelsOf(string $auswahl, array $args): void
+    {
+        global $wpdb;
+
+        $ids = array_values(array_filter(array_map(
+            intval(...),
+            Query::column('Beschriftungen des Weggeraeumten lesen', $wpdb->prepare($auswahl, ...$args))
+        )));
+
+        if ($ids === []) {
+            return;
+        }
+
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('label_texts') . " WHERE label_id IN ({$slots})",
+            ...$ids
+        ));
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('labels') . " WHERE id IN ({$slots})",
+            ...$ids
         ));
     }
 
@@ -514,9 +631,8 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
-                . " WHERE implemented_by IN ($slots) ORDER BY id",
-            ...$classNames
+            'SELECT ' . self::COLUMNS . self::fromNodes() . "WHERE n.implemented_by IN ($slots) ORDER BY n.id",
+            ...[...self::nameArgs(), ...$classNames]
         ));
 
         $aus = [];

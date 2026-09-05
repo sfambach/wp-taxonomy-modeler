@@ -181,3 +181,41 @@ denselben zeigen dürfen.** Die Speicherung muss dafür nichts anderes können �
 ## 2026-09-02 · Herleitungen aus `package.md`
 
 
+
+---
+
+## 2026-09-05 · Der Name verlässt den Knoten — `labels` und `label_texts`, Fassung 34
+
+**Was vorher galt:** `nodes.name` und `relations.name` waren Spalten, und `labels` war eine hohe
+Tabelle — eine Zeile je Eigentümer, Pfad, Rolle, Numerus und Sprache, mit `owner_id` als Verweis
+**auf** den Gegenstand.
+
+**Warum es fiel — sein Vorschlag, und das Argument ist seines**
+([D-580](../../NewConcept/90-decision-log.md)): *«wenn wir jeder Kante eine `label_id` geben … dann
+hätten wir das Problem gelöst.»* **Zeigte die Labeltabelle auf ihren Gegenstand, bräuchte sie je
+neuer Art eine weitere Spalte** — `node_id`, `relation_id`, dann `setting_id`. Umgedreht bekommt
+jede Tabelle **ihre eigene** `label_id`, und jeder Fremdschlüssel ist echt und einspaltig.
+
+**Und warum der Name mit hineinzieht** ([D-646](../../NewConcept/90-decision-log.md)): *«der Name muss
+auch sprachabhängig werden, sonst schaltet man die Sprache um und alle Knoten haben noch den gleichen
+Namen.»* **Das berichtigt D-580 an einer tragenden Stelle:** dort zog `name` ins *Sprachunabhängige*,
+mit der Begründung «so sind alle Rückfallszenarien in `labels`». Der Grund trägt weiter — alles liegt
+in den Beschriftungen —, nur endet die Kette jetzt auf `text_name` **der angefragten Sprache**.
+
+**Was daran gemessen wurde, bevor etwas fiel:** 137 Knotennamen, 58 Kantennamen, 52 Beschriftungen,
+davon 0 mit Pfad und 0 mit einem anderen Numerus als `one`. Nachher lieferte **jeder Knoten und jede
+Kante denselben Namen und dieselbe Beschriftung wie vorher** — Zeile für Zeile verglichen, nicht als
+Summe. Die 48 sprachlosen Zeilen wurden Zeilen der Standardsprache; die neutrale Zeile gibt es seit
+[D-645](../../NewConcept/90-decision-log.md) nicht mehr.
+
+**Was der Umzug gekostet hat, und was er dabei sichtbar gemacht hat:** *rund 90 SQL-Stellen in den
+Prüfläufen lasen eine Spalte, die es nicht mehr gibt. Statt jede einzeln zu einem Verbund umzubauen,
+legt die Fassung zwei **Sichten** an — `…nodes_named`, `…relations_named` —, die die Zeile samt Namen
+in der Standardsprache zeigen. **Das ist zugleich die Antwort auf die Folge, die D-580 selbst
+benannt hat:** «`nodes` hat danach keine lesbare Spalte mehr.»*
+
+**Und eine Nebenwirkung, die keine Kleinigkeit ist:** *bis zur Fassung 34 hatte ein Knoten nur dann
+eine Beschriftungszeile, wenn jemand einen Text geschrieben hatte. **Jetzt hat sie jeder**, weil der
+Name eine ist — also lässt jedes Löschen, das an der Ablage vorbei mit rohem SQL arbeitet, eine
+Waise zurück. Die Ablagewege räumen seither selbst auf; die Prüfläufe, die roh löschen, rufen
+`Schema::forgetOrphanLabels()` am Ende.*

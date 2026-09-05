@@ -49,6 +49,11 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 $passed = 0;
 $failed = 0;
 
@@ -96,6 +101,16 @@ function rowsFor(string $table, array $ownerIds, string $column = 'owner_id'): i
 
     $in = implode(',', array_map('intval', $ownerIds));
 
+    // ⚠️ *Seit TASK-019 haengt eine Beschriftung nicht am Eigentuemer, sondern der Eigentuemer an ihr
+    // ([D-580](../../docs/NewConcept/90-decision-log.md)) — gezaehlt wird ueber `label_id`.*
+    if ($table === 'labels') {
+        return (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$p}label_texts t
+             WHERE t.label_id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$in}))
+                OR t.label_id IN (SELECT label_id FROM {$p}relations WHERE id IN ({$in}))"
+        );
+    }
+
     return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}{$table} WHERE {$column} IN ({$in})");
 }
 
@@ -109,18 +124,10 @@ $relation   = $editor->addField($doomed->id, $target->id, 'feld');
 // ⚠️ *Hier bekam der Knoten eine Zeile in der `settings`-Tabelle, damit sich zeigen laesst, dass sie
 // mit ihm verschwindet. **Die Tabelle ist mit D-579 gestrichen**; was mitgeht, sind Labels, Kanten
 // und Datensaetze — und genau das misst der Rest dieser Datei.*
-// ⚠️ *The role is a **seeded node** ([D-196](../../docs/NewConcept/90-decision-log.md)), so `role_id`
-// is a real id and not an enum value. Taking one that exists keeps the foreign key honest — inventing
-// a number here would test the check's imagination rather than the act.*
-$roleId = (int) $wpdb->get_var("SELECT role_id FROM {$p}labels LIMIT 1");
+// ⚠️ *Die Rolle ist seit TASK-019 eine **Spalte** ([D-598](../../docs/NewConcept/90-decision-log.md))
+// und keine Knotennummer mehr — es gibt hier nichts nachzuschlagen.*
 
-if ($roleId === 0) {
-    echo "  Keine Label-Rolle im Baum — die Pruefung kann nichts ueber Labels sagen.\n";
-
-    exit(1);
-}
-
-$labelRows->put(new Label($doomed->id, IdentitySpace::Node, '', $roleId, '', 'de_DE', 'Weg damit'));
+$labelRows->put(new Label($doomed->id, IdentitySpace::Node, SeededRole::Form, Label::BASE_NUMBER, 'de_DE', 'Weg damit'));
 
 // ⚠️ *Ein eigener Datensatz, damit die Zusage «its records went with it» etwas zu pruefen hat —
 // [C102](../../docs/NewConcept/10-domain-core.md): einen Datensatz ohne seinen Knoten darf es nicht
@@ -240,12 +247,12 @@ echo "\n== tidying up ==\n";
 // mine died before this line while the act was being got right, and the third then reported **their**
 // leftovers as its own failure. A cleanup that only knows the ids of the run it is in blames the wrong
 // run.*
-$mine  = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name LIKE '\\_\\_ct %'"));
+$mine  = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_ct %'"));
 $in    = $mine === [] ? (string) $target->id : implode(',', $mine);
 $stray = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})"));
 $own   = $stray === [] ? $in : $in . ',' . implode(',', $stray);
 
-$wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
+$wpdb->query("DELETE FROM {$p}label_texts WHERE label_id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$own}))");
 
 if ($stray !== []) {
     $wpdb->query("DELETE FROM {$p}relations WHERE id IN (" . implode(',', $stray) . ')');
@@ -268,7 +275,7 @@ $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 check(
     'the check leaves nothing behind',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '\\_\\_ct %'") === 0
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_ct %'") === 0
 );
 
 // ⚠️ *Die Zusage dazu, damit derselbe Rest nicht ein zweites Mal unbemerkt bleibt: **kein Datensatz

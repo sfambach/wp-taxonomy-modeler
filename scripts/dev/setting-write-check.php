@@ -61,6 +61,11 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
+
 global $wpdb;
 $ok  = 0;
 $bad = 0;
@@ -176,7 +181,7 @@ check(
 );
 
 $rendererPfad = (string) $wpdb->get_var(
-    'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
+    'SELECT path FROM ' . Schema::table('nodes_named') . " WHERE name = 'Renderer' LIMIT 1"
 );
 // ⚠️ **Dieselbe Zusage wie frueher «jeder gespeicherte Renderer zeigt in den Renderer-Ast», nur an
 // der neuen Adresse.** *Sie ist am eigenen Fehler gelernt: es gibt zwei Knoten namens `form` -- die
@@ -236,8 +241,8 @@ if ($knoten === null) {
 // Ein echter Renderer-Knoten als Wert — der Wert ist ein **Verweis**, nicht ein Name.
 $rendererKnoten = $wpdb->get_row($wpdb->prepare(
     // ⚠️ *Aus der Spalte statt aus der Kante (TASK-018, [D-581](../../NewConcept/90-decision-log.md)).*
-    'SELECT k.id, k.name FROM ' . Schema::table('nodes') . ' k
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = k.parent_node_id
+    'SELECT k.id, k.name FROM ' . Schema::table('nodes_named') . ' k
+     INNER JOIN ' . Schema::table('nodes_named') . ' v ON v.id = k.parent_node_id
      WHERE v.name = %s AND k.name = %s LIMIT 1',
     'Renderer',
     'spinner'
@@ -342,8 +347,8 @@ echo "\n== Ein anderer Renderer ersetzt den Satz, er kommt nicht dazu ==\n";
 // herauszunehmen. Der Rundlauf ueber `handlePost()` kann darum nicht geprueft werden -- er
 // existiert nicht. Das ist eine Luecke des Umbaus und gehoert ins Eingangsblatt.
 $zweiter = $wpdb->get_row($wpdb->prepare(
-    'SELECT k.id, k.name FROM ' . Schema::table('nodes') . ' k
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = k.parent_node_id
+    'SELECT k.id, k.name FROM ' . Schema::table('nodes_named') . ' k
+     INNER JOIN ' . Schema::table('nodes_named') . ' v ON v.id = k.parent_node_id
      WHERE v.name = %s AND k.name = %s LIMIT 1',
     'Renderer',
     'slider'
@@ -553,7 +558,7 @@ check('der Pruefknoten haelt genau eine Wahl', $wahlen === 1, (string) $wahlen);
 // dazwischen, keine zweite Zeile daneben.
 $stufen = $wpdb->get_row($wpdb->prepare(
     'SELECT z.name FROM ' . Schema::table('node_records') . ' r
-     INNER JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
+     INNER JOIN ' . Schema::table('nodes_named') . ' z ON z.id = r.node_id
      WHERE r.id = %d',
     traegersatz($knotenId)
 ), ARRAY_A);

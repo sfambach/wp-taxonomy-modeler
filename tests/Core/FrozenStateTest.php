@@ -11,6 +11,7 @@ use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\Labels;
@@ -223,14 +224,9 @@ final class FrozenStateTest extends TestCase
         $nodes->add($trash);
 
         $changes = new RecordedChanges();
-        $labels  = new Labels(
-            new InMemoryLabels(),
-            new FixedFramework($root, $trash),
-            $changes,
-            $nodes
-        );
+        $labels  = new Labels(new InMemoryLabels(), 'en_US', $changes);
 
-        $labels->put(new Label($root->id, IdentitySpace::Node, '4654', 733, 'one', 'de_DE', 'Ein Name mit Leerzeichen'));
+        $labels->put(new Label($root->id, IdentitySpace::Node, SeededRole::Form, 'one', 'de_DE', 'Ein Name mit Leerzeichen'));
 
         $entry = $changes->entries[0];
 
@@ -239,8 +235,7 @@ final class FrozenStateTest extends TestCase
         $after = FrozenState::parse((string) $entry[4]);
 
         self::assertNotNull($after);
-        self::assertSame('733', $after->field('role'));
-        self::assertSame('4654', $after->field('path'));
+        self::assertSame('form', $after->field('role'));
         self::assertSame('one', $after->field('number'));
         self::assertSame('de_DE', $after->field('locale'));
         self::assertSame('Ein Name mit Leerzeichen', $after->field('text'));
