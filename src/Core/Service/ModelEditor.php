@@ -438,7 +438,11 @@ final class ModelEditor
                 continue;
             }
 
-            $newRelations[$relation->id] = $this->addField($copy->id, $relation->toNodeId, $relation->name)->id;
+            // ⚠️ **Die Art der Vorlage reist mit** (TASK-053). *Vorher las die Kopie sie am Zielast
+            // neu ab — **und eine Einstellungskante kam als Komposition heraus**, weil `setting` die
+            // einzige Art ist, die kein Ast hergibt ([D-618](../../../docs/NewConcept/90-decision-log.md)).
+            // Eine Kopie, deren Kanten anders heissen als die des Originals, ist keine.*
+            $newRelations[$relation->id] = $this->addField($copy->id, $relation->toNodeId, $relation->name, $relation->kind)->id;
         }
 
         $this->copyLabels($node->id, $copy->id, $newRelations);
@@ -490,7 +494,9 @@ final class ModelEditor
         // refuses renaming for the same reason).
         $relation = $this->ownAttribute($ownerId, $relationId);
 
-        $copy = $this->addField($ownerId, $relation->toNodeId, $name);
+        // ⚠️ **Die Art der Vorlage reist mit** (TASK-053) — derselbe Grund wie bei der Kopie eines
+        // Knotens: eine Einstellungskante, die als Komposition zurückkommt, ist keine Kopie.
+        $copy = $this->addField($ownerId, $relation->toNodeId, $name, $relation->kind);
 
         return $copy;
     }
@@ -540,7 +546,26 @@ final class ModelEditor
             ));
         }
     }
-    public function addField(int $ownerId, int $targetId, string $name): Relation
+    /**
+     * Ein Feld anlegen — **und die Art wird genannt, nicht geraten**
+     * ([D-618](../../../docs/NewConcept/90-decision-log.md), TASK-053).
+     *
+     * ⚠️ **Sein Wort:** *«der benutzer legt fest, automation machen wir später aber auch nur
+     * vielleicht».* **Seit [D-639](../../../docs/NewConcept/90-decision-log.md) gibt es genau drei
+     * Arten mit je einer Klasse** — `setting`, `aggregation`, `composition` —, und `$kind` wählt
+     * unter diesen dreien.
+     *
+     * ⚠️ **Warum das die vorsichtigere Hälfte ist:** *ein Akt, der rät, ist schwerer zu prüfen als
+     * einer, dem man es sagt — und geraten wurde hier an einem Tag zweimal falsch. Der Code legte
+     * `Renderer --converter--> Converter` als Aggregation an, obwohl das Ziel im Einstellungsast
+     * liegt, und es fiel nur seinem Blick auf.*
+     *
+     * ⚠️ **`null` heisst «niemand hat es gesagt», und dann liest der Akt weiter den Zielast** —
+     * *der Rückfall für Saatgut, Gerüste und Wächter, die keine Benutzer sind. **Die Maske gibt die
+     * Art immer an.** Ob die ~140 übrigen Aufrufstellen ihre Art nennen sollen, ist eine Aufgabe und
+     * steht im Eingang als `INF-052`; geraten wird sie nicht (`PR-4`).*
+     */
+    public function addField(int $ownerId, int $targetId, string $name, ?RelationKind $kind = null): Relation
     {
         // ⚠️ **Ein Akt, eine Änderungsnummer** ([Zeile 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
         // *Ein Feld anlegen schreibt die Kante **und** materialisiert, was der Zieltyp sagt. Verschachtelte Klammern werden gezählt, also gewinnt die äußere — die,
@@ -548,13 +573,13 @@ final class ModelEditor
         $this->changelog->beginAct();
 
         try {
-            return $this->addedField($ownerId, $targetId, $name);
+            return $this->addedField($ownerId, $targetId, $name, $kind);
         } finally {
             $this->changelog->endAct();
         }
     }
 
-    private function addedField(int $ownerId, int $targetId, string $name): Relation
+    private function addedField(int $ownerId, int $targetId, string $name, ?RelationKind $kind): Relation
     {
         $owner  = $this->nodes->byId($ownerId);
         $target = $this->nodes->byId($targetId);
@@ -577,7 +602,9 @@ final class ModelEditor
             0,
             $owner->id,
             $target->id,
-            $branch->relationKind(),
+            // ⚠️ **Die Angabe gewinnt, der Ast ist nur noch der Rückfall** (TASK-053,
+            // [D-618](../../../docs/NewConcept/90-decision-log.md)).
+            $kind ?? $branch->relationKind(),
             $name,
             $this->relations->nextFieldPositionUnder($owner->id)
         );

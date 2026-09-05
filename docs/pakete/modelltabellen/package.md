@@ -22,6 +22,14 @@ Aggregation unterschied, ist eine einzige Frage — **wird mit dem Knoten gelös
 Kante eine Einstellung trägt, sagt der Ast des Zielknotens. Die Spalte war ohnehin abgeleitet:
 die Oberfläche sagt es dem Benutzer schon heute, «Kind is not a choice».*
 
+⚠️ **Der Absatz darüber gilt so nicht mehr, in beiden Hälften** ([D-618](../../NewConcept/90-decision-log.md),
+[D-639](../../NewConcept/90-decision-log.md)). *Erstens: die Spalte **bleibt**, mit genau drei Werten
+— `setting`, `aggregation`, `composition` — und je einer Klasse dahinter; D-587 war geschrieben, als
+es vier Arten gab und die Vererbung noch eine Kante war. Zweitens: **der zitierte Satz stand auf der
+Oberfläche und war nie wahr** — der Akt legte `Renderer --converter--> Converter` als Aggregation an,
+obwohl das Ziel im Einstellungsast liegt. **Seit TASK-053 wird die Art angegeben**, und der Satz ist
+weg.*
+
 **Noch offen:** `labels`, `changelog` (im Paket [`aenderungstabellen/`](../aenderungstabellen/package.md)),
 **`settings` ist gestrichen** ([D-579](../../NewConcept/90-decision-log.md)) — die drei letzten Werte
 werden neu eingegeben, sobald `label_role` seinen Ort hat.

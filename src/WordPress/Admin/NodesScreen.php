@@ -10,6 +10,7 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
@@ -2027,7 +2028,14 @@ final class NodesScreen
     private function fieldBlockHeading(FieldType $kind): array
     {
         // ⚠️ *Der Satz über «Kind» und «own/inherited» gilt für beide Blöcke — es ist dieselbe Tabelle.*
-        $gemeinsam = __('«Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod');
+        //
+        // ⚠️ **Hier stand «‹Kind› is not a choice — it follows from where the target sits in the
+        // tree», und der Satz war nie wahr** ([D-618](../../../docs/NewConcept/90-decision-log.md),
+        // TASK-053). *Der Code legte `Renderer --converter--> Converter` als Aggregation an, obwohl
+        // das Ziel im Einstellungsast liegt — es fiel nur seinem Blick auf. **Und `setting` konnte
+        // gar nicht aus einem Ast folgen**, weil kein Ast sie hergibt. Sein Wort: «der benutzer legt
+        // fest, automation machen wir später aber auch nur vielleicht».*
+        $gemeinsam = __('«Kind» says what the relation is: composition, aggregation or setting. It is chosen when the field is added, not read off the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod');
 
         return match ($kind) {
             FieldType::Model => [
@@ -2201,6 +2209,22 @@ final class NodesScreen
             . '<input type="text" class="taxmod-chosen" readonly tabindex="-1"'
             . ' placeholder="' . esc_attr__('Nothing chosen yet', 'taxmod') . '" style="flex:1">'
             . $chooser
+            // ⚠️ **Die Art wird angegeben, nicht geraten** ([D-618](../../../docs/NewConcept/90-decision-log.md),
+            // TASK-053). *Sein Wort: «der benutzer legt fest». **Sie stand vorher nirgends auf der
+            // Seite** — der Akt las sie am Zielast ab, und die Tabelle behauptete darunter, das sei
+            // keine Wahl. Seit [D-639](../../../docs/NewConcept/90-decision-log.md) sind es genau
+            // drei Werte mit je einer Klasse, also drei Einträge und kein vierter.*
+            //
+            // ⚠️ **Vorbelegt mit «composition», und das ist eine Messung und keine Meinung:**
+            // *gemessen am 2026-09-05 tragen **42** benannte Kanten `composition`, **12** `setting`,
+            // **4** `aggregation`. Eine Vorbelegung, die auf dem Schirm steht, ist etwas anderes als
+            // eine Ableitung, die niemand sieht — sie ist zu ändern, bevor der Knopf gedrückt wird.*
+            . '<select name="relation_kind" title="'
+            . esc_attr__('What kind of relation this is', 'taxmod') . '">'
+            . '<option value="composition" selected>' . esc_html__('composition — the target belongs to this node', 'taxmod') . '</option>'
+            . '<option value="aggregation">' . esc_html__('aggregation — the target stands on its own', 'taxmod') . '</option>'
+            . '<option value="setting">' . esc_html__('setting — a value the model carries, not an entry', 'taxmod') . '</option>'
+            . '</select>'
             . ControlMarkup::button(new Control(
                 'do',
                 'add_field',
@@ -3703,6 +3727,14 @@ final class NodesScreen
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see fieldForm()}).*
         $pointsAt     = isset($_POST['field_target']) ? absint($_POST['field_target']) : 0;
+        // ⚠️ **Die Kantenart kommt vom Benutzer** ([D-618](../../../docs/NewConcept/90-decision-log.md),
+        // TASK-053). *`tryFrom()` und nicht `from()`: was nicht eine der drei Arten ist, ist keine
+        // Angabe — dann rät der Rand nicht, sondern reicht `null` durch, und der Kern nimmt seinen
+        // benannten Rückfall. **Ein Ausnahmefehler wäre hier falsch**, weil ein alter Reiter ohne das
+        // Feld sonst mit «Unknown action» abbräche, statt zu tun, was er bisher tat.*
+        $relationKind = RelationKind::tryFrom(
+            isset($_POST['relation_kind']) ? sanitize_key(wp_unslash((string) $_POST['relation_kind'])) : ''
+        );
         $relation         = isset($_POST['relation']) ? absint($_POST['relation']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
@@ -3782,7 +3814,10 @@ final class NodesScreen
                 'add_field'  => $this->editor->addField(
                     $id,
                     $pointsAt,
-                    $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name
+                    $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name,
+                    // WICHTIG: Die Art kommt aus der Zeile und nicht aus dem Ast -- TASK-053,
+                    // D-618: "der benutzer legt fest".
+                    $relationKind
                 ),
                 // Parked, not purged — D-123's two stages, so it can come back.
                 // WICHTIG: Den Typ eines eigenen Feldes aendern -- TASK-029. Sein Regel fuer die

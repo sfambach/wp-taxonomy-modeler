@@ -1415,7 +1415,7 @@ holt.*
 
 ---
 
-[ ] TASK-053  Die Kantenart wird angegeben, nicht geraten (D-618)
+[x] TASK-053  Die Kantenart wird angegeben, nicht geraten (D-618)
 
 Drei Teile, aus [D-618](../../NewConcept/90-decision-log.md):
 
@@ -1440,7 +1440,33 @@ demselben Grund wie bei [D-606](../../NewConcept/90-decision-log.md).*
 Abweichungen» auch dann wahr, wenn die Regel gar nichts prüft.** `addField()` erzeugt den Gegenfall
 auf dem gewöhnlichen Weg — genau die Ableitung, die Teil 1 ablösen soll.*
 
-⚠️ *Teil 1 und Teil 2 sind **nicht** gebaut.*
+**Teil 1 und Teil 2 gebaut am 2026-09-05.** *`addField()` nimmt die Art als vierte Angabe entgegen;
+die Anlege-Zeile trägt einen Wähler mit genau drei Einträgen — `composition`, `aggregation`,
+`setting` —, und der Satz «‹Kind› is not a choice» ist von der Oberfläche verschwunden. An seiner
+Stelle steht, was wahr ist: die Art **sagt**, was die Kante ist, und sie wird beim Anlegen gewählt.*
+
+⚠️ **Vorbelegt mit `composition`, und das ist eine Messung:** *gemessen am 2026-09-05 tragen **42**
+benannte Kanten `composition`, **12** `setting`, **4** `aggregation`. **Eine Vorbelegung auf dem
+Schirm ist etwas anderes als eine Ableitung, die niemand sieht** — sie steht da, bevor der Knopf
+gedrückt wird, und ist zu ändern.*
+
+⚠️ **Ein Fehler ging mit, den niemand gesucht hatte:** *`duplicate()` und `duplicateField()` liessen
+die Art am Zielast **neu ableiten**. Eine kopierte Einstellungskante kam damit als Komposition
+zurück, weil `setting` die einzige Art ist, die kein Ast hergibt. **Die Vorlage gibt ihre Art jetzt
+mit** — eine Kopie, deren Kanten anders heissen als die des Originals, ist keine.*
+
+⚠️ **Der Wächter ist gewachsen, nicht neu:** [`setting-branch-relation-check.php`](../../../scripts/dev/setting-branch-relation-check.php)
+*hatte Teil 3 schon. Er geht jetzt zusätzlich den **Weg über die Maske**: der Wähler ist gezeichnet,
+er steht im Formular des Anlegen-Knopfes, er bietet genau die drei Arten und keine vierte, der falsche
+Satz ist nachweislich fort — und ein abgeschicktes `composition` auf ein Ziel **im Einstellungsast**
+kommt als `composition` an der Kante an. **Das ist der Fall, den die Ableitung gar nicht bauen
+konnte**, und er fällt danach der Regel aus Abschnitt 1 auf, was die beiden Hälften der Aufgabe
+zusammennäht. Sein Gegenfall aus Teil 3 hängt nicht mehr am abgelösten Verhalten: die Abweichung wird
+benannt statt geerbt.*
+
+⚠️ **Offen und im Eingang als `INF-052`:** *rund **140** weitere Aufrufe von `addField()` — Saatgut,
+Gerüste, Wächter, Tests — lassen die Angabe weg und bekommen weiter die Art des Zielastes. `null`
+heisst «niemand hat es gesagt»; ob diese Stellen ihre Art nennen sollen, ist eine eigene Aufgabe.*
 
 ⚠️ *Ableiten ist damit nicht verboten, sondern vertagt: «später, aber auch nur vielleicht».*
 

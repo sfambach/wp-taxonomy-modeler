@@ -192,10 +192,19 @@ try {
     $besitzer = $editor->createNode('__astkante Besitzer', $framework->rootOf(Branch::Model)->id);
     $gebaut[] = $besitzer->id;
 
-    // ⚠️ **Genau das ist der Fall aus D-618:** *`addField()` leitet die Art heute aus dem Zielast ab
-    // — und `Branch::Settings->relationKind()` sagt `aggregation`, nicht `setting`. Der Gegenfall
-    // muss darum nicht gebastelt werden; er entsteht auf dem gewoehnlichen Weg.*
-    $kante = $editor->addField($besitzer->id, $ziel->id, '__astkante_feld');
+    // ⚠️ **Der Gegenfall wird jetzt **gesagt** und nicht mehr geerbt** (TASK-053,
+    // [D-618](../../docs/NewConcept/90-decision-log.md)). *Vorher stand hier: «`addField()` leitet
+    // die Art aus dem Zielast ab — und `Branch::Settings->relationKind()` sagt `aggregation`, nicht
+    // `setting`; der Gegenfall entsteht auf dem gewoehnlichen Weg.» **Der gewoehnliche Weg ist nicht
+    // mehr das Ableiten**, also haengt die Abweichung nicht laenger an einem Verhalten, das gerade
+    // abgeloest wurde — sie wird benannt.*
+    $kante = $editor->addField($besitzer->id, $ziel->id, '__astkante_feld', RelationKind::Aggregation);
+
+    check(
+        'die angegebene Art kommt an der Kante an',
+        $kante->kind === RelationKind::Aggregation,
+        'die Kante traegt ' . $kante->kind->value
+    );
 
     $gefunden = abweichungen($nodes, $framework);
     $ids      = array_column($gefunden, 'id');
@@ -217,6 +226,130 @@ try {
         ! in_array($kante->id, $danach, true),
         'sie wird weiter gemeldet — dann meldet Abschnitt 1 jede Kante'
     );
+    echo "\n== 3b. Die Art wird angegeben — der Weg ueber die Maske (TASK-053) ==\n";
+
+    // ⚠️ **Ueber die Maske und nicht ueber den Kern.** *Ein Waechter, der `addField(..., $art)` ruft,
+    // prueft die Haelfte, die er selbst mitbringt. Die Frage aus D-618 ist, ob die **Seite** die Art
+    // ueberhaupt fragt — und ob das, was sie schickt, an der Kante ankommt. `move-mask-check` und
+    // `renderer-choice-mask-check` gehen denselben Weg.*
+    wp_set_current_user(1);
+
+    $rc     = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+    $plugin = $rc->newInstanceWithoutConstructor();
+    $rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
+    $screen = $plugin->screen();
+
+    $_GET['page']        = 'taxmod-nodes';
+    $_GET['taxmod_node'] = (string) $besitzer->id;
+
+    $markup = $screen->render();
+
+    check(
+        'die Seite zeichnet einen Waehler fuer die Kantenart',
+        (bool) preg_match('/<select[^>]*name="relation_kind"/', $markup),
+        'kein Steuerelement namens relation_kind'
+    );
+
+    foreach (RelationKind::cases() as $art) {
+        check(
+            "sie bietet «{$art->value}» an",
+            (bool) preg_match('/<option value="' . $art->value . '"/', $markup)
+        );
+    }
+
+    // ⚠️ *Genau drei, weil es seit [D-639](../../docs/NewConcept/90-decision-log.md) genau drei
+    // Werte mit je einer Klasse gibt. Ein vierter waere ein Wert ohne Klasse. **In diesem Waehler
+    // gezaehlt und nicht auf der Seite** — die Seite traegt weitere Auswahllisten.*
+    preg_match('/<select[^>]*name="relation_kind".*?<\/select>/s', $markup, $waehler);
+
+    check(
+        'und keinen vierten',
+        preg_match_all('/<option value="/', $waehler[0] ?? '') === count(RelationKind::cases()),
+        (string) preg_match_all('/<option value="/', $waehler[0] ?? '')
+    );
+
+    // ⚠️ **Der Satz, der nie wahr war, ist weg** ([D-618](../../docs/NewConcept/90-decision-log.md)).
+    // *«‹Kind› is not a choice — it follows from where the target sits in the tree.» Er stand unter
+    // beiden Feldtabellen. Solange er dasteht, sagt die Oberflaeche das Gegenteil des Aktes.*
+    check(
+        'die Oberflaeche behauptet nicht mehr, die Art sei keine Wahl',
+        ! str_contains($markup, 'is not a choice'),
+        'der Satz steht noch da'
+    );
+
+    // ⚠️ *Ein Steuerelement ausserhalb des Formulars schickt lautlos nichts mit — dann kaeme keine
+    // Art an, der Kern nutzte seinen Rueckfall, und der Waechter saehe den Unterschied nicht.*
+    $vorWaehler = substr($markup, 0, (int) strpos($markup, 'name="relation_kind"'));
+
+    check(
+        'der Waehler steckt im selben Formular wie der Anlegen-Knopf',
+        substr_count($vorWaehler, '<form') - substr_count($vorWaehler, '</form>') === 1,
+        'Formulartiefe ' . (substr_count($vorWaehler, '<form') - substr_count($vorWaehler, '</form>'))
+    );
+
+    // ── Abschicken, und nachsehen, was an der Kante steht ────────────────────────────────────────
+    //
+    // ⚠️ **Das Ziel liegt im Einstellungsast, die Angabe sagt `composition`.** *Genau der Fall, den
+    // die Ableitung nicht bauen konnte: der Ast haette `aggregation` gesagt. Kommt `composition` an,
+    // hat die Angabe gewonnen und nicht der Ast.*
+    $lief = false;
+    $fang = static function () use (&$lief): string {
+        $lief = true;
+
+        throw new RuntimeException('redirect');
+    };
+
+    $_POST = $_REQUEST = [
+        'do'            => 'add_field',
+        'id'            => (string) $besitzer->id,
+        'field_target'  => (string) $ziel->id,
+        'name'          => '__astkante_maske',
+        'relation_kind' => 'composition',
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $besitzer->id),
+    ];
+
+    add_filter('wp_redirect', $fang, 1);
+
+    try {
+        $screen->handlePost();
+    } catch (RuntimeException) {
+        // Erwartet: der Akt ist durch und wollte weiterleiten.
+    } finally {
+        remove_filter('wp_redirect', $fang, 1);
+
+        $_POST = $_REQUEST = [];
+    }
+
+    check('der Akt ist durchgelaufen', $lief);
+
+    // Frisch nachgelesen, nicht aus dem Gedaechtnis.
+    $ausMaske = $wpdb->get_row($wpdb->prepare(
+        'SELECT id, kind FROM ' . Schema::table('relations_named') . ' WHERE name = %s',
+        '__astkante_maske'
+    ));
+
+    check('die Maske hat eine Kante angelegt', $ausMaske !== null);
+
+    if ($ausMaske !== null) {
+        check(
+            'sie traegt die angegebene Art und nicht die des Zielastes',
+            $ausMaske->kind === RelationKind::Composition->value,
+            'sie traegt ' . (string) $ausMaske->kind
+        );
+
+        // ⚠️ *Und damit ist sie eine Abweichung — die Regel aus Abschnitt 1 muss sie sehen. **Das ist
+        // die Naht zwischen den beiden Haelften dieser Aufgabe:** wer die Art frei angeben darf, kann
+        // eine Kante in den Ast legen, die keine Einstellungskante ist, und genau dafuer gibt es
+        // diesen Waechter.*
+        check(
+            'und faellt der Regel aus Abschnitt 1 auf',
+            in_array((int) $ausMaske->id, array_column(abweichungen($nodes, $framework), 'id'), true),
+            'die Regel hat sie durchgelassen'
+        );
+
+        // ⚠️ *Die Kante selbst raeumt `$abbauen()` mit ihren beiden Knoten weg; ihre Beschriftung
+        // faellt am Ende des Laufs als Waise ({@see forgetOrphanLabels()} oben).*
+    }
 } finally {
     $abbauen();
 }

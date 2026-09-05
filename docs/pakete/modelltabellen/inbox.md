@@ -1487,3 +1487,19 @@ TASK-002 wird gestrichen statt verschoben.*
 ⚠️ *Nicht geraten und nichts angefasst (`PR-4`). Die Spalte steht unverändert; gebaut ist nur der
 Wächter [`path-check.php`](../../../scripts/dev/path-check.php), und er hält diesen Zustand fest,
 statt ihn vorwegzunehmen.*
+
+---
+
+## INF-052 · Wer sonst noch die Kantenart nennen müsste
+
+**Aufgefallen beim Bauen von TASK-053** ([D-618](../../NewConcept/90-decision-log.md)).
+
+⚠️ **`addField()` nimmt die Art jetzt als Angabe entgegen, und die Maske gibt sie an. Der Rest tut
+es nicht.** *Gemessen: **rund 140 Aufrufe** von `addField()` im Baum — Saatgut, Gerüste, Wächter,
+Tests. Sie alle lassen die Angabe weg, und für sie leitet der Akt die Art weiter aus dem Zielast ab.*
+
+⚠️ **Der Rückfall ist bewusst und benannt, aber er ist nicht die Entscheidung.** *D-618 sagt «der
+Benutzer legt fest»; ein Wächter ist kein Benutzer, ein Saatgutlauf auch nicht. **Offen ist, ob
+diese ~140 Stellen ihre Art nennen sollen** — dann fällt die Ableitung ganz — **oder ob der Rückfall
+für Nicht-Benutzer bleibt.** Das ist eine Aufgabe und keine Nebenbemerkung; geraten wird sie nicht
+(`PR-4`).*
