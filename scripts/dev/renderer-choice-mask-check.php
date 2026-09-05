@@ -550,6 +550,113 @@ check(
     'gelesen «' . gespeicherterRenderer($probe->id) . "», gewaehlt {$zweite}"
 );
 
+echo "\n== und der gewaehlte Renderer zeichnet auch (TASK-058) ==\n";
+
+// ⚠️ **Die zweite Haelfte, und bis heute prueft sie niemand.** *Gespeichert wird oben geprueft;
+// **dass der gespeicherte Renderer auch zeichnet**, stand nirgends. **Dazwischen liegt die
+// Aufloesungskette**, und dort ist schon zweimal etwas verlorengegangen: die Umbenennung der
+// Traegerkante ([D-543](../../docs/NewConcept/90-decision-log.md), sechs Knoten zeichneten `plain`)
+// und der Wegfall des Huellknotens ([D-604](../../docs/NewConcept/90-decision-log.md)). **Beide
+// Male blieb die Wahl gespeichert und trotzdem zeichnete etwas anderes.***
+//
+// ⚠️ *Der Weg geht durch ein **Feld**, nicht durch den Knoten selbst: so zeichnet die Oberflaeche.
+// Der Traeger zeigt auf die Probe, die Probe traegt die Wahl — die Kette laeuft von der Kante ueber
+// das Ziel zu dessen Vorfahren ([D-079](../../docs/NewConcept/90-decision-log.md)).*
+
+/** Ein frischer Zeichenlauf — nichts aus diesem Prozess wird wiederverwendet. */
+function zeichner(): \Taxmod\Core\Service\Rendering
+{
+    $nodes     = new WpdbNodeRepository();
+    $relations = new WpdbRelationRepository();
+    $fw        = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
+
+    return new \Taxmod\Core\Service\Rendering(
+        $nodes,
+        $fw,
+        \Taxmod\Core\Renderer\ShippedRenderers::registry(),
+        new SeededTypeNodes($nodes, $fw),
+        new \Taxmod\Core\Service\Labels(
+            new WpdbLabelRepository(),
+            \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()
+        ),
+        null,
+        new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $fw),
+        $relations
+    );
+}
+
+$traeger = $editor->createNode('__rcm traeger', $framework->rootOf(Branch::Model)->id);
+$feld    = $editor->addField($traeger->id, $probe->id, '__rcm feld');
+
+/**
+ * Was beim Zeichnen dieses Feldes herauskommt — Renderername und Markup.
+ *
+ * @return array{0: string, 1: string}
+ */
+function gezeichnet(int $relationId): array
+{
+    $relation = (new WpdbRelationRepository())->byId($relationId);
+
+    if ($relation === null) {
+        return ['', ''];
+    }
+
+    $felder = zeichner()->fieldsFor([$relation], [], \Taxmod\Core\Renderer\Purpose::Edit, 'taxmod_value');
+
+    if ($felder === []) {
+        return ['', ''];
+    }
+
+    return [$felder[0]->rendererName, $felder[0]->result->markup];
+}
+
+$markups = [];
+$fehler  = [];
+
+foreach ($angebot as $id => $name) {
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $probe->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
+        'taxmod_value'  => [(string) $kante => (string) $id],
+    ]);
+
+    [$gezeichneterName, $markup] = gezeichnet($feld->id);
+
+    if ($gezeichneterName !== $name) {
+        $fehler[] = "gewaehlt «{$name}», gezeichnet «{$gezeichneterName}»";
+    }
+
+    $markups[$name] = $markup;
+}
+
+// ⚠️ **«Der gewaehlte», nicht «ein Renderer».** *Jede angebotene Wahl wird gewaehlt, gespeichert,
+// frisch aufgeloest und gezeichnet — und im Ergebnis muss ihr eigener Name stehen.*
+check(
+    'jede Wahl zeichnet danach mit dem gewaehlten Renderer',
+    $fehler === [] && $markups !== [],
+    implode('; ', $fehler) ?: 'nichts gezeichnet'
+);
+
+// ⚠️ **Der Rueckfall ist ein Fehler und kein Boden** ([R14b](../../docs/NewConcept/30-renderer.md)).
+// *Genau er kam bei beiden Verlusten heraus: die Wahl stand da und `plain` zeichnete. **Ohne diese
+// Zusage waere die obige gruen zu bekommen, indem `plain` selbst mit angeboten wird.***
+check(
+    'und keine davon faellt auf den Rueckfall zurueck',
+    ! in_array(\Taxmod\Core\Renderer\PlainRenderer::NAME, array_keys($markups), true)
+        && ! array_filter($markups, static fn (string $m): bool => str_contains($m, 'taxmod-no-renderer')),
+    implode(',', array_keys(array_filter($markups, static fn (string $m): bool => str_contains($m, 'taxmod-no-renderer'))))
+);
+
+// ⚠️ **Der Name allein waere zu wenig.** *Er koennte richtig aus der Aufloesung kommen und das
+// Markup trotzdem von woanders — dann saehen drei Wahlen gleich aus. **Verschiedene Wahlen muessen
+// verschieden zeichnen**, sonst zeichnet nicht die Wahl, sondern etwas hinter ihr.*
+check(
+    'und verschiedene Wahlen zeichnen verschieden',
+    count(array_unique(array_values($markups))) === count($markups),
+    implode(',', array_keys($markups))
+);
+
 echo "\n== aufraeumen ==\n";
 
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit

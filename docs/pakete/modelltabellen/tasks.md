@@ -1583,7 +1583,7 @@ steht und nicht in der Wertspalte ihrer eigenen Zeile.*
 
 ---
 
-[ ] TASK-058  Der gewaehlte Renderer wird auch verwendet — nachweisen, nicht annehmen
+[x] TASK-058  Der gewaehlte Renderer wird auch verwendet — nachweisen, nicht annehmen
 
 **2026-09-05, sein Auftrag nach TASK-057:** *«schau danach, dass der Renderer auch verwendet wird.»*
 
@@ -1600,6 +1600,21 @@ sondern **der gewaehlte**.*
 ⚠️ *Sein Satz endete mit «das klappt naemlich aktuell» — ob «klappt» oder «klappt nicht» gemeint
 war, ist nicht sicher. **Die Zusage deckt beide Lesarten ab:** sie haelt fest, was funktioniert, und
 faellt rot, wo es nicht funktioniert.*
+
+⚠️ **Gebaut, und die Antwort auf seinen Satz ist: es klappt.** *Drei Zusagen sind an
+`renderer-choice-mask-check` angewachsen (23 → 26), weil dort der ganze Weg schon steht und ein
+zweiter Waechter ihn nur ein zweites Mal gegangen waere. Der Weg geht jetzt durch ein **Feld**, so
+wie die Oberflaeche zeichnet: ein Traegerknoten zeigt auf die Probe, die Probe traegt die Wahl.
+**Jede angebotene Wahl** — fuer `Integer` `field`, `spinner`, `slider` — wird gewaehlt, ueber die
+Maske gespeichert, mit frischen Repositorien aufgeloest und **gezeichnet**; im Ergebnis steht ihr
+eigener Name. Dazu zwei, die das absichern: keine faellt auf `plain` zurueck ([R14b](../../NewConcept/30-renderer.md)),
+und verschiedene Wahlen zeichnen verschieden — sonst zeichnete nicht die Wahl, sondern etwas
+dahinter.*
+
+⚠️ **Gegengeprobt, und das ist der eigentliche Befund:** *die Aufloesung wurde versuchsweise blind
+gemacht — die gespeicherte Wahl ignoriert, genau der Verlust aus [D-543](../../NewConcept/90-decision-log.md).
+**Die neuen Zusagen fielen rot, und alle 23 alten blieben gruen.** Der Riss zwischen «gespeichert»
+und «gezeichnet» war also wirklich unbewacht, und er ist es jetzt nicht mehr.*
 
 ---
 
