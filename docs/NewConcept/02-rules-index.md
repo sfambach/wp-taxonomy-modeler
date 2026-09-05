@@ -50,7 +50,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
 | **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 16 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 22 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 23 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 2 |
 
 ## CD — Code — wie geschrieben wird
