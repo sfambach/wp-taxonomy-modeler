@@ -1617,3 +1617,37 @@ gebaut, die zweite nicht.** Gemessen: fiele der Block heute, verlöre der Eigent
 `compact`, `reference` und die beiden Waehler-Renderer — sie haengen unter dem Zwischenknoten
 `render with label`, und nur der Block holt sie noch aus der Registratur. **Das ist eine Entscheidung
 ueber diese sechs und keine Aufraeumarbeit** (`PR-4`, `INF-043`).*
+
+---
+
+## Angehaengt am 2026-09-05, auf sein Wort «dann haenge das mal an die Bauliste an»
+
+**Die Reihenfolge, in der es gebaut wird, sobald er es freigibt.** *Sie steht hier und nicht im
+Kopf, weil `TASK-001` bis `TASK-003` seit dem 2026-09-01 beschlossen sind und **nie angefangen
+wurden** — nicht wegen einer offenen Frage, sondern weil immer etwas dazwischenkam. Das ist mein
+Versaeumnis und keine Unklarheit.*
+
+1. **Die Auswahl fragt die Registratur** (TASK-059, neu). *Die Moeglichkeiten eines Renderer-Waehlers
+   kommen aus `RendererRegistry`, nicht aus den Kindern des Kantenziels. **Gemessen kennt die
+   Registratur 27 Renderer** — `form`, `table`, `compact`, `reference`, `chooser-dialog`,
+   `chooser-inline` sind darunter, **`render with label` ist es nicht.** Damit wird der
+   Zwischenknoten fuer den Waehler bedeutungslos, und die sechs fehlenden Renderer aus `INF-043`
+   kommen zurueck, ohne dass eine Ersatzregel erfunden werden muss (die naheliegende ist gemessen
+   falsch: sie machte `Base units` von 2 auf 14 waehlbar). `eligibleFor()` schraenkt weiter auf den
+   Typ ein — am Knoten der Knoten, an der Kante der Zielknoten ([D-603](../../NewConcept/90-decision-log.md)).*
+2. **`TASK-003`** — `path` aus `labels`. *Nachweislich leer, der billigste Durchgang.*
+3. **`TASK-002`** — `path` aus `relation_records`. *Reiner Spiegel von `relation_id`.*
+4. **`TASK-001`** — `path` aus `nodes`. *Die teuerste, aber **billiger als beschlossen**: die
+   Aufgabe verlangt noch, der Vorfahrenweg muesse danach «aus `relations` kommen» — das war vor
+   TASK-018. **Seit dem 2026-09-05 ist `parent_node_id` der Baum**, die Vorfahren laufen darueber,
+   und der teuerste Teil hat sich von selbst erledigt. Gemessen kommt `path` noch in **17 Dateien**
+   vor, allein 24 mal im Knotenspeicher.*
+5. **Danach** die drei gemerkten Punkte aus dem Marken-Rueckbau: die sechs Renderer (erledigt sich
+   mit 1), der eigene Renderer-Block (faellt mit 1, dann ist [D-644](../../NewConcept/90-decision-log.md)
+   ganz erfuellt) und die Vorkehrung gegen den Sicherungsverlust.
+
+⚠️ **Nicht angefasst wird `render with label`, bis er es sagt.** *Er wollte ihn herausnehmen —
+«das ist das einfachste». **An ihm haengen zwei Einstellungskanten**, `with_label` (4 Werte) und
+`label_role` (0 Werte); er ist die Zwischenklasse, die `with_label` traegt (sein Wort). Faellt er
+ohne neuen Ort fuer die beiden, fallen sie mit. **Nach Schritt 1 stoert er den Waehler ohnehin
+nicht mehr** — dann ist es seine freie Entscheidung statt einer erzwungenen.*
