@@ -1011,3 +1011,33 @@ weil D-587 ausdrücklich von *einer* neuen Angabe spricht.*
 
 **TASK-018 ist davon nicht berührt und steht** — die Vererbung ist eine Spalte, und die Kantentabelle
 trägt nur noch Komposition, Aggregation und Einstellung.
+
+---
+
+## INF-039 · `node_records.created_at` steht noch, weil das Änderungsbuch erst 9 von 421 Datensätzen kennt
+
+**TASK-015 nennt sie ausdrücklich** — *der Eigentümer: «das `created_at` ist eigentlich was fürs
+Log»* — **und knüpft sie ebenso ausdrücklich an eine Bedingung:** *«`created_at` fällt erst, wenn das
+Änderungsbuch Datensätze führt. Erst der neue Leser, dann die Daten.»*
+
+**Gemessen am 2026-09-05, und die Zahl in der Aufgabe war eine ältere:**
+
+| | |
+|---|---|
+| Einträge im Änderungsbuch mit `owner_kind = 'record'` | **9** |
+| dazu `owner_kind = 'record_value'` | **8** |
+| lebende Datensätze in `node_records` | **421** |
+| Zeilen mit leerem `created_at` | **0** |
+
+⚠️ **Die Bedingung ist damit halb erfüllt und das genügt nicht.** *Es gibt inzwischen einen
+Schreiber — `DataEntry` meldet «record created» —, aber er läuft erst, seit es ihn gibt. **Für 412
+Datensätze hält allein die Spalte fest, wann sie entstanden sind.** Sie fallen zu lassen hiesse,
+diese Zeiten wegzuwerfen; sie aus der Spalte ins Log zu schreiben hiesse, Geschichte zu erfinden,
+die niemand aufgeschrieben hat ([D-065](../../NewConcept/90-decision-log.md): Geschichte ist
+eingefroren).*
+
+⚠️ **Zu entscheiden ist eine von zwei Fragen, und keine davon ist geraten worden (`PR-4`):** *(a) die
+412 Entstehungszeiten sind entbehrlich, dann fällt die Spalte sofort; oder (b) sie sind es nicht,
+dann fällt sie erst, wenn jeder heutige Datensatz einen Eintrag hat — und woher der käme, sagt
+niemand.* **Gemessen liest heute niemand die Spalte zur Anzeige**: `NodeRecord::$createdAt` wird
+geschrieben und weitergereicht, die Entstehungszeile am Schirm kommt aus dem Änderungsbuch.

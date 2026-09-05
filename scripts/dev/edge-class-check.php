@@ -283,7 +283,7 @@ foreach (['__zweiBesitzerA', '__zweiBesitzerB'] as $name) {
 check('beide Probeknoten sind entstanden', count($meine['knoten']) === 2 && ! in_array(0, $meine['knoten'], true));
 
 Query::run('Probesatz anlegen', $wpdb->prepare(
-    'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[2]) . ' (node_id, node_version, created_at, kind)
+    'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[2]) . ' (node_id, node_version, created_at, record_type)
      VALUES (%d, 1, %s, %s)',
     $meine['knoten'][0],
     gmdate('Y-m-d H:i:s'),

@@ -252,7 +252,7 @@ if ($rendererKnoten === null) {
         // ist»). Die alte Fassung suchte Saetze mit `node_id = <mein Knoten>` und haette hier
         // nichts gefunden.
         $satz = $wpdb->get_row($wpdb->prepare(
-            'SELECT r.kind, r.node_id FROM ' . Schema::table('nodes') . ' n
+            'SELECT r.record_type, r.node_id FROM ' . Schema::table('nodes') . ' n
              INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
              WHERE n.id = %d',
             $knotenId
@@ -260,7 +260,7 @@ if ($rendererKnoten === null) {
 
         check(
             'und zwar im default-Satz des gewaehlten Renderers',
-            ($satz['kind'] ?? null) === 'default'
+            ($satz['record_type'] ?? null) === 'default'
                 && (int) ($satz['node_id'] ?? 0) === (int) $rendererKnoten['id'],
             json_encode($satz) ?: 'kein Satz'
         );

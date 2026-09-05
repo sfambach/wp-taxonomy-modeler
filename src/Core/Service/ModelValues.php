@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
@@ -718,7 +718,7 @@ final class ModelValues
         // ⚠️ *Auch hier über das Gedächtnis: `nonPersistentValue()` wird je Feld gefragt, und ohne
         // das wäre es dasselbe N+1, das `package7-check.php` eben gemeldet hat.*
         foreach ($this->saetzeVon($node->id) as $record) {
-            if ($record->kind !== RecordKind::Default) {
+            if ($record->recordType !== RecordType::Default) {
                 continue;
             }
 

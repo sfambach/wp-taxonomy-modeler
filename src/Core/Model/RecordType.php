@@ -22,7 +22,7 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/02-field-and-setting.md
  */
-enum RecordKind: string
+enum RecordType: string
 {
     /**
      * Ein Mensch hat es eingegeben.

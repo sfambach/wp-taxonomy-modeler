@@ -40,7 +40,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\WordPress\Persistence\Schema;
@@ -172,7 +172,7 @@ $satzVon = [];
 $gebaut  = [];
 
 foreach ($plan as $p) {
-    $satzVon[$p['besitzer']] ??= $data->create($p['besitzer'], RecordKind::Default)->id;
+    $satzVon[$p['besitzer']] ??= $data->create($p['besitzer'], RecordType::Default)->id;
 
     $teil = $data->createPartAt($satzVon[$p['besitzer']], $p['kette']);
     $data->put($teil->id, $renderFeld, TypedValue::ofReference($p['renderer']));

@@ -44,7 +44,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require __DIR__ . '/geruest.php';
 
 use Taxmod\Core\Exception\NotYetStorable;
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
@@ -172,7 +172,7 @@ if ($exponent === null) {
     } else {
         check('ein Knoten erbt «Prefixes.exponent»', true, '#' . $traegerId);
 
-        $satz    = $data->create($traegerId, RecordKind::User);
+        $satz    = $data->create($traegerId, RecordType::User);
         $meine[] = $satz->id;
 
         $verweigert = false;
@@ -204,7 +204,7 @@ if ($exponent === null) {
         } else {
             check('ein gewoehnliches Feld zum Vergleich gefunden', true);
 
-            $satz2    = $data->create($normal->fromNodeId, RecordKind::User);
+            $satz2    = $data->create($normal->fromNodeId, RecordType::User);
             $meine[]  = $satz2->id;
             $ging     = true;
 
@@ -239,7 +239,7 @@ if ($exponent !== null && ($eltern = $nodes->find($exponent->fromNodeId)) !== nu
 
     foreach ($kinder as $kindId) {
         foreach ($records->ofNode($kindId) as $satz) {
-            if ($satz->kind !== RecordKind::Default) {
+            if ($satz->recordType !== RecordType::Default) {
                 continue;
             }
 

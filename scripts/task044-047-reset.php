@@ -215,7 +215,7 @@ foreach ($nullVerweise as $z) {
 }
 
 foreach ($loeschbar as $r) {
-    $schatten('node_records', $r, ['id', 'node_id', 'node_version', 'version', 'created_at', 'kind']);
+    $schatten('node_records', $r, ['id', 'version', 'node_id', 'node_version', 'created_at', 'record_type']);
     $wpdb->query($wpdb->prepare(
         'DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d',
         (int) $r['id']

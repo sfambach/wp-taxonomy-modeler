@@ -42,7 +42,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
@@ -256,12 +256,14 @@ echo "\n== 3b. Die Marke am Datensatz — drei Zustände, nicht zwei ==\n";
 // «is test data» / «is default value» would do it»* — **drei Zustände**, und `is_test` konnte zwei.
 $spalten = array_column($wpdb->get_results('SHOW COLUMNS FROM ' . Schema::table('node_records'), ARRAY_A), 'Field');
 
-check('records hat die Spalte kind', in_array('kind', $spalten, true), implode(', ', $spalten));
+// ⚠️ *Die Spalte heisst seit TASK-015 `record_type` — die Zusage ist dieselbe, nur der Name nicht.*
+check('node_records hat die Spalte record_type', in_array('record_type', $spalten, true), implode(', ', $spalten));
+check('und kind gibt es nicht mehr', ! in_array('kind', $spalten, true));
 check('und is_test ist weg — nicht danebengestellt', ! in_array('is_test', $spalten, true));
 
 $fremd = array_values(array_filter(
-    $wpdb->get_col('SELECT DISTINCT kind FROM ' . Schema::table('node_records')),
-    static fn ($v): bool => RecordKind::tryFrom((string) $v) === null
+    $wpdb->get_col('SELECT DISTINCT record_type FROM ' . Schema::table('node_records')),
+    static fn ($v): bool => RecordType::tryFrom((string) $v) === null
 ));
 
 check('keine Marke, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));
@@ -270,17 +272,17 @@ check('keine Marke, die der Code nicht kennt', $fremd === [], implode(', ', $fre
 // hängen am **selben** Knoten und müssen sich trotzdem unterscheiden lassen — sonst erscheint die
 // Vorgabe von `Parts List.Name` als vierte Stückliste.*
 if ($kilo !== null) {
-    $alsAutor  = $data->create($kilo->id, RecordKind::Default);
+    $alsAutor  = $data->create($kilo->id, RecordType::Default);
     $meine[]   = $alsAutor->id;
 
-    check('ein Datensatz lässt sich als Autorenwert anlegen', $alsAutor->kind === RecordKind::Default, $alsAutor->kind->value);
+    check('ein Datensatz lässt sich als Autorenwert anlegen', $alsAutor->recordType === RecordType::Default, $alsAutor->recordType->value);
 
     $zurueck = $data->find($alsAutor->id);
 
-    check('und die Marke liest sich zurück', $zurueck?->kind === RecordKind::Default, $zurueck?->kind->value ?? 'null');
+    check('und die Marke liest sich zurück', $zurueck?->recordType === RecordType::Default, $zurueck?->recordType->value ?? 'null');
 
     $roh = $wpdb->get_var($wpdb->prepare(
-        'SELECT kind FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+        'SELECT record_type FROM ' . Schema::table('node_records') . ' WHERE id = %d',
         $alsAutor->id
     ));
 

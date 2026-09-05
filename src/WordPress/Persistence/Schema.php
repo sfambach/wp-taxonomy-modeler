@@ -295,7 +295,26 @@ final class Schema
      * keine Zeile.** `RENAME TABLE` zurück und `CHANGE` zurück stellen denselben Stand her; es gibt
      * keinen Inhalt, den ein Schatten aufheben könnte.*
      */
-    public const VERSION = 29;
+    /**
+     * Fassung 30: `node_records.kind` heisst `record_type`, und `version` steht unter `id`
+     * (TASK-015).
+     *
+     * ⚠️ **Der Eigentümer:** *«`kind` → `type` umbenennen, `version` würde ich nach oben unter `id`
+     * packen.»* — und zur Frage, ob `type` oder `record_type`: *«Records — gleiche Handhabung wie
+     * Knoten und Kanten.»* **Damit heissen alle drei qualifiziert:** `field_type`, `relation_type`,
+     * `record_type`. *Das ist `CD-9`: drei Spalten `kind` mit drei Bedeutungen waren der Befund.*
+     *
+     * ⚠️ **Die Spaltenordnung ist kein Schmuck, sondern das, was ein Mensch beim `DESCRIBE` liest**
+     * — und `dbDelta` stellt sie **nicht** her: es fügt eine fehlende Spalte hinten an und ordnet
+     * nie um. *Darum von Hand, mit `MODIFY … AFTER id`, lebend und im Schatten.*
+     *
+     * ⚠️ **`created_at` fällt hier nicht, und das ist gemessen statt vergessen** (`PR-4`): *die
+     * Aufgabe knüpft es an das Änderungsbuch — «erst der neue Leser, dann die Daten». **Gemessen am
+     * 2026-09-05: 6 Einträge mit `owner_kind = 'record'` gegen 417 Datensätze.** Die Spalte fallen
+     * zu lassen hiesse, 411 Entstehungszeiten wegzuwerfen, für die das Log keine hat. Steht als
+     * `INF-039` im Eingang.*
+     */
+    public const VERSION = 30;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -436,6 +455,11 @@ final class Schema
         // neben `record_id`, mit den Daten in der Spalte, die niemand mehr liest (TASK-014).*
         self::renameRelationRecordColumns();
 
+        // ⚠️ *Ebenfalls vor `dbDelta`, aus demselben Grund — und **vor**
+        // {@see self::moveTestFlagIntoKind()}, die für eine sehr alte Installation in die Spalte
+        // schreibt, die hier gerade ihren heutigen Namen bekommt (TASK-015).*
+        self::renameRecordTypeColumn();
+
         // ⚠️ *Ebenfalls vor `dbDelta`, aus demselben Grund: es kennt keine Umbenennung und legte
         // `field_type` neben `kind`, mit den Daten in der Spalte, die niemand mehr liest (TASK-007).*
         self::renameNodeKindColumn();
@@ -459,6 +483,10 @@ final class Schema
         foreach (self::statements() as $sql) {
             dbDelta($sql);
         }
+
+        // ⚠️ *Nach `dbDelta`, weil die Spalte dastehen muss, bevor sie verschoben werden kann
+        // (TASK-015).*
+        self::orderRecordColumns();
 
         self::giveEveryTableItsOwnIdSpace();
         self::dropRetiredColumns();
@@ -1085,6 +1113,97 @@ final class Schema
         }
     }
 
+    /**
+     * `node_records.kind` heisst `record_type` — Fassung 30 (TASK-015).
+     *
+     * ⚠️ **`CD-9`, und der Befund stand als offene Frage in der Aufgabenliste:** *drei Spalten
+     * hiessen `kind` und meinten drei verschiedene Dinge. Die erste wurde `field_type` (TASK-007),
+     * die zweite fällt mit der Kantenart, und diese heisst jetzt, was sie ist.*
+     *
+     * ⚠️ *Der Index hiess `kind` und zieht mit — dieselbe Falle wie bei `edge_id`: eine umbenannte
+     * Spalte behält den **Namen** ihres Indexes, und `dbDelta` legte daneben einen zweiten.*
+     */
+    private static function renameRecordTypeColumn(): void
+    {
+        global $wpdb;
+
+        foreach (['node_records', 'node_records_history'] as $name) {
+            $table = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            $vorhanden = $wpdb->get_col($wpdb->prepare(
+                'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                $table,
+                'kind'
+            ));
+
+            if ($vorhanden === []) {
+                continue;
+            }
+
+            $wpdb->query(
+                "ALTER TABLE {$table} CHANGE kind record_type varchar(20) NOT NULL DEFAULT 'user'"
+            );
+
+            $alterIndex = $wpdb->get_col($wpdb->prepare(
+                'SELECT INDEX_NAME FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+                $table,
+                'kind'
+            ));
+
+            if ($alterIndex !== []) {
+                $wpdb->query("ALTER TABLE {$table} DROP INDEX kind");
+            }
+        }
+    }
+
+    /**
+     * `version` steht unter `id` — Fassung 30 (TASK-015).
+     *
+     * ⚠️ **Der Eigentümer:** *«`version` würde ich nach oben unter `id` packen.»* **`dbDelta` stellt
+     * das nicht her:** *es fügt eine fehlende Spalte hinten an und ordnet nie um. Wer die Ordnung
+     * nur im `CREATE TABLE` ändert, hat sie auf einer frischen Installation und sonst nirgends.*
+     *
+     * ⚠️ *Nach `dbDelta`, weil die Spalte dastehen muss, bevor sie verschoben werden kann — und der
+     * Schritt fragt vorher, wo sie steht: steht sie schon an zweiter Stelle, tut er nichts.*
+     */
+    private static function orderRecordColumns(): void
+    {
+        global $wpdb;
+
+        foreach (['node_records', 'node_records_history'] as $name) {
+            $table = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            $stelle = $wpdb->get_var($wpdb->prepare(
+                'SELECT ORDINAL_POSITION FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                $table,
+                'version'
+            ));
+
+            if ($stelle === null || (int) $stelle === 2) {
+                continue;
+            }
+
+            // Der Schatten führt `version` im Schlüssel und darum ohne Vorgabe; die lebende Tabelle
+            // vergibt sie mit `1`.
+            $vorgabe = $name === 'node_records' ? ' DEFAULT 1' : '';
+
+            $wpdb->query(
+                "ALTER TABLE {$table} MODIFY version int(10) unsigned NOT NULL{$vorgabe} AFTER id"
+            );
+        }
+    }
+
     private static function renameRecordColumns(): void
     {
         global $wpdb;
@@ -1227,7 +1346,10 @@ final class Schema
         // ⚠️ *Nur die markierten Zeilen wandern; alle anderen tragen die Vorgabe `user` schon aus
         // der Spaltendefinition. **Gemessen waren das 29 von 29** — die Umschrift kostet hier nichts
         // und ist auf einer Installation mit Testdaten trotzdem richtig.*
-        $wpdb->query("UPDATE {$records} SET kind = 'example' WHERE is_test = 1");
+        // ⚠️ *Die Spalte heisst seit Fassung 30 `record_type` (TASK-015). **Eine alte Wanderung
+        // schreibt in die Spalte von heute** — sie läuft nach `dbDelta`, das die neue schon angelegt
+        // hat, und der alte Name stünde hier für eine Tabelle, die es so nicht mehr gibt.*
+        $wpdb->query("UPDATE {$records} SET record_type = 'example' WHERE is_test = 1");
 
         $wpdb->query("ALTER TABLE {$records} DROP COLUMN is_test");
     }
@@ -1842,14 +1964,14 @@ final class Schema
             // The record identity space is its own (D-164), so AUTO_INCREMENT serves it.
             "CREATE TABLE {$t('node_records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                version int(10) unsigned NOT NULL DEFAULT 1,
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
-                version int(10) unsigned NOT NULL DEFAULT 1,
                 created_at datetime NOT NULL,
-                kind varchar(20) NOT NULL DEFAULT 'user',
+                record_type varchar(20) NOT NULL DEFAULT 'user',
                 PRIMARY KEY  (id),
                 KEY node_id (node_id),
-                KEY kind (kind)
+                KEY record_type (record_type)
             ) {$charset};",
 
             // Keyed on a path with the last edge repeated in relation_id, so that
@@ -1926,11 +2048,11 @@ final class Schema
 
             "CREATE TABLE {$t('node_records_history')} (
                 id bigint(20) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
-                version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
-                kind varchar(20) NOT NULL DEFAULT 'user',
+                record_type varchar(20) NOT NULL DEFAULT 'user',
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

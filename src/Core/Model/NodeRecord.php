@@ -39,7 +39,7 @@ final class NodeRecord
          * weiterläuft und **eine gewöhnliche Eingabe** meint — dasselbe, was `DEFAULT 'user'` in
          * der Tabelle für die vorhandenen Zeilen tut.*
          */
-        public readonly RecordKind $kind = RecordKind::User,
+        public readonly RecordType $recordType = RecordType::User,
     ) {
     }
 }

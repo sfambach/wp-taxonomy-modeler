@@ -7,7 +7,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\EdgeRecord;
@@ -120,7 +120,11 @@ final class DataEntry
         return FrozenState::of([
             'node'          => $record->nodeId,
             'node_version'  => $record->nodeVersion,
-            'kind'          => $record->kind->value,
+            // ⚠️ *Der Schlüssel heisst wie die Spalte, seit sie `record_type` heisst (TASK-015).
+            // **Die alten Einträge behalten `kind`** — Geschichte ist eingefroren
+            // ([D-065](../../../docs/NewConcept/90-decision-log.md)), dieselbe Regel wie beim
+            // Eintrag «field type set».*
+            'record_type'   => $record->recordType->value,
         ])->write();
     }
 
@@ -167,10 +171,10 @@ final class DataEntry
      * instances of its own — a `Text` node is not a thing somebody owns three of.
      */
     /**
-     * @param RecordKind $kind Wer die Zeile schreibt — ein Mensch, der Autor, oder das Bauen
+     * @param RecordType $kind Wer die Zeile schreibt — ein Mensch, der Autor, oder das Bauen
      *                         ([C65](../../../docs/NewConcept/10-domain-core.md)).
      */
-    public function create(int $nodeId, RecordKind $kind = RecordKind::User): NodeRecord
+    public function create(int $nodeId, RecordType $kind = RecordType::User): NodeRecord
     {
         $model = $this->nodes->byId($nodeId);
 
@@ -226,7 +230,7 @@ final class DataEntry
         // ⚠️ *Die Marke faehrt mit, sonst gibt die Methode etwas zurueck, das anders aussieht als das,
         // was sie geschrieben hat. **Gemessen war genau das der Fall**: die Spalte trug `default`, das
         // zurueckgegebene Exemplar sagte `user`.*
-        return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->kind);
+        return new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->recordType);
     }
 
     /**
@@ -247,14 +251,14 @@ final class DataEntry
      * {@see self::ownsItsRecord()} nach [D-541](../../../docs/NewConcept/90-decision-log.md), und
      * {@see self::createPart()} sagt Nein, wenn es anders ist.*
      */
-    private function ensureRequiredParts(int $recordId, Node $model, RecordKind $kind): void
+    private function ensureRequiredParts(int $recordId, Node $model, RecordType $kind): void
     {
         foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
             if (! $edge->multiplicity->requiresOne() || $edge->hide) {
                 continue;
             }
 
-            if ($kind === RecordKind::User && ! $this->keepsValues($edge)) {
+            if ($kind === RecordType::User && ! $this->keepsValues($edge)) {
                 continue;
             }
 
@@ -341,7 +345,7 @@ final class DataEntry
         $letzte = $kette[array_key_last($kette)];
         $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
 
-        $this->refuseUnwritable($letzte, $satz->kind);
+        $this->refuseUnwritable($letzte, $satz->recordType);
 
         $pfad      = implode('.', $edgeIds);
         $vorhanden = $this->valuesAtPath($recordId, $pfad, $locale);
@@ -524,7 +528,7 @@ final class DataEntry
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
 
-        $this->refuseUnwritable($edge, $record->kind);
+        $this->refuseUnwritable($edge, $record->recordType);
 
         return $edge;
     }
@@ -583,7 +587,7 @@ final class DataEntry
         return false;
     }
 
-    private function refuseUnwritable(Relation $edge, RecordKind $kind = RecordKind::User): void
+    private function refuseUnwritable(Relation $edge, RecordType $kind = RecordType::User): void
     {
         $target = $this->nodes->byId($edge->toNodeId);
         $branch = $this->framework->branchOf($target);
@@ -602,7 +606,7 @@ final class DataEntry
         // [D-026](../../../docs/NewConcept/90-decision-log.md) sagt, wo er lebt: «at model level there
         // are no values, only defaults». Ohne diese Ausnahme liesse sich der Exponent von `kilo` nicht
         // hinschreiben — der einzige echte nicht-speichernde Fall im ganzen Modell.*
-        if ($kind === RecordKind::User && ! $this->keepsValues($edge)) {
+        if ($kind === RecordType::User && ! $this->keepsValues($edge)) {
             throw NotYetStorable::thatFieldKeepsNothing($edge->name);
         }
 
@@ -959,7 +963,7 @@ final class DataEntry
         $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
 
         foreach ($this->records->ofNode($stelle->fromNodeId) as $satz) {
-            if ($satz->kind === RecordKind::Default) {
+            if ($satz->recordType === RecordType::Default) {
                 $this->clearPath($satz->id, $edgeId . '.' . $settingEdgeId, $locale);
             }
         }
@@ -993,7 +997,7 @@ final class DataEntry
         $werte = [];
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->kind !== RecordKind::Default) {
+            if ($satz->recordType !== RecordType::Default) {
                 continue;
             }
 
@@ -1066,7 +1070,7 @@ final class DataEntry
         $satzIds = [];
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->kind === RecordKind::Default) {
+            if ($satz->recordType === RecordType::Default) {
                 $satzIds[] = $satz->id;
             }
         }
@@ -1187,7 +1191,7 @@ final class DataEntry
     {
         $vorhanden = $this->findDefaultRecord($nodeId);
 
-        return $vorhanden !== 0 ? $vorhanden : $this->create($nodeId, RecordKind::Default)->id;
+        return $vorhanden !== 0 ? $vorhanden : $this->create($nodeId, RecordType::Default)->id;
     }
 
     /**
@@ -1201,7 +1205,7 @@ final class DataEntry
     private function findDefaultRecord(int $nodeId): int
     {
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->kind === RecordKind::Default) {
+            if ($satz->recordType === RecordType::Default) {
                 return $satz->id;
             }
         }
@@ -1285,7 +1289,7 @@ final class DataEntry
 
         $this->nodes->rememberSettingsRecord(
             $nodeId,
-            $this->create($chosenNodeId, RecordKind::Default)->id
+            $this->create($chosenNodeId, RecordType::Default)->id
         );
     }
 
@@ -1352,14 +1356,14 @@ final class DataEntry
         $this->changelog?->beginAct();
 
         try {
-            return $this->teilAnlegen($recordId, $edgeId, $path, $gewaehlt, $record->kind);
+            return $this->teilAnlegen($recordId, $edgeId, $path, $gewaehlt, $record->recordType);
         } finally {
             $this->changelog?->endAct();
         }
     }
 
     /** Der Teil selbst und der Verweis, der ihn hält — innerhalb der Klammer von {@see createPart()}. */
-    private function teilAnlegen(int $recordId, int $edgeId, string $path, Node $gewaehlt, RecordKind $kind): NodeRecord
+    private function teilAnlegen(int $recordId, int $edgeId, string $path, Node $gewaehlt, RecordType $kind): NodeRecord
     {
         $part = $this->create($gewaehlt->id, $kind);
 

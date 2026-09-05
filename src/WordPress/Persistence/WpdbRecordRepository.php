@@ -4,7 +4,7 @@ namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\ReferenceSpace;
-use Taxmod\Core\Model\RecordKind;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
@@ -34,7 +34,7 @@ final class WpdbRecordRepository implements RecordRepository
                 // ⚠️ *Die Spalte ist `NOT NULL` mit Vorgabe, also gibt es hier keine Null-Falle —
                 // anders als bei `nodes.kind`, wo `$wpdb->prepare('%s', null)` eine leere
                 // Zeichenkette schrieb ([D-519](../../../docs/NewConcept/90-decision-log.md)).*
-                'kind'         => $record->kind->value,
+                'record_type'  => $record->recordType->value,
             ],
             ['%d', '%d', '%s', '%s']
         );
@@ -47,7 +47,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $row = Query::row('Datensatz lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records')
+            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records')
                 . ' WHERE id = %d',
             $id
         ));
@@ -60,7 +60,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $rows = Query::rows('Datensaetze des Knotens lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records') . '
+            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records') . '
              WHERE node_id = %d ORDER BY id ASC',
             $nodeId
         ));
@@ -91,7 +91,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Datensaetze der Knoten lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records') . '
+            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records') . '
              WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
             ...$ids
         ));
@@ -444,11 +444,11 @@ final class WpdbRecordRepository implements RecordRepository
             (int) $row['node_id'],
             (int) $row['node_version'],
             (string) $row['created_at'],
-            // ⚠️ *`?? null` und nicht `$row['kind']` allein: `hydrate()` bekommt auch Zeilen aus
+            // ⚠️ *`?? null` und nicht `$row['record_type']` allein: `hydrate()` bekommt auch Zeilen aus
             // Abfragen, die die Spalte nicht auswaehlen — ein fehlender Schluessel waere eine Warnung
             // und danach stillschweigend die Vorgabe. **So ist es dieselbe Vorgabe, aber ausgesprochen.**
             // *
-            RecordKind::fromStorage(isset($row['kind']) ? (string) $row['kind'] : null),
+            RecordType::fromStorage(isset($row['record_type']) ? (string) $row['record_type'] : null),
         );
     }
 

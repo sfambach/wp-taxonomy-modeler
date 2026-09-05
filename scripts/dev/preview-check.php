@@ -186,7 +186,7 @@ if ($edge === null) {
     );
 
     $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$prefix}node_records WHERE node_id = %d AND kind = 'default' ORDER BY id LIMIT 1",
+        "SELECT id FROM {$prefix}node_records WHERE node_id = %d AND record_type = 'default' ORDER BY id LIMIT 1",
         $model
     ));
 
@@ -335,15 +335,29 @@ echo "\n== real data → rows marked as test data → the defaults ==\n";
  * ⚠️ *A clean node rather than the busy one above, because the point is which record the preview
  * chooses and a node with 21 real rows can never show the marked rung at all.*
  */
-$clean = (int) $wpdb->get_var(
+/**
+ * ⚠️ **Der erste Bewerber, an dem die Vorschau überhaupt gezeichnet wird — und nicht einfach der
+ * erste Bewerber.** *«Kanten und keine Datensätze» reicht nicht: es gibt zwei Knoten namens
+ * `Adresse` mit je fünf Kanten, einen unter einem Ast, der Daten hält, und einen unter einem, der
+ * keine hält. **Welchen `LIMIT 1` bei Gleichstand nahm, entschied die Datenbank** — mit dem einen
+ * war der Abschnitt grün, mit dem anderen viermal rot, und an der Vorschau war beides Mal nichts
+ * falsch. `ORDER BY n.id` macht die Wahl wiederholbar, die Schleife macht sie richtig.*
+ */
+$clean = 0;
+
+foreach ($wpdb->get_col(
     "SELECT n.id
        FROM {$prefix}nodes n
        JOIN {$prefix}relations r ON r.from_node_id = n.id AND r.name <> ''
       WHERE n.id NOT IN (SELECT node_id FROM {$prefix}node_records)
       GROUP BY n.id
-      ORDER BY COUNT(r.id) DESC
-      LIMIT 1"
-);
+      ORDER BY COUNT(r.id) DESC, n.id ASC"
+) as $bewerber) {
+    if (previewOf($screen, (int) $bewerber) !== '') {
+        $clean = (int) $bewerber;
+        break;
+    }
+}
 
 /** Writes one record against a node and hands back its id, so the cleanup has something to name. */
 $record = static function (int $node, bool $isTest) use ($wpdb, $prefix): int {
@@ -356,7 +370,7 @@ $record = static function (int $node, bool $isTest) use ($wpdb, $prefix): int {
             // ⚠️ *Seit Schema 15 eine Aufzählung statt eines Schalters ([C65](../../docs/NewConcept/10-domain-core.md)):
             // `user`, `default`, `example`. **Hier wird weiter nur der Testdatenfall gebraucht**, denn
             // das ist die Sprosse, um die es dieser Prüfung geht.*
-            'kind'         => $isTest ? 'example' : 'user',
+            'record_type'  => $isTest ? 'example' : 'user',
         ],
         ['%d', '%d', '%s', '%s']
     );

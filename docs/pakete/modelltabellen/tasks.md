@@ -426,7 +426,7 @@ an `nodes` und `relations` — sie steht nicht in der Aufgabe, und sie umzubenen
 Entscheidung gewesen, die niemand getroffen hat (`PR-4`).*
 
 ```text
-[ ] TASK-015  node_records: kind -> record_type, version unter id, created_at faellt
+[~] TASK-015  node_records: kind -> record_type, version unter id, created_at faellt
 ```
 
 *Der Eigentümer: «`kind` → `type` umbenennen, `version` würde ich nach oben unter `id` packen. Das
@@ -439,6 +439,41 @@ Art. **Erst der neue Leser, dann die Daten** (`PR-12`).*
 ⚠️ *Die Frage «`type` oder `record_type`» ist entschieden: **`record_type`.** Der Eigentümer:
 «Records — gleiche Handhabung wie Knoten und Kanten.» Damit heissen alle drei qualifiziert:
 `field_type`, `relation_type`, `record_type`.*
+
+**Zwei Drittel gebaut am 2026-09-05, Schema 30 — und das dritte ist eine Frage, keine Arbeit.**
+Die Spalte heisst `node_records.record_type`, lebend und im Schatten; `version` steht unter `id`,
+ebenfalls in beiden. **Im Kern heisst die Aufzählung `RecordType`** (vorher `RecordKind`) und die
+Marke `NodeRecord::$recordType` — dieselbe Umschrift wie bei `NodeKind` → `FieldType` (TASK-007),
+denn sonst lügt der Name weiter (`CD-9`).
+
+⚠️ **Gezählt vor und nach der Wanderung, und es ist dieselbe Verteilung:** *`node_records`
+**421 → 421** (default 392, user 29), `node_records_history` **1630 → 1630** (user 1406, default
+224). **Gemessen nachher:** die Spaltenfolge lautet `id, version, node_id, node_version, created_at,
+record_type`, der Index heisst `record_type`, und `kind` gibt es an keiner der beiden Tabellen mehr.*
+
+⚠️ **Die Spaltenordnung stellt `dbDelta` nicht her, und das ist der Grund für einen eigenen
+Schritt:** *es hängt eine fehlende Spalte hinten an und ordnet nie um. Wer die Reihenfolge nur im
+`CREATE TABLE` ändert, hat sie auf einer frischen Installation und sonst nirgends.*
+
+⚠️ **`created_at` steht noch, und der Grund ist die Bedingung aus der Aufgabe selbst** (`PR-4`):
+*«erst der neue Leser, dann die Daten». **Gemessen: 9 Einträge mit `owner_kind = 'record'` gegen 421
+Datensätze** — den Schreiber gibt es inzwischen, aber er läuft erst, seit es ihn gibt. Für 412
+Datensätze hält allein die Spalte fest, wann sie entstanden sind. Steht als `INF-039` im Eingang.*
+
+⚠️ **Der Eintrag im Änderungsbuch heisst jetzt `record_type`; die alten behalten `kind`** —
+*Geschichte ist eingefroren ([D-065](../../NewConcept/90-decision-log.md)), dieselbe Regel wie beim
+Eintrag «field type set».*
+
+⚠️ *Mitgezogen, weil sie die Spalte roh abfragten: `record-on-any-node-check` (er verlangt jetzt
+`record_type` **und** dass `kind` weg ist), `setting-write-check`, `preview-check`,
+`task044-047-reset` und `edge-class-check`. **Keiner ist entschärft.***
+
+⚠️ **Und einer war schon vorher wacklig, ohne dass es jemand gesehen hat:** *`preview-check` suchte
+«einen Knoten mit Kanten und ohne Datensätze» und nahm bei Gleichstand, was die Datenbank zuerst
+lieferte. **Es gibt zwei Knoten namens `Adresse` mit je fünf Kanten** — einer unter einem Ast, der
+Daten hält, einer unter einem, der keine hält. Mit dem einen war der Abschnitt grün, mit dem anderen
+viermal rot, **und an der Vorschau war beides Mal nichts falsch.** Er nimmt jetzt den ersten
+Bewerber, an dem die Vorschau überhaupt gezeichnet wird, in fester Reihenfolge.*
 
 ```text
 [?] node_version bei Versionskonflikt — bewusst zurückgestellt
