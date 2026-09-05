@@ -1426,3 +1426,64 @@ Dialog am zweiten Knopf — dann steht dieselbe Frage zweimal auf der Seite.*
 Ziel einer benannten Kante, **5** davon mehr als einmal; die schwerste ist `Text` mit **26**
 Verwendungen. **Für 115 Knoten ändert sich durch TASK-037 nichts** — der Dialog erscheint nur dort,
 wo etwas zerbrechen kann.*
+
+---
+
+## INF-051 · `relation_records.path` ist **kein** Spiegel von `relation_id` — TASK-002 angehalten
+
+**Aufgefallen beim Anfangen von TASK-002**, am 2026-09-05. *Die Aufgabe verlangt, die Spalte zu
+streichen; sie heisst dort «reiner Spiegel von `relation_id`». **Nachgemessen ist sie das nicht**,
+und der Unterschied ist nicht kosmetisch: er trägt die Adresse einer Einstellung **an einer
+Verwendungsstelle**.*
+
+⚠️ **Woran die alte Messung vorbeigesehen hat: sie hat nur die lebende Tabelle gezählt.**
+
+| Gemessen am 2026-09-05 | |
+|---|---|
+| lebende Zeilen, in denen `path` von `relation_id` abweicht | **0 von 103** — daher die Lesart «Spiegel» |
+| lebende Zeilen mit mehrteiligem Pfad | **0** |
+| **Schattenzeilen, in denen `path` abweicht** | **1119 von 5569** |
+| **Schattenzeilen mit mehrteiligem Pfad** | **1117** — die jüngste von heute |
+
+*Der Spiegel ist also nur der **augenblickliche** Zustand einer Tabelle, in der gerade keine
+Einstellung an einer Verwendungsstelle gesetzt ist.*
+
+⚠️ **Und der Kern schreibt den zweiteiligen Pfad heute, an drei Stellen.** *Das ist kein Rest,
+sondern der gebaute Mechanismus aus [D-611](../../NewConcept/90-decision-log.md):*
+
+| Stelle in `DataEntry` | Pfad |
+|---|---|
+| `putSettingAtUseSite()` | `Verwendungsstelle . Einstellungskante` |
+| `clearSettingAtUseSite()` | derselbe, zum Löschen |
+| `createPartAt()` | die ganze Kette von aussen nach innen, geprüft |
+
+*Und beide Leser entscheiden **am Pfad**, nicht an `relation_id`: `$gesucht[$wert->path]`.*
+
+⚠️ **Was ein Streichen kostet, ist deshalb kein Aufräumen, sondern ein stiller Verlust.** *Ohne die
+Spalte fallen «diese Einstellung, überall» und «diese Einstellung, nur an dieser Verwendungsstelle»
+auf **dieselbe Zeile** — dieselbe `node_record_id`, dieselbe `relation_id`, derselbe `locale`. Die
+zweite überschriebe die erste, ohne dass irgendetwas rot würde.*
+
+⚠️ **Das Konzept sagt dasselbe, und es ist die geltende Fassung** (`PR-10` — zitiert, nicht
+erinnert). [D-232](../../NewConcept/90-decision-log.md) hat [D-133](../../NewConcept/90-decision-log.md)
+abgelöst: der **Ast** entscheidet, wo ein Wert liegt, nicht die Multiplizität. Und
+[`Storage.php`](../../../src/Core/Model/Storage.php) hält den dritten Fall fest:
+
+> *`InsideTheRecord` — «No instances: the value sits in the holder's record, **addressed by path**».*
+
+Dazu [D-374](../../NewConcept/90-decision-log.md), über den zusammengesetzten Typ, der noch nicht
+speichern kann ([D-375](../../NewConcept/90-decision-log.md)):
+
+> *«[D-220] … answered with **those are not two fields, they are members of one value**, stored
+> **inside** the record by path ([D-133], [D-134]). So `2.7 kΩ` is three rows.»*
+
+**ENTSCHEIDUNG ERFORDERLICH: JA.** *Die Frage, die TASK-002 selbst schon gestellt und die nie jemand
+beantwortet hat — «bekommt eine Komposition mit Multiplizität 1 immer ihren eigenen Datensatz?» — ist
+genau diese. **Sagt er ja**, dann liegt kein Wert mehr im Satz des Halters, `Storage::InsideTheRecord`
+verliert seinen Sinn, und die Spalte kann fallen — dann aber zusammen mit der Adresse der
+Verwendungsstelle, die einen **anderen** Träger braucht. **Sagt er nein**, bleibt die Spalte und
+TASK-002 wird gestrichen statt verschoben.*
+
+⚠️ *Nicht geraten und nichts angefasst (`PR-4`). Die Spalte steht unverändert; gebaut ist nur der
+Wächter [`path-check.php`](../../../scripts/dev/path-check.php), und er hält diesen Zustand fest,
+statt ihn vorwegzunehmen.*

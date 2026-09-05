@@ -23,6 +23,23 @@ Beschlossen am 2026-09-01. **Die teuerste der vier**: `WpdbNodeRepository` fasst
 Vorher zu klären ist die Frage aus [`review-tabellen.md`](../../review-tabellen.md): bekommt eine
 Komposition mit Multiplizität 1 immer ihren eigenen Datensatz?
 
+⚠️ **Angehalten am 2026-09-05, und der Grund ist eine Messung: die Spalte ist kein Spiegel**
+(`INF-051` in [`inbox.md`](inbox.md)). *Die Zahl «12 gegen 12» stammt aus der **lebenden** Tabelle,
+und dort stimmt sie bis heute — 0 von 103 Abweichungen. **Die Schattentabelle sagt das Gegenteil:
+1119 von 5569 Zeilen weichen ab, 1117 tragen einen mehrteiligen Pfad, die jüngste von heute.***
+
+⚠️ **Der Pfad trägt die Adresse einer Einstellung *an einer Verwendungsstelle*** — gebaut, nicht
+geplant: `putSettingAtUseSite()` schreibt `Verwendungsstelle.Einstellungskante`,
+`clearSettingAtUseSite()` löscht darunter, `createPartAt()` setzt die ganze Kette zusammen, und
+**beide Leser schlagen über `$wert->path` nach**, nicht über `relation_id`. *Fiele die Spalte, lägen
+«diese Einstellung, überall» und «diese Einstellung, nur hier» auf **derselben** Zeile und die zweite
+überschriebe die erste — still.*
+
+⚠️ **Die Frage, die oben schon steht, ist genau die zu entscheidende, und sie wird nicht geraten**
+(`PR-4`). *Die Vorlage dafür liegt im Eingang; bis dahin steht die Spalte unverändert, und
+[`path-check.php`](../../../scripts/dev/path-check.php) hält den Zustand fest, statt ihn
+vorwegzunehmen.*
+
 ```text
 [x] TASK-003  path aus labels und settings entfernen
 ```

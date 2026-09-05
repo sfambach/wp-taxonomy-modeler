@@ -184,6 +184,54 @@ check(
     implode(', ', $treffer)
 );
 
+echo "\n2 · TASK-002 · relation_records.path bleibt stehen — und warum\n";
+
+// ⚠️ **Die umgekehrte Zusage, und sie ist Absicht** (`INF-051`,
+// [`inbox.md`](../../docs/pakete/modelltabellen/inbox.md)). *TASK-002 nennt die Spalte einen «reinen
+// Spiegel von `relation_id`». **Gemessen am 2026-09-05 ist sie das nur in der lebenden Tabelle** —
+// 0 von 103 Abweichungen dort, aber **1119 von 5569 im Schatten**, davon 1117 mit mehrteiligem Pfad.
+// Der Spiegel ist der augenblickliche Zustand einer Tabelle, in der gerade keine Einstellung an einer
+// Verwendungsstelle steht.*
+//
+// ⚠️ **Was ein Streichen kostete, ist kein Aufraeumen, sondern ein stiller Verlust:** *«diese
+// Einstellung, ueberall» und «diese Einstellung, nur an dieser Verwendungsstelle» fielen auf
+// **dieselbe** Zeile — gleiche `node_record_id`, gleiche `relation_id`, gleicher `locale`. Die
+// zweite ueberschriebe die erste, ohne dass irgendetwas rot wuerde.*
+//
+// ⚠️ *Bis er entscheidet, haelt dieser Abschnitt den Zustand fest, statt ihn vorwegzunehmen (`PR-4`).
+// **Den Rundlauf selbst prueft `setting-write-check`** — «und zwar im Satz des Besitzers, unter der
+// zweistufigen Adresse». Hier steht nur, dass der Traeger dieser Adresse noch da ist.*
+$werte = Schema::table('relation_records');
+
+check('relation_records traegt weiter die Spalte path', hatSpalte($werte, 'path'));
+
+// ⚠️ **Und der Kern schreibt die zweistufige Adresse wirklich** — sonst waere die Spalte oben ein
+// Denkmal. *Gesucht im Quelltext **ohne Kommentare**: die drei Stellen, die einen Pfad aus mehr als
+// einem Abschnitt bauen.*
+$eintrag = ohneKommentare(dirname(__DIR__, 2) . '/src/Core/Service/DataEntry.php');
+
+check(
+    'putSettingAtUseSite baut Verwendungsstelle . Einstellungskante',
+    preg_match('/\$pfad\s*=\s*\$relationId\s*\.\s*\'\.\'\s*\.\s*\$kante->id/', $eintrag) === 1
+);
+
+check(
+    'clearSettingAtUseSite loescht unter derselben Adresse',
+    preg_match('/clearPath\(\s*\$satz->id,\s*\$relationId\s*\.\s*\'\.\'\s*\.\s*\$settingRelationId/', $eintrag) === 1
+);
+
+check(
+    'createPartAt setzt die ganze Kette zusammen',
+    preg_match('/implode\(\'\.\',\s*\$relationIds\)/', $eintrag) === 1
+);
+
+// ⚠️ *Und die Leser entscheiden **am Pfad** und nicht an `relation_id` — genau die Unterscheidung,
+// die mit der Spalte fiele.*
+check(
+    'die Leser schlagen ueber den Pfad nach',
+    substr_count($eintrag, '$gesucht[$wert->path]') >= 2
+);
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);
