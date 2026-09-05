@@ -63,7 +63,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 20 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 13 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 118 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 119 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 3 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
@@ -74,8 +74,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 24 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 59 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 23 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 61 |
 
 ## DC — Dokumentation im Code
 
@@ -277,11 +277,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R25** | A chooser is given two nodes: a branch node, whose subtree it shows, and a default node, down to whose children the tree is expanded. | [30-renderer.md:814](30-renderer.md) | 7 |
 | **R26** | The user picks from those children — but may also move into any other branch that is on screen. | [30-renderer.md:815](30-renderer.md) | 1 |
 | **R27** | The branch node is what scopes the choice: picking any node means the whole tree; picking a model means the models branch is put in front. | [30-renderer.md:816](30-renderer.md) | 3 |
-| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 49 |
+| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 52 |
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
 | **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 8 |
-| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 35 |
+| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 38 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
@@ -312,7 +312,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R60** | A chooser is in principle also a renderer, but it has more functions — at least two render forms: inline, and button plus popup. | [30-renderer.md:2430](30-renderer.md) | 1 |
 | **R61** | "The popup is, I think, not quite render-conform — unless we make it a part of it, an inline/popup context option." | [30-renderer.md:2431](30-renderer.md) | 2 |
 | **R62** | Two separate renderers — an inline chooser and a popup chooser — and the author states which makes sense in a given place. | [30-renderer.md:2476](30-renderer.md) | 1 |
-| **R63** | If the selectable set has no children — only one level — it is really a selection list, and the renderer should show it that way. One level → list,… | [30-renderer.md:2477](30-renderer.md) | 3 |
+| **R63** | If the selectable set has no children — only one level — it is really a selection list, and the renderer should show it that way. One level → list,… | [30-renderer.md:2477](30-renderer.md) | 4 |
 | **R64** | The initial node handed in — the branch root — does not normally count as a choice. Open whether that must be configurable or is a general rule. | [30-renderer.md:2478](30-renderer.md) | 2 |
 | **R65** | The multi-step renderer: the user first chooses a node, then has to enter data for that node. Changing the selection calls the tree chooser again. | [30-renderer.md:2655](30-renderer.md) | 5 |
 | **R66** | The row of the model to be filled in then appears, driven by JavaScript. | [30-renderer.md:2656](30-renderer.md) | 1 |
