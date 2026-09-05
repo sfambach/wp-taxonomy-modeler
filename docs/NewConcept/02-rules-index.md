@@ -45,7 +45,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 13 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 6 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 14 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 44 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 48 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
@@ -57,15 +57,15 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 67 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 68 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:69](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
-| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 20 |
+| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 21 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 13 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 116 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 117 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 3 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 25 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 26 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:78](../../CLAUDE.md) | 2 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:79](../../CLAUDE.md) | 7 |
@@ -74,8 +74,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 17 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 54 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 23 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 55 |
 
 ## DC — Dokumentation im Code
 
@@ -250,7 +250,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 109 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 110 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 4 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
