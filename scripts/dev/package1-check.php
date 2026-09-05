@@ -112,18 +112,18 @@ foreach (['nodes', 'relations'] as $name) {
 echo "\n== 4. Create, rename, trash ==\n";
 $editor = new ModelEditor($nodes, $edges, $framework, $log);
 
-$made = $editor->createNode('  Platine  ', $root->id);
-check('name is trimmed on the way in', $made->name === 'Platine', "«{$made->name}»");
+$made = $editor->createNode('  __p1 Platine  ', $root->id);
+check('name is trimmed on the way in', $made->name === '__p1 Platine', "«{$made->name}»");
 check('version starts at 1', $made->version === 1);
 check('path hangs off the root', $made->path === $root->path . '.' . $made->id, $made->path);
 
-$renamed = $editor->rename($made->id, 'Board');
+$renamed = $editor->rename($made->id, '__p1 Board');
 check('rename raises the version', $renamed->version === 2, (string) $renamed->version);
 
-$again = $editor->rename($made->id, 'Board');
+$again = $editor->rename($made->id, '__p1 Board');
 check('an unchanged save does NOT raise it (D-282)', $again->version === 2, (string) $again->version);
 
-$child = $editor->createNode('Resistor', $made->id);
+$child = $editor->createNode('__p1 Teil', $made->id);
 check('a child hangs off its parent', $child->path === $renamed->path . '.' . $child->id, $child->path);
 
 $parked = $editor->moveToTrash($made->id);
@@ -141,7 +141,7 @@ catch (DomainError $e) { check('the root cannot be trashed', true); }
 
 echo "\n== 6. It survives a fresh read ==\n";
 $fresh = (new WpdbNodeRepository())->byId($made->id);
-check('still there, still named Board', $fresh->name === 'Board', $fresh->name);
+check('still there, still named __p1 Board', $fresh->name === '__p1 Board', $fresh->name);
 check('still parked', $fresh->path === $parked->path, $fresh->path);
 
 echo "\n== 7. Changelog ==\n";

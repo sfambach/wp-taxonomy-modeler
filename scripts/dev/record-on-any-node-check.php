@@ -9,7 +9,7 @@
  * Default-Wert; gehört er zu Settings, ist es eine Einstellung.»*
  *
  * ⚠️ **Die Zusage, die diese Prüfung trägt, ist die eine, die vorher unmöglich war:** *ein Knoten
- * ausserhalb von `Model` und `Compositions` — `kilo`, eine Konstante — nimmt einen Datensatz an, und
+ * ausserhalb von `Model` und `Compositions` — eine Konstante unter `Prefixes` — nimmt einen Datensatz an, und
  * der Wert landet unter der **Kanten-Id** des Feldes. **Fällt das, ist der ganze Umbau von `default`
  * zurück auf Anfang.***
  *
@@ -105,20 +105,23 @@ foreach ($nodes->childrenOf($framework->rootOf(Branch::Constants)) as $child) {
     }
 }
 
+// ⚠️ **Der erste Kindknoten, nicht «kilo»** ([D-613](../../docs/NewConcept/90-decision-log.md),
+// vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)). *`kilo` ist sein Inhalt und darf
+// heissen, wie er will; **die Zusage gilt jeder Konstanten unter `Prefixes`** — dass sie in einem
+// Zweig ohne eigene Daten liegt und trotzdem einen Datensatz annimmt. `Prefixes` selbst bleibt
+// stehen: das bringt das Plugin mit.*
 $kilo = null;
 
 if ($prefixes !== null) {
     foreach ($nodes->childrenOf($prefixes) as $child) {
-        if ($child->name === 'kilo') {
-            $kilo = $child;
-        }
+        $kilo ??= $child;
     }
 }
 
 if ($kilo === null) {
-    check('ein Knoten kilo unter Constants › Prefixes', false);
+    check('eine Konstante unter Constants › Prefixes', false);
 } else {
-    check('kilo liegt unter Constants', $framework->branchOf($kilo) === Branch::Constants);
+    check('sie liegt unter Constants', $framework->branchOf($kilo) === Branch::Constants, '#' . $kilo->id);
     check(
         'und sein Zweig sagt weiterhin «keine Daten»',
         $framework->branchOf($kilo)?->holdsData() === false,
@@ -134,7 +137,7 @@ if ($kilo === null) {
     }
 
     if ($exponent === null) {
-        check('kilo erbt ein Feld «exponent»', false);
+        check('die Konstante erbt ein Feld «exponent»', false);
     } else {
         // ⚠️ **Gefangen und nicht durchgelassen.** *Ohne das stürzt die Prüfung ab, sobald das Tor
         // wieder nach dem Zweig fragt — und **eine abstürzende Prüfung überspringt ihre restlichen
@@ -146,13 +149,13 @@ if ($kilo === null) {
             $record  = $data->create($kilo->id);
             $meine[] = $record->id;
         } catch (NotYetStorable $e) {
-            check('ein Datensatz an kilo lässt sich anlegen', false, $e->getMessage());
+            check('ein Datensatz an der Konstanten lässt sich anlegen', false, $e->getMessage());
         }
 
         $verweigert = null;
 
         if ($record !== null) {
-            check('ein Datensatz an kilo lässt sich anlegen', $record->id > 0, (string) $record->id);
+            check('ein Datensatz an der Konstanten lässt sich anlegen', $record->id > 0, (string) $record->id);
 
             // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil von [D-538](../../docs/NewConcept/90-decision-log.md).**
             // *Diese Prüfung schrieb hier einen Wert und verlangte, dass er unter der Kanten-Id steht.

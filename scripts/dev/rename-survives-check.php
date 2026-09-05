@@ -86,34 +86,46 @@ $registry  = ShippedRenderers::registry();
 $r = Schema::table('relations');
 $n = Schema::table('nodes');
 
-/** Was jeder Knoten zeichnet — mit einem **frischen** Leser, damit nichts aus dem Gedächtnis kommt. */
-function gezeichnet(array $namen): array
+/**
+ * Was jeder Knoten zeichnet — mit einem **frischen** Leser, damit nichts aus dem Gedächtnis kommt.
+ *
+ * ⚠️ *Frisch je Durchgang: {@see ModelValues} merkt sich seine Funde je Instanz (`CD-7`), und
+ * ein wiederverwendeter Leser würde die alte Antwort zurückgeben und die Prüfung grün lügen.*
+ *
+ * @param list<int> $ids
+ * @return array<int, string>
+ */
+function gezeichnet(array $ids): array
 {
-    global $wpdb, $nodes, $edges, $framework, $records, $registry, $n;
+    global $nodes, $edges, $framework, $records, $registry;
 
-    // ⚠️ *Frisch je Durchgang: {@see ModelValues} merkt sich seine Funde je Instanz (`CD-7`), und
-    // ein wiederverwendeter Leser würde die alte Antwort zurückgeben und die Prüfung grün lügen.*
-    $model  = new ModelValues($records, $edges, $nodes, $framework);
+    $model   = new ModelValues($records, $edges, $nodes, $framework);
     $antwort = [];
 
-    foreach ($namen as $name) {
-        $id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$n} WHERE name = %s LIMIT 1", $name));
-
-        if ($id === 0) {
-            $antwort[$name] = '(kein Knoten)';
-
-            continue;
-        }
-
-        $knoten          = $nodes->byId($id);
-        $gewaehlt        = $registry->chosenFor($knoten, $model->forNode($knoten), Purpose::Edit);
-        $antwort[$name]  = $gewaehlt?->name() ?? 'nichts';
+    foreach ($ids as $id) {
+        $knoten       = $nodes->find($id);
+        $antwort[$id] = $knoten === null
+            ? '(kein Knoten)'
+            : ($registry->chosenFor($knoten, $model->forNode($knoten), Purpose::Edit)?->name() ?? 'nichts');
     }
 
     return $antwort;
 }
 
-$beobachtet = ['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts List'];
+// ⚠️ **Beobachtet wird über Ids, und die Auswahl trifft der Baum, nicht eine Liste seiner Namen**
+// ([D-613](../../docs/NewConcept/90-decision-log.md), vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)).
+// *Hier standen sechs Namen aus seinem Modell — `Passiv`, `Dimension`, `Parts List` unter ihnen.
+// **Zwei davon kommen in seinem Modell doppelt vor**, und ein `WHERE name = … LIMIT 1` greift dann
+// eine von beiden, ohne zu wissen welche.*
+//
+// ⚠️ *Der Gegenfall wird davon **stärker**, nicht schwächer: beobachtet wird jeder Knoten unter der
+// Wurzel, und verlangt wird, dass mindestens vier davon überhaupt etwas anderes als `plain`
+// zeichnen. Fällt die Auflösung aus, ist diese Zahl null — genau der Ausfall, den es zu fangen gilt.*
+$beobachtet = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+    "SELECT id FROM {$n} WHERE path LIKE %s AND path NOT LIKE %s ORDER BY id",
+    $wpdb->esc_like($framework->root()->path . '.') . '%',
+    $wpdb->esc_like($framework->trash()->path . '.') . '%'
+)));
 
 echo "\n== Die Ids stehen aufgeschrieben ==\n";
 
@@ -189,13 +201,21 @@ check(
 
 $nachher = gezeichnet($beobachtet);
 
-foreach ($beobachtet as $name) {
-    check(
-        "«{$name}» zeichnet unveraendert mit «{$vorher[$name]}»",
-        ($nachher[$name] ?? null) === $vorher[$name],
-        ($nachher[$name] ?? 'nichts') . ' statt ' . $vorher[$name]
-    );
+// ⚠️ *Eine Zusage über den ganzen Baum statt eine je Name — und die Abweichungen werden **genannt**,
+// mit Id, damit ein rotes Ergebnis auch sagt, wo man nachsehen muss.*
+$abweichend = [];
+
+foreach ($beobachtet as $id) {
+    if (($nachher[$id] ?? null) !== $vorher[$id]) {
+        $abweichend[] = "#{$id}: " . ($nachher[$id] ?? 'nichts') . ' statt ' . $vorher[$id];
+    }
 }
+
+check(
+    'kein Knoten zeichnet nach der Umbenennung anders (' . count($beobachtet) . ' beobachtet)',
+    $abweichend === [],
+    implode(', ', array_slice($abweichend, 0, 10))
+);
 
 echo "\n== Und die Namen sind zurueck ==\n";
 

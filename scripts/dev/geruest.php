@@ -260,6 +260,21 @@ final class Geruest
     }
 
     /**
+     * Ein Kind unter einem gebauten Knoten — der Fall «erbt, erklärt aber nichts selbst».
+     *
+     * ⚠️ *Es braucht ihn, weil ein Fehler, der nur die **eigene** Deklaration trifft, an einem
+     * Knoten mit eigenen Feldern nicht auffällt. Vorher wurden dafür Knoten des Eigentümers
+     * herangezogen ([D-613](../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public function kindVon(int $elternId, string $name): int
+    {
+        $kind = $this->editor->createNode($this->vorsatz . ' ' . $name, $elternId);
+        $this->gebaut[] = $kind->id;
+
+        return $kind->id;
+    }
+
+    /**
      * Ein Einstellungsknoten und ein Traeger, der ihn benutzt.
      *
      * ⚠️ *«Einstellung» ist keine Wahl, sondern folgt aus dem Ast — die Oberflaeche sagt es dem

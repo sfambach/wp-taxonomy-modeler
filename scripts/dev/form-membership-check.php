@@ -47,6 +47,8 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+require __DIR__ . "/geruest.php";
+
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\Level;
@@ -155,22 +157,23 @@ $rendering = new Rendering(
     new ModelValues($records, $edges, $nodes, $framework)
 );
 
+$geruest = new Geruest('__fm');
+
 echo "\n== Kein stummes Bedienelement in einer Feldzeile ==\n";
 
-// ⚠️ *Drei Knoten und nicht einer: `Passiv` erklärt eigene Felder, `Dimension` erbt, `Einheitenwert`
-// trägt eine Kopie. Ein Fehler, der nur die eigene Deklaration trifft, fällt sonst nicht auf.*
-foreach (['Passiv', 'Dimension', 'Einheitenwert'] as $name) {
-    $id = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
-        $name
-    ));
+// ⚠️ *Drei Knoten und nicht einer: einer erklärt eigene Felder, einer erbt nur, einer trägt beides.
+// Ein Fehler, der nur die eigene Deklaration trifft, fällt sonst nicht auf.*
+//
+// ⚠️ **Und die drei werden gebaut, nicht gesucht** ([D-613](../../docs/NewConcept/90-decision-log.md),
+// vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)). *Hier standen `Passiv`, `Dimension`
+// und `Einheitenwert` — sein Modellinhalt, den er jederzeit umbenennen darf, und ein
+// `WHERE name = … LIMIT 1` greift bei einem doppelt vergebenen Namen die falsche Zeile.*
+$erklaerend = $geruest->feldMit('Erklaerend', 'eigen', '1')['von'];
+$erbend     = $geruest->kindVon($erklaerend, 'Erbend');
+$beides     = $geruest->feldMit('Beides', 'auch eigen', '1')['von'];
 
-    if ($id === 0) {
-        check("«{$name}» steht im Modell", false);
-
-        continue;
-    }
-
+foreach ([$erklaerend, $erbend, $beides] as $id) {
+    $name   = '#' . $id;
     $knoten = $nodes->byId($id);
     $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
 
@@ -243,12 +246,13 @@ foreach (['Passiv', 'Dimension', 'Einheitenwert'] as $name) {
 
 echo "\n== Und das Namensfeld ist eines davon ==\n";
 
-// ⚠️ *Namentlich, weil dies der Fall ist, den er gemeldet hat. Die Prüfung oben ist die allgemeine;
-// diese hier stirbt nicht, wenn jemand die Klasse umbenennt, sondern wenn das Feld wieder stumm wird.*
-$id = (int) $wpdb->get_var(
-    'SELECT id FROM ' . Schema::table('nodes') . " WHERE name = 'Passiv' LIMIT 1"
-);
-
+// ⚠️ *Die Prüfung oben ist die allgemeine; diese hier stirbt nicht, wenn jemand die Klasse
+// umbenennt, sondern wenn das Feld wieder stumm wird.*
+//
+// ⚠️ *Sie hing an `Passiv`, weil das der Knoten war, an dem er es gemeldet hat. **Der Fall ist
+// nicht der Knoten** ([D-613](../../docs/NewConcept/90-decision-log.md)): gebraucht wird einer, der
+// eigene Felder erklärt, und einen davon hat der Lauf gerade selbst gebaut.*
+$id       = $erklaerend;
 $knoten   = $nodes->byId($id);
 $kanten   = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
 $actions  = [];
@@ -282,7 +286,7 @@ foreach ($rendering->fieldRowsFor($kanten, $id, $actions, $submits, 'taxmod_fiel
     }
 }
 
-check('«Passiv» zeichnet Umbenennungsfelder', $gefunden > 0, (string) $gefunden);
+check('der erklaerende Knoten zeichnet Umbenennungsfelder', $gefunden > 0, (string) $gefunden);
 check('und jedes nennt sein Formular', $stumm === 0, "{$stumm} von {$gefunden} ohne form-Attribut");
 
 echo "\n== Name und «wie oft» gehoeren ins Seitenformular, je Zeile eigen ==\n";
@@ -389,6 +393,8 @@ check(
     ! str_contains($schirm, "'save_field'"),
     'save_field steht noch im Schirm'
 );
+
+$geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

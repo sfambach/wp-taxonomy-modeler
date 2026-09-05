@@ -9,12 +9,17 @@
  * eine Auswahlliste habe, zum Beispiel für die Präfixe, dann soll er doch bitte das **Symbol**
  * nehmen. **Also war das eher eine Eigenschaft des Renderers.**»*
  *
- * ⚠️ **Was hier gleich bleiben muss:** *`Einheitenwert.einheit` und `.prefix` zeichnen mit `symbol` —
- * heute über eine Setting-Zeile, danach über ein Feld von `DisplayOption`. **Ohne das stünde «4 kilo
- * Ohm» statt «4 kΩ».***
+ * ⚠️ **Was hier gleich bleiben muss:** *ein Feld einer Einheit zeichnet mit `symbol` — heute über
+ * eine Setting-Zeile, danach über ein Feld von `DisplayOption`. **Ohne das stünde «4 kilo Ohm» statt
+ * «4 kΩ».***
  *
- * ⚠️ *Gemessen tragen die Knoten ihre Symbole: `kilo` → `k`, `Ohm` → `Ω`, `Gramm` → `g`. Die Rolle
- * entscheidet nur, welcher der Namen genommen wird — **sie erfindet keinen.***
+ * ⚠️ *Die Knoten tragen ihre Symbole als Beschriftung in der Rolle `symbol`. Die Rolle entscheidet
+ * nur, welcher der Namen genommen wird — **sie erfindet keinen.***
+ *
+ * ⚠️ **Diese Prüfung nennt keinen einzigen seiner Knoten mehr beim Namen**
+ * ([D-613](../../docs/NewConcept/90-decision-log.md), vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)).
+ * *Sie fragt die Registratur nach den Rollen, die Beschriftungstabelle nach der Rolle `symbol` und
+ * den Baum nach seinen Feldkanten. **Was er wie nennt, geht sie nichts an.***
  *
  * @see docs/NewConcept/40-i18n.md
  */
@@ -90,55 +95,48 @@ $rendering = new Rendering(
     $model
 );
 
-function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Relation
-{
-    global $wpdb, $nodes, $edges;
-
-    $id = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
-        $knotenName
-    ));
-
-    $knoten = $id === 0 ? null : $nodes->find($id);
-
-    if ($knoten === null) {
-        return null;
-    }
-
-    foreach ($edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]) as $eine) {
-        if ($eine->name === $feldName) {
-            return $eine;
-        }
-    }
-
-    return null;
-}
+// ⚠️ *Hier stand `feldVon(string $knotenName, …)` — ein Nachschlagen über den Knotennamen. Es hat
+// keinen Aufrufer mehr ([D-613](../../docs/NewConcept/90-decision-log.md)) und ist deshalb weg statt
+// auskommentiert.*
 
 echo "\n== Die Rollen sind Knoten und werden benutzt ==\n";
 
-$rollen = $wpdb->get_col(
-    "SELECT kn.name FROM " . Schema::table('nodes') . " kn
-     WHERE kn.path LIKE (SELECT CONCAT(p.path, '.%') FROM " . Schema::table('nodes') . " p
-                         WHERE p.name = 'Label roles' AND p.id = 731)"
-) ?: [];
+// ⚠️ **Über die Registratur gefragt, nicht über Name und Nummer**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). *Hier stand `WHERE p.name = 'Label roles' AND
+// p.id = 731` — ein Name **und** eine hart hingeschriebene Id, also zwei Bindungen, die beide brechen
+// können. Das Rahmenwerk führt seine Rollen selbst ({@see SeededFrameworkNodes::roleId()}), und genau
+// dort fragt die Prüfung jetzt nach.*
+foreach (SeededRole::cases() as $rolle) {
+    $id = $framework->roleId($rolle);
 
-foreach (['form', 'table', 'select', 'symbol', 'help'] as $rolle) {
-    check("die Rolle «{$rolle}» ist ein Knoten", in_array($rolle, $rollen, true));
+    check(
+        "die Rolle «{$rolle->value}» ist ein Knoten",
+        $id !== 0 && $nodes->find($id) !== null,
+        (string) $id
+    );
 }
 
-echo "\n== Und die Knoten tragen ihre Symbole ==\n";
+echo "\n== Und Knoten tragen ihre Symbole ==\n";
 
-foreach (['kilo' => 'k', 'Ohm' => 'Ω', 'Gramm' => 'g'] as $name => $symbol) {
-    $text = $wpdb->get_var($wpdb->prepare(
-        'SELECT lb.text FROM ' . Schema::table('labels') . ' lb
-         JOIN ' . Schema::table('nodes') . ' kn ON kn.id = lb.owner_id
-         JOIN ' . Schema::table('nodes') . " ro ON ro.id = lb.role_id
-         WHERE kn.name = %s AND ro.name = 'symbol' LIMIT 1",
-        $name
-    ));
+// ⚠️ **Nach der Rolle gefragt, nicht nach `kilo`, `Ohm`, `Gramm`**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). *Das waren drei Namen aus seinem Modell samt
+// ihren Symbolen — beides sein Inhalt, den er jederzeit ändern darf. **Die Zusage ist keine dieser
+// drei Zeilen, sondern der Mechanismus:** es gibt Symbolbeschriftungen, sie hängen an der Rolle
+// `symbol`, und sie tragen Text. Ohne das stünde «4 kilo Ohm» statt «4 kΩ» — wessen Einheit auch
+// immer.*
+$symbolRolle = $framework->roleId(SeededRole::Symbol);
 
-    check("«{$name}» hat das Symbol «{$symbol}»", $text === $symbol, (string) ($text ?? 'nichts'));
-}
+$symbole = $wpdb->get_col($wpdb->prepare(
+    'SELECT lb.text FROM ' . Schema::table('labels') . ' lb
+     JOIN ' . Schema::table('nodes') . ' kn ON kn.id = lb.owner_id
+     WHERE lb.role_id = %d',
+    $symbolRolle
+)) ?: [];
+
+$mitText = count(array_filter($symbole, static fn (?string $t): bool => $t !== null && trim($t) !== ''));
+
+check('es gibt Beschriftungen in der Rolle «symbol»', $symbole !== [], (string) count($symbole));
+check('und jede von ihnen traegt Text', $mitText === count($symbole), "{$mitText} von " . count($symbole));
 
 echo "\n== Welche Rolle ein Feld zeichnet ==\n";
 
@@ -151,29 +149,37 @@ echo "\n== Welche Rolle ein Feld zeichnet ==\n";
 // seinen neuen Ort hat (`OQ-134`). **Die Zusage wird mitgezogen und nicht abgeschaltet** — sie misst
 // jetzt den Zustand, der gilt, und wird wieder rot, wenn `OQ-134` gebaut ist und trotzdem `form`
 // herauskommt (`PR-9`).*
-$erwartet = [
-    ['Einheitenwert', 'einheit', SeededRole::Form],
-    ['Einheitenwert', 'prefix', SeededRole::Form],
-    ['Einheitenwert', 'wert', SeededRole::Form],
-];
+//
+// ⚠️ **Und gemessen wird über alle Feldkanten, nicht über drei Felder von `Einheitenwert`**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). *Sein Knoten, seine Feldnamen — er darf beide
+// umbenennen, und `Einheitenwert` über `WHERE name = … LIMIT 1` zu greifen ist obendrein die
+// Bindung, die [D-022](../../docs/NewConcept/90-decision-log.md) verbietet. **Die Zusage bleibt
+// wörtlich dieselbe:** solange `OQ-134` offen ist, zeichnet **keine** Feldkante mit `symbol`; sobald
+// sie gebaut ist, wird diese Zeile rot und will neu geschrieben werden.*
+$alleBesitzer = array_map(intval(...), $wpdb->get_col(
+    'SELECT DISTINCT from_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance'"
+) ?: []);
 
-foreach ($erwartet as [$vonName, $feldName, $soll]) {
-    $kante = feldVon($vonName, $feldName);
+$mitSymbol = [];
+$gesehen   = 0;
 
-    if ($kante === null) {
-        check("«{$vonName}.{$feldName}» steht im Modell", false, 'nicht gefunden');
+foreach ($edges->fieldEdgesOf($alleBesitzer) as $kante) {
+    ++$gesehen;
 
-        continue;
+    if ($rendering->labelRoleFor($kante) === SeededRole::Symbol) {
+        $mitSymbol[] = '#' . $kante->id;
     }
-
-    $ist = $rendering->labelRoleFor($kante);
-
-    check(
-        "«{$vonName}.{$feldName}» zeichnet die Rolle «{$soll->value}»",
-        $ist === $soll,
-        $ist->value
-    );
 }
+
+// ⚠️ *Der Gegenfall: ohne ihn wäre «keine zeichnet mit symbol» auch dann wahr, wenn es überhaupt
+// keine Feldkanten mehr gäbe.*
+check('es gibt ueberhaupt Feldkanten zu messen', $gesehen > 0, (string) $gesehen);
+
+check(
+    "solange OQ-134 offen ist, zeichnet keine der {$gesehen} Feldkanten mit «symbol» (D-579)",
+    $mitSymbol === [],
+    implode(', ', array_slice($mitSymbol, 0, 10))
+);
 
 echo "\n== Woher die Auskunft kommt ==\n";
 
@@ -197,12 +203,15 @@ echo "\n== Woher die Auskunft kommt ==\n";
     check('die Kante «label_role» steht im Modell', $feld !== null);
 
     if ($feld !== null) {
-        $ziel = $nodes->find($feld->toId);
+        // ⚠️ *Verglichen wird die **Id** des Rollenbehälters, nicht sein Name
+        // ([D-613](../../docs/NewConcept/90-decision-log.md)). Wo er liegt, weiss die Registratur:
+        // der Behälter ist der Elternknoten jeder gesäten Rolle.*
+        $behaelter = $nodes->find($framework->roleId(SeededRole::Form))?->parentId();
 
         check(
-            'und zeigt auf «Label roles»',
-            ($ziel?->name ?? null) === 'Label roles',
-            $ziel?->name ?? 'nichts'
+            'und zeigt auf den Behaelter der Rollen',
+            $behaelter !== null && $feld->toId === $behaelter,
+            $feld->toId . ' statt ' . ($behaelter ?? 'nichts')
         );
     }
 }

@@ -41,6 +41,8 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+require __DIR__ . '/geruest.php';
+
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\RelationKind;
@@ -85,6 +87,7 @@ $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $records   = new WpdbRecordRepository();
 $data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$geruest   = new Geruest('__se');
 
 /** Ein Feld eines Knotens über seinen Namen. */
 function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Relation
@@ -111,6 +114,29 @@ function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Rela
     return null;
 }
 
+/**
+ * Der erste Knoten unter einem gegebenen — über die Id gefunden, nie über einen Namen.
+ *
+ * ⚠️ *Das ist die Ersetzung für ein halbes Dutzend `WHERE name = …` in dieser Datei
+ * ([D-613](../../docs/NewConcept/90-decision-log.md)). Wessen Kinder gemeint sind, sagt die Id des
+ * Elternteils; **wie sie heissen, geht die Prüfung nichts an.***
+ */
+function ersterUnter(int $elternId): int
+{
+    global $wpdb, $nodes;
+
+    $eltern = $nodes->find($elternId);
+
+    if ($eltern === null) {
+        return 0;
+    }
+
+    return (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s ORDER BY id LIMIT 1',
+        $wpdb->esc_like($eltern->path . '.') . '%'
+    ));
+}
+
 /** @var list<int> Was dieser Lauf angelegt hat. */
 $meine = [];
 
@@ -134,14 +160,19 @@ if ($exponent === null) {
 } else {
     check('das Feld «Prefixes.exponent» steht im Modell', true);
 
-    $kiloId = (int) $wpdb->get_var(
-        'SELECT id FROM ' . Schema::table('nodes') . " WHERE name = 'kilo' LIMIT 1"
-    );
+    // ⚠️ **Nicht «kilo», sondern «irgendein Träger dieses Feldes»**
+    // ([D-613](../../docs/NewConcept/90-decision-log.md), vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)).
+    // *`kilo` ist sein Inhalt und darf sich jederzeit ändern; **`Prefixes` ist Rahmenwerk** und
+    // steht hier als Besitzer der Kante, nicht als gesuchter Name. Gefragt wird der Baum: welcher
+    // Knoten erbt dieses Feld? Der erste, den es gibt, beantwortet die Frage genauso gut.*
+    $traegerId = ersterUnter($exponent->fromId);
 
-    if ($kiloId === 0) {
-        check('«kilo» steht im Modell', false);
+    if ($traegerId === 0) {
+        check('ein Knoten erbt «Prefixes.exponent»', false);
     } else {
-        $satz    = $data->create($kiloId, RecordKind::User);
+        check('ein Knoten erbt «Prefixes.exponent»', true, '#' . $traegerId);
+
+        $satz    = $data->create($traegerId, RecordKind::User);
         $meine[] = $satz->id;
 
         $verweigert = false;
@@ -156,10 +187,20 @@ if ($exponent === null) {
 
         // ⚠️ **Der Gegenfall.** *Eine Prüfung, die nur Verweigerungen kennt, wäre auch dann grün, wenn
         // überhaupt nichts mehr gespeichert werden könnte.*
-        $normal = feldVon('Passiv', 'Tolerance');
+        //
+        // ⚠️ *Und das gewöhnliche Feld wird **gebaut, nicht gesucht** ([D-613](../../docs/NewConcept/90-decision-log.md)):
+        // hier stand `Passiv.Tolerance` — sein Modellinhalt, den er jederzeit umbenennen darf.*
+        $gebaut = $geruest->feldMit('Vergleich', 'gewoehnlich', '1');
+        $normal = null;
+
+        foreach ($edges->fieldEdgesOf([$gebaut['von']]) as $eine) {
+            if ($eine->id === $gebaut['kante']) {
+                $normal = $eine;
+            }
+        }
 
         if ($normal === null) {
-            check('ein gewoehnliches Feld zum Vergleich gefunden', false, '«Passiv.Tolerance» fehlt');
+            check('ein gewoehnliches Feld zum Vergleich gefunden', false, 'das Geruest hat keines geliefert');
         } else {
             check('ein gewoehnliches Feld zum Vergleich gefunden', true);
 
@@ -181,29 +222,37 @@ if ($exponent === null) {
 echo "\n== Und die Vorgabe bleibt lesbar ==\n";
 
 // ⚠️ *Verweigert heisst «kein **Benutzer**wert» und nicht «kein Wert»
-// ([D-538](../../docs/NewConcept/90-decision-log.md)). Der Exponent von `kilo` steht als Vorgabe da
-// und muss es bleiben — sonst hätte die Verweigerung zu viel weggenommen.*
-$kiloExponent = null;
+// ([D-538](../../docs/NewConcept/90-decision-log.md)). Der Exponent steht als Vorgabe da und muss es
+// bleiben — sonst hätte die Verweigerung zu viel weggenommen.*
+//
+// ⚠️ **Hier stand «`kilo` trägt seinen Exponenten 3»** ([D-613](../../docs/NewConcept/90-decision-log.md)).
+// *Das war zweimal sein Inhalt: der Name **und** die Zahl. Die Zusage, um die es geht, ist keine von
+// beiden, sondern: **die Vorgaben unter `Prefixes` überleben die Verweigerung.** Wie viele es sind
+// und welche Zahl darin steht, entscheidet er.*
+$mitVorgabe = 0;
 
-if ($exponent !== null) {
-    $kiloId = (int) $wpdb->get_var(
-        'SELECT id FROM ' . Schema::table('nodes') . " WHERE name = 'kilo' LIMIT 1"
-    );
+if ($exponent !== null && ($eltern = $nodes->find($exponent->fromId)) !== null) {
+    $kinder = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
+        $wpdb->esc_like($eltern->path . '.') . '%'
+    )));
 
-    foreach ($records->ofNode($kiloId) as $satz) {
-        if ($satz->kind !== RecordKind::Default) {
-            continue;
-        }
+    foreach ($kinder as $kindId) {
+        foreach ($records->ofNode($kindId) as $satz) {
+            if ($satz->kind !== RecordKind::Default) {
+                continue;
+            }
 
-        foreach ($records->valuesOf($satz->id) as $wert) {
-            if ($wert->path === (string) $exponent->id) {
-                $kiloExponent = $wert->value->int;
+            foreach ($records->valuesOf($satz->id) as $wert) {
+                if ($wert->path === (string) $exponent->id && $wert->value->int !== null) {
+                    ++$mitVorgabe;
+                }
             }
         }
     }
 }
 
-check('«kilo» traegt seinen Exponenten 3 als Vorgabe', $kiloExponent === 3, (string) ($kiloExponent ?? 'nichts'));
+check('die Exponenten stehen als Vorgabe da', $mitVorgabe > 0, (string) $mitVorgabe);
 
 echo "\n== Die Vorschau zeigt keine Einstellungen ==\n";
 
@@ -224,18 +273,18 @@ $rendering = new Rendering(
     new ModelValues($records, $edges, $nodes, $framework)
 );
 
-foreach (['Passiv', 'Dimension', 'Integer'] as $name) {
-    $id = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
-        $name
-    ));
+// ⚠️ **Drei gebaute Knoten statt `Passiv`, `Dimension`, `Integer`**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). *Was die Zusage braucht, ist ein Knoten, der
+// die Einstellungskanten der Wurzel **erbt** — und das tut jeder, der im Modell hängt. Seine drei
+// waren nur zufällig zur Hand, und zwei von ihnen sind sein Inhalt.*
+$vorschauKnoten = [
+    $geruest->feldMit('Vorschau eins', 'a', '1')['von'],
+    $geruest->feldMit('Vorschau zwei', 'b', '1')['von'],
+    $geruest->feldMit('Vorschau drei', 'c', '1')['von'],
+];
 
-    if ($id === 0) {
-        check("«{$name}» steht im Modell", false);
-
-        continue;
-    }
-
+foreach ($vorschauKnoten as $id) {
+    $name   = '#' . $id;
     $knoten = $nodes->byId($id);
     $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
     $sicht  = $rendering->previewVisibilityFor($kanten, $rendering->settingsForUseSites($kanten));
@@ -289,6 +338,8 @@ echo "\n== Woher die Auskunft kommt ==\n";
         RelationKind::Setting->isComposition()
     );
 }
+
+$geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
