@@ -45,8 +45,14 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FieldType;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
+use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
 
@@ -76,11 +82,22 @@ $relationsTable = Schema::table('relations');
 
 echo "\n== 1. Der Ast ist auffindbar ==\n";
 
-$branch = $wpdb->get_row(
-    "SELECT id, path FROM {$nodesNamed} WHERE name = 'Settings' AND path NOT LIKE '%.%.%'"
-);
+// ⚠️ *Der Ast wird ueber seine **Rolle** geholt und nicht ueber den Namen `Settings`
+// ([D-613](../../docs/NewConcept/90-decision-log.md): «Kein Waechter sucht einen Knoten ueber seinen
+// Namen»). **Die Zusage ist dieselbe geblieben** — der Ast steht direkt unter der Wurzel und traegt
+// Knoten —, nur die Adresse ist die, die der Kode ohnehin benutzt.*
+$astKnoten = (new SeededFrameworkNodes(
+    new WpdbNodeRepository(),
+    new WpdbRelationRepository(),
+    new WpdbChangelog(new SystemClock())
+))->rootOf(Branch::Settings);
 
-check('die Astwurzel `Settings` steht direkt unter der Wurzel', $branch !== null);
+$branch = $wpdb->get_row($wpdb->prepare(
+    "SELECT id, path FROM {$nodesNamed} WHERE id = %d AND path NOT LIKE '%%.%%.%%'",
+    $astKnoten->id
+));
+
+check('die Astwurzel des Einstellungsastes steht direkt unter der Wurzel', $branch !== null);
 
 if ($branch === null) {
     echo "\n$ok ok, $bad fehlgeschlagen\n";

@@ -132,10 +132,15 @@ check('it says where the values came from', str_contains($band, 'Filled from'));
 //
 // ⚠️ *Der Knoten wird jetzt über seinen **Ast** gesucht und nicht über einen Namen: ein Name ist
 // Modellinhalt und darf sich ändern, ein Ast ist Gerüst.*
-$dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT id FROM {$prefix}nodes_named WHERE name = %s LIMIT 1",
-    'Data Types'
-));
+//
+// ⚠️ *Und der Ast selbst wird seit [D-613](../../docs/NewConcept/90-decision-log.md) ueber seine
+// **Rolle** geholt statt ueber den Namen `Data Types` — der Satz oben stimmte in der Absicht und
+// nicht im Kode: gesucht wurde weiterhin ein Name.*
+$dataTypeRoot = (new \Taxmod\WordPress\Persistence\SeededFrameworkNodes(
+    new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+    new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+    new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock())
+))->rootOf(\Taxmod\Core\Model\Branch::DataTypes)->id;
 
 // ⚠️ *Aus der Spalte statt aus der Kante (TASK-018, [D-581](../../NewConcept/90-decision-log.md)).*
 $dataType = $dataTypeRoot === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
