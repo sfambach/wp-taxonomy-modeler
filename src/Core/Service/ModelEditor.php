@@ -7,6 +7,7 @@ use Taxmod\Core\Exception\ImpossibleMove;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\FieldType;
@@ -588,9 +589,11 @@ final class ModelEditor
             return;
         }
 
-        foreach ($this->labels->forOwners([$fromNodeId]) as $one) {
+        // ⚠️ *Beide Seiten sind Knoten — eine Kopie eines Knotens (Fassung 31, `INF-035`).*
+        foreach ($this->labels->forOwners([$fromNodeId], IdentitySpace::Node) as $one) {
             $this->labels->put(new Label(
                 $toNodeId,
+                IdentitySpace::Node,
                 $this->remapPath($one->path, $relationMap),
                 $one->roleId,
                 $one->number,
@@ -782,7 +785,12 @@ final class ModelEditor
 
         // ⚠️ **Order matters**: what points at something goes before what it points at, or a foreign
         // key refuses. *Settings and labels hang off both nodes and relations, so they go first of all.*
-        $owners = [...$ids, ...$relations];
+        //
+        // ⚠️ **Hier stand eine gemischte Liste `[...$ids, ...$relations]`, und sie war die Falle aus
+        // `INF-035`** (Fassung 31, [D-597](../../../docs/NewConcept/90-decision-log.md)): *Knoten- und
+        // Kantennummern in einem Topf, an eine Ablage gereicht, die den Raum nicht kannte. **Eine
+        // gelöschte Kante hätte damit die Beschriftungen eines gleichnummerigen, gesunden Knotens
+        // mitgenommen.** Jetzt sind es zwei Fragen, jede mit ihrem Raum.*
 
         // ⚠️ **Die Daten gehen mit, und das fehlte — [C102](../../../docs/NewConcept/10-domain-core.md)
         // durchgesetzt.** *Der Docblock über dieser Methode behauptete es seit dem Anfang («und es nimmt
@@ -802,7 +810,8 @@ final class ModelEditor
         $data = $this->records?->forgetNodes($ids) ?? ['records' => 0, 'values' => 0];
 
         $gone = [
-            'labels'   => $this->labels?->forgetOwners($owners) ?? 0,
+            'labels'   => ($this->labels?->forgetOwners($ids, IdentitySpace::Node) ?? 0)
+                + ($this->labels?->forgetOwners($relations, IdentitySpace::Relation) ?? 0),
             'records'  => $data['records'],
             'values'   => $data['values'],
             'relations'    => count($relations),

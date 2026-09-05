@@ -17,9 +17,12 @@
  * anderer Weg still danebenher schreibt — genau der Zustand, den sie ersetzt.*
  *
  * ⚠️ **Die Ausnahmen stehen namentlich hier und sind Befunde, keine Bequemlichkeit** (`PR-4`):
- * *`labels` traegt gar keine Versionsspalte, und ein Sammelakt wie das Leeren des Papierkorbs
- * erzeugt keine einzelne Zeile. Kommt ein anderes Verb ohne Version dazu, wird diese Pruefung rot —
- * das ist der Sinn der Liste.*
+ * *ein Sammelakt wie das Leeren des Papierkorbs erzeugt keine einzelne Zeile. Kommt ein anderes Verb
+ * ohne Version dazu, wird diese Pruefung rot — das ist der Sinn der Liste.*
+ *
+ * ⚠️ **Die drei Label-Verben standen hier bis zum 2026-09-05 und sind fort** (Schemafassung 31,
+ * `INF-035`): *`labels` trug als einzige Tabelle keine Versionsspalte. **Sie trägt jetzt eine**, und
+ * damit gilt D-634 auch fuer Beschriftungen.*
  */
 
 define('WP_ADMIN', true);
@@ -38,10 +41,16 @@ use Taxmod\Core\Model\TypedValue;
  *
  * @var array<string,string>
  */
+// ⚠️ **Drei Ausnahmen sind am 2026-09-05 gestrichen, und das ist eine Verschaerfung**
+// (Schemafassung 31, D-634): *`label set`, `label cleared` und `labels removed` standen hier mit dem
+// Grund «labels hat keine Versionsspalte». **Die Spalte gibt es jetzt**, also gibt es den Grund nicht
+// mehr — und eine Ausnahme, deren Begruendung weggefallen ist, ist eine Luecke.*
+//
+// ⚠️ *`label cleared` ist der eine Fall, der weiterhin ohne Version im Buch stehen **darf**: ein
+// Loeschen ohne vorhandene Zeile hat keine Nummer zu nennen. Er steht trotzdem nicht mehr in dieser
+// Liste, weil `Labels::forget()` die Version der Zeile liest, **bevor** sie verschwindet — es gibt
+// also im Normalfall eine. Kaeme je eine ohne, wird diese Pruefung rot, und das ist richtig so.
 const OHNE_VERSION = [
-    'label set'      => 'labels hat keine Versionsspalte',
-    'label cleared'  => 'labels hat keine Versionsspalte',
-    'labels removed' => 'labels hat keine Versionsspalte',
     'trash cleared'  => 'ein Sammelakt ueber hunderte Zeilen, keine einzelne',
 ];
 

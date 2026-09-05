@@ -143,7 +143,7 @@ $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $typeNodes = new SeededTypeNodes($nodes, $framework);
-$labels    = new Labels(new WpdbLabelRepository(), $framework, $log, $nodes);
+$labels    = new Labels(new WpdbLabelRepository(), $framework, $log);
 
 // ⚠️ *Dieselbe Reihenfolge wie in `Plugin::activate()` — `unitScaffold` braucht, was `baseScaffold`
 // legt, und `compositionScaffold` braucht beide.*

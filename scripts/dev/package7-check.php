@@ -32,6 +32,7 @@ use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Exception\CannotWiden;
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -902,18 +903,29 @@ $scratchIds = $wpdb->get_col(
 // relation owners survived because their nodes had already gone in an earlier run, so no endpoint pointed
 // at them any more. *The raw delete below finds those relations by **name**, so the cleanup has to look
 // them up the same way, or it clears the settings of exactly the relations it can still see.*
-$ownersToClear = array_map('intval', $scratchIds);
+// ⚠️ **Zwei Listen statt einer, seit Fassung 31 (`INF-035`):** *hier standen Knoten- und
+// Kantennummern in **einem** Topf. Seit jede Tabelle ihren eigenen Id-Raum hat und ein Knoten keine
+// Vererbungskante mehr anlegt, treffen sich die Zähler — und der Aufräumlauf hätte die
+// Beschriftungen eines gesunden Knotens mitgenommen.*
+$knotenZuLeeren = array_map('intval', $scratchIds);
+$kantenZuLeeren = [];
 
-foreach ($relations->relationsTouching($ownersToClear) as $relation) {
-    $ownersToClear[] = $relation->id;
+foreach ($relations->relationsTouching($knotenZuLeeren) as $relation) {
+    $kantenZuLeeren[] = $relation->id;
 }
 
 foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"') as $named) {
-    $ownersToClear[] = (int) $named;
+    $kantenZuLeeren[] = (int) $named;
 }
 
-if ($ownersToClear !== []) {
-    (new WpdbLabelRepository())->forgetOwners($ownersToClear);
+$labelAblage = new WpdbLabelRepository();
+
+if ($knotenZuLeeren !== []) {
+    $labelAblage->forgetOwners($knotenZuLeeren, IdentitySpace::Node);
+}
+
+if ($kantenZuLeeren !== []) {
+    $labelAblage->forgetOwners($kantenZuLeeren, IdentitySpace::Relation);
 }
 
 // WICHTIG: Auch die Datensaetze, und das ist derselbe Fehler wie bei den Beschriftungen eine Stufe

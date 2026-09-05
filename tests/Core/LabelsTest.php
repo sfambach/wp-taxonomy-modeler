@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
@@ -27,8 +28,8 @@ final class LabelsTest extends TestCase
         $one = Node::create(60, 'Resistor', 'Root');
         $two = Node::create(61, 'Capacitor', 'Root');
 
-        $this->stored->put(new Label($one->id, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Widerstand'));
-        $this->stored->put(new Label($two->id, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Kondensator'));
+        $this->stored->put(new Label($one->id, IdentitySpace::Node, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Widerstand'));
+        $this->stored->put(new Label($two->id, IdentitySpace::Node, '', self::ROLE_IDS['form'], Label::BASE_NUMBER, '', 'Kondensator'));
 
         $found = $this->labels->forNodes([$one, $two]);
 
@@ -79,7 +80,7 @@ final class LabelsTest extends TestCase
 
     private function write(string $role, string $text, string $locale = '', string $number = Label::BASE_NUMBER): void
     {
-        $this->stored->put(new Label($this->node->id, '', self::ROLE_IDS[$role], $number, $locale, $text));
+        $this->stored->put(new Label($this->node->id, IdentitySpace::Node, '', self::ROLE_IDS[$role], $number, $locale, $text));
     }
 
     #[Test]
@@ -178,7 +179,7 @@ final class LabelsTest extends TestCase
     public function a_label_on_a_different_path_is_not_this_ones(): void
     {
         // D-158: `path` reaches one validator among several inside the same owner.
-        $this->stored->put(new Label($this->node->id, '10.20', self::ROLE_IDS['form'], 'one', '', 'somewhere inside'));
+        $this->stored->put(new Label($this->node->id, IdentitySpace::Node, '10.20', self::ROLE_IDS['form'], 'one', '', 'somewhere inside'));
 
         self::assertSame('Widerstandswert', $this->labels->of($this->node, SeededRole::Form));
         self::assertSame('somewhere inside', $this->labels->of($this->node, SeededRole::Form, '', 'one', '10.20'));
@@ -201,11 +202,68 @@ final class LabelsTest extends TestCase
         // called something else from the type it points at.
         $relationId = 7777;
 
-        $this->stored->put(new Label($relationId, '', self::ROLE_IDS['form'], 'one', '', 'Tolerance'));
+        $this->stored->put(new Label($relationId, IdentitySpace::Relation, '', self::ROLE_IDS['form'], 'one', '', 'Tolerance'));
 
-        $found = $this->labels->storedFor($relationId);
+        $found = $this->labels->storedFor($relationId, IdentitySpace::Relation);
 
         self::assertCount(1, $found);
         self::assertSame('Tolerance', $found[0]->text);
+    }
+
+    /**
+     * ⚠️ **Der gemessene Fehler von `INF-035`, als Prüfung.** *Am 2026-09-05 bekam eine frisch
+     * angelegte Kante **sechs** Beschriftungen statt einer: sie trug dieselbe Nummer wie ein zwei
+     * Zeilen zuvor entstandener Knoten. Seit [D-581](../../../docs/NewConcept/90-decision-log.md) ein
+     * Knoten keine Vererbungskante mehr anlegt, laufen die beiden Id-Zähler verschieden schnell — und
+     * dann treffen sie sich.*
+     *
+     * ⚠️ *Die Abhilfe ist die von [D-597](../../../docs/NewConcept/90-decision-log.md): eine zweite
+     * Spalte, die den Raum nennt.*
+     */
+    #[Test]
+    public function a_relation_and_a_node_may_share_a_number_without_sharing_a_label(): void
+    {
+        $gleicheNummer = 8888;
+
+        $this->stored->put(new Label($gleicheNummer, IdentitySpace::Node, '', self::ROLE_IDS['form'], 'one', '', 'der Knoten'));
+        $this->stored->put(new Label($gleicheNummer, IdentitySpace::Relation, '', self::ROLE_IDS['form'], 'one', '', 'die Kante'));
+
+        $amKnoten = $this->labels->storedFor($gleicheNummer, IdentitySpace::Node);
+        $anDerKante = $this->labels->storedFor($gleicheNummer, IdentitySpace::Relation);
+
+        self::assertCount(1, $amKnoten);
+        self::assertCount(1, $anDerKante);
+        self::assertSame('der Knoten', $amKnoten[0]->text);
+        self::assertSame('die Kante', $anDerKante[0]->text);
+    }
+
+    /**
+     * ⚠️ **Die Version ist die Zeilennummer** ([D-634](../../../docs/NewConcept/90-decision-log.md)).
+     * *`labels` war bis Fassung 31 die einzige Tabelle ohne sie, und {@see Labels} musste dem Journal
+     * `null` hinschreiben. **Die Ablage zählt sie, nicht der Aufrufer** — sonst könnte eine Maske sie
+     * setzen und damit das Sperren aushebeln.*
+     */
+    #[Test]
+    public function writing_a_label_a_second_time_raises_its_version(): void
+    {
+        $bau = fn (string $text): Label => new Label(
+            $this->node->id,
+            IdentitySpace::Node,
+            '',
+            self::ROLE_IDS['form'],
+            'one',
+            'de_DE',
+            $text
+        );
+
+        $this->labels->put($bau('erst so'));
+        self::assertSame(1, $this->labels->storedFor($this->node->id, IdentitySpace::Node)[0]->version);
+
+        $this->labels->put($bau('dann so'));
+        self::assertSame(2, $this->labels->storedFor($this->node->id, IdentitySpace::Node)[0]->version);
+
+        // ⚠️ *Ein Speichern, das nichts ändert, hebt die Version nicht (D-282, D-488).*
+        $this->labels->put($bau('dann so'));
+        self::assertSame(2, $this->labels->storedFor($this->node->id, IdentitySpace::Node)[0]->version);
     }
 }

@@ -314,7 +314,27 @@ final class Schema
      * zu lassen hiesse, 411 Entstehungszeiten wegzuwerfen, für die das Log keine hat. Steht als
      * `INF-039` im Eingang.*
      */
-    public const VERSION = 30;
+    /**
+     * Fassung 31: **`labels` nennt den Raum ihres Eigentümers und bekommt eine Version**
+     * (`INF-035`, [D-164](../../../docs/NewConcept/90-decision-log.md),
+     * [D-597](../../../docs/NewConcept/90-decision-log.md), [D-634](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Zwei Befunde in einer Fassung, weil beide dieselbe Tabelle betreffen und beide gemessen
+     * sind.** *`owner_kind`: eine frische Kante bekam am 2026-09-05 die fünf Beschriftungen eines
+     * gleichnummerigen Knotens zurück. `version`: `labels` war die **einzige** Tabelle ohne
+     * Zeilennummer, und seit D-634 ist die Version beim Melden ein Pflichtwert — {@see \Taxmod\Core\Service\Labels}
+     * musste dem Journal `null` hinschreiben.*
+     *
+     * ⚠️ **Keine Wanderung von Zeilen, nur das Füllen einer neuen Spalte.** *Gemessen vor dem Schritt:
+     * 47 Beschriftungen an 40 Eigentümern, **40 von 40 Knoten**, keiner eine Kante, keine Nummer
+     * zugleich beides. Der Schritt schreibt trotzdem beide Richtungen, weil eine Wanderung, die nur
+     * den gemessenen Fall kann, auf der nächsten Installation falsch ist.*
+     *
+     * ⚠️ *Was hier ausdrücklich **nicht** geschieht: die Teilung in `labels` und `label_texts` und der
+     * Umzug von `name` ([D-580](../../../docs/NewConcept/90-decision-log.md), TASK-019). Die beiden
+     * sind ein Stück und stehen weiter offen — siehe `INF-040` im Eingang.*
+     */
+    public const VERSION = 31;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -510,9 +530,158 @@ final class Schema
         // entfernt und eine Bedingung, die auf sie zeigte, im Weg stünde (TASK-018).
         self::moveInheritanceOntoTheNode();
 
+        // ⚠️ **Nach `dbDelta`, weil die Spalte dastehen muss, bevor etwas hineingeschrieben wird** —
+        // und nach {@see self::moveInheritanceOntoTheNode()}, weil erst danach feststeht, welche
+        // Kanten es überhaupt noch gibt (Fassung 31, `INF-035`).
+        self::nameTheLabelSpace();
+
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
         self::constrainRelationsToNodes();
+    }
+
+    /**
+     * Fassung 31: **`labels.owner_id` nennt ihren Raum** — und die Zeile bekommt eine Version.
+     *
+     * ⚠️ **Der Anlass ist gemessen und nicht hergeleitet** (`INF-035`, 2026-09-05): *`package5-check`
+     * fragte die Beschriftungen einer frisch angelegten **Kante** ab und bekam **sechs** Zeilen statt
+     * einer — die Kante trug dieselbe Nummer wie ein zwei Zeilen zuvor entstandener **Knoten**, der
+     * schon fünf Beschriftungen hatte.*
+     *
+     * ⚠️ **Die Lücke ist alt, TASK-018 hat sie nur ausgelöst.** *Seit TASK-004 hat jede Tabelle ihren
+     * eigenen Id-Raum, und beide begannen bei derselben Zahl. Solange ein neuer Knoten **immer** auch
+     * eine Vererbungskante anlegte, liefen die zwei Zähler im Gleichschritt; seit
+     * [D-581](../../../docs/NewConcept/90-decision-log.md) ein Knoten keine Kante mehr anlegt, laufen
+     * sie verschieden schnell — und dann treffen sie sich.*
+     *
+     * ⚠️ **Das Muster ist vorgegeben und wird nicht neu erfunden** ([D-164](../../../docs/NewConcept/90-decision-log.md),
+     * [D-597](../../../docs/NewConcept/90-decision-log.md), [`package.md` §6](../../../docs/pakete/modelltabellen/package.md)):
+     * *«Kann eine Spalte auf mehr als eine Tabelle zeigen, nennt eine zweite Spalte den Raum» —
+     * `changelog.owner_kind`, `relation_records.value_ref_kind`, und jetzt `labels.owner_kind`.*
+     *
+     * ⚠️ **Umkehrbar ohne Schattenzeilen, und das ist keine Nachlässigkeit** (`PR-9`): *dieser Schritt
+     * **löscht nichts und schreibt keinen Text um**. Er füllt eine neue Spalte, deren voriger Wert
+     * bekanntlich leer war; ein Schatten hielte davon nichts fest, was nicht schon feststünde. **Was
+     * er sich nicht zutraut, lässt er leer**: eine Nummer, die zugleich Knoten und Kante ist, und eine,
+     * die keines von beidem ist, bleiben ohne Raum stehen und werden gezählt statt geraten (`PR-4`).*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine leere Spalte mehr und nur noch den
+     * fertigen Schlüssel.*
+     */
+    private static function nameTheLabelSpace(): void
+    {
+        global $wpdb;
+
+        $labels    = self::table('labels');
+        $nodes     = self::table('nodes');
+        $relations = self::table('relations');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $labels)) !== $labels) {
+            return;
+        }
+
+        if (! self::hasColumn($labels, 'owner_kind')) {
+            return;
+        }
+
+        $vorher = self::countedLabels($labels);
+
+        $wpdb->query(
+            "UPDATE {$labels} l
+             SET l.owner_kind = 'node'
+             WHERE l.owner_kind = ''
+               AND EXISTS (SELECT 1 FROM {$nodes} n WHERE n.id = l.owner_id)
+               AND NOT EXISTS (SELECT 1 FROM {$relations} r WHERE r.id = l.owner_id)"
+        );
+
+        $wpdb->query(
+            "UPDATE {$labels} l
+             SET l.owner_kind = 'relation'
+             WHERE l.owner_kind = ''
+               AND EXISTS (SELECT 1 FROM {$relations} r WHERE r.id = l.owner_id)
+               AND NOT EXISTS (SELECT 1 FROM {$nodes} n WHERE n.id = l.owner_id)"
+        );
+
+        $nachher = self::countedLabels($labels);
+
+        // ⚠️ **Zahl und Text sind die Zusage: dieselbe Menge Beschriftungen, jede mit demselben Text
+        // an derselben Stelle** (`PR-9`). *Verglichen wird über eine Prüfsumme aus Eigentümer, Pfad,
+        // Rolle, Numerus, Locale und Text — an gezählten Zahlen und nicht an Namen.*
+        if ($vorher['rows'] !== $nachher['rows'] || $vorher['texts'] !== $nachher['texts']) {
+            throw new \RuntimeException(
+                'Fassung 31: die Beschriftungen nach dem Benennen des Raums sind nicht die von vorher. '
+                . 'Vorher ' . wp_json_encode($vorher) . ', nachher ' . wp_json_encode($nachher) . '. '
+                . 'Es wurde nichts geloescht; die Fassungsnummer bleibt stehen.'
+            );
+        }
+
+        self::widenLabelUniqueKey($labels);
+
+        // ⚠️ *Die Zahlen bleiben stehen, damit `label-space-check` sie **vergleichen** kann, statt sie
+        // nachzurechnen — dieselbe Vorsorge wie bei TASK-018.*
+        update_option('taxmod_labelspace_shape', $nachher, false);
+    }
+
+    /**
+     * Die Beschriftungen, gezählt: wie viele Zeilen, wie viele je Raum, und eine Prüfsumme über
+     * Stelle und Text.
+     *
+     * @return array{rows: int, node: int, relation: int, homeless: int, texts: string}
+     */
+    private static function countedLabels(string $labels): array
+    {
+        global $wpdb;
+
+        return [
+            'rows'     => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels}"),
+            'node'     => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = 'node'"),
+            'relation' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = 'relation'"),
+            'homeless' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labels} WHERE owner_kind = ''"),
+            // ⚠️ *`owner_kind` steht bewusst **nicht** in der Prüfsumme: sie soll gleich bleiben,
+            // während genau diese Spalte sich füllt.*
+            'texts'    => (string) $wpdb->get_var(
+                "SELECT COALESCE(MD5(GROUP_CONCAT(x.z ORDER BY x.z SEPARATOR '|')), '')
+                 FROM (SELECT CONCAT_WS(':', owner_id, path, role_id, number, locale, text) z
+                       FROM {$labels}) x"
+            ),
+        ];
+    }
+
+    /**
+     * Der eindeutige Schlüssel nimmt den Raum auf — sonst schlössen sich Knoten 5 und Kante 5 aus.
+     *
+     * ⚠️ **Nach `dbDelta` und von Hand, weil `dbDelta` das nicht kann:** *es vergleicht Schlüssel über
+     * ihren **Namen**; einen bestehenden `one_text` mit fünf Spalten ersetzt es nicht durch einen mit
+     * sechs, sondern versucht, ihn ein zweites Mal anzulegen — und **`$wpdb` sagt darüber nichts**.*
+     *
+     * ⚠️ *Der neue Schlüssel geht hinein, bevor der alte herauskommt — dieselbe Reihenfolge wie bei
+     * `widenSettingUniqueKey()`, und aus demselben Grund: schlägt das Anlegen fehl, bleibt der alte
+     * stehen und die Tabelle ist nie ohne ihre Zusage.*
+     */
+    private static function widenLabelUniqueKey(string $labels): void
+    {
+        global $wpdb;
+
+        $spalten = $wpdb->get_col($wpdb->prepare(
+            'SELECT COLUMN_NAME FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s
+             ORDER BY SEQ_IN_INDEX',
+            $labels,
+            'one_text'
+        ));
+
+        if ($spalten === [] || in_array('owner_kind', $spalten, true)) {
+            return;
+        }
+
+        $wpdb->query("ALTER TABLE {$labels} ADD UNIQUE KEY one_text_kind (owner_id,owner_kind,path,role_id,number,locale)");
+
+        if ($wpdb->last_error !== '') {
+            return;
+        }
+
+        $wpdb->query("ALTER TABLE {$labels} DROP INDEX one_text");
+        $wpdb->query("ALTER TABLE {$labels} RENAME INDEX one_text_kind TO one_text");
     }
 
     /**
@@ -1926,16 +2095,27 @@ final class Schema
             // `relation_records`. Die Adressfrage, die `settings.path` beantwortete, beantwortet dort der
             // Pfad.*
 
+            // ⚠️ **`owner_kind` nennt den Raum, aus dem `owner_id` stammt** (Fassung 31, `INF-035`,
+            // D-164, D-597). *Ein Label hängt an einem Knoten **oder** an einer Kante (D-410). Solange
+            // ein neuer Knoten immer auch eine Vererbungskante anlegte, liefen die beiden Zähler im
+            // Gleichschritt; seit D-581 laufen sie verschieden schnell und treffen sich. **Gemessen am
+            // 2026-09-05**: eine frische Kante bekam die fünf Beschriftungen eines gleichnummerigen
+            // Knotens zurück.*
+            //
+            // ⚠️ **`version` ist die Zeilennummer** (D-634). *`labels` war die **einzige** Tabelle ohne
+            // sie, und der Melder musste dem Journal `null` hinschreiben.*
             "CREATE TABLE {$t('labels')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                version int(10) unsigned NOT NULL DEFAULT 1,
                 owner_id bigint(20) unsigned NOT NULL,
+                owner_kind varchar(20) NOT NULL DEFAULT '',
                 path varchar(255) NOT NULL DEFAULT '',
                 role_id bigint(20) unsigned NOT NULL,
                 number varchar(20) NOT NULL DEFAULT '',
                 locale varchar(20) NOT NULL DEFAULT '',
                 text mediumtext NOT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY one_text (owner_id,path,role_id,number,locale),
+                UNIQUE KEY one_text (owner_id,owner_kind,path,role_id,number,locale),
                 KEY role_id (role_id)
             ) {$charset};",
 

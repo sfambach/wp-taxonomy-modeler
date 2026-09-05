@@ -380,7 +380,8 @@ Spalte.
 |---|---|---|
 | `records.node_id` · `record_values.record_id` · `record_values.edge_id` | Knoten · Datensätze · Kanten | Name sagt es |
 | `changelog.owner_id` | vier Tabellen | `owner_kind` sagt es |
-| `labels.owner_id` · `role_id` | Knoten | Name sagt es **nicht** |
+| `labels.owner_id` | Knoten **oder** Kanten | **`owner_kind` sagt den Raum** (Fassung 31, gebaut) |
+| `labels.role_id` | Knoten | Name sagt es **nicht** |
 | **`settings.owner_id`** | **Kanten** | **derselbe Name, anderes Ziel als in `labels`** |
 | `record_values.value_ref` | Knoten 50 · Datensätze 93 | **`value_ref_kind` sagt den Raum** (TASK-005, gebaut) |
 

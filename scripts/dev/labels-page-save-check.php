@@ -42,6 +42,7 @@ require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
 wp_set_current_user(1);
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\SettingsRenderer;
@@ -143,7 +144,7 @@ $rolle  = $fw->roleId(SeededRole::Form);
 
 // ⚠️ *Ein Text, der schon dasteht — sonst wäre «unverändert» nicht prüfbar: ein leeres Feld gegen
 // eine leere Zeile ist derselbe Vergleich und beweist nichts.*
-$labels->put(new Label($knoten->id, '', $rolle, Label::BASE_NUMBER, '', '__lb Stückliste'));
+$labels->put(new Label($knoten->id, IdentitySpace::Node, '', $rolle, Label::BASE_NUMBER, '', '__lb Stückliste'));
 
 // ⚠️ **Das Formular der Seite, nicht das eines Blocks darin** ([D-517](../../docs/NewConcept/90-decision-log.md)).
 // *Bis zum 2026-08-29 stand hier `SettingsRenderer::formFor()`, und als der Einstellungsblock ging,
@@ -266,7 +267,7 @@ $say(
 );
 
 $gelesen = array_values(array_filter(
-    $labels->forOwners([$knoten->id]),
+    $labels->forOwners([$knoten->id], IdentitySpace::Node),
     static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
 ));
 
@@ -323,7 +324,7 @@ $dritte['taxmod_label']['form'] = '';
 $dritter = $abschicken($dritte);
 
 $danach = array_values(array_filter(
-    $labels->forOwners([$knoten->id]),
+    $labels->forOwners([$knoten->id], IdentitySpace::Node),
     static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
 ));
 
@@ -345,7 +346,7 @@ $vierte['taxmod_label']['form'] = '__lb Über den eigenen Knopf';
 $vierter = $abschicken($vierte);
 
 $ueber = array_values(array_filter(
-    $labels->forOwners([$knoten->id]),
+    $labels->forOwners([$knoten->id], IdentitySpace::Node),
     static fn (Label $l): bool => $l->roleId === $rolle && $l->locale === '' && $l->path === ''
 ));
 

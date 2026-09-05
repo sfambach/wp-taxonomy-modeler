@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotAFrozenState;
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -229,7 +230,7 @@ final class FrozenStateTest extends TestCase
             $nodes
         );
 
-        $labels->put(new Label($root->id, '4654', 733, 'one', 'de_DE', 'Ein Name mit Leerzeichen'));
+        $labels->put(new Label($root->id, IdentitySpace::Node, '4654', 733, 'one', 'de_DE', 'Ein Name mit Leerzeichen'));
 
         $entry = $changes->entries[0];
 

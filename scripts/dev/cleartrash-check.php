@@ -34,6 +34,7 @@ require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
@@ -119,7 +120,7 @@ if ($roleId === 0) {
     exit(1);
 }
 
-$labelRows->put(new Label($doomed->id, '', $roleId, '', 'de_DE', 'Weg damit'));
+$labelRows->put(new Label($doomed->id, IdentitySpace::Node, '', $roleId, '', 'de_DE', 'Weg damit'));
 
 // ⚠️ *Ein eigener Datensatz, damit die Zusage «its records went with it» etwas zu pruefen hat —
 // [C102](../../docs/NewConcept/10-domain-core.md): einen Datensatz ohne seinen Knoten darf es nicht

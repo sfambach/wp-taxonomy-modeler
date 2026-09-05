@@ -323,7 +323,7 @@ final class Plugin
             $this->frameworkNodes(),
             // ⚠️ *Mit Changelog und Knoten-Repository, damit eine Labelaenderung in der Geschichte
             // steht ([D-489]) und `owner_kind` nicht geraten wird.*
-            new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository()),
+            new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog()),
             $this->typeNodes()
         );
     }
@@ -458,7 +458,7 @@ final class Plugin
     {
         // ⚠️ *Dasselbe Exemplar des Changelogs wie ueberall ([D-470](../../docs/NewConcept/90-decision-log.md)),
         // damit eine Labelaenderung in derselben Aenderungsgruppe landet wie der Akt, der sie ausloeste.*
-        $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog(), new WpdbNodeRepository());
+        $labels   = new Labels(new WpdbLabelRepository(), $this->frameworkNodes(), $this->changelog());
 
         return new NodesScreen(
             $this->editor(),

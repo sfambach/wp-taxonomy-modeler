@@ -45,6 +45,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
@@ -99,7 +100,9 @@ $framework = new SeededFrameworkNodes($nodes, $relations, $changelog);
 $framework->seed();
 
 $editor   = new ModelEditor($nodes, $relations, $framework, $changelog);
-$labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog, $nodes);
+// ⚠️ *Ohne Knotenspeicher: `Labels` hat ihn benutzt, um `node` von `relation` zu **raten**, und die
+// Zeile nennt ihren Raum seit Fassung 31 selbst (`INF-035`, D-597).*
+$labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog);
 
 $journal = Schema::table('changelog');
 
@@ -126,7 +129,7 @@ $role = $framework->roleId(SeededRole::Form);
 if ($role === 0) {
     echo "  --   no seeded label roles here; the label half is skipped\n";
 } else {
-    $labels->put(new Label($thing->id, (string) $first->id, $role, Label::BASE_NUMBER, '', '__ja Ein Text mit Leerzeichen'));
+    $labels->put(new Label($thing->id, IdentitySpace::Node, (string) $first->id, $role, Label::BASE_NUMBER, '', '__ja Ein Text mit Leerzeichen'));
 
     $labelRow = $wpdb->get_row($wpdb->prepare(
         "SELECT what, after_state FROM {$journal} WHERE id > %d AND what LIKE %s ORDER BY id DESC LIMIT 1",

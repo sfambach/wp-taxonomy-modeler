@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\Node;
@@ -606,6 +607,7 @@ final class RenderingTest extends TestCase
 
         $this->labelStore->put(new Label(
             $kilo->id,
+            IdentitySpace::Node,
             '',
             self::ROLE_IDS['symbol'],
             Label::BASE_NUMBER,

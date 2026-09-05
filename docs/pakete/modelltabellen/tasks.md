@@ -666,6 +666,23 @@ wird an vielen Stellen gelesen. Reihenfolge `PR-12` — Wächter, Leser, Daten.
 
 ⚠️ *Offen davor: sind die vier Rollen Spalten in `label_texts` oder Zeilen mit `role_id`?*
 
+⚠️ **2026-09-05 angelaufen und **nicht** gebaut — der Grund steht gezählt in `INF-040`.** *Die Teilung
+und der Umzug des Namens sind ein Stück: die Umkehrung des Verweises allein erzeugt 194 leere
+Beschriftungszeilen, der Umzug allein hat keine Tabelle. **Gemessen, was daran hängt: 137 Knoten- und
+57 Kantennamen, 166 SQL-Stellen in 60 der 88 Prüfläufe, 20 685 + 25 124 Namen in den
+Schattentabellen.** Dazu drei unentschiedene Fragen — die von D-580 selbst genannte (Rollen als
+Spalten oder als Zeilen), `symbol` als Spalte gegen [D-262](../../NewConcept/90-decision-log.md)s
+«ein Standard, keine Tatsache», und der Wegfall der neutralen Zeile, der die Standardsprache in den
+Kern reichen müsste (`CD-1`).*
+
+⚠️ **Was aus dieser Aufgabe **vorgezogen und gebaut** ist: die beiden Befunde, die sie vorausschickte
+— Schemafassung 31.** *`labels.owner_kind` nennt den Raum ihres Eigentümers
+([D-164](../../NewConcept/90-decision-log.md), [D-597](../../NewConcept/90-decision-log.md),
+`INF-035`), und `labels.version` gibt es — sie war die einzige Tabelle ohne Zeilennummer, und
+[D-634](../../NewConcept/90-decision-log.md) macht die Version beim Melden zum Pflichtwert.
+**47 Beschriftungen vorher, 47 nachher, dieselbe Prüfsumme über Text und Stelle, 47 mal `node`, keine
+ohne Raum.** Neu am Netz: `label-space-check.php`. Steht im Eingang unter `INF-035`.*
+
 ```text
 [?] hide — vertagt bis zum Settings-Umbau
 ```

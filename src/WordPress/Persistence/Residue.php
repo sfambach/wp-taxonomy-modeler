@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -173,13 +174,53 @@ final class Residue
             return 0;
         }
 
-        $gone = $this->labels->forgetOwners([$ownerId]);
+        // ⚠️ *Vor dem Löschen gelesen — danach wäre die Version nicht mehr feststellbar. Seit Fassung
+        // 31 hat eine Beschriftung eine ([D-634](../../../docs/NewConcept/90-decision-log.md)); hier
+        // stand vorher `null` mit dem Befund «`labels` hat keine Versionsspalte».*
+        $version = $this->hoechsteVersion('labels', 'owner_id = %d', [$ownerId]);
 
-        // ⚠️ *Ohne Version, und das ist derselbe Befund wie in {@see \Taxmod\Core\Service\Labels}:
-        // **`labels` hat keine Versionsspalte.** Erfunden wird hier nichts (`PR-4`).*
-        $this->record($ownerId, self::KIND_GONE, 'labels removed', $gone, null);
+        // ⚠️ **Jeder Raum für sich, und nur der verwaiste** (Fassung 31, `INF-035`,
+        // [D-597](../../../docs/NewConcept/90-decision-log.md)): *eine Nummer kann im einen Raum
+        // verwaist und im anderen lebendig sein. **Beide Seiten pauschal wegzuräumen wäre genau der
+        // Schaden, gegen den `owner_kind` gebaut ist** — die Beschriftungen eines gesunden Knotens,
+        // gelöscht, weil eine gleichnummerige Kante fort ist.*
+        $gone = 0;
+
+        foreach ($this->verwaisteRaeume($ownerId) as $raum) {
+            $gone += $this->labels->forgetOwners([$ownerId], $raum);
+        }
+
+        $this->record($ownerId, self::KIND_GONE, 'labels removed', $gone, $version);
 
         return $gone;
+    }
+
+    /**
+     * Die Räume, in denen diese Nummer keinen Eigentümer mehr hat.
+     *
+     * ⚠️ *Zwei kleine Abfragen statt einer Vermutung (`INF-035`). Sie laufen einmal je Aufräumklick
+     * und nicht in einer Schleife — das ist nicht das N+1, das `CD-7` verbietet.*
+     *
+     * @return list<IdentitySpace>
+     */
+    private function verwaisteRaeume(int $ownerId): array
+    {
+        global $wpdb;
+
+        $raeume = [];
+
+        foreach ([[IdentitySpace::Node, 'nodes'], [IdentitySpace::Relation, 'relations']] as [$raum, $tabelle]) {
+            $lebt = (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM ' . Schema::table($tabelle) . ' t WHERE t.id = %d',
+                $ownerId
+            ));
+
+            if ($lebt === 0) {
+                $raeume[] = $raum;
+            }
+        }
+
+        return $raeume;
     }
 
     /** Remove the values of an relation that no longer exists, and say how many went. */
@@ -239,7 +280,9 @@ final class Residue
         }
 
         $gone = [
-            'labels' => $this->labels->forgetOwners([$id]),
+            // ⚠️ *Ein Knoten wird entfernt, also gehen die Beschriftungen **des Knotens** — nicht die
+            // einer gleichnummerigen Kante (Fassung 31, `INF-035`).*
+            'labels' => $this->labels->forgetOwners([$id], IdentitySpace::Node),
         ];
 
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
@@ -351,14 +394,28 @@ final class Residue
     {
         global $wpdb;
 
+        // ⚠️ **Die Zeile nennt ihren Raum, also wird in genau diesem Raum nachgesehen** (Fassung 31,
+        // `INF-035`, [D-597](../../../docs/NewConcept/90-decision-log.md)). *Hier stand «weder ein
+        // Knoten noch eine Kante trägt diese Nummer» — die einzige Frage, die ohne Raumangabe möglich
+        // war, und sie ist **zu nachsichtig**: die Beschriftung einer gelöschten Kante blieb
+        // unentdeckt liegen, solange irgendein Knoten zufällig dieselbe Nummer trug. **Seit
+        // [D-581](../../../docs/NewConcept/90-decision-log.md) ist «zufällig dieselbe Nummer» der
+        // Normalfall.***
+        //
+        // ⚠️ *Eine Zeile ohne Raum — es gibt heute keine — bliebe hier unsichtbar; dafür ist
+        // `label-space-check` da, der genau sie zählt.*
         $rows = $this->rows($wpdb->prepare(
             'SELECT t.owner_id AS owner, COUNT(*) AS rows_held FROM ' . Schema::table($table) . ' t
              WHERE t.owner_id <> %d
-               AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = t.owner_id)
-               AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = t.owner_id)
+               AND ((t.owner_kind = %s
+                     AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = t.owner_id))
+                 OR (t.owner_kind = %s
+                     AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = t.owner_id)))
              GROUP BY t.owner_id
              ORDER BY t.owner_id ASC',
-            $this->framework->installationId()
+            $this->framework->installationId(),
+            IdentitySpace::Node->value,
+            IdentitySpace::Relation->value
         ));
 
         return $this->countsByOwner($rows);

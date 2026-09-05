@@ -147,10 +147,17 @@ echo "\n3 · Kein Fremdschluessel zeigt ins Leere\n";
 // ⚠️ *Die sieben Spalten, die bis Fassung 20 auf `identities.id` zeigten, plus die drei, die schon
 // immer ihre Zieltabelle im Namen trugen. **Was hier steht, ist der Soll-Zustand von `package.md` §6**,
 // und `settings.owner_id` stand hier bewusst nicht — die Tabelle ist seit D-579 fort.*
+//
+// ⚠️ **`labels.owner_id` steht hier nicht mehr, und das ist keine Entschärfung** (Fassung 31,
+// `INF-035`, [D-597](../../docs/NewConcept/90-decision-log.md)). *Sie stand hier als «zeigt auf einen
+// Knoten» — eine Zusage, die **schlicht falsch** war: eine Kante darf eigene Beschriftungen tragen
+// ([D-410](../../docs/NewConcept/90-decision-log.md)), und gemessen zeigte die Spalte nur deshalb auf
+// lauter Knoten, weil noch niemand einer Kante eine gegeben hatte. **Die Spalte zeigt jetzt in den
+// Raum, den `owner_kind` nennt**, und Abschnitt 6 prüft genau das — je Raum, gegen die richtige
+// Tabelle.*
 $verweise = [
     ['relations', 'from_node_id', 'nodes'],
     ['relations', 'to_node_id', 'nodes'],
-    ['labels', 'owner_id', 'nodes'],
     ['labels', 'role_id', 'nodes'],
     ['node_records', 'node_id', 'nodes'],
     ['relation_records', 'node_record_id', 'records'],
@@ -253,8 +260,10 @@ echo "
 // Kante 5 und Datensatz 5».
 //
 // Was bleibt, ist die Gegenprobe, dass niemand mehr ohne Raum fragt: keine Tabelle mit einer
-// mehrdeutigen Besitzerspalte. changelog nennt owner_kind, relation_records nennt value_ref_kind, und
-// labels.owner_id zeigt gemessen nur auf Knoten — das steht in Abschnitt 3.
+// mehrdeutigen Besitzerspalte. changelog nennt owner_kind, relation_records nennt value_ref_kind --
+// und labels nennt seit Fassung 31 ebenfalls owner_kind (INF-035, D-597). Bis dahin stand hier "zeigt
+// gemessen nur auf Knoten", was keine Zusage war, sondern eine Beobachtung an Daten, die noch keine
+// beschriftete Kante enthielten.
 $settingsTabelle = Schema::table('settings');
 
 check(
@@ -270,6 +279,54 @@ $doppelt = (int) $wpdb->get_var(
 
 printf("       gemessen: %d Nummern sind zugleich Knoten und Kante — erlaubt, seit jede Tabelle ihren eigenen Raum hat
 ", $doppelt);
+
+echo "
+6 · Jede Beschriftung nennt ihren Raum, und der Raum stimmt
+";
+
+// ⚠️ **Fassung 31, INF-035, D-597.** *Bis dahin stand `labels.owner_id` in Abschnitt 3 als "zeigt auf
+// einen Knoten". Das war eine Beobachtung und keine Zusage: eine Kante darf eigene Beschriftungen
+// tragen (D-410), und seit D-581 tragen Knoten und Kante ohne Weiteres dieselbe Nummer. Hier steht
+// jetzt die Zusage, die wirklich gilt -- jede Zeile nennt ihren Raum, und in diesem Raum gibt es sie.*
+$labelTabelle = Schema::table('labels');
+
+$ohneRaum = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$labelTabelle} WHERE owner_kind NOT IN ('node','relation')"
+);
+
+check('jede Beschriftung nennt einen der beiden Raeume', $ohneRaum === 0, "$ohneRaum ohne Raum");
+
+foreach ([['node', 'nodes'], ['relation', 'relations']] as [$raum, $ziel]) {
+    $zielTabelle = Schema::table($ziel);
+
+    $waisen = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$labelTabelle} l
+         WHERE l.owner_kind = %s
+           AND NOT EXISTS (SELECT 1 FROM {$zielTabelle} z WHERE z.id = l.owner_id)",
+        $raum
+    ));
+
+    check("labels mit owner_kind = {$raum} finden ihren Eintrag in {$ziel}", $waisen === 0, "$waisen Waisen");
+}
+
+// ⚠️ *Die Version ist seit Fassung 31 Pflicht (D-634) -- eine Zeile mit Version 0 waere eine, die
+// unter dem alten Schema angelegt und beim Aufstieg uebersehen wurde.*
+$ohneVersion = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$labelTabelle} WHERE version < 1");
+
+check('jede Beschriftung hat eine Version', $ohneVersion === 0, "$ohneVersion ohne Version");
+
+$schluessel = $wpdb->get_col($wpdb->prepare(
+    "SELECT COLUMN_NAME FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = 'one_text'
+     ORDER BY SEQ_IN_INDEX",
+    $labelTabelle
+));
+
+check(
+    'der eindeutige Schluessel nennt den Raum mit',
+    in_array('owner_kind', $schluessel, true),
+    implode(', ', $schluessel)
+);
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

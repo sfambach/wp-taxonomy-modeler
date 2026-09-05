@@ -3,12 +3,12 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\FrozenState;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\LabelRepository;
 
 /**
@@ -50,11 +50,12 @@ final class Labels
         // ⚠️ *Optional wie bei {@see Settings}: die Aufrufer, die nur **lesen**, sollen keine
         // Abhängigkeit erklären müssen, die sie nie benutzen.*
         private readonly ?Changelog $changelog = null,
-        // ⚠️ *Nur um `node` von `relation` zu unterscheiden — ein Label hängt an beidem
-        // ([D-410](../../../docs/NewConcept/90-decision-log.md)), und die Id allein sagt nicht welches.
-        // **Ohne dieses Repository wäre `owner_kind` geraten**, und `Settings::kindOf()` nennt genau das
-        // eine Lüge, die es dort schon einmal war.*
-        private readonly ?NodeRepository $nodes = null,
+        // ⚠️ **Hier stand ein `NodeRepository`, und es stand hier, um `node` von `relation` zu
+        // **raten*** (Fassung 31, `INF-035`). *«Gibt es einen Knoten mit dieser Nummer?» ist die
+        // richtige Frage nur, solange keine Kante dieselbe Nummer tragen kann — und seit
+        // [D-581](../../../docs/NewConcept/90-decision-log.md) kann sie das. **Die Zeile nennt ihren
+        // Raum jetzt selbst** ([D-597](../../../docs/NewConcept/90-decision-log.md)), also ist die
+        // Abhängigkeit fort und nicht nur unbenutzt.*
     ) {
     }
 
@@ -70,7 +71,7 @@ final class Labels
         string $number = Label::BASE_NUMBER,
         string $path = '',
     ): string {
-        $stored = $this->indexed($this->labels->forOwners([$node->id]), $path);
+        $stored = $this->indexed($this->labels->forOwners([$node->id], IdentitySpace::Node), $path);
 
         $roleId = $this->framework->roleId($role);
 
@@ -113,7 +114,7 @@ final class Labels
         // up as *the wrong name on one row* and gets blamed on the data.
         $stored = [];
 
-        foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes)) as $label) {
+        foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes), IdentitySpace::Node) as $label) {
             if ($label->path !== '') {
                 continue;
             }
@@ -185,7 +186,8 @@ final class Labels
     /** Write one label. */
     public function put(Label $label): void
     {
-        $was = $this->storedText($label);
+        $vorhanden = $this->stored($label);
+        $was       = $vorhanden?->text;
 
         // ⚠️ *Derselbe Wächter wie in {@see Settings::put()}, und aus demselben Grund: **ein Textfeld
         // sendet immer**, und seit [D-488](../../../docs/NewConcept/90-decision-log.md) bei jedem
@@ -197,7 +199,12 @@ final class Labels
 
         $this->labels->put($label);
 
-        $this->note($label, $was, $label->text);
+        // ⚠️ **Die Version, die im Journal steht, ist die **neue*** ([D-634](../../../docs/NewConcept/90-decision-log.md)):
+        // *die Ablage hebt sie beim Überschreiben um eins, eine frisch angelegte Zeile ist Version 1.
+        // Sie hier zu rechnen statt zurückzulesen spart eine zweite Abfrage je Speichern; die Rechnung
+        // ist dieselbe, die {@see \Taxmod\WordPress\Persistence\WpdbLabelRepository::put()} ausführt,
+        // und `label-space-check` misst sie gegeneinander.*
+        $this->note($label, $was, $label->text, $vorhanden === null ? 1 : $vorhanden->version + 1);
     }
 
     /**
@@ -212,11 +219,12 @@ final class Labels
      */
     public function forget(Label $label): void
     {
-        $was = $this->storedText($label);
+        $vorhanden = $this->stored($label);
 
-        $this->labels->forget($label->ownerId, $label->path, $label->roleId, $label->number, $label->locale);
+        $this->labels->forget($label->ownerId, $label->ownerKind, $label->path, $label->roleId, $label->number, $label->locale);
 
-        $this->note($label, $was, null);
+        // ⚠️ *Die Version der Zeile, die es gerade noch gab — beim Löschen gibt es keine neue.*
+        $this->note($label, $vorhanden?->text, null, $vorhanden?->version);
     }
 
     /**
@@ -227,15 +235,15 @@ final class Labels
      * vergleichen würde bei jedem Seitenspeichern den Platzhalter als Änderung protokollieren und ihn
      * damit festschreiben.*
      */
-    private function storedText(Label $label): ?string
+    private function stored(Label $label): ?Label
     {
-        foreach ($this->labels->forOwners([$label->ownerId]) as $one) {
+        foreach ($this->labels->forOwners([$label->ownerId], $label->ownerKind) as $one) {
             if ($one->path === $label->path
                 && $one->roleId === $label->roleId
                 && $one->number === $label->number
                 && $one->locale === $label->locale
             ) {
-                return $one->text;
+                return $one;
             }
         }
 
@@ -275,7 +283,7 @@ final class Labels
      * bei jedem Seitenspeichern ([D-488](../../../docs/NewConcept/90-decision-log.md)). Ein Journal,
      * das Nicht-Ereignisse aufschreibt, liest niemand.*
      */
-    private function note(Label $label, ?string $was, ?string $now): void
+    private function note(Label $label, ?string $was, ?string $now, ?int $version): void
     {
         if ($this->changelog === null || $was === $now) {
             return;
@@ -293,26 +301,33 @@ final class Labels
 
         $this->changelog->record(
             $label->ownerId,
-            // ⚠️ *Ein Label hängt an einem Knoten **oder** an einer Kante ([D-410](../../../docs/NewConcept/90-decision-log.md)),
-            // und die Id allein sagt nicht welches. Ohne das Repository bliebe nur Raten — und geraten
-            // hat `Settings` diese Spalte schon einmal, was dort als «einfach eine Lüge» steht.*
-            $this->nodes === null || $this->nodes->find($label->ownerId) !== null ? 'node' : 'relation',
+            // ⚠️ **Der Raum wird gelesen, nicht mehr erraten** (`INF-035`, Fassung 31). *Hier stand
+            // «gibt es einen Knoten mit dieser Nummer? dann `node`, sonst `relation`» — ein Griff, der
+            // schweigend falsch antwortet, sobald eine Kante die Nummer eines Knotens trägt, und
+            // **genau das ist am 2026-09-05 gemessen worden**. Die Zeile nennt ihren Raum jetzt selbst
+            // ([D-597](../../../docs/NewConcept/90-decision-log.md)).*
+            $label->ownerKind->value,
             $now === null ? 'label cleared' : 'label set',
             $state($was),
             $state($now),
-            // ⚠️ **Ein Label hat keine Version, und zwar gemessen: `labels` trägt keine solche
-            // Spalte** — anders als `nodes`, `relations`, `node_records` und `relation_records`. *Seit
-            // [D-634](../../../docs/NewConcept/90-decision-log.md) muss der Melder das hinschreiben
-            // statt es wegzulassen; `null` ist hier die richtige Antwort und zugleich der Befund
-            // (`PR-4`): ob Labels versioniert werden, ist nicht entschieden.*
-            null
+            // ⚠️ **Seit Fassung 31 hat eine Beschriftung eine Version, und hier steht sie**
+            // ([D-634](../../../docs/NewConcept/90-decision-log.md)). *Hier stand `null` mit dem Befund
+            // «`labels` trägt als einzige Tabelle keine solche Spalte»; die Spalte gibt es jetzt.
+            // **`null` bleibt für den einen Fall, in dem es keine Zeile mehr gibt, deren Nummer man
+            // nennen könnte** — ein Löschen ohne vorhandene Zeile.*
+            $version
         );
     }
 
-    /** @return list<Label> Everything stored for this owner, for a screen that lists them. */
-    public function storedFor(int $ownerId): array
+    /**
+     * @return list<Label> Everything stored for this owner, for a screen that lists them.
+     *
+     * ⚠️ *Der Raum gehört zur Frage (`INF-035`): eine Maske zeigt die Beschriftungen **eines**
+     * Knotens oder **einer** Kante, und sie weiss, was sie gerade offen hat.*
+     */
+    public function storedFor(int $ownerId, IdentitySpace $ownerKind): array
     {
-        return $this->labels->forOwners([$ownerId]);
+        return $this->labels->forOwners([$ownerId], $ownerKind);
     }
 
     /**

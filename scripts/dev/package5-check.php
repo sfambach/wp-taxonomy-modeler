@@ -28,6 +28,7 @@ require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Service\Labels;
@@ -91,59 +92,76 @@ check('with nothing stored, the node name is used', $labels->of($thing, SeededRo
 // the chain). **The owner found what it does on a real node**: a label nobody wrote inherited the
 // whole help sentence, so a column heading read *condensator is an electronic part that has a
 // capacity …*. D-386 takes `help` out; the node's own name is the whole fallback.
-$stored->put(new Label($thing->id, '', $framework->roleId(SeededRole::Help), 'one', '', '__p5 the long description'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $framework->roleId(SeededRole::Help), 'one', '', '__p5 the long description'));
 check('a missing role keeps the node name and does not inherit the help sentence',
     $labels->of($thing, SeededRole::Table) === '__p5 Widerstandswert',
     $labels->of($thing, SeededRole::Table));
 check('and help still answers when it is what was asked for',
     $labels->of($thing, SeededRole::Help) === '__p5 the long description');
 
-$stored->put(new Label($thing->id, '', $framework->roleId(SeededRole::Table), 'one', '', 'R'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $framework->roleId(SeededRole::Table), 'one', '', 'R'));
 check('and the asked-for role wins once it exists', $labels->of($thing, SeededRole::Table) === 'R');
 
 echo "\n== 3. The same thing in another language ==\n";
 $form = $framework->roleId(SeededRole::Form);
-$stored->put(new Label($thing->id, '', $form, 'one', 'de_DE', '__p5 Widerstandswert'));
-$stored->put(new Label($thing->id, '', $form, 'one', 'en_US', '__p5 Resistance value'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $form, 'one', 'de_DE', '__p5 Widerstandswert'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $form, 'one', 'en_US', '__p5 Resistance value'));
 
 check('German', $labels->of($thing, SeededRole::Form, 'de_DE') === '__p5 Widerstandswert');
 check('English', $labels->of($thing, SeededRole::Form, 'en_US') === '__p5 Resistance value');
 
-$stored->put(new Label($thing->id, '', $form, 'one', '', '__p5 neutral'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $form, 'one', '', '__p5 neutral'));
 check('a locale nobody wrote falls back to the neutral row', $labels->of($thing, SeededRole::Form, 'fr_FR') === '__p5 neutral');
 
 echo "\n== 4. Number before role ==\n";
-$stored->put(new Label($thing->id, '', $form, 'other', 'de_DE', '__p5 Widerstandswerte'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $form, 'other', 'de_DE', '__p5 Widerstandswerte'));
 check('the plural form is used when stored', $labels->of($thing, SeededRole::Form, 'de_DE', 'other') === '__p5 Widerstandswerte');
 check('and falls back to the base form of the same role', $labels->of($thing, SeededRole::Form, 'en_US', 'other') === '__p5 Resistance value');
 
 echo "\n== 5. A label hangs on an identity, so an relation can carry one ==\n";
 $text = $editor->createNode('__p5 Text', $framework->rootOf(Branch::DataTypes)->id);
 $relation = $editor->addField($thing->id, $text->id, '__p5 description');
-$stored->put(new Label($relation->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
+$stored->put(new Label($relation->id, IdentitySpace::Relation, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
 
-// ⚠️ **Gefiltert statt gezählt, und der Grund ist gemessen** (TASK-018): *dieser Satz lautete
-// `count($onRelation) === 1`. **Er ist rot geworden, und nicht an den Beschriftungen** — seit ein neuer
-// Knoten keine Vererbungskante mehr anlegt, laufen die beiden Zähler anders auseinander, und in
-// diesem Lauf trug die frische Kante **dieselbe Nummer** wie der Knoten `$thing` zwei Zeilen darüber.
-// `labels.owner_id` sagt nicht, welchen Raum sie meint, also kamen sechs Zeilen zurück statt einer.
+// ⚠️ **Wieder gezählt statt gefiltert, und das ist die Umkehrung von `INF-035`** (Fassung 31,
+// [D-597](../../docs/NewConcept/90-decision-log.md)). *Hier stand seit TASK-018 ein `array_filter`
+// mit der Begründung: die frische Kante trug **dieselbe Nummer** wie der Knoten `$thing` zwei Zeilen
+// darüber, `labels.owner_id` nannte ihren Raum nicht, und es kamen **sechs** Zeilen zurück statt
+// einer. **Der Filter war ein Verband auf einer offenen Frage.**
 //
-// ⚠️ *Das ist ein **Befund** und keine Schwächung: geprüft wird weiterhin, dass genau **diese**
-// geschriebene Zeile an der Kante steht. **Dass `owner_id` ihren Raum nicht nennt, steht als
-// `INF-035` im Eingang** — es ist dieselbe Lücke, die `INF-009` an `settings.owner_id` hatte, und sie
-// war schon vorher da; TASK-018 hat sie nur sichtbar gemacht.*
-$onRelation = array_values(array_filter(
-    $stored->forOwners([$relation->id]),
-    static fn ($l): bool => $l->roleId === $form && $l->locale === 'de_DE' && $l->number === 'one'
-));
-check('the relation has its own label', count($onRelation) === 1 && $onRelation[0]->text === '__p5 Beschreibung');
-check('and it did not land on the type', count(array_filter($stored->forOwners([$text->id]))) === 0);
+// ⚠️ *Die Frage ist beantwortet: die Zeile nennt ihren Raum, und die Abfrage nennt ihn mit. **Damit
+// ist die harte Zusage wieder tragbar** — genau eine Zeile an der Kante, und dieser Satz wird rot,
+// wenn die Räume je wieder ineinanderlaufen. Der Filter hätte das nie gemerkt.*
+$onRelation = $stored->forOwners([$relation->id], IdentitySpace::Relation);
+
+check('the relation has its own label, and only that one', count($onRelation) === 1 && $onRelation[0]->text === '__p5 Beschreibung',
+    count($onRelation) . ' Zeile(n)');
+check('and it did not land on the type', count($stored->forOwners([$text->id], IdentitySpace::Node)) === 0);
+
+// ⚠️ **Die Gegenprobe zu `INF-035`, und sie ist der Grund, warum die Spalte existiert:** *dieselbe
+// Nummer, einmal als Knoten und einmal als Kante gefragt. **Solange `owner_id` allein zählte, war
+// das dieselbe Frage.***
+$alsKnotenGefragt = array_filter(
+    $stored->forOwners([$relation->id], IdentitySpace::Node),
+    static fn ($l): bool => $l->text === '__p5 Beschreibung'
+);
+
+check(
+    'dieselbe Nummer als Knoten gefragt liefert die Beschriftung der Kante nicht',
+    $alsKnotenGefragt === [],
+    'Nummer ' . $relation->id . ', ' . count($alsKnotenGefragt) . ' Treffer'
+);
 
 echo "\n== 6. One row per owner, path, role, number and locale ==\n";
-$stored->put(new Label($thing->id, '', $form, 'one', 'de_DE', '__p5 zweimal geschrieben'));
+$stored->put(new Label($thing->id, IdentitySpace::Node, '', $form, 'one', 'de_DE', '__p5 zweimal geschrieben'));
+// ⚠️ **`owner_kind` gehoert in diese Abfrage, und der Beweis ist dieser Lauf selbst** (Fassung 31,
+// `INF-035`): *ohne die Spalte zaehlte sie **zwei** Zeilen — die des Knotens `$thing` und die der
+// Kante aus Abschnitt 5, **weil beide dieselbe Nummer tragen**. Der Satz «writing twice leaves one
+// row» wurde damit rot, ohne dass zweimal geschrieben worden waere.*
 $rows = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('labels') . ' WHERE owner_id = %d AND role_id = %d AND number = %s AND locale = %s',
-    $thing->id, $form, 'one', 'de_DE'));
+    'SELECT COUNT(*) FROM ' . Schema::table('labels')
+        . ' WHERE owner_id = %d AND owner_kind = %s AND role_id = %d AND number = %s AND locale = %s',
+    $thing->id, IdentitySpace::Node->value, $form, 'one', 'de_DE'));
 check('writing twice leaves one row', $rows === 1, "$rows rows");
 check('and the second write won', $labels->of($thing, SeededRole::Form, 'de_DE') === '__p5 zweimal geschrieben');
 
@@ -157,17 +175,23 @@ echo "\n== 7. The check cleans up after itself ==\n";
 // ⚠️ *Owners are the honest key here for the same reason they are in
 // {@see \Taxmod\Core\Service\ModelEditor::clearTrash()}: what hangs off a thing goes when the thing
 // goes, and a name is a description of the thing rather than a handle on what it owns.*
-$ownersToClear = [$thing->id, $text->id];
+// ⚠️ **Zwei Listen statt einer, seit Fassung 31 (`INF-035`):** *Knotennummern und Kantennummern
+// wurden hier in **einen** Topf geworfen. Solange die Ablage den Raum nicht kannte, war das der
+// einzige mögliche Weg — **und es räumte die Beschriftungen eines gleichnummerigen, gesunden Knotens
+// mit weg.***
+$knotenZuLeeren = [$thing->id, $text->id];
+$kantenZuLeeren = [];
 
-foreach ($relations->relationsTouching($ownersToClear) as $relation) {
-    $ownersToClear[] = $relation->id;
+foreach ($relations->relationsTouching($knotenZuLeeren) as $relation) {
+    $kantenZuLeeren[] = $relation->id;
 }
 
 foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p5%"') as $named) {
-    $ownersToClear[] = (int) $named;
+    $kantenZuLeeren[] = (int) $named;
 }
 
-$stored->forgetOwners($ownersToClear);
+$stored->forgetOwners($knotenZuLeeren, IdentitySpace::Node);
+$stored->forgetOwners($kantenZuLeeren, IdentitySpace::Relation);
 
 foreach ([$thing->id, $text->id] as $scratch) {
     $node = $nodes->find($scratch);

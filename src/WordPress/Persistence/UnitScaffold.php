@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
@@ -406,6 +407,7 @@ final class UnitScaffold
 
         $this->labels->put(new Label(
             $node->id,
+            IdentitySpace::Node,
             '',
             $this->framework->roleId(SeededRole::Symbol),
             Label::BASE_NUMBER,

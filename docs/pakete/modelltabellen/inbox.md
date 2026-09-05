@@ -964,6 +964,56 @@ nennt, wie `changelog.owner_kind` und wie `record_values.value_ref_kind` seit TA
 Knoten und Kante zugleich sind — der Schaden ist bisher nur in Prüfläufen aufgetreten, die selbst
 anlegen.*
 
+### ✅ Erledigt am 2026-09-05, Schemafassung 31 — als eigener Schritt, vor TASK-019
+
+**`labels.owner_kind` steht**, gefüllt, im eindeutigen Schlüssel und bewacht. *Das Muster ist das
+vorgegebene und kein neues:* [D-164](../../NewConcept/90-decision-log.md),
+[D-597](../../NewConcept/90-decision-log.md), [`package.md` §6](package.md) — «kann eine Spalte auf
+mehr als eine Tabelle zeigen, nennt eine zweite Spalte den Raum».
+
+| | vorher | nachher |
+|---|---|---|
+| Beschriftungen | 47 | 47 |
+| Prüfsumme über Eigentümer · Pfad · Rolle · Numerus · Locale · **Text** | `4e98b857…` | `4e98b857…` |
+| davon `owner_kind = node` | — | **47** |
+| davon `owner_kind = relation` | — | 0 |
+| davon **ohne Raum** | — | **0** |
+| Eigentümer, die Knoten sind / Kanten sind / keines von beidem | 40 / 0 / 0 | unverändert |
+| Nummern, die zugleich Knoten und Kante sind | 0 | 0 |
+
+⚠️ **Der Schritt löscht nichts und schreibt keinen Text um** — er füllt eine neue Spalte, deren
+voriger Wert bekanntlich leer war. *Deshalb **keine Schattenzeilen**: umkehrbar ist er durch das
+Fallenlassen der Spalte, und ein Schatten hielte nichts fest, was nicht schon feststünde.*
+
+⚠️ **Zugleich hat `labels` eine `version` bekommen** ([D-634](../../NewConcept/90-decision-log.md)):
+*sie war die **einzige** Tabelle ohne Zeilennummer, und `Labels::note()` musste dem Journal `null`
+hinschreiben. Die Ablage zählt sie beim Überschreiben, nicht der Aufrufer. Alle 47 Zeilen stehen auf
+Version 1 — es ist nichts nachträglich erfunden worden.*
+
+⚠️ **Drei Stellen haben dabei **geraten**, und das ist der eigentliche Fund:** *(1) `Labels::note()`
+fragte «gibt es einen Knoten mit dieser Nummer? dann `node`, sonst `relation`» und schrieb die
+Antwort ins Änderungsbuch; (2) `ModelEditor::clearTrash()` reichte eine **gemischte** Liste aus
+Knoten- und Kantennummern an `forgetOwners()`; (3) `Residue::orphanedLabels()` fragte «weder Knoten
+noch Kante», was zu **nachsichtig** war — die Beschriftung einer gelöschten Kante blieb liegen,
+solange irgendein Knoten dieselbe Nummer trug. **Alle drei nennen den Raum jetzt.**
+
+⚠️ **Und der Fehler ist im laufenden Prüflauf noch einmal aufgetreten, als Beweis:** *`package5-check`
+§6 zählte **zwei** Zeilen statt einer, weil seine Abfrage `owner_kind` nicht nannte — die frisch
+angelegte Kante trug wieder dieselbe Nummer wie der Knoten zwei Abschnitte darüber. **Der Filter, den
+TASK-018 als Notbehelf in §5 eingesetzt hatte, ist wieder eine gezählte Zusage** (`count === 1`).*
+
+**Neu am Netz:** [`label-space-check.php`](../../../scripts/dev/label-space-check.php) — die Spalten,
+der Schlüssel, die Zahlen der Wanderung gegen die von heute, keine Zeile ohne Raum, keine Waise je
+Raum, und die Gegenprobe: dieselbe Nummer als Knoten und als Kante trägt zwei verschiedene Texte.
+**Mitgezogen:** `id-space-check` (Abschnitt 6 neu; `labels.owner_id` steht nicht mehr als «zeigt auf
+einen Knoten» in Abschnitt 3 — *das war eine Beobachtung an Daten ohne beschriftete Kante, keine
+Zusage*), `package5-check`, `package7-check`, `labels-page-save-check`, `journal-address-check`,
+`cleartrash-check`, `seed-twice-check`. **Keiner ist entschärft**, einer ist wieder schärfer.
+
+⚠️ **Zwei Einträge im Entscheidungsprotokoll fehlen und sind geschuldet** (`PR-3`): *das Protokoll ist
+für diesen Auftrag gesperrt. Zu schreiben sind — «`labels.owner_kind` nach dem Muster von D-164/D-597»
+und «`labels` bekommt eine Version, D-634 gilt damit auch für Beschriftungen».*
+
 ## INF-036 · `always-on-check` ist rot, und nicht wegen dieses Umbaus
 
 **2026-09-05 gemessen:** das Immer-Gelesene (`CLAUDE.md`, `docs/arbeitsmodell.md`, `AGENTS.md`) liegt
@@ -1041,3 +1091,51 @@ eingefroren).*
 dann fällt sie erst, wenn jeder heutige Datensatz einen Eintrag hat — und woher der käme, sagt
 niemand.* **Gemessen liest heute niemand die Spalte zur Anzeige**: `NodeRecord::$createdAt` wird
 geschrieben und weitergereicht, die Entstehungszeile am Schirm kommt aus dem Änderungsbuch.
+
+## INF-040 · TASK-019 ist **nicht** gebaut, und zwar aus drei gemessenen Gründen
+
+**2026-09-05, beim Anlauf gemessen, nicht geschätzt** (`PR-4`, `PR-7`). *Gebaut wurde an diesem Tag
+nur, was TASK-019 als Messung vorausschickte: `labels.owner_kind` und `labels.version` (`INF-035`).
+**Die Teilung nach [D-580](../../NewConcept/90-decision-log.md) steht aus.***
+
+**Erstens: die Teilung und der Umzug des Namens sind ein Stück und lassen sich nicht halbieren.**
+*D-580 dreht die Richtung des Verweises um — `nodes.label_id` und `relations.label_id` statt
+`labels.owner_id`. **Baut man nur die Umkehrung, entstehen 194 Beschriftungszeilen, die nichts
+enthalten**, denn ihr einziger sprachunabhängiger Inhalt ist heute das Symbol (38 Zeilen). Baut man
+nur den Namensumzug, gibt es die Tabelle nicht, in die er soll.*
+
+**Zweitens: der Namensumzug ist der grosse Posten, und er ist jetzt gezählt.**
+
+| | |
+|---|---|
+| Knoten mit Namen · Kanten mit Namen | **137 · 57** — also 194 künftige `labels`-Zeilen |
+| Beschriftungen heute | **47** (38 `symbol`, 3 `form`, 3 `table`, 2 `select`, 1 `help`) |
+| SQL-Stellen in `scripts/dev`, die eine Spalte `name` lesen oder schreiben | **166** |
+| Prüfläufe in `scripts/dev` insgesamt | 88, davon **60** mit einer solchen Stelle |
+| Zeilen in den Schattentabellen, die einen Namen tragen | `nodes_history` **20 685** · `relations_history` **25 124** |
+| Index auf `nodes.name` | vorhanden |
+
+⚠️ *Jede dieser Stellen wird zu einem Verbund über `label_id`. **Das ist mechanisch, aber es ist
+nicht wenig**, und jeder der 60 Läufe muss danach einzeln grün sein (`PR-9`). Ob die Schattentabellen
+den Namen **behalten** — als eingefrorene Geschichte, wie `changelog` es tut
+([D-065](../../NewConcept/90-decision-log.md)) — oder mitwandern, sagt D-580 nicht.*
+
+**Drittens: drei Fragen stehen offen, und keine davon wird beim Bauen nebenbei beantwortet.**
+
+1. **Die von D-580 selbst benannte:** *«sind die vier Rollen Spalten in `label_texts` oder Zeilen mit
+   `role_id`?»* — Spalten heissen: eine neue Rolle ist ein Schemawechsel. Zeilen heissen: eine neue
+   Rolle ist eine Zeile. **Heute sind die Rollen Knoten im Modell**
+   ([D-151](../../NewConcept/90-decision-log.md)).
+2. **`symbol` als Spalte gegen [D-262](../../NewConcept/90-decision-log.md).** *D-580 legt `symbol`
+   sprachunabhängig in `labels` — gemessen tragen **38 von 38** keine Sprache. **D-262 sagt aber
+   ausdrücklich, das sei «ein Standard, keine Tatsache»**: ein Symbol, das sich je Sprache wirklich
+   unterscheidet, dürfe als übersetzbar gekennzeichnet werden. *Als Spalte ist es das nicht mehr.*
+3. **Die neutrale Zeile fällt.** *D-580: «Die heutigen 43 sprachlosen Labels werden zu Zeilen der
+   Standardsprache.» Damit ändert sich die Rückfallkette — heute fällt sie von `de_DE` auf die
+   **leere** Locale zurück, danach auf die **Standardsprache**. Gemessen ist die `en_US`, `WPLANG`
+   ist leer. **Der Kern kennt die Standardsprache nicht** (`CD-1`); sie müsste vom Rand hereingereicht
+   werden.*
+
+⚠️ **Was nicht der Grund ist:** *`INF-003` — sein Vorschlag, Beschriftungen als Kanten-Datensätze zu
+führen — ist hier nicht angerührt und nicht vorweggenommen. **Er denkt darüber nach**, und der Umbau
+von heute steht ihm nicht im Weg: er hat der Tabelle eine Spalte gegeben, keine Struktur festgezurrt.*

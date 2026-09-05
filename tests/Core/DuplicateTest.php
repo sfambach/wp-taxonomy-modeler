@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
@@ -123,14 +124,14 @@ final class DuplicateTest extends TestCase
 
         // ⚠️ *`labels.path` addresses a place exactly as `settings.path` does, and `copyLabels()` had
         // the identical fault one line over — unmentioned by the row that found the first one.*
-        $this->labelStore->put(new Label($part->id, (string) $count->id, 901, '', 'de_DE', 'Stückzahl'));
+        $this->labelStore->put(new Label($part->id, IdentitySpace::Node, (string) $count->id, 901, '', 'de_DE', 'Stückzahl'));
 
         $copy     = $this->editor->duplicate($part->id);
         $copyRelation = $this->fieldNamed($copy, 'count');
 
         $paths = array_map(
             static fn (Label $one): string => $one->path,
-            array_values($this->labelStore->forOwners([$copy->id]))
+            array_values($this->labelStore->forOwners([$copy->id], IdentitySpace::Node))
         );
 
         self::assertContains((string) $copyRelation->id, $paths);
