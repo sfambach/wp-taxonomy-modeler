@@ -1498,3 +1498,23 @@ hier ist») und zu [D-639](../../NewConcept/90-decision-log.md) (drei Kantenarte
 ⚠️ **Auf sein Wort vertagt (2026-09-05): «nicht gleich bauen».** *Die Aufgabe steht, der Zeitpunkt
 ist offen. **Bis dahin bleibt die Spalte in Betrieb** — sie ist gemessen tragfaehig (29 Traeger,
 `renderer-choice-mask-check` gruen), sie ist nur nicht die Form, die er gemeint hat.*
+
+---
+
+[ ] TASK-058  Der gewaehlte Renderer wird auch verwendet — nachweisen, nicht annehmen
+
+**2026-09-05, sein Auftrag nach TASK-057:** *«schau danach, dass der Renderer auch verwendet wird.»*
+
+⚠️ **Zwei Dinge sind zu trennen, und heute prueft niemand das zweite:** *(1) die Wahl wird
+**gespeichert** — das haelt `renderer-choice-mask-check` seit TASK-052; (2) der gespeicherte
+Renderer **zeichnet auch wirklich**. **Zwischen beidem liegt die Aufloesungskette**, und dort ist
+schon zweimal etwas verlorengegangen: die Umbenennung der Traegerkante ([D-543](../../NewConcept/90-decision-log.md),
+sechs Knoten zeichneten `plain`) und der Wegfall des Huellknotens ([D-604](../../NewConcept/90-decision-log.md)).*
+
+**Zu bauen ist die Zusage, die beides verbindet:** *fuer jeden Traeger — waehlen, speichern, frisch
+aufloesen, **zeichnen**, und im Ergebnis muss der gewaehlte Renderer stehen. Nicht «ein Renderer»,
+sondern **der gewaehlte**.*
+
+⚠️ *Sein Satz endete mit «das klappt naemlich aktuell» — ob «klappt» oder «klappt nicht» gemeint
+war, ist nicht sicher. **Die Zusage deckt beide Lesarten ab:** sie haelt fest, was funktioniert, und
+faellt rot, wo es nicht funktioniert.*
