@@ -183,3 +183,9 @@ Also, vor jedem Commit, ohne Ausnahme:
    gemeinsamen Baum schon einmal verschluckt.*
 4. **Die Nachricht sagt, was drin ist.** Nimmt ein Commit fremde Arbeit mit, steht das darin — sonst
    erzählt die Geschichte es falsch, und das ist der einzige bleibende Schaden.
+
+**Und der Notnagel ist nicht die Lösung.** *Git ist nie für nebenläufige Arbeit in **einem** Baum
+gebaut worden; es löst sie über **getrennte Bäume**. Die vier Punkte oben sind Disziplin an einer
+Stelle, an der Werkzeug gehörte.* Wo mehrere Agenten gleichzeitig bauen, ist der saubere Weg **ein
+eigener Arbeitsbaum je Agent** (`git worktree`), zusammengeführt am Ende. Die Regeln oben gelten
+für den Fall, dass es dennoch ein gemeinsamer Baum ist — **nicht als Ersatz für den getrennten.**
