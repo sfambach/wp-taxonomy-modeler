@@ -4,49 +4,65 @@ namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SimpleType;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\TypeNodes;
+use Taxmod\Core\Service\ModelEditor;
+use Taxmod\WordPress\SystemClock;
 
 /**
- * The seeded data type nodes, found by the ids the seed wrote into options.
+ * Die gesäten Datentyp-Knoten — gefunden über die **Klasse, die den Typ umsetzt**.
  *
- * ⚠️ **The same shape as {@see SeededFrameworkNodes}, deliberately** ([D-510](../../../docs/NewConcept/90-decision-log.md)):
- * an option per node, written when the node is made. *The third technique was already lying there
- * and it is the right one — `taxmod_root_id`, `taxmod_branch_model_id`, `taxmod_role_symbol` — and
- * a rename breaks none of them.*
+ * ⚠️ **Bis zum 2026-09-05 hielten elf WordPress-Optionen diese Bindung** (`taxmod_type_int_id` und
+ * zehn weitere), und das war der Rest von TASK-009. *Er stand, weil ein einfacher Typ ein
+ * Aufzählungsfall war und keine Klasse — `nodes.implemented_by` trägt einen **Klassennamen**
+ * (TASK-008, auf sein Wort: «wenn das ohne Factory geht, weil der Klassenname da drinsteht,
+ * perfekt»), und ein Aufzählungsfall hat keinen.* **Mit [D-484](../../../docs/NewConcept/90-decision-log.md)
+ * hat er einen**: {@see \Taxmod\Core\Model\Type\IntType} ist der Integer-Typ, und der Knoten sagt
+ * das selbst. **Damit gilt `AR-1` auch hier: die Bindung steht im Modell und nicht daneben.**
  *
- * ⚠️ **The one difference from the framework nodes: these may be thrown away.** A base scaffold is
- * imported once and is afterwards ordinary authored content ([D-119](../../../docs/NewConcept/90-decision-log.md)),
- * so an option here may point at a node that has been trashed or purged. *That is why nothing in
- * this class reads a node to answer — it answers with an id, and the caller that needs the node
- * looks for it where it should be and gets null when it is gone.*
+ * ```mermaid
+ * flowchart LR
+ *   A["nach einem Typ fragen"] --> B["nodes.implemented_by = IntType"]
+ *   B -->|"nichts"| C["der Name unter Data Types · Notnagel"]
+ *   C --> D["die Klasse in den Knoten schreiben"]
+ * ```
+ *
+ * ⚠️ **Der Notnagel bleibt und tut jetzt den Umzug**: *eine Installation, die vor dieser Änderung
+ * gesät wurde, trägt an ihren Typknoten keine Klasse. Der erste Zugriff findet sie über den Namen
+ * und **schreibt die Klasse fest** — journalisiert, mit Schattenzeile, also umkehrbar
+ * ([D-535](../../../docs/NewConcept/90-decision-log.md)).*
+ *
+ * ⚠️ **Ein weggeworfener Typ bleibt weggeworfen.** *Eine Saat ist danach gewöhnlicher Inhalt
+ * ([D-119](../../../docs/NewConcept/90-decision-log.md)); {@see ModelEditor::nodeImplementing()}
+ * übergeht, was im Müll liegt, und der Notnagel sieht nur unter `Data Types` nach.*
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
 final class SeededTypeNodes implements TypeNodes
 {
-    public const OPTION_PREFIX = 'taxmod_type_';
-
-    /** Named like the ones that were already right: `taxmod_type_int_id` beside `taxmod_root_id`. */
-    public static function optionFor(SimpleType $type): string
+    /** Die Klasse, die diesen Typ umsetzt — der Wert, der in `nodes.implemented_by` steht. */
+    public static function classFor(SimpleType $type): string
     {
-        return self::OPTION_PREFIX . $type->value . '_id';
+        return SpecialisedTypes::for($type)::class;
     }
 
     public function __construct(
-        // ⚠️ *Only the Notnagel reads nodes. Nothing on the id path touches the database beyond the
-        // options, which are autoloaded.*
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
+        // ⚠️ *Nachgereicht und nicht verlangt: die zwanzig Aufrufer bauen dieses Objekt mit zwei
+        // Abhängigkeiten, und ein Schreibweg, der nur beim Nachtragen gebraucht wird, soll sie nicht
+        // alle anfassen. Es ist der Rand — hier darf WordPress zusammengesteckt werden.*
+        private ?ModelEditor $editor = null,
     ) {
     }
 
     /**
-     * @var array<string,int>|null The ids this request has read, by {@see SimpleType::$value}.
-     *                             One read of the options per object, because the ancestor walk in
-     *                             {@see \Taxmod\Core\Service\Rendering} asks once per level and a
-     *                             query per level is the loop `CD-7` forbids.
+     * @var array<string,int>|null Die Ids dieses Aufrufs, nach {@see SimpleType::$value}. **Ein
+     *                             Lesen je Objekt**, weil der Vorfahrenlauf in
+     *                             {@see \Taxmod\Core\Service\Rendering} je Ebene fragt und eine
+     *                             Abfrage je Ebene die Schleife wäre, die `CD-7` verbietet.
      */
     private ?array $ids = null;
 
@@ -68,10 +84,10 @@ final class SeededTypeNodes implements TypeNodes
 
     public function remember(SimpleType $type, int $nodeId): void
     {
-        update_option(self::optionFor($type), $nodeId, true);
+        $this->editor()->setImplementedBy($nodeId, self::classFor($type));
 
-        // ⚠️ *Only when the cache is already built. Seeding it with a single entry would make every
-        // other type answer «not written down» without the options ever having been read.*
+        // ⚠️ *Nur, wenn der Zwischenspeicher schon steht. Ihn mit einem Eintrag anzulegen hiesse,
+        // dass jeder andere Typ «nicht notiert» antwortet, ohne dass je gelesen wurde.*
         if ($this->ids !== null) {
             $this->ids[$type->value] = $nodeId;
         }
@@ -86,12 +102,19 @@ final class SeededTypeNodes implements TypeNodes
 
         $ids     = [];
         $missing = [];
+        $muell   = $this->framework->trash();
+
+        // ⚠️ *Eine Abfrage für alle elf, nicht elf Abfragen (`CD-7`).*
+        $byClass = $this->nodes->byImplementations(array_map(
+            static fn (SimpleType $type): string => self::classFor($type),
+            SimpleType::cases()
+        ));
 
         foreach (SimpleType::cases() as $type) {
-            $id = (int) get_option(self::optionFor($type), 0);
+            $node = $byClass[self::classFor($type)] ?? null;
 
-            if ($id > 0) {
-                $ids[$type->value] = $id;
+            if ($node !== null && $node->id !== $muell->id && ! $node->isDescendantOf($muell)) {
+                $ids[$type->value] = $node->id;
             } else {
                 $missing[] = $type;
             }
@@ -101,17 +124,17 @@ final class SeededTypeNodes implements TypeNodes
     }
 
     /**
-     * The Notnagel — and it writes the id down so it is not needed a second time.
+     * Der Notnagel — und er schreibt die Klasse fest, damit er kein zweites Mal gebraucht wird.
      *
-     * ⚠️ **Without this an upgrade would be a loss** ([D-510](../../../docs/NewConcept/90-decision-log.md)):
-     * an installation seeded before the decision has no option for any type, and a lookup that only
-     * knew ids would report every seeded type as absent.
+     * ⚠️ **Ohne ihn wäre ein Aufstieg ein Verlust** ([D-510](../../../docs/NewConcept/90-decision-log.md)):
+     * *eine bestehende Installation trägt an ihren Typknoten keine Klasse, und eine Suche, die nur
+     * die Spalte kennt, meldete jeden gesäten Typ als abwesend.*
      *
-     * ⚠️ *One query for the whole branch, not one per missing type — and it runs once per
-     * installation, because the last thing it does is make itself unnecessary.*
+     * ⚠️ *Eine Abfrage für den ganzen Ast, nicht eine je fehlendem Typ — und sie läuft einmal je
+     * Installation, weil sie sich zuletzt selbst überflüssig macht.*
      *
-     * @param  array<string,int> $ids     What the options already answered.
-     * @param  list<SimpleType>  $missing The types no option pointed at.
+     * @param  array<string,int> $ids     Was die Spalte schon beantwortet hat.
+     * @param  list<SimpleType>  $missing Die Typen, an denen keine Klasse steht.
      * @return array<string,int>
      */
     private function fromTheirNames(array $ids, array $missing): array
@@ -125,8 +148,9 @@ final class SeededTypeNodes implements TypeNodes
         foreach ($this->nodes->childrenOf($this->framework->rootOf(Branch::DataTypes)) as $child) {
             $type = SimpleType::fromNodeName($child->name);
 
-            // ⚠️ *A node another type already answers with is not this one. Two nodes can carry the
-            // same name (D-022), and `int` beside `Integer` is exactly the pair this survived.*
+            // ⚠️ *Ein Knoten, mit dem ein anderer Typ schon antwortet, ist nicht dieser. Zwei Knoten
+            // dürfen denselben Namen tragen (D-022), und `int` neben `Integer` ist genau das Paar,
+            // an dem das schon einmal wehgetan hat.*
             if ($type === null || ! isset($wanted[$type->value]) || in_array($child->id, $ids, true)) {
                 continue;
             }
@@ -138,5 +162,15 @@ final class SeededTypeNodes implements TypeNodes
         }
 
         return $ids;
+    }
+
+    private function editor(): ModelEditor
+    {
+        return $this->editor ??= new ModelEditor(
+            $this->nodes,
+            new WpdbRelationRepository(),
+            $this->framework,
+            new WpdbChangelog(new SystemClock())
+        );
     }
 }

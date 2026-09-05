@@ -28,6 +28,7 @@ as the whole net.*
 |---|---|
 | `package1`…`package7` | one per package of [97 Implementation plan](../docs/NewConcept/97-implementation-plan.md) |
 | `scaffold` | the seeded data types and framework nodes |
+| `simple-type` | **das Inventar der einfachen Typen** ([D-484](../docs/NewConcept/90-decision-log.md)) — Klassen, Aufzählungsfälle und gesäte Knoten sind **eine** Zahl, jeder Typknoten trägt seine Klasse, keine der elf Optionen ist zurück, und die Validatoren lesen ab, was der Typ kann |
 | `unitvalue` | a value with a prefix and a unit — `2.7 kΩ` stored and read back ([D-394](../docs/NewConcept/90-decision-log.md)) |
 | `settings-screen` | the installation screen, and that its two sizes reach the stylesheet ([D-397](../docs/NewConcept/90-decision-log.md)) |
 | `preview` | the preview, and that `hide` and `read_only` actually **do** something ([D-160](../docs/NewConcept/90-decision-log.md), [D-399](../docs/NewConcept/90-decision-log.md)) |

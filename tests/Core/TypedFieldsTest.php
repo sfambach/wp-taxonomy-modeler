@@ -11,6 +11,7 @@ use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\Type\DateTimeType;
 use Taxmod\Core\Renderer\ColorRenderer;
 use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
@@ -672,7 +673,7 @@ final class TypedFieldsTest extends TestCase
         self::assertSame('2026-08-25 00:00:00', SimpleType::DateTime->valueFrom('2026-08-25')->date);
         self::assertSame('2026-08-25 14:32:00', SimpleType::DateTime->valueFrom('2026-08-25T14:32')->date);
         self::assertSame(
-            SimpleType::TIME_WITHOUT_A_DATE . ' 14:32:00',
+            DateTimeType::TIME_WITHOUT_A_DATE . ' 14:32:00',
             SimpleType::DateTime->valueFrom('14:32')->date
         );
     }

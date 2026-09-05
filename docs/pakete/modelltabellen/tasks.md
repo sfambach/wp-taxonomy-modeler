@@ -177,7 +177,7 @@ Schatten **zählt** er nur — Geschichte ist eingefroren ([D-065](../../NewConc
 und eine Fassung darf eine Klasse nennen, die es heute nicht mehr gibt.*
 
 ```text
-[~] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken
+[x] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken
 ```
 
 Folgt aus TASK-008. **Gemessen: 56 WordPress-Optionen** halten heute die Bindung «welcher Knoten ist
@@ -219,6 +219,22 @@ nur der Preis von (a) hat sich vervierfacht.*
 ⚠️ **Ein Befund korrigiert `INF-020`:** *die neun Rückstände zeigen **nicht** auf ältere Knoten. Ihre
 Ids stehen weder in `nodes` noch im Schatten — sie halten gar keine Bindung. Stehengelassen, weil
 Löschen in seinem Bestand seine Entscheidung ist; die Frage ist damit nur noch eine Ja-Nein-Frage.*
+
+**Zuendegebracht am 2026-09-05: die elf Typoptionen sind gefallen** — *und der Grund, aus dem sie
+standen, ist weg. Sie standen, weil ein einfacher Typ ein **Aufzählungsfall** war und keine Klasse;
+mit [D-484](../../NewConcept/90-decision-log.md) hat jeder Typ eine Klasse
+(`Taxmod\Core\Model\Type\IntType` und zehn weitere), also trägt sein Knoten den Klassennamen wie
+jeder Renderer. **Weg (a) aus `INF-020`, und niemand musste die Entscheidung aus TASK-008 dafür
+brechen.*** Reihenfolge wie beim ersten Mal — Wächter (`simple-type-check`, `node-binding-check` §3b,
+`implemented-by-check` §4), dann der Leser ({@see SeededTypeNodes}, jetzt über
+`nodes.implemented_by`), dann der Lauf
+[`type-binding-migrate.php`](../../../scripts/dev/type-binding-migrate.php), der nur löscht, was mit
+der Zeile übereinstimmt. *Gemessen: elf Optionen, elf Knoten, dieselben elf Ids.*
+
+⚠️ **Damit stehen von den 40 noch 29**, und alle offen aus demselben Grund wie vorher: fünf Äste,
+fünf Beschriftungsrollen, vier gesäte Einzelorte, drei Behälter, drei Wegwerfäste der Wächter und
+neun Rückstände, die auf nichts zeigen. *Ob Äste und Rollen denselben Weg gehen sollen wie die Typen,
+hat der Eigentümer nicht gesagt — es steht als `INF-026` im Eingang und wird nicht geraten (`PR-4`).*
 
 **Der Wächter dazu ist neu:** [`node-binding-check.php`](../../../scripts/dev/node-binding-check.php).
 *Er hält fest, was TASK-009 erreicht hat — **keine der 23 abgelösten Klassenoptionen kommt zurück**,

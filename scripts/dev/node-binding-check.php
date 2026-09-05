@@ -95,9 +95,10 @@ $nodes = Schema::table('nodes');
  */
 $erlaubt = [];
 
-foreach (SimpleType::cases() as $typ) {
-    $erlaubt[SeededTypeNodes::optionFor($typ)] = 'einfacher Typ';
-}
+// ⚠️ **Die elf Typoptionen stehen hier nicht mehr, und das ist der Punkt**
+// ([D-484](../../docs/NewConcept/90-decision-log.md), TASK-009): *seit jeder einfache Typ eine Klasse
+// ist, trägt sein Knoten den Klassennamen, und die Option ist gefallen. Käme eine zurück, meldete
+// Abschnitt 1 sie als **unbekannt** — genau das ist die Zusage.*
 
 foreach (Branch::cases() as $ast) {
     $erlaubt['taxmod_branch_' . str_replace('-', '_', $ast->value) . '_id'] = 'Ast';
@@ -240,6 +241,29 @@ check(
     $ohneKnoten === [],
     implode(' · ', array_slice($ohneKnoten, 0, 8))
 );
+
+echo "\n3b · Und dasselbe für die elf einfachen Typen (D-484, TASK-009)\n";
+
+$typZurueck = [];
+$typOhne    = [];
+
+foreach (SimpleType::cases() as $typ) {
+    if (get_option('taxmod_type_' . $typ->value . '_id', null) !== null) {
+        $typZurueck[] = 'taxmod_type_' . $typ->value . '_id';
+    }
+
+    $treffer = (int) $wpdb->get_var(
+        $wpdb->prepare("SELECT COUNT(*) FROM {$nodes} WHERE implemented_by = %s", SeededTypeNodes::classFor($typ))
+    );
+
+    if ($treffer !== 1) {
+        $typOhne[] = $typ->value . ' ×' . $treffer;
+    }
+}
+
+check('keine der elf Typoptionen ist zurück', $typZurueck === [], implode(' · ', $typZurueck));
+
+check('jede der elf Typklassen steht an genau einem Knoten', $typOhne === [], implode(' · ', $typOhne));
 
 echo "\n4 · Die Oberflächenoptionen zeigen weiter auf nichts (INF-020)\n";
 

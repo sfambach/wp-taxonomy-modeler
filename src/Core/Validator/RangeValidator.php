@@ -5,6 +5,7 @@ namespace Taxmod\Core\Validator;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
 
 /**
  * Liegt der Wert in seinen Grenzen?
@@ -43,7 +44,11 @@ final class RangeValidator implements Validator
 
     public function handles(): array
     {
-        return [SimpleType::Int, SimpleType::Decimal, SimpleType::DateTime];
+        // ⚠️ **Abgelesen und nicht aufgezählt** ([D-484](../../../docs/NewConcept/90-decision-log.md)).
+        // *Welche Typen eine Grenze vertragen, sagt der Typ selbst — {@see \Taxmod\Core\Model\Type\SpecialisedType::hasBounds()}.
+        // Hier stand dieselbe Auskunft als zweite Liste, und der Eigentümer wollte genau das nicht:
+        // «wenn ich einen int-Knoten habe, kann ich das softwaretechnisch prüfen.»*
+        return SpecialisedTypes::withBounds();
     }
 
     public function check(TypedValue $value, ?SimpleType $type, array $settings): array

@@ -144,7 +144,7 @@ check(
     ))
 );
 
-echo "\n4 · Jeder registrierte Renderer, Konverter und Validator hat seinen Knoten\n";
+echo "\n4 · Jeder registrierte Renderer, Konverter, Validator und einfache Typ hat seinen Knoten\n";
 
 // ⚠️ *Die Registraturen werden hier frisch gefüllt und nicht aus dem Plugin geholt: dieser Lauf soll
 // prüfen, was der Code **enthält**, nicht was eine Anfrage gerade zusammengebaut hat.*
@@ -176,6 +176,14 @@ foreach ($validator->namesForNodes() as $name) {
     if ($klasse !== null) {
         $erwartet[$klasse] = 'Validator ' . $name;
     }
+}
+
+// ⚠️ **Und die elf spezialisierten Typen** ([D-484](../../docs/NewConcept/90-decision-log.md)):
+// *seit sie Klassen sind, tragen ihre Knoten den Klassennamen wie jeder Renderer — und damit ist die
+// Bindung «welcher Knoten ist der Integer-Typ» hier mitbewacht, statt in elf Optionen zu stehen
+// (TASK-009).*
+foreach (\Taxmod\Core\Model\Type\SpecialisedTypes::all() as $einfacherTyp) {
+    $erwartet[$einfacherTyp::class] = 'Typ ' . $einfacherTyp->type()->value;
 }
 
 $dastehend = [];

@@ -4,6 +4,7 @@ namespace Taxmod\Core\Validator;
 
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
 
 /**
  * Hat der Wert die Form, die sein Typ verspricht?
@@ -52,7 +53,11 @@ final class ShapeValidator implements Validator
 
     public function handles(): array
     {
-        return [SimpleType::Email, SimpleType::Color, SimpleType::Version];
+        // ⚠️ **Abgelesen und nicht aufgezählt** ([D-484](../../../docs/NewConcept/90-decision-log.md)):
+        // *die drei sind genau die, die eine Form versprechen, ohne sie beim Lesen zu erzwingen —
+        // {@see \Taxmod\Core\Model\Type\SpecialisedType::wellFormedShape()}. Ein vierter loser Typ
+        // steht damit von selbst hier, statt vergessen zu werden.*
+        return SpecialisedTypes::withAShape();
     }
 
     public function check(TypedValue $value, ?SimpleType $type, array $settings): array
@@ -82,21 +87,16 @@ final class ShapeValidator implements Validator
         return [new Complaint(self::NAME, 'wrong_shape', ['value' => $zeichen])];
     }
 
-    /** Die Form dieses Typs, oder `null`, wenn der Typ sich selbst schon verteidigt. */
+    /**
+     * Die Form dieses Typs, oder `null`, wenn der Typ sich selbst schon verteidigt.
+     *
+     * ⚠️ **Die drei Muster sind am 2026-09-05 in die Typklassen gezogen**
+     * ([D-484](../../../docs/NewConcept/90-decision-log.md)). *Sie sagen etwas über den **Typ** aus
+     * und nicht über diesen Validator — hier stand die Kenntnis ein zweites Mal, und der Wächter
+     * hätte sie nicht auseinanderhalten können.*
+     */
     private function shapeOf(SimpleType $type): ?string
     {
-        return match ($type) {
-            // ⚠️ *Bewusst genügsam: ein Zeichen vor dem `@`, ein Name mit mindestens einem Punkt danach,
-            // keine Leerzeichen. **Die vollständige Adressgrammatik zu prüfen wäre ein Fehler** — sie
-            // erlaubt Dinge, die jeder für falsch hält, und verbietet Dinge, die zustellbar sind.*
-            SimpleType::Email => '/^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$/',
-            // ⚠️ *Sechs Stellen mit `#`. Die Kurzform `#f00` ist absichtlich **nicht** erlaubt: sie ist
-            // eine zweite Schreibweise für denselben Wert, und zwei Schreibweisen in einer Spalte machen
-            // jeden Vergleich zweideutig.*
-            SimpleType::Color => '/^#[0-9a-fA-F]{6}$/',
-            // ⚠️ *Drei Zahlen — `MAJOR.MINOR.PATCH` (`CD-11`). `1.2` ist keine Fassung dieses Projekts.*
-            SimpleType::Version => '/^\d+\.\d+\.\d+$/',
-            default => null,
-        };
+        return $type->specialised()->wellFormedShape();
     }
 }

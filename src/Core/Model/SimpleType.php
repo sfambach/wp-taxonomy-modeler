@@ -2,7 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
-use Taxmod\Core\Exception\NotAValueOfThatType;
+use Taxmod\Core\Model\Type\SpecialisedType;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
 
 /**
  * The simple data types that ship in the box.
@@ -86,14 +87,21 @@ enum SimpleType: string
      */
     public function column(): string
     {
-        return match ($this) {
-            self::Int, self::Bool                                              => 'value_int',
-            self::Decimal                                                      => 'value_decimal',
-            self::DateTime                                                     => 'value_date',
-            self::NodeRef                                                      => 'value_ref',
-            self::Text, self::Char, self::Email, self::Color,
-            self::Version, self::UserRef                                       => 'value_text',
-        };
+        return $this->specialised()->column();
+    }
+
+    /**
+     * Die Klasse, die diesen Fall ausmacht — **und die alles beantwortet, was unten steht**.
+     *
+     * ⚠️ **Der Fall ist die Adresse, die Klasse ist die Wahrheit** ([D-484](../../../docs/NewConcept/90-decision-log.md)).
+     * *Bis zum 2026-09-05 stand jede dieser Auskünfte hier als `match` über elf Fälle; sie stehen
+     * jetzt je einmal in {@see \Taxmod\Core\Model\Type\SpecialisedType}s Kind. Was hier bleibt, sind
+     * die Signaturen, damit kein Aufrufer sich ändern muss — **eine Weiterleitung und keine zweite
+     * Heimat**.*
+     */
+    public function specialised(): SpecialisedType
+    {
+        return SpecialisedTypes::for($this);
     }
 
     /**
@@ -110,16 +118,7 @@ enum SimpleType: string
      */
     public function humanName(): string
     {
-        return match ($this) {
-            self::Int      => 'integer',
-            self::Decimal  => 'double',
-            self::NodeRef  => 'node reference',
-            self::UserRef  => 'user reference',
-            self::DateTime => 'date and time',
-            self::Char     => 'character',
-            self::Bool     => 'yes or no',
-            default        => $this->value,
-        };
+        return $this->specialised()->humanName();
     }
 
     /**
@@ -152,19 +151,7 @@ enum SimpleType: string
      */
     public function nodeName(): string
     {
-        return match ($this) {
-            self::Int      => 'Integer',
-            self::Decimal  => 'Decimal',
-            self::Text     => 'Text',
-            self::Char     => 'Character',
-            self::Bool     => 'Boolean',
-            self::Email    => 'Email',
-            self::DateTime => 'Date and time',
-            self::Color    => 'Color',
-            self::Version  => 'Version',
-            self::NodeRef  => 'Node reference',
-            self::UserRef  => 'User reference',
-        };
+        return $this->specialised()->nodeName();
     }
 
     /**
@@ -229,21 +216,13 @@ enum SimpleType: string
      */
     public function pattern(): ?string
     {
-        return match ($this) {
-            self::Int     => '-?\d+',
-            self::Decimal => '-?\d+(\.\d+)?',
-            default       => null,
-        };
+        return $this->specialised()->pattern();
     }
 
     /** Which on-screen keyboard the control should ask for. */
     public function inputMode(): ?string
     {
-        return match ($this) {
-            self::Int     => 'numeric',
-            self::Decimal => 'decimal',
-            default       => null,
-        };
+        return $this->specialised()->inputMode();
     }
 
     /**
@@ -270,111 +249,9 @@ enum SimpleType: string
             return TypedValue::nothing();
         }
 
-        return match ($this) {
-            self::Int     => $this->integer($characters),
-            self::Decimal => $this->exactDecimal($characters),
-            self::Bool    => $this->boolean($characters),
-            self::DateTime => TypedValue::ofDate($this->timestamp($characters)),
-            self::NodeRef => $this->nodeReference($characters),
-            self::Char    => $this->oneCharacter($characters),
-            // ⚠️ Text, email, colour, version and a foreign user key are stored as given. Whether
-            // an address is one, or a version well-formed, is a **validator's** question (D-319) —
-            // and a renderer that never writes has no business tidying it either (D-159).
-            default       => TypedValue::ofText($characters),
-        };
+        // ⚠️ *Und ab hier antwortet der Typ selbst* ([D-484](../../../docs/NewConcept/90-decision-log.md)).
+        // Text, E-Mail, Farbe, Fassung und ein fremder Benutzerschlüssel werden abgelegt, wie sie
+        // kamen — ob eine Adresse eine ist, ist die Frage eines **Validators** (D-319).
+        return $this->specialised()->valueFrom($characters);
     }
-
-    private function integer(string $characters): TypedValue
-    {
-        $this->mustMatchItsShape($characters);
-
-        return TypedValue::ofInt((int) $characters);
-    }
-
-    /** Kept as the characters it arrived as — a decimal never becomes a float (D-057). */
-    private function exactDecimal(string $characters): TypedValue
-    {
-        $this->mustMatchItsShape($characters);
-
-        return TypedValue::ofDecimal($characters);
-    }
-
-    /**
-     * ⚠️ **The same pattern the control carries**, anchored. Writing the rule out a second time
-     * here is how a control and its core come to disagree, and the disagreement only shows up as
-     * *the form refuses what the field allowed*.
-     */
-    private function mustMatchItsShape(string $characters): void
-    {
-        $pattern = $this->pattern();
-
-        if ($pattern !== null && preg_match('/^' . $pattern . '$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-    }
-
-    private function boolean(string $characters): TypedValue
-    {
-        return match (strtolower($characters)) {
-            '1', 'true', 'on', 'yes'  => TypedValue::ofBool(true),
-            '0', 'false', 'off', 'no' => TypedValue::ofBool(false),
-            default                   => throw NotAValueOfThatType::submitted($characters, $this->value),
-        };
-    }
-
-    private function nodeReference(string $characters): TypedValue
-    {
-        if (preg_match('/^\d+$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-
-        return TypedValue::ofReference((int) $characters);
-    }
-
-    /**
-     * ⚠️ **Counted in characters, not bytes.** `mb_strlen` is why `ä` is one `char` and not two —
-     * a `char` has a numeric identity behind it (D-329), and that identity is a code point.
-     */
-    private function oneCharacter(string $characters): TypedValue
-    {
-        if (mb_strlen($characters, 'UTF-8') !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-
-        return TypedValue::ofText($characters);
-    }
-
-    /**
-     * The three shapes a date control submits, normalised to what the column holds.
-     *
-     * ⚠️ **A time with no date is stored against the epoch, and that is a compromise, not a
-     * design.** The column is a `datetime` (D-291 gives date, time and both to one type), so a
-     * time of day has nowhere to sit without a date beside it. The epoch is used because it is
-     * recognisable and because the precision setting is what says the date part carries no
-     * meaning — but a stored fact nobody meant is exactly what this model tries not to have. See
-     * [OQ-088](../../../docs/NewConcept/91-open-questions.md).
-     */
-    private function timestamp(string $characters): string
-    {
-        $characters = str_replace('T', ' ', $characters);
-
-        return match (true) {
-            preg_match('/^\d{4}-\d{2}-\d{2}$/', $characters) === 1
-                => $characters . ' 00:00:00',
-            preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $characters) === 1
-                => self::TIME_WITHOUT_A_DATE . ' ' . $this->withSeconds($characters),
-            preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $characters) === 1
-                => substr($characters, 0, 10) . ' ' . $this->withSeconds(substr($characters, 11)),
-            default
-                => throw NotAValueOfThatType::submitted($characters, $this->value),
-        };
-    }
-
-    private function withSeconds(string $time): string
-    {
-        return strlen($time) === 5 ? $time . ':00' : $time;
-    }
-
-    /** The date a time-of-day is parked against when it has none of its own. */
-    public const TIME_WITHOUT_A_DATE = '1970-01-01';
 }

@@ -15,9 +15,11 @@
  * stehen auf dieser Installation seit vor der Umbenennung, und sie zu löschen, um es zu messen, wäre
  * ein Datenverlust am Modell des Eigentümers. Was davon abgesichert ist, ist der Nachschlag selbst.*
  *
- * ⚠️ **Sie schreibt in die Datenbank, und zwar zweierlei.** *Die elf Optionen, die es tragen —
- * das ist der Auftrag. Und einen Schmierknoten `__tb …` unter `Data Types`, den sie am Ende wieder
- * wegräumt, mitsamt dem, was ein abgestürzter Vorlauf liegengelassen hat.*
+ * ⚠️ **Sie schreibt in die Datenbank, und zwar zweierlei.** *Die elf Klassennamen in
+ * `nodes.implemented_by`, die die Bindung tragen — das ist der Auftrag, seit die Optionen mit
+ * [D-484](../../docs/NewConcept/90-decision-log.md) gefallen sind. Und einen Schmierknoten `__tb …`
+ * unter `Data Types`, den sie am Ende wieder wegräumt, mitsamt dem, was ein abgestürzter Vorlauf
+ * liegengelassen hat.*
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
@@ -96,26 +98,35 @@ foreach ($editor->childrenOf($dataTypes->id) as $child) {
     $children[$child->id] = $child;
 }
 
-echo "\n== 1. Jeder Typ hat seine Id notiert, und sie zeigt auf einen Knoten unter Data Types ==\n";
+echo "\n== 1. Jeder Typ hat seine Klasse notiert, und sie zeigt auf einen Knoten unter Data Types ==\n";
 
-// ⚠️ *Der erste Zugriff trägt fehlende Optionen über den Notnagel nach — genau das ist der Weg, auf
-// dem eine bestehende Installation ohne Datenverlust umsteigt.*
+// ⚠️ **Die Bindung ist seit dem 2026-09-05 `nodes.implemented_by` und keine Option mehr**
+// ([D-484](../../docs/NewConcept/90-decision-log.md), TASK-009). *Die Zusagen dieses Laufs sind
+// wortgleich geblieben — nur der Ort, an dem die Antwort steht, ist der Knoten selbst (`AR-1`).*
+//
+// ⚠️ *Der erste Zugriff trägt eine fehlende Klasse über den Notnagel nach — genau das ist der Weg,
+// auf dem eine bestehende Installation ohne Datenverlust umsteigt.*
 foreach (SimpleType::cases() as $type) {
     $id = $types->nodeId($type);
 
     check(
-        $type->value . ' → ' . SeededTypeNodes::optionFor($type),
+        $type->value . ' → ' . SeededTypeNodes::classFor($type),
         $id !== null && isset($children[$id]),
-        $id === null ? 'keine Option' : "Id $id ist kein Kind von Data Types"
+        $id === null ? 'keine Klasse notiert' : "Id $id ist kein Kind von Data Types"
     );
 }
 
-echo "\n== 2. Die Option steht auch wirklich in der Datenbank, nicht nur im Gedächtnis ==\n";
+echo "\n== 2. Die Klasse steht auch wirklich in der Zeile, nicht nur im Gedächtnis ==\n";
 
 foreach (SimpleType::cases() as $type) {
-    $stored = (int) get_option(SeededTypeNodes::optionFor($type), 0);
+    $id   = $types->nodeId($type);
+    $node = $id === null ? null : $nodes->find($id);
 
-    check($type->value . ' ist gespeichert', $stored > 0 && $stored === $types->nodeId($type), (string) $stored);
+    check(
+        $type->value . ' ist gespeichert',
+        $node !== null && $node->implementedBy === SeededTypeNodes::classFor($type),
+        (string) $node?->implementedBy
+    );
 }
 
 echo "\n== 3. Und der Knoten hinter der Id ist der, den man erwartet ==\n";
@@ -194,16 +205,17 @@ check(
     $nodes->byId($doppel->id)->name
 );
 
-echo "\n== 6. Der Notnagel trägt eine fehlende Option nach (D-510) ==\n";
+echo "\n== 6. Der Notnagel trägt eine fehlende Klasse nach (D-510) ==\n";
 
-// ⚠️ **Ohne den Rückfall wäre ein Upgrade ein Datenverlust** — eine bestehende Installation hat die
-// Optionen nicht. *Gemessen wird an `color`, indem die Option gelöscht und ein **frisches** Exemplar
-// gefragt wird; danach steht sie wieder da, mit demselben Wert. Netto ändert sich nichts.*
+// ⚠️ **Ohne den Rückfall wäre ein Aufstieg ein Datenverlust** — eine bestehende Installation trägt
+// an ihren Typknoten keine Klasse. *Gemessen wird an `color`, indem die Angabe gelöscht und ein
+// **frisches** Exemplar gefragt wird; danach steht sie wieder da, auf demselben Knoten. Netto ändert
+// sich nichts, und der Weg dahin ist journalisiert.*
 $colourBefore = $types->nodeId(SimpleType::Color);
 
-delete_option(SeededTypeNodes::optionFor(SimpleType::Color));
+$editor->setImplementedBy($colourBefore, null);
 
-check('die Option ist weg', get_option(SeededTypeNodes::optionFor(SimpleType::Color)) === false);
+check('die Angabe ist weg', $nodes->byId($colourBefore)->implementedBy === null);
 
 $fresh = new SeededTypeNodes($nodes, $framework);
 
@@ -214,8 +226,8 @@ check(
 );
 
 check(
-    'und die Option ist nachgetragen, damit der Notnagel nicht wieder gebraucht wird',
-    (int) get_option(SeededTypeNodes::optionFor(SimpleType::Color), 0) === $colourBefore
+    'und die Klasse ist nachgetragen, damit der Notnagel nicht wieder gebraucht wird',
+    $nodes->byId($colourBefore)->implementedBy === SeededTypeNodes::classFor(SimpleType::Color)
 );
 
 echo "\n== 6b. Auch die Saat schlägt Id zuerst nach (D-510) ==\n";
@@ -228,7 +240,7 @@ echo "\n== 6b. Auch die Saat schlägt Id zuerst nach (D-510) ==\n";
 // diesem Zeitpunkt noch steht: die Saat darf ihn nicht ansehen.*
 $vorher    = $types->nodeId(SimpleType::Int);
 $kinder    = count($editor->childrenOf($dataTypes->id));
-$scaffold  = new \Taxmod\WordPress\Persistence\BaseScaffold($editor, $framework, $types, $settings);
+$scaffold  = new \Taxmod\WordPress\Persistence\BaseScaffold($editor, $framework, $types);
 $angelegt  = $scaffold->import();
 
 check('die Saat legt neben dem Doppelgänger nichts Neues an', $angelegt === [], implode(', ', $angelegt));

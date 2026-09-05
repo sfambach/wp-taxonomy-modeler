@@ -727,3 +727,39 @@ abgelösten Klassenoptionen ist zurück**; jede registrierte Klasse steht an gen
 die neun Rückstände zeigen weiterhin auf nichts. **Geprüft, dass er beisst** — mit einer
 untergeschobenen `taxmod_render_renderer_slider_id` und einer erfundenen Option wird er rot, und er
 lässt beim Lauf nichts liegen (`INF-021`).*
+
+---
+
+## INF-026 · Die Äste und die Beschriftungsrollen sind derselbe Fall wie die Typen — gefragt, nicht entschieden
+
+**2026-09-05, beim Vollzug von [D-484](../../NewConcept/90-decision-log.md).** *Die elf einfachen
+Typen haben jetzt je eine Klasse, und damit ist ihre Bindung an einen Knoten aus der WordPress-Option
+in den Knoten gezogen (`AR-1`, TASK-009).*
+
+⚠️ **Die fünf `taxmod_branch_<ast>_id` und die fünf `taxmod_role_<rolle>` sind technisch derselbe
+Fall** — *`Branch` und `SeededRole` sind Aufzählungen wie `SimpleType` war, und derselbe Weg stünde
+ihnen offen: je Fall eine Klasse, der Klassenname in `nodes.implemented_by`, die Option fällt.*
+
+⚠️ **Sie sind nicht angefasst worden, und das ist Absicht.** *D-484 spricht von **spezialisierten
+Typen**. Ob dieselbe Begründung — «dann ist auch klar, wie viele wir haben» — für Äste und Rollen
+gilt, hat der Eigentümer nicht gesagt, und es wird nicht geraten (`PR-4`). **Ein Ast ist auch nicht
+offensichtlich dasselbe wie ein Typ:** er trägt kein Verhalten, das eine Klasse tragen könnte — er
+ist ein Ort. Genau das war der Grund, aus dem die drei Behälteroptionen (`Renderer`, `Converter`,
+`Validator`) schon beim ersten Mal stehengeblieben sind.*
+
+**Die Frage ist eine Ja-Nein-Frage:** sollen Äste und Rollen denselben Weg gehen? *Zehn Optionen
+hängen daran.*
+
+---
+
+## INF-027 · `BaseScaffold::importOnce()` ruft zwei Methoden, die es nicht mehr gibt
+
+**Gefunden am 2026-09-05, nebenbei, und nicht angefasst.** *`importOnce()` ruft `boundTheNumbers()`
+und `declareKeyDefaults()`; beide sind mit der `settings`-Tabelle gestrichen worden (D-579), und der
+Kommentar in derselben Datei sagt es selbst: «Hier standen `boundTheNumbers()`, `seededNode()` und
+`declareKeyDefaults()` … Die Tabelle ist mit D-579 gestrichen.»*
+
+⚠️ **Es ist ein Aufruf ins Leere und damit ein fataler Fehler, sobald der Weg genommen wird** — er
+wird nur nicht genommen, weil `importOnce()` bei gesetzter Option früh zurückkehrt. *Auf einer
+frischen Installation wäre es der erste Lauf, der stirbt.* **Gemeldet und nicht repariert**, weil es
+zu einer anderen Arbeit gehört als der, in der es auffiel.
