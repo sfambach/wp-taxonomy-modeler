@@ -1242,7 +1242,7 @@ Spiegel stehen. **Gemessen: es waren die einzigen zwei Zeilen im Bestand, bei de
 auseinandergingen.***
 
 ```text
-[ ] TASK-045  Der Schreiber sucht die Einstellungskante an beiden Ketten —
+[x] TASK-045  Der Schreiber sucht die Einstellungskante an beiden Ketten —
               Besitzer und Ziel (D-611). Nur fuer Einstellungen, nicht fuer
               Modellfelder.
 [x] TASK-047  Zwei Kanten auf den Zweigkopf «Constants» entfernen —
@@ -1250,6 +1250,36 @@ auseinandergingen.***
 [ ] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
               nach den Kanten 44091/44093, die es nicht mehr gibt
 ```
+
+**TASK-045 gebaut am 2026-09-05, und der Leser ging mit.** *`settingRelationAtUseSite()` sucht die
+Einstellungskante jetzt an **beiden** Ketten — der des Besitzers, dann der des Ziels — und
+`useSiteSettingRelation()` prüft dieselbe Menge, damit die Maske nicht abweist, was sie eine Zeile
+vorher angeboten hat. **Beide gehen durch dieselbe eine Stelle**, sonst gälte «beide Ketten» an einem
+Ort und am anderen nicht.*
+
+⚠️ **Der Leser musste mit, sonst wäre die alte Begründung wahr geworden.** *Es stand da: «ein
+Schlüssel, den nur das Ziel erklärt, bekommt `null` — ihn zu schreiben hiesse, eine Zeile anzulegen,
+die niemand liest.» **Das war richtig, solange `ModelValues::settingRelation()` nur den Besitzer
+kannte.** Sie sucht eine Verwendungsstelle jetzt in derselben Reihenfolge. **Schreiber und Leser auf
+zwei Adressen ist der Fehler, den [D-611](../../NewConcept/90-decision-log.md) selbst beschreibt** —
+einer der beiden allein hätte ihn spiegelverkehrt wiederhergestellt.*
+
+⚠️ **Keine Zusatzregel für Namensgleichheit** — *die hatte ich zu D-611 mitentschieden, und der
+Eigentümer hat sie zurückgenommen: «gibt es nur an Root, nicht doppelt; Integer erbt es und kann es
+umstellen.» **Eine Einstellung wird einmal erklärt und vererbt.** Die Reihenfolge steht trotzdem
+fest, damit sie nicht von der Reihenfolge einer Abfrage abhängt.*
+
+⚠️ **Der Wächter ist gewachsen:** [`setting-write-check.php`](../../../scripts/dev/setting-write-check.php)
+*hatte den Rundlauf an einer Verwendungsstelle schon. Er hat einen zweiten dazubekommen, mit seinem
+Fall: ein **eigener** Zieltyp trägt eine Einstellungskante, die die Kette des Besitzers nicht kennt —
+erst wird nachgewiesen, dass sie dort wirklich fehlt, dann dass der Schreiber sie findet, dass der
+Wert danach im Satz des **Besitzers** unter der zweistufigen Adresse steht, dass der Leser ihn dort
+wiederfindet und dass «nichts» ihn wieder herausnimmt. **Vor TASK-045 war die dritte Zusage nicht zu
+erfüllen**, weil schon der Schreiber die Kante nicht fand.*
+
+⚠️ *Die Grenze steht: **nur Einstellungen.** Ein Modellfeld trägt Daten des Benutzers, und die an
+einer Verwendungsstelle zu überschreiben wäre etwas anderes — sein Wort: «a, aber aktuell nur für
+Settings».*
 
 ⚠️ **TASK-047 erledigt am 2026-09-05 — und die Quelle mit, sonst wäre es in einer Woche wieder da.**
 *Die zwei Kanten `Decimal --renderer--> Constants` und `Integer --read_only--> Constants` legt

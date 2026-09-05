@@ -935,25 +935,73 @@ final class DataEntry
      * und Leser auf zwei Adressen.*
      *
      * ⚠️ *Kein Name aus dem Formular wird zur Id gemacht, ohne dass er hier gefunden wurde
-     * (`CD-5`) — ein unbekannter Schlüssel bekommt `null` und nicht eine erfundene Kante. **Und ein
-     * Schlüssel, den nur das Ziel erklärt, bekommt ebenfalls `null`**: ihn zu schreiben hiesse, eine
-     * Zeile anzulegen, die niemand liest.*
+     * (`CD-5`) — ein unbekannter Schlüssel bekommt `null` und nicht eine erfundene Kante.*
+     *
+     * ⚠️ **Seit TASK-045 werden **beide** Ketten durchsucht** ([D-611](../../../docs/NewConcept/90-decision-log.md)).
+     * *Hier stand: «ein Schlüssel, den nur das Ziel erklärt, bekommt ebenfalls `null` — ihn zu
+     * schreiben hiesse, eine Zeile anzulegen, die niemand liest.» **Der Eigentümer hat das
+     * abgelehnt**, und sein Fall ist der, an dem es weh tut: `Integer --max--> max` erklärt `max`,
+     * und nur `Integer`. Für «an `Kunde.alter` ist max = 120» kennt die Kette des Besitzers kein
+     * `max`, **also wurde gar nichts geschrieben**. Sein Wort: «a, aber aktuell nur für Settings.»*
+     *
+     * ⚠️ **Und der Leser wurde mitgezogen, sonst wäre die alte Begründung wahr geworden.**
+     * *{@see ModelValues::settingRelation()} sucht eine Verwendungsstelle jetzt ebenfalls erst am
+     * Besitzer und dann am Ziel — dieselbe Reihenfolge, dieselbe Regel. **Schreiber und Leser auf
+     * zwei Adressen ist der Fehler, den dieses Projekt schon mehrfach hatte**, und einer der beiden
+     * allein hätte ihn wieder erzeugt.*
+     *
+     * ⚠️ **Näher zuerst, aber ohne Zusatzregel für Namensgleichheit** — *die hatte ich zu
+     * [D-611](../../../docs/NewConcept/90-decision-log.md) mitentschieden und der Eigentümer hat sie
+     * zurückgenommen: «gibt es nur an Root, nicht doppelt; Integer erbt es und kann es umstellen.»
+     * Eine Einstellung wird **einmal erklärt und vererbt**. Die Reihenfolge steht trotzdem fest,
+     * damit sie nicht von der Reihenfolge einer Abfrage abhängt.*
      */
     public function settingRelationAtUseSite(Relation $useSite, string $key): ?Relation
     {
-        $besitzer = $this->nodes->find($useSite->fromNodeId);
-
-        if ($besitzer === null) {
-            return null;
-        }
-
-        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-            if ($kante->isSetting() && $kante->name === $key) {
+        foreach ($this->useSiteSettingRelations($useSite) as $kante) {
+            if ($kante->name === $key) {
                 return $kante;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Die Einstellungskanten, die an dieser Verwendungsstelle gelten — **beide Ketten, Besitzer
+     * zuerst** ([D-611](../../../docs/NewConcept/90-decision-log.md), TASK-045).
+     *
+     * ⚠️ *An **einer** Stelle, weil die Suche nach dem Namen und die Prüfung einer Id aus dem
+     * Formular dieselbe Frage stellen. Zwei Fassungen davon wären zwei Orte, an denen «beide Ketten»
+     * gilt, und einer würde beim nächsten Mal vergessen.*
+     *
+     * ⚠️ *Zwei Abfragen und keine je Kante (`CD-7`): jede Kette holt ihre Kanten in einem Zug.*
+     *
+     * @return list<Relation>
+     */
+    private function useSiteSettingRelations(Relation $useSite): array
+    {
+        $ketten = [];
+
+        foreach ([$useSite->fromNodeId, $useSite->toNodeId] as $traeger) {
+            $knoten = $this->nodes->find($traeger);
+
+            if ($knoten === null) {
+                continue;
+            }
+
+            $ketten[] = $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten));
+        }
+
+        $aus = [];
+
+        foreach (array_merge(...$ketten === [] ? [[]] : $ketten) as $kante) {
+            if ($kante->isSetting()) {
+                $aus[] = $kante;
+            }
+        }
+
+        return $aus;
     }
 
     public function putSettingAtUseSite(int $relationId, int $settingRelationId, TypedValue $value, string $locale = ''): void
@@ -994,22 +1042,27 @@ final class DataEntry
     }
 
     /**
-     * Die Einstellungskante dieser Id — geprüft an der Kette, an der der Leser sie sucht.
+     * Die Einstellungskante dieser Id — geprüft an den Ketten, an denen der Leser sie sucht.
      *
-     * ⚠️ **Geprüft statt geglaubt** (`CD-5`). *Eine Id aus einem Formular, die keine
-     * Einstellungskante des Besitzers ist, würde eine Zeile an eine Adresse legen, die niemand liest.*
+     * ⚠️ **Geprüft statt geglaubt** (`CD-5`). *Eine Id aus einem Formular, die an keiner der beiden
+     * Ketten eine Einstellungskante ist, würde eine Zeile an eine Adresse legen, die niemand liest.*
+     *
+     * ⚠️ **Beide Ketten seit TASK-045** ([D-611](../../../docs/NewConcept/90-decision-log.md)) —
+     * *dieselbe Menge, die {@see self::settingRelationAtUseSite()} dem Formular angeboten hat. Prüfte
+     * sie nur den Besitzer, wiese sie genau die Angabe ab, die sie eine Zeile vorher angeboten hat.*
      */
     private function useSiteSettingRelation(Relation $useSite, int $settingRelationId): Relation
     {
-        $besitzer = $this->nodes->byId($useSite->fromNodeId);
-
-        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-            if ($kante->id === $settingRelationId && $kante->isSetting()) {
+        foreach ($this->useSiteSettingRelations($useSite) as $kante) {
+            if ($kante->id === $settingRelationId) {
                 return $kante;
             }
         }
 
-        throw NotYetStorable::notAFieldOfThisModel($settingRelationId, $besitzer->name);
+        throw NotYetStorable::notAFieldOfThisModel(
+            $settingRelationId,
+            $this->nodes->byId($useSite->fromNodeId)->name
+        );
     }
 
     /**

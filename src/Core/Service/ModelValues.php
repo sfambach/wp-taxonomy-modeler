@@ -355,15 +355,36 @@ final class ModelValues
         // vergessen.** *`read_only` ist an `Root` erklärt und sein Wert steht am Knoten — ohne die
         // Vorfahren war die Kante nicht zu finden, und die Angabe fiel still weg. **Gemessen an
         // `preview-check.php`, das genau deshalb rot blieb.***
-        $kette = $this->erbkette($subject);
+        // ⚠️ **Bei einer Verwendungsstelle sind es zwei Ketten, Besitzer zuerst** (TASK-045,
+        // [D-611](../../../docs/NewConcept/90-decision-log.md)). *Der Schreiber bietet einer
+        // Verwendungsstelle seit TASK-045 auch die Einstellungskanten ihres **Ziels** an — `max` ist
+        // an `Integer` erklärt, und «an `Kunde.alter` ist max = 120» soll gehen. **Fände der Leser
+        // die Kante nur am Besitzer, stünde die Zeile richtig in der Datenbank und wäre für ihn
+        // nicht da** — genau der Fehler, den D-611 an seiner ersten Fassung beschreibt, nur
+        // spiegelverkehrt.*
+        //
+        // ⚠️ *Für einen **Knoten** bleibt es eine Kette: er ist keine Verwendungsstelle und hat kein
+        // Ziel. `forUseSite()` mischt die Angaben des Ziels ohnehin schon dazu — hier geht es um die
+        // Kante, unter der ein an der Stelle **geschriebener** Wert steht.*
+        $ketten = [$this->erbkette($subject)];
 
-        $this->kantenVorladen($kette);
+        if ($subject instanceof Relation) {
+            $ziel = $this->knoten($subject->toNodeId);
 
-        foreach ($kette as $besitzer) {
-            $kante = $this->kantenNachBesitzer[$besitzer][$relationId] ?? null;
+            if ($ziel !== null) {
+                $ketten[] = $this->framework->inheritanceOwnersOf($ziel);
+            }
+        }
 
-            if ($kante !== null) {
-                return $kante->isSetting() ? $kante : null;
+        foreach ($ketten as $kette) {
+            $this->kantenVorladen($kette);
+
+            foreach ($kette as $besitzer) {
+                $kante = $this->kantenNachBesitzer[$besitzer][$relationId] ?? null;
+
+                if ($kante !== null) {
+                    return $kante->isSetting() ? $kante : null;
+                }
             }
         }
 

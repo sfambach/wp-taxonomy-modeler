@@ -521,6 +521,95 @@ if ($einstellung === null) {
         check('und nimmt sie wieder heraus', $anDerStelle() !== true);
     }
 }
+
+echo "\n== Eine Einstellung, die nur das Ziel erklaert (TASK-045, D-611) ==\n";
+
+// ⚠️ **Sein Fall, und er war bis heute nicht zu schreiben.** *«`Integer --max--> max` erklaert `max`,
+// und nur `Integer`. Fuer ‹an `Kunde.alter` ist max = 120› kennt die Kette des Besitzers — `Kunde`,
+// `Model`, `Root` — kein `max`. **Heute wird der Wert dann gar nicht geschrieben.**» Der Schreiber
+// sucht die Einstellungskante seit TASK-045 an **beiden** Ketten, Besitzer zuerst.*
+//
+// ⚠️ **Und der Leser wurde mitgezogen — sonst waere die alte Begruendung wahr geworden.** *«Lieber
+// nichts schreiben als an eine Adresse legen, die niemand liest» war richtig, solange
+// {@see ModelValues::settingRelation()} nur den Besitzer kannte. **Die Zusage unten prueft genau
+// das:** geschrieben **und** wiedergefunden. Ohne die zweite Haelfte waere dies der Fehler, den
+// [D-611](../../docs/NewConcept/90-decision-log.md) an seiner ersten Fassung beschreibt, nur
+// spiegelverkehrt.*
+//
+// ⚠️ *Eigene Knoten mit eigenem Praefix, an seinem Modell wird nichts angefasst — die
+// Einstellungskante haengt an **meinem** Zieltyp, nicht an `Integer`.*
+$eigenerTyp = $editor->createNode('__sw2 Zieltyp', $framework->rootOf(\Taxmod\Core\Model\Branch::DataTypes)->id);
+$meineKnoten[] = $eigenerTyp->id;
+
+$eigeneAngabe  = $editor->createNode('__sw2 hoechstens', $framework->rootOf(\Taxmod\Core\Model\Branch::Settings)->id);
+$meineKnoten[] = $eigeneAngabe->id;
+
+// ⚠️ *Die Art wird angegeben (TASK-053, [D-618](../../docs/NewConcept/90-decision-log.md)) — der
+// Einstellungsast gibt `setting` nicht her, und frueher haette hier ein `markAsSetting()` danach
+// gestanden.*
+$nurAmZiel = $editor->addField(
+    $eigenerTyp->id,
+    $eigeneAngabe->id,
+    '__sw2_hoechstens',
+    \Taxmod\Core\Model\RelationKind::Setting
+);
+
+$stelle2 = $editor->addField($knotenId, $eigenerTyp->id, '__sw2 stelle');
+
+// ⚠️ *Die Gegenprobe zuerst: die Kante darf an der Kette des **Besitzers** wirklich nicht stehen,
+// sonst prueft der Abschnitt etwas anderes als er behauptet.*
+$amBesitzer = false;
+
+foreach ($relations->fieldRelationsOf($framework->inheritanceOwnersOf($nodes->byId($knotenId))) as $kante) {
+    if ($kante->id === $nurAmZiel->id) {
+        $amBesitzer = true;
+    }
+}
+
+check('die Einstellungskante steht nicht an der Kette des Besitzers', ! $amBesitzer);
+
+$gefunden = $data->settingRelationAtUseSite($stelle2, '__sw2_hoechstens');
+
+check(
+    'der Schreiber findet sie trotzdem — an der Kette des Ziels',
+    $gefunden !== null && $gefunden->id === $nurAmZiel->id,
+    $gefunden === null ? 'nicht gefunden' : 'eine andere Kante'
+);
+
+if ($gefunden !== null) {
+    $anDerStelle2 = static function () use ($records, $relations, $nodes, $framework, $stelle2): ?int {
+        $angabe = (new ModelValues($records, $relations, $nodes, $framework))
+            ->forUseSite($stelle2)['__sw2_hoechstens'] ?? null;
+
+        return $angabe === null || $angabe->setHere !== true ? null : $angabe->value->int;
+    };
+
+    check('vorher steht dort nichts', $anDerStelle2() === null);
+
+    $data->putSettingAtUseSite($stelle2->id, $gefunden->id, TypedValue::ofInt(120));
+
+    // ⚠️ **Die Zusage, die den ganzen Abschnitt traegt:** *geschrieben, und der Leser findet es an
+    // derselben Stelle wieder. **Sie war vor TASK-045 nicht zu erfuellen**, weil schon der Schreiber
+    // die Kante nicht fand.*
+    check('geschrieben, und der Leser findet den Wert an der Stelle', $anDerStelle2() === 120, (string) $anDerStelle2());
+
+    // ⚠️ *Und im Satz des **Besitzers**, nicht im Satz des Ziels — sonst truege die Angabe fuer alle,
+    // die den Typ verwenden, und genau die Unterscheidung ist der Sinn von D-611.*
+    $zeilen2 = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' w
+         INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = w.node_record_id
+         WHERE r.node_id = %d AND w.path = %s',
+        $knotenId,
+        $stelle2->id . '.' . $nurAmZiel->id
+    ));
+
+    check('und zwar im Satz des Besitzers, unter der zweistufigen Adresse', $zeilen2 === 1, (string) $zeilen2);
+
+    $data->clearSettingAtUseSite($stelle2->id, $gefunden->id);
+
+    check('herausgenommen, und die Stelle sagt nichts mehr', $anDerStelle2() === null);
+}
+
 echo "\n== Genau ein Renderer, und die zweite Zeile ist abgeschafft ==\n";
 
 // WICHTIG: Hier stand «Eine Zeile hinzufuegen legt einen zweiten Teil an», und diese Zusage ist
